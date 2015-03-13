@@ -1,5 +1,13 @@
-#	will create two mods %AppData%\SpaceEngineers\Mods\Autopilot" and %AppData%\SpaceEngineers\Mods\Autopilot Dev"
-#	the Dev version has logging enabled
+# build.py
+#
+# This script combines the individual module folders into a single structure
+# for Space Engineers to load (and a bunch of other useful deploy tasks)
+#
+# It will create two mods,
+#   "%AppData%\SpaceEngineers\Mods\Autopilot" and
+#   "%AppData%\SpaceEngineers\Mods\Autopilot Dev".
+#
+# The Dev version has logging enabled
 
 
 import datetime, errno, os, os.path, psutil, shutil, stat, subprocess, sys, time
@@ -232,6 +240,7 @@ if os.path.exists(mwmBuilder):
 	mwmLarge.wait()
 	mwmSmall.wait()
 	print("\nfinished MwmBuilder\n")
+
 
 emptyDirectory(sourceModelRadarLarge, sourceModelRadarLarge + "\\output")
 emptyDirectory(sourceModelRadarSmall, sourceModelRadarSmall + "\\output")
