@@ -1,0 +1,14 @@
+previous system:
+determined whether two grids can see each other based on distance between them
+
+a grid can be detected with beacons or antennae
+friendly antennae relay the position off all grids they know of
+antennae remember positions of grids (up to 1 hour)
+hacking an antennae steals information
+
+radar dish: detects all grids
+larger grids can be detected further away, range is 5% - 50% of radar power
+
+antennae can display information
+breakdown
+	: to copy GPS
