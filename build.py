@@ -2,7 +2,11 @@
 #	the Dev version has logging enabled
 
 
-import datetime, os, os.path, psutil, shutil, stat, subprocess, sys, time
+import datetime, errno, os, os.path, psutil, shutil, stat, subprocess, sys, time
+
+# in case build.ini is missing variables
+mwmBuilder = os.devnull
+Zip7 = os.devnull
 
 exec(open('build.ini').read())
 
@@ -130,11 +134,15 @@ def emptyDirectory(l_startDir, l_current):
 #	not working ATM
 sourceModelRadarLarge = startDir + r"\AntennaRelay\Model\large"
 sourceModelRadarSmall = startDir + r"\AntennaRelay\Model\small"
-#print("\nrunning mwmBuilder")
-#os.chdir(sourceModelRadarLarge)
-#subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
-#os.chdir(sourceModelRadarSmall)
-#subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
+
+if os.path.exists(mwmBuilder):
+	print("\nrunning mwmBuilder")
+	os.chdir(sourceModelRadarLarge)
+	createDir('ouput')
+	mwmLarge = subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
+	os.chdir(sourceModelRadarSmall)
+	createDir('ouput')
+	mwmSmall = subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
 
 # copy textures
 copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Cubes", destTextureCube, ".dds")
@@ -154,7 +162,7 @@ copyScriptFiles("TurretControl")
 replaceIn_file=r"Help.cs"
 replaceIn_DirSource= startDir + r"\Autopilot\Scripts"
 
-readme_file= startDir + r"\Autopilot\readme.txt"
+readme_file= startDir + r"\Player Readme.txt"
 
 replaceIn_write_name = destScript+"\\Autopilot."+replaceIn_file
 replaceIn_writeDev_name = destScriptDev+"\\Autopilot."+replaceIn_file
@@ -219,23 +227,12 @@ os.rename(replaceIn_writeDev_name+".tmp", replaceIn_writeDev_name)
 #	end of build Help.cs
 print ("\nfinished .cs and .sbc\n")
 
-# wait on mwmBuilder
-builder_running = True
-while builder_running:
-	time.sleep(0.1)
-	builder_running = False
-	for pid in psutil.get_pid_list():
-		process = psutil.Process(pid)
-		try:
-			name = process.name
-		except Exception:
-			pass
-		if "MwmBuilder.exe" in name:
-			builder_running = True
-			print (name+" is running")
-			break
+if os.path.exists(mwmBuilder):
+	# wait on mwmBuilder
+	mwmLarge.wait()
+	mwmSmall.wait()
+	print("\nfinished MwmBuilder\n")
 
-print("\nfinished MwmBuilder\n")
 emptyDirectory(sourceModelRadarLarge, sourceModelRadarLarge + "\\output")
 emptyDirectory(sourceModelRadarSmall, sourceModelRadarSmall + "\\output")
 copyWithExtension(sourceModelRadarLarge, destModel + "\\" + "large", ".mwm")
@@ -244,4 +241,35 @@ copyWithExtension(sourceModelRadarLarge, destModelDev + "\\" + "large", ".mwm")
 copyWithExtension(sourceModelRadarSmall, destModelDev + "\\" + "small", ".mwm")
 
 
-print("\nfinished build\n\n")
+print("\nfinished build\n")
+
+#	Pack Archive
+
+os.chdir(startDir)
+
+if not os.path.exists(Zip7):
+	print ("\n7-Zip not found\n")
+	sys.exit()
+
+print("\n7-Zip running")
+
+cmd = [Zip7, 'u', 'Archive.7z', 'Archive']
+process = subprocess.Popen(cmd, stdout = open(os.devnull, 'wb'))
+process.wait()
+
+if process.returncode != 0:
+	print("\n7-Zip failed\n")
+	sys.exit()
+
+print("7-Zip finished\n")
+
+#	http://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows/1214935#1214935
+def handleRemoveReadonly(func, path, exc):
+  excvalue = exc[1]
+  if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+      os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
+      func(path)
+  else:
+      raise
+
+shutil.rmtree('Archive', ignore_errors=False, onerror=handleRemoveReadonly)

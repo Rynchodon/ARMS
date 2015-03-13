@@ -102,29 +102,40 @@ It is not possible for Autopilot to display entities on the HUD.
 Messages can be sent from one programmable block to another. Block communication will use antenna relay to send messages to other grids.
 An in-game script, [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] available here [/url], is used to parse messages and includes an example of how to send a message.
 
+[h1]Smart Turret Control[/h1]
+Turrets can be given specific instructions on which targets to shoot; for blocks the turret will attempt to disable rather than destroy.
+In order for Smart Turret Control to function, a turret must have square brackets in its name and have "Idle Rotation" disabled.
+
+[b]Priorities[/b] - highest to lowest
+If Target Missiles is enabled, shoot missiles that are approaching the turret.
+If Target Meteors is enabled, shoot meteors.
+If Target Moving Objects is enabled, shoot enemy characters.
+Get a list of block definitions from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
+Example - [ Turret, Gun, Weapon, Reactor, Battery ] - First shoot all turrets, then guns, then weapons, then reactors, then batteries.
+
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.
 You cannot change the settings while Autopilot is running (close Space Engineers first). To reset a value to its default, simply delete it.
+bAllowAutopilot - this mod can control the movement of grids
+bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
+bAllowTurretControl - enables Smart Turret Control
 fDefaultSpeed - the target minimum speed, when not using V
+fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
 [h1]Known Issues[/h1]
 Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
 
-Sometimes when pasting a grid in creative mode, Autopilot will not run for the pasted grid.
-Workaround:
-Copy the not functioning grid and paste it again, you may have to repeat a couple times.
+Sometimes when pasting a grid in creative mode, Autopilot will not run for the pasted grid. I am still working to resolve this issue.
 
-There is a bug in Space Engineers that occurs when unlocking a connector while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
+There is a bug in Space Engineers that occurs when unlocking a connector or landing gear while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
 see http://forums.keenswh.com/post/1-061-rare-remote-control-lost-control-bug-7215218
-Autopilot will not unlock a connector while any player is in a cockpit or passenger seat. The remote control will display <GET_OUT_OF_SEAT> until all cockpits and passenger seats are empty, then it will unlock the connector.
+Autopilot will not unlock a connector or landing gear while any player is in a cockpit or passenger seat. The remote control will display <GET_OUT_OF_SEAT> until all cockpits and passenger seats are empty, then it will unlock the connector or landing gear.
 
-Merge blocks may conflict with Autopilot.
+Merge blocks may conflict with Autopilot. Autopilot cannot detect a merge, so you will have to sort it out yourself.
 
 [h1]More Information[/h1]
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
 If you reset the Autopilot while landed, it will not separate before moving.
-
-Autopilot is no longer forced to stop at a destination, use wait if you want it to stop.
 
 In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
 
@@ -142,24 +153,13 @@ If there are multiple Remote Controls with commands, one will be picked arbitrar
 The direction that the Remote Control is facing is the direction the ship will fly in.
 When the end of the commands is reached, Autopilot will start back at the first command.
 
-[b]Planned Development[/b]
-control via programmable block
-better support for TextPanel
-jump drive
-saving
-aim & fire weapons
-mine asteroid / grind grid
-repair grid
-check for grids connected via landing gear
-collision avoidance improvements
-pathfinding improvements
-collision avoidance for rotation
-
 [b]Public Domain License[/b]
 To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
 http://creativecommons.org/publicdomain/zero/1.0/
 
-Many thanks to Degalus for testing multiplayer for me.
+[h1]Credits[/h1]
+GitMaster Extraordinaire - [uRxP]DrChocolate
+Multiplayer Testing - Degalus
 
 [b]Links[/b]
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
