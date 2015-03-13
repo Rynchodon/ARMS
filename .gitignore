@@ -1,5 +1,16 @@
-#    Archive Dir
+# Archive
 Archive/
+Archive.7z
+
+# varies by computer
+build.ini
+
+# Visual Studio
+*.csproj
+*.sln
+*/[Bb]in/
+*/[Oo]bj/
+*/[Pp]roperties/
 
 #################
 ## Eclipse
