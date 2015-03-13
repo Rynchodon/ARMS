@@ -61,11 +61,6 @@ namespace Rynchodon
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
 		}
 
-		//internal static void open()
-		//{
-			
-		//}
-
 		/// <summary>
 		/// 
 		/// </summary>

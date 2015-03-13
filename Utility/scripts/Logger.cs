@@ -88,7 +88,7 @@ namespace Rynchodon
 
 		private static FastResourceLock lock_log = new FastResourceLock();
 
-		//[System.Diagnostics.Conditional("DEBUG_LOGGING")]
+		[System.Diagnostics.Conditional("DEBUG_LOGGING")]
 		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null) 
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
 
