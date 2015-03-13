@@ -1,5 +1,13 @@
-#	will create two mods %AppData%\SpaceEngineers\Mods\Autopilot" and %AppData%\SpaceEngineers\Mods\Autopilot Dev"
-#	the Dev version has logging enabled
+# build.py
+#
+# This script combines the individual module folders into a single structure
+# for Space Engineers to load (and a bunch of other useful deploy tasks)
+#
+# It will create two mods,
+#   "%AppData%\SpaceEngineers\Mods\Autopilot" and
+#   "%AppData%\SpaceEngineers\Mods\Autopilot Dev".
+#
+# The Dev version has logging enabled
 
 
 import datetime, os, os.path, psutil, shutil, stat, subprocess, sys, time
@@ -226,8 +234,9 @@ while builder_running:
 	builder_running = False
 	for pid in psutil.get_pid_list():
 		process = psutil.Process(pid)
+
 		try:
-			name = process.name
+			name = process.name()
 		except Exception:
 			pass
 		if "MwmBuilder.exe" in name:
