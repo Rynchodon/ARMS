@@ -1,0 +1,197 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using Sandbox.Common;
+using Sandbox.ModAPI;
+
+namespace Rynchodon
+{
+	/// <summary>
+	/// Unowned:
+	/// For a grid, hostile. For a block, None.
+	/// 
+	/// Hostile:
+	/// The goal is to be consistent with what a turret will shoot at.
+	/// i.e. A turret will shoot at an enemy block and will shoot at a grid if it contains any enemy blocks.
+	/// 
+	/// Friendly:
+	/// Essentially, any block or grid which is neither enemies nor neutral.
+	/// </summary>
+	public static class IMyCubeBlockExtensions
+	{
+		[Flags]
+		public enum Relations : byte { None = 0, Enemy = 1, Neutral = 2, Faction = 4, Owner = 8 }
+
+		public static bool HasFlagFast(this Relations rel, Relations flag)
+		{ return (rel & flag) > 0; }
+
+		private static bool toIsFriendly(Relations rel)
+		{
+			if (rel.HasFlagFast(Relations.Enemy))
+				return false;
+			if (rel.HasFlagFast(Relations.Neutral))
+				return false;
+
+			if (rel == Relations.None)
+				return false;
+
+			return true;
+		}
+
+		private static bool toIsHostile(Relations rel)
+		{
+			if (rel.HasFlagFast(Relations.Enemy))
+				return true;
+
+			if (rel == Relations.None)
+				return true;
+
+			return false;
+		}
+
+		public static Relations mostHostile(this Relations rel)
+		{
+			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Neutral, Relations.Faction, Relations.Owner })
+				if (rel.HasFlagFast(flag))
+					return flag;
+			return Relations.None;
+		}
+
+		private static Relations getRelationsTo(this IMyCubeBlock block, long playerID)
+		{
+			switch (block.GetUserRelationToOwner(playerID))
+			{
+				case MyRelationsBetweenPlayerAndBlock.Enemies:
+					return Relations.Enemy;
+				case MyRelationsBetweenPlayerAndBlock.Neutral:
+					return Relations.Neutral;
+				case MyRelationsBetweenPlayerAndBlock.FactionShare:
+					return Relations.Faction;
+				case MyRelationsBetweenPlayerAndBlock.Owner:
+					return Relations.Owner;
+				default:
+					return Relations.None;
+			}
+		}
+
+		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeBlock target)
+		{
+			if (block.OwnerId == 0 || target.OwnerId == 0)
+				return Relations.None;
+			return block.getRelationsTo(target.OwnerId) ;
+		}
+
+		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
+		{
+			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
+				return Relations.Enemy;
+
+			Relations relationsToGrid = Relations.None;
+			foreach (long gridOwner in target.BigOwners)
+			{
+				relationsToGrid |= block.getRelationsTo(gridOwner); 
+				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
+					return relationsToGrid;
+			}
+
+			foreach (long gridOwner in target.SmallOwners)
+			{
+				relationsToGrid |= block.getRelationsTo(gridOwner);
+				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
+					return relationsToGrid;
+			}
+
+			return relationsToGrid;
+ 		}
+
+		public static bool canConsiderFriendly(this IMyCubeBlock block, long playerID)
+		{ return toIsFriendly(block.getRelationsTo(playerID));}
+
+		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeBlock target)
+		{ return toIsFriendly(block.getRelationsTo(target)); }
+
+		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeGrid target)
+		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
+
+
+		public static bool canConsiderHostile(this IMyCubeBlock block, long playerID)
+		{ return toIsHostile(block.getRelationsTo(playerID)); }
+
+		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeBlock target)
+		{ return toIsHostile(block.getRelationsTo(target)); }
+
+		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeGrid target)
+		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
+
+
+		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
+		{
+			switch (block.getRelationsTo(target))
+			{
+				case Relations.Faction:
+				case Relations.Owner:
+				case Relations.None:
+					return true;
+				default:
+					return false;
+			}
+		}
+
+
+		/// <summary>
+		/// Tests for sendFrom is working and same grid or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
+		/// </summary>
+		/// <param name="sendFrom"></param>
+		/// <param name="sendTo"></param>
+		/// <param name="range"></param>
+		/// <returns></returns>
+		public static bool canSendTo(this IMyCubeBlock sendFrom, IMyEntity sendTo, float range = 0, bool rangeIsSquared = false)
+		{
+			if (!sendFrom.IsWorking)
+				return false;
+
+			IMyCubeBlock sendToAsBlock = sendTo as IMyCubeBlock;
+			if (sendToAsBlock != null)
+			{
+				if (!sendToAsBlock.IsWorking)
+					return false;
+
+				if (AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsBlock.CubeGrid))
+					return true;
+
+				if (range > 0)
+				{
+					double distanceSquared = (sendFrom.GetPosition() - sendTo.GetPosition()).LengthSquared();
+					if (rangeIsSquared)
+						return distanceSquared < range;
+					else
+						return distanceSquared < range * range;
+				}
+			}
+			else
+			{
+				IMyCubeGrid sendToAsGrid = sendTo as IMyCubeGrid;
+				if (sendToAsGrid != null)
+					if (Rynchodon.AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsGrid))
+						return true;
+
+				if (range > 0)
+				{
+					double distance = sendToAsGrid.WorldAABB.Distance(sendFrom.GetPosition());
+					if (rangeIsSquared)
+						return distance * distance < range;
+					else
+						return distance < range;
+				}
+			}
+
+			return false;
+		}
+
+
+		public static string gridBlockName(this IMyCubeBlock block)
+		{ return block.CubeGrid.DisplayName + "-" + block.DisplayNameText; }
+	}
+}
