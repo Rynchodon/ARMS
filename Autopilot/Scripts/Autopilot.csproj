@@ -64,7 +64,7 @@
       <HintPath>..\..\..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin\VRage.Common.dll</HintPath>
     </Reference>
     <Reference Include="VRage.Library">
-      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin\VRage.Library.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin\VRage.Library.dll</HintPath>
     </Reference>
     <Reference Include="VRage.Math">
       <HintPath>..\..\..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin\VRage.Math.dll</HintPath>

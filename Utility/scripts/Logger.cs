@@ -1,6 +1,4 @@
-﻿#define DEBUG_LOGGING //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 //using System.Linq;
 using System.Text;
@@ -88,7 +86,7 @@ namespace Rynchodon
 
 		private static FastResourceLock lock_log = new FastResourceLock();
 
-		[System.Diagnostics.Conditional("DEBUG_LOGGING")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null) 
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
 
@@ -126,7 +124,7 @@ namespace Rynchodon
 				if (numLines >= maxNumLines)
 				{
 					numLines = 0;
-					new Logger(null, "Logger").log(severity.INFO, "log()", "reached maximum log length");
+					//new Logger(null, "Logger").log(severity.INFO, "log()", "reached maximum log length");
 					close();
 					return;
 				}

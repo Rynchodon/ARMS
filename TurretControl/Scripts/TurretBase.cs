@@ -1,6 +1,4 @@
-﻿// TODO:
-// determine if a turret can point at a target. MinElevationDegrees is unreliable
-// Test missiles are going to pass near turret. Both to avoid shooting the wrong missiles and to avoid targeting missiles the turret cannot hit. Possibly within (projectile speed / 10) metres.
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -28,6 +26,10 @@ namespace Rynchodon.Autopilot.Turret
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_InteriorTurret))]
 	public class TurretInterior : TurretBase { }
 
+	// TODO:
+	// determine if a turret can point at a target. MinElevationDegrees is unreliable
+	// Test missiles are going to pass near turret. Both to avoid shooting the wrong missiles and to avoid targeting missiles the turret cannot hit. Possibly within (projectile speed / 10) metres.
+	// Test a large area, if it has no enemies: disable missiles, players, and blocks
 	public class TurretBase : UpdateEnforcer
 	{
 		private IMyCubeBlock myCubeBlock;
@@ -87,7 +89,7 @@ namespace Rynchodon.Autopilot.Turret
 		/// <summary>
 		/// acquire a shared lock to perform actions on MyAPIGateway or use GetObjectBuilder()
 		/// </summary>
-		private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock(); // must be static if we want to run one thread at a time
+		private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock();
 
 		public override void UpdateAfterSimulation10()
 		{
@@ -124,14 +126,17 @@ namespace Rynchodon.Autopilot.Turret
 					{
 						lastTarget = null;
 						myTurretBase.ResetTargetingToDefault();
-						//myTurretBase.TrackTarget(null);
 					}
 					return;
 				}
 
 				// start thread
-				MyAPIGateway.Parallel.Start(UpdateThread);
-				//UpdateThread();
+				if (!isUpdating)
+				{
+					isUpdating = true;
+					MyAPIGateway.Parallel.Start(UpdateThread);
+					//UpdateThread();
+				}
 			}
 			catch { }
 			finally
@@ -151,17 +156,20 @@ namespace Rynchodon.Autopilot.Turret
 		/// </summary>
 		private BoundingSphereD turretMissileBubble;
 
-		private static VRage.FastResourceLock lock_update = new VRage.FastResourceLock(); // one at a time, please
+		//private VRage.FastResourceLock lock_update = new VRage.FastResourceLock();
 
 		private bool currentTargetIsMissile = false;
 
+		private bool isUpdating = false;
+
+		// locking updates was causing a huge issue, not sure what I am doing wrong
 		private void UpdateThread()
 		{
-			if (!lock_update.TryAcquireExclusive()) // too many Smart Turrets
-			{
-				myLogger.debugLog("too many smart turrets", "UpdateThread()");
-				return;
-			}
+			//if (!lock_update.TryAcquireExclusive())
+			//{
+			//	myLogger.debugLog("failed to acquire lock", "UpdateThread()");
+			//	return;
+			//}
 
 			try
 			{
@@ -170,7 +178,10 @@ namespace Rynchodon.Autopilot.Turret
 
 				double distToMissile;
 				if (currentTargetIsMissile && missileIsHostile(lastTarget, out distToMissile))
+				{
+					myLogger.debugLog("no need to switch targets", "UpdateThread()");
 					return; // no need to switch targets
+				}
 
 				getValidTargets();
 
@@ -182,6 +193,7 @@ namespace Rynchodon.Autopilot.Turret
 						lastTarget = bestTarget;
 						myLogger.debugLog("new target = " + bestTarget.getBestName(), "UpdateThread()", Logger.severity.TRACE);
 					}
+					myTurretBase.ResetTargetingToDefault();
 					myTurretBase.RequestEnable(true);
 					myTurretBase.TrackTarget(bestTarget);
 				}
@@ -192,7 +204,8 @@ namespace Rynchodon.Autopilot.Turret
 				}
 			}
 			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
-			finally { lock_update.ReleaseExclusive(); }
+			//finally { lock_update.ReleaseExclusive(); }
+			finally { isUpdating = false; }
 		}
 
 		private List<IMyEntity> validTarget_missile, validTarget_meteor, validTarget_character, validTarget_block;
@@ -265,14 +278,26 @@ namespace Rynchodon.Autopilot.Turret
 		{
 			currentTargetIsMissile = getBestMissile(out bestTarget);
 			if (currentTargetIsMissile)
+			{
+				myLogger.debugLog("found a missile: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
+			}
 			if (getClosest(validTarget_meteor, out bestTarget))
+			{
+				myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
+			}
 			if (getClosest(validTarget_character, out bestTarget))
+			{
+				myLogger.debugLog("found a character: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
+			}
 			if (getBestBlock(out bestTarget))
+			{
+				myLogger.debugLog("found a block: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
-
+			}
+			myLogger.debugLog("no target", "getBestTarget()");
 			return false;
 		}
 
@@ -313,9 +338,6 @@ namespace Rynchodon.Autopilot.Turret
 		{
 			foreach (IMyEntity missile in validTarget_missile)
 			{
-				if (missile.Closed)
-					continue;
-
 				double toMissilePosition;
 				if (missileIsHostile(missile, out toMissilePosition))
 				{
@@ -379,8 +401,16 @@ namespace Rynchodon.Autopilot.Turret
 		/// <returns></returns>
 		private bool missileIsHostile(IMyEntity missile, out double toP0_lengthSquared)
 		{
+			toP0_lengthSquared = -1;
+			if (missile.Closed || missile.Physics == null)
+				return false;
+
+			//myLogger.debugLog("missile = " + missile, "missileIsHostile()");
+			//myLogger.debugLog("missile.GetPosition() = " + missile.GetPosition(), "missileIsHostile()");
+			//myLogger.debugLog("missile.Physics = " + missile.Physics, "missileIsHostile()");
 			Vector3D P0 = missile.GetPosition();
 			Vector3D missileDirection = Vector3D.Normalize(missile.Physics.LinearVelocity);
+			//myLogger.debugLog("missileDirection = " + missileDirection, "missileIsHostile()");
 
 			toP0_lengthSquared = (P0 - turretPosition).LengthSquared();
 			double toP1_lengthSquared = (P0 + missileDirection - turretPosition).LengthSquared();
@@ -388,11 +418,12 @@ namespace Rynchodon.Autopilot.Turret
 				return false;
 
 			RayD missileRay = new RayD(P0, missileDirection);
+			//myLogger.debugLog("missileRay = " + missileRay, "missileIsHostile()");
 
-			double? interscts = missileRay.Intersects(turretMissileBubble);
-			if (interscts != null)
+			double? intersects = missileRay.Intersects(turretMissileBubble);
+			if (intersects != null)
 			{
-				myLogger.debugLog("got a missile intersection of " + interscts, "getBestMissile()");
+				myLogger.debugLog("got a missile intersection of " + intersects, "getBestMissile()");
 				return true;
 			}
 			return false;
