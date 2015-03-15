@@ -103,8 +103,10 @@ Messages can be sent from one programmable block to another. Block communication
 An in-game script, [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] available here [/url], is used to parse messages and includes an example of how to send a message.
 
 [h1]Smart Turret Control[/h1]
+Turret control is in testing stage, it must be enabled in Settings to work. set:
+[code]bTestingTurretControl=true[/code]
 Turrets can be given specific instructions on which targets to shoot; for blocks the turret will attempt to disable rather than destroy.
-In order for Smart Turret Control to function, a turret must have square brackets in its name and have "Idle Rotation" disabled.
+In order for Smart Turret Control to function, a turret must have square brackets in its name and be attached to an antenna that is detecting a nearby enemy.
 
 [b]Priorities[/b] - highest to lowest
 If Target Missiles is enabled, shoot missiles that are approaching the turret.
@@ -115,10 +117,11 @@ Example - [ Turret, Gun, Weapon, Reactor, Battery ] - First shoot all turrets, t
 
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.
-You cannot change the settings while Autopilot is running (close Space Engineers first). To reset a value to its default, simply delete it.
+To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
-bAllowTurretControl - enables Smart Turret Control
+bAllowTurretControl - enables Smart Turret Control (after testing is finished)
+bTestingTurretControl - enables Smart Turret Control (while in testing stage)
 fDefaultSpeed - the target minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 

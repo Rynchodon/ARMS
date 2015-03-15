@@ -57,8 +57,13 @@
     <Compile Include="Tracker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TurretBase.cs" />
+    <Compile Include="TurretThread.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\AntennaRelay\Scripts\AntennaRelay.csproj">
+      <Project>{71a113d1-1738-4d80-a115-f585817a6404}</Project>
+      <Name>AntennaRelay</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Utility\scripts\Utility.csproj">
       <Project>{34f8b86f-21e6-432b-b644-ade6c1e573ae}</Project>
       <Name>Utility</Name>

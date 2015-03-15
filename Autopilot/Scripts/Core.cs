@@ -1,4 +1,4 @@
-﻿#define DEBUG //remove on build
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace Rynchodon.Autopilot
 	public class Core : Sandbox.Common.MySessionComponentBase
 	{
 		private static Logger myLogger = new Logger(null, "Core");
-		[System.Diagnostics.Conditional("DEBUG")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ myLogger.log(level, method, toLog); }
 
@@ -156,7 +156,7 @@ namespace Rynchodon.Autopilot
 			//blacklist.Remove(dead);
 		}
 
-		[System.Diagnostics.Conditional("DEBUG")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private static void interruptingCow(string name, bool Exception)
 		{
 			if (Exception)
@@ -210,6 +210,8 @@ namespace Rynchodon.Autopilot
 				build();
 			}
 
+			Logger.ShowNotification("Autopilot Dev loaded", 10000);
+
 			//try
 			//{
 			//	if (MyAPIGateway.Utilities.FileExistsInLocalStorage("Autopilot.log", typeof(Core)))
@@ -258,10 +260,12 @@ namespace Rynchodon.Autopilot
 			return allNavigators.TryGetValue(gridToLookup, out navForGrid);
 		}
 
+		// cannot log here, Logger is closed/closing
 		protected override void UnloadData()
 		{
-			try { Settings.writeAll(); }
-			catch { }
+			//try { Settings.writeAll(); }
+			//catch { }
+			allNavigators = null;
 			try { MyAPIGateway.Utilities.MessageEntered -= Rynchodon.Autopilot.Chat.Help.printCommand; }
 			catch { }
 		}

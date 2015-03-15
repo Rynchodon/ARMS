@@ -144,7 +144,7 @@ namespace Rynchodon
 
 
 		/// <summary>
-		/// Tests for sendFrom is working and same grid or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
+		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
 		/// </summary>
 		/// <param name="sendFrom"></param>
 		/// <param name="sendTo"></param>
@@ -152,13 +152,13 @@ namespace Rynchodon
 		/// <returns></returns>
 		public static bool canSendTo(this IMyCubeBlock sendFrom, IMyEntity sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
-			if (!sendFrom.IsWorking)
+			if (sendFrom.Closed || !sendFrom.IsWorking)
 				return false;
 
 			IMyCubeBlock sendToAsBlock = sendTo as IMyCubeBlock;
 			if (sendToAsBlock != null)
 			{
-				if (!sendToAsBlock.IsWorking)
+				if (sendToAsBlock.Closed || !sendToAsBlock.IsWorking)
 					return false;
 
 				if (friendsOnly && !sendFrom.canConsiderFriendly(sendToAsBlock))

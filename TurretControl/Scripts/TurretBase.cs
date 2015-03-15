@@ -15,6 +15,8 @@ using Sandbox.ModAPI.Interfaces;
 using VRage;
 using VRageMath;
 
+using Rynchodon.AntennaRelay;
+
 namespace Rynchodon.Autopilot.Turret
 {
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LargeGatlingTurret))]
@@ -28,11 +30,11 @@ namespace Rynchodon.Autopilot.Turret
 
 	// TODO:
 	// determine if a turret can point at a target. MinElevationDegrees is unreliable
-	// Test missiles are going to pass near turret. Both to avoid shooting the wrong missiles and to avoid targeting missiles the turret cannot hit. Possibly within (projectile speed / 10) metres.
-	// Test a large area, if it has no enemies: disable missiles, players, and blocks
+	// Use projectile speed to determine turretMissileBubble radius.
 	public class TurretBase : UpdateEnforcer
 	{
 		private IMyCubeBlock myCubeBlock;
+		private IMyTerminalBlock myTerminal;
 		private Ingame.IMyLargeTurretBase myTurretBase;
 
 		// definition limits, will be needed to determine whether or not a turret can face a target
@@ -42,20 +44,22 @@ namespace Rynchodon.Autopilot.Turret
 
 		protected override void DelayedInit()
 		{
-			if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
+			if (!Settings.boolSettings[Settings.BoolSetName.bTestingTurretControl])
 				return;
 
 			this.myCubeBlock = Entity as IMyCubeBlock;
+			this.myTerminal = Entity as IMyTerminalBlock;
 			this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
 
 			myLogger.log("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-			EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_10TH_FRAME; // missiles travel >13m per update, need to test often
+			EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // missiles travel >13m per update, need to test often
 			if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
 				myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " []");
 
 			TurretBase_CustomNameChanged(null);
-			(myCubeBlock as IMyTerminalBlock).CustomNameChanged += TurretBase_CustomNameChanged;
+			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
+			myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
 
 			// definition limits
 			//var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
@@ -68,34 +72,60 @@ namespace Rynchodon.Autopilot.Turret
 
 		public override void Close()
 		{
+			if (needToRelease)
+				lock_notMyUpdate.ReleaseExclusive();
+
 			IMyTerminalBlock asTerm = myCubeBlock as IMyTerminalBlock;
 			if (asTerm != null)
 				asTerm.CustomNameChanged -= TurretBase_CustomNameChanged;
 			myCubeBlock = null;
 			myTurretBase = null;
+			enabled = false;
+		}
+
+		private void TurretBase_CustomNameChanged(IMyTerminalBlock obj)
+		{
+			string instructions = myCubeBlock.getInstructions();
+			myLogger.debugLog("name changed to " + myCubeBlock.DisplayNameText + ", instructions = " + instructions, "TurretBase_CustomNameChanged()", Logger.severity.DEBUG);
+			if (instructions == null)
+			{
+				requestedBlocks = null;
+				return;
+			}
+			requestedBlocks = instructions.Split(',');
+			//myLogger.debugLog("requestedBlocks = " + requestedBlocks, "TurretBase_CustomNameChanged()");
+		}
+
+		void myTerminal_OwnershipChanged(IMyTerminalBlock obj)
+		{
+			try { myTurretBase.ResetTargetingToDefault(); }
+			catch (Exception e) { myLogger.debugLog("Exception: " + e, "myTerminal_OwnershipChanged()", Logger.severity.ERROR); }
 		}
 
 		private bool enabled = false;
 
-		private byte updateCount = 0;
+		private short updateCount = 1000;
 
 		private bool targetMissiles, targetMeteors, targetCharacters;
 
-		private enum priorities : byte { MISSILE, METEOR, PLAYER, BLOCK };
+		//private enum priorities : byte { MISSILE, METEOR, PLAYER, BLOCK };
 
 		private IMyEntity lastTarget;
 
-		private static bool needToRelease = true;
+		private Receiver myAntenna;
+
+		private static bool needToRelease = false;
 		/// <summary>
 		/// acquire a shared lock to perform actions on MyAPIGateway or use GetObjectBuilder()
 		/// </summary>
 		private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock();
 
-		public override void UpdateAfterSimulation10()
+		private enum State : byte { OFF, HAS_TARGET, NO_TARGET }
+		private State CurrentState = State.OFF;
+
+		public override void UpdateAfterSimulation()
 		{
-			if (!IsInitialized)
-				return;
-			if (!myCubeBlock.IsFunctional)
+			if (!IsInitialized || myCubeBlock == null)
 				return;
 
 			if (needToRelease)
@@ -104,41 +134,75 @@ namespace Rynchodon.Autopilot.Turret
 
 			try
 			{
-				if (updateCount >= 10)
+				if (!myCubeBlock.IsWorking || myCubeBlock.Closed)
+					return;
+
+				if (updateCount >= 100) // every 100 updates
 				{
-					MyObjectBuilder_TurretBase builder = myCubeBlock.getSlimObjectBuilder() as MyObjectBuilder_TurretBase;
-					enabled = !builder.EnableIdleRotation && myCubeBlock.DisplayNameText.Contains("[") && myCubeBlock.DisplayNameText.Contains("]");
+					updateCount = 0;
+					enabled = myCubeBlock.DisplayNameText.Contains("[") && myCubeBlock.DisplayNameText.Contains("]");
 
 					//myLogger.debugLog("enabled = " + enabled + ", idle = " + builder.EnableIdleRotation + ", shooting = " + builder.IsShooting, "UpdateAfterSimulation10()");
 
 					//uint firstAmmoID = (myTurretBase as IMyInventoryOwner).GetInventory(0).GetItems()[0].ItemId;
 					//float ammoSpeed = MyDefinitionManager.Static.GetAmmoDefinition(new MyDefinitionId(firstAmmoID)).DesiredSpeed;
 
-					//if (enabled)
-					//	getValidTargets();
+					if (enabled)
+					{
+						if (myAntenna == null || myAntenna.CubeBlock == null || !myAntenna.CubeBlock.canSendTo(myCubeBlock, true))
+						{
+							//myLogger.debugLog("searching for attached antenna", "UpdateAfterSimulation10()");
 
-					updateCount = 0;
+							myAntenna = null;
+							foreach (Receiver antenna in RadioAntenna.registry)
+								if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
+								{
+									myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+									myAntenna = antenna;
+									break;
+								}
+							if (myAntenna == null)
+								foreach (Receiver antenna in LaserAntenna.registry)
+									if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
+									{
+										myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+										myAntenna = antenna;
+										break;
+									}
+						}
+						if (myAntenna == null)
+							myLogger.debugLog("did not find attached antenna", "UpdateAfterSimulation10()");
+					}
 				}
 
 				if (!enabled)
 				{
-					if (lastTarget != null)
+					if (CurrentState != State.OFF)
 					{
-						lastTarget = null;
+						CurrentState = State.OFF;
+						//myTurretBase.TrackTarget(null);
 						myTurretBase.ResetTargetingToDefault();
 					}
 					return;
 				}
 
+				if (CurrentState == State.OFF)
+					setNoTarget();
+
+				//using (lock_newTarget.AcquireSharedUsing())
+				//	if (newTarget != lastTarget)
+				//		myTurretBase.TrackTarget(newTarget);
+
 				// start thread
-				if (!isUpdating)
+				if (queued < 2 && updateCount % 10 == 0)
 				{
-					isUpdating = true;
-					MyAPIGateway.Parallel.Start(UpdateThread);
-					//UpdateThread();
+					queued++;
+					//MyAPIGateway.Parallel.Start(Update);
+					//Update();
+					TurretThread.EnqueueAction(Update);
 				}
 			}
-			catch { }
+			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
 			finally
 			{
 				updateCount++;
@@ -156,56 +220,52 @@ namespace Rynchodon.Autopilot.Turret
 		/// </summary>
 		private BoundingSphereD turretMissileBubble;
 
-		//private VRage.FastResourceLock lock_update = new VRage.FastResourceLock();
-
 		private bool currentTargetIsMissile = false;
 
-		private bool isUpdating = false;
+		private byte queued = 0;
 
-		// locking updates was causing a huge issue, not sure what I am doing wrong
-		private void UpdateThread()
+		//private IMyEntity newTarget;
+		//private FastResourceLock lock_newTarget = new FastResourceLock();
+
+		private void Update()
 		{
-			//if (!lock_update.TryAcquireExclusive())
-			//{
-			//	myLogger.debugLog("failed to acquire lock", "UpdateThread()");
-			//	return;
-			//}
-
 			try
 			{
+				if (!enabled)
+					return;
+
 				turretPosition = myCubeBlock.GetPosition();
-				turretMissileBubble = new BoundingSphereD(turretPosition, 30);
+				turretMissileBubble = new BoundingSphereD(turretPosition, 100);
 
 				double distToMissile;
-				if (currentTargetIsMissile && missileIsHostile(lastTarget, out distToMissile))
+				if (currentTargetIsMissile && missileIsHostile(lastTarget, out distToMissile, true))
 				{
-					myLogger.debugLog("no need to switch targets", "UpdateThread()");
+					//myLogger.debugLog("no need to switch targets", "UpdateThread()");
 					return; // no need to switch targets
 				}
 
-				getValidTargets();
+				//if (currentTargetIsMissile && !lastTarget.Closed)
+				//	return;
 
 				IMyEntity bestTarget;
-				if (getBestTarget(out bestTarget))
+				if (getValidTargets() && getBestTarget(out bestTarget))
 				{
-					if (lastTarget != bestTarget)
+					if (CurrentState != State.HAS_TARGET || lastTarget != bestTarget)
 					{
+						CurrentState = State.HAS_TARGET;
 						lastTarget = bestTarget;
-						myLogger.debugLog("new target = " + bestTarget.getBestName(), "UpdateThread()", Logger.severity.TRACE);
+						myLogger.debugLog("new target = " + bestTarget.getBestName(), "UpdateThread()", Logger.severity.DEBUG);
+						//using (lock_newTarget.AcquireExclusiveUsing())
+						//	newTarget = bestTarget;
+						myTurretBase.TrackTarget(bestTarget);
 					}
-					myTurretBase.ResetTargetingToDefault();
-					myTurretBase.RequestEnable(true);
-					myTurretBase.TrackTarget(bestTarget);
 				}
-				else
-				{
-					//myLogger.debugLog("no target", "UpdateThread()", Logger.severity.TRACE);
-					myTurretBase.RequestEnable(false);
-				}
+				else // no target
+					if (CurrentState == State.HAS_TARGET && !currentTargetIsMissile)
+						setNoTarget();
 			}
 			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
-			//finally { lock_update.ReleaseExclusive(); }
-			finally { isUpdating = false; }
+			finally { queued--; }
 		}
 
 		private List<IMyEntity> validTarget_missile, validTarget_meteor, validTarget_character, validTarget_block;
@@ -213,7 +273,7 @@ namespace Rynchodon.Autopilot.Turret
 		/// <summary>
 		/// Fills validTarget_*
 		/// </summary>
-		private void getValidTargets()
+		private bool getValidTargets()
 		{
 			List<IMyEntity> entitiesInRange;
 			using (lock_notMyUpdate.AcquireSharedUsing())
@@ -232,16 +292,25 @@ namespace Rynchodon.Autopilot.Turret
 			validTarget_character = new List<IMyEntity>();
 			validTarget_block = new List<IMyEntity>();
 
+			bool EnemyNear = myAntenna != null && myAntenna.EnemyNear;
+			if (!EnemyNear && !targetMeteors && !targetCharacters)
+			{
+				myLogger.debugLog("no possible targets", "getValidTargets()");
+				return false;
+			}
+			//if (EnemyNear)
+			//	myLogger.debugLog("enemy near", "getValidTargets()");
+
 			//myLogger.debugLog("initial entity count is " + entitiesInRange.Count, "getValidTargets()");
 
 			foreach (IMyEntity entity in entitiesInRange)
 			{
 				if (entity is IMyCubeBlock)
 				{
-					if (myCubeBlock.canConsiderHostile(entity as IMyCubeBlock))
+					if (EnemyNear && myCubeBlock.canConsiderHostile(entity as IMyCubeBlock))
 						validTarget_block.Add(entity);
 				}
-				else if (entity is IMyCubeGrid) { } // don't shoot grids, it is not nice!
+				else if (entity is IMyCubeGrid) { } // do not shoot grids, it is not nice!
 				else if (entity is IMyMeteor)
 				{
 					if (targetMeteors)
@@ -257,16 +326,17 @@ namespace Rynchodon.Autopilot.Turret
 							MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.DisplayName == entity.DisplayName; });
 						//foreach (var player in matchingPlayer)
 						//	myLogger.debugLog("found a player: " + player.DisplayName, "getValidTargets()");
-						if (matchingPlayer.Count == 1 && myCubeBlock.canConsiderHostile(matchingPlayer[0].PlayerID))
+						if (matchingPlayer.Count != 1 || myCubeBlock.canConsiderHostile(matchingPlayer[0].PlayerID))
 							validTarget_character.Add(entity);
 					}
 				}
-				else if (entity.ToString().StartsWith("MyMissile"))
+				else if (EnemyNear && entity.ToString().StartsWith("MyMissile"))
 					if (targetMissiles)
 						validTarget_missile.Add(entity);
 			}
 
 			//myLogger.debugLog("target counts = " + validTarget_missile.Count + ", " + validTarget_meteor.Count + ", " + validTarget_character.Count + ", " + validTarget_block.Count, "getValidTargets()");
+			return validTarget_missile.Count > 0 || validTarget_meteor.Count > 0 || validTarget_character.Count > 0 || validTarget_block.Count > 0;
 		}
 
 		/// <summary>
@@ -279,25 +349,25 @@ namespace Rynchodon.Autopilot.Turret
 			currentTargetIsMissile = getBestMissile(out bestTarget);
 			if (currentTargetIsMissile)
 			{
-				myLogger.debugLog("found a missile: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("found a missile: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
 			if (getClosest(validTarget_meteor, out bestTarget))
 			{
-				myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
 			if (getClosest(validTarget_character, out bestTarget))
 			{
-				myLogger.debugLog("found a character: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("found a character: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
 			if (getBestBlock(out bestTarget))
 			{
-				myLogger.debugLog("found a block: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("found a block: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
-			myLogger.debugLog("no target", "getBestTarget()");
+			//myLogger.debugLog("no target", "getBestTarget()");
 			return false;
 		}
 
@@ -311,13 +381,10 @@ namespace Rynchodon.Autopilot.Turret
 
 			foreach (IMyEntity entity in entities)
 			{
+				if (entity.Closed)
+					continue;
+
 				double distanceSquared;
-				//if (missileTest)
-				//	if (!missileIsHostile(entity, out distanceSquared))
-				//	//{
-				//		//myLogger.debugLog("ignoring missile, not a threat", "getClosest()");
-				//		continue;
-				//	//}
 				distanceSquared = (entity.GetPosition() - turretPosition).LengthSquared();
 				if (distanceSquared < closestDistanceSquared)
 				{
@@ -330,23 +397,29 @@ namespace Rynchodon.Autopilot.Turret
 		}
 
 		/// <summary>
-		/// any hostile missile
+		/// furthest hostile missile
 		/// </summary>
 		/// <param name="bestMissile"></param>
 		/// <returns></returns>
 		private bool getBestMissile(out IMyEntity bestMissile)
 		{
+			bestMissile = null;
+			double furthest = 0;
 			foreach (IMyEntity missile in validTarget_missile)
 			{
 				double toMissilePosition;
-				if (missileIsHostile(missile, out toMissilePosition))
+				if (missileIsHostile(missile, out toMissilePosition, false) && toMissilePosition > furthest)
 				{
+					furthest = toMissilePosition;
 					bestMissile = missile;
-					return true;
 				}
+				//if (missileIsHostile(missile, out toMissilePosition, false))
+				//{
+				//	bestMissile = missile;
+				//	return true;
+				//}
 			}
-			bestMissile = null;
-			return false;
+			return (bestMissile != null);
 		}
 
 		private bool getBestBlock(out IMyEntity bestMatch)
@@ -382,40 +455,30 @@ namespace Rynchodon.Autopilot.Turret
 
 		private string[] requestedBlocks;
 
-		private void TurretBase_CustomNameChanged(IMyTerminalBlock obj)
-		{
-			string instructions = myCubeBlock.getInstructions();
-			//myLogger.debugLog("name changed to " + myCubeBlock.DisplayNameText + ", instructions = " + instructions, "TurretBase_CustomNameChanged()");
-			if (instructions == null)
-			{
-				requestedBlocks = null;
-				return;
-			}
-			requestedBlocks = instructions.Split(',');
-			//myLogger.debugLog("requestedBlocks = " + requestedBlocks, "TurretBase_CustomNameChanged()");
-		}
-
 		/// <summary>
 		/// approaching, going to intersect turretMissileBubble
 		/// </summary>
 		/// <returns></returns>
-		private bool missileIsHostile(IMyEntity missile, out double toP0_lengthSquared)
+		private bool missileIsHostile(IMyEntity missile, out double toP0_lengthSquared, bool allowInside)
 		{
 			toP0_lengthSquared = -1;
 			if (missile.Closed || missile.Physics == null)
 				return false;
 
-			//myLogger.debugLog("missile = " + missile, "missileIsHostile()");
-			//myLogger.debugLog("missile.GetPosition() = " + missile.GetPosition(), "missileIsHostile()");
-			//myLogger.debugLog("missile.Physics = " + missile.Physics, "missileIsHostile()");
 			Vector3D P0 = missile.GetPosition();
 			Vector3D missileDirection = Vector3D.Normalize(missile.Physics.LinearVelocity);
-			//myLogger.debugLog("missileDirection = " + missileDirection, "missileIsHostile()");
 
-			toP0_lengthSquared = (P0 - turretPosition).LengthSquared();
-			double toP1_lengthSquared = (P0 + missileDirection - turretPosition).LengthSquared();
-			if (toP0_lengthSquared < toP1_lengthSquared) // moving away
-				return false;
+			if (!allowInside)
+			{
+				toP0_lengthSquared = (P0 - turretPosition).LengthSquared();
+				if (toP0_lengthSquared < turretMissileBubble.Radius * turretMissileBubble.Radius + 25) // missile is inside bubble
+					return false;
+			}
+
+			// made redundant
+			//double toP1_lengthSquared = (P0 + missileDirection - turretPosition).LengthSquared();
+			//if (toP0_lengthSquared < toP1_lengthSquared) // moving away
+			//	return false;
 
 			RayD missileRay = new RayD(P0, missileDirection);
 			//myLogger.debugLog("missileRay = " + missileRay, "missileIsHostile()");
@@ -423,10 +486,21 @@ namespace Rynchodon.Autopilot.Turret
 			double? intersects = missileRay.Intersects(turretMissileBubble);
 			if (intersects != null)
 			{
-				myLogger.debugLog("got a missile intersection of " + intersects, "getBestMissile()");
+				//myLogger.debugLog("got a missile intersection of " + intersects, "getBestMissile()");
 				return true;
 			}
 			return false;
+		}
+
+		private void setNoTarget()
+		{
+			myLogger.debugLog("no target", "setNoTarget()");
+			CurrentState = State.NO_TARGET;
+			myTurretBase.TrackTarget(myTurretBase);
+			myTurretBase.RequestEnable(false);
+			myTurretBase.UpdateIsWorking();
+			myTurretBase.RequestEnable(true);
+			//myTurretBase.UpdateIsWorking();
 		}
 
 		private Logger myLogger;

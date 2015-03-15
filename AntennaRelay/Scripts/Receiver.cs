@@ -8,15 +8,14 @@ using System.Collections.Generic;
 using Sandbox.Common.Components;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
 	public abstract class Receiver : UpdateEnforcer
 	{
-		//private static LinkedList<Receiver> allReceivers = new LinkedList<Receiver>();
-
 		protected Dictionary<IMyEntity, LastSeen> myLastSeen = new Dictionary<IMyEntity, LastSeen>();
-		internal IMyCubeBlock CubeBlock { get; set; }
+		public IMyCubeBlock CubeBlock { get; internal set; }
 		protected LinkedList<Message> myMessages = new LinkedList<Message>();
 
 		/// <summary>
@@ -27,17 +26,13 @@ namespace Rynchodon.AntennaRelay
 		{
 			//(new Logger(null, "Receiver")).log("init", "DelayedInit()", Logger.severity.TRACE);
 			CubeBlock = Entity as IMyCubeBlock;
-			//allReceivers.AddLast(this);
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
+			EnemyNear = false;
 		}
 
 		public override void Close()
 		{
-			//try
-			//{ allReceivers.Remove(this); }
-			//catch (Exception e)
-			//{ alwaysLog("exception on removing from allReceivers: " + e, "Close()", Logger.severity.WARNING); }
-			MyObjectBuilder = null; 
+			MyObjectBuilder = null;
 			myLastSeen = null;
 			CubeBlock = null;
 			myMessages = null;
@@ -115,7 +110,7 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<IMyEntity, LastSeen> dictionary=null)
+		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<IMyEntity, LastSeen> dictionary = null)
 		{
 			ICollection<LastSeen> toSend;
 			if (list != null)
@@ -203,6 +198,23 @@ namespace Rynchodon.AntennaRelay
 				if (sender.canSendTo(laserAnt.CubeBlock, true))
 					foreach (Message mes in toSend)
 						laserAnt.receive(mes);
+		}
+
+		/// <summary>
+		/// Is there any enemy within 10km, seen in the past 10 seconds? Not all Receiver update this; for Receiver that do not update, false.
+		/// </summary>
+		public bool EnemyNear { get; private set; }
+
+		protected void UpdateEnemyNear()
+		{
+			Vector3D myPosition = CubeBlock.GetPosition();
+			EnemyNear = false;
+			foreach (LastSeen seen in myLastSeen.Values)
+				if (seen.isRecent() && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
+				{
+					EnemyNear = true;
+					return;
+				}
 		}
 
 		protected string ClassName = "Receiver";
