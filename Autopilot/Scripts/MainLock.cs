@@ -8,12 +8,12 @@ using Sandbox.ModAPI;
 using VRage;
 using VRageMath;
 
-namespace Rynchodon
+namespace Rynchodon.Autopilot
 {
 	/// <summary>
 	/// Obtains a lock on core thread while performing an action. Locks can only be obtained while core is running.
 	/// </summary>
-	public static class MainLock
+	internal static class MainLock
 	{
 		public static FastResourceLock Lock = new FastResourceLock();
 

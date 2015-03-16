@@ -138,12 +138,7 @@ namespace Rynchodon
 				if (toLog == null)
 					toLog = "no message";
 				if (numLines >= maxNumLines)
-				{
-					numLines = 0;
-					//new Logger(null, "Logger").log(severity.INFO, "log()", "reached maximum log length");
-					close();
 					return;
-				}
 
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));

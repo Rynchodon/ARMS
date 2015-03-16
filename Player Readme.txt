@@ -1,3 +1,12 @@
+[h1]Contribute[/h1]
+I am looking for assistance with models, code, tutorials, and translations.
+If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
+
+Models - Full 3D models would be ideal but even drawings would be nice.
+Code - Programming experience is required; this could be a great opportunity to learn C#.
+Tutorials - Think you have a good handle on how to work the mod? Prove it!
+Translations - Speak another language? Good, because I don't.
+
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth
@@ -105,8 +114,10 @@ An in-game script, [url=http://steamcommunity.com/sharedfiles/filedetails/?id=39
 [h1]Smart Turret Control[/h1]
 Turret control is in testing stage, it must be enabled in Settings to work. set:
 [code]bTestingTurretControl=true[/code]
+If the turrets are tracking targets but not firing, try changing ownership to nobody, then back again.
 Turrets can be given specific instructions on which targets to shoot; for blocks the turret will attempt to disable rather than destroy.
-In order for Smart Turret Control to function, a turret must have square brackets in its name and be attached to an antenna that is detecting a nearby enemy.
+In order for Smart Turret Control to function, a turret must have square brackets in its name. Smart Turrets will only search for missiles and/or blocks when an attached antenna is detecting a nearby enemy.
+Most of the work for Smart Turret Control is done in a separate thread; having lots of turrets running will not slow down S.E. but will make turrets less responsive.
 
 [b]Priorities[/b] - highest to lowest
 If Target Missiles is enabled, shoot missiles that are approaching the turret.
@@ -122,13 +133,13 @@ bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bAllowTurretControl - enables Smart Turret Control (after testing is finished)
 bTestingTurretControl - enables Smart Turret Control (while in testing stage)
-fDefaultSpeed - the target minimum speed, when not using V
+fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
 [h1]Known Issues[/h1]
 Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
 
-Sometimes when pasting a grid in creative mode, Autopilot will not run for the pasted grid. I am still working to resolve this issue.
+Sometimes when pasting a grid in creative mode, Autopilot will not run properly for the pasted grid. I am still working to resolve this issue.
 
 There is a bug in Space Engineers that occurs when unlocking a connector or landing gear while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
 see http://forums.keenswh.com/post/1-061-rare-remote-control-lost-control-bug-7215218
@@ -167,4 +178,4 @@ Multiplayer Testing - Degalus
 [b]Links[/b]
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
-[url=http://www.nexusmods.com/spaceengineers/users/donate/?id=2411014] Donate [/url]
+[url=https://github.com/Rynchodon/Autopilot] GitHub [/url]

@@ -75,6 +75,7 @@
     <Compile Include="Collision.cs" />
     <Compile Include="CollisionBox.cs" />
     <Compile Include="GridDestination.cs" />
+    <Compile Include="MainLock.cs" />
     <Compile Include="NewTargeter.cs" />
     <Compile Include="Help.cs" />
     <Compile Include="Instruction.cs" />
