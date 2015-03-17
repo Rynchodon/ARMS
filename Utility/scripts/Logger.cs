@@ -1,11 +1,9 @@
-﻿#define DEBUG_LOGGING //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 //using System.Linq;
 using System.Text;
 
-//using Sandbox.Common;
+using Sandbox.Common;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage;
@@ -73,7 +71,7 @@ namespace Rynchodon
 			try
 			{ deleteIfExists("log.txt"); }
 			catch { }
-			for (int i = 0; i < 100; i++)
+			for (int i = 0; i < 10; i++)
 				if (logWriter == null)
 					try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
 					catch { }
@@ -88,13 +86,29 @@ namespace Rynchodon
 
 		private static FastResourceLock lock_log = new FastResourceLock();
 
-		//[System.Diagnostics.Conditional("DEBUG_LOGGING")]
+		/// <summary>
+		/// For logging INFO and lower severity.
+		/// </summary>
+		/// <param name="toLog"></param>
+		/// <param name="methodName"></param>
+		/// <param name="level"></param>
+		/// <param name="primaryState"></param>
+		/// <param name="secondaryState"></param>
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null) 
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
 
 		public void log(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null) 
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
 
+		/// <summary>
+		/// Only call directly for logging WARNING and higher severity.
+		/// </summary>
+		/// <param name="level"></param>
+		/// <param name="methodName"></param>
+		/// <param name="toLog"></param>
+		/// <param name="primaryState"></param>
+		/// <param name="secondaryState"></param>
 		public void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
 		{
 			if (closed)
@@ -124,12 +138,7 @@ namespace Rynchodon
 				if (toLog == null)
 					toLog = "no message";
 				if (numLines >= maxNumLines)
-				{
-					numLines = 0;
-					new Logger(null, "Logger").log(severity.INFO, "log()", "reached maximum log length");
-					close();
 					return;
-				}
 
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
@@ -178,6 +187,13 @@ namespace Rynchodon
 
 		protected override void UnloadData()
 		{ close(); }
+
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		public static void ShowNotification(string message, int disappearTimeMs = 2000, MyFontEnum font = MyFontEnum.White)
+		{
+			if (MyAPIGateway.Utilities != null)
+				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
+		}
 
 		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL}
 	}

@@ -18,7 +18,8 @@ namespace Rynchodon.AntennaRelay
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LaserAntenna))]
 	public class LaserAntenna : Receiver
 	{
-		internal static LinkedList<LaserAntenna> registry = new LinkedList<LaserAntenna>(); // to iterate over
+		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
+		public static IReadOnlyList<LaserAntenna> registry { get { return value_registry.AsReadOnly(); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 
@@ -26,7 +27,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			base.DelayedInit();
 			myLaserAntenna = Entity as Ingame.IMyLaserAntenna;
-			registry.AddLast(this);
+			value_registry.Add(this);
 
 			log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
@@ -37,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 			try
 			{
 				if (CubeBlock != null)
-					registry.Remove(this);
+					value_registry.Remove(this);
 			}
 			catch (Exception e)
 			{ alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
@@ -77,6 +78,8 @@ namespace Rynchodon.AntennaRelay
 				// send to attached receivers
 				Receiver.sendToAttached(CubeBlock, myLastSeen);
 				Receiver.sendToAttached(CubeBlock, myMessages);
+
+				UpdateEnemyNear();
 			}
 			catch (Exception e)
 			{ alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

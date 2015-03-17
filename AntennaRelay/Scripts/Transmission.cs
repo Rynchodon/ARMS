@@ -124,6 +124,13 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
+		/// <summary>
+		/// Use this instead of hard-coding.
+		/// </summary>
+		/// <returns></returns>
+		public bool isRecent()
+		{ return (DateTime.UtcNow - LastSeenAt).TotalSeconds < 10; }
+
 		private static string ClassName = "LastSeen";
 		private static Logger myLogger;
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
