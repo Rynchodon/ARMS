@@ -35,6 +35,7 @@ namespace Rynchodon.AntennaRelay
 
 		public override void Close()
 		{
+			base.Close();
 			try
 			{
 				if (CubeBlock != null)

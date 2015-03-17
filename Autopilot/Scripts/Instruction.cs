@@ -53,12 +53,14 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_flyTo(out asAction, owner.currentRCblock, data);
 				case 'g':
 					return getAction_gridDest(out asAction, data);
+				//case 'h':
+					// harvest
 				case 'l':
 					return getAction_localBlock(out asAction, data);
 				case 'o':
 					return getAction_offset(out asAction, data);
 				case 'p':
-					return getActionProximity(out asAction, data);
+					return getAction_Proximity(out asAction, data);
 				//case 't':
 					// text panel
 			}
@@ -231,7 +233,7 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
-		private bool getActionProximity(out Action execute, string instruction)
+		private bool getAction_Proximity(out Action execute, string instruction)
 		{
 			float distance;
 			if (stringToDistance(out distance, instruction))
@@ -247,6 +249,17 @@ namespace Rynchodon.Autopilot.Instruction
 			log("failed to parse " + instruction + " to float, radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 			execute = null;
 			return false;
+		}
+
+		/// <summary>
+		/// Get instructions from TextPanel. T (panel name)[, (start)][, (end)]
+		/// </summary>
+		/// <param name="execute"></param>
+		/// <param name="instruction"></param>
+		/// <returns></returns>
+		private bool getAction_TextPanel(out Action execute, string instruction)
+		{
+
 		}
 
 
