@@ -124,7 +124,7 @@ If Target Missiles is enabled, shoot missiles that are approaching the turret.
 If Target Meteors is enabled, shoot meteors.
 If Target Moving Objects is enabled, shoot enemy characters.
 Get a list of block definitions from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
-Example - [ Turret, Gun, Weapon, Reactor, Battery ] - First shoot all turrets, then guns, then weapons, then reactors, then batteries.
+Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
 
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.
