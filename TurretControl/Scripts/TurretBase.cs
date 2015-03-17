@@ -132,8 +132,6 @@ namespace Rynchodon.Autopilot.Turret
 
 		private bool defaultTargetingAcquiredTarget = false;
 
-		// TODO:
-		// need to allow default targeting to acquire a target before we can take over
 		public override void UpdateAfterSimulation()
 		{
 			if (!IsInitialized || myCubeBlock == null)
