@@ -259,7 +259,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns></returns>
 		private bool getAction_TextPanel(out Action execute, string instruction)
 		{
-
+			execute = null;
+			return false;
 		}
 
 

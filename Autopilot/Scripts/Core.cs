@@ -149,11 +149,15 @@ namespace Rynchodon.Autopilot
 
 		internal static void remove(Navigator dead, bool Exception = false)
 		{
-			log("removing navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.INFO);
-			interruptingCow(dead.myGrid.DisplayName, Exception);
-			if (!allNavigators.Remove(dead.myGrid))
-				myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
-			//blacklist.Remove(dead);
+			try
+			{
+				log("removing navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.INFO);
+				interruptingCow(dead.myGrid.DisplayName, Exception);
+				if (!allNavigators.Remove(dead.myGrid))
+					myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
+				//blacklist.Remove(dead);
+			}
+			catch { } // stop throwing exceptions!
 		}
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
