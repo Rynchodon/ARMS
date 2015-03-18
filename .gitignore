@@ -1,6 +1,7 @@
-# Archive
+# Build Files
 Archive/
 Archive.7z
+*/mwmBuilder/*
 
 # varies by computer
 build.ini
