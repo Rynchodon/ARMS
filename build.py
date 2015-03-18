@@ -23,6 +23,14 @@ startDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 appData = os.getenv('APPDATA')
 build_model = startDir + "\\build-model.py"
 
+
+modules = []
+for file in os.listdir(startDir):
+	if file == ".git":
+		continue
+	if os.path.isdir(file):
+		modules.append(file)
+
 endDir = appData + r"\SpaceEngineers\Mods\Autopilot"
 endDirDev = appData + r"\SpaceEngineers\Mods\Autopilot Dev"
 
@@ -69,7 +77,7 @@ createDir(destScript)
 createDir(destScriptDev)
 
 # method that takes a name and moves the files
-def copyScriptFiles(l_source):
+def copyFiles(l_source):
 	print ("copying from "+l_source)
 	l_sourceDir = startDir + "\\" + l_source + "\Scripts"
 	l_dataDir = startDir + "\\" + l_source + "\Data"
@@ -124,29 +132,38 @@ def copyWithExtension(l_from, l_to, l_ext):
 			shutil.copy(file, l_to)
 
 # start mwmBuilder first, it will run in parallel
-sourceModelRadarLarge = startDir + r"\AntennaRelay\Model\large"
-sourceModelRadarSmall = startDir + r"\AntennaRelay\Model\small"
-
+mwmProcess = []
 if os.path.exists(mwmBuilder):
 	print("\nrunning mwmBuilder")
-	os.chdir(sourceModelRadarLarge)
-	mwmLarge = subprocess.Popen(["python", build_model])
-	os.chdir(sourceModelRadarSmall)
-	mwmSmall = subprocess.Popen(["python", build_model])
+	for module in modules[:]:
+		modelDir = startDir + "\\" + module + "\\Model\\large"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
+		modelDir = startDir + "\\" + module + "\\Model\\small"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
+			
 
 # copy textures
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Cubes", destTextureCube, ".dds")
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Cubes", destTextureCubeDev, ".dds")
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\TextPanel", destTexturePanel, ".dds")
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\TextPanel", destTexturePanelDev, ".dds")
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Icon", destTextureIcon, ".dds")
-copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Icon", destTextureIconDev, ".dds")
+for module in modules[:]:
+	textureDir = startDir + "\\" + module + "\\Textures\\Cubes"
+	if os.path.exists(textureDir):
+		copyWithExtension(textureDir, destTextureCube, ".dds")
+		copyWithExtension(textureDir, destTextureCubeDev, ".dds")
+	textureDir = startDir + "\\" + module + "\\Textures\\TextPanel"
+	if os.path.exists(textureDir):
+		copyWithExtension(textureDir, destTexturePanel, ".dds")
+		copyWithExtension(textureDir, destTexturePanelDev, ".dds")
+	textureDir = startDir + "\\" + module + "\\Textures\\Icon"
+	if os.path.exists(textureDir):
+		copyWithExtension(textureDir, destTextureIcon, ".dds")
+		copyWithExtension(textureDir, destTextureIconDev, ".dds")
 
-# copy scripts
-copyScriptFiles("Autopilot")
-copyScriptFiles("Utility")
-copyScriptFiles("AntennaRelay")
-copyScriptFiles("TurretControl")
+# copy scripts, data
+for module in modules[:]:
+	copyFiles(module)
 
 #	start of build Help.cs
 replaceIn_file=r"Help.cs"
@@ -217,17 +234,24 @@ os.rename(replaceIn_writeDev_name+".tmp", replaceIn_writeDev_name)
 #	end of build Help.cs
 print ("\nfinished .cs and .sbc\n")
 
+
+# wait on mwmBuilder
 if os.path.exists(mwmBuilder):
-	# wait on mwmBuilder
-	mwmLarge.wait()
-	mwmSmall.wait()
+	for process in mwmProcess[:]:
+		process.wait()
+	
+	# copy files created by mwmBuilder
+	for module in modules[:]:
+		modelDir = startDir + "\\" + module + "\\Model\\large"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel, ".mwm")
+			copyWithExtension(modelDir, destModelDev, ".mwm")
+		modelDir = startDir + "\\" + module + "\\Model\\large"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel, ".mwm")
+			copyWithExtension(modelDir, destModelDev, ".mwm")
+	
 	print("\nfinished MwmBuilder\n")
-
-
-copyWithExtension(sourceModelRadarLarge, destModel + "\\" + "large", ".mwm")
-copyWithExtension(sourceModelRadarSmall, destModel + "\\" + "small", ".mwm")
-copyWithExtension(sourceModelRadarLarge, destModelDev + "\\" + "large", ".mwm")
-copyWithExtension(sourceModelRadarSmall, destModelDev + "\\" + "small", ".mwm")
 
 
 print("\nfinished build\n")
