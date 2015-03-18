@@ -244,12 +244,12 @@ if os.path.exists(mwmBuilder):
 	for module in modules[:]:
 		modelDir = startDir + "\\" + module + "\\Model\\large"
 		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel, ".mwm")
-			copyWithExtension(modelDir, destModelDev, ".mwm")
-		modelDir = startDir + "\\" + module + "\\Model\\large"
+			copyWithExtension(modelDir, destModel + "\\large", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+		modelDir = startDir + "\\" + module + "\\Model\\small"
 		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel, ".mwm")
-			copyWithExtension(modelDir, destModelDev, ".mwm")
+			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
 	
 	print("\nfinished MwmBuilder\n")
 
