@@ -20,8 +20,7 @@ exec(open('build.ini').read())
 
 startDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 appData = os.getenv('APPDATA')
-
-print (appData)
+build_model = startDir + "\\build-model.py"
 
 endDir = appData + r"\SpaceEngineers\Mods\Autopilot"
 endDirDev = appData + r"\SpaceEngineers\Mods\Autopilot Dev"
@@ -123,34 +122,16 @@ def copyWithExtension(l_from, l_to, l_ext):
 		if file.endswith(l_ext):
 			shutil.copy(file, l_to)
 
-def emptyDirectory(l_startDir, l_current):
-	if not os.path.exists(l_current):
-		return
-	for item in os.listdir(l_current):
-		fullPath = l_current + "\\" + item
-		if os.path.isdir(fullPath):
-			print("descending into: " + item)
-			emptyDirectory(l_startDir, fullPath)
-		else:
-			print("moving file up: " + item)
-			fullDest = l_startDir + "\\" + item
-			if os.path.exists(fullDest):
-				os.remove(fullDest)
-			shutil.copy(fullPath, fullDest)
-
 # start mwmBuilder first, it will run in parallel
-#	not working ATM
 sourceModelRadarLarge = startDir + r"\AntennaRelay\Model\large"
 sourceModelRadarSmall = startDir + r"\AntennaRelay\Model\small"
 
 if os.path.exists(mwmBuilder):
 	print("\nrunning mwmBuilder")
 	os.chdir(sourceModelRadarLarge)
-	createDir('ouput')
-	mwmLarge = subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
+	mwmLarge = subprocess.Popen(["python", build_model])
 	os.chdir(sourceModelRadarSmall)
-	createDir('ouput')
-	mwmSmall = subprocess.Popen([mwmBuilder, "/s:.", "/o:./output/"])
+	mwmSmall = subprocess.Popen(["python", build_model])
 
 # copy textures
 copyWithExtension(startDir + r"\AntennaRelay\Model\Textures\Cubes", destTextureCube, ".dds")
@@ -242,8 +223,6 @@ if os.path.exists(mwmBuilder):
 	print("\nfinished MwmBuilder\n")
 
 
-emptyDirectory(sourceModelRadarLarge, sourceModelRadarLarge + "\\output")
-emptyDirectory(sourceModelRadarSmall, sourceModelRadarSmall + "\\output")
 copyWithExtension(sourceModelRadarLarge, destModel + "\\" + "large", ".mwm")
 copyWithExtension(sourceModelRadarSmall, destModel + "\\" + "small", ".mwm")
 copyWithExtension(sourceModelRadarLarge, destModelDev + "\\" + "large", ".mwm")
@@ -272,7 +251,7 @@ if process.returncode != 0:
 
 print("7-Zip finished\n")
 
-#	http://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows/1214935#1214935
+# shamelessly copied from http://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows/1214935#1214935
 def handleRemoveReadonly(func, path, exc):
   excvalue = exc[1]
   if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
