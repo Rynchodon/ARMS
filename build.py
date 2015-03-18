@@ -16,7 +16,8 @@ import datetime, errno, os, os.path, psutil, shutil, stat, subprocess, sys, time
 mwmBuilder = os.devnull
 Zip7 = os.devnull
 
-exec(open('build.ini').read())
+if os.path.exists('build.ini'):
+	exec(open('build.ini').read())
 
 startDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 appData = os.getenv('APPDATA')
