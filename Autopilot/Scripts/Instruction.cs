@@ -7,7 +7,10 @@ using System.Text.RegularExpressions;
 
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
+
+using VRage.Collections;
 using VRageMath;
+
 using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot.Instruction
@@ -29,11 +32,18 @@ namespace Rynchodon.Autopilot.Instruction
 		public Interpreter(Navigator owner)
 		{ this.owner = owner; }
 
-		// TODO addInstruction should be moved here, as instruction parsing is re-written
-		public bool getAction(out Action asAction, string instruction)
+		/// <summary>
+		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 
+		/// </summary>
+		public MyQueue<Action> instructionQueue = new MyQueue<Action>(8);
+
+		/// <summary>
+		/// Turn a string instruction into an Action or Actions, and Enqueue it/them to instructionQueue.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true if an Action was queued, false if parsing failed</returns>
+		public bool enqueueActions(string instruction)
 		{
-			//log("entered getAction(asAction, " + instruction + ")", "getAction()", Logger.severity.TRACE);
-			asAction = null;
 			if (instruction.Length < 2)
 			{
 				log("instruction too short: " + instruction.Length, "getAction()", Logger.severity.TRACE);
@@ -42,27 +52,62 @@ namespace Rynchodon.Autopilot.Instruction
 
 			string lowerCase = instruction.ToLower().Replace(" ", "");
 
-			if (lowerCase == "reset")
-				return getAction_dispose(out asAction);
+			Action singleAction = null;
+			if (getAction_word(lowerCase, out singleAction))
+			{
+				instructionQueue.Enqueue(singleAction);
+				return true;
+			}
 
+		}
+
+		/// <summary>
+		/// Try to match instruction against keywords.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_word(string lowerCase, out Action wordAction)
+		{
+			if (lowerCase == "exit")
+				return getAction_exit(out wordAction);
+			if (lowerCase == "jump")
+				return getAction_jump(out wordAction);
+			if (lowerCase == "lock")
+				return getAction_lock(out wordAction);
+			if (lowerCase == "reset")
+				return getAction_dispose(out wordAction);
+			wordAction = null;
+			return false;
+		}
+
+		/// <summary>
+		/// Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_multiple(string lowerCase)
+		{
+
+		}
+
+		private bool getAction_single(string lowerCase, Action instructionAction)
+		{
 			string data = lowerCase.Substring(1);
 			//log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", data = " + data + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
 			switch (lowerCase[0])
 			{
 				case 'f':
-					return getAction_flyTo(out asAction, owner.currentRCblock, data);
+					return getAction_flyTo(out instructionAction, owner.currentRCblock, data);
 				case 'g':
-					return getAction_gridDest(out asAction, data);
+					return getAction_gridDest(out instructionAction, data);
 				//case 'h':
 					// harvest
 				case 'l':
-					return getAction_localBlock(out asAction, data);
+					return getAction_localBlock(out instructionAction, data);
 				case 'o':
-					return getAction_offset(out asAction, data);
+					return getAction_offset(out instructionAction, data);
 				case 'p':
-					return getAction_Proximity(out asAction, data);
-				//case 't':
-					// text panel
+					return getAction_Proximity(out instructionAction, data);
 			}
 			log("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
 			return false;
@@ -71,22 +116,34 @@ namespace Rynchodon.Autopilot.Instruction
 
 		// INDIVIDUAL METHODS
 
+		// KEYWORD ACTIONS
+
+		private bool getAction_exit(out Action execute)
+		{
+			execute = () =>
+			{
+				owner.CNS.EXIT = true;
+				owner.reportState(Navigator.ReportableState.OFF);
+				owner.fullStop("EXIT");
+			};
+			return true;
+		}
 
 		private bool getAction_dispose(out Action execute)
 		{
 			IMyTerminalBlock RCterminal = owner.currentRCterminal;
-			//Regex reset = new Regex("reset", RegexOptions.IgnoreCase);
 			execute = () =>
 			{
-				//log("running reset action", "getAction_dispose()", Logger.severity.TRACE);
-				//RCterminal.SetCustomName(reset.Replace(RCterminal.DisplayNameText, ""));
 				if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
 					RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
 				Core.remove(owner);
 			};
-			//log("finished building reset action", "getAction_dispose()", Logger.severity.TRACE);
 			return true;
 		}
+
+		// MULTIPLE ACTIONS
+
+		// SINGLE ACTIONS
 
 		private bool getAction_flyTo(out Action execute, IMyCubeBlock remote, string instruction)
 		{
