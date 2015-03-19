@@ -1,5 +1,8 @@
 # This scripts builds all the .FBX files in the current directory into .mwm files using MwmBuilder.exe
-# You will likely get Texture warnings while running this script.
+# You will get Texture warnings while running this script.
+#
+# if build.ini is in the same folder as this script, it will be read
+# otherwise, the path to MwmBuilder.exe must be supplied as the first argument
 # usage: build-model.py <Path to MwmBuilder.exe>
 
 import os, os.path, shutil, subprocess, sys
@@ -11,13 +14,13 @@ output = input + "\\Output"
 
 mwmBuilder = os.devnull
 
-if len(sys.argv) >= 2:
-	mwmBuilder = sys.argv[1]
-	#print ("got mwmBuilder from argument")
-
 if (os.path.exists(buildIni)):
 	exec(open(buildIni).read())
 	#print ("read build.ini file")
+
+if len(sys.argv) >= 2:
+	mwmBuilder = sys.argv[1]
+	#print ("got mwmBuilder from argument")
 
 if not os.path.exists(mwmBuilder):
 	print("ERROR: could not find mwmBuilder at " + mwmBuilder)
@@ -34,14 +37,17 @@ for file in os.listdir('.'):
 			bNoXML = False
 
 if bNoFBX or bNoXML:
-	print("ERROR: current directory does not contain .fbx and .xml files")
+	print("WARNING: " + os.getcwd() + " does not contain .fbx and .xml files")
 	sys.exit()
 
 
 def createDir(l_dir):
 	if not os.path.exists(l_dir):
-		#print ("making: "+l_dir)
 		os.makedirs(l_dir)
+
+def eraseDir(l_dir):
+	if os.path.exists(l_dir):
+		shutil.rmtree(l_dir)
 
 def copyWithExtension(l_from, l_to, l_ext):
 	createDir(l_to)
@@ -59,7 +65,6 @@ copyWithExtension(startDir, input, ".xml")
 copyWithExtension(startDir, input, ".hkt")
 
 # run builder
-#print("running mwmBuilder")
-mwmBuilderProcess = subprocess.Popen([mwmBuilder, "/s:" + input, "/o:" + output])
+mwmBuilderProcess = subprocess.Popen([mwmBuilder, "/s:" + input, "/o:" + output, "/l:" + startDir + "\\MwmBuilder.log"])
 mwmBuilderProcess.wait()
 copyWithExtension(output, startDir, ".mwm")
