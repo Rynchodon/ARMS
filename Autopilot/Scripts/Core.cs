@@ -210,7 +210,7 @@ namespace Rynchodon.Autopilot
 				build();
 			}
 
-			Logger.ShowNotification("Autopilot Dev loaded", 10000);
+			myLogger.ShowNotificationDebug("Autopilot Dev loaded", 10000);
 
 			//try
 			//{
