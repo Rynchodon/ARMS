@@ -2,6 +2,7 @@
 Archive/
 Archive.7z
 **/mwmBuilder/
+**/MwmBuilder.log
 
 # varies by computer
 build.ini
