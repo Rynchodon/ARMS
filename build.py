@@ -26,7 +26,7 @@ build_model = startDir + "\\build-model.py"
 
 modules = []
 for file in os.listdir(startDir):
-	if file == ".git":
+	if file[0] == '.' or file == "Archive":
 		continue
 	if os.path.isdir(file):
 		modules.append(file)

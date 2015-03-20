@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		private void OnClose(IMyEntity closing)
-		{ OnClose(); }
+		{ try { OnClose(); } catch { } }
 
 		//private bool needToUpdateBlocks;
 		private static MyObjectBuilderType remoteControlType = typeof(MyObjectBuilder_RemoteControl);
@@ -1571,7 +1571,7 @@ namespace Rynchodon.Autopilot
 			//log("entered moveOrder("+move+")");
 			if (normalize)
 				move = Vector3.Normalize(move);
-			if (!Vector3.IsValid(move))
+			if (!move.IsValid())
 				move = Vector3.Zero;
 			if (currentMove == move)
 				return;
