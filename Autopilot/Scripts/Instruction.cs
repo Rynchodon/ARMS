@@ -42,7 +42,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		/// <param name="instruction">unparsed instruction</param>
 		/// <returns>true if an Action was queued, false if parsing failed</returns>
-		public bool enqueueActions(string instruction)
+		public bool enqueueAction(string instruction)
 		{
 			if (instruction.Length < 2)
 			{
@@ -58,7 +58,14 @@ namespace Rynchodon.Autopilot.Instruction
 				instructionQueue.Enqueue(singleAction);
 				return true;
 			}
-
+			if (getAction_multiple(lowerCase))
+				return true;
+			if (getAction_single(lowerCase, singleAction))
+			{
+				instructionQueue.Enqueue(singleAction);
+				return true;
+			}
+			return false;
 		}
 
 		/// <summary>
@@ -69,13 +76,50 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool getAction_word(string lowerCase, out Action wordAction)
 		{
 			if (lowerCase == "exit")
-				return getAction_exit(out wordAction);
+			{
+				wordAction = () =>
+				{
+					owner.CNS.EXIT = true;
+					owner.reportState(Navigator.ReportableState.OFF);
+					owner.fullStop("EXIT");
+				};
+				return true;
+			}
 			if (lowerCase == "jump")
-				return getAction_jump(out wordAction);
+			{
+				wordAction = () =>
+				{
+					log("setting jump", "addInstruction()", Logger.severity.DEBUG);
+					owner.CNS.jump_to_dest = true;
+					return;
+				};
+				return true;
+			}
 			if (lowerCase == "lock")
-				return getAction_lock(out wordAction);
+			{
+				wordAction = () =>
+				{
+					if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
+					{
+						log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "addInstruction()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
+						owner.CNS.landingState = NavSettings.LANDING.OFF;
+						owner.CNS.landingSeparateBlock = null;
+						owner.CNS.landingSeparateWaypoint = null;
+						owner.setDampeners(); // dampeners will have been turned off for docking
+					}
+				};
+				return true;
+			}
 			if (lowerCase == "reset")
-				return getAction_dispose(out wordAction);
+			{
+				IMyTerminalBlock RCterminal = owner.currentRCterminal;
+				wordAction = () =>
+				{
+					if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
+						RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
+					Core.remove(owner);
+				};
+			}
 			wordAction = null;
 			return false;
 		}
@@ -87,7 +131,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool getAction_multiple(string lowerCase)
 		{
-
+			return false;
 		}
 
 		private bool getAction_single(string lowerCase, Action instructionAction)
@@ -100,8 +144,7 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_flyTo(out instructionAction, owner.currentRCblock, data);
 				case 'g':
 					return getAction_gridDest(out instructionAction, data);
-				//case 'h':
-					// harvest
+				//case 'h': // harvest
 				case 'l':
 					return getAction_localBlock(out instructionAction, data);
 				case 'o':
@@ -113,33 +156,6 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
-
-		// INDIVIDUAL METHODS
-
-		// KEYWORD ACTIONS
-
-		private bool getAction_exit(out Action execute)
-		{
-			execute = () =>
-			{
-				owner.CNS.EXIT = true;
-				owner.reportState(Navigator.ReportableState.OFF);
-				owner.fullStop("EXIT");
-			};
-			return true;
-		}
-
-		private bool getAction_dispose(out Action execute)
-		{
-			IMyTerminalBlock RCterminal = owner.currentRCterminal;
-			execute = () =>
-			{
-				if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
-					RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
-				Core.remove(owner);
-			};
-			return true;
-		}
 
 		// MULTIPLE ACTIONS
 
