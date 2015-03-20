@@ -208,7 +208,7 @@ namespace Rynchodon.Autopilot
 			string blockName;
 			if (Fatblock is Ingame.IMyRemoteControl)
 			{
-				blockName = Navigator.getRCNameOnly(Fatblock);
+				blockName = Fatblock.getNameOnly();
 				if (blockName == null)
 					blockName = Fatblock.DisplayNameText;
 			}

@@ -12,7 +12,7 @@ using Sandbox.ModAPI.Interfaces;
 namespace Rynchodon.Autopilot
 {
 	/// <summary>
-	/// For giving instructions to Autopilot
+	/// For giving allInstructions to Autopilot
 	/// </summary>
 	public class AutopilotLink
 	{
