@@ -153,7 +153,6 @@ namespace Rynchodon.Autopilot
 			interruptingCow(dead.myGrid.DisplayName, Exception);
 			if (!allNavigators.Remove(dead.myGrid))
 				myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
-			//blacklist.Remove(dead);
 		}
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]

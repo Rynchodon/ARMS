@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		private void OnClose(IMyEntity closing)
-		{ OnClose(); }
+		{ try { OnClose(); } catch { } }
 
 		//private bool needToUpdateBlocks;
 		private static MyObjectBuilderType remoteControlType = typeof(MyObjectBuilder_RemoteControl);
