@@ -12,17 +12,19 @@
 
 import datetime, errno, os, os.path, psutil, shutil, stat, subprocess, sys, time
 
+# primary directories
+scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
+buildIni = scriptDir + "\\build.ini"
+startDir = os.path.split(scriptDir)[0]
+appData = os.getenv('APPDATA')
+build_model = scriptDir + "\\build-model.py"
+
 # in case build.ini is missing variables
 mwmBuilder = os.devnull
 Zip7 = os.devnull
 
-if os.path.exists('build.ini'):
-	exec(open('build.ini').read())
-
-startDir = os.path.dirname(os.path.realpath(sys.argv[0]))
-appData = os.getenv('APPDATA')
-build_model = startDir + "\\build-model.py"
-
+if os.path.exists(buildIni):
+	exec(open(buildIni).read())
 
 modules = []
 for file in os.listdir(startDir):
