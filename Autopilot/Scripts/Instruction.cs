@@ -157,9 +157,8 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 
-		// MULTIPLE ACTIONS
-
 		// SINGLE ACTIONS
+
 
 		private bool getAction_flyTo(out Action execute, IMyCubeBlock remote, string instruction)
 		{
@@ -320,18 +319,6 @@ namespace Rynchodon.Autopilot.Instruction
 				return true;
 			}
 			log("failed to parse " + instruction + " to float, radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
-			execute = null;
-			return false;
-		}
-
-		/// <summary>
-		/// Get instructions from TextPanel. T (panel name)[, (start)][, (end)]
-		/// </summary>
-		/// <param name="execute"></param>
-		/// <param name="instruction"></param>
-		/// <returns></returns>
-		private bool getAction_TextPanel(out Action execute, string instruction)
-		{
 			execute = null;
 			return false;
 		}
