@@ -44,10 +44,10 @@ if not os.path.exists(mwmBuilder):
 bNoFBX = True
 bNoXML = True
 for file in os.listdir('.'):
-	if file.endswith(".FBX"):
+	if file.lower().endswith(".fbx"):
 		bNoFBX = False
 	else:
-		if file.endswith(".xml"):
+		if file.lower().endswith(".xml"):
 			bNoXML = False
 
 if bNoFBX or bNoXML:
@@ -67,14 +67,14 @@ def copyWithExtension(l_from, l_to, l_ext):
 	createDir(l_to)
 	os.chdir(l_from)
 	for file in os.listdir('.'):
-		if file.endswith(l_ext):
+		if file.lower().endswith(l_ext.lower()):
 			shutil.copy2(file, l_to)
 
 
 # set up directories for MwmBuilder
 createDir(input)
 createDir(output)
-copyWithExtension(startDir, input, ".FBX")
+copyWithExtension(startDir, input, ".fbx")
 copyWithExtension(startDir, input, ".xml")
 copyWithExtension(startDir, input, ".hkt")
 

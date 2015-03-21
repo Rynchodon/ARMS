@@ -89,7 +89,7 @@ def copyFiles(l_source):
 	
 	os.chdir(l_sourceDir)
 	for file in os.listdir(l_sourceDir):
-		if file.endswith(".cs"):
+		if file.lower().endswith(".cs"):
 			#print ("file is "+file)
 			lines = open(file, 'r').readlines()
 			if ("skip file on build" in lines[0]):
@@ -130,7 +130,7 @@ def copyWithExtension(l_from, l_to, l_ext):
 	createDir(l_to)
 	os.chdir(l_from)
 	for file in os.listdir(l_from):
-		if file.endswith(l_ext):
+		if file.lower().endswith(l_ext.lower()):
 			shutil.copy(file, l_to)
 
 # start mwmBuilder first, it will run in parallel
