@@ -79,6 +79,7 @@ namespace Rynchodon.Autopilot.Turret
 
 		public override void Close()
 		{
+			base.Close();
 			if (needToRelease)
 				lock_notMyUpdate.ReleaseExclusive();
 

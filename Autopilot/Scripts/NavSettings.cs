@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot
 		public DateTime waitUntil;
 		public DateTime waitUntilNoCheck;
 		public string searchBlockName; // might want to remove this one
-		public Queue<string> instructions;
+		//public Queue<string> instructions;
 		public TARGET lockOnTarget;
 		public int lockOnRangeEnemy;
 		public string lockOnBlock;
@@ -100,7 +100,7 @@ namespace Rynchodon.Autopilot
 			//this.myGridDims = owner.myGridDim;
 			//if (logger != null)
 			//logger.WriteLine("initialized navigation settings");
-			instructions = new Queue<string>();
+			//instructions = new Queue<string>();
 			isAMissile = false;
 			waitUntil = DateTime.UtcNow;
 			waitUntilNoCheck = DateTime.UtcNow;

@@ -44,6 +44,12 @@ namespace Rynchodon
 			myLogger.debugLog("queuing for init: " + Entity.getBestName(), "Init()");
 		}
 
+		public override void Close()
+		{
+			base.Close();
+			Closed = true; // possibly set by base.Close()
+		}
+
 		/// <summary>
 		/// Will be true only after DelayedInit has been called.
 		/// </summary>
