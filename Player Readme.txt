@@ -1,3 +1,18 @@
+[h1]Mod Features[/h1]
+Automatic docking & landing
+Patrol
+Fly to another ship/station
+Fly to world GPS location
+Fly a certain distance relavant to ship
+Formations/Orientation matching
+Command looping
+Speed Control 
+Obstacle detection & collision avoidance
+Engage Enemy ships/stations 
+Act as a missle and target a block on a an enemy ship/station
+(In development) Smart Turret Control - Allows you to set priorities for your turrets. 
+            --This allows you to disable, but not completely destroy an enemy ship/station (grid)
+
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.
 If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
