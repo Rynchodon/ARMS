@@ -15,40 +15,8 @@ feature list.
 If you'd simply like to use the mod, please subscribe to it via the Steam
 Workshop as you normally would and enable it on your save or server.
 
-To download a development-ready local copy of this mod instead, follow the steps
-below.
-
-### Requirements
-
-To work with Autopilot, ensure you have:
-
-* [Git](http://git-scm.com/)
-* [Python](https://www.python.org/)
-* A working understanding of [C#]
-(https://msdn.microsoft.com/en-us/library/67ef8sbd.aspx)
-
-### Installation
-
-First, [create your own github fork]
-(https://help.github.com/articles/fork-a-repo/) to hold your changes.
-
-Next, clone to repo to your machine:
-
-```
-git clone https://github.com/username/autopilot
-```
-
-Finally, make sure you can run the build task that packages your current
-code state and deploys it to Space Engineers:
-
-```
-python build.py
-```
-
-After that, you should be able to load Autopilot and Autopilot Dev (has
-logging) directly from the Space Engineers mod screen.
-
-**Ensure you rerun the build task each time you're ready to test your changes.**
+To work with a local development copy of this mod instead, follow the steps
+listed [on the wiki](https://github.com/Rynchodon/Autopilot/wiki/Developing-Autopilot).
 
 ## Roadmap
 

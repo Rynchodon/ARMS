@@ -9,23 +9,37 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
-	/// <summary>
-	/// Summary of Relations
-	/// 
-	/// Unowned:
-	/// For a grid, hostile. For a block, None.
-	/// 
-	/// Hostile:
-	/// The goal is to be consistent with what a turret will shoot at.
-	/// i.e. A turret will shoot at an enemy block and will shoot at a grid if it contains any enemy blocks.
-	/// 
-	/// Friendly:
-	/// Essentially, any block or grid which is neither enemies nor neutral.
-	/// </summary>
 	public static class IMyCubeBlockExtensions
 	{
+		/// <summary>
+		/// <para>For a grid, we normally consider the worst relationship.</para>
+		/// <para>Eg. A grid that contains any Neutral blocks and no Enemy blocks shall be considered Neutral.</para>
+		/// <para>A grid that is completely unowned shall be considered Enemy.</para>
+		/// </summary>
 		[Flags]
-		public enum Relations : byte { None = 0, Enemy = 1, Neutral = 2, Faction = 4, Owner = 8 }
+		public enum Relations : byte
+		{
+			/// <summary>
+			/// Owner/Player is "nobody"
+			/// </summary>
+			None = 0,
+			/// <summary>
+			/// Owner/Player is a member of an at war faction
+			/// </summary>
+			Enemy = 1,
+			/// <summary>
+			/// Owner/Player is a member of an at peace faction
+			/// </summary>
+			Neutral = 2,
+			/// <summary>
+			/// Owner/Player is a member of the same faction
+			/// </summary>
+			Faction = 4,
+			/// <summary>
+			/// Owner/Player is the same player
+			/// </summary>
+			Owner = 8
+		}
 
 		public static bool HasFlagFast(this Relations rel, Relations flag)
 		{ return (rel & flag) > 0; }
