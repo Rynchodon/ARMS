@@ -9,6 +9,7 @@ Command looping
 Speed Control 
 Obstacle detection & collision avoidance
 Engage Enemy ships/stations 
+Radar
 Act as a missle and target a block on a an enemy ship/station
 (In development) Smart Turret Control - Allows you to set priorities for your turrets. 
             --This allows you to disable, but not completely destroy an enemy ship/station (grid)
