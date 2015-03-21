@@ -16,7 +16,7 @@ If you'd simply like to use the mod, please subscribe to it via the Steam
 Workshop as you normally would and enable it on your save or server.
 
 To work with a local development copy of this mod instead, follow the steps
-listed [on the wiki](https://github.com/Rynchodon/Autopilot/wiki/Developing-in-Autopilot).
+listed [on the wiki](https://github.com/Rynchodon/Autopilot/wiki/Developing-Autopilot).
 
 ## Roadmap
 
