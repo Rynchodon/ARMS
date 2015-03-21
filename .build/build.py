@@ -146,6 +146,14 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
+		modelDir = startDir + "\\" + module + "\\Models\\large"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
+		modelDir = startDir + "\\" + module + "\\Models\\small"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
 			
 
 # copy textures
