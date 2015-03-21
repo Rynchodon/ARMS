@@ -15,7 +15,7 @@ namespace Rynchodon
 	//		each class shall declare a Logger field (usually myLogger) that must be initialized
 	//		the constructor/initializer may replace myLogger with a more verbose one
 	//		all logging actions shall be performed by calling myLogger.log() or myLogger.debugLog()
-	//		notifications shall use myLogger.ShowNotificationDebug() or myLogger.ShowNotification()
+	//		notifications shall use myLogger.notify() or myLogger.debugNotify()
 	//
 	// Log4J Pattern for GamutLogViewer: [%date][%level][%Grid][%Class][%Method][%PriState][%SecState]%Message
 	/// <summary>
@@ -241,26 +241,25 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
-		/// <param name="font">font colour</param>
+		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void ShowNotificationDebug(string message, int disappearTimeMs = 2000, MyFontEnum font = MyFontEnum.White)
-		{
-			if (MyAPIGateway.Utilities != null)
-				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
-			else
-				log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
+		public void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		{ 
+			notify(message, disappearTimeMs, level);
 		}
 
+		
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
-		/// <param name="font">font colour</param>
+		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
-		public void ShowNotification(string message, int disappearTimeMs = 2000, MyFontEnum font = MyFontEnum.White)
+		public void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
+			MyFontEnum font = fontForSeverity(level);
 			if (MyAPIGateway.Utilities != null)
 				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
 			else
@@ -268,5 +267,25 @@ namespace Rynchodon
 		}
 
 		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL }
+		
+		private MyFontEnum fontForSeverity(severity level = severity.TRACE) {
+			switch (level) {
+				case severity.INFO:
+					return MyFontEnum.Green;
+				case severity.TRACE:
+					return MyFontEnum.White;
+				case severity.DEBUG:
+					return MyFontEnum.Debug;
+				case severity.WARNING:
+					return MyFontEnum.Red;
+				case severity.ERROR:
+					return MyFontEnum.Red;
+				case severity.FATAL:
+					return MyFontEnum.Red;
+				default:
+					return MyFontEnum.White;					
+			}
+		}
+		
 	}
 }
