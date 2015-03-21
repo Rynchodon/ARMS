@@ -37,14 +37,6 @@ namespace Rynchodon.Autopilot
 		internal NewTargeter(Navigator owner)
 		{ this.owner = owner; }
 
-		//private IMyCubeGrid isInRange_last_grid = null;
-		//private Vector3D isInRange_last_position;
-		//private double isInRange_last_distance;
-
-		//private static DateTime tryLockOnLastGlobal;
-		//private DateTime tryLockOnLastLocal;
-		//private static DateTime sanityCheckMinTime = DateTime.Today.AddDays(-1);
-
 		private DateTime nextTryLockOn;
 
 		public void tryLockOn()
@@ -54,20 +46,6 @@ namespace Rynchodon.Autopilot
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.OFF)
 				return;
 
-			//DateTime now = DateTime.UtcNow;
-
-			//if (tryLockOnLastLocal > DateTime.MinValue)
-			//{
-			//	double secondsSinceLocalUpdate = (now - tryLockOnLastLocal).TotalSeconds;
-			//	if (secondsSinceLocalUpdate < 1)
-			//		return;
-			//	double millisecondDelayGlobal = 9000 / secondsSinceLocalUpdate + 100;
-			//	if (now < tryLockOnLastGlobal.AddMilliseconds(millisecondDelayGlobal))
-			//		return;
-			//}
-			//else if (tryLockOnLastGlobal > sanityCheckMinTime && now < tryLockOnLastGlobal.AddMilliseconds(50)) // delay for first run
-			//	return;
-
 			if (DateTime.UtcNow.CompareTo(nextTryLockOn) < 0)
 			{
 				//log("bailing, too soon to retarget", "tryLockOn()", Logger.severity.TRACE);
@@ -76,9 +54,6 @@ namespace Rynchodon.Autopilot
 
 			log("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
 			
-			//tryLockOnLastGlobal = now;
-			//tryLockOnLastLocal = DateTime.UtcNow;
-
 			IMyCubeBlock bestMatchBlock;
 			LastSeen bestMatchGrid;
 			if (!lastSeenHostile(out bestMatchGrid, out bestMatchBlock, owner.CNS.lockOnBlock)) // did not find a target
@@ -244,24 +219,18 @@ namespace Rynchodon.Autopilot
 			foreach (IMySlimBlock block in collected)
 			{
 				IMyCubeBlock Fatblock = block.FatBlock;
-				//if (fatblock == null // armour or something
-				//	|| !owner.currentRCblock.canControlBlock(fatblock)) // if not friendly
-				//	continue;
 
 				//log("checking block: "+fatblock.DisplayNameText, "findBestFriendly()", Logger.severity.TRACE);
 
 				string blockName = getBlockName(Fatblock);
 
 				//log("checking " + blockName + " contains " + blockContains, "findBestFriendly()", Logger.severity.TRACE);
-				//if (blockName.looseContains(blockContains))
-				//{
 					log("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
 					if ((bestMatchBlock == null || blockName.Length < bestMatchLength)) // if better match
 					{
 						bestMatchBlock = Fatblock;
 						bestMatchLength = grid.DisplayName.Length;
 					}
-				//}
 			}
 			return bestMatchBlock != null;
 		}
@@ -291,20 +260,12 @@ namespace Rynchodon.Autopilot
 			foreach (IMySlimBlock block in collected)
 			{
 				IMyCubeBlock Fatblock = block.FatBlock;
-				//if (fatblock == null // armour or something
-				//	|| !fatblock.IsWorking // ignore inactive hostile blocks
-				//	|| !owner.currentRCblock.canConsiderHostile(fatblock)) // not hostile
-				//	continue;
-
-				//if (fatblock.DefinitionDisplayNameText.looseContains(blockContains))
-				//{
-					double distance = owner.myGrid.WorldAABB.Distance(Fatblock.GetPosition());
-					if (bestMatchBlock == null || distance < bestMatchDist) // if better match
-					{
-						bestMatchBlock = Fatblock;
-						bestMatchDist = distance;
-					}
-				//}
+				double distance = owner.myGrid.WorldAABB.Distance(Fatblock.GetPosition());
+				if (bestMatchBlock == null || distance < bestMatchDist) // if better match
+				{
+					bestMatchBlock = Fatblock;
+					bestMatchDist = distance;
+				}
 			}
 			return bestMatchBlock != null;
 		}

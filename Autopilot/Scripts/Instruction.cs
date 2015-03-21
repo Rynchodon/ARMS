@@ -41,9 +41,9 @@ namespace Rynchodon.Autopilot.Instruction
 		public Interpreter(Navigator owner)
 		{ this.owner = owner; }
 
-		/// <summary>
+		/// <remarks>
 		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 
-		/// </summary>
+		/// </remarks>
 		public MyQueue<Action> instructionQueue;
 
 		public bool enqueueAllActions(string allInstructions)
@@ -390,6 +390,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool flyOldStyle(out RelativeVector3F result, IMyCubeBlock remote, string instruction)
 		{
+			log("entered flyOldStyle(result, " + remote.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
+
 			result = null;
 			string[] coordsString = instruction.Split(',');
 			if (coordsString.Length != 3)
@@ -407,7 +409,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private bool flyTo_generic(out RelativeVector3F result, IMyCubeBlock remote, string instruction)
 		{
-			//log("entered flyTo_generic(result, " + block.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
+			log("entered flyTo_generic(result, " + remote.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
 
 			Vector3 fromGeneric;
 			if (getVector_fromGeneric(out fromGeneric, instruction))
