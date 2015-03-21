@@ -10,7 +10,7 @@
 # The Dev version has logging enabled
 
 
-import datetime, errno, os, os.path, psutil, shutil, stat, subprocess, sys, time
+import datetime, errno, os, os.path, shutil, stat, subprocess, sys, time
 
 # primary directories
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -280,7 +280,7 @@ if process.returncode != 0:
 
 print("7-Zip finished\n")
 
-# shamelessly copied from http://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows/1214935#1214935
+# copied from http://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows/1214935#1214935
 def handleRemoveReadonly(func, path, exc):
   excvalue = exc[1]
   if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:

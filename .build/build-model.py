@@ -59,9 +59,12 @@ def createDir(l_dir):
 	if not os.path.exists(l_dir):
 		os.makedirs(l_dir)
 
-def eraseDir(l_dir):
+# delete all the files in a directory
+def emptyDir(l_dir):
 	if os.path.exists(l_dir):
-		shutil.rmtree(l_dir)
+		for file in os.listdir(l_dir):
+			if os.path.isfile(l_dir + "\\" + file):
+				os.remove(l_dir + "\\" + file)
 
 def copyWithExtension(l_from, l_to, l_ext):
 	createDir(l_to)
@@ -77,8 +80,13 @@ createDir(output)
 copyWithExtension(startDir, input, ".fbx")
 copyWithExtension(startDir, input, ".xml")
 copyWithExtension(startDir, input, ".hkt")
+copyWithExtension(startDir, output, ".mwm") # copying.mwm to output allows MwmBuilder to skip unchanged models
 
 # run MwmBuilder
 mwmBuilderProcess = subprocess.Popen([mwmBuilder, "/s:" + input, "/o:" + output, "/l:" + startDir + "\\MwmBuilder.log"])
 mwmBuilderProcess.wait()
 copyWithExtension(output, startDir, ".mwm")
+
+# cannot delete directories, but we can empty them
+emptyDir(startDir + "\\" + input)
+emptyDir(startDir + "\\" + output)
