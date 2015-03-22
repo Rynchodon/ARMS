@@ -318,13 +318,24 @@ namespace Rynchodon.Autopilot.Instruction
 				for (int i = 0; i < coordsDouble.Length; i++)
 					if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
 					{
+						// failed to parse
 						instructionAction = null;
 						return false;
 					}
 
 				// successfully parsed
 				Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-				instructionAction = () => { owner.CNS.setDestination(destination); };
+				instructionAction = () =>
+				{
+					if (owner == null)
+						myLogger.debugLog("owner is null", "getAction_coordinates()");
+					if (owner.CNS == null)
+						myLogger.debugLog("CNS is null", "getAction_coordinates()");
+					if (destination == null)
+						myLogger.debugLog("destination is null", "getAction_coordinates()");
+					myLogger.debugLog("setting " + owner.CNS + " destination to " + destination, "getAction_coordinates()");
+					owner.CNS.setDestination(destination);
+				};
 				return true;
 			}
 			instructionAction = null;
@@ -377,7 +388,11 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			//log("passed, destination will be "+result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
-			execute = () => owner.CNS.setDestination(result.getWorldAbsolute());
+			execute = () =>
+			{
+				log("setting " + owner.CNS.ToString() + " destination to " + result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
+				owner.CNS.setDestination(result.getWorldAbsolute());
+			};
 			//log("created action: " + execute, "getAction_flyTo()", Logger.severity.TRACE);
 			return true;
 		}
@@ -423,28 +438,31 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
-			NavSettings CNS = owner.CNS;
-			string searchName = CNS.tempBlockName;
-			CNS.tempBlockName = null;
+			string searchName = owner.CNS.tempBlockName;
+			owner.CNS.tempBlockName = null;
 			IMyCubeBlock blockBestMatch;
 			LastSeen gridBestMatch;
 			//myLogger.debugLog("calling lastSeenFriendly on " + owner.myTargeter + " with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
 			if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
 			{
-				execute = () => { CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock); };
-				if (blockBestMatch != null && CNS.landLocalBlock != null && CNS.landDirection == null)
+				execute = () =>
+				{
+					myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + ", " + owner.currentRCblock.DisplayNameText, "getAction_gridDest()");
+					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
+				};
+				if (blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
 				{
 					Base6Directions.Direction? landDir;
 					if (!Lander.landingDirection(blockBestMatch, out landDir))
 					{
-						log("could not get landing direction from block: " + CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
-						return true; // still fly near dest, maybe issue is a bit more obvious
+						log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
+						return false;
 					}
 					execute = () =>
 					{
-						CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
-						CNS.landDirection = landDir;
-						log("set land offset to " + CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
+						owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
+						owner.CNS.landDirection = landDir;
+						log("set land offset to " + owner.CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
 					};
 				}
 				return true;
