@@ -253,6 +253,7 @@ namespace Rynchodon.Autopilot
 					while (myInterpreter.instructionQueue.Count > 0)
 					{
 						//addInstruction(CNS.instructions.Dequeue());
+						myLogger.debugLog("invoking queued action, count is" + myInterpreter.instructionQueue.Count, "update()");
 						myInterpreter.instructionQueue.Dequeue().Invoke();
 						switch (CNS.getTypeOfWayDest())
 						{
@@ -317,14 +318,16 @@ namespace Rynchodon.Autopilot
 								//	continue;
 								//log("found a ready remote control " + fatBlock.DisplayNameText, "update()", Logger.severity.TRACE);
 								//CNS.instructions = new Queue<string>(inst);
+								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
 								if (myInterpreter == null)
 									myInterpreter = new Interpreter(this);
 								if (!myInterpreter.enqueueAllActions(instructions))
 								{
 									myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
+									currentRCcontrol = null;
 									continue;
 								}
-								currentRCcontrol = (fatBlock as IMyControllableEntity);
+								
 								CNS.startOfCommands();
 								log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instructions", "update()", Logger.severity.TRACE);
 								return;

@@ -164,7 +164,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			string lowerCase = instruction.ToLower();
 			string dataLowerCase = lowerCase.Substring(1);
-			//log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", data = " + data + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+			log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", dataLowerCase = " + dataLowerCase + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
 			switch (lowerCase[0])
 			{
 				case 'a':
@@ -365,13 +365,13 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			execute = null;
 			RelativeVector3F result;
-			//log("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
+			log("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
 			if (!flyOldStyle(out result, owner.currentRCblock, instruction))
 			{
-				//log("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
+				log("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
 				if (!flyTo_generic(out result, owner.currentRCblock, instruction))
 				{
-					//log("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
+					log("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
 					return false;
 				}
 			}
@@ -428,6 +428,7 @@ namespace Rynchodon.Autopilot.Instruction
 			CNS.tempBlockName = null;
 			IMyCubeBlock blockBestMatch;
 			LastSeen gridBestMatch;
+			//myLogger.debugLog("calling lastSeenFriendly on " + owner.myTargeter + " with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
 			if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
 			{
 				execute = () => { CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock); };
