@@ -75,6 +75,8 @@ def copyWithExtension(l_from, l_to, l_ext):
 
 
 # set up directories for MwmBuilder
+emptyDir(startDir + "\\" + input)
+emptyDir(startDir + "\\" + output)
 createDir(input)
 createDir(output)
 copyWithExtension(startDir, input, ".fbx")
