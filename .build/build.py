@@ -86,11 +86,16 @@ def copyFiles(l_source):
 	l_archiveDir = startDir + "\Archive\\" + l_source
 
 	createDir(l_archiveDir)
+	ignoreDirs = [ "bin", "obj", "Properties" ] # these are case-sensitive
 
-	for dir, dirs, files in os.walk(l_sourceDir):
-		os.chdir(dir)
+	for path, dirs, files in os.walk(l_sourceDir):
+		for ignore in ignoreDirs:
+			if (ignore in dirs):
+				dirs.remove(ignore)
 
-		nsPath = dir.replace(l_sourceDir,'')
+		os.chdir(path)
+
+		nsPath = path.replace(l_sourceDir,'')
 		nsStr = nsPath.replace("\\","") + '.' if nsPath != '' else ''
 
 
@@ -101,7 +106,7 @@ def copyFiles(l_source):
 			#print ("file is "+file)
 			lines = open(file, 'r').readlines()
 
-			if ("skip file on build" in lines[0]):
+			if (len(lines) == 0 or  "skip file on build" in lines[0]):
 				#print ("skipping "+file)
 				continue
 
@@ -164,7 +169,7 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
-			
+
 
 # copy textures
 for module in modules[:]:
@@ -213,7 +218,7 @@ while (position == 0):
 while (0==0):
 	index+=1
 	line_cur = readme_lines[index]
-	
+
 	if ("Advanced Commands" in line_cur):
 		continue
 	if ("\n" is line_cur):
@@ -223,9 +228,9 @@ while (0==0):
 			if (command_current):
 				command_lines.append(command_current) # append current
 			break
-	
+
 	line_cur = line_cur.replace("\"", "\"\"")
-	
+
 	if ("Example - " in line_cur):
 		command_current += line_cur # attach to current
 	else:
@@ -259,7 +264,7 @@ print ("\nfinished .cs and .sbc\n")
 if os.path.exists(mwmBuilder):
 	for process in mwmProcess[:]:
 		process.wait()
-	
+
 	# copy files created by mwmBuilder
 	for module in modules[:]:
 		# large models
@@ -272,7 +277,7 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
 			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
-	
+
 	print("\nfinished MwmBuilder\n")
 
 
