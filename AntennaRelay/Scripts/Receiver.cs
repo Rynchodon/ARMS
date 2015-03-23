@@ -226,7 +226,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (myLogger == null)
 				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
-			myLogger.log(level, method, toLog, CubeBlock.DisplayNameText);
+			myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
 		}
 	}
 }

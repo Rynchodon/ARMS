@@ -62,7 +62,10 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionQueue = new MyQueue<Action>(8);
 			foreach (string instruction in splitInstructions)
 				if (!enqueueAction(instruction))
+				{
+					instructionQueue = null;
 					return false;
+				}
 
 			return true;
 		}
