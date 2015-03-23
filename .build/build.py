@@ -78,26 +78,36 @@ eraseDir(endDirDev + r"\Textures")
 createDir(destScript)
 createDir(destScriptDev)
 
-# method that takes a name and moves the files
+# method that takes a module name and moves the files
 def copyFiles(l_source):
 	print ("copying from "+l_source)
 	l_sourceDir = startDir + "\\" + l_source + "\Scripts"
 	l_dataDir = startDir + "\\" + l_source + "\Data"
 	l_archiveDir = startDir + "\Archive\\" + l_source
-	
+
 	createDir(l_archiveDir)
-	
-	os.chdir(l_sourceDir)
-	for file in os.listdir(l_sourceDir):
-		if file.lower().endswith(".cs"):
+
+	for dir, dirs, files in os.walk(l_sourceDir):
+		os.chdir(dir)
+
+		nsPath = dir.replace(l_sourceDir,'')
+		nsStr = nsPath.replace("\\","") + '.' if nsPath != '' else ''
+
+
+		for file in files:
+			if not file.lower().endswith(".cs"):
+				continue
+
 			#print ("file is "+file)
 			lines = open(file, 'r').readlines()
+
 			if ("skip file on build" in lines[0]):
 				#print ("skipping "+file)
 				continue
-			
-			l_destFile = destScript + "\\" + l_source + '.' + file
-			l_destFileDev = destScriptDev + "\\" + l_source + '.' + file
+
+			l_destFileName =  l_source + '.' + nsStr + file
+			l_destFile = destScript + "\\" + l_destFileName
+			l_destFileDev = destScriptDev + "\\" + l_destFileName
 
 			if ("remove on build" in lines[0]):
 				#print ("removing first line" +" in "+file)
