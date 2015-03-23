@@ -152,9 +152,9 @@ namespace Rynchodon
 		/// <summary>
 		/// For logging WARNING and higher severity.
 		/// </summary>
-		/// <param name="level">message to log</param>
+		/// <param name="level">severity level</param>
 		/// <param name="methodName">calling method</param>
-		/// <param name="toLog">severity level</param>
+		/// <param name="toLog">message to log</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		public void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)

@@ -90,7 +90,15 @@ namespace Rynchodon.Autopilot
 		public LANDING landingState = LANDING.OFF;
 
 		private Navigator myNav;
-		private GridDimensions myGridDims { get { return myNav.myGridDim;}}
+		private GridDimensions myGridDims
+		{
+			get
+			{
+				if (myNav == null)
+					return null;
+				return myNav.myGridDim;
+			}
+		}
 
 		public NavSettings(Navigator owner)
 		{
@@ -113,6 +121,9 @@ namespace Rynchodon.Autopilot
 			CurrentGridDest = null;
 
 			startOfCommands(); // for consistency
+
+			if (myNav != null && myNav.myGrid != null)
+				myLogger = new Logger(myNav.myGrid.DisplayName, "NavSettings");
 		}
 
 		/// <summary>
@@ -131,13 +142,18 @@ namespace Rynchodon.Autopilot
 			destinationRadius = 100;
 		}
 
+		/// <summary>
+		/// reset some variables when adding or removing a waypoint or destination
+		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
+			myLogger.debugLog("entered onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
 			collisionUpdateSinceWaypointAdded = 0;
 			if (myGridDims == null)
 				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
 
 			clearSpeedInternal();
+			myLogger.debugLog("exiting onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
 		}
 
 		private Vector3D? myWaypoint;
@@ -178,18 +194,15 @@ namespace Rynchodon.Autopilot
 		}
 		public void clearSpeedInternal()
 		{
+			myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 		}
 
-		private Logger myLogger = null;// = new Logger(myGrid.DisplayName, "Collision");
+		private Logger myLogger = new Logger(null, "NavSettings");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(myGridDims.myGrid.DisplayName, "NavSettings");
-			myLogger.log(level, method, toLog);
-		}
+		{ myLogger.log(level, method, toLog); }
 
 		/// <summary>
 		/// sets coordinates as destination
@@ -209,6 +222,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="seenBy"></param>
 		public void setDestination(LastSeen ls, IMyCubeBlock destBlock, IMyCubeBlock seenBy)
 		{
+			myLogger.debugLog("entered setDestination()", "setDestination()");
 			onWayDestAddedRemoved();
 			CurrentGridDest = new GridDestination(ls, destBlock, seenBy, myNav);
 		}

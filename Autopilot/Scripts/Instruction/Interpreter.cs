@@ -27,19 +27,24 @@ namespace Rynchodon.Autopilot.Instruction
 		public class InstructionQueueOverflow : Exception { }
 
 		private Navigator owner;
+		private NavSettings CNS { get { return owner.CNS; } }
 
-		private Logger myLogger;
+		private Logger myLogger = new Logger(null, "Interpreter");
+		
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Instruction");
+			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
 			myLogger.log(level, method, toLog);
 		}
 
 		public Interpreter(Navigator owner)
-		{ this.owner = owner; }
+		{
+			this.owner = owner;
+			myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
+		}
 
 		/// <remarks>
 		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 

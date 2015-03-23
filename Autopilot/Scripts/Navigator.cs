@@ -1,4 +1,4 @@
-﻿#define DEBUG //remove on build
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -25,11 +25,11 @@ namespace Rynchodon.Autopilot
 	public class Navigator
 	{
 		private Logger myLogger = null;
-		[System.Diagnostics.Conditional("DEBUG")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{			alwaysLog(level, method, toLog);		}
+		{ alwaysLog(level, method, toLog); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.WARNING)
-		{			alwaysLog(level, method, toLog);		}
+		{ alwaysLog(level, method, toLog); }
 		private void alwaysLog(Logger.severity level, string method, string toLog)
 		{
 			try
@@ -253,7 +253,7 @@ namespace Rynchodon.Autopilot
 					while (myInterpreter.instructionQueue.Count > 0)
 					{
 						//addInstruction(CNS.instructions.Dequeue());
-						myLogger.debugLog("invoking queued action, count is" + myInterpreter.instructionQueue.Count, "update()");
+						myLogger.debugLog("invoking queued action, count is " + myInterpreter.instructionQueue.Count, "update()");
 						myInterpreter.instructionQueue.Dequeue().Invoke();
 						switch (CNS.getTypeOfWayDest())
 						{

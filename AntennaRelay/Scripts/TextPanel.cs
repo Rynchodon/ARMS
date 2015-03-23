@@ -21,7 +21,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// TextPanel will fetch instructions from Antenna and write them either for players or for programmable blocks.
 	/// </summary>
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LaserAntenna))]
+	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
 	public class TextPanel : UpdateEnforcer
 	{
 		private const string publicTitle_forPlayer = "Grid found by Autopilot";
