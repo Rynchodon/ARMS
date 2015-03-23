@@ -1,3 +1,5 @@
+Autopilot provides Electronic Navigation, Communication, and Targeting Systems
+
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
