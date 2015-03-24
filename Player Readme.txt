@@ -1,12 +1,40 @@
+Autopilot provides Electronic Navigation, Communication, and Targeting Systems
+
+[h1]Mod Features[/h1]
+Automatic docking & landing
+Patrol
+Fly to another ship/station
+Fly to world GPS location
+Fly a certain distance relative to ship
+Formations/Orientation matching
+Command looping
+Speed Control 
+Obstacle detection & collision avoidance
+Engage Enemy ships/stations 
+Radar
+Act as a missle and target a block on a an enemy ship/station
+(In development) Smart Turret Control - Allows you to set priorities for your turrets. 
+            --This allows you to disable, but not completely destroy an enemy ship/station (grid)
+
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.
 If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
 
+<discussion>
 Models - Full 3D models would be ideal but even drawings would be nice.
 Code - Programming experience is required; this could be a great opportunity to learn C#.
 Tutorials - Think you have a good handle on how to work the mod? Prove it!
 Translations - Speak another language? Good, because I don't.
+</discussion>
 
+[h1]Ingame Help[/h1]
+type "/Autopilot" ingame for a list of help topics
+type "/Autopilot <topic>" for information about a specific topic
+
+[h1]Autopilot Navigation[/h1]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
+
+<discussion>
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth
@@ -77,10 +105,6 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 [P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the remote to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
 
-[h1]Ingame Help[/h1]
-type "/Autopilot" ingame for a list of help topics
-type "/Autopilot <topic>" for information about a specific topic
-
 [h1]Autopilot States[/h1]
 <OFF> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
 <PATHFINDING> searching for a path towards the destination
@@ -94,6 +118,27 @@ type "/Autopilot <topic>" for information about a specific topic
 <PLAYER> A player is controlling grid
 <GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector while a player is in a seat.
 <BROKEN> Congratulations! You found a bug, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440] please report it [/url].
+
+[h1]More Information[/h1]
+To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
+If you reset the Autopilot while landed, it will not separate before moving.
+
+In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
+
+All commands are in the display name of a Remote Control block.
+[] All commands are contained within a single set of square brackets
+<> Do not use angle brackets in your Remote Control's name
+: Commands are separated by colons
+X # : Commands are identified by a single character, followed by information to use
+Variables P and V affect all destinations that come after
+  Interpreter ignores all spaces
+Aa Interpreter is case insensitve
+
+All distances and coordinates are in metres, speed is in metres per second
+If there are multiple Remote Controls with commands, one will be picked arbitrarily.
+The direction that the Remote Control is facing is the direction the ship will fly in.
+When the end of the commands is reached, Autopilot will start back at the first command.
+</discussion>
 
 [h1]Antenna Relay and Radar[/h1]
 Each radio antenna, beacon, and radar transmits its location to radio antennae that are inside its broadcast range.
@@ -147,26 +192,6 @@ Autopilot will not unlock a connector or landing gear while any player is in a c
 
 Merge blocks may conflict with Autopilot. Autopilot cannot detect a merge, so you will have to sort it out yourself.
 
-[h1]More Information[/h1]
-To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
-If you reset the Autopilot while landed, it will not separate before moving.
-
-In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
-
-All commands are in the display name of a Remote Control block.
-[] All commands are contained within a single set of square brackets
-<> Do not use angle brackets in your Remote Control's name
-: Commands are separated by colons
-X # : Commands are identified by a single character, followed by information to use
-Variables P and V affect all destinations that come after
-  Interpreter ignores all spaces
-Aa Interpreter is case insensitve
-
-All distances and coordinates are in metres, speed is in metres per second
-If there are multiple Remote Controls with commands, one will be picked arbitrarily.
-The direction that the Remote Control is facing is the direction the ship will fly in.
-When the end of the commands is reached, Autopilot will start back at the first command.
-
 [b]Public Domain License[/b]
 To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
 http://creativecommons.org/publicdomain/zero/1.0/
@@ -178,4 +203,8 @@ Multiplayer Testing - Degalus
 [b]Links[/b]
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
-[url=https://github.com/Rynchodon/Autopilot] GitHub [/url]
+[url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
+
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]

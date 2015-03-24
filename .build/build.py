@@ -23,8 +23,26 @@ build_model = scriptDir + "\\build-model.py"
 mwmBuilder = os.devnull
 Zip7 = os.devnull
 
+def investigateBadPath(s_printName, s_path):
+	if s_path is os.devnull:
+		print (s_printName + " set to null device")
+	else:
+		print ("ERROR: incorrect path to " + s_printName)
+		lastPath = s_path
+		while (not os.path.exists(s_path)):
+			if (len(s_path) == 0):
+				break
+			if (s_path[-1] is "\\"):
+				s_path = s_path[:-1]
+			lastPath = s_path
+			s_path = os.path.dirname(s_path)
+		print ("\tbad path:  " + lastPath)
+		print ("\tgood path: " + s_path)
+
 if os.path.exists(buildIni):
 	exec(open(buildIni).read())
+else:
+	investigateBadPath("build.ini", buildIni)
 
 modules = []
 for file in os.listdir(startDir):
@@ -78,26 +96,41 @@ eraseDir(endDirDev + r"\Textures")
 createDir(destScript)
 createDir(destScriptDev)
 
-# method that takes a name and moves the files
+# method that takes a module name and moves the files
 def copyFiles(l_source):
 	print ("copying from "+l_source)
 	l_sourceDir = startDir + "\\" + l_source + "\Scripts"
 	l_dataDir = startDir + "\\" + l_source + "\Data"
 	l_archiveDir = startDir + "\Archive\\" + l_source
-	
+
 	createDir(l_archiveDir)
-	
-	os.chdir(l_sourceDir)
-	for file in os.listdir(l_sourceDir):
-		if file.lower().endswith(".cs"):
+	ignoreDirs = [ "bin", "obj", "Properties" ] # these are case-sensitive
+
+	for path, dirs, files in os.walk(l_sourceDir):
+		for ignore in ignoreDirs:
+			if (ignore in dirs):
+				dirs.remove(ignore)
+
+		os.chdir(path)
+
+		nsPath = path.replace(l_sourceDir,'')
+		nsStr = nsPath.replace("\\","") + '.' if nsPath != '' else ''
+
+
+		for file in files:
+			if not file.lower().endswith(".cs"):
+				continue
+
 			#print ("file is "+file)
 			lines = open(file, 'r').readlines()
-			if ("skip file on build" in lines[0]):
+
+			if (len(lines) == 0 or  "skip file on build" in lines[0]):
 				#print ("skipping "+file)
 				continue
-			
-			l_destFile = destScript + "\\" + l_source + '.' + file
-			l_destFileDev = destScriptDev + "\\" + l_source + '.' + file
+
+			l_destFileName =  l_source + '.' + nsStr + file
+			l_destFile = destScript + "\\" + l_destFileName
+			l_destFileDev = destScriptDev + "\\" + l_destFileName
 
 			if ("remove on build" in lines[0]):
 				#print ("removing first line" +" in "+file)
@@ -136,7 +169,7 @@ def copyWithExtension(l_from, l_to, l_ext):
 # start mwmBuilder first, it will run in parallel
 mwmProcess = []
 if os.path.exists(mwmBuilder):
-	print("\nrunning mwmBuilder")
+	print("\nrunning MwmBuilder")
 	for module in modules[:]:
 		modelDir = startDir + "\\" + module + "\\Model\\large"
 		if os.path.exists(modelDir):
@@ -146,7 +179,16 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
-			
+		modelDir = startDir + "\\" + module + "\\Models\\large"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
+		modelDir = startDir + "\\" + module + "\\Models\\small"
+		if os.path.exists(modelDir):
+			os.chdir(modelDir)
+			mwmProcess.append(subprocess.Popen(["python", build_model]))
+else:
+	investigateBadPath("MwmBuilder", mwmBuilder)
 
 # copy textures
 for module in modules[:]:
@@ -195,7 +237,7 @@ while (position == 0):
 while (0==0):
 	index+=1
 	line_cur = readme_lines[index]
-	
+
 	if ("Advanced Commands" in line_cur):
 		continue
 	if ("\n" is line_cur):
@@ -205,9 +247,9 @@ while (0==0):
 			if (command_current):
 				command_lines.append(command_current) # append current
 			break
-	
+
 	line_cur = line_cur.replace("\"", "\"\"")
-	
+
 	if ("Example - " in line_cur):
 		command_current += line_cur # attach to current
 	else:
@@ -241,7 +283,7 @@ print ("\nfinished .cs and .sbc\n")
 if os.path.exists(mwmBuilder):
 	for process in mwmProcess[:]:
 		process.wait()
-	
+
 	# copy files created by mwmBuilder
 	for module in modules[:]:
 		# large models
@@ -254,7 +296,17 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
 			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
-	
+		# large models
+		modelDir = startDir + "\\" + module + "\\Models\\large"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel + "\\large", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+		# small models
+		modelDir = startDir + "\\" + module + "\\Models\\small"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
+
 	print("\nfinished MwmBuilder\n")
 
 
@@ -265,7 +317,7 @@ print("\nfinished build\n")
 os.chdir(startDir)
 
 if not os.path.exists(Zip7):
-	print ("\n7-Zip not found\n")
+	investigateBadPath("7-Zip", Zip7)
 	sys.exit()
 
 print("\n7-Zip running")
