@@ -148,6 +148,22 @@ def copyWithExtension(l_from, l_to, l_ext):
 		if file.lower().endswith(l_ext.lower()):
 			shutil.copy(file, l_to)
 
+def investigateBadPath(s_printName, s_path):
+	if s_path is os.devnull:
+		print (s_printName + " set to null device")
+	else:
+		print ("ERROR: incorrect path to " + s_printName)
+		lastPath = s_path
+		while (not os.path.exists(s_path)):
+			if (len(s_path) == 0):
+				break
+			if (s_path[-1] is "\\"):
+				s_path = s_path[:-1]
+			lastPath = s_path
+			s_path = os.path.dirname(s_path)
+		print ("\tbad path:  " + lastPath)
+		print ("\tgood path: " + s_path)
+
 # start mwmBuilder first, it will run in parallel
 mwmProcess = []
 if os.path.exists(mwmBuilder):
@@ -170,10 +186,7 @@ if os.path.exists(mwmBuilder):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
 else:
-	if (mwmBuilder is os.devnull):
-		print ("mwmBuilder not found, models will not be built")
-	else:
-		print ("WARNING: incorrect path to MwmBuilder:\n\t" + mwmBuilder)
+	investigateBadPath("MwmBuilder", mwmBuilder)
 
 # copy textures
 for module in modules[:]:
@@ -281,6 +294,16 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
 			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
+		# large models
+		modelDir = startDir + "\\" + module + "\\Models\\large"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel + "\\large", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+		# small models
+		modelDir = startDir + "\\" + module + "\\Models\\small"
+		if os.path.exists(modelDir):
+			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
+			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
 
 	print("\nfinished MwmBuilder\n")
 
@@ -292,7 +315,7 @@ print("\nfinished build\n")
 os.chdir(startDir)
 
 if not os.path.exists(Zip7):
-	print ("\n7-Zip not found\n")
+	investigateBadPath("7-Zip", Zip7)
 	sys.exit()
 
 print("\n7-Zip running")
