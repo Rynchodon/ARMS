@@ -23,8 +23,26 @@ build_model = scriptDir + "\\build-model.py"
 mwmBuilder = os.devnull
 Zip7 = os.devnull
 
+def investigateBadPath(s_printName, s_path):
+	if s_path is os.devnull:
+		print (s_printName + " set to null device")
+	else:
+		print ("ERROR: incorrect path to " + s_printName)
+		lastPath = s_path
+		while (not os.path.exists(s_path)):
+			if (len(s_path) == 0):
+				break
+			if (s_path[-1] is "\\"):
+				s_path = s_path[:-1]
+			lastPath = s_path
+			s_path = os.path.dirname(s_path)
+		print ("\tbad path:  " + lastPath)
+		print ("\tgood path: " + s_path)
+
 if os.path.exists(buildIni):
 	exec(open(buildIni).read())
+else:
+	investigateBadPath("build.ini", buildIni)
 
 modules = []
 for file in os.listdir(startDir):
@@ -147,22 +165,6 @@ def copyWithExtension(l_from, l_to, l_ext):
 	for file in os.listdir(l_from):
 		if file.lower().endswith(l_ext.lower()):
 			shutil.copy(file, l_to)
-
-def investigateBadPath(s_printName, s_path):
-	if s_path is os.devnull:
-		print (s_printName + " set to null device")
-	else:
-		print ("ERROR: incorrect path to " + s_printName)
-		lastPath = s_path
-		while (not os.path.exists(s_path)):
-			if (len(s_path) == 0):
-				break
-			if (s_path[-1] is "\\"):
-				s_path = s_path[:-1]
-			lastPath = s_path
-			s_path = os.path.dirname(s_path)
-		print ("\tbad path:  " + lastPath)
-		print ("\tgood path: " + s_path)
 
 # start mwmBuilder first, it will run in parallel
 mwmProcess = []
