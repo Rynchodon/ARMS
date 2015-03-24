@@ -151,7 +151,7 @@ def copyWithExtension(l_from, l_to, l_ext):
 # start mwmBuilder first, it will run in parallel
 mwmProcess = []
 if os.path.exists(mwmBuilder):
-	print("\nrunning mwmBuilder")
+	print("\nrunning MwmBuilder")
 	for module in modules[:]:
 		modelDir = startDir + "\\" + module + "\\Model\\large"
 		if os.path.exists(modelDir):
@@ -169,7 +169,11 @@ if os.path.exists(mwmBuilder):
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
-
+else:
+	if (mwmBuilder is os.devnull):
+		print ("mwmBuilder not found, models will not be built")
+	else:
+		print ("WARNING: incorrect path to MwmBuilder:\n\t" + mwmBuilder)
 
 # copy textures
 for module in modules[:]:
