@@ -150,7 +150,10 @@ namespace Rynchodon.Autopilot
 			myLogger.debugLog("entered onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
 			collisionUpdateSinceWaypointAdded = 0;
 			if (myGridDims == null)
+			{
 				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
+				VRage.Exceptions.ThrowIf<NullReferenceException>(true);
+			}
 
 			clearSpeedInternal();
 			myLogger.debugLog("exiting onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
