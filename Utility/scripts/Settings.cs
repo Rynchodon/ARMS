@@ -16,10 +16,12 @@ namespace Rynchodon
 		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl, bTestingTurretControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
+		public enum StringSetName : byte { sTurretDefaultPlayer, sTurretDefaultNPC }
 
 		public static Dictionary<BoolSetName, bool> boolSettings = new Dictionary<BoolSetName, bool>();
 		public static Dictionary<IntSetName, int> intSettings = new Dictionary<IntSetName, int>();
 		public static Dictionary<FloatSetName, float> floatSettings = new Dictionary<FloatSetName, float>();
+		public static Dictionary<StringSetName, string> stringSettings = new Dictionary<StringSetName, string>();
 
 		//
 		private static string settings_file_name = "AutopilotSettings.txt";
@@ -46,6 +48,9 @@ namespace Rynchodon
 			writeAll();
 		}
 		
+		/// <summary>
+		/// put each setting into a dictionary with its default value
+		/// </summary>
 		private static void buildSettings()
 		{
 			boolSettings.Add(BoolSetName.bAllowJumpCreative, true);
@@ -60,10 +65,13 @@ namespace Rynchodon
 			floatSettings.Add(FloatSetName.fMaxSpeed, float.MaxValue);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeLarge, 100);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
+
+			stringSettings.Add(StringSetName.sTurretDefaultNPC, "[ Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
+			stringSettings.Add(StringSetName.sTurretDefaultPlayer, "[  ]");
 		}
 
 		/// <summary>
-		/// 
+		/// Read all settings from file
 		/// </summary>
 		/// <returns>version of file</returns>
 		private static int readAll()
@@ -100,6 +108,9 @@ namespace Rynchodon
 			}
 		}
 
+		/// <summary>
+		/// write all settings to file
+		/// </summary>
 		internal static void writeAll()
 		{
 			// write to file
@@ -114,13 +125,19 @@ namespace Rynchodon
 				write(pair.Key.ToString(), pair.Value.ToString());
 			foreach (KeyValuePair<FloatSetName, float> pair in floatSettings)
 				write(pair.Key.ToString(), pair.Value.ToString());
+			foreach (KeyValuePair<StringSetName, string> pair in stringSettings)
+				write(pair.Key.ToString(), pair.Value.ToString());
 
 			settingsWriter.Flush();
 			settingsWriter.Close();
 			settingsWriter = null;
 		}
 
-		// format shall be Name=value
+		/// <summary>
+		/// write a single setting to file, format is name=value
+		/// </summary>
+		/// <param name="name">name of setting</param>
+		/// <param name="value">value of setting</param>
 		private static void write(string name, string value)
 		{
 			StringBuilder toWrite = new StringBuilder();
@@ -130,6 +147,10 @@ namespace Rynchodon
 			settingsWriter.WriteLine(toWrite);
 		}
 
+		/// <summary>
+		/// convert a line of format name=value into a setting and apply it
+		/// </summary>
+		/// <param name="line"></param>
 		private static void parse(string line)
 		{
 			if (line.Length < 4)
@@ -180,6 +201,15 @@ namespace Rynchodon
 							return;
 						floatSettings[fsn] = f;
 						log("got float setting: " + fsn + ", with value: " + f, "parse()", Logger.severity.TRACE);
+						return;
+					}
+				case 's':
+					{
+						StringSetName ssn;
+						if (!Enum.TryParse<StringSetName>(name, out ssn))
+							return;
+						stringSettings[ssn] = value;
+						log("got string setting: " + ssn + ", with value: " + value, "parse()", Logger.severity.TRACE);
 						return;
 					}
 			}

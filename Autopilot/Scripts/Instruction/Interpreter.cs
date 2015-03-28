@@ -181,6 +181,7 @@ namespace Rynchodon.Autopilot.Instruction
 			IMyCubeBlock landLocalBlock;
 			if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
 			{
+				(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
 				execute = () => { owner.CNS.landLocalBlock = landLocalBlock; };
 				return true;
 			}

@@ -240,6 +240,7 @@ namespace Rynchodon.Autopilot
 					log("wait interrupted", "update()", Logger.severity.DEBUG);
 					reset();
 				}
+				reportState(ReportableState.WAITING);
 				return;
 			}
 
@@ -1019,9 +1020,10 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
-						if (MM.distToWayDest < CNS.destinationRadius * 3)
+						if (MM.distToWayDest < CNS.destinationRadius * 3
+							|| MM.rotLenSq < rotLenSq_startMove)
 						{
-							log("close to dest, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
+							log("on course, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
 							calcAndMove();
 							CNS.moveState = NavSettings.Moving.MOVING; // switch to moving
 							reportState(ReportableState.MOVING);
@@ -1081,13 +1083,8 @@ namespace Rynchodon.Autopilot
 		/// start moving when less than
 		/// </summary>
 		public const float rotLenSq_startMove = 0.274f;
-		//private const float rotLenSq_startHybrid = 9f;
-		///// <summary>
-		///// inflight rotate when greater than
-		///// </summary>
-		//public const float rotLenSq_inflight = 0.00762f;
 		/// <summary>
-		/// should be square root of rotLenSq_inflight
+		/// not squared
 		/// </summary>
 		public const float rotLen_minimum = 0.0873f;
 		/// <summary>
@@ -1150,7 +1147,6 @@ namespace Rynchodon.Autopilot
 								moveDirection = course;
 								log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
 								log("... scaled=" + scaled.getWorld() + ":" + scaled.getGrid() + ":" + scaled.getBlock(currentRCblock), "calcAndMove()", Logger.severity.DEBUG);
-								//CNS.moveState = NavSettings.Moving.SIDELING;
 							}
 							break;
 						}
@@ -1165,15 +1161,10 @@ namespace Rynchodon.Autopilot
 			{
 				moveOrder(Vector3.Forward); // move forward
 				log("moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
-				//CNS.moveState = NavSettings.Moving.MOVING;
 			}
 
-			//reportState(ReportableState.MOVING);
 			stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
 		}
-
-		//private double pitchRotatePast;
-		//private double yawRotatePast;
 
 		private double pitchNeedToRotate = 0, yawNeedToRotate = 0;
 
@@ -1208,11 +1199,6 @@ namespace Rynchodon.Autopilot
 								}
 							case NavSettings.Moving.HYBRID:
 								{
-									//if (MM.rotLenSq < rotLenSq_inflight)
-									//	return;
-									// make a small, inflight adjustment
-									//pitchRotatePast = pitchNeedToRotate / 2;
-									//yawRotatePast = yawNeedToRotate / 2;
 									pitchNeedToRotate = MM.pitch;// +pitchRotatePast;
 									yawNeedToRotate = MM.yaw;// +yawRotatePast;
 									if (Math.Abs(pitchNeedToRotate) < rotLen_minimum)
@@ -1232,8 +1218,6 @@ namespace Rynchodon.Autopilot
 								{
 									if (!CNS.isAMissile && CNS.collisionUpdateSinceWaypointAdded < collisionUpdatesBeforeMove)
 										return;
-									//pitchRotatePast = 0;
-									//yawRotatePast = 0;
 									pitchNeedToRotate = MM.pitch;
 									yawNeedToRotate = MM.yaw;
 									if (Math.Abs(pitchNeedToRotate) < rotLen_minimum)
@@ -1267,8 +1251,6 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Rotating.ROTATING:
 					{
 						// check for need to derotate
-						//pitch += pitchRotatePast;
-						//yaw += yawRotatePast;
 						float whichDecelRot;
 						if (CNS.moveState == NavSettings.Moving.MOVING)
 							whichDecelRot = inflightDecelerateRotation;
@@ -1371,8 +1353,6 @@ namespace Rynchodon.Autopilot
 		private float decelerateRotation = 1f / 4f; // how much of rotation should be deceleration
 		internal float inflightRotatingPower = 10;
 		private float inflightDecelerateRotation = 1f / 4f;
-		//internal float rollPower = 3f;
-		//internal float decelerateRoll = 1f / 2f;
 
 		private static float decelerateAdjustmentOver = 1.15f; // adjust decelerate by this much when overshoot
 		private static float decelerateAdjustmentUnder = 0.90f; // adjust decelerate by this much when undershoot
@@ -1385,13 +1365,11 @@ namespace Rynchodon.Autopilot
 			//	check for overshoot/undershoot
 			if (Math.Abs(MM.pitch) > 0.1 && Math.Abs(pitchNeedToRotate) > 0.1)
 				if (Math.Sign(MM.pitch) == Math.Sign(pitchNeedToRotate)) // same sign
-					//if ((x > 0 && needToRotateX > 0) || (x < 0 && needToRotateX < 0))
 					overUnder--;
 				else // different sign
 					overUnder++;
 			if (Math.Abs(MM.yaw) > 0.1 && Math.Abs(yawNeedToRotate) > 0.1)
 				if (Math.Sign(MM.yaw) == Math.Sign(yawNeedToRotate)) // same sign
-					//if ((y > 0 && needToRotateY > 0) || (y < 0 && needToRotateY < 0))
 					overUnder--;
 				else // different sign
 					overUnder++;
@@ -1445,20 +1423,6 @@ namespace Rynchodon.Autopilot
 				}
 			}
 		}
-
-		//private void capFloat(ref float value, float min, float max)
-		//{
-		//	if (value < min)
-		//	{
-		//		//alwaysLog(Logger.severity.WARNING, "capFloat", "value too low " + value + " < " + min, CNS.moveState.ToString(), CNS.rotateState.ToString());
-		//		value = min;
-		//	}
-		//	else if (value > max)
-		//	{
-		//		//alwaysLog(Logger.severity.WARNING, "capFloat", "value too high " + value + " > " + max, CNS.moveState.ToString(), CNS.rotateState.ToString());
-		//		value = max;
-		//	}
-		//}
 
 		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 0, 1);
 		private DateTime stoppedMovingAt;
@@ -1545,6 +1509,9 @@ namespace Rynchodon.Autopilot
 		internal void fullStop(string reason)
 		{
 			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn())
+				return;
+
+			if (currentRCcontrol == null)
 				return;
 
 			reportState(ReportableState.STOPPING);
@@ -1651,7 +1618,7 @@ namespace Rynchodon.Autopilot
 			return "Nav:" + myGrid.DisplayName;
 		}
 
-		public enum ReportableState : byte { OFF, PATHFINDING, ROTATING, MOVING, STOPPING, NO_PATH, NO_DEST, MISSILE, ENGAGING, LANDED, PLAYER, JUMP, BROKEN, HYBRID, SIDEL, ROLL, GET_OUT_OF_SEAT };
+		public enum ReportableState : byte { OFF, PATHFINDING, ROTATING, MOVING, STOPPING, NO_PATH, NO_DEST, MISSILE, ENGAGING, LANDED, PLAYER, JUMP, BROKEN, HYBRID, SIDEL, ROLL, GET_OUT_OF_SEAT, WAITING };
 		private ReportableState currentReportable = ReportableState.OFF;
 
 		internal bool GET_OUT_OF_SEAT = false;

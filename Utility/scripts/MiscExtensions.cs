@@ -1,5 +1,5 @@
 ﻿using System;
-//using System.Collections.Generic;
+using System.Collections.Generic;
 //using System.Linq;
 //using System.Text;
 
@@ -63,5 +63,19 @@ namespace Rynchodon
 
 		public static bool moreThanSecondsAgo(this DateTime previous, double seconds)
 		{ return (DateTime.UtcNow - previous).TotalSeconds > seconds; }
+
+		public static bool Is_ID_NPC(this long playerID)
+		{
+			if (playerID == 0)
+				return false;
+
+			List<IMyPlayer> players = new List<IMyPlayer>();
+			MyAPIGateway.Players.GetPlayers(players);
+			foreach (IMyPlayer play in players)
+				if (play.PlayerID == playerID)
+					return false;
+
+			return true;
+		}
 	}
 }
