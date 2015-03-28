@@ -70,16 +70,9 @@ namespace Rynchodon.Autopilot
 				log("targetDirection=" + targetDirection + ", targetRoll=" + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
 				matchOrientation_finished_rotating = false;
 			}
-			//double rotX, rotY;
-			//log("my Down=" + currentRCblock.WorldMatrix.Down + ", my Right=" + currentRCblock.WorldMatrix.Right, "matchOrientation()", Logger.severity.TRACE);
-			//myNav.getRotationC((Vector3D)targetDirection, out rotX, out rotY);
 			myNav.MM = new MovementMeasure(myNav, targetDirection);
-			//log("target = " + targetDirection + ", facing = " + myNav.currentRCblock.WorldMatrix.Forward + ", pitch = " + myNav.MM.pitch + ", yaw = " + myNav.MM.yaw, "matchOrientation()", Logger.severity.TRACE);
-			//float rotLenSq = Math.Abs((new Vector2((float)rotX, (float)rotY)).LengthSquared());
-			//double rotLenSq = MM.rotLenSq;
 			if (!matchOrientation_finished_rotating && (CNS.rotateState != NavSettings.Rotating.NOT_ROTA || myNav.MM.rotLenSq > rotLenSq_orientRota))
 			{
-				//log("rotX=" + rotX + ", rotY=" + rotY + ", rotX/power=" + rotX / rotationPower + ", rotY/power=" + rotY / rotationPower, "matchOrientation()", Logger.severity.TRACE);
 				myNav.calcAndRotate();
 			}
 			else
@@ -95,20 +88,9 @@ namespace Rynchodon.Autopilot
 				{ matchOrientation_clear(); return; }
 
 				// roll time
-				//Sandbox.ModAPI.IMyCubeBlock navigationBlock = getNavigationBlock();
 				double up = myNav.currentRCblock.WorldMatrix.Up.Dot((Vector3D)targetRoll);
 				double right = myNav.currentRCblock.WorldMatrix.Right.Dot((Vector3D)targetRoll);
 				double roll = Math.Atan2(right, up);
-				//if (up < 0)
-				//{
-				//	double original_roll = roll;
-				//	if (roll > 0)
-				//		roll = 2 * Math.PI - roll;
-				//	else
-				//		roll = -2 * Math.PI - roll;
-				//	log("roll adjusted from " + original_roll + " to " + roll, "matchOrientation()", Logger.severity.TRACE);
-				//}
-				//roll *= myNav.rollPower;
 				if (CNS.rollState != NavSettings.Rolling.NOT_ROLL || Math.Abs(roll) > rotLen_orientRoll)
 				{
 					//log("roll=" + roll, "matchOrientation()", Logger.severity.TRACE);
@@ -134,13 +116,14 @@ namespace Rynchodon.Autopilot
 
 		public void landGrid(MovementMeasure forDistNav)
 		{
-			// test landLocalBlock for functional, we can turn it on 
-			if (CNS.landLocalBlock.Closed || CNS.CurrentGridDest.Block.Closed || !CNS.landLocalBlock.IsFunctional || !CNS.CurrentGridDest.Block.IsWorking)
+			if ((CNS.landLocalBlock != null && (CNS.landLocalBlock.Closed || !CNS.landLocalBlock.IsFunctional)) // test landLocalBlock for functional, we can turn it on
+				|| (CNS.CurrentGridDest != null && CNS.CurrentGridDest.Block != null && (CNS.CurrentGridDest.Block.Closed || !CNS.CurrentGridDest.Block.IsWorking)))
 			{
 				log("cannot land with broken block. " + CNS.landLocalBlock.Closed + " : " + CNS.CurrentGridDest.Block.Closed + " : " + !CNS.landLocalBlock.IsFunctional + " && " + !CNS.CurrentGridDest.Block.IsWorking, "landGrid()", Logger.severity.DEBUG);
 				CNS.landLocalBlock = null;
 				CNS.landingState = NavSettings.LANDING.OFF;
-				unlockLanding();
+				if (CNS.landingSeparateBlock != null)
+					unlockLanding();
 				return;
 			}
 
@@ -292,21 +275,13 @@ namespace Rynchodon.Autopilot
 				{
 					log("merge block set", "lockLanding()", Logger.severity.TRACE);
 					mergeBlock.GetActionWithName("OnOff_On").Apply(mergeBlock); // on
-					//mergeMonitor.makeReady(mergeBlock as IMyShipMergeBlock);
-					//(mergeBlock as IMyShipMergeBlock).BeforeMerge += logBeforeMerge;
 				}
-				//return mergeMonitor.mergeStatus == MergeMonitor.MergeStatus.MERGED;
 				return false;
 			}
 
 			log("unknown lander block type " + CNS.landLocalBlock.DefinitionDisplayNameText, "lockLanding()", Logger.severity.INFO);
 			return true; // assume there is nothing to lock
 		}
-
-		//private void logBeforeMerge()
-		//{
-		//	log("before merge");
-		//}
 
 		private bool unlockLanding()
 		{
@@ -370,12 +345,6 @@ namespace Rynchodon.Autopilot
 					log("landing gear switching lock", "unlockLanding()", Logger.severity.TRACE);
 					landingGear.GetActionWithName("SwitchLock").Apply(landingGear); // unlock
 				}
-				//if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled) // OnOff not working
-				//{
-				//	disconnected = false;
-				//	log("turning off landing gear", "unlockLanding()", Logger.severity.TRACE);
-				//	landingGear.GetActionWithName("OnOff_Off").Apply(connector); // off
-				//}
 				return disconnected;
 			}
 

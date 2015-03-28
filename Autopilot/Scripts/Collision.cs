@@ -449,7 +449,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					return true; // cannot run self over
 				}
 				IMyCubeGrid entityAsGrid = entity as IMyCubeGrid;
-				if (entity.Physics != null && (entityAsGrid == null || !entityAsGrid.IsStatic) && entity.Physics.Mass < 1000)
+				if (entity.Physics != null && entity.Physics.Mass > 0 && entity.Physics.Mass < 1000)
 				{
 					log(myLogger, "ignoring object: low mass(" + entity.Physics.Mass + "): " + getEntityName(entity));
 					return true; // low mass object
@@ -483,7 +483,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (grid == null)
 				{
 					log(myLogger, "not a grid, using old test: " + getEntityName(entity), "entityIntersectsWithSphere()", Logger.severity.DEBUG);
-					return entity.GetIntersectionWithSphere(ref sphere); // too expensive for CubeGrid, fine for VoxelMap
+					return true;
+					//return entity.GetIntersectionWithSphere(ref sphere); // not at all reliable
 				}
 				expensiveTest = true;
 				log(myLogger, "using grid test", "entityIntersectsWithSphere()", Logger.severity.DEBUG);

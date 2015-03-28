@@ -43,28 +43,8 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.SIDELING:
 				case NavSettings.Moving.HYBRID:
 					double distanceToDestination = nav.MM.distToWayDest;
-					//if (nav.CNS.moveState == NavSettings.Moving.SIDELING)
-					//	distanceToDestination = nav.MM.distToWayDest;
 
-					switch (nav.CNS.getTypeOfWayDest())
-					{
-						//case NavSettings.TypeOfWayDest.BLOCK:
-						//case NavSettings.TypeOfWayDest.GRID:
-						//case NavSettings.TypeOfWayDest.LAND:
-						//	if (nav.CNS.moveState == NavSettings.Moving.MOVING || nav.CNS.moveState == NavSettings.Moving.HYBRID)
-						//		distanceToDestination = nav.CNS.getDistanceToDestGrid();
-						//	goto case NavSettings.TypeOfWayDest.COORDINATES;
-						case NavSettings.TypeOfWayDest.WAYPOINT:
-							adjustSpeeds(nav, myLogger, distanceToDestination, 1f, 2f);
-							break;
-						case NavSettings.TypeOfWayDest.BLOCK:
-						case NavSettings.TypeOfWayDest.GRID:
-						case NavSettings.TypeOfWayDest.LAND:
-						case NavSettings.TypeOfWayDest.OFFSET: // run collision avoidance on aproach. see CollisionAvoidance..ctor()
-						case NavSettings.TypeOfWayDest.COORDINATES:
-							adjustSpeeds(nav, myLogger, distanceToDestination, 2f, 4f);
-							break;
-					}
+					adjustSpeeds(nav, myLogger, distanceToDestination, 2f, 4f);
 					break;
 			}
 			checkAndCruise(nav, myLogger);
@@ -72,13 +52,6 @@ namespace Rynchodon.Autopilot
 
 		private static void adjustSpeeds(Navigator nav, Logger myLogger, double distanceToDestination, float stopMultiplierSlowDown, float stopMultiplierSpeedUp)
 		{
-			//if (distanceToDestination < 0)
-			//{
-			//	log(myLogger, "distance < 0: " + distanceToDestination, "adjustSpeeds()", Logger.severity.INFO);
-			//	nav.fullStop("distance under 0");
-			//	return;
-			//}
-
 			float stoppingDistance = nav.currentThrust.getStoppingDistance();
 
 			if (distanceToDestination < stopMultiplierSlowDown * stoppingDistance) // distance is small
@@ -161,7 +134,6 @@ namespace Rynchodon.Autopilot
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;
 					nav.setDampeners();
-					//nav.calcAndMove(nav.CNS.moveState == NavSettings.Moving.SIDELING);
 				}
 				return;
 			}
