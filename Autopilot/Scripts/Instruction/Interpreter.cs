@@ -51,23 +51,27 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </remarks>
 		public MyQueue<Action> instructionQueue;
 
-		public bool enqueueAllActions(string allInstructions)
+		public bool hasInstructionQueued()
+		{ return instructionQueue != null && instructionQueue.Count > 0; }
+
+		/// <summary>
+		/// Split allInstructions, convert to actions, enqueue to instructionQueue
+		/// </summary>
+		/// <param name="allInstructions">all the instructions to enqueue</param>
+		public void enqueueAllActions(string allInstructions)
 		{
 			allInstructions = allInstructions.Replace(" ", string.Empty);
 			string[] splitInstructions = allInstructions.Split(new char[] { ':', ';' });
 
 			if (splitInstructions == null || splitInstructions.Length == 0)
-				return false;
+				return;
+
+			CNS.syntaxError = false;
 
 			instructionQueue = new MyQueue<Action>(8);
 			foreach (string instruction in splitInstructions)
 				if (!enqueueAction(instruction))
-				{
-					instructionQueue = null;
-					return false;
-				}
-
-			return true;
+					CNS.syntaxError = true;
 		}
 
 		/// <summary>

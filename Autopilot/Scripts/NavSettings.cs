@@ -100,6 +100,11 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
+		/// <summary>
+		/// An error occured while parsing instructions
+		/// </summary>
+		public bool syntaxError = false;
+
 		public NavSettings(Navigator owner)
 		{
 			this.myNav = owner;
