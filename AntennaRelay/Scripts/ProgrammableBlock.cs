@@ -48,6 +48,9 @@ namespace Rynchodon.AntennaRelay
 			MyObjectBuilder = null;
 		}
 
+		/// <summary>
+		/// Uses MessageParser to grab messages, then sends them out. Not registered for event because it fires too frequently.
+		/// </summary>
 		private void myProgBlock_CustomNameChanged()
 		{
 			if (Closed)
@@ -55,25 +58,12 @@ namespace Rynchodon.AntennaRelay
 			try
 			{
 				List<Message> toSend = MessageParser.getFromName(myProgBlock as IMyTerminalBlock); // get messages from name
-				log("name changed to: " + myProgBlock.DisplayNameText+", messages to send: "+toSend.Count, "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 				if (toSend == null || toSend.Count == 0)
 				{
 					log("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 					return;
 				}
 				Receiver.sendToAttached(CubeBlock, toSend);
-				//foreach (Message mes in toSend)
-				//{
-				//	log("testing "+RadioAntenna.registry.Count+" antenna", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-				//	foreach (RadioAntenna ant in RadioAntenna.registry)
-				//		if (AttachedGrids.isGridAttached(CubeBlock.CubeGrid, ant.CubeBlock.CubeGrid))
-				//		{
-				//			log("sending message to "+ant, "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-				//			ant.receive(mes);
-				//		}
-				//		else
-				//			log("antenna not attached: " + ant, "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-				//}
 				log("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 			}
 			catch (Exception e)
@@ -81,17 +71,6 @@ namespace Rynchodon.AntennaRelay
 				alwaysLog("Exception: " + e, "ProgBlock_CustomNameChanged()", Logger.severity.ERROR);
 			}
 		}
-
-		// isValid = false, set by Receiver.sendToAttached()
-		///// <summary>
-		///// does not check mes for received, or correct destination. Does set mes.isValid = false
-		///// </summary>
-		///// <param name="mes"></param>
-		//public override void receive(Message mes)
-		//{
-		//	mes.isValid = false; // final dest
-		//	base.receive(mes);
-		//}
 
 		private string previousName;
 
@@ -123,20 +102,5 @@ namespace Rynchodon.AntennaRelay
 
 		public static bool TryGet(IMyCubeBlock block, out ProgrammableBlock result)
 		{ return registry.TryGetValue(block, out result); }
-
-
-		//public override string ToString()
-		//{ return CubeBlock.CubeGrid.DisplayName + "-" + myProgBlock.DisplayNameText; }
-
-		//private Logger myLogger;
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
-		//private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{ alwaysLog(toLog, method, level); }
-		//protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{
-		//	if (myLogger == null)
-		//		myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, "ProgrammableBlock");
-		//	myLogger.log(level, method, toLog, CubeBlock.DisplayNameText);
-		//}
 	}
 }

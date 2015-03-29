@@ -58,7 +58,12 @@ namespace Rynchodon.Autopilot.Turret
 			myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
 			EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
 			if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
-				myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " []");
+			{
+				if (myTurretBase.OwnerId.Is_ID_NPC())
+					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sTurretDefaultNPC]);
+				else
+					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sTurretDefaultPlayer]);
+			}
 
 			TurretBase_CustomNameChanged(null);
 			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
