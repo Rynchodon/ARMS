@@ -10,18 +10,18 @@
         <SubtypeId>LargeBlockAutopilot</SubtypeId>
       </Id>
       <DisplayName>Autopilot Block</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\RemoteControl.dds</Icon>
+      <Icon>Textures\GUI\Icons\Cubes\Autopilot.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="1" z="1" />
+      <Size x="1" y="1" z="2" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\RemoteControl.mwm</Model>
+      <Model>Models\Cubes\Large\ApBlockRev1.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="5" />
         <Component Subtype="Construction" Count="10" />
         <Component Subtype="Motor" Count="1" />
-        <Component Subtype="Computer" Count="15" />
-        <Component Subtype="InteriorPlate" Count="5" />
+        <Component Subtype="Computer" Count="150" />
+        <Component Subtype="InteriorPlate" Count="50" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <MountPoints>

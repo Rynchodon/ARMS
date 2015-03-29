@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Model Name="ApBlockRev1">
+  <BoneGridSize d2p1:nil="true" xmlns:d2p1="http://www.w3.org/2001/XMLSchema-instance" />
+  <Parameter Name="Centered">True</Parameter>
+  <Parameter Name="RescaleFactor">1</Parameter>
+  <Parameter Name="RescaleToLengthInMeters">false</Parameter>
+  <Parameter Name="SpecularPower">10</Parameter>
+  <Parameter Name="SpecularShininess">0.8</Parameter>
+  <Material Name="red_de">
+    <Parameter Name="SpecularIntensity">0</Parameter>
+    <Parameter Name="SpecularPower">2</Parameter>
+    <Parameter Name="DiffuseColorX">255</Parameter>
+    <Parameter Name="DiffuseColorY">255</Parameter>
+    <Parameter Name="DiffuseColorZ">255</Parameter>
+    <Parameter Name="Texture">Textures\Models\Cubes\red_de.dds</Parameter>
+    <Parameter Name="NormalTexture" />
+  </Material>
+</Model>
