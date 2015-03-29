@@ -70,7 +70,15 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		public string instructionErrorIndex = null;
 
-		private byte currentInstruction;
+		private int currentInstruction;
+
+		private void instructionErrorIndex_add(int instructionNum)
+		{
+			if (instructionErrorIndex == null)
+				instructionErrorIndex = instructionNum.ToString();
+			else
+				instructionErrorIndex += ',' + instructionNum;
+		}
 
 		/// <summary>
 		/// Split allInstructions, convert to actions, enqueue to instructionQueue
@@ -93,10 +101,7 @@ namespace Rynchodon.Autopilot.Instruction
 				if (!enqueueAction(splitInstructions[currentInstruction]))
 				{
 					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()", Logger.severity.INFO);
-					if (instructionErrorIndex == null)
-						instructionErrorIndex = currentInstruction.ToString();
-					else
-						instructionErrorIndex += ',' + currentInstruction;
+					instructionErrorIndex_add(currentInstruction);
 				}
 				else
 					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()");
@@ -330,24 +335,33 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// register a name for block search. This action is executed when parsed and supplies a do nothing Action.
+		/// Register a name for block search.
 		/// </summary>
 		private bool getAction_blockSearch(out Action instructionAction, string dataLowerCase)
 		{
-			instructionAction = () => { };
 			string[] dataParts = dataLowerCase.Split(',');
 			if (dataParts.Length != 2)
 			{
-				owner.CNS.tempBlockName = dataLowerCase;
-				myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataLowerCase = " + dataLowerCase, "getAction_blockSearch()");
+				instructionAction = () =>
+				{
+					owner.CNS.tempBlockName = dataLowerCase;
+					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataLowerCase = " + dataLowerCase, "getAction_blockSearch()");
+				};
 				return true;
 			}
-			owner.CNS.tempBlockName = dataParts[0];
-			myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataParts[0] = " + dataParts[0], "getAction_blockSearch()");
 			Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
 			if (dataDir != null)
-				owner.CNS.landDirection = dataDir;
-			return true;
+			{
+				instructionAction = () =>
+				{
+					owner.CNS.landDirection = dataDir;
+					owner.CNS.tempBlockName = dataParts[0];
+					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataParts[0] = " + dataParts[0], "getAction_blockSearch()");
+				};
+				return true;
+			}
+			instructionAction = null;
+			return false;
 		}
 
 		/// <summary>
@@ -483,68 +497,82 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
+		/// <summary>
+		/// Search for a grid. The search happens when the action is executed. When action is executed, an error may occur and instructionErrorIndex will be updated.
+		/// </summary>
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
-			myLogger.debugLog("entered getAction_gridDest(out Action execute, string "+instruction+")", "getAction_gridDest()");
+			myLogger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")", "getAction_gridDest()");
 			string searchName = owner.CNS.tempBlockName;
 			myLogger.debugLog("searchName = " + searchName + ", owner.CNS.tempBlockName = " + owner.CNS.tempBlockName, "getAction_gridDest()");
 			owner.CNS.tempBlockName = null;
-			IMyCubeBlock blockBestMatch;
-			LastSeen gridBestMatch;
-			myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
-			if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
+			int myInstructionIndex = currentInstruction;
+
+			Base6Directions.Direction? landDir = null;
+			if ((blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
+				&& !Lander.landingDirection(blockBestMatch, out landDir))
 			{
-				execute = () =>
-				{
-					if (blockBestMatch != null)
-						myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
-					else
-						myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
-					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
-				};
-				myLogger.debugLog("null test: " + blockBestMatch + " ; " + owner.CNS.landLocalBlock + " ; " + owner.CNS.landDirection, "getAction_gridDest()");
-				if (blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
-				{
-					Base6Directions.Direction? landDir;
-					if (!Lander.landingDirection(blockBestMatch, out landDir))
-					{
-						log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
-						return false;
-					}
-					myLogger.debugLog("got landing direction of " + landDir + " from " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()");
-					execute = () =>
-					{
-						owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
-						owner.CNS.landDirection = landDir;
-						log("set land offset to " + owner.CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
-					};
-				}
-				return true;
+				log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
+				instructionErrorIndex_add(myInstructionIndex);
+				return;
 			}
-			log("did not find a friendly grid", "getAction_gridDest()", Logger.severity.TRACE);
-			execute = null;
-			return false;
+
+			execute = () =>
+			{
+				IMyCubeBlock blockBestMatch;
+				LastSeen gridBestMatch;
+				myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
+				if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
+				{
+					
+
+					if (landDir != null) // got a landing direction
+					{
+						owner.CNS.landDirection = landDir;
+						myLogger.debugLog("got landing direction of " + landDir + " from " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()");
+						log("set land offset to " + owner.CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
+					}
+					else // no landing direction
+					{
+						if (blockBestMatch != null)
+							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+						else
+							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+					}
+
+					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
+					return;
+				}
+				// did not find grid
+				log("did not find a friendly grid", "getAction_gridDest()", Logger.severity.TRACE);
+				instructionErrorIndex_add(myInstructionIndex);
+			};
+
+			return true;
 		}
 
 		/// <summary>
-		/// Set the landLocalBlock
+		/// Set the landLocalBlock.
+		/// The search happens when the action is executed.
 		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
 			IMyCubeBlock landLocalBlock;
-			if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
+			execute = () =>
 			{
-				(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
-				execute = () =>
+				if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
 				{
+					(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
 					myLogger.debugLog("setting landLocalBlock to " + landLocalBlock.DisplayNameText, "getAction_localBlock()");
 					owner.CNS.landLocalBlock = landLocalBlock;
-				};
-				return true;
-			}
-			log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
-			execute = null;
-			return false;
+				}
+				else
+				{
+					log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
+					return false;
+
+				}
+			};
 		}
 
 		/// <summary>
