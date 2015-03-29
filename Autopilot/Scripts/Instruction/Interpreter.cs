@@ -498,33 +498,33 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// Search for a grid. The search happens when the action is executed. When action is executed, an error may occur and instructionErrorIndex will be updated.
+		/// <para>Search for a grid.</para>
+		/// The search happens when the action is executed. 
+		/// When action is executed, an error may occur and instructionErrorIndex will be updated.
 		/// </summary>
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
 			myLogger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")", "getAction_gridDest()");
-			string searchName = owner.CNS.tempBlockName;
-			myLogger.debugLog("searchName = " + searchName + ", owner.CNS.tempBlockName = " + owner.CNS.tempBlockName, "getAction_gridDest()");
-			owner.CNS.tempBlockName = null;
+			//string searchName = owner.CNS.tempBlockName;
+			//myLogger.debugLog("searchName = " + searchName + ", owner.CNS.tempBlockName = " + owner.CNS.tempBlockName, "getAction_gridDest()");
+			//owner.CNS.tempBlockName = null;
 			int myInstructionIndex = currentInstruction;
-
-			Base6Directions.Direction? landDir = null;
-			if ((blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
-				&& !Lander.landingDirection(blockBestMatch, out landDir))
-			{
-				log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
-				instructionErrorIndex_add(myInstructionIndex);
-				return;
-			}
 
 			execute = () =>
 			{
 				IMyCubeBlock blockBestMatch;
 				LastSeen gridBestMatch;
-				myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
-				if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
+				myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + owner.CNS.tempBlockName + ")", "getAction_gridDest()");
+				if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, owner.CNS.tempBlockName))
 				{
-					
+					Base6Directions.Direction? landDir = null;
+					if ((blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
+						&& !Lander.landingDirection(blockBestMatch, out landDir))
+					{
+						log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
+						instructionErrorIndex_add(myInstructionIndex);
+						return;
+					}
 
 					if (landDir != null) // got a landing direction
 					{
@@ -552,12 +552,15 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// Set the landLocalBlock.
+		/// <para>Set the landLocalBlock.</para>
 		/// The search happens when the action is executed.
+		/// When action is executed, the block may not be found and instructionErrorIndex will be updated.
 		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
 			IMyCubeBlock landLocalBlock;
+			int myInstructionIndex = currentInstruction;
+
 			execute = () =>
 			{
 				if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
@@ -569,17 +572,16 @@ namespace Rynchodon.Autopilot.Instruction
 				else
 				{
 					log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
-					return false;
-
+					instructionErrorIndex_add(myInstructionIndex);
 				}
 			};
+
+			return true;
 		}
 
 		/// <summary>
 		/// set missile
 		/// </summary>
-		/// <param name="instructionAction"></param>
-		/// <param name="dataLowerCase"></param>
 		/// <returns>true</returns>
 		private bool getAction_missile(out Action instructionAction, string dataLowerCase)
 		{
