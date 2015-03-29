@@ -53,9 +53,12 @@ namespace Rynchodon.Autopilot
 		private Collision myCollisionObject;
 		internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
-		internal NewTargeter myTargeter;
+		internal Targeter myTargeter;
 
 		private IMyControllableEntity currentRemoteControl_Value;
+		/// <summary>
+		/// Primary remote control value.
+		/// </summary>
 		public IMyControllableEntity currentRCcontrol
 		{
 			get { return currentRemoteControl_Value; }
@@ -77,7 +80,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				currentRemoteControl_Value = value;
-				IMyCubeBlock currentRCblock = (currentRemoteControl_Value as IMyCubeBlock);
+				//IMyCubeBlock currentRCblock = (currentRemoteControl_Value as IMyCubeBlock); // WTF?
 				myLand = null;
 				if (currentRemoteControl_Value == null)
 				{
@@ -90,15 +93,15 @@ namespace Rynchodon.Autopilot
 					myGridDim = new GridDimensions(currentRCblock);
 					myCollisionObject = new Collision(myGridDim); //(currentRCblock, out distance_from_RC_to_front);
 					CNS = new NavSettings(this);
+					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
 				}
 
 				if (currentRemoteControl_Value != null)
 				{
 					// actions on new RC
+					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
 					reportState(ReportableState.OFF);
-					//if (currentRCblock.NeedsUpdate == MyEntityUpdateEnum.NONE)
-					//	currentRCblock.NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
 				}
 
 				// some variables
@@ -108,11 +111,17 @@ namespace Rynchodon.Autopilot
 				inflightDecelerateRotation = 1f / 2f;
 			}
 		}
+		/// <summary>
+		/// Secondary remote control value.
+		/// </summary>
 		public Sandbox.ModAPI.IMyCubeBlock currentRCblock
 		{
 			get { return currentRemoteControl_Value as Sandbox.ModAPI.IMyCubeBlock; }
 			set { currentRCcontrol = value as IMyControllableEntity; }
 		}
+		/// <summary>
+		/// Secondary remote control value.
+		/// </summary>
 		public IMyTerminalBlock currentRCterminal
 		{ get { return currentRemoteControl_Value as IMyTerminalBlock; } }
 
@@ -155,12 +164,12 @@ namespace Rynchodon.Autopilot
 
 			currentThrust = new ThrustProfiler(myGrid);
 			CNS = new NavSettings(null);
-			myTargeter = new NewTargeter(this);
+			myTargeter = new Targeter(this);
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
 		}
 
-		private void OnClose()
+		internal void Close()
 		{
 			if (myGrid != null)
 			{
@@ -168,27 +177,24 @@ namespace Rynchodon.Autopilot
 				myGrid.OnBlockAdded -= OnBlockAdded;
 				myGrid.OnBlockRemoved -= OnBlockRemoved;
 			}
-			Core.remove(this);
 			currentRCcontrol = null;
+		}
+
+		private void OnClose()
+		{
+			Close();
+			Core.remove(this);
 		}
 
 		private void OnClose(IMyEntity closing)
 		{ try { OnClose(); } catch { } }
 
-		//private bool needToUpdateBlocks;
 		private static MyObjectBuilderType remoteControlType = typeof(MyObjectBuilder_RemoteControl);
-
-		//private void OnBlockOwnershipChanged(Sandbox.ModAPI.IMyCubeGrid changedBlock)
-		//{
-		//	//needToUpdateBlocks = true;
-
-		//}
 
 		private void OnBlockAdded(Sandbox.ModAPI.IMySlimBlock addedBlock)
 		{
 			if (addedBlock.FatBlock != null && addedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
 				remoteControlBlocks.Add(addedBlock);
-				//needToUpdateBlocks = true;
 		}
 
 		private void OnBlockRemoved(Sandbox.ModAPI.IMySlimBlock removedBlock)
@@ -197,7 +203,6 @@ namespace Rynchodon.Autopilot
 			{
 				if (removedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
 					remoteControlBlocks.Remove(removedBlock);
-					//needToUpdateBlocks = true;
 			}
 		}
 
@@ -206,12 +211,12 @@ namespace Rynchodon.Autopilot
 
 		/// <summary>
 		/// Causes the ship to fly around, following commands.
-		/// Calling more often means more precise movements, calling too often (~ every update) will break functionality.
 		/// </summary>
+		/// <remarks>
+		/// Calling more often means more precise movements, calling too often (~ every update) will break functionality.
+		/// </remarks>
 		public void update()
 		{
-			//if (CNS != null)
-			//	log("destination radius = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.TRACE);
 			updateCount++;
 			if (gridCanNavigate())
 			{
@@ -249,13 +254,19 @@ namespace Rynchodon.Autopilot
 			else // no waypoints
 			{
 				//log("no waypoints or destination");
-				if (myInterpreter.hasInstructions())
+				if (currentRCcontrol != null && myInterpreter.hasInstructions())
 				{
-					while (myInterpreter.instructionQueue.Count > 0)
+					while (myInterpreter.hasInstructions())
 					{
 						//addInstruction(CNS.instructions.Dequeue());
-						myLogger.debugLog("invoking queued action, count is " + myInterpreter.instructionQueue.Count, "update()");
-						myInterpreter.instructionQueue.Dequeue().Invoke();
+						myLogger.debugLog("invoking instruction: " + myInterpreter.getCurrentInstructionString(), "update()");
+						Action instruction = myInterpreter.instructionQueue.Dequeue();
+						try { instruction.Invoke(); }
+						catch (Exception ex)
+						{
+							myLogger.log("Exception while invoking instruction: " + ex, "update()", Logger.severity.ERROR);
+							continue;
+						}
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
@@ -286,7 +297,6 @@ namespace Rynchodon.Autopilot
 						}
 					}
 					// at end of allInstructions
-					//CNS.startOfCommands();
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 					return;
 				}
@@ -312,6 +322,9 @@ namespace Rynchodon.Autopilot
 								string instructions = fatBlock.getInstructions();
 								if (string.IsNullOrWhiteSpace(instructions))
 									continue;
+
+
+
 								//log("allInstructions = "+allInstructions, "update()", Logger.severity.TRACE);
 								//log("allInstructions = " + allInstructions.Replace(" ", string.Empty), "update()", Logger.severity.TRACE);
 								//string[] inst = instructions.Replace(" ", string.Empty).Split(':'); // split into CNS.allInstructions
@@ -319,19 +332,22 @@ namespace Rynchodon.Autopilot
 								//	continue;
 								//log("found a ready remote control " + fatBlock.DisplayNameText, "update()", Logger.severity.TRACE);
 								//CNS.instructions = new Queue<string>(inst);
+
+
+
 								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
 								if (myInterpreter == null)
 									myInterpreter = new Interpreter(this);
-								if (!myInterpreter.enqueueAllActions(instructions))
+								myInterpreter.enqueueAllActions(instructions);
+								if (myInterpreter.hasInstructions())
 								{
-									myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
-									currentRCcontrol = null;
-									continue;
+									CNS.startOfCommands();
+									log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instructions", "update()", Logger.severity.TRACE);
+									return;
 								}
-								
-								CNS.startOfCommands();
-								log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instructions", "update()", Logger.severity.TRACE);
-								return;
+								myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
+								currentRCcontrol = null;
+								continue;
 							}
 						}
 					}
@@ -393,7 +409,7 @@ namespace Rynchodon.Autopilot
 		private bool remoteControlIsNotReady = false;
 
 		/// <summary>
-		/// checks the functional and working flags, current player owns it, display name has not changed
+		/// checks the working flag, current player owns it, display name has not changed
 		/// </summary>
 		/// <param name="remoteControl">remote control to check</param>
 		/// <returns>true iff the remote control is ready</returns>
@@ -410,11 +426,6 @@ namespace Rynchodon.Autopilot
 				//log("no remote control", "remoteControlIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			//if (!remoteControl.IsFunctional)
-			//{
-			//	log("not functional", "remoteControlIsReady()", Logger.severity.TRACE);
-			//	return false;
-			//}
 			if (!remoteControl.IsWorking)
 			{
 				log("not working", "remoteControlIsReady()", Logger.severity.TRACE);
@@ -425,7 +436,6 @@ namespace Rynchodon.Autopilot
 				log("no owner", "remoteControlIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			//if (!Core.canControl(remoteControl))
 			if (remoteControl.OwnerId != remoteControl.CubeGrid.BigOwners[0]) // remote control is not owned by grid's owner
 			{
 				log("remote has different owner", "remoteControlIsReady()", Logger.severity.TRACE);
@@ -441,36 +451,10 @@ namespace Rynchodon.Autopilot
 		}
 
 		public bool remoteControlIsReady(IMyControllableEntity remoteControl)
-		{
-			return remoteControlIsReady(remoteControl as Sandbox.ModAPI.IMyCubeBlock);
-		}
+		{ return remoteControlIsReady(remoteControl as Sandbox.ModAPI.IMyCubeBlock); }
 
 		public void reset()
-		{
-			currentRCcontrol = null;
-			//Core.remove(this);
-			////log("resetting");
-			//NavSettings startNav = CNS;
-			//if (currentRCcontrol != null)
-			//{
-			//	try
-			//	{
-			//		fullStop("reset");
-			//	}
-			//	catch (NullReferenceException) { } // when grid is destroyed
-			//	//log("clearing current remote control");
-			//	currentRCcontrol = null;
-			//}
-			//if (object.ReferenceEquals(startNav, CNS))
-			//{
-			//	log("clearing CNS", "reset()", Logger.severity.DEBUG);
-			//	CNS = new NavSettings(this);
-			//}
-			//else
-			//	log("did not clear CNS", "reset()", Logger.severity.TRACE);
-		}
-
-		//public double movementSpeed { get; private set; }
+		{ currentRCcontrol = null; }
 
 		private DateTime maxRotateTime;
 		internal MovementMeasure MM;
@@ -482,6 +466,7 @@ namespace Rynchodon.Autopilot
 			if (!remoteControlIsReady(currentRCblock))
 			{
 				log("remote control is not ready");
+				reportState(ReportableState.OFF);
 				reset();
 				return;
 			}
@@ -578,7 +563,7 @@ namespace Rynchodon.Autopilot
 			{
 				fullStop("At dest");
 				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
-				log("reached destination dist = "+MM.distToWayDest+", proximity = "+CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -667,10 +652,10 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
-						if (MM.distToWayDest < CNS.destinationRadius * 3
-							|| MM.rotLenSq < rotLenSq_startMove)
+						if (MM.distToWayDest < CNS.destinationRadius * 1.5
+							|| MM.rotLenSq < rotLenSq_switchToMove)
 						{
-							log("on course, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
+							log("on course or nearing dest, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
 							calcAndMove();
 							CNS.moveState = NavSettings.Moving.MOVING; // switch to moving
 							reportState(ReportableState.MOVING);
@@ -704,11 +689,11 @@ namespace Rynchodon.Autopilot
 									reportState(ReportableState.MOVING);
 								}
 								else // missile will always end up here (for case NOT_MOVE)
-									{
-										calcAndMove(true);
-										CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid
-										reportState(ReportableState.MOVING);
-									}
+								{
+									calcAndMove(true);
+									CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid
+									reportState(ReportableState.MOVING);
+								}
 							}
 							else
 								reportState(ReportableState.PATHFINDING);
@@ -727,15 +712,19 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// start moving when less than
-		/// </summary>
-		public const float rotLenSq_startMove = 0.274f;
-		/// <summary>
-		/// not squared
+		/// not squared (5°)
 		/// </summary>
 		public const float rotLen_minimum = 0.0873f;
 		/// <summary>
-		/// stop and rotate when greater than
+		/// switch from hybrid to moving when less than (5°)
+		/// </summary>
+		public const float rotLenSq_switchToMove = 0.00762f;
+		/// <summary>
+		/// start moving when less than (30°)
+		/// </summary>
+		public const float rotLenSq_startMove = 0.274f;
+		/// <summary>
+		/// stop and rotate when greater than (90°)
 		/// </summary>
 		public const float rotLenSq_stopAndRot = 2.47f;
 
@@ -746,7 +735,7 @@ namespace Rynchodon.Autopilot
 
 		private Vector3 moveDirection = Vector3.Zero;
 
-		private void calcAndMove(bool sidel= false)//, bool anyState=false)
+		private void calcAndMove(bool sidel = false)//, bool anyState=false)
 		{
 			//log("entered calcAndMove("+doSidel+")", "calcAndMove()", Logger.severity.TRACE);
 			movingTooSlow = false;
@@ -799,7 +788,7 @@ namespace Rynchodon.Autopilot
 						}
 					default:
 						{
-							alwaysLog("unsuported moveState: "+CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
+							alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
 							return;
 						}
 				}
@@ -821,7 +810,8 @@ namespace Rynchodon.Autopilot
 		/// <param name="pitch"></param>
 		/// <param name="yaw"></param>
 		/// <param name="precision_stopAndRot">for increasing precision of rotLenSq_stopAndRot</param>
-		internal void calcAndRotate(float? precision_stopAndRot=null){
+		internal void calcAndRotate(float? precision_stopAndRot = null)
+		{
 			if (precision_stopAndRot == null)
 				precision_stopAndRot = rotLenSq_stopAndRot;
 
@@ -969,7 +959,7 @@ namespace Rynchodon.Autopilot
 						{
 							//log("Math.Sign(roll) = " + Math.Sign(roll) + ", Math.Sign(needToRoll) = " + Math.Sign(needToRoll) + ", Math.Abs(roll) = " + Math.Abs(roll) + ", Math.Abs(needToRoll) = " + Math.Abs(needToRoll)
 							//	+ ", decelerateRotation = " + decelerateRotation + ", DateTime.UtcNow = " + DateTime.UtcNow + ", maxRotateTime = " + maxRotateTime);
-							log("decelerate roll, roll="+roll+", needToRoll="+needToRoll, "calcAndRoll()", Logger.severity.DEBUG);
+							log("decelerate roll, roll=" + roll + ", needToRoll=" + needToRoll, "calcAndRoll()", Logger.severity.DEBUG);
 							rollOrder(0);
 							CNS.rollState = NavSettings.Rolling.STOP_ROLL;
 						}
@@ -1155,14 +1145,11 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn())
+			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn()) // already stopped
 				return;
 
-			if (currentRCcontrol == null)
-				return;
-
+			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
 			reportState(ReportableState.STOPPING);
-			log("full stop: "+reason, "fullStop()", Logger.severity.INFO);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
@@ -1265,7 +1252,12 @@ namespace Rynchodon.Autopilot
 			return "Nav:" + myGrid.DisplayName;
 		}
 
-		public enum ReportableState : byte { OFF, PATHFINDING, ROTATING, MOVING, STOPPING, NO_PATH, NO_DEST, MISSILE, ENGAGING, LANDED, PLAYER, JUMP, BROKEN, HYBRID, SIDEL, ROLL, GET_OUT_OF_SEAT, WAITING };
+		public enum ReportableState : byte
+		{
+			OFF, PATHFINDING, NO_PATH, NO_DEST, WAITING,
+			ROTATING, MOVING, STOPPING, HYBRID, SIDEL, ROLL,
+			MISSILE, ENGAGING, LANDED, PLAYER, JUMP, GET_OUT_OF_SEAT
+		};
 		private ReportableState currentReportable = ReportableState.OFF;
 
 		internal bool GET_OUT_OF_SEAT = false;
@@ -1319,6 +1311,8 @@ namespace Rynchodon.Autopilot
 			// add new state
 			StringBuilder newName = new StringBuilder();
 			newName.Append('<');
+			if (myInterpreter.instructionErrorIndex != null)
+				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
 			newName.Append(newState);
 			if (newState == ReportableState.JUMP && myJump != null && myJump.currentState == Jumper.GridJumper.State.TRANSFER)
 			{
@@ -1359,7 +1353,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		//private bool ignore_RemoteControl_nameChange = false;
-		private string instructions;
+		public string instructions { get; private set; }
 		private void remoteControl_OnNameChanged(IMyTerminalBlock whichBlock)
 		{
 			string instructionsInBlock = (whichBlock as IMyCubeBlock).getInstructions();
@@ -1372,31 +1366,5 @@ namespace Rynchodon.Autopilot
 				CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 			}
 		}
-
-		///// <summary>
-		///// 
-		///// </summary>
-		///// <param name="rc"></param>
-		///// <returns>null iff name could not be extracted</returns>
-		//public static string getRCNameOnly(IMyCubeBlock rc)
-		//{
-		//	string displayName = rc.DisplayNameText;
-		//	int start = displayName.IndexOf('>') + 1;
-		//	int end = displayName.IndexOf('[');
-		//	if (start > 0 && end > start)
-		//	{
-		//		int length = end - start;
-		//		return displayName.Substring(start, length);
-		//	}
-		//	if (start > 0)
-		//	{
-		//		return displayName.Substring(start);
-		//	}
-		//	if (end > 0)
-		//	{
-		//		return displayName.Substring(0, end);
-		//	}
-		//	return null;
-		//}
 	}
 }

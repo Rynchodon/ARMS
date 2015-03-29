@@ -100,10 +100,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		/// <summary>
-		/// An error occured while parsing instructions
-		/// </summary>
-		public bool syntaxError = false;
+		public bool ignoreAsteroids = false;
 
 		public NavSettings(Navigator owner)
 		{
@@ -152,16 +149,15 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
-			myLogger.debugLog("entered onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
 			collisionUpdateSinceWaypointAdded = 0;
+			clearSpeedInternal();
+			ignoreAsteroids = false;
+
 			if (myGridDims == null)
 			{
 				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
 				VRage.Exceptions.ThrowIf<NullReferenceException>(true);
 			}
-
-			clearSpeedInternal();
-			myLogger.debugLog("exiting onWayDestAddedRemoved()", "onWayDestAddedRemoved()", Logger.severity.TRACE);
 		}
 
 		private Vector3D? myWaypoint;
@@ -374,7 +370,7 @@ namespace Rynchodon.Autopilot
 			world += (destination_offset.Y + useLandOffset.Y) * CurrentGridDest.Block.WorldMatrix.Up;
 			world += (destination_offset.Z + useLandOffset.Z) * CurrentGridDest.Block.WorldMatrix.Backward;
 
-			//log("grabbed vectors: "+ Base6Directions.GetVector(closestBlock.Orientation.Left)+", "+Base6Directions.GetVector(closestBlock.Orientation.Up)+", "+Base6Directions.GetVector(closestBlock.Orientation.Forward));
+			//log("grabbed vectors: " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Left) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Up) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Forward), "offsetToWorld()");
 			//log("destination_offset=" + destination_offset + ", landingState=" + landingState + ", landOffset is " + landOffset + ", useLandOffset is " + useLandOffset + ", world vector is " + world, "offsetToWorld()", Logger.severity.TRACE);
 			return world;
 		}

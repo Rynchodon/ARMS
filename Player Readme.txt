@@ -1,5 +1,7 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
+[url=http://forums.keenswh.com/post/mod-autopilot-7227970] German Translation by jirok666 [/url]
+
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
@@ -8,12 +10,12 @@ Fly to world GPS location
 Fly a certain distance relative to ship
 Formations/Orientation matching
 Command looping
-Speed Control 
+Speed Control
 Obstacle detection & collision avoidance
-Engage Enemy ships/stations 
+Engage Enemy ships/stations
 Radar
 Act as a missle and target a block on a an enemy ship/station
-(In development) Smart Turret Control - Allows you to set priorities for your turrets. 
+(In development) Smart Turret Control - Allows you to set priorities for your turrets.
             --This allows you to disable, but not completely destroy an enemy ship/station (grid)
 
 [h1]Contribute[/h1]
@@ -57,6 +59,9 @@ Example - [ C 0, 0 , 0 : W 60 : C 500, 500, 500 : EXIT ] - Will wait for 60 seco
 [h1]Advanced Commands[/h1]
 A <block>, <action> : Run an action on one or more blocks. <action> is case-sensitive. Autopilot will find every block that contains <block>, find the ITerminalAction that matches <action>, and apply it. Block must have faction share with remote's owner.
 Example - [ A Thrust, OnOff_On ] - turn all the thrusters on
+
+Asteroid : Disable asteroid collision avoidance, only affects the next destination.
+Example - [ Asteroid : C 0,0,0 : C 1000,0,0 ] - fly to 0,0,0 ignoring asteroids, fly to 1000,0,0 avoiding asteroids
 
 B <name> : for navigating to a specific block on a grid, will only affect the next use of G, E, or M. For friendly grids uses the display name; for hostile grids the definition name. Target block must be working.
 Example - [ B Antenna : G Platform ] - fly to Antenna on Platform
@@ -128,8 +133,7 @@ In order for Autopilot to control a grid, it must have a gyroscope, have thruste
 All commands are in the display name of a Remote Control block.
 [] All commands are contained within a single set of square brackets
 <> Do not use angle brackets in your Remote Control's name
-: Commands are separated by colons
-X # : Commands are identified by a single character, followed by information to use
+:; Commands are separated by colons and/or semicolons
 Variables P and V affect all destinations that come after
   Interpreter ignores all spaces
 Aa Interpreter is case insensitve

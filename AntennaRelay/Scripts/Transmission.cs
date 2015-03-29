@@ -10,11 +10,6 @@ using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
-	//public interface Transmission
-	//{
-	//	public abstract bool isValid { get; }
-	//}
-
 	// must be immutable
 	public class LastSeen //: Transmission
 	{
@@ -77,25 +72,12 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>true iff an update was performed</returns>
 		public bool update(ref LastSeen toUpdate)
 		{
-			//log("testing this against toUpdate: radar = " + (!this.EntityHasRadar && toUpdate.EntityHasRadar) +
-			//	", update info = " + (toUpdate.Info != null && (this.Info == null || toUpdate.Info.IsNewerThan(this.Info))) +
-			//	", newer than = " + (this.isNewerThan(toUpdate)), "update()", Logger.severity.TRACE);
-			//log("radar breakdown : (toUpdate) = " + (toUpdate.Info != null) +
-			//	", info...null = " + (this.Info == null) +
-			//	", newer = " + (this.Info != null && toUpdate.Info != null && this.Info.IsNewerThan(toUpdate.Info)), "update()", Logger.severity.TRACE);
-			//if (this.Info != null && toUpdate.Info != null)
-			//{
-			//	if (Entity.getBestName().looseContains("Leo"))
-			//		log("dectected at for this = " + this.Info.DetectedAt.secondsSince() + ", for toUpdate = " + toUpdate.Info.DetectedAt.secondsSince(), "update()", Logger.severity.TRACE);
-			//}
 			if ((!this.EntityHasRadar && toUpdate.EntityHasRadar) ||
 				(toUpdate.Info != null && (this.Info == null || this.Info.IsNewerThan(toUpdate.Info))) ||
 				(this.isNewerThan(toUpdate)))
 			{
 				LastSeen param = toUpdate;
 				toUpdate = new LastSeen(this, toUpdate);
-				//if (Entity.getBestName().looseContains("Leo"))
-				//	log("last seen at for this = " + this.LastSeenAt.secondsSince() + ", for param = " + param.LastSeenAt.secondsSince() + ", for new = " + toUpdate.LastSeenAt.secondsSince(), "update()", Logger.severity.TRACE);
 				return true;
 			}
 			return false;
@@ -149,34 +131,8 @@ namespace Rynchodon.AntennaRelay
 		public readonly DateTime DetectedAt;
 		public readonly float Volume;
 
-		private const float dm3 = 0.001f;
-		private const float dam3 = 1000;
-		private const float hm3 = 1000000;
-		private const float km3 = 1000000000;
-
-		private string threeSigFig(float toRound)
-		{
-			if (toRound > 100)
-				return toRound.ToString("F0");
-			if (toRound > 10)
-				return toRound.ToString("F1");
-			if (toRound > 1)
-				return toRound.ToString("F2");
-			return toRound.ToString("F3");
-		}
-
 		public string Pretty_Volume()
-		{
-			if (Volume > km3)
-				return threeSigFig(Volume / km3) + "km3";
-			if (Volume > hm3)
-				return threeSigFig(Volume / hm3) + "hm3";
-			if (Volume > dam3)
-				return threeSigFig(Volume / dam3) + "dam3";
-			if (Volume > 1)
-				return threeSigFig(Volume) + "m3";
-			return threeSigFig(Volume / dm3) + "dm3";
-		}
+		{ return PrettySI.makePrettyCubic(Volume) + "m³"; }
 
 		public RadarInfo(float volume)
 		{

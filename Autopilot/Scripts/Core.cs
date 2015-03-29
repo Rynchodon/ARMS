@@ -19,29 +19,29 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot
 {
-
-	//
-	// = Autopilot.Core
-	//
-	// This ties Autopilot's navigation thread to the game's frame updates.
-	// This is the entry point for most of the Autopilot module's logic.
-	//
+	/// <summary>
+	/// This ties Autopilot's navigation thread to the game's frame updates.
+	/// This is the entry point for most of the Autopilot module's logic.
+	/// </summary>
 	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.BeforeSimulation)]
 	public class Core : Sandbox.Common.MySessionComponentBase
 	{
-		private static bool initialized = false;
-		private static bool terminated = false;
-		private static bool controlGrids = false;
+		private bool initialized = false;
+		private bool terminated = false;
+		private bool controlGrids = false;
 		
 		// for tracking which grids already have handlers and for iterating through handlers
-		private static Dictionary<Sandbox.ModAPI.IMyCubeGrid, Navigator> allNavigators;
+		private Dictionary<Sandbox.ModAPI.IMyCubeGrid, Navigator> allNavigators;
 
-		public static long updateCount { get; private set; }
-		private static bool isUpdating = false;
+		public long updateCount { get; private set; }
+		private bool isUpdating = false;
 		private const int FRAMES_BETWEEN_UPDATES = 10;
-		private static int gridsPerFrame;
+		private int gridsPerFrame;
+		private int delayStart = 300; // updates before starting
 
-		private readonly static Logger myLogger = new Logger(null, "Core");
+		private readonly Logger myLogger = new Logger(null, "Core");
+
+		private static Core Instance;
 
 
 		//
@@ -85,6 +85,7 @@ namespace Rynchodon.Autopilot
 			}
 
 			myLogger.debugNotify("Autopilot Dev loaded", 10000);
+			Instance = this;
 			initialized = true;
 		}
 
@@ -92,8 +93,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (!terminated)
 				terminated = true;
-				myLogger.debugNotify("Autopilot encountered an exception and has been terminated.",
-			                               10000, Logger.severity.FATAL);
+			myLogger.debugNotify("Autopilot encountered an exception and has been terminated.", 10000, Logger.severity.FATAL);
 		}
 
 
@@ -102,6 +102,12 @@ namespace Rynchodon.Autopilot
 		//
 		public override void UpdateBeforeSimulation()
 		{
+			if (delayStart > 0)
+			{
+				delayStart--;
+				return;
+			}
+
 			//MainLock.Lock.ReleaseExclusive();
 			//try
 			//{
@@ -165,7 +171,7 @@ namespace Rynchodon.Autopilot
 					try { current.update(); }
 					catch (Exception updateEx)
 					{
-						myLogger.log("Exception on update: " + updateEx, null, Logger.severity.WARNING);
+						myLogger.log("Exception on update: " + updateEx, null, Logger.severity.ERROR);
 
 						try { remove(current, true); }
 						catch (Exception resetEx)
@@ -206,16 +212,22 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		// Remove a navigator object from the list and pass any errors that
-		// caused its removal to the log output
+		/// <summary>
+		/// Remove a navigator object from the list and pass any errors that
+		/// caused its removal to the log output
+		/// </summary>
+		/// <param name="dead"></param>
+		/// <param name="exception"></param>
 		internal static void remove(Navigator dead, bool exception = false)
 		{
-			myLogger.debugLog("removing navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.INFO);
+			Instance.myLogger.debugLog("removing navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.INFO);
 			Logger.severity level = exception ? Logger.severity.ERROR : Logger.severity.INFO;
-			myLogger.debugNotify("Autopilot removed: " + dead.myGrid.DisplayName, 3000, level);
+			Instance.myLogger.debugNotify("Autopilot removed: " + dead.myGrid.DisplayName, 3000, level);
 
-			if (!allNavigators.Remove(dead.myGrid))
-				myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
+			if (!Instance.allNavigators.Remove(dead.myGrid))
+				Instance.myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
+
+			dead.Close();
 		}
 	}
 }

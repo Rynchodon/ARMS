@@ -12,6 +12,8 @@ using VRageMath;
 
 namespace Rynchodon
 {
+	// TODO: If MyAPIGateway.Entities.GetEntityById(long entityId) works for blocks, use it as a replacement for tracking/searching attached parts of grids.
+	// TODO: Rework so we can get the largest attached grid (public), and use the largest attached grid for isGridAttached()
 	public class AttachedGrids
 	{
 		private static Dictionary<IMyCubeGrid, AttachedGrids> registry = new Dictionary<IMyCubeGrid, AttachedGrids>();

@@ -22,8 +22,14 @@ namespace Rynchodon.Autopilot.Instruction
 		{ return toCheck != null && toCheck.instructionQueue != null && toCheck.instructionQueue.Count > 0; }
 	}
 
+	/// <summary>
+	/// Parses instructions into Actions
+	/// </summary>
 	public class Interpreter
 	{
+		/// <summary>
+		/// When queued actions exceeds the limit, this exception will be thrown.
+		/// </summary>
 		public class InstructionQueueOverflow : Exception { }
 
 		private Navigator owner;
@@ -46,13 +52,25 @@ namespace Rynchodon.Autopilot.Instruction
 			myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
 		}
 
+		/// <summary>
+		/// All the instructions queued (as Action)
+		/// </summary>
 		/// <remarks>
 		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 
 		/// </remarks>
 		public MyQueue<Action> instructionQueue;
 
-		public bool hasInstructionQueued()
-		{ return instructionQueue != null && instructionQueue.Count > 0; }
+		private List<string> instructionQueueString;
+
+		public string getCurrentInstructionString()
+		{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
+
+		/// <summary>
+		/// If errors occured while parsing instructions, will contain all their indecies.
+		/// </summary>
+		public string instructionErrorIndex = null;
+
+		private byte currentInstruction;
 
 		/// <summary>
 		/// Split allInstructions, convert to actions, enqueue to instructionQueue
@@ -66,12 +84,22 @@ namespace Rynchodon.Autopilot.Instruction
 			if (splitInstructions == null || splitInstructions.Length == 0)
 				return;
 
-			CNS.syntaxError = false;
+			instructionErrorIndex = null;
 
 			instructionQueue = new MyQueue<Action>(8);
-			foreach (string instruction in splitInstructions)
-				if (!enqueueAction(instruction))
-					CNS.syntaxError = true;
+			instructionQueueString = new List<string>();
+
+			for (currentInstruction = 0; currentInstruction < splitInstructions.Length; currentInstruction++)
+				if (!enqueueAction(splitInstructions[currentInstruction]))
+				{
+					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()", Logger.severity.INFO);
+					if (instructionErrorIndex == null)
+						instructionErrorIndex = currentInstruction.ToString();
+					else
+						instructionErrorIndex += ',' + currentInstruction;
+				}
+				else
+					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()");
 		}
 
 		/// <summary>
@@ -93,13 +121,18 @@ namespace Rynchodon.Autopilot.Instruction
 			if (getAction_word(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			if (getAction_multiple(instruction))
+			{
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
+			}
 			if (getAction_single(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			return false;
@@ -113,6 +146,11 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
 			string lowerCase = instruction.ToLower();
+			if (lowerCase == "asteroid")
+			{
+				wordAction = () => { CNS.ignoreAsteroids = true; };
+				return true;
+			}
 			if (lowerCase == "exit")
 			{
 				wordAction = () =>
@@ -163,7 +201,7 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// Try to replace an instruction with multiple allInstructions. Will enqueue actions, not return them.
+		/// Not Yet Implemented. Try to replace an instruction with multiple allInstructions. Will enqueue actions, not return them.
 		/// </summary>
 		/// <param name="instruction">unparsed instruction</param>
 		/// <returns>true iff successful</returns>
@@ -292,26 +330,23 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// register a name for block search
+		/// register a name for block search. This action is executed when parsed and supplies a do nothing Action.
 		/// </summary>
-		/// <param name="instructionAction"></param>
-		/// <param name="dataLowerCase"></param>
-		/// <returns>true</returns>
 		private bool getAction_blockSearch(out Action instructionAction, string dataLowerCase)
 		{
-			instructionAction = () =>
+			instructionAction = () => { };
+			string[] dataParts = dataLowerCase.Split(',');
+			if (dataParts.Length != 2)
 			{
-				string[] dataParts = dataLowerCase.Split(',');
-				if (dataParts.Length != 2)
-				{
-					owner.CNS.tempBlockName = dataLowerCase;
-					return;
-				}
-				owner.CNS.tempBlockName = dataParts[0];
-				Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
-				if (dataDir != null)
-					owner.CNS.landDirection = dataDir;
-			};
+				owner.CNS.tempBlockName = dataLowerCase;
+				myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataLowerCase = " + dataLowerCase, "getAction_blockSearch()");
+				return true;
+			}
+			owner.CNS.tempBlockName = dataParts[0];
+			myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataParts[0] = " + dataParts[0], "getAction_blockSearch()");
+			Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
+			if (dataDir != null)
+				owner.CNS.landDirection = dataDir;
 			return true;
 		}
 
@@ -362,15 +397,16 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true</returns>
 		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
 		{
-			NavSettings CNS = owner.CNS;
 			double parsed;
+			string searchBlockName = CNS.tempBlockName;
+			CNS.tempBlockName = null;
 			instructionAction = () =>
 			{
 				if (Double.TryParse(dataLowerCase, out parsed))
 				{
 					CNS.lockOnTarget = NavSettings.TARGET.ENEMY;
 					CNS.lockOnRangeEnemy = (int)parsed;
-					CNS.lockOnBlock = CNS.tempBlockName;
+					CNS.lockOnBlock = searchBlockName;
 				}
 				else
 				{
@@ -379,7 +415,6 @@ namespace Rynchodon.Autopilot.Instruction
 					CNS.lockOnBlock = null;
 					log("stopped tracking enemies");
 				}
-				CNS.tempBlockName = null;
 			};
 			return true;
 		}
@@ -450,18 +485,24 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
+			myLogger.debugLog("entered getAction_gridDest(out Action execute, string "+instruction+")", "getAction_gridDest()");
 			string searchName = owner.CNS.tempBlockName;
+			myLogger.debugLog("searchName = " + searchName + ", owner.CNS.tempBlockName = " + owner.CNS.tempBlockName, "getAction_gridDest()");
 			owner.CNS.tempBlockName = null;
 			IMyCubeBlock blockBestMatch;
 			LastSeen gridBestMatch;
-			//myLogger.debugLog("calling lastSeenFriendly on " + owner.myTargeter + " with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
+			myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + searchName + ")", "getAction_gridDest()");
 			if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
 			{
 				execute = () =>
 				{
-					myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + ", " + owner.currentRCblock.DisplayNameText, "getAction_gridDest()");
+					if (blockBestMatch != null)
+						myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+					else
+						myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
 					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
 				};
+				myLogger.debugLog("null test: " + blockBestMatch + " ; " + owner.CNS.landLocalBlock + " ; " + owner.CNS.landDirection, "getAction_gridDest()");
 				if (blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
 				{
 					Base6Directions.Direction? landDir;
@@ -470,6 +511,7 @@ namespace Rynchodon.Autopilot.Instruction
 						log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
 						return false;
 					}
+					myLogger.debugLog("got landing direction of " + landDir + " from " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()");
 					execute = () =>
 					{
 						owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
@@ -484,13 +526,20 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
+		/// <summary>
+		/// Set the landLocalBlock
+		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
 			IMyCubeBlock landLocalBlock;
 			if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
 			{
 				(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
-				execute = () => { owner.CNS.landLocalBlock = landLocalBlock; };
+				execute = () =>
+				{
+					myLogger.debugLog("setting landLocalBlock to " + landLocalBlock.DisplayNameText, "getAction_localBlock()");
+					owner.CNS.landLocalBlock = landLocalBlock;
+				};
 				return true;
 			}
 			log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
@@ -506,7 +555,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true</returns>
 		private bool getAction_missile(out Action instructionAction, string dataLowerCase)
 		{
-			NavSettings CNS = owner.CNS;
+			string searchBlockName = CNS.tempBlockName;
+			CNS.tempBlockName = null;
 			instructionAction = () =>
 			{
 				double parsed;
@@ -514,7 +564,7 @@ namespace Rynchodon.Autopilot.Instruction
 				{
 					CNS.lockOnTarget = NavSettings.TARGET.MISSILE;
 					CNS.lockOnRangeEnemy = (int)parsed;
-					CNS.lockOnBlock = CNS.tempBlockName;
+					CNS.lockOnBlock = searchBlockName;
 				}
 				else
 				{
@@ -523,7 +573,6 @@ namespace Rynchodon.Autopilot.Instruction
 					CNS.lockOnBlock = null;
 					log("stopped tracking enemies");
 				}
-				CNS.tempBlockName = null;
 			};
 			return true;
 		}
@@ -537,7 +586,11 @@ namespace Rynchodon.Autopilot.Instruction
 					execute = null;
 					return false;
 				}
-			execute = () => { owner.CNS.destination_offset = offsetVector; };
+			execute = () =>
+			{
+				//myLogger.debugLog("setting offset vector to " + offsetVector, "getAction_offset()");
+				owner.CNS.destination_offset = offsetVector;
+			};
 			return true;
 		}
 
