@@ -284,31 +284,30 @@ if os.path.exists(mwmBuilder):
 	for process in mwmProcess[:]:
 		process.wait()
 
-	# copy files created by mwmBuilder
-	for module in modules[:]:
-		# large models
-		modelDir = startDir + "\\" + module + "\\Model\\large"
-		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel + "\\large", ".mwm")
-			copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
-		# small models
-		modelDir = startDir + "\\" + module + "\\Model\\small"
-		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
-			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
-		# large models
-		modelDir = startDir + "\\" + module + "\\Models\\large"
-		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel + "\\large", ".mwm")
-			copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
-		# small models
-		modelDir = startDir + "\\" + module + "\\Models\\small"
-		if os.path.exists(modelDir):
-			copyWithExtension(modelDir, destModel + "\\small", ".mwm")
-			copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
-
 	print("\nfinished MwmBuilder\n")
 
+# copy mwm files
+for module in modules[:]:
+	# large models
+	modelDir = startDir + "\\" + module + "\\Model\\large"
+	if os.path.exists(modelDir):
+		copyWithExtension(modelDir, destModel + "\\large", ".mwm")
+		copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+	# small models
+	modelDir = startDir + "\\" + module + "\\Model\\small"
+	if os.path.exists(modelDir):
+		copyWithExtension(modelDir, destModel + "\\small", ".mwm")
+		copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
+	# large models
+	modelDir = startDir + "\\" + module + "\\Models\\large"
+	if os.path.exists(modelDir):
+		copyWithExtension(modelDir, destModel + "\\large", ".mwm")
+		copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+	# small models
+	modelDir = startDir + "\\" + module + "\\Models\\small"
+	if os.path.exists(modelDir):
+		copyWithExtension(modelDir, destModel + "\\small", ".mwm")
+		copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
 
 print("\nfinished build\n")
 
