@@ -95,6 +95,11 @@ Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, t
 R <f>, <u> : match orientation (direction and roll). <f> as above. <u> which block direction will be Remote Control's Up
 Example - [ R Forward, Upward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Remote Control to antenna forward, then roll so that Antenna's Upward will match Remote Control's upward.
 
+T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]
+Example - [ T Command Panel ] - fetch commands from "Command Panel"
+T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.
+Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
+
 V <cruise> : when travelling faster than <cruise> reduce thrust (zero or very little thrust)
 Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, cruising when above 10m/s. The default for <cruise> is set in the settings file.
 V <cruise>, <slow> : when speed is below <cruise>, accelerate; when speed is between <cruise> and <slow>, cruise; when speed is above <slow>, decelerate. The default for <cruise> is set in the settings file, the default for <slow> is infinity (practically).
@@ -113,16 +118,17 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 [h1]Autopilot States[/h1]
 <OFF> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
 <PATHFINDING> searching for a path towards the destination
+<NO_PATH> could not find a path to the destination
+<NO_DEST> could not find a valid target or destination, this state is usually temporary
+<WAITING:(time)> a wait command was reached, display time remaining
 <ROTATING> rotating the ship
 <MOVING> heading towards the next stop
 <STOPPING> stopping the grid
-<NO_PATH> could not find a path to the destination
-<NO_DEST> could not find a valid target or destination, this state is usually temporary
 <MISSILE> found a target, going to hit it
 <ENGAGING> found a target, flying towards it
+<LANDED> grid is landed
 <PLAYER> A player is controlling grid
-<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector while a player is in a seat.
-<BROKEN> Congratulations! You found a bug, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440] please report it [/url].
+<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
 
 [h1]More Information[/h1]
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.

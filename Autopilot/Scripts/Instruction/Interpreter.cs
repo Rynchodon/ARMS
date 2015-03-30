@@ -86,25 +86,37 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <param name="allInstructions">all the instructions to enqueue</param>
 		public void enqueueAllActions(string allInstructions)
 		{
-			allInstructions = allInstructions.Replace(" ", string.Empty);
+			instructionErrorIndex = null;
+			currentInstruction = 0;
+			instructionQueue = new MyQueue<Action>(8);
+			instructionQueueString = new List<string>();
+
+			enqueueAllActions_continue(allInstructions);
+		}
+
+		/// <summary>
+		/// Does the heavy lifting for enqueueAllActions
+		/// </summary>
+		private void enqueueAllActions_continue(string allInstructions)
+		{
+			allInstructions = allInstructions.RemoveWhitespace();
 			string[] splitInstructions = allInstructions.Split(new char[] { ':', ';' });
 
 			if (splitInstructions == null || splitInstructions.Length == 0)
 				return;
 
-			instructionErrorIndex = null;
-
-			instructionQueue = new MyQueue<Action>(8);
-			instructionQueueString = new List<string>();
-
-			for (currentInstruction = 0; currentInstruction < splitInstructions.Length; currentInstruction++)
-				if (!enqueueAction(splitInstructions[currentInstruction]))
+			for (int i = 0; i < splitInstructions.Length; i++)
+			{
+				if (!enqueueAction(splitInstructions[i]))
 				{
-					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()", Logger.severity.INFO);
+					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()", Logger.severity.INFO);
 					instructionErrorIndex_add(currentInstruction);
 				}
 				else
-					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[currentInstruction], "enqueueAllActions()");
+					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()");
+
+				currentInstruction++;
+			}
 		}
 
 		/// <summary>
@@ -206,12 +218,21 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// Not Yet Implemented. Try to replace an instruction with multiple allInstructions. Will enqueue actions, not return them.
+		/// <para>Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.</para>
 		/// </summary>
 		/// <param name="instruction">unparsed instruction</param>
 		/// <returns>true iff successful</returns>
 		private bool getAction_multiple(string instruction)
 		{
+			string lowerCase = instruction.ToLower();
+
+			switch (lowerCase[0])
+			{
+				case 't':
+					addAction_textPanel(lowerCase.Substring(1));
+					return true;
+			}
+
 			return false;
 		}
 
@@ -220,6 +241,7 @@ namespace Rynchodon.Autopilot.Instruction
 			string lowerCase = instruction.ToLower();
 			string dataLowerCase = lowerCase.Substring(1);
 			log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", dataLowerCase = " + dataLowerCase + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+
 			switch (lowerCase[0])
 			{
 				case 'a':
@@ -250,9 +272,84 @@ namespace Rynchodon.Autopilot.Instruction
 				case 'w':
 					return getAction_wait(out instructionAction, dataLowerCase);
 			}
+
 			log("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
 			instructionAction = null;
 			return false;
+		}
+
+
+		// MULTI ACTIONS
+
+
+		/// <summary>
+		/// <para>add actions from a text panel</para>
+		/// <para>Format for instruction is [ t (Text Panel Name), (Identifier) ]</para>
+		/// </summary>
+		private bool addAction_textPanel(string dataLowerCase)
+		{
+			string[] split = dataLowerCase.Split(',');
+
+			string panelName;
+			if (split.Length == 2)
+				panelName = split[0];
+			else
+				panelName = dataLowerCase;
+
+			IMyCubeBlock bestMatch;
+			if (!owner.myTargeter.findBestFriendly(owner.myGrid, out bestMatch, panelName))
+			{
+				myLogger.debugLog("could not find " + panelName + " on " + owner.myGrid.DisplayName, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			Ingame.IMyTextPanel panel = bestMatch as Ingame.IMyTextPanel;
+			if (panel == null)
+			{
+				myLogger.debugLog("not a Text Panel: " + panel, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			string panelText = panel.GetPublicText().ToLower();
+
+			string identifier;
+			int identifierIndex, startOfCommands;
+
+			if (split.Length == 2)
+			{
+				identifier = split[1];
+				identifierIndex = panelText.IndexOf(identifier);
+				if (identifierIndex < 0)
+				{
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					return false;
+				}
+				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
+			}
+			else
+			{
+				identifier = null;
+				identifierIndex = -1;
+				startOfCommands = panelText.IndexOf('[') + 1;
+			}
+
+			if (startOfCommands < 0)
+			{
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
+			if (endOfCommands < 0)
+			{
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			myLogger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
+			enqueueAllActions_continue(panelText.Substring(startOfCommands, endOfCommands - startOfCommands));
+
+			return true; // this instruction was successfully executed, even if sub instructions were not
 		}
 
 

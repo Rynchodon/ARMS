@@ -24,6 +24,8 @@ namespace Rynchodon.AntennaRelay
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
 	public class TextPanel : UpdateEnforcer
 	{
+		// TODO: make decisions based on text panel's name (consistency), set the public title
+
 		private const string publicTitle_forPlayer = "Grid found by Autopilot";
 		private const string publicTitle_forProgram = "Autopilot to Program";
 		private const string radarIconId = "Radar";
@@ -124,18 +126,6 @@ namespace Rynchodon.AntennaRelay
 			myTextPanel.WritePublicText(displayText.ToString());
 
 			return true;
-
-			//foreach (Ingame.IMyTextPanel panel in textPanels)
-			//{
-			//	log("writing to panel: " + panel.DisplayNameText, "findTextPanel()", Logger.severity.TRACE);
-			//	panel.WritePublicText(displayString);
-			//	if (panel.GetPublicTitle() != publicTitle)
-			//	{
-			//		panel.WritePublicTitle(publicTitle);
-			//		panel.AddImageToSelection(radarId);
-			//		panel.ShowTextureOnScreen();
-			//	}
-			//}
 		}
 
 		private class sortableLastSeen : IComparable<sortableLastSeen>

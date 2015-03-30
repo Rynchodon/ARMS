@@ -1300,26 +1300,39 @@ namespace Rynchodon.Autopilot
 				newState = ReportableState.JUMP;
 
 			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.JUMP)
+			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
 				return;
 			currentReportable = newState;
 
 			// cut old state, if any
-			int endOfState = displayName.IndexOf('>');
-			if (endOfState != -1)
-				displayName = displayName.Substring(endOfState + 1);
+			if (displayName[0] == '<')
+			{
+				int endOfState = displayName.IndexOf('>');
+				if (endOfState != -1)
+					displayName = displayName.Substring(endOfState + 1);
+			}
 
 			// add new state
 			StringBuilder newName = new StringBuilder();
 			newName.Append('<');
+			// error
 			if (myInterpreter.instructionErrorIndex != null)
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
+			// actual state
 			newName.Append(newState);
+			// jump time
 			if (newState == ReportableState.JUMP && myJump != null && myJump.currentState == Jumper.GridJumper.State.TRANSFER)
 			{
 				newName.Append(':');
 				newName.Append((int)myJump.estimatedTimeToReadyMillis() / 1000);
 			}
+			// wait time
+			if (newState == ReportableState.WAITING)
+			{
+				newName.Append(':');
+				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
+			}
+
 			newName.Append('>');
 			newName.Append(displayName);
 			//RCDisplayName = newName.ToString();
