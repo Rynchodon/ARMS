@@ -21,7 +21,6 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Do not forget to call this!
 		/// </summary>
-		/// <param name="objectBuilder"></param>
 		protected override void DelayedInit()
 		{
 			//(new Logger(null, "Receiver")).log("init", "DelayedInit()", Logger.severity.TRACE);
@@ -216,6 +215,9 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 		}
+
+		public IEnumerator<LastSeen> getLastSeenEnum()
+		{ return myLastSeen.Values.GetEnumerator(); }
 
 		protected string ClassName = "Receiver";
 		private Logger myLogger;

@@ -101,6 +101,7 @@ namespace Rynchodon.Autopilot
 					// actions on new RC
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
+					fullStop("new RC"); 
 					reportState(ReportableState.OFF);
 				}
 

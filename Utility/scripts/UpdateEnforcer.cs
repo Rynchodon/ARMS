@@ -41,7 +41,7 @@ namespace Rynchodon
 				needsToInit = new LinkedList<UpdateEnforcer>();
 			needsToInit.AddLast(this);
 			myLogger = new Logger(null, "UpdateEnforcer");
-			myLogger.debugLog("queuing for init: " + Entity.getBestName(), "Init()");
+			//myLogger.debugLog("queuing for init: " + Entity.getBestName(), "Init()");
 		}
 
 		public override void Close()

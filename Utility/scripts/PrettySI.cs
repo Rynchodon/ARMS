@@ -96,7 +96,7 @@ namespace Rynchodon
 		public static string makePretty(double toPretty, byte sigFigs = 3)
 		{
 			string result = makePretty(toPretty, SI_1000_multiples, SI_1000_subMulti, sigFigs);
-			myLogger.debugLog("converted " + toPretty + " to " + result, "makePretty()");
+			//myLogger.debugLog("converted " + toPretty + " to " + result, "makePretty()");
 			return result;
 		}
 
@@ -109,7 +109,7 @@ namespace Rynchodon
 		public static string makePrettyCubic(double toPretty, byte sigFig = 3)
 		{
 			string result = makePretty(toPretty, SI_10_multiples, SI_10_subMulti, sigFig);
-			myLogger.debugLog("converted " + toPretty + " to " + result, "makePrettyCubic()");
+			//myLogger.debugLog("converted " + toPretty + " to " + result, "makePrettyCubic()");
 			return result;
 		}
 

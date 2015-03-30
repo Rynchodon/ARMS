@@ -1,6 +1,6 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
-[url=http://forums.keenswh.com/post/mod-autopilot-7227970] German Translation by jirok666 [/url]
+[url=http://forums.keenswh.com/post/mod-autopilot-7227970] Deutsche Übersetzung von jirok666 [/url]
 
 [h1]Mod Features[/h1]
 Automatic docking & landing

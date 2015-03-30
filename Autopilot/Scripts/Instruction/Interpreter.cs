@@ -411,16 +411,16 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true</returns>
 		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
 		{
-			double parsed;
-			string searchBlockName = CNS.tempBlockName;
-			CNS.tempBlockName = null;
+			//string searchBlockName = CNS.tempBlockName;
+			//CNS.tempBlockName = null;
 			instructionAction = () =>
 			{
+				double parsed;
 				if (Double.TryParse(dataLowerCase, out parsed))
 				{
 					CNS.lockOnTarget = NavSettings.TARGET.ENEMY;
 					CNS.lockOnRangeEnemy = (int)parsed;
-					CNS.lockOnBlock = searchBlockName;
+					CNS.lockOnBlock = CNS.tempBlockName;
 				}
 				else
 				{
@@ -429,6 +429,7 @@ namespace Rynchodon.Autopilot.Instruction
 					CNS.lockOnBlock = null;
 					log("stopped tracking enemies");
 				}
+				CNS.tempBlockName = null;
 			};
 			return true;
 		}
@@ -563,6 +564,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			execute = () =>
 			{
+				myLogger.debugLog("searching for local block: " + instruction, "getAction_localBlock()");
 				if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
 				{
 					(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
@@ -585,8 +587,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true</returns>
 		private bool getAction_missile(out Action instructionAction, string dataLowerCase)
 		{
-			string searchBlockName = CNS.tempBlockName;
-			CNS.tempBlockName = null;
+			//string searchBlockName = CNS.tempBlockName;
+			//CNS.tempBlockName = null;
 			instructionAction = () =>
 			{
 				double parsed;
@@ -594,7 +596,7 @@ namespace Rynchodon.Autopilot.Instruction
 				{
 					CNS.lockOnTarget = NavSettings.TARGET.MISSILE;
 					CNS.lockOnRangeEnemy = (int)parsed;
-					CNS.lockOnBlock = searchBlockName;
+					CNS.lockOnBlock = CNS.tempBlockName;
 				}
 				else
 				{
@@ -603,6 +605,7 @@ namespace Rynchodon.Autopilot.Instruction
 					CNS.lockOnBlock = null;
 					log("stopped tracking enemies");
 				}
+				CNS.tempBlockName = null;
 			};
 			return true;
 		}

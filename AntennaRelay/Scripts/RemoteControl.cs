@@ -32,7 +32,7 @@ namespace Rynchodon.AntennaRelay
 			registry.Add(CubeBlock, this);
 			ClassName = "RemoteControl";
 
-			log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+			//log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 
 			// for my German friends...
 			if (!myRemote.DisplayNameText.Contains('[') && !myRemote.DisplayNameText.Contains(']'))
