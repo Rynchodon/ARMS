@@ -96,8 +96,8 @@ namespace Rynchodon.AntennaRelay
 				Message toWrite = myMessages.First();
 				myMessages.RemoveFirst();
 				MessageParser.writeToName(asTerm, toWrite);
-				asTerm.GetActionWithName("Run").Apply(CubeBlock);
 			}
+			asTerm.GetActionWithName("Run").Apply(CubeBlock);
 		}
 
 		public static bool TryGet(IMyCubeBlock block, out ProgrammableBlock result)

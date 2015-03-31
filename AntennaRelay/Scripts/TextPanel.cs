@@ -30,7 +30,7 @@ namespace Rynchodon.AntennaRelay
 		private const string publicTitle_forPlayer = "Detected Grids";
 		private const string publicTitle_forProgram = "Transmission to Programmable block";
 		private const string publicTitle_fromProgramParsed = "Transmission from Programmable block";
-		private const string blockName_fromProgramFresh = "[ fresh Transmission from Programmable block ]";
+		private const string blockName_fromProgram = "from Program";
 
 		private const string radarIconId = "Radar";
 		private const string messageToProgram = "Fetch Detected from Text Panel";
@@ -52,7 +52,7 @@ namespace Rynchodon.AntennaRelay
 			myCubeBlock = Entity as IMyCubeBlock;
 			myTextPanel = Entity as Ingame.IMyTextPanel;
 			myTermBlock = Entity as IMyTerminalBlock;
-			myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TextPanel", myCubeBlock.DisplayNameText);
+			myLogger = new Logger("TextPanel", () => myCubeBlock.CubeGrid.DisplayName, () => myCubeBlock.getNameOnly());
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 			myLogger.debugLog("init: " + myCubeBlock.DisplayNameText, "DelayedInit()");
 
@@ -61,23 +61,29 @@ namespace Rynchodon.AntennaRelay
 
 		private string previousName;
 
-		void TextPanel_CustomNameChanged(IMyTerminalBlock obj)
+		/// <summary>
+		/// Checks for a change in the name and responds to added commmands.
+		/// </summary>
+		/// <param name="obj">not used</param>
+		private void TextPanel_CustomNameChanged(IMyTerminalBlock obj)
 		{
 			if (!IsInitialized || Closed)
 				return;
 			try
 			{
 				if (myCubeBlock.DisplayNameText == previousName)
-				{
-					myLogger.debugLog("no name change: " + previousName, "TextPanel_CustomNameChanged()");
 					return;
-				}
 
-				if (myCubeBlock.DisplayNameText.Contains(blockName_fromProgramFresh))
+				string instructions = myCubeBlock.getInstructions();
+				if (instructions != null)
 				{
-					myLogger.debugLog("replacing entity Ids", "TextPanel_CustomNameChanged()");
-					myTextPanel.SetCustomName(myCubeBlock.DisplayNameText.Replace(blockName_fromProgramFresh, string.Empty));
-					replaceEntityIdsWithLastSeen();
+					string[] splitInstructions = instructions.Split(separator);
+					if (splitInstructions[0] == blockName_fromProgram)
+					{
+						myLogger.debugLog("replacing entity Ids", "TextPanel_CustomNameChanged()");
+						myTextPanel.SetCustomName(myCubeBlock.getNameOnly());
+						replaceEntityIdsWithLastSeen(splitInstructions);
+					}
 				}
 
 				myProgBlock = null;
@@ -102,7 +108,11 @@ namespace Rynchodon.AntennaRelay
 			if (!IsInitialized || Closed)
 				return;
 
-			try { displayLastSeen(); }
+			try
+			{
+				displayLastSeen();
+				TextPanel_CustomNameChanged(null);
+			}
 			catch (Exception ex) { myLogger.log("Exception: " + ex, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 
@@ -191,7 +201,6 @@ namespace Rynchodon.AntennaRelay
 				if (sentToProgram && myTextPanel.GetPublicTitle() == publicTitle_forProgram && !string.IsNullOrWhiteSpace(myTextPanel.GetPublicText()))
 				{
 					myLogger.debugLog("public text is not clear", "displayLastSeen()");
-					runProgram();
 					return;
 				}
 				forProgram = true;
@@ -278,22 +287,21 @@ namespace Rynchodon.AntennaRelay
 				sentToProgram = false;
 		}
 
-		private void replaceEntityIdsWithLastSeen()
+		private void replaceEntityIdsWithLastSeen(string[] instructions)
 		{
 			if (!findAntenna())
 				return;
 
-			string[] allLines = myTextPanel.GetPublicText().Split('\n');
 			Vector3D myPos = myCubeBlock.GetPosition();
 			int count = 0;
 			StringBuilder newText = new StringBuilder();
-			foreach (string line in allLines)
+			for (int d = 1; d < instructions.Length; d++) // skip first
 			{
-				if (string.IsNullOrWhiteSpace(line))
+				if (string.IsNullOrWhiteSpace(instructions[d]))
 					continue;
 
-				myLogger.debugLog("checking line: " + line, "replaceEntityIdsWithLastSeen()");
-				long entityId = long.Parse(line);
+				myLogger.debugLog("checking id: " + instructions[d], "replaceEntityIdsWithLastSeen()");
+				long entityId = long.Parse(instructions[d]);
 				myLogger.debugLog("got long: " + entityId, "replaceEntityIdsWithLastSeen()");
 				LastSeen seen;
 				if (myAntenna.tryGetLastSeen(entityId, out seen))
@@ -317,7 +325,7 @@ namespace Rynchodon.AntennaRelay
 		private class sortableLastSeen : IComparable<sortableLastSeen>
 		{
 			private readonly IMyCubeBlockExtensions.Relations relations;
-			private readonly long distance;
+			private readonly double distance;
 			private readonly int seconds;
 			private readonly LastSeen seen;
 			private readonly Vector3D predictedPos;
@@ -334,7 +342,7 @@ namespace Rynchodon.AntennaRelay
 				this.relations = relations;
 				TimeSpan sinceLastSeen;
 				predictedPos = seen.predictPosition(out sinceLastSeen);
-				distance = (long)(predictedPos - myPos).Length();
+				distance = (predictedPos - myPos).Length();
 				seconds = (int)sinceLastSeen.TotalSeconds;
 			}
 

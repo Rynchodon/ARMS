@@ -54,7 +54,7 @@ namespace Programmable
 		/// This functions is called when receiveMessage is executed; put all your message receiving code here.
 		/// </summary>
 		/// <param name="senderGrid">The grid where the message originated</param>
-		/// <param name="senderBlock">The programmable block where the message originated</param>
+		/// <param name="senderBlock">The block where the message originated</param>
 		/// <param name="message">the content of the message</param>
 		void parseReceivedMessage(string senderGrid, string senderBlock, string message)
 		{
@@ -73,7 +73,7 @@ namespace Programmable
 
 
 		/// <summary>
-		/// Called before any detected grids are retreived.
+		/// Called before any detected grids are retrieved.
 		/// </summary>
 		void beforeHandleDetected()
 		{
@@ -88,6 +88,8 @@ namespace Programmable
 		{
 			if (!detectedEnemy // have not found an enemy this run
 				&& grid.distance < 10000 // closer than 10km
+				&& grid.volume > 100 // larger than 100m³
+				&& grid.seconds < 60 // seen in the past minute
 				&& (grid.relations == "Enemy")) // grid is enemy
 				{
 					detectedEnemy = true;
@@ -103,14 +105,6 @@ namespace Programmable
 				addToOutput(grid); // this will add a grid to all the output panels
 		}
 
-		/// <summary>
-		/// Determines whether or not a block will be used as an output panel.
-		/// </summary>
-		/// <param name="block">the IMyTextPanel to test</param>
-		/// <returns>true iff the block should be used as an output panel</returns>
-		bool collect_outputPanel(IMyTerminalBlock block)
-		{ return block.DisplayNameText == "LCD Panel 3"; }
-
 
 		// Do not edit past this line. Browsing is encouraged, however.
 
@@ -122,7 +116,7 @@ namespace Programmable
 		const string startOfSend = "[.[", endOfSend = "].]", startOfReceive = "<.<", endOfReceive = ">.>"; // has to match MessageParser.cs
 		const char separator = ':'; // has to match MessageParser.cs and TextPanel.cs
 		const string fetchFromTextPanel = "Fetch Detected from Text Panel"; // has to match TextPanel.cs
-		const string blockName_fromProgramFresh = "[ fresh Transmission from Programmable block ]"; // has to match TextPanel.cs
+		const string blockName_fromProgram = "from Program"; // has to match TextPanel.cs
 
 		readonly string[] newLine = { "\n", "\r\n" };
 		const string tab = "    ";
@@ -132,21 +126,15 @@ namespace Programmable
 		/// </summary>
 		void Main()
 		{
-			debug("starting", false);
 			if (ThisBlock == null)
 				fillThisBlock();
-			debug("invoking fillOutputPanel()");
 			fillOutputPanel();
 
-			debug("invoking beforeHandleDetected()");
 			beforeHandleDetected();
-			outputText = new StringBuilder();
+			outputText = new StringBuilder('[' + blockName_fromProgram);
 
-			debug("invoking receiveMessage()");
 			receiveMessage();
-			debug("invoking sendMessage()");
 			sendMessage();
-			debug("invoking writeOutput()");
 			writeOutput();
 		}
 
@@ -167,6 +155,14 @@ namespace Programmable
 			GridTerminalSystem.GetBlocksOfType<IMyProgrammableBlock>(progBlocks, collect_ThisBlock);
 			ThisBlock = progBlocks[0];
 		}
+
+		/// <summary>
+		/// Determines whether or not a block will be used as an output panel.
+		/// </summary>
+		/// <param name="block">the IMyTextPanel to test</param>
+		/// <returns>true iff the block should be used as an output panel</returns>
+		bool collect_outputPanel(IMyTerminalBlock block)
+		{ return block.DisplayNameText == OutputPanelName; }
 
 		/// <summary>
 		/// fills outputPanels with IMyTextPanel that match collect_outputPanel
@@ -244,7 +240,6 @@ namespace Programmable
 				message = messageSB.ToString();
 			}
 
-			debug("message = " + message);
 			if (message == fetchFromTextPanel)
 				createListDetected(received[1]);
 			else
@@ -271,7 +266,7 @@ namespace Programmable
 			// assume panel has been filled, otherwise something went horribly wrong
 
 			// get data
-			string[] splitByLine = panel.GetPublicText().Split(newLine, StringSplitOptions.None);
+			string[] splitByLine = panel.GetPublicText().Split(newLine, StringSplitOptions.RemoveEmptyEntries);
 
 			// erase panel
 			panel.WritePublicText("");
@@ -279,10 +274,7 @@ namespace Programmable
 			// build from data and invoke handler
 			for (int l = 0; l < splitByLine.Length; l++)
 				if (!string.IsNullOrWhiteSpace(splitByLine[l]))
-				{
-					debug("from line: " + splitByLine[l]);
 					handle_detectedGrid(new Detected(splitByLine[l]));
-				}
 		}
 
 		/// <summary>
@@ -291,31 +283,22 @@ namespace Programmable
 		/// <param name="grid">detected grid to add</param>
 		void addToOutput(Detected grid)
 		{
+			outputText.Append(separator);
 			outputText.Append(grid.entityId);
-			outputText.AppendLine();
 		}
 
 		/// <summary>
-		/// Write outputText to each panel
+		/// Write outputText to each panel name
 		/// </summary>
 		void writeOutput()
 		{
-			string outputString = outputText.ToString();
+			outputText.Append(']');
 			for (int p = 0; p < outputPanels.Count; p++)
 			{
 				IMyTextPanel panel = outputPanels[p] as IMyTextPanel;
-				panel.WritePublicText(outputString);
-				panel.SetCustomName(panel.DisplayNameText + blockName_fromProgramFresh);
+				//panel.WritePublicText(outputString);
+				panel.SetCustomName(panel.DisplayNameText + outputText);
 			}
-		}
-
-		void debug(string line, bool append = true)
-		{
-			List<IMyTerminalBlock> textPanels = new List<IMyTerminalBlock>();
-			GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(textPanels);
-			for (int i = 0; i < textPanels.Count; i++)
-				if (textPanels[i].DisplayNameText == "Debug")
-					(textPanels[i] as IMyTextPanel).WritePublicText(line + "\n", append);
 		}
 
 		/// <summary>

@@ -120,6 +120,7 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 <PATHFINDING> searching for a path towards the destination
 <NO_PATH> could not find a path to the destination
 <NO_DEST> could not find a valid target or destination, this state is usually temporary
+<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
 <WAITING:(time)> a wait command was reached, display time remaining
 <ROTATING> rotating the ship
 <MOVING> heading towards the next stop
