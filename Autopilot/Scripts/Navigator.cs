@@ -259,7 +259,6 @@ namespace Rynchodon.Autopilot
 				{
 					while (myInterpreter.hasInstructions())
 					{
-						//addInstruction(CNS.instructions.Dequeue());
 						myLogger.debugLog("invoking instruction: " + myInterpreter.getCurrentInstructionString(), "update()");
 						Action instruction = myInterpreter.instructionQueue.Dequeue();
 						try { instruction.Invoke(); }
@@ -324,18 +323,6 @@ namespace Rynchodon.Autopilot
 								if (string.IsNullOrWhiteSpace(instructions))
 									continue;
 
-
-
-								//log("allInstructions = "+allInstructions, "update()", Logger.severity.TRACE);
-								//log("allInstructions = " + allInstructions.Replace(" ", string.Empty), "update()", Logger.severity.TRACE);
-								//string[] inst = instructions.Replace(" ", string.Empty).Split(':'); // split into CNS.allInstructions
-								//if (inst.Length == 0)
-								//	continue;
-								//log("found a ready remote control " + fatBlock.DisplayNameText, "update()", Logger.severity.TRACE);
-								//CNS.instructions = new Queue<string>(inst);
-
-
-
 								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
 								if (myInterpreter == null)
 									myInterpreter = new Interpreter(this);
@@ -343,7 +330,7 @@ namespace Rynchodon.Autopilot
 								if (myInterpreter.hasInstructions())
 								{
 									CNS.startOfCommands();
-									log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instructions", "update()", Logger.severity.TRACE);
+									log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instruction", "update()", Logger.severity.TRACE);
 									return;
 								}
 								myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);

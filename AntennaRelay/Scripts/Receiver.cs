@@ -216,6 +216,19 @@ namespace Rynchodon.AntennaRelay
 				}
 		}
 
+		public bool tryGetLastSeen(long entityId, out LastSeen result)
+		{
+			result = null;
+			
+			IMyEntity fromId;
+			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out fromId))
+				return false;
+			if (!myLastSeen.TryGetValue(fromId, out result))
+				return false;
+
+			return true;
+		}
+
 		public IEnumerator<LastSeen> getLastSeenEnum()
 		{ return myLastSeen.Values.GetEnumerator(); }
 

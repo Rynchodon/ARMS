@@ -8,7 +8,7 @@ using System;
 namespace Rynchodon
 {
 	/// <summary>
-	/// Convert a number to a pretty string using a SI multiple.
+	/// Convert a number to a pretty string using a SI multiple. If the number is too large or small, uses scientific notation.
 	/// </summary>
 	public static class PrettySI
 	{
@@ -24,7 +24,7 @@ namespace Rynchodon
 		private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>
-		/// Round a double to a number of significant figures. Minimum of three significant figures.
+		/// For a double between 0 and 1000, round to a number of significant figures. Minimum of three significant figures.
 		/// </summary>
 		/// <param name="toRound">number to round</param>
 		/// <param name="sigFig">number of significant figures in result</param>
@@ -115,7 +115,7 @@ namespace Rynchodon
 
 		// TODO: 
 		/// <summary>
-		/// Convert a pretty string with a SI prefix to a double.
+		/// Not Yet Implemented. Convert a pretty string with a SI prefix to a double.
 		/// </summary>
 		/// <param name="pretty">string with SI prefix</param>
 		/// <returns>parsed double</returns>

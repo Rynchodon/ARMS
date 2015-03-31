@@ -14,6 +14,9 @@ namespace Rynchodon
 	{
 		public static bool looseContains(this string bigString, string smallString)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(bigString == null, "bigString");
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(smallString == null, "smallString");
+
 			string compare1 = bigString.RemoveWhitespace().ToLower();
 			string compare2 = smallString.RemoveWhitespace().ToLower();
 			return compare1.Contains(compare2);

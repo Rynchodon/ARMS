@@ -53,7 +53,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private void myProgBlock_CustomNameChanged()
 		{
-			if (Closed)
+			if (!IsInitialized || Closed)
 				return;
 			try
 			{

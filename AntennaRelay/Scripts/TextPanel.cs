@@ -24,44 +24,93 @@ namespace Rynchodon.AntennaRelay
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
 	public class TextPanel : UpdateEnforcer
 	{
-		// TODO: make decisions based on text panel's name (consistency), set the public title
+		private const string command_forPlayer = "Display Detected";
+		private const string command_forProgram = "Transmit Detected to ";
 
-		private const string publicTitle_forPlayer = "Grid found by Autopilot";
-		private const string publicTitle_forProgram = "Autopilot to Program";
+		private const string publicTitle_forPlayer = "Detected Grids";
+		private const string publicTitle_forProgram = "Transmission to Programmable block";
+		private const string publicTitle_fromProgramParsed = "Transmission from Programmable block";
+		private const string blockName_fromProgramFresh = "[ fresh Transmission from Programmable block ]";
+
 		private const string radarIconId = "Radar";
+		private const string messageToProgram = "Fetch Detected from Text Panel";
+
+		private const char separator = ':';
 
 		private IMyCubeBlock myCubeBlock;
 		private Ingame.IMyTextPanel myTextPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
 		private Receiver myAntenna;
+		private ProgrammableBlock myProgBlock;
+		private IMyTerminalBlock myTermBlock;
+
+		private bool sentToProgram = false;
 
 		protected override void DelayedInit()
 		{
 			myCubeBlock = Entity as IMyCubeBlock;
 			myTextPanel = Entity as Ingame.IMyTextPanel;
+			myTermBlock = Entity as IMyTerminalBlock;
 			myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TextPanel", myCubeBlock.DisplayNameText);
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+			myLogger.debugLog("init: " + myCubeBlock.DisplayNameText, "DelayedInit()");
+
+			myTermBlock.CustomNameChanged += TextPanel_CustomNameChanged;
+		}
+
+		private string previousName;
+
+		void TextPanel_CustomNameChanged(IMyTerminalBlock obj)
+		{
+			if (!IsInitialized || Closed)
+				return;
+			try
+			{
+				if (myCubeBlock.DisplayNameText == previousName)
+				{
+					myLogger.debugLog("no name change: " + previousName, "TextPanel_CustomNameChanged()");
+					return;
+				}
+
+				if (myCubeBlock.DisplayNameText.Contains(blockName_fromProgramFresh))
+				{
+					myLogger.debugLog("replacing entity Ids", "TextPanel_CustomNameChanged()");
+					myTextPanel.SetCustomName(myCubeBlock.DisplayNameText.Replace(blockName_fromProgramFresh, string.Empty));
+					replaceEntityIdsWithLastSeen();
+				}
+
+				myProgBlock = null;
+			}
+			catch (Exception ex)
+			{ myLogger.log("Exception: " + ex, "TextPanel_CustomNameChanged()", Logger.severity.ERROR); }
 		}
 
 		public override void Close()
 		{
 			base.Close();
-			myCubeBlock = null;
+
+			if (myCubeBlock != null)
+			{
+				myTermBlock.CustomNameChanged -= TextPanel_CustomNameChanged;
+				myCubeBlock = null;
+			}
 		}
 
 		public override void UpdateAfterSimulation100()
 		{
-			if (informPlayer())
+			if (!IsInitialized || Closed)
 				return;
-			// informProgBlock()
+
+			try { displayLastSeen(); }
+			catch (Exception ex) { myLogger.log("Exception: " + ex, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 
 		/// <summary>
 		/// Search for an attached antenna, if we do not have one.
 		/// </summary>
 		/// <returns>true iff current antenna is valid or one was found</returns>
-		private bool searchForAntenna()
+		private bool findAntenna()
 		{
 			if (myAntenna != null && !myAntenna.Closed) // already have one
 				return true;
@@ -83,21 +132,84 @@ namespace Rynchodon.AntennaRelay
 			return false;
 		}
 
-		/// <summary>
-		/// If public title matches publicTitle_forPlayer, output information to public text for player review.
-		/// </summary>
-		/// <returns>false if the title is not set to publicTitle_forPlayer</returns>
-		private bool informPlayer()
-		{
-			if (!myTextPanel.GetPublicTitle().looseContains(publicTitle_forPlayer))
-				return false;
+		private static readonly MyObjectBuilderType ProgOBtype = typeof(MyObjectBuilder_MyProgrammableBlock);
 
-			if (!searchForAntenna())
+		private bool findProgBlock()
+		{
+			if (myProgBlock != null && !myProgBlock.Closed) // already have one
 				return true;
+
+			string instruction = myCubeBlock.getInstructions().RemoveWhitespace().ToLower();
+			string command = command_forProgram .RemoveWhitespace().ToLower();
+
+			int destNameIndex = instruction.IndexOf(command) + command.Length;
+			if (destNameIndex >= instruction.Length)
+			{
+				myLogger.debugLog("destNameIndex = " + destNameIndex + ", instruction.Length = " + instruction.Length, "searchForAntenna()", Logger.severity.TRACE);
+				return false;
+			}
+			string destName = instruction.Substring(destNameIndex);
+
+			myLogger.debugLog("searching for a programmable block: " + destName, "searchForAntenna()", Logger.severity.TRACE);
+
+			IReadOnlyCollection<Ingame.IMyTerminalBlock> progBlocks = CubeGridCache.GetFor(myCubeBlock.CubeGrid).GetBlocksOfType(ProgOBtype);
+			if (progBlocks == null)
+			{
+				myLogger.debugLog("no programmable blocks", "searchForAntenna()", Logger.severity.TRACE);
+				return false;
+			}
+
+			foreach (Ingame.IMyTerminalBlock block in progBlocks)
+				if (block.DisplayNameText.looseContains(destName))
+					if (ProgrammableBlock.TryGet(block as IMyCubeBlock, out myProgBlock))
+					{
+						myLogger.debugLog("found programmable block: " + block.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
+						return true;
+					}
+					else
+					{
+						myLogger.debugLog("failed to get receiver for: " + block.DisplayNameText, "searchForAntenna()", Logger.severity.WARNING);
+						return false;
+					}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Display text either for player or for program
+		/// </summary>
+		private void displayLastSeen()
+		{
+			bool forProgram;
+			string instruction = myCubeBlock.getInstructions();
+
+			if (instruction == null)
+				return;
+
+			if (instruction.looseContains(command_forProgram))
+			{
+				if (sentToProgram && myTextPanel.GetPublicTitle() == publicTitle_forProgram && !string.IsNullOrWhiteSpace(myTextPanel.GetPublicText()))
+				{
+					myLogger.debugLog("public text is not clear", "displayLastSeen()");
+					runProgram();
+					return;
+				}
+				forProgram = true;
+			}
+			else if (instruction.looseContains(command_forPlayer))
+				forProgram = false;
+			else
+				return;
+
+			if (!findAntenna())
+				return;
 
 			IEnumerator<LastSeen> toDisplay = myAntenna.getLastSeenEnum();
 
-			myLogger.debugLog("building display list", "informPlayer()", Logger.severity.TRACE);
+			if (forProgram)
+				myLogger.debugLog("building display list for program", "informPlayer()", Logger.severity.TRACE);
+			else
+				myLogger.debugLog("building display list for player", "informPlayer()", Logger.severity.TRACE);
 			Vector3D myPos = myCubeBlock.GetPosition();
 			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
 			while (toDisplay.MoveNext())
@@ -113,25 +225,99 @@ namespace Rynchodon.AntennaRelay
 
 			int count = 0;
 			StringBuilder displayText = new StringBuilder();
-			foreach (sortableLastSeen sortable in sortableSeen)
-			{
-				displayText.Append(sortable.ToStringBuilder(count++));
-				if (count >= 50)
-					break;
-			}
+			if (forProgram)
+				foreach (sortableLastSeen sortable in sortableSeen)
+					displayText.Append(sortable.TextForProgram());
+			else
+				foreach (sortableLastSeen sortable in sortableSeen)
+				{
+					displayText.Append(sortable.TextForPlayer(count++));
+					if (count >= 50)
+						break;
+				}
 
 			string displayString = displayText.ToString();
 
 			myLogger.debugLog("writing to panel " + myTextPanel.DisplayNameText, "findTextPanel()", Logger.severity.TRACE);
 			myTextPanel.WritePublicText(displayText.ToString());
 
-			return true;
+			// set public title
+			if (forProgram)
+			{
+				if (myTextPanel.GetPublicTitle() != publicTitle_forProgram)
+				{
+					myTextPanel.WritePublicTitle(publicTitle_forProgram);
+					myTextPanel.AddImageToSelection(radarIconId);
+					//myTextPanel.ShowTextureOnScreen();
+				}
+
+				runProgram();
+			}
+			else
+				if (myTextPanel.GetPublicTitle() != publicTitle_forPlayer)
+				{
+					myTextPanel.WritePublicTitle(publicTitle_forPlayer);
+					myTextPanel.AddImageToSelection(radarIconId);
+					//myTextPanel.ShowTextureOnScreen();
+				}
+		}
+
+		/// <summary>
+		/// Create a message and send to programmable block
+		/// </summary>
+		private void runProgram()
+		{
+			if (findProgBlock())
+			{
+				myLogger.debugLog("sending message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
+				Message toSend = new Message(messageToProgram, myProgBlock.CubeBlock, myCubeBlock);
+				myProgBlock.receive(toSend);
+				sentToProgram = true;
+			}
+			else
+				sentToProgram = false;
+		}
+
+		private void replaceEntityIdsWithLastSeen()
+		{
+			if (!findAntenna())
+				return;
+
+			string[] allLines = myTextPanel.GetPublicText().Split('\n');
+			Vector3D myPos = myCubeBlock.GetPosition();
+			int count = 0;
+			StringBuilder newText = new StringBuilder();
+			foreach (string line in allLines)
+			{
+				if (string.IsNullOrWhiteSpace(line))
+					continue;
+
+				myLogger.debugLog("checking line: " + line, "replaceEntityIdsWithLastSeen()");
+				long entityId = long.Parse(line);
+				myLogger.debugLog("got long: " + entityId, "replaceEntityIdsWithLastSeen()");
+				LastSeen seen;
+				if (myAntenna.tryGetLastSeen(entityId, out seen))
+				{
+					myLogger.debugLog("got last seen: " + seen, "replaceEntityIdsWithLastSeen()");
+					IMyCubeGrid cubeGrid = seen.Entity as IMyCubeGrid;
+					if (cubeGrid == null)
+					{
+						myLogger.log("cubeGrid from LastSeen is null", "replaceEntityIdsWithLastSeen()", Logger.severity.WARNING);
+						continue;
+					}
+					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).mostHostile();
+					newText.Append((new sortableLastSeen(myPos, seen, relations)).TextForPlayer(count++));
+					myLogger.debugLog("append OK", "replaceEntityIdsWithLastSeen()");
+				}
+			}
+			myTextPanel.WritePublicText(newText.ToString());
+			myTextPanel.WritePublicTitle(publicTitle_fromProgramParsed);
 		}
 
 		private class sortableLastSeen : IComparable<sortableLastSeen>
 		{
 			private readonly IMyCubeBlockExtensions.Relations relations;
-			private readonly int distance;
+			private readonly long distance;
 			private readonly int seconds;
 			private readonly LastSeen seen;
 			private readonly Vector3D predictedPos;
@@ -148,13 +334,13 @@ namespace Rynchodon.AntennaRelay
 				this.relations = relations;
 				TimeSpan sinceLastSeen;
 				predictedPos = seen.predictPosition(out sinceLastSeen);
-				distance = (int)(predictedPos - myPos).Length();
+				distance = (long)(predictedPos - myPos).Length();
 				seconds = (int)sinceLastSeen.TotalSeconds;
 			}
 
-			public StringBuilder ToStringBuilder(int count)
+			public StringBuilder TextForPlayer(int count)
 			{
-				string time = (seconds / 60).ToString("00") + ":" + (seconds % 60).ToString("00");
+				string time = (seconds / 60).ToString("00") + separator + (seconds % 60).ToString("00");
 				bool friendly = relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Faction) || relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Owner);
 				string bestName = seen.Entity.getBestName();
 
@@ -172,7 +358,7 @@ namespace Rynchodon.AntennaRelay
 						builder.Append("Has Radar");
 						builder.Append(tab);
 					}
-				builder.Append(distance);
+				builder.Append(PrettySI.makePretty(distance));
 				builder.Append('m');
 				builder.Append(tab);
 				builder.Append(time);
@@ -193,13 +379,36 @@ namespace Rynchodon.AntennaRelay
 					builder.Append('#');
 					builder.Append(count);
 				}
-				builder.Append(':');
+				builder.Append(separator);
 				builder.Append((int)predictedPos.X);
-				builder.Append(':');
+				builder.Append(separator);
 				builder.Append((int)predictedPos.Y);
-				builder.Append(':');
+				builder.Append(separator);
 				builder.Append((int)predictedPos.Z);
-				builder.Append(":\n");
+				builder.Append(separator + "\n");
+
+				return builder;
+			}
+
+			public StringBuilder TextForProgram()
+			{
+				bool friendly = relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Faction) || relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Owner);
+				string bestName;
+				if (friendly)
+					bestName = seen.Entity.getBestName();
+				else
+					bestName = "Unknown";
+
+				StringBuilder builder = new StringBuilder();
+				builder.Append(seen.Entity.EntityId); builder.Append(separator);
+				builder.Append(relations); builder.Append(separator);
+				builder.Append(bestName); builder.Append(separator);
+				builder.Append(seen.EntityHasRadar); builder.Append(separator);
+				builder.Append(distance); builder.Append(separator);
+				builder.Append(seconds); builder.Append(separator);
+				if (seen.Info != null)
+					builder.Append(seen.Info.Volume);
+				builder.AppendLine();
 
 				return builder;
 			}

@@ -11,7 +11,7 @@ using VRageMath;
 namespace Rynchodon.Autopilot
 {
 	/// <summary>
-	/// Obtains a lock on core thread while performing an action. Locks can only be obtained while core is running.
+	/// Obtains a shared lock on core thread while performing an action. Locks can only be obtained while core is running.
 	/// </summary>
 	internal static class MainLock
 	{
