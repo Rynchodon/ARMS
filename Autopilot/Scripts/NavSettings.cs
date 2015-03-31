@@ -35,7 +35,6 @@ namespace Rynchodon.Autopilot
 		public DateTime waitUntil;
 		public DateTime waitUntilNoCheck;
 		public string searchBlockName; // might want to remove this one
-		public Queue<string> instructions;
 		public TARGET lockOnTarget;
 		public int lockOnRangeEnemy;
 		public string lockOnBlock;
@@ -63,7 +62,6 @@ namespace Rynchodon.Autopilot
 		public Vector3 landOffset { get { return landOffset_value; } }
 		public Vector3D? landingSeparateWaypoint;
 		public Sandbox.ModAPI.IMyCubeBlock landingSeparateBlock;
-		//public bool forcedStopAtDest = true;
 
 		private bool value__jump_to_dest = false;
 		public bool jump_to_dest
@@ -92,15 +90,21 @@ namespace Rynchodon.Autopilot
 		public LANDING landingState = LANDING.OFF;
 
 		private Navigator myNav;
-		private GridDimensions myGridDims { get { return myNav.myGridDim;}}
+		private GridDimensions myGridDims
+		{
+			get
+			{
+				if (myNav == null)
+					return null;
+				return myNav.myGridDim;
+			}
+		}
+
+		public bool ignoreAsteroids = false;
 
 		public NavSettings(Navigator owner)
 		{
 			this.myNav = owner;
-			//this.myGridDims = owner.myGridDim;
-			//if (logger != null)
-			//logger.WriteLine("initialized navigation settings");
-			instructions = new Queue<string>();
 			isAMissile = false;
 			waitUntil = DateTime.UtcNow;
 			waitUntilNoCheck = DateTime.UtcNow;
@@ -114,12 +118,14 @@ namespace Rynchodon.Autopilot
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 
 			// private vars
-			//waypoints = new Stack<Vector3D>();
 			myWaypoint = null;
 			coordDestination = null;
 			CurrentGridDest = null;
 
 			startOfCommands(); // for consistency
+
+			if (myNav != null && myNav.myGrid != null)
+				myLogger = new Logger(myNav.myGrid.DisplayName, "NavSettings");
 		}
 
 		/// <summary>
@@ -138,32 +144,24 @@ namespace Rynchodon.Autopilot
 			destinationRadius = 100;
 		}
 
+		/// <summary>
+		/// reset some variables when adding or removing a waypoint or destination
+		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
 			collisionUpdateSinceWaypointAdded = 0;
-			if (myGridDims == null)
-				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
-
 			clearSpeedInternal();
+			ignoreAsteroids = false;
+
+			if (myGridDims == null)
+			{
+				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
+				VRage.Exceptions.ThrowIf<NullReferenceException>(true);
+			}
 		}
 
-		//private Stack<Vector3D> waypoints;
 		private Vector3D? myWaypoint;
 		private Vector3D? coordDestination;
-
-		//public LastSeen LastSeenDest { get; private set; }
-
-		//public IMyCubeGrid gridDestination
-		//{
-		//	get
-		//	{
-		//		IMyCubeGrid value = LastSeenDest.Entity as IMyCubeGrid;
-		//		if (value == null)
-		//			myLogger.log("LastSeenDest.Entity is not a grid", "gridDestination", Logger.severity.FATAL);
-		//		return value;
-		//	}
-		//}
-		//public IMyCubeBlock closestBlock { get; private set; }
 
 		/// <summary>
 		/// to keep ship from moving until at least one collision check has happend.
@@ -200,88 +198,58 @@ namespace Rynchodon.Autopilot
 		}
 		public void clearSpeedInternal()
 		{
+			myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 		}
 
-		private Logger myLogger = null;// = new Logger(myGrid.DisplayName, "Collision");
+		private Logger myLogger = new Logger(null, "NavSettings");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(myGridDims.myGrid.DisplayName, "NavSettings");
-			myLogger.log(level, method, toLog);
-		}
+		{ myLogger.log(level, method, toLog); }
 
-		//public bool destinationIsFarEnough(double distance)
-		//{
-		//	if (isAMissile || destinationRadius == 0 || landLocalBlock != null || landingState != LANDING.OFF)
-		//		return true;
-		//	distance -= (double)myGridDims.getLongestDim();
-		//	return (distance > 2 * destinationRadius);
-		//}
-
-		//public bool waypointIsFarEnough(Vector3D waypoint)
-		//{
-		//	double distanceSquared = (myGridDims.myRC.GetPosition() - waypoint).LengthSquared();
-		//	double longestDim = myGridDims.getLongestDim();
-		//	return distanceSquared - longestDim * longestDim > destinationRadius * destinationRadius;
-		//}
-
-		//private bool destinationIsFarEnough(BoundingBoxD destination)
-		//{
-		//	return destinationIsFarEnough(myGridDims.getRCdistanceTo(destination));
-		//}
-
+		/// <summary>
+		/// sets coordinates as destination
+		/// </summary>
+		/// <param name="coordinates"></param>
 		public void setDestination(Vector3D coordinates)
 		{
+			myLogger.debugLog("entered setDestination(" + coordinates + ")", "setDestination()");
 			onWayDestAddedRemoved();
 			coordDestination = coordinates;
 		}
-		//public void setDestination(Sandbox.ModAPI.IMyCubeGrid grid)
-		//{
-		//	onWayDestAddedRemoved();
-		//	gridDestination = grid;
-		//}
-		//public void setDestination(Sandbox.ModAPI.IMyCubeBlock block)
-		//{
-		//	onWayDestAddedRemoved();
-		//	gridDestination = block.CubeGrid;
-		//	closestBlock = block;
-		//}
-		///// <summary>
-		///// if block is not null use it, otherwise use grid
-		///// </summary>
-		//public void setDestination(Sandbox.ModAPI.IMyCubeBlock block, Sandbox.ModAPI.IMyCubeGrid grid)
-		//{
-		//	if (block == null)
-		//		setDestination(grid);
-		//	else
-		//		setDestination(block);
-		//}
+		/// <summary>
+		/// sets a grid as a destination
+		/// </summary>
+		/// <param name="ls"></param>
+		/// <param name="destBlock"></param>
+		/// <param name="seenBy"></param>
 		public void setDestination(LastSeen ls, IMyCubeBlock destBlock, IMyCubeBlock seenBy)
 		{
+			myLogger.debugLog("entered setDestination()", "setDestination()");
 			onWayDestAddedRemoved();
 			CurrentGridDest = new GridDestination(ls, destBlock, seenBy, myNav);
 		}
+		/// <summary>
+		/// sets a waypoint; a coordinate that will be flown to before the destination
+		/// </summary>
+		/// <param name="waypoint"></param>
+		/// <param name="forced"></param>
+		/// <returns></returns>
 		public bool addWaypoint(Vector3D waypoint, bool forced = false)
 		{
 			onWayDestAddedRemoved();
 			if (forced)
 			{
-				//waypoints.Push(waypoint);
 				myWaypoint = waypoint;
 				return true;
 			}
-			//bool farEnough = waypointIsFarEnough(waypoint);
-			//if (farEnough)
-				//waypoints.Push(waypoint);
 				myWaypoint = waypoint;
 			return true;
 		}
 
 		/// <summary>
-		/// removes one waypoint or destination
+		/// removes the waypoint if one exists, otherwise removes the destination
 		/// </summary>
 		public void atWayDest()
 		{
@@ -310,11 +278,9 @@ namespace Rynchodon.Autopilot
 					match_roll = null;
 					landLocalBlock = null;
 					landDirection = null;
-					//landOffset = Vector3.Zero;
 					jump_to_dest = false;
 					return;
 				case TypeOfWayDest.WAYPOINT:
-					//waypoints.Pop();
 					myWaypoint = null;
 					return;
 				default:
@@ -341,7 +307,6 @@ namespace Rynchodon.Autopilot
 				case TypeOfWayDest.GRID:
 					return CurrentGridDest.GetGridPos();
 				case TypeOfWayDest.WAYPOINT:
-					//return waypoints.Peek();
 					return myWaypoint;
 				default:
 					log("unknown type " + getTypeOfWayDest(), "getWayDest()", Logger.severity.ERROR);
@@ -352,7 +317,6 @@ namespace Rynchodon.Autopilot
 		public enum TypeOfWayDest : byte { NULL, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 		public TypeOfWayDest getTypeOfWayDest()
 		{
-			//if (waypoints.Count > 0)
 			if (myWaypoint != null)
 				return TypeOfWayDest.WAYPOINT;
 
@@ -406,7 +370,7 @@ namespace Rynchodon.Autopilot
 			world += (destination_offset.Y + useLandOffset.Y) * CurrentGridDest.Block.WorldMatrix.Up;
 			world += (destination_offset.Z + useLandOffset.Z) * CurrentGridDest.Block.WorldMatrix.Backward;
 
-			//log("grabbed vectors: "+ Base6Directions.GetVector(closestBlock.Orientation.Left)+", "+Base6Directions.GetVector(closestBlock.Orientation.Up)+", "+Base6Directions.GetVector(closestBlock.Orientation.Forward));
+			//log("grabbed vectors: " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Left) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Up) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Forward), "offsetToWorld()");
 			//log("destination_offset=" + destination_offset + ", landingState=" + landingState + ", landOffset is " + landOffset + ", useLandOffset is " + useLandOffset + ", world vector is " + world, "offsetToWorld()", Logger.severity.TRACE);
 			return world;
 		}

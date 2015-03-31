@@ -10,17 +10,20 @@ using VRage;
 
 namespace Rynchodon
 {
-	// The prefered way to use Logger is as follows:
-	//		each class shall have "#define LOG_ENABLED // remove on build" as its first line to enable debug logging
-	//		each class shall declare a Logger field (usually myLogger) that must be initialized
-	//		the constructor/initializer may replace myLogger with a more verbose one
-	//		all logging actions shall be performed by calling myLogger.log() or myLogger.debugLog()
-	//		notifications shall use myLogger.notify() or myLogger.debugNotify()
-	//
-	// Log4J Pattern for GamutLogViewer: [%date][%level][%Grid][%Class][%Method][%PriState][%SecState]%Message
+	// 
 	/// <summary>
-	/// Generates log files to be read by GamutLogViewer. For usage, see Logger.cs
+	/// Generates log files to be read by GamutLogViewer.
 	/// </summary>
+	/// <remarks>
+	/// <para>The prefered way to use Logger is as follows:</para>
+	///	<para>    each class shall have "#define LOG_ENABLED // remove on build" as its first line to enable debug logging</para>
+	///	<para>    each class shall declare a Logger field (usually myLogger) that must be initialized</para>
+	///	<para>    the constructor/initializer may replace myLogger with a more verbose one</para>
+	///	<para>    all logging actions shall be performed by calling myLogger.log() or myLogger.debugLog()</para>
+	///	<para>    notifications shall use myLogger.notify() or myLogger.debugNotify()</para>
+	/// <para> </para>
+	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Grid][%Class][%Method][%PriState][%SecState]%Message</para>
+	/// </remarks>
 	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.NoUpdate)]
 	public class Logger : Sandbox.Common.MySessionComponentBase
 	{
@@ -152,9 +155,9 @@ namespace Rynchodon
 		/// <summary>
 		/// For logging WARNING and higher severity.
 		/// </summary>
-		/// <param name="level">message to log</param>
+		/// <param name="level">severity level</param>
 		/// <param name="methodName">calling method</param>
-		/// <param name="toLog">severity level</param>
+		/// <param name="toLog">message to log</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		public void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
@@ -248,7 +251,6 @@ namespace Rynchodon
 		{ 
 			notify(message, disappearTimeMs, level);
 		}
-
 		
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.

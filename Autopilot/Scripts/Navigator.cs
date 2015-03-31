@@ -1,4 +1,4 @@
-﻿#define DEBUG //remove on build
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -25,11 +25,11 @@ namespace Rynchodon.Autopilot
 	public class Navigator
 	{
 		private Logger myLogger = null;
-		[System.Diagnostics.Conditional("DEBUG")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{			alwaysLog(level, method, toLog);		}
+		{ alwaysLog(level, method, toLog); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.WARNING)
-		{			alwaysLog(level, method, toLog);		}
+		{ alwaysLog(level, method, toLog); }
 		private void alwaysLog(Logger.severity level, string method, string toLog)
 		{
 			try
@@ -53,9 +53,12 @@ namespace Rynchodon.Autopilot
 		private Collision myCollisionObject;
 		internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
-		internal NewTargeter myTargeter;
+		internal Targeter myTargeter;
 
 		private IMyControllableEntity currentRemoteControl_Value;
+		/// <summary>
+		/// Primary remote control value.
+		/// </summary>
 		public IMyControllableEntity currentRCcontrol
 		{
 			get { return currentRemoteControl_Value; }
@@ -77,7 +80,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				currentRemoteControl_Value = value;
-				IMyCubeBlock currentRCblock = (currentRemoteControl_Value as IMyCubeBlock);
+				//IMyCubeBlock currentRCblock = (currentRemoteControl_Value as IMyCubeBlock); // WTF?
 				myLand = null;
 				if (currentRemoteControl_Value == null)
 				{
@@ -90,15 +93,16 @@ namespace Rynchodon.Autopilot
 					myGridDim = new GridDimensions(currentRCblock);
 					myCollisionObject = new Collision(myGridDim); //(currentRCblock, out distance_from_RC_to_front);
 					CNS = new NavSettings(this);
+					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
 				}
 
 				if (currentRemoteControl_Value != null)
 				{
 					// actions on new RC
+					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
+					fullStop("new RC"); 
 					reportState(ReportableState.OFF);
-					//if (currentRCblock.NeedsUpdate == MyEntityUpdateEnum.NONE)
-					//	currentRCblock.NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
 				}
 
 				// some variables
@@ -108,11 +112,17 @@ namespace Rynchodon.Autopilot
 				inflightDecelerateRotation = 1f / 2f;
 			}
 		}
+		/// <summary>
+		/// Secondary remote control value.
+		/// </summary>
 		public Sandbox.ModAPI.IMyCubeBlock currentRCblock
 		{
 			get { return currentRemoteControl_Value as Sandbox.ModAPI.IMyCubeBlock; }
 			set { currentRCcontrol = value as IMyControllableEntity; }
 		}
+		/// <summary>
+		/// Secondary remote control value.
+		/// </summary>
 		public IMyTerminalBlock currentRCterminal
 		{ get { return currentRemoteControl_Value as IMyTerminalBlock; } }
 
@@ -155,12 +165,12 @@ namespace Rynchodon.Autopilot
 
 			currentThrust = new ThrustProfiler(myGrid);
 			CNS = new NavSettings(null);
-			myTargeter = new NewTargeter(this);
+			myTargeter = new Targeter(this);
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
 		}
 
-		private void OnClose()
+		internal void Close()
 		{
 			if (myGrid != null)
 			{
@@ -168,27 +178,24 @@ namespace Rynchodon.Autopilot
 				myGrid.OnBlockAdded -= OnBlockAdded;
 				myGrid.OnBlockRemoved -= OnBlockRemoved;
 			}
-			Core.remove(this);
 			currentRCcontrol = null;
+		}
+
+		private void OnClose()
+		{
+			Close();
+			Core.remove(this);
 		}
 
 		private void OnClose(IMyEntity closing)
 		{ try { OnClose(); } catch { } }
 
-		//private bool needToUpdateBlocks;
 		private static MyObjectBuilderType remoteControlType = typeof(MyObjectBuilder_RemoteControl);
-
-		//private void OnBlockOwnershipChanged(Sandbox.ModAPI.IMyCubeGrid changedBlock)
-		//{
-		//	//needToUpdateBlocks = true;
-
-		//}
 
 		private void OnBlockAdded(Sandbox.ModAPI.IMySlimBlock addedBlock)
 		{
 			if (addedBlock.FatBlock != null && addedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
 				remoteControlBlocks.Add(addedBlock);
-				//needToUpdateBlocks = true;
 		}
 
 		private void OnBlockRemoved(Sandbox.ModAPI.IMySlimBlock removedBlock)
@@ -197,7 +204,6 @@ namespace Rynchodon.Autopilot
 			{
 				if (removedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
 					remoteControlBlocks.Remove(removedBlock);
-					//needToUpdateBlocks = true;
 			}
 		}
 
@@ -206,12 +212,12 @@ namespace Rynchodon.Autopilot
 
 		/// <summary>
 		/// Causes the ship to fly around, following commands.
-		/// Calling more often means more precise movements, calling too often (~ every update) will break functionality.
 		/// </summary>
+		/// <remarks>
+		/// Calling more often means more precise movements, calling too often (~ every update) will break functionality.
+		/// </remarks>
 		public void update()
 		{
-			//if (CNS != null)
-			//	log("destination radius = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.TRACE);
 			updateCount++;
 			if (gridCanNavigate())
 			{
@@ -249,11 +255,18 @@ namespace Rynchodon.Autopilot
 			else // no waypoints
 			{
 				//log("no waypoints or destination");
-				if (CNS.instructions.Count > 0)
+				if (currentRCcontrol != null && myInterpreter.hasInstructions())
 				{
-					while (CNS.instructions.Count > 0)
+					while (myInterpreter.hasInstructions())
 					{
-						addInstruction(CNS.instructions.Dequeue());
+						myLogger.debugLog("invoking instruction: " + myInterpreter.getCurrentInstructionString(), "update()");
+						Action instruction = myInterpreter.instructionQueue.Dequeue();
+						try { instruction.Invoke(); }
+						catch (Exception ex)
+						{
+							myLogger.log("Exception while invoking instruction: " + ex, "update()", Logger.severity.ERROR);
+							continue;
+						}
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
@@ -283,14 +296,13 @@ namespace Rynchodon.Autopilot
 								return;
 						}
 					}
-					// at end of instructions
-					//CNS.startOfCommands();
+					// at end of allInstructions
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 					return;
 				}
 				else
 				{
-					// find a remote control with NavSettings instructions
+					// find a remote control with NavSettings allInstructions
 					reportState(ReportableState.NO_DEST);
 					//log("searching for a ready remote control", "update()", Logger.severity.TRACE);
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
@@ -310,17 +322,20 @@ namespace Rynchodon.Autopilot
 								string instructions = fatBlock.getInstructions();
 								if (string.IsNullOrWhiteSpace(instructions))
 									continue;
-								//log("instructions = "+instructions, "update()", Logger.severity.TRACE);
-								//log("instructions = " + instructions.Replace(" ", string.Empty), "update()", Logger.severity.TRACE);
-								string[] inst = instructions.Replace(" ", string.Empty).Split(':'); // split into CNS.instructions
-								if (inst.Length == 0)
-									continue;
-								//log("found a ready remote control " + fatBlock.DisplayNameText, "update()", Logger.severity.TRACE);
-								CNS.instructions = new Queue<string>(inst);
-								currentRCcontrol = (fatBlock as IMyControllableEntity);
-								CNS.startOfCommands();
-								log("remote control: " + getRCNameOnly(fatBlock) + " finished queuing " + CNS.instructions.Count + " of " + inst.Length + " instructions", "update()", Logger.severity.TRACE);
-								return;
+
+								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
+								if (myInterpreter == null)
+									myInterpreter = new Interpreter(this);
+								myInterpreter.enqueueAllActions(instructions);
+								if (myInterpreter.hasInstructions())
+								{
+									CNS.startOfCommands();
+									log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instruction", "update()", Logger.severity.TRACE);
+									return;
+								}
+								myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
+								currentRCcontrol = null;
+								continue;
 							}
 						}
 					}
@@ -329,371 +344,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		private void runActionOnBlock(string blockName, string actionString)
-		{
-			//log("entered runActionOnBlock("+blockName+", "+actionString+")", "runActionOnBlock()", Logger.severity.TRACE);
-			blockName = blockName.ToLower().Replace(" ", "");
-			actionString = actionString.Trim();
-
-			List<IMySlimBlock> blocksWithName = new List<IMySlimBlock>();
-			//ITerminalAction actionToRun = null;
-			myGrid.GetBlocks(blocksWithName);//, block => block.FatBlock != null && block.FatBlock.DisplayNameText.Contains(blockName));
-			foreach (IMySlimBlock block in blocksWithName){
-				IMyCubeBlock fatblock = block.FatBlock;
-				if (fatblock == null)
-					continue;
-
-				Sandbox.Common.MyRelationsBetweenPlayerAndBlock relationship = fatblock.GetUserRelationToOwner(currentRCblock.OwnerId);
-				if (relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.Owner && relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.FactionShare)
-				{
-					//log("failed relationship test for " + fatblock.DisplayNameText + ", result was " + relationship.ToString(), "runActionOnBlock()", Logger.severity.TRACE);
-					continue;
-				}
-				//log("passed relationship test for " + fatblock.DisplayNameText + ", result was " + relationship.ToString(), "runActionOnBlock()", Logger.severity.TRACE);
-
-				//log("testing: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
-				// name test
-				if (fatblock is Ingame.IMyRemoteControl)
-				{
-					string nameOnly = getRCNameOnly(fatblock);
-					if (nameOnly == null || !nameOnly.Contains(blockName))
-						continue;
-				}
-				else
-				{
-					if (!looseContains(fatblock.DisplayNameText, blockName))
-					{
-						//log("testing failed " + fatblock.DisplayNameText + " does not contain " + blockName, "runActionOnBlock()", Logger.severity.TRACE);
-						continue;
-					}
-					//log("testing successfull " + fatblock.DisplayNameText + " contains " + blockName, "runActionOnBlock()", Logger.severity.TRACE);
-				}
-
-				if (!(fatblock is IMyTerminalBlock))
-				{
-					//log("not a terminal block: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
-					continue;
-				}
-				IMyTerminalBlock terminalBlock = fatblock as IMyTerminalBlock;
-				ITerminalAction	actionToRun = terminalBlock.GetActionWithName(actionString); // get actionToRun on every iteration so invalid blocks can be ignored
-				if (actionToRun != null)
-				{
-					log("running action: " + actionString + " on block: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.DEBUG);
-					actionToRun.Apply(fatblock);
-				}
-				else
-					log("could not get action: " + actionString + " for: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
-			}
-		}
-
 		private Interpreter myInterpreter;
-
-		// Do not add to this method, it is replaced by Instuction.
-		/// <summary>
-		/// adds a single instruction to this handler
-		/// </summary>
-		/// <param name="instruction">the instruction to add</param>
-		private void addInstruction(string instruction)
-		{
-			log("entered addInstruction(" + instruction + ")", "addInstruction()", Logger.severity.TRACE);
-
-			if (instruction.Length < 2)
-				return;
-
-			string lowerCase = instruction.ToLower();
-			string data = lowerCase.Substring(1);
-
-			if (looseContains(instruction, "EXIT"))
-			{
-				CNS.EXIT = true;
-				reportState(ReportableState.OFF);
-				fullStop("EXIT");
-				return;
-			}
-			if (looseContains(instruction, "JUMP"))
-			{
-				log("setting jump", "addInstruction()", Logger.severity.DEBUG);
-				CNS.jump_to_dest = true;
-				return;
-			}
-
-			if (looseContains(instruction, "LOCK"))
-			{
-				if (CNS.landingState == NavSettings.LANDING.LOCKED)
-				{
-					log("staying locked. local=" + CNS.landingSeparateBlock.DisplayNameText, "addInstruction()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
-					CNS.landingState = NavSettings.LANDING.OFF;
-					CNS.landingSeparateBlock = null;
-					CNS.landingSeparateWaypoint = null;
-					setDampeners(); // dampeners will have been turned off for docking
-				}
-				return;
-			}
-
-			switch (lowerCase[0])
-			{
-				case 'a': // action, run an action on (a) block(s)
-					{
-						data = instruction.Substring(1); // restore case
-						string[] split = data.Split(',');
-						if (split.Length == 2)
-							runActionOnBlock(split[0], split[1]);
-						return;
-					}
-				case 'b': // block: for friendly, search by name. for enemy, search by type
-					{
-						string[] dataParts = data.Split(',');
-						if (dataParts.Length != 2)
-						{
-							CNS.tempBlockName = data;
-							return;
-						}
-						CNS.tempBlockName = dataParts[0];
-						Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
-						if (dataDir != null)
-							CNS.landDirection = dataDir;
-							//CNS.landOffset = Base6Directions.GetVector((Base6Directions.Direction)dataDir);
-						return;
-					}
-				case 'c': // coordinates
-					{
-						string[] coordsString = data.Split(',');
-						if (coordsString.Length == 3)
-						{
-							double[] coordsDouble = new double[3];
-							for (int i = 0; i < coordsDouble.Length; i++)
-								if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
-									return;
-							Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-							CNS.setDestination(destination);
-						}
-						return;
-					}
-				case 'e': // fly to nearest enemy, set max lock-on, block
-					goto case 'm';
-				//case 'f': // fly a given distance relative to RC
-				//	{
-						//string[] coordsString = data.Split(',');
-						//if (coordsString.Length == 3)
-						//{
-						//	double[] coordsDouble = new double[3];
-						//	for (int i = 0; i < coordsDouble.Length; i++)
-						//		if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
-						//		{
-						//			//log("failed to parse " + coordsString[i] + " to double", "addInstruction()", Logger.severity.TRACE);
-						//			return;
-						//		}
-						//	Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-						//	destination = GridWorld.RCtoWorld(currentRCblock, destination);
-						//	CNS.setDestination(destination);
-						//	//if (CNS.setDestination(destination))
-						//	//{
-						//		//log("added " + destination + " as a relative destination, type response=" + CNS.getTypeOfWayDest(), "addInstruction()", Logger.severity.TRACE);
-						//	//}
-						//	//else
-						//	//	log("failed to add " + destination + " as a fly to destination", "addInstruction()", Logger.severity.TRACE);
-						//}
-						////else
-						//	//log("wrong number of coords " + coordsString.Length, "addInstruction()", Logger.severity.TRACE);
-					//	return;
-					//}
-				//case 'g': // grid: closest friendly grid that contains the string
-				//	{
-				//		CNS.searchBlockName = CNS.tempBlockName;
-				//		CNS.tempBlockName = null;
-				//		Sandbox.ModAPI.IMyCubeBlock closestBlock;
-				//		Sandbox.ModAPI.IMyCubeGrid closestGrid = myTargeter.findCubeGrid(out closestBlock, true, data, CNS.searchBlockName);
-				//		IMyCubeBlock bestBlockMatch;
-				//		LastSeen bestGridMatch;
-
-				//		if (closestGrid != null)
-				//		{
-				//			//if (CNS.setDestination(closestBlock, closestGrid))
-				//			//{
-				//			//log("grid destination set", "addInstruction()", Logger.severity.TRACE);
-				//			//log("CNS.landLocalBlock = " + CNS.landLocalBlock + ", CNS.landOffset = " + CNS.landOffset, "addInstruction()", Logger.severity.TRACE);
-				//			CNS.setDestination(closestBlock, closestGrid);
-				//			if (CNS.closestBlock != null && CNS.landLocalBlock != null && CNS.landDirection == null)
-				//			{
-				//				Base6Directions.Direction? landDir;// = Lander.landingDirection(CNS.closestBlock);
-				//				if (!Lander.landingDirection(CNS.closestBlock, out landDir))
-				//				{
-				//					log("could not get landing direction from block: " + CNS.landLocalBlock.DefinitionDisplayNameText, "calcOrientationFromBlockDirection()", Logger.severity.INFO);
-				//					return;
-				//				}
-				//				CNS.landDirection = landDir;// = Lander.landingDirection(CNS.closestBlock);
-				//				//CNS.landOffset = Base6Directions.GetVector((Base6Directions.Direction)Lander.landingDirection(CNS.closestBlock));
-				//				log("set land offset to " + CNS.landOffset, "addInstruction()", Logger.severity.TRACE);
-				//			}
-				//			//}
-				//			//else
-				//			//{
-				//			//	string block;
-				//			//	if (closestBlock == null)
-				//			//		block = "null";
-				//			//	else
-				//			//		block = closestBlock.DisplayNameText;
-				//			//	log("could not add block/grid destination: " + block + " : " + closestGrid.DisplayName);
-				//			//}
-				//		}
-				//		return;
-				//	}
-				//case 'l': // for landing or docking, specify direction and local block
-				//	{
-				//		//string[] dataParts = data.Split(',');
-				//		//if (dataParts.Length != 2)
-				//		//	return;
-				//		//Base6Directions.Direction? dataDir = stringToDirection(dataParts[0]);
-				//		//if (dataDir == null)
-				//		//{
-				//		//	log("could not get a direction for landing", "addInstruction()", Logger.severity.DEBUG);
-				//		//	return;
-				//		//}
-				//		IMyCubeBlock landLocalBlock;
-				//		myTargeter.findClosestCubeBlockOnGrid(out landLocalBlock, myGrid, data, true);
-				//		CNS.landLocalBlock = landLocalBlock;
-				//		if (CNS.landLocalBlock == null)
-				//		{
-				//			log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
-				//			return;
-				//		}
-
-				//		//CNS.landOffset = Base6Directions.GetVector((Base6Directions.Direction)dataDir);
-				//		//CNS.landRCdirection = myGridDim.direction_getLandRCdirection(landLocalBlock);
-				//		return;
-				//	}
-				case 'm': // same as e, but will crash into target
-					{
-						double parsed;
-						if (Double.TryParse(data, out parsed))
-						{
-							if (lowerCase[0] == 'e')
-								CNS.lockOnTarget = NavSettings.TARGET.ENEMY;
-							else
-								CNS.lockOnTarget = NavSettings.TARGET.MISSILE;
-							CNS.lockOnRangeEnemy = (int)parsed;
-							CNS.lockOnBlock = CNS.tempBlockName;
-						}
-						else
-						{
-							CNS.lockOnTarget = NavSettings.TARGET.OFF;
-							CNS.lockOnRangeEnemy = 0;
-							CNS.lockOnBlock = null;
-							log("stopped tracking enemies");
-						}
-						CNS.tempBlockName = null;
-						return;
-					}
-				//case 'o': // destination offset, should be cleared after every waypoint
-				//	{
-				//		string[] coordsString = data.Split(',');
-				//		if (coordsString.Length == 3)
-				//		{
-				//			double[] coordsDouble = new double[3];
-				//			for (int i = 0; i < coordsDouble.Length; i++)
-				//				if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
-				//					return;
-				//			CNS.destination_offset = new Vector3I((int)coordsDouble[0], (int)coordsDouble[1], (int)coordsDouble[2]);
-				//			log("setting offset to " + CNS.destination_offset, "addInstruction()", Logger.severity.DEBUG);
-				//		}
-				//		return;
-				//	}
-				//case 'p': // how close ship needs to be to destination
-				//	{
-				//		double parsed;
-				//		if (double.TryParse(data, out parsed))
-				//			CNS.destinationRadius = (int)parsed;
-				//		return;
-				//	}
-				case 'r': // match orientation
-					{
-						CNS.match_direction = null;
-						CNS.match_roll = null;
-						string[] orientation = data.Split(',');
-						if (orientation.Length == 0 || orientation.Length > 2)
-							break;
-						Base6Directions.Direction? dir = stringToDirection(orientation[0]);
-						//log("got dir "+dir);
-						if (dir == null)
-							break;
-						CNS.match_direction = (Base6Directions.Direction)dir;
-
-						if (orientation.Length == 1)
-							return;
-						Base6Directions.Direction? roll = stringToDirection(orientation[1]);
-						//log("got roll " + roll);
-						if (roll == null)
-							return;
-						CNS.match_roll = (Base6Directions.Direction)roll;
-
-						return;
-					}
-				case 'v': // speed limits
-					{
-						string[] speeds = data.Split(',');
-						if (speeds.Length == 2)
-						{
-							double[] parsedArray = new double[2];
-							for (int i = 0; i < parsedArray.Length; i++)
-							{
-								if (!Double.TryParse(speeds[i], out parsedArray[i]))
-									return;
-							}
-							CNS.speedCruise_external = (int)parsedArray[0];
-							CNS.speedSlow_external = (int)parsedArray[1];
-						}
-						else
-						{
-							double parsed;
-							if (Double.TryParse(data, out parsed))
-								CNS.speedCruise_external = (int)parsed;
-							return;
-						}
-						return;
-					}
-				case 'w': // wait
-					double seconds = 0;
-					if (Double.TryParse(data, out seconds))
-					{
-						if (CNS.waitUntil < DateTime.UtcNow)
-							CNS.waitUntil = DateTime.UtcNow.AddSeconds(seconds);
-						//if (seconds > 1.1)
-						//log("setting wait for " + CNS.waitUntil);
-					}
-					return;
-			}
-			Action instAsAction;
-			log("sending to Interpreter: " + instruction, "addInstruction()", Logger.severity.TRACE);
-			if (myInterpreter.getAction(out instAsAction, instruction))
-			{
-				//log("got action from instruction. instruction = " + instruction+", action = "+instAsAction, "addInstruction", Logger.severity.TRACE);
-				log("parsed by Interpreter: " + instruction, "addInstruction()", Logger.severity.TRACE);
-				instAsAction.Invoke();
-				return;
-			}
-
-			log("failed to parse: " + instruction, "addInstruction()", Logger.severity.TRACE);
-		}
-
-		private Base6Directions.Direction? stringToDirection(string str)
-		{
-			switch (str[0])
-			{
-				case 'f':
-					return Base6Directions.Direction.Forward;
-				case 'b':
-					return Base6Directions.Direction.Backward;
-				case 'l':
-					return Base6Directions.Direction.Left;
-				case 'r':
-					return Base6Directions.Direction.Right;
-				case 'u':
-					return Base6Directions.Direction.Up;
-				case 'd':
-					return Base6Directions.Direction.Down;
-			}
-			return null;
-		}
 
 		public static bool looseContains(string bigstring, string substring)
 		{
@@ -746,7 +397,7 @@ namespace Rynchodon.Autopilot
 		private bool remoteControlIsNotReady = false;
 
 		/// <summary>
-		/// checks the functional and working flags, current player owns it, display name has not changed
+		/// checks the working flag, current player owns it, display name has not changed
 		/// </summary>
 		/// <param name="remoteControl">remote control to check</param>
 		/// <returns>true iff the remote control is ready</returns>
@@ -763,11 +414,6 @@ namespace Rynchodon.Autopilot
 				//log("no remote control", "remoteControlIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			//if (!remoteControl.IsFunctional)
-			//{
-			//	log("not functional", "remoteControlIsReady()", Logger.severity.TRACE);
-			//	return false;
-			//}
 			if (!remoteControl.IsWorking)
 			{
 				log("not working", "remoteControlIsReady()", Logger.severity.TRACE);
@@ -778,7 +424,6 @@ namespace Rynchodon.Autopilot
 				log("no owner", "remoteControlIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			//if (!Core.canControl(remoteControl))
 			if (remoteControl.OwnerId != remoteControl.CubeGrid.BigOwners[0]) // remote control is not owned by grid's owner
 			{
 				log("remote has different owner", "remoteControlIsReady()", Logger.severity.TRACE);
@@ -794,36 +439,10 @@ namespace Rynchodon.Autopilot
 		}
 
 		public bool remoteControlIsReady(IMyControllableEntity remoteControl)
-		{
-			return remoteControlIsReady(remoteControl as Sandbox.ModAPI.IMyCubeBlock);
-		}
+		{ return remoteControlIsReady(remoteControl as Sandbox.ModAPI.IMyCubeBlock); }
 
 		public void reset()
-		{
-			currentRCcontrol = null;
-			//Core.remove(this);
-			////log("resetting");
-			//NavSettings startNav = CNS;
-			//if (currentRCcontrol != null)
-			//{
-			//	try
-			//	{
-			//		fullStop("reset");
-			//	}
-			//	catch (NullReferenceException) { } // when grid is destroyed
-			//	//log("clearing current remote control");
-			//	currentRCcontrol = null;
-			//}
-			//if (object.ReferenceEquals(startNav, CNS))
-			//{
-			//	log("clearing CNS", "reset()", Logger.severity.DEBUG);
-			//	CNS = new NavSettings(this);
-			//}
-			//else
-			//	log("did not clear CNS", "reset()", Logger.severity.TRACE);
-		}
-
-		//public double movementSpeed { get; private set; }
+		{ currentRCcontrol = null; }
 
 		private DateTime maxRotateTime;
 		internal MovementMeasure MM;
@@ -835,6 +454,7 @@ namespace Rynchodon.Autopilot
 			if (!remoteControlIsReady(currentRCblock))
 			{
 				log("remote control is not ready");
+				reportState(ReportableState.OFF);
 				reset();
 				return;
 			}
@@ -931,7 +551,7 @@ namespace Rynchodon.Autopilot
 			{
 				fullStop("At dest");
 				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
-				log("reached destination dist = "+MM.distToWayDest+", proximity = "+CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -1020,10 +640,10 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
-						if (MM.distToWayDest < CNS.destinationRadius * 3
-							|| MM.rotLenSq < rotLenSq_startMove)
+						if (MM.distToWayDest < CNS.destinationRadius * 1.5
+							|| MM.rotLenSq < rotLenSq_switchToMove)
 						{
-							log("on course, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
+							log("on course or nearing dest, switch to moving", "calcAndRotate()", Logger.severity.DEBUG);
 							calcAndMove();
 							CNS.moveState = NavSettings.Moving.MOVING; // switch to moving
 							reportState(ReportableState.MOVING);
@@ -1057,11 +677,11 @@ namespace Rynchodon.Autopilot
 									reportState(ReportableState.MOVING);
 								}
 								else // missile will always end up here (for case NOT_MOVE)
-									{
-										calcAndMove(true);
-										CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid
-										reportState(ReportableState.MOVING);
-									}
+								{
+									calcAndMove(true);
+									CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid
+									reportState(ReportableState.MOVING);
+								}
 							}
 							else
 								reportState(ReportableState.PATHFINDING);
@@ -1080,15 +700,19 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// start moving when less than
-		/// </summary>
-		public const float rotLenSq_startMove = 0.274f;
-		/// <summary>
-		/// not squared
+		/// not squared (5°)
 		/// </summary>
 		public const float rotLen_minimum = 0.0873f;
 		/// <summary>
-		/// stop and rotate when greater than
+		/// switch from hybrid to moving when less than (5°)
+		/// </summary>
+		public const float rotLenSq_switchToMove = 0.00762f;
+		/// <summary>
+		/// start moving when less than (30°)
+		/// </summary>
+		public const float rotLenSq_startMove = 0.274f;
+		/// <summary>
+		/// stop and rotate when greater than (90°)
 		/// </summary>
 		public const float rotLenSq_stopAndRot = 2.47f;
 
@@ -1099,7 +723,7 @@ namespace Rynchodon.Autopilot
 
 		private Vector3 moveDirection = Vector3.Zero;
 
-		private void calcAndMove(bool sidel= false)//, bool anyState=false)
+		private void calcAndMove(bool sidel = false)//, bool anyState=false)
 		{
 			//log("entered calcAndMove("+doSidel+")", "calcAndMove()", Logger.severity.TRACE);
 			movingTooSlow = false;
@@ -1152,7 +776,7 @@ namespace Rynchodon.Autopilot
 						}
 					default:
 						{
-							alwaysLog("unsuported moveState: "+CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
+							alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
 							return;
 						}
 				}
@@ -1174,7 +798,8 @@ namespace Rynchodon.Autopilot
 		/// <param name="pitch"></param>
 		/// <param name="yaw"></param>
 		/// <param name="precision_stopAndRot">for increasing precision of rotLenSq_stopAndRot</param>
-		internal void calcAndRotate(float? precision_stopAndRot=null){
+		internal void calcAndRotate(float? precision_stopAndRot = null)
+		{
 			if (precision_stopAndRot == null)
 				precision_stopAndRot = rotLenSq_stopAndRot;
 
@@ -1322,7 +947,7 @@ namespace Rynchodon.Autopilot
 						{
 							//log("Math.Sign(roll) = " + Math.Sign(roll) + ", Math.Sign(needToRoll) = " + Math.Sign(needToRoll) + ", Math.Abs(roll) = " + Math.Abs(roll) + ", Math.Abs(needToRoll) = " + Math.Abs(needToRoll)
 							//	+ ", decelerateRotation = " + decelerateRotation + ", DateTime.UtcNow = " + DateTime.UtcNow + ", maxRotateTime = " + maxRotateTime);
-							log("decelerate roll, roll="+roll+", needToRoll="+needToRoll, "calcAndRoll()", Logger.severity.DEBUG);
+							log("decelerate roll, roll=" + roll + ", needToRoll=" + needToRoll, "calcAndRoll()", Logger.severity.DEBUG);
 							rollOrder(0);
 							CNS.rollState = NavSettings.Rolling.STOP_ROLL;
 						}
@@ -1508,14 +1133,11 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn())
+			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn()) // already stopped
 				return;
 
-			if (currentRCcontrol == null)
-				return;
-
+			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
 			reportState(ReportableState.STOPPING);
-			log("full stop: "+reason, "fullStop()", Logger.severity.INFO);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
@@ -1618,7 +1240,12 @@ namespace Rynchodon.Autopilot
 			return "Nav:" + myGrid.DisplayName;
 		}
 
-		public enum ReportableState : byte { OFF, PATHFINDING, ROTATING, MOVING, STOPPING, NO_PATH, NO_DEST, MISSILE, ENGAGING, LANDED, PLAYER, JUMP, BROKEN, HYBRID, SIDEL, ROLL, GET_OUT_OF_SEAT, WAITING };
+		public enum ReportableState : byte
+		{
+			OFF, PATHFINDING, NO_PATH, NO_DEST, WAITING,
+			ROTATING, MOVING, STOPPING, HYBRID, SIDEL, ROLL,
+			MISSILE, ENGAGING, LANDED, PLAYER, JUMP, GET_OUT_OF_SEAT
+		};
 		private ReportableState currentReportable = ReportableState.OFF;
 
 		internal bool GET_OUT_OF_SEAT = false;
@@ -1660,24 +1287,39 @@ namespace Rynchodon.Autopilot
 				newState = ReportableState.JUMP;
 
 			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.JUMP)
+			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
 				return;
 			currentReportable = newState;
 
 			// cut old state, if any
-			int endOfState = displayName.IndexOf('>');
-			if (endOfState != -1)
-				displayName = displayName.Substring(endOfState + 1);
+			if (displayName[0] == '<')
+			{
+				int endOfState = displayName.IndexOf('>');
+				if (endOfState != -1)
+					displayName = displayName.Substring(endOfState + 1);
+			}
 
 			// add new state
 			StringBuilder newName = new StringBuilder();
 			newName.Append('<');
+			// error
+			if (myInterpreter.instructionErrorIndex != null)
+				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
+			// actual state
 			newName.Append(newState);
+			// jump time
 			if (newState == ReportableState.JUMP && myJump != null && myJump.currentState == Jumper.GridJumper.State.TRANSFER)
 			{
 				newName.Append(':');
 				newName.Append((int)myJump.estimatedTimeToReadyMillis() / 1000);
 			}
+			// wait time
+			if (newState == ReportableState.WAITING)
+			{
+				newName.Append(':');
+				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
+			}
+
 			newName.Append('>');
 			newName.Append(displayName);
 			//RCDisplayName = newName.ToString();
@@ -1712,44 +1354,18 @@ namespace Rynchodon.Autopilot
 		}
 
 		//private bool ignore_RemoteControl_nameChange = false;
-		private string instructions;
+		public string instructions { get; private set; }
 		private void remoteControl_OnNameChanged(IMyTerminalBlock whichBlock)
 		{
 			string instructionsInBlock = (whichBlock as IMyCubeBlock).getInstructions();
 			if (instructions == null || !instructions.Equals(instructionsInBlock))
 			{
-				//log("RC name changed: " + whichBlock.CustomName+"; inst were: "+instructions+"; are now: "+instructionsInBlock, "remoteControl_OnNameChanged()", Logger.severity.DEBUG);
+				//log("RC name changed: " + whichBlock.CustomName+"; inst were: "+allInstructions+"; are now: "+instructionsInBlock, "remoteControl_OnNameChanged()", Logger.severity.DEBUG);
 				instructions = instructionsInBlock;
 				remoteControlIsNotReady = true;
 				reset();
 				CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 			}
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="rc"></param>
-		/// <returns>null iff name could not be extracted</returns>
-		public static string getRCNameOnly(IMyCubeBlock rc)
-		{
-			string displayName = rc.DisplayNameText;
-			int start = displayName.IndexOf('>') + 1;
-			int end = displayName.IndexOf('[');
-			if (start > 0 && end > start)
-			{
-				int length = end - start;
-				return displayName.Substring(start, length);
-			}
-			if (start > 0)
-			{
-				return displayName.Substring(start);
-			}
-			if (end > 0)
-			{
-				return displayName.Substring(0, end);
-			}
-			return null;
 		}
 	}
 }

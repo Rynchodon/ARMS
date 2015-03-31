@@ -10,6 +10,9 @@ using VRageMath;
 
 namespace Rynchodon
 {
+	/// <summary>
+	/// For converting between local and world Vectors.
+	/// </summary>
 	public class RelativeVector3F
 	{
 		// one of these will always be set on create
@@ -20,16 +23,6 @@ namespace Rynchodon
 
 		private IMyCubeGrid cubeGrid; // always set on create
 		private IMyCubeBlock cubeBlock = null;
-
-		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null) myLogger = new Logger(cubeGrid.DisplayName, "RelativeVector3F");
-			myLogger.log(level, method, toLog);
-		}
 
 		private RelativeVector3F() { }
 
@@ -55,7 +48,6 @@ namespace Rynchodon
 			result.value__block = fromBlock;
 			result.cubeGrid = block.CubeGrid;
 			result.cubeBlock = block;
-			//result.log("value__block = " + result.value__block, "createFromBlock()", Logger.severity.TRACE);
 			return result;
 		}
 
@@ -113,7 +105,6 @@ namespace Rynchodon
 
 			// add block position
 			value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
-			//log("created from block. block = " + (Vector3D)value__block + ", grid = " + (Vector3D)value__grid, "get_grid()", Logger.severity.TRACE);
 			return (Vector3D)value__grid;
 		}
 
@@ -122,11 +113,11 @@ namespace Rynchodon
 			if (this.cubeBlock == cubeBlock)
 				return (Vector3)value__block;
 
-			// create from grid
 			Vector3 v3;
 			MatrixD matrix;
 			if (value__grid != null)
 			{
+				// create from grid
 				v3 = ((Vector3)this.value__grid);
 				matrix = cubeBlock.LocalMatrix;
 			}

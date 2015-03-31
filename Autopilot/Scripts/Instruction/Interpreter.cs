@@ -1,108 +1,557 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-//using System.Collections.Generic;
+using System.Collections.Generic;
 //using System.Linq;
 using System.Text.RegularExpressions;
 
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
+using Sandbox.ModAPI.Interfaces;
+
+using VRage.Collections;
 using VRageMath;
+
 using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot.Instruction
 {
+	public static class InterpreterExtensions
+	{
+		public static bool hasInstructions(this Interpreter toCheck)
+		{ return toCheck != null && toCheck.instructionQueue != null && toCheck.instructionQueue.Count > 0; }
+	}
+
+	/// <summary>
+	/// Parses instructions into Actions
+	/// </summary>
 	public class Interpreter
 	{
-		private Navigator owner;
+		/// <summary>
+		/// When queued actions exceeds the limit, this exception will be thrown.
+		/// </summary>
+		public class InstructionQueueOverflow : Exception { }
 
-		private Logger myLogger;
+		private Navigator owner;
+		private NavSettings CNS { get { return owner.CNS; } }
+
+		private Logger myLogger = new Logger(null, "Interpreter");
+		
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Instruction");
+			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
 			myLogger.log(level, method, toLog);
 		}
 
 		public Interpreter(Navigator owner)
-		{ this.owner = owner; }
-
-		// TODO addInstruction should be moved here, as instruction parsing is re-written
-		public bool getAction(out Action asAction, string instruction)
 		{
-			//log("entered getAction(asAction, " + instruction + ")", "getAction()", Logger.severity.TRACE);
-			asAction = null;
+			this.owner = owner;
+			myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
+		}
+
+		/// <summary>
+		/// All the instructions queued (as Action)
+		/// </summary>
+		/// <remarks>
+		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 
+		/// </remarks>
+		public MyQueue<Action> instructionQueue;
+
+		private List<string> instructionQueueString;
+
+		public string getCurrentInstructionString()
+		{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
+
+		/// <summary>
+		/// If errors occured while parsing instructions, will contain all their indecies.
+		/// </summary>
+		public string instructionErrorIndex = null;
+
+		private int currentInstruction;
+
+		private void instructionErrorIndex_add(int instructionNum)
+		{
+			if (instructionErrorIndex == null)
+				instructionErrorIndex = instructionNum.ToString();
+			else
+				instructionErrorIndex += ',' + instructionNum;
+		}
+
+		/// <summary>
+		/// Split allInstructions, convert to actions, enqueue to instructionQueue
+		/// </summary>
+		/// <param name="allInstructions">all the instructions to enqueue</param>
+		public void enqueueAllActions(string allInstructions)
+		{
+			instructionErrorIndex = null;
+			currentInstruction = 0;
+			instructionQueue = new MyQueue<Action>(8);
+			instructionQueueString = new List<string>();
+
+			enqueueAllActions_continue(allInstructions);
+		}
+
+		/// <summary>
+		/// Does the heavy lifting for enqueueAllActions
+		/// </summary>
+		private void enqueueAllActions_continue(string allInstructions)
+		{
+			allInstructions = allInstructions.RemoveWhitespace();
+			string[] splitInstructions = allInstructions.Split(new char[] { ':', ';' });
+
+			if (splitInstructions == null || splitInstructions.Length == 0)
+				return;
+
+			for (int i = 0; i < splitInstructions.Length; i++)
+			{
+				if (!enqueueAction(splitInstructions[i]))
+				{
+					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()", Logger.severity.INFO);
+					instructionErrorIndex_add(currentInstruction);
+				}
+				else
+					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()");
+
+				currentInstruction++;
+			}
+		}
+
+		/// <summary>
+		/// Turn a string instruction into an Action or Actions, and Enqueue it/them to instructionQueue.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true if an Action was queued, false if parsing failed</returns>
+		private bool enqueueAction(string instruction)
+		{
+			VRage.Exceptions.ThrowIf<InstructionQueueOverflow>(instructionQueue.Count > 1000);
+
 			if (instruction.Length < 2)
 			{
 				log("instruction too short: " + instruction.Length, "getAction()", Logger.severity.TRACE);
 				return false;
 			}
 
-			string lowerCase = instruction.ToLower().Replace(" ", "");
+			Action singleAction = null;
+			if (getAction_word(instruction, out singleAction))
+			{
+				instructionQueue.Enqueue(singleAction);
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				return true;
+			}
+			if (getAction_multiple(instruction))
+			{
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				return true;
+			}
+			if (getAction_single(instruction, out singleAction))
+			{
+				instructionQueue.Enqueue(singleAction);
+				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				return true;
+			}
+			return false;
+		}
 
+		/// <summary>
+		/// Try to match instruction against keywords.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_word(string instruction, out Action wordAction)
+		{
+			string lowerCase = instruction.ToLower();
+			if (lowerCase == "asteroid")
+			{
+				wordAction = () => { CNS.ignoreAsteroids = true; };
+				return true;
+			}
+			if (lowerCase == "exit")
+			{
+				wordAction = () =>
+				{
+					owner.CNS.EXIT = true;
+					owner.reportState(Navigator.ReportableState.OFF);
+					owner.fullStop("EXIT");
+				};
+				return true;
+			}
+			if (lowerCase == "jump")
+			{
+				wordAction = () =>
+				{
+					log("setting jump", "addInstruction()", Logger.severity.DEBUG);
+					owner.CNS.jump_to_dest = true;
+					return;
+				};
+				return true;
+			}
+			if (lowerCase == "lock")
+			{
+				wordAction = () =>
+				{
+					if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
+					{
+						log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "addInstruction()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
+						owner.CNS.landingState = NavSettings.LANDING.OFF;
+						owner.CNS.landingSeparateBlock = null;
+						owner.CNS.landingSeparateWaypoint = null;
+						owner.setDampeners(); // dampeners will have been turned off for docking
+					}
+				};
+				return true;
+			}
 			if (lowerCase == "reset")
-				return getAction_dispose(out asAction);
+			{
+				IMyTerminalBlock RCterminal = owner.currentRCterminal;
+				wordAction = () =>
+				{
+					if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
+						RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
+					Core.remove(owner);
+				};
+			}
+			wordAction = null;
+			return false;
+		}
 
-			string data = lowerCase.Substring(1);
-			//log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", data = " + data + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+		/// <summary>
+		/// <para>Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.</para>
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_multiple(string instruction)
+		{
+			string lowerCase = instruction.ToLower();
+
 			switch (lowerCase[0])
 			{
-				case 'f':
-					return getAction_flyTo(out asAction, owner.currentRCblock, data);
-				case 'g':
-					return getAction_gridDest(out asAction, data);
-				case 'l':
-					return getAction_localBlock(out asAction, data);
-				case 'o':
-					return getAction_offset(out asAction, data);
-				case 'p':
-					return getActionProximity(out asAction, data);
-				//case 't':
-					// text panel
+				case 't':
+					addAction_textPanel(lowerCase.Substring(1));
+					return true;
 			}
+
+			return false;
+		}
+
+		private bool getAction_single(string instruction, out Action instructionAction)
+		{
+			string lowerCase = instruction.ToLower();
+			string dataLowerCase = lowerCase.Substring(1);
+			log("instruction = " + instruction + ", lowerCase = " + lowerCase + ", dataLowerCase = " + dataLowerCase + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+
+			switch (lowerCase[0])
+			{
+				case 'a':
+					return getAction_terminalAction(out instructionAction, instruction.Substring(1));
+				case 'b':
+					return getAction_blockSearch(out instructionAction, dataLowerCase);
+				case 'c':
+					return getAction_coordinates(out instructionAction, dataLowerCase);
+				case 'e':
+					return getAction_engage(out instructionAction, dataLowerCase);
+				case 'f':
+					return getAction_flyTo(out instructionAction, dataLowerCase);
+				case 'g':
+					return getAction_gridDest(out instructionAction, dataLowerCase);
+				//case 'h': // harvest
+				case 'l':
+					return getAction_localBlock(out instructionAction, dataLowerCase);
+				case 'm':
+					return getAction_missile(out instructionAction, dataLowerCase);
+				case 'o':
+					return getAction_offset(out instructionAction, dataLowerCase);
+				case 'p':
+					return getAction_Proximity(out instructionAction, dataLowerCase);
+				case 'r':
+					return getAction_orientation(out instructionAction, dataLowerCase);
+				case 'v':
+					return getAction_speedLimits(out instructionAction, dataLowerCase);
+				case 'w':
+					return getAction_wait(out instructionAction, dataLowerCase);
+			}
+
 			log("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+			instructionAction = null;
 			return false;
 		}
 
 
-		// INDIVIDUAL METHODS
+		// MULTI ACTIONS
 
 
-		private bool getAction_dispose(out Action execute)
+		/// <summary>
+		/// <para>add actions from a text panel</para>
+		/// <para>Format for instruction is [ t (Text Panel Name), (Identifier) ]</para>
+		/// </summary>
+		private bool addAction_textPanel(string dataLowerCase)
 		{
-			IMyTerminalBlock RCterminal = owner.currentRCterminal;
-			//Regex reset = new Regex("reset", RegexOptions.IgnoreCase);
-			execute = () =>
+			string[] split = dataLowerCase.Split(',');
+
+			string panelName;
+			if (split.Length == 2)
+				panelName = split[0];
+			else
+				panelName = dataLowerCase;
+
+			IMyCubeBlock bestMatch;
+			if (!owner.myTargeter.findBestFriendly(owner.myGrid, out bestMatch, panelName))
 			{
-				//log("running reset action", "getAction_dispose()", Logger.severity.TRACE);
-				//RCterminal.SetCustomName(reset.Replace(RCterminal.DisplayNameText, ""));
-				if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
-					RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
-				Core.remove(owner);
+				myLogger.debugLog("could not find " + panelName + " on " + owner.myGrid.DisplayName, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			Ingame.IMyTextPanel panel = bestMatch as Ingame.IMyTextPanel;
+			if (panel == null)
+			{
+				myLogger.debugLog("not a Text Panel: " + panel, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			string panelText = panel.GetPublicText().ToLower();
+
+			string identifier;
+			int identifierIndex, startOfCommands;
+
+			if (split.Length == 2)
+			{
+				identifier = split[1];
+				identifierIndex = panelText.IndexOf(identifier);
+				if (identifierIndex < 0)
+				{
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					return false;
+				}
+				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
+			}
+			else
+			{
+				identifier = null;
+				identifierIndex = -1;
+				startOfCommands = panelText.IndexOf('[') + 1;
+			}
+
+			if (startOfCommands < 0)
+			{
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
+			if (endOfCommands < 0)
+			{
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
+
+			myLogger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
+			enqueueAllActions_continue(panelText.Substring(startOfCommands, endOfCommands - startOfCommands));
+
+			return true; // this instruction was successfully executed, even if sub instructions were not
+		}
+
+
+		// SINGLE ACTIONS
+
+
+		/// <summary>
+		/// run an action on (a) block(s)
+		/// </summary>
+		/// <param name="instructionAction"></param>
+		/// <param name="dataPreserveCase"></param>
+		/// <returns></returns>
+		private bool getAction_terminalAction(out Action instructionAction, string dataPreserveCase)
+		{
+			string[] split = dataPreserveCase.Split(',');
+			if (split.Length == 2)
+			{
+				instructionAction = () => { runActionOnBlock(split[0], split[1]); };
+				return true;
+			}
+			instructionAction = null;
+			return false;
+		}
+
+		private void runActionOnBlock(string blockName, string actionString)
+		{
+			//log("entered runActionOnBlock("+blockName+", "+actionString+")", "runActionOnBlock()", Logger.severity.TRACE);
+			blockName = blockName.ToLower().Replace(" ", "");
+			actionString = actionString.Trim();
+
+			List<IMySlimBlock> blocksWithName = new List<IMySlimBlock>();
+			owner.myGrid.GetBlocks(blocksWithName);
+			foreach (IMySlimBlock block in blocksWithName)
+			{
+				IMyCubeBlock fatblock = block.FatBlock;
+				if (fatblock == null)
+					continue;
+
+				Sandbox.Common.MyRelationsBetweenPlayerAndBlock relationship = fatblock.GetUserRelationToOwner(owner.currentRCblock.OwnerId);
+				if (relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.Owner && relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.FactionShare)
+				{
+					//log("failed relationship test for " + fatblock.DisplayNameText + ", result was " + relationship.ToString(), "runActionOnBlock()", Logger.severity.TRACE);
+					continue;
+				}
+				//log("passed relationship test for " + fatblock.DisplayNameText + ", result was " + relationship.ToString(), "runActionOnBlock()", Logger.severity.TRACE);
+
+				//log("testing: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
+				// name test
+				if (fatblock is Ingame.IMyRemoteControl)
+				{
+					string nameOnly = fatblock.getNameOnly();
+					if (nameOnly == null || !nameOnly.Contains(blockName))
+						continue;
+				}
+				else
+				{
+					if (!fatblock.DisplayNameText.looseContains(blockName))
+					{
+						//log("testing failed " + fatblock.DisplayNameText + " does not contain " + blockName, "runActionOnBlock()", Logger.severity.TRACE);
+						continue;
+					}
+					//log("testing successfull " + fatblock.DisplayNameText + " contains " + blockName, "runActionOnBlock()", Logger.severity.TRACE);
+				}
+
+				if (!(fatblock is IMyTerminalBlock))
+				{
+					//log("not a terminal block: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
+					continue;
+				}
+				IMyTerminalBlock terminalBlock = fatblock as IMyTerminalBlock;
+				ITerminalAction actionToRun = terminalBlock.GetActionWithName(actionString); // get actionToRun on every iteration so invalid blocks can be ignored
+				if (actionToRun != null)
+				{
+					log("running action: " + actionString + " on block: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.DEBUG);
+					actionToRun.Apply(fatblock);
+				}
+				else
+					log("could not get action: " + actionString + " for: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
+			}
+		}
+
+		/// <summary>
+		/// Register a name for block search.
+		/// </summary>
+		private bool getAction_blockSearch(out Action instructionAction, string dataLowerCase)
+		{
+			string[] dataParts = dataLowerCase.Split(',');
+			if (dataParts.Length != 2)
+			{
+				instructionAction = () =>
+				{
+					owner.CNS.tempBlockName = dataLowerCase;
+					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataLowerCase = " + dataLowerCase, "getAction_blockSearch()");
+				};
+				return true;
+			}
+			Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
+			if (dataDir != null)
+			{
+				instructionAction = () =>
+				{
+					owner.CNS.landDirection = dataDir;
+					owner.CNS.tempBlockName = dataParts[0];
+					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataParts[0] = " + dataParts[0], "getAction_blockSearch()");
+				};
+				return true;
+			}
+			instructionAction = null;
+			return false;
+		}
+
+		/// <summary>
+		/// set destination to coordinates
+		/// </summary>
+		/// <param name="instructionAction"></param>
+		/// <param name="data"></param>
+		/// <returns></returns>
+		private bool getAction_coordinates(out Action instructionAction, string dataLowerCase)
+		{
+			string[] coordsString = dataLowerCase.Split(',');
+			if (coordsString.Length == 3)
+			{
+				double[] coordsDouble = new double[3];
+				for (int i = 0; i < coordsDouble.Length; i++)
+					if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
+					{
+						// failed to parse
+						instructionAction = null;
+						return false;
+					}
+
+				// successfully parsed
+				Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
+				instructionAction = () =>
+				{
+					if (owner == null)
+						myLogger.debugLog("owner is null", "getAction_coordinates()");
+					if (owner.CNS == null)
+						myLogger.debugLog("CNS is null", "getAction_coordinates()");
+					if (destination == null)
+						myLogger.debugLog("destination is null", "getAction_coordinates()");
+					myLogger.debugLog("setting " + owner.CNS + " destination to " + destination, "getAction_coordinates()");
+					owner.CNS.setDestination(destination);
+				};
+				return true;
+			}
+			instructionAction = null;
+			return false;
+		}
+
+		/// <summary>
+		/// set engage nearest enemy
+		/// </summary>
+		/// <param name="instructionAction"></param>
+		/// <param name="dataLowerCase"></param>
+		/// <returns>true</returns>
+		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
+		{
+			//string searchBlockName = CNS.tempBlockName;
+			//CNS.tempBlockName = null;
+			instructionAction = () =>
+			{
+				double parsed;
+				if (Double.TryParse(dataLowerCase, out parsed))
+				{
+					CNS.lockOnTarget = NavSettings.TARGET.ENEMY;
+					CNS.lockOnRangeEnemy = (int)parsed;
+					CNS.lockOnBlock = CNS.tempBlockName;
+				}
+				else
+				{
+					CNS.lockOnTarget = NavSettings.TARGET.OFF;
+					CNS.lockOnRangeEnemy = 0;
+					CNS.lockOnBlock = null;
+					log("stopped tracking enemies");
+				}
+				CNS.tempBlockName = null;
 			};
-			//log("finished building reset action", "getAction_dispose()", Logger.severity.TRACE);
 			return true;
 		}
 
-		private bool getAction_flyTo(out Action execute, IMyCubeBlock remote, string instruction)
+		private bool getAction_flyTo(out Action execute, string instruction)
 		{
 			execute = null;
 			RelativeVector3F result;
-			//log("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
-			if (!flyOldStyle(out result, remote, instruction))
+			log("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
+			if (!flyOldStyle(out result, owner.currentRCblock, instruction))
 			{
-				//log("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
-				if (!flyTo_generic(out result, remote, instruction))
+				log("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
+				if (!flyTo_generic(out result, owner.currentRCblock, instruction))
 				{
-					//log("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
+					log("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
 					return false;
 				}
 			}
 
 			//log("passed, destination will be "+result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
-			execute = () => owner.CNS.setDestination(result.getWorldAbsolute());
+			execute = () =>
+			{
+				log("setting " + owner.CNS.ToString() + " destination to " + result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
+				owner.CNS.setDestination(result.getWorldAbsolute());
+			};
 			//log("created action: " + execute, "getAction_flyTo()", Logger.severity.TRACE);
 			return true;
 		}
@@ -115,6 +564,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool flyOldStyle(out RelativeVector3F result, IMyCubeBlock remote, string instruction)
 		{
+			log("entered flyOldStyle(result, " + remote.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
+
 			result = null;
 			string[] coordsString = instruction.Split(',');
 			if (coordsString.Length != 3)
@@ -132,7 +583,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private bool flyTo_generic(out RelativeVector3F result, IMyCubeBlock remote, string instruction)
 		{
-			//log("entered flyTo_generic(result, " + block.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
+			log("entered flyTo_generic(result, " + remote.DisplayNameText + ", " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
 
 			Vector3 fromGeneric;
 			if (getVector_fromGeneric(out fromGeneric, instruction))
@@ -144,50 +595,116 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
+		/// <summary>
+		/// <para>Search for a grid.</para>
+		/// The search happens when the action is executed. 
+		/// When action is executed, an error may occur and instructionErrorIndex will be updated.
+		/// </summary>
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
-			NavSettings CNS = owner.CNS;
-			string searchName = CNS.tempBlockName;
-			CNS.tempBlockName = null;
-			IMyCubeBlock blockBestMatch;
-			LastSeen gridBestMatch;
-			if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, searchName))
+			myLogger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")", "getAction_gridDest()");
+			//string searchName = owner.CNS.tempBlockName;
+			//myLogger.debugLog("searchName = " + searchName + ", owner.CNS.tempBlockName = " + owner.CNS.tempBlockName, "getAction_gridDest()");
+			//owner.CNS.tempBlockName = null;
+			int myInstructionIndex = currentInstruction;
+
+			execute = () =>
 			{
-				execute = () => { CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock); };
-				if (blockBestMatch != null && CNS.landLocalBlock != null && CNS.landDirection == null)
+				IMyCubeBlock blockBestMatch;
+				LastSeen gridBestMatch;
+				myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + owner.CNS.tempBlockName + ")", "getAction_gridDest()");
+				if (owner.myTargeter.lastSeenFriendly(instruction, out gridBestMatch, out blockBestMatch, owner.CNS.tempBlockName))
 				{
-					Base6Directions.Direction? landDir;
-					if (!Lander.landingDirection(blockBestMatch, out landDir))
+					Base6Directions.Direction? landDir = null;
+					if ((blockBestMatch != null && owner.CNS.landLocalBlock != null && owner.CNS.landDirection == null)
+						&& !Lander.landingDirection(blockBestMatch, out landDir))
 					{
-						log("could not get landing direction from block: " + CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
-						return true; // still fly near dest, maybe issue is a bit more obvious
+						log("could not get landing direction from block: " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()", Logger.severity.INFO);
+						instructionErrorIndex_add(myInstructionIndex);
+						return;
 					}
-					execute = () =>
+
+					if (landDir != null) // got a landing direction
 					{
-						CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
-						CNS.landDirection = landDir;
-						log("set land offset to " + CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
-					};
+						owner.CNS.landDirection = landDir;
+						myLogger.debugLog("got landing direction of " + landDir + " from " + owner.CNS.landLocalBlock.DefinitionDisplayNameText, "getAction_gridDest()");
+						log("set land offset to " + owner.CNS.landOffset, "getAction_gridDest()", Logger.severity.TRACE);
+					}
+					else // no landing direction
+					{
+						if (blockBestMatch != null)
+							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+						else
+							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+					}
+
+					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
+					return;
 				}
-				return true;
-			}
-			log("did not find a friendly grid", "getAction_gridDest()", Logger.severity.TRACE);
-			execute = null;
-			return false;
+				// did not find grid
+				log("did not find a friendly grid", "getAction_gridDest()", Logger.severity.TRACE);
+				instructionErrorIndex_add(myInstructionIndex);
+			};
+
+			return true;
 		}
 
+		/// <summary>
+		/// <para>Set the landLocalBlock.</para>
+		/// The search happens when the action is executed.
+		/// When action is executed, the block may not be found and instructionErrorIndex will be updated.
+		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
 			IMyCubeBlock landLocalBlock;
-			if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
+			int myInstructionIndex = currentInstruction;
+
+			execute = () =>
 			{
-				(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
-				execute = () => { owner.CNS.landLocalBlock = landLocalBlock; };
-				return true;
-			}
-			log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
-			execute = null;
-			return false;
+				myLogger.debugLog("searching for local block: " + instruction, "getAction_localBlock()");
+				if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
+				{
+					(landLocalBlock as Ingame.IMyFunctionalBlock).GetActionWithName("OnOff_Off").Apply(landLocalBlock);
+					myLogger.debugLog("setting landLocalBlock to " + landLocalBlock.DisplayNameText, "getAction_localBlock()");
+					owner.CNS.landLocalBlock = landLocalBlock;
+				}
+				else
+				{
+					log("could not get a block for landing", "addInstruction()", Logger.severity.DEBUG);
+					instructionErrorIndex_add(myInstructionIndex);
+				}
+			};
+
+			return true;
+		}
+
+		/// <summary>
+		/// set missile
+		/// </summary>
+		/// <returns>true</returns>
+		private bool getAction_missile(out Action instructionAction, string dataLowerCase)
+		{
+			//string searchBlockName = CNS.tempBlockName;
+			//CNS.tempBlockName = null;
+			instructionAction = () =>
+			{
+				double parsed;
+				if (Double.TryParse(dataLowerCase, out parsed))
+				{
+					CNS.lockOnTarget = NavSettings.TARGET.MISSILE;
+					CNS.lockOnRangeEnemy = (int)parsed;
+					CNS.lockOnBlock = CNS.tempBlockName;
+				}
+				else
+				{
+					CNS.lockOnTarget = NavSettings.TARGET.OFF;
+					CNS.lockOnRangeEnemy = 0;
+					CNS.lockOnBlock = null;
+					log("stopped tracking enemies");
+				}
+				CNS.tempBlockName = null;
+			};
+			return true;
 		}
 
 		private bool getAction_offset(out Action execute, string instruction)
@@ -199,7 +716,11 @@ namespace Rynchodon.Autopilot.Instruction
 					execute = null;
 					return false;
 				}
-			execute = () => { owner.CNS.destination_offset = offsetVector; };
+			execute = () =>
+			{
+				//myLogger.debugLog("setting offset vector to " + offsetVector, "getAction_offset()");
+				owner.CNS.destination_offset = offsetVector;
+			};
 			return true;
 		}
 
@@ -232,7 +753,7 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
-		private bool getActionProximity(out Action execute, string instruction)
+		private bool getAction_Proximity(out Action execute, string instruction)
 		{
 			float distance;
 			if (stringToDistance(out distance, instruction))
@@ -240,13 +761,106 @@ namespace Rynchodon.Autopilot.Instruction
 				execute = () =>
 				{
 					owner.CNS.destinationRadius = (int)distance;
-					log("proximity action executed " + instruction + " to " + distance + ", radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
+					//log("proximity action executed " + instruction + " to " + distance + ", radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 				};
-				log("proximity action created successfully " + instruction + " to " + distance + ", radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
+				//log("proximity action created successfully " + instruction + " to " + distance + ", radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 				return true;
 			}
-			log("failed to parse " + instruction + " to float, radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
+			//log("failed to parse " + instruction + " to float, radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 			execute = null;
+			return false;
+		}
+
+		/// <summary>
+		/// match orientation
+		/// </summary>
+		/// <param name="instructionAction"></param>
+		/// <param name="dataLowerCase"></param>
+		/// <returns></returns>
+		private bool getAction_orientation(out Action instructionAction, string dataLowerCase)
+		{
+			string[] orientation = dataLowerCase.Split(',');
+			if (orientation.Length == 0 || orientation.Length > 2)
+			{
+				instructionAction = null;
+				return false;
+			}
+			Base6Directions.Direction? dir = stringToDirection(orientation[0]);
+			//log("got dir "+dir);
+			if (dir == null) // direction could not be parsed
+			{
+				instructionAction = null;
+				return false;
+			}
+
+			if (orientation.Length == 1) // only direction specified
+			{
+				instructionAction = () => { owner.CNS.match_direction = (Base6Directions.Direction)dir; };
+				return true;
+			}
+
+			Base6Directions.Direction? roll = stringToDirection(orientation[1]);
+			//log("got roll " + roll);
+			if (roll == null) // roll specified, could not be parsed
+			{
+				instructionAction = null;
+				return false;
+			}
+			instructionAction = () =>
+			{
+				owner.CNS.match_direction = (Base6Directions.Direction)dir;
+				owner.CNS.match_roll = (Base6Directions.Direction)roll;
+			};
+			return true;
+		}
+
+		private bool getAction_speedLimits(out Action instructionAction, string dataLowerCase)
+		{
+			string[] speeds = dataLowerCase.Split(',');
+			if (speeds.Length == 2)
+			{
+				double[] parsedArray = new double[2];
+				for (int i = 0; i < parsedArray.Length; i++)
+				{
+					if (!Double.TryParse(speeds[i], out parsedArray[i]))
+					{
+						instructionAction = null;
+						return false;
+					}
+				}
+				instructionAction = () =>
+				{
+					owner.CNS.speedCruise_external = (int)parsedArray[0];
+					owner.CNS.speedSlow_external = (int)parsedArray[1];
+				};
+				return true;
+			}
+			else
+			{
+				double parsed;
+				if (!Double.TryParse(dataLowerCase, out parsed))
+				{
+					instructionAction = null;
+					return false;
+				}
+				instructionAction = () => { owner.CNS.speedCruise_external = (int)parsed; };
+				return true;
+			}
+		}
+
+		private bool getAction_wait(out Action instructionAction, string dataLowerCase)
+		{
+			double seconds = 0;
+			if (Double.TryParse(dataLowerCase, out seconds))
+			{
+				instructionAction = () =>
+				{
+					if (owner.CNS.waitUntil < DateTime.UtcNow)
+						owner.CNS.waitUntil = DateTime.UtcNow.AddSeconds(seconds);
+				};
+				return true;
+			}
+			instructionAction = null;
 			return false;
 		}
 

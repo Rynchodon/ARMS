@@ -1,6 +1,4 @@
-﻿// skip file on build
-
-#define LOG_ENABLED //remove on build
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -18,6 +16,8 @@ using Ingame = Sandbox.ModAPI.Ingame;
 //using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
+using Rynchodon.AntennaRelay;
+
 namespace Rynchodon.Autopilot
 {
 	internal class Targeter
@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot
 		{ alwaysLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Targeter");
+			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "NewTargeter");
 			myLogger.log(level, method, toLog);
 		}
 
@@ -37,127 +37,7 @@ namespace Rynchodon.Autopilot
 		internal Targeter(Navigator owner)
 		{ this.owner = owner; }
 
-		private IMyCubeGrid isInRange_last_grid = null;
-		private Vector3D isInRange_last_position;
-		private double isInRange_last_distance;
-
-		// TODO: use AntennaRelay
-		private bool isInRange(out double distance, bool friend, IMyCubeGrid targetGrid)
-		{
-			Vector3D position = owner.currentRCblock.GetPosition();
-			if (targetGrid == isInRange_last_grid && position == isInRange_last_position)
-			{
-				distance = isInRange_last_distance;
-			}
-			else
-			{
-				distance = targetGrid.WorldAABB.Distance(position);
-				isInRange_last_grid = targetGrid;
-				isInRange_last_position = position;
-				isInRange_last_distance = distance;
-			}
-
-			if (friend)
-			{
-				//log("got distance of " + distance + ", between " + owner.myGrid.DisplayName + " and " + targetGrid.DisplayName, "canTarget()", Logger.severity.TRACE);
-				return distance < Settings.intSettings[Settings.IntSetName.iMaxLockOnRangeFriend];
-			}
-			else
-			{
-				if (owner.CNS.lockOnRangeEnemy < 1)
-					owner.CNS.lockOnRangeEnemy = Settings.intSettings[Settings.IntSetName.iMaxLockOnRangeEnemy];
-				//log("got distance of " + distance + ", between " + owner.myGrid.DisplayName + " and " + targetGrid.DisplayName, "canTarget()", Logger.severity.TRACE);
-				return distance < owner.CNS.lockOnRangeEnemy;
-			}
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="distance">distance to grid if no targetBlock, distance to block squared otherwise</param>
-		/// <param name="friend"></param>
-		/// <param name="targetGrid"></param>
-		/// <param name="targetBlock"></param>
-		/// <returns></returns>
-		private bool canTarget(out double distance, bool friend, IMyCubeGrid targetGrid = null, IMyCubeBlock targetBlock = null)
-		{
-			//log("entered canTarget(" + friend + ")", "canTarget()", Logger.severity.TRACE);
-
-			distance = -1;
-			if (targetBlock == null)
-			{
-				if (targetGrid == null)
-					return false; // need something to target
-				//if (targetGrid.IsTrash()) // never seems to come up
-				//{
-				//	log("cannot lock onto trash: " + targetGrid.DisplayName, "canTarget()", Logger.severity.TRACE);
-				//	return false;
-				//}
-				if (friend)
-				{
-					if (!owner.currentRCblock.canConsiderFriendly(targetGrid))
-						return false;
-				}
-				else if (!owner.currentRCblock.canConsiderHostile(targetGrid))
-					return false;
-
-				if (!isInRange(out distance, friend, targetGrid))
-				{
-					//log ("not in range", "canTarget()", Logger.severity.TRACE);
-					return false;
-				}
-
-				//log("can lock onto grid", "canTarget()", Logger.severity.TRACE);
-				return true;
-			}
-
-			targetGrid = targetBlock.CubeGrid;
-
-			// working test
-			if (!friend && !targetBlock.IsWorking)
-			{
-				log("cannot lock onto non-working block: " + targetBlock.DisplayNameText, "canTarget()", Logger.severity.TRACE);
-				return false;
-			}
-
-			// relations test
-			if (friend)
-			{
-				//log("checking canConsiderFriendly: " + targetBlock.DisplayNameText, "canTarget()", Logger.severity.TRACE);
-				if (!owner.currentRCblock.canConsiderFriendly(targetBlock))
-				{
-					log("cannot lock onto non-friend: " + targetBlock.DisplayNameText, "canTarget()", Logger.severity.TRACE);
-					return false;
-				}
-			}
-			else
-			{
-				//log("checking canConsiderHostile: " + targetBlock.DisplayNameText, "canTarget()", Logger.severity.TRACE);
-				if (!owner.currentRCblock.canConsiderHostile(targetBlock))
-				{
-					log("cannot lock onto non-enemy: " + targetBlock.DisplayNameText, "canTarget()", Logger.severity.TRACE);
-					return false;
-				}
-			}
-
-			// distance test
-			if (!isInRange(out distance, friend, targetGrid))
-			{
-				//log("got distance of " + distance + ", between " + owner.myGrid.DisplayName + " and " + targetGrid.DisplayName, "canTarget()", Logger.severity.TRACE);
-				log("block's grid is out of range", "canTarget()", Logger.severity.TRACE);
-				return false;
-			}
-
-			
-			// passed all tests
-			distance = (owner.currentRCblock.GetPosition() - targetBlock.GetPosition()).LengthSquared();
-			//log("can lock onto block", "canTarget()", Logger.severity.TRACE);
-			return true;
-		}
-
-		private static DateTime tryLockOnLastGlobal;
-		private DateTime tryLockOnLastLocal;
-		private static DateTime sanityCheckMinTime = DateTime.Today.AddDays(-1);
+		private DateTime nextTryLockOn;
 
 		public void tryLockOn()
 		{
@@ -166,43 +46,37 @@ namespace Rynchodon.Autopilot
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.OFF)
 				return;
 
-			DateTime now = DateTime.UtcNow;
-
-			if (tryLockOnLastLocal > sanityCheckMinTime)
+			if (DateTime.UtcNow.CompareTo(nextTryLockOn) < 0)
 			{
-				double secondsSinceLocalUpdate = (now - tryLockOnLastLocal).TotalSeconds;
-				if (secondsSinceLocalUpdate < 1)
-					return;
-				double millisecondDelayGlobal = 9000 / secondsSinceLocalUpdate + 100;
-				if (now < tryLockOnLastGlobal.AddMilliseconds(millisecondDelayGlobal))
-					return;
-			}
-			else if (tryLockOnLastGlobal > sanityCheckMinTime && now < tryLockOnLastGlobal.AddMilliseconds(50)) // delay for first run
+				//log("bailing, too soon to retarget", "tryLockOn()", Logger.severity.TRACE);
 				return;
+			}
 
 			log("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
-			tryLockOnLastGlobal = now;
-			tryLockOnLastLocal = now;
-
-			Sandbox.ModAPI.IMyCubeBlock closestBlock;
-			Sandbox.ModAPI.IMyCubeGrid closestEnemy = findCubeGrid(out closestBlock, false, null, owner.CNS.lockOnBlock);
-			if (closestEnemy == null)
+			
+			IMyCubeBlock bestMatchBlock;
+			LastSeen bestMatchGrid;
+			if (!lastSeenHostile(out bestMatchGrid, out bestMatchBlock, owner.CNS.lockOnBlock)) // did not find a target
 			{
-				double distance;
-				if (owner.CNS.gridDestination != null && !canTarget(out distance, false, null, owner.CNS.closestBlock))
+				if (owner.CNS.target_locked)
 				{
-					log("lost lock on " + owner.CNS.gridDestination + ":" + owner.CNS.getDestGridName());
+					log("lost lock on " + owner.CNS.GridDestName);
+					owner.CNS.target_locked = false;
 					owner.CNS.atWayDest();
 				}
+				nextTryLockOn = DateTime.UtcNow.AddSeconds(1);
 				return;
 			}
 
 			// found an enemy, setting as destination
-			if (closestBlock != null)
-				log("found an enemy: " + closestEnemy.DisplayName + ":" + closestBlock.DisplayNameText, "tryLockOn()");
+			if (bestMatchBlock != null)
+				log("found an enemy: " + bestMatchGrid.Entity.DisplayName + ":" + bestMatchBlock.DisplayNameText, "tryLockOn()");
 			else
-				log("found an enemy: " + closestEnemy.DisplayName, "tryLockOn()");
-			owner.CNS.setDestination(closestBlock, closestEnemy);
+				log("found an enemy: " + bestMatchGrid.Entity.DisplayName, "tryLockOn()");
+
+			owner.CNS.target_locked = true;
+			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
+			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentRCblock);
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
 			{
@@ -215,104 +89,185 @@ namespace Rynchodon.Autopilot
 			owner.CNS.clearSpeedInternal();
 		}
 
-		public Sandbox.ModAPI.IMyCubeGrid findCubeGrid(out Sandbox.ModAPI.IMyCubeBlock closestBlock, bool friend = true, string gridNameContains = null, string blockContains = null)
+		/// <summary>
+		/// Search by best match (shortest string matching gridNameContains).
+		/// </summary>
+		/// <param name="gridNameContains"></param>
+		public bool lastSeenFriendly(string gridNameContains, out LastSeen bestMatchGrid, out IMyCubeBlock bestMatchBlock, string blockContains = null)
 		{
-			closestBlock = null;
+			log("entered lastSeenFriendly(" + gridNameContains + ", " + blockContains + ")", "lastSeenFriendly()", Logger.severity.TRACE);
+			bestMatchGrid = null;
+			bestMatchBlock = null;
+			int bestMatchLength = -1;
 
-			Dictionary<double, Sandbox.ModAPI.IMyCubeGrid> nearbyGrids = new Dictionary<double, Sandbox.ModAPI.IMyCubeGrid>();
-
-			HashSet<IMyEntity> entities = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntities(entities);
-			foreach (IMyEntity entity in entities)
+			RemoteControl myAR;
+			if (!RemoteControl.TryGet(owner.currentRCblock, out myAR))
 			{
-				IMyCubeGrid grid = entity as IMyCubeGrid;
-				if (grid == null)
+				alwaysLog("failed to get ARRemoteControl for currentRC(" + owner.currentRCblock.getNameOnly() + ")", "lastSeenFriendly()", Logger.severity.WARNING);
+				//log("needs update is " + owner.currentRCblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
+				return false;
+			}
+			IEnumerator<LastSeen> allLastSeen = myAR.lastSeenEnumerator();
+			while (allLastSeen.MoveNext())
+			{
+				IMyCubeGrid grid = allLastSeen.Current.Entity as IMyCubeGrid;
+				if (grid == null || grid == owner.myGrid)
 					continue;
-				if (owner.myGrid == grid)
-					continue;
-
-				double distance;
-				if (!canTarget(out distance, friend, grid))
-					continue;
-				if (gridNameContains == null || Navigator.looseContains(grid.DisplayName, gridNameContains))
+				//log("testing " + grid.DisplayName + " contains " + gridNameContains, "lastSeenFriendly()", Logger.severity.TRACE);
+				if (grid.DisplayName.looseContains(gridNameContains))
 				{
-					//log("adding to nearbyGrids: " + grid.DisplayName, "findCubeGrid()", Logger.severity.TRACE);
-					bool added = false;
-					while (!added)
+					log("compare match "+grid.DisplayName+"(" + grid.DisplayName.Length + ") to " + bestMatchLength, "lastSeenFriendly()", Logger.severity.TRACE);
+					if (bestMatchGrid == null || grid.DisplayName.Length < bestMatchLength) // if better grid match
 					{
-						try
+						IMyCubeBlock matchBlock = null;
+						if (!string.IsNullOrEmpty(blockContains) && !findBestFriendly(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block
 						{
-							nearbyGrids.Add(distance, grid);
-							added = true;
+							log("no matching block in "+grid.DisplayName, "lastSeenFriendly()", Logger.severity.TRACE);
+							continue;
 						}
-						catch (ArgumentException) { distance += 0.001; }
+
+						bestMatchGrid = allLastSeen.Current;
+						bestMatchLength = grid.DisplayName.Length;
+						bestMatchBlock = matchBlock;
 					}
 				}
 			}
-			
-			if (nearbyGrids.Count > 0)
-				foreach (KeyValuePair<double, Sandbox.ModAPI.IMyCubeGrid> pair in nearbyGrids.OrderBy(i => i.Key))
-				{
-					log("checking pair: " + pair.Key + ", " + pair.Value.DisplayName + ". block contains=" + blockContains, "findCubeGrid()", Logger.severity.TRACE);
-					if (blockContains == null || findClosestCubeBlockOnGrid(out closestBlock, pair.Value, blockContains, friend))
-					{
-						log("pair OK", "findCubeGrid()", Logger.severity.TRACE);
-						return pair.Value;
-					}
-				}
-
-			return null;
+			return bestMatchGrid != null;
 		}
 
 		/// <summary>
-		/// finds the closest block on a grid that contains the specified string
+		/// Finds a last seen hostile ordered by distance(in metres) + time since last seen(in millis).
 		/// </summary>
-		/// <param name="grid"></param>
-		/// <param name="blockContains"></param>
-		/// <param name="friend"></param>
 		/// <returns></returns>
-		public bool findClosestCubeBlockOnGrid(out Sandbox.ModAPI.IMyCubeBlock closestBlock, Sandbox.ModAPI.IMyCubeGrid grid, string blockContains, bool friend) //, bool getAny = false)
+		public bool lastSeenHostile(out LastSeen bestMatchGrid, out IMyCubeBlock bestMatchBlock, string blockContains = null)
 		{
-			List<Sandbox.ModAPI.IMySlimBlock> allBlocks = new List<Sandbox.ModAPI.IMySlimBlock>();
-			closestBlock = null;
-			double distanceToClosest = 0;
-			grid.GetBlocks(allBlocks);
-			foreach (Sandbox.ModAPI.IMySlimBlock blockInGrid in allBlocks)
+			bestMatchGrid = null;
+			bestMatchBlock = null;
+			double bestMatchValue = -1;
+
+			RemoteControl myAR;
+			if (!RemoteControl.TryGet(owner.currentRCblock, out myAR))
 			{
-				Sandbox.ModAPI.IMyCubeBlock fatBlock = blockInGrid.FatBlock;
-				if (fatBlock == null || fatBlock == owner.currentRCblock)
-					continue;
-
-				double distance;
-				if (!canTarget(out distance, friend, null, fatBlock))
-					continue;
-
-				string toSearch;
-				if (friend)
-				{
-					if (fatBlock is Ingame.IMyRemoteControl)
-						toSearch = Navigator.getRCNameOnly(fatBlock);
-					else
-						toSearch = fatBlock.DisplayNameText;
-				}
-				else
-					toSearch = fatBlock.DefinitionDisplayNameText;
-				
-				//toSearch = toSearch.ToLower();
-				if (Navigator.looseContains(toSearch, blockContains))
-				{
-					//log("got a match for " + blockContains + ", match is " + toSearch, "findClosestCubeBlockOnGrid()", Logger.severity.TRACE);
-					//double distance = myGridDim.getRCdistanceTo(fatBlock);
-					if (closestBlock == null || distance < distanceToClosest)
-					{
-						closestBlock = fatBlock;
-						distanceToClosest = distance;
-					}
-				}
-				//else
-				//	log("did not match " + toSearch + " to " + blockContains, "findClosestCubeBlockOnGrid()", Logger.severity.TRACE);
+				alwaysLog("failed to get ARRemoteControl for currentRC(" + owner.currentRCblock.DisplayNameText + ")", "lastSeenHostile()", Logger.severity.WARNING);
+				log("needs update is " + owner.currentRCblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
+				return false;
 			}
-			return (closestBlock != null);
+			IEnumerator<LastSeen> allLastSeen = myAR.lastSeenEnumerator();
+			while (allLastSeen.MoveNext())
+			{
+				IMyCubeGrid grid = allLastSeen.Current.Entity as IMyCubeGrid;
+				if (grid == null || grid == owner.myGrid || !owner.currentRCblock.canConsiderHostile(grid))
+					continue;
+
+				IMyCubeBlock matchBlock = null;
+				if (!string.IsNullOrEmpty(blockContains) && !findBestHostile(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block
+					continue;
+
+				TimeSpan timeSinceSeen = DateTime.UtcNow - allLastSeen.Current.LastSeenAt;
+				double distance = owner.myGrid.WorldAABB.Distance(allLastSeen.Current.predictPosition(timeSinceSeen));
+				if (owner.CNS.lockOnRangeEnemy > 0 && distance > owner.CNS.lockOnRangeEnemy)
+					continue;
+				double matchValue = distance + timeSinceSeen.TotalMilliseconds;
+				if (bestMatchGrid == null || matchValue < bestMatchValue) // if better grid match
+				{
+					bestMatchGrid = allLastSeen.Current;
+					bestMatchValue = matchValue;
+					bestMatchBlock = matchBlock;
+				}
+			}
+			return bestMatchGrid != null;
+		}
+
+		private string getBlockName(IMyCubeBlock Fatblock)
+		{
+			string blockName;
+			if (Fatblock is Ingame.IMyRemoteControl)
+			{
+				blockName = Fatblock.getNameOnly();
+				if (blockName == null)
+					blockName = Fatblock.DisplayNameText;
+			}
+			else
+				blockName = Fatblock.DisplayNameText;
+			return blockName;
+		}
+
+		private bool collect_findBestFriendly(IMySlimBlock slim, string blockContains)
+		{
+			IMyCubeBlock Fatblock = slim.FatBlock;
+			if (Fatblock == null // armour or something
+				|| !owner.currentRCblock.canControlBlock(Fatblock)) // neutral is OK too
+				return false;
+
+			string blockName = getBlockName(Fatblock);
+			return blockName.looseContains(blockContains); // must contain blockContains
+		}
+
+		/// <summary>
+		/// Finds the best matching block (shortest string matching blockContains).
+		/// </summary>
+		/// <param name="bestMatchBlock"></param>
+		/// <param name="blockContains"></param>
+		/// <returns></returns>
+		public bool findBestFriendly(IMyCubeGrid grid, out IMyCubeBlock bestMatchBlock, string blockContains)
+		{
+			List<IMySlimBlock> collected = new List<IMySlimBlock>();
+			bestMatchBlock = null;
+			int bestMatchLength = -1;
+			grid.GetBlocks(collected, block => collect_findBestFriendly(block, blockContains));
+
+			foreach (IMySlimBlock block in collected)
+			{
+				IMyCubeBlock Fatblock = block.FatBlock;
+
+				//log("checking block: "+fatblock.DisplayNameText, "findBestFriendly()", Logger.severity.TRACE);
+
+				string blockName = getBlockName(Fatblock);
+
+				//log("checking " + blockName + " contains " + blockContains, "findBestFriendly()", Logger.severity.TRACE);
+					log("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
+					if ((bestMatchBlock == null || blockName.Length < bestMatchLength)) // if better match
+					{
+						bestMatchBlock = Fatblock;
+						bestMatchLength = grid.DisplayName.Length;
+					}
+			}
+			return bestMatchBlock != null;
+		}
+
+		private bool collect_findBestHostile(IMySlimBlock slim, string blockContains)
+		{
+			IMyCubeBlock Fatblock = slim.FatBlock;
+			return Fatblock != null // not armour
+				&& Fatblock.IsWorking // ignore inactive hostile blocks
+				&& owner.currentRCblock.canConsiderHostile(Fatblock) // block must be hostile
+				&& Fatblock.DefinitionDisplayNameText.looseContains(blockContains); // must contain blockContains
+		}
+
+		/// <summary>
+		/// Finds the best matching block ordered by distance(in metres) + time since last seen(in millis).
+		/// </summary>
+		/// <param name="bestMatchBlock"></param>
+		/// <param name="blockContains"></param>
+		/// <returns></returns>
+		public bool findBestHostile(IMyCubeGrid grid, out IMyCubeBlock bestMatchBlock, string blockContains)
+		{
+			List<IMySlimBlock> collected = new List<IMySlimBlock>();
+			bestMatchBlock = null;
+			double bestMatchDist = -1;
+			grid.GetBlocks(collected, block => collect_findBestHostile(block, blockContains));
+
+			foreach (IMySlimBlock block in collected)
+			{
+				IMyCubeBlock Fatblock = block.FatBlock;
+				double distance = owner.myGrid.WorldAABB.Distance(Fatblock.GetPosition());
+				if (bestMatchBlock == null || distance < bestMatchDist) // if better match
+				{
+					bestMatchBlock = Fatblock;
+					bestMatchDist = distance;
+				}
+			}
+			return bestMatchBlock != null;
 		}
 	}
 }

@@ -29,7 +29,7 @@ namespace Rynchodon.AntennaRelay
 			myRadioAntenna = Entity as Ingame.IMyRadioAntenna;
 			value_registry.Add(this);
 
-			log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+			//log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
@@ -52,7 +52,7 @@ namespace Rynchodon.AntennaRelay
 				if (!myRadioAntenna.IsWorking)
 					return;
 
-				Showoff.doShowoff(CubeBlock, myLastSeen.Values.GetEnumerator(), myLastSeen.Count);
+				//Showoff.doShowoff(CubeBlock, myLastSeen.Values.GetEnumerator(), myLastSeen.Count);
 
 				float radiusSquared;
 				MyObjectBuilder_RadioAntenna antBuilder = CubeBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_RadioAntenna;

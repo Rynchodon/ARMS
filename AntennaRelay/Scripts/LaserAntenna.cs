@@ -29,12 +29,13 @@ namespace Rynchodon.AntennaRelay
 			myLaserAntenna = Entity as Ingame.IMyLaserAntenna;
 			value_registry.Add(this);
 
-			log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+			//log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
 		public override void Close()
 		{
+			base.Close();
 			try
 			{
 				if (CubeBlock != null)
@@ -58,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 				if (!myLaserAntenna.IsWorking)
 					return;
 
-				Showoff.doShowoff(CubeBlock, myLastSeen.Values.GetEnumerator(), myLastSeen.Count);
+				//Showoff.doShowoff(CubeBlock, myLastSeen.Values.GetEnumerator(), myLastSeen.Count);
 
 				// stage 5 is the final stage. It is possible for one to be in stage 5, while the other is not
 				MyObjectBuilder_LaserAntenna builder = CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna;

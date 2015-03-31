@@ -1,5 +1,7 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
+[url=http://forums.keenswh.com/post/mod-autopilot-7227970] Deutsche Übersetzung von jirok666 [/url]
+
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
@@ -8,12 +10,12 @@ Fly to world GPS location
 Fly a certain distance relative to ship
 Formations/Orientation matching
 Command looping
-Speed Control 
+Speed Control
 Obstacle detection & collision avoidance
-Engage Enemy ships/stations 
+Engage Enemy ships/stations
 Radar
 Act as a missle and target a block on a an enemy ship/station
-(In development) Smart Turret Control - Allows you to set priorities for your turrets. 
+(In development) Smart Turret Control - Allows you to set priorities for your turrets.
             --This allows you to disable, but not completely destroy an enemy ship/station (grid)
 
 [h1]Contribute[/h1]
@@ -58,6 +60,9 @@ Example - [ C 0, 0 , 0 : W 60 : C 500, 500, 500 : EXIT ] - Will wait for 60 seco
 A <block>, <action> : Run an action on one or more blocks. <action> is case-sensitive. Autopilot will find every block that contains <block>, find the ITerminalAction that matches <action>, and apply it. Block must have faction share with remote's owner.
 Example - [ A Thrust, OnOff_On ] - turn all the thrusters on
 
+Asteroid : Disable asteroid collision avoidance, only affects the next destination.
+Example - [ Asteroid : C 0,0,0 : C 1000,0,0 ] - fly to 0,0,0 ignoring asteroids, fly to 1000,0,0 avoiding asteroids
+
 B <name> : for navigating to a specific block on a grid, will only affect the next use of G, E, or M. For friendly grids uses the display name; for hostile grids the definition name. Target block must be working.
 Example - [ B Antenna : G Platform ] - fly to Antenna on Platform
 Example - [ B Reactor : E 0 ] - will only target an enemy with a working reactor
@@ -90,6 +95,11 @@ Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, t
 R <f>, <u> : match orientation (direction and roll). <f> as above. <u> which block direction will be Remote Control's Up
 Example - [ R Forward, Upward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Remote Control to antenna forward, then roll so that Antenna's Upward will match Remote Control's upward.
 
+T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]
+Example - [ T Command Panel ] - fetch commands from "Command Panel"
+T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.
+Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
+
 V <cruise> : when travelling faster than <cruise> reduce thrust (zero or very little thrust)
 Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, cruising when above 10m/s. The default for <cruise> is set in the settings file.
 V <cruise>, <slow> : when speed is below <cruise>, accelerate; when speed is between <cruise> and <slow>, cruise; when speed is above <slow>, decelerate. The default for <cruise> is set in the settings file, the default for <slow> is infinity (practically).
@@ -108,16 +118,18 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 [h1]Autopilot States[/h1]
 <OFF> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
 <PATHFINDING> searching for a path towards the destination
+<NO_PATH> could not find a path to the destination
+<NO_DEST> could not find a valid target or destination, this state is usually temporary
+<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
+<WAITING:(time)> a wait command was reached, display time remaining
 <ROTATING> rotating the ship
 <MOVING> heading towards the next stop
 <STOPPING> stopping the grid
-<NO_PATH> could not find a path to the destination
-<NO_DEST> could not find a valid target or destination, this state is usually temporary
 <MISSILE> found a target, going to hit it
 <ENGAGING> found a target, flying towards it
+<LANDED> grid is landed
 <PLAYER> A player is controlling grid
-<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector while a player is in a seat.
-<BROKEN> Congratulations! You found a bug, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440] please report it [/url].
+<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
 
 [h1]More Information[/h1]
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
@@ -128,8 +140,7 @@ In order for Autopilot to control a grid, it must have a gyroscope, have thruste
 All commands are in the display name of a Remote Control block.
 [] All commands are contained within a single set of square brackets
 <> Do not use angle brackets in your Remote Control's name
-: Commands are separated by colons
-X # : Commands are identified by a single character, followed by information to use
+:; Commands are separated by colons and/or semicolons
 Variables P and V affect all destinations that come after
   Interpreter ignores all spaces
 Aa Interpreter is case insensitve

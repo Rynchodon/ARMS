@@ -16,7 +16,7 @@ namespace Rynchodon.Autopilot
 	{
 		private Navigator myNav;
 		private IMyEntity Entity;
-		public LastSeen gridLastSeen { get { return seenBy.lastSeenByEntity(Entity); } }
+		public LastSeen gridLastSeen { get { return seenBy.getLastSeen(Entity.EntityId); } }
 
 		//public LastSeen gridLastSeen { get; private set; }
 		private RemoteControl seenBy;

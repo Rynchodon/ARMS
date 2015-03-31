@@ -32,7 +32,7 @@ namespace Rynchodon.AntennaRelay
 			registry.Add(CubeBlock, this);
 			ClassName = "RemoteControl";
 
-			log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+			//log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 
 			// for my German friends...
 			if (!myRemote.DisplayNameText.Contains('[') && !myRemote.DisplayNameText.Contains(']'))
@@ -60,7 +60,7 @@ namespace Rynchodon.AntennaRelay
 				if (!seen.isValid)
 					removeList.AddLast(seen);
 			foreach (LastSeen seen in removeList)
-				myLastSeen.Remove(seen.Entity);
+				myLastSeen.Remove(seen.Entity.EntityId);
 
 			log("enumerator has " + myLastSeen.Count + " values", "lastSeenEnumerator()", Logger.severity.TRACE);
 			return myLastSeen.Values.GetEnumerator();
@@ -92,11 +92,11 @@ namespace Rynchodon.AntennaRelay
 		public static bool TryGet(IMyCubeBlock block, out RemoteControl result)
 		{ return registry.TryGetValue(block, out result); }
 
-		public bool lastSeenByEntity(IMyEntity key, out LastSeen result)
-		{ return myLastSeen.TryGetValue(key, out result); }
+		//public bool lastSeenByEntity(IMyEntity key, out LastSeen result)
+		//{ return myLastSeen.TryGetValue(key, out result); }
 
-		public LastSeen lastSeenByEntity(IMyEntity key)
-		{ return myLastSeen[key]; }
+		//public LastSeen lastSeenByEntity(IMyEntity key)
+		//{ return myLastSeen[key]; }
 
 		//public override string ToString()
 		//{ return CubeBlock.CubeGrid.DisplayName + "-" + myRemote.DisplayNameText; }

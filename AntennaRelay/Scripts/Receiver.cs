@@ -14,14 +14,16 @@ namespace Rynchodon.AntennaRelay
 {
 	public abstract class Receiver : UpdateEnforcer
 	{
-		protected Dictionary<IMyEntity, LastSeen> myLastSeen = new Dictionary<IMyEntity, LastSeen>();
+		/// <summary>
+		/// Track LastSeen objects by entityId
+		/// </summary>
+		protected Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
 		public IMyCubeBlock CubeBlock { get; internal set; }
 		protected LinkedList<Message> myMessages = new LinkedList<Message>();
 
 		/// <summary>
 		/// Do not forget to call this!
 		/// </summary>
-		/// <param name="objectBuilder"></param>
 		protected override void DelayedInit()
 		{
 			//(new Logger(null, "Receiver")).log("init", "DelayedInit()", Logger.severity.TRACE);
@@ -72,14 +74,14 @@ namespace Rynchodon.AntennaRelay
 			//}
 
 			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity, out toUpdate))
+			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
 			{
 				if (seen.update(ref toUpdate))
 				{
 					//if (toUpdate.Entity.getBestName().looseContains("Leo"))// toUpdate.LastSeenAt.secondsSince() > 3)
 					//	log("updating: " + seen.Entity.getBestName(), "receive()", Logger.severity.TRACE);
-					myLastSeen.Remove(toUpdate.Entity);
-					myLastSeen.Add(toUpdate.Entity, toUpdate);
+					myLastSeen.Remove(toUpdate.Entity.EntityId);
+					myLastSeen.Add(toUpdate.Entity.EntityId, toUpdate);
 				}
 				//else
 				//	if (toUpdate.Entity.getBestName().looseContains("Leo"))
@@ -87,7 +89,7 @@ namespace Rynchodon.AntennaRelay
 			}
 			else
 				//{
-				myLastSeen.Add(seen.Entity, seen);
+				myLastSeen.Add(seen.Entity.EntityId, seen);
 			//	log("got a new last seen: " + seen.Entity.DisplayName, "receive()", Logger.severity.TRACE);
 			//}
 		}
@@ -103,14 +105,14 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		public static void sendToAttached(IMyCubeBlock sender, Dictionary<IMyEntity, LastSeen> dictionary)
+		public static void sendToAttached(IMyCubeBlock sender, Dictionary<long, LastSeen> dictionary)
 		{ sendToAttached(sender, null, dictionary); }
 
 		/// <summary>
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<IMyEntity, LastSeen> dictionary = null)
+		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
 		{
 			ICollection<LastSeen> toSend;
 			if (list != null)
@@ -124,7 +126,7 @@ namespace Rynchodon.AntennaRelay
 					removeList.AddLast(seen);
 			foreach (LastSeen seen in removeList)
 				if (dictionary != null)
-					dictionary.Remove(seen.Entity);
+					dictionary.Remove(seen.Entity.EntityId);
 				else
 					toSend.Remove(seen);
 
@@ -217,6 +219,15 @@ namespace Rynchodon.AntennaRelay
 				}
 		}
 
+		public LastSeen getLastSeen(long entityId)
+		{ return myLastSeen[entityId]; }
+
+		public bool tryGetLastSeen(long entityId, out LastSeen result)
+		{ return myLastSeen.TryGetValue(entityId, out result); }
+
+		public IEnumerator<LastSeen> getLastSeenEnum()
+		{ return myLastSeen.Values.GetEnumerator(); }
+
 		protected string ClassName = "Receiver";
 		private Logger myLogger;
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
@@ -226,7 +237,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (myLogger == null)
 				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
-			myLogger.log(level, method, toLog, CubeBlock.DisplayNameText);
+			myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
 		}
 	}
 }

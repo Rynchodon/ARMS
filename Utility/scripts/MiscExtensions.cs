@@ -14,8 +14,11 @@ namespace Rynchodon
 	{
 		public static bool looseContains(this string bigString, string smallString)
 		{
-			string compare1 = bigString.Replace(" ", string.Empty).ToUpper();
-			string compare2 = smallString.Replace(" ", string.Empty).ToUpper();
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(bigString == null, "bigString");
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(smallString == null, "smallString");
+
+			string compare1 = bigString.RemoveWhitespace().ToLower();
+			string compare2 = smallString.RemoveWhitespace().ToLower();
 			return compare1.Contains(compare2);
 		}
 
@@ -76,6 +79,28 @@ namespace Rynchodon
 					return false;
 
 			return true;
+		}
+
+		/// <summary>
+		/// From http://stackoverflow.com/a/20857897
+		/// </summary>
+		public static string RemoveWhitespace(this string input)
+		{
+			int j = 0, inputlen = input.Length;
+			char[] newarr = new char[inputlen];
+
+			for (int i = 0; i < inputlen; ++i)
+			{
+				char tmp = input[i];
+
+				if (!char.IsWhiteSpace(tmp))
+				{
+					newarr[j] = tmp;
+					++j;
+				}
+			}
+
+			return new String(newarr, 0, j);
 		}
 	}
 }

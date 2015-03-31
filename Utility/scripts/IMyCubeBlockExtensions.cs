@@ -237,5 +237,31 @@ namespace Rynchodon
 			}
 			return null;
 		}
+
+		/// <summary>
+		/// Extracts the identifier portion of a blocks name.
+		/// </summary>
+		/// <param name="rc"></param>
+		/// <returns>null iff name could not be extracted</returns>
+		public static string getNameOnly(this IMyCubeBlock rc)
+		{
+			string displayName = rc.DisplayNameText;
+			int start = displayName.IndexOf('>') + 1;
+			int end = displayName.IndexOf('[');
+			if (start > 0 && end > start)
+			{
+				int length = end - start;
+				return displayName.Substring(start, length);
+			}
+			if (start > 0)
+			{
+				return displayName.Substring(start);
+			}
+			if (end > 0)
+			{
+				return displayName.Substring(0, end);
+			}
+			return null;
+		}
 	}
 }
