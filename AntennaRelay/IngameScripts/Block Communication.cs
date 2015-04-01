@@ -21,6 +21,9 @@ namespace Programmable
 
 		/*
 		 * Script for block communication and filtering detected grids.
+		 * To send detected grid information to a Programmable block, use the command
+		 *     [ Transmit Detected to <Programmable block name> ]
+		 * in the name of a TextPanel.
 		 */
 
 		/// <summary>

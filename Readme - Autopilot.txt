@@ -2,6 +2,9 @@ Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
 [url=http://forums.keenswh.com/post/mod-autopilot-7227970] Deutsche Übersetzung von jirok666 [/url]
 
+[b]There is now a different method for writing detected grids to a text panel.[/b]
+Instead of writing [ <panel name> ] in an antenna's name, write [ Display Detected ] in the text panel's name.
+
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
@@ -164,8 +167,10 @@ Each antenna and remote control keeps track of the last time a grid was seen, wh
 It is not possible for Autopilot to display entities on the HUD.
 
 [h1]Block Communication[/h1]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] This script [/url] can be used to send and receive messages, filter detected grids, and execute actions based on detected grids.
 Messages can be sent from one programmable block to another. Block communication will use antenna relay to send messages to other grids.
-An in-game script, [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] available here [/url], is used to parse messages and includes an example of how to send a message.
+Block Communication can read detected grid information, apply filters, execute actions, and write to a TextPanel.
+For usage, see the script itself.
 
 [h1]Smart Turret Control[/h1]
 Turret control is in testing stage, it must be enabled in Settings to work. set:
