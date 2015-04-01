@@ -133,6 +133,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			/// <returns></returns>
 			public CollisionAvoidance(ref NavSettings CNS, GridDimensions gridDims)
 			{
+				VRage.Exceptions.ThrowIf<ArgumentNullException>(CNS == null, "CNS");
+				VRage.Exceptions.ThrowIf<ArgumentNullException>(gridDims == null, "gridDims");
+
 				this.CNS = CNS;
 				this.wayDest = (Vector3D)CNS.getWayDest();
 				this.myGridDims = gridDims;
@@ -149,22 +152,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 						break;
 					case NavSettings.TypeOfWayDest.LAND:
 					default:
-						if (CNS.landingState == NavSettings.LANDING.OFF)
-						{
-							this.destGrid = null;
-							//log(myLogger, "landingState == OFF, avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.TRACE);
-						}
-						else
-						{
+						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
 							this.destGrid = CNS.CurrentGridDest.Grid;
-							//log(myLogger, "landing, not avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.TRACE);
-						}
 						break;
-					//default:
-					//	// run collision avoidance on aproach
-					//	this.destGrid = null;
-					//	log(myLogger, "state = "+CNS.getTypeOfWayDest()+", avoiding destination grid: " + CNS.gridDestination.DisplayName + " : " + this.destGrid, ".ctor()", Logger.severity.DEBUG);
-					//	break;
 				}
 
 				log(myLogger, "created CollisionAvoidance", ".ctor()", Logger.severity.TRACE);
