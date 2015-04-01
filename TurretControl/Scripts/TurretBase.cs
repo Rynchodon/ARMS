@@ -30,10 +30,10 @@ namespace Rynchodon.Autopilot.Turret
 
 	// TODO:
 	// determine if a turret can point at a target, and is unobstructed. MinElevationDegrees is unreliable
-	// Use projectile speed to determine turretMissileBubble radius.
-	/// <summary>
+	// Use projectile speed to determine turretMissileBubble radius and to adjust for missile acceleration.
+	/// <remarks>
 	/// Turrets will be forced on initially, it is necissary for normal targeting to run briefly before we take control.
-	/// </summary>
+	/// </remarks>
 	public class TurretBase : UpdateEnforcer
 	{
 		private IMyCubeBlock myCubeBlock;
@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Turret
 		private Ingame.IMyLargeTurretBase myTurretBase;
 
 		// definition limits, will be needed to determine whether or not a turret can face a target
-		//private int MinElevationDegrees, MaxElevationDegrees, MinAzimuthDegrees, MaxAzimuthDegrees;
+		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
 
 		private float missileRange;
 
@@ -74,12 +74,14 @@ namespace Rynchodon.Autopilot.Turret
 			myTurretBase.SyncEnableIdleRotation();
 
 			// definition limits
-			//var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
-			//this.MinElevationDegrees = definition.MinElevationDegrees;
-			//this.MaxElevationDegrees = definition.MaxElevationDegrees;
-			//this.MinAzimuthDegrees = definition.MinAzimuthDegrees;
-			//this.MaxAzimuthDegrees = definition.MaxAzimuthDegrees;
-			//myLogger.debugLog("definition limits = " +definition.MinElevationDegrees+", "+definition.MaxElevationDegrees+", "+definition.MinAzimuthDegrees+", "+definition.MaxAzimuthDegrees, "DelayedInit()");
+			var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
+			minElevation = (float)Math.Min(definition.MinElevationDegrees * 180 / Math.PI, -0.6);
+			maxElevation = (float)(definition.MaxElevationDegrees * 180 / Math.PI);
+			minAzimuth = (float)(definition.MinAzimuthDegrees * 180 / Math.PI);
+			maxAzimuth = (float)(definition.MaxAzimuthDegrees * 180 / Math.PI);
+
+			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
+			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
 		}
 
 		public override void Close()
@@ -120,8 +122,6 @@ namespace Rynchodon.Autopilot.Turret
 		private int updateCount = 1000;
 
 		private bool targetMissiles, targetMeteors, targetCharacters;
-
-		//private enum priorities : byte { MISSILE, METEOR, PLAYER, BLOCK };
 
 		private IMyEntity lastTarget;
 
@@ -391,17 +391,17 @@ namespace Rynchodon.Autopilot.Turret
 		/// <returns></returns>
 		private bool getBestTarget(out IMyEntity bestTarget)
 		{
-			currentTargetIsMissile = getBestMissile(out bestTarget);
+			currentTargetIsMissile = getOneMissile(out bestTarget, validTarget_missile) || getOneMissile(out bestTarget, validTarget_meteor);
 			if (currentTargetIsMissile)
 			{
 				//myLogger.debugLog("found a missile: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
-			if (getClosest(validTarget_meteor, out bestTarget))
-			{
-				//myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
-				return true;
-			}
+			//if (getClosest(validTarget_meteor, out bestTarget))
+			//{
+			//	//myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
+			//	return true;
+			//}
 			if (getClosest(validTarget_character, out bestTarget))
 			{
 				//myLogger.debugLog("found a character: " + bestTarget.getBestName(), "getBestTarget()");
@@ -416,7 +416,7 @@ namespace Rynchodon.Autopilot.Turret
 			return false;
 		}
 
-		private bool getClosest(List<IMyEntity> entities, out IMyEntity closest)//, bool missileTest = false)
+		private bool getClosest(List<IMyEntity> entities, out IMyEntity closest)
 		{
 			closest = null;
 			if (entities.Count == 0)
@@ -442,29 +442,26 @@ namespace Rynchodon.Autopilot.Turret
 		}
 
 		/// <summary>
-		/// furthest hostile missile
+		/// any threatening missile
 		/// </summary>
 		/// <param name="bestMissile"></param>
 		/// <returns></returns>
-		private bool getBestMissile(out IMyEntity bestMissile)
+		private bool getOneMissile(out IMyEntity bestMissile, List<IMyEntity> valid_missiles)
 		{
 			bestMissile = null;
-			double furthest = 0;
-			foreach (IMyEntity missile in validTarget_missile)
+			//double furthest = 0;
+			foreach (IMyEntity missile in valid_missiles)
 			{
 				double toMissilePosition;
-				if (missileIsThreat(missile, out toMissilePosition, false) && toMissilePosition > furthest)
+				if (missileIsThreat(missile, out toMissilePosition, false))// && toMissilePosition > furthest)
 				{
-					furthest = toMissilePosition;
+					//furthest = toMissilePosition;
 					bestMissile = missile;
+					return true;
 				}
-				//if (missileIsHostile(missile, out toMissilePosition, false))
-				//{
-				//	bestMissile = missile;
-				//	return true;
-				//}
 			}
-			return (bestMissile != null);
+			//return (bestMissile != null);
+			return false;
 		}
 
 		private bool getBestBlock(out IMyEntity bestMatch)
@@ -501,7 +498,8 @@ namespace Rynchodon.Autopilot.Turret
 		private string[] requestedBlocks;
 
 		/// <summary>
-		/// approaching, going to intersect turretMissileBubble
+		/// Approaching, going to intersect turretMissileBubble.
+		/// Meteors are also checked, they are after all, essentially missiles.
 		/// </summary>
 		/// <returns></returns>
 		private bool missileIsThreat(IMyEntity missile, out double toP0_lengthSquared, bool allowInside)
