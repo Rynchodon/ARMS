@@ -151,7 +151,6 @@ namespace Rynchodon.Autopilot
 		{
 			collisionUpdateSinceWaypointAdded = 0;
 			clearSpeedInternal();
-			ignoreAsteroids = false;
 
 			if (myGridDims == null)
 			{
@@ -263,6 +262,7 @@ namespace Rynchodon.Autopilot
 		public void atWayDest(TypeOfWayDest typeToRemove)
 		{
 			onWayDestAddedRemoved();
+			ignoreAsteroids = false;
 			switch (typeToRemove)
 			{
 				case TypeOfWayDest.BLOCK:
