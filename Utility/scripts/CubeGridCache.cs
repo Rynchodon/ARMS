@@ -42,9 +42,12 @@ namespace Rynchodon
 
 			if (lock_iterateBlocks != null)
 				lock_iterateBlocks.AcquireShared();
-			CubeGrid.GetBlocks(allSlims, slim => slim.FatBlock is IMyTerminalBlock);
-			if (lock_iterateBlocks != null)
-				lock_iterateBlocks.ReleaseShared();
+			try { CubeGrid.GetBlocks(allSlims, slim => slim.FatBlock is IMyTerminalBlock); }
+			finally
+			{
+				if (lock_iterateBlocks != null)
+					lock_iterateBlocks.ReleaseShared();
+			}
 
 			foreach (IMySlimBlock slim in allSlims)
 				CubeGrid_OnBlockAdded(slim);

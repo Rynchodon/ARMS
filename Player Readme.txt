@@ -1,6 +1,6 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
-[url=http://forums.keenswh.com/post/mod-autopilot-7227970] Deutsche Übersetzung von jirok666 [/url]
+[url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
 [b]There is now a different method for writing detected grids to a text panel.[/b]
 Instead of writing [ <panel name> ] in an antenna's name, write [ Display Detected ] in the text panel's name.
