@@ -1,6 +1,6 @@
 Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
-[url=http://forums.keenswh.com/post/mod-autopilot-7227970] Deutsche Übersetzung von jirok666 [/url]
+[url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
 [b]There is now a different method for writing detected grids to a text panel.[/b]
 Instead of writing [ <panel name> ] in an antenna's name, write [ Display Detected ] in the text panel's name.
@@ -180,12 +180,15 @@ Turrets can be given specific instructions on which targets to shoot; for blocks
 In order for Smart Turret Control to function, a turret must have square brackets in its name. Smart Turrets will only search for missiles and/or blocks when an attached antenna is detecting a nearby enemy.
 Most of the work for Smart Turret Control is done in a separate thread; having lots of turrets running will not slow down S.E. but will make turrets less responsive.
 
+Block targets are fetched from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
+Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
+
 [b]Priorities[/b] - highest to lowest
 If Target Missiles is enabled, shoot missiles that are approaching the turret.
-If Target Meteors is enabled, shoot meteors.
-If Target Moving Objects is enabled, shoot enemy characters.
-Get a list of block definitions from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
-Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
+If Target Meteors is enabled, shoot meteors that are approaching the turret.
+If Target Characters is enabled, shoot enemy characters.
+If a list of block targets is provided, shoot blocks.
+If Target Moving Objects is enabled, shoot hostile grids that are approaching the turret.
 
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.

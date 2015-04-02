@@ -476,7 +476,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid == null)
 				{
-					log(myLogger, "Asteroid: " + entity.getBestName(), "entityIntersectsWithSphere()", Logger.severity.DEBUG);
+					log(myLogger, "Asteroid: " + entity.getBestName() + ", " + !ignoreAsteroids, "entityIntersectsWithSphere()", Logger.severity.DEBUG);
 
 					return !ignoreAsteroids;
 					//return entity.GetIntersectionWithSphere(ref sphere); // not at all reliable
