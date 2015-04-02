@@ -38,9 +38,12 @@ namespace Rynchodon.Autopilot.Turret
 			}
 			if (lock_MyAPIGateway != null)
 				lock_MyAPIGateway.AcquireShared();
-			MyAPIGateway.Parallel.Start(Run);
-			if (lock_MyAPIGateway != null)
-				lock_MyAPIGateway.ReleaseShared();
+			try { MyAPIGateway.Parallel.Start(Run); }
+			finally
+			{
+				if (lock_MyAPIGateway != null)
+					lock_MyAPIGateway.ReleaseShared();
+			}
 		}
 
 		private static void Run()
