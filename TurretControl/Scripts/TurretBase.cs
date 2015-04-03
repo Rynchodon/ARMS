@@ -41,7 +41,9 @@ namespace Rynchodon.Autopilot.Turret
 		private IMyTerminalBlock myTerminal;
 		private Ingame.IMyLargeTurretBase myTurretBase;
 
-		// definition limits, will be needed to determine whether or not a turret can face a target
+		/// <summary>
+		/// limits to determine whether or not a turret can face a target
+		/// </summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
 
 		protected override void DelayedInit()
@@ -68,13 +70,13 @@ namespace Rynchodon.Autopilot.Turret
 			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
 			myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
 
-			myTurretBase.SyncAzimuth();
-			myTurretBase.SyncElevation();
-			myTurretBase.SyncEnableIdleRotation();
+			//myTurretBase.SyncAzimuth();
+			//myTurretBase.SyncElevation();
+			//myTurretBase.SyncEnableIdleRotation();
 
 			// definition limits
-			var definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
-			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6);
+			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
+			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
 			maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
 			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
 			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
@@ -129,7 +131,7 @@ namespace Rynchodon.Autopilot.Turret
 		}
 
 		private bool controlEnabled = false;
-		private int updateCount = 1000;
+		private int updateCount = 0;
 		private bool targetMissiles, targetMeteors, targetCharacters, targetMoving, targetLargeGrids, targetSmallGrids, targetStations;
 		private IMyEntity lastTarget;
 		private Receiver myAntenna;
@@ -168,9 +170,14 @@ namespace Rynchodon.Autopilot.Turret
 				if (!myCubeBlock.IsWorking || myCubeBlock.Closed)
 					return;
 
-				if (updateCount >= 100) // every 100 updates
+				if (updateCount % 100 == 0) // every 100 updates
 				{
-					updateCount = 0;
+					if (updateCount == 1000)
+					{
+						reset();
+						return;
+					}
+
 					controlEnabled = myCubeBlock.DisplayNameText.Contains("[") && myCubeBlock.DisplayNameText.Contains("]");
 
 					if (controlEnabled)
@@ -235,16 +242,18 @@ namespace Rynchodon.Autopilot.Turret
 					else
 						CurrentState = State.WAIT_DTAT;
 
-				// Wait for default targeting to acquire a target. This is not an exhaustive test but it is the best we have.
+				// Wait for default targeting to acquire a target.
 				if (CurrentState == State.WAIT_DTAT)
 				{
 					if (updateCount % 10 == 0)
 					{
+						turretPosition = myCubeBlock.GetPosition();
 						MyObjectBuilder_TurretBase builder = myCubeBlock.getSlimObjectBuilder() as MyObjectBuilder_TurretBase;
-						if (builder.Target > 0)
+						IMyEntity target;
+						if (MyAPIGateway.Entities.TryGetEntityById(builder.Target, out target))
 						{
-							IMyEntity target = MyAPIGateway.Entities.GetEntityById(builder.Target);
-							if (canLase(target))
+							if ((target is IMyCubeBlock || target is IMyMeteor)
+								&& canLase(target))
 							{
 								defaultTargetingAcquiredTarget = true;
 								setNoTarget();
@@ -295,6 +304,7 @@ namespace Rynchodon.Autopilot.Turret
 					return;
 
 				turretPosition = myCubeBlock.GetPosition();
+				myLogger.debugLog("Turret Position: " + turretPosition, "Update()");
 				turretMissileBubble = new BoundingSphereD(turretPosition, myTurretBase.Range / 10);
 
 				double distToMissile;
@@ -324,7 +334,7 @@ namespace Rynchodon.Autopilot.Turret
 			finally { queued = false; }
 		}
 
-		private List<IMyEntity> validTarget_missile, validTarget_meteor, validTarget_character, validTarget_block, validTarget_moving;
+		private List<IMyEntity> validTarget_missile, validTarget_meteor, validTarget_character, validTarget_block, validTarget_CubeGrid, ObstructingGrids;
 
 		private static readonly MyObjectBuilderType Type_Decoy = new MyObjectBuilderType(typeof(MyObjectBuilder_Decoy));
 
@@ -344,7 +354,8 @@ namespace Rynchodon.Autopilot.Turret
 			validTarget_meteor = new List<IMyEntity>();
 			validTarget_character = new List<IMyEntity>();
 			validTarget_block = new List<IMyEntity>();
-			validTarget_moving = new List<IMyEntity>();
+			validTarget_CubeGrid = new List<IMyEntity>();
+			ObstructingGrids = new List<IMyEntity>();
 
 			if (!possibleTargets())
 			{
@@ -368,8 +379,13 @@ namespace Rynchodon.Autopilot.Turret
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
-					if (targetMoving && enemyNear() && targetGridFlagSet(asGrid) && myCubeBlock.canConsiderHostile(asGrid))
-						validTarget_moving.Add(entity);
+					if (myCubeBlock.canConsiderHostile(asGrid))
+					{
+						if (targetMoving && enemyNear() && targetGridFlagSet(asGrid))
+							validTarget_CubeGrid.Add(entity);
+					}
+					else // not hostile
+						ObstructingGrids.Add(entity);
 					continue;
 				}
 				if (entity is IMyMeteor)
@@ -400,11 +416,11 @@ namespace Rynchodon.Autopilot.Turret
 			}
 
 			//myLogger.debugLog("target counts = " + validTarget_missile.Count + ", " + validTarget_meteor.Count + ", " + validTarget_character.Count + ", " + validTarget_block.Count, "getValidTargets()");
-			return validTarget_missile.Count > 0 || validTarget_meteor.Count > 0 || validTarget_character.Count > 0 || validTarget_block.Count > 0 || validTarget_moving.Count > 0;
+			return validTarget_missile.Count > 0 || validTarget_meteor.Count > 0 || validTarget_character.Count > 0 || validTarget_block.Count > 0 || validTarget_CubeGrid.Count > 0;
 		}
 
 		/// <summary>
-		/// Responsible for prioritizing. Missile, Meteor, Character, Decoy, Other Blocks
+		/// Responsible for prioritizing. Missile, Meteor, Character, Decoy, Other Blocks, Moving
 		/// </summary>
 		/// <param name="bestTarget"></param>
 		/// <returns></returns>
@@ -417,11 +433,6 @@ namespace Rynchodon.Autopilot.Turret
 				//myLogger.debugLog("found a missile: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
-			//if (getClosest(validTarget_meteor, out bestTarget))
-			//{
-			//	//myLogger.debugLog("found a meteor: " + bestTarget.getBestName(), "getBestTarget()");
-			//	return true;
-			//}
 			if (getClosest(validTarget_character, out bestTarget))
 			{
 				//myLogger.debugLog("found a character: " + bestTarget.getBestName(), "getBestTarget()");
@@ -429,15 +440,15 @@ namespace Rynchodon.Autopilot.Turret
 			}
 			if (getBestBlock(out bestTarget))
 			{
-				myLogger.debugLog("found a block: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("found a block: " + bestTarget.getBestName(), "getBestTarget()");
 				return true;
 			}
-			if (getClosest(validTarget_moving, out bestTarget, true))
+			if (getClosest(validTarget_CubeGrid, out bestTarget, true))
 			{
-				myLogger.debugLog("closest approaching grid: " + bestTarget.getBestName(), "getBestTarget()");
+				//myLogger.debugLog("closest approaching grid: " + bestTarget.getBestName(), "getBestTarget()");
 				if (getClosestBlock(bestTarget as IMyCubeGrid, out bestTarget))
 				{
-					myLogger.debugLog("closest block on grid: " + bestTarget.getBestName(), "getBestTarget()");
+					//myLogger.debugLog("closest block on grid: " + bestTarget.getBestName(), "getBestTarget()");
 					return true;
 				}
 			}
@@ -617,18 +628,82 @@ namespace Rynchodon.Autopilot.Turret
 			Vector3 relativeToBlock = RelativeVector3F.createFromWorld(targetPos - turretPosition, myCubeBlock.CubeGrid).getBlock(myCubeBlock);
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(Vector3.Normalize(relativeToBlock), out azimuth, out elevation);
-			//myLogger.debugLog("for target = " + target.getBestName() + ", elevation = " + elevation + ", azimuth = " + azimuth, "canLase()");
+			//myLogger.debugLog("for target = " + target.getBestName() + ", at " + target.GetPosition() + ", elevation = " + elevation + ", azimuth = " + azimuth, "canLase()");
 			if (azimuth < minAzimuth || azimuth > maxAzimuth || elevation < minElevation || elevation > maxElevation)
 				return false;
 
-			// Test line of sight
-			// need to be able to test armour blocks, which are not entities
+			// if we are waiting on default targeting, ObstructingGrids will not be up-to-date
+			if (CurrentState == State.WAIT_DTAT)
+			{
+				List<IMyEntity> entitiesInRange;
+				using (lock_notMyUpdate.AcquireSharedUsing())
+				{
+					BoundingSphereD range = new BoundingSphereD(turretPosition, myTurretBase.Range + 200);
+					entitiesInRange = MyAPIGateway.Entities.GetEntitiesInSphere(ref range);
+				}
+
+				foreach (IMyEntity entity in entitiesInRange)
+				{
+					IMyCubeGrid asGrid = entity as IMyCubeGrid;
+					//if (asGrid != null)
+					//	myLogger.debugLog("checking entity: " + entity.getBestName(), "canLase()");
+					if (asGrid != null && !myCubeBlock.canConsiderHostile(asGrid) && IsObstructing(asGrid, targetPos))
+					{
+						myLogger.debugLog("for target " + target.getBestName() + ", path from " + turretPosition + " to " + targetPos + ", obstructing entity = " + entity.getBestName(), "canLase()");
+						return false;
+					}
+				}
+			}
+			else 
+			{
+				foreach (IMyCubeGrid grid in ObstructingGrids)
+				{
+					//if (grid != null)
+					//	myLogger.debugLog("checking entity: " + grid.getBestName(), "canLase()");
+					if (IsObstructing(grid, targetPos))
+					{
+						myLogger.debugLog("for target " + target.getBestName() + ", path from " + turretPosition + " to " + targetPos + ", obstructing entity = " + grid.getBestName(), "canLase()");
+						return false;
+					}
+				}
+			}
+
 			return true;
+		}
 
-			//using (lock_notMyUpdate.AcquireSharedUsing())
-			//	return !MyAPIGateway.Entities.IsRaycastBlocked(turretPosition, targetPos);
+		private bool IsObstructing(IMyCubeGrid grid, Vector3D target)
+		{
+			List<Vector3I> cells = new List<Vector3I>();
+			grid.RayCastCells(turretPosition, target, cells, null, true);
+			if (cells.Count == 0)
+				return false;
+			if (grid != myCubeBlock.CubeGrid)
+				return true;
 
-			
+			//myLogger.debugLog("testing " + cells.Count + " of " + grid.getBestName() + " cells for obstruction", "IsObstructing()");
+			foreach (Vector3I pos in cells)
+			{
+				//if (pos == myCubeBlock.Position)
+				//{
+				//	//myLogger.debugLog("my cell: " + pos + ", world:" + grid.GridIntegerToWorld(pos), "IsObstructing()");
+				//	continue;
+				//}
+
+				IMySlimBlock block = grid.GetCubeBlock(pos);
+				if (block != null)
+				{
+					if (block == myCubeBlock)
+						continue;
+
+					if (block.FatBlock == null)
+						myLogger.debugLog("obstructing slim pos = " + pos + ", world = " + grid.GridIntegerToWorld(pos), "IsObstructing()");
+					else
+						myLogger.debugLog("obstructing cube: " + block.FatBlock.DisplayNameText + ", pos = " + pos + ", world = " + grid.GridIntegerToWorld(pos), "IsObstructing()");
+					return true;
+				}
+				//myLogger.debugLog("empty cell: " + pos + ", world:" + grid.GridIntegerToWorld(pos), "IsObstructing()");
+			}
+			return false;
 		}
 
 		/// <summary>
