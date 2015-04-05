@@ -61,9 +61,9 @@ namespace Rynchodon.Autopilot.Turret
 			if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
 			{
 				if (myTurretBase.OwnerId.Is_ID_NPC())
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sTurretDefaultNPC]);
+					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
 				else
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sTurretDefaultPlayer]);
+					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
 			}
 
 			TurretBase_CustomNameChanged(null);
