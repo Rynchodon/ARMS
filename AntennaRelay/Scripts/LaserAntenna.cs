@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 //using System.Linq;
 //using System.Text;
 
@@ -19,7 +20,7 @@ namespace Rynchodon.AntennaRelay
 	public class LaserAntenna : Receiver
 	{
 		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
-		public static IReadOnlyList<LaserAntenna> registry { get { return value_registry.AsReadOnly(); } }
+		public static ReadOnlyCollection<LaserAntenna> registry { get { return value_registry.AsReadOnly(); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 

@@ -13,6 +13,7 @@ build.ini
 */[Bb]in/
 */[Oo]bj/
 */[Pp]roperties/
+app.config
 
 #################
 ## Eclipse
