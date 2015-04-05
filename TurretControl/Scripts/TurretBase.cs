@@ -692,13 +692,14 @@ namespace Rynchodon.Autopilot.Turret
 				IMySlimBlock block = grid.GetCubeBlock(pos);
 				if (block != null)
 				{
-					if (block == myCubeBlock)
-						continue;
-
 					if (block.FatBlock == null)
 						myLogger.debugLog("obstructing slim pos = " + pos + ", world = " + grid.GridIntegerToWorld(pos), "IsObstructing()");
 					else
+					{
+						if (block.FatBlock == myCubeBlock)
+							continue;
 						myLogger.debugLog("obstructing cube: " + block.FatBlock.DisplayNameText + ", pos = " + pos + ", world = " + grid.GridIntegerToWorld(pos), "IsObstructing()");
+					}
 					return true;
 				}
 				//myLogger.debugLog("empty cell: " + pos + ", world:" + grid.GridIntegerToWorld(pos), "IsObstructing()");
