@@ -29,7 +29,6 @@ namespace Rynchodon.Autopilot.Turret
 	public class TurretInterior : TurretBase { }
 
 	// TODO:
-	// determine if a turret can point at a target, and is unobstructed. MinElevationDegrees is unreliable
 	// Use projectile speed to determine turretMissileBubble radius and to adjust for missile acceleration.
 	// Go through object builder to get ammo data?
 	/// <remarks>
@@ -69,10 +68,6 @@ namespace Rynchodon.Autopilot.Turret
 			TurretBase_CustomNameChanged(null);
 			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
 			myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
-
-			//myTurretBase.SyncAzimuth();
-			//myTurretBase.SyncElevation();
-			//myTurretBase.SyncEnableIdleRotation();
 
 			// definition limits
 			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
@@ -143,16 +138,7 @@ namespace Rynchodon.Autopilot.Turret
 		private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock(); // static so work can be performed when any turret has main thread
 
 		private enum State : byte { OFF, HAS_TARGET, NO_TARGET, NO_POSSIBLE, WAIT_DTAT }
-		//private State value_CurrentState = State.OFF;
 		private State CurrentState = State.OFF;
-		//{
-		//	get { return value_CurrentState; }
-		//	set
-		//	{
-		//		value_CurrentState = value;
-		//		myLogger.debugLog("state changed to " + value, "set_CurrentState()");
-		//	}
-		//}
 
 		private bool defaultTargetingAcquiredTarget = false;
 
@@ -292,9 +278,6 @@ namespace Rynchodon.Autopilot.Turret
 		private bool currentTargetIsMissile = false;
 
 		private bool queued = false;
-
-		//private IMyEntity newTarget;
-		//private FastResourceLock lock_newTarget = new FastResourceLock();
 
 		private void Update()
 		{
