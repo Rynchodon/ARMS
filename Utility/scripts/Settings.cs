@@ -16,7 +16,7 @@ namespace Rynchodon
 		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl, bTestingTurretControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
-		public enum StringSetName : byte { sTurretDefaultPlayer, sTurretDefaultNPC }
+		public enum StringSetName : byte { sSmartTurretDefaultPlayer, sSmartTurretDefaultNPC }
 
 		public static Dictionary<BoolSetName, bool> boolSettings = new Dictionary<BoolSetName, bool>();
 		public static Dictionary<IntSetName, int> intSettings = new Dictionary<IntSetName, int>();
@@ -66,8 +66,8 @@ namespace Rynchodon
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeLarge, 100);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
 
-			stringSettings.Add(StringSetName.sTurretDefaultNPC, "[ Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
-			stringSettings.Add(StringSetName.sTurretDefaultPlayer, "[  ]");
+			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
+			stringSettings.Add(StringSetName.sSmartTurretDefaultPlayer, "");
 		}
 
 		/// <summary>

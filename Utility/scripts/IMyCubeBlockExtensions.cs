@@ -78,6 +78,8 @@ namespace Rynchodon
 
 		private static Relations getRelationsTo(this IMyCubeBlock block, long playerID)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
+
 			switch (block.GetUserRelationToOwner(playerID))
 			{
 				case MyRelationsBetweenPlayerAndBlock.Enemies:
@@ -95,6 +97,9 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeBlock target)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
+
 			if (block.OwnerId == 0 || target.OwnerId == 0)
 				return Relations.None;
 			return block.getRelationsTo(target.OwnerId) ;
@@ -102,6 +107,9 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
+
 			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
 				return Relations.Enemy;
 

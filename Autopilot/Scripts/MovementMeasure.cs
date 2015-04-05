@@ -27,7 +27,6 @@ namespace Rynchodon.Autopilot
 
 			lazy_navBlockPosition = new Lazy<Vector3D>(() => { return owner.getNavigationBlock().GetPosition(); });
 			lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
-			//lazy_gridDistToWayDest = new Lazy<double>(() => { return owner.myGrid.WorldAABB.Distance(currentWaypoint); }); // test each corner of either grid with Distance
 			lazy_distToWayDest = new Lazy<double>(() =>
 			{
 				switch (owner.CNS.getTypeOfWayDest())
@@ -96,28 +95,9 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		// might want a lookup table
 		private void buildPitchYaw()
 		{
-			//if (owner.getNavigationBlock() != owner.currentRCblock)
 			isValid__pitchYaw = true;
-
-			//value__pitch = 0;
-			//value__yaw = 0;
-			//value__pitchPower = 0;
-			//value__yawPower = 0;
-
-			//if (owner.CNS.moveState == NavSettings.Moving.SIDELING)
-			//	return;
-
-			//switch (owner.CNS.landingState)
-			//{
-			//	case NavSettings.LANDING.OFF:
-			//	case NavSettings.LANDING.ORIENT:
-			//		break;
-			//	default:
-			//		return;
-			//}
 
 			Vector3D dirNorm;
 			if (targetDirection == null)
@@ -135,15 +115,6 @@ namespace Rynchodon.Autopilot
 			//log("dir vects = " + right + ", " + down + ", " + forward, "buildPitchYaw()", Logger.severity.TRACE);
 			value__pitch = Math.Atan2(down, forward);
 			value__yaw = Math.Atan2(right, forward);
-			//if (forward < 0)
-			//{
-			//	double new_yaw;
-			//	if (value__yaw < 0)
-			//		new_yaw = -2 * Math.PI - value__yaw;
-			//	else // value_yaw > 0
-			//		new_yaw = 2 * Math.PI - value__yaw;
-			//	log("yaw adjusted from " + value__yaw + " to " + new_yaw, "buildPitchYaw()", Logger.severity.DEBUG);
-			//}
 			//log("pitch = " + value__pitch + ", yaw = " + value__yaw, "buildPitchYaw()", Logger.severity.TRACE);
 			switch (owner.CNS.moveState)
 			{
@@ -189,12 +160,6 @@ namespace Rynchodon.Autopilot
 		/// from nav block to way/dest or, if destination is a block or a grid, distToDestGrid
 		/// </summary>
 		public double distToWayDest { get { return lazy_distToWayDest.Value; } }
-
-		//private Lazy<double> lazy_gridDistToWayDest;
-		///// <summary>
-		///// from myGrid.WorldAABB to way/dest
-		///// </summary>
-		//public double gridDistToWayDest { get { return lazy_gridDistToWayDest.Value; } }
 
 		private Lazy<double> lazy_distToDestGrid;
 		/// <summary>
