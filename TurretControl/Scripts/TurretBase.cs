@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Turret
 
 		protected override void DelayedInit()
 		{
-			if (!Settings.boolSettings[Settings.BoolSetName.bTestingTurretControl])
+			if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
 				return;
 
 			this.myCubeBlock = Entity as IMyCubeBlock;

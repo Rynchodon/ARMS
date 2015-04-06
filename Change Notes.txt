@@ -1,0 +1,11 @@
+Will be moved to steam every release.
+
+major:
+SmartTurrets test azimuth and elevation of target against limits
+SmartTurrets test for friendlies in line-of-sight to target
+SmartTurrets use new options
+
+minor:
+no longer requires .NET 4.5
+NO_PATH clears if obstruction moves
+new defaults for SmartTurrets
