@@ -520,17 +520,17 @@ namespace Rynchodon.Autopilot
 		{
 			if (CNS.isAMissile)
 			{
-				log("missile never reaches destination", "checkAt_wayDest()", Logger.severity.TRACE);
+				//log("missile never reaches destination", "checkAt_wayDest()", Logger.severity.TRACE);
 				return false;
 			}
 			if (MM.distToWayDest > CNS.destinationRadius)
 			{
-				log("keep approaching; too far (" + MM.distToWayDest + " > " + CNS.destinationRadius + ")", "checkAt_wayDest()", Logger.severity.TRACE);
+				//log("keep approaching; too far (" + MM.distToWayDest + " > " + CNS.destinationRadius + ")", "checkAt_wayDest()", Logger.severity.TRACE);
 				return false;
 			}
 			if (CNS.landLocalBlock != null && MM.distToWayDest > radiusLandWay) // distance to start landing
 			{
-				log("keep approaching; getting ready to land (" + MM.distToWayDest + " > " + radiusLandWay + ")", "checkAt_wayDest()", Logger.severity.TRACE);
+				//log("keep approaching; getting ready to land (" + MM.distToWayDest + " > " + radiusLandWay + ")", "checkAt_wayDest()", Logger.severity.TRACE);
 				return false;
 			}
 
@@ -1051,6 +1051,7 @@ namespace Rynchodon.Autopilot
 
 		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 0, 1);
 		private DateTime stoppedMovingAt;
+		private static float stoppedPrecision = 0.2f;
 
 		private void checkStopped()
 		{
@@ -1060,7 +1061,7 @@ namespace Rynchodon.Autopilot
 			bool isStopped;
 
 			//log("checking movementSpeed "+movementSpeed, "checkStopped()", Logger.severity.TRACE);
-			if (MM.movementSpeed == null || MM.movementSpeed > 0.1f)
+			if (MM.movementSpeed == null || MM.movementSpeed > stoppedPrecision)
 			{
 				//log("fast", "checkStopped()", Logger.severity.TRACE);
 				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
@@ -1091,7 +1092,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private Vector3D? facing = null;
 
-		private static float notRotPrecision = 0.01f;
+		private static float notRotPrecision = 0.2f;
 
 		private bool isNotRotating()
 		{

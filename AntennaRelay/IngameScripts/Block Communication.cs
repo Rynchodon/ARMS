@@ -66,8 +66,8 @@ namespace Programmable
 			{
 				List<IMyTerminalBlock> lightBlocks = new List<IMyTerminalBlock>();
 				GridTerminalSystem.GetBlocksOfType<IMyInteriorLight>(lightBlocks);
-				for (int i = 0; i < lightBlocks.Count; i++)
-					lightBlocks[i].ApplyAction("OnOff_On");
+				for (int index = 0; index < lightBlocks.Count; index++)
+					lightBlocks[index].ApplyAction("OnOff_On");
 			}
 		}
 
@@ -259,10 +259,10 @@ namespace Programmable
 			IMyTextPanel panel = null;
 			List<IMyTerminalBlock> textPanels = new List<IMyTerminalBlock>();
 			GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(textPanels);
-			for (int i = 0; i < textPanels.Count; i++)
-				if (textPanels[i].DisplayNameText == textPanelName)
+			for (int index = 0; index < textPanels.Count; index++)
+				if (textPanels[index].DisplayNameText == textPanelName)
 				{
-					panel = textPanels[i] as IMyTextPanel;
+					panel = textPanels[index] as IMyTextPanel;
 					break;
 				}
 
