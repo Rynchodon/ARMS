@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 //using System.Linq;
 //using System.Text;
 
@@ -20,7 +19,7 @@ namespace Rynchodon.AntennaRelay
 	public class LaserAntenna : Receiver
 	{
 		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
-		public static ReadOnlyCollection<LaserAntenna> registry { get { return value_registry.AsReadOnly(); } }
+		public static ReadOnlyList<LaserAntenna> registry { get { return new ReadOnlyList<LaserAntenna>(value_registry); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 
@@ -65,7 +64,7 @@ namespace Rynchodon.AntennaRelay
 				// stage 5 is the final stage. It is possible for one to be in stage 5, while the other is not
 				MyObjectBuilder_LaserAntenna builder = CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna;
 				if (builder.targetEntityId != null)
-					foreach (LaserAntenna lAnt in registry)
+					foreach (LaserAntenna lAnt in value_registry)
 						if (lAnt.CubeBlock.EntityId == builder.targetEntityId)
 							if (builder.State == 5 && (lAnt.CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna).State == 5)
 							{

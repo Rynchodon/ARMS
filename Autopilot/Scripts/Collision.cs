@@ -98,7 +98,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 				return avoidCollisions(ref CNS, updateCount, (byte)(tryCount - 1));
 			}
 			if (result == collisionAvoidResult.NO_WAY_FORWARD)
+			{
 				nextUpdate = updateCount + 10;
+				myCA = null;
+			}
 			else
 				nextUpdate = updateCount + 1;
 			//log("time to avoidCollisions: " + (DateTime.UtcNow - startOfMethod).TotalMilliseconds+" spheres checked: "+spheresChecked);

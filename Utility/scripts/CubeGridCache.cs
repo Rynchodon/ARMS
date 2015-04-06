@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 //using System.Linq;
 //using System.Text;
 
@@ -191,7 +190,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
-		public ReadOnlyCollection<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType )
+		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
 			myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
@@ -200,7 +199,7 @@ namespace Rynchodon
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 				{
 					value.IsClean = false;
-					return value.AsReadOnly();
+					return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
 				}
 				return null;
 			}
@@ -211,7 +210,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="definition"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public ReadOnlyCollection<Ingame.IMyTerminalBlock> GetBlocksByDefinition(string definition)
+		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefinition(string definition)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
@@ -219,7 +218,7 @@ namespace Rynchodon
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 				{
 					value.IsClean = false;
-					return value.AsReadOnly();
+					return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
 				}
 				return null;
 			}
@@ -230,7 +229,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public ReadOnlyCollection<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contained)
+		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contained)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
@@ -239,7 +238,7 @@ namespace Rynchodon
 					{
 						CleanList<Ingame.IMyTerminalBlock> value = CubeBlocks_Definition[key];
 						value.IsClean = false;
-						return value.AsReadOnly();
+						return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
 					}
 				return null;
 			}
