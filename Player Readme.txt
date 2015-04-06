@@ -224,6 +224,7 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
 [url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
 
+[b]I will not be responding to comments posted below, use one of these links or start a new discussion.[/b]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
