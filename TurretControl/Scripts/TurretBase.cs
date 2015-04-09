@@ -287,7 +287,7 @@ namespace Rynchodon.Autopilot.Turret
 					return;
 
 				turretPosition = myCubeBlock.GetPosition();
-				myLogger.debugLog("Turret Position: " + turretPosition, "Update()");
+				//myLogger.debugLog("Turret Position: " + turretPosition, "Update()");
 				turretMissileBubble = new BoundingSphereD(turretPosition, myTurretBase.Range / 10);
 
 				double distToMissile;
