@@ -65,7 +65,7 @@ namespace Rynchodon
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeLarge, 100);
 			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
 
-			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
+			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
 			stringSettings.Add(StringSetName.sSmartTurretDefaultPlayer, "");
 		}
 
