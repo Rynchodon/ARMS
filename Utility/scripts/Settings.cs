@@ -12,18 +12,20 @@ namespace Rynchodon
 {
 	public static class Settings
 	{
-		// Settings
+		#region settings
 		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
+		public enum DoubleSetName : byte { }
 		public enum StringSetName : byte { sSmartTurretDefaultPlayer, sSmartTurretDefaultNPC }
 
 		public static Dictionary<BoolSetName, bool> boolSettings = new Dictionary<BoolSetName, bool>();
 		public static Dictionary<IntSetName, int> intSettings = new Dictionary<IntSetName, int>();
 		public static Dictionary<FloatSetName, float> floatSettings = new Dictionary<FloatSetName, float>();
+		public static Dictionary<DoubleSetName, double> doubleSettings = new Dictionary<DoubleSetName, double>();
 		public static Dictionary<StringSetName, string> stringSettings = new Dictionary<StringSetName, string>();
+		#endregion
 
-		//
 		private static string settings_file_name = "AutopilotSettings.txt";
 		private static System.IO.TextReader settingsReader;
 		private static System.IO.TextWriter settingsWriter;
@@ -43,11 +45,11 @@ namespace Rynchodon
 			int fileVersion = readAll();
 			if (fileVersion != latestVersion)
 				MyAPIGateway.Utilities.ShowNotification("Autopilot has been updated.", 10000, MyFontEnum.White);
-			log("file version: " + fileVersion + ", latest version: " + latestVersion);
+			log("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
 
-			writeAll();
+			writeAll(); // writing immediately decreases user errors & whining
 		}
-		
+
 		/// <summary>
 		/// put each setting into a dictionary with its default value
 		/// </summary>
@@ -56,14 +58,11 @@ namespace Rynchodon
 			boolSettings.Add(BoolSetName.bAllowJumpCreative, true);
 			boolSettings.Add(BoolSetName.bAllowJumpSurvival, true);
 			boolSettings.Add(BoolSetName.bAllowAutopilot, true);
-			//boolSettings.Add(BoolSetName.bAllowMessaging, true);
 			boolSettings.Add(BoolSetName.bAllowRadar, true);
 			boolSettings.Add(BoolSetName.bAllowTurretControl, true);
 
 			floatSettings.Add(FloatSetName.fDefaultSpeed, 100);
 			floatSettings.Add(FloatSetName.fMaxSpeed, float.MaxValue);
-			//floatSettings.Add(FloatSetName.fMinimumGridVolumeLarge, 100);
-			//floatSettings.Add(FloatSetName.fMinimumGridVolumeSmall, 10);
 
 			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
 			stringSettings.Add(StringSetName.sSmartTurretDefaultPlayer, "");
@@ -110,26 +109,34 @@ namespace Rynchodon
 		/// <summary>
 		/// write all settings to file
 		/// </summary>
-		internal static void writeAll()
+		private static void writeAll()
 		{
-			// write to file
-			settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(Settings));
+			try
+			{
+				// write to file
+				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(Settings));
 
-			write(strVersion, latestVersion.ToString()); // must be first line
+				write(strVersion, latestVersion.ToString()); // must be first line
 
-			// write settings
-			foreach (KeyValuePair<BoolSetName, bool> pair in boolSettings)
-				write(pair.Key.ToString(), pair.Value.ToString());
-			foreach (KeyValuePair<IntSetName, int> pair in intSettings)
-				write(pair.Key.ToString(), pair.Value.ToString());
-			foreach (KeyValuePair<FloatSetName, float> pair in floatSettings)
-				write(pair.Key.ToString(), pair.Value.ToString());
-			foreach (KeyValuePair<StringSetName, string> pair in stringSettings)
-				write(pair.Key.ToString(), pair.Value.ToString());
+				// write settings
+				foreach (KeyValuePair<BoolSetName, bool> pair in boolSettings)
+					write(pair.Key.ToString(), pair.Value.ToString());
+				foreach (KeyValuePair<IntSetName, int> pair in intSettings)
+					write(pair.Key.ToString(), pair.Value.ToString());
+				foreach (KeyValuePair<FloatSetName, float> pair in floatSettings)
+					write(pair.Key.ToString(), pair.Value.ToString());
+				foreach (KeyValuePair<DoubleSetName, double> pair in doubleSettings)
+					write(pair.Key.ToString(), pair.Value.ToString());
+				foreach (KeyValuePair<StringSetName, string> pair in stringSettings)
+					write(pair.Key.ToString(), pair.Value.ToString());
 
-			settingsWriter.Flush();
-			settingsWriter.Close();
-			settingsWriter = null;
+			}
+			finally
+			{
+				settingsWriter.Flush();
+				settingsWriter.Close();
+				settingsWriter = null;
+			}
 		}
 
 		/// <summary>
@@ -149,7 +156,9 @@ namespace Rynchodon
 		/// <summary>
 		/// convert a line of format name=value into a setting and apply it
 		/// </summary>
-		/// <param name="line"></param>
+		/// <remarks>
+		/// guesses setting type based on first letter of name, but will check against all setting types
+		/// </remarks>
 		private static void parse(string line)
 		{
 			if (line.Length < 4)
@@ -163,56 +172,116 @@ namespace Rynchodon
 
 			if (split.Length != 2)
 			{
-				log("split wrong: " + split.Length, "parse()", Logger.severity.WARNING);
+				log("split wrong length: " + split.Length, "parse()", Logger.severity.WARNING);
 				return;
 			}
-			
+
 			string name = split[0];
 			string value = split[1];
 
 			switch (first)
 			{
 				case 'b':
-					{
-						BoolSetName bsn;
-						bool b;
-						if (!Enum.TryParse<BoolSetName>(name, out bsn) || !bool.TryParse(value, out b))
-							return;
-						log("got bool setting: " + bsn + ", with value: " + b, "parse()", Logger.severity.TRACE);
-						boolSettings[bsn] = b;
+				default:
+					if (parseAsBool(name, value)
+						|| parseAsInt(name, value)
+						|| parseAsFloat(name, value)
+						|| parseAsDouble(name, value)
+						|| parseAsString(name, value))
 						return;
-					}
+					break;
+				case 'd':
+					if (parseAsDouble(name, value)
+						|| parseAsBool(name, value)
+						|| parseAsInt(name, value)
+						|| parseAsFloat(name, value)
+						|| parseAsString(name, value))
+						return;
+					break;
 				case 'i':
-					{
-						IntSetName isn;
-						int i;
-						if (!Enum.TryParse<IntSetName>(name, out isn) || !int.TryParse(value, out i))
-							return;
-						log("got int setting: " + isn + ", with value: " + i, "parse()", Logger.severity.TRACE);
-						intSettings[isn] = i;
+					if (parseAsInt(name, value)
+						|| parseAsBool(name, value)
+						|| parseAsFloat(name, value)
+						|| parseAsDouble(name, value)
+						|| parseAsString(name, value))
 						return;
-					}
+					break;
 				case 'f':
-					{
-						FloatSetName fsn;
-						float f;
-						if (!Enum.TryParse<FloatSetName>(name, out fsn) || !float.TryParse(value, out f))
-							return;
-						floatSettings[fsn] = f;
-						log("got float setting: " + fsn + ", with value: " + f, "parse()", Logger.severity.TRACE);
+					if (parseAsFloat(name, value)
+						|| parseAsBool(name, value)
+						|| parseAsInt(name, value)
+						|| parseAsDouble(name, value)
+						|| parseAsString(name, value))
 						return;
-					}
+					break;
 				case 's':
-					{
-						StringSetName ssn;
-						if (!Enum.TryParse<StringSetName>(name, out ssn))
-							return;
-						stringSettings[ssn] = value;
-						log("got string setting: " + ssn + ", with value: " + value, "parse()", Logger.severity.TRACE);
+					if (parseAsString(name, value)
+						|| parseAsBool(name, value)
+						|| parseAsInt(name, value)
+						|| parseAsFloat(name, value)
+						|| parseAsDouble(name, value))
 						return;
-					}
+					break;
 			}
 			log("failed to parse: " + line, "parse()", Logger.severity.WARNING);
 		}
+
+		#region parse methods
+
+		private static bool parseAsBool(string name, string value)
+		{
+			BoolSetName bsn;
+			bool bValue;
+			if (!Enum.TryParse<BoolSetName>(name, out bsn) || !bool.TryParse(value, out bValue))
+				return false;
+			log("got bool setting: " + bsn + ", with value: " + bValue, "parseAsBool()", Logger.severity.DEBUG);
+			boolSettings[bsn] = bValue;
+			return true;
+		}
+
+		private static bool parseAsInt(string name, string value)
+		{
+			IntSetName isn;
+			int iValue;
+			if (!Enum.TryParse<IntSetName>(name, out isn) || !int.TryParse(value, out iValue))
+				return false;
+			log("got int setting: " + isn + ", with value: " + iValue, "parseAsInt()", Logger.severity.DEBUG);
+			intSettings[isn] = iValue;
+			return false;
+		}
+
+		private static bool parseAsFloat(string name, string value)
+		{
+			FloatSetName fsn;
+			float fValue;
+			if (!Enum.TryParse<FloatSetName>(name, out fsn) || !float.TryParse(value, out fValue))
+				return false;
+			floatSettings[fsn] = fValue;
+			log("got float setting: " + fsn + ", with value: " + fValue, "parseAsFloat()", Logger.severity.DEBUG);
+			return true;
+		}
+
+		private static bool parseAsDouble(string name, string value)
+		{
+			DoubleSetName dsn;
+			double dValue;
+			if (!Enum.TryParse<DoubleSetName>(name, out dsn) || !double.TryParse(value, out dValue))
+				return false;
+			doubleSettings[dsn] = dValue;
+			log("got double setting: " + dsn + ", with value: " + dValue, "parseAsDouble()", Logger.severity.DEBUG);
+			return true;
+		}
+
+		private static bool parseAsString(string name, string value)
+		{
+			StringSetName ssn;
+			if (!Enum.TryParse<StringSetName>(name, out ssn))
+				return false;
+			stringSettings[ssn] = value;
+			log("got string setting: " + ssn + ", with value: " + value, "parseAsString()", Logger.severity.DEBUG);
+			return true;
+		}
+
+		#endregion
 	}
 }

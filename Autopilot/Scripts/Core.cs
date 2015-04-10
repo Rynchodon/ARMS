@@ -43,10 +43,7 @@ namespace Rynchodon.Autopilot
 
 		private static Core Instance;
 
-
-		//
-		// == Class Lifecycle
-		//
+		#region Class Lifecycle
 		private void init()
 		{
 			if (MyAPIGateway.Session == null)
@@ -96,10 +93,9 @@ namespace Rynchodon.Autopilot
 			myLogger.debugNotify("Autopilot encountered an exception and has been terminated.", 10000, Logger.severity.FATAL);
 		}
 
+		#endregion
+		#region SessionComponent Hooks
 
-		//
-		// == SessionComponent Hooks
-		//
 		public override void UpdateBeforeSimulation()
 		{
 			if (delayStart > 0)
@@ -129,10 +125,9 @@ namespace Rynchodon.Autopilot
 			catch { }
 		}
 
+		#endregion
+		#region Updates
 
-		//
-		// == Updates
-		//
 		private void doUpdate()
 		{
 			try
@@ -188,10 +183,8 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-
-		//
-		// == Navigator Management
-		//
+		#endregion
+		#region Navigator Management
 
 		// @wip @feature Attach to entity add/update events instead for less expensive searching of autopilot ships
 		private void findNavigators()
@@ -229,5 +222,7 @@ namespace Rynchodon.Autopilot
 
 			dead.Close();
 		}
+
+		#endregion
 	}
 }

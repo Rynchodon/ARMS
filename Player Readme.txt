@@ -18,7 +18,7 @@ Obstacle detection & collision avoidance
 Engage Enemy ships/stations
 Radar
 Act as a missle and target a block on a an enemy ship/station
-(In development) Smart Turret Control - Allows you to set priorities for your turrets.
+Smart Turret Control - Allows you to set priorities for your turrets.
             --This allows you to disable, but not completely destroy an enemy ship/station (grid)
 
 [h1]Contribute[/h1]
@@ -173,9 +173,8 @@ Block Communication can read detected grid information, apply filters, execute a
 For usage, see the script itself.
 
 [h1]Smart Turret Control[/h1]
-Turrets can be given specific instructions on which targets to shoot; for blocks the turret will attempt to disable rather than destroy.
-In order for Smart Turret Control to function, a turret must have square brackets in its name. Smart Turrets will only search for missiles and/or blocks when an attached antenna is detecting a nearby enemy.
-Most of the work for Smart Turret Control is done in a separate thread; having lots of turrets running will not slow down S.E. but will make turrets less responsive.
+Turrets can be given specific instructions on which targets to shoot; for blocks the turret will only target blocks that are working.
+In order for Smart Turret Control to function, a turret must have square brackets in its name.
 
 Block targets are fetched from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
 Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
@@ -184,7 +183,7 @@ Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turret
 If Target Missiles is enabled, shoot missiles that are approaching the turret.
 If Target Meteors is enabled, shoot meteors that are approaching the turret.
 If Target Characters is enabled, shoot enemy characters.
-If a list of block targets is provided, shoot blocks.
+If a list of block targets is provided, shoot working blocks.
 If Target Moving Objects is enabled, shoot hostile grids that are approaching the turret.
 
 [h1]Settings[/h1]
@@ -192,8 +191,7 @@ The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotS
 To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
-bAllowTurretControl - enables Smart Turret Control (after testing is finished)
-bTestingTurretControl - enables Smart Turret Control (while in testing stage)
+bAllowTurretControl - enables Smart Turret Control
 fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 

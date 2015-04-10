@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private NavSettings CNS { get { return owner.CNS; } }
 
 		private Logger myLogger = new Logger(null, "Interpreter");
-		
+
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }
@@ -279,7 +279,7 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 
-		// MULTI ACTIONS
+		#region MULTI ACTIONS
 
 
 		/// <summary>
@@ -353,7 +353,8 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 
-		// SINGLE ACTIONS
+		#endregion
+		#region SINGLE ACTIONS
 
 
 		/// <summary>
@@ -865,7 +866,8 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 
-		// COMMON METHODS
+		#endregion
+		#region COMMON METHODS
 
 
 		/// <summary>
@@ -900,7 +902,7 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		private static readonly Regex numberRegex = new Regex(@"\A-?\d+\.?\d*");
-		
+
 		/// <summary>
 		/// 
 		/// </summary>
@@ -937,7 +939,7 @@ namespace Rynchodon.Autopilot.Instruction
 			Base6Directions.Direction? direction = stringToDirection(letterString);
 			if (direction == null)
 			{
-				log("failed to parse letter: " + letterString , "stringToVector3()", Logger.severity.TRACE);
+				log("failed to parse letter: " + letterString, "stringToVector3()", Logger.severity.TRACE);
 				return false;
 			}
 
@@ -1049,5 +1051,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 			return null;
 		}
+
+		#endregion
 	}
 }
