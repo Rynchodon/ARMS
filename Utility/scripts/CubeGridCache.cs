@@ -28,8 +28,8 @@ namespace Rynchodon
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
-		private Dictionary<MyObjectBuilderType, CleanList<Ingame.IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, CleanList<Ingame.IMyTerminalBlock>>();
-		private Dictionary<string, CleanList<Ingame.IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, CleanList<Ingame.IMyTerminalBlock>>();
+		private Dictionary<MyObjectBuilderType, ListCacher<Ingame.IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListCacher<Ingame.IMyTerminalBlock>>();
+		private Dictionary<string, ListCacher<Ingame.IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListCacher<Ingame.IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
 
 		private readonly IMyCubeGrid CubeGrid;
@@ -65,7 +65,7 @@ namespace Rynchodon
 			CubeGrid.OnBlockRemoved -= CubeGrid_OnBlockRemoved;
 			CubeGrid.OnClose -= CubeGrid_OnClose;
 
-			//CubeBlocks_Type = null;
+			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
 
 			using (lock_registry.AcquireExclusiveUsing())
@@ -115,37 +115,37 @@ namespace Rynchodon
 
 				//log("adding " + termType + " : " + definition, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
 
-				CleanList<Ingame.IMyTerminalBlock> setBlocks_Type;
-				CleanList<Ingame.IMyTerminalBlock> setBlocks_Def;
+				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Type;
+				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Def;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
 					//log("new lists for " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-					setBlocks_Type = new CleanList<Ingame.IMyTerminalBlock>();
+					setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>();
 					CubeBlocks_Type.Add(myOBtype, setBlocks_Type);
 				}
 				if (!CubeBlocks_Definition.TryGetValue(definition, out setBlocks_Def))
 				{
-					setBlocks_Def = new CleanList<Ingame.IMyTerminalBlock>();
+					setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>();
 					CubeBlocks_Definition.Add(definition, setBlocks_Def);
 					addKnownDefinition(definition);
 				}
 
-				//log("checking for dirty lists: " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-				// replace dirty list
-				if (!setBlocks_Def.IsClean)
-				{
-					setBlocks_Def = new CleanList<Ingame.IMyTerminalBlock>(setBlocks_Def);
-					CubeBlocks_Definition[definition] = setBlocks_Def;
-				}
-				if (!setBlocks_Type.IsClean)
-				{
-					setBlocks_Type = new CleanList<Ingame.IMyTerminalBlock>(setBlocks_Type);
-					CubeBlocks_Type[myOBtype] = setBlocks_Type;
-				}
+				////log("checking for dirty lists: " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
+				//// replace dirty list
+				//if (!setBlocks_Def.IsClean)
+				//{
+				//	setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Def);
+				//	CubeBlocks_Definition[definition] = setBlocks_Def;
+				//}
+				//if (!setBlocks_Type.IsClean)
+				//{
+				//	setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Type);
+				//	CubeBlocks_Type[myOBtype] = setBlocks_Type;
+				//}
 
 				log("adding: " + asTerm.DefinitionDisplayNameText + ", termType = " + myOBtype, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-				setBlocks_Type.Add(asTerm);
-				setBlocks_Def.Add(asTerm);
+				setBlocks_Type.mutable().Add(asTerm);
+				setBlocks_Def.mutable().Add(asTerm);
 			}
 			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
@@ -163,23 +163,23 @@ namespace Rynchodon
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
-				CleanList<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
-				CleanList<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
+				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
+				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 
-				// replace dirty list
-				if (!setBlocks_Def.IsClean)
-				{
-					setBlocks_Def = new CleanList<Ingame.IMyTerminalBlock>(setBlocks_Def);
-					CubeBlocks_Definition[definition] = setBlocks_Def;
-				}
-				if (!setBlocks_Type.IsClean)
-				{
-					setBlocks_Type = new CleanList<Ingame.IMyTerminalBlock>(setBlocks_Type);
-					CubeBlocks_Type[myOBtype] = setBlocks_Type;
-				}
+				//// replace dirty list
+				//if (!setBlocks_Def.IsClean)
+				//{
+				//	setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Def);
+				//	CubeBlocks_Definition[definition] = setBlocks_Def;
+				//}
+				//if (!setBlocks_Type.IsClean)
+				//{
+				//	setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Type);
+				//	CubeBlocks_Type[myOBtype] = setBlocks_Type;
+				//}
 
-				setBlocks_Type.Remove(asTerm);
-				setBlocks_Def.Remove(asTerm);
+				setBlocks_Type.mutable().Remove(asTerm);
+				setBlocks_Def.mutable().Remove(asTerm);
 			}
 			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
@@ -195,11 +195,12 @@ namespace Rynchodon
 			myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				CleanList<Ingame.IMyTerminalBlock> value;
+				ListCacher<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 				{
-					value.IsClean = false;
-					return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
+					return value.immutable();
+					//value.IsClean = false;
+					//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
 				}
 				return null;
 			}
@@ -214,34 +215,39 @@ namespace Rynchodon
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				CleanList<Ingame.IMyTerminalBlock> value;
+				ListCacher<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 				{
-					value.IsClean = false;
-					return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
+					return value.immutable();
+					//value.IsClean = false;
+					//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
 				}
 				return null;
 			}
 		}
 
 		/// <summary>
-		/// Much slower than GetBlocksByDefinition(), as contained is compared to each definition.
+		/// <para>shortcut for GetBlocksByDefinition(getKnownDefinition(contains))</para>
+		/// <para>slower than GetBlocksByDefinition(), as contained is compared to each definition.</para>
 		/// </summary>
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contained)
+		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contains)
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
-			{
-				foreach (string key in CubeBlocks_Definition.Keys)
-					if (key.looseContains(contained))
-					{
-						CleanList<Ingame.IMyTerminalBlock> value = CubeBlocks_Definition[key];
-						value.IsClean = false;
-						return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
-					}
-				return null;
-			}
+			return GetBlocksByDefinition(getKnownDefinition(contains));
+
+			//using (lock_CubeBlocks.AcquireSharedUsing())
+			//{
+			//	foreach (string key in CubeBlocks_Definition.Keys)
+			//		if (key.looseContains(contained))
+			//		{
+			//			ListCacher<Ingame.IMyTerminalBlock> value = CubeBlocks_Definition[key];
+			//			return value.immutable();
+			//			//value.IsClean = false;
+			//			//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
+			//		}
+			//	return null;
+			//}
 		}
 
 		/// <summary>
@@ -284,15 +290,6 @@ namespace Rynchodon
 			if (myLogger == null)
 				myLogger = new Logger(CubeGrid.DisplayName, "CubeGridCache");
 			myLogger.log(level, method, toLog);
-		}
-
-		private class CleanList<T> : List<T>
-		{
-			private bool value_IsClean = true;
-			public bool IsClean { get { return value_IsClean; } set { value_IsClean &= value; } }
-
-			public CleanList() : base() { }
-			public CleanList(List<T> toCopy) : base(toCopy) { }
 		}
 	}
 }

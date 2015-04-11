@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Feedback(bool pathClear = false, Vector3D waypoint = new Vector3D())
 			{
 				this.PathClear = pathClear;
-				this.HasWaypoint = Vector3D.IsValid(waypoint);
+				this.HasWaypoint = waypoint.IsValid();
 				this.Waypoint = waypoint;
 			}
 		}
