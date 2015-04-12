@@ -18,7 +18,7 @@ namespace Rynchodon
 	ICollection<T>, IEnumerable<T>
 	{
 		public int Count { get { return myList.Count; } }
-		public T this[int index] { get { return myList[index]; } set { Exceptions.ThrowIf<NotSupportedException>(IsReadOnly); } }
+		public T this[int index] { get { return myList[index]; } set { Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly"); } }
 
 		private List<T> myList;
 
@@ -84,11 +84,11 @@ namespace Rynchodon
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{ return myList.GetEnumerator(); }
 
-		public bool value_IsReadOnly = true;
+		private bool value_IsReadOnly = true;
 		public bool IsReadOnly { get { return value_IsReadOnly; } }
 
 		/// <summary>
-		/// If this is writable, make it read-only. Irreversible.
+		/// Irreversible. If this is writable, make it read-only.
 		/// </summary>
 		public void set_ReadOnly()
 		{ value_IsReadOnly = true; }
@@ -97,32 +97,32 @@ namespace Rynchodon
 
 		public void Insert(int index, T item)
 		{
-			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly);
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
 			myList.Insert(index, item);
 		}
 
 		public void RemoveAt(int index)
 		{
-			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly);
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
 			myList.RemoveAt(index);
 		}
 
 		public void Add(T item)
 		{
-			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly);
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
 			myList.Add(item);
 		}
 
 		public void Clear()
 		{
-			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly);
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
 			myList = new List<T>(myList.Count);
 		}
 
 		public bool Remove(T item)
 		{
-			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly);
-			return (myList.Remove(item);
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+			return (myList.Remove(item));
 		}
 
 		#endregion

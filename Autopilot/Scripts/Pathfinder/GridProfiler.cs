@@ -11,7 +11,7 @@ using VRageMath;
 namespace Rynchodon.Autopilot.Pathfinder
 {
 	/// <summary>
-	/// Creates a List of every occupied cell for a grid. This List is uses to create projections of the grid. 
+	/// Creates a List of every occupied cell for a grid. This List is used to create projections of the grid. 
 	/// </summary>
 	public class GridProfiler
 	{
@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>
 		/// All the local positions of occupied cells in this grid.
 		/// </summary>
-		private ListCacher<Vector3I> OccupiedCells;
+		private ListSnapshots<Vector3I> OccupiedCells;
 		private FastResourceLock lock_OccupiedCells = new FastResourceLock();
 
 		#region Life Cycle
@@ -35,10 +35,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			this.CubeGrid = grid;
 
-			this.OccupiedCells = new ListCacher<Vector3I>();
+			this.OccupiedCells = new ListSnapshots<Vector3I>();
 
 			// instead of iterating over blocks, test cells of grid for contents (no need to lock anything)
-			List<Vector3I> mutable = OccupiedCells.mutable();
+			ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
 			foreachVector3I(CubeGrid.Min, CubeGrid.Max, (cell) =>
 			{
 				if (CubeGrid.CubeExists(cell))
@@ -57,14 +57,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnBlockAdded(IMySlimBlock obj)
 		{
-			IMyCubeBlock fatblock = obj.FatBlock;
-			if (fatblock == null)
-
-
-
-			foreachVector3I(obj
-
-			throw new NotImplementedException();
+			using (lock_OccupiedCells.AcquireExclusiveUsing())
+			{
+				IMyCubeBlock fatblock = obj.FatBlock;
+				ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
+				if (fatblock == null)
+					mutable.Add(obj.Position);
+				else
+					foreachVector3I(fatblock.Min, fatblock.Max, (cell) => { mutable.Add(cell); });
+			}
 		}
 
 		/// <summary>
@@ -72,7 +73,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnBlockRemoved(IMySlimBlock obj)
 		{
-			throw new NotImplementedException();
+			using (lock_OccupiedCells.AcquireExclusiveUsing())
+			{
+				IMyCubeBlock fatblock = obj.FatBlock;
+				ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
+				if (fatblock == null)
+					mutable.Remove(obj.Position);
+				else
+					foreachVector3I(fatblock.Min, fatblock.Max, (cell) => { mutable.Remove(cell); });
+			}
 		}
 
 		/// <summary>
@@ -102,7 +111,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="grid"></param>
 		/// <param name="iterateLock">if not null and a build is required, obtains a shared lock while iterating over blocks in a grid</param>
-		public static GridProfiler getFor(IMyCubeGrid grid, FastResourceLock iterateLock)
+		public static GridProfiler getFor(IMyCubeGrid grid)
 		{
 			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
 			return null;

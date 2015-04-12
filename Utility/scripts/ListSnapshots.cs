@@ -7,36 +7,38 @@ namespace Rynchodon
 	/// Creates immutable copies of a list, while minimizing copy all operations. Not synchronized.
 	/// </summary>
 	/// <typeparam name="T">The type of elements in the list.</typeparam>
-	public class ListCacher<T>
+	public class ListSnapshots<T>
 	{
-		private List<T> mutableList;
-		private ReadOnlyList<T> immutableList;
+		private ReadOnlyList<T> myList;
 
 		/// <summary>
-		/// Initializes with a List&lt;T&gt; with the default capacity.
+		/// Initializes with a list with the default capacity.
 		/// </summary>
-		public ListCacher() { mutableList = new List<T>(); }
+		public ListSnapshots() { myList = ReadOnlyList<T>.create_Writable(); }
 
 		/// <summary>
-		/// Initializes with a List&lt;T&gt; with elements copied from the collection.
+		/// Initializes with a list with the specified capacity.
+		/// </summary>
+		/// <param name="initialCapacity"></param>
+		public ListSnapshots(int initialCapacity) { myList = ReadOnlyList<T>.create_Writable(initialCapacity); }
+
+		/// <summary>
+		/// Initializes with a list with elements copied from the collection.
 		/// </summary>
 		/// <param name="collection">To copy elements from</param>
-		public ListCacher(IEnumerable<T> collection) { mutableList = new List<T>(collection); }
+		public ListSnapshots(IEnumerable<T> collection) { myList = ReadOnlyList<T>.create_Writable(collection); }
 
 		/// <summary>
 		/// <para>Get a mutable copy of the list</para>
 		/// <para>Will trigger a copy all operation if immutable() has been called since creation or the last call to mutable().</para>
 		/// </summary>
 		/// <returns>Mutable copy of the list</returns>
-		public List<T> mutable()
+		public ReadOnlyList<T> mutable()
 		{
-			if (immutableList != null)
-			{
-				immutableList = null;
-				mutableList = new List<T>(mutableList);
-			}
+			if (myList.IsReadOnly)
+				myList = ReadOnlyList<T>.create_Writable(myList);
 
-			return mutableList;
+			return myList;
 		}
 
 		/// <summary>
@@ -45,10 +47,8 @@ namespace Rynchodon
 		/// <returns>Immutable copy of the list</returns>
 		public ReadOnlyList<T> immutable()
 		{
-			if (immutableList == null)
-				immutableList = new ReadOnlyList<T>(mutableList);
-
-			return immutableList;
+			myList.set_ReadOnly();
+			return myList;
 		}
 	}
 }

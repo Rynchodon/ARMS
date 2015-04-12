@@ -28,8 +28,8 @@ namespace Rynchodon
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
-		private Dictionary<MyObjectBuilderType, ListCacher<Ingame.IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListCacher<Ingame.IMyTerminalBlock>>();
-		private Dictionary<string, ListCacher<Ingame.IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListCacher<Ingame.IMyTerminalBlock>>();
+		private Dictionary<MyObjectBuilderType, ListSnapshots<Ingame.IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<Ingame.IMyTerminalBlock>>();
+		private Dictionary<string, ListSnapshots<Ingame.IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<Ingame.IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
 
 		private readonly IMyCubeGrid CubeGrid;
@@ -103,29 +103,29 @@ namespace Rynchodon
 
 		private void CubeGrid_OnBlockAdded(IMySlimBlock obj)
 		{
+			IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
+			if (asTerm == null)
+				return; // only track IMyTerminalBlock
+
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
-				IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
-				if (asTerm == null)
-					return; // only track IMyTerminalBlock
-
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
 				//log("adding " + termType + " : " + definition, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
 
-				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Type;
-				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Def;
+				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type;
+				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
 					//log("new lists for " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-					setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>();
+					setBlocks_Type = new ListSnapshots<Ingame.IMyTerminalBlock>();
 					CubeBlocks_Type.Add(myOBtype, setBlocks_Type);
 				}
 				if (!CubeBlocks_Definition.TryGetValue(definition, out setBlocks_Def))
 				{
-					setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>();
+					setBlocks_Def = new ListSnapshots<Ingame.IMyTerminalBlock>();
 					CubeBlocks_Definition.Add(definition, setBlocks_Def);
 					addKnownDefinition(definition);
 				}
@@ -153,18 +153,18 @@ namespace Rynchodon
 
 		private void CubeGrid_OnBlockRemoved(IMySlimBlock obj)
 		{
+			IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
+			if (asTerm == null)
+				return; // only track IMyTerminalBlock
+
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
-				IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
-				if (asTerm == null)
-					return; // only track IMyTerminalBlock
-
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
-				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
-				ListCacher<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
+				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
+				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 
 				//// replace dirty list
 				//if (!setBlocks_Def.IsClean)
@@ -195,7 +195,7 @@ namespace Rynchodon
 			myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListCacher<Ingame.IMyTerminalBlock> value;
+				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 				{
 					return value.immutable();
@@ -215,7 +215,7 @@ namespace Rynchodon
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListCacher<Ingame.IMyTerminalBlock> value;
+				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 				{
 					return value.immutable();
