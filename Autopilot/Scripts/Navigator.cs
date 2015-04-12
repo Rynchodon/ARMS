@@ -1221,6 +1221,19 @@ namespace Rynchodon.Autopilot
 
 		internal void setDampeners(bool dampenersOn = true)
 		{
+			if (dampenersOn)
+			{
+				myLogger.debugLog("enabling all thrusters", "setDampeners()");
+				currentThrust.enableAllThrusters();
+			}
+			else
+				if (CNS.moveState == NavSettings.Moving.MOVING)
+				{
+					myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
+					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
+					return;
+				}
+
 			try
 			{
 				if ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride != dampenersOn)

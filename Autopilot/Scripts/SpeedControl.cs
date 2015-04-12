@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define LOG_ENABLED //remove on build
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -43,8 +45,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.SIDELING:
 				case NavSettings.Moving.HYBRID:
 					double distanceToDestination = nav.MM.distToWayDest;
-
-					adjustSpeeds(nav, myLogger, distanceToDestination, 2f, 4f);
+					adjustSpeeds(nav, myLogger, distanceToDestination, 1f, 2f);
 					break;
 			}
 			checkAndCruise(nav, myLogger);
@@ -53,6 +54,7 @@ namespace Rynchodon.Autopilot
 		private static void adjustSpeeds(Navigator nav, Logger myLogger, double distanceToDestination, float stopMultiplierSlowDown, float stopMultiplierSpeedUp)
 		{
 			float stoppingDistance = nav.currentThrust.getStoppingDistance();
+			myLogger.debugLog("distanceToDestination = " + distanceToDestination + ", stoppingDistance = " + stoppingDistance + ", stopMultiplierSlowDown = " + stopMultiplierSlowDown, "adjustSpeeds()");
 
 			if (distanceToDestination < stopMultiplierSlowDown * stoppingDistance) // distance is small
 			{
