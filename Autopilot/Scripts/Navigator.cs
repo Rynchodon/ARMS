@@ -1217,7 +1217,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		public bool dampenersOn()
-		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride); }
+		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
 
 		internal void setDampeners(bool dampenersOn = true)
 		{

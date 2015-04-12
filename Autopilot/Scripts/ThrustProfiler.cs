@@ -309,6 +309,13 @@ namespace Rynchodon.Autopilot
 			thrustersDisabledByAutopilot = new HashSet<IMyCubeBlock>();
 		}
 
+		/// <summary>
+		/// Are there any thrusters that are currently disabled by Autopilot?
+		/// </summary>
+		/// <returns>true iff any thrusters are disabled by Autopilot</returns>
+		public bool disabledThrusters()
+		{ return thrustersDisabledByAutopilot.Count > 0; }
+
 		#endregion
 	}
 }

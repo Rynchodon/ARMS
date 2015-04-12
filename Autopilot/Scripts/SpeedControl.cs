@@ -54,10 +54,11 @@ namespace Rynchodon.Autopilot
 		private static void adjustSpeeds(Navigator nav, Logger myLogger, double distanceToDestination, float stopMultiplierSlowDown, float stopMultiplierSpeedUp)
 		{
 			float stoppingDistance = nav.currentThrust.getStoppingDistance();
-			myLogger.debugLog("distanceToDestination = " + distanceToDestination + ", stoppingDistance = " + stoppingDistance + ", stopMultiplierSlowDown = " + stopMultiplierSlowDown, "adjustSpeeds()");
+			//myLogger.debugLog("distanceToDestination = " + distanceToDestination + ", stoppingDistance = " + stoppingDistance + ", stopMultiplierSlowDown = " + stopMultiplierSlowDown + ", stopMultiplierSpeedUp = " + stopMultiplierSpeedUp, "adjustSpeeds()");
 
 			if (distanceToDestination < stopMultiplierSlowDown * stoppingDistance) // distance is small
 			{
+				//myLogger.debugLog("already slowing down", "adjustSpeeds()");
 				if (!(nav.currentMove == Vector3.Zero && nav.dampenersOn())) // not slowing down
 				{
 					float initialSpeedSlow = nav.CNS.getSpeedSlow();
@@ -69,6 +70,8 @@ namespace Rynchodon.Autopilot
 					//if (nav.CNS.getSpeedSlow() < initialSpeedSlow) // have made a difference
 					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + (float)(nav.MM.movementSpeed * 0.9), "adjustSpeeds()", Logger.severity.TRACE);
 				}
+				//else
+				//	myLogger.debugLog("already slowing down", "adjustSpeeds()");
 			}
 			else // distance is not small
 				if (distanceToDestination > stopMultiplierSpeedUp * stoppingDistance) // distance is great
