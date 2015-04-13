@@ -81,9 +81,9 @@ namespace Rynchodon
 			return true;
 		}
 
-		/// <summary>
+		/// <remarks>
 		/// From http://stackoverflow.com/a/20857897
-		/// </summary>
+		/// </remarks>
 		public static string RemoveWhitespace(this string input)
 		{
 			int j = 0, inputlen = input.Length;
@@ -101,6 +101,18 @@ namespace Rynchodon
 			}
 
 			return new String(newarr, 0, j);
+		}
+
+		/// <summary>
+		/// Calcluate the vector rejection of A from B.
+		/// </summary>
+		/// <param name="vectorB_part">used to reduce the number of operations for multiple calls with the same B, should initially be null</param>
+		/// <returns>The vector rejection of A from B.</returns>
+		public static Vector3 Rejection(this Vector3 vectorA, Vector3 vectorB, ref Vector3? vectorB_part)
+		{
+			if (vectorB_part == null)
+				vectorB_part = vectorB / vectorB.LengthSquared();
+			return vectorA - vectorA.Dot(vectorB) * (Vector3)vectorB_part;
 		}
 	}
 }

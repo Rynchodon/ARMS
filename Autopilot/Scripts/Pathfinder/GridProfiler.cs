@@ -118,16 +118,28 @@ namespace Rynchodon.Autopilot.Pathfinder
 		}
 
 		/// <summary>
-		/// 
+		/// Gets a snapshot of current occupied cells
 		/// </summary>
-		/// <returns></returns>
+		/// <returns>An immutable ReadOnlyList of occupied cells</returns>
 		public ReadOnlyList<Vector3I> get_OccupiedCells()
 		{
 			using (lock_OccupiedCells.AcquireSharedUsing())
-			{
-				OccupiedCells.IsClean = false;
-				return new ReadOnlyList<Vector3I>(OccupiedCells);
-			}
+				return OccupiedCells.immutable();
+		}
+
+		/// <summary>
+		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in a HashSet.
+		/// </summary>
+		/// <param name="direction">vector to perform rejection from</param>
+		/// <returns></returns>
+		public HashSet<Vector3> rejectAll(Vector3 direction)
+		{
+			HashSet<Vector3> rejections = new HashSet<Vector3>();
+			Vector3? dir_part = null;
+			foreach (Vector3I cell in OccupiedCells.immutable())
+				rejections.Add((cell * CubeGrid.GridSize).Rejection(direction, ref dir_part));
+
+			return rejections;
 		}
 
 		#endregion
