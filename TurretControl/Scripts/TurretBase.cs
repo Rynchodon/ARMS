@@ -202,12 +202,12 @@ namespace Rynchodon.Autopilot.Turret
 						targetLargeGrids = builder.TargetLargeGrids;
 						targetSmallGrids = builder.TargetSmallGrids;
 						targetStations = builder.TargetStations;
+					}
 
-						if (!possibleTargets())
-						{
-							setNoTarget();
-							CurrentState = State.NO_POSSIBLE;
-						}
+					if (!possibleTargets())
+					{
+						setNoTarget();
+						CurrentState = State.NO_POSSIBLE;
 					}
 				}
 
