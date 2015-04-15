@@ -51,6 +51,14 @@ namespace Rynchodon
 			return name;
 		}
 
+		public static string getBestName(this IMySlimBlock slimBlock)
+		{
+			IMyCubeBlock Fatblock = slimBlock.FatBlock;
+			if (Fatblock != null)
+				return Fatblock.DisplayNameText;
+			return slimBlock.ToString();
+		}
+
 		public static Vector3 GetLinearAcceleration(this MyPhysicsComponentBase Physics)
 		{
 			if (Physics.CanUpdateAccelerations && Physics.LinearAcceleration == Vector3.Zero)
@@ -60,6 +68,18 @@ namespace Rynchodon
 
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
 		{ return RelativeVector3F.createFromGrid(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
+
+		public static Vector3D GetCentre(this IMyEntity entity)
+		{
+			IMyCubeGrid asGrid = entity as IMyCubeGrid;
+			if (asGrid != null)
+				return GetCentre(asGrid);
+
+			if (entity.WorldAABB != null)
+				return entity.WorldAABB.Center;
+
+			return entity.GetPosition();
+		}
 
 		public static double secondsSince(this DateTime previous)
 		{ return (DateTime.UtcNow - previous).TotalSeconds; }
@@ -129,5 +149,31 @@ namespace Rynchodon
 
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
 		{ return PrettySI.makePretty(timeSpan.Seconds) + 's'; }
+
+		/// <summary>
+		/// Minimum distance squared between a line and a point.
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		/// <returns>The minimum distance between the line and the point</returns>
+		public static float DistanceSquared(this Line line, Vector3 point)
+		{
+			if (line.From == line.To)
+				return Vector3.DistanceSquared(line.From, point);
+
+			Vector3 line_disp = line.To - line.From;
+			float line_distSq = line_disp.LengthSquared();
+
+			float fraction = Vector3.Dot(point - line.From, line_disp) / line_distSq; // projection as a fraction of line_disp
+
+			if (fraction < 0) // extends past From
+				return Vector3.DistanceSquared(point, line.From);
+			else if (fraction > 1) // extends past To
+				return Vector3.DistanceSquared(point, line.To);
+
+			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
+			return Vector3.DistanceSquared(point, closestPoint);
+		}
 	}
 }

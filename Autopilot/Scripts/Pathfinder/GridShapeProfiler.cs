@@ -8,17 +8,21 @@ using System.Collections.Generic;
 using Sandbox.ModAPI;
 
 using VRage;
+using VRage.Collections;
 using VRage.Library.Utils;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {
 	/// <summary>
-	/// Creates a List of every occupied cell for a grid. This List is used to create projections of the grid. 
+	/// <para>Creates a List of every occupied cell for a grid. This List is used to create projections of the grid.</para>
+	/// <para>This class only ever uses local positions.</para>
 	/// </summary>
-	public class GridShapeProfiler
+	internal class GridShapeProfiler
 	{
 		public IMyCubeGrid CubeGrid { get; private set; }
+		public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
+		public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
 
 		private static Dictionary<IMyCubeGrid, GridShapeProfiler> registry = new Dictionary<IMyCubeGrid, GridShapeProfiler>();
 		private static FastResourceLock lock_registry = new FastResourceLock();
@@ -33,8 +37,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private Vector3 Displacement;
 		private Vector3? Displacement_PartialCalculation = null;
 
-		private HashSet<Vector3> rejectionCells;
-		public Capsule pathCapsule { get; private set; }
+		public MyUniqueList<Vector3> rejectionCells;
+		public Path myPath { get; private set; }
 
 		private Logger myLogger = new Logger(null, "GridShapeProfiler");
 
@@ -145,18 +149,30 @@ namespace Rynchodon.Autopilot.Pathfinder
 		}
 
 		/// <summary>
-		/// Set the destination.
+		/// Set the destination, calulate the profile.
 		/// </summary>
 		/// <param name="destination">waypoint or destination to fly to</param>
 		/// <param name="navigationBlock">usually remote control</param>
-		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock)
+		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock, Vector3? displacement = null)
 		{
-			Displacement = destination.getGrid() - navigationBlock.Position * CubeGrid.GridSize;
+			if (displacement == null)
+				this.Displacement = destination.getGrid() - navigationBlock.Position * CubeGrid.GridSize;
+			else
+				this.Displacement = (Vector3)displacement;
 			Vector3 centreDestination = destination.getGrid() + (Centre - navigationBlock.Position) * CubeGrid.GridSize;
 
 			rejectAll();
 			createCapsule(centreDestination);
 		}
+
+		/// <summary>
+		/// <para>Perform a vector rejection from direction to destination.</para>
+		/// <para>Destination must be set first.</para>
+		/// </summary>
+		/// <param name="toReject">the grid-local vector to reject</param>
+		/// <returns>the rejected vector</returns>
+		public Vector3 rejectVector(Vector3 toReject)
+		{ return toReject.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize); }
 
 		#endregion
 		#region Private Methods
@@ -175,9 +191,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 						action.Invoke(new Vector3I(x, y, z));
 		}
 
-		private Vector3 rejectVector(Vector3 toReject)
-		{ return toReject.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize); }
-
 		/// <summary>
 		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in rejectionCells.
 		/// </summary>
@@ -187,7 +200,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void rejectAll()
 		{
 			VRage.Exceptions.ThrowIf<ArgumentNullException>(Displacement == null, "direction");
-			rejectionCells = new HashSet<Vector3>();
+			rejectionCells = new MyUniqueList<Vector3>();
 
 			ReadOnlyList<Vector3I> immutable;
 			using (lock_OccupiedCells.AcquireSharedUsing())
@@ -212,7 +225,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					radiusSquared = distanceSquared;
 			}
 
-			pathCapsule = new Capsule(CentreRejection, centreDestination, (float)Math.Pow(radiusSquared, 1 / 2));
+			myPath = new Path(Centre, centreDestination, radiusSquared + PathBufferSquared);
 		}
 
 		#endregion

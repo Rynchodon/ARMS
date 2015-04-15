@@ -12,6 +12,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Results from timing an Action. This class is lazy-initialized.
 		/// </summary>
+		/// <remarks>
+		/// Mean does not allways produce sane results.
+		/// </remarks>
 		public class Results
 		{
 			public int Count { get; private set; }
@@ -105,9 +108,17 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="action">Action to perform</param>
 		/// <param name="iterations">Number of iterations of action</param>
+		/// <param name="ignoreFirst">Perform an extra invokation first, that will not be timed.</param>
 		/// <returns>Results of timing</returns>
-		public static Results Time(Action action, int iterations = 1)
+		/// <exception cref="ArgumentNullException">If action == null</exception>
+		/// <exception cref="ArgumentOutOfRangeException">If iterarions &lt; 1</exception>
+		public static Results Time(Action action, int iterations = 1, bool extraFirst = false)
 		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(action == null, "action");
+			VRage.Exceptions.ThrowIf<ArgumentOutOfRangeException>(iterations < 1, "iterations < 1");
+
+			if (extraFirst)
+				action.Invoke();
 			ListSnapshots<MyTimeSpan> unsortedResults = new ListSnapshots<MyTimeSpan>();
 			ReadOnlyList<MyTimeSpan> mutable = unsortedResults.mutable();
 			for (int i = 0; i < iterations; i++)

@@ -171,40 +171,40 @@ namespace Rynchodon.Autopilot
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
 
-			GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+		//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
 
-			reject1000(Vector3.Forward);
-			reject1000(new Vector3(1, 1, 1));
-			reject1000(new Vector3(854.731f, -551.474f, 393.268f));
-		}
+		//	reject1000(Vector3.Forward);
+		//	reject1000(new Vector3(1, 1, 1));
+		//	reject1000(new Vector3(854.731f, -551.474f, 393.268f));
+		//}
 
-		private void reject1000(Vector3 direction)
-		{
-			GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
-			//MyGameTimer methodTimer = new MyGameTimer();
-			//MyTimeSpan longest;// = new MyTimeSpan();
-			//string prettyMax;
-			//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
+		//private void reject1000(Vector3 direction)
+		//{
+		//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+		//	//MyGameTimer methodTimer = new MyGameTimer();
+		//	//MyTimeSpan longest;// = new MyTimeSpan();
+		//	//string prettyMax;
+		//	//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
 			
-			var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
-			myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
+		//	var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
+		//	myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
 
-			// producing incorrect results
-			//var results_keen = TimeAction.get_MyGameTimer(() => profiler.rejectAllKeen(direction), 1);
-			//myLogger.debugLog("Results Keen: " + results_keen + "; rejection cells " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+		//	// producing incorrect results
+		//	//var results_keen = TimeAction.get_MyGameTimer(() => profiler.rejectAllKeen(direction), 1);
+		//	//myLogger.debugLog("Results Keen: " + results_keen + "; rejection cells " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
 
-			var results_keen_norm = TimeAction.Time(() => profiler.rejectAllKeen(direction), 1000);
-			myLogger.debugLog("Results Keen Norm: " + results_keen_norm.Pretty_FiveNumbers() + "; rejection cells: " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+		//	var results_keen_norm = TimeAction.Time(() => profiler.rejectAllKeen(direction), 1000);
+		//	myLogger.debugLog("Results Keen Norm: " + results_keen_norm.Pretty_FiveNumbers() + "; rejection cells: " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
 
-			myLogger.debugLog("Lazy_Total number of blocks is " + profiler.get_OccupiedCells().Count, "reject1000()");
-			//for (int i = 0; i < 1000; i++)
-			//{
-			//	MyTimeSpan span = TimeAction.(() => profiler.rejectAll(direction));
-			//	if (span > longest)
-			//		longest = span;
-			//}
+		//	myLogger.debugLog("Lazy_Total number of blocks is " + profiler.get_OccupiedCells().Count, "reject1000()");
+		//	//for (int i = 0; i < 1000; i++)
+		//	//{
+		//	//	MyTimeSpan span = TimeAction.(() => profiler.rejectAll(direction));
+		//	//	if (span > longest)
+		//	//		longest = span;
+		//	//}
 			
-			//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
+		//	//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
 		}
 
 		internal void Close()
