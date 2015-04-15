@@ -125,6 +125,32 @@ namespace Rynchodon
 			return (myList.Remove(item));
 		}
 
+		#region Sort
+		public void Sort()
+		{
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+			myList.Sort();
+		}
+
+		public void Sort(Comparison<T> comparison)
+		{
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+			myList.Sort(comparison);
+		}
+
+		public void Sort(IComparer<T> comparer)
+		{
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+			myList.Sort(comparer);
+		}
+
+		public void Sort(int index, int count, IComparer<T> comparer)
+		{
+			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+			myList.Sort(index, count, comparer);
+		}
+		#endregion
+
 		#endregion
 	}
 }

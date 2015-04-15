@@ -402,14 +402,14 @@ namespace Rynchodon.Autopilot.Jumper
 			//log("box = " + myGrid.WorldAABB);
 			//log("matrix = " + myGrid.WorldMatrix);
 			//log("");
-			//var boxTranslateDestination = myGrid.WorldAABB.Translate(destination);
+			//var boxTranslateDestination = myGrid.WorldAABB.Translate(centreDestination);
 			//log("");
 			//log("boxTranslateDestination = " + boxTranslateDestination);
 			//log("box = " + myGrid.WorldAABB);
-			//log("destination = " + destination);
+			//log("centreDestination = " + centreDestination);
 			//log("");
-			//var displacement = destination - myGrid.WorldAABB.Center;
-			//var boxTranslateDisplacement = myGrid.WorldAABB.Translate(destination);
+			//var displacement = centreDestination - myGrid.WorldAABB.Center;
+			//var boxTranslateDisplacement = myGrid.WorldAABB.Translate(centreDestination);
 			//log("");
 			//log("boxTranslateDisplacement = " + boxTranslateDisplacement);
 			//log("box = " + myGrid.WorldAABB);

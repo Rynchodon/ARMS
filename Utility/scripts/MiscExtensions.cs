@@ -106,6 +106,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Calcluate the vector rejection of A from B.
 		/// </summary>
+		/// <remarks>
+		/// It is not useful to normalize B first. About 10% slower than keen's version but slightly more accurate (by about 3E-7 m).
+		/// </remarks>
 		/// <param name="vectorB_part">used to reduce the number of operations for multiple calls with the same B, should initially be null</param>
 		/// <returns>The vector rejection of A from B.</returns>
 		public static Vector3 Rejection(this Vector3 vectorA, Vector3 vectorB, ref Vector3? vectorB_part)
@@ -114,5 +117,17 @@ namespace Rynchodon
 				vectorB_part = vectorB / vectorB.LengthSquared();
 			return vectorA - vectorA.Dot(vectorB) * (Vector3)vectorB_part;
 		}
+
+		public static Vector3 Round(this Vector3 toRound, float roundTo)
+		{
+			double
+				x = Math.Round(toRound.X * roundTo) / roundTo,
+				y = Math.Round(toRound.Y * roundTo) / roundTo,
+				z = Math.Round(toRound.Z * roundTo) / roundTo;
+			return new Vector3(x, y, z);
+		}
+
+		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
+		{ return PrettySI.makePretty(timeSpan.Seconds) + 's'; }
 	}
 }

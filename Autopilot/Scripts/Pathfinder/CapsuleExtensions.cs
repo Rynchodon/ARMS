@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <para>Not Implemented</para>
 		/// <para>Tests whether or not the grid interesects with this capsule.</para>
 		/// </summary>
-		public static bool IntersectsWith(this Capsule capsule, GridProfiler grid)
+		public static bool IntersectsWith(this Capsule capsule, GridShapeProfiler grid)
 		{
 			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
 			return true;
@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <para>Tests whether or not the grid interesects with this capsule.</para>
 		/// </summary>
 		public static bool IntersectsWith(this Capsule capsule, IMyCubeGrid grid)
-		{ return (IntersectsWith(capsule, GridProfiler.getFor(grid))); }
+		{ return (IntersectsWith(capsule, GridShapeProfiler.getFor(grid))); }
 
 		/// <summary>
 		/// <para>Not Implemented</para>

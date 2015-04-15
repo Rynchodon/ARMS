@@ -157,7 +157,7 @@ namespace Rynchodon.Autopilot
 
 		private Lazy<double> lazy_distToWayDest;
 		/// <summary>
-		/// from nav block to way/dest or, if destination is a block or a grid, distToDestGrid
+		/// from nav block to way/dest or, if centreDestination is a block or a grid, distToDestGrid
 		/// </summary>
 		public double distToWayDest { get { return lazy_distToWayDest.Value; } }
 

@@ -68,7 +68,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			// found an enemy, setting as destination
+			// found an enemy, setting as centreDestination
 			if (bestMatchBlock != null)
 				log("found an enemy: " + bestMatchGrid.Entity.DisplayName + ":" + bestMatchBlock.DisplayNameText, "tryLockOn()");
 			else

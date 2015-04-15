@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define LOG_ENABLED // remove on build
+
+using System;
 using System.Collections.Generic;
 //using System.Linq;
 //using System.Text;
@@ -6,6 +8,7 @@ using System.Collections.Generic;
 using Sandbox.ModAPI;
 
 using VRage;
+using VRage.Library.Utils;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -13,11 +16,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// <summary>
 	/// Creates a List of every occupied cell for a grid. This List is used to create projections of the grid. 
 	/// </summary>
-	public class GridProfiler
+	public class GridShapeProfiler
 	{
 		public IMyCubeGrid CubeGrid { get; private set; }
 
-		private static Dictionary<IMyCubeGrid, GridProfiler> registry = new Dictionary<IMyCubeGrid, GridProfiler>();
+		private static Dictionary<IMyCubeGrid, GridShapeProfiler> registry = new Dictionary<IMyCubeGrid, GridShapeProfiler>();
 		private static FastResourceLock lock_registry = new FastResourceLock();
 		/// <summary>
 		/// All the local positions of occupied cells in this grid.
@@ -25,19 +28,29 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private ListSnapshots<Vector3I> OccupiedCells;
 		private FastResourceLock lock_OccupiedCells = new FastResourceLock();
 
+		private Vector3 Centre { get { return CubeGrid.LocalAABB.Center; } }
+		private Vector3 CentreRejection;
+		private Vector3 Displacement;
+		private Vector3? Displacement_PartialCalculation = null;
+
+		private HashSet<Vector3> rejectionCells;
+		public Capsule pathCapsule { get; private set; }
+
+		private Logger myLogger = new Logger(null, "GridShapeProfiler");
+
 		#region Life Cycle
 
 		/// <summary>
 		/// Create a profile for a grid.
 		/// </summary>
 		/// <param name="grid">grid to profile</param>
-		private GridProfiler(IMyCubeGrid grid)
+		private GridShapeProfiler(IMyCubeGrid grid)
 		{
 			this.CubeGrid = grid;
-
+			myLogger = new Logger("GridShapeProfiler", () => CubeGrid.DisplayName);
 			this.OccupiedCells = new ListSnapshots<Vector3I>();
 
-			// instead of iterating over blocks, test cells of grid for contents (no need to lock anything)
+			// instead of iterating over blocks, test cells of grid for contents (no need to lock grid)
 			ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
 			foreachVector3I(CubeGrid.Min, CubeGrid.Max, (cell) =>
 			{
@@ -49,7 +62,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			CubeGrid.OnBlockRemoved += Grid_OnBlockRemoved;
 			CubeGrid.OnClose += Grid_OnClose;
 
-			registry.Add(this.CubeGrid, this);
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Add(this.CubeGrid, this);
 		}
 
 		/// <summary>
@@ -90,8 +104,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void Grid_OnClose(IMyEntity obj)
 		{
 			// remove references to this
-			registry.Remove(CubeGrid);
-			
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Remove(CubeGrid);
+
 			CubeGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			CubeGrid.OnBlockRemoved -= Grid_OnBlockRemoved;
 			CubeGrid.OnClose -= Grid_OnClose;
@@ -106,15 +121,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 		#region Public Methods
 
 		/// <summary>
-		/// <para>Not Implemented</para>
-		/// Get or build the GridProfiler for a given grid.
+		/// Get or build the GridShapeProfiler for a given grid.
 		/// </summary>
-		/// <param name="grid"></param>
-		/// <param name="iterateLock">if not null and a build is required, obtains a shared lock while iterating over blocks in a grid</param>
-		public static GridProfiler getFor(IMyCubeGrid grid)
+		/// <param name="grid">grid the profile will be for</param>
+		public static GridShapeProfiler getFor(IMyCubeGrid grid)
 		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-			return null;
+			GridShapeProfiler result;
+			using (lock_registry.AcquireSharedUsing())
+				if (registry.TryGetValue(grid, out result))
+					return result;
+
+			return new GridShapeProfiler(grid);
 		}
 
 		/// <summary>
@@ -128,22 +145,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 		}
 
 		/// <summary>
-		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in a HashSet.
+		/// Set the destination.
 		/// </summary>
-		/// <param name="direction">vector to perform rejection from</param>
-		/// <returns></returns>
-		public HashSet<Vector3> rejectAll(Vector3 direction)
+		/// <param name="destination">waypoint or destination to fly to</param>
+		/// <param name="navigationBlock">usually remote control</param>
+		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock)
 		{
-			HashSet<Vector3> rejections = new HashSet<Vector3>();
-			Vector3? dir_part = null;
-			foreach (Vector3I cell in OccupiedCells.immutable())
-				rejections.Add((cell * CubeGrid.GridSize).Rejection(direction, ref dir_part));
+			Displacement = destination.getGrid() - navigationBlock.Position * CubeGrid.GridSize;
+			Vector3 centreDestination = destination.getGrid() + (Centre - navigationBlock.Position) * CubeGrid.GridSize;
 
-			return rejections;
+			rejectAll();
+			createCapsule(centreDestination);
 		}
 
 		#endregion
-		#region Private Functions
+		#region Private Methods
 
 		/// <summary>
 		/// Perform an Action for each Vector3I from min to max (inclusive).
@@ -157,6 +173,46 @@ namespace Rynchodon.Autopilot.Pathfinder
 				for (int y = min.Y; y <= max.Y; y++)
 					for (int z = min.Z; z <= max.Z; z++)
 						action.Invoke(new Vector3I(x, y, z));
+		}
+
+		private Vector3 rejectVector(Vector3 toReject)
+		{ return toReject.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize); }
+
+		/// <summary>
+		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in rejectionCells.
+		/// </summary>
+		/// <remarks>
+		/// It is not useful to normalize direction first.
+		/// </remarks>
+		private void rejectAll()
+		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(Displacement == null, "direction");
+			rejectionCells = new HashSet<Vector3>();
+
+			ReadOnlyList<Vector3I> immutable;
+			using (lock_OccupiedCells.AcquireSharedUsing())
+				immutable = OccupiedCells.immutable();
+
+			CentreRejection = Centre.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize);
+			foreach (Vector3I cell in immutable)
+			{
+				Vector3 rejection = (cell * CubeGrid.GridSize).Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize);
+				rejectionCells.Add(rejection);
+			}
+		}
+
+		/// <param name="centreDestination">where the centre of the grid will end up</param>
+		private void createCapsule(Vector3 centreDestination)
+		{
+			float radiusSquared = 0;
+			foreach (Vector3 rejection in rejectionCells)
+			{
+				float distanceSquared = (rejection - CentreRejection).LengthSquared();
+				if (distanceSquared > radiusSquared)
+					radiusSquared = distanceSquared;
+			}
+
+			pathCapsule = new Capsule(CentreRejection, centreDestination, (float)Math.Pow(radiusSquared, 1 / 2));
 		}
 
 		#endregion

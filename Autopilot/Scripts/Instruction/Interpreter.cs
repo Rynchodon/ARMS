@@ -463,7 +463,7 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// set destination to coordinates
+		/// set centreDestination to coordinates
 		/// </summary>
 		/// <param name="instructionAction"></param>
 		/// <param name="data"></param>
@@ -491,8 +491,8 @@ namespace Rynchodon.Autopilot.Instruction
 					if (owner.CNS == null)
 						myLogger.debugLog("CNS is null", "getAction_coordinates()");
 					if (destination == null)
-						myLogger.debugLog("destination is null", "getAction_coordinates()");
-					myLogger.debugLog("setting " + owner.CNS + " destination to " + destination, "getAction_coordinates()");
+						myLogger.debugLog("centreDestination is null", "getAction_coordinates()");
+					myLogger.debugLog("setting " + owner.CNS + " centreDestination to " + destination, "getAction_coordinates()");
 					owner.CNS.setDestination(destination);
 				};
 				return true;
@@ -547,10 +547,10 @@ namespace Rynchodon.Autopilot.Instruction
 				}
 			}
 
-			//log("passed, destination will be "+result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
+			//log("passed, centreDestination will be "+result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
 			execute = () =>
 			{
-				log("setting " + owner.CNS.ToString() + " destination to " + result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
+				log("setting " + owner.CNS.ToString() + " centreDestination to " + result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
 				owner.CNS.setDestination(result.getWorldAbsolute());
 			};
 			//log("created action: " + execute, "getAction_flyTo()", Logger.severity.TRACE);
@@ -634,9 +634,9 @@ namespace Rynchodon.Autopilot.Instruction
 					else // no landing direction
 					{
 						if (blockBestMatch != null)
-							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
 						else
-							myLogger.debugLog("setting destination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
 					}
 
 					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);

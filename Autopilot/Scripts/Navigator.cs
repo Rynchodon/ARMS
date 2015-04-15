@@ -14,6 +14,8 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
+
+using VRage.Library.Utils;
 using VRageMath;
 
 using Rynchodon.Autopilot.Instruction;
@@ -168,6 +170,41 @@ namespace Rynchodon.Autopilot
 			myTargeter = new Targeter(this);
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
+
+			GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+
+			reject1000(Vector3.Forward);
+			reject1000(new Vector3(1, 1, 1));
+			reject1000(new Vector3(854.731f, -551.474f, 393.268f));
+		}
+
+		private void reject1000(Vector3 direction)
+		{
+			GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+			//MyGameTimer methodTimer = new MyGameTimer();
+			//MyTimeSpan longest;// = new MyTimeSpan();
+			//string prettyMax;
+			//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
+			
+			var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
+			myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
+
+			// producing incorrect results
+			//var results_keen = TimeAction.get_MyGameTimer(() => profiler.rejectAllKeen(direction), 1);
+			//myLogger.debugLog("Results Keen: " + results_keen + "; rejection cells " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+
+			var results_keen_norm = TimeAction.Time(() => profiler.rejectAllKeen(direction), 1000);
+			myLogger.debugLog("Results Keen Norm: " + results_keen_norm.Pretty_FiveNumbers() + "; rejection cells: " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+
+			myLogger.debugLog("Lazy_Total number of blocks is " + profiler.get_OccupiedCells().Count, "reject1000()");
+			//for (int i = 0; i < 1000; i++)
+			//{
+			//	MyTimeSpan span = TimeAction.(() => profiler.rejectAll(direction));
+			//	if (span > longest)
+			//		longest = span;
+			//}
+			
+			//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
 		}
 
 		internal void Close()
@@ -254,7 +291,7 @@ namespace Rynchodon.Autopilot
 				navigate();
 			else // no waypoints
 			{
-				//log("no waypoints or destination");
+				//log("no waypoints or centreDestination");
 				if (currentRCcontrol != null && myInterpreter.hasInstructions())
 				{
 					while (myInterpreter.hasInstructions())
@@ -270,23 +307,23 @@ namespace Rynchodon.Autopilot
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
-								log("got a block as a destination: " + CNS.GridDestName + ":" + CNS.searchBlockName, "update()", Logger.severity.INFO);
+								log("got a block as a centreDestination: " + CNS.GridDestName + ":" + CNS.searchBlockName, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.OFFSET:
-								log("got an offset as a destination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
+								log("got an offset as a centreDestination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.GRID:
-								log("got a grid as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
+								log("got a grid as a centreDestination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.COORDINATES:
-								log("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								log("got a new centreDestination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.LAND:
-								log("got a new landing destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								log("got a new landing centreDestination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.NULL:
@@ -520,7 +557,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (CNS.isAMissile)
 			{
-				//log("missile never reaches destination", "checkAt_wayDest()", Logger.severity.TRACE);
+				//log("missile never reaches centreDestination", "checkAt_wayDest()", Logger.severity.TRACE);
 				return false;
 			}
 			if (MM.distToWayDest > CNS.destinationRadius)
@@ -551,7 +588,7 @@ namespace Rynchodon.Autopilot
 			{
 				fullStop("At dest");
 				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
-				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				log("reached centreDestination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -626,7 +663,7 @@ namespace Rynchodon.Autopilot
 			switch (CNS.moveState)
 			{
 				case NavSettings.Moving.MOVING:
-					// will go here after clearing a waypoint or destination, do not want to switch to hybrid, as we may need to kill alot of inertia
+					// will go here after clearing a waypoint or centreDestination, do not want to switch to hybrid, as we may need to kill alot of inertia
 					{
 						if (movingTooSlow && CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove) //speed up test. missile will never pass this test
 							if (MM.rotLenSq < rotLenSq_startMove)
@@ -737,7 +774,7 @@ namespace Rynchodon.Autopilot
 				{
 					case NavSettings.Moving.SIDELING:
 						{
-							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
+							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + centreDestination, "calcAndMove()", Logger.severity.TRACE);
 							if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
 							{
 								//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
