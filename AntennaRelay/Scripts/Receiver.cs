@@ -30,6 +30,7 @@ namespace Rynchodon.AntennaRelay
 			CubeBlock = Entity as IMyCubeBlock;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
 			EnemyNear = false;
+			myLogger = new Logger("Receiver", ()=> CubeBlock.CubeGrid.DisplayName);
 		}
 
 		public override void Close()
@@ -212,11 +213,20 @@ namespace Rynchodon.AntennaRelay
 			Vector3D myPosition = CubeBlock.GetPosition();
 			EnemyNear = false;
 			foreach (LastSeen seen in myLastSeen.Values)
-				if (seen.isRecent() && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
+			{
+				IMyCubeGrid seenAsGrid = seen.Entity as IMyCubeGrid;
+				if (seenAsGrid != null)
 				{
-					EnemyNear = true;
-					return;
+					//myLogger.debugLog("testing grid: " + seenAsGrid.DisplayName + ", recent = " + seen.isRecent() + ", hostile = " + CubeBlock.canConsiderHostile(seenAsGrid) + ", distance squared = " + (seen.LastKnownPosition - myPosition).LengthSquared(), "UpdateEnemyNear()");
+					if (seen.isRecent() && CubeBlock.canConsiderHostile(seenAsGrid) && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
+					{
+						myLogger.debugLog("nearby enemy: " + seen.Entity.getBestName(), "UpdateEnemyNear()");
+						EnemyNear = true;
+						return;
+					}
 				}
+			}
+			myLogger.debugLog("no enemy nearby", "UpdateEnemyNear()");
 		}
 
 		public LastSeen getLastSeen(long entityId)
@@ -229,7 +239,7 @@ namespace Rynchodon.AntennaRelay
 		{ return myLastSeen.Values.GetEnumerator(); }
 
 		protected string ClassName = "Receiver";
-		private Logger myLogger;
+		private Logger myLogger = new Logger(null, "Receiver");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		protected void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }

@@ -798,10 +798,10 @@ namespace Rynchodon.Autopilot
 		/// <param name="pitch"></param>
 		/// <param name="yaw"></param>
 		/// <param name="precision_stopAndRot">for increasing precision of rotLenSq_stopAndRot</param>
-		internal void calcAndRotate(float? precision_stopAndRot = null)
+		internal void calcAndRotate()
 		{
-			if (precision_stopAndRot == null)
-				precision_stopAndRot = rotLenSq_stopAndRot;
+			//if (precision_stopAndRot == null)
+			//	precision_stopAndRot = rotLenSq_stopAndRot;
 
 			//log("need to rotate "+rot.Length());
 			// need to rotate
@@ -813,7 +813,7 @@ namespace Rynchodon.Autopilot
 						{
 							case NavSettings.Moving.MOVING:
 								{
-									if (MM.rotLenSq > precision_stopAndRot)
+									if (MM.rotLenSq > rotLenSq_stopAndRot)
 									{
 										//log("stopping to rotate", "calcAndRotate()");
 										fullStop("stopping to rorate");
@@ -1134,7 +1134,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersOn()) // already stopped
+			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
 				return;
 
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);

@@ -4,3 +4,6 @@ major:
 
 minor:
 disable reverse thrusters, instead of dampeners, when cruising forward
+dumb turrets are now disabled if there are no possible targets
+react when default targeting acquires unowned block on friendly ship
+bug fix for turrets' nearby enemies test
