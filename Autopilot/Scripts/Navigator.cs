@@ -469,7 +469,6 @@ namespace Rynchodon.Autopilot
 		}
 
 		private Lander myLand;
-		private Rynchodon.Autopilot.Jumper.GridJumper myJump = null;
 
 		private void navigateSub()
 		{
@@ -484,24 +483,6 @@ namespace Rynchodon.Autopilot
 			{
 				myLand.matchOrientation(); // continue match
 				return;
-			}
-			if (myJump != null && myJump.currentState != Jumper.GridJumper.State.OFF)
-			{
-				myJump.update(); // continue jumping
-				reportState(ReportableState.JUMP);
-				return;
-			}
-			if (CNS.jump_to_dest && CNS.moveState == NavSettings.Moving.NOT_MOVE && CNS.rotateState == NavSettings.Rotating.NOT_ROTA && MM.distToWayDest > 100)
-			{
-				myJump = new Jumper.GridJumper(myGridDim, MM.currentWaypoint);
-				if (myJump.trySetJump())
-				{
-					log("started Jumper", "navigateSub()", Logger.severity.DEBUG);
-					reportState(ReportableState.JUMP);
-					return;
-				}
-				else
-					log("could not start Jumper", "navigateSub()", Logger.severity.DEBUG);
 			}
 
 			if (!checkAt_wayDest())
@@ -1297,8 +1278,6 @@ namespace Rynchodon.Autopilot
 				newState = ReportableState.LANDED;
 			if (GET_OUT_OF_SEAT) // must override LANDED
 				newState = ReportableState.GET_OUT_OF_SEAT;
-			if (myJump != null && myJump.currentState != Jumper.GridJumper.State.OFF && myJump.currentState != Jumper.GridJumper.State.FAILED)
-				newState = ReportableState.JUMP;
 
 			// did state actually change?
 			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
@@ -1321,12 +1300,6 @@ namespace Rynchodon.Autopilot
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
 			// actual state
 			newName.Append(newState);
-			// jump time
-			if (newState == ReportableState.JUMP && myJump != null && myJump.currentState == Jumper.GridJumper.State.TRANSFER)
-			{
-				newName.Append(':');
-				newName.Append((int)myJump.estimatedTimeToReadyMillis() / 1000);
-			}
 			// wait time
 			if (newState == ReportableState.WAITING)
 			{
