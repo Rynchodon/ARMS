@@ -52,7 +52,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// does not check mes for isValid
 		/// </summary>
-		/// <param name="mes"></param>
+		/// <param name="mes">message to receive</param>
 		public virtual void receive(Message mes)
 		{
 			if (myMessages.Contains(mes))
@@ -60,6 +60,13 @@ namespace Rynchodon.AntennaRelay
 			myMessages.AddLast(mes);
 			log("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
 		}
+
+		/// <summary>
+		/// number of messages currently held
+		/// </summary>
+		/// <returns>number of messages</returns>
+		public int messageCount()
+		{ return myMessages.Count; }
 
 		/// <summary>
 		/// does not check seen for isValid
@@ -249,5 +256,11 @@ namespace Rynchodon.AntennaRelay
 				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
 			myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
 		}
+	}
+
+	public static class ReceiverExtensions
+	{
+		public static bool IsOpen(this Receiver receiver)
+		{ return receiver != null && !receiver.Closed && receiver.CubeBlock != null && !receiver.CubeBlock.Closed; }
 	}
 }
