@@ -194,7 +194,7 @@ namespace Rynchodon.Autopilot
 			foreach (IMyEntity entity in entities)
 			{
 				Sandbox.ModAPI.IMyCubeGrid grid = entity as Sandbox.ModAPI.IMyCubeGrid;
-				if (grid == null || grid.Closed || grid.MarkedForClose)
+				if (grid == null || grid.Closed || grid.MarkedForClose || grid.Physics == null)
 					continue;
 				if (!allNavigators.ContainsKey(grid))
 				{

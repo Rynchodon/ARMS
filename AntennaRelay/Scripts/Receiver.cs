@@ -233,7 +233,7 @@ namespace Rynchodon.AntennaRelay
 					}
 				}
 			}
-			myLogger.debugLog("no enemy nearby", "UpdateEnemyNear()");
+			//myLogger.debugLog("no enemy nearby", "UpdateEnemyNear()");
 		}
 
 		public LastSeen getLastSeen(long entityId)

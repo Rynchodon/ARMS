@@ -105,11 +105,11 @@ namespace Rynchodon.Autopilot
 					reportState(ReportableState.OFF);
 				}
 
-				// some variables
+				// set rotation power variables
 				rotationPower = 3f;
-				decelerateRotation = 1f / 2f;
-				inflightRotatingPower = 3f;
-				inflightDecelerateRotation = 1f / 2f;
+				decelerateRotation = 1f / 4f;
+				inflightRotatingPower = 10f;
+				inflightDecelerateRotation = 1f / 4f;
 			}
 		}
 		/// <summary>
@@ -292,8 +292,13 @@ namespace Rynchodon.Autopilot
 							case NavSettings.TypeOfWayDest.NULL:
 								break; // keep searching
 							default:
-								alwaysLog("got an invalid TypeOfWayDest: " + CNS.getTypeOfWayDest(), "update()", Logger.severity.WARNING);
+								alwaysLog("got an invalid TypeOfWayDest: " + CNS.getTypeOfWayDest(), "update()", Logger.severity.FATAL);
 								return;
+						}
+						if (CNS.waitUntil.CompareTo(DateTime.UtcNow) > 0)
+						{
+							myLogger.debugLog("Waiting for " + (CNS.waitUntil - DateTime.UtcNow), "update()", Logger.severity.DEBUG);
+							return;
 						}
 					}
 					// at end of allInstructions
@@ -832,7 +837,7 @@ namespace Rynchodon.Autopilot
 										yawNeedToRotate = 0;
 									if (pitchNeedToRotate == 0 && yawNeedToRotate == 0)
 										return;
-									log("starting rotation: " + MM.pitch + ", " + MM.yaw + ", updates=" + collisionUpdatesBeforeMove, "calcAndRotate()");
+									log("starting rotation: " + MM.pitch + ", " + MM.yaw + ", updates=" + CNS.collisionUpdateSinceWaypointAdded, "calcAndRotate()");
 									changeRotationPower = !changeRotationPower;
 									rotateOrder(); // rotate towards target
 									CNS.rotateState = NavSettings.Rotating.ROTATING;
@@ -955,10 +960,11 @@ namespace Rynchodon.Autopilot
 		}
 
 		// rotationPower and decelerateRotation are also used and affected by rolling
-		internal float rotationPower = 3f;
-		private float decelerateRotation = 1f / 4f; // how much of rotation should be deceleration
-		internal float inflightRotatingPower = 10;
-		private float inflightDecelerateRotation = 1f / 4f;
+		// these values are set in set_currentRCcontrol()
+		internal float rotationPower;
+		private float decelerateRotation;
+		internal float inflightRotatingPower;
+		private float inflightDecelerateRotation;
 
 		private static float decelerateAdjustmentOver = 1.15f; // adjust decelerate by this much when overshoot
 		private static float decelerateAdjustmentUnder = 0.90f; // adjust decelerate by this much when undershoot
@@ -1317,7 +1323,7 @@ namespace Rynchodon.Autopilot
 			log("added ReportableState to RC: " + newState, "reportState()", Logger.severity.TRACE);
 		}
 
-		[System.Diagnostics.Conditional("DEBUG")]
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void reportExtra(ref ReportableState reportState)
 		{
 			switch (reportState)
