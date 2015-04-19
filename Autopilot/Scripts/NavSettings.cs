@@ -89,6 +89,8 @@ namespace Rynchodon.Autopilot
 		public enum LANDING : byte { OFF, ORIENT, LINEUP, LAND, LOCKED, SEPARATE }
 		public LANDING landingState = LANDING.OFF;
 
+		private DateTime waypointExpiresAt;
+
 		private Navigator myNav;
 		private GridDimensions myGridDims
 		{
@@ -235,15 +237,14 @@ namespace Rynchodon.Autopilot
 		/// <param name="waypoint"></param>
 		/// <param name="forced"></param>
 		/// <returns></returns>
-		public bool addWaypoint(Vector3D waypoint, bool forced = false)
+		public bool addWaypoint(Vector3D waypoint, bool waypointExpires = false)
 		{
 			onWayDestAddedRemoved();
-			if (forced)
-			{
-				myWaypoint = waypoint;
-				return true;
-			}
-				myWaypoint = waypoint;
+			myWaypoint = waypoint;
+			if (waypointExpires)
+				waypointExpiresAt = DateTime.UtcNow.AddSeconds(10);
+			else
+				waypointExpiresAt = DateTime.MaxValue;
 			return true;
 		}
 
@@ -318,7 +319,16 @@ namespace Rynchodon.Autopilot
 		public TypeOfWayDest getTypeOfWayDest()
 		{
 			if (myWaypoint != null)
-				return TypeOfWayDest.WAYPOINT;
+			{
+				if (moveState == Moving.SIDELING // might want to add HYBRID as well, or maybe it would just switch to moving?
+					|| waypointExpiresAt > DateTime.UtcNow)
+					return TypeOfWayDest.WAYPOINT;
+				else // waypoint has expired
+				{
+					myLogger.debugLog("waypoint has expired: " + myWaypoint, "getTypeOfWayDest()");
+					myWaypoint = null;
+				}
+			}
 
 			if (CurrentGridDest != null)
 			{

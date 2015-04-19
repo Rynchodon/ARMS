@@ -234,8 +234,10 @@ namespace Rynchodon
 		{ return block.getSlim().GetObjectBuilder(); }
 
 		public static string getInstructions(this IMyCubeBlock block)
+		{ return getInstructions(block.DisplayNameText); }
+
+		public static string getInstructions(this string displayName)
 		{
-			string displayName = block.DisplayNameText;
 			int start = displayName.IndexOf('[') + 1;
 			int end = displayName.IndexOf(']');
 			if (start > 0 && end > start) // has appropriate brackets

@@ -102,5 +102,12 @@ namespace Rynchodon
 
 			return new String(newarr, 0, j);
 		}
+
+		public static bool IsClient(this IMyMultiplayer multiplayer)
+		{
+			if (!multiplayer.MultiplayerActive)
+				return false;
+			return !multiplayer.IsServer;
+		}
 	}
 }

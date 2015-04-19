@@ -43,6 +43,8 @@ type "/Autopilot <topic>" for information about a specific topic
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth
+C GPS:<name>:<x>:<y>:<z>: : GPS tags will be replaced with the appropriate coordinates
+Example - [ C GPS:Origin:0:0:0: ] - fly to {0, 0, 0}
 
 E <range> : Any time after E is set, fly towards the nearest enemy grid. While no enemy is in range, continue following commands. Use 0 for infinite range. Use OFF to disable.
 Example - [ E 0 ] - move towards any detected enemy

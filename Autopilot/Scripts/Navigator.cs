@@ -333,7 +333,7 @@ namespace Rynchodon.Autopilot
 								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
 								if (myInterpreter == null)
 									myInterpreter = new Interpreter(this);
-								myInterpreter.enqueueAllActions(instructions);
+								myInterpreter.enqueueAllActions(fatBlock);
 								if (myInterpreter.hasInstructions())
 								{
 									CNS.startOfCommands();
@@ -639,8 +639,11 @@ namespace Rynchodon.Autopilot
 						//	reportState(ReportableState.MOVING);
 						//	break;
 						//}
-						if (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward) // otherwise we should be slowing
+
+						if (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward)
 							calcAndMove(true); // continue in current state
+						else if (movingTooSlow)
+							goto case NavSettings.Moving.MOVING;
 						break;
 					}
 				case NavSettings.Moving.SIDELING:
@@ -662,6 +665,7 @@ namespace Rynchodon.Autopilot
 							{
 								if (CNS.isAMissile // missile never sidel
 									|| (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGridDim.getLongestDim() + CNS.destinationRadius)) // hybrid when not landing and moving a long way
+								//if (CNS.isAMissile || CNS.landingState == NavSettings.LANDING.OFF)
 								{
 									calcAndMove(true);
 									CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid

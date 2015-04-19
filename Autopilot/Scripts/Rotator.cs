@@ -81,7 +81,7 @@ namespace Rynchodon.Autopilot
 		private RotateProfile
 			stoppedRotate = new RotateProfile(1.0f, 1f / 2f),
 			stoppedRoll = new RotateProfile(1.0f, 1f / 2f),
-			inflightRotate = new RotateProfile(1.0f, 1f / 16f);
+			inflightRotate = new RotateProfile(1.0f, 1f / 4f);
 
 		private float current_pitch, current_yaw, current_roll;
 		private float needToRotate_pitch, needToRotate_yaw, needToRotate_roll;
@@ -93,17 +93,21 @@ namespace Rynchodon.Autopilot
 		private NavSettings CNS { get { return owner.CNS; } }
 		private MovementMeasure CMM { get { return owner.MM; } }
 
-		public Rotator(Navigator owner) { 
+		public Rotator(Navigator owner)
+		{
 			this.owner = owner;
 			myLogger = new Logger("Rotator", () => this.owner.myGrid.DisplayName, () => this.owner.CNS.moveState.ToString(), () => this.owner.CNS.rotateState.ToString());
 		}
 
+		/// <summary>
+		/// calculates the required rotation and executes the rotation order
+		/// </summary>
 		public void calcAndRotate()
 		{
 			switch (CNS.rotateState)
 			{
 				case NavSettings.Rotating.NOT_ROTA:
-					myLogger.debugLog("entered NOT_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
+					//myLogger.debugLog("entered NOT_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
 					switch (CNS.moveState)
 					{
 						case NavSettings.Moving.MOVING:
@@ -127,7 +131,7 @@ namespace Rynchodon.Autopilot
 							needToRotate_yaw = (float)CMM.yaw;
 							if (Math.Abs(needToRotate_pitch) < rotComp_minimum && Math.Abs(needToRotate_yaw) < rotComp_minimum)
 							{
-								myLogger.debugLog("needToRotate_pitch = " + needToRotate_pitch + ", rotComp_minimum = " + rotComp_minimum + ", needToRotate_yaw = " + needToRotate_yaw + ", rotComp_minimum = " + rotComp_minimum, "calcAndRotate()");
+								//myLogger.debugLog("needToRotate_pitch = " + needToRotate_pitch + ", rotComp_minimum = " + rotComp_minimum + ", needToRotate_yaw = " + needToRotate_yaw + ", rotComp_minimum = " + rotComp_minimum, "calcAndRotate()");
 								return;
 							}
 							myLogger.debugLog("rotate by " + needToRotate_pitch + " & " + needToRotate_yaw, "calcAndRotate()");
@@ -138,8 +142,8 @@ namespace Rynchodon.Autopilot
 							return;
 					}
 				case NavSettings.Rotating.ROTATING:
-					myLogger.debugLog("entered ROTATING, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
-					float whichDecel = currentProfile().decelPortion;
+					//myLogger.debugLog("entered ROTATING, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
+					float whichDecel = currentRotateProfile().decelPortion;
 					if (needToRotate_pitch > rotComp_minimum && CMM.pitch < needToRotate_pitch * whichDecel)
 					{
 						myLogger.debugLog("decelerate rotation, first case " + CMM.pitch + " < " + (needToRotate_pitch * whichDecel), "calcAndRotate()");
@@ -165,12 +169,12 @@ namespace Rynchodon.Autopilot
 						return;
 					}
 
-					// no need to decel, accelerate!
+					// no need to decel, accelerate! This help keeps ships from becoming stuck and causes low-gyro ship to, ultimately, rotate much faster
 					addToRotate((float)CMM.pitch, (float)CMM.yaw);
 					myLogger.debugLog("increased rotation power by " + CMM.pitch + ", " + CMM.yaw + ", to " + current_pitch + ", " + current_yaw, "calcAndRotate()");
 					return;
 				case NavSettings.Rotating.STOP_ROTA:
-					myLogger.debugLog("entered STOP_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
+					//myLogger.debugLog("entered STOP_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
 					if (isRotating())
 						return;
 					CNS.rotateState = NavSettings.Rotating.NOT_ROTA;
@@ -180,15 +184,18 @@ namespace Rynchodon.Autopilot
 					overUnder += testOverUnder((float)CMM.pitch, needToRotate_pitch);
 					overUnder += testOverUnder((float)CMM.yaw, needToRotate_yaw);
 					if (overUnder != 0)
-						currentProfile().adjust(overUnder > 0);
+						currentRotateProfile().adjust(overUnder > 0);
 
 					return;
 			}
 		}
 
 		/// <summary>
-		/// does not test state for move or rotate
+		/// calculates the required roll and executes the roll order
 		/// </summary>
+		/// <remarks>
+		/// does not test state for move or rotate
+		/// </remarks>
 		public void calcAndRoll(float roll)
 		{
 			switch (CNS.rollState)
@@ -236,7 +243,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// if moveState is moving or hybrid, inflightRotate. otherwise, stoppedRotate
 		/// </summary>
-		private RotateProfile currentProfile()
+		private RotateProfile currentRotateProfile()
 		{
 			switch (CNS.moveState)
 			{
@@ -248,6 +255,12 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
+		/// <summary>
+		/// tests for over/under roation/roll
+		/// </summary>
+		/// <param name="currentRotate">current rotate/roll (from target direction)</param>
+		/// <param name="needToRotate">rotate/roll when rotation/rolling started</param>
+		/// <returns>-1 if under, 1 if over, 0 if very close</returns>
 		private int testOverUnder( float currentRotate, float needToRotate)
 		{
 			if (Math.Abs(currentRotate) > rotComp_minimum && Math.Abs(needToRotate) > rotComp_minimum)
@@ -258,6 +271,9 @@ namespace Rynchodon.Autopilot
 			return 0; // rotated accurately
 		}
 
+		/// <summary>
+		/// is the grid rotating
+		/// </summary>
 		private bool isRotating()
 		{
 			//myLogger.debugLog("Angular Velocity = " + owner.myGrid.Physics.AngularVelocity + ", length squared = " + owner.myGrid.Physics.AngularVelocity.LengthSquared(), "isRotating()");
@@ -268,6 +284,9 @@ namespace Rynchodon.Autopilot
 
 		#region Rotate & Roll Methods
 
+		/// <summary>
+		/// adds values to current rotation and executes rotation
+		/// </summary>
 		private void addToRotate(float addPitch, float addYaw)
 		{
 			CNS.rotateState = NavSettings.Rotating.ROTATING;
@@ -276,6 +295,9 @@ namespace Rynchodon.Autopilot
 			performRotateRoll();
 		}
 
+		/// <summary>
+		/// adds values to current roll and executes roll
+		/// </summary>
 		private void addToRoll(float addRoll)
 		{
 			CNS.rotateState = NavSettings.Rotating.ROTATING;
@@ -283,6 +305,9 @@ namespace Rynchodon.Autopilot
 			performRotateRoll();
 		}
 
+		/// <summary>
+		/// stop rotating and rolling
+		/// </summary>
 		private void stopRotateRoll()
 		{
 			CNS.rotateState = NavSettings.Rotating.STOP_ROTA;
@@ -292,6 +317,9 @@ namespace Rynchodon.Autopilot
 			performRotateRoll();
 		}
 
+		/// <summary>
+		/// executes rotation for current_pitch and current_yaw and roll for current_roll by passing to Navigator
+		/// </summary>
 		private void performRotateRoll()
 		{
 			owner.currentRotate = new Vector2(current_pitch, current_yaw);
