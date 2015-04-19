@@ -51,44 +51,63 @@ namespace Rynchodon.Autopilot.Turret
 
 		protected override void DelayedInit()
 		{
-			if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
-				return;
-
-			this.myCubeBlock = Entity as IMyCubeBlock;
-			this.myTerminal = Entity as IMyTerminalBlock;
-			this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
-
-			myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-			EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
-			if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
+			try
 			{
-				if (myTurretBase.OwnerId.Is_ID_NPC())
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
-				else
-					myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
+				if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
+					return;
+
+				this.myCubeBlock = Entity as IMyCubeBlock;
+				this.myTerminal = Entity as IMyTerminalBlock;
+				this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
+				this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
+
+				this.myCubeBlock.throwIfNull_variable("myCubeBlock");
+				this.myTerminal.throwIfNull_variable("myTerminal");
+				this.myTurretBase.throwIfNull_variable("myTurretBase");
+
+				myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
+				EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
+				if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
+				{
+					if (myTurretBase.OwnerId.Is_ID_NPC())
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
+					else
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
+				}
+
+				TurretBase_CustomNameChanged(null);
+				myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
+				myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
+
+				// definition limits
+				MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
+
+				definition.throwIfNull_variable("definition");
+
+				minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
+				maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
+				minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
+				maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
+
+				myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
+				myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
 			}
-
-			TurretBase_CustomNameChanged(null);
-			myTerminal.CustomNameChanged += TurretBase_CustomNameChanged;
-			myTerminal.OwnershipChanged += myTerminal_OwnershipChanged;
-
-			// definition limits
-			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(myCubeBlock.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
-			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
-			maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
-			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
-			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
-
-			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
-			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
+			catch (Exception e)
+			{
+				if (myCubeBlock == null)
+					myLogger.log("failed to initialize myCubeBlock == null, Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
+				else
+					myLogger.log("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
+				VRage.Exceptions.ThrowIf<Exception>(true, e);
+				return;
+			}
 		}
 
 		public override void Close()
 		{
 			base.Close();
-			if (needToRelease)
-				lock_notMyUpdate.ReleaseExclusive();
+			//if (needToRelease)
+			//	lock_notMyUpdate.ReleaseExclusive();
 
 			IMyTerminalBlock asTerm = myCubeBlock as IMyTerminalBlock;
 			if (asTerm != null)
