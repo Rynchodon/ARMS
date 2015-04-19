@@ -3,10 +3,4 @@ Will be moved to steam every release.
 major:
 
 minor:
-disable reverse thrusters, instead of dampeners, when cruising forward
-dumb turrets are now disabled if there are no possible targets
-react when default targeting acquires unowned block on friendly ship
-bug fix for turrets' nearby enemies test
-made block communication script for filtering simpler to use
-added current time to detected grid display
-when displayed information is old, the background will turn Gray
+fix for ships (especially heavy ones) becoming stuck while rotating

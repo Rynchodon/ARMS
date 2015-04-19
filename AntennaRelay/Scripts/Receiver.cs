@@ -227,7 +227,7 @@ namespace Rynchodon.AntennaRelay
 					//myLogger.debugLog("testing grid: " + seenAsGrid.DisplayName + ", recent = " + seen.isRecent() + ", hostile = " + CubeBlock.canConsiderHostile(seenAsGrid) + ", distance squared = " + (seen.LastKnownPosition - myPosition).LengthSquared(), "UpdateEnemyNear()");
 					if (seen.isRecent() && CubeBlock.canConsiderHostile(seenAsGrid) && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
 					{
-						myLogger.debugLog("nearby enemy: " + seen.Entity.getBestName(), "UpdateEnemyNear()");
+						//myLogger.debugLog("nearby enemy: " + seen.Entity.getBestName(), "UpdateEnemyNear()");
 						EnemyNear = true;
 						return;
 					}
