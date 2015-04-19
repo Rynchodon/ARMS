@@ -3,4 +3,5 @@ Will be moved to steam every release.
 major:
 
 minor:
-fix for ships (especially heavy ones) becoming stuck while rotating
+wait interrupts commands, not just destinations
+better rotation performance (particularly for low-gyro ships)
