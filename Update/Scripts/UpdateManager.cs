@@ -14,12 +14,6 @@ using Rynchodon.Autopilot;
 
 namespace Rynchodon.Update
 {
-	//public abstract class EntityScript // where T : IMyEntity
-	//{
-	//	//internal abstract void Init(T myEntity);
-	//	internal abstract void Close(IMyEntity myEntity);
-	//}
-
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase
 	{
@@ -36,12 +30,26 @@ namespace Rynchodon.Update
 		private Logger myLogger = new Logger(null, "UpdateManager");
 
 		/// <summary>
+		/// Scripts that use UpdateManager shall be added here.
+		/// </summary>
+		private void RegisterScripts()
+		{
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) =>
+			{
+				myLogger.debugLog("running beacon creation", "Init()");
+				Beacon newBeacon = new Beacon(block);
+				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100);
+			});
+		}
+
+		/// <summary>
 		/// For MySessionComponentBase
 		/// </summary>
 		public UpdateManager() { }
 
 		public void Init()
 		{
+			myLogger.debugLog("entered Init", "Init()");
 			try
 			{
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
@@ -49,17 +57,13 @@ namespace Rynchodon.Update
 				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
 				GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
-				// register scripts
-				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) =>
-				{
-					Beacon newBeacon = new Beacon(block);
-					RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100);
-				});
+				RegisterScripts();
 
 				// create script for each entity
 				HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities(allEntities);
 
+				myLogger.debugLog("Adding all entities", "Init()");
 				foreach (IMyEntity entity in allEntities)
 					Entities_OnEntityAdd(entity);
 
@@ -69,13 +73,13 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.debugLog("failed to Init(): " + ex, "Init()");
+				myLogger.log("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
 				MangerStatus = Status.Terminated;
 			}
 		}
 
-		private static byte DelayInitBy = 100;
-		public static ulong Update { get; private set; }
+		private byte DelayInitBy = 100;
+		public ulong Update { get; private set; }
 
 		public override void UpdateAfterSimulation()
 		{
@@ -91,15 +95,20 @@ namespace Rynchodon.Update
 				switch (MangerStatus)
 				{
 					case Status.Not_Initialized:
+						myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
 					case Status.Terminated:
 						return;
 				}
+				//myLogger.debugLog("Checking for need to update (currently disabled)", "UpdateAfterSimulation()");
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
+					{
+						myLogger.debugLog("Issuing an update at " + pair.Key, "UpdateAfterSimulation()");
 						foreach (Action item in pair.Value)
 							item.Invoke();
+					}
 			}
 			catch (Exception ex)
 			{
@@ -112,11 +121,15 @@ namespace Rynchodon.Update
 			}
 		}
 
-		private static void RegisterForUpdates(uint frequency, Action toInvoke)
-		{ UpdateList(frequency).Add(toInvoke); }
-
-		private static void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor) //where T : EntityScript<IMyCubeBlock>, new()
+		private void RegisterForUpdates(uint frequency, Action toInvoke)
 		{
+			myLogger.debugLog("Registering action with frequency = " + frequency, "RegisterForUpdates()");
+			UpdateList(frequency).Add(toInvoke);
+		}
+
+		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor) //where T : EntityScript<IMyCubeBlock>, new()
+		{
+			myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()");
 			BlockScriptConstructor(objBuildType).Add(constructor);
 				/*(IMyCubeBlock block) =>
 			{
@@ -126,8 +139,9 @@ namespace Rynchodon.Update
 			});*/
 		}
 
-		private static void RegisterForCharacter(Action<IMyCharacter> constructor) //where T : EntityScript<IMyCharacter>, new()
+		private void RegisterForCharacter(Action<IMyCharacter> constructor) //where T : EntityScript<IMyCharacter>, new()
 		{
+			myLogger.debugLog("Registered for character", "RegisterForCharacter()");
 			CharacterScriptConstructors.Add(constructor);
 				/*(IMyCharacter character) =>
 			{
@@ -137,8 +151,9 @@ namespace Rynchodon.Update
 			});*/
 		}
 
-		private static void RegisterForGrid(Action<IMyCubeGrid> constructor) //where T : EntityScript<IMyCubeGrid>, new()
+		private void RegisterForGrid(Action<IMyCubeGrid> constructor) //where T : EntityScript<IMyCubeGrid>, new()
 		{
+			myLogger.debugLog("Registered for grid", "RegisterForGrid()");
 			GridScriptConstructors.Add(constructor);
 				/*(IMyCubeGrid grid) =>
 			{
@@ -148,20 +163,18 @@ namespace Rynchodon.Update
 			});*/
 		}
 
-		private static void Entities_OnEntityAdd(IMyEntity entity)
+		private void Entities_OnEntityAdd(IMyEntity entity)
 		{
-			IMyCubeBlock asBlock = entity as IMyCubeBlock;
-			if (asBlock != null)
-			{
-				MyObjectBuilderType typeId = asBlock.BlockDefinition.TypeId;
-				if (AllBlockScriptConstructors.ContainsKey(typeId))
-					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
-						constructor.Invoke(asBlock);
-				return;
-			}
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
+				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
+				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
+				foreach (IMySlimBlock slim in blocksInGrid)
+					Grid_OnBlockAdded(slim);
+				asGrid.OnBlockAdded += Grid_OnBlockAdded;
+				asGrid.OnClosing += Grid_OnClosing;
+
 				foreach (var constructor in GridScriptConstructors)
 					constructor.Invoke(asGrid);
 				return;
@@ -175,7 +188,37 @@ namespace Rynchodon.Update
 			}
 		}
 
-		private static List<Action<IMyCubeBlock>> BlockScriptConstructor(MyObjectBuilderType objBuildType)
+		private void Grid_OnBlockAdded(IMySlimBlock block)
+		{
+			IMyCubeBlock fatblock = block.FatBlock;
+			if (fatblock != null)
+			{
+				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
+				if (AllBlockScriptConstructors.ContainsKey(typeId))
+				{
+					//myLogger.debugLog("Found for ID: " + typeId, "Grid_OnBlockAdded()");
+					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
+						constructor.Invoke(fatblock);
+				}
+				//else
+				//	myLogger.debugLog("Nothing for ID: " + typeId, "Grid_OnBlockAdded()");
+				return;
+			}
+		}
+
+		private void Grid_OnClosing(IMyEntity gridAsEntity)
+		{
+			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
+			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
+			asGrid.OnClosing -= Grid_OnClosing;
+		}
+
+		/// <summary>
+		/// Gets the constructor list mapped to a MyObjectBuilderType
+		/// </summary>
+		/// <param name="objBuildType"></param>
+		/// <returns></returns>
+		private List<Action<IMyCubeBlock>> BlockScriptConstructor(MyObjectBuilderType objBuildType)
 		{
 			List<Action<IMyCubeBlock>> scripts;
 			if (!AllBlockScriptConstructors.TryGetValue(objBuildType, out scripts))
@@ -186,7 +229,12 @@ namespace Rynchodon.Update
 			return scripts;
 		}
 
-		private static List<Action> UpdateList(uint frequency)
+		/// <summary>
+		/// Gets the update list mapped to a frequency
+		/// </summary>
+		/// <param name="frequency"></param>
+		/// <returns></returns>
+		private List<Action> UpdateList(uint frequency)
 		{
 			List<Action> updates;
 			if (!UpdateRegistrar.TryGetValue(frequency, out updates))
