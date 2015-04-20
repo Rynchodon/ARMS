@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define LOG_ENABLED //remove on build
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -174,6 +176,9 @@ namespace Rynchodon
 		/// <returns></returns>
 		public static bool canSendTo(this IMyCubeBlock sendFrom, IMyEntity sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
+			sendFrom.throwIfNull_argument("sendFrom");
+			sendTo.throwIfNull_argument("sendTo");
+
 			if (sendFrom.Closed || !sendFrom.IsWorking)
 				return false;
 
@@ -210,9 +215,10 @@ namespace Rynchodon
 						return true;
 				}
 
+				// may or may not be grid
 				if (range > 0)
 				{
-					double distance = sendToAsGrid.WorldAABB.Distance(sendFrom.GetPosition());
+					double distance = sendTo.WorldAABB.Distance(sendFrom.GetPosition());
 					if (rangeIsSquared)
 						return distance * distance < range;
 					else

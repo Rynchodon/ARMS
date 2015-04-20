@@ -93,7 +93,7 @@ namespace Rynchodon.AntennaRelay
 				HashSet<IMyEntity> allEntitiesInWorld = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities(allEntitiesInWorld);
 				foreach (IMyEntity ent in allEntitiesInWorld)
-					if (ent is IMyCubeGrid || ent is IMyVoxelMap || ent is IMyCharacter)
+					if (ent is IMyCubeGrid || ent is IMyCharacter)
 					{
 						// get detection distance
 						float volume = ent.LocalAABB.Volume();
