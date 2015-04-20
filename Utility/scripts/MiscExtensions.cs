@@ -109,5 +109,11 @@ namespace Rynchodon
 				return false;
 			return !multiplayer.IsServer;
 		}
+
+		public static void throwIfNull_argument(this object argument, string name)
+		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
+
+		public static void throwIfNull_variable(this object variable, string name)
+		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
 	}
 }
