@@ -224,7 +224,7 @@ namespace Rynchodon.Autopilot.Turret
 							setNoTarget();
 							CurrentState = State.NO_POSSIBLE;
 						}
-				}
+				} // end if (updateCount % 100 == 0)
 
 				if (CurrentState == State.NO_POSSIBLE)
 					return;
@@ -411,9 +411,8 @@ namespace Rynchodon.Autopilot.Turret
 					continue;
 
 				// entity could be missile
-				if (enemyNear() && entity.ToString().StartsWith("MyMissile"))
-					if (targetMissiles)
-						validTarget_missile.Add(entity);
+				if (targetMissiles && enemyNear() && entity.ToString().StartsWith("MyMissile"))
+					validTarget_missile.Add(entity);
 			}
 
 			//myLogger.debugLog("target counts = " + validTarget_missile.Count + ", " + validTarget_meteor.Count + ", " + validTarget_character.Count + ", " + validTarget_block.Count, "getValidTargets()");

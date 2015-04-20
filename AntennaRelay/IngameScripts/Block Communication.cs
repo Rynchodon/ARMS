@@ -21,22 +21,40 @@ namespace Programmable
 
 		/*
 		 * Script for block communication and filtering detected grids.
+		 * 
 		 * To send detected grid information to a Programmable block, use the command
 		 *     [ Transmit Detected to <Programmable block name> ]
 		 * in the name of a TextPanel.
 		 */
 
 		/// <summary>
-		/// name of this block, case sensitive, first matching block will be used
+		/// Name of this block. 
+		/// Case sensitive, must match exactly. 
+		/// First matching block will be used.
 		/// </summary>
 		const string ThisBlockName = "Programmable block";
-		/// <summary>
-		/// name of output text panels, can match more than one block
-		/// </summary>
-		const string OutputPanelName = "LCD Panel Detected Output";
 
+		/// <summary>
+		/// Set to true to send the "Lights : On" message
+		/// </summary>
 		bool sendLightsOn = false;
-		bool detectedEnemy;
+
+		/// <summary>
+		/// The name of the sound blocks that are proximity alarms. 
+		/// Case sensitive, must match exactly. 
+		/// Can match more than one block.
+		/// </summary>
+		const string ProximityAlarmName = "Proximity Alarm";
+
+		/// <summary>
+		/// Set to true to use proximity alarm.
+		/// </summary>
+		const bool useProximityAlarm = false;
+
+		/// <summary>
+		/// This value is set later in the program.
+		/// </summary>
+		bool alarmIsSounding;
 
 
 		// Handling of Messages
@@ -62,7 +80,7 @@ namespace Programmable
 		void parseReceivedMessage(string senderGrid, string senderBlock, string message)
 		{
 			// this is an example of how to receive a message
-			if (message == "Lights : On")
+			if (senderGrid == "Platform A" && message == "Lights : On")
 			{
 				List<IMyTerminalBlock> lightBlocks = new List<IMyTerminalBlock>();
 				GridTerminalSystem.GetBlocksOfType<IMyInteriorLight>(lightBlocks);
@@ -80,7 +98,7 @@ namespace Programmable
 		/// </summary>
 		void beforeHandleDetected()
 		{
-			detectedEnemy = false; // reset every run or will alarm will only sound once
+			alarmIsSounding = false; // reset every run or alarm will only sound once
 		}
 
 		/// <summary>
@@ -89,23 +107,20 @@ namespace Programmable
 		/// <param name="grid">information about a grid</param>
 		void handle_detectedGrid(Detected grid)
 		{
-			if (!detectedEnemy // have not found an enemy this run
+			if (grid.relations == "Enemy")
+				addToOutput("Placeholder", grid); // this will add a grid to the output panels
+
+			// sound an alarm if an enemy is near
+			if (useProximityAlarm // proximity alarm is enabled
+				&& !alarmIsSounding // have not found an enemy this run
+
 				&& grid.distance < 10000 // closer than 10km
 				&& grid.volume > 100 // larger than 100m³
 				&& grid.seconds < 60 // seen in the past minute
 				&& (grid.relations == "Enemy")) // grid is enemy
-				{
-					detectedEnemy = true;
-
-					// sound an alarm
-					List<IMyTerminalBlock> alarmBlocks = new List<IMyTerminalBlock>();
-					GridTerminalSystem.GetBlocksOfType<IMySoundBlock>(alarmBlocks); // this gets every sound block, it could be improved by checking block names
-					for (int b = 0; b < alarmBlocks.Count; b++)
-						alarmBlocks[b].ApplyAction("PlaySound");
-				}
-
-			if (grid.relations == "Enemy" || grid.relations == "Neutral")
-				addToOutput(grid); // this will add a grid to all the output panels
+			{
+				soundProximityAlarm(); // sounds the alarm
+			}
 		}
 
 
@@ -113,15 +128,14 @@ namespace Programmable
 
 
 		IMyTerminalBlock ThisBlock;
-		List<IMyTerminalBlock> outputPanels;
-		StringBuilder outputText;
+		Dictionary<string, StringBuilder> outputText;
 
 		const string startOfSend = "[.[", endOfSend = "].]", startOfReceive = "<.<", endOfReceive = ">.>"; // has to match MessageParser.cs
 		const char separator = ':'; // has to match MessageParser.cs and TextPanel.cs
 		const string fetchFromTextPanel = "Fetch Detected from Text Panel"; // has to match TextPanel.cs
 		const string blockName_fromProgram = "from Program"; // has to match TextPanel.cs
 
-		readonly string[] newLine = { "\n", "\r\n" };
+		readonly string[] newLine = { "\n", "\r", "\r\n" };
 		const string tab = "    ";
 
 		/// <summary>
@@ -131,23 +145,27 @@ namespace Programmable
 		{
 			if (ThisBlock == null)
 				fillThisBlock();
-			fillOutputPanel();
+
+			outputText = new Dictionary<string, StringBuilder>();
 
 			beforeHandleDetected();
-			outputText = new StringBuilder('[' + blockName_fromProgram);
-
 			receiveMessage();
 			sendMessage();
 			writeOutput();
 		}
 
 		/// <summary>
-		/// Determines whether or not a block is this block.
+		/// Search string for collect_BlockName
+		/// </summary>
+		string search_collect_BlockName;
+
+		/// <summary>
+		/// collect blocks whose names match search_collect_BlockName
 		/// </summary>
 		/// <param name="block">block to test</param>
-		/// <returns>true iff block is this block</returns>
-		bool collect_ThisBlock(IMyTerminalBlock block)
-		{ return block.DisplayNameText.Contains(ThisBlockName); }
+		/// <returns>true if the name matches</returns>
+		bool collect_BlockName(IMyTerminalBlock block)
+		{ return block.DisplayNameText.Contains(search_collect_BlockName); }
 
 		/// <summary>
 		/// fills ThisBlock with first Programmable block found that matches collect_ThisBlock
@@ -155,25 +173,9 @@ namespace Programmable
 		void fillThisBlock()
 		{
 			List<IMyTerminalBlock> progBlocks = new List<IMyTerminalBlock>();
-			GridTerminalSystem.GetBlocksOfType<IMyProgrammableBlock>(progBlocks, collect_ThisBlock);
+			search_collect_BlockName = ThisBlockName;
+			GridTerminalSystem.GetBlocksOfType<IMyProgrammableBlock>(progBlocks, collect_BlockName);
 			ThisBlock = progBlocks[0];
-		}
-
-		/// <summary>
-		/// Determines whether or not a block will be used as an output panel.
-		/// </summary>
-		/// <param name="block">the IMyTextPanel to test</param>
-		/// <returns>true iff the block should be used as an output panel</returns>
-		bool collect_outputPanel(IMyTerminalBlock block)
-		{ return block.DisplayNameText == OutputPanelName; }
-
-		/// <summary>
-		/// fills outputPanels with IMyTextPanel that match collect_outputPanel
-		/// </summary>
-		void fillOutputPanel()
-		{
-			outputPanels = new List<IMyTerminalBlock>();
-			GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(outputPanels, collect_outputPanel);
 		}
 
 		/// <summary>
@@ -275,19 +277,48 @@ namespace Programmable
 			panel.WritePublicText("");
 
 			// build from data and invoke handler
-			for (int l = 0; l < splitByLine.Length; l++)
-				if (!string.IsNullOrWhiteSpace(splitByLine[l]))
-					handle_detectedGrid(new Detected(splitByLine[l]));
+			for (int lineIndex = 0; lineIndex < splitByLine.Length; lineIndex++)
+				if (!string.IsNullOrWhiteSpace(splitByLine[lineIndex]))
+				{
+					//string distanceString = splitByLine[lineIndex].Split(separator)[4];
+					//debug("distance = "+distanceString+" => "+);
+					handle_detectedGrid(new Detected(splitByLine[lineIndex]));
+				}
 		}
 
 		/// <summary>
 		/// Append a grid's Id to outputText
 		/// </summary>
+		/// <param name="whichOutput">which set of output panels to use</param>
 		/// <param name="grid">detected grid to add</param>
-		void addToOutput(Detected grid)
+		void addToOutput(string whichOutput, Detected grid)
 		{
-			outputText.Append(separator);
-			outputText.Append(grid.entityId);
+			StringBuilder addTo;
+			if (!outputText.TryGetValue(whichOutput, out addTo))
+			{
+				addTo = new StringBuilder('[' + blockName_fromProgram);
+				outputText.Add(whichOutput, addTo);
+			}
+
+			addTo.Append(separator);
+			addTo.Append(grid.entityId);
+		}
+
+		/// <summary>
+		/// if a textpanel's name is in outputText, write the detected grids.
+		/// </summary>
+		/// <param name="block">the IMyTextPanel to test</param>
+		/// <returns>false, this is a fake collector</returns>
+		bool action_outputPanel(IMyTerminalBlock block)
+		{
+			StringBuilder writeToPanel;
+			if (outputText.TryGetValue(block.DisplayNameText, out writeToPanel))
+			{
+				IMyTextPanel panel = block as IMyTextPanel;
+				panel.SetCustomName(panel.DisplayNameText + writeToPanel + ']');
+			}
+
+			return false; // fake collector
 		}
 
 		/// <summary>
@@ -295,14 +326,44 @@ namespace Programmable
 		/// </summary>
 		void writeOutput()
 		{
-			outputText.Append(']');
-			for (int p = 0; p < outputPanels.Count; p++)
-			{
-				IMyTextPanel panel = outputPanels[p] as IMyTextPanel;
-				//panel.WritePublicText(outputString);
-				panel.SetCustomName(panel.DisplayNameText + outputText);
-			}
+			List<IMyTerminalBlock> neverFilled = new List<IMyTerminalBlock>();
+			GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(neverFilled, action_outputPanel);
 		}
+
+		/// <summary>
+		/// Sounds the proximity alarm(s)
+		/// </summary>
+		void soundProximityAlarm()
+		{
+			if (alarmIsSounding)
+				return;
+			alarmIsSounding = true;
+
+			List<IMyTerminalBlock> proximityAlarms = new List<IMyTerminalBlock>();
+			search_collect_BlockName = ProximityAlarmName;
+			GridTerminalSystem.GetBlocksOfType<IMySoundBlock>(proximityAlarms, collect_BlockName);
+			for (int index = 0; index < proximityAlarms.Count; index++)
+				proximityAlarms[index].ApplyAction("PlaySound");
+		}
+
+		#region Debugging
+
+		//List<IMyTerminalBlock> DebugPanels;
+
+		//void debug(string line, bool append = true)
+		//{
+		//	if (DebugPanels == null)
+		//	{
+		//		DebugPanels = new List<IMyTerminalBlock>();
+		//		search_collect_BlockName = "Debug Panel for Block Communication";
+		//		GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(DebugPanels, collect_BlockName);
+		//	}
+
+		//	for (int index = 0; index < DebugPanels.Count; index++)
+		//		((IMyTextPanel)DebugPanels[index]).WritePublicText(line + '\n', append);
+		//}
+
+		#endregion
 
 		/// <summary>
 		/// Represents a detected grid
@@ -313,7 +374,7 @@ namespace Programmable
 			public string relations;
 			public string name;
 			public bool hasRadar;
-			public long distance;
+			public double distance;
 			public int seconds;
 			public float volume = -1;
 
@@ -325,10 +386,13 @@ namespace Programmable
 				relations = split[1];
 				name = split[2];
 				bool.TryParse(split[3], out hasRadar);
-				long.TryParse(split[4], out distance);
+				double.TryParse(split[4], out distance);
 				int.TryParse(split[5], out seconds);
 				float.TryParse(split[6], out volume);
 			}
+
+			public override string ToString()
+			{ return name + separator + relations + separator + entityId; }
 		}
 
 

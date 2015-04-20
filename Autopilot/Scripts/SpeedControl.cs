@@ -134,7 +134,9 @@ namespace Rynchodon.Autopilot
 			if (nav.MM.movementSpeed < nav.CNS.getSpeedCruise())
 			{
 				// as long as there is acceleration, do not calcAndMove
-				if (nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward && !nav.movingTooSlow)
+				myLogger.debugLog("current move = " + nav.currentMove + ", moving too slow = " + nav.movingTooSlow, "checkAndCruise()", Logger.severity.TRACE);
+				myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
+				if ((nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) && !nav.movingTooSlow)
 				{
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;

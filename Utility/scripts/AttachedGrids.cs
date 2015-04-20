@@ -273,6 +273,11 @@ namespace Rynchodon
 				return true;
 			if (needsRebuild || connectedChanged())
 			{
+				// might be rebuilding too frequently
+				if (needsRebuild)
+					myLogger.debugLog("needsRebuild == true", "isGridAttached()");
+				else
+					myLogger.debugLog("connectedChanged() == true", "isGridAttached()");
 				rebuildAttached();
 				needsRebuild = false;
 			}
