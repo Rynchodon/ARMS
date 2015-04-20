@@ -97,8 +97,8 @@ namespace Rynchodon.Autopilot.Turret
 				if (myCubeBlock == null)
 					myLogger.log("failed to initialize myCubeBlock == null, Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
 				else
-					myLogger.log("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
-				VRage.Exceptions.ThrowIf<Exception>(true, e);
+					myLogger.log("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.WARNING);
+				Close();
 				return;
 			}
 		}
@@ -109,9 +109,11 @@ namespace Rynchodon.Autopilot.Turret
 			//if (needToRelease)
 			//	lock_notMyUpdate.ReleaseExclusive();
 
-			IMyTerminalBlock asTerm = myCubeBlock as IMyTerminalBlock;
-			if (asTerm != null)
-				asTerm.CustomNameChanged -= TurretBase_CustomNameChanged;
+			if (myTerminal != null)
+			{
+				myTerminal.CustomNameChanged -= TurretBase_CustomNameChanged;
+				myTerminal.OwnershipChanged -= myTerminal_OwnershipChanged;
+			}
 			myCubeBlock = null;
 			myTurretBase = null;
 			controlEnabled = false;
