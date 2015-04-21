@@ -11,11 +11,13 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
 {
 	/// <summary>
 	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
+	/// <para>Will send updates after creating object, until object is closing.</para>
 	/// <para>Does not attach to entities the same way, so access is lost to ObjectBuilder for MyGameLogicComponent.</para>
 	/// </summary>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
@@ -32,6 +34,7 @@ namespace Rynchodon.Update
 		private Status MangerStatus = Status.Not_Initialized;
 
 		private Logger myLogger = new Logger(null, "UpdateManager");
+		private static UpdateManager Instance;
 
 		/// <summary>
 		/// Scripts that use UpdateManager shall be added here.
@@ -41,7 +44,48 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) =>
 			{
 				Beacon newBeacon = new Beacon(block);
-				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100);
+				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) =>
+			{
+				TextPanel newTextPanel = new TextPanel(block);
+				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) =>
+			{
+				LaserAntenna newLA = new LaserAntenna(block);
+				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) =>
+			{
+				ProgrammableBlock newPB = new ProgrammableBlock(block);
+				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) =>
+			{
+				RadioAntenna newRA = new RadioAntenna(block);
+				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) =>
+			{
+				RemoteControl newRC = new RemoteControl(block);
+				// Does not receive Updates
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) =>
+			{
+				TurretLargeGatling newTurret = new TurretLargeGatling(block);
+				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) =>
+			{
+				TurretLargeRocket newTurret = new TurretLargeRocket(block);
+				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+			}); 
+			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) =>
+			{
+				TurretInterior newTurret = new TurretInterior(block);
+				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
 			});
 		}
 
@@ -126,10 +170,26 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// register a script object for updates
+		/// register an Action for updates
 		/// </summary>
-		private void RegisterForUpdates(uint frequency, Action toInvoke)
-		{ UpdateList(frequency).Add(toInvoke); }
+		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing)
+		{
+			UpdateList(frequency).Add(toInvoke);
+
+			unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
+		}
+
+		/// <summary>
+		/// Unregister an Action from updates
+		/// </summary>
+		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
+		{
+			List<Action> UpdateL = UpdateList(frequency);
+			UpdateL.Remove(toInvoke);
+
+			if (UpdateL.Count == 0)
+				UpdateRegistrar.Remove(frequency);
+		}
 
 		/// <summary>
 		/// register a constructor Action for a block
@@ -242,3 +302,4 @@ namespace Rynchodon.Update
 		}
 	}
 }
+

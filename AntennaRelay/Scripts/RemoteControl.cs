@@ -18,19 +18,19 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Keeps track of transmissions for a remote control. A remote control cannot relay, so it should only receive messages for iteself.
 	/// </summary>
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_RemoteControl))]
 	public class RemoteControl :  Receiver
 	{
 		internal static Dictionary<IMyCubeBlock, RemoteControl> registry = new Dictionary<IMyCubeBlock, RemoteControl>();
 
 		private Ingame.IMyRemoteControl myRemote;
+		private Logger myLogger;
 
-		protected override void DelayedInit()
+		public RemoteControl(IMyCubeBlock block)
+			: base(block)
 		{
-			base.DelayedInit();
-			myRemote = Entity as Ingame.IMyRemoteControl;
+			myLogger = new Logger("RemoteControl", () => CubeBlock.CubeGrid.DisplayName);
+			myRemote = CubeBlock as Ingame.IMyRemoteControl;
 			registry.Add(CubeBlock, this);
-			ClassName = "RemoteControl";
 
 			//log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 
@@ -39,7 +39,7 @@ namespace Rynchodon.AntennaRelay
 				myRemote.SetCustomName(myRemote.DisplayNameText + " []");
 		}
 
-		public override void Close()
+		protected override void Close(IMyEntity entity)
 		{
 			try
 			{
@@ -47,10 +47,9 @@ namespace Rynchodon.AntennaRelay
 					registry.Remove(CubeBlock);
 			}
 			catch (Exception e)
-			{ alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myRemote = null;
-			MyObjectBuilder = null;
 		}
 
 		public IEnumerator<LastSeen> lastSeenEnumerator()
@@ -62,7 +61,7 @@ namespace Rynchodon.AntennaRelay
 			foreach (LastSeen seen in removeList)
 				myLastSeen.Remove(seen.Entity.EntityId);
 
-			log("enumerator has " + myLastSeen.Count + " values", "lastSeenEnumerator()", Logger.severity.TRACE);
+			myLogger.debugLog("enumerator has " + myLastSeen.Count + " values", "lastSeenEnumerator()", Logger.severity.TRACE);
 			return myLastSeen.Values.GetEnumerator();
 		}
 
@@ -74,42 +73,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<Message> sorted = myMessages.OrderBy(m => m.created).ToList();
 			myMessages = new LinkedList<Message>();
-			log("sorted " + sorted.Count + " messages", "popMessageOrderedByDate()", Logger.severity.TRACE);
+			myLogger.debugLog("sorted " + sorted.Count + " messages", "popMessageOrderedByDate()", Logger.severity.TRACE);
 			return sorted;
 		}
 
-		// isValid = false, set by Receiver.sendToAttached()
-		///// <summary>
-		///// does not check mes for received, or correct destination. Does set mes.isValid = false
-		///// </summary>
-		///// <param name="mes"></param>
-		//public override void receive(Message mes)
-		//{
-		//	mes.isValid = false; // final dest
-		//	base.receive(mes);
-		//}
-
 		public static bool TryGet(IMyCubeBlock block, out RemoteControl result)
 		{ return registry.TryGetValue(block, out result); }
-
-		//public bool lastSeenByEntity(IMyEntity key, out LastSeen result)
-		//{ return myLastSeen.TryGetValue(key, out result); }
-
-		//public LastSeen lastSeenByEntity(IMyEntity key)
-		//{ return myLastSeen[key]; }
-
-		//public override string ToString()
-		//{ return CubeBlock.CubeGrid.DisplayName + "-" + myRemote.DisplayNameText; }
-
-		//private Logger myLogger;
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
-		//private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{ alwaysLog(toLog, method, level); }
-		//protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{
-		//	if (myLogger == null)
-		//		myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, "AR.RemoteControl");
-		//	myLogger.log(level, method, toLog, CubeBlock.DisplayNameText);
-		//}
 	}
 }

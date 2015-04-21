@@ -104,17 +104,17 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			//MainLock.Lock.ReleaseExclusive();
-			//try
-			//{
+			MainLock.MainThread_TryReleaseExclusive();
+			try
+			{
 				if (isUpdating || terminated)
 					return;
 				isUpdating = true;
 				//MyAPIGateway.Parallel.Start(doUpdate, updateCallback);
 				doUpdate();
 				isUpdating = false;
-			//}
-			//finally { MainLock.Lock.AcquireExclusive(); }
+			}
+			finally { MainLock.MainThread_TryAcquireExclusive(); }
 		}
 
 		// cannot log here, Logger is closed/closing

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using Ingame = Sandbox.ModAPI.Ingame;
 using VRage;
 using VRageMath;
 
@@ -44,6 +45,16 @@ namespace Rynchodon
 			Lock_MainThread.ReleaseExclusive();
 			ExclusiveHeld = false;
 			return true;
+		}
+
+		/// <summary>
+		/// perform an Action while using a shared lock on main thread.
+		/// </summary>
+		/// <param name="safeAction">Action to perform</param>
+		public static void UsingShared(Action safeAction)
+		{
+			using (Lock_MainThread.AcquireSharedUsing())
+				safeAction.Invoke();
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
@@ -102,6 +113,5 @@ namespace Rynchodon
 					return null;
 			}
 		}
-
 	}
 }

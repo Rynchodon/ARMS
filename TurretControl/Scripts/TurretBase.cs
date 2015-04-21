@@ -19,14 +19,20 @@ using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot.Turret
 {
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LargeGatlingTurret))]
-	public class TurretLargeGatling : TurretBase { }
+	public class TurretLargeGatling : TurretBase
+	{
+		public TurretLargeGatling(IMyCubeBlock block) : base(block) { }
+	}
 
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LargeMissileTurret))]
-	public class TurretLargeRocket : TurretBase { }
+	public class TurretLargeRocket : TurretBase
+	{
+		public TurretLargeRocket(IMyCubeBlock block) : base(block) { }
+	}
 
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_InteriorTurret))]
-	public class TurretInterior : TurretBase { }
+	public class TurretInterior : TurretBase
+	{
+		public TurretInterior(IMyCubeBlock block) : base(block) { }
+	}
 
 	/// <remarks>
 	/// Turrets will be forced on initially, it is necissary for normal targeting to run briefly before we take control.
@@ -35,7 +41,7 @@ namespace Rynchodon.Autopilot.Turret
 	/// Use projectile speed to determine turretMissileBubble radius and to adjust for missile acceleration.
 	/// Go through object builder to get ammo data?
 	/// need to ignore target grid for thingiy
-	public class TurretBase : UpdateEnforcer
+	public class TurretBase //: UpdateEnforcer
 	{
 		private static bool MeteorsEnabled
 		{ get { return MyAPIGateway.Session.EnvironmentHostility != MyEnvironmentHostilityEnum.SAFE; } }
@@ -49,16 +55,16 @@ namespace Rynchodon.Autopilot.Turret
 		/// </summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
 
-		protected override void DelayedInit()
+		public TurretBase(IMyCubeBlock CubeBlock)
 		{
 			try
 			{
 				if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
 					return;
 
-				this.myCubeBlock = Entity as IMyCubeBlock;
-				this.myTerminal = Entity as IMyTerminalBlock;
-				this.myTurretBase = Entity as Ingame.IMyLargeTurretBase;
+				this.myCubeBlock = CubeBlock;
+				this.myTerminal = CubeBlock as IMyTerminalBlock;
+				this.myTurretBase = CubeBlock as Ingame.IMyLargeTurretBase;
 				this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
 
 				this.myCubeBlock.throwIfNull_variable("myCubeBlock");
@@ -66,7 +72,7 @@ namespace Rynchodon.Autopilot.Turret
 				this.myTurretBase.throwIfNull_variable("myTurretBase");
 
 				myLogger.debugLog("created for: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-				EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
+				//EnforcedUpdate = Sandbox.Common.MyEntityUpdateEnum.EACH_FRAME; // want as many opportunities to lock main thread as possible
 				if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
 				{
 					if (myTurretBase.OwnerId.Is_ID_NPC())
@@ -91,6 +97,8 @@ namespace Rynchodon.Autopilot.Turret
 
 				myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
 				myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
+
+				CubeBlock.OnClosing += Close;
 			}
 			catch (Exception e)
 			{
@@ -98,14 +106,13 @@ namespace Rynchodon.Autopilot.Turret
 					myLogger.log("failed to initialize myCubeBlock == null, Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
 				else
 					myLogger.log("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.WARNING);
-				Close();
+				Close(null);
 				return;
 			}
 		}
 
-		public override void Close()
+		private void Close(IMyEntity entity)
 		{
-			base.Close();
 			//if (needToRelease)
 			//	lock_notMyUpdate.ReleaseExclusive();
 
@@ -159,25 +166,25 @@ namespace Rynchodon.Autopilot.Turret
 		private IMyEntity lastTarget;
 		private Receiver myAntenna;
 
-		private static bool needToRelease = false;
-		/// <summary>
-		/// acquire a shared lock to perform actions on MyAPIGateway or use GetObjectBuilder()
-		/// </summary>
-		private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock(); // static so work can be performed when any turret has main thread
+		//private static bool needToRelease = false;
+		///// <summary>
+		///// acquire a shared lock to perform actions on MyAPIGateway or use GetObjectBuilder()
+		///// </summary>
+		//private static VRage.FastResourceLock lock_notMyUpdate = new VRage.FastResourceLock(); // static so work can be performed when any turret has main thread
 
 		private enum State : byte { OFF, HAS_TARGET, NO_TARGET, NO_POSSIBLE, WAIT_DTAT }
 		private State CurrentState = State.OFF;
 
 		private bool defaultTargetingAcquiredTarget = false;
 
-		public override void UpdateAfterSimulation()
+		public void UpdateAfterSimulation()
 		{
-			if (!IsInitialized || myCubeBlock == null)
+			if (myCubeBlock == null)
 				return;
 
-			if (needToRelease)
-				lock_notMyUpdate.ReleaseExclusive();
-			needToRelease = false;
+			//if (needToRelease)
+			//	lock_notMyUpdate.ReleaseExclusive();
+			//needToRelease = false;
 
 			try
 			{
@@ -296,12 +303,12 @@ namespace Rynchodon.Autopilot.Turret
 					TurretThread.EnqueueAction(Update);
 				}
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.log("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
 			finally
 			{
 				updateCount++;
-				needToRelease = true;
-				lock_notMyUpdate.AcquireExclusive();
+				//needToRelease = true;
+				//lock_notMyUpdate.AcquireExclusive();
 			}
 		}
 
@@ -344,15 +351,14 @@ namespace Rynchodon.Autopilot.Turret
 						CurrentState = State.HAS_TARGET;
 						lastTarget = bestTarget;
 						myLogger.debugLog("new target = " + bestTarget.getBestName(), "UpdateThread()", Logger.severity.DEBUG);
-						using (lock_notMyUpdate.AcquireSharedUsing())
-							myTurretBase.TrackTarget(bestTarget);
+						MainLock.UsingShared(() => myTurretBase.TrackTarget(bestTarget));
 					}
 				}
 				else // no target
 					if (CurrentState == State.HAS_TARGET && !currentTargetIsMissile)
 						setNoTarget();
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.log("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
 			finally { queued = false; }
 		}
 
@@ -365,12 +371,9 @@ namespace Rynchodon.Autopilot.Turret
 		/// </summary>
 		private bool getValidTargets()
 		{
-			List<IMyEntity> entitiesInRange;
-			using (lock_notMyUpdate.AcquireSharedUsing())
-			{
-				BoundingSphereD range = new BoundingSphereD(turretPosition, myTurretBase.Range + 200);
-				entitiesInRange = MyAPIGateway.Entities.GetEntitiesInSphere(ref range);
-			}
+			List<IMyEntity> entitiesInRange = null;
+			BoundingSphereD range = new BoundingSphereD(turretPosition, myTurretBase.Range + 200);
+			MainLock.UsingShared(() => { entitiesInRange = MyAPIGateway.Entities.GetEntitiesInSphere(ref range); });
 
 			validTarget_missile = new List<IMyEntity>();
 			validTarget_meteor = new List<IMyEntity>();
@@ -416,14 +419,13 @@ namespace Rynchodon.Autopilot.Turret
 						validTarget_meteor.Add(entity);
 					continue;
 				}
-				if (entity is IMyCharacter)
+				IMyPlayer asPlayer = entity as IMyPlayer;
+				if (asPlayer != null)
 				{
 					if (targetCharacters)
 					{
-						List<IMyPlayer> matchingPlayer = new List<IMyPlayer>();
-						using (lock_notMyUpdate.AcquireSharedUsing())
-							MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.DisplayName == entity.DisplayName; });
-						if (matchingPlayer.Count != 1 || myCubeBlock.canConsiderHostile(matchingPlayer[0].PlayerID))
+						IMyPlayer matchingPlayer = (entity as IMyCharacter).GetPlayer_Safe();
+						if (myCubeBlock.canConsiderHostile(matchingPlayer.PlayerID))
 							validTarget_character.Add(entity);
 					}
 					continue;
@@ -672,12 +674,9 @@ namespace Rynchodon.Autopilot.Turret
 				}
 
 
-				List<IMyEntity> entitiesInRange;
-				using (lock_notMyUpdate.AcquireSharedUsing())
-				{
-					BoundingSphereD range = new BoundingSphereD(turretPosition, myTurretBase.Range + 200);
-					entitiesInRange = MyAPIGateway.Entities.GetEntitiesInSphere(ref range);
-				}
+				List<IMyEntity> entitiesInRange = null;
+				BoundingSphereD range = new BoundingSphereD(turretPosition, myTurretBase.Range + 200);
+				MainLock.UsingShared(() => { entitiesInRange = MyAPIGateway.Entities.GetEntitiesInSphere(ref range); });
 
 				foreach (IMyEntity entity in entitiesInRange)
 				{
@@ -698,7 +697,7 @@ namespace Rynchodon.Autopilot.Turret
 					}
 				}
 			}
-			else 
+			else
 			{
 				foreach (IMyCubeGrid grid in ObstructingGrids)
 				{
@@ -773,8 +772,7 @@ namespace Rynchodon.Autopilot.Turret
 		private bool getClosestBlock(IMyCubeGrid grid, out IMyEntity closestBlock)
 		{
 			List<IMySlimBlock> allBlocks = new List<IMySlimBlock>();
-			using (lock_notMyUpdate.AcquireSharedUsing())
-				grid.GetBlocks(allBlocks, slim => slim.FatBlock != null);
+			grid.GetBlocks_Safe(allBlocks, slim => slim.FatBlock != null);
 
 			double closestDistanceSquared = myTurretBase.Range * myTurretBase.Range;
 			closestBlock = null;
@@ -793,11 +791,11 @@ namespace Rynchodon.Autopilot.Turret
 		}
 
 		private Logger myLogger;
-		protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(null, "TurretBase");
-			myLogger.log(toLog, method, level);
-		}
+		//protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		//{
+		//	if (myLogger == null)
+		//		myLogger = new Logger(null, "TurretBase");
+		//	myLogger.log(toLog, method, level);
+		//}
 	}
 }

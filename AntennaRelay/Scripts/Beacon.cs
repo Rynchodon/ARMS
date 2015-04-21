@@ -27,8 +27,6 @@ namespace Rynchodon.AntennaRelay
 		private IMyCubeBlock CubeBlock;
 		private Ingame.IMyBeacon myBeacon;
 
-		private Beacon() { }
-
 		public Beacon(IMyCubeBlock block)
 		{
 			CubeBlock = block;
@@ -42,6 +40,8 @@ namespace Rynchodon.AntennaRelay
 			else
 				log("init as beacon: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			//UpdateManager.RegisterForUpdates(100, UpdateAfterSimulation100);
+
+			CubeBlock.OnClosing += Close;
 		}
 
 		//private bool isClosed = false;

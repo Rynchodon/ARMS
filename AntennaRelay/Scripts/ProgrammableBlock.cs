@@ -19,22 +19,22 @@ namespace Rynchodon.AntennaRelay
 	/// Keeps track of transmissions for a programmable block. A programmable block cannot relay, so it should only receive messages for iteself.
 	/// When name changes, creates and sends a message.
 	/// </summary>
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_MyProgrammableBlock))]
 	public class ProgrammableBlock : Receiver
 	{
 		internal static Dictionary<IMyCubeBlock, ProgrammableBlock> registry = new Dictionary<IMyCubeBlock, ProgrammableBlock>();
 
 		private Ingame.IMyProgrammableBlock myProgBlock;
+		private Logger myLogger;
 
-		protected override void DelayedInit()
+		public ProgrammableBlock(IMyCubeBlock block)
+			: base(block)
 		{
-			base.DelayedInit();
+			myLogger = new Logger("Programmable block", () => CubeBlock.CubeGrid.DisplayName);
 			myProgBlock = CubeBlock as Ingame.IMyProgrammableBlock;
 			registry.Add(CubeBlock, this);
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
-		public override void Close()
+		protected override void Close(IMyEntity entity)
 		{
 			try
 			{
@@ -42,43 +42,38 @@ namespace Rynchodon.AntennaRelay
 					registry.Remove(CubeBlock);
 			}
 			catch (Exception e)
-			{ alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myProgBlock = null;
-			MyObjectBuilder = null;
 		}
 
 		/// <summary>
 		/// Uses MessageParser to grab messages, then sends them out. Not registered for event because it fires too frequently.
 		/// </summary>
+		/// Not actually subscribed to an event
 		private void myProgBlock_CustomNameChanged()
 		{
-			if (!IsInitialized || Closed)
-				return;
 			try
 			{
 				List<Message> toSend = MessageParser.getFromName(myProgBlock as IMyTerminalBlock); // get messages from name
 				if (toSend == null || toSend.Count == 0)
 				{
-					log("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
+					myLogger.debugLog("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 					return;
 				}
 				Receiver.sendToAttached(CubeBlock, toSend);
-				log("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
+				myLogger.debugLog("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 			}
 			catch (Exception e)
 			{
-				alwaysLog("Exception: " + e, "ProgBlock_CustomNameChanged()", Logger.severity.ERROR);
+				myLogger.log("Exception: " + e, "ProgBlock_CustomNameChanged()", Logger.severity.ERROR);
 			}
 		}
 
 		private string previousName;
 
-		public override void UpdateAfterSimulation100()
+		public void UpdateAfterSimulation100()
 		{
-			if (!IsInitialized || Closed)
-				return;
-
 			// check name for message from ingame
 			if (myProgBlock.DisplayNameText != previousName)
 			{
