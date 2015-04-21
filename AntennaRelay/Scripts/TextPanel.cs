@@ -21,8 +21,8 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// TextPanel will fetch instructions from Antenna and write them either for players or for programmable blocks.
 	/// </summary>
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
-	public class TextPanel : UpdateEnforcer
+	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
+	public class TextPanel //: UpdateEnforcer
 	{
 		private const string command_forPlayer = "Display Detected";
 		private const string command_forProgram = "Transmit Detected to ";
@@ -51,16 +51,24 @@ namespace Rynchodon.AntennaRelay
 
 		private bool sentToProgram = false;
 
-		protected override void DelayedInit()
+		public TextPanel(IMyCubeBlock block)
 		{
-			myCubeBlock = Entity as IMyCubeBlock;
-			myTextPanel = Entity as Ingame.IMyTextPanel;
-			myTermBlock = Entity as IMyTerminalBlock;
+			myCubeBlock = block;
+			myTextPanel = block as Ingame.IMyTextPanel;
+			myTermBlock = block as IMyTerminalBlock;
 			myLogger = new Logger("TextPanel", () => myCubeBlock.CubeGrid.DisplayName, () => myCubeBlock.getNameOnly());
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 			myLogger.debugLog("init: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-
 			myTermBlock.CustomNameChanged += TextPanel_CustomNameChanged;
+			myTermBlock.OnClosing += Close;
+		}
+
+		private void Close(IMyEntity entity)
+		{
+			if (myCubeBlock != null)
+			{
+				myTermBlock.CustomNameChanged -= TextPanel_CustomNameChanged;
+				myCubeBlock = null;
+			}
 		}
 
 		private string previousName;
@@ -71,8 +79,6 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="obj">not used</param>
 		private void TextPanel_CustomNameChanged(IMyTerminalBlock obj)
 		{
-			if (!IsInitialized || Closed)
-				return;
 			try
 			{
 				if (myCubeBlock.DisplayNameText == previousName)
@@ -96,22 +102,8 @@ namespace Rynchodon.AntennaRelay
 			{ myLogger.log("Exception: " + ex, "TextPanel_CustomNameChanged()", Logger.severity.ERROR); }
 		}
 
-		public override void Close()
+		public void UpdateAfterSimulation100()
 		{
-			base.Close();
-
-			if (myCubeBlock != null)
-			{
-				myTermBlock.CustomNameChanged -= TextPanel_CustomNameChanged;
-				myCubeBlock = null;
-			}
-		}
-
-		public override void UpdateAfterSimulation100()
-		{
-			if (!IsInitialized || Closed)
-				return;
-
 			try
 			{
 				string publicTitle = myTextPanel.GetPublicTitle();
@@ -158,7 +150,7 @@ namespace Rynchodon.AntennaRelay
 				return true;
 
 			string instruction = myCubeBlock.getInstructions().RemoveWhitespace().ToLower();
-			string command = command_forProgram .RemoveWhitespace().ToLower();
+			string command = command_forProgram.RemoveWhitespace().ToLower();
 
 			int destNameIndex = instruction.IndexOf(command) + command.Length;
 			if (destNameIndex >= instruction.Length)
@@ -360,7 +352,7 @@ namespace Rynchodon.AntennaRelay
 		/// how long until displayed information is old
 		/// </summary>
 		private TimeSpan displayOldAfter = new TimeSpan(0, 0, 10);
-		
+
 		/// <summary>
 		/// background colour when display is new
 		/// </summary>
@@ -385,8 +377,8 @@ namespace Rynchodon.AntennaRelay
 					ITerminalProperty<Color> backgroundColourProperty = myTextPanel.GetProperty("BackgroundColor").AsColor();
 
 					oldBackgroundColour = backgroundColourProperty.GetValue(myTextPanel);
-					if (oldBackgroundColour == Color.Black)
-						oldBackgroundColour = Color.Gray;
+					if (youngBackgroundColour == Color.Gray)
+						youngBackgroundColour = Color.Black;
 
 					backgroundColourProperty.SetValue(myTextPanel, youngBackgroundColour);
 
@@ -402,8 +394,8 @@ namespace Rynchodon.AntennaRelay
 					ITerminalProperty<Color> backgroundColourProperty = myTextPanel.GetProperty("BackgroundColor").AsColor();
 
 					youngBackgroundColour = backgroundColourProperty.GetValue(myTextPanel);
-					if (youngBackgroundColour == Color.Gray)
-						youngBackgroundColour = Color.Black;
+					if (oldBackgroundColour == Color.Black)
+						oldBackgroundColour = Color.Gray;
 
 					backgroundColourProperty.SetValue(myTextPanel, oldBackgroundColour);
 

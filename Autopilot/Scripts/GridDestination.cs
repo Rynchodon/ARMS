@@ -136,7 +136,7 @@ namespace Rynchodon.Autopilot
 					(new Logger(null, "GridDestination")).log(level, method, toLog);
 					return;
 				}
-				myLogger = new Logger((seenBy.Entity as IMyCubeBlock).CubeGrid.DisplayName, "GridDestination");
+				myLogger = new Logger(seenBy.CubeBlock.CubeGrid.DisplayName, "GridDestination");
 			}
 			myLogger.log(level, method, toLog, Grid.DisplayName, Block.DisplayNameText);
 		}

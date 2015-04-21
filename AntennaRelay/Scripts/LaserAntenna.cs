@@ -15,45 +15,42 @@ using VRage;
 
 namespace Rynchodon.AntennaRelay
 {
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LaserAntenna))]
 	public class LaserAntenna : Receiver
 	{
 		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
 		public static ReadOnlyList<LaserAntenna> registry { get { return new ReadOnlyList<LaserAntenna>(value_registry); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
+		private Logger myLogger;
 
-		protected override void DelayedInit()
+		public LaserAntenna(IMyCubeBlock block)
+			: base(block)
 		{
-			base.DelayedInit();
-			myLaserAntenna = Entity as Ingame.IMyLaserAntenna;
+			myLaserAntenna = CubeBlock as Ingame.IMyLaserAntenna;
+			myLogger = new Logger("LaserAntenna", () => CubeBlock.CubeGrid.DisplayName);
 			value_registry.Add(this);
 
 			//log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+			//EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
-		public override void Close()
+		protected override void Close(IMyEntity entity)
 		{
-			base.Close();
 			try
 			{
 				if (CubeBlock != null)
 					value_registry.Remove(this);
 			}
 			catch (Exception e)
-			{ alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myLaserAntenna = null;
-			MyObjectBuilder = null;
 			myLastSeen = null;
 			myMessages = null;
 		}
 
-		public override void UpdateAfterSimulation100()
+		public void UpdateAfterSimulation100()
 		{
-			if (!IsInitialized) return;
-			if (Closed) return;
 			try
 			{
 				if (!myLaserAntenna.IsWorking)
@@ -83,7 +80,7 @@ namespace Rynchodon.AntennaRelay
 				UpdateEnemyNear();
 			}
 			catch (Exception e)
-			{ alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
+			{ myLogger.log("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 	}
 }
