@@ -11,6 +11,7 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
@@ -91,7 +92,7 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
 			{
 				OreDetector newOD = new OreDetector(block);
-				RegisterForUpdates(1, newOD.Update100, block);
+				RegisterForUpdates(100, newOD.Update100, block);
 			});
 		}
 

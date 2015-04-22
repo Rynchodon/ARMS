@@ -7,7 +7,7 @@ using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.Autopilot
+namespace Rynchodon.Autopilot.Harvest
 {
 	public class OreDetector
 	{
@@ -24,13 +24,19 @@ namespace Rynchodon.Autopilot
 			myLogger = new Logger("OreDetector", () => myCubeBlock.CubeGrid.DisplayName);
 		}
 
+		bool run = true;
+
 		public void Update100()
 		{
 			try
 			{
+				if (!run)
+					return;
+				run = false;
+
 				if (myCubeBlock.IsWorking)
 				{
-					BoundingSphereD detectInSphere = new BoundingSphereD(myCubeBlock.GetPosition(), myOreDetector.Range);
+					BoundingSphereD detectInSphere = new BoundingSphereD(myCubeBlock.GetPosition(), myOreDetector.Range * 1.5); // myOreDetector.Range seems to get an incorrect value, it is fine for testing though
 					List<IMyEntity> entitiesInSphere = MyAPIGateway.Entities.GetEntitiesInSphere_Safe(ref detectInSphere);
 
 					foreach (IMyEntity entity in entitiesInSphere)
@@ -39,7 +45,8 @@ namespace Rynchodon.Autopilot
 						if (asteroid == null)
 							continue;
 
-						GetOre(asteroid, detectInSphere);
+						var results = TimeAction.Time(() => GetOre(asteroid, detectInSphere));
+						myLogger.debugLog("timing results: " + results.Total.ToPrettySeconds(), "Update100()");
 					}
 				}
 			}
@@ -63,20 +70,27 @@ namespace Rynchodon.Autopilot
 			//(boundingBox.Min - asteroid.PositionLeftBottomCorner).ApplyOperation(Math.Floor, out boundsMin);
 			//(boundingBox.Max - asteroid.PositionLeftBottomCorner).ApplyOperation(Math.Ceiling, out boundsMax);
 
-			MyStorageDataCache cache = new MyStorageDataCache();
-			cache.Resize(boundsMin, boundsMax);
-			asteroid.Storage.ReadRange(cache, MyStorageDataTypeFlags.All, 0, boundsMin, boundsMax);
-
-			ulong count = 0;
-
-			Vector3I.Zero.ForEach(boundsMax - boundsMin, (Vector3I current) =>
+			var results = TimeAction.Time(() =>
 			{
-				if (Vector3.DistanceSquared(spherePosFloat, current) > radiusSquared)
-					return;
-				count++;
-				//myLogger.debugLog("At " + current + ", Material = " + cache.Material(ref current) + ", Content = " + cache.Content(ref current), "GetOre()");
-			});
-			myLogger.debugLog("Voxel Count is " + count, "GetOre()");
+				MyStorageDataCache cache = new MyStorageDataCache();
+				cache.Resize(boundsMin, boundsMax);
+				asteroid.Storage.ReadRange(cache, MyStorageDataTypeFlags.All, 10, boundsMin, boundsMax);
+			}, 100, true);
+			myLogger.debugLog("timed ReadRange: " + results.Pretty_FiveNumbers(), "GetOre()");
+
+			var iterateVoxels = TimeAction.Time(() =>
+			{
+				ulong count = 0;
+				Vector3I.Zero.ForEach(boundsMax - boundsMin, (Vector3I current) =>
+				{
+					//if (Vector3.DistanceSquared(spherePosFloat, current) > radiusSquared)
+					//	return;
+					count++;
+					//myLogger.debugLog("At " + current + ", Material = " + cache.Material(ref current) + ", Content = " + cache.Content(ref current), "GetOre()");
+				});
+				myLogger.debugLog("Voxel Min is " + boundsMin + ", Voxel Max is " + boundsMax + ", Voxel Count is " + count, "GetOre()");
+			}, 1, true);
+			myLogger.debugLog("Time to iterate over voxels: " + iterateVoxels.Pretty_FiveNumbers(), "GetOre()");
 		}
 	}
 }
