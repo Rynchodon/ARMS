@@ -81,11 +81,17 @@ namespace Rynchodon.Update
 			{
 				TurretLargeRocket newTurret = new TurretLargeRocket(block);
 				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-			}); 
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) =>
 			{
 				TurretInterior newTurret = new TurretInterior(block);
 				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
+			{
+				OreDetector newOD = new OreDetector(block);
+				RegisterForUpdates(1, newOD.Update100, block);
 			});
 		}
 

@@ -115,5 +115,35 @@ namespace Rynchodon
 
 		public static void throwIfNull_variable(this object variable, string name)
 		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
+
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3D result)
+		{
+			double x = operation(vector.X);
+			double y = operation(vector.Y);
+			double z = operation(vector.Z);
+			result = new Vector3D(x, y, z);
+		}
+
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3I result)
+		{
+			int x = (int)operation(vector.X);
+			int y = (int)operation(vector.Y);
+			int z = (int)operation(vector.Z);
+			result = new Vector3I(x, y, z);
+		}
+
+		public static void ForEach(this Vector3I min, Vector3I max, Action<Vector3I> toInvoke)
+		{
+			for (int x = min.X; x < max.X; x++)
+				for (int y = min.Y; y < max.Y; y++)
+					for (int z = min.Z; z < max.Z; z++)
+						toInvoke(new Vector3I(x, y, z));
+		}
 	}
 }
