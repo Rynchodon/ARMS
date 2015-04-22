@@ -8,7 +8,7 @@ using System;
 namespace Rynchodon
 {
 	/// <summary>
-	/// Convert a number to a pretty string using a SI multiple. If the number is too large or small, uses scientific notation.
+	/// Convert a number to a pretty string using a SI multiple. If the number is too large or small, uses E notation.
 	/// </summary>
 	public static class PrettySI
 	{
@@ -48,13 +48,16 @@ namespace Rynchodon
 		/// </summary>
 		private static string makePretty(double toPretty, string[] multiple, string[] subMutli, byte sigFig)
 		{
+			if (toPretty == 0)
+				return "0 ";
+
 			if (sigFig < 3)
 				sigFig = 3;
 
 			if (toPretty >= 1)
 			{
 				if (toPretty < k)
-					return toSigFigs(toPretty, sigFig); // no multiple
+					return toSigFigs(toPretty, sigFig) + " "; // no multiple
 
 				double nextMulti = k;
 				for (int i = 0; i < multiple.Length; i++)
@@ -63,11 +66,11 @@ namespace Rynchodon
 					nextMulti *= k;
 
 					if (toPretty < nextMulti)
-						return toSigFigs(toPretty / multi) + multiple[0];
+						return toSigFigs(toPretty / multi) + " " + multiple[i];
 				}
 
 				// more than a thousand of highest multi
-				return toPretty.ToString("E" + (sigFig - 1));
+				return toPretty.ToString("E" + (sigFig - 1)) + " ";
 			}
 
 			// toPretty < 1
@@ -78,12 +81,12 @@ namespace Rynchodon
 					double multi = nextMulti;
 					nextMulti *= m;
 
-					if (toPretty > nextMulti)
-						return toSigFigs(toPretty / multi) + subMutli[0];
+					if (toPretty > multi)
+						return toSigFigs(toPretty / multi) + " " + subMutli[i];
 				}
 
 				// less than a thousandth of lowest sub-multi
-				return toPretty.ToString("E" + (sigFig - 1));
+				return toPretty.ToString("E" + (sigFig - 1)) + " ";
 			}
 		}
 

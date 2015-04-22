@@ -147,7 +147,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// reset some variables when adding or removing a waypoint or destination
+		/// reset some variables when adding or removing a waypoint or centreDestination
 		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
@@ -166,7 +166,7 @@ namespace Rynchodon.Autopilot
 
 		/// <summary>
 		/// to keep ship from moving until at least one collision check has happend.
-		/// updated for new destination, not for new waypoint. updated for atWayDest
+		/// updated for new centreDestination, not for new waypoint. updated for atWayDest
 		/// </summary>
 		public int collisionUpdateSinceWaypointAdded = 0;
 
@@ -210,7 +210,7 @@ namespace Rynchodon.Autopilot
 		{ myLogger.log(level, method, toLog); }
 
 		/// <summary>
-		/// sets coordinates as destination
+		/// sets coordinates as centreDestination
 		/// </summary>
 		/// <param name="coordinates"></param>
 		public void setDestination(Vector3D coordinates)
@@ -220,7 +220,7 @@ namespace Rynchodon.Autopilot
 			coordDestination = coordinates;
 		}
 		/// <summary>
-		/// sets a grid as a destination
+		/// sets a grid as a centreDestination
 		/// </summary>
 		/// <param name="ls"></param>
 		/// <param name="destBlock"></param>
@@ -232,7 +232,7 @@ namespace Rynchodon.Autopilot
 			CurrentGridDest = new GridDestination(ls, destBlock, seenBy, myNav);
 		}
 		/// <summary>
-		/// sets a waypoint; a coordinate that will be flown to before the destination
+		/// sets a waypoint; a coordinate that will be flown to before the centreDestination
 		/// </summary>
 		/// <param name="waypoint"></param>
 		/// <param name="forced"></param>
@@ -249,7 +249,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// removes the waypoint if one exists, otherwise removes the destination
+		/// removes the waypoint if one exists, otherwise removes the centreDestination
 		/// </summary>
 		public void atWayDest()
 		{
@@ -257,7 +257,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// removes one waypoint or destination of the specified type
+		/// removes one waypoint or centreDestination of the specified type
 		/// </summary>
 		/// <param name="typeToRemove"></param>
 		public void atWayDest(TypeOfWayDest typeToRemove)
@@ -271,7 +271,7 @@ namespace Rynchodon.Autopilot
 				case TypeOfWayDest.GRID:
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
-					log("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
+					log("clearing centreDestination variables", "atWayDest()", Logger.severity.TRACE);
 					CurrentGridDest = null;
 					coordDestination = null;
 					destination_offset = Vector3.Zero;
@@ -291,7 +291,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// get next waypoint or destination
+		/// get next waypoint or centreDestination
 		/// </summary>
 		/// <returns></returns>
 		public Vector3D? getWayDest()
