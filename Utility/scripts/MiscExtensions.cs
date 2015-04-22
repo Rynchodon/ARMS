@@ -164,6 +164,8 @@ namespace Rynchodon
 				for (int y = min.Y; y < max.Y; y++)
 					for (int z = min.Z; z < max.Z; z++)
 						toInvoke(new Vector3I(x, y, z));
+		}
+
 		/// <summary>
 		/// Calcluate the vector rejection of A from B.
 		/// </summary>
@@ -177,15 +179,6 @@ namespace Rynchodon
 			if (vectorB_part == null)
 				vectorB_part = vectorB / vectorB.LengthSquared();
 			return vectorA - vectorA.Dot(vectorB) * (Vector3)vectorB_part;
-		}
-
-		public static Vector3 Round(this Vector3 toRound, float roundTo)
-		{
-			double
-				x = Math.Round(toRound.X * roundTo) / roundTo,
-				y = Math.Round(toRound.Y * roundTo) / roundTo,
-				z = Math.Round(toRound.Z * roundTo) / roundTo;
-			return new Vector3(x, y, z);
 		}
 
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
