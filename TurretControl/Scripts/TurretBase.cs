@@ -40,7 +40,6 @@ namespace Rynchodon.Autopilot.Turret
 	/// TODO:
 	/// Use projectile speed to determine turretMissileBubble radius and to adjust for missile acceleration.
 	/// Go through object builder to get ammo data?
-	/// need to ignore target grid for thingiy
 	public class TurretBase //: UpdateEnforcer
 	{
 		private static bool MeteorsEnabled
@@ -394,6 +393,9 @@ namespace Rynchodon.Autopilot.Turret
 
 			foreach (IMyEntity entity in entitiesInRange)
 			{
+				if (entity.Transparent) // part of a ship / station being pasted
+					continue;
+
 				IMyCubeBlock asBlock = entity as IMyCubeBlock;
 				if (asBlock != null)
 				{
