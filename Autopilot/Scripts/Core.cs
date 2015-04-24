@@ -8,7 +8,7 @@ using System.Linq;
 using Sandbox.Common;
 //using Sandbox.Common.Components;
 //using Sandbox.Common.ObjectBuilders;
-using Sandbox.Definitions;
+//using Sandbox.Definitions;
 //using Sandbox.Engine;
 //using Sandbox.Game;
 using Sandbox.ModAPI;

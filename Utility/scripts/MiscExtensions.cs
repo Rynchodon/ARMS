@@ -180,13 +180,16 @@ namespace Rynchodon
 			result = new Vector3I(x, y, z);
 		}
 
-		public static void ForEach(this Vector3I min, Vector3I max, Action<Vector3I> toInvoke)
+		public static void ForEach(this Vector3I min, Vector3I max, int step, Action<Vector3I> toInvoke)
 		{
-			for (int x = min.X; x < max.X; x++)
-				for (int y = min.Y; y < max.Y; y++)
-					for (int z = min.Z; z < max.Z; z++)
+			for (int x = min.X; x <= max.X; x += step)
+				for (int y = min.Y; y <= max.Y; y += step)
+					for (int z = min.Z; z <= max.Z; z += step)
 						toInvoke(new Vector3I(x, y, z));
 		}
+
+		public static void ForEach(this Vector3I min, Vector3I max, Action<Vector3I> toInvoke)
+		{ ForEach(min, max, 1, toInvoke); }
 
 		/// <summary>
 		/// Calcluate the vector rejection of A from B.

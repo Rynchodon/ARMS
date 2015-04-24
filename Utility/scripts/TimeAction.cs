@@ -93,7 +93,13 @@ namespace Rynchodon
 			/// </summary>
 			/// <returns>Five number summary</returns>
 			public string Pretty_FiveNumbers()
-			{ return "Five number summary: " + Min.ToPrettySeconds() + ", " + FirstQuartile.ToPrettySeconds() + ", " + Median.ToPrettySeconds() + ", " + ThirdQuartile.ToPrettySeconds() + ", " + Max.ToPrettySeconds(); }
+			{
+				if (Count == 1)
+					return "One Action: " + Min.ToPrettySeconds();
+				if (Count == 2)
+					return "Two Actions: " + Min.ToPrettySeconds() + ", " + Max.ToPrettySeconds();
+				return "Five number summary: " + Min.ToPrettySeconds() + ", " + FirstQuartile.ToPrettySeconds() + ", " + Median.ToPrettySeconds() + ", " + ThirdQuartile.ToPrettySeconds() + ", " + Max.ToPrettySeconds();
+			}
 
 			/// <summary>
 			/// With Mean and Median as pretty seconds.
