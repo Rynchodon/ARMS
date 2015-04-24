@@ -1,10 +1,5 @@
 Will be moved to steam every release.
 
 major:
-better rotation performance (particularly for low-gyro ships)
 
 minor:
-wait interrupts commands, not just destinations
-replace GPS:<name>:X:Y:Z: in remote's name with X, Y, Z
-pathfinder periodically recalculates path
-fixed crash when turret locks onto pasting ship / station
