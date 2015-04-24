@@ -214,7 +214,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		/// <param name="centreDestination">where the centre of the grid will end up</param>
+		/// <param name="centreDestination">where the centre of the grid will end up (local)</param>
 		private void createCapsule(Vector3 centreDestination)
 		{
 			float radiusSquared = 0;
@@ -225,7 +225,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					radiusSquared = distanceSquared;
 			}
 
-			myPath = new Path(Centre, centreDestination, radiusSquared + PathBufferSquared);
+			myPath = new Path(RelativeVector3F.createFromGrid(Centre, CubeGrid), RelativeVector3F.createFromGrid(centreDestination, CubeGrid), radiusSquared + PathBufferSquared);
 		}
 
 		#endregion

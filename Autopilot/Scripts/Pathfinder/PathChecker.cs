@@ -27,14 +27,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>
 		/// Test the path for obstructions
 		/// </summary>
-		/// <param name="destination"></param>
-		/// <param name="navigationBlock"></param>
 		/// <returns>true iff the path is clear from obstructions</returns>
 		private bool TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock)
 		{
 			Vector3 Displacement = destination.getGrid() - navigationBlock.Position * CubeGrid.GridSize;
 
-			// entities in AABB
+			// entities in large AABB
 			BoundingBoxD AtDest = CubeGrid.WorldAABB.Translate(Displacement);
 			BoundingBoxD PathAABB = BoundingBoxD.CreateMerged(CubeGrid.WorldAABB, AtDest);
 			List<IMyEntity> offenders = MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
@@ -71,7 +69,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
-					// grid's AABB intersects capsule?
+					if (!AABB_intersects_path(entity, myPath))
+						continue;
 					
 					// foreach block
 					List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
@@ -83,7 +82,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						RelativeVector3F blockPosition = RelativeVector3F.createFromWorld(blockPosWorld, CubeGrid);
 
 						// intersects capsule
-						if (myPath.line.DistanceSquared(blockPosition.getGrid()) < myPath.BufferedRadiusSquared)
+						if (myPath.line_local.DistanceSquared(blockPosition.getGrid()) < myPath.BufferedRadiusSquared)
 							continue;
 
 						// rejection
@@ -91,23 +90,26 @@ namespace Rynchodon.Autopilot.Pathfinder
 						foreach (Vector3 myBlockRejection in myGridShape.rejectionCells)
 							if (Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection) < myGridShape. PathBufferSquared)
 							{
-								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()");
+								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
 								return false;
 							}
 					}
 					continue;
 				}
-
 				// not a grid
 
 				IMyVoxelMap asVoxel = entity as IMyVoxelMap;
 				if (asVoxel != null)
 				{
-					// test voxel
+					if (!AABB_intersects_path(entity, myPath))
+						continue;
+
+					myLogger.debugLog("no more tests for asteroids are implemented", "TestPath()", Logger.severity.DEBUG);
+					return false;
 				}
 			}
 
-			myLogger.debugLog("no obstruction was found", "TestPath()");
+			myLogger.debugLog("no obstruction was found", "TestPath()", Logger.severity.DEBUG);
 			return true;
 		}
 
@@ -134,6 +136,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			return true;
+		}
+
+		private bool AABB_intersects_path(IMyEntity entity, Path myPath)
+		{
+			double distance;
+			if (entity.WorldAABB.Intersects(myPath.line_world, out distance) || distance <= myPath.BufferedRadius)
+			{
+				myLogger.debugLog("for " + entity.DisplayName + ", AABB(" + entity.WorldAABB + ") intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+				return true;
+			}
+			myLogger.debugLog("for " + entity.DisplayName + ", AABB(" + entity.WorldAABB + ") does not intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+			return false;
 		}
 	}
 }
