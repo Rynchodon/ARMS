@@ -1,4 +1,5 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using Sandbox.Common;
 using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
@@ -17,6 +19,17 @@ namespace Rynchodon
 	/// </summary>
 	public abstract class UpdateEnforcer : MyGameLogicComponent
 	{
+		private static bool? value_IsClient = null;
+		private static bool IsClient
+		{
+			get
+			{
+				if (value_IsClient == null)
+					value_IsClient = MyAPIGateway.Multiplayer.IsClient();
+				return (bool)value_IsClient;
+			}
+		}
+
 		private MyEntityUpdateEnum value_EnforcedUpdate = MyEntityUpdateEnum.NONE;
 		/// <summary>
 		/// do not set to MyEntityUpdateEnum.BEFORE_NEXT_FRAME, not implemented
@@ -35,12 +48,13 @@ namespace Rynchodon
 
 		public override sealed void Init(MyObjectBuilder_EntityBase objectBuilder)
 		{
+			myLogger = new Logger(null, "UpdateEnforcer");
 			MyObjectBuilder = objectBuilder;
+			
 			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 			if (needsToInit == null)
 				needsToInit = new LinkedList<UpdateEnforcer>();
 			needsToInit.AddLast(this);
-			myLogger = new Logger(null, "UpdateEnforcer");
 			//myLogger.debugLog("queuing for init: " + Entity.getBestName(), "Init()");
 		}
 
@@ -187,6 +201,11 @@ namespace Rynchodon
 		}
 		public override sealed void UpdateBeforeSimulation100()
 		{
+			if (IsClient)
+			{
+				myLogger.debugLog("is client, not running script", "UpdateBeforeSimulation100()");
+				return;
+			}
 			if (needsToInit.Count > 0)
 				startStalled();
 			if (IsInitialized)

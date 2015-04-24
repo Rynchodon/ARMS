@@ -12,7 +12,7 @@ using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
-	public abstract class Receiver : UpdateEnforcer
+	public abstract class Receiver //: UpdateEnforcer
 	{
 		/// <summary>
 		/// Track LastSeen objects by entityId
@@ -24,21 +24,22 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Do not forget to call this!
 		/// </summary>
-		protected override void DelayedInit()
+		protected Receiver(IMyCubeBlock block)
 		{
 			//(new Logger(null, "Receiver")).log("init", "DelayedInit()", Logger.severity.TRACE);
-			CubeBlock = Entity as IMyCubeBlock;
+			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
 			EnemyNear = false;
+			myLogger = new Logger("Receiver", () => CubeBlock.CubeGrid.DisplayName);
+			CubeBlock.OnClosing += Close;
 		}
 
-		public override void Close()
-		{
-			MyObjectBuilder = null;
-			myLastSeen = null;
-			CubeBlock = null;
-			myMessages = null;
-		}
+		protected abstract void Close(IMyEntity entity);
+		//{
+		//	myLastSeen = null;
+		//	CubeBlock = null;
+		//	myMessages = null;
+		//}
 
 		//public abstract void Init(Sandbox.Common.ObjectBuilders.MyObjectBuilder_EntityBase objectBuilder);
 
@@ -51,14 +52,21 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// does not check mes for isValid
 		/// </summary>
-		/// <param name="mes"></param>
+		/// <param name="mes">message to receive</param>
 		public virtual void receive(Message mes)
 		{
 			if (myMessages.Contains(mes))
 				return;
 			myMessages.AddLast(mes);
-			log("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
+			myLogger.debugLog("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
 		}
+
+		/// <summary>
+		/// number of messages currently held
+		/// </summary>
+		/// <returns>number of messages</returns>
+		public int messageCount()
+		{ return myMessages.Count; }
 
 		/// <summary>
 		/// does not check seen for isValid
@@ -203,7 +211,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Is there any enemy within 10km, seen in the past 10 seconds? Not all Receiver update this; for Receiver that do not update, false.
+		/// Is there any enemy within 3km, seen in the past 10 seconds? Not all Receiver update this; for Receiver that do not update, false.
 		/// </summary>
 		public bool EnemyNear { get; private set; }
 
@@ -212,11 +220,20 @@ namespace Rynchodon.AntennaRelay
 			Vector3D myPosition = CubeBlock.GetPosition();
 			EnemyNear = false;
 			foreach (LastSeen seen in myLastSeen.Values)
-				if (seen.isRecent() && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
+			{
+				IMyCubeGrid seenAsGrid = seen.Entity as IMyCubeGrid;
+				if (seenAsGrid != null)
 				{
-					EnemyNear = true;
-					return;
+					//myLogger.debugLog("testing grid: " + seenAsGrid.DisplayName + ", recent = " + seen.isRecent() + ", hostile = " + CubeBlock.canConsiderHostile(seenAsGrid) + ", distance squared = " + (seen.LastKnownPosition - myPosition).LengthSquared(), "UpdateEnemyNear()");
+					if (seen.isRecent() && CubeBlock.canConsiderHostile(seenAsGrid) && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
+					{
+						//myLogger.debugLog("nearby enemy: " + seen.Entity.getBestName(), "UpdateEnemyNear()");
+						EnemyNear = true;
+						return;
+					}
 				}
+			}
+			//myLogger.debugLog("no enemy nearby", "UpdateEnemyNear()");
 		}
 
 		public LastSeen getLastSeen(long entityId)
@@ -228,16 +245,22 @@ namespace Rynchodon.AntennaRelay
 		public IEnumerator<LastSeen> getLastSeenEnum()
 		{ return myLastSeen.Values.GetEnumerator(); }
 
-		protected string ClassName = "Receiver";
-		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		protected void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
-			myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
-		}
+		private Logger myLogger = new Logger(null, "Receiver");
+		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//protected void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		//{ alwaysLog(toLog, method, level); }
+		//protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		//{
+		//	if (myLogger == null)
+		//		myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
+		//	myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
+		//}
+	}
+
+	public static class ReceiverExtensions
+	{
+		public static bool IsOpen(this Receiver receiver)
+		{ return receiver != null && receiver.CubeBlock != null && !receiver.CubeBlock.Closed; }
 	}
 }
+

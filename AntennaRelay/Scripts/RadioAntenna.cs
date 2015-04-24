@@ -15,38 +15,36 @@ using VRage;
 
 namespace Rynchodon.AntennaRelay
 {
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_RadioAntenna))]
 	public class RadioAntenna : Receiver
 	{
 		private static List<RadioAntenna> value_registry = new List<RadioAntenna>();
 		public static ReadOnlyList<RadioAntenna> registry { get { return new ReadOnlyList<RadioAntenna>(value_registry); } }
 
 		private Ingame.IMyRadioAntenna myRadioAntenna;
+		private Logger myLogger;
 
-		protected override void DelayedInit()
+		public RadioAntenna(IMyCubeBlock block)
+			: base(block)
 		{
-			base.DelayedInit();
-			myRadioAntenna = Entity as Ingame.IMyRadioAntenna;
+			myLogger = new Logger("RadioAntenna", () => CubeBlock.CubeGrid.DisplayName);
+			myRadioAntenna = CubeBlock as Ingame.IMyRadioAntenna;
 			value_registry.Add(this);
 
 			//log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+			//EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
-		public override void Close()
+		protected override void Close(IMyEntity entity)
 		{
-			base.Close();
 			try
 			{ value_registry.Remove(this); }
 			catch (Exception e)
-			{ alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			myRadioAntenna = null;
 		}
 
-		public override void UpdateAfterSimulation100()
+		public void UpdateAfterSimulation100()
 		{
-			if (!IsInitialized) return;
-			if (Closed) return;
 			try
 			{
 				if (!myRadioAntenna.IsWorking)
@@ -87,7 +85,7 @@ namespace Rynchodon.AntennaRelay
 				UpdateEnemyNear();
 			}
 			catch (Exception e)
-			{ alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
+			{ myLogger.log("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 	}
 }

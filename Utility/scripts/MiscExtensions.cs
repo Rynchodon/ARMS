@@ -175,5 +175,19 @@ namespace Rynchodon
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
+
+		public static bool IsClient(this IMyMultiplayer multiplayer)
+		{
+			if (!multiplayer.MultiplayerActive)
+				return false;
+			return !multiplayer.IsServer;
+		}
+
+		public static void throwIfNull_argument(this object argument, string name)
+		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
+
+		public static void throwIfNull_variable(this object variable, string name)
+		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
+
 	}
 }

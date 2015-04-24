@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define LOG_ENABLED //remove on build
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -43,8 +45,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.SIDELING:
 				case NavSettings.Moving.HYBRID:
 					double distanceToDestination = nav.MM.distToWayDest;
-
-					adjustSpeeds(nav, myLogger, distanceToDestination, 2f, 4f);
+					adjustSpeeds(nav, myLogger, distanceToDestination, 1f, 2f);
 					break;
 			}
 			checkAndCruise(nav, myLogger);
@@ -53,10 +54,12 @@ namespace Rynchodon.Autopilot
 		private static void adjustSpeeds(Navigator nav, Logger myLogger, double distanceToDestination, float stopMultiplierSlowDown, float stopMultiplierSpeedUp)
 		{
 			float stoppingDistance = nav.currentThrust.getStoppingDistance();
+			//myLogger.debugLog("distanceToDestination = " + distanceToDestination + ", stoppingDistance = " + stoppingDistance + ", stopMultiplierSlowDown = " + stopMultiplierSlowDown + ", stopMultiplierSpeedUp = " + stopMultiplierSpeedUp, "adjustSpeeds()");
 
 			if (distanceToDestination < stopMultiplierSlowDown * stoppingDistance) // distance is small
 			{
-				if (!(nav.currentMove == Vector3.Zero && nav.dampenersOn())) // not slowing down
+				//myLogger.debugLog("already slowing down", "adjustSpeeds()");
+				if (!(nav.currentMove == Vector3.Zero && nav.dampenersEnabled())) // not slowing down
 				{
 					float initialSpeedSlow = nav.CNS.getSpeedSlow();
 
@@ -67,6 +70,8 @@ namespace Rynchodon.Autopilot
 					//if (nav.CNS.getSpeedSlow() < initialSpeedSlow) // have made a difference
 					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + (float)(nav.MM.movementSpeed * 0.9), "adjustSpeeds()", Logger.severity.TRACE);
 				}
+				//else
+				//	myLogger.debugLog("already slowing down", "adjustSpeeds()");
 			}
 			else // distance is not small
 				if (distanceToDestination > stopMultiplierSpeedUp * stoppingDistance) // distance is great
@@ -105,7 +110,7 @@ namespace Rynchodon.Autopilot
 					//case NavSettings.Moving.STOP_MOVE:
 					break; // continue method
 				default:
-					if (nav.MM.movementSpeed > 1 && !nav.dampenersOn())
+					if (nav.MM.movementSpeed > 1 && !nav.dampenersEnabled())
 					{
 						nav.setDampeners();
 						log(myLogger, "wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
@@ -118,7 +123,7 @@ namespace Rynchodon.Autopilot
 
 			if (nav.MM.movementSpeed > nav.CNS.getSpeedSlow())
 			{
-				if (!nav.dampenersOn() || nav.currentMove != Vector3.Zero)
+				if (!nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
 					nav.setDampeners();
@@ -129,7 +134,9 @@ namespace Rynchodon.Autopilot
 			if (nav.MM.movementSpeed < nav.CNS.getSpeedCruise())
 			{
 				// as long as there is acceleration, do not calcAndMove
-				if (nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward && !nav.movingTooSlow)
+				myLogger.debugLog("current move = " + nav.currentMove + ", moving too slow = " + nav.movingTooSlow, "checkAndCruise()", Logger.severity.TRACE);
+				myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
+				if ((nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) && !nav.movingTooSlow)
 				{
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;
@@ -141,7 +148,7 @@ namespace Rynchodon.Autopilot
 			// between cruise and slow speed
 			if (nav.CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // as long as state change comes after checkAndCruise, this will work
 			{
-				if (nav.dampenersOn() || nav.currentMove != Vector3.Zero)
+				if (nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					// disable dampeners
@@ -153,7 +160,7 @@ namespace Rynchodon.Autopilot
 			else
 			{
 				// use cruise vector
-				if (!nav.dampenersOn() || nav.currentMove != cruiseForward)
+				if (!nav.dampenersEnabled() || nav.currentMove != cruiseForward)
 				{
 					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), using cruise vector", "checkAndCruise()", Logger.severity.TRACE);
 					nav.setDampeners();

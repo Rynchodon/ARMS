@@ -77,21 +77,46 @@ namespace Rynchodon.Autopilot.Instruction
 			if (instructionErrorIndex == null)
 				instructionErrorIndex = instructionNum.ToString();
 			else
-				instructionErrorIndex += ',' + instructionNum;
+				instructionErrorIndex += ',' + instructionNum.ToString();
 		}
 
 		/// <summary>
-		/// Split allInstructions, convert to actions, enqueue to instructionQueue
+		/// convert instructions from block to Action, then enqueue to instructionQueue
 		/// </summary>
-		/// <param name="allInstructions">all the instructions to enqueue</param>
-		public void enqueueAllActions(string allInstructions)
+		/// <param name="block">block with instructions</param>
+		public void enqueueAllActions(IMyCubeBlock block)
 		{
+			string instructions = preParse(block).getInstructions();
+
 			instructionErrorIndex = null;
 			currentInstruction = 0;
 			instructionQueue = new MyQueue<Action>(8);
 			instructionQueueString = new List<string>();
 
-			enqueueAllActions_continue(allInstructions);
+			enqueueAllActions_continue(instructions);
+		}
+
+		private static readonly Regex GPS_tag = new Regex(@"GPS:.*:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
+		private static readonly string replaceWith = @"$1, $2, $3";
+
+		/// <summary>
+		/// <para>performs actions before splitting instructions by : & ;</para>
+		/// <para>Currently, performs a substitution for pasted GPS tags</para>
+		/// </summary>
+		private string preParse(IMyCubeBlock block)
+		{
+			string blockName = block.DisplayNameText;
+
+			blockName = GPS_tag.Replace(blockName, replaceWith);
+			//myLogger.debugLog("replaced name: " + blockName, "preParse()");
+
+			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
+			if (asTerm != null)
+				asTerm.SetCustomName(blockName);
+			else
+				myLogger.debugLog("not functional, name will not be updated: " + block.getBestName(), "preParse()", Logger.severity.WARNING);
+
+			return blockName;
 		}
 
 		/// <summary>

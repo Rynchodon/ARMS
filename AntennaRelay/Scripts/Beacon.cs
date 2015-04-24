@@ -12,10 +12,13 @@ using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
 
+//using Rynchodon.Update;
+
 namespace Rynchodon.AntennaRelay
 {
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon))]
-	public class Beacon : UpdateEnforcer
+	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon))]
+	//public class Beacon : UpdateEnforcer
+	public class Beacon //: EntityScript<IMyCubeBlock>
 	{
 		internal bool isRadar = false;
 
@@ -24,10 +27,10 @@ namespace Rynchodon.AntennaRelay
 		private IMyCubeBlock CubeBlock;
 		private Ingame.IMyBeacon myBeacon;
 
-		protected override void DelayedInit()
+		public Beacon(IMyCubeBlock block)
 		{
-			CubeBlock = Entity as IMyCubeBlock;
-			myBeacon = Entity as Ingame.IMyBeacon;
+			CubeBlock = block;
+			myBeacon = block as Ingame.IMyBeacon;
 
 			if (Settings.boolSettings[Settings.BoolSetName.bAllowRadar] && CubeBlock.BlockDefinition.SubtypeName.Contains(SubTypeSearchRadar))
 			{
@@ -36,16 +39,18 @@ namespace Rynchodon.AntennaRelay
 			}
 			else
 				log("init as beacon: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+			//UpdateManager.RegisterForUpdates(100, UpdateAfterSimulation100);
+
+			CubeBlock.OnClosing += Close;
 		}
 
 		//private bool isClosed = false;
-		public override void Close()
+		private void Close(IMyEntity myEntity)
 		{
 			//radarCanSee = null;
 			CubeBlock = null;
 			myBeacon = null;
-			MyObjectBuilder = null;
+			//MyObjectBuilder = null;
 			//isClosed = true;
 		}
 
@@ -54,10 +59,10 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private const float radarPower_A = 10000, radarPower_B = 100000, radarPower_C = 2;
 
-		public override void UpdateAfterSimulation100()
+		public void UpdateAfterSimulation100()
 		{
-			if (!IsInitialized) return;
-			if (Closed || CubeBlock == null || CubeBlock.CubeGrid == null) return;
+			//if (!IsInitialized) return;
+			if (CubeBlock == null || CubeBlock.Closed || CubeBlock.CubeGrid == null) return;
 			try
 			{
 				if (!myBeacon.IsWorking)
@@ -88,7 +93,7 @@ namespace Rynchodon.AntennaRelay
 				HashSet<IMyEntity> allEntitiesInWorld = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities(allEntitiesInWorld);
 				foreach (IMyEntity ent in allEntitiesInWorld)
-					if (ent is IMyCubeGrid)
+					if (ent is IMyCubeGrid || ent is IMyCharacter)
 					{
 						// get detection distance
 						float volume = ent.LocalAABB.Volume();
@@ -124,7 +129,7 @@ namespace Rynchodon.AntennaRelay
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }
-		protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
 			if (myLogger == null)
 				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, "Beacon");

@@ -70,30 +70,30 @@ namespace Rynchodon.Autopilot
 				return value__yaw;
 			}
 		}
-		/// <summary>
-		/// power to apply in pitch
-		/// </summary>
-		public double pitchPower
-		{
-			get
-			{
-				if (!isValid__pitchYaw)
-					buildPitchYaw();
-				return value__pitchPower;
-			}
-		}
-		/// <summary>
-		/// power to apply in yaw
-		/// </summary>
-		public double yawPower
-		{
-			get
-			{
-				if (!isValid__pitchYaw)
-					buildPitchYaw();
-				return value__yawPower;
-			}
-		}
+		///// <summary>
+		///// power to apply in pitch
+		///// </summary>
+		//public double pitchPower
+		//{
+		//	get
+		//	{
+		//		if (!isValid__pitchYaw)
+		//			buildPitchYaw();
+		//		return value__pitchPower;
+		//	}
+		//}
+		///// <summary>
+		///// power to apply in yaw
+		///// </summary>
+		//public double yawPower
+		//{
+		//	get
+		//	{
+		//		if (!isValid__pitchYaw)
+		//			buildPitchYaw();
+		//		return value__yawPower;
+		//	}
+		//}
 
 		private void buildPitchYaw()
 		{
@@ -116,21 +116,21 @@ namespace Rynchodon.Autopilot
 			value__pitch = Math.Atan2(down, forward);
 			value__yaw = Math.Atan2(right, forward);
 			//log("pitch = " + value__pitch + ", yaw = " + value__yaw, "buildPitchYaw()", Logger.severity.TRACE);
-			switch (owner.CNS.moveState)
-			{
-				case NavSettings.Moving.MOVING:
-				case NavSettings.Moving.HYBRID:
-					value__pitchPower = value__pitch * owner.inflightRotatingPower;
-					value__yawPower = value__yaw * owner.inflightRotatingPower;
-					//log("power multiplier = " + owner.inflightRotatingPower, "buildPitchYaw()", Logger.severity.TRACE);
-					break;
-				default:
-					value__pitchPower = value__pitch * owner.rotationPower;
-					value__yawPower = value__yaw * owner.rotationPower;
-					//log("power multiplier = " + owner.rotationPower, "buildPitchYaw()", Logger.severity.TRACE);
-					break;
-			}
-			//log("pitch power = " + value__pitchPower + ", yaw power = " + value__yawPower, "buildPitchYaw()", Logger.severity.TRACE);
+			//switch (owner.CNS.moveState)
+			//{
+			//	case NavSettings.Moving.MOVING:
+			//	case NavSettings.Moving.HYBRID:
+			//		value__pitchPower = value__pitch * owner.inflightRotatingPower;
+			//		value__yawPower = value__yaw * owner.inflightRotatingPower;
+			//		//log("power multiplier = " + owner.inflightRotatingPower, "buildPitchYaw()", Logger.severity.TRACE);
+			//		break;
+			//	default:
+			//		value__pitchPower = value__pitch * owner.rotationPower;
+			//		value__yawPower = value__yaw * owner.rotationPower;
+			//		//log("power multiplier = " + owner.rotationPower, "buildPitchYaw()", Logger.severity.TRACE);
+			//		break;
+			//}
+			////log("pitch power = " + value__pitchPower + ", yaw power = " + value__yawPower, "buildPitchYaw()", Logger.severity.TRACE);
 		}
 
 		private Lazy<double> lazy_rotationLengthSquared;

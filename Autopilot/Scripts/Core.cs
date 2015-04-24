@@ -104,17 +104,17 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			//MainLock.Lock.ReleaseExclusive();
-			//try
-			//{
+			MainLock.MainThread_TryReleaseExclusive();
+			try
+			{
 				if (isUpdating || terminated)
 					return;
 				isUpdating = true;
 				//MyAPIGateway.Parallel.Start(doUpdate, updateCallback);
 				doUpdate();
 				isUpdating = false;
-			//}
-			//finally { MainLock.Lock.AcquireExclusive(); }
+			}
+			finally { MainLock.MainThread_TryAcquireExclusive(); }
 		}
 
 		// cannot log here, Logger is closed/closing
@@ -194,7 +194,7 @@ namespace Rynchodon.Autopilot
 			foreach (IMyEntity entity in entities)
 			{
 				Sandbox.ModAPI.IMyCubeGrid grid = entity as Sandbox.ModAPI.IMyCubeGrid;
-				if (grid == null || grid.Closed || grid.MarkedForClose)
+				if (grid == null || grid.Closed || grid.MarkedForClose || grid.Physics == null)
 					continue;
 				if (!allNavigators.ContainsKey(grid))
 				{

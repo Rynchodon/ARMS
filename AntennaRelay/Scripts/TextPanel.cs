@@ -21,8 +21,8 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// TextPanel will fetch instructions from Antenna and write them either for players or for programmable blocks.
 	/// </summary>
-	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
-	public class TextPanel : UpdateEnforcer
+	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
+	public class TextPanel //: UpdateEnforcer
 	{
 		private const string command_forPlayer = "Display Detected";
 		private const string command_forProgram = "Transmit Detected to ";
@@ -34,6 +34,10 @@ namespace Rynchodon.AntennaRelay
 
 		private const string radarIconId = "Radar";
 		private const string messageToProgram = "Fetch Detected from Text Panel";
+
+		private const string timeString = "Current as of: ";
+
+		private readonly string[] newLine = { "\n", "\r", "\r\n" };
 
 		private const char separator = ':';
 
@@ -47,16 +51,24 @@ namespace Rynchodon.AntennaRelay
 
 		private bool sentToProgram = false;
 
-		protected override void DelayedInit()
+		public TextPanel(IMyCubeBlock block)
 		{
-			myCubeBlock = Entity as IMyCubeBlock;
-			myTextPanel = Entity as Ingame.IMyTextPanel;
-			myTermBlock = Entity as IMyTerminalBlock;
+			myCubeBlock = block;
+			myTextPanel = block as Ingame.IMyTextPanel;
+			myTermBlock = block as IMyTerminalBlock;
 			myLogger = new Logger("TextPanel", () => myCubeBlock.CubeGrid.DisplayName, () => myCubeBlock.getNameOnly());
-			EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 			myLogger.debugLog("init: " + myCubeBlock.DisplayNameText, "DelayedInit()");
-
 			myTermBlock.CustomNameChanged += TextPanel_CustomNameChanged;
+			myTermBlock.OnClosing += Close;
+		}
+
+		private void Close(IMyEntity entity)
+		{
+			if (myCubeBlock != null)
+			{
+				myTermBlock.CustomNameChanged -= TextPanel_CustomNameChanged;
+				myCubeBlock = null;
+			}
 		}
 
 		private string previousName;
@@ -67,8 +79,6 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="obj">not used</param>
 		private void TextPanel_CustomNameChanged(IMyTerminalBlock obj)
 		{
-			if (!IsInitialized || Closed)
-				return;
 			try
 			{
 				if (myCubeBlock.DisplayNameText == previousName)
@@ -92,24 +102,14 @@ namespace Rynchodon.AntennaRelay
 			{ myLogger.log("Exception: " + ex, "TextPanel_CustomNameChanged()", Logger.severity.ERROR); }
 		}
 
-		public override void Close()
+		public void UpdateAfterSimulation100()
 		{
-			base.Close();
-
-			if (myCubeBlock != null)
-			{
-				myTermBlock.CustomNameChanged -= TextPanel_CustomNameChanged;
-				myCubeBlock = null;
-			}
-		}
-
-		public override void UpdateAfterSimulation100()
-		{
-			if (!IsInitialized || Closed)
-				return;
-
 			try
 			{
+				string publicTitle = myTextPanel.GetPublicTitle();
+				if (publicTitle == publicTitle_forPlayer || publicTitle == publicTitle_fromProgramParsed)
+					checkAge();
+
 				displayLastSeen();
 				TextPanel_CustomNameChanged(null);
 			}
@@ -122,7 +122,7 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>true iff current antenna is valid or one was found</returns>
 		private bool findAntenna()
 		{
-			if (myAntenna != null && !myAntenna.Closed) // already have one
+			if (myAntenna.IsOpen()) // already have one
 				return true;
 
 			foreach (Receiver antenna in RadioAntenna.registry)
@@ -146,11 +146,11 @@ namespace Rynchodon.AntennaRelay
 
 		private bool findProgBlock()
 		{
-			if (myProgBlock != null && !myProgBlock.Closed) // already have one
+			if (myProgBlock.IsOpen()) // already have one
 				return true;
 
 			string instruction = myCubeBlock.getInstructions().RemoveWhitespace().ToLower();
-			string command = command_forProgram .RemoveWhitespace().ToLower();
+			string command = command_forProgram.RemoveWhitespace().ToLower();
 
 			int destNameIndex = instruction.IndexOf(command) + command.Length;
 			if (destNameIndex >= instruction.Length)
@@ -200,7 +200,8 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (sentToProgram && myTextPanel.GetPublicTitle() == publicTitle_forProgram && !string.IsNullOrWhiteSpace(myTextPanel.GetPublicText()))
 				{
-					myLogger.debugLog("public text is not clear", "displayLastSeen()");
+					//myLogger.debugLog("public text is not clear", "displayLastSeen()");
+					runProgram();
 					return;
 				}
 				forProgram = true;
@@ -238,12 +239,18 @@ namespace Rynchodon.AntennaRelay
 				foreach (sortableLastSeen sortable in sortableSeen)
 					displayText.Append(sortable.TextForProgram());
 			else
+			{
+				displayText.Append(timeString);
+				displayText.Append(DateTime.Now.ToLongTimeString());
+				writeTime = DateTime.Now;
+				displayText.Append('\n');
 				foreach (sortableLastSeen sortable in sortableSeen)
 				{
 					displayText.Append(sortable.TextForPlayer(count++));
 					if (count >= 50)
 						break;
 				}
+			}
 
 			string displayString = displayText.ToString();
 
@@ -278,6 +285,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (findProgBlock())
 			{
+				if (myProgBlock.messageCount() > 0)
+				{
+					myLogger.debugLog("cannot send message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
+					return;
+				}
 				myLogger.debugLog("sending message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
 				Message toSend = new Message(messageToProgram, myProgBlock.CubeBlock, myCubeBlock);
 				myProgBlock.receive(toSend);
@@ -295,6 +307,10 @@ namespace Rynchodon.AntennaRelay
 			Vector3D myPos = myCubeBlock.GetPosition();
 			int count = 0;
 			StringBuilder newText = new StringBuilder();
+			newText.Append(timeString);
+			newText.Append(DateTime.Now.ToLongTimeString());
+			writeTime = DateTime.Now;
+			newText.Append('\n');
 			for (int d = 1; d < instructions.Length; d++) // skip first
 			{
 				if (string.IsNullOrWhiteSpace(instructions[d]))
@@ -302,7 +318,7 @@ namespace Rynchodon.AntennaRelay
 
 				myLogger.debugLog("checking id: " + instructions[d], "replaceEntityIdsWithLastSeen()");
 				long entityId = long.Parse(instructions[d]);
-				myLogger.debugLog("got long: " + entityId, "replaceEntityIdsWithLastSeen()");
+				//myLogger.debugLog("got long: " + entityId, "replaceEntityIdsWithLastSeen()");
 				LastSeen seen;
 				if (myAntenna.tryGetLastSeen(entityId, out seen))
 				{
@@ -315,11 +331,77 @@ namespace Rynchodon.AntennaRelay
 					}
 					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).mostHostile();
 					newText.Append((new sortableLastSeen(myPos, seen, relations)).TextForPlayer(count++));
-					myLogger.debugLog("append OK", "replaceEntityIdsWithLastSeen()");
+					//myLogger.debugLog("append OK", "replaceEntityIdsWithLastSeen()");
 				}
 			}
 			myTextPanel.WritePublicText(newText.ToString());
 			myTextPanel.WritePublicTitle(publicTitle_fromProgramParsed);
+		}
+
+		/// <summary>
+		/// The time of last writing to public text
+		/// </summary>
+		private DateTime writeTime;
+
+		/// <summary>
+		/// display information is old
+		/// </summary>
+		private bool displayIsOld = false;
+
+		/// <summary>
+		/// how long until displayed information is old
+		/// </summary>
+		private TimeSpan displayOldAfter = new TimeSpan(0, 0, 10);
+
+		/// <summary>
+		/// background colour when display is new
+		/// </summary>
+		private Color youngBackgroundColour = Color.Black;
+
+		/// <summary>
+		/// background colour when display is old
+		/// </summary>
+		private Color oldBackgroundColour = Color.Gray;
+
+		/// <summary>
+		/// check the age of the message on the panel and change colour if it is old
+		/// </summary>
+		private void checkAge()
+		{
+			if (displayIsOld)
+			{
+				if (DateTime.Now - writeTime < displayOldAfter) // has just become young
+				{
+					displayIsOld = false;
+
+					ITerminalProperty<Color> backgroundColourProperty = myTextPanel.GetProperty("BackgroundColor").AsColor();
+
+					oldBackgroundColour = backgroundColourProperty.GetValue(myTextPanel);
+					if (youngBackgroundColour == Color.Gray)
+						youngBackgroundColour = Color.Black;
+
+					backgroundColourProperty.SetValue(myTextPanel, youngBackgroundColour);
+
+					myLogger.debugLog("Panel data is now young, storing " + oldBackgroundColour + ", using " + youngBackgroundColour, "checkAge()", Logger.severity.DEBUG);
+				}
+			}
+			else
+			{
+				if (DateTime.Now - writeTime > displayOldAfter) // has just become old
+				{
+					displayIsOld = true;
+
+					ITerminalProperty<Color> backgroundColourProperty = myTextPanel.GetProperty("BackgroundColor").AsColor();
+
+					youngBackgroundColour = backgroundColourProperty.GetValue(myTextPanel);
+					if (oldBackgroundColour == Color.Black)
+						oldBackgroundColour = Color.Gray;
+
+					backgroundColourProperty.SetValue(myTextPanel, oldBackgroundColour);
+
+					myLogger.debugLog("Panel data is now old, storing " + youngBackgroundColour + ", using " + oldBackgroundColour, "checkAge()", Logger.severity.DEBUG);
+				}
+			}
 		}
 
 		private class sortableLastSeen : IComparable<sortableLastSeen>
