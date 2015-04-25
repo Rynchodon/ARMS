@@ -11,7 +11,7 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
-using Rynchodon.Autopilot.Harvest;
+//using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
