@@ -67,7 +67,7 @@ namespace Rynchodon
 		}
 
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
-		{ return RelativeVector3F.createFromGrid(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
+		{ return RelativeVector3F.createFromLocal(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
 
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{

@@ -21,8 +21,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 	internal class GridShapeProfiler
 	{
 		public IMyCubeGrid CubeGrid { get; private set; }
-		public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
-		public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
+		//public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
+		//public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
 
 		private static Dictionary<IMyCubeGrid, GridShapeProfiler> registry = new Dictionary<IMyCubeGrid, GridShapeProfiler>();
 		private static FastResourceLock lock_registry = new FastResourceLock();
@@ -156,10 +156,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock, Vector3? displacement = null)
 		{
 			if (displacement == null)
-				this.Displacement = destination.getGrid() - navigationBlock.Position * CubeGrid.GridSize;
+				this.Displacement = destination.getLocal() - navigationBlock.Position * CubeGrid.GridSize;
 			else
 				this.Displacement = (Vector3)displacement;
-			Vector3 centreDestination = destination.getGrid() + (Centre - navigationBlock.Position) * CubeGrid.GridSize;
+			Vector3 centreDestination = destination.getLocal() + (Centre - navigationBlock.Position) * CubeGrid.GridSize;
 
 			rejectAll();
 			createCapsule(centreDestination);
@@ -225,7 +225,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					radiusSquared = distanceSquared;
 			}
 
-			myPath = new Path(RelativeVector3F.createFromGrid(Centre, CubeGrid), RelativeVector3F.createFromGrid(centreDestination, CubeGrid), radiusSquared + PathBufferSquared);
+			myPath = new Path(RelativeVector3F.createFromLocal(Centre, CubeGrid), RelativeVector3F.createFromLocal(centreDestination, CubeGrid), radiusSquared, CubeGrid.GridSize);
 		}
 
 		#endregion

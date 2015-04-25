@@ -293,7 +293,7 @@ namespace Rynchodon.Autopilot
 				navigate();
 			else // no waypoints
 			{
-				//log("no waypoints or centreDestination");
+				//log("no waypoints or destination");
 				if (currentRCcontrol != null && myInterpreter.hasInstructions())
 				{
 					while (myInterpreter.hasInstructions())
@@ -309,23 +309,29 @@ namespace Rynchodon.Autopilot
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
-								log("got a block as a centreDestination: " + CNS.GridDestName + ":" + CNS.searchBlockName, "update()", Logger.severity.INFO);
+								log("got a block as a destination: " + CNS.GridDestName + ":" + CNS.searchBlockName, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.OFFSET:
-								log("got an offset as a centreDestination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
+								log("got an offset as a destination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.GRID:
-								log("got a grid as a centreDestination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
+								log("got a grid as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.COORDINATES:
-								log("got a new centreDestination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								log("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+
+								PathChecker checker = new PathChecker(myGrid);
+								var timeResults = TimeAction.Time(() => checker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)CNS.getWayDest(), myGrid), getNavigationBlock()), 1);
+								myLogger.debugLog("Path Length: " + ((Vector3D)CNS.getWayDest() - getNavigationBlock().GetPosition()).Length(), "update()", Logger.severity.INFO);
+								myLogger.debugLog("Timed new path checker: " + timeResults.Pretty_FiveNumbers(), "update()", Logger.severity.INFO);
+
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.LAND:
-								log("got a new landing centreDestination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								log("got a new landing destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.NULL:
@@ -545,7 +551,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (CNS.isAMissile)
 			{
-				//log("missile never reaches centreDestination", "checkAt_wayDest()", Logger.severity.TRACE);
+				//log("missile never reaches destination", "checkAt_wayDest()", Logger.severity.TRACE);
 				return false;
 			}
 			if (MM.distToWayDest > CNS.destinationRadius)
@@ -577,7 +583,7 @@ namespace Rynchodon.Autopilot
 				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
 				calcAndMove();
 				fullStop("At dest");
-				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				log("reached destination2 dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -652,7 +658,7 @@ namespace Rynchodon.Autopilot
 			switch (CNS.moveState)
 			{
 				case NavSettings.Moving.MOVING:
-					// will go here after clearing a waypoint or centreDestination, do not want to switch to hybrid, as we may need to kill alot of inertia
+					// will go here after clearing a waypoint or destination, do not want to switch to hybrid, as we may need to kill alot of inertia
 					{
 						if (movingTooSlow && CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove) //speed up test. missile will never pass this test
 							if (MM.rotLenSq < rotLenSq_startMove)
@@ -769,7 +775,7 @@ namespace Rynchodon.Autopilot
 				{
 					case NavSettings.Moving.SIDELING:
 						{
-							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + centreDestination, "calcAndMove()", Logger.severity.TRACE);
+							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
 							if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
 							{
 								//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
@@ -802,7 +808,7 @@ namespace Rynchodon.Autopilot
 							{
 								moveDirection = course;
 								log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
-								log("... scaled=" + scaled.getWorld() + ":" + scaled.getGrid() + ":" + scaled.getBlock(currentRCblock), "calcAndMove()", Logger.severity.DEBUG);
+								log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(currentRCblock), "calcAndMove()", Logger.severity.DEBUG);
 							}
 							break;
 						}
