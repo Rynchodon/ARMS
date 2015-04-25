@@ -104,7 +104,7 @@ namespace Rynchodon.Autopilot
 					// actions on new RC
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
-					fullStop("new RC"); 
+					fullStop("new RC");
 					reportState(ReportableState.OFF);
 				}
 
@@ -187,7 +187,7 @@ namespace Rynchodon.Autopilot
 		//	//MyTimeSpan longest;// = new MyTimeSpan();
 		//	//string prettyMax;
 		//	//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
-			
+
 		//	var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
 		//	myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
 
@@ -205,7 +205,7 @@ namespace Rynchodon.Autopilot
 		//	//	if (span > longest)
 		//	//		longest = span;
 		//	//}
-			
+
 		//	//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
 		}
 
@@ -542,7 +542,7 @@ namespace Rynchodon.Autopilot
 		internal const int radiusLandWay = 10;
 
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		/// <param name="pitch"></param>
 		/// <param name="yaw"></param>
@@ -583,7 +583,7 @@ namespace Rynchodon.Autopilot
 				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
 				calcAndMove();
 				fullStop("At dest");
-				log("reached destination2 dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -834,7 +834,7 @@ namespace Rynchodon.Autopilot
 		//private double pitchNeedToRotate = 0, yawNeedToRotate = 0;
 
 		///// <summary>
-		///// 
+		/////
 		///// </summary>
 		///// <param name="pitch"></param>
 		///// <param name="yaw"></param>

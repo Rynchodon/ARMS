@@ -123,6 +123,19 @@ namespace Rynchodon
 			return new String(newarr, 0, j);
 		}
 
+		public static bool IsClient(this IMyMultiplayer multiplayer)
+		{
+			if (!multiplayer.MultiplayerActive)
+				return false;
+			return !multiplayer.IsServer;
+		}
+
+		public static void throwIfNull_argument(this object argument, string name)
+		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
+
+		public static void throwIfNull_variable(this object variable, string name)
+		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
+	
 		/// <summary>
 		/// Calcluate the vector rejection of A from B.
 		/// </summary>
@@ -136,15 +149,6 @@ namespace Rynchodon
 			if (vectorB_part == null)
 				vectorB_part = vectorB / vectorB.LengthSquared();
 			return vectorA - vectorA.Dot(vectorB) * (Vector3)vectorB_part;
-		}
-
-		public static Vector3 Round(this Vector3 toRound, float roundTo)
-		{
-			double
-				x = Math.Round(toRound.X * roundTo) / roundTo,
-				y = Math.Round(toRound.Y * roundTo) / roundTo,
-				z = Math.Round(toRound.Z * roundTo) / roundTo;
-			return new Vector3(x, y, z);
 		}
 
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
@@ -176,18 +180,59 @@ namespace Rynchodon
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
 
-		public static bool IsClient(this IMyMultiplayer multiplayer)
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3D result)
 		{
-			if (!multiplayer.MultiplayerActive)
-				return false;
-			return !multiplayer.IsServer;
+			double x = operation(vector.X);
+			double y = operation(vector.Y);
+			double z = operation(vector.Z);
+			result = new Vector3D(x, y, z);
 		}
 
-		public static void throwIfNull_argument(this object argument, string name)
-		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3I result)
+		{
+			int x = (int)operation(vector.X);
+			int y = (int)operation(vector.Y);
+			int z = (int)operation(vector.Z);
+			result = new Vector3I(x, y, z);
+		}
 
-		public static void throwIfNull_variable(this object variable, string name)
-		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3D result)
+		{
+			double x = operation(vector.X);
+			double y = operation(vector.Y);
+			double z = operation(vector.Z);
+			result = new Vector3D(x, y, z);
+		}
 
+		/// <summary>
+		/// aply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3I result)
+		{
+			int x = (int)operation(vector.X);
+			int y = (int)operation(vector.Y);
+			int z = (int)operation(vector.Z);
+			result = new Vector3I(x, y, z);
+		}
+
+		public static void ForEach(this Vector3I min, Vector3I max, int step, Action<Vector3I> toInvoke)
+		{
+			for (int x = min.X; x <= max.X; x += step)
+				for (int y = min.Y; y <= max.Y; y += step)
+					for (int z = min.Z; z <= max.Z; z += step)
+						toInvoke(new Vector3I(x, y, z));
+		}
+
+		public static void ForEach(this Vector3I min, Vector3I max, Action<Vector3I> toInvoke)
+		{ ForEach(min, max, 1, toInvoke); }
 	}
 }

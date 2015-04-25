@@ -11,6 +11,7 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
+//using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
@@ -42,51 +43,57 @@ namespace Rynchodon.Update
 		private void RegisterScripts()
 		{
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) =>
-			{
-				Beacon newBeacon = new Beacon(block);
-				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
-			});
+				{
+					Beacon newBeacon = new Beacon(block);
+					RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) =>
-			{
-				TextPanel newTextPanel = new TextPanel(block);
-				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
-			});
+				{
+					TextPanel newTextPanel = new TextPanel(block);
+					RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) =>
-			{
-				LaserAntenna newLA = new LaserAntenna(block);
-				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
-			});
+				{
+					LaserAntenna newLA = new LaserAntenna(block);
+					RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) =>
-			{
-				ProgrammableBlock newPB = new ProgrammableBlock(block);
-				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-			});
+				{
+					ProgrammableBlock newPB = new ProgrammableBlock(block);
+					RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) =>
-			{
-				RadioAntenna newRA = new RadioAntenna(block);
-				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-			});
+				{
+					RadioAntenna newRA = new RadioAntenna(block);
+					RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) =>
-			{
-				RemoteControl newRC = new RemoteControl(block);
-				// Does not receive Updates
-			});
+				{
+					RemoteControl newRC = new RemoteControl(block);
+					// Does not receive Updates
+				});
 
 			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) =>
-			{
-				TurretLargeGatling newTurret = new TurretLargeGatling(block);
-				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-			});
+				{
+					TurretLargeGatling newTurret = new TurretLargeGatling(block);
+					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) =>
-			{
-				TurretLargeRocket newTurret = new TurretLargeRocket(block);
-				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-			}); 
+				{
+					TurretLargeRocket newTurret = new TurretLargeRocket(block);
+					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				});
 			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) =>
-			{
-				TurretInterior newTurret = new TurretInterior(block);
-				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-			});
+				{
+					TurretInterior newTurret = new TurretInterior(block);
+					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				});
+
+			//RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
+			//	{
+			//		OreDetector newOD = new OreDetector(block);
+			//		RegisterForUpdates(100, newOD.Update100, block);
+			//	});
 		}
 
 		/// <summary>
