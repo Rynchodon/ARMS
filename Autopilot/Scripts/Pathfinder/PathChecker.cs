@@ -12,7 +12,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 {
 	public class PathChecker
 	{
-		public IMyCubeGrid CubeGrid { get; private set; }
+		public IMyCubeGrid myCubeGrid { get; private set; }
 		public bool IgnoreAsteroids = false;
 
 		private GridShapeProfiler myGridShape;
@@ -20,8 +20,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public PathChecker(IMyCubeGrid grid)
 		{
-			CubeGrid = grid;
-			myLogger = new Logger("PathChecker", () => CubeGrid.DisplayName);
+			myCubeGrid = grid;
+			myLogger = new Logger("PathChecker", () => myCubeGrid.DisplayName);
 		}
 
 		/// <summary>
@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			destination.throwIfNull_argument("navigationBlock");
 
 			myLogger.debugLog("destination (world absolute) = " + destination.getWorldAbsolute(), "TestPath()");
+			myLogger.debugLog("destination (local) = " + destination.getLocal(), "TestPath()");
 			myLogger.debugLog("destination (nav block) = " + destination.getBlock(navigationBlock), "TestPath()");
 
 			Vector3D Displacement = destination.getWorldAbsolute() - navigationBlock.GetPosition();
@@ -41,12 +42,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myLogger.debugLog("Displacement = " + Displacement, "TestPath()");
 
 			// entities in large AABB
-			BoundingBoxD AtDest = CubeGrid.WorldAABB.Translate(Displacement);
+			BoundingBoxD AtDest = myCubeGrid.WorldAABB.Translate(Displacement);
 			//BoundingBoxD PathAABB = BoundingBoxD.CreateMerged(CubeGrid.WorldAABB, AtDest);
 
 			List<Vector3D> PathPoints = new List<Vector3D>();
-			PathPoints.Add(CubeGrid.WorldAABB.Min);
-			PathPoints.Add(CubeGrid.WorldAABB.Max);
+			PathPoints.Add(myCubeGrid.WorldAABB.Min);
+			PathPoints.Add(myCubeGrid.WorldAABB.Max);
 			PathPoints.Add(AtDest.Min);
 			PathPoints.Add(AtDest.Max);
 			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(PathPoints);
@@ -61,7 +62,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
 
 			// filter offenders and sort by distance
-			Vector3D Centre = CubeGrid.GetCentre();
+			Vector3D Centre = myCubeGrid.GetCentre();
 			SortedDictionary<float, IMyEntity> sortedOffenders = new SortedDictionary<float, IMyEntity>();
 			foreach (IMyEntity entity in offenders)
 			{
@@ -81,9 +82,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myLogger.debugLog("remaining after ignore list: " + sortedOffenders.Count, "TestPath()");
 
 			// set destination
-			myGridShape = GridShapeProfiler.getFor(CubeGrid);
-			myGridShape.SetDestination(destination, navigationBlock, Displacement);
-			Path myPath = myGridShape.myPath;
+			myGridShape = GridShapeProfiler.getFor(myCubeGrid);
+			myGridShape.SetDestination(destination, navigationBlock);
+			Capsule myPath = myGridShape.myPath;
 
 			// test path
 			foreach (IMyEntity entity in sortedOffenders.Values)
@@ -93,37 +94,48 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
-					if (!AABB_intersects_path(entity, myPath))
+					if (!myPath.IntersectsAABB(entity))//  !AABB_intersects_path(entity, myPath))
 						continue;
 
 					myLogger.debugLog("searching blocks of " + entity.getBestName(), "TestPath()");
-					uint blockCount = 0, blockRejectedCount = 0;
+					uint cellCount = 0, cellRejectedCount = 0;
 
 					// foreach block
+					float GridSize = asGrid.GridSize;
 					List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 					asGrid.GetBlocks_Safe(allSlims);
 					foreach (IMySlimBlock slim in allSlims)
 					{
-						// position. TODO: each cell a block occupies
-						Vector3 blockPosWorld = slim.CubeGrid.GridIntegerToWorld(slim.Position);
-						RelativeVector3F blockPosition = RelativeVector3F.createFromWorld(blockPosWorld, CubeGrid);
-						blockCount++;
-
-						// intersects capsule
-						if (myPath.line_local.DistanceSquared(blockPosition.getLocal()) < myPath.BufferedRadiusSquared)
-							continue;
-
-						blockRejectedCount++;
-						// rejection
-						Vector3 offendingBlockRejection = myGridShape.rejectVector(blockPosition.getLocal());
-						foreach (Vector3 myBlockRejection in myGridShape.rejectionCells)
-							if (Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection) < myPath.BufferSquared)
+						bool blockIntersects = false;
+						slim.ForEachCell((cell) =>
 							{
-								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
-								return false;
-							}
+								Vector3 cellPosWorld = asGrid.GridIntegerToWorld(cell);
+								//RelativeVector3F cellPosition = RelativeVector3F.createFromWorld(cellPosWorld, myCubeGrid);
+								cellCount++;
+								//Vector3 worldPosition = asGrid.GridIntegerToWorld(cell);
+
+								// intersects capsule
+								//myLogger.debugLog("distance(sq) between " + slim.getBestName() + " and path {" + myPath.P0.getWorldAbsolute() + ", " + myPath.P1.getWorldAbsolute() + "} is " + myPath.line_local.DistanceSquared(blockPosition.getLocal()) + ", BufferedRadiusSquared = " + myPath.BufferedRadiusSquared, "TestPath()");
+								//if (myPath.line_local.DistanceSquared(blockPosition.getLocal()) > myPath.BufferedRadiusSquared)
+								if (!myPath.Intersects(cellPosWorld, GridSize))
+									return false;
+
+								cellRejectedCount++;
+								// rejection
+								Vector3 offendingBlockRejection = myGridShape.rejectVector(cellPosition.getLocal());
+								foreach (Vector3 myBlockRejection in myGridShape.rejectionCells)
+								{
+									myLogger.debugLog("comparing offending cell at " + offendingBlockRejection + " to " + myBlockRejection + ", distance is " + Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection), "TestPath()");
+									if (Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection) < myPath.BufferSquared)
+									{
+										myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
+										blockIntersects = true;
+										return true;
+									}
+								}
+							});
 					}
-					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + blockCount + " against capsule and " + blockRejectedCount + " against rejection", "TestPath()");
+					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + cellCount + " against capsule and " + cellRejectedCount + " against rejection", "TestPath()");
 					continue;
 				}
 
@@ -155,29 +167,29 @@ namespace Rynchodon.Autopilot.Pathfinder
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
-				if (asGrid == CubeGrid)
+				if (asGrid == myCubeGrid)
 					return false;
 
-				if (AttachedGrids.isGridAttached(CubeGrid, asGrid))
+				if (AttachedGrids.isGridAttached(myCubeGrid, asGrid))
 					return false;
 			}
 
 			return true;
 		}
 
-		private bool AABB_intersects_path(IMyEntity entity, Path myPath)
+		private bool AABB_intersects_path(IMyEntity entity, PathCapsule myPath)
 		{
 			BoundingBoxD AABB = entity.WorldAABB;
 			AABB.Inflate(myPath.BufferedRadius);
 			double distance;
-			myLogger.debugLog("inflated " + entity.WorldAABB + " to " + AABB, "TestPath()");
-			myLogger.debugLog("line = " + myPath.line_world.From + " to " + myPath.line_world.To, "TestPath()");
+			//myLogger.debugLog("inflated " + entity.WorldAABB + " to " + AABB, "TestPath()");
+			//myLogger.debugLog("line = " + myPath.line_world.From + " to " + myPath.line_world.To, "TestPath()");
 			if (entity.WorldAABB.Intersects(myPath.line_world, out distance))
 			{
-				myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+				myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") intersects path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
 				return true;
 			}
-			myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") does not intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+			//myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") does not intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
 			return false;
 		}
 	}

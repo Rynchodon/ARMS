@@ -12,16 +12,6 @@ namespace Rynchodon
 {
 	public static class MiscExtensions
 	{
-		public static bool looseContains(this string bigString, string smallString)
-		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(bigString == null, "bigString");
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(smallString == null, "smallString");
-
-			string compare1 = bigString.RemoveWhitespace().ToLower();
-			string compare2 = smallString.RemoveWhitespace().ToLower();
-			return compare1.Contains(compare2);
-		}
-
 		public static string getBestName(this IMyEntity entity)
 		{
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
@@ -49,14 +39,6 @@ namespace Rynchodon
 			//else
 			//	name += "." + entity.EntityId;
 			return name;
-		}
-
-		public static string getBestName(this IMySlimBlock slimBlock)
-		{
-			IMyCubeBlock Fatblock = slimBlock.FatBlock;
-			if (Fatblock != null)
-				return Fatblock.DisplayNameText;
-			return slimBlock.ToString();
 		}
 
 		public static Vector3 GetLinearAcceleration(this MyPhysicsComponentBase Physics)
@@ -101,28 +83,6 @@ namespace Rynchodon
 			return true;
 		}
 
-		/// <remarks>
-		/// From http://stackoverflow.com/a/20857897
-		/// </remarks>
-		public static string RemoveWhitespace(this string input)
-		{
-			int j = 0, inputlen = input.Length;
-			char[] newarr = new char[inputlen];
-
-			for (int i = 0; i < inputlen; ++i)
-			{
-				char tmp = input[i];
-
-				if (!char.IsWhiteSpace(tmp))
-				{
-					newarr[j] = tmp;
-					++j;
-				}
-			}
-
-			return new String(newarr, 0, j);
-		}
-
 		public static bool IsClient(this IMyMultiplayer multiplayer)
 		{
 			if (!multiplayer.MultiplayerActive)
@@ -135,21 +95,6 @@ namespace Rynchodon
 
 		public static void throwIfNull_variable(this object variable, string name)
 		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
-	
-		/// <summary>
-		/// Calcluate the vector rejection of A from B.
-		/// </summary>
-		/// <remarks>
-		/// It is not useful to normalize B first. About 10% slower than keen's version but slightly more accurate (by about 3E-7 m).
-		/// </remarks>
-		/// <param name="vectorB_part">used to reduce the number of operations for multiple calls with the same B, should initially be null</param>
-		/// <returns>The vector rejection of A from B.</returns>
-		public static Vector3 Rejection(this Vector3 vectorA, Vector3 vectorB, ref Vector3? vectorB_part)
-		{
-			if (vectorB_part == null)
-				vectorB_part = vectorB / vectorB.LengthSquared();
-			return vectorA - vectorA.Dot(vectorB) * (Vector3)vectorB_part;
-		}
 
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
 		{ return PrettySI.makePretty(timeSpan.Seconds) + 's'; }
@@ -179,60 +124,5 @@ namespace Rynchodon
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
-
-		/// <summary>
-		/// aply an operation to each of x, y, z
-		/// </summary>
-		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3D result)
-		{
-			double x = operation(vector.X);
-			double y = operation(vector.Y);
-			double z = operation(vector.Z);
-			result = new Vector3D(x, y, z);
-		}
-
-		/// <summary>
-		/// aply an operation to each of x, y, z
-		/// </summary>
-		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3I result)
-		{
-			int x = (int)operation(vector.X);
-			int y = (int)operation(vector.Y);
-			int z = (int)operation(vector.Z);
-			result = new Vector3I(x, y, z);
-		}
-
-		/// <summary>
-		/// aply an operation to each of x, y, z
-		/// </summary>
-		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3D result)
-		{
-			double x = operation(vector.X);
-			double y = operation(vector.Y);
-			double z = operation(vector.Z);
-			result = new Vector3D(x, y, z);
-		}
-
-		/// <summary>
-		/// aply an operation to each of x, y, z
-		/// </summary>
-		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3I result)
-		{
-			int x = (int)operation(vector.X);
-			int y = (int)operation(vector.Y);
-			int z = (int)operation(vector.Z);
-			result = new Vector3I(x, y, z);
-		}
-
-		public static void ForEach(this Vector3I min, Vector3I max, int step, Action<Vector3I> toInvoke)
-		{
-			for (int x = min.X; x <= max.X; x += step)
-				for (int y = min.Y; y <= max.Y; y += step)
-					for (int z = min.Z; z <= max.Z; z += step)
-						toInvoke(new Vector3I(x, y, z));
-		}
-
-		public static void ForEach(this Vector3I min, Vector3I max, Action<Vector3I> toInvoke)
-		{ ForEach(min, max, 1, toInvoke); }
 	}
 }

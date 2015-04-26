@@ -8,11 +8,14 @@ using System.Text;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRageMath;
 
 namespace Rynchodon
 {
 	public static class IMyCubeBlockExtensions
 	{
+		#region Relations
+
 		/// <summary>
 		/// <para>For a grid, we normally consider the worst relationship.</para>
 		/// <para>Eg. A grid that contains any Neutral blocks and no Enemy blocks shall be considered Neutral.</para>
@@ -166,6 +169,7 @@ namespace Rynchodon
 			}
 		}
 
+		#endregion
 
 		/// <summary>
 		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
@@ -240,19 +244,7 @@ namespace Rynchodon
 		{ return block.getSlim().GetObjectBuilder(); }
 
 		public static string getInstructions(this IMyCubeBlock block)
-		{ return getInstructions(block.DisplayNameText); }
-
-		public static string getInstructions(this string displayName)
-		{
-			int start = displayName.IndexOf('[') + 1;
-			int end = displayName.IndexOf(']');
-			if (start > 0 && end > start) // has appropriate brackets
-			{
-				int length = end - start;
-				return displayName.Substring(start, length);
-			}
-			return null;
-		}
+		{ return block.DisplayNameText.getInstructions(); }
 
 		/// <summary>
 		/// Extracts the identifier portion of a blocks name.

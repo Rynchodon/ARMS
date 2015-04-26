@@ -20,7 +20,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// </summary>
 	internal class GridShapeProfiler
 	{
-		public IMyCubeGrid CubeGrid { get; private set; }
+		public IMyCubeGrid myCubeGrid { get; private set; }
 		//public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
 		//public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
 
@@ -29,16 +29,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>
 		/// All the local positions of occupied cells in this grid.
 		/// </summary>
-		private ListSnapshots<Vector3I> OccupiedCells;
-		private FastResourceLock lock_OccupiedCells = new FastResourceLock();
+		private ListSnapshots<IMySlimBlock> SlimBlocks;
+		private FastResourceLock lock_SlimBlocks = new FastResourceLock();
 
-		private Vector3 Centre { get { return CubeGrid.LocalAABB.Center; } }
+		private Vector3 Centre { get { return myCubeGrid.LocalAABB.Center; } }
 		private Vector3 CentreRejection;
 		private Vector3 Displacement;
 		private Vector3? Displacement_PartialCalculation = null;
 
-		public MyUniqueList<Vector3> rejectionCells;
-		public Path myPath { get; private set; }
+		private MyUniqueList<Vector3I> rejectionCells;
+		public Capsule myPath { get; private set; }
 
 		private Logger myLogger = new Logger(null, "GridShapeProfiler");
 
@@ -50,55 +50,62 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="grid">grid to profile</param>
 		private GridShapeProfiler(IMyCubeGrid grid)
 		{
-			this.CubeGrid = grid;
-			myLogger = new Logger("GridShapeProfiler", () => CubeGrid.DisplayName);
-			this.OccupiedCells = new ListSnapshots<Vector3I>();
+			this.myCubeGrid = grid;
+			myLogger = new Logger("GridShapeProfiler", () => myCubeGrid.DisplayName);
+			this.SlimBlocks = new ListSnapshots<IMySlimBlock>();
 
 			// instead of iterating over blocks, test cells of grid for contents (no need to lock grid)
-			ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
-			foreachVector3I(CubeGrid.Min, CubeGrid.Max, (cell) =>
+			ReadOnlyList<IMySlimBlock> mutable = SlimBlocks.mutable();
+			//foreachVector3I(CubeGrid.Min, CubeGrid.Max, (cell) =>
+			myCubeGrid.Min.ForEachVector(myCubeGrid.Max, (cell) =>
 			{
-				if (CubeGrid.CubeExists(cell))
-					mutable.Add(cell);
+				IMySlimBlock slim = myCubeGrid.GetCubeBlock(cell);
+				if (slim != null)
+					mutable.Add(slim);
+				//if (CubeGrid.CubeExists(cell))
+				//	mutable.Add(cell);
+				return false;
 			});
 
-			CubeGrid.OnBlockAdded += Grid_OnBlockAdded;
-			CubeGrid.OnBlockRemoved += Grid_OnBlockRemoved;
-			CubeGrid.OnClose += Grid_OnClose;
+			myCubeGrid.OnBlockAdded += Grid_OnBlockAdded;
+			myCubeGrid.OnBlockRemoved += Grid_OnBlockRemoved;
+			myCubeGrid.OnClose += Grid_OnClose;
 
 			using (lock_registry.AcquireExclusiveUsing())
-				registry.Add(this.CubeGrid, this);
+				registry.Add(this.myCubeGrid, this);
 		}
 
 		/// <summary>
 		/// Add a block to the profile.
 		/// </summary>
-		private void Grid_OnBlockAdded(IMySlimBlock obj)
+		private void Grid_OnBlockAdded(IMySlimBlock slim)
 		{
-			using (lock_OccupiedCells.AcquireExclusiveUsing())
+			using (lock_SlimBlocks.AcquireExclusiveUsing())
 			{
-				IMyCubeBlock fatblock = obj.FatBlock;
-				ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
-				if (fatblock == null)
-					mutable.Add(obj.Position);
-				else
-					foreachVector3I(fatblock.Min, fatblock.Max, (cell) => { mutable.Add(cell); });
+				//IMyCubeBlock fatblock = obj.FatBlock;
+				//ReadOnlyList<IMySlimBlock> mutable = 
+				SlimBlocks.mutable().Add(slim);
+				//if (fatblock == null)
+				//	mutable.Add(obj.Position);
+				//else
+				//	fatblock.Min.ForEachVector(fatblock.Max, (cell) => { mutable.Add(cell); return false; });
 			}
 		}
 
 		/// <summary>
 		/// Remove a block from the profile.
 		/// </summary>
-		private void Grid_OnBlockRemoved(IMySlimBlock obj)
+		private void Grid_OnBlockRemoved(IMySlimBlock slim)
 		{
-			using (lock_OccupiedCells.AcquireExclusiveUsing())
+			using (lock_SlimBlocks.AcquireExclusiveUsing())
 			{
-				IMyCubeBlock fatblock = obj.FatBlock;
-				ReadOnlyList<Vector3I> mutable = OccupiedCells.mutable();
-				if (fatblock == null)
-					mutable.Remove(obj.Position);
-				else
-					foreachVector3I(fatblock.Min, fatblock.Max, (cell) => { mutable.Remove(cell); });
+				//IMyCubeBlock fatblock = obj.FatBlock;
+				//ReadOnlyList<Vector3I> mutable = SlimBlocks.mutable();
+				//if (fatblock == null)
+				//	mutable.Remove(obj.Position);
+				//else
+				//	fatblock.Min.ForEachVector(fatblock.Max, (cell) => { mutable.Remove(cell); return false; });
+				SlimBlocks.mutable().Add(slim);
 			}
 		}
 
@@ -109,16 +116,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			// remove references to this
 			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeGrid);
+				registry.Remove(myCubeGrid);
 
-			CubeGrid.OnBlockAdded -= Grid_OnBlockAdded;
-			CubeGrid.OnBlockRemoved -= Grid_OnBlockRemoved;
-			CubeGrid.OnClose -= Grid_OnClose;
+			myCubeGrid.OnBlockAdded -= Grid_OnBlockAdded;
+			myCubeGrid.OnBlockRemoved -= Grid_OnBlockRemoved;
+			myCubeGrid.OnClose -= Grid_OnClose;
 
 			// invalidate
-			using (lock_OccupiedCells.AcquireExclusiveUsing())
-				OccupiedCells = null;
-			CubeGrid = null;
+			using (lock_SlimBlocks.AcquireExclusiveUsing())
+				SlimBlocks = null;
+			myCubeGrid = null;
 		}
 
 		#endregion
@@ -138,57 +145,85 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return new GridShapeProfiler(grid);
 		}
 
-		/// <summary>
-		/// Gets a snapshot of current occupied cells
-		/// </summary>
-		/// <returns>An immutable ReadOnlyList of occupied cells</returns>
-		public ReadOnlyList<Vector3I> get_OccupiedCells()
-		{
-			using (lock_OccupiedCells.AcquireSharedUsing())
-				return OccupiedCells.immutable();
-		}
+		///// <summary>
+		///// Gets a snapshot of current occupied cells
+		///// </summary>
+		///// <returns>An immutable ReadOnlyList of occupied cells</returns>
+		//public ReadOnlyList<Vector3I> get_OccupiedCells()
+		//{
+		//	using (lock_SlimBlocks.AcquireSharedUsing())
+		//		return SlimBlocks.immutable();
+		//}
 
 		/// <summary>
 		/// Set the destination, calulate the profile.
 		/// </summary>
 		/// <param name="destination">waypoint or destination to fly to</param>
 		/// <param name="navigationBlock">usually remote control</param>
-		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock, Vector3? displacement = null)
+		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock)
 		{
-			if (displacement == null)
-				this.Displacement = destination.getLocal() - navigationBlock.Position * CubeGrid.GridSize;
-			else
-				this.Displacement = (Vector3)displacement;
-			Vector3 centreDestination = destination.getLocal() + (Centre - navigationBlock.Position) * CubeGrid.GridSize;
+			//if (displacement == null)
+			this.Displacement = destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize;
+			this.Displacement_PartialCalculation = null;
+			//else
+			//	this.Displacement = (Vector3)displacement;
+			Vector3 centreDestination = destination.getLocal() + (Centre - navigationBlock.Position) * myCubeGrid.GridSize;
 
 			rejectAll();
 			createCapsule(centreDestination);
 		}
 
-		/// <summary>
-		/// <para>Perform a vector rejection from direction to destination.</para>
-		/// <para>Destination must be set first.</para>
-		/// </summary>
-		/// <param name="toReject">the grid-local vector to reject</param>
-		/// <returns>the rejected vector</returns>
-		public Vector3 rejectVector(Vector3 toReject)
-		{ return toReject.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize); }
+		///// <summary>
+		///// <para>Perform a vector rejection from direction to destination.</para>
+		///// <para>Destination must be set first.</para>
+		///// </summary>
+		///// <param name="toReject">the grid-local vector to reject</param>
+		///// <returns>the rejected vector</returns>
+		//public Vector3 rejectVector(Vector3 toReject)
+		//{
+		//	Vector3 result;
+		//	toReject.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out result);
+		//	myLogger.debugLog("rejected vector " + toReject + " is " + result, "rejectVector()");
+		//	return result;
+		//}
+
+		public bool testVector(Vector3 toTest)
+		{
+			Vector3I asCell = myCubeGrid.WorldToGridInteger(toTest);
+
+
+
+			// perform vector rejection, convert to cell, and == against rejectionCells
+			// or convert to cell, perform rejection, and == against rejectionCells
+		}
 
 		#endregion
 		#region Private Methods
 
+		///// <summary>
+		///// Perform an Action for each Vector3I from min to max (inclusive).
+		///// </summary>
+		///// <param name="min">starting Vector3I</param>
+		///// <param name="max">ending Vector3I</param>
+		///// <param name="action">action to invoke</param>
+		//private void foreachVector3I(Vector3I min, Vector3I max, Action<Vector3I> action)
+		//{
+		//	for (int x = min.X; x <= max.X; x++)
+		//		for (int y = min.Y; y <= max.Y; y++)
+		//			for (int z = min.Z; z <= max.Z; z++)
+		//				action.Invoke(new Vector3I(x, y, z));
+		//}
+
 		/// <summary>
-		/// Perform an Action for each Vector3I from min to max (inclusive).
+		/// to ensure consistency, all rejections should be performed by this method
 		/// </summary>
-		/// <param name="min">starting Vector3I</param>
-		/// <param name="max">ending Vector3I</param>
-		/// <param name="action">action to invoke</param>
-		private void foreachVector3I(Vector3I min, Vector3I max, Action<Vector3I> action)
+		/// <param name="toReject">local position vector</param>
+		/// <returns></returns>
+		private Vector3I rejectLocalPosition(Vector3I toReject)
 		{
-			for (int x = min.X; x <= max.X; x++)
-				for (int y = min.Y; y <= max.Y; y++)
-					for (int z = min.Z; z <= max.Z; z++)
-						action.Invoke(new Vector3I(x, y, z));
+			Vector3I rejection;
+			toReject.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
+			return rejection;
 		}
 
 		/// <summary>
@@ -200,32 +235,40 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void rejectAll()
 		{
 			VRage.Exceptions.ThrowIf<ArgumentNullException>(Displacement == null, "direction");
-			rejectionCells = new MyUniqueList<Vector3>();
+			rejectionCells = new MyUniqueList<Vector3I>();
 
-			ReadOnlyList<Vector3I> immutable;
-			using (lock_OccupiedCells.AcquireSharedUsing())
-				immutable = OccupiedCells.immutable();
+			ReadOnlyList<IMySlimBlock> immutable;
+			using (lock_SlimBlocks.AcquireSharedUsing())
+				immutable = SlimBlocks.immutable();
 
-			CentreRejection = Centre.Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize);
-			foreach (Vector3I cell in immutable)
+			Centre.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out CentreRejection);//.Round(CubeGrid.GridSize);
+			foreach (IMySlimBlock slim in immutable)
 			{
-				Vector3 rejection = (cell * CubeGrid.GridSize).Rejection(Displacement, ref Displacement_PartialCalculation).Round(CubeGrid.GridSize);
-				rejectionCells.Add(rejection);
+				slim.ForEachCellSurround((cell) =>
+				{
+					Vector3I rejection;
+					(cell * myCubeGrid.GridSize).Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
+					rejectionCells.Add(rejection);
+					return false;
+				});
 			}
 		}
 
 		/// <param name="centreDestination">where the centre of the grid will end up (local)</param>
 		private void createCapsule(Vector3 centreDestination)
 		{
-			float radiusSquared = 0;
+			float longestDistanceSquared = 0;
 			foreach (Vector3 rejection in rejectionCells)
 			{
 				float distanceSquared = (rejection - CentreRejection).LengthSquared();
-				if (distanceSquared > radiusSquared)
-					radiusSquared = distanceSquared;
+				if (distanceSquared > longestDistanceSquared)
+					longestDistanceSquared = distanceSquared;
 			}
-
-			myPath = new Path(RelativeVector3F.createFromLocal(Centre, CubeGrid), RelativeVector3F.createFromLocal(centreDestination, CubeGrid), radiusSquared, CubeGrid.GridSize);
+			//myPath = new PathCapsule(RelativeVector3F.createFromLocal(Centre, CubeGrid), RelativeVector3F.createFromLocal(centreDestination, CubeGrid), longestDistanceSquared, CubeGrid.GridSize);
+			RelativeVector3F P0 = RelativeVector3F.createFromLocal(Centre, myCubeGrid);
+			RelativeVector3F P1 = RelativeVector3F.createFromLocal(centreDestination, myCubeGrid);
+			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + myCubeGrid.GridSize);
+			myPath = new Capsule(P0.getWorldAbsolute(), P1.getWorldAbsolute(), CapsuleRadius);
 		}
 
 		#endregion

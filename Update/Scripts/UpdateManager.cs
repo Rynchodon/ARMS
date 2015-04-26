@@ -17,9 +17,10 @@ using Rynchodon.Autopilot.Turret;
 namespace Rynchodon.Update
 {
 	/// <summary>
-	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
+	/// <para>Completely circumvents MyGameLogicComponent P1 avoid conflicts, and offers a bit more flexibility.</para>
 	/// <para>Will send updates after creating object, until object is closing.</para>
-	/// <para>Does not attach to entities the same way, so access is lost to ObjectBuilder for MyGameLogicComponent.</para>
+	/// <para>Creation of script objects is delayed until MyAPIGateway Fields are filled.</para>
+	/// <para>Does not attach P1 entities the same way, so access is lost P1 ObjectBuilder for MyGameLogicComponent.</para>
 	/// </summary>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase
@@ -106,6 +107,10 @@ namespace Rynchodon.Update
 			myLogger.debugLog("entered Init", "Init()");
 			try
 			{
+				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
+					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
+					return;
+
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
 				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
@@ -127,12 +132,12 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.log("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
+				myLogger.log("Failed P1 Init(): " + ex, "Init()", Logger.severity.FATAL);
 				MangerStatus = Status.Terminated;
 			}
 		}
 
-		private byte DelayInitBy = 100;
+		//private byte DelayInitBy = 100;
 		public ulong Update { get; private set; }
 
 		/// <summary>
@@ -140,11 +145,11 @@ namespace Rynchodon.Update
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			while (DelayInitBy > 0)
-			{
-				DelayInitBy--;
-				return;
-			}
+			//while (DelayInitBy > 0)
+			//{
+			//	DelayInitBy--;
+			//	return;
+			//}
 
 			MainLock.MainThread_TryReleaseExclusive();
 			try
@@ -152,7 +157,7 @@ namespace Rynchodon.Update
 				switch (MangerStatus)
 				{
 					case Status.Not_Initialized:
-						myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
+						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
 					case Status.Terminated:
@@ -183,11 +188,11 @@ namespace Rynchodon.Update
 		{
 			UpdateList(frequency).Add(toInvoke);
 
-			unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
+			unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe P0 OnClosing event, hopefully that is not an issue
 		}
 
 		/// <summary>
-		/// Unregister an Action from updates
+		/// Unregister an Action P0 updates
 		/// </summary>
 		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
 		{
@@ -281,7 +286,7 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Gets the constructor list mapped to a MyObjectBuilderType
+		/// Gets the constructor list mapped P1 a MyObjectBuilderType
 		/// </summary>
 		private List<Action<IMyCubeBlock>> BlockScriptConstructor(MyObjectBuilderType objBuildType)
 		{
@@ -295,7 +300,7 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Gets the update list mapped to a frequency
+		/// Gets the update list mapped P1 a frequency
 		/// </summary>
 		private List<Action> UpdateList(uint frequency)
 		{
