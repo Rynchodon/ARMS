@@ -17,26 +17,18 @@ using Rynchodon.Autopilot.Turret;
 namespace Rynchodon.Update
 {
 	/// <summary>
-	/// <para>Completely circumvents MyGameLogicComponent P1 avoid conflicts, and offers a bit more flexibility.</para>
+	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
 	/// <para>Will send updates after creating object, until object is closing.</para>
 	/// <para>Creation of script objects is delayed until MyAPIGateway Fields are filled.</para>
-	/// <para>Does not attach P1 entities the same way, so access is lost P1 ObjectBuilder for MyGameLogicComponent.</para>
+	/// <para>If an update script throws an exception, it will not stop receiving updates.</para>
 	/// </summary>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase
 	{
-		private static Dictionary<uint, List<Action>> UpdateRegistrar;
-
-		private static Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
-		private static List<Action<IMyCharacter>> CharacterScriptConstructors;
-		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
-		//private static Dictionary<Func<bool>, Action> OtherScriptConstructors = new Dictionary<Func<bool>, Action>();
-
-		private enum Status : byte { Not_Initialized, Initialized, Terminated }
-		private Status MangerStatus = Status.Not_Initialized;
-
-		private Logger myLogger = new Logger(null, "UpdateManager");
-		private static UpdateManager Instance;
+		/// <summary>
+		/// If true, all scripts will run only on server
+		/// </summary>
+		private const bool ServerOnly = true;
 
 		/// <summary>
 		/// Scripts that use UpdateManager shall be added here.
@@ -97,6 +89,19 @@ namespace Rynchodon.Update
 			//	});
 		}
 
+		private static Dictionary<uint, List<Action>> UpdateRegistrar;
+
+		private static Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
+		private static List<Action<IMyCharacter>> CharacterScriptConstructors;
+		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
+		//private static Dictionary<Func<bool>, Action> OtherScriptConstructors;
+
+		private enum Status : byte { Not_Initialized, Initialized, Terminated }
+		private Status MangerStatus = Status.Not_Initialized;
+
+		private Logger myLogger = new Logger(null, "UpdateManager");
+		private static UpdateManager Instance;
+
 		/// <summary>
 		/// For MySessionComponentBase
 		/// </summary>
@@ -104,12 +109,19 @@ namespace Rynchodon.Update
 
 		public void Init()
 		{
-			myLogger.debugLog("entered Init", "Init()");
+			//myLogger.debugLog("entered Init", "Init()");
 			try
 			{
 				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
 					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
 					return;
+
+				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && ! MyAPIGateway.Multiplayer.IsServer)
+				{
+					myLogger.debugLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
+					MangerStatus = Status.Terminated;
+					return;
+				}
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
@@ -122,7 +134,7 @@ namespace Rynchodon.Update
 				HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities(allEntities);
 
-				myLogger.debugLog("Adding all entities", "Init()");
+				//myLogger.debugLog("Adding all entities", "Init()");
 				foreach (IMyEntity entity in allEntities)
 					Entities_OnEntityAdd(entity);
 
@@ -132,12 +144,11 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.log("Failed P1 Init(): " + ex, "Init()", Logger.severity.FATAL);
+				myLogger.log("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
 				MangerStatus = Status.Terminated;
 			}
 		}
 
-		//private byte DelayInitBy = 100;
 		public ulong Update { get; private set; }
 
 		/// <summary>
@@ -145,12 +156,6 @@ namespace Rynchodon.Update
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			//while (DelayInitBy > 0)
-			//{
-			//	DelayInitBy--;
-			//	return;
-			//}
-
 			MainLock.MainThread_TryReleaseExclusive();
 			try
 			{
@@ -167,12 +172,19 @@ namespace Rynchodon.Update
 					if (Update % pair.Key == 0)
 					{
 						foreach (Action item in pair.Value)
-							item.Invoke();
+							try
+							{ item.Invoke(); }
+							catch (Exception ex2)
+							{
+								myLogger.log("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
+								UnRegisterForUpdates(pair.Key, item);
+							}
 					}
 			}
 			catch (Exception ex)
 			{
-				myLogger.debugLog("Exception: " + ex, "UpdateAfterSimulation()");
+				myLogger.log("Exception: " + ex, "UpdateAfterSimulation()", Logger.severity.FATAL);
+				MangerStatus = Status.Terminated;
 			}
 			finally
 			{
@@ -184,15 +196,16 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// register an Action for updates
 		/// </summary>
-		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing)
+		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
 			UpdateList(frequency).Add(toInvoke);
 
-			unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe P0 OnClosing event, hopefully that is not an issue
+			if (unregisterOnClosing != null)
+				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
 		}
 
 		/// <summary>
-		/// Unregister an Action P0 updates
+		/// Unregister an Action from updates
 		/// </summary>
 		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
 		{
@@ -208,7 +221,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor)
 		{
-			myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
@@ -217,7 +230,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterForCharacter(Action<IMyCharacter> constructor)
 		{
-			myLogger.debugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
 			CharacterScriptConstructors.Add(constructor);
 		}
 
@@ -226,7 +239,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterForGrid(Action<IMyCubeGrid> constructor)
 		{
-			myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -286,7 +299,7 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Gets the constructor list mapped P1 a MyObjectBuilderType
+		/// Gets the constructor list mapped to a MyObjectBuilderType
 		/// </summary>
 		private List<Action<IMyCubeBlock>> BlockScriptConstructor(MyObjectBuilderType objBuildType)
 		{
@@ -300,7 +313,7 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Gets the update list mapped P1 a frequency
+		/// Gets the update list mapped to a frequency
 		/// </summary>
 		private List<Action> UpdateList(uint frequency)
 		{
