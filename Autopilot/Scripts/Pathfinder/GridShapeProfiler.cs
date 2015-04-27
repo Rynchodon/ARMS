@@ -27,17 +27,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private static Dictionary<IMyCubeGrid, GridShapeProfiler> registry = new Dictionary<IMyCubeGrid, GridShapeProfiler>();
 		private static FastResourceLock lock_registry = new FastResourceLock();
 		/// <summary>
-		/// All the local positions of occupied cells in this grid.
+		/// All the local positions of blocks in this grid.
 		/// </summary>
 		private ListSnapshots<IMySlimBlock> SlimBlocks;
 		private FastResourceLock lock_SlimBlocks = new FastResourceLock();
+		///// <summary>
+		///// All the cells that are occupied and neighbouring cells.
+		///// </summary>
+		//private MyUniqueList<Vector3I> CellsSurround;
 
 		private Vector3 Centre { get { return myCubeGrid.LocalAABB.Center; } }
 		private Vector3 CentreRejection;
-		private Vector3 Displacement;
-		private Vector3? Displacement_PartialCalculation = null;
+		private Vector3 DirectionNorm;
+		//private Vector3? Displacement_PartialCalculation = null;
 
-		private MyUniqueList<Vector3I> rejectionCells;
+		private MyUniqueList<Vector3> rejectionCells;
 		public Capsule myPath { get; private set; }
 
 		private Logger myLogger = new Logger(null, "GridShapeProfiler");
@@ -163,68 +167,84 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock)
 		{
 			//if (displacement == null)
-			this.Displacement = destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize;
-			this.Displacement_PartialCalculation = null;
+			//var results = TimeAction.Time(() =>
+			//{
+			//Vector3 newDirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
+			//if (DirectionNorm.IsValid() && Vector3.RectangularDistance(ref this.DirectionNorm, ref newDirectionNorm) < 0.1)
+			//{
+			//	myLogger.debugLog("newDirectionNorm(" + newDirectionNorm + ") is not appreciably different from DirectionNorm (" + DirectionNorm + ")", "SetDestination()");
+			//	return;
+			//}
+			//DirectionNorm = newDirectionNorm;
+			DirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
+			//}, 10, false);
+			//myLogger.debugLog("Time to DirectionNorm: " + results.Pretty_FiveNumbers(), "SetDestination()");
+			//this.Displacement_PartialCalculation = null;
 			//else
 			//	this.Displacement = (Vector3)displacement;
-			Vector3 centreDestination = destination.getLocal() + (Centre - navigationBlock.Position) * myCubeGrid.GridSize;
+			//Vector3 centreDestination = new Vector3();
+			//results = TimeAction.Time(() =>
+			//{
+				Vector3 centreDestination = destination.getLocal() + Centre - navigationBlock.Position * myCubeGrid.GridSize;
+			//}, 10, false);
+			//myLogger.debugLog("Time to centreDestination: " + results.Pretty_FiveNumbers(), "SetDestination()");
 
-			rejectAll();
-			createCapsule(centreDestination);
+			//results = TimeAction.Time(() =>
+			//{
+				rejectAll();
+			//}, 10, false);
+			//myLogger.debugLog("Time to reject all: " + results.Pretty_FiveNumbers(), "SetDestination()");
+			//results = TimeAction.Time(() =>
+			//{
+				createCapsule(centreDestination);
+			//}, 10, false);
+			//myLogger.debugLog("Time to createCapsule: " + results.Pretty_FiveNumbers(), "SetDestination()");
 		}
 
-		///// <summary>
-		///// <para>Perform a vector rejection from direction to destination.</para>
-		///// <para>Destination must be set first.</para>
-		///// </summary>
-		///// <param name="toReject">the grid-local vector to reject</param>
-		///// <returns>the rejected vector</returns>
-		//public Vector3 rejectVector(Vector3 toReject)
-		//{
-		//	Vector3 result;
-		//	toReject.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out result);
-		//	myLogger.debugLog("rejected vector " + toReject + " is " + result, "rejectVector()");
-		//	return result;
-		//}
+		/// <summary>
+		/// Rejection test for intersection with the profiled grid.
+		/// </summary>
+		/// <param name="position">position of potential obstruction</param>
+		/// <returns>true if the rejection collides with one or more of the grid's rejections</returns>
+		public bool rejectionIntersects(RelativeVector3F position, float GridSize)
+		{ return rejectionIntersects(position.getLocal(), GridSize); }
 
-		public bool testVector(Vector3 toTest)
+		/// <summary>
+		/// Rejection test for intersection with the profiled grid.
+		/// </summary>
+		/// <param name="localMetresPosition">The local position in metres.</param>
+		/// <returns>true if the rejection collides with one or more of the grid's rejections</returns>
+		public bool rejectionIntersects(Vector3 localMetresPosition, float GridSize)
 		{
-			Vector3I asCell = myCubeGrid.WorldToGridInteger(toTest);
-
-
-
-			// perform vector rejection, convert to cell, and == against rejectionCells
-			// or convert to cell, perform rejection, and == against rejectionCells
+			Vector3 TestRejection = RejectMetres(localMetresPosition);
+			foreach (Vector3 ProfileRejection in rejectionCells)
+				//if (TestRejection == ProfileRejection)
+				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < GridSize + myCubeGrid.GridSize)
+					return true;
+			return false;
 		}
 
 		#endregion
 		#region Private Methods
 
 		///// <summary>
-		///// Perform an Action for each Vector3I from min to max (inclusive).
+		///// Perform a rejection of a cell from Displacement and round the result to 1 decimal
 		///// </summary>
-		///// <param name="min">starting Vector3I</param>
-		///// <param name="max">ending Vector3I</param>
-		///// <param name="action">action to invoke</param>
-		//private void foreachVector3I(Vector3I min, Vector3I max, Action<Vector3I> action)
+		///// <remarks>
+		///// To ensure consistency, all rejections should be performed by this method.
+		///// </remarks>
+		//private Vector3 RejectCell(Vector3I cellPosition)
 		//{
-		//	for (int x = min.X; x <= max.X; x++)
-		//		for (int y = min.Y; y <= max.Y; y++)
-		//			for (int z = min.Z; z <= max.Z; z++)
-		//				action.Invoke(new Vector3I(x, y, z));
+		//	Vector3 rejection = Vector3.Reject(cellPosition, DirectionNorm);
+		//	rejection.ApplyOperation((comp) => Math.Round(comp, 1), out rejection);
+		//	return rejection;
 		//}
 
 		/// <summary>
-		/// to ensure consistency, all rejections should be performed by this method
+		/// Convert metres to a cell, perfrom a rejection of the cell, and round the result to 1 decimal
 		/// </summary>
-		/// <param name="toReject">local position vector</param>
-		/// <returns></returns>
-		private Vector3I rejectLocalPosition(Vector3I toReject)
-		{
-			Vector3I rejection;
-			toReject.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
-			return rejection;
-		}
+		private Vector3 RejectMetres(Vector3 metresPosition)
+		{ return Vector3.Reject(metresPosition, DirectionNorm); } // RejectCell(myCubeGrid.WorldToGridInteger(metresPosition)); }
 
 		/// <summary>
 		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in rejectionCells.
@@ -234,20 +254,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </remarks>
 		private void rejectAll()
 		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(Displacement == null, "direction");
-			rejectionCells = new MyUniqueList<Vector3I>();
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(DirectionNorm == null, "DirectionNorm");
+			rejectionCells = new MyUniqueList<Vector3>();
 
 			ReadOnlyList<IMySlimBlock> immutable;
 			using (lock_SlimBlocks.AcquireSharedUsing())
 				immutable = SlimBlocks.immutable();
 
-			Centre.Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out CentreRejection);//.Round(CubeGrid.GridSize);
+			CentreRejection = RejectMetres(Centre);
+			//Centre.Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out CentreRejection);//.Round(CubeGrid.GridSize);
 			foreach (IMySlimBlock slim in immutable)
 			{
 				slim.ForEachCellSurround((cell) =>
 				{
-					Vector3I rejection;
-					(cell * myCubeGrid.GridSize).Rejection(Displacement, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
+					Vector3 rejection = RejectMetres(cell * myCubeGrid.GridSize);
+					//(cell * myCubeGrid.GridSize).Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
 					rejectionCells.Add(rejection);
 					return false;
 				});

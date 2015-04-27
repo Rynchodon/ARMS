@@ -324,7 +324,7 @@ namespace Rynchodon.Autopilot
 								log("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 
 								PathChecker checker = new PathChecker(myGrid);
-								var timeResults = TimeAction.Time(() => checker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)CNS.getWayDest(), myGrid), getNavigationBlock()), 1);
+								var timeResults = TimeAction.Time(() => checker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)CNS.getWayDest(), myGrid), getNavigationBlock()), 10);
 								myLogger.debugLog("Path Length: " + ((Vector3D)CNS.getWayDest() - getNavigationBlock().GetPosition()).Length(), "update()", Logger.severity.INFO);
 								myLogger.debugLog("Timed new path checker: " + timeResults.Pretty_FiveNumbers(), "update()", Logger.severity.INFO);
 

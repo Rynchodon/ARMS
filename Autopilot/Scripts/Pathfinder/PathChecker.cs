@@ -83,6 +83,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// set destination
 			myGridShape = GridShapeProfiler.getFor(myCubeGrid);
+			//var results = TimeAction.Time(()=>{
+			//myGridShape.SetDestination(destination, navigationBlock);}, 10);
+			//myLogger.debugLog("Timed Set Destination: " + results.Pretty_FiveNumbers(), "TestPath()");
 			myGridShape.SetDestination(destination, navigationBlock);
 			Capsule myPath = myGridShape.myPath;
 
@@ -120,20 +123,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 								if (!myPath.Intersects(cellPosWorld, GridSize))
 									return false;
 
-								cellRejectedCount++;
 								// rejection
-								Vector3 offendingBlockRejection = myGridShape.rejectVector(cellPosition.getLocal());
-								foreach (Vector3 myBlockRejection in myGridShape.rejectionCells)
-								{
-									myLogger.debugLog("comparing offending cell at " + offendingBlockRejection + " to " + myBlockRejection + ", distance is " + Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection), "TestPath()");
-									if (Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection) < myPath.BufferSquared)
+								cellRejectedCount++;
+								//Vector3 offendingBlockRejection = myGridShape.rejectVector(cellPosition.getLocal());
+								if (myGridShape.rejectionIntersects( RelativeVector3F.createFromWorldAbsolute(cellPosWorld, myCubeGrid), myCubeGrid.GridSize))
+								//myGridShape.rejectionIntersects(
+								//foreach (Vector3 myBlockRejection in myGridShape.rejectionCells)
+								//{
+								//	myLogger.debugLog("comparing offending cell at " + offendingBlockRejection + " to " + myBlockRejection + ", distance is " + Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection), "TestPath()");
+								//	if (Vector3.DistanceSquared(offendingBlockRejection, myBlockRejection) < myPath.BufferSquared)
 									{
 										myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
 										blockIntersects = true;
 										return true;
 									}
-								}
+								return false;
+								//}
 							});
+						if (blockIntersects)
+							return false;
 					}
 					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + cellCount + " against capsule and " + cellRejectedCount + " against rejection", "TestPath()");
 					continue;
@@ -141,7 +149,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				// not a grid
 				myLogger.debugLog("not a grid, testing AABB", "TestPath()");
-				if (!AABB_intersects_path(entity, myPath))
+				if (!myPath.IntersectsAABB(entity)) //  !AABB_intersects_path(entity, myPath))
 					continue;
 
 				myLogger.debugLog("no more tests for non-grids are implemented", "TestPath()", Logger.severity.DEBUG);
@@ -177,20 +185,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return true;
 		}
 
-		private bool AABB_intersects_path(IMyEntity entity, PathCapsule myPath)
-		{
-			BoundingBoxD AABB = entity.WorldAABB;
-			AABB.Inflate(myPath.BufferedRadius);
-			double distance;
-			//myLogger.debugLog("inflated " + entity.WorldAABB + " to " + AABB, "TestPath()");
-			//myLogger.debugLog("line = " + myPath.line_world.From + " to " + myPath.line_world.To, "TestPath()");
-			if (entity.WorldAABB.Intersects(myPath.line_world, out distance))
-			{
-				myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") intersects path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
-				return true;
-			}
-			//myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") does not intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
-			return false;
-		}
+		//private bool AABB_intersects_path(IMyEntity entity, PathCapsule myPath)
+		//{
+		//	BoundingBoxD AABB = entity.WorldAABB;
+		//	AABB.Inflate(myPath.BufferedRadius);
+		//	double distance;
+		//	//myLogger.debugLog("inflated " + entity.WorldAABB + " to " + AABB, "TestPath()");
+		//	//myLogger.debugLog("line = " + myPath.line_world.From + " to " + myPath.line_world.To, "TestPath()");
+		//	if (entity.WorldAABB.Intersects(myPath.line_world, out distance))
+		//	{
+		//		myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") intersects path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+		//		return true;
+		//	}
+		//	//myLogger.debugLog("for " + entity.getBestName() + ", AABB(" + entity.WorldAABB + ") does not intersect path, distance = " + distance, "TestPath()", Logger.severity.DEBUG);
+		//	return false;
+		//}
 	}
 }

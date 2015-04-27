@@ -42,22 +42,22 @@ namespace Rynchodon
 		/// performs an action on each cell a block occupies plus all the surrounding cells
 		/// </summary>
 		/// <param name="invokeOnEach">function to call for each vector, if it return true short-curcuit</param>
-		public static void ForEachCellSurround(this IMySlimBlock block, Func<Vector3I, bool> invokeOnEach)
+		public static void ForEachCellSurround(this IMySlimBlock block, Func<Vector3I, bool> invokeOnEach, int extend = 1)
 		{
 			IMyCubeBlock FatBlock = block.FatBlock;
 			if (FatBlock == null)
 			{
 				Vector3I min, max;
-				block.Position.ApplyOperation((cellComp) => { return cellComp - 1; }, out min);
-				block.Position.ApplyOperation((cellComp) => { return cellComp + 1; }, out max);
+				block.Position.ApplyOperation((cellComp) => { return cellComp - extend; }, out min);
+				block.Position.ApplyOperation((cellComp) => { return cellComp + extend; }, out max);
 				min.ForEachVector(max, invokeOnEach);
 			}
 			else
 			{
 				float gridSize = block.CubeGrid.GridSize;
 				Vector3I min, max;
-				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize - 1), out min);
-				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize + 1), out max);
+				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize - extend), out min);
+				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize + extend), out max);
 				min.ForEachVector(max, invokeOnEach);
 			}
 		}
