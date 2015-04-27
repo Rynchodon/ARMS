@@ -11,6 +11,7 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
+//using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
@@ -18,23 +19,16 @@ namespace Rynchodon.Update
 	/// <summary>
 	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
 	/// <para>Will send updates after creating object, until object is closing.</para>
-	/// <para>Does not attach to entities the same way, so access is lost to ObjectBuilder for MyGameLogicComponent.</para>
+	/// <para>Creation of script objects is delayed until MyAPIGateway Fields are filled.</para>
+	/// <para>If an update script throws an exception, it will not stop receiving updates.</para>
 	/// </summary>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase
 	{
-		private static Dictionary<uint, List<Action>> UpdateRegistrar;
-
-		private static Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
-		private static List<Action<IMyCharacter>> CharacterScriptConstructors;
-		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
-		//private static Dictionary<Func<bool>, Action> OtherScriptConstructors = new Dictionary<Func<bool>, Action>();
-
-		private enum Status : byte { Not_Initialized, Initialized, Terminated }
-		private Status MangerStatus = Status.Not_Initialized;
-
-		private Logger myLogger = new Logger(null, "UpdateManager");
-		private static UpdateManager Instance;
+		/// <summary>
+		/// If true, all scripts will run only on server / single player
+		/// </summary>
+		private const bool ServerOnly = true;
 
 		/// <summary>
 		/// Scripts that use UpdateManager shall be added here.
@@ -81,13 +75,31 @@ namespace Rynchodon.Update
 			{
 				TurretLargeRocket newTurret = new TurretLargeRocket(block);
 				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-			}); 
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) =>
 			{
 				TurretInterior newTurret = new TurretInterior(block);
 				RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
 			});
+
+			//RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
+			//	{
+			//		OreDetector newOD = new OreDetector(block);
+			//		RegisterForUpdates(100, newOD.Update100, block);
+			//	});
 		}
+
+		private static Dictionary<uint, List<Action>> UpdateRegistrar;
+
+		private static Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
+		private static List<Action<IMyCharacter>> CharacterScriptConstructors;
+		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
+
+		private enum Status : byte { Not_Initialized, Initialized, Terminated }
+		private Status MangerStatus = Status.Not_Initialized;
+
+		private Logger myLogger = new Logger(null, "UpdateManager");
+		private static UpdateManager Instance;
 
 		/// <summary>
 		/// For MySessionComponentBase
@@ -96,9 +108,20 @@ namespace Rynchodon.Update
 
 		public void Init()
 		{
-			myLogger.debugLog("entered Init", "Init()");
+			//myLogger.debugLog("entered Init", "Init()");
 			try
 			{
+				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
+					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
+					return;
+
+				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && !MyAPIGateway.Multiplayer.IsServer)
+				{
+					myLogger.debugLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
+					MangerStatus = Status.Terminated;
+					return;
+				}
+
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
 				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
@@ -110,7 +133,7 @@ namespace Rynchodon.Update
 				HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities(allEntities);
 
-				myLogger.debugLog("Adding all entities", "Init()");
+				//myLogger.debugLog("Adding all entities", "Init()");
 				foreach (IMyEntity entity in allEntities)
 					Entities_OnEntityAdd(entity);
 
@@ -125,7 +148,6 @@ namespace Rynchodon.Update
 			}
 		}
 
-		private byte DelayInitBy = 100;
 		public ulong Update { get; private set; }
 
 		/// <summary>
@@ -133,19 +155,13 @@ namespace Rynchodon.Update
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			while (DelayInitBy > 0)
-			{
-				DelayInitBy--;
-				return;
-			}
-
 			MainLock.MainThread_TryReleaseExclusive();
 			try
 			{
 				switch (MangerStatus)
 				{
 					case Status.Not_Initialized:
-						myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
+						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
 					case Status.Terminated:
@@ -155,12 +171,19 @@ namespace Rynchodon.Update
 					if (Update % pair.Key == 0)
 					{
 						foreach (Action item in pair.Value)
-							item.Invoke();
+							try
+							{ item.Invoke(); }
+							catch (Exception ex2)
+							{
+								myLogger.log("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
+								UnRegisterForUpdates(pair.Key, item);
+							}
 					}
 			}
 			catch (Exception ex)
 			{
-				myLogger.debugLog("Exception: " + ex, "UpdateAfterSimulation()");
+				myLogger.log("Exception: " + ex, "UpdateAfterSimulation()", Logger.severity.FATAL);
+				MangerStatus = Status.Terminated;
 			}
 			finally
 			{
@@ -172,11 +195,15 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// register an Action for updates
 		/// </summary>
-		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing)
+		/// <param name="frequency">how often to invoke</param>
+		/// <param name="toInvoke">action to invoke</param>
+		/// <param name="unregisterOnClosing">stop invoking when entity closes</param>
+		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
 			UpdateList(frequency).Add(toInvoke);
 
-			unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
+			if (unregisterOnClosing != null)
+				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
 		}
 
 		/// <summary>
@@ -194,27 +221,31 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// register a constructor Action for a block
 		/// </summary>
+		/// <param name="objBuildType">type of block to create for</param>
+		/// <param name="constructor">construcor wrapped in an Action</param>
 		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor)
 		{
-			myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
 		/// <summary>
 		/// register a constructor Action for a character
 		/// </summary>
+		/// <param name="constructor">constructor wrapped in an Action</param>
 		private void RegisterForCharacter(Action<IMyCharacter> constructor)
 		{
-			myLogger.debugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
 			CharacterScriptConstructors.Add(constructor);
 		}
 
 		/// <summary>
 		/// register a constructor Action for a grid
 		/// </summary>
+		/// <param name="constructor">constructor wrapped in an Action</param>
 		private void RegisterForGrid(Action<IMyCubeGrid> constructor)
 		{
-			myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -247,6 +278,8 @@ namespace Rynchodon.Update
 			}
 		}
 
+		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
+
 		/// <summary>
 		/// if necessary, builds script for a block
 		/// </summary>
@@ -255,6 +288,12 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
+				long EntityId = fatblock.EntityId;
+				if (CubeBlock_entityIds.Contains(EntityId))
+					return;
+				CubeBlock_entityIds.Add(EntityId);
+				fatblock.OnClosing += (alsoFatblock) => { CubeBlock_entityIds.Remove(EntityId); };
+
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
