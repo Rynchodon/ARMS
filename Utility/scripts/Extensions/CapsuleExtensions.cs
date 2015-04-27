@@ -24,5 +24,13 @@ namespace Rynchodon
 			float bufferedRadiusSquared = bufferedRadius * bufferedRadius;
 			return cap.get_Line().DistanceSquared(worldPosition) <= bufferedRadiusSquared;
 		}
+
+		public static bool Intersects(this Capsule capsule, Capsule other)
+		{
+			float shortestDistanceSquared = Line.GetShortestDistanceSquared(capsule.get_Line(), other.get_Line());
+			float radiiSquared = capsule.Radius + other.Radius;
+			radiiSquared *= radiiSquared;
+			return shortestDistanceSquared <= radiiSquared;
+		}
 	}
 }
