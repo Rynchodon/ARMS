@@ -263,7 +263,6 @@ namespace Rynchodon.Autopilot
 		public void atWayDest(TypeOfWayDest typeToRemove)
 		{
 			onWayDestAddedRemoved();
-			ignoreAsteroids = false;
 			switch (typeToRemove)
 			{
 				case TypeOfWayDest.BLOCK:
@@ -272,6 +271,7 @@ namespace Rynchodon.Autopilot
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
 					log("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
+					ignoreAsteroids = false;
 					CurrentGridDest = null;
 					coordDestination = null;
 					destination_offset = Vector3.Zero;
