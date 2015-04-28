@@ -3,3 +3,5 @@ Will be moved to steam every release.
 major:
 
 minor:
+fixed crash caused by merging
+fixed ignore asteroid cleared upon reaching waypoint
