@@ -9,12 +9,29 @@ namespace Rynchodon
 		public static Line get_Line(this Capsule cap)
 		{ return new Line(cap.P0, cap.P1, false); }
 
+		public static Ray get_Ray(this Capsule cap, out float length)
+		{
+			Vector3 direction = cap.P1 - cap.P0;
+			length = direction.Length();
+			Vector3 directionNorm = direction / length;
+			Ray result = new Ray(cap.P0, directionNorm);
+			return result;
+		}
+
 		public static bool IntersectsAABB(this Capsule cap, IMyEntity entity)
 		{
 			BoundingBox AABB = (BoundingBox)entity.WorldAABB;
 			AABB.Inflate(cap.Radius);
 			float distance;
 			return (AABB.Intersects(cap.get_Line(), out distance));
+		}
+
+		public static bool IntersectsVolume(this Capsule cap, IMyEntity entity)
+		{
+			BoundingSphere Volume = (BoundingSphere)entity.WorldVolume;
+			Volume.Radius += cap.Radius;
+			float length, tmin, tmax;
+			return Volume.IntersectRaySphere(cap.get_Ray(out length), out tmin, out tmax) && tmin < length;
 		}
 
 		/// <param name="buffer">the grid size of the grid to test, added to the size of the grid that owns the path</param>

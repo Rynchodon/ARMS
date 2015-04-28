@@ -240,18 +240,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 		//	return rejection;
 		//}
 
-		/// <summary>
-		/// Convert metres to a cell, perfrom a rejection of the cell, and round the result to 1 decimal
-		/// </summary>
 		private Vector3 RejectMetres(Vector3 metresPosition)
 		{ return Vector3.Reject(metresPosition, DirectionNorm); } // RejectCell(myCubeGrid.WorldToGridInteger(metresPosition)); }
 
 		/// <summary>
-		/// Perform a vector rejection of every occupied cell from the specified direction and store the results in rejectionCells.
+		/// Perform a vector rejection of every occupied cell from DirectionNorm and store the results in rejectionCells.
 		/// </summary>
-		/// <remarks>
-		/// It is not useful to normalize direction first.
-		/// </remarks>
 		private void rejectAll()
 		{
 			VRage.Exceptions.ThrowIf<ArgumentNullException>(DirectionNorm == null, "DirectionNorm");
@@ -265,7 +259,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//Centre.Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out CentreRejection);//.Round(CubeGrid.GridSize);
 			foreach (IMySlimBlock slim in immutable)
 			{
-				slim.ForEachCellSurround((cell) =>
+				slim.ForEachCell((cell) =>
 				{
 					Vector3 rejection = RejectMetres(cell * myCubeGrid.GridSize);
 					//(cell * myCubeGrid.GridSize).Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);

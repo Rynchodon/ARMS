@@ -62,6 +62,8 @@ namespace Rynchodon
 				IMyCubeGrid entityAsGrid = entity as IMyCubeGrid;
 				if (entityAsGrid != null)
 				{
+					// TODO: test GetLineIntersectionExact...
+
 					List<Vector3I> rayCastCells = new List<Vector3I>();
 					entityAsGrid.RayCastCells(world.From, world.To, rayCastCells); // I do not know if rayCastCells will be sorted
 

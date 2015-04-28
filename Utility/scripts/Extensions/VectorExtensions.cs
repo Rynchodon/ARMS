@@ -39,7 +39,7 @@ namespace Rynchodon
 		/// <summary>
 		/// aply an operation to each of x, y, z
 		/// </summary>
-		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3I result)
+		public static void ApplyOperation(this Vector3D vector, Func<double, int> operation, out Vector3I result)
 		{
 			int x = (int)operation(vector.X);
 			int y = (int)operation(vector.Y);
@@ -61,7 +61,7 @@ namespace Rynchodon
 		/// <summary>
 		/// aply an operation to each of x, y, z
 		/// </summary>
-		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3I result)
+		public static void ApplyOperation(this Vector3 vector, Func<double, int> operation, out Vector3I result)
 		{
 			int x = (int)operation(vector.X);
 			int y = (int)operation(vector.Y);

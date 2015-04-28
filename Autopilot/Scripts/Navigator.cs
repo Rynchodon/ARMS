@@ -580,8 +580,8 @@ namespace Rynchodon.Autopilot
 
 			if (CNS.match_direction == null && CNS.landLocalBlock == null)
 			{
-				CNS.moveState = NavSettings.Moving.MOVING; // to allow speed control to restart movement
-				calcAndMove();
+				//CNS.moveState = NavSettings.Moving.MOVING;
+				//calcAndMove(); // to allow speed control to restart movement
 				fullStop("At dest");
 				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
@@ -658,7 +658,6 @@ namespace Rynchodon.Autopilot
 			switch (CNS.moveState)
 			{
 				case NavSettings.Moving.MOVING:
-					// will go here after clearing a waypoint or destination, do not want to switch to hybrid, as we may need to kill alot of inertia
 					{
 						if (movingTooSlow && CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove) //speed up test. missile will never pass this test
 							if (MM.rotLenSq < rotLenSq_startMove)
@@ -669,6 +668,15 @@ namespace Rynchodon.Autopilot
 					}
 					break;
 				case NavSettings.Moving.STOP_MOVE:
+					{
+						if (CNS.isAMissile || CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove)
+							if (MM.rotLenSq < Rotator.rotLenSq_stopAndRot)
+							{
+								calcAndMove();
+								CNS.moveState = NavSettings.Moving.MOVING;
+								reportState(ReportableState.MOVING);
+							}
+					}
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
@@ -741,10 +749,10 @@ namespace Rynchodon.Autopilot
 		/// not squared (5°)
 		/// </summary>
 		//public const float rotLen_minimum = 0.0873f;
-		/// <summary>
-		/// switch from hybrid to moving when less than (5°)
-		/// </summary>
-		public const float rotLenSq_switchToMove = 0.00762f;
+		///// <summary>
+		///// switch from hybrid to moving when less than (5°)
+		///// </summary>
+		//public const float rotLenSq_switchToMove = 0.00762f;
 		/// <summary>
 		/// start moving when less than (30°)
 		/// </summary>

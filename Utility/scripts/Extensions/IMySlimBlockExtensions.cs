@@ -32,8 +32,8 @@ namespace Rynchodon
 			{
 				float gridSize = block.CubeGrid.GridSize;
 				Vector3I min, max;
-				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => { return Math.Round(metresComp / gridSize); }, out min);
-				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => { return Math.Round(metresComp / gridSize); }, out max);
+				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out min);
+				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out max);
 				min.ForEachVector(max, invokeOnEach);
 			}
 		}
@@ -56,8 +56,8 @@ namespace Rynchodon
 			{
 				float gridSize = block.CubeGrid.GridSize;
 				Vector3I min, max;
-				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize - extend), out min);
-				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => Math.Round(metresComp / gridSize + extend), out max);
+				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => (int)Math.Round(metresComp / gridSize - extend), out min);
+				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => (int)Math.Round(metresComp / gridSize + extend), out max);
 				min.ForEachVector(max, invokeOnEach);
 			}
 		}

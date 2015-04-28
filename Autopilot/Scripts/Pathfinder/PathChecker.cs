@@ -148,8 +148,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 
 				// not a grid
-				myLogger.debugLog("not a grid, testing AABB", "TestPath()");
-				if (!myPath.IntersectsAABB(entity)) //  !AABB_intersects_path(entity, myPath))
+				myLogger.debugLog("not a grid, testing bounds", "TestPath()");
+				if (!myPath.IntersectsAABB(entity))
+					continue;
+
+				if (!myPath.IntersectsVolume(entity))
 					continue;
 
 				myLogger.debugLog("no more tests for non-grids are implemented", "TestPath()", Logger.severity.DEBUG);
