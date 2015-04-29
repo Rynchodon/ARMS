@@ -119,9 +119,9 @@ namespace Rynchodon.Autopilot
 							else
 								goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.NOT_MOVE:
-							if (!CNS.isAMissile && CNS.collisionUpdateSinceWaypointAdded < Navigator.collisionUpdatesBeforeMove)
+							if (!owner.PathfinderAllowsMovement)
 							{
-								myLogger.debugLog("waiting for collision updates: " + CNS.collisionUpdateSinceWaypointAdded, "calcAndRotate()");
+								myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
 								return;
 							}
 							owner.reportState(Navigator.ReportableState.ROTATING);

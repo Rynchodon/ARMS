@@ -14,23 +14,21 @@ namespace Rynchodon
 		private FastResourceLock lock_ActionQueue = new FastResourceLock();
 
 		private bool IsRunning = false;
+		private FastResourceLock lock_IsRunning = new FastResourceLock();
 
-		private Logger myLogger;
-
-		public ThreadManager(string name)
-		{
-			myLogger = new Logger(null, "ThreadManager-" + name);
-		}
+		public ThreadManager() { }
 
 		public void EnqueueAction(Action toQueue)
 		{
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 				ActionQueue.Enqueue(toQueue);
 			
-			// this section is safe so long as there is only one thread that calls this method
-			if (IsRunning)
-				return;
-			IsRunning = true;
+			using (lock_IsRunning.AcquireExclusiveUsing())
+			{
+				if (IsRunning)
+					return;
+				IsRunning = true;
+			}
 
 			MyAPIGateway.Parallel.Start(Run);
 		}

@@ -137,7 +137,8 @@ namespace Rynchodon.Autopilot
 						calcOrientationFromBlockDirection(CNS.landLocalBlock);
 						matchOrientation(); // start
 						CNS.landingState = NavSettings.LANDING.ORIENT;
-						CNS.collisionUpdateSinceWaypointAdded = 1000; // will not be calling collision
+						//CNS.collisionUpdateSinceWaypointAdded = 1000; // will not be calling collision
+						myNav.PathfinderAllowsMovement = true;
 						//mergeMonitor.clearMergeStatus();
 						return;
 					}

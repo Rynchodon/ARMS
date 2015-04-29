@@ -19,7 +19,6 @@ using VRage.Library.Utils;
 using VRageMath;
 
 using Rynchodon.Autopilot.Instruction;
-using Rynchodon.Autopilot.Pathfinder;
 using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot
@@ -52,7 +51,8 @@ namespace Rynchodon.Autopilot
 		/// current navigation settings
 		/// </summary>
 		internal NavSettings CNS;
-		private Collision myCollisionObject;
+		//private Collision myCollisionObject;
+		private Pathfinder.Pathfinder myPathfinder;
 		internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
 		internal Targeter myTargeter;
@@ -88,13 +88,15 @@ namespace Rynchodon.Autopilot
 				if (currentRemoteControl_Value == null)
 				{
 					myGridDim = null;
-					myCollisionObject = null;
+					//myCollisionObject = null;
+					myPathfinder = null;
 					CNS = new NavSettings(null);
 				}
 				else
 				{
 					myGridDim = new GridDimensions(currentRCblock);
-					myCollisionObject = new Collision(myGridDim); //(currentRCblock, out distance_from_RC_to_front);
+					//myCollisionObject = new Collision(myGridDim); //(currentRCblock, out distance_from_RC_to_front);
+					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
 					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
 				}
@@ -173,40 +175,40 @@ namespace Rynchodon.Autopilot
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
 
-		//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+			//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
 
-		//	reject1000(Vector3.Forward);
-		//	reject1000(new Vector3(1, 1, 1));
-		//	reject1000(new Vector3(854.731f, -551.474f, 393.268f));
-		//}
+			//	reject1000(Vector3.Forward);
+			//	reject1000(new Vector3(1, 1, 1));
+			//	reject1000(new Vector3(854.731f, -551.474f, 393.268f));
+			//}
 
-		//private void reject1000(Vector3 direction)
-		//{
-		//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
-		//	//MyGameTimer methodTimer = new MyGameTimer();
-		//	//MyTimeSpan longest;// = new MyTimeSpan();
-		//	//string prettyMax;
-		//	//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
+			//private void reject1000(Vector3 direction)
+			//{
+			//	GridShapeProfiler profiler = GridShapeProfiler.getFor(myGrid);
+			//	//MyGameTimer methodTimer = new MyGameTimer();
+			//	//MyTimeSpan longest;// = new MyTimeSpan();
+			//	//string prettyMax;
+			//	//string prettyTotal = TimeAction.get_PrettySeconds(() => profiler.rejectAll(direction), out prettyMax, 1000);
 
-		//	var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
-		//	myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
+			//	var results = TimeAction.Time(() => profiler.rejectAll(direction), 1000);
+			//	myLogger.debugLog("Results: " + results.Pretty_FiveNumbers() + "; rejection cells " + profiler.rejectionCells.Count + ";  for direction: " + direction, "reject1000()");
 
-		//	// producing incorrect results
-		//	//var results_keen = TimeAction.get_MyGameTimer(() => profiler.rejectAllKeen(direction), 1);
-		//	//myLogger.debugLog("Results Keen: " + results_keen + "; rejection cells " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+			//	// producing incorrect results
+			//	//var results_keen = TimeAction.get_MyGameTimer(() => profiler.rejectAllKeen(direction), 1);
+			//	//myLogger.debugLog("Results Keen: " + results_keen + "; rejection cells " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
 
-		//	var results_keen_norm = TimeAction.Time(() => profiler.rejectAllKeen(direction), 1000);
-		//	myLogger.debugLog("Results Keen Norm: " + results_keen_norm.Pretty_FiveNumbers() + "; rejection cells: " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
+			//	var results_keen_norm = TimeAction.Time(() => profiler.rejectAllKeen(direction), 1000);
+			//	myLogger.debugLog("Results Keen Norm: " + results_keen_norm.Pretty_FiveNumbers() + "; rejection cells: " + profiler.rejectionCells.Count + "; for direction: " + direction, "reject1000()");
 
-		//	myLogger.debugLog("Lazy_Total number of blocks is " + profiler.get_OccupiedCells().Count, "reject1000()");
-		//	//for (int i = 0; i < 1000; i++)
-		//	//{
-		//	//	MyTimeSpan span = TimeAction.(() => profiler.rejectAll(direction));
-		//	//	if (span > longest)
-		//	//		longest = span;
-		//	//}
+			//	myLogger.debugLog("Lazy_Total number of blocks is " + profiler.get_OccupiedCells().Count, "reject1000()");
+			//	//for (int i = 0; i < 1000; i++)
+			//	//{
+			//	//	MyTimeSpan span = TimeAction.(() => profiler.rejectAll(direction));
+			//	//	if (span > longest)
+			//	//		longest = span;
+			//	//}
 
-		//	//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
+			//	//myLogger.debugLog("average reject all time is " + PrettySI.makePretty(methodTimer.Elapsed.Seconds / 1000) + "s, longest is " + PrettySI.makePretty(longest.Seconds) + "s, accurate to " + PrettySI.makePretty(1.0 / MyGameTimer.Frequency) + "s, for direction = " + direction, "reject1000()");
 		}
 
 		internal void Close()
@@ -309,7 +311,7 @@ namespace Rynchodon.Autopilot
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
-								log("got a block as a destination: " + CNS.GridDestName + ":" + CNS.searchBlockName, "update()", Logger.severity.INFO);
+								log("got a block as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
 								//reportState(ReportableState.PATHFINDING);
 								return;
 							case NavSettings.TypeOfWayDest.OFFSET:
@@ -323,10 +325,10 @@ namespace Rynchodon.Autopilot
 							case NavSettings.TypeOfWayDest.COORDINATES:
 								log("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 
-								PathChecker checker = new PathChecker(myGrid);
-								var timeResults = TimeAction.Time(() => checker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)CNS.getWayDest(), myGrid), getNavigationBlock()), 10);
-								myLogger.debugLog("Path Length: " + ((Vector3D)CNS.getWayDest() - getNavigationBlock().GetPosition()).Length(), "update()", Logger.severity.INFO);
-								myLogger.debugLog("Timed new path checker: " + timeResults.Pretty_FiveNumbers(), "update()", Logger.severity.INFO);
+								//PathChecker checker = new PathChecker(myGrid);
+								//var timeResults = TimeAction.Time(() => checker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)CNS.getWayDest(), myGrid), getNavigationBlock()), 10);
+								//myLogger.debugLog("Path Length: " + ((Vector3D)CNS.getWayDest() - getNavigationBlock().GetPosition()).Length(), "update()", Logger.severity.INFO);
+								//myLogger.debugLog("Timed new path checker: " + timeResults.Pretty_FiveNumbers(), "update()", Logger.severity.INFO);
 
 								//reportState(ReportableState.PATHFINDING);
 								return;
@@ -610,46 +612,88 @@ namespace Rynchodon.Autopilot
 		{
 			if (!CNS.isAMissile)
 			{
-				Collision.collisionAvoidResult currentAvoidResult = myCollisionObject.avoidCollisions(ref CNS, updateCount);
-				switch (currentAvoidResult)
+				//Collision.collisionAvoidResult currentAvoidResult = myCollisionObject.avoidCollisions(ref CNS, updateCount);
+				//switch (currentAvoidResult)
+				//{
+				//	case Collision.collisionAvoidResult.NOT_FINISHED:
+				//		CNS.collisionUpdateSinceWaypointAdded++;
+				//		break;
+				//	case Collision.collisionAvoidResult.NOT_PERFORMED:
+				//		break;
+				//	case Collision.collisionAvoidResult.ALTERNATE_PATH:
+				//		CNS.noWayForward = false;
+				//		log("got a currentAvoidResult " + currentAvoidResult + ", new waypoint is " + CNS.getWayDest(), "navigate()", Logger.severity.TRACE);
+				//		CNS.collisionUpdateSinceWaypointAdded += collisionUpdatesBeforeMove;
+				//		break;
+				//	case Collision.collisionAvoidResult.NO_WAY_FORWARD:
+				//		log("got a currentAvoidResult " + currentAvoidResult, "navigate()", Logger.severity.INFO);
+				//		CNS.noWayForward = true;
+				//		reportState(ReportableState.NO_PATH);
+				//		fullStop("No Path");
+				//		return;
+				//	case Collision.collisionAvoidResult.NO_OBSTRUCTION:
+				//		CNS.noWayForward = false;
+				//		CNS.collisionUpdateSinceWaypointAdded += collisionUpdatesBeforeMove;
+				//		break;
+				//	default:
+				//		alwaysLog(Logger.severity.ERROR, "navigate()", "Error: unsuitable case from avoidCollisions(): " + currentAvoidResult);
+				//		fullStop("Invalid collisionAvoidResult");
+				//		return;
+				//}
+				//myPathfinder.throwIfNull_variable("myPathfinder");
+				Pathfinder.PathfinderOutput Output = myPathfinder.GetOutput();
+				//Output.throwIfNull_variable("Output");
+				if (Output != null)
 				{
-					case Collision.collisionAvoidResult.NOT_FINISHED:
-						CNS.collisionUpdateSinceWaypointAdded++;
-						break;
-					case Collision.collisionAvoidResult.NOT_PERFORMED:
-						break;
-					case Collision.collisionAvoidResult.ALTERNATE_PATH:
-						CNS.noWayForward = false;
-						log("got a currentAvoidResult " + currentAvoidResult + ", new waypoint is " + CNS.getWayDest(), "navigate()", Logger.severity.TRACE);
-						CNS.collisionUpdateSinceWaypointAdded += collisionUpdatesBeforeMove;
-						break;
-					case Collision.collisionAvoidResult.NO_WAY_FORWARD:
-						log("got a currentAvoidResult " + currentAvoidResult, "navigate()", Logger.severity.INFO);
-						CNS.noWayForward = true;
-						reportState(ReportableState.NO_PATH);
-						fullStop("No Path");
-						return;
-					case Collision.collisionAvoidResult.NO_OBSTRUCTION:
-						CNS.noWayForward = false;
-						CNS.collisionUpdateSinceWaypointAdded += collisionUpdatesBeforeMove;
-						break;
-					default:
-						alwaysLog(Logger.severity.ERROR, "navigate()", "Error: unsuitable case from avoidCollisions(): " + currentAvoidResult);
-						fullStop("Invalid collisionAvoidResult");
-						return;
+					myLogger.debugLog("result: " + Output.PathfinderResult, "collisionCheckMoveAndRotate()");
+					switch (Output.PathfinderResult)
+					{
+						case Pathfinder.PathfinderOutput.Result.Incomplete:
+						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
+							fullStop("searching for a path");
+							PathfinderAllowsMovement = false;
+							break;
+						case Pathfinder.PathfinderOutput.Result.Alternate_Path:
+							myLogger.debugLog("Setting new waypoint: " + Output.Waypoint, "collisionCheckMoveAndRotate()");
+							CNS.addWaypoint(Output.Waypoint, true);
+							fullStop("new path");
+							goto case Pathfinder.PathfinderOutput.Result.Path_Clear;
+						case Pathfinder.PathfinderOutput.Result.Path_Clear:
+							PathfinderAllowsMovement = true;
+							break;
+						case Pathfinder.PathfinderOutput.Result.No_Way_Forward:
+							reportState(ReportableState.NO_PATH);
+							fullStop("No Path");
+							PathfinderAllowsMovement = false;
+							return;
+						default:
+							myLogger.log("Error, invalid case: " + Output.PathfinderResult, "collisionCheckMoveAndRotate()", Logger.severity.FATAL);
+							fullStop("Invalid Pathfinder.PathfinderOutput");
+							PathfinderAllowsMovement = false;
+							return;
+					}
 				}
+				myPathfinder.Run((Vector3D)CNS.getWayDest(), getNavigationBlock(), CNS.ignoreAsteroids);
 			}
 			calcMoveAndRotate();
 		}
 
-		public static readonly byte collisionUpdatesBeforeMove = 100;
+		private bool value_PathfinderAllowsMovement = false;
+		/// <summary>Does the pathfinder permit the grid to move?</summary>
+		public bool PathfinderAllowsMovement
+		{
+			get { return CNS.isAMissile || value_PathfinderAllowsMovement; }
+			set { value_PathfinderAllowsMovement = value; }
+		}
+
+		//public static readonly byte collisionUpdatesBeforeMove = 100;
 		internal bool movingTooSlow = false;
 
 		private void calcMoveAndRotate()
 		{
 			//log("entered calcMoveAndRotate(" + pitch + ", " + yaw + ", " + CNS.getWayDest() + ")", "calcMoveAndRotate()", Logger.severity.TRACE);
 
-			if (CNS.noWayForward)
+			if (!PathfinderAllowsMovement)
 				return;
 
 			SpeedControl.controlSpeed(this);
@@ -659,7 +703,7 @@ namespace Rynchodon.Autopilot
 			{
 				case NavSettings.Moving.MOVING:
 					{
-						if (movingTooSlow && CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove) //speed up test. missile will never pass this test
+						if (movingTooSlow && PathfinderAllowsMovement) //speed up test. missile will never pass this test
 							if (MM.rotLenSq < rotLenSq_startMove)
 							{
 								calcAndMove();
@@ -669,7 +713,7 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
-						if (CNS.isAMissile || CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove)
+						if (PathfinderAllowsMovement)
 							if (MM.rotLenSq < Rotator.rotLenSq_stopAndRot)
 							{
 								calcAndMove();
@@ -712,7 +756,7 @@ namespace Rynchodon.Autopilot
 					{
 						if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA)
 						{
-							if (CNS.isAMissile || CNS.collisionUpdateSinceWaypointAdded >= collisionUpdatesBeforeMove)
+							if (PathfinderAllowsMovement)
 							{
 								if (CNS.isAMissile // missile never sidel
 									|| (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGridDim.getLongestDim() + CNS.destinationRadius)) // hybrid when not landing and moving a long way
@@ -1339,7 +1383,7 @@ namespace Rynchodon.Autopilot
 
 			reportExtra(ref newState);
 
-			if (CNS.noWayForward)
+			if (!PathfinderAllowsMovement)
 			{
 				//log("changing report to NO_PATH(noWayForward)", "reportState()", Logger.severity.TRACE);
 				newState = ReportableState.NO_PATH;

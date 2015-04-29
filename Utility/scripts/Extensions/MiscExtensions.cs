@@ -99,13 +99,15 @@ namespace Rynchodon
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
 		{ return PrettySI.makePretty(timeSpan.Seconds) + 's'; }
 
+		#region Distance
+
 		/// <summary>
 		/// Minimum distance squared between a line and a point.
 		/// </summary>
 		/// <remarks>
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
-		/// <returns>The minimum distance between the line and the point</returns>
+		/// <returns>The minimum distance squared between the line and the point</returns>
 		public static float DistanceSquared(this Line line, Vector3 point)
 		{
 			if (line.From == line.To)
@@ -124,5 +126,69 @@ namespace Rynchodon
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
+
+		/// <summary>
+		/// Minimum distance between a line and a point.
+		/// </summary>
+		/// <returns>Minimum distance between a line and a point.</returns>
+		public static float Distance(this Line line, Vector3 point)
+		{ return (float)Math.Pow(line.DistanceSquared(point), 0.5); }
+
+		/// <summary>
+		/// Tests that the distance between line and point is less than or equal to supplied distance
+		/// </summary>
+		public static bool DistanceLessEqual(this Line line, Vector3 point, float distance)
+		{
+			distance *= distance;
+			return line.DistanceSquared(point) <= distance;
+		}
+
+		public static double Distance(this BoundingSphereD first, BoundingSphereD second)
+		{
+			double distance_centre = Vector3D.Distance(first.Center, second.Center);
+			return distance_centre - first.Radius - second.Radius;
+		}
+
+		public static double DistanceSquared(this BoundingBoxD first, BoundingBoxD second)
+		{
+			double distanceSquared = 0;
+
+			for (int i = 0; i < 3; i++)
+			{
+				double
+					firstMin = first.Min.GetDim(i),
+					firstMax = first.Max.GetDim(i),
+					secondMin = second.Min.GetDim(i),
+					secondMax = second.Max.GetDim(i);
+
+				if (firstMin > secondMax)
+				{
+					double delta = secondMax - firstMin;
+					distanceSquared += delta * delta;
+				}
+				else if (secondMin > firstMax)
+				{
+					double delta = firstMax - secondMin;
+					distanceSquared += delta * delta;
+				}
+			}
+
+			return distanceSquared;
+		}
+
+		public static double Distance(this BoundingBoxD first, BoundingBoxD second)
+		{ return Math.Pow(first.DistanceSquared(second), 0.5); }
+
+		/// <summary>
+		/// Finds the shorter of distance between AABB and distance between Volume
+		/// </summary>
+		public static double Distance_ShorterBounds(this IMyEntity first, IMyEntity second)
+		{
+			double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
+			double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
+			return Math.Min(distanceAABB, distanceVolume);
+		}
+
+		#endregion
 	}
 }

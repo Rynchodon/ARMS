@@ -34,12 +34,12 @@ namespace Rynchodon.Autopilot
 		public bool isAMissile;
 		public DateTime waitUntil;
 		public DateTime waitUntilNoCheck;
-		public string searchBlockName; // might want to remove this one
+		//public string searchBlockName; // might want to remove this one
 		public TARGET lockOnTarget;
 		public int lockOnRangeEnemy;
 		public string lockOnBlock;
 		public string tempBlockName;
-		public bool noWayForward;
+		//public bool noWayForward;
 		public bool EXIT = false;
 		public Vector3 destination_offset = Vector3.Zero;
 		public Base6Directions.Direction? match_direction = null; // reset on reached dest
@@ -110,12 +110,12 @@ namespace Rynchodon.Autopilot
 			isAMissile = false;
 			waitUntil = DateTime.UtcNow;
 			waitUntilNoCheck = DateTime.UtcNow;
-			searchBlockName = null;
+			//searchBlockName = null;
 			lockOnTarget = TARGET.OFF;
 			lockOnRangeEnemy = 0;
 			lockOnBlock = null;
 			tempBlockName = null;
-			noWayForward = false;
+			//noWayForward = false;
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 
@@ -151,7 +151,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
-			collisionUpdateSinceWaypointAdded = 0;
+			//collisionUpdateSinceWaypointAdded = 0;
 			clearSpeedInternal();
 
 			if (myGridDims == null)
@@ -164,11 +164,11 @@ namespace Rynchodon.Autopilot
 		private Vector3D? myWaypoint;
 		private Vector3D? coordDestination;
 
-		/// <summary>
-		/// to keep ship from moving until at least one collision check has happend.
-		/// updated for new centreDestination, not for new waypoint. updated for atWayDest
-		/// </summary>
-		public int collisionUpdateSinceWaypointAdded = 0;
+		///// <summary>
+		///// to keep ship from moving until at least one collision check has happend.
+		///// updated for new centreDestination, not for new waypoint. updated for atWayDest
+		///// </summary>
+		//public int collisionUpdateSinceWaypointAdded = 0;
 
 		/// <summary>
 		/// reset on Navigator.FullStop()
