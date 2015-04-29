@@ -38,6 +38,24 @@ type "/Autopilot <topic>" for information about a specific topic
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
 
 <discussion>
+All commands are in the display name of a Remote Control block.
+[] All commands are contained within a single set of square brackets
+<> Do not use angle brackets in your Remote Control's name
+:; Commands are separated by colons and/or semicolons
+  Interpreter ignores all spaces
+Aa Interpreter is case insensitve
+Variables P and V affect all destinations that come after
+
+To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
+If you reset the Autopilot while landed, it will not separate before moving.
+
+In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
+
+All distances and coordinates are in metres, speed is in metres per second
+If there are multiple Remote Controls with commands, one will be picked arbitrarily.
+The direction that the Remote Control is facing is the direction the ship will fly in.
+When the end of the commands is reached, Autopilot will start back at the first command.
+
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth
@@ -133,25 +151,6 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 <LANDED> grid is landed
 <PLAYER> A player is controlling grid
 <GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
-
-[h1]More Information[/h1]
-To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
-If you reset the Autopilot while landed, it will not separate before moving.
-
-In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
-
-All commands are in the display name of a Remote Control block.
-[] All commands are contained within a single set of square brackets
-<> Do not use angle brackets in your Remote Control's name
-:; Commands are separated by colons and/or semicolons
-Variables P and V affect all destinations that come after
-  Interpreter ignores all spaces
-Aa Interpreter is case insensitve
-
-All distances and coordinates are in metres, speed is in metres per second
-If there are multiple Remote Controls with commands, one will be picked arbitrarily.
-The direction that the Remote Control is facing is the direction the ship will fly in.
-When the end of the commands is reached, Autopilot will start back at the first command.
 </discussion>
 
 [h1]Antenna Relay and Radar[/h1]
@@ -196,14 +195,14 @@ fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
 [h1]Known Issues[/h1]
-Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
+These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.
 
-Sometimes when pasting a grid in creative mode, Autopilot will not run properly for the pasted grid. I am still working to resolve this issue.
+Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
 
 There is a bug in Space Engineers that occurs when unlocking a connector or landing gear while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
 Autopilot will not unlock a connector or landing gear while any player is in a cockpit or passenger seat. The remote control will display <GET_OUT_OF_SEAT> until all cockpits and passenger seats are empty, then it will unlock the connector or landing gear.
 
-Merge blocks may conflict with Autopilot. Autopilot cannot detect a merge, so you will have to sort it out yourself.
+Merging grids, particularly with the landing (L) command, can cause unexpected behaviour. Autopilot cannot detect a merge, so you will have to sort it out yourself.
 
 [b]Public Domain License[/b]
 To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
