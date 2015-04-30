@@ -649,9 +649,11 @@ namespace Rynchodon.Autopilot
 					switch (Output.PathfinderResult)
 					{
 						case Pathfinder.PathfinderOutput.Result.Incomplete:
+							PathfinderAllowsMovement = true;
+							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
-							PathfinderAllowsMovement = false;
+							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Alternate_Path:
 							myLogger.debugLog("Setting new waypoint: " + Output.Waypoint, "collisionCheckMoveAndRotate()");

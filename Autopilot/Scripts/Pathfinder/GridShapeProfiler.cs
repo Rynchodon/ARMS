@@ -20,6 +20,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// </summary>
 	internal class GridShapeProfiler
 	{
+		public readonly int CubesSpacingAltPath = 10;
+
 		public IMyCubeGrid myCubeGrid { get; private set; }
 		//public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
 		//public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
@@ -214,13 +216,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="localMetresPosition">The local position in metres.</param>
 		/// <returns>true if the rejection collides with one or more of the grid's rejections</returns>
-		public bool rejectionIntersects(Vector3 localMetresPosition, float GridSize)
+		public bool rejectionIntersects(Vector3 localMetresPosition, float Buffer)
 		{
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in rejectionCells)
+			{
 				//if (TestRejection == ProfileRejection)
-				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < GridSize + myCubeGrid.GridSize)
+				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < Buffer + myCubeGrid.GridSize)
 					return true;
+			}
 			return false;
 		}
 

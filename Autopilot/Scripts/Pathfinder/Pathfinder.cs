@@ -88,7 +88,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			// path check incomplete, do not replace output - it may be valid
 
 			myLogger.debugLog("testing forward path", "CheckPath()");
-			IMyEntity ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(Destination, CubeGrid), NavigationBlock, IgnoreAsteroids);
+			Vector3? pointOfObstruction;
+			IMyEntity ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(Destination, CubeGrid), NavigationBlock, IgnoreAsteroids, out pointOfObstruction);
 
 			if (ObstructingEntity == null)
 			{
@@ -98,10 +99,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			CheckInterrupt();
 			SetOutput(new PathfinderOutput(PathfinderOutput.Result.Searching_Alt, ObstructingEntity));
-			myLogger.debugLog("Path forward is obstructed by " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.TRACE);
+			myLogger.debugLog("Path forward is obstructed by " + ObstructingEntity.getBestName() + " at " + pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
 
-			Vector3 obstructionCentre = ObstructingEntity.GetCentre();
-			Vector3 lineToObstruction = obstructionCentre - CubeGrid.GetCentre();
+			//Vector3 obstructionCentre = ObstructingEntity.GetCentre();
+			Vector3 lineToObstruction = (Vector3)pointOfObstruction - CubeGrid.GetCentre();
 			Vector3 newPath_v1, newPath_v2;
 			lineToObstruction.CalculatePerpendicularVector(out newPath_v1);
 			newPath_v2 = lineToObstruction.Cross(newPath_v1);
@@ -109,17 +110,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			newPath_v2 = Vector3.Normalize(newPath_v2);
 			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
 
-			int newPathMinimum = (int)(ObstructingEntity.WorldVolume.Radius + CubeGrid.WorldVolume.Radius + 10);
-			for (int newPathAdd = 0; newPathAdd < 10000; newPathAdd *= 2)
+			//int newPathMinimum = (int)(ObstructingEntity.WorldVolume.Radius + CubeGrid.WorldVolume.Radius + 10);
+			for (int newPathDistance = 1; newPathDistance < 10000; newPathDistance *= 2)
 			{
-				int newPathDistance = newPathMinimum + newPathAdd;
+				myLogger.debugLog("newPathDistance = " + newPathDistance, "CheckPath()", Logger.severity.TRACE);
 				for (int whichNewPath = 0; whichNewPath < 4; whichNewPath++)
 				{
-					Vector3 newPathDestination = obstructionCentre + newPathDistance * NewPathVectors[whichNewPath];
-					myLogger.debugLog("testing alternate path: " + newPathDestination, "CheckPath()");
-					if (myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(newPathDestination, CubeGrid), NavigationBlock, IgnoreAsteroids) == null) // found a new path
+					Vector3 newPathDestination = (Vector3)pointOfObstruction + newPathDistance * NewPathVectors[whichNewPath];
+					myLogger.debugLog("testing alternate path: " + newPathDestination + " from " + pointOfObstruction + " + " + newPathDistance + " * " + NewPathVectors[whichNewPath], "CheckPath()");
+					Vector3? alt_pointOfObstruction;
+					if (myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(newPathDestination, CubeGrid), NavigationBlock, IgnoreAsteroids, out alt_pointOfObstruction) == null) // found a new path
 					{
-						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, ObstructingEntity, newPathDestination));
+						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, ObstructingEntity, (Vector3)pointOfObstruction + (newPathDistance + CubeGrid.GridSize) * 1.1f * NewPathVectors[whichNewPath])); // adjust slightly
 						myLogger.debugLog("Found a new path: " + newPathDestination, "CheckPath()", Logger.severity.DEBUG);
 						return;
 					}

@@ -32,8 +32,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// Test the path for obstructions
 		/// </summary>
 		/// <exception cref="InterruptException">If interrupted</exception>
-		/// I considered keeping track of the closest entity. This would have been, at best, unreliable due to initial AABB test.
-		public IMyEntity TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids)
+		/// I considered keeping track of the closest entity, in the event there was no obstruction. This would have been, at best, unreliable due to initial AABB test.
+		public IMyEntity TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction)
 		{
 			destination.throwIfNull_argument("destination");
 			destination.throwIfNull_argument("navigationBlock");
@@ -62,6 +62,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (offenders.Count == 0)
 			{
 				myLogger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
+				pointOfObstruction = null;
 				return null;
 			}
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
@@ -81,6 +82,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (sortedOffenders.Count == 0)
 			{
 				myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
+				pointOfObstruction = null;
 				return null;
 			}
 			myLogger.debugLog("remaining after ignore list: " + sortedOffenders.Count, "TestPath()");
@@ -112,10 +114,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 					foreach (IMySlimBlock slim in allSlims)
 					{
 						bool blockIntersects = false;
+						Vector3 cellPosWorld = new Vector3();
 						slim.ForEachCell((cell) =>
 						{
 							CheckInterrupt();
-							Vector3 cellPosWorld = asGrid.GridIntegerToWorld(cell);
+							cellPosWorld = asGrid.GridIntegerToWorld(cell);
 							cellCount++;
 
 							// intersects capsule
@@ -126,14 +129,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 							cellRejectedCount++;
 							if (myGridShape.rejectionIntersects(RelativeVector3F.createFromWorldAbsolute(cellPosWorld, myCubeGrid), myCubeGrid.GridSize))
 							{
-								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
+								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", cell = " + cellPosWorld + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
 								blockIntersects = true;
 								return true;
 							}
 							return false;
 						});
 						if (blockIntersects)
+						{
+							myLogger.debugLog("closest point on line: {" + myPath.get_Line().From + ", " + myPath.get_Line().To + "} to " + cellPosWorld + " is " + myPath.get_Line().ClosestPoint(cellPosWorld), "TestPath()");
+							pointOfObstruction = myPath.get_Line().ClosestPoint(cellPosWorld);
 							return entity;
+						}
 					}
 					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + cellCount + " against capsule and " + cellRejectedCount + " against rejection", "TestPath()");
 					continue;
@@ -147,17 +154,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 
 				myLogger.debugLog("not a grid, testing bounds", "TestPath()");
-				//if (!myPath.IntersectsAABB(entity))
-				//	continue;
+				if (!myPath.IntersectsAABB(entity))
+					continue;
 
 				if (!myPath.IntersectsVolume(entity))
 					continue;
 
 				myLogger.debugLog("no more tests for non-grids are implemented", "TestPath()", Logger.severity.DEBUG);
+				myLogger.debugLog("closest point on line: {" + myPath.get_Line().From + ", " + myPath.get_Line().To + "} to " + entity.GetCentre() + " is " + myPath.get_Line().ClosestPoint(entity.GetCentre()), "TestPath()");
+				pointOfObstruction = myPath.get_Line().ClosestPoint(entity.GetCentre());
 				return entity;
 			}
 
 			myLogger.debugLog("no obstruction was found", "TestPath()", Logger.severity.DEBUG);
+			pointOfObstruction = null;
 			return null;
 		}
 

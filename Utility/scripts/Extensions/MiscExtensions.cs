@@ -128,6 +128,30 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Closest point on a line to specified coordinates
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		public static Vector3 ClosestPoint(this Line line, Vector3 coordinates)
+		{
+			if (line.From == line.To)
+				return line.From;
+
+			Vector3 line_disp = line.To - line.From;
+			float line_distSq = line_disp.LengthSquared();
+
+			float fraction = Vector3.Dot(coordinates - line.From, line_disp) / line_distSq; // projection as a fraction of line_disp
+
+			if (fraction < 0) // extends past From
+				return line.From;
+			else if (fraction > 1) // extends past To
+				return line.To;
+
+			return line.From + fraction * line_disp; // closest point on the line
+		}
+
+		/// <summary>
 		/// Minimum distance between a line and a point.
 		/// </summary>
 		/// <returns>Minimum distance between a line and a point.</returns>
