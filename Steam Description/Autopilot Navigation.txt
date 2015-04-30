@@ -1,48 +1,8 @@
-Autopilot provides Electronic Navigation, Communication, and Targeting Systems
-
-[url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Ãœbersetzung von Robinson C. [/url]
-
-[url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
-
-[h1]Mod Features[/h1]
-Automatic docking & landing
-Patrol
-Fly to another ship/station
-Fly to world GPS location
-Fly a certain distance relative to ship
-Formations/Orientation matching
-Command looping
-Speed Control
-Obstacle detection & collision avoidance
-Engage Enemy ships/stations
-Radar
-Act as a missle and target a block on a an enemy ship/station
-Smart Turret Control - Allows you to set priorities for your turrets.
-
-[h1]Contribute[/h1]
-I am looking for assistance with models, code, tutorials, and translations.
-If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
-
-<discussion>
-Models - Full 3D models would be ideal but even drawings would be nice.
-Code - Programming experience is required; this could be a great opportunity to learn C#.
-Tutorials - Think you have a good handle on how to work the mod? Prove it!
-Translations - Speak another language? Good, because I don't.
-</discussion>
-
-[h1]Ingame Help[/h1]
-type "/Autopilot" ingame for a list of help topics
-type "/Autopilot <topic>" for information about a specific topic
-
-[h1]Autopilot Navigation[/h1]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
-
-<discussion>
 All commands are in the display name of a Remote Control block.
 [] All commands are contained within a single set of square brackets
 <> Do not use angle brackets in your Remote Control's name
 :; Commands are separated by colons and/or semicolons
-  Interpreter ignores all spaces
+    Interpreter ignores all spaces
 Aa Interpreter is case insensitve
 Variables P and V affect all destinations that come after
 
@@ -151,74 +111,3 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 <LANDED> grid is landed
 <PLAYER> A player is controlling grid
 <GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
-</discussion>
-
-[h1]Antenna Relay and Radar[/h1]
-Each radio antenna, beacon, and radar transmits its location to radio antennae that are inside its broadcast range.
-Each radio antenna relays the information that it has to friendly radio antennae inside its broadcast range.
-Each laser antenna relays the information that is has to the laser antenna it is connected to.
-Antennae, radars, and remote controls in attached grids share information.
-
-Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. The maximum distance a grid can be detected is 50% of the radar's power and the minimum distance is 5% of the radar's power.
-
-Each antenna and remote control keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
-
-It is not possible for Autopilot to display entities on the HUD.
-
-[h1]Block Communication[/h1]
-[url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] This script [/url] can be used to send and receive messages, filter detected grids, and execute actions based on detected grids.
-Messages can be sent from one programmable block to another. Block communication will use antenna relay to send messages to other grids.
-Block Communication can read detected grid information, apply filters, execute actions, and write to a TextPanel.
-For usage, see the script itself.
-
-[h1]Smart Turret Control[/h1]
-Turrets can be given specific instructions on which targets to shoot; for blocks the turret will only target blocks that are working.
-In order for Smart Turret Control to function, a turret must have square brackets in its name.
-
-Block targets are fetched from the turret's name [ <definition1>, <definition2>, ... ] and target working hostile blocks in order.
-Example - [ Turret, Rocket, Gatling, Reactor, Battery ] - First shoot all turrets, then rocket launchers, then gatling weapons, then reactors, then batteries.
-
-[b]Priorities[/b] - highest to lowest
-If Target Missiles is enabled, shoot missiles that are approaching the turret.
-If Target Meteors is enabled, shoot meteors that are approaching the turret.
-If Target Characters is enabled, shoot enemy characters.
-If a list of block targets is provided, shoot working blocks.
-If Target Moving Objects is enabled, shoot hostile grids that are approaching the turret.
-
-[h1]Settings[/h1]
-The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.
-To reset a value to its default, simply delete it.
-bAllowAutopilot - this mod can control the movement of grids
-bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
-bAllowTurretControl - enables Smart Turret Control
-fDefaultSpeed - the desired minimum speed, when not using V
-fMaxSpeed - the maximum speed Autopilot is allowed to fly at
-
-[h1]Known Issues[/h1]
-These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.
-
-Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
-
-There is a bug in Space Engineers that occurs when unlocking a connector or landing gear while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
-Autopilot will not unlock a connector or landing gear while any player is in a cockpit or passenger seat. The remote control will display <GET_OUT_OF_SEAT> until all cockpits and passenger seats are empty, then it will unlock the connector or landing gear.
-
-Merging grids, particularly with the landing (L) command, can cause unexpected behaviour. Autopilot cannot detect a merge, so you will have to sort it out yourself.
-
-[b]Public Domain License[/b]
-To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
-http://creativecommons.org/publicdomain/zero/1.0/
-
-[h1]Credits[/h1]
-Marketing Coordinator - Souper07
-GitMaster Extraordinaire - [uRxP]DrChocolate
-Multiplayer Testing - Degalus
-
-[b]Links[/b]
-[url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
-[url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
-[url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
-
-[u]I will not be responding to comments posted below, use one of these links or start a new discussion.[/u]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]

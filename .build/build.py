@@ -213,7 +213,7 @@ for module in modules[:]:
 replaceIn_file=r"Help.cs"
 replaceIn_DirSource= startDir + r"\Autopilot\Scripts"
 
-readme_file= startDir + r"\Player Readme.txt"
+readme_file= startDir + r"\Steam Description\Autopilot Navigation.txt"
 
 replaceIn_write_name = destScript+"\\Autopilot."+replaceIn_file
 replaceIn_writeDev_name = destScriptDev+"\\Autopilot."+replaceIn_file
@@ -230,7 +230,7 @@ command_current = ""
 index = 0
 position = 0
 while (position == 0):
-	if ("Commands" in readme_lines[index]):
+	if ("[h1]Commands[/h1]" in readme_lines[index]):
 		position+=1
 	else:
 		index+=1
