@@ -23,8 +23,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public readonly int CubesSpacingAltPath = 10;
 
 		public IMyCubeGrid myCubeGrid { get; private set; }
-		//public float PathBuffer { get { return CubeGrid.GridSize * 2; } }
-		//public float PathBufferSquared { get { return PathBuffer * PathBuffer; } }
 
 		private static Dictionary<IMyCubeGrid, GridShapeProfiler> registry = new Dictionary<IMyCubeGrid, GridShapeProfiler>();
 		private static FastResourceLock lock_registry = new FastResourceLock();
@@ -33,15 +31,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private ListSnapshots<IMySlimBlock> SlimBlocks;
 		private FastResourceLock lock_SlimBlocks = new FastResourceLock();
-		///// <summary>
-		///// All the cells that are occupied and neighbouring cells.
-		///// </summary>
-		//private MyUniqueList<Vector3I> CellsSurround;
 
 		private Vector3 Centre { get { return myCubeGrid.LocalAABB.Center; } }
 		private Vector3 CentreRejection;
 		private Vector3 DirectionNorm;
-		//private Vector3? Displacement_PartialCalculation = null;
 
 		private MyUniqueList<Vector3> rejectionCells;
 		public Capsule myPath { get; private set; }
@@ -62,14 +55,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// instead of iterating over blocks, test cells of grid for contents (no need to lock grid)
 			ReadOnlyList<IMySlimBlock> mutable = SlimBlocks.mutable();
-			//foreachVector3I(CubeGrid.Min, CubeGrid.Max, (cell) =>
 			myCubeGrid.Min.ForEachVector(myCubeGrid.Max, (cell) =>
 			{
 				IMySlimBlock slim = myCubeGrid.GetCubeBlock(cell);
 				if (slim != null)
 					mutable.Add(slim);
-				//if (CubeGrid.CubeExists(cell))
-				//	mutable.Add(cell);
 				return false;
 			});
 
@@ -87,15 +77,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void Grid_OnBlockAdded(IMySlimBlock slim)
 		{
 			using (lock_SlimBlocks.AcquireExclusiveUsing())
-			{
-				//IMyCubeBlock fatblock = obj.FatBlock;
-				//ReadOnlyList<IMySlimBlock> mutable = 
 				SlimBlocks.mutable().Add(slim);
-				//if (fatblock == null)
-				//	mutable.Add(obj.Position);
-				//else
-				//	fatblock.Min.ForEachVector(fatblock.Max, (cell) => { mutable.Add(cell); return false; });
-			}
 		}
 
 		/// <summary>
@@ -104,15 +86,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void Grid_OnBlockRemoved(IMySlimBlock slim)
 		{
 			using (lock_SlimBlocks.AcquireExclusiveUsing())
-			{
-				//IMyCubeBlock fatblock = obj.FatBlock;
-				//ReadOnlyList<Vector3I> mutable = SlimBlocks.mutable();
-				//if (fatblock == null)
-				//	mutable.Remove(obj.Position);
-				//else
-				//	fatblock.Min.ForEachVector(fatblock.Max, (cell) => { mutable.Remove(cell); return false; });
 				SlimBlocks.mutable().Add(slim);
-			}
 		}
 
 		/// <summary>
@@ -151,16 +125,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return new GridShapeProfiler(grid);
 		}
 
-		///// <summary>
-		///// Gets a snapshot of current occupied cells
-		///// </summary>
-		///// <returns>An immutable ReadOnlyList of occupied cells</returns>
-		//public ReadOnlyList<Vector3I> get_OccupiedCells()
-		//{
-		//	using (lock_SlimBlocks.AcquireSharedUsing())
-		//		return SlimBlocks.immutable();
-		//}
-
 		/// <summary>
 		/// Set the destination, calulate the profile.
 		/// </summary>
@@ -168,39 +132,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="navigationBlock">usually remote control</param>
 		public void SetDestination(RelativeVector3F destination, IMyCubeBlock navigationBlock)
 		{
-			//if (displacement == null)
-			//var results = TimeAction.Time(() =>
-			//{
-			//Vector3 newDirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
-			//if (DirectionNorm.IsValid() && Vector3.RectangularDistance(ref this.DirectionNorm, ref newDirectionNorm) < 0.1)
-			//{
-			//	myLogger.debugLog("newDirectionNorm(" + newDirectionNorm + ") is not appreciably different from DirectionNorm (" + DirectionNorm + ")", "SetDestination()");
-			//	return;
-			//}
-			//DirectionNorm = newDirectionNorm;
 			DirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
-			//}, 10, false);
-			//myLogger.debugLog("Time to DirectionNorm: " + results.Pretty_FiveNumbers(), "SetDestination()");
-			//this.Displacement_PartialCalculation = null;
-			//else
-			//	this.Displacement = (Vector3)displacement;
-			//Vector3 centreDestination = new Vector3();
-			//results = TimeAction.Time(() =>
-			//{
-				Vector3 centreDestination = destination.getLocal() + Centre - navigationBlock.Position * myCubeGrid.GridSize;
-			//}, 10, false);
-			//myLogger.debugLog("Time to centreDestination: " + results.Pretty_FiveNumbers(), "SetDestination()");
-
-			//results = TimeAction.Time(() =>
-			//{
-				rejectAll();
-			//}, 10, false);
-			//myLogger.debugLog("Time to reject all: " + results.Pretty_FiveNumbers(), "SetDestination()");
-			//results = TimeAction.Time(() =>
-			//{
-				createCapsule(centreDestination);
-			//}, 10, false);
-			//myLogger.debugLog("Time to createCapsule: " + results.Pretty_FiveNumbers(), "SetDestination()");
+			Vector3 centreDestination = destination.getLocal() + Centre - navigationBlock.Position * myCubeGrid.GridSize;
+			rejectAll();
+			createCapsule(centreDestination);
 		}
 
 		/// <summary>
@@ -221,7 +156,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in rejectionCells)
 			{
-				//if (TestRejection == ProfileRejection)
 				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < Buffer + myCubeGrid.GridSize)
 					return true;
 			}
@@ -230,19 +164,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		#endregion
 		#region Private Methods
-
-		///// <summary>
-		///// Perform a rejection of a cell from Displacement and round the result to 1 decimal
-		///// </summary>
-		///// <remarks>
-		///// To ensure consistency, all rejections should be performed by this method.
-		///// </remarks>
-		//private Vector3 RejectCell(Vector3I cellPosition)
-		//{
-		//	Vector3 rejection = Vector3.Reject(cellPosition, DirectionNorm);
-		//	rejection.ApplyOperation((comp) => Math.Round(comp, 1), out rejection);
-		//	return rejection;
-		//}
 
 		private Vector3 RejectMetres(Vector3 metresPosition)
 		{ return Vector3.Reject(metresPosition, DirectionNorm); } // RejectCell(myCubeGrid.WorldToGridInteger(metresPosition)); }
@@ -260,13 +181,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 				immutable = SlimBlocks.immutable();
 
 			CentreRejection = RejectMetres(Centre);
-			//Centre.Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out CentreRejection);//.Round(CubeGrid.GridSize);
 			foreach (IMySlimBlock slim in immutable)
 			{
 				slim.ForEachCell((cell) =>
 				{
 					Vector3 rejection = RejectMetres(cell * myCubeGrid.GridSize);
-					//(cell * myCubeGrid.GridSize).Rejection(DirectionNorm, ref Displacement_PartialCalculation).ApplyOperation(Math.Round, out rejection);
 					rejectionCells.Add(rejection);
 					return false;
 				});
@@ -283,7 +202,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (distanceSquared > longestDistanceSquared)
 					longestDistanceSquared = distanceSquared;
 			}
-			//myPath = new PathCapsule(RelativeVector3F.createFromLocal(Centre, CubeGrid), RelativeVector3F.createFromLocal(centreDestination, CubeGrid), longestDistanceSquared, CubeGrid.GridSize);
 			RelativeVector3F P0 = RelativeVector3F.createFromLocal(Centre, myCubeGrid);
 			RelativeVector3F P1 = RelativeVector3F.createFromLocal(centreDestination, myCubeGrid);
 			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + myCubeGrid.GridSize);

@@ -17,9 +17,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 	internal class PathChecker
 	{
 		public IMyCubeGrid myCubeGrid { get; private set; }
-		//public bool IgnoreAsteroids = false;
 
-		//private GridShapeProfiler myGridShape;
+		private IMyCubeBlock NavigationBlock;
+		private Capsule myPath;
+		private bool IgnoreAsteroids;
+
 		private Logger myLogger = new Logger(null, "PathChecker");
 
 		public PathChecker(IMyCubeGrid grid)
@@ -39,6 +41,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			destination.throwIfNull_argument("navigationBlock");
 
 			Interrupt = false;
+			this.NavigationBlock = navigationBlock;
+			this.IgnoreAsteroids = IgnoreAsteroids;
 
 			myLogger.debugLog("destination (world absolute) = " + destination.getWorldAbsolute(), "TestPath()");
 			myLogger.debugLog("destination (local) = " + destination.getLocal(), "TestPath()");
@@ -49,16 +53,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// entities in large AABB
 			BoundingBoxD AtDest = myCubeGrid.WorldAABB.Translate(Displacement);
-
-			List<Vector3D> PathPoints = new List<Vector3D>();
-			PathPoints.Add(myCubeGrid.WorldAABB.Min);
-			PathPoints.Add(myCubeGrid.WorldAABB.Max);
-			PathPoints.Add(AtDest.Min);
-			PathPoints.Add(AtDest.Max);
-			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(PathPoints);
-			myLogger.debugLog("Path AABB = " + PathAABB, "TestPath()");
-
-			List<IMyEntity> offenders = MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
+			ICollection<IMyEntity> offenders = EntitiesInLargeAABB(myCubeGrid.WorldAABB, AtDest);
 			if (offenders.Count == 0)
 			{
 				myLogger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
@@ -68,6 +63,85 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
 
 			// filter offenders and sort by distance
+			offenders = SortAndFilter(offenders);
+
+			if (offenders.Count == 0)
+			{
+				myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
+				pointOfObstruction = null;
+				return null;
+			}
+			myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
+
+			// set destination
+			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
+			myGridShape.SetDestination(destination, navigationBlock);
+			myPath = myGridShape.myPath;
+
+			// test path
+			return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction);
+		}
+
+		/// <summary>
+		/// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
+		/// </summary>
+		/// <remarks>
+		/// Capsule only test because the ship will not be oriented correctly
+		/// </remarks>
+		/// <returns>distance from the destination that can be reached</returns>
+		public float distanceCanTravel(Line canTravel)
+		{
+			Vector3D navBlockPos = NavigationBlock.GetPosition();
+
+			Vector3D DisplacementStart = canTravel.From - navBlockPos;
+			Vector3D DisplacementEnd = canTravel.To - navBlockPos;
+
+			BoundingBoxD atStart = myCubeGrid.WorldAABB.Translate(DisplacementStart);
+			BoundingBoxD atDest = myCubeGrid.WorldAABB.Translate(DisplacementEnd);
+
+			ICollection<IMyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
+			if (offenders.Count == 0)
+			{
+				myLogger.debugLog("AABB is empty", "distanceCanTravel()");
+				return 0;
+			}
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
+			offenders = SortAndFilter(offenders);
+			if (offenders.Count == 0)
+			{
+				myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
+				return 0;
+			}
+			myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
+
+			Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
+			Vector3? pointOfObstruction;
+			IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction);
+			if (obstruction == null)
+			{
+				myLogger.debugLog("no obstruction", "distanceCanTravel()");
+				return 0;
+			}
+
+			myLogger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
+			return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
+		}
+
+		private List<IMyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
+		{
+			List<Vector3D> PathPoints = new List<Vector3D>();
+			PathPoints.Add(start.Min);
+			PathPoints.Add(start.Max);
+			PathPoints.Add(end.Min);
+			PathPoints.Add(end.Max);
+			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(PathPoints);
+			myLogger.debugLog("Path AABB = " + PathAABB, "TestPath()");
+
+			return MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
+		}
+
+		private  ICollection<IMyEntity> SortAndFilter(ICollection<IMyEntity> offenders)
+		{
 			Vector3D Centre = myCubeGrid.GetCentre();
 			SortedDictionary<float, IMyEntity> sortedOffenders = new SortedDictionary<float, IMyEntity>();
 			foreach (IMyEntity entity in offenders)
@@ -75,100 +149,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 				CheckInterrupt();
 				if (collect_Entities(entity))
 				{
-					float distanceSquared = Vector3.DistanceSquared(Centre, entity.GetCentre());
+					float distanceSquared = (float)myCubeGrid.Distance_ShorterBounds(entity);// Vector3.DistanceSquared(Centre, entity.GetCentre());
 					sortedOffenders.Add(distanceSquared, entity);
 				}
 			}
-			if (sortedOffenders.Count == 0)
-			{
-				myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
-				pointOfObstruction = null;
-				return null;
-			}
-			myLogger.debugLog("remaining after ignore list: " + sortedOffenders.Count, "TestPath()");
-
-			// set destination
-			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
-			myGridShape.SetDestination(destination, navigationBlock);
-			Capsule myPath = myGridShape.myPath;
-
-			// test path
-			foreach (IMyEntity entity in sortedOffenders.Values)
-			{
-				CheckInterrupt();
-				myLogger.debugLog("testing offender: " + entity.getBestName() + " at " + entity.GetPosition(), "TestPath()");
-
-				IMyCubeGrid asGrid = entity as IMyCubeGrid;
-				if (asGrid != null)
-				{
-					if (!myPath.IntersectsAABB(entity))
-						continue;
-
-					myLogger.debugLog("searching blocks of " + entity.getBestName(), "TestPath()");
-					uint cellCount = 0, cellRejectedCount = 0;
-
-					// foreach block
-					float GridSize = asGrid.GridSize;
-					List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-					asGrid.GetBlocks_Safe(allSlims);
-					foreach (IMySlimBlock slim in allSlims)
-					{
-						bool blockIntersects = false;
-						Vector3 cellPosWorld = new Vector3();
-						slim.ForEachCell((cell) =>
-						{
-							CheckInterrupt();
-							cellPosWorld = asGrid.GridIntegerToWorld(cell);
-							cellCount++;
-
-							// intersects capsule
-							if (!myPath.Intersects(cellPosWorld, GridSize))
-								return false;
-
-							// rejection
-							cellRejectedCount++;
-							if (myGridShape.rejectionIntersects(RelativeVector3F.createFromWorldAbsolute(cellPosWorld, myCubeGrid), myCubeGrid.GridSize))
-							{
-								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", cell = " + cellPosWorld + ", block = " + slim.getBestName(), "TestPath()", Logger.severity.DEBUG);
-								blockIntersects = true;
-								return true;
-							}
-							return false;
-						});
-						if (blockIntersects)
-						{
-							myLogger.debugLog("closest point on line: {" + myPath.get_Line().From + ", " + myPath.get_Line().To + "} to " + cellPosWorld + " is " + myPath.get_Line().ClosestPoint(cellPosWorld), "TestPath()");
-							pointOfObstruction = myPath.get_Line().ClosestPoint(cellPosWorld);
-							return entity;
-						}
-					}
-					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + cellCount + " against capsule and " + cellRejectedCount + " against rejection", "TestPath()");
-					continue;
-				}
-
-				// not a grid
-				if (IgnoreAsteroids && entity is IMyVoxelMap)
-				{
-					myLogger.debugLog("Ignoring asteroid: " + entity.getBestName(), "TestPath()");
-					continue;
-				}
-
-				myLogger.debugLog("not a grid, testing bounds", "TestPath()");
-				if (!myPath.IntersectsAABB(entity))
-					continue;
-
-				if (!myPath.IntersectsVolume(entity))
-					continue;
-
-				myLogger.debugLog("no more tests for non-grids are implemented", "TestPath()", Logger.severity.DEBUG);
-				myLogger.debugLog("closest point on line: {" + myPath.get_Line().From + ", " + myPath.get_Line().To + "} to " + entity.GetCentre() + " is " + myPath.get_Line().ClosestPoint(entity.GetCentre()), "TestPath()");
-				pointOfObstruction = myPath.get_Line().ClosestPoint(entity.GetCentre());
-				return entity;
-			}
-
-			myLogger.debugLog("no obstruction was found", "TestPath()", Logger.severity.DEBUG);
-			pointOfObstruction = null;
-			return null;
+			return sortedOffenders.Values;
 		}
 
 		/// <returns>true iff the entity should be kept</returns>
@@ -188,6 +173,88 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			return true;
+		}
+
+		/// <param name="offenders">entities to test</param>
+		/// <param name="myGridShape">iff null, skip rejection test</param>
+		private IMyEntity TestEntities(ICollection<IMyEntity> offenders, Capsule path, GridShapeProfiler myGridShape, out Vector3? pointOfObstruction)
+		{
+			foreach (IMyEntity entity in offenders)
+			{
+				CheckInterrupt();
+				myLogger.debugLog("testing offender: " + entity.getBestName() + " at " + entity.GetPosition(), "TestEntities()");
+
+				IMyCubeGrid asGrid = entity as IMyCubeGrid;
+				if (asGrid != null)
+				{
+					if (!path.IntersectsAABB(entity))
+						continue;
+
+					myLogger.debugLog("searching blocks of " + entity.getBestName(), "TestEntities()");
+					uint cellCount = 0, cellRejectedCount = 0;
+
+					// foreach block
+					float GridSize = asGrid.GridSize;
+					List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
+					asGrid.GetBlocks_Safe(allSlims);
+					foreach (IMySlimBlock slim in allSlims)
+					{
+						bool blockIntersects = false;
+						Vector3 cellPosWorld = new Vector3();
+						slim.ForEachCell((cell) =>
+						{
+							CheckInterrupt();
+							cellPosWorld = asGrid.GridIntegerToWorld(cell);
+							cellCount++;
+
+							// intersects capsule
+							if (!path.Intersects(cellPosWorld, GridSize))
+								return false;
+
+							// rejection
+							cellRejectedCount++;
+							if (myGridShape == null || myGridShape.rejectionIntersects(RelativeVector3F.createFromWorldAbsolute(cellPosWorld, myCubeGrid), myCubeGrid.GridSize))
+							{
+								myLogger.debugLog("obstructing grid = " + asGrid.DisplayName + ", cell = " + cellPosWorld + ", block = " + slim.getBestName(), "TestEntities()", Logger.severity.DEBUG);
+								blockIntersects = true;
+								return true;
+							}
+							return false;
+						});
+						if (blockIntersects)
+						{
+							//myLogger.debugLog("closest point on line: {" + path.get_Line().From + ", " + path.get_Line().To + "} to " + cellPosWorld + " is " + path.get_Line().ClosestPoint(cellPosWorld), "TestEntities()");
+							pointOfObstruction = path.get_Line().ClosestPoint(cellPosWorld);
+							return entity;
+						}
+					}
+					myLogger.debugLog("no obstruction for grid " + asGrid.DisplayName + ", tested " + cellCount + " against capsule and " + cellRejectedCount + " against rejection", "TestPath()");
+					continue;
+				}
+
+				// not a grid
+				if (IgnoreAsteroids && entity is IMyVoxelMap)
+				{
+					myLogger.debugLog("Ignoring asteroid: " + entity.getBestName(), "TestEntities()");
+					continue;
+				}
+
+				myLogger.debugLog("not a grid, testing bounds", "TestEntities()");
+				if (!path.IntersectsAABB(entity))
+					continue;
+
+				if (!path.IntersectsVolume(entity))
+					continue;
+
+				myLogger.debugLog("no more tests for non-grids are implemented", "TestEntities()", Logger.severity.DEBUG);
+				//myLogger.debugLog("closest point on line: {" + path.get_Line().From + ", " + path.get_Line().To + "} to " + entity.GetCentre() + " is " + path.get_Line().ClosestPoint(entity.GetCentre()), "TestEntities()");
+				pointOfObstruction = path.get_Line().ClosestPoint(entity.GetCentre());
+				return entity;
+			}
+
+			myLogger.debugLog("no obstruction was found", "TestPath()", Logger.severity.DEBUG);
+			pointOfObstruction = null;
+			return null;
 		}
 
 		#region Interrupt

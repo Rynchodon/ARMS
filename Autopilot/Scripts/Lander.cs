@@ -187,13 +187,14 @@ namespace Rynchodon.Autopilot
 							return;
 						}
 						else // waypoint exists
-							if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
-								log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
-							else
-							{
-								alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
-								return;
-							}
+							//if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
+							//	log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
+							//else
+							//{
+							//	alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
+							//	return;
+							//}
+							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}

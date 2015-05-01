@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot
 		public enum LANDING : byte { OFF, ORIENT, LINEUP, LAND, LOCKED, SEPARATE }
 		public LANDING landingState = LANDING.OFF;
 
-		private DateTime waypointExpiresAt;
+		//private DateTime waypointExpiresAt;
 
 		private Navigator myNav;
 		private GridDimensions myGridDims
@@ -161,7 +161,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		private Vector3D? myWaypoint;
+		public Vector3D? myWaypoint { get; private set; }
 		private Vector3D? coordDestination;
 
 		///// <summary>
@@ -236,17 +236,21 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <param name="waypoint"></param>
 		/// <param name="forced"></param>
-		/// <returns></returns>
-		public bool addWaypoint(Vector3D waypoint, bool waypointExpires = false)
+		public void addWaypoint(Vector3D waypoint)
 		{
 			onWayDestAddedRemoved();
 			myWaypoint = waypoint;
-			if (waypointExpires)
-				waypointExpiresAt = DateTime.UtcNow.AddSeconds(10);
-			else
-				waypointExpiresAt = DateTime.MaxValue;
-			return true;
+			//if (waypointExpires)
+			//	waypointExpiresAt = DateTime.UtcNow.AddSeconds(10);
+			//else
+			//	waypointExpiresAt = DateTime.MaxValue;
 		}
+
+		/// <summary>
+		/// tests if a waypoint is far enough away (further than destinationRadius)
+		/// </summary>
+		public bool waypointFarEnough(Vector3D waypoint)
+		{ return myGridDims.myGrid.WorldAABB.Distance(waypoint) > destinationRadius; }
 
 		/// <summary>
 		/// removes the waypoint if one exists, otherwise removes the centreDestination
@@ -291,43 +295,51 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// get next waypoint or centreDestination
+		/// get next waypoint or destination
 		/// </summary>
-		/// <returns></returns>
-		public Vector3D? getWayDest()
+		public Vector3D? getWayDest(bool getWaypoint = true)
+		{ return getWayDest(getTypeOfWayDest(getWaypoint)); }
+
+		/// <summary>
+		/// get waypoint or destination of specified type
+		/// </summary>
+		public Vector3D? getWayDest(TypeOfWayDest type)
 		{
-			switch (getTypeOfWayDest())
+			switch (type)
 			{
 				case TypeOfWayDest.BLOCK:
+					CurrentGridDest.throwIfNull_variable("CurrentGridDest");
 					return CurrentGridDest.GetBlockPos();
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
+					CurrentGridDest.throwIfNull_variable("CurrentGridDest");
 					return CurrentGridDest.GetBlockPos() + offsetToWorld();
 				case TypeOfWayDest.COORDINATES:
 					return coordDestination;
 				case TypeOfWayDest.GRID:
+					CurrentGridDest.throwIfNull_variable("CurrentGridDest");
 					return CurrentGridDest.GetGridPos();
 				case TypeOfWayDest.WAYPOINT:
 					return myWaypoint;
 				default:
-					log("unknown type " + getTypeOfWayDest(), "getWayDest()", Logger.severity.ERROR);
+					log("unknown type " + type, "getWayDest()", Logger.severity.ERROR);
 					return null;
 			}
 		}
 
 		public enum TypeOfWayDest : byte { NULL, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
-		public TypeOfWayDest getTypeOfWayDest()
+		public TypeOfWayDest getTypeOfWayDest(bool getWaypoint = true)
 		{
-			if (myWaypoint != null)
+			if (getWaypoint && myWaypoint != null)
 			{
-				if (moveState == Moving.SIDELING // might want to add HYBRID as well, or maybe it would just switch to moving?
-					|| waypointExpiresAt > DateTime.UtcNow)
+				//if (moveState == Moving.SIDELING // might want to add HYBRID as well, or maybe it would just switch to moving?
+				//	|| waypointExpiresAt > DateTime.UtcNow)
 					return TypeOfWayDest.WAYPOINT;
-				else // waypoint has expired
-				{
-					myLogger.debugLog("waypoint has expired: " + myWaypoint, "getTypeOfWayDest()");
-					myWaypoint = null;
-				}
+				//else // waypoint has expired
+				//{
+				//	myLogger.debugLog("waypoint has expired: " + myWaypoint, "getTypeOfWayDest()");
+				//	myWaypoint = null;
+				//}
 			}
 
 			if (CurrentGridDest != null)
