@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot
 		internal Navigator(Sandbox.ModAPI.IMyCubeGrid grid)
 		{
 			myGrid = grid;
-			myLogger = new Logger(myGrid.DisplayName, "Navigator");
+			myLogger = new Logger("Navigator", () => myGrid.DisplayName, () => { return CNS.moveState.ToString() + ':' + CNS.rotateState.ToString(); }, () => CNS.landingState.ToString());
 		}
 
 		private bool needToInit = true;
@@ -561,7 +561,7 @@ namespace Rynchodon.Autopilot
 				myPathfinder.Run(CNS, getNavigationBlock());
 				if (myPathfinder_Output != null)
 				{
-					myLogger.debugLog("result: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()");
+					//myLogger.debugLog("result: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()");
 					switch (myPathfinder_Output.PathfinderResult)
 					{
 						case Pathfinder.PathfinderOutput.Result.Incomplete:
@@ -579,7 +579,7 @@ namespace Rynchodon.Autopilot
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Path_Clear:
-							myLogger.debugLog("Path forward is clear", "collisionCheckMoveAndRotate()");
+							//myLogger.debugLog("Path forward is clear", "collisionCheckMoveAndRotate()");
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.No_Way_Forward:
@@ -607,6 +607,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		//public static readonly byte collisionUpdatesBeforeMove = 100;
+		private double prevDistToWayDest = float.MaxValue;
 		internal bool movingTooSlow = false;
 
 		private void calcMoveAndRotate()
@@ -619,22 +620,37 @@ namespace Rynchodon.Autopilot
 			SpeedControl.controlSpeed(this);
 			//log("reached missile check", "calcMoveAndRotate()", Logger.severity.TRACE);
 
+			//myLogger.debugLog("reached switch", "calcMoveAndRotate()");
+
 			switch (CNS.moveState)
 			{
 				case NavSettings.Moving.MOVING:
 					{
+						double newDistToWayDest = MM.distToWayDest;
+						myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
+						if (newDistToWayDest > prevDistToWayDest)
+						{
+							myLogger.debugLog("Moving away from destination, newDistToWayDest = " + newDistToWayDest + " > prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
+							fullStop("moving away from destination");
+							return;
+						}
+						prevDistToWayDest = newDistToWayDest;
+
+						myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
 						if (movingTooSlow && PathfinderAllowsMovement) //speed up test. missile will never pass this test
 							if (MM.rotLenSq < rotLenSq_startMove)
 							{
 								calcAndMove();
 								reportState(ReportableState.MOVING);
 							}
+						//else
+						//	fullStop("need to stop and rotate");
 					}
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
 						if (PathfinderAllowsMovement)
-							if (MM.rotLenSq < Rotator.rotLenSq_stopAndRot)
+							if (MM.rotLenSq < myRotator.rotLenSq_stopAndRot)
 							{
 								calcAndMove();
 								CNS.moveState = NavSettings.Moving.MOVING;
@@ -644,10 +660,12 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
-						if (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward)
+						//myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", currentMove = " + currentMove, "calcMoveAndRotate()");
+						if (movingTooSlow
+							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
 							calcAndMove(true); // continue in current state
-						else if (movingTooSlow)
-							goto case NavSettings.Moving.MOVING;
+						//else if (movingTooSlow)
+						//	goto case NavSettings.Moving.MOVING;
 						break;
 					}
 				case NavSettings.Moving.SIDELING:
@@ -694,7 +712,7 @@ namespace Rynchodon.Autopilot
 					}
 			}
 
-			if (CNS.moveState != NavSettings.Moving.SIDELING)
+			if (CNS.moveState != NavSettings.Moving.SIDELING) // && CNS.landingState == NavSettings.LANDING.OFF)
 				calcAndRotate();
 		}
 
@@ -706,7 +724,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// stop when greater than
 		/// </summary>
-		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f;
+		private const float onCourse_sidel = 0.01f, onCourse_hybrid = 0.1f;
 
 		private Vector3 moveDirection = Vector3.Zero;
 
@@ -720,7 +738,6 @@ namespace Rynchodon.Autopilot
 				RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
 				Vector3 course = Vector3.Normalize(displacement.getWorld());
 				float offCourse = Vector3.RectangularDistance(course, moveDirection);
-				myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 
 				switch (CNS.moveState)
 				{
@@ -735,6 +752,7 @@ namespace Rynchodon.Autopilot
 							}
 							else
 							{
+								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 								//log("sidel, stop to change course", "calcAndMove()", Logger.severity.TRACE);
 								fullStop("change course: sidel");
 								return;
@@ -747,7 +765,8 @@ namespace Rynchodon.Autopilot
 								goto case NavSettings.Moving.NOT_MOVE;
 							else
 							{
-								log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
+								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
+								//log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
 								CNS.moveState = NavSettings.Moving.MOVING;
 								calcAndMove();
 								return;
@@ -840,6 +859,7 @@ namespace Rynchodon.Autopilot
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
+			prevDistToWayDest = float.MaxValue;
 
 			setDampeners();
 			currentRCcontrol.MoveAndRotateStopped();

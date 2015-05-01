@@ -18,6 +18,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	{
 		public IMyCubeGrid myCubeGrid { get; private set; }
 
+		private IMyCubeGrid DestGrid;
 		private IMyCubeBlock NavigationBlock;
 		private Capsule myPath;
 		private bool IgnoreAsteroids;
@@ -35,7 +36,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <exception cref="InterruptException">If interrupted</exception>
 		/// I considered keeping track of the closest entity, in the event there was no obstruction. This would have been, at best, unreliable due to initial AABB test.
-		public IMyEntity TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction)
+		public IMyEntity TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction, IMyCubeGrid DestGrid)
 		{
 			destination.throwIfNull_argument("destination");
 			destination.throwIfNull_argument("navigationBlock");
@@ -43,6 +44,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Interrupt = false;
 			this.NavigationBlock = navigationBlock;
 			this.IgnoreAsteroids = IgnoreAsteroids;
+			this.DestGrid = DestGrid;
 
 			myLogger.debugLog("destination (world absolute) = " + destination.getWorldAbsolute(), "TestPath()");
 			myLogger.debugLog("destination (local) = " + destination.getLocal(), "TestPath()");
@@ -79,7 +81,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myPath = myGridShape.myPath;
 
 			// test path
-			return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction);
+			return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction, this.DestGrid);
 		}
 
 		/// <summary>
@@ -116,7 +118,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
 			Vector3? pointOfObstruction;
-			IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction);
+			IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
 			if (obstruction == null)
 			{
 				myLogger.debugLog("no obstruction", "distanceCanTravel()");
@@ -177,7 +179,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		/// <param name="offenders">entities to test</param>
 		/// <param name="myGridShape">iff null, skip rejection test</param>
-		private IMyEntity TestEntities(ICollection<IMyEntity> offenders, Capsule path, GridShapeProfiler myGridShape, out Vector3? pointOfObstruction)
+		private IMyEntity TestEntities(ICollection<IMyEntity> offenders, Capsule path, GridShapeProfiler myGridShape, out Vector3? pointOfObstruction, IMyCubeGrid GridDestination)
 		{
 			foreach (IMyEntity entity in offenders)
 			{
@@ -187,6 +189,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
+					if (asGrid == GridDestination)
+						continue;
+
 					if (!path.IntersectsAABB(entity))
 						continue;
 

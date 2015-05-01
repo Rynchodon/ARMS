@@ -155,8 +155,15 @@ namespace Rynchodon.Autopilot
 					}
 				case NavSettings.LANDING.LINEUP:
 					//log("LINEUP: getDistNavToWayDest()=" + getDistNavToWayDest(), "landGrid()", Logger.severity.TRACE);
-					if (CNS.moveState == NavSettings.Moving.NOT_MOVE && forDistNav.distToWayDest < 1)
-						CNS.landingState = NavSettings.LANDING.LAND;
+					//myLogger.debugLog("Lining up, distance to wayDest = " + forDistNav.distToWayDest, "landGrid()");
+					if (forDistNav.distToWayDest < 1)
+					{
+						if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+							CNS.landingState = NavSettings.LANDING.LAND;
+						else
+							myNav.fullStop("lineup: within range");
+						return;
+					}
 					goto case NavSettings.LANDING.LAND;
 				case NavSettings.LANDING.LAND:
 					{

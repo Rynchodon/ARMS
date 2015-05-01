@@ -73,10 +73,22 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public const float rotComp_minimum = 0.0349f;
 
-		/// <summary>
-		/// stop and rotate when greater than (90°)
-		/// </summary>
-		public const float rotLenSq_stopAndRot = 2.47f;
+		///// <summary>
+		///// stop and rotate when greater than (90°)
+		///// </summary>
+		//public const float rotLenSq_stopAndRot = 2.47f;
+
+		/// <summary>stop and rotate when greater than</summary>
+		public float rotLenSq_stopAndRot
+		{
+			get
+			{
+				if (CNS.isAMissile)
+					return 2.47f; // 90°
+				else
+					return 0.685f; // 15°
+			}
+		}
 
 		private RotateProfile
 			stoppedRotate = new RotateProfile(1.0f, 1f / 2f),
@@ -108,9 +120,20 @@ namespace Rynchodon.Autopilot
 			{
 				case NavSettings.Rotating.NOT_ROTA:
 					//myLogger.debugLog("entered NOT_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
+					switch (CNS.landingState)
+					{
+						case NavSettings.LANDING.OFF:
+						case NavSettings.LANDING.ORIENT:
+							break;
+						default:
+							//myLogger.debugLog("Cannot rotate, landing > ORIENT", "calcAndRotate()");
+							return;
+					}
+
 					switch (CNS.moveState)
 					{
 						case NavSettings.Moving.MOVING:
+							//myLogger.debugLog("CMM.rotLenSq = " + CMM.rotLenSq + ", rotLenSq_stopAndRot = " + rotLenSq_stopAndRot, "calcAndRotate()");
 							if (CMM.rotLenSq > rotLenSq_stopAndRot)
 							{
 								owner.fullStop("stopping to rotate");

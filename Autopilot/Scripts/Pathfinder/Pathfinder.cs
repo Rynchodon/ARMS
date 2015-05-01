@@ -19,6 +19,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private Vector3D Destination;// { get; private set; }
 		private Vector3D? Waypoint;// { get; private set; }
 
+		private IMyCubeGrid DestGrid;
 		private IMyCubeBlock NavigationBlock;// { get; private set; }
 		private bool IgnoreAsteroids;// { get; private set; }
 		private bool NoAlternateRoute;// { get; private set; }
@@ -61,7 +62,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		internal void Run(NavSettings CNS,  IMyCubeBlock NavigationBlock)
+		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)
 		{
 			Vector3D destination = (Vector3D)CNS.getWayDest(false);
 			Vector3D? waypoint = CNS.myWaypoint;
@@ -81,6 +82,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 				this.NavigationBlock = NavigationBlock;
 				this.IgnoreAsteroids = ignoreAsteroids;
 				this.NoAlternateRoute = noAlternateRoute;
+
+				// decide whether to use collision avoidance or slowdown
+				this.DestGrid = null;
+				switch (CNS.getTypeOfWayDest())
+				{
+					case NavSettings.TypeOfWayDest.BLOCK:
+					case NavSettings.TypeOfWayDest.GRID:
+						// run slowdown. see Navigator.calcMoveAndRotate()
+						this.DestGrid = CNS.CurrentGridDest.Grid;
+						break;
+					case NavSettings.TypeOfWayDest.LAND:
+					default:
+						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
+							this.DestGrid = CNS.CurrentGridDest.Grid;
+						break;
+				}
 			}
 
 			// not a race, this function is only called from one thread
@@ -111,38 +128,49 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void CheckPath()
 		{
 			myLogger.debugLog("testing path to destination", "CheckPath()");
-			Vector3? pointOfObstruction;
+			Vector3? pointOfObstruction = null;
 			Vector3D WayDest = Destination;
 			DistanceToDest = (float)(Destination - NavigationBlock.GetPosition()).Length();
-			IMyEntity ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(Destination, CubeGrid), NavigationBlock, IgnoreAsteroids, out pointOfObstruction);
-			if (ObstructingEntity == null)
+
+			IMyEntity ObstructingEntity = null;
+			if (CNS.landingState == NavSettings.LANDING.OFF)
 			{
-				if (Waypoint == null)
+				ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(Destination, CubeGrid), NavigationBlock, IgnoreAsteroids, out pointOfObstruction, DestGrid);
+				if (ObstructingEntity == null)
 				{
-					myLogger.debugLog("Path to destination is clear", "CheckPath()", Logger.severity.DEBUG);
-					SetOutput(new PathfinderOutput(PathfinderOutput.Result.Path_Clear));
+					if (Waypoint == null)
+					{
+						myLogger.debugLog("Path to destination is clear", "CheckPath()", Logger.severity.DEBUG);
+						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Path_Clear));
+					}
+					else
+					{
+						myLogger.debugLog("Re-routing to destination, path is now clear", "CheckPath()", Logger.severity.DEBUG);
+						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, null, Destination));
+					}
+					return;
 				}
-				else
-				{
-					myLogger.debugLog("Re-routing to destination, path is now clear", "CheckPath()", Logger.severity.DEBUG);
-					SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, null, Destination));
-				}
-				return;
+				CheckInterrupt();
+				myLogger.debugLog("Path to destination is obstructed by " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
 			}
-			CheckInterrupt();
-			myLogger.debugLog("Path to destination is obstructed by " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
 
 			if (Waypoint != null)
 			{
 				WayDest = (Vector3)Waypoint;
 				myLogger.debugLog("testing path to waypoint", "CheckPath()");
-				ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)Waypoint, CubeGrid), NavigationBlock, IgnoreAsteroids, out pointOfObstruction);
+				ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute((Vector3D)Waypoint, CubeGrid), NavigationBlock, IgnoreAsteroids, out pointOfObstruction, DestGrid);
 				if (ObstructingEntity == null)
 				{
 					myLogger.debugLog("Path to waypoint is clear", "CheckPath()", Logger.severity.DEBUG);
 					SetOutput(new PathfinderOutput(PathfinderOutput.Result.Path_Clear));
 					return;
 				}
+			}
+
+			if (ObstructingEntity == null)
+			{
+				myLogger.debugLog("Neither Destination nor Waypoint were tested", "CheckPath()", Logger.severity.DEBUG);
+				return;
 			}
 
 			CheckInterrupt();
@@ -173,7 +201,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					pointOfObstruction.throwIfNull_variable("pointOfObstruction");
 					Vector3 Alternate = (Vector3)pointOfObstruction + newPathDistance * PathVector;
-					myLogger.debugLog("Alternate = "+Alternate, "CheckPath()");
+					myLogger.debugLog("Alternate = " + Alternate, "CheckPath()");
 					CNS.throwIfNull_variable("CNS");
 					if (!CNS.waypointFarEnough(Alternate))
 					{
@@ -185,10 +213,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 					Alternate_Path.Add(distanceFromDest, Alternate);
 					myLogger.debugLog("Added alt path: " + Alternate + " with distance of " + distanceFromDest, "CheckPath()");
 				}
-				
+
 				//for (int whichNewPath = 0; whichNewPath < 4; whichNewPath++)
 				foreach (Vector3 AlternatePoint in Alternate_Path.Values)
-				//{
+					//{
 					////Vector3 newPathDestination = (Vector3)pointOfObstruction + newPathDistance * NewPathVectors[whichNewPath];
 					////myLogger.debugLog("testing alternate path: " + newPathDestination + " from " + pointOfObstruction + " + " + newPathDistance + " * " + NewPathVectors[whichNewPath], "CheckPath()");
 					//myLogger.debugLog("testing alternate path: " + Alternate_Waypoint, "CheckPath()");
@@ -209,7 +237,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// before going to No Way Forward, check if we can move away from obstruction
 			Vector3D GridCentre = CubeGrid.GetCentre();
-			Vector3 Forward = Vector3.Normalize( lineToWayDest);
+			Vector3 Forward = Vector3.Normalize(lineToWayDest);
 			for (int backWardDistance = 128; backWardDistance < 10000; backWardDistance *= 2)
 			{
 				Vector3 backWardPoint = GridCentre - backWardDistance * Forward;
@@ -233,7 +261,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			myLogger.debugLog("testing alternate path: " + AlternatePoint, "CheckPath()");
 			Vector3? alt_pointOfObstruction;
-			IMyEntity Alt_ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(AlternatePoint, CubeGrid), NavigationBlock, IgnoreAsteroids, out alt_pointOfObstruction);
+			IMyEntity Alt_ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(AlternatePoint, CubeGrid), NavigationBlock, IgnoreAsteroids, out alt_pointOfObstruction, DestGrid);
 			if (Alt_ObstructingEntity == null) // found a new path
 			{
 				CheckInterrupt();
