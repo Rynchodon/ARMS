@@ -3,3 +3,5 @@ Will be moved to steam every release.
 major:
 
 minor:
+radar charges while on / discharges while off. charge level affects range
+capped small radar to 20 km
