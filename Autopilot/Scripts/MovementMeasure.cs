@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 			Vector3D dirNorm;
 			if (targetDirection == null)
 			{
-				Vector3D displacement = currentWaypoint - owner.myGridDim.getRCworld();
+				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition(); // owner.myGridDim.getRCworld();
 				dirNorm = Vector3D.Normalize(displacement);
 			}
 			else

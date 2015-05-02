@@ -55,8 +55,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// instead of iterating over blocks, test cells of grid for contents (no need to lock grid)
 			ReadOnlyList<IMySlimBlock> mutable = SlimBlocks.mutable();
-			myCubeGrid.Min.ForEachVector(myCubeGrid.Max, (cell) =>
-			{
+			myCubeGrid.Min.ForEachVector(myCubeGrid.Max, (cell) => {
 				IMySlimBlock slim = myCubeGrid.GetCubeBlock(cell);
 				if (slim != null)
 					mutable.Add(slim);
@@ -134,10 +133,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			DirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
 			Vector3 centreDestination = destination.getLocal() + Centre - navigationBlock.Position * myCubeGrid.GridSize;
-			myLogger.debugLog("destination.getLocal() = " + destination.getLocal() + ", Centre = " + Centre + ", navigationBlock.Position * myCubeGrid.GridSize = " + navigationBlock.Position * myCubeGrid.GridSize, "SetDestination()");
-			myLogger.debugLog("centreDestination = " + centreDestination + ", world = " + RelativeVector3F.createFromLocal(centreDestination, myCubeGrid).getWorldAbsolute(), "SetDestination()");
+			//myLogger.debugLog("destination.getLocal() = " + destination.getLocal() + ", Centre = " + Centre + ", navigationBlock.Position * myCubeGrid.GridSize = " + navigationBlock.Position * myCubeGrid.GridSize, "SetDestination()");
+			//myLogger.debugLog("centreDestination = " + centreDestination + ", world = " + RelativeVector3F.createFromLocal(centreDestination, myCubeGrid).getWorldAbsolute(), "SetDestination()");
 			rejectAll();
-			createCapsule(centreDestination);
+			createCapsule(centreDestination, navigationBlock);
 		}
 
 		/// <summary>
@@ -183,8 +182,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			CentreRejection = RejectMetres(Centre);
 			foreach (IMySlimBlock slim in immutable)
 			{
-				slim.ForEachCell((cell) =>
-				{
+				slim.ForEachCell((cell) => {
 					Vector3 rejection = RejectMetres(cell * myCubeGrid.GridSize);
 					rejectionCells.Add(rejection);
 					return false;
@@ -193,7 +191,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		}
 
 		/// <param name="centreDestination">where the centre of the grid will end up (local)</param>
-		private void createCapsule(Vector3 centreDestination)
+		private void createCapsule(Vector3 centreDestination, IMyCubeBlock navigationBlock)
 		{
 			float longestDistanceSquared = 0;
 			foreach (Vector3 rejection in rejectionCells)
@@ -202,10 +200,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (distanceSquared > longestDistanceSquared)
 					longestDistanceSquared = distanceSquared;
 			}
-			RelativeVector3F P0 = RelativeVector3F.createFromLocal(Centre, myCubeGrid);
-			RelativeVector3F P1 = RelativeVector3F.createFromLocal(centreDestination, myCubeGrid);
+			Vector3D P0 = RelativeVector3F.createFromLocal(Centre, myCubeGrid).getWorldAbsolute();
+			//Vector3D P1 = RelativeVector3F.createFromLocal(centreDestination, myCubeGrid).getWorldAbsolute();
+
+			// need to extend capsule past destination by distance between remote and front of ship
+			Vector3 localPosition = navigationBlock.LocalPosition();
+			Ray navTowardsDest = new Ray(localPosition, DirectionNorm);
+			float tMin, tMax;
+			myCubeGrid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
+			Vector3D P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * DirectionNorm, myCubeGrid).getWorldAbsolute();
+
 			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + 3 * myCubeGrid.GridSize);
-			myPath = new Capsule(P0.getWorldAbsolute(), P1.getWorldAbsolute(), CapsuleRadius);
+			myPath = new Capsule(P0, P1, CapsuleRadius);
 		}
 
 		#endregion

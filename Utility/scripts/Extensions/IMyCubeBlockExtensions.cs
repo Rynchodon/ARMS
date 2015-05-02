@@ -271,5 +271,14 @@ namespace Rynchodon
 			}
 			return null;
 		}
+
+		public static Vector3 LocalPosition(this IMyCubeBlock block)
+		{ return block.Position * block.CubeGrid.GridSize; }
+
+		//public static void DistanceToEdge(this IMyCubeBlock block, Base6Directions.Direction direction)
+		//{
+
+
+		//}
 	}
 }

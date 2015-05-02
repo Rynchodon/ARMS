@@ -33,7 +33,7 @@ namespace Rynchodon
 			Vector3 Radius = new Vector3(cap.Radius, cap.Radius, cap.Radius);
 			AABB = new BoundingBox(AABB.Min - Radius, AABB.Max + Radius);
 			float distance;
-			myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
+			//myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
 			return (AABB.Intersects(cap.get_Line(), out distance));
 		}
 

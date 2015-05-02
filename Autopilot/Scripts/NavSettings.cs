@@ -2,18 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
 
-//using Sandbox.Common;
-//using Sandbox.Common.Components;
-//using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
 using Sandbox.ModAPI;
-//using Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
 using Rynchodon.AntennaRelay;
@@ -92,18 +82,23 @@ namespace Rynchodon.Autopilot
 		//private DateTime waypointExpiresAt;
 
 		private Navigator myNav;
-		private GridDimensions myGridDims
+		private IMyCubeGrid myCubeGrid
 		{
-			get
-			{
-				if (myNav == null)
-					return null;
-				return myNav.myGridDim;
-			}
-		}
+			get { if (myNav == null)
+			return null;
+			return myNav.myGrid; } }
+		//private GridDimensions myGridDims
+		//{
+		//	get
+		//	{
+		//		if (myNav == null)
+		//			return null;
+		//		return myNav.myGridDim;
+		//	}
+		//}
 
 		public bool ignoreAsteroids = false;
-		public bool noAlternateRoute = false;
+		public bool FlyTheLine = false;
 
 		public NavSettings(Navigator owner)
 		{
@@ -155,11 +150,7 @@ namespace Rynchodon.Autopilot
 			//collisionUpdateSinceWaypointAdded = 0;
 			clearSpeedInternal();
 
-			if (myGridDims == null)
-			{
-				myLogger.log(Logger.severity.FATAL, "onWayDestAddedRemoved()", "myGridDims == null");
-				VRage.Exceptions.ThrowIf<NullReferenceException>(true);
-			}
+			myCubeGrid.throwIfNull_variable("myCubeGrid");
 		}
 
 		public Vector3D? myWaypoint { get; private set; }
@@ -251,7 +242,7 @@ namespace Rynchodon.Autopilot
 		/// tests if a waypoint is far enough away (further than destinationRadius)
 		/// </summary>
 		public bool waypointFarEnough(Vector3D waypoint)
-		{ return myGridDims.myGrid.WorldAABB.Distance(waypoint) > destinationRadius; }
+		{ return myCubeGrid.WorldAABB.Distance(waypoint) > destinationRadius; }
 
 		/// <summary>
 		/// removes the waypoint if one exists, otherwise removes the centreDestination
@@ -285,7 +276,7 @@ namespace Rynchodon.Autopilot
 					landDirection = null;
 					jump_to_dest = false;
 					ignoreAsteroids = false;
-					noAlternateRoute = false;
+					FlyTheLine = false;
 					return;
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;
@@ -376,7 +367,7 @@ namespace Rynchodon.Autopilot
 				switch (landingState)
 				{
 					case LANDING.OFF:
-						useLandOffset = landOffset * (myGridDims.getLongestDim() * 1.5f + 15);
+						useLandOffset = landOffset * (myCubeGrid.GetLongestDim() * 1.5f + 15);
 						break;
 					case LANDING.LINEUP:
 					case LANDING.SEPARATE:

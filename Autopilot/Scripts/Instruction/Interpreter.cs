@@ -195,14 +195,6 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => { CNS.ignoreAsteroids = true; };
 						return true;
 					}
-				case "door":
-					{
-						wordAction = () => {
-							owner.CNS.noAlternateRoute = true;
-							myLogger.debugLog("Set noAlternateRoute", "getAction_word()");
-						};
-						return true;
-					}
 				case "exit":
 					{
 						wordAction = () => {
@@ -218,6 +210,14 @@ namespace Rynchodon.Autopilot.Instruction
 							log("setting jump", "getAction_word()", Logger.severity.DEBUG);
 							owner.CNS.jump_to_dest = true;
 							return;
+						};
+						return true;
+					}
+				case "line":
+					{
+						wordAction = () => {
+							owner.CNS.FlyTheLine = true;
+							myLogger.debugLog("Set FlyTheLine", "getAction_word()");
 						};
 						return true;
 					}

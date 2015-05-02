@@ -11,7 +11,8 @@ using VRageMath;
 namespace Rynchodon
 {
 	/// <summary>
-	/// For converting between local and world Vectors.
+	/// <para>For converting between local and world Vectors.</para>
+	/// <para>References should be transient; the longer it is held the less accurate it becomes.</para>
 	/// </summary>
 	public class RelativeVector3F
 	{

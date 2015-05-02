@@ -240,5 +240,20 @@ namespace Rynchodon
 		}
 
 		#endregion
+
+		/// <summary>
+		/// Longest of width, length, height.
+		/// </summary>
+		public static float GetLongestDim(this BoundingBox box)
+		{
+			Vector3 Size = box.Size;
+			return MathHelper.Max(Size.X, Size.Y, Size.Z);
+		}
+
+		/// <summary>
+		/// Longest of width, length, height.
+		/// </summary>
+		public static float GetLongestDim(this IMyCubeGrid grid)
+		{ return grid.LocalAABB.GetLongestDim(); }
 	}
 }

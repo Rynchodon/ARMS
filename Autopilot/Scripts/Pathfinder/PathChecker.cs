@@ -38,21 +38,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <exception cref="InterruptException">If interrupted</exception>
 		/// I considered keeping track of the closest entity, in the event there was no obstruction. This would have been, at best, unreliable due to initial AABB test.
-		public IMyEntity TestPath(RelativeVector3F destination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction, IMyCubeGrid DestGrid)
+		public IMyEntity TestPath(Vector3D worldDestination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction, IMyCubeGrid DestGrid)
 		{
-			destination.throwIfNull_argument("destination");
-			destination.throwIfNull_argument("navigationBlock");
+			worldDestination.throwIfNull_argument("destination");
+			worldDestination.throwIfNull_argument("navigationBlock");
 
 			Interrupt = false;
 			this.NavigationBlock = navigationBlock;
 			this.IgnoreAsteroids = IgnoreAsteroids;
 			this.DestGrid = DestGrid;
 
-			myLogger.debugLog("destination (world absolute) = " + destination.getWorldAbsolute(), "TestPath()");
-			myLogger.debugLog("destination (local) = " + destination.getLocal(), "TestPath()");
-			myLogger.debugLog("destination (nav block) = " + destination.getBlock(navigationBlock), "TestPath()");
+			myLogger.debugLog("destination (world absolute) = " + worldDestination, "TestPath()");
+			//myLogger.debugLog("destination (local) = " + worldDestination.getLocal(), "TestPath()");
+			//myLogger.debugLog("destination (nav block) = " + worldDestination.getBlock(navigationBlock), "TestPath()");
 
-			Vector3D Displacement = destination.getWorldAbsolute() - navigationBlock.GetPosition();
+			Vector3D Displacement = worldDestination - navigationBlock.GetPosition();
 			myLogger.debugLog("Displacement = " + Displacement, "TestPath()");
 
 			// entities in large AABB
@@ -71,8 +71,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// set destination
 			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
-			myLogger.debugLog("destination = " + destination.getWorldAbsolute() + ", navigationBlock = " + navigationBlock.GetPosition(), "TestPath()");
-			myGridShape.SetDestination(destination, navigationBlock);
+			//myLogger.debugLog("destination = " + worldDestination.getWorldAbsolute() + ", navigationBlock = " + navigationBlock.GetPosition(), "TestPath()");
+			myGridShape.SetDestination(RelativeVector3F.createFromWorldAbsolute(worldDestination, myCubeGrid), navigationBlock);
 			myPath = myGridShape.myPath;
 			myLogger.debugLog("got path from " + myPath.P0 + " to " + myPath.P1 + " with radius " + myPath.Radius, "TestPath()");
 
@@ -83,6 +83,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>
 		/// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
 		/// </summary>
+		/// <param name="canTravel">Line along which navigation block would travel</param>
 		/// <remarks>
 		/// Capsule only test because the ship will not be oriented correctly
 		/// </remarks>
@@ -105,12 +106,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
 			offenders = SortByDistance(offenders);
-			if (offenders.Count == 0)
-			{
-				myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
-				return 0;
-			}
-			myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
+			//if (offenders.Count == 0)
+			//{
+			//	myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
+			//	return 0;
+			//}
+			//myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
 
 			Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
 			Vector3? pointOfObstruction;
@@ -239,11 +240,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 					{
 						bool blockIntersects = false;
 						Vector3 cellPosWorld = new Vector3();
+						//myLogger.debugLog("slim = " + slim.getBestName() + ", fat = " + slim.FatBlock + ", cell = " + slim.Position, "TestEntities()");
+						//if (slim.FatBlock != null)
+						//{
+						//	myLogger.debugLog("fatblock min = " + slim.FatBlock.Min + ", fatblock max = " + slim.FatBlock.Max, "TestEntities()");
+						//	//myLogger.debugLog("fatblock AABB min = " + slim.FatBlock.LocalAABB.Min + ", fatblock AABB max = " + slim.FatBlock.LocalAABB.Max, "TestEntities()");
+						//}
 						slim.ForEachCell((cell) => {
 							CheckInterrupt();
 							cellPosWorld = asGrid.GridIntegerToWorld(cell);
 							cellCount++;
 
+							//myLogger.debugLog("slim = " + slim.getBestName() + ", cell = " + cell + ", world position = " + cellPosWorld, "TestEntities()");
 							// intersects capsule
 							if (!path.Intersects(cellPosWorld, GridSize))
 								return false;
@@ -256,6 +264,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 								blockIntersects = true;
 								return true;
 							}
+							//myLogger.debugLog("rejection: no collision, cell = " + cellPosWorld + ", block = " + slim.getBestName(), "TestEntities()", Logger.severity.DEBUG);
 							return false;
 						});
 						if (blockIntersects)

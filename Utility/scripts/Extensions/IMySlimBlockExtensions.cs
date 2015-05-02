@@ -30,36 +30,35 @@ namespace Rynchodon
 			}
 			else
 			{
-				float gridSize = block.CubeGrid.GridSize;
-				Vector3I min, max;
-				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out min);
-				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out max);
-				min.ForEachVector(max, invokeOnEach);
+				//float gridSize = block.CubeGrid.GridSize;
+				//Vector3I min, max;
+				//FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out min);
+				//FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out max);
+				FatBlock. Min.ForEachVector(FatBlock.Max, invokeOnEach);
 			}
 		}
 
-		/// <summary>
-		/// performs an action on each cell a block occupies plus all the surrounding cells
-		/// </summary>
-		/// <param name="invokeOnEach">function to call for each vector, if it return true short-curcuit</param>
-		public static void ForEachCellSurround(this IMySlimBlock block, Func<Vector3I, bool> invokeOnEach, int extend = 1)
-		{
-			IMyCubeBlock FatBlock = block.FatBlock;
-			if (FatBlock == null)
-			{
-				Vector3I min, max;
-				block.Position.ApplyOperation((cellComp) => { return cellComp - extend; }, out min);
-				block.Position.ApplyOperation((cellComp) => { return cellComp + extend; }, out max);
-				min.ForEachVector(max, invokeOnEach);
-			}
-			else
-			{
-				float gridSize = block.CubeGrid.GridSize;
-				Vector3I min, max;
-				FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => (int)Math.Round(metresComp / gridSize - extend), out min);
-				FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => (int)Math.Round(metresComp / gridSize + extend), out max);
-				min.ForEachVector(max, invokeOnEach);
-			}
-		}
+		///// <summary>
+		///// performs an action on each cell a block occupies plus all the surrounding cells
+		///// </summary>
+		///// <param name="invokeOnEach">function to call for each vector, if it return true short-curcuit</param>
+		//public static void ForEachCellSurround(this IMySlimBlock block, Func<Vector3I, bool> invokeOnEach, int extend = 1)
+		//{
+		//	IMyCubeBlock FatBlock = block.FatBlock;
+		//	if (FatBlock == null)
+		//	{
+		//		Vector3I min, max;
+		//		min.ForEachVector(max, invokeOnEach);
+		//	}
+		//	else
+		//	{
+		//		float gridSize = block.CubeGrid.GridSize;
+		//		Vector3I min, max;
+		//		min.ForEachVector(max, invokeOnEach);
+		//	}
+		//}
+
+		public static Vector3 LocalPosition(this IMySlimBlock block)
+		{ return block.Position * block.CubeGrid.GridSize; }
 	}
 }

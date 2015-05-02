@@ -15,7 +15,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <para>Distance to closest entity, has nothing to do with obstruction.</para>
 		/// <para>May be negative.</para>
 		/// </summary>
-		public readonly double DistanceToClosest;
+		public double DistanceToClosest { get { return lazy_DistanceToClosest.Value; } }
+		private Lazy<double> lazy_DistanceToClosest;
 		//public readonly bool AllowsMovement;
 
 		public PathfinderOutput(PathChecker getClosestFrom, Result PathfinderResult, IMyEntity Obstruction = null, Vector3D Waypoint = new Vector3D())
@@ -30,12 +31,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 				case Result.Path_Clear:
 				case Result.Alternate_Path:
 					//AllowsMovement = true;
-					this.DistanceToClosest = getClosestFrom.ClosestEntity();
+					//this.DistanceToClosest = getClosestFrom.ClosestEntity();
+					this.lazy_DistanceToClosest = new Lazy<double>(() => { return getClosestFrom.ClosestEntity(); });
 					break;
 				case Result.Searching_Alt:
 				case Result.No_Way_Forward:
 					//AllowsMovement = false;
-					this.DistanceToClosest = PathChecker.NearbyRange;
+					//this.DistanceToClosest = PathChecker.NearbyRange;
+					this.lazy_DistanceToClosest = new Lazy<double>(() => { return PathChecker.NearbyRange; });
 					break;
 			}
 		}

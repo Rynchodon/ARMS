@@ -1,4 +1,6 @@
-﻿using System;
+﻿// skip file on build
+
+using System;
 using VRageMath;
 using System.Collections.Generic;
 //using System.Linq;

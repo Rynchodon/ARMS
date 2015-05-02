@@ -49,7 +49,7 @@ namespace Rynchodon.Autopilot
 		internal NavSettings CNS;
 		private Pathfinder.Pathfinder myPathfinder;
 		internal Pathfinder.PathfinderOutput myPathfinder_Output { get; private set; }
-		internal GridDimensions myGridDim;
+		//internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
 		internal Targeter myTargeter;
 		private Rotator myRotator;
@@ -82,13 +82,13 @@ namespace Rynchodon.Autopilot
 				myLand = null;
 				if (currentRemoteControl_Value == null)
 				{
-					myGridDim = null;
+					//myGridDim = null;
 					myPathfinder = null;
 					CNS = new NavSettings(null);
 				}
 				else
 				{
-					myGridDim = new GridDimensions(currentRCblock);
+					//myGridDim = new GridDimensions(currentRCblock);
 					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
 					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
@@ -653,11 +653,21 @@ namespace Rynchodon.Autopilot
 					{
 						if (PathfinderAllowsMovement)
 							if (MM.rotLenSq < myRotator.rotLenSq_stopAndRot)
+							//MoveIfPossible(false);
+							//if (!CNS.FlyTheLine)
+							//{
+							//	calcAndMove();
+							//	CNS.moveState = NavSettings.Moving.MOVING;
+							//	reportState(ReportableState.MOVING);
+							//}
+							//goto case NavSettings.Moving.NOT_MOVE;
+							//if (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGrid.GetLongestDim() + CNS.destinationRadius)
 							{
 								calcAndMove();
 								CNS.moveState = NavSettings.Moving.MOVING;
 								reportState(ReportableState.MOVING);
 							}
+						//{ }
 					}
 					break;
 				case NavSettings.Moving.HYBRID:
@@ -685,25 +695,8 @@ namespace Rynchodon.Autopilot
 					{
 						if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA)
 						{
-							if (PathfinderAllowsMovement)
-							{
-								if (CNS.isAMissile // missile never sidel
-									|| (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGridDim.getLongestDim() + CNS.destinationRadius)) // hybrid when not landing and moving a long way
-								//if (CNS.isAMissile || CNS.landingState == NavSettings.LANDING.OFF)
-								{
-									calcAndMove(true);
-									CNS.moveState = NavSettings.Moving.HYBRID; // switch to hybrid
-									reportState(ReportableState.MOVING);
-								}
-								else
-								{
-									calcAndMove(true);
-									CNS.moveState = NavSettings.Moving.SIDELING; // switch to sideling
-									reportState(ReportableState.MOVING);
-								}
-							}
-							else
-								reportState(ReportableState.PATHFINDING);
+							if (MoveIfPossible(true))
+								break;
 						}
 						break;
 					}
@@ -716,6 +709,50 @@ namespace Rynchodon.Autopilot
 
 			if (CNS.moveState != NavSettings.Moving.SIDELING) // && CNS.landingState == NavSettings.LANDING.OFF)
 				calcAndRotate();
+		}
+
+		private bool MoveIfPossible(bool canSidel)
+		{
+			if (PathfinderAllowsMovement)
+			{
+				if (CNS.isAMissile)
+				{
+					StartMoveHybrid();
+					return true;
+				}
+				if (CNS.FlyTheLine)
+				{
+					if (!canSidel)
+						return false;
+					StartMoveSidel();
+					return true;
+				}
+				if (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGrid.GetLongestDim() + CNS.destinationRadius)
+				{
+					StartMoveHybrid();
+					return true;
+				}
+				if (!canSidel)
+					return false;
+				StartMoveSidel();
+				return true;
+			}
+			reportState(ReportableState.PATHFINDING);
+			return false;
+		}
+
+		private void StartMoveHybrid()
+		{
+			calcAndMove(true);
+			CNS.moveState = NavSettings.Moving.HYBRID;
+			reportState(ReportableState.MOVING);
+		}
+
+		private void StartMoveSidel()
+		{
+			calcAndMove(true);
+			CNS.moveState = NavSettings.Moving.SIDELING;
+			reportState(ReportableState.MOVING);
 		}
 
 		/// <summary>
