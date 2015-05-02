@@ -39,7 +39,6 @@
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>150</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
-	  <MaxRange>40000</MaxRange>
     </Definition>
     <Definition>
       <Id>
@@ -94,7 +93,7 @@
       <ItemIds>
 		<string>Beacon/LargeBlockRadarRynAR</string>
       </ItemIds>
-    </Category>  
+    </Category>
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
       <Id>
         <TypeId>GuiBlockCategoryDefinition</TypeId>

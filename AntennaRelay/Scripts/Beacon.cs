@@ -20,7 +20,7 @@ namespace Rynchodon.AntennaRelay
 	//public class Beacon : UpdateEnforcer
 	public class Beacon //: EntityScript<IMyCubeBlock>
 	{
-		internal bool isRadar = false;
+		internal readonly bool isRadar = false;
 
 		private const string SubTypeSearchRadar = "Radar";
 
@@ -32,6 +32,7 @@ namespace Rynchodon.AntennaRelay
 			CubeBlock = block;
 			myBeacon = block as Ingame.IMyBeacon;
 
+			isSmallBlock =  block.CubeGrid.GridSizeEnum == MyCubeSize.Small;
 			if (Settings.boolSettings[Settings.BoolSetName.bAllowRadar] && CubeBlock.BlockDefinition.SubtypeName.Contains(SubTypeSearchRadar))
 			{
 				isRadar = true;
@@ -54,6 +55,18 @@ namespace Rynchodon.AntennaRelay
 			//isClosed = true;
 		}
 
+		/// <summary>Is this a small block?</summary>
+		private readonly bool isSmallBlock;
+		/// <summary>radius of small radar will be forced down to this number</summary>
+		private const float maxRadiusSmallRadar = 20000;
+
+		/// <summary>While radar has power, its powerLevel will increase up to its radius</summary>
+		private float powerLevel = 0;
+		/// <summary>Power change per 100 updates while on</summary>
+		private const float powerIncrease = 1000;
+		/// <summary>Power change per 100 updates while off</summary>
+		private const float powerDecrease = -2000;
+
 		/// <summary>
 		/// power ratio is (mass + A) / (mass + B) / C
 		/// </summary>
@@ -66,7 +79,11 @@ namespace Rynchodon.AntennaRelay
 			try
 			{
 				if (!myBeacon.IsWorking)
+				{
+					if (isRadar && powerLevel > 0)
+						powerLevel += powerDecrease;
 					return;
+				}
 
 				// send beacon self to radio antenna
 				LinkedList<RadioAntenna> canSeeMe = new LinkedList<RadioAntenna>(); // friend and foe alike
@@ -87,33 +104,54 @@ namespace Rynchodon.AntennaRelay
 
 				// Radar
 
+				float Radius = myBeacon.Radius;
+
+				// cap small radar
+				if (isSmallBlock)
+				{
+					if (Radius > maxRadiusSmallRadar)
+					{
+						myLogger.debugLog("Reduce radius from " + Radius + " to " + maxRadiusSmallRadar, "UpdateAfterSimulation100()");
+						myBeacon.SetValueFloat("Radius", maxRadiusSmallRadar);
+						Radius = maxRadiusSmallRadar;
+					}
+				}
+
+				// adjust power level
+				if (powerLevel < 0)
+					powerLevel = 0;
+				powerLevel += powerIncrease;
+				if (powerLevel > Radius)
+					powerLevel = Radius;
+				myLogger.debugLog("Radius = " + Radius + ", power level = " + powerLevel, "UpdateAfterSimulation100()");
+
 				// figure out what radar sees
 				LinkedList<LastSeen> radarSees = new LinkedList<LastSeen>();
 
-				HashSet<IMyEntity> allEntitiesInWorld = new HashSet<IMyEntity>();
-				MyAPIGateway.Entities.GetEntities(allEntitiesInWorld);
-				foreach (IMyEntity ent in allEntitiesInWorld)
-					if (ent is IMyCubeGrid || ent is IMyCharacter)
-					{
-						// get detection distance
-						float volume = ent.LocalAABB.Volume();
-						float power = (volume + radarPower_A) / (volume + radarPower_B) / radarPower_C * myBeacon.Radius;
-						if (!CubeBlock.canSendTo(ent, false, power)) // not in range
-							continue;
+				HashSet<IMyEntity> allGrids = new HashSet<IMyEntity>();
+				MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
+				foreach (IMyEntity ent in allGrids)
+				//if (ent is IMyCubeGrid || ent is IMyCharacter)
+				{
+					// get detection distance
+					float volume = ent.LocalAABB.Volume();
+					float power = (volume + radarPower_A) / (volume + radarPower_B) / radarPower_C * powerLevel;
+					if (!CubeBlock.canSendTo(ent, false, power)) // not in range
+						continue;
 
-						//log("radar found a grid: " + (ent as IMyCubeGrid).DisplayName, "UpdateAfterSimulation100()", Logger.severity.TRACE);
+					//log("radar found a grid: " + (ent as IMyCubeGrid).DisplayName, "UpdateAfterSimulation100()", Logger.severity.TRACE);
 
-						// report to attached antennas and remotes
-						LastSeen seen = new LastSeen(ent, false, new RadarInfo(volume));
-						radarSees.AddLast(seen);
+					// report to attached antennas and remotes
+					LastSeen seen = new LastSeen(ent, false, new RadarInfo(volume));
+					radarSees.AddLast(seen);
 
-						//foreach (RadioAntenna ant in RadioAntenna.registry)
-						//	if (CubeBlock.canSendTo(ant.CubeBlock, true))
-						//		ant.receive(seen);
-						//foreach (RemoteControl rem in RemoteControl.registry.Values)
-						//	if (CubeBlock.canSendTo(rem.CubeBlock, true))
-						//		rem.receive(seen);
-					}
+					//foreach (RadioAntenna ant in RadioAntenna.registry)
+					//	if (CubeBlock.canSendTo(ant.CubeBlock, true))
+					//		ant.receive(seen);
+					//foreach (RemoteControl rem in RemoteControl.registry.Values)
+					//	if (CubeBlock.canSendTo(rem.CubeBlock, true))
+					//		rem.receive(seen);
+				}
 
 				Receiver.sendToAttached(CubeBlock, radarSees);
 			}
