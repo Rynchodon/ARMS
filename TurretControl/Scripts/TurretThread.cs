@@ -11,7 +11,7 @@ using VRage;
 
 namespace Rynchodon.Autopilot.Turret
 {
-	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.NoUpdate)]
+	//[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.NoUpdate)]
 	public class TurretThread : MySessionComponentBase
 	{
 		private static Logger myLogger = new Logger(null, "TurretThread");
@@ -23,8 +23,8 @@ namespace Rynchodon.Autopilot.Turret
 		private static bool isRunning = false;
 		private static FastResourceLock lock_isRunning = new FastResourceLock();
 
-		protected override void UnloadData()
-		{ TurretActions = null; }
+		//protected override void UnloadData()
+		//{ TurretActions = null; }
 
 		public static void EnqueueAction(Action item, FastResourceLock lock_MyAPIGateway = null)
 		{

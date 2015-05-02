@@ -137,7 +137,7 @@ namespace Rynchodon.Autopilot
 						calcOrientationFromBlockDirection(CNS.landLocalBlock);
 						matchOrientation(); // start
 						CNS.landingState = NavSettings.LANDING.ORIENT;
-						CNS.collisionUpdateSinceWaypointAdded = 1000; // will not be calling collision
+						//CNS.collisionUpdateSinceWaypointAdded = 1000; // will not be calling collision
 						//mergeMonitor.clearMergeStatus();
 						return;
 					}
@@ -154,8 +154,15 @@ namespace Rynchodon.Autopilot
 					}
 				case NavSettings.LANDING.LINEUP:
 					//log("LINEUP: getDistNavToWayDest()=" + getDistNavToWayDest(), "landGrid()", Logger.severity.TRACE);
-					if (CNS.moveState == NavSettings.Moving.NOT_MOVE && forDistNav.distToWayDest < 1)
-						CNS.landingState = NavSettings.LANDING.LAND;
+					//myLogger.debugLog("Lining up, distance to wayDest = " + forDistNav.distToWayDest, "landGrid()");
+					if (forDistNav.distToWayDest < 1)
+					{
+						if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+							CNS.landingState = NavSettings.LANDING.LAND;
+						else
+							myNav.fullStop("lineup: within range");
+						return;
+					}
 					goto case NavSettings.LANDING.LAND;
 				case NavSettings.LANDING.LAND:
 					{
@@ -186,13 +193,14 @@ namespace Rynchodon.Autopilot
 							return;
 						}
 						else // waypoint exists
-							if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
-								log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
-							else
-							{
-								alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
-								return;
-							}
+							//if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
+							//	log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
+							//else
+							//{
+							//	alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
+							//	return;
+							//}
+							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}

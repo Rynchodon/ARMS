@@ -63,23 +63,59 @@ namespace Rynchodon
 				grid.GetBlocks(blocks, collect);
 		}
 
+		#region IMyEntities
+
 		public static void GetEntities_Safe(this IMyEntities entitiesObject, HashSet<IMyEntity> entities, Func<IMyEntity, bool> collect = null)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
 				entitiesObject.GetEntities(entities, collect);
 		}
 
+		/// <summary>
+		/// <para>Uses IMyEntities.GetEntities to get entities in AABB</para>
+		/// <para>Always use over GetEntitiesInAABB_Safe() when blocks are not needed, much faster.</para>
+		/// </summary>
+		/// <param name="preCollect">applied before intersection test</param>
+		public static void GetEntitiesInAABB_Safe_NoBlock(this IMyEntities entitiesObject, BoundingBoxD boundingBox, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
+		{
+			Func<IMyEntity, bool> collector;
+			if (preCollect == null)
+				collector = (entity) => boundingBox.Intersects(entity.WorldAABB);
+			else
+				collector = (entity) => { return  preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
+			entitiesObject.GetEntities_Safe(entities, collector);
+		}
+
+		/// <summary>
+		/// <para>Uses IMyEntities.GetEntities to get entities in Sphere</para>
+		/// <para>Always use over GetEntitiesInSphere_Safe() when blocks are not needed, much faster.</para>
+		/// </summary>
+		/// <param name="preCollect">applied before intersection test</param>
+		public static void GetEntitiesInSphere_Safe_NoBlock(this IMyEntities entitiesObject, BoundingSphereD boundingSphere, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
+		{
+			Func<IMyEntity, bool> collector;
+			if (preCollect == null)
+				collector = (entity) => boundingSphere.Intersects(entity.WorldAABB);
+			else
+				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldAABB); };
+			entitiesObject.GetEntities_Safe(entities, collector);
+		}
+
+		/// <summary>Consider using GetEntitiesInAABB_Safe_NoBlock instead.</summary>
 		public static List<IMyEntity> GetEntitiesInAABB_Safe(this IMyEntities entitiesObject, ref BoundingBoxD boundingBox)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
 				return entitiesObject.GetEntitiesInAABB(ref boundingBox);
 		}
 
+		/// <summary>Consider using GetEntitiesInSphere_Safe_NoBlock instead.</summary>
 		public static List<IMyEntity> GetEntitiesInSphere_Safe(this IMyEntities entitiesObject, ref BoundingSphereD boundingSphere)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
 				return entitiesObject.GetEntitiesInSphere(ref boundingSphere);
 		}
+
+		#endregion
 
 		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMySlimBlock block)
 		{

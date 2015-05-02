@@ -15,6 +15,8 @@ namespace Rynchodon
 	/// </summary>
 	public class RelativeVector3F
 	{
+		private const float precisionMultiplier = 1024;
+
 		// one of these will always be set on create
 		private Vector3? value__worldAbsolute = null;
 		private Vector3? value__world = null;
@@ -26,6 +28,21 @@ namespace Rynchodon
 
 		private RelativeVector3F() { }
 
+		/// <summary>
+		/// create from an absolute world vector (G.P.S.)
+		/// </summary>
+		public static RelativeVector3F createFromWorldAbsolute(Vector3 worldAbsoulte, IMyCubeGrid cubeGrid)
+		{
+			RelativeVector3F result = new RelativeVector3F();
+			result.value__worldAbsolute = worldAbsoulte;
+			result.cubeGrid = cubeGrid;
+			result.getWorld();
+			return result;
+		}
+
+		/// <summary>
+		/// create from a relative world vector (current position - G.P.S.)
+		/// </summary>
 		public static RelativeVector3F createFromWorld(Vector3 world, IMyCubeGrid cubeGrid)
 		{
 			RelativeVector3F result = new RelativeVector3F();
@@ -34,7 +51,10 @@ namespace Rynchodon
 			return result;
 		}
 
-		public static RelativeVector3F createFromGrid(Vector3 grid, IMyCubeGrid cubeGrid)
+		/// <summary>
+		/// creates from a local position
+		/// </summary>
+		public static RelativeVector3F createFromLocal(Vector3 grid, IMyCubeGrid cubeGrid)
 		{
 			RelativeVector3F result = new RelativeVector3F();
 			result.value__grid = grid;
@@ -42,6 +62,9 @@ namespace Rynchodon
 			return result;
 		}
 
+		/// <summary>
+		/// create from a vector relative to a block (including block orientation)
+		/// </summary>
 		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block)
 		{
 			RelativeVector3F result = new RelativeVector3F();
@@ -51,10 +74,9 @@ namespace Rynchodon
 			return result;
 		}
 
-		//public static RelativeVector3F createFromBlock(Vector3 block, IMyCubeBlock cubeBlock) { } // might need this at some point
-
-		private const float precisionMultiplier = 1024;
-
+		/// <summary>
+		/// gets the aboslute world position (G.P.S.)
+		/// </summary>
 		public Vector3 getWorldAbsolute()
 		{
 			if (value__worldAbsolute != null)
@@ -64,18 +86,30 @@ namespace Rynchodon
 			return getWorld() + cubeGrid.GetPosition();
 		}
 
+		/// <summary>
+		/// gets the relative world position
+		/// </summary>
 		public Vector3 getWorld()
 		{
 			if (value__world != null)
 				return (Vector3)value__world;
 
+			if (value__worldAbsolute != null)
+			{
+				// create from world absolute
+				value__world = (Vector3)value__worldAbsolute - cubeGrid.GetPosition();
+			}
+
 			// create from grid
-			Vector3I gridInt = Vector3I.Round(getGrid() * precisionMultiplier / cubeGrid.GridSize);
+			Vector3I gridInt = Vector3I.Round(getLocal() * precisionMultiplier / cubeGrid.GridSize);
 			value__world = (cubeGrid.GridIntegerToWorld(gridInt)) / precisionMultiplier;
 			return (Vector3)value__world;
 		}
 
-		public Vector3 getGrid()
+		/// <summary>
+		/// gets the local position
+		/// </summary>
+		public Vector3 getLocal()
 		{
 			if (value__grid != null)
 				return (Vector3)value__grid;
@@ -89,9 +123,6 @@ namespace Rynchodon
 			}
 
 			// create from block
-			if (value__grid != null)
-				return (Vector3D)value__grid;
-
 			// create from block
 			// orient according to block
 			Vector3D resultant = Vector3D.Zero;
@@ -108,8 +139,13 @@ namespace Rynchodon
 			return (Vector3D)value__grid;
 		}
 
+		/// <summary>
+		/// gets the local postion relative to a block (including block orientation)
+		/// </summary>
 		public Vector3 getBlock(Sandbox.ModAPI.IMyCubeBlock cubeBlock)
 		{
+			cubeBlock.throwIfNull_argument("cubeBlock");
+
 			if (this.cubeBlock == cubeBlock)
 				return (Vector3)value__block;
 

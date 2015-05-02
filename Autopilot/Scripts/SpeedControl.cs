@@ -46,11 +46,15 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.HYBRID:
 					double distanceToDestination = nav.MM.distToWayDest;
 					adjustSpeeds(nav, myLogger, distanceToDestination, 1f, 2f);
+					adjustSpeedsByClosest(nav, myLogger);
 					break;
 			}
 			checkAndCruise(nav, myLogger);
 		}
 
+		/// <summary>
+		/// adjust cruise/slow speed based on current speed and distance to way/dest
+		/// </summary>
 		private static void adjustSpeeds(Navigator nav, Logger myLogger, double distanceToDestination, float stopMultiplierSlowDown, float stopMultiplierSpeedUp)
 		{
 			float stoppingDistance = nav.currentThrust.getStoppingDistance();
@@ -68,7 +72,7 @@ namespace Rynchodon.Autopilot
 					nav.CNS.speedCruise_internal = speedSlow / 2;
 
 					//if (nav.CNS.getSpeedSlow() < initialSpeedSlow) // have made a difference
-					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + (float)(nav.MM.movementSpeed * 0.9), "adjustSpeeds()", Logger.severity.TRACE);
+					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + nav.MM.movementSpeed * 0.9, "adjustSpeeds()", Logger.severity.TRACE);
 				}
 				//else
 				//	myLogger.debugLog("already slowing down", "adjustSpeeds()");
@@ -80,17 +84,42 @@ namespace Rynchodon.Autopilot
 					{
 						float initialSpeedCruise = nav.CNS.getSpeedCruise();
 
-						float speedCruise = (float)(nav.MM.movementSpeed * 2);
+						float speedCruise = nav.MM.movementSpeed * 2;
 						nav.CNS.speedCruise_internal = speedCruise;
 						nav.CNS.speedSlow_internal = speedCruise * 2;
 
 						//if (nav.CNS.getSpeedCruise() > initialSpeedCruise) // have made a difference
-						log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + (float)(nav.MM.movementSpeed * 2), "adjustSpeeds()", Logger.severity.TRACE);
+						log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + nav.MM.movementSpeed * 2, "adjustSpeeds()", Logger.severity.TRACE);
 					}
 				}
 
 			//if (nav.CNS.moveState == NavSettings.Moving.HYBRID)
 			//	log(myLogger, "distanceToDestination = " + distanceToDestination + ", slow at = " + stopMultiplierSlowDown * stoppingDistance + ", speed at = " + stopMultiplierSpeedUp * stoppingDistance, "adjustSpeeds()", Logger.severity.TRACE);
+		}
+
+		/// <summary>
+		/// Adjust speeds for closest entity.
+		/// </summary>
+		private static void adjustSpeedsByClosest(Navigator nav, Logger myLogger)
+		{
+			if (nav.myPathfinder_Output == null)
+			{
+				myLogger.debugLog("No pathfinder output", "adjustSpeedsByClosest()");
+				return;
+			}
+			double closestDistance = nav.myPathfinder_Output.DistanceToClosest;
+			float slowSpeed = MathHelper.Max((float)closestDistance + 10f, 10f),
+				cruiseSpeed = slowSpeed / 2;
+			if (nav.CNS.getSpeedSlow() > slowSpeed)
+			{
+				myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
+				nav.CNS.speedSlow_internal = slowSpeed;
+			}
+			if (nav.CNS.getSpeedCruise() > cruiseSpeed)
+			{
+				myLogger.debugLog("cruise speed is now " + cruiseSpeed, "adjustSpeedsByClosest()");
+				nav.CNS.speedCruise_internal = cruiseSpeed;
+			}
 		}
 
 		public static readonly Vector3 cruiseForward = new Vector3(0, 0, -0.01); // 10 * observed minimum

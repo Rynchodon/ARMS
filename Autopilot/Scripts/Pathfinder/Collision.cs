@@ -1,4 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+
+#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -132,7 +134,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			/// <summary>
 			/// be sure to get a new one after a reset, CNS changes will not be respected
 			/// </summary>
-			/// <param name="stopFromDestGrid">how close to destination grid to stop, if destination is a grid</param>
+			/// <param name="stopFromDestGrid">how close to centreDestination grid to stop, if centreDestination is a grid</param>
 			/// <returns></returns>
 			public CollisionAvoidance(ref NavSettings CNS, GridDimensions gridDims)
 			{
@@ -521,7 +523,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//		RelativeVector3F first = RelativeVector3F.createFromGrid(
 			//	}
 
-			//	// for destination rectangle project past destination (say length of ship for simplicity)
+			//	// for centreDestination rectangle project past centreDestination (say length of ship for simplicity)
 			//	// construct BoundingBoxD from points
 			//	return BoundingBoxD.CreateFromPoints(points);
 			//}

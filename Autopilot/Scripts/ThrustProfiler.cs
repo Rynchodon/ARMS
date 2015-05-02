@@ -8,7 +8,7 @@ using System.Text;
 //using Sandbox.Common;
 //using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Common.ObjectBuilders.Definitions;
+//using Sandbox.Common.ObjectBuilders.Definitions;
 using Sandbox.Definitions;
 //using Sandbox.Engine;
 //using Sandbox.Game;
@@ -227,7 +227,7 @@ namespace Rynchodon.Autopilot
 		/// <returns>scaled vector</returns>
 		public RelativeVector3F scaleByForce(RelativeVector3F displacement, IMyCubeBlock remote)
 		{
-			Vector3 displacementGrid = displacement.getGrid();
+			Vector3 displacementGrid = displacement.getLocal();
 
 			// get force-determinant direction
 			// for each thrusting direction, compare needed thrust to max available
@@ -253,7 +253,7 @@ namespace Rynchodon.Autopilot
 				}
 			}
 
-			return RelativeVector3F.createFromGrid(scaledMovement, remote.CubeGrid);
+			return RelativeVector3F.createFromLocal(scaledMovement, remote.CubeGrid);
 		}
 
 		/// <summary>
@@ -272,7 +272,7 @@ namespace Rynchodon.Autopilot
 			float maxStopDistance = 0;
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
 			{
-				float velocityInDirection = velocity.getGrid().Dot(Base6Directions.GetVector(direction));
+				float velocityInDirection = velocity.getLocal().Dot(Base6Directions.GetVector(direction));
 				if (velocityInDirection < -0.1) // direction is opposite of velocityGrid
 				{
 					float acceleration = Math.Min(Math.Abs(thrustProfile[direction] / myGrid.Physics.Mass), Math.Abs(velocityInDirection / 2));
