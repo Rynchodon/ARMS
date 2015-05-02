@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal NavSettings CNS;
 		private Pathfinder.Pathfinder myPathfinder;
-		private Pathfinder.PathfinderOutput myPathfinder_Output;
+		internal Pathfinder.PathfinderOutput myPathfinder_Output { get; private set; }
 		internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
 		internal Targeter myTargeter;
@@ -212,6 +212,7 @@ namespace Rynchodon.Autopilot
 		/// </remarks>
 		public void update()
 		{
+			reportState();
 			updateCount++;
 			if (gridCanNavigate())
 			{
@@ -565,7 +566,8 @@ namespace Rynchodon.Autopilot
 					switch (myPathfinder_Output.PathfinderResult)
 					{
 						case Pathfinder.PathfinderOutput.Result.Incomplete:
-							PathfinderAllowsMovement = true;
+							//PathfinderAllowsMovement = true;
+							// leave PathfinderAllowsMovement as it was
 							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
@@ -603,7 +605,7 @@ namespace Rynchodon.Autopilot
 		public bool PathfinderAllowsMovement
 		{
 			get { return CNS.isAMissile || value_PathfinderAllowsMovement; }
-			set { value_PathfinderAllowsMovement = value; }
+			private set { value_PathfinderAllowsMovement = value; }
 		}
 
 		//public static readonly byte collisionUpdatesBeforeMove = 100;
@@ -953,6 +955,9 @@ namespace Rynchodon.Autopilot
 		private ReportableState currentReportable = ReportableState.OFF;
 
 		internal bool GET_OUT_OF_SEAT = false;
+
+		internal void reportState()
+		{ reportState(currentReportable); }
 
 		/// <summary>
 		/// may ignore the given state, if Nav is actually in another state

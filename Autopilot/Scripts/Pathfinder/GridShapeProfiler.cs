@@ -151,14 +151,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="localMetresPosition">The local position in metres.</param>
 		/// <returns>true if the rejection collides with one or more of the grid's rejections</returns>
-		public bool rejectionIntersects(Vector3 localMetresPosition, float Buffer)
+		public bool rejectionIntersects(Vector3 localMetresPosition, float GridSize)
 		{
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in rejectionCells)
-			{
-				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < Buffer + myCubeGrid.GridSize)
+				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < GridSize + 3 * myCubeGrid.GridSize)
 					return true;
-			}
 			return false;
 		}
 
@@ -204,7 +202,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			RelativeVector3F P0 = RelativeVector3F.createFromLocal(Centre, myCubeGrid);
 			RelativeVector3F P1 = RelativeVector3F.createFromLocal(centreDestination, myCubeGrid);
-			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + myCubeGrid.GridSize);
+			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + 3 * myCubeGrid.GridSize);
 			myPath = new Capsule(P0.getWorldAbsolute(), P1.getWorldAbsolute(), CapsuleRadius);
 		}
 

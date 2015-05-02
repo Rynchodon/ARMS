@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
+using System.Runtime.InteropServices;
 
 using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
@@ -211,6 +210,33 @@ namespace Rynchodon
 			double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
 			double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
 			return Math.Min(distanceAABB, distanceVolume);
+		}
+
+		#endregion
+		#region Float Significand++/--
+		// based on http://realtimemadness.blogspot.ca/2012/06/nextafter-in-c-without-allocations-of.html
+
+		[StructLayout(LayoutKind.Explicit)]
+		private struct FloatIntUnion
+		{
+			[FieldOffset(0)]
+			public int i;
+			[FieldOffset(0)]
+			public float f;
+		}
+
+		public static float IncrementSignificand(this float number)
+		{
+			FloatIntUnion union; union.i = 0; union.f = number;
+			union.i++;
+			return union.f;
+		}
+
+		public static float DecrementSignificand(this float number)
+		{
+			FloatIntUnion union; union.i = 0; union.f = number;
+			union.i--;
+			return union.f;
 		}
 
 		#endregion

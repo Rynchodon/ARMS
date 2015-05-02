@@ -38,9 +38,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			CubeGrid = grid;
 			myPathChecker = new PathChecker(grid);
 			myLogger = new Logger("Pathfinder", () => grid.DisplayName);
+			myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 		}
 
-		private PathfinderOutput myOutput = new PathfinderOutput(PathfinderOutput.Result.Incomplete);
+		private PathfinderOutput myOutput;// = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 		private FastResourceLock lock_myOutput = new FastResourceLock();
 
 		private void SetOutput(PathfinderOutput newOutput)
@@ -57,7 +58,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				PathfinderOutput temp = myOutput;
 				if (temp.PathfinderResult != PathfinderOutput.Result.Incomplete)
-					myOutput = new PathfinderOutput(PathfinderOutput.Result.Incomplete);
+					myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 				return temp;
 			}
 		}
@@ -118,7 +119,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{ myLogger.debugLog("Exception: " + other, "Wrapper_CheckPath", Logger.severity.ERROR); }
 			finally
 			{
-				nextRun = DateTime.UtcNow + new TimeSpan(0, 0, 1);
+				if (myOutput != null && myOutput.PathfinderResult == PathfinderOutput.Result.No_Way_Forward)
+				{
+					myLogger.debugLog("no way forward, delaying next run by 60 seconds", "Wrapper_CheckPath()");
+					nextRun = DateTime.UtcNow + new TimeSpan(0, 0, 60);
+				}
+				else
+					nextRun = DateTime.UtcNow + new TimeSpan(0, 0, 1);
 				//myLogger.debugLog("next run is in: " + nextRun, "Wrapper_CheckPath");
 			}
 		}
@@ -141,12 +148,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (Waypoint == null)
 					{
 						myLogger.debugLog("Path to destination is clear", "CheckPath()", Logger.severity.DEBUG);
-						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Path_Clear));
+						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Path_Clear));
 					}
 					else
 					{
 						myLogger.debugLog("Re-routing to destination, path is now clear", "CheckPath()", Logger.severity.DEBUG);
-						SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, null, Destination));
+						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, Destination));
 					}
 					return;
 				}
@@ -162,7 +169,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (ObstructingEntity == null)
 				{
 					myLogger.debugLog("Path to waypoint is clear", "CheckPath()", Logger.severity.DEBUG);
-					SetOutput(new PathfinderOutput(PathfinderOutput.Result.Path_Clear));
+					SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Path_Clear));
 					return;
 				}
 			}
@@ -177,10 +184,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (NoAlternateRoute)
 			{
 				myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
-				SetOutput(new PathfinderOutput(PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
+				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
 			}
 
-			SetOutput(new PathfinderOutput(PathfinderOutput.Result.Searching_Alt, ObstructingEntity));
+			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Searching_Alt, ObstructingEntity));
 			myLogger.debugLog("Path forward is obstructed by " + ObstructingEntity.getBestName() + " at " + pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
 
 			Vector3 lineToWayDest = WayDest - CubeGrid.GetCentre();
@@ -191,7 +198,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			newPath_v2 = Vector3.Normalize(newPath_v2);
 			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
 
-			for (int newPathDistance = 128; newPathDistance < 10000; newPathDistance *= 2) // TODO: vet new point by verifying that we can move towards destination
+			for (int newPathDistance = 8; newPathDistance < 10000; newPathDistance *= 2) // TODO: vet new point by verifying that we can move towards destination
 			{
 				myLogger.debugLog("newPathDistance = " + newPathDistance, "CheckPath()", Logger.severity.TRACE);
 
@@ -210,48 +217,68 @@ namespace Rynchodon.Autopilot.Pathfinder
 					}
 					float distanceFromDest = Vector3.Distance(Destination, Alternate);
 					Alternate_Path.throwIfNull_variable("Alternate_Path");
+					while (Alternate_Path.ContainsKey(distanceFromDest))
+						distanceFromDest = distanceFromDest.IncrementSignificand();
 					Alternate_Path.Add(distanceFromDest, Alternate);
+
+					//while (true)
+					//{
+					//	try
+					//	{
+					//		Alternate_Path.Add(distanceFromDest, Alternate);
+					//		break;
+					//	}
+					//	catch (ArgumentException)
+					//	{
+					//		distanceFromDest = distanceFromDest.IncrementSignificand();
+					//		myLogger.debugLog("Failed to add to Alternate_Path: " + distanceFromDest + ", " + Alternate, "CheckPath()");
+					//	}
+					//}
 					myLogger.debugLog("Added alt path: " + Alternate + " with distance of " + distanceFromDest, "CheckPath()");
 				}
 
-				//for (int whichNewPath = 0; whichNewPath < 4; whichNewPath++)
 				foreach (Vector3 AlternatePoint in Alternate_Path.Values)
-					//{
-					////Vector3 newPathDestination = (Vector3)pointOfObstruction + newPathDistance * NewPathVectors[whichNewPath];
-					////myLogger.debugLog("testing alternate path: " + newPathDestination + " from " + pointOfObstruction + " + " + newPathDistance + " * " + NewPathVectors[whichNewPath], "CheckPath()");
-					//myLogger.debugLog("testing alternate path: " + Alternate_Waypoint, "CheckPath()");
-					//Vector3? alt_pointOfObstruction;
-					//IMyEntity Alt_ObstructingEntity = myPathChecker.TestPath(RelativeVector3F.createFromWorldAbsolute(Alternate_Waypoint, CubeGrid), NavigationBlock, IgnoreAsteroids, out alt_pointOfObstruction);
-					//if (Alt_ObstructingEntity == null) // found a new path
-					//{
-					//	SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, ObstructingEntity, Alternate_Waypoint));
-					//	myLogger.debugLog("Found a new path: " + Alternate_Waypoint, "CheckPath()", Logger.severity.DEBUG);
-					//	return;
-					//}
-					//myLogger.debugLog("Alternate path is obstructed by " + Alt_ObstructingEntity + " at " + alt_pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
-					//CheckInterrupt();
 					if (TestAltPath(AlternatePoint))
 						return;
-				//}
 			}
 
 			// before going to No Way Forward, check if we can move away from obstruction
+
+			// try moving forward
 			Vector3D GridCentre = CubeGrid.GetCentre();
-			Vector3 Forward = Vector3.Normalize(lineToWayDest);
-			for (int backWardDistance = 128; backWardDistance < 10000; backWardDistance *= 2)
+			Vector3 Forward = NavigationBlock.WorldMatrix.Forward;
+			for (int forwardDistance = 8 ; forwardDistance < 10000 ; forwardDistance *= 2)
 			{
-				Vector3 backWardPoint = GridCentre - backWardDistance * Forward;
-				if (CNS.waypointFarEnough(backWardPoint))
+				Vector3 forwardPoint = GridCentre + forwardDistance * Forward;
+				if (CNS.waypointFarEnough(forwardPoint))
 				{
-					myLogger.debugLog("testing backwards: backWardDistance = " + backWardDistance + ", backWardPoint = " + backWardPoint, "CheckPath()", Logger.severity.TRACE);
-					if (TestAltPath(backWardPoint))
+					myLogger.debugLog("testing forwards: forwardDistance = " + forwardDistance + ", forwardPoint = " + forwardPoint, "CheckPath()", Logger.severity.TRACE);
+					if (TestAltPath(forwardPoint))
 						return;
 					break;
 				}
-				myLogger.debugLog("backwards too close: backWardDistance = " + backWardDistance + ", backWardPoint = " + backWardPoint, "CheckPath()", Logger.severity.TRACE);
+				myLogger.debugLog("forwards too close: forwardDistance = " + forwardDistance + ", forwardPoint = " + forwardPoint, "CheckPath()", Logger.severity.TRACE);
 			}
 
-			SetOutput(new PathfinderOutput(PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
+			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
+			myLogger.debugLog("No Way Forward: " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.INFO);
+
+			//Vector3 Forward = Vector3.Normalize(lineToWayDest);
+			Vector3 Backward = NavigationBlock.WorldMatrix.Backward;
+			for (int backwardDistance = 8; backwardDistance < 10000; backwardDistance *= 2)
+			{
+				Vector3 backwardPoint = GridCentre + backwardDistance * Backward;
+				if (CNS.waypointFarEnough(backwardPoint))
+				{
+					myLogger.debugLog("testing backwards: backwardDistance = " + backwardDistance + ", backwardPoint = " + backwardPoint, "CheckPath()", Logger.severity.TRACE);
+					if (TestAltPath(backwardPoint))
+						return;
+					break;
+				}
+				myLogger.debugLog("backwards too close: backwardDistance = " + backwardDistance + ", backwardPoint = " + backwardPoint, "CheckPath()", Logger.severity.TRACE);
+			}
+
+			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
 			myLogger.debugLog("No Way Forward: " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.INFO);
 		}
 
@@ -278,11 +305,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 				myLogger.debugLog("path is useful. distance to dest = " + DistanceToDest + ", pathwise = " + pathwiseDistanceToDest, "CheckPath()", Logger.severity.TRACE);
 
-				SetOutput(new PathfinderOutput(PathfinderOutput.Result.Alternate_Path, null, AlternatePoint));
+				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, AlternatePoint));
 				myLogger.debugLog("Found a new path: " + AlternatePoint, "CheckPath()", Logger.severity.DEBUG);
 				return true;
 			}
-			myLogger.debugLog("Alternate path is obstructed by " + Alt_ObstructingEntity + " at " + alt_pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
+			myLogger.debugLog("Alternate path is obstructed by " + Alt_ObstructingEntity.getBestName() + " at " + alt_pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
 			CheckInterrupt();
 			return false;
 		}

@@ -31,6 +31,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myLogger = new Logger("PathChecker", () => myCubeGrid.DisplayName);
 		}
 
+		#region Public Test Functions
+
 		/// <summary>
 		/// Test the path for obstructions
 		/// </summary>
@@ -64,16 +66,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
 
-			// filter offenders and sort by distance
-			offenders = SortAndFilter(offenders);
+			// sort offenders by distance
+			offenders = SortByDistance(offenders);
 
-			if (offenders.Count == 0)
-			{
-				myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
-				pointOfObstruction = null;
-				return null;
-			}
-			myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
+			//if (offenders.Count == 0)
+			//{
+			//	myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
+			//	pointOfObstruction = null;
+			//	return null;
+			//}
+			//myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
 
 			// set destination
 			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
@@ -108,7 +110,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				return 0;
 			}
 			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
-			offenders = SortAndFilter(offenders);
+			offenders = SortByDistance(offenders);
 			if (offenders.Count == 0)
 			{
 				myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
@@ -129,7 +131,43 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
 		}
 
-		private List<IMyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
+		public const double NearbyRange = 2000;
+
+		/// <summary>
+		/// How far away is the closest entity to myCubeGrid?
+		/// </summary>
+		/// <returns>Distance to closest Entity, may be negative</returns>
+		public double ClosestEntity()
+		{
+			BoundingBoxD NearbyBox = myCubeGrid.WorldAABB;
+			NearbyBox.Inflate(NearbyRange);
+
+			HashSet<IMyEntity> offenders = new HashSet<IMyEntity>();// = MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref NearbyBox);
+			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(NearbyBox, offenders, collect_Entities);
+			if (offenders.Count == 0)
+			{
+				myLogger.debugLog("AABB is empty", "ClosestEntity()");
+				return NearbyRange;
+			}
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "ClosestEntity()");
+
+			double distClosest = NearbyRange;
+			foreach (IMyEntity entity in offenders)
+			{
+				//if (collect_Entities(entity))
+				//{
+					double distance = myCubeGrid.Distance_ShorterBounds(entity);
+					if (distance < distClosest)
+						distClosest = distance;
+				//}
+			}
+			return distClosest;
+		}
+
+		#endregion
+		#region Private Test Functions
+
+		private HashSet<IMyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
 		{
 			List<Vector3D> PathPoints = new List<Vector3D>();
 			PathPoints.Add(start.Min);
@@ -137,23 +175,26 @@ namespace Rynchodon.Autopilot.Pathfinder
 			PathPoints.Add(end.Min);
 			PathPoints.Add(end.Max);
 			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(PathPoints);
-			myLogger.debugLog("Path AABB = " + PathAABB, "TestPath()");
+			myLogger.debugLog("Path AABB = " + PathAABB, "EntitiesInLargeAABB()");
 
-			return MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
+			HashSet<IMyEntity> results = new HashSet<IMyEntity>();
+			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(PathAABB, results, collect_Entities);
+			return results;
+
+			//return MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
 		}
 
-		private  ICollection<IMyEntity> SortAndFilter(ICollection<IMyEntity> offenders)
+		private ICollection<IMyEntity> SortByDistance(ICollection<IMyEntity> offenders)
 		{
-			Vector3D Centre = myCubeGrid.GetCentre();
 			SortedDictionary<float, IMyEntity> sortedOffenders = new SortedDictionary<float, IMyEntity>();
 			foreach (IMyEntity entity in offenders)
 			{
 				CheckInterrupt();
-				if (collect_Entities(entity))
-				{
-					float distanceSquared = (float)myCubeGrid.Distance_ShorterBounds(entity);// Vector3.DistanceSquared(Centre, entity.GetCentre());
-					sortedOffenders.Add(distanceSquared, entity);
-				}
+				//if (collect_Entities(entity))
+				//{
+					float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
+					sortedOffenders.Add(distance, entity);
+				//}
 			}
 			return sortedOffenders.Values;
 		}
@@ -206,8 +247,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					{
 						bool blockIntersects = false;
 						Vector3 cellPosWorld = new Vector3();
-						slim.ForEachCell((cell) =>
-						{
+						slim.ForEachCell((cell) => {
 							CheckInterrupt();
 							cellPosWorld = asGrid.GridIntegerToWorld(cell);
 							cellCount++;
@@ -262,6 +302,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return null;
 		}
 
+		#endregion
 		#region Interrupt
 
 		public bool Interrupt = false;
