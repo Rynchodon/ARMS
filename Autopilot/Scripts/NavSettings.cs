@@ -103,6 +103,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		public bool ignoreAsteroids = false;
+		public bool noAlternateRoute = false;
 
 		public NavSettings(Navigator owner)
 		{
@@ -275,7 +276,6 @@ namespace Rynchodon.Autopilot
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
 					log("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
-					ignoreAsteroids = false;
 					CurrentGridDest = null;
 					coordDestination = null;
 					destination_offset = Vector3.Zero;
@@ -284,6 +284,8 @@ namespace Rynchodon.Autopilot
 					landLocalBlock = null;
 					landDirection = null;
 					jump_to_dest = false;
+					ignoreAsteroids = false;
+					noAlternateRoute = false;
 					return;
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;

@@ -69,18 +69,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			// sort offenders by distance
 			offenders = SortByDistance(offenders);
 
-			//if (offenders.Count == 0)
-			//{
-			//	myLogger.debugLog("all offenders are ignored", "TestPath()", Logger.severity.DEBUG);
-			//	pointOfObstruction = null;
-			//	return null;
-			//}
-			//myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
-
 			// set destination
 			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
+			myLogger.debugLog("destination = " + destination.getWorldAbsolute() + ", navigationBlock = " + navigationBlock.GetPosition(), "TestPath()");
 			myGridShape.SetDestination(destination, navigationBlock);
 			myPath = myGridShape.myPath;
+			myLogger.debugLog("got path from " + myPath.P0 + " to " + myPath.P1 + " with radius " + myPath.Radius, "TestPath()");
 
 			// test path
 			return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction, this.DestGrid);
@@ -154,12 +148,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			double distClosest = NearbyRange;
 			foreach (IMyEntity entity in offenders)
 			{
-				//if (collect_Entities(entity))
-				//{
 					double distance = myCubeGrid.Distance_ShorterBounds(entity);
 					if (distance < distClosest)
 						distClosest = distance;
-				//}
 			}
 			return distClosest;
 		}
@@ -180,8 +171,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 			HashSet<IMyEntity> results = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(PathAABB, results, collect_Entities);
 			return results;
-
-			//return MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref PathAABB);
 		}
 
 		private ICollection<IMyEntity> SortByDistance(ICollection<IMyEntity> offenders)
@@ -190,11 +179,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (IMyEntity entity in offenders)
 			{
 				CheckInterrupt();
-				//if (collect_Entities(entity))
-				//{
 					float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
 					sortedOffenders.Add(distance, entity);
-				//}
 			}
 			return sortedOffenders.Values;
 		}
@@ -231,10 +217,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (asGrid != null)
 				{
 					if (asGrid == GridDestination)
+					{
+						myLogger.debugLog("grid is destination: " + asGrid.DisplayName, "TestEntities()");
 						continue;
+					}
 
 					if (!path.IntersectsAABB(entity))
+					{
+						myLogger.debugLog("no AABB intersection: " + asGrid.DisplayName, "TestEntities()");
 						continue;
+					}
 
 					myLogger.debugLog("searching blocks of " + entity.getBestName(), "TestEntities()");
 					uint cellCount = 0, cellRejectedCount = 0;

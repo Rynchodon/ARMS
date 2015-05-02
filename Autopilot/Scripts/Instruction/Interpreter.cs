@@ -188,55 +188,63 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
 			string lowerCase = instruction.ToLower();
-			if (lowerCase == "asteroid")
+			switch (lowerCase)
 			{
-				wordAction = () => { CNS.ignoreAsteroids = true; };
-				return true;
-			}
-			if (lowerCase == "exit")
-			{
-				wordAction = () =>
-				{
-					owner.CNS.EXIT = true;
-					owner.reportState(Navigator.ReportableState.OFF);
-					owner.fullStop("EXIT");
-				};
-				return true;
-			}
-			if (lowerCase == "jump")
-			{
-				wordAction = () =>
-				{
-					log("setting jump", "addInstruction()", Logger.severity.DEBUG);
-					owner.CNS.jump_to_dest = true;
-					return;
-				};
-				return true;
-			}
-			if (lowerCase == "lock")
-			{
-				wordAction = () =>
-				{
-					if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
+				case "asteroid":
 					{
-						log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "addInstruction()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
-						owner.CNS.landingState = NavSettings.LANDING.OFF;
-						owner.CNS.landingSeparateBlock = null;
-						owner.CNS.landingSeparateWaypoint = null;
-						owner.setDampeners(); // dampeners will have been turned off for docking
+						wordAction = () => { CNS.ignoreAsteroids = true; };
+						return true;
 					}
-				};
-				return true;
-			}
-			if (lowerCase == "reset")
-			{
-				IMyTerminalBlock RCterminal = owner.currentRCterminal;
-				wordAction = () =>
-				{
-					if (!(owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
-						RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
-					Core.remove(owner);
-				};
+				case "door":
+					{
+						wordAction = () => {
+							owner.CNS.noAlternateRoute = true;
+							myLogger.debugLog("Set noAlternateRoute", "getAction_word()");
+						};
+						return true;
+					}
+				case "exit":
+					{
+						wordAction = () => {
+							owner.CNS.EXIT = true;
+							owner.reportState(Navigator.ReportableState.OFF);
+							owner.fullStop("EXIT");
+						};
+						return true;
+					}
+				case "jump":
+					{
+						wordAction = () => {
+							log("setting jump", "getAction_word()", Logger.severity.DEBUG);
+							owner.CNS.jump_to_dest = true;
+							return;
+						};
+						return true;
+					}
+				case "lock":
+					{
+						wordAction = () => {
+							if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
+							{
+								log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "getAction_word()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
+								owner.CNS.landingState = NavSettings.LANDING.OFF;
+								owner.CNS.landingSeparateBlock = null;
+								owner.CNS.landingSeparateWaypoint = null;
+								owner.setDampeners(); // dampeners will have been turned off for docking
+							}
+						};
+						return true;
+					}
+				case "reset":
+					{
+						IMyTerminalBlock RCterminal = owner.currentRCterminal;
+						wordAction = () => {
+							if ((owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
+								RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
+							Core.remove(owner);
+						};
+						return true;
+					}
 			}
 			wordAction = null;
 			return false;

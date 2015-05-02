@@ -1,4 +1,6 @@
-﻿using Sandbox.ModAPI;
+﻿#define LOG_ENABLED // remove on build
+
+using Sandbox.ModAPI;
 using System;
 using VRageMath;
 
@@ -6,6 +8,8 @@ namespace Rynchodon
 {
 	public static class CapsuleExtensions
 	{
+		private static Logger myLogger = new Logger(null, "CapsuleExtensions");
+
 		/// <summary>
 		/// Gets the line from P0 to P1.
 		/// </summary>
@@ -26,8 +30,10 @@ namespace Rynchodon
 		public static bool IntersectsAABB(this Capsule cap, IMyEntity entity)
 		{
 			BoundingBox AABB = (BoundingBox)entity.WorldAABB;
-			AABB.Inflate(cap.Radius);
+			Vector3 Radius = new Vector3(cap.Radius, cap.Radius, cap.Radius);
+			AABB = new BoundingBox(AABB.Min - Radius, AABB.Max + Radius);
 			float distance;
+			myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
 			return (AABB.Intersects(cap.get_Line(), out distance));
 		}
 

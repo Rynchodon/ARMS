@@ -134,6 +134,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			DirectionNorm = Vector3.Normalize(destination.getLocal() - navigationBlock.Position * myCubeGrid.GridSize);
 			Vector3 centreDestination = destination.getLocal() + Centre - navigationBlock.Position * myCubeGrid.GridSize;
+			myLogger.debugLog("destination.getLocal() = " + destination.getLocal() + ", Centre = " + Centre + ", navigationBlock.Position * myCubeGrid.GridSize = " + navigationBlock.Position * myCubeGrid.GridSize, "SetDestination()");
+			myLogger.debugLog("centreDestination = " + centreDestination + ", world = " + RelativeVector3F.createFromLocal(centreDestination, myCubeGrid).getWorldAbsolute(), "SetDestination()");
 			rejectAll();
 			createCapsule(centreDestination);
 		}
