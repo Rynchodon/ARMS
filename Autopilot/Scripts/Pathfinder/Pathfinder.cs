@@ -299,12 +299,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//if (distance > 0)
 			//{
 			//	Vector3 pointOnLine = NavBlockPos + direction * distance;
+			//	if (TestAltPath(pointOnLine, false))
+			//		return true;
+
 			//	SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, pointOnLine));
 			//	myLogger.debugLog("Found a new path: " + pointOnLine, "CanMoveInDirection()", Logger.severity.DEBUG);
 			//	return true;
 			//}
 
-			for (int distance = 1024 ; distance >= 2 ; distance /= 2)
+			for (int distance = 128 ; distance >= 2 ; distance /= 2)
 			{
 				Vector3 testPoint = NavBlockPos + distance * direction;
 				if (!CNS.waypointFarEnough(testPoint))

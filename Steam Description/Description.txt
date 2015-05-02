@@ -81,6 +81,8 @@ Autopilot will not unlock a connector or landing gear while any player is in a c
 
 Merging grids, particularly with the landing (L) command, can cause unexpected behaviour. Autopilot cannot detect a merge, so you will have to sort it out yourself.
 
+Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
+
 [b]Public Domain License[/b]
 To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
 http://creativecommons.org/publicdomain/zero/1.0/

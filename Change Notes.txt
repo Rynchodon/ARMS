@@ -1,5 +1,7 @@
 Will be moved to steam every release.
 
 major:
+complete rebuild of pathfinder and obstruction testing
 
 minor:
+ships slow based on proximity to other entities

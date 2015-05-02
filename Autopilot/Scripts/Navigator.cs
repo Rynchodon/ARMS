@@ -645,29 +645,16 @@ namespace Rynchodon.Autopilot
 								calcAndMove();
 								reportState(ReportableState.MOVING);
 							}
-						//else
-						//	fullStop("need to stop and rotate");
 					}
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
-						if (PathfinderAllowsMovement)
-							if (MM.rotLenSq < myRotator.rotLenSq_stopAndRot)
-							//MoveIfPossible(false);
-							//if (!CNS.FlyTheLine)
-							//{
-							//	calcAndMove();
-							//	CNS.moveState = NavSettings.Moving.MOVING;
-							//	reportState(ReportableState.MOVING);
-							//}
-							//goto case NavSettings.Moving.NOT_MOVE;
-							//if (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGrid.GetLongestDim() + CNS.destinationRadius)
-							{
-								calcAndMove();
-								CNS.moveState = NavSettings.Moving.MOVING;
-								reportState(ReportableState.MOVING);
-							}
-						//{ }
+						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && !CNS.FlyTheLine)
+						{
+							calcAndMove();
+							CNS.moveState = NavSettings.Moving.MOVING;
+							reportState(ReportableState.MOVING);
+						}
 					}
 					break;
 				case NavSettings.Moving.HYBRID:
@@ -676,8 +663,6 @@ namespace Rynchodon.Autopilot
 						if (movingTooSlow
 							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
 							calcAndMove(true); // continue in current state
-						//else if (movingTooSlow)
-						//	goto case NavSettings.Moving.MOVING;
 						break;
 					}
 				case NavSettings.Moving.SIDELING:

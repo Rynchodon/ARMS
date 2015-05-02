@@ -59,6 +59,8 @@ Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m
 L : landing block. the block on the same grid as the Remote that will be used to land. To land there must be a landing block, a target block, and a target grid [ L <localBlock> : B <targetBlock> : G <targetGrid> ]. If there is a wait command before the next destination, the grid will wait while attached. If there is a LOCK command before the next destination, the grid will not separate. If there is an EXIT command before the next destination, the grid will stay attached.
 Example - [ L Connector : B Connector : G Platform : W60 : C 0,0,0 ] - attach local connector to connector on Platform, wait 60 seconds, detach, fly to {0,0,0}
 
+LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
+
 LOCK : leave landing block in locked state ( do not disconnect )
 Example - [ L Connector : B Connector : G Pickup : LOCK : F 0, 0, 0 ] - connect with Pickup, fly to {0, 0, 0}
 
