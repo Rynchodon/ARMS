@@ -170,8 +170,8 @@ namespace Rynchodon.Autopilot
 		/// reset on Navigator.FullStop()
 		/// </summary>
 		public float speedSlow_internal { private get; set; }
-		public float speedCruise_external { private get; set; }
-		public float speedSlow_external { private get; set; }
+		public float speedCruise_external;// { private get; set; }
+		public float speedSlow_external;// { private get; set; }
 		//public const float speedSlow_minimum = 0.25f;
 
 		public float getSpeedCruise()

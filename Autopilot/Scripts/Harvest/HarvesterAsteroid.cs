@@ -13,28 +13,6 @@ namespace Rynchodon.Autopilot.Harvest
 	/// <summary>
 	/// Controls the movement of a ship for purposes of harvesting from an asteroid.
 	/// </summary>
-	///		harvest:
-	/// Pick a random point inside the asteroid. (bias towards middle?)
-	/// Disable asteroid obstruction test
-	/// Enable drills.
-	/// Fly drills-forward towards point - and past it
-	/// If ship becomes full goto backout
-	/// If ship gets stuck goto backout
-	/// If ship flies all the way through goto finished
-	/// 
-	///		backout:
-	///	disable drills, fly drills-backwards out of asteroid aabb/volume
-	///	if ship gets stuck goto tunnel-through
-	///	goto finished
-	///	
-	///		tunnel-through:
-	///	enable drills
-	///	fly forwards until outside of asteroid
-	///	
-	///		finished:
-	///	disabled drills
-	///	enable asteroid avoidance
-	///	return control to navigator
 	internal class HarvesterAsteroid
 	{
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.5f;
@@ -45,9 +23,8 @@ namespace Rynchodon.Autopilot.Harvest
 		public NavSettings CNS { get { return myNav.CNS; } }
 		private Logger myLogger;
 
+		/// <summary>Current stage of harvesting</summary>
 		private Action StageAction;
-
-		private Vector3D harvestTowards;
 
 		public HarvesterAsteroid(Navigator myNav)
 		{
@@ -57,6 +34,13 @@ namespace Rynchodon.Autopilot.Harvest
 		}
 
 		#region Control
+
+		/// <summary>Start harvesting.</summary>
+		public void Start()
+		{
+			CNS_SetHarvest();
+			Ready();
+		}
 
 		///<summary>Continue harvesting</summary>
 		/// <returns>true iff harvesting actions were performed</returns>
@@ -68,15 +52,10 @@ namespace Rynchodon.Autopilot.Harvest
 			return true;
 		}
 
-		/// <summary>Start harvesting.</summary>
-		public void Start()
-		{ Ready(); }
-
 		/// <remarks>
-		/// <para>If drills are full, change stage to Off.</para>
+		/// <para>If drills are full, change stage to Backout.</para>
 		/// <para>Get closest asteroid, pick a random point.</para>
-		/// <para>Disable Asteroid obstruction test.</para>
-		/// <para>Set speed limits</para>
+		/// <para>Set CNS settings</para>
 		/// <para>Enables Drills.</para>
 		/// </remarks>>
 		private void Ready()
@@ -87,10 +66,7 @@ namespace Rynchodon.Autopilot.Harvest
 				StageAction = Backout;
 				return;
 			}
-			harvestTowards = GetRandomPointInside(GetClosestAsteroid().WorldVolume);
-			CNS.ignoreAsteroids = true;
-			CNS.speedCruise_external = 1;
-			CNS.speedSlow_external = 2;
+			CNS.setDestination(GetRandomPointInside(GetClosestAsteroid().WorldVolume));
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 				drill.RequestEnable(true);
 
@@ -98,14 +74,24 @@ namespace Rynchodon.Autopilot.Harvest
 		}
 
 		/// <remarks>
-		/// <para>Fly towards harvestTowards.</para>
+		/// <para>Fly towards destination.</para>
 		/// <para>If ship becomes full goto backout</para>
 		/// <para>If ship gets stuck goto backout</para>
 		/// <para>If ship flies all the way through goto finished</para>
 		/// </remarks>
 		private void Harvest()
 		{
-
+			if (DrillFullness(GetDrills()) > FullAmount_Abort || myNav.checkStopped())
+			{
+				StageAction = Backout;
+				return;
+			}
+			if (!IsInsideAsteroid())
+			{
+				StageAction = Finished;
+				return;
+			}
+			myNav.collisionCheckMoveAndRotate();
 		}
 
 		/// <remarks>
@@ -136,9 +122,7 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			foreach (Ingame.IMyShipDrill drill in GetDrills())
 				drill.RequestEnable(false);
-			CNS.ignoreAsteroids = false;
-			CNS.speedCruise_external = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
-			CNS.speedSlow_external = Settings.floatSettings[Settings.FloatSetName.fDefaultSpeed];
+			CNS_RestorePrevious();
 			StageAction = null;
 		}
 
@@ -146,9 +130,8 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private bool IsInsideAsteroid()
 		{
-			HashSet<IMyEntity> asteroids = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(myCubeGrid.WorldAABB, asteroids, (entity) => { return entity is IMyVoxelMap && myCubeGrid.IntersectsAABBVolume(entity); });
-			return asteroids.Count > 0;
+			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
+			return allAsteroids.Count > 0;
 		}
 
 		private ReadOnlyList<Ingame.IMyTerminalBlock> GetDrills()
@@ -171,8 +154,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private IMyVoxelMap GetClosestAsteroid()
 		{
-			HashSet<IMyEntity> allAsteroids = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntities_Safe(allAsteroids, (entity) => { return entity is IMyVoxelMap; });
+			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe();
 			SortedDictionary<float, IMyVoxelMap> sortedAsteroids = new SortedDictionary<float, IMyVoxelMap>();
 			foreach (IMyVoxelMap asteroid in allAsteroids)
 			{
@@ -191,5 +173,47 @@ namespace Rynchodon.Autopilot.Harvest
 			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
 			return new Vector3D();
 		}
+
+		#region CNS Variables
+
+		private float initial_speedCruise_external, initial_speedSlow_external;
+		//private int initial_destinationRadius;
+
+		/// <summary>
+		/// variables that are not cleared at each destination go here, they must only be set once
+		/// </summary>
+		private void CNS_SetHarvest()
+		{
+			initial_speedCruise_external = CNS.speedCruise_external;
+			initial_speedSlow_external = CNS.speedSlow_external;
+			//initial_destinationRadius = CNS.destinationRadius;
+
+			CNS.speedCruise_external = 1;
+			CNS.speedSlow_external = 2;
+			//CNS.destinationRadius = 3;
+
+			CNS_SetHarvestWay();
+		}
+
+		/// <summary>
+		/// variables that are cleared at each waypoint go here, they must be set more than once
+		/// </summary>
+		private void CNS_SetHarvestWay()
+		{
+			CNS.ignoreAsteroids = true;
+			CNS.FlyTheLine = true;
+		}
+
+		/// <summary>
+		/// restore the variables that were saved by CNS_SetHarvest()
+		/// </summary>
+		private void CNS_RestorePrevious()
+		{
+			CNS.speedCruise_external = initial_speedCruise_external;
+			CNS.speedSlow_external = initial_speedSlow_external;
+			//CNS.destinationRadius = initial_destinationRadius;
+		}
+
+		#endregion
 	}
 }

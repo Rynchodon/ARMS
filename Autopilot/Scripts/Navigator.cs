@@ -834,10 +834,10 @@ namespace Rynchodon.Autopilot
 		private DateTime stoppedMovingAt;
 		private static float stoppedPrecision = 0.2f;
 
-		private void checkStopped()
+		public bool checkStopped()
 		{
 			if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
-				return;
+				return true;
 
 			bool isStopped;
 
@@ -868,6 +868,8 @@ namespace Rynchodon.Autopilot
 			else
 				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
 					reportState(ReportableState.STOPPING);
+
+			return isStopped;
 		}
 
 		/// <summary>
