@@ -1,4 +1,4 @@
-﻿#define LOG_ENABLED
+﻿#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;

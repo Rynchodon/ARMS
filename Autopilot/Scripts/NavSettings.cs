@@ -171,7 +171,8 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public float speedSlow_internal { private get; set; }
 		public float speedCruise_external { private get; set; }
-		public float speedSlow_external { private get; set; }
+		private float value_speedSlow_external;
+		public float speedSlow_external { private get; set { value_speedSlow_external = MathHelper.Min(value, Settings.floatSettings[Settings.FloatSetName.fMaxSpeed]); } }
 		//public const float speedSlow_minimum = 0.25f;
 
 		public float getSpeedCruise()
