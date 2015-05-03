@@ -7,3 +7,4 @@ minor:
 ships slow based on proximity to other entities
 radar charges while on / discharges while off. charge level affects range
 capped small radar to 20 km
+bug fixes
