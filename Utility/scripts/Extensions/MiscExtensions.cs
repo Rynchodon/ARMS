@@ -255,5 +255,17 @@ namespace Rynchodon
 		/// </summary>
 		public static float GetLongestDim(this IMyCubeGrid grid)
 		{ return grid.LocalAABB.GetLongestDim(); }
+
+		/// <summary>
+		/// <para>Tests the AABB and the Volume of first against the AABB and Volume of the second.</para>
+		/// </summary>
+		/// <returns>true iff all intersect</returns>
+		public static bool IntersectsAABBVolume(this IMyEntity first, IMyEntity second)
+		{
+			return first.WorldAABB.Intersects(second.WorldAABB)
+				&& first.WorldAABB.Intersects(second.WorldVolume)
+				&& first.WorldVolume.Intersects(second.WorldAABB)
+				&& first.WorldVolume.Intersects(second.WorldVolume);
+		}
 	}
 }
