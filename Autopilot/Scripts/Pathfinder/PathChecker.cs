@@ -204,6 +204,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 					return false;
 			}
 
+			if (entity.Physics != null && entity.Physics.Mass > 0 && entity.Physics.Mass < 1000)
+				return false;
+
 			return true;
 		}
 
