@@ -180,8 +180,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (IMyEntity entity in offenders)
 			{
 				CheckInterrupt();
-					float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
-					sortedOffenders.Add(distance, entity);
+				float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
+				while (sortedOffenders.ContainsKey(distance))
+					distance = distance.IncrementSignificand();
+				sortedOffenders.Add(distance, entity);
 			}
 			return sortedOffenders.Values;
 		}

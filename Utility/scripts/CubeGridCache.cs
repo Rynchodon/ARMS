@@ -34,19 +34,11 @@ namespace Rynchodon
 
 		private readonly IMyCubeGrid CubeGrid;
 
-		private CubeGridCache(IMyCubeGrid grid, FastResourceLock lock_iterateBlocks)
+		private CubeGridCache(IMyCubeGrid grid)
 		{
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-
-			if (lock_iterateBlocks != null)
-				lock_iterateBlocks.AcquireShared();
-			try { CubeGrid.GetBlocks(allSlims, slim => slim.FatBlock is IMyTerminalBlock); }
-			finally
-			{
-				if (lock_iterateBlocks != null)
-					lock_iterateBlocks.ReleaseShared();
-			}
+			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock is IMyTerminalBlock);
 
 			foreach (IMySlimBlock slim in allSlims)
 				CubeGrid_OnBlockAdded(slim);
@@ -59,7 +51,7 @@ namespace Rynchodon
 			log("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
-		public void CubeGrid_OnClose(IMyEntity grid)
+		private void CubeGrid_OnClose(IMyEntity grid)
 		{
 			CubeGrid.OnBlockAdded -= CubeGrid_OnBlockAdded;
 			CubeGrid.OnBlockRemoved -= CubeGrid_OnBlockRemoved;
@@ -253,10 +245,7 @@ namespace Rynchodon
 		/// <summary>
 		/// will return null if grid is closed, or CubeGridCache cannot be created
 		/// </summary>
-		/// <param name="grid"></param>
-		/// <param name="lock_iterateBlocks">if not null, will obtain a shared lock if it is necessary to iterate over blocks</param>
-		/// <returns></returns>
-		public static CubeGridCache GetFor(IMyCubeGrid grid, FastResourceLock lock_iterateBlocks = null)
+		public static CubeGridCache GetFor(IMyCubeGrid grid)
 		{
 			if (grid.Closed)
 				return null;
@@ -268,10 +257,10 @@ namespace Rynchodon
 
 			using (lock_registry.AcquireExclusiveUsing())
 			{
-				if (registry.TryGetValue(grid, out value)) // CubeGridCache created while waiting for exclusive lock
+				if (registry.TryGetValue(grid, out value))
 					return value;
 				try
-				{ return new CubeGridCache(grid, lock_iterateBlocks); }
+				{ return new CubeGridCache(grid); }
 				catch (Exception e)
 				{
 					(new Logger(null, "CubeGridCache")).log("Exception on creation: " + e, "GetFor()", Logger.severity.WARNING);
