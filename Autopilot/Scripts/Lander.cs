@@ -57,8 +57,8 @@ namespace Rynchodon.Autopilot
 		private Vector3D? targetRoll = null;
 		private bool matchOrientation_finished_rotating = false;
 
-		private const float rotLenSq_orientRota = 0.00762f;
-		private const float rotLen_orientRoll = 0.0873f;
+		private const float rotLenSq_orientRota = 0.00762f; // 5°
+		private const float rotLen_orientRoll = 0.0873f; // 5°
 
 		public void matchOrientation()
 		{
@@ -200,7 +200,7 @@ namespace Rynchodon.Autopilot
 							//	alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
 							//	return;
 							//}
-							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
+							CNS.setWaypoint((Vector3D)CNS.landingSeparateWaypoint);
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}

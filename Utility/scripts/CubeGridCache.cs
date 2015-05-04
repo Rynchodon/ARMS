@@ -192,7 +192,7 @@ namespace Rynchodon
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
-			myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
+			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;

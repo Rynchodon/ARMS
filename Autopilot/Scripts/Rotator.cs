@@ -142,11 +142,11 @@ namespace Rynchodon.Autopilot
 							else
 								goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.NOT_MOVE:
-							if (!owner.PathfinderAllowsMovement)
-							{
-								myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
-								return;
-							}
+							//if (!owner.PathfinderAllowsMovement)
+							//{
+							//	myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
+							//	return;
+							//}
 							owner.reportState(Navigator.ReportableState.ROTATING);
 							goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.HYBRID:

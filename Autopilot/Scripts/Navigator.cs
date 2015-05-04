@@ -8,14 +8,15 @@ using System.Text;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 using VRage.Library.Utils;
 using VRageMath;
 
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.Harvest;
 
 namespace Rynchodon.Autopilot
 {
@@ -53,6 +54,7 @@ namespace Rynchodon.Autopilot
 		internal ThrustProfiler currentThrust;
 		internal Targeter myTargeter;
 		private Rotator myRotator;
+		internal HarvesterAsteroid myHarvester { get; private set; }
 
 		private IMyControllableEntity currentRemoteControl_Value;
 		/// <summary>
@@ -103,8 +105,8 @@ namespace Rynchodon.Autopilot
 					reportState(ReportableState.OFF);
 				}
 
-				// set rotation power variables
 				myRotator = new Rotator(this);
+				myHarvester = new HarvesterAsteroid(this);
 			}
 		}
 		/// <summary>
@@ -285,6 +287,9 @@ namespace Rynchodon.Autopilot
 								return;
 							case NavSettings.TypeOfWayDest.NULL:
 								break; // keep searching
+							case NavSettings.TypeOfWayDest.WAYPOINT:
+								log("got a new waypoint destination (harvesting) " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								return;
 							default:
 								alwaysLog("got an invalid TypeOfWayDest: " + CNS.getTypeOfWayDest(), "update()", Logger.severity.FATAL);
 								return;
@@ -483,6 +488,8 @@ namespace Rynchodon.Autopilot
 				myLand.matchOrientation(); // continue match
 				return;
 			}
+			if (myHarvester.Run())
+				return;
 
 			if (!checkAt_wayDest())
 				collisionCheckMoveAndRotate();
@@ -576,7 +583,7 @@ namespace Rynchodon.Autopilot
 							break;
 						case Pathfinder.PathfinderOutput.Result.Alternate_Path:
 							myLogger.debugLog("Setting new waypoint: " + myPathfinder_Output.Waypoint, "collisionCheckMoveAndRotate()");
-							CNS.addWaypoint(myPathfinder_Output.Waypoint);
+							CNS.setWaypoint(myPathfinder_Output.Waypoint);
 							//fullStop("new path");
 							PathfinderAllowsMovement = true;
 							break;

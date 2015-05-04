@@ -228,7 +228,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <param name="waypoint"></param>
 		/// <param name="forced"></param>
-		public void addWaypoint(Vector3D waypoint)
+		public void setWaypoint(Vector3D waypoint)
 		{
 			onWayDestAddedRemoved();
 			myWaypoint = waypoint;

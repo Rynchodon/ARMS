@@ -204,6 +204,11 @@ namespace Rynchodon.Autopilot.Instruction
 						};
 						return true;
 					}
+				case "harvest":
+					{
+						wordAction = () => { owner.myHarvester.Start(); };
+						return true;
+					}
 				case "jump":
 					{
 						wordAction = () => {

@@ -72,7 +72,7 @@ namespace Rynchodon.Autopilot
 					nav.CNS.speedCruise_internal = speedSlow / 2;
 
 					//if (nav.CNS.getSpeedSlow() < initialSpeedSlow) // have made a difference
-					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + nav.MM.movementSpeed * 0.9, "adjustSpeeds()", Logger.severity.TRACE);
+					//log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + nav.MM.movementSpeed * 0.9, "adjustSpeeds()", Logger.severity.TRACE);
 				}
 				//else
 				//	myLogger.debugLog("already slowing down", "adjustSpeeds()");
@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot
 						nav.CNS.speedSlow_internal = speedCruise * 2;
 
 						//if (nav.CNS.getSpeedCruise() > initialSpeedCruise) // have made a difference
-						log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + nav.MM.movementSpeed * 2, "adjustSpeeds()", Logger.severity.TRACE);
+						//log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + nav.MM.movementSpeed * 2, "adjustSpeeds()", Logger.severity.TRACE);
 					}
 				}
 
@@ -112,12 +112,12 @@ namespace Rynchodon.Autopilot
 				cruiseSpeed = slowSpeed / 2;
 			if (nav.CNS.getSpeedSlow() > slowSpeed)
 			{
-				myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
+				//myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
 				nav.CNS.speedSlow_internal = slowSpeed;
 			}
 			if (nav.CNS.getSpeedCruise() > cruiseSpeed)
 			{
-				myLogger.debugLog("cruise speed is now " + cruiseSpeed, "adjustSpeedsByClosest()");
+				//myLogger.debugLog("cruise speed is now " + cruiseSpeed, "adjustSpeedsByClosest()");
 				nav.CNS.speedCruise_internal = cruiseSpeed;
 			}
 		}
