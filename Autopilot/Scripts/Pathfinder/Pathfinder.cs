@@ -149,7 +149,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			DistanceToDest = (float)(Destination - NavBlockPosition).Length();
 
 			IMyEntity ObstructingEntity = null;
-			if (CNS.landingState == NavSettings.LANDING.OFF)
+			//if (CNS.landingState == NavSettings.LANDING.OFF
+			//	&& (!FlyTheLine || Waypoint == null)) // if flying a line and has a waypoint, do not reroute to destination
+			if (!FlyTheLine || Waypoint == null)
 			{
 				myLogger.debugLog("testing path to destination", "CheckPath()");
 				ObstructingEntity = myPathChecker.TestPath(Destination, NavigationBlock, IgnoreAsteroids, out pointOfObstruction, DestGrid);

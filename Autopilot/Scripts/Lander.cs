@@ -57,8 +57,8 @@ namespace Rynchodon.Autopilot
 		private Vector3D? targetRoll = null;
 		private bool matchOrientation_finished_rotating = false;
 
-		private const float rotLenSq_orientRota = 0.00762f;
-		private const float rotLen_orientRoll = 0.0873f;
+		private const float rotLenSq_orientRota = 0.00762f; // 5°
+		private const float rotLen_orientRoll = 0.0873f; // 5°
 
 		public void matchOrientation()
 		{
@@ -149,6 +149,7 @@ namespace Rynchodon.Autopilot
 						{
 							log("starting to land", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LINEUP;
+							CNS.FlyTheLine = true;
 						}
 						return;
 					}
@@ -173,6 +174,7 @@ namespace Rynchodon.Autopilot
 							myNav.reportState(Navigator.ReportableState.LANDED);
 							myNav.fullStop("landed");
 							myNav.setDampeners(false); // dampeners should be off while docked, incase another grid is to fly
+							CNS.moveState = NavSettings.Moving.NOT_MOVE;
 							CNS.atWayDest(NavSettings.TypeOfWayDest.LAND);
 							CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 							return;
@@ -193,6 +195,7 @@ namespace Rynchodon.Autopilot
 							return;
 						}
 						else // waypoint exists
+						{
 							//if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
 							//	log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
 							//else
@@ -201,6 +204,8 @@ namespace Rynchodon.Autopilot
 							//	return;
 							//}
 							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
+							CNS.FlyTheLine = true;
+						}
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}
