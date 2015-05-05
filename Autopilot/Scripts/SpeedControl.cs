@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot
 				default:
 					if (nav.MM.movementSpeed > 1 && !nav.dampenersEnabled())
 					{
-						nav.setDampeners();
+						nav.EnableDampeners();
 						log(myLogger, "wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					}
 					return;
@@ -155,7 +155,7 @@ namespace Rynchodon.Autopilot
 				if (!nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
-					nav.setDampeners();
+					nav.EnableDampeners();
 					nav.moveOrder(Vector3.Zero);
 				}
 				return;
@@ -169,7 +169,7 @@ namespace Rynchodon.Autopilot
 				{
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;
-					nav.setDampeners();
+					//nav.EnableDampeners();
 				}
 				return;
 			}
@@ -180,8 +180,9 @@ namespace Rynchodon.Autopilot
 				if (nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
-					// disable dampeners
-					nav.setDampeners(false);
+					//// disable dampeners
+					//nav.setDampeners(false);
+					nav.DisableReverseThrust();
 					nav.moveOrder(Vector3.Zero);
 				}
 				return;

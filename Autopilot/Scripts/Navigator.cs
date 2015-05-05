@@ -766,6 +766,7 @@ namespace Rynchodon.Autopilot
 		private void calcAndMove(bool sidel = false)//, bool anyState=false)
 		{
 			//log("entered calcAndMove("+doSidel+")", "calcAndMove()", Logger.severity.TRACE);
+			EnableDampeners();
 			movingTooSlow = false;
 			if (sidel)
 			{
@@ -898,7 +899,7 @@ namespace Rynchodon.Autopilot
 			currentRoll = 0;
 			prevDistToWayDest = float.MaxValue;
 
-			setDampeners();
+			EnableDampeners();
 			currentRCcontrol.MoveAndRotateStopped();
 
 			CNS.moveState = NavSettings.Moving.STOP_MOVE;
@@ -946,30 +947,57 @@ namespace Rynchodon.Autopilot
 		public bool dampenersEnabled()
 		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
 
-		internal void setDampeners(bool dampenersOn = true)
+		internal void DisableReverseThrust()
 		{
-			if (dampenersOn)
-			{
-				//myLogger.debugLog("enabling all thrusters", "setDampeners()");
-				currentThrust.enableAllThrusters();
-			}
-			else
-				if (CNS.moveState == NavSettings.Moving.MOVING || CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
+			//if (enable)
+			//{
+			//	currentThrust.enableAllThrusters();
+			//	EnableDampeners();
+			//}
+			//else
+			//{
+				switch (CNS.moveState)
 				{
-					myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
-					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
-					return;
+					case NavSettings.Moving.HYBRID:
+					case NavSettings.Moving.MOVING:
+						currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
+						EnableDampeners();
+						break;
+					default:
+						EnableDampeners(false);
+						break;
 				}
+				
+			//}
+		}
+
+		public void EnableDampeners(bool dampenersOn = true)
+		{
+			//if (dampenersOn)
+			//{
+			//	//myLogger.debugLog("enabling all thrusters", "setDampeners()");
+			//	currentThrust.enableAllThrusters();
+			//}
+			//else
+			//	if (CNS.moveState == NavSettings.Moving.MOVING || CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
+			//	{
+			//		myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
+			//		currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
+			//		return;
+			//	}
+
+			if (dampenersOn)
+				currentThrust.enableAllThrusters();
 
 			try
 			{
 				if ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride != dampenersOn)
 				{
 					currentRCcontrol.SwitchDamping(); // sometimes SwitchDamping() throws a NullReferenceException while grid is being destroyed
-					if (!dampenersOn)
-						log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
-					else
-						log("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+					//if (!dampenersOn)
+					//	log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+					//else
+					//	log("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
 				}
 			}
 			catch (NullReferenceException)

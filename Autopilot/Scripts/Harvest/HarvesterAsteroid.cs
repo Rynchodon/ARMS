@@ -218,7 +218,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			if (myNav.MM.distToWayDest < 10)
 			{
-				myLogger.debugLog("reached wayDest", "Harvest()");
+				myLogger.debugLog("reached wayDest: " + CNS.getTypeOfWayDest(), "Harvest()");
 				StageAction = StartBackout;
 				return;
 			}

@@ -235,7 +235,7 @@ namespace Rynchodon.Autopilot.Instruction
 								owner.CNS.landingState = NavSettings.LANDING.OFF;
 								owner.CNS.landingSeparateBlock = null;
 								owner.CNS.landingSeparateWaypoint = null;
-								owner.setDampeners(); // dampeners will have been turned off for docking
+								owner.EnableDampeners(); // dampeners will have been turned off for docking
 							}
 						};
 						return true;

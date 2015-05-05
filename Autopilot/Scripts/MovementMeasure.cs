@@ -169,13 +169,14 @@ namespace Rynchodon.Autopilot
 
 		private double shortestDistanceToDestGrid()
 		{
-			BoundingBoxD grid1 = owner.myGrid.WorldAABB, grid2 = owner.CNS.CurrentGridDest.Grid.WorldAABB;
-			double shortestDistance = double.MaxValue;
-			foreach (Vector3D corner in grid1.GetCorners())
-				shortestDistance = Math.Min(shortestDistance, grid2.Distance(corner));
-			foreach (Vector3D corner in grid2.GetCorners())
-				shortestDistance = Math.Min(shortestDistance, grid1.Distance(corner));
-			return shortestDistance;
+			return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB);
+			//BoundingBoxD grid1 = owner.myGrid.WorldAABB, grid2 = owner.CNS.CurrentGridDest.Grid.WorldAABB;
+			//double shortestDistance = double.MaxValue;
+			//foreach (Vector3D corner in grid1.GetCorners())
+			//	shortestDistance = Math.Min(shortestDistance, grid2.Distance(corner));
+			//foreach (Vector3D corner in grid2.GetCorners())
+			//	shortestDistance = Math.Min(shortestDistance, grid1.Distance(corner));
+			//return shortestDistance;
 		}
 
 
