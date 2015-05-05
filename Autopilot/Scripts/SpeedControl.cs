@@ -175,8 +175,8 @@ namespace Rynchodon.Autopilot
 			}
 
 			// between cruise and slow speed
-			if (nav.CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // as long as state change comes after checkAndCruise, this will work
-			{
+			//if (nav.CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // as long as state change comes after checkAndCruise, this will work
+			//{
 				if (nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
@@ -185,18 +185,18 @@ namespace Rynchodon.Autopilot
 					nav.moveOrder(Vector3.Zero);
 				}
 				return;
-			}
-			else
-			{
-				// use cruise vector
-				if (!nav.dampenersEnabled() || nav.currentMove != cruiseForward)
-				{
-					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), using cruise vector", "checkAndCruise()", Logger.severity.TRACE);
-					nav.setDampeners();
-					nav.moveOrder(cruiseForward, false);
-				}
-				return;
-			}
+			//}
+			//else
+			//{
+			//	// use cruise vector
+			//	if (!nav.dampenersEnabled() || nav.currentMove != cruiseForward)
+			//	{
+			//		log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), using cruise vector", "checkAndCruise()", Logger.severity.TRACE);
+			//		nav.setDampeners();
+			//		nav.moveOrder(cruiseForward, false);
+			//	}
+			//	return;
+			//}
 		}
 	}
 }

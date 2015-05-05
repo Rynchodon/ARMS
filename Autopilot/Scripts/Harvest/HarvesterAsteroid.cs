@@ -24,6 +24,10 @@ namespace Rynchodon.Autopilot.Harvest
 		public NavSettings CNS { get { return myNav.CNS; } }
 		public IMyCubeBlock NavigationDrill { get; private set; }
 
+		private static readonly TimeSpan StuckAfter = new TimeSpan(0, 0, 10);
+		private DateTime StuckAt = DateTime.MaxValue;
+		private bool IsStuck = false;
+
 		private Logger myLogger;
 
 		/// <summary>Current stage of harvesting</summary>
@@ -46,10 +50,10 @@ namespace Rynchodon.Autopilot.Harvest
 				IEnumerator<Ingame.IMyTerminalBlock> drillEnum = GetDrills().GetEnumerator();
 				drillEnum.MoveNext();
 				NavigationDrill = drillEnum.Current as IMyCubeBlock; // while harvester is random, drill choice does not matter (assuming all drills face the same way)
+				//EnableDrills(false);
 
-				CNS.setDestination(NavigationDrill.GetPosition()); // will return to this point when backing out
 				CNS_Store();
-				CNS_SetHarvest();
+				//CNS_SetHarvest();
 
 				myLogger.debugLog("Started harvester", "Start()");
 				Ready();
@@ -66,6 +70,18 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <returns>true iff harvesting actions were performed</returns>
 		public bool Run()
 		{
+			//myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared(), "Run()");
+			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() > 0.5f)
+			{
+				StuckAt = DateTime.UtcNow + StuckAfter;
+				IsStuck = false;
+			}
+			else if (!IsStuck && DateTime.UtcNow > StuckAt)
+			{
+				myLogger.debugLog("Is now stuck", "Run()");
+				IsStuck = true;
+			}
+
 			//myLogger.debugLog("Entered Run()", "Run()");
 			if (StageAction == null)
 				return false;
@@ -102,9 +118,14 @@ namespace Rynchodon.Autopilot.Harvest
 				StageAction = Finished;
 				return;
 			}
-			CNS.setWaypoint(GetRandomPointInside(GetClosestAsteroid().WorldVolume));
+			CNS.setDestination(NavigationDrill.GetPosition()); // will return to this point when backing out
+			CNS.setWaypoint(GetRandomTarget(GetClosestAsteroid().WorldVolume));
 			CNS_SetHarvest();
+			CNS.FlyTheLine = false;
+			//CNS.speedCruise_external = 5;
+			//CNS.speedSlow_external = 10;
 
+			EnableDrills(false);
 			myLogger.debugLog("Ready", "Ready()");
 			StageAction = RotateToWaypoint;
 		}
@@ -118,7 +139,9 @@ namespace Rynchodon.Autopilot.Harvest
 			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
 			{
 				myLogger.debugLog("Finished rotating", "RotateToWaypoint()");
-				StageAction = MoveToAsteroid;
+				//StageAction = MoveToAsteroid;
+				//EnableDrills(true);
+				StageAction = StartHarvest;
 				return;
 			}
 			myNav.calcAndRotate();
@@ -130,10 +153,10 @@ namespace Rynchodon.Autopilot.Harvest
 		private void MoveToAsteroid()
 		{
 			myLogger.debugLog("Entered MoveToAsteroid()", "MoveToAsteroid()");
-			if (IsInsideAsteroid() && myNav.checkStopped())
+
+			if (IsStuck && IsInsideAsteroid())
 			{
-				foreach (Ingame.IMyShipDrill drill in GetDrills())
-					drill.RequestEnable(true);
+				//EnableDrills(true);
 				myLogger.debugLog("started", "MoveToAsteroid()");
 				StageAction = StartHarvest;
 			}
@@ -147,7 +170,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void StartHarvest()
 		{
 			myLogger.debugLog("Entered StartHarvest()", "StartHarvest()");
-			if (!myNav.checkStopped())
+			if (!IsStuck)
 			{
 				myLogger.debugLog("now moving", "StartHarvest()");
 				StageAction = Harvest;
@@ -168,17 +191,18 @@ namespace Rynchodon.Autopilot.Harvest
 		private void Harvest()
 		{
 			myLogger.debugLog("Entered Harvest()", "Harvest()");
-			if (DrillFullness(GetDrills()) > FullAmount_Abort )
+
+			if (CNS.moveState == NavSettings.Moving.NOT_MOVE || CNS.moveState == NavSettings.Moving.STOP_MOVE)
+				EnableDrills(false);
+			else
+				EnableDrills(true);
+
+			if (IsStuck || DrillFullness(GetDrills()) > FullAmount_Abort)
 			{
-				myLogger.debugLog("Drills are full: " + DrillFullness(GetDrills()) + " > " + FullAmount_Abort, "Harvest()");
-				CNS.atWayDest(NavSettings.TypeOfWayDest.WAYPOINT); // consider waypoint reached
-				CNS_SetHarvest();
-				StageAction = StartBackout;
-				return;
-			}
-			if (myNav.checkStopped())
-			{
-				myLogger.debugLog("harvester is stuck", "Harvest()");
+				if (IsStuck)
+					myLogger.debugLog("harvester is stuck", "Harvest()");
+				else
+					myLogger.debugLog("Drills are full: " + DrillFullness(GetDrills()) + " > " + FullAmount_Abort, "Harvest()");
 				CNS.atWayDest(NavSettings.TypeOfWayDest.WAYPOINT); // consider waypoint reached
 				CNS_SetHarvest();
 				StageAction = StartBackout;
@@ -186,12 +210,18 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 			if (!IsInsideAsteroid())
 			{
-				myLogger.debugLog("harvester reached far side", "Harvest()");
+				//myLogger.debugLog("harvester reached far side", "Harvest()");
+				myNav.fullStop("harvester reached far side");
 				StageAction = Ready;
 				return;
 			}
 
-			// TODO: check distance to waypoint
+			if (myNav.MM.distToWayDest < 10)
+			{
+				myLogger.debugLog("reached wayDest", "Harvest()");
+				StageAction = StartBackout;
+				return;
+			}
 
 			myNav.collisionCheckMoveAndRotate();
 		}
@@ -202,9 +232,12 @@ namespace Rynchodon.Autopilot.Harvest
 		private void StartBackout()
 		{
 			myLogger.debugLog("Entered StartBackout()", "StartBackout()");
-			if (!myNav.checkStopped() && IsInsideAsteroid())
+
+			EnableDrills(false);
+			if (!IsStuck)
 			{
 				myLogger.debugLog("started", "StartBackout()");
+				CNS.FlyTheLine = true;
 				StageAction = Backout;
 			}
 
@@ -222,24 +255,32 @@ namespace Rynchodon.Autopilot.Harvest
 		private void Backout()
 		{
 			myLogger.debugLog("Entered Backout()", "Backout()");
-			if (myNav.checkStopped())
+			if (IsStuck)
 			{
 				myLogger.debugLog("harvester is stuck", "Backout()");
-				CNS.atWayDest(NavSettings.TypeOfWayDest.COORDINATES); // consider destination reached
-				CNS_SetHarvest();
-				StageAction = TunnelThrough;
+				StageAction = StartTunnelThrough;
 				return;
 			}
-			if (!IsInsideAsteroid())
+			if (!IsInsideAsteroid() || myNav.MM.distToWayDest < 10)
 			{
 				myLogger.debugLog("harvester backed out successfully", "Backout()");
-				CNS.atWayDest(NavSettings.TypeOfWayDest.COORDINATES); // consider destination reached
-				CNS_SetHarvest();
+				myNav.fullStop("backed away from asteroid");
 				StageAction = Ready;
 				return;
 			}
 
 			myNav.collisionCheckMoveAndRotate();
+		}
+
+		private void StartTunnelThrough()
+		{
+			myLogger.debugLog("Entered StartTunnelThrough()", "TunnelThrough()");
+			EnableDrills(true);
+			Vector3D current = NavigationDrill.GetPosition();
+			Vector3D forwardVect = NavigationDrill.WorldMatrix.Forward;
+			CNS.setWaypoint(current + forwardVect * 131072);
+
+			StageAction = TunnelThrough;
 		}
 
 		/// <summary>
@@ -252,12 +293,25 @@ namespace Rynchodon.Autopilot.Harvest
 		private void TunnelThrough()
 		{
 			myLogger.debugLog("Entered TunnelThrough()", "TunnelThrough()");
-			foreach (Ingame.IMyShipDrill drill in GetDrills())
-				drill.RequestEnable(true);
 
-			// incomplete
-			myLogger.debugLog("successfully reached TunnelThrough()! which is not implemented...", "TunnelThrough()");
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
+			if (IsStuck || myNav.MM.distToWayDest < 10)
+			{
+				if (IsStuck)
+					myLogger.debugLog("stuck", "TunnelThrough()");
+				else
+					myLogger.debugLog("reached wayDest", "TunnelThrough()");
+				StageAction = StartTunnelThrough;
+				return;
+			}
+			if (!IsInsideAsteroid())
+			{
+				myLogger.debugLog("tunneled out the other side", "TunnelThrough()");
+				EnableDrills(false);
+				StageAction = Ready;
+				return;
+			}
+
+			myNav.collisionCheckMoveAndRotate();
 		}
 
 		/// <summary>
@@ -271,8 +325,8 @@ namespace Rynchodon.Autopilot.Harvest
 		private void Finished()
 		{
 			myLogger.debugLog("Entered Finished()", "Finished()");
-			foreach (Ingame.IMyShipDrill drill in GetDrills())
-				drill.RequestEnable(false);
+			EnableDrills(false);
+			CNS.atWayDest(NavSettings.TypeOfWayDest.COORDINATES); // consider destination reached
 			CNS_RestorePrevious();
 			StageAction = null;
 		}
@@ -322,9 +376,9 @@ namespace Rynchodon.Autopilot.Harvest
 		private static Random myRandom = new Random();
 
 		/// <summary>
-		/// Gets a random point inside sphere
+		/// Gets a random point beyond sphere
 		/// </summary>
-		private Vector3D GetRandomPointInside(BoundingSphereD sphere)
+		private Vector3D GetRandomTarget(BoundingSphereD sphere)
 		{
 			double randRadius = myRandom.NextDouble() * sphere.Radius;
 			double randAngle1 = myRandom.NextDouble() * MathHelper.TwoPi;
@@ -334,9 +388,13 @@ namespace Rynchodon.Autopilot.Harvest
 			double y = randRadius * Math.Sin(randAngle1) * Math.Sin(randAngle2);
 			double z = randRadius * Math.Cos(randAngle1);
 
-			Vector3D RandomPoint = new Vector3D(x, y, z);
-			myLogger.debugLog("Random point inside sphere: {" + sphere.Center + ", " + sphere.Radius + "} is " + RandomPoint, "GetRandomPointInside()");
-			return sphere.Center + RandomPoint;
+			Vector3D RandomPoint = new Vector3D(x, y, z) + sphere.Center;
+			Vector3D travelVector = Vector3D.Normalize(RandomPoint - NavigationDrill.GetPosition());
+			Vector3D destination = travelVector * 131072;
+
+			//Vector3D RandomPoint = new Vector3D(x, y, z);
+			//myLogger.debugLog("Random point inside sphere: {" + sphere.Center + ", " + sphere.Radius + "} is " + RandomPoint, "GetRandomPointInside()");
+			return destination;
 		}
 
 		#region CNS Variables
@@ -356,10 +414,10 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private void CNS_SetHarvest()
 		{
-			CNS.speedCruise_external = 5;
-			CNS.speedSlow_external = 10;
+			CNS.speedCruise_external = 1;
+			CNS.speedSlow_external = 5;
 			CNS.ignoreAsteroids = true;
-			CNS.FlyTheLine = true;
+			//CNS.FlyTheLine = true;
 		}
 
 		/// <summary>
@@ -370,6 +428,21 @@ namespace Rynchodon.Autopilot.Harvest
 			CNS.speedCruise_external = initial_speedCruise_external;
 			CNS.speedSlow_external = initial_speedSlow_external;
 			//CNS.destinationRadius = initial_destinationRadius;
+		}
+
+		#endregion
+		#region Enable/Disable Drills
+
+		private bool DrillsAreEnabled = true;
+
+		private void EnableDrills(bool enable)
+		{
+			if (DrillsAreEnabled == enable)
+				return;
+
+			DrillsAreEnabled = enable;
+			foreach (Ingame.IMyShipDrill drill in GetDrills())
+				drill.RequestEnable(enable);
 		}
 
 		#endregion

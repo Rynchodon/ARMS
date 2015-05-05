@@ -282,7 +282,7 @@ namespace Rynchodon.Autopilot
 					jump_to_dest = false;
 					ignoreAsteroids = false;
 					FlyTheLine = false;
-					return;
+					goto case TypeOfWayDest.WAYPOINT;
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;
 					return;

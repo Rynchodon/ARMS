@@ -646,22 +646,15 @@ namespace Rynchodon.Autopilot
 						prevDistToWayDest = newDistToWayDest;
 
 						myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
-						if (movingTooSlow && PathfinderAllowsMovement) //speed up test. missile will never pass this test
-							if (MM.rotLenSq < rotLenSq_startMove)
-							{
-								calcAndMove();
-								reportState(ReportableState.MOVING);
-							}
+						if (movingTooSlow && PathfinderAllowsMovement //speed up test. missile will never pass this test
+							&& MM.rotLenSq < rotLenSq_startMove)
+							StartMoveMove();
 					}
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
 						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && !CNS.FlyTheLine)
-						{
-							calcAndMove();
-							CNS.moveState = NavSettings.Moving.MOVING;
-							reportState(ReportableState.MOVING);
-						}
+							StartMoveMove();
 					}
 					break;
 				case NavSettings.Moving.HYBRID:
@@ -686,10 +679,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.NOT_MOVE:
 					{
 						if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA)
-						{
-							if (MoveIfPossible(true))
-								break;
-						}
+							MoveIfPossible(true);
 						break;
 					}
 				default:
@@ -712,8 +702,13 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (CNS.FlyTheLine)
+				if (CNS.FlyTheLine) // TODO: check tightness, move if possible
 				{
+					//if (MM.rotLenSq <= rotLenSq_tight)
+					//{
+					//	StartMoveMove();
+					//	return true;
+					//}
 					if (!canSidel)
 						return false;
 					StartMoveSidel();
@@ -747,6 +742,15 @@ namespace Rynchodon.Autopilot
 			reportState(ReportableState.MOVING);
 		}
 
+		private void StartMoveMove()
+		{
+			calcAndMove();
+			CNS.moveState = NavSettings.Moving.MOVING;
+			reportState(ReportableState.MOVING);
+		}
+
+		//public const float rotLenSq_tight = 0.00762f; // 5°
+
 		/// <summary>
 		/// start moving when less than (30°)
 		/// </summary>
@@ -755,7 +759,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// stop when greater than
 		/// </summary>
-		private const float onCourse_sidel = 0.01f, onCourse_hybrid = 0.1f;
+		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f;
 
 		private Vector3 moveDirection = Vector3.Zero;
 
@@ -946,11 +950,11 @@ namespace Rynchodon.Autopilot
 		{
 			if (dampenersOn)
 			{
-				myLogger.debugLog("enabling all thrusters", "setDampeners()");
+				//myLogger.debugLog("enabling all thrusters", "setDampeners()");
 				currentThrust.enableAllThrusters();
 			}
 			else
-				if (CNS.moveState == NavSettings.Moving.MOVING)
+				if (CNS.moveState == NavSettings.Moving.MOVING || CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
 				{
 					myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
 					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
