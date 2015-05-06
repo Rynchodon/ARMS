@@ -130,7 +130,11 @@ namespace Rynchodon.Autopilot
 		public Sandbox.ModAPI.IMyCubeBlock getNavigationBlock()
 		{
 			if (CNS.landingState == NavSettings.LANDING.OFF || CNS.landLocalBlock == null)
+			{
+				if (myHarvester.NavigationDrill != null)
+					return myHarvester.NavigationDrill;
 				return currentRCblock;
+			}
 			else
 			{
 				//log("using "+CNS.landLocalBlock.DisplayNameText+" as navigation block");
@@ -636,7 +640,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.MOVING:
 					{
 						double newDistToWayDest = MM.distToWayDest;
-						myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
+						//myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
 						if (newDistToWayDest > prevDistToWayDest)
 						{
 							myLogger.debugLog("Moving away from destination, newDistToWayDest = " + newDistToWayDest + " > prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
@@ -645,7 +649,7 @@ namespace Rynchodon.Autopilot
 						}
 						prevDistToWayDest = newDistToWayDest;
 
-						myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
+						//myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
 						if (movingTooSlow && PathfinderAllowsMovement //speed up test. missile will never pass this test
 							&& MM.rotLenSq < rotLenSq_startMove)
 							StartMoveMove();
@@ -653,7 +657,7 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
-						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && !CNS.FlyTheLine)
+						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.None)
 							StartMoveMove();
 					}
 					break;
@@ -663,6 +667,11 @@ namespace Rynchodon.Autopilot
 						if (movingTooSlow
 							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
 							calcAndMove(true); // continue in current state
+						if (MM.rotLenSq < rotLenSq_switchToMove)
+						{
+							myLogger.debugLog("switching to move", "calcMoveAndRotate()", Logger.severity.DEBUG);
+							StartMoveMove();
+						}
 						break;
 					}
 				case NavSettings.Moving.SIDELING:
@@ -679,7 +688,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.NOT_MOVE:
 					{
 						if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA)
-							MoveIfPossible(true);
+							MoveIfPossible();
 						break;
 					}
 				default:
@@ -693,7 +702,7 @@ namespace Rynchodon.Autopilot
 				calcAndRotate();
 		}
 
-		private bool MoveIfPossible(bool canSidel)
+		private bool MoveIfPossible()
 		{
 			if (PathfinderAllowsMovement)
 			{
@@ -702,16 +711,21 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (CNS.FlyTheLine) // TODO: check tightness, move if possible
+				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)// || MM.rotLenSq > rotLenSq_switchToMove)
 				{
 					//if (MM.rotLenSq <= rotLenSq_tight)
 					//{
 					//	StartMoveMove();
 					//	return true;
 					//}
-					if (!canSidel)
-						return false;
+					//if (!canSidel)
+					//	return false;
 					StartMoveSidel();
+					return true;
+				}
+				if (myHarvester.NavigationDrill != null) // if harvester has not set Line_SidelForward, normal move
+				{
+					StartMoveMove();
 					return true;
 				}
 				if (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGrid.GetLongestDim() + CNS.destinationRadius)
@@ -719,8 +733,8 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (!canSidel)
-					return false;
+				//if (!canSidel)
+				//	return false;
 				StartMoveSidel();
 				return true;
 			}
@@ -749,7 +763,7 @@ namespace Rynchodon.Autopilot
 			reportState(ReportableState.MOVING);
 		}
 
-		//public const float rotLenSq_tight = 0.00762f; // 5°
+		public const float rotLenSq_switchToMove = 0.00762f; // 5°
 
 		/// <summary>
 		/// start moving when less than (30°)
@@ -766,74 +780,80 @@ namespace Rynchodon.Autopilot
 		private void calcAndMove(bool sidel = false)//, bool anyState=false)
 		{
 			//log("entered calcAndMove("+doSidel+")", "calcAndMove()", Logger.severity.TRACE);
-			EnableDampeners();
-			movingTooSlow = false;
-			if (sidel)
+			try
 			{
-				Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
-				RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
-				Vector3 course = Vector3.Normalize(displacement.getWorld());
-				float offCourse = Vector3.RectangularDistance(course, moveDirection);
-
-				switch (CNS.moveState)
+				if (sidel)
 				{
-					case NavSettings.Moving.SIDELING:
-						{
-							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
-							//if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
-							if (offCourse < onCourse_sidel)
+					Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
+					RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
+					Vector3 course = Vector3.Normalize(displacement.getWorld());
+					float offCourse = Vector3.RectangularDistance(course, moveDirection);
+
+					switch (CNS.moveState)
+					{
+						case NavSettings.Moving.SIDELING:
 							{
-								//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
+								//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
+								//if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
+								if (offCourse < onCourse_sidel)
+								{
+									if (movingTooSlow)
+										goto case NavSettings.Moving.NOT_MOVE;
+									//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
+									return;
+								}
+								else
+								{
+									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
+									//log("sidel, stop to change course", "calcAndMove()", Logger.severity.TRACE);
+									fullStop("change course: sidel");
+									return;
+								}
+							}
+						case NavSettings.Moving.HYBRID:
+							{
+								//if (Math.Abs(moveDirection.X - course.X) < onCourse_hybrid && Math.Abs(moveDirection.Y - course.Y) < onCourse_hybrid && Math.Abs(moveDirection.Z - course.Z) < onCourse_hybrid)
+								if (offCourse < onCourse_hybrid)
+									goto case NavSettings.Moving.NOT_MOVE;
+								else
+								{
+									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
+									//log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
+									CNS.moveState = NavSettings.Moving.MOVING;
+									calcAndMove();
+									return;
+								}
+							}
+						case NavSettings.Moving.NOT_MOVE:
+							{
+								RelativeVector3F scaled = currentThrust.scaleByForce(displacement, getNavigationBlock());
+								moveOrder(scaled);
+								if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+								{
+									moveDirection = course;
+									log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
+									log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
+								}
+								break;
+							}
+						default:
+							{
+								alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
 								return;
 							}
-							else
-							{
-								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
-								//log("sidel, stop to change course", "calcAndMove()", Logger.severity.TRACE);
-								fullStop("change course: sidel");
-								return;
-							}
-						}
-					case NavSettings.Moving.HYBRID:
-						{
-							//if (Math.Abs(moveDirection.X - course.X) < onCourse_hybrid && Math.Abs(moveDirection.Y - course.Y) < onCourse_hybrid && Math.Abs(moveDirection.Z - course.Z) < onCourse_hybrid)
-							if (offCourse < onCourse_hybrid)
-								goto case NavSettings.Moving.NOT_MOVE;
-							else
-							{
-								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
-								//log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
-								CNS.moveState = NavSettings.Moving.MOVING;
-								calcAndMove();
-								return;
-							}
-						}
-					case NavSettings.Moving.NOT_MOVE:
-						{
-							RelativeVector3F scaled = currentThrust.scaleByForce(displacement, currentRCblock);
-							moveOrder(scaled);
-							if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
-							{
-								moveDirection = course;
-								log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
-								log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(currentRCblock), "calcAndMove()", Logger.severity.DEBUG);
-							}
-							break;
-						}
-					default:
-						{
-							alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
-							return;
-						}
+					}
+				}
+				else // not sidel
+				{
+					moveOrder(Vector3.Forward); // move forward
+					log("moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
 				}
 			}
-			else // not sidel
+			finally
 			{
-				moveOrder(Vector3.Forward); // move forward
-				log("moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
+				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
+				movingTooSlow = false;
 			}
-
-			stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
 		}
 
 		internal void calcAndRotate()
@@ -921,6 +941,11 @@ namespace Rynchodon.Autopilot
 				return;
 			currentMove = move;
 			moveAndRotate();
+			if (move != Vector3.Zero)
+			{
+				myLogger.debugLog("Enabling dampeners", "moveOrder()");
+				EnableDampeners();
+			}
 		}
 
 		internal void moveOrder(RelativeVector3F move, bool normalize = true)
@@ -960,10 +985,12 @@ namespace Rynchodon.Autopilot
 				{
 					case NavSettings.Moving.HYBRID:
 					case NavSettings.Moving.MOVING:
-						currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
+						myLogger.debugLog("disabling reverse thrust", "DisableReverseThrust()");
 						EnableDampeners();
+						currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
 						break;
 					default:
+						myLogger.debugLog("disabling dampeners", "DisableReverseThrust()");
 						EnableDampeners(false);
 						break;
 				}
@@ -994,10 +1021,10 @@ namespace Rynchodon.Autopilot
 				if ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride != dampenersOn)
 				{
 					currentRCcontrol.SwitchDamping(); // sometimes SwitchDamping() throws a NullReferenceException while grid is being destroyed
-					//if (!dampenersOn)
-					//	log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
-					//else
-					//	log("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+					if (!dampenersOn)
+						log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+					else
+						log("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
 				}
 			}
 			catch (NullReferenceException)
@@ -1067,7 +1094,7 @@ namespace Rynchodon.Autopilot
 			// add new state
 			StringBuilder newName = new StringBuilder();
 			newName.Append('<');
-			reportPathfinding(newName);
+			//reportPathfinding(newName);
 			// error
 			if (myInterpreter.instructionErrorIndex != null)
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
@@ -1113,13 +1140,13 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void reportPathfinding(StringBuilder newName)
-		{
-			if (myPathfinder_Output != null)
-				newName.Append(myPathfinder_Output.PathfinderResult);
-			newName.Append(':');
-		}
+		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//private void reportPathfinding(StringBuilder newName)
+		//{
+		//	if (myPathfinder_Output != null)
+		//		newName.Append(myPathfinder_Output.PathfinderResult);
+		//	newName.Append(':');
+		//}
 
 		//private bool ignore_RemoteControl_nameChange = false;
 		public string instructions { get; private set; }

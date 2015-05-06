@@ -221,7 +221,7 @@ namespace Rynchodon.Autopilot.Instruction
 				case "line":
 					{
 						wordAction = () => {
-							owner.CNS.FlyTheLine = true;
+							owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 							myLogger.debugLog("Set FlyTheLine", "getAction_word()");
 						};
 						return true;

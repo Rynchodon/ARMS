@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			this.IgnoreAsteroids = IgnoreAsteroids;
 			this.DestGrid = DestGrid;
 
-			myLogger.debugLog("destination (world absolute) = " + worldDestination, "TestPath()");
+			myLogger.debugLog("Test path to (world absolute) " + worldDestination, "TestPath()");
 			//myLogger.debugLog("destination (local) = " + worldDestination.getLocal(), "TestPath()");
 			//myLogger.debugLog("destination (nav block) = " + worldDestination.getBlock(navigationBlock), "TestPath()");
 

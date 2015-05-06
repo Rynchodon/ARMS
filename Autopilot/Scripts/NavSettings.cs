@@ -98,7 +98,19 @@ namespace Rynchodon.Autopilot
 		//}
 
 		public bool ignoreAsteroids = false;
-		public bool FlyTheLine = false;
+
+		/// <summary>Special Flying Instructions</summary>
+		public enum SpecialFlying : byte
+		{
+			/// <summary>no special instructions</summary>
+			None,
+			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
+			Line_Any,
+			/// <summary>pathfinder can fly forwards, sidel only</summary>
+			Line_SidelForward
+		}
+
+		public SpecialFlying SpecialFlyingInstructions = SpecialFlying.None;
 
 		public NavSettings(Navigator owner)
 		{
@@ -196,7 +208,7 @@ namespace Rynchodon.Autopilot
 		}
 		public void clearSpeedInternal()
 		{
-			myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
+			//myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 		}
@@ -281,7 +293,7 @@ namespace Rynchodon.Autopilot
 					landDirection = null;
 					jump_to_dest = false;
 					ignoreAsteroids = false;
-					FlyTheLine = false;
+					SpecialFlyingInstructions = SpecialFlying.None;
 					goto case TypeOfWayDest.WAYPOINT;
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;

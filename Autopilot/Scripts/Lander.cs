@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot
 						{
 							log("starting to land", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LINEUP;
-							CNS.FlyTheLine = true;
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 						}
 						return;
 					}
@@ -202,13 +202,9 @@ namespace Rynchodon.Autopilot
 							//	alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
 							//	return;
 							//}
-<<<<<<< HEAD
 							CNS.setWaypoint((Vector3D)CNS.landingSeparateWaypoint);
-=======
-							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
-							CNS.FlyTheLine = true;
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 						}
->>>>>>> origin/docking-bug
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}
@@ -221,6 +217,7 @@ namespace Rynchodon.Autopilot
 							CNS.landingSeparateBlock = null;
 							CNS.landingSeparateWaypoint = null;
 							CNS.atWayDest(NavSettings.TypeOfWayDest.WAYPOINT);
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.None;
 							//log("separated, landing procedures completed. target="+CNS.closestBlock.DisplayNameText+", local=" + CNS.landLocalBlock.DisplayNameText + ", offset=" + CNS.landOffset, "landGrid()", Logger.severity.DEBUG);
 							return;
 						}
