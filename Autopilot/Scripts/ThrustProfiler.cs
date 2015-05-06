@@ -13,7 +13,7 @@ using Sandbox.Definitions;
 //using Sandbox.Engine;
 //using Sandbox.Game;
 using Sandbox.ModAPI;
-//using Ingame = Sandbox.ModAPI.Ingame;
+using Ingame = Sandbox.ModAPI.Ingame;
 //using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot
 
 			myGrid.OnBlockAdded += grid_OnBlockAdded;
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
-			enableAllThrusters();
+			//enableAllThrusters(); // up to Navigator
 		}
 
 		/// <summary>
@@ -299,12 +299,18 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// enable all the thrusters of this grid.
+		/// enable all the thrusters of this grid. disables any thruster with an override
 		/// </summary>
 		public void enableAllThrusters()
 		{
 			foreach (IMyCubeBlock thruster in allMyThrusters.Keys)
-				(thruster as IMyFunctionalBlock).RequestEnable(true);
+			{
+				Ingame.IMyThrust ingame = thruster as Ingame.IMyThrust;
+				if (ingame.ThrustOverride > 0)
+					ingame.RequestEnable(false);
+				else
+					ingame.RequestEnable(true);
+			}
 
 			thrustersDisabledByAutopilot = new HashSet<IMyCubeBlock>();
 		}
@@ -314,7 +320,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <returns>true iff any thrusters are disabled by Autopilot</returns>
 		public bool disabledThrusters()
-		{ return thrustersDisabledByAutopilot.Count > 0; }
+		{ return thrustersDisabledByAutopilot != null && thrustersDisabledByAutopilot.Count > 0; }
 
 		#endregion
 	}
