@@ -66,7 +66,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// Thrusters which are disabled by Autopilot and should not be removed from profile.
 		/// </summary>
-		private HashSet<IMyCubeBlock> thrustersDisabledByAutopilot;
+		private HashSet<IMyCubeBlock> thrustersDisabledByAutopilot = new HashSet<IMyCubeBlock>();
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -151,7 +151,7 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception e)
 			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockAdded()", "Exception: " + e); }
-			init();
+			//init();
 		}
 
 		/// <summary>
@@ -180,7 +180,7 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception e)
 			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockRemoved()", "Exception: " + e); }
-			init();
+			//init();
 		}
 
 		// 
@@ -214,7 +214,7 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception e)
 			{ myLogger.log(Logger.severity.ERROR, "block_IsWorkingChanged()", "Exception: " + e); }
-			init();
+			//init();
 		}
 
 		#region Public Methods
@@ -320,7 +320,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <returns>true iff any thrusters are disabled by Autopilot</returns>
 		public bool disabledThrusters()
-		{ return thrustersDisabledByAutopilot != null && thrustersDisabledByAutopilot.Count > 0; }
+		{ return thrustersDisabledByAutopilot.Count > 0; }
 
 		#endregion
 	}
