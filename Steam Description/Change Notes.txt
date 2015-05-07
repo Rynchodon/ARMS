@@ -3,3 +3,5 @@ Will be moved to steam every release.
 major:
 
 minor:
+blueprint for radar
+preserve case for instructions from panel

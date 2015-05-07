@@ -93,6 +93,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionQueue = new MyQueue<Action>(8);
 			instructionQueueString = new List<string>();
 
+			myLogger.debugLog("block: " + block.Name + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
 		}
 
@@ -343,7 +344,8 @@ namespace Rynchodon.Autopilot.Instruction
 				return false;
 			}
 
-			string panelText = panel.GetPublicText().ToLower();
+			string panelText = panel.GetPublicText();
+			string lowerText = panelText.ToLower();
 
 			string identifier;
 			int identifierIndex, startOfCommands;
@@ -351,7 +353,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (split.Length == 2)
 			{
 				identifier = split[1];
-				identifierIndex = panelText.IndexOf(identifier);
+				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
 					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
