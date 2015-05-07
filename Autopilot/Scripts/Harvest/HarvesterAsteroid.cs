@@ -146,6 +146,8 @@ namespace Rynchodon.Autopilot.Harvest
 				myLogger.debugLog("Finished rotating", "RotateToWaypoint()");
 				//StageAction = MoveToAsteroid;
 				//EnableDrills(true);
+				
+
 				SetNextStage(StartHarvest, true);
 				return;
 			}
@@ -157,14 +159,9 @@ namespace Rynchodon.Autopilot.Harvest
 		///// </summary>
 		//private void MoveToAsteroid()
 		//{
-		//	myLogger.debugLog("Entered MoveToAsteroid()", "MoveToAsteroid()");
+		//	LogEntered("MoveToAsteroid");
 
-		//	if (IsStuck && IsInsideAsteroid())
-		//	{
-		//		//EnableDrills(true);
-		//		myLogger.debugLog("started", "MoveToAsteroid()");
-		//		SetNextStage(StartHarvest, true);
-		//	}
+			
 
 		//	myNav.collisionCheckMoveAndRotate();
 		//}
@@ -406,7 +403,7 @@ namespace Rynchodon.Autopilot.Harvest
 			return enumerator.Current.Value;
 		}
 
-		private static Random myRandom = new Random();
+		private static Random myRandom = new Random(4);
 
 		/// <summary>
 		/// Gets a random point beyond sphere

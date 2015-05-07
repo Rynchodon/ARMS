@@ -93,7 +93,8 @@ namespace Rynchodon.Autopilot
 		private RotateProfile
 			stoppedRotate = new RotateProfile(1.0f, 1f / 2f),
 			stoppedRoll = new RotateProfile(1.0f, 1f / 2f),
-			inflightRotate = new RotateProfile(1.0f, 1f / 4f);
+			inflightRotate = new RotateProfile(1.0f, 1f / 4f),
+			inflightRoll = new RotateProfile(1.0f, 1f / 2f);
 
 		private float current_pitch, current_yaw, current_roll;
 		private float needToRotate_pitch, needToRotate_yaw, needToRotate_roll;
@@ -275,6 +276,21 @@ namespace Rynchodon.Autopilot
 					return inflightRotate;
 				default:
 					return stoppedRotate;
+			}
+		}
+
+		/// <summary>
+		/// if moveState is moving or hybrid, inflightRoll. otherwise, stoppedRoll
+		/// </summary>
+		private RotateProfile currentRollProfile()
+		{
+			switch (CNS.moveState)
+			{
+				case NavSettings.Moving.MOVING:
+				case NavSettings.Moving.HYBRID:
+					return inflightRoll;
+				default:
+					return stoppedRoll;
 			}
 		}
 

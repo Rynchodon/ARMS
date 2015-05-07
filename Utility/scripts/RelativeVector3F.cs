@@ -37,7 +37,6 @@ namespace Rynchodon
 			RelativeVector3F result = new RelativeVector3F();
 			result.value__worldAbsolute = worldAbsoulte;
 			result.cubeGrid = cubeGrid;
-			result.getWorld();
 			return result;
 		}
 
@@ -115,10 +114,10 @@ namespace Rynchodon
 			if (value__grid != null)
 				return (Vector3)value__grid;
 
-			if (value__world != null)
+			if (value__world != null || value__worldAbsolute != null)
 			{
 				// create from world
-				Vector3I gridInt = cubeGrid.WorldToGridInteger((Vector3)value__world * precisionMultiplier + cubeGrid.GetPosition());
+				Vector3I gridInt = cubeGrid.WorldToGridInteger(getWorld() * precisionMultiplier + cubeGrid.GetPosition());
 				value__grid = (gridInt * cubeGrid.GridSize) / precisionMultiplier;
 				return (Vector3)value__grid;
 			}
@@ -152,17 +151,20 @@ namespace Rynchodon
 
 			Vector3 v3;
 			MatrixD matrix;
-			if (value__grid != null)
+			if (value__world != null || value__worldAbsolute != null)
 			{
-				// create from grid
-				v3 = ((Vector3)this.value__grid);
-				matrix = cubeBlock.LocalMatrix;
-			}
-			else // assuming (world != null)
-			{
-				v3 = ((Vector3)this.value__world);
+				v3 = getWorld();
 				matrix = cubeBlock.WorldMatrix;
 			}
+			else // assume we can get local
+			//if (value__grid != null)
+			{
+				// create from local
+				v3 = getLocal();
+				matrix = cubeBlock.LocalMatrix;
+			}
+			//else // assuming (world != null)
+				
 
 			Vector3 resultant = v3.Dot(matrix.Right) * Base6Directions.GetVector(Base6Directions.Direction.Right);
 			resultant += v3.Dot(matrix.Up) * Base6Directions.GetVector(Base6Directions.Direction.Up);

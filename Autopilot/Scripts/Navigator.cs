@@ -94,10 +94,10 @@ namespace Rynchodon.Autopilot
 					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
 					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
-				}
+				//}
 
-				if (currentRemoteControl_Value != null)
-				{
+				//if (currentRemoteControl_Value != null)
+				//{
 					// actions on new RC
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
@@ -926,7 +926,7 @@ namespace Rynchodon.Autopilot
 			CNS.rotateState = NavSettings.Rotating.STOP_ROTA;
 		}
 
-		internal Vector3 currentMove = Vector3.Zero;
+		internal Vector3 currentMove = Vector3.One; // for initial fullStop
 		internal Vector2 currentRotate = Vector2.Zero;
 		internal float currentRoll = 0;
 

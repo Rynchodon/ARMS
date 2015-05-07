@@ -19,6 +19,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
+	/// <summary>
+	/// Orients and Lands a grid
+	/// </summary>
 	class Lander
 	{
 		private Logger myLogger = null;
