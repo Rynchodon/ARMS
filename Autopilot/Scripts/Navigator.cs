@@ -845,8 +845,11 @@ namespace Rynchodon.Autopilot
 				}
 				else // not sidel
 				{
-					moveOrder(Vector3.Forward); // move forward
-					log("moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
+					Vector3 NavForward = getNavigationBlock().LocalMatrix.Forward;
+					Vector3 RemFromNF = Base6Directions.GetVector(currentRCblock.LocalMatrix.GetClosestDirection(ref NavForward));
+
+					moveOrder(RemFromNF); // move forward
+					log("forward = " + RemFromNF + ", moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
 				}
 			}
 			finally
@@ -857,7 +860,10 @@ namespace Rynchodon.Autopilot
 		}
 
 		internal void calcAndRotate()
-		{ myRotator.calcAndRotate(); }
+		{
+			myRotator.calcAndRotate();
+			myRotator.calcAndRoll(MM.roll);
+		}
 
 		internal void calcAndRoll(float roll)
 		{ myRotator.calcAndRoll(roll); }

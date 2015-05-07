@@ -24,7 +24,7 @@ namespace Rynchodon.Autopilot
 
 			myLogger = new Logger(owner.myGrid.DisplayName, "MovementMeasure");
 
-			lazy_rotationLengthSquared = new Lazy<double>(() => { return pitch * pitch + yaw * yaw; });
+			lazy_rotationLengthSquared = new Lazy<double>(() => { return pitch * pitch + yaw * yaw + roll * roll; });
 			lazy_currentWaypoint = new Lazy<Vector3D>(() => { return (Vector3D)owner.CNS.getWayDest(); });
 			lazy_movementSpeed = new Lazy<float>(() => { return owner.myGrid.Physics.LinearVelocity.Length(); });
 
@@ -45,13 +45,13 @@ namespace Rynchodon.Autopilot
 		}
 
 		// these are all built together so we will not be using lazy
-		private double value__pitch, value__yaw, value__roll; //, value__pitchPower, value__yawPower;
+		private float value__pitch, value__yaw, value__roll; //, value__pitchPower, value__yawPower;
 		private bool isValid__pitchYaw = false;
 
 		/// <summary>
 		/// radians to pitch to reach target
 		/// </summary>
-		public double pitch
+		public float pitch
 		{
 			get
 			{
@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// radians to yaw to reach target
 		/// </summary>
-		public double yaw
+		public float yaw
 		{
 			get
 			{
@@ -75,7 +75,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// radians to roll to reach target
 		/// </summary>
-		public double roll
+		public float roll
 		{
 			get
 			{
@@ -104,7 +104,7 @@ namespace Rynchodon.Autopilot
 			RelativeVector3F direction = RelativeVector3F.createFromWorld(dirNorm, owner.myGrid);
 
 			Vector3 navDirection = direction.getBlock(owner.getNavigationBlock());
-			myLogger.debugLog("navDirection = " + navDirection, "buildPitchYaw()");
+			//myLogger.debugLog("navDirection = " + navDirection, "buildPitchYaw()");
 
 			Vector3 NavRight = NavBlock.LocalMatrix.Right;
 			Vector3 RemFrNR = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavRight));
@@ -115,15 +115,15 @@ namespace Rynchodon.Autopilot
 			//Vector3 NavBack = NavBlock.LocalMatrix.Backward;
 			//Vector3 RemFrNB = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavBack));
 
-			myLogger.debugLog("NavRight = " + NavRight + ", NavUp = " + NavUp, "buildPitchYaw()");
-			myLogger.debugLog("RemFrNR = " + RemFrNR + ", RemFrNU = " + RemFrNU, "buildPitchYaw()");
+			//myLogger.debugLog("NavRight = " + NavRight + ", NavUp = " + NavUp, "buildPitchYaw()");
+			//myLogger.debugLog("RemFrNR = " + RemFrNR + ", RemFrNU = " + RemFrNU, "buildPitchYaw()");
 
 			float right = navDirection.X, down = -navDirection.Y, forward = -navDirection.Z;
 			float pitch = (float)Math.Atan2(down, forward), yaw = (float)Math.Atan2(right, forward);
 
 			Vector3 mapped = pitch * RemFrNR + yaw * RemFrNU;
 
-			myLogger.debugLog("mapped " + new Vector3(pitch, yaw, 0) + " to " + mapped, "buildPitchYaw()");
+			//myLogger.debugLog("mapped " + new Vector3(pitch, yaw, 0) + " to " + mapped, "buildPitchYaw()");
 
 			value__pitch = mapped.X;
 			value__yaw = mapped.Y;

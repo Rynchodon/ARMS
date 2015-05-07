@@ -222,6 +222,12 @@ namespace Rynchodon.Autopilot
 		/// </remarks>
 		public void calcAndRoll(float roll)
 		{
+			if (Math.Abs(roll) < rotComp_minimum)
+			{
+				//myLogger.debugLog("roll is low: " + roll + " < " + rotComp_minimum, "calcAndRoll()");
+				return;
+			}
+
 			switch (CNS.rollState)
 			{
 				case NavSettings.Rolling.NOT_ROLL:
@@ -232,7 +238,7 @@ namespace Rynchodon.Autopilot
 					owner.reportState(Navigator.ReportableState.ROTATING);
 					return;
 				case NavSettings.Rolling.ROLLING:
-					if (Math.Sign(roll) != Math.Sign(needToRotate_roll) || Math.Abs(roll) < Math.Abs(needToRotate_roll) * stoppedRoll.decelPortion)
+					if (Math.Sign(roll) != Math.Sign(needToRotate_roll) || Math.Abs(roll) < Math.Abs(needToRotate_roll) * currentRollProfile().decelPortion)
 					{
 						myLogger.debugLog("decelerate roll, roll=" + roll + ", needToRoll=" + needToRotate_roll, "calcAndRoll()", Logger.severity.DEBUG);
 						CNS.rollState = NavSettings.Rolling.STOP_ROLL;
@@ -254,7 +260,7 @@ namespace Rynchodon.Autopilot
 
 					int overUnder = testOverUnder(roll, needToRotate_roll);
 					if (overUnder != 0)
-						stoppedRoll.adjust(overUnder > 0);
+						currentRollProfile().adjust(overUnder > 0);
 
 					return;
 			}

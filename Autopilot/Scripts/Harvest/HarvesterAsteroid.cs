@@ -17,6 +17,7 @@ namespace Rynchodon.Autopilot.Harvest
 	{
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.5f;
 		private const float rotLenSq_rotate = 0.00762f; // 5°
+		private const float rotLenSq_offCourse = 0.685f; // 15°
 
 		private readonly Navigator myNav;
 		private readonly CubeGridCache myCache;
@@ -172,7 +173,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void StartHarvest()
 		{
 			LogEntered("StartHarvest()");
-			if (myNav.MM.rotLenSq > rotLenSq_rotate)
+			if (myNav.MM.rotLenSq > rotLenSq_offCourse)
 			{
 				myLogger.debugLog("too far from correct direction", "StartHarvest()");
 				SetNextStage(StartTunnelThrough, false);
