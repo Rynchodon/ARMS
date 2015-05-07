@@ -77,7 +77,7 @@ namespace Rynchodon.Autopilot
 					// actions on old RC
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged -= remoteControl_OnNameChanged;
 					fullStop("unsetting RC");
-					reportState(ReportableState.OFF);
+					reportState(ReportableState.Off);
 				}
 
 				currentRemoteControl_Value = value;
@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
 					fullStop("new RC");
-					reportState(ReportableState.OFF);
+					reportState(ReportableState.Off);
 				}
 
 				myRotator = new Rotator(this);
@@ -247,7 +247,7 @@ namespace Rynchodon.Autopilot
 					log("wait interrupted", "update()", Logger.severity.DEBUG);
 					reset();
 				}
-				reportState(ReportableState.WAITING);
+				reportState(ReportableState.Waiting);
 				return;
 			}
 
@@ -311,7 +311,7 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					// find a remote control with NavSettings allInstructions
-					reportState(ReportableState.NO_DEST);
+					reportState(ReportableState.No_Dest);
 					//log("searching for a ready remote control", "update()", Logger.severity.TRACE);
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 					foreach (Sandbox.ModAPI.IMySlimBlock remoteControlBlock in remoteControlBlocks)
@@ -388,7 +388,7 @@ namespace Rynchodon.Autopilot
 					{
 						log("player is controlling grid: " + controllingPlayer.DisplayName, "gridCanNavigate()", Logger.severity.TRACE);
 						player_controlling = true;
-						reportState(ReportableState.PLAYER);
+						reportState(ReportableState.Player);
 					}
 				}
 				return false;
@@ -462,7 +462,7 @@ namespace Rynchodon.Autopilot
 			if (!remoteControlIsReady(currentRCblock))
 			{
 				log("remote control is not ready");
-				reportState(ReportableState.OFF);
+				reportState(ReportableState.Off);
 				reset();
 				return;
 			}
@@ -582,27 +582,32 @@ namespace Rynchodon.Autopilot
 							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
-							reportState(ReportableState.PATHFINDING);
+							//reportState(ReportableState.PATHFINDING);
+							pathfinderState = ReportableState.Pathfinding;
 							PathfinderAllowsMovement = false;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Alternate_Path:
 							myLogger.debugLog("Setting new waypoint: " + myPathfinder_Output.Waypoint, "collisionCheckMoveAndRotate()");
 							CNS.setWaypoint(myPathfinder_Output.Waypoint);
 							//fullStop("new path");
+							pathfinderState = ReportableState.Path_OK;
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Path_Clear:
 							//myLogger.debugLog("Path forward is clear", "collisionCheckMoveAndRotate()");
+							pathfinderState = ReportableState.Path_OK;
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.No_Way_Forward:
-							reportState(ReportableState.NO_PATH);
+							//reportState(ReportableState.NO_PATH);
 							fullStop("No Path");
+							pathfinderState = ReportableState.No_Path;
 							PathfinderAllowsMovement = false;
 							return;
 						default:
 							myLogger.log("Error, invalid case: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()", Logger.severity.FATAL);
 							fullStop("Invalid Pathfinder.PathfinderOutput");
+							pathfinderState = ReportableState.No_Path;
 							PathfinderAllowsMovement = false;
 							return;
 					}
@@ -738,7 +743,7 @@ namespace Rynchodon.Autopilot
 				StartMoveSidel();
 				return true;
 			}
-			reportState(ReportableState.PATHFINDING);
+			reportState(ReportableState.Pathfinding);
 			return false;
 		}
 
@@ -746,21 +751,21 @@ namespace Rynchodon.Autopilot
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.HYBRID;
-			reportState(ReportableState.MOVING);
+			reportState(ReportableState.Moving);
 		}
 
 		private void StartMoveSidel()
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.SIDELING;
-			reportState(ReportableState.MOVING);
+			reportState(ReportableState.Moving);
 		}
 
 		private void StartMoveMove()
 		{
 			calcAndMove();
 			CNS.moveState = NavSettings.Moving.MOVING;
-			reportState(ReportableState.MOVING);
+			reportState(ReportableState.Moving);
 		}
 
 		public const float rotLenSq_switchToMove = 0.00762f; // 5°
@@ -905,7 +910,7 @@ namespace Rynchodon.Autopilot
 			}
 			else
 				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
-					reportState(ReportableState.STOPPING);
+					reportState(ReportableState.Stopping);
 
 			return isStopped;
 		}
@@ -919,7 +924,7 @@ namespace Rynchodon.Autopilot
 				return;
 
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
-			reportState(ReportableState.STOPPING);
+			reportState(ReportableState.Stopping);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
@@ -1042,13 +1047,19 @@ namespace Rynchodon.Autopilot
 			return "Nav:" + myGrid.DisplayName;
 		}
 
+		#region Report State
+
 		public enum ReportableState : byte
 		{
-			OFF, PATHFINDING, NO_PATH, NO_DEST, WAITING,
-			ROTATING, MOVING, STOPPING, HYBRID, SIDEL, ROLL,
-			MISSILE, ENGAGING, LANDED, PLAYER, JUMP, GET_OUT_OF_SEAT
+			Off, No_Dest, Waiting,
+			Path_OK, Pathfinding, No_Path,
+			Rotating, Moving, Stopping, Hybrid, Sidel, Roll,
+			H_Ready, Harvest, H_Stuck, H_Back, H_Tunnel,
+			Missile, Engaging, Landed, Player, Jump, GET_OUT_OF_SEAT
 		};
-		private ReportableState currentReportable = ReportableState.OFF;
+		private ReportableState currentReportable = ReportableState.Off;
+		/// <summary>The state of the pathinfinder</summary>
+		private ReportableState pathfinderState = ReportableState.Path_OK;
 
 		internal bool GET_OUT_OF_SEAT = false;
 
@@ -1058,7 +1069,6 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// may ignore the given state, if Nav is actually in another state
 		/// </summary>
-		/// <param name="newState"></param>
 		internal void reportState(ReportableState newState)
 		{
 			//log("entered reportState()", "reportState()", Logger.severity.TRACE);
@@ -1075,17 +1085,13 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			reportExtra(ref newState);
-
-			if (CNS.EXIT)
-				newState = ReportableState.OFF;
-			if (CNS.landingState == NavSettings.LANDING.LOCKED)
-				newState = ReportableState.LANDED;
-			if (GET_OUT_OF_SEAT) // must override LANDED
-				newState = ReportableState.GET_OUT_OF_SEAT;
+			ReportableState? got = GetState();
+			if (got.HasValue)
+				newState = got.Value;
+			//reportExtra(ref newState);
 
 			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
+			if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting) // jump and waiting update times
 				return;
 			currentReportable = newState;
 
@@ -1107,7 +1113,7 @@ namespace Rynchodon.Autopilot
 			// actual state
 			newName.Append(newState);
 			// wait time
-			if (newState == ReportableState.WAITING)
+			if (newState == ReportableState.Waiting)
 			{
 				newName.Append(':');
 				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
@@ -1123,28 +1129,58 @@ namespace Rynchodon.Autopilot
 			log("added ReportableState to RC: " + newState, "reportState()", Logger.severity.TRACE);
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void reportExtra(ref ReportableState reportState)
+		private ReportableState? GetState()
 		{
-			switch (reportState)
+			if (CNS.EXIT)
+				return ReportableState.Off;
+
+			// landing
+			if (GET_OUT_OF_SEAT) // must override LANDED
+				return ReportableState.GET_OUT_OF_SEAT;
+			if (CNS.landingState == NavSettings.LANDING.LOCKED)
+				return ReportableState.Landed;
+			
+			// pathfinding
+			switch (pathfinderState)
 			{
-				case ReportableState.MOVING:
-					switch (CNS.moveState)
-					{
-						case NavSettings.Moving.SIDELING:
-							reportState = ReportableState.SIDEL;
-							break;
-						case NavSettings.Moving.HYBRID:
-							reportState = ReportableState.HYBRID;
-							break;
-					}
-					return;
-				case ReportableState.ROTATING:
-					if (CNS.rollState == NavSettings.Rolling.ROLLING)
-						reportState = ReportableState.ROLL;
-					return;
+				case ReportableState.No_Path:
+					return ReportableState.No_Path;
+				case ReportableState.Pathfinding:
+					return ReportableState.Pathfinding;
 			}
+			
+			// harvest
+			if (myHarvester.IsActive())
+				if (myHarvester.HarvestState != ReportableState.H_Ready)
+					return myHarvester.HarvestState;
+
+			// moving
+			switch (CNS.moveState)
+			{
+				case NavSettings.Moving.SIDELING:
+					return ReportableState.Sidel;
+				case NavSettings.Moving.HYBRID:
+					return ReportableState.Hybrid;
+				case NavSettings.Moving.MOVING:
+					return ReportableState.Moving;
+			}
+
+			// rotating
+			if (CNS.rotateState == NavSettings.Rotating.ROTATING)
+				return ReportableState.Rotating;
+			if (CNS.rollState == NavSettings.Rolling.ROLLING)
+				return ReportableState.Roll;
+
+			// stopping
+			if (CNS.moveState == NavSettings.Moving.STOP_MOVE
+				||CNS.rotateState == NavSettings.Rotating.STOP_ROTA
+				|| CNS.rollState == NavSettings.Rolling.STOP_ROLL)
+				return ReportableState.Stopping;
+
+			return null;
 		}
+
+		#endregion
 
 		//[System.Diagnostics.Conditional("LOG_ENABLED")]
 		//private void reportPathfinding(StringBuilder newName)

@@ -148,7 +148,7 @@ namespace Rynchodon.Autopilot
 							//	myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
 							//	return;
 							//}
-							owner.reportState(Navigator.ReportableState.ROTATING);
+							owner.reportState(Navigator.ReportableState.Rotating);
 							goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.HYBRID:
 							needToRotate_pitch = (float)CMM.pitch;
@@ -235,7 +235,7 @@ namespace Rynchodon.Autopilot
 					needToRotate_roll = roll;
 					addToRoll(roll);
 					CNS.rollState = NavSettings.Rolling.ROLLING;
-					owner.reportState(Navigator.ReportableState.ROTATING);
+					owner.reportState(Navigator.ReportableState.Rotating);
 					return;
 				case NavSettings.Rolling.ROLLING:
 					if (Math.Sign(roll) != Math.Sign(needToRotate_roll) || Math.Abs(roll) < Math.Abs(needToRotate_roll) * currentRollProfile().decelPortion)

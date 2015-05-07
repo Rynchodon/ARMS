@@ -199,7 +199,7 @@ namespace Rynchodon.Autopilot.Instruction
 					{
 						wordAction = () => {
 							owner.CNS.EXIT = true;
-							owner.reportState(Navigator.ReportableState.OFF);
+							owner.reportState(Navigator.ReportableState.Off);
 							owner.fullStop("EXIT");
 						};
 						return true;

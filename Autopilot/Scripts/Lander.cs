@@ -174,7 +174,7 @@ namespace Rynchodon.Autopilot
 						{
 							//log("locked", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LOCKED;
-							myNav.reportState(Navigator.ReportableState.LANDED);
+							myNav.reportState(Navigator.ReportableState.Landed);
 							myNav.fullStop("landed");
 							myNav.EnableDampeners(false); // dampeners should be off while docked, incase another grid is to fly
 							CNS.atWayDest(NavSettings.TypeOfWayDest.LAND);
