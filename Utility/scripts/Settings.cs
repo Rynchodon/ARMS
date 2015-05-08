@@ -13,7 +13,7 @@ namespace Rynchodon
 	public static class Settings
 	{
 		#region settings
-		public enum BoolSetName : byte { bAllowJumpCreative, bAllowJumpSurvival, bAllowAutopilot, bAllowRadar, bAllowTurretControl }
+		public enum BoolSetName : byte { /*bAllowJumpCreative, bAllowJumpSurvival,*/ bAllowAutopilot, bAllowRadar, bAllowTurretControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
 		public enum DoubleSetName : byte { }
@@ -55,8 +55,8 @@ namespace Rynchodon
 		/// </summary>
 		private static void buildSettings()
 		{
-			boolSettings.Add(BoolSetName.bAllowJumpCreative, true);
-			boolSettings.Add(BoolSetName.bAllowJumpSurvival, true);
+			//boolSettings.Add(BoolSetName.bAllowJumpCreative, true);
+			//boolSettings.Add(BoolSetName.bAllowJumpSurvival, true);
 			boolSettings.Add(BoolSetName.bAllowAutopilot, true);
 			boolSettings.Add(BoolSetName.bAllowRadar, true);
 			boolSettings.Add(BoolSetName.bAllowTurretControl, true);
