@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Harvest
 	/// </summary>
 	internal class HarvesterAsteroid
 	{
-		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.5f;
+		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
 		private const float rotLenSq_rotate = 0.00762f; // 5°
 		private const float rotLenSq_offCourse = 0.685f; // 15°
 
