@@ -18,6 +18,7 @@ Engage Enemy ships/stations
 Radar
 Act as a missle and target a block on a an enemy ship/station
 Smart Turret Control - Allows you to set priorities for your turrets.
+Harvest - Extract resources from asteroids
 
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.

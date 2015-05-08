@@ -98,7 +98,19 @@ namespace Rynchodon.Autopilot
 		//}
 
 		public bool ignoreAsteroids = false;
-		public bool FlyTheLine = false;
+
+		/// <summary>Special Flying Instructions</summary>
+		public enum SpecialFlying : byte
+		{
+			/// <summary>no special instructions</summary>
+			None,
+			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
+			Line_Any,
+			/// <summary>pathfinder can fly forwards, sidel only</summary>
+			Line_SidelForward
+		}
+
+		public SpecialFlying SpecialFlyingInstructions = SpecialFlying.None;
 
 		public NavSettings(Navigator owner)
 		{
@@ -170,11 +182,11 @@ namespace Rynchodon.Autopilot
 		/// reset on Navigator.FullStop()
 		/// </summary>
 		public float speedSlow_internal { private get; set; }
-		public float speedCruise_external { private get; set; }
+		public float speedCruise_external; //{ private get; set; }
 		private float value_speedSlow_external;
 		public float speedSlow_external
 		{
-			private get { return value_speedSlow_external; }
+			get { return value_speedSlow_external; }
 			set { value_speedSlow_external = MathHelper.Min(value, Settings.floatSettings[Settings.FloatSetName.fMaxSpeed]); }
 		}
 		//public const float speedSlow_minimum = 0.25f;
@@ -196,7 +208,7 @@ namespace Rynchodon.Autopilot
 		}
 		public void clearSpeedInternal()
 		{
-			myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
+			//myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 		}
@@ -233,7 +245,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <param name="waypoint"></param>
 		/// <param name="forced"></param>
-		public void addWaypoint(Vector3D waypoint)
+		public void setWaypoint(Vector3D waypoint)
 		{
 			onWayDestAddedRemoved();
 			myWaypoint = waypoint;
@@ -281,8 +293,8 @@ namespace Rynchodon.Autopilot
 					landDirection = null;
 					jump_to_dest = false;
 					ignoreAsteroids = false;
-					FlyTheLine = false;
-					return;
+					SpecialFlyingInstructions = SpecialFlying.None;
+					goto case TypeOfWayDest.WAYPOINT;
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;
 					return;

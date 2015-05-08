@@ -135,7 +135,7 @@ namespace Rynchodon
 				//	CubeBlocks_Type[myOBtype] = setBlocks_Type;
 				//}
 
-				log("adding: " + asTerm.DefinitionDisplayNameText + ", termType = " + myOBtype, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
+				//log("adding: " + asTerm.DefinitionDisplayNameText + ", termType = " + myOBtype, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
 				setBlocks_Type.mutable().Add(asTerm);
 				setBlocks_Def.mutable().Add(asTerm);
 			}
@@ -184,7 +184,7 @@ namespace Rynchodon
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
-			myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
+			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;

@@ -19,6 +19,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
+	/// <summary>
+	/// Orients and Lands a grid
+	/// </summary>
 	class Lander
 	{
 		private Logger myLogger = null;
@@ -57,8 +60,8 @@ namespace Rynchodon.Autopilot
 		private Vector3D? targetRoll = null;
 		private bool matchOrientation_finished_rotating = false;
 
-		private const float rotLenSq_orientRota = 0.00762f;
-		private const float rotLen_orientRoll = 0.0873f;
+		private const float rotLenSq_orientRota = 0.00762f; // 5°
+		private const float rotLen_orientRoll = 0.0873f; // 5°
 
 		public void matchOrientation()
 		{
@@ -149,6 +152,7 @@ namespace Rynchodon.Autopilot
 						{
 							log("starting to land", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LINEUP;
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 						}
 						return;
 					}
@@ -170,9 +174,9 @@ namespace Rynchodon.Autopilot
 						{
 							//log("locked", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LOCKED;
-							myNav.reportState(Navigator.ReportableState.LANDED);
+							myNav.reportState(Navigator.ReportableState.Landed);
 							myNav.fullStop("landed");
-							myNav.setDampeners(false); // dampeners should be off while docked, incase another grid is to fly
+							myNav.EnableDampeners(false); // dampeners should be off while docked, incase another grid is to fly
 							CNS.atWayDest(NavSettings.TypeOfWayDest.LAND);
 							CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 							return;
@@ -193,6 +197,7 @@ namespace Rynchodon.Autopilot
 							return;
 						}
 						else // waypoint exists
+						{
 							//if (CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint))
 							//	log("added separate waypoint", "landGrid()", Logger.severity.TRACE);
 							//else
@@ -200,7 +205,9 @@ namespace Rynchodon.Autopilot
 							//	alwaysLog(Logger.severity.ERROR, "landGrid()", "failed to add separate waypoint");
 							//	return;
 							//}
-							CNS.addWaypoint((Vector3D)CNS.landingSeparateWaypoint);
+							CNS.setWaypoint((Vector3D)CNS.landingSeparateWaypoint);
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
+						}
 						CNS.landingState = NavSettings.LANDING.SEPARATE;
 						return;
 					}
@@ -213,6 +220,7 @@ namespace Rynchodon.Autopilot
 							CNS.landingSeparateBlock = null;
 							CNS.landingSeparateWaypoint = null;
 							CNS.atWayDest(NavSettings.TypeOfWayDest.WAYPOINT);
+							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.None;
 							//log("separated, landing procedures completed. target="+CNS.closestBlock.DisplayNameText+", local=" + CNS.landLocalBlock.DisplayNameText + ", offset=" + CNS.landOffset, "landGrid()", Logger.severity.DEBUG);
 							return;
 						}

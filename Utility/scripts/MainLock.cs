@@ -149,5 +149,23 @@ namespace Rynchodon
 					return null;
 			}
 		}
+
+		public static List<IMyVoxelMap> GetInstances_Safe(this IMyVoxelMaps mapsObject,  Func<IMyVoxelMap, bool> collect = null)
+		{
+			List<IMyVoxelMap> outInstances = new List<IMyVoxelMap>();
+			using (Lock_MainThread.AcquireSharedUsing())
+				mapsObject.GetInstances(outInstances, collect);
+			return outInstances;
+		}
+
+		/// <remarks>I have not tested IsInsideVoxel for thread-safety, I assumed it is not.</remarks>
+		public static bool RayCastVoxel(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
+		{
+			using (Lock_MainThread.AcquireSharedUsing())
+			{
+				entities.IsInsideVoxel(from, to, out boundary);
+				return (boundary != from);
+			}
+		}
 	}
 }

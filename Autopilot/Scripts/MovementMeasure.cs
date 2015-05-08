@@ -1,6 +1,7 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using Sandbox.ModAPI;
 //using System.Collections.Generic;
 //using System.Linq;
 //using System.Text;
@@ -21,14 +22,15 @@ namespace Rynchodon.Autopilot
 			this.owner = owner;
 			this.targetDirection = targetDirection;
 
-			lazy_rotationLengthSquared = new Lazy<double>(() => { return pitch * pitch + yaw * yaw; });
+			myLogger = new Logger(owner.myGrid.DisplayName, "MovementMeasure");
+
+			lazy_rotationLengthSquared = new Lazy<double>(() => { return pitch * pitch + yaw * yaw + roll * roll; });
 			lazy_currentWaypoint = new Lazy<Vector3D>(() => { return (Vector3D)owner.CNS.getWayDest(); });
 			lazy_movementSpeed = new Lazy<float>(() => { return owner.myGrid.Physics.LinearVelocity.Length(); });
 
 			lazy_navBlockPosition = new Lazy<Vector3D>(() => { return owner.getNavigationBlock().GetPosition(); });
 			lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
-			lazy_distToWayDest = new Lazy<double>(() =>
-			{
+			lazy_distToWayDest = new Lazy<double>(() => {
 				switch (owner.CNS.getTypeOfWayDest())
 				{
 					case NavSettings.TypeOfWayDest.BLOCK:
@@ -43,13 +45,13 @@ namespace Rynchodon.Autopilot
 		}
 
 		// these are all built together so we will not be using lazy
-		private double value__pitch, value__yaw, value__pitchPower, value__yawPower;
+		private float value__pitch, value__yaw, value__roll; //, value__pitchPower, value__yawPower;
 		private bool isValid__pitchYaw = false;
 
 		/// <summary>
 		/// radians to pitch to reach target
 		/// </summary>
-		public double pitch
+		public float pitch
 		{
 			get
 			{
@@ -61,7 +63,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// radians to yaw to reach target
 		/// </summary>
-		public double yaw
+		public float yaw
 		{
 			get
 			{
@@ -70,30 +72,18 @@ namespace Rynchodon.Autopilot
 				return value__yaw;
 			}
 		}
-		///// <summary>
-		///// power to apply in pitch
-		///// </summary>
-		//public double pitchPower
-		//{
-		//	get
-		//	{
-		//		if (!isValid__pitchYaw)
-		//			buildPitchYaw();
-		//		return value__pitchPower;
-		//	}
-		//}
-		///// <summary>
-		///// power to apply in yaw
-		///// </summary>
-		//public double yawPower
-		//{
-		//	get
-		//	{
-		//		if (!isValid__pitchYaw)
-		//			buildPitchYaw();
-		//		return value__yawPower;
-		//	}
-		//}
+		/// <summary>
+		/// radians to roll to reach target
+		/// </summary>
+		public float roll
+		{
+			get
+			{
+				if (!isValid__pitchYaw)
+					buildPitchYaw();
+				return value__roll;
+			}
+		}
 
 		private void buildPitchYaw()
 		{
@@ -102,35 +92,42 @@ namespace Rynchodon.Autopilot
 			Vector3D dirNorm;
 			if (targetDirection == null)
 			{
-				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition(); // owner.myGridDim.getRCworld();
+				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition();
 				dirNorm = Vector3D.Normalize(displacement);
 			}
 			else
 				dirNorm = (Vector3D)targetDirection;
-			//log("facing = " + owner.currentRCblock.WorldMatrix.Forward, "buildPitchYaw()", Logger.severity.TRACE);
-			//log("dirNorm = " + dirNorm, "buildPitchYaw()", Logger.severity.TRACE);
-			double right = owner.currentRCblock.WorldMatrix.Right.Dot(dirNorm);
-			double down = owner.currentRCblock.WorldMatrix.Down.Dot(dirNorm);
-			double forward = owner.currentRCblock.WorldMatrix.Forward.Dot(dirNorm);
-			//log("dir vects = " + right + ", " + down + ", " + forward, "buildPitchYaw()", Logger.severity.TRACE);
-			value__pitch = Math.Atan2(down, forward);
-			value__yaw = Math.Atan2(right, forward);
-			//log("pitch = " + value__pitch + ", yaw = " + value__yaw, "buildPitchYaw()", Logger.severity.TRACE);
-			//switch (owner.CNS.moveState)
-			//{
-			//	case NavSettings.Moving.MOVING:
-			//	case NavSettings.Moving.HYBRID:
-			//		value__pitchPower = value__pitch * owner.inflightRotatingPower;
-			//		value__yawPower = value__yaw * owner.inflightRotatingPower;
-			//		//log("power multiplier = " + owner.inflightRotatingPower, "buildPitchYaw()", Logger.severity.TRACE);
-			//		break;
-			//	default:
-			//		value__pitchPower = value__pitch * owner.rotationPower;
-			//		value__yawPower = value__yaw * owner.rotationPower;
-			//		//log("power multiplier = " + owner.rotationPower, "buildPitchYaw()", Logger.severity.TRACE);
-			//		break;
-			//}
-			////log("pitch power = " + value__pitchPower + ", yaw power = " + value__yawPower, "buildPitchYaw()", Logger.severity.TRACE);
+
+			IMyCubeBlock NavBlock = owner.getNavigationBlock();
+			IMyCubeBlock RemBlock = owner.currentRCblock;
+
+			RelativeVector3F direction = RelativeVector3F.createFromWorld(dirNorm, owner.myGrid);
+
+			Vector3 navDirection = direction.getBlock(owner.getNavigationBlock());
+			//myLogger.debugLog("navDirection = " + navDirection, "buildPitchYaw()");
+
+			Vector3 NavRight = NavBlock.LocalMatrix.Right;
+			Vector3 RemFrNR = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavRight));
+
+			Vector3 NavUp = NavBlock.LocalMatrix.Up;
+			Vector3 RemFrNU = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavUp));
+
+			//Vector3 NavBack = NavBlock.LocalMatrix.Backward;
+			//Vector3 RemFrNB = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavBack));
+
+			//myLogger.debugLog("NavRight = " + NavRight + ", NavUp = " + NavUp, "buildPitchYaw()");
+			//myLogger.debugLog("RemFrNR = " + RemFrNR + ", RemFrNU = " + RemFrNU, "buildPitchYaw()");
+
+			float right = navDirection.X, down = -navDirection.Y, forward = -navDirection.Z;
+			float pitch = (float)Math.Atan2(down, forward), yaw = (float)Math.Atan2(right, forward);
+
+			Vector3 mapped = pitch * RemFrNR + yaw * RemFrNU;
+
+			//myLogger.debugLog("mapped " + new Vector3(pitch, yaw, 0) + " to " + mapped, "buildPitchYaw()");
+
+			value__pitch = mapped.X;
+			value__yaw = mapped.Y;
+			value__roll = mapped.Z;
 		}
 
 		private Lazy<double> lazy_rotationLengthSquared;
@@ -163,20 +160,12 @@ namespace Rynchodon.Autopilot
 
 		private Lazy<double> lazy_distToDestGrid;
 		/// <summary>
-		/// shortest distance between any corner and opposite BoundingBoxD
+		/// shortest distance between AABB
 		/// </summary>
 		private double distToDestGrid { get { return lazy_distToDestGrid.Value; } }
 
 		private double shortestDistanceToDestGrid()
-		{
-			BoundingBoxD grid1 = owner.myGrid.WorldAABB, grid2 = owner.CNS.CurrentGridDest.Grid.WorldAABB;
-			double shortestDistance = double.MaxValue;
-			foreach (Vector3D corner in grid1.GetCorners())
-				shortestDistance = Math.Min(shortestDistance, grid2.Distance(corner));
-			foreach (Vector3D corner in grid2.GetCorners())
-				shortestDistance = Math.Min(shortestDistance, grid1.Distance(corner));
-			return shortestDistance;
-		}
+		{ return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); }
 
 
 		private Logger myLogger;

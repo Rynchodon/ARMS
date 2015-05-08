@@ -308,7 +308,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 							log(myLogger, "not finished stage: " + currentStage + ", spheres: " + spheresChecked);
 							return true;
 						case collisionAvoidResult.NO_OBSTRUCTION:
-							if (CNS.addWaypoint(waypoint, true))
+							if (CNS.setWaypoint(waypoint, true))
 							{
 								log(myLogger, "added new waypoint " + waypoint, "next()", Logger.severity.DEBUG);
 								result = collisionAvoidResult.ALTERNATE_PATH;

@@ -1,0 +1,24 @@
+[url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
+
+Suggest a new feature here.
+
+[b]In Progress[/b]
+mining asteroid
+Autopilot block
+jump drive
+
+[b]Future Features[/b]
+aim & fire weapons
+save (resume commands when game is loaded)
+mine asteroid / grind grid
+repair grid
+check for grids connected via landing gear
+support for decoy blocks (confuse radar)
+display autopilot settings from server
+collision avoidance for rotation
+search attached grids for block ('B' command)
+holding pattern for landing / docking
+separate thread
+orbiting
+control via programmable block
+TextPanel status reports

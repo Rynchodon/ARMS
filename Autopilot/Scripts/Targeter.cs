@@ -81,10 +81,10 @@ namespace Rynchodon.Autopilot
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
 			{
 				owner.CNS.isAMissile = true;
-				owner.reportState(Navigator.ReportableState.MISSILE);
+				owner.reportState(Navigator.ReportableState.Missile);
 			}
 			else
-				owner.reportState(Navigator.ReportableState.ENGAGING);
+				owner.reportState(Navigator.ReportableState.Engaging);
 			owner.CNS.waitUntil = DateTime.UtcNow; // stop waiting
 			owner.CNS.clearSpeedInternal();
 		}

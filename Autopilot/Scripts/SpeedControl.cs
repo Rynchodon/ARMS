@@ -72,7 +72,7 @@ namespace Rynchodon.Autopilot
 					nav.CNS.speedCruise_internal = speedSlow / 2;
 
 					//if (nav.CNS.getSpeedSlow() < initialSpeedSlow) // have made a difference
-					log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + nav.MM.movementSpeed * 0.9, "adjustSpeeds()", Logger.severity.TRACE);
+					//log(myLogger, "reducing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed slow = " + nav.MM.movementSpeed * 0.9, "adjustSpeeds()", Logger.severity.TRACE);
 				}
 				//else
 				//	myLogger.debugLog("already slowing down", "adjustSpeeds()");
@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot
 						nav.CNS.speedSlow_internal = speedCruise * 2;
 
 						//if (nav.CNS.getSpeedCruise() > initialSpeedCruise) // have made a difference
-						log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + nav.MM.movementSpeed * 2, "adjustSpeeds()", Logger.severity.TRACE);
+						//log(myLogger, "increasing speeds (" + distanceToDestination + ", " + stoppingDistance + "), setting speed cruise = " + nav.MM.movementSpeed * 2, "adjustSpeeds()", Logger.severity.TRACE);
 					}
 				}
 
@@ -112,12 +112,12 @@ namespace Rynchodon.Autopilot
 				cruiseSpeed = slowSpeed / 2;
 			if (nav.CNS.getSpeedSlow() > slowSpeed)
 			{
-				myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
+				//myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
 				nav.CNS.speedSlow_internal = slowSpeed;
 			}
 			if (nav.CNS.getSpeedCruise() > cruiseSpeed)
 			{
-				myLogger.debugLog("cruise speed is now " + cruiseSpeed, "adjustSpeedsByClosest()");
+				//myLogger.debugLog("cruise speed is now " + cruiseSpeed, "adjustSpeedsByClosest()");
 				nav.CNS.speedCruise_internal = cruiseSpeed;
 			}
 		}
@@ -129,7 +129,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private static void checkAndCruise(Navigator nav, Logger myLogger) //float rotLengthSq)
 		{
-			//log("entered checkAndCruise, speed="+movementSpeed+", slow="+CNS.getSpeedSlow()+", cruise="+CNS.getSpeedCruise());
+			myLogger.debugLog("entered checkAndCruise, speed=" + nav.MM.movementSpeed + ", slow=" + nav.CNS.getSpeedSlow() + ", cruise=" + nav.CNS.getSpeedCruise(), "checkAndCruise()");
 
 			switch (nav.CNS.moveState)
 			{
@@ -141,9 +141,11 @@ namespace Rynchodon.Autopilot
 				default:
 					if (nav.MM.movementSpeed > 1 && !nav.dampenersEnabled())
 					{
-						nav.setDampeners();
+						nav.EnableDampeners();
 						log(myLogger, "wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					}
+					else
+						myLogger.debugLog("wrong state: " + nav.CNS.moveState, "checkAndCruise()", Logger.severity.TRACE);
 					return;
 			}
 
@@ -152,10 +154,11 @@ namespace Rynchodon.Autopilot
 
 			if (nav.MM.movementSpeed > nav.CNS.getSpeedSlow())
 			{
+				myLogger.debugLog("too fast, checking dampeners = " + nav.dampenersEnabled() + ", and current move = " + nav.currentMove, "checkAndCruise()", Logger.severity.TRACE);
 				if (!nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
-					nav.setDampeners();
+					nav.EnableDampeners();
 					nav.moveOrder(Vector3.Zero);
 				}
 				return;
@@ -169,34 +172,37 @@ namespace Rynchodon.Autopilot
 				{
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;
-					nav.setDampeners();
+					//nav.EnableDampeners();
 				}
 				return;
 			}
 
 			// between cruise and slow speed
-			if (nav.CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // as long as state change comes after checkAndCruise, this will work
-			{
+			//if (nav.CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // as long as state change comes after checkAndCruise, this will work
+			//{
 				if (nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
-					// disable dampeners
-					nav.setDampeners(false);
+					//// disable dampeners
+					//nav.setDampeners(false);
+					nav.DisableReverseThrust();
 					nav.moveOrder(Vector3.Zero);
+					return;
 				}
-				return;
-			}
-			else
-			{
-				// use cruise vector
-				if (!nav.dampenersEnabled() || nav.currentMove != cruiseForward)
-				{
-					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), using cruise vector", "checkAndCruise()", Logger.severity.TRACE);
-					nav.setDampeners();
-					nav.moveOrder(cruiseForward, false);
-				}
-				return;
-			}
+
+				myLogger.debugLog("no adjustments made", "checkAndCruise()", Logger.severity.TRACE);
+			//}
+			//else
+			//{
+			//	// use cruise vector
+			//	if (!nav.dampenersEnabled() || nav.currentMove != cruiseForward)
+			//	{
+			//		log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), using cruise vector", "checkAndCruise()", Logger.severity.TRACE);
+			//		nav.setDampeners();
+			//		nav.moveOrder(cruiseForward, false);
+			//	}
+			//	return;
+			//}
 		}
 	}
 }

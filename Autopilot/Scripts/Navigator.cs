@@ -8,14 +8,15 @@ using System.Text;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 using VRage.Library.Utils;
 using VRageMath;
 
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.Harvest;
 
 namespace Rynchodon.Autopilot
 {
@@ -53,6 +54,7 @@ namespace Rynchodon.Autopilot
 		internal ThrustProfiler currentThrust;
 		internal Targeter myTargeter;
 		private Rotator myRotator;
+		internal HarvesterAsteroid myHarvester { get; private set; }
 
 		private IMyControllableEntity currentRemoteControl_Value;
 		/// <summary>
@@ -75,7 +77,7 @@ namespace Rynchodon.Autopilot
 					// actions on old RC
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged -= remoteControl_OnNameChanged;
 					fullStop("unsetting RC");
-					reportState(ReportableState.OFF);
+					reportState(ReportableState.Off);
 				}
 
 				currentRemoteControl_Value = value;
@@ -92,19 +94,19 @@ namespace Rynchodon.Autopilot
 					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
 					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
-				}
+				//}
 
-				if (currentRemoteControl_Value != null)
-				{
+				//if (currentRemoteControl_Value != null)
+				//{
 					// actions on new RC
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
 					fullStop("new RC");
-					reportState(ReportableState.OFF);
+					reportState(ReportableState.Off);
 				}
 
-				// set rotation power variables
 				myRotator = new Rotator(this);
+				myHarvester = new HarvesterAsteroid(this);
 			}
 		}
 		/// <summary>
@@ -128,7 +130,11 @@ namespace Rynchodon.Autopilot
 		public Sandbox.ModAPI.IMyCubeBlock getNavigationBlock()
 		{
 			if (CNS.landingState == NavSettings.LANDING.OFF || CNS.landLocalBlock == null)
+			{
+				if (myHarvester.NavigationDrill != null)
+					return myHarvester.NavigationDrill;
 				return currentRCblock;
+			}
 			else
 			{
 				//log("using "+CNS.landLocalBlock.DisplayNameText+" as navigation block");
@@ -241,7 +247,7 @@ namespace Rynchodon.Autopilot
 					log("wait interrupted", "update()", Logger.severity.DEBUG);
 					reset();
 				}
-				reportState(ReportableState.WAITING);
+				reportState(ReportableState.Waiting);
 				return;
 			}
 
@@ -285,6 +291,9 @@ namespace Rynchodon.Autopilot
 								return;
 							case NavSettings.TypeOfWayDest.NULL:
 								break; // keep searching
+							case NavSettings.TypeOfWayDest.WAYPOINT:
+								log("got a new waypoint destination (harvesting) " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								return;
 							default:
 								alwaysLog("got an invalid TypeOfWayDest: " + CNS.getTypeOfWayDest(), "update()", Logger.severity.FATAL);
 								return;
@@ -302,7 +311,7 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					// find a remote control with NavSettings allInstructions
-					reportState(ReportableState.NO_DEST);
+					reportState(ReportableState.No_Dest);
 					//log("searching for a ready remote control", "update()", Logger.severity.TRACE);
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 					foreach (Sandbox.ModAPI.IMySlimBlock remoteControlBlock in remoteControlBlocks)
@@ -379,7 +388,7 @@ namespace Rynchodon.Autopilot
 					{
 						log("player is controlling grid: " + controllingPlayer.DisplayName, "gridCanNavigate()", Logger.severity.TRACE);
 						player_controlling = true;
-						reportState(ReportableState.PLAYER);
+						reportState(ReportableState.Player);
 					}
 				}
 				return false;
@@ -453,7 +462,7 @@ namespace Rynchodon.Autopilot
 			if (!remoteControlIsReady(currentRCblock))
 			{
 				log("remote control is not ready");
-				reportState(ReportableState.OFF);
+				reportState(ReportableState.Off);
 				reset();
 				return;
 			}
@@ -483,6 +492,8 @@ namespace Rynchodon.Autopilot
 				myLand.matchOrientation(); // continue match
 				return;
 			}
+			if (myHarvester.Run())
+				return;
 
 			if (!checkAt_wayDest())
 				collisionCheckMoveAndRotate();
@@ -571,27 +582,32 @@ namespace Rynchodon.Autopilot
 							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
-							reportState(ReportableState.PATHFINDING);
+							//reportState(ReportableState.PATHFINDING);
+							pathfinderState = ReportableState.Pathfinding;
 							PathfinderAllowsMovement = false;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Alternate_Path:
 							myLogger.debugLog("Setting new waypoint: " + myPathfinder_Output.Waypoint, "collisionCheckMoveAndRotate()");
-							CNS.addWaypoint(myPathfinder_Output.Waypoint);
+							CNS.setWaypoint(myPathfinder_Output.Waypoint);
 							//fullStop("new path");
+							pathfinderState = ReportableState.Path_OK;
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Path_Clear:
 							//myLogger.debugLog("Path forward is clear", "collisionCheckMoveAndRotate()");
+							pathfinderState = ReportableState.Path_OK;
 							PathfinderAllowsMovement = true;
 							break;
 						case Pathfinder.PathfinderOutput.Result.No_Way_Forward:
-							reportState(ReportableState.NO_PATH);
+							//reportState(ReportableState.NO_PATH);
 							fullStop("No Path");
+							pathfinderState = ReportableState.No_Path;
 							PathfinderAllowsMovement = false;
 							return;
 						default:
 							myLogger.log("Error, invalid case: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()", Logger.severity.FATAL);
 							fullStop("Invalid Pathfinder.PathfinderOutput");
+							pathfinderState = ReportableState.No_Path;
 							PathfinderAllowsMovement = false;
 							return;
 					}
@@ -629,7 +645,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.MOVING:
 					{
 						double newDistToWayDest = MM.distToWayDest;
-						myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
+						//myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
 						if (newDistToWayDest > prevDistToWayDest)
 						{
 							myLogger.debugLog("Moving away from destination, newDistToWayDest = " + newDistToWayDest + " > prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
@@ -638,23 +654,16 @@ namespace Rynchodon.Autopilot
 						}
 						prevDistToWayDest = newDistToWayDest;
 
-						myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
-						if (movingTooSlow && PathfinderAllowsMovement) //speed up test. missile will never pass this test
-							if (MM.rotLenSq < rotLenSq_startMove)
-							{
-								calcAndMove();
-								reportState(ReportableState.MOVING);
-							}
+						//myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", PathfinderAllowsMovement = " + PathfinderAllowsMovement + ", MM.rotLenSq = " + MM.rotLenSq + ", rotLenSq_startMove = " + rotLenSq_startMove, "calcMoveAndRotate()");
+						if (movingTooSlow && PathfinderAllowsMovement //speed up test. missile will never pass this test
+							&& MM.rotLenSq < rotLenSq_startMove)
+							StartMoveMove();
 					}
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
-						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && !CNS.FlyTheLine)
-						{
-							calcAndMove();
-							CNS.moveState = NavSettings.Moving.MOVING;
-							reportState(ReportableState.MOVING);
-						}
+						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.None)
+							StartMoveMove();
 					}
 					break;
 				case NavSettings.Moving.HYBRID:
@@ -663,6 +672,11 @@ namespace Rynchodon.Autopilot
 						if (movingTooSlow
 							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
 							calcAndMove(true); // continue in current state
+						if (MM.rotLenSq < rotLenSq_switchToMove)
+						{
+							myLogger.debugLog("switching to move", "calcMoveAndRotate()", Logger.severity.DEBUG);
+							StartMoveMove();
+						}
 						break;
 					}
 				case NavSettings.Moving.SIDELING:
@@ -679,10 +693,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.NOT_MOVE:
 					{
 						if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA)
-						{
-							if (MoveIfPossible(true))
-								break;
-						}
+							MoveIfPossible();
 						break;
 					}
 				default:
@@ -696,7 +707,7 @@ namespace Rynchodon.Autopilot
 				calcAndRotate();
 		}
 
-		private bool MoveIfPossible(bool canSidel)
+		private bool MoveIfPossible()
 		{
 			if (PathfinderAllowsMovement)
 			{
@@ -705,11 +716,21 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (CNS.FlyTheLine)
+				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)// || MM.rotLenSq > rotLenSq_switchToMove)
 				{
-					if (!canSidel)
-						return false;
+					//if (MM.rotLenSq <= rotLenSq_tight)
+					//{
+					//	StartMoveMove();
+					//	return true;
+					//}
+					//if (!canSidel)
+					//	return false;
 					StartMoveSidel();
+					return true;
+				}
+				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_Any)
+				{
+					StartMoveMove();
 					return true;
 				}
 				if (CNS.landingState == NavSettings.LANDING.OFF && MM.distToWayDest > myGrid.GetLongestDim() + CNS.destinationRadius)
@@ -717,12 +738,12 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (!canSidel)
-					return false;
+				//if (!canSidel)
+				//	return false;
 				StartMoveSidel();
 				return true;
 			}
-			reportState(ReportableState.PATHFINDING);
+			reportState(ReportableState.Pathfinding);
 			return false;
 		}
 
@@ -730,15 +751,24 @@ namespace Rynchodon.Autopilot
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.HYBRID;
-			reportState(ReportableState.MOVING);
+			reportState(ReportableState.Moving);
 		}
 
 		private void StartMoveSidel()
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.SIDELING;
-			reportState(ReportableState.MOVING);
+			reportState(ReportableState.Moving);
 		}
+
+		private void StartMoveMove()
+		{
+			calcAndMove();
+			CNS.moveState = NavSettings.Moving.MOVING;
+			reportState(ReportableState.Moving);
+		}
+
+		public const float rotLenSq_switchToMove = 0.00762f; // 5°
 
 		/// <summary>
 		/// start moving when less than (30°)
@@ -748,84 +778,97 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// stop when greater than
 		/// </summary>
-		private const float onCourse_sidel = 0.01f, onCourse_hybrid = 0.1f;
+		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f;
 
 		private Vector3 moveDirection = Vector3.Zero;
 
 		private void calcAndMove(bool sidel = false)//, bool anyState=false)
 		{
 			//log("entered calcAndMove("+doSidel+")", "calcAndMove()", Logger.severity.TRACE);
-			movingTooSlow = false;
-			if (sidel)
+			try
 			{
-				Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
-				RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
-				Vector3 course = Vector3.Normalize(displacement.getWorld());
-				float offCourse = Vector3.RectangularDistance(course, moveDirection);
-
-				switch (CNS.moveState)
+				if (sidel)
 				{
-					case NavSettings.Moving.SIDELING:
-						{
-							//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
-							//if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
-							if (offCourse < onCourse_sidel)
+					Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
+					RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
+					Vector3 course = Vector3.Normalize(displacement.getWorld());
+					float offCourse = Vector3.RectangularDistance(course, moveDirection);
+
+					switch (CNS.moveState)
+					{
+						case NavSettings.Moving.SIDELING:
 							{
-								//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
+								//log("inflight adjust sidel " + direction + " for " + displacement + " to " + destination, "calcAndMove()", Logger.severity.TRACE);
+								//if (Math.Abs(moveDirection.X - course.X) < onCourse_sidel && Math.Abs(moveDirection.Y - course.Y) < onCourse_sidel && Math.Abs(moveDirection.Z - course.Z) < onCourse_sidel)
+								if (offCourse < onCourse_sidel)
+								{
+									if (movingTooSlow)
+										goto case NavSettings.Moving.NOT_MOVE;
+									//log("cancel inflight adjustment: no change", "calcAndMove()", Logger.severity.TRACE);
+									return;
+								}
+								else
+								{
+									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
+									//log("sidel, stop to change course", "calcAndMove()", Logger.severity.TRACE);
+									fullStop("change course: sidel");
+									return;
+								}
+							}
+						case NavSettings.Moving.HYBRID:
+							{
+								//if (Math.Abs(moveDirection.X - course.X) < onCourse_hybrid && Math.Abs(moveDirection.Y - course.Y) < onCourse_hybrid && Math.Abs(moveDirection.Z - course.Z) < onCourse_hybrid)
+								if (offCourse < onCourse_hybrid)
+									goto case NavSettings.Moving.NOT_MOVE;
+								else
+								{
+									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
+									//log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
+									CNS.moveState = NavSettings.Moving.MOVING;
+									calcAndMove();
+									return;
+								}
+							}
+						case NavSettings.Moving.NOT_MOVE:
+							{
+								RelativeVector3F scaled = currentThrust.scaleByForce(displacement, getNavigationBlock());
+								moveOrder(scaled);
+								if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+								{
+									moveDirection = course;
+									log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
+									log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
+								}
+								break;
+							}
+						default:
+							{
+								alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
 								return;
 							}
-							else
-							{
-								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
-								//log("sidel, stop to change course", "calcAndMove()", Logger.severity.TRACE);
-								fullStop("change course: sidel");
-								return;
-							}
-						}
-					case NavSettings.Moving.HYBRID:
-						{
-							//if (Math.Abs(moveDirection.X - course.X) < onCourse_hybrid && Math.Abs(moveDirection.Y - course.Y) < onCourse_hybrid && Math.Abs(moveDirection.Z - course.Z) < onCourse_hybrid)
-							if (offCourse < onCourse_hybrid)
-								goto case NavSettings.Moving.NOT_MOVE;
-							else
-							{
-								myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
-								//log("off course, switching to move", "calcAndMove()", Logger.severity.DEBUG);
-								CNS.moveState = NavSettings.Moving.MOVING;
-								calcAndMove();
-								return;
-							}
-						}
-					case NavSettings.Moving.NOT_MOVE:
-						{
-							RelativeVector3F scaled = currentThrust.scaleByForce(displacement, currentRCblock);
-							moveOrder(scaled);
-							if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
-							{
-								moveDirection = course;
-								log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
-								log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(currentRCblock), "calcAndMove()", Logger.severity.DEBUG);
-							}
-							break;
-						}
-					default:
-						{
-							alwaysLog("unsuported moveState: " + CNS.moveState, "calcAndMove()", Logger.severity.ERROR);
-							return;
-						}
+					}
+				}
+				else // not sidel
+				{
+					Vector3 NavForward = getNavigationBlock().LocalMatrix.Forward;
+					Vector3 RemFromNF = Base6Directions.GetVector(currentRCblock.LocalMatrix.GetClosestDirection(ref NavForward));
+
+					moveOrder(RemFromNF); // move forward
+					log("forward = " + RemFromNF + ", moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
 				}
 			}
-			else // not sidel
+			finally
 			{
-				moveOrder(Vector3.Forward); // move forward
-				log("moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
+				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
+				movingTooSlow = false;
 			}
-
-			stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
 		}
 
 		internal void calcAndRotate()
-		{ myRotator.calcAndRotate(); }
+		{
+			myRotator.calcAndRotate();
+			myRotator.calcAndRoll(MM.roll);
+		}
 
 		internal void calcAndRoll(float roll)
 		{ myRotator.calcAndRoll(roll); }
@@ -834,23 +877,23 @@ namespace Rynchodon.Autopilot
 		private DateTime stoppedMovingAt;
 		private static float stoppedPrecision = 0.2f;
 
-		private void checkStopped()
+		public bool checkStopped()
 		{
 			if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
-				return;
+				return true;
 
 			bool isStopped;
 
 			//log("checking movementSpeed "+movementSpeed, "checkStopped()", Logger.severity.TRACE);
 			if (MM.movementSpeed == null || MM.movementSpeed > stoppedPrecision)
 			{
-				//log("fast", "checkStopped()", Logger.severity.TRACE);
+				//log("not slow, speed = " + MM.movementSpeed, "checkStopped()", Logger.severity.TRACE);
 				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
 				isStopped = false;
 			}
 			else
 			{
-				//log("stopped in " + (stoppedMovingAt - DateTime.UtcNow).TotalMilliseconds, "checkStopped()", Logger.severity.TRACE);
+				//log("slow, speed = " + MM.movementSpeed + ", stopped in " + (stoppedMovingAt - DateTime.UtcNow).TotalMilliseconds, "checkStopped()", Logger.severity.TRACE);
 				isStopped = DateTime.UtcNow > stoppedMovingAt;
 			}
 
@@ -863,11 +906,14 @@ namespace Rynchodon.Autopilot
 					CNS.clearSpeedInternal();
 				}
 				else
-					CNS.moveState = NavSettings.Moving.STOP_MOVE;
+					fullStop("not moving");
+					//CNS.moveState = NavSettings.Moving.STOP_MOVE;
 			}
 			else
 				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
-					reportState(ReportableState.STOPPING);
+					reportState(ReportableState.Stopping);
+
+			return isStopped;
 		}
 
 		/// <summary>
@@ -875,24 +921,24 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
-				return;
+			//if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
+			//	return;
 
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
-			reportState(ReportableState.STOPPING);
+			reportState(ReportableState.Stopping);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
 			prevDistToWayDest = float.MaxValue;
 
-			setDampeners();
+			EnableDampeners();
 			currentRCcontrol.MoveAndRotateStopped();
 
 			CNS.moveState = NavSettings.Moving.STOP_MOVE;
 			CNS.rotateState = NavSettings.Rotating.STOP_ROTA;
 		}
 
-		internal Vector3 currentMove = Vector3.Zero;
+		internal Vector3 currentMove = Vector3.One; // for initial fullStop
 		internal Vector2 currentRotate = Vector2.Zero;
 		internal float currentRoll = 0;
 
@@ -907,6 +953,11 @@ namespace Rynchodon.Autopilot
 				return;
 			currentMove = move;
 			moveAndRotate();
+			if (move != Vector3.Zero)
+			{
+				myLogger.debugLog("Enabling dampeners", "moveOrder()");
+				EnableDampeners();
+			}
 		}
 
 		internal void moveOrder(RelativeVector3F move, bool normalize = true)
@@ -933,20 +984,49 @@ namespace Rynchodon.Autopilot
 		public bool dampenersEnabled()
 		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
 
-		internal void setDampeners(bool dampenersOn = true)
+		internal void DisableReverseThrust()
 		{
-			if (dampenersOn)
-			{
-				myLogger.debugLog("enabling all thrusters", "setDampeners()");
-				currentThrust.enableAllThrusters();
-			}
-			else
-				if (CNS.moveState == NavSettings.Moving.MOVING)
+			//if (enable)
+			//{
+			//	currentThrust.enableAllThrusters();
+			//	EnableDampeners();
+			//}
+			//else
+			//{
+				switch (CNS.moveState)
 				{
-					myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
-					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
-					return;
+					case NavSettings.Moving.HYBRID:
+					case NavSettings.Moving.MOVING:
+						myLogger.debugLog("disabling reverse thrust", "DisableReverseThrust()");
+						EnableDampeners();
+						currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
+						break;
+					default:
+						myLogger.debugLog("disabling dampeners", "DisableReverseThrust()");
+						EnableDampeners(false);
+						break;
 				}
+				
+			//}
+		}
+
+		public void EnableDampeners(bool dampenersOn = true)
+		{
+			//if (dampenersOn)
+			//{
+			//	//myLogger.debugLog("enabling all thrusters", "setDampeners()");
+			//	currentThrust.enableAllThrusters();
+			//}
+			//else
+			//	if (CNS.moveState == NavSettings.Moving.MOVING || CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
+			//	{
+			//		myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
+			//		currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
+			//		return;
+			//	}
+
+			if (dampenersOn)
+				currentThrust.enableAllThrusters();
 
 			try
 			{
@@ -968,13 +1048,19 @@ namespace Rynchodon.Autopilot
 			return "Nav:" + myGrid.DisplayName;
 		}
 
+		#region Report State
+
 		public enum ReportableState : byte
 		{
-			OFF, PATHFINDING, NO_PATH, NO_DEST, WAITING,
-			ROTATING, MOVING, STOPPING, HYBRID, SIDEL, ROLL,
-			MISSILE, ENGAGING, LANDED, PLAYER, JUMP, GET_OUT_OF_SEAT
+			Off, No_Dest, Waiting,
+			Path_OK, Pathfinding, No_Path,
+			Rotating, Moving, Stopping, Hybrid, Sidel, Roll,
+			H_Ready, Harvest, H_Stuck, H_Back, H_Tunnel,
+			Missile, Engaging, Landed, Player, Jump, GET_OUT_OF_SEAT
 		};
-		private ReportableState currentReportable = ReportableState.OFF;
+		private ReportableState currentReportable = ReportableState.Off;
+		/// <summary>The state of the pathinfinder</summary>
+		private ReportableState pathfinderState = ReportableState.Path_OK;
 
 		internal bool GET_OUT_OF_SEAT = false;
 
@@ -984,7 +1070,6 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// may ignore the given state, if Nav is actually in another state
 		/// </summary>
-		/// <param name="newState"></param>
 		internal void reportState(ReportableState newState)
 		{
 			//log("entered reportState()", "reportState()", Logger.severity.TRACE);
@@ -1001,17 +1086,13 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			reportExtra(ref newState);
-
-			if (CNS.EXIT)
-				newState = ReportableState.OFF;
-			if (CNS.landingState == NavSettings.LANDING.LOCKED)
-				newState = ReportableState.LANDED;
-			if (GET_OUT_OF_SEAT) // must override LANDED
-				newState = ReportableState.GET_OUT_OF_SEAT;
+			ReportableState? got = GetState();
+			if (got.HasValue)
+				newState = got.Value;
+			//reportExtra(ref newState);
 
 			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.JUMP && newState != ReportableState.WAITING) // jump and waiting update times
+			if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
 				return;
 			currentReportable = newState;
 
@@ -1026,14 +1107,14 @@ namespace Rynchodon.Autopilot
 			// add new state
 			StringBuilder newName = new StringBuilder();
 			newName.Append('<');
-			reportPathfinding(newName);
+			//reportPathfinding(newName);
 			// error
 			if (myInterpreter.instructionErrorIndex != null)
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
 			// actual state
 			newName.Append(newState);
 			// wait time
-			if (newState == ReportableState.WAITING)
+			if (newState == ReportableState.Waiting || newState == ReportableState.Landed)
 			{
 				newName.Append(':');
 				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
@@ -1049,36 +1130,66 @@ namespace Rynchodon.Autopilot
 			log("added ReportableState to RC: " + newState, "reportState()", Logger.severity.TRACE);
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void reportExtra(ref ReportableState reportState)
+		private ReportableState? GetState()
 		{
-			switch (reportState)
+			if (CNS.EXIT)
+				return ReportableState.Off;
+
+			// landing
+			if (GET_OUT_OF_SEAT) // must override LANDED
+				return ReportableState.GET_OUT_OF_SEAT;
+			if (CNS.landingState == NavSettings.LANDING.LOCKED)
+				return ReportableState.Landed;
+			
+			// pathfinding
+			switch (pathfinderState)
 			{
-				case ReportableState.MOVING:
-					switch (CNS.moveState)
-					{
-						case NavSettings.Moving.SIDELING:
-							reportState = ReportableState.SIDEL;
-							break;
-						case NavSettings.Moving.HYBRID:
-							reportState = ReportableState.HYBRID;
-							break;
-					}
-					return;
-				case ReportableState.ROTATING:
-					if (CNS.rollState == NavSettings.Rolling.ROLLING)
-						reportState = ReportableState.ROLL;
-					return;
+				case ReportableState.No_Path:
+					return ReportableState.No_Path;
+				case ReportableState.Pathfinding:
+					return ReportableState.Pathfinding;
 			}
+			
+			// harvest
+			if (myHarvester.IsActive())
+				if (myHarvester.HarvestState != ReportableState.H_Ready)
+					return myHarvester.HarvestState;
+
+			// moving
+			switch (CNS.moveState)
+			{
+				case NavSettings.Moving.SIDELING:
+					return ReportableState.Sidel;
+				case NavSettings.Moving.HYBRID:
+					return ReportableState.Hybrid;
+				case NavSettings.Moving.MOVING:
+					return ReportableState.Moving;
+			}
+
+			// rotating
+			if (CNS.rotateState == NavSettings.Rotating.ROTATING)
+				return ReportableState.Rotating;
+			if (CNS.rollState == NavSettings.Rolling.ROLLING)
+				return ReportableState.Roll;
+
+			// stopping
+			if (CNS.moveState == NavSettings.Moving.STOP_MOVE
+				||CNS.rotateState == NavSettings.Rotating.STOP_ROTA
+				|| CNS.rollState == NavSettings.Rolling.STOP_ROLL)
+				return ReportableState.Stopping;
+
+			return null;
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void reportPathfinding(StringBuilder newName)
-		{
-			if (myPathfinder_Output != null)
-				newName.Append(myPathfinder_Output.PathfinderResult);
-			newName.Append(':');
-		}
+		#endregion
+
+		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//private void reportPathfinding(StringBuilder newName)
+		//{
+		//	if (myPathfinder_Output != null)
+		//		newName.Append(myPathfinder_Output.PathfinderResult);
+		//	newName.Append(':');
+		//}
 
 		//private bool ignore_RemoteControl_nameChange = false;
 		public string instructions { get; private set; }

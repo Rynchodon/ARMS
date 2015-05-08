@@ -200,9 +200,14 @@ namespace Rynchodon.Autopilot.Instruction
 					{
 						wordAction = () => {
 							owner.CNS.EXIT = true;
-							owner.reportState(Navigator.ReportableState.OFF);
+							owner.reportState(Navigator.ReportableState.Off);
 							owner.fullStop("EXIT");
 						};
+						return true;
+					}
+				case "harvest":
+					{
+						wordAction = () => { owner.myHarvester.Start(); };
 						return true;
 					}
 				case "jump":
@@ -217,7 +222,7 @@ namespace Rynchodon.Autopilot.Instruction
 				case "line":
 					{
 						wordAction = () => {
-							owner.CNS.FlyTheLine = true;
+							owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 							myLogger.debugLog("Set FlyTheLine", "getAction_word()");
 						};
 						return true;
@@ -231,7 +236,7 @@ namespace Rynchodon.Autopilot.Instruction
 								owner.CNS.landingState = NavSettings.LANDING.OFF;
 								owner.CNS.landingSeparateBlock = null;
 								owner.CNS.landingSeparateWaypoint = null;
-								owner.setDampeners(); // dampeners will have been turned off for docking
+								owner.EnableDampeners(); // dampeners will have been turned off for docking
 							}
 						};
 						return true;

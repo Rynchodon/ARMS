@@ -93,7 +93,8 @@ namespace Rynchodon.Autopilot
 		private RotateProfile
 			stoppedRotate = new RotateProfile(1.0f, 1f / 2f),
 			stoppedRoll = new RotateProfile(1.0f, 1f / 2f),
-			inflightRotate = new RotateProfile(1.0f, 1f / 4f);
+			inflightRotate = new RotateProfile(1.0f, 1f / 4f),
+			inflightRoll = new RotateProfile(1.0f, 1f / 2f);
 
 		private float current_pitch, current_yaw, current_roll;
 		private float needToRotate_pitch, needToRotate_yaw, needToRotate_roll;
@@ -142,12 +143,12 @@ namespace Rynchodon.Autopilot
 							else
 								goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.NOT_MOVE:
-							if (!owner.PathfinderAllowsMovement)
-							{
-								myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
-								return;
-							}
-							owner.reportState(Navigator.ReportableState.ROTATING);
+							//if (!owner.PathfinderAllowsMovement)
+							//{
+							//	myLogger.debugLog("waiting for collision updates", "calcAndRotate()");
+							//	return;
+							//}
+							owner.reportState(Navigator.ReportableState.Rotating);
 							goto case NavSettings.Moving.HYBRID;
 						case NavSettings.Moving.HYBRID:
 							needToRotate_pitch = (float)CMM.pitch;
@@ -221,6 +222,12 @@ namespace Rynchodon.Autopilot
 		/// </remarks>
 		public void calcAndRoll(float roll)
 		{
+			if (Math.Abs(roll) < rotComp_minimum)
+			{
+				//myLogger.debugLog("roll is low: " + roll + " < " + rotComp_minimum, "calcAndRoll()");
+				return;
+			}
+
 			switch (CNS.rollState)
 			{
 				case NavSettings.Rolling.NOT_ROLL:
@@ -228,10 +235,10 @@ namespace Rynchodon.Autopilot
 					needToRotate_roll = roll;
 					addToRoll(roll);
 					CNS.rollState = NavSettings.Rolling.ROLLING;
-					owner.reportState(Navigator.ReportableState.ROTATING);
+					owner.reportState(Navigator.ReportableState.Rotating);
 					return;
 				case NavSettings.Rolling.ROLLING:
-					if (Math.Sign(roll) != Math.Sign(needToRotate_roll) || Math.Abs(roll) < Math.Abs(needToRotate_roll) * stoppedRoll.decelPortion)
+					if (Math.Sign(roll) != Math.Sign(needToRotate_roll) || Math.Abs(roll) < Math.Abs(needToRotate_roll) * currentRollProfile().decelPortion)
 					{
 						myLogger.debugLog("decelerate roll, roll=" + roll + ", needToRoll=" + needToRotate_roll, "calcAndRoll()", Logger.severity.DEBUG);
 						CNS.rollState = NavSettings.Rolling.STOP_ROLL;
@@ -253,7 +260,7 @@ namespace Rynchodon.Autopilot
 
 					int overUnder = testOverUnder(roll, needToRotate_roll);
 					if (overUnder != 0)
-						stoppedRoll.adjust(overUnder > 0);
+						currentRollProfile().adjust(overUnder > 0);
 
 					return;
 			}
@@ -275,6 +282,21 @@ namespace Rynchodon.Autopilot
 					return inflightRotate;
 				default:
 					return stoppedRotate;
+			}
+		}
+
+		/// <summary>
+		/// if moveState is moving or hybrid, inflightRoll. otherwise, stoppedRoll
+		/// </summary>
+		private RotateProfile currentRollProfile()
+		{
+			switch (CNS.moveState)
+			{
+				case NavSettings.Moving.MOVING:
+				case NavSettings.Moving.HYBRID:
+					return inflightRoll;
+				default:
+					return stoppedRoll;
 			}
 		}
 
