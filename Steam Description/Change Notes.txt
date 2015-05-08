@@ -1,11 +1,5 @@
 Will be moved to steam every release.
 
 major:
-Harvest command
 
 minor:
-no longer force thrusters on when loading
-when auto-piloting, disable thrusters with overrides
-changes to reporting states
-blueprint for radar
-preserve case for instructions from panel

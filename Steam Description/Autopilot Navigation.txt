@@ -31,7 +31,7 @@ Example - [ E 0 : C 0, 0, 0 : EXIT ] - will target any enemy that comes into ran
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
-Harvest : drill the nearest asteroid
+Harvest : extract resources from the nearest asteroid
 Example - [ C 0,0,0 : Drill ] - fly to {0,0,0} then harvest the closest asteroid
 
 M <range> : same as E but for a missile

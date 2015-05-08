@@ -3,7 +3,6 @@
 Suggest a new feature here.
 
 [b]In Progress[/b]
-mining asteroid
 Autopilot block
 jump drive
 
@@ -22,3 +21,4 @@ separate thread
 orbiting
 control via programmable block
 TextPanel status reports
+harvest by ore type
