@@ -728,7 +728,7 @@ namespace Rynchodon.Autopilot
 					StartMoveSidel();
 					return true;
 				}
-				if (myHarvester.NavigationDrill != null) // if harvester has not set Line_SidelForward, normal move
+				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_Any)
 				{
 					StartMoveMove();
 					return true;
@@ -887,13 +887,13 @@ namespace Rynchodon.Autopilot
 			//log("checking movementSpeed "+movementSpeed, "checkStopped()", Logger.severity.TRACE);
 			if (MM.movementSpeed == null || MM.movementSpeed > stoppedPrecision)
 			{
-				//log("fast", "checkStopped()", Logger.severity.TRACE);
+				//log("not slow, speed = " + MM.movementSpeed, "checkStopped()", Logger.severity.TRACE);
 				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
 				isStopped = false;
 			}
 			else
 			{
-				//log("stopped in " + (stoppedMovingAt - DateTime.UtcNow).TotalMilliseconds, "checkStopped()", Logger.severity.TRACE);
+				//log("slow, speed = " + MM.movementSpeed + ", stopped in " + (stoppedMovingAt - DateTime.UtcNow).TotalMilliseconds, "checkStopped()", Logger.severity.TRACE);
 				isStopped = DateTime.UtcNow > stoppedMovingAt;
 			}
 
@@ -906,7 +906,8 @@ namespace Rynchodon.Autopilot
 					CNS.clearSpeedInternal();
 				}
 				else
-					CNS.moveState = NavSettings.Moving.STOP_MOVE;
+					fullStop("not moving");
+					//CNS.moveState = NavSettings.Moving.STOP_MOVE;
 			}
 			else
 				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
@@ -920,8 +921,8 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
-				return;
+			//if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0 && dampenersEnabled()) // already stopped
+			//	return;
 
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
 			reportState(ReportableState.Stopping);
@@ -1091,7 +1092,7 @@ namespace Rynchodon.Autopilot
 			//reportExtra(ref newState);
 
 			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting) // jump and waiting update times
+			if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
 				return;
 			currentReportable = newState;
 
@@ -1113,7 +1114,7 @@ namespace Rynchodon.Autopilot
 			// actual state
 			newName.Append(newState);
 			// wait time
-			if (newState == ReportableState.Waiting)
+			if (newState == ReportableState.Waiting || newState == ReportableState.Landed)
 			{
 				newName.Append(':');
 				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);

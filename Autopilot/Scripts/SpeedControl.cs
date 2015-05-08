@@ -129,7 +129,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private static void checkAndCruise(Navigator nav, Logger myLogger) //float rotLengthSq)
 		{
-			//log("entered checkAndCruise, speed="+movementSpeed+", slow="+CNS.getSpeedSlow()+", cruise="+CNS.getSpeedCruise());
+			myLogger.debugLog("entered checkAndCruise, speed=" + nav.MM.movementSpeed + ", slow=" + nav.CNS.getSpeedSlow() + ", cruise=" + nav.CNS.getSpeedCruise(), "checkAndCruise()");
 
 			switch (nav.CNS.moveState)
 			{
@@ -144,6 +144,8 @@ namespace Rynchodon.Autopilot
 						nav.EnableDampeners();
 						log(myLogger, "wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					}
+					else
+						myLogger.debugLog("wrong state: " + nav.CNS.moveState, "checkAndCruise()", Logger.severity.TRACE);
 					return;
 			}
 
@@ -152,6 +154,7 @@ namespace Rynchodon.Autopilot
 
 			if (nav.MM.movementSpeed > nav.CNS.getSpeedSlow())
 			{
+				myLogger.debugLog("too fast, checking dampeners = " + nav.dampenersEnabled() + ", and current move = " + nav.currentMove, "checkAndCruise()", Logger.severity.TRACE);
 				if (!nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
 					log(myLogger, "too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
@@ -163,8 +166,8 @@ namespace Rynchodon.Autopilot
 			if (nav.MM.movementSpeed < nav.CNS.getSpeedCruise())
 			{
 				// as long as there is acceleration, do not calcAndMove
-				//myLogger.debugLog("current move = " + nav.currentMove + ", moving too slow = " + nav.movingTooSlow, "checkAndCruise()", Logger.severity.TRACE);
-				//myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
+				myLogger.debugLog("current move = " + nav.currentMove + ", moving too slow = " + nav.movingTooSlow, "checkAndCruise()", Logger.severity.TRACE);
+				myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
 				if ((nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) && !nav.movingTooSlow)
 				{
 					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
@@ -184,8 +187,10 @@ namespace Rynchodon.Autopilot
 					//nav.setDampeners(false);
 					nav.DisableReverseThrust();
 					nav.moveOrder(Vector3.Zero);
+					return;
 				}
-				return;
+
+				myLogger.debugLog("no adjustments made", "checkAndCruise()", Logger.severity.TRACE);
 			//}
 			//else
 			//{
