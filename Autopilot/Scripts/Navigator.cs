@@ -1116,8 +1116,12 @@ namespace Rynchodon.Autopilot
 			// wait time
 			if (newState == ReportableState.Waiting || newState == ReportableState.Landed)
 			{
-				newName.Append(':');
-				newName.Append((int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
+				int seconds = (int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds;
+				if (seconds >= 0)
+				{
+					newName.Append(':');
+					newName.Append(seconds);
+				}
 			}
 
 			newName.Append('>');
@@ -1127,7 +1131,8 @@ namespace Rynchodon.Autopilot
 			//ignore_RemoteControl_nameChange = true;
 			(currentRemoteControl_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
 			//ignore_RemoteControl_nameChange = false;
-			log("added ReportableState to RC: " + newState, "reportState()", Logger.severity.TRACE);
+			log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
+			myLogger.debugLog("Error index = " + myInterpreter.instructionErrorIndex, "reportState()");
 		}
 
 		private ReportableState? GetState()

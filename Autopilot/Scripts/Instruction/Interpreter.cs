@@ -345,7 +345,7 @@ namespace Rynchodon.Autopilot.Instruction
 			Ingame.IMyTextPanel panel = bestMatch as Ingame.IMyTextPanel;
 			if (panel == null)
 			{
-				myLogger.debugLog("not a Text Panel: " + panel, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("not a Text Panel: " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 				return false;
 			}
 

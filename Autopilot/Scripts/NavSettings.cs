@@ -24,12 +24,10 @@ namespace Rynchodon.Autopilot
 		public bool isAMissile;
 		public DateTime waitUntil;
 		public DateTime waitUntilNoCheck;
-		//public string searchBlockName; // might want to remove this one
 		public TARGET lockOnTarget;
 		public int lockOnRangeEnemy;
 		public string lockOnBlock;
 		public string tempBlockName;
-		//public bool noWayForward;
 		public bool EXIT = false;
 		public Vector3 destination_offset = Vector3.Zero;
 		public Base6Directions.Direction? match_direction = null; // reset on reached dest
@@ -53,24 +51,10 @@ namespace Rynchodon.Autopilot
 		public Vector3D? landingSeparateWaypoint;
 		public Sandbox.ModAPI.IMyCubeBlock landingSeparateBlock;
 
-		private bool value__jump_to_dest = false;
 		public bool jump_to_dest
 		{
-			get { return value__jump_to_dest; }
-			set
-			{
-				bool allowed, fetched;
-				if (MyAPIGateway.Session.CreativeMode)
-					fetched = Settings.boolSettings.TryGetValue(Settings.BoolSetName.bAllowJumpCreative, out allowed);
-				else
-					fetched = Settings.boolSettings.TryGetValue(Settings.BoolSetName.bAllowJumpSurvival, out allowed);
-				if (!fetched)
-				{
-					myLogger.log(Logger.severity.ERROR, "set_jump_to_dest()", "failed to get setting");
-					allowed = false;
-				}
-				value__jump_to_dest = value && allowed;
-			}
+			get { return false; }
+			set { }
 		}
 
 		public enum TARGET : byte { OFF, MISSILE, ENEMY }
@@ -79,23 +63,16 @@ namespace Rynchodon.Autopilot
 		public enum LANDING : byte { OFF, ORIENT, LINEUP, LAND, LOCKED, SEPARATE }
 		public LANDING landingState = LANDING.OFF;
 
-		//private DateTime waypointExpiresAt;
-
 		private Navigator myNav;
 		private IMyCubeGrid myCubeGrid
 		{
-			get { if (myNav == null)
-			return null;
-			return myNav.myGrid; } }
-		//private GridDimensions myGridDims
-		//{
-		//	get
-		//	{
-		//		if (myNav == null)
-		//			return null;
-		//		return myNav.myGridDim;
-		//	}
-		//}
+			get
+			{
+				if (myNav == null)
+					return null;
+				return myNav.myGrid;
+			}
+		}
 
 		public bool ignoreAsteroids = false;
 
@@ -118,12 +95,10 @@ namespace Rynchodon.Autopilot
 			isAMissile = false;
 			waitUntil = DateTime.UtcNow;
 			waitUntilNoCheck = DateTime.UtcNow;
-			//searchBlockName = null;
 			lockOnTarget = TARGET.OFF;
 			lockOnRangeEnemy = 0;
 			lockOnBlock = null;
 			tempBlockName = null;
-			//noWayForward = false;
 			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
 
@@ -167,12 +142,6 @@ namespace Rynchodon.Autopilot
 
 		public Vector3D? myWaypoint { get; private set; }
 		private Vector3D? coordDestination;
-
-		///// <summary>
-		///// to keep ship from moving until at least one collision check has happend.
-		///// updated for new centreDestination, not for new waypoint. updated for atWayDest
-		///// </summary>
-		//public int collisionUpdateSinceWaypointAdded = 0;
 
 		/// <summary>
 		/// reset on Navigator.FullStop()
@@ -249,10 +218,6 @@ namespace Rynchodon.Autopilot
 		{
 			onWayDestAddedRemoved();
 			myWaypoint = waypoint;
-			//if (waypointExpires)
-			//	waypointExpiresAt = DateTime.UtcNow.AddSeconds(10);
-			//else
-			//	waypointExpiresAt = DateTime.MaxValue;
 		}
 
 		/// <summary>
@@ -341,16 +306,7 @@ namespace Rynchodon.Autopilot
 		public TypeOfWayDest getTypeOfWayDest(bool getWaypoint = true)
 		{
 			if (getWaypoint && myWaypoint != null)
-			{
-				//if (moveState == Moving.SIDELING // might want to add HYBRID as well, or maybe it would just switch to moving?
-				//	|| waypointExpiresAt > DateTime.UtcNow)
-					return TypeOfWayDest.WAYPOINT;
-				//else // waypoint has expired
-				//{
-				//	myLogger.debugLog("waypoint has expired: " + myWaypoint, "getTypeOfWayDest()");
-				//	myWaypoint = null;
-				//}
-			}
+				return TypeOfWayDest.WAYPOINT;
 
 			if (CurrentGridDest != null)
 			{

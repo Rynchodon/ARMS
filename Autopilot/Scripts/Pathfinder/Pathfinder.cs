@@ -171,6 +171,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 				CheckInterrupt();
 				myLogger.debugLog("Path to destination is obstructed by " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
+				IMyVoxelMap ObsAsVoxel = ObstructingEntity as IMyVoxelMap;
+				if (ObsAsVoxel != null)
+					myLogger.debugLog("Voxel AABB = " + ObsAsVoxel.WorldAABB + ", Volume = " + ObsAsVoxel.WorldVolume, "CheckPath()");
 			}
 
 			if (Waypoint != null)
