@@ -94,10 +94,10 @@ namespace Rynchodon.Autopilot
 					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
 					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
-				//}
+					//}
 
-				//if (currentRemoteControl_Value != null)
-				//{
+					//if (currentRemoteControl_Value != null)
+					//{
 					// actions on new RC
 					instructions = currentRCblock.getInstructions();
 					(currentRemoteControl_Value as Sandbox.ModAPI.IMyTerminalBlock).CustomNameChanged += remoteControl_OnNameChanged;
@@ -474,6 +474,7 @@ namespace Rynchodon.Autopilot
 
 			// after navigate
 			checkStopped();
+			myRotator.isRotating();
 		}
 
 		private Lander myLand;
@@ -907,7 +908,6 @@ namespace Rynchodon.Autopilot
 				}
 				else
 					fullStop("not moving");
-					//CNS.moveState = NavSettings.Moving.STOP_MOVE;
 			}
 			else
 				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
@@ -986,45 +986,23 @@ namespace Rynchodon.Autopilot
 
 		internal void DisableReverseThrust()
 		{
-			//if (enable)
-			//{
-			//	currentThrust.enableAllThrusters();
-			//	EnableDampeners();
-			//}
-			//else
-			//{
-				switch (CNS.moveState)
-				{
-					case NavSettings.Moving.HYBRID:
-					case NavSettings.Moving.MOVING:
-						myLogger.debugLog("disabling reverse thrust", "DisableReverseThrust()");
-						EnableDampeners();
-						currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
-						break;
-					default:
-						myLogger.debugLog("disabling dampeners", "DisableReverseThrust()");
-						EnableDampeners(false);
-						break;
-				}
-				
-			//}
+			switch (CNS.moveState)
+			{
+				case NavSettings.Moving.HYBRID:
+				case NavSettings.Moving.MOVING:
+					myLogger.debugLog("disabling reverse thrust", "DisableReverseThrust()");
+					EnableDampeners();
+					currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(getNavigationBlock().Orientation.Forward));
+					break;
+				default:
+					myLogger.debugLog("disabling dampeners", "DisableReverseThrust()");
+					EnableDampeners(false);
+					break;
+			}
 		}
 
 		public void EnableDampeners(bool dampenersOn = true)
 		{
-			//if (dampenersOn)
-			//{
-			//	//myLogger.debugLog("enabling all thrusters", "setDampeners()");
-			//	currentThrust.enableAllThrusters();
-			//}
-			//else
-			//	if (CNS.moveState == NavSettings.Moving.MOVING || CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
-			//	{
-			//		myLogger.debugLog("disabling reverse thrusters", "setDampeners()");
-			//		currentThrust.disableThrusters(Base6Directions.GetFlippedDirection(currentRCblock.Orientation.Forward));
-			//		return;
-			//	}
-
 			if (dampenersOn)
 				currentThrust.enableAllThrusters();
 
@@ -1089,11 +1067,10 @@ namespace Rynchodon.Autopilot
 			ReportableState? got = GetState();
 			if (got.HasValue)
 				newState = got.Value;
-			//reportExtra(ref newState);
 
-			// did state actually change?
-			if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
-				return;
+			//// did state actually change?
+			//if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
+			//	return;
 			currentReportable = newState;
 
 			// cut old state, if any
@@ -1126,11 +1103,8 @@ namespace Rynchodon.Autopilot
 
 			newName.Append('>');
 			newName.Append(displayName);
-			//RCDisplayName = newName.ToString();
 
-			//ignore_RemoteControl_nameChange = true;
 			(currentRemoteControl_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
-			//ignore_RemoteControl_nameChange = false;
 			log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 			myLogger.debugLog("Error index = " + myInterpreter.instructionErrorIndex, "reportState()");
 		}
@@ -1145,7 +1119,7 @@ namespace Rynchodon.Autopilot
 				return ReportableState.GET_OUT_OF_SEAT;
 			if (CNS.landingState == NavSettings.LANDING.LOCKED)
 				return ReportableState.Landed;
-			
+
 			// pathfinding
 			switch (pathfinderState)
 			{
@@ -1154,7 +1128,7 @@ namespace Rynchodon.Autopilot
 				case ReportableState.Pathfinding:
 					return ReportableState.Pathfinding;
 			}
-			
+
 			// harvest
 			if (myHarvester.IsActive())
 				if (myHarvester.HarvestState != ReportableState.H_Ready)
@@ -1179,7 +1153,7 @@ namespace Rynchodon.Autopilot
 
 			// stopping
 			if (CNS.moveState == NavSettings.Moving.STOP_MOVE
-				||CNS.rotateState == NavSettings.Rotating.STOP_ROTA
+				|| CNS.rotateState == NavSettings.Rotating.STOP_ROTA
 				|| CNS.rollState == NavSettings.Rolling.STOP_ROLL)
 				return ReportableState.Stopping;
 
@@ -1196,7 +1170,6 @@ namespace Rynchodon.Autopilot
 		//	newName.Append(':');
 		//}
 
-		//private bool ignore_RemoteControl_nameChange = false;
 		public string instructions { get; private set; }
 		private void remoteControl_OnNameChanged(IMyTerminalBlock whichBlock)
 		{

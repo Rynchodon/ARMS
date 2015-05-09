@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot
 				log("targetDirection=" + targetDirection + ", targetRoll=" + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
 				matchOrientation_finished_rotating = false;
 			}
-			myNav.MM = new MovementMeasure(myNav, targetDirection);
+			myNav.MM = new MovementMeasure(myNav, targetDirection, true);
 			if (!matchOrientation_finished_rotating && (CNS.rotateState != NavSettings.Rotating.NOT_ROTA || myNav.MM.rotLenSq > rotLenSq_orientRota))
 			{
 				myNav.calcAndRotate();

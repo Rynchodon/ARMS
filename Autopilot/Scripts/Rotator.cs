@@ -201,7 +201,6 @@ namespace Rynchodon.Autopilot
 					//myLogger.debugLog("entered STOP_ROTA, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
 					if (isRotating())
 						return;
-					CNS.rotateState = NavSettings.Rotating.NOT_ROTA;
 					myLogger.debugLog("no longer rotating", "calcAndRotate()");
 
 					int overUnder = 0;
@@ -251,11 +250,7 @@ namespace Rynchodon.Autopilot
 					return;
 				case NavSettings.Rolling.STOP_ROLL:
 					if (isRotating())
-					{
-						//previous_roll = roll;
 						return;
-					}
-					CNS.rollState = NavSettings.Rolling.NOT_ROLL;
 					myLogger.debugLog("get off the log", "calcAndRoll()", Logger.severity.DEBUG);
 
 					int overUnder = testOverUnder(roll, needToRotate_roll);
@@ -317,12 +312,18 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// is the grid rotating
+		/// is the grid rotating. iff stopped sets rotate and roll states to NOT...
 		/// </summary>
-		private bool isRotating()
+		/// <returns>true iff the grid is rotating</returns>
+		public bool isRotating()
 		{
 			//myLogger.debugLog("Angular Velocity = " + owner.myGrid.Physics.AngularVelocity + ", length squared = " + owner.myGrid.Physics.AngularVelocity.LengthSquared(), "isRotating()");
-			return owner.myGrid.Physics.AngularVelocity != Vector3.Zero;
+			if (owner.myGrid.Physics.AngularVelocity != Vector3.Zero)
+				return true;
+
+			CNS.rotateState = NavSettings.Rotating.NOT_ROTA;
+			CNS.rollState = NavSettings.Rolling.NOT_ROLL;
+			return false;
 		}
 
 		#endregion

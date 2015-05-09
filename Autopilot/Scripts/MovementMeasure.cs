@@ -17,10 +17,14 @@ namespace Rynchodon.Autopilot
 	{
 		private Navigator owner;
 		private Vector3D? targetDirection;
-		public MovementMeasure(Navigator owner, Vector3D? targetDirection = null)
+		/// <summary>created from lander class</summary>
+		private bool Lander;
+
+		public MovementMeasure(Navigator owner, Vector3D? targetDirection = null, bool Lander = false)
 		{
 			this.owner = owner;
 			this.targetDirection = targetDirection;
+			this.Lander = Lander;
 
 			myLogger = new Logger(owner.myGrid.DisplayName, "MovementMeasure");
 
@@ -45,7 +49,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		// these are all built together so we will not be using lazy
-		private float value__pitch, value__yaw, value__roll; //, value__pitchPower, value__yawPower;
+		private float value__pitch, value__yaw, value__roll;
 		private bool isValid__pitchYaw = false;
 
 		/// <summary>
@@ -87,6 +91,12 @@ namespace Rynchodon.Autopilot
 
 		private void buildPitchYaw()
 		{
+			if (Lander)
+			{
+				buildPitchYaw_forLander();
+				return;
+			}
+
 			isValid__pitchYaw = true;
 
 			Vector3D dirNorm;
@@ -112,9 +122,6 @@ namespace Rynchodon.Autopilot
 			Vector3 NavUp = NavBlock.LocalMatrix.Up;
 			Vector3 RemFrNU = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavUp));
 
-			//Vector3 NavBack = NavBlock.LocalMatrix.Backward;
-			//Vector3 RemFrNB = Base6Directions.GetVector(RemBlock.LocalMatrix.GetClosestDirection(ref NavBack));
-
 			//myLogger.debugLog("NavRight = " + NavRight + ", NavUp = " + NavUp, "buildPitchYaw()");
 			//myLogger.debugLog("RemFrNR = " + RemFrNR + ", RemFrNU = " + RemFrNU, "buildPitchYaw()");
 
@@ -128,6 +135,30 @@ namespace Rynchodon.Autopilot
 			value__pitch = mapped.X;
 			value__yaw = mapped.Y;
 			value__roll = mapped.Z;
+		}
+
+		private void buildPitchYaw_forLander()
+		{
+			myLogger.debugLog("Entered buildPitchYaw_forLander()", "buildPitchYaw_forLander()");
+
+			isValid__pitchYaw = true;
+
+			Vector3D dirNorm;
+			if (targetDirection == null)
+			{
+				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition();
+				dirNorm = Vector3D.Normalize(displacement);
+			}
+			else
+				dirNorm = (Vector3D)targetDirection;
+
+			double right = owner.currentRCblock.WorldMatrix.Right.Dot(dirNorm);
+			double down = owner.currentRCblock.WorldMatrix.Down.Dot(dirNorm);
+			double forward = owner.currentRCblock.WorldMatrix.Forward.Dot(dirNorm);
+
+			value__pitch = (float)Math.Atan2(down, forward);
+			value__yaw = (float)Math.Atan2(right, forward);
+			value__roll = 0;
 		}
 
 		private Lazy<double> lazy_rotationLengthSquared;
