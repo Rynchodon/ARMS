@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionQueue = new MyQueue<Action>(8);
 			instructionQueueString = new List<string>();
 
-			myLogger.debugLog("block: " + block.Name + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
+			myLogger.debugLog("block: " + block.DisplayNameText + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
 		}
 

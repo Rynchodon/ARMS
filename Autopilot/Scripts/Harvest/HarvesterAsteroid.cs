@@ -15,6 +15,8 @@ namespace Rynchodon.Autopilot.Harvest
 	/// </summary>
 	internal class HarvesterAsteroid
 	{
+		private static bool CreativeMode = MyAPIGateway.Session.CreativeMode;
+
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
 		private const float rotLenSq_rotate = 0.00762f; // 5°
 		private const float rotLenSq_offCourse = 0.685f; // 15°
@@ -140,7 +142,7 @@ namespace Rynchodon.Autopilot.Harvest
 			LogEntered("Ready()");
 			HarvestState = Navigator.ReportableState.H_Ready;
 
-			if (DrillFullness(GetDrills()) > FullAmount_Return)
+			if (CreativeMode || DrillFullness(GetDrills()) > FullAmount_Return)
 			{
 				myLogger.debugLog("Drills are full: " + DrillFullness(GetDrills()) + " > " + FullAmount_Return, "Ready()");
 				SetNextStage(Finished, false);
