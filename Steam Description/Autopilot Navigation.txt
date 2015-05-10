@@ -110,7 +110,7 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 <Waiting:(time)> a wait command was reached, display time remaining
 <Rotating> / <Roll> rotating the ship
 <Moving> / <Hybrid> / <Sidel> heading towards the next stop
-<Stopping> stopping the ship
+<Stop_Move> / <Stop_Rotate> / <Stop_Roll> stopping the ship
 <Missile> found a target, going to hit it
 <Engaging> found a target, flying towards it
 <Landed> grid is landed

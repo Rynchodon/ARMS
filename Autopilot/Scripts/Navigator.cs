@@ -233,7 +233,6 @@ namespace Rynchodon.Autopilot
 			{
 				if (!remoteControlIsReady(currentRCblock)) // if something changes, stop waiting!
 					reset("wait interrupted");
-				reportState(ReportableState.Waiting);
 				return;
 			}
 
@@ -292,7 +291,6 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					// find a remote control with NavSettings allInstructions
-					reportState(ReportableState.No_Dest);
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
 					foreach (Sandbox.ModAPI.IMySlimBlock remoteControlBlock in remoteControlBlocks)
 					{
@@ -372,7 +370,6 @@ namespace Rynchodon.Autopilot
 					{
 						log("player is controlling grid: " + controllingPlayer.DisplayName, "gridCanNavigate()", Logger.severity.TRACE);
 						player_controlling = true;
-						reportState(ReportableState.Player);
 					}
 				}
 				return false;
@@ -700,7 +697,6 @@ namespace Rynchodon.Autopilot
 				StartMoveSidel();
 				return true;
 			}
-			reportState(ReportableState.Pathfinding);
 			return false;
 		}
 
@@ -708,21 +704,18 @@ namespace Rynchodon.Autopilot
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.HYBRID;
-			reportState(ReportableState.Moving);
 		}
 
 		private void StartMoveSidel()
 		{
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.SIDELING;
-			reportState(ReportableState.Moving);
 		}
 
 		private void StartMoveMove()
 		{
 			calcAndMove();
 			CNS.moveState = NavSettings.Moving.MOVING;
-			reportState(ReportableState.Moving);
 		}
 
 		public const float rotLenSq_switchToMove = 0.00762f; // 5°
@@ -855,9 +848,6 @@ namespace Rynchodon.Autopilot
 				else
 					fullStop("not moving");
 			}
-			else
-				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
-					reportState(ReportableState.Stopping);
 
 			return isStopped;
 		}
@@ -868,7 +858,6 @@ namespace Rynchodon.Autopilot
 		internal void fullStop(string reason)
 		{
 			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
-			reportState(ReportableState.Stopping);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
@@ -973,7 +962,8 @@ namespace Rynchodon.Autopilot
 		{
 			None, Off, No_Dest, Waiting,
 			Path_OK, Pathfinding, No_Path,
-			Rotating, Moving, Stopping, Hybrid, Sidel, Roll,
+			Rotating, Moving, Hybrid, Sidel, Roll,
+			Stop_Move, Stop_Rotate, Stop_Roll,
 			H_Ready, Harvest, H_Stuck, H_Back, H_Tunnel,
 			Missile, Engaging, Landed, Player, Jump, GET_OUT_OF_SEAT
 		};
@@ -982,7 +972,7 @@ namespace Rynchodon.Autopilot
 
 		internal bool GET_OUT_OF_SEAT = false;
 
-		internal void reportState(ReportableState newState = ReportableState.None, bool forced = false)
+		internal void reportState(ReportableState newState = ReportableState.Off, bool forced = false)
 		{
 			if (currentRemoteControl_Value == null)
 				return;
@@ -996,6 +986,9 @@ namespace Rynchodon.Autopilot
 
 			if (!forced)
 				newState = GetState();
+
+			if (newState == ReportableState.None)
+				return;
 
 			//// did state actually change?
 			//if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
@@ -1024,7 +1017,7 @@ namespace Rynchodon.Autopilot
 			// wait time
 			if (newState == ReportableState.Waiting || newState == ReportableState.Landed)
 			{
-				int seconds = (int)(CNS.waitUntil - DateTime.UtcNow).TotalSeconds;
+				int seconds = (int)Math.Ceiling((CNS.waitUntil - DateTime.UtcNow).TotalSeconds);
 				if (seconds >= 0)
 				{
 					newName.Append(':');
@@ -1068,6 +1061,18 @@ namespace Rynchodon.Autopilot
 				if (myHarvester.HarvestState != ReportableState.H_Ready)
 					return myHarvester.HarvestState;
 
+			if (CNS.getWayDest() == null)
+				return ReportableState.No_Dest;
+
+			// targeting
+			if (CNS.target_locked)
+			{
+				if (CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+					return ReportableState.Engaging;
+				if (CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
+					return ReportableState.Missile;
+			}
+
 			// moving
 			switch (CNS.moveState)
 			{
@@ -1086,12 +1091,14 @@ namespace Rynchodon.Autopilot
 				return ReportableState.Roll;
 
 			// stopping
-			if (CNS.moveState == NavSettings.Moving.STOP_MOVE
-				|| CNS.rotateState == NavSettings.Rotating.STOP_ROTA
-				|| CNS.rollState == NavSettings.Rolling.STOP_ROLL)
-				return ReportableState.Stopping;
+			if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
+				return ReportableState.Stop_Move;
+			if (CNS.rotateState == NavSettings.Rotating.STOP_ROTA)
+				return ReportableState.Stop_Rotate;
+			if (CNS.rollState == NavSettings.Rolling.STOP_ROLL)
+				return ReportableState.Stop_Roll;
 
-			return ReportableState.Off;
+			return ReportableState.None;
 		}
 
 		#endregion

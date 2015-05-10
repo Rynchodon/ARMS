@@ -45,16 +45,13 @@ namespace Rynchodon.Autopilot.Harvest
 			private set { value_HarvestState = value; }
 		}
 
-		private bool Tunnel = true;
+		private bool Tunnel = false;
 
 		/// <summary>target point inside asteroid</summary>
 		private Vector3 targetVoxel;
 
 		/// <summary>determined from a ray cast from nav drill to target</summary>
 		private Vector3 closestVoxel;
-
-		///// <summary>Current stage of harvesting</summary>
-		//private Action StageAction;
 
 		public HarvesterAsteroid(Navigator myNav)
 		{
@@ -78,14 +75,21 @@ namespace Rynchodon.Autopilot.Harvest
 				IEnumerator<Ingame.IMyTerminalBlock> drillEnum = GetDrills().GetEnumerator();
 				drillEnum.MoveNext();
 				NavigationDrill = drillEnum.Current as IMyCubeBlock; // while harvester is random, drill choice does not matter (assuming all drills face the same way)
-				//EnableDrills(false);
 
 				CNS_Store();
-				//CNS_SetHarvest();
+				CNS.setDestination(GetClosestAsteroid().WorldVolume.Center); // need an initial destination or we keep parsing instructions
+
+				if (CreativeMode)
+				{
+					myLogger.debugLog("Disabling use converyors for dills", "Start()");
+					foreach (Ingame.IMyShipDrill drill in GetDrills())
+						if (drill.UseConveyorSystem)
+							drill.GetActionWithName("UseConveyor").Apply(drill);
+				}
 
 				myLogger.debugLog("Started harvester", "Start()");
 				SetNextStage(Ready, false);
-				return Run();
+				return true;
 			}
 			catch (Exception ex)
 			{
@@ -105,7 +109,7 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			//myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared(), "Run()");
-			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() > 0.25f)
+			if (myNav.MM.movementSpeed > 0.25f)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
 				IsStuck = false;
@@ -142,7 +146,7 @@ namespace Rynchodon.Autopilot.Harvest
 			LogEntered("Ready()");
 			HarvestState = Navigator.ReportableState.H_Ready;
 
-			if (CreativeMode || DrillFullness(GetDrills()) > FullAmount_Return)
+			if (DrillFullness(GetDrills()) > FullAmount_Return)
 			{
 				myLogger.debugLog("Drills are full: " + DrillFullness(GetDrills()) + " > " + FullAmount_Return, "Ready()");
 				SetNextStage(Finished, false);
@@ -292,7 +296,6 @@ namespace Rynchodon.Autopilot.Harvest
 			LogEntered("StartBackout()");
 			HarvestState = Navigator.ReportableState.H_Back;
 
-			//CNS.atWayDest(); // consider destination reached
 			CNS_SetHarvest();
 			CNS.setDestination(ReadyPoint);
 			CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
@@ -334,7 +337,6 @@ namespace Rynchodon.Autopilot.Harvest
 			LogEntered("StartTunnelThrough()");
 			HarvestState = Navigator.ReportableState.H_Tunnel;
 
-			//CNS.atWayDest(); // consider destination reached
 			Vector3D current = NavigationDrill.GetPosition();
 			Vector3D forwardVect = NavigationDrill.WorldMatrix.Forward;
 			CNS_SetHarvest();
@@ -393,7 +395,6 @@ namespace Rynchodon.Autopilot.Harvest
 		private void Finished()
 		{
 			LogEntered("Finished()");
-			//CNS.atWayDest(); // consider destination reached
 			CNS_RestorePrevious();
 			NavigationDrill = null;
 
@@ -414,15 +415,28 @@ namespace Rynchodon.Autopilot.Harvest
 			return allDrills;
 		}
 
+		/// <summary>
+		/// <para>In survival, returns fraction of drills filled</para>
+		/// <para>In creative, returns content per drill * 0.01</para>
+		/// </summary>
 		private float DrillFullness(ReadOnlyList<Ingame.IMyTerminalBlock> allDrills)
 		{
 			MyFixedPoint content = 0, capacity = 0;
+			int drillCount = 0;
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 			{
 				IMyInventory drillInventory = (IMyInventory)Ingame.TerminalBlockExtentions.GetInventory(drill, 0);
 				content += drillInventory.CurrentVolume;
 				capacity += drillInventory.MaxVolume;
+				drillCount++;
 			}
+
+			if (CreativeMode)
+			{
+				myLogger.debugLog("content = " + content + ", drillCount = " + drillCount, "DrillFullness()");
+				return (float)content * 0.01f / drillCount;
+			}
+			myLogger.debugLog("content = " + content + ", capacity = " + capacity, "DrillFullness()");
 			return (float)content / (float)capacity;
 		}
 
@@ -458,13 +472,6 @@ namespace Rynchodon.Autopilot.Harvest
 			double z = randRadius * Math.Cos(randAngle1);
 
 			Vector3D RandomPoint = new Vector3D(x, y, z) + sphere.Center;
-
-			// set destination to really far ahead
-			//Vector3D travelVector = Vector3D.Normalize(RandomPoint - NavigationDrill.GetPosition());
-			//Vector3D destination = travelVector * 131072;
-
-			//Vector3D RandomPoint = new Vector3D(x, y, z);
-			//myLogger.debugLog("Random point inside sphere: {" + sphere.Center + ", " + sphere.Radius + "} is " + RandomPoint, "GetRandomPointInside()");
 			return RandomPoint;
 		}
 
@@ -496,7 +503,6 @@ namespace Rynchodon.Autopilot.Harvest
 		#region CNS Variables
 
 		private float initial_speedCruise_external, initial_speedSlow_external;
-		//private int initial_destinationRadius;
 
 		/// <summary>
 		/// variables that are not cleared at each destination go here, they must only be set once
@@ -505,7 +511,6 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			initial_speedCruise_external = CNS.speedCruise_external;
 			initial_speedSlow_external = CNS.speedSlow_external;
-			//initial_destinationRadius = CNS.destinationRadius;
 		}
 
 		/// <summary>
@@ -529,14 +534,12 @@ namespace Rynchodon.Autopilot.Harvest
 			CNS.speedCruise_external = initial_speedCruise_external;
 			CNS.speedSlow_external = initial_speedSlow_external;
 			CNS.ignoreAsteroids = false;
-			//CNS.destinationRadius = initial_destinationRadius;
 		}
 
 		#endregion
 		#region Enable/Disable Drills
 
 		private bool DrillsOn = false;
-		//private bool DrillsAreEnabled = true;
 
 		private void SetDrills()
 		{
@@ -545,13 +548,6 @@ namespace Rynchodon.Autopilot.Harvest
 			if (enable)
 				enable = CNS.moveState != NavSettings.Moving.STOP_MOVE && (myNav.currentMove != Vector3.Zero || myNav.MM.movementSpeed > 0.1);
 
-			//if (!enable)
-			//	myLogger.debugLog("drills disabled moveState = " + CNS.moveState + ", currentMove = " + myNav.currentMove, "SetDrills()");
-
-			//if (DrillsAreEnabled == enable)
-			//	return;
-
-			//DrillsAreEnabled = enable;
 			foreach (Ingame.IMyShipDrill drill in GetDrills())
 				drill.RequestEnable(enable);
 		}

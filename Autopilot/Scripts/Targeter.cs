@@ -3,17 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Text;
 
 using Sandbox.Common;
-//using Sandbox.Common.Components;
-//using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
 using Rynchodon.AntennaRelay;
@@ -158,6 +151,8 @@ namespace Rynchodon.Autopilot
 				IMyCubeGrid grid = allLastSeen.Current.Entity as IMyCubeGrid;
 				if (grid == null || grid == owner.myGrid || !owner.currentRCblock.canConsiderHostile(grid))
 					continue;
+
+				myLogger.debugLog("checking hostile grid: " + grid.DisplayName, "lastSeenHostile()");
 
 				IMyCubeBlock matchBlock = null;
 				if (!string.IsNullOrEmpty(blockContains) && !findBestHostile(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block

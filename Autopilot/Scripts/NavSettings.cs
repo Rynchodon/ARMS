@@ -296,6 +296,8 @@ namespace Rynchodon.Autopilot
 					return CurrentGridDest.GetGridPos();
 				case TypeOfWayDest.WAYPOINT:
 					return myWaypoint;
+				case TypeOfWayDest.NULL:
+					return null;
 				default:
 					log("unknown type " + type, "getWayDest()", Logger.severity.ERROR);
 					return null;
