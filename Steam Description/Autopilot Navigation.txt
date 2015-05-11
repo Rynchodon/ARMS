@@ -11,10 +11,29 @@ If you reset the Autopilot while landed, it will not separate before moving.
 
 In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
 
+The G, E, and M commands all require that the target be detected, see the video for Antenna Relay and Radar.
+
 All distances and coordinates are in metres, speed is in metres per second
 If there are multiple Remote Controls with commands, one will be picked arbitrarily.
 The direction that the Remote Control is facing is the direction the ship will fly in.
 When the end of the commands is reached, Autopilot will start back at the first command.
+
+[h1]Autopilot States[/h1]
+<Off> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
+<Pathfinding> searching for a path towards the destination
+<No_Path> could not find a path to the destination
+<No_Dest> could not find a valid target or destination, this state is usually temporary
+<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
+<Waiting:(time)> a wait command was reached, display time remaining
+<Rotating> / <Roll> rotating the ship
+<Moving> / <Hybrid> / <Sidel> heading towards the next stop
+<Stopping> stopping the ship
+<Missile> found a target, going to hit it
+<Engaging> found a target, flying towards it
+<Landed> grid is landed
+<Harvest> / <H_Stuck> / <H_Back> <H_Tunnel> harvesting an asteroid
+<Player> A player is controlling grid
+<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
 
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
@@ -100,20 +119,3 @@ Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth betwee
 [P 10 : F 0,0,-100 : M 0] Fly forward 100 metres then convert to missile. If no enemy is found, keep moving forward 100m at a time. Can lock onto an enemy any time after first move.
 [P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the remote to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
-
-[h1]Autopilot States[/h1]
-<Off> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
-<Pathfinding> searching for a path towards the destination
-<No_Path> could not find a path to the destination
-<No_Dest> could not find a valid target or destination, this state is usually temporary
-<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
-<Waiting:(time)> a wait command was reached, display time remaining
-<Rotating> / <Roll> rotating the ship
-<Moving> / <Hybrid> / <Sidel> heading towards the next stop
-<Stop_Move> / <Stop_Rotate> / <Stop_Roll> stopping the ship
-<Missile> found a target, going to hit it
-<Engaging> found a target, flying towards it
-<Landed> grid is landed
-<Harvest> / <H_Stuck> / <H_Back> <H_Tunnel> harvesting an asteroid
-<Player> A player is controlling grid
-<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
