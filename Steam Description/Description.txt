@@ -2,8 +2,6 @@ Autopilot provides Electronic Navigation, Communication, and Targeting Systems
 
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
-[url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
-
 [h1]Mod Features[/h1]
 Automatic docking & landing
 Patrol
@@ -84,16 +82,15 @@ Merging grids, particularly with the landing (L) command, can cause unexpected b
 
 Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
 
-[b]Public Domain License[/b]
-To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
-http://creativecommons.org/publicdomain/zero/1.0/
-
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07
 GitMaster Extraordinaire - [uRxP]DrChocolate
 Multiplayer Testing - Degalus
 
-[b]Links[/b]
+[h1]Links[/h1]
+[url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=441825776] Autopilot Demonstration World [/url]
+
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
 [url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
@@ -102,3 +99,7 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
+
+[b]Public Domain License[/b]
+To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
+http://creativecommons.org/publicdomain/zero/1.0/
