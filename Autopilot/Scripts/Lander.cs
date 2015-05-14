@@ -235,15 +235,17 @@ namespace Rynchodon.Autopilot
 
 		private bool hasPilot()
 		{
-			List<Sandbox.ModAPI.IMySlimBlock> allCockpits = new List<Sandbox.ModAPI.IMySlimBlock>();
-			myGrid.GetBlocks(allCockpits, block => block.FatBlock != null && block.FatBlock is Ingame.IMyCockpit);
-			foreach (IMySlimBlock cockpit in allCockpits)
+			ReadOnlyList<Ingame.IMyTerminalBlock> allCockpits = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof( MyObjectBuilder_Cockpit));
+
+			//List<Sandbox.ModAPI.IMySlimBlock> allCockpits = new List<Sandbox.ModAPI.IMySlimBlock>();
+			//myGrid.GetBlocks(allCockpits, block => block.FatBlock != null && block.FatBlock is Ingame.IMyCockpit);
+			foreach (Ingame.IMyTerminalBlock cockpit in allCockpits)
 			{
-				MyObjectBuilder_Character pilot = (cockpit.FatBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_Cockpit).Pilot;
+				MyObjectBuilder_Character pilot = ((cockpit as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_Cockpit).Pilot;
 				if (pilot != null)
 				{
 					if (hasPilot_value != pilot)
-						log("got a pilot in " + cockpit.FatBlock.DisplayNameText + ", pilot is " + pilot.DisplayName, "hasPilot()", Logger.severity.DEBUG);
+						log("got a pilot in " + cockpit.DisplayNameText + ", pilot is " + pilot.DisplayName, "hasPilot()", Logger.severity.DEBUG);
 					hasPilot_value = pilot;
 					return true;
 				}
@@ -257,21 +259,29 @@ namespace Rynchodon.Autopilot
 			Ingame.IMyShipConnector connector = CNS.landLocalBlock as Ingame.IMyShipConnector;
 			if (connector != null)
 			{
+				if (connector.IsConnected)
+				{
+					myLogger.debugLog(connector.DisplayNameText + " is connected ", "lockLanding()");
+					return true;
+				}
+
 				if (!connector.IsLocked) // this actually checks for ready to lock (yellow light)
 				{
-					connector.GetActionWithName("OnOff_On").Apply(connector); // on
+					connector.RequestEnable(true);
+					//connector.GetActionWithName("OnOff_On").Apply(connector); // on
 					return false;
 				}
 				log("trying to lock connector", "lockLanding()", Logger.severity.TRACE);
 				connector.GetActionWithName("SwitchLock").Apply(connector); // lock
-				return true;
+				return false;
 			}
 
 			Ingame.IMyLandingGear landingGear = CNS.landLocalBlock as Ingame.IMyLandingGear;
 			if (landingGear != null)
 			{
 				MyObjectBuilder_LandingGear builder = CNS.landLocalBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_LandingGear;
-				landingGear.GetActionWithName("OnOff_On").Apply(landingGear); // on
+				landingGear.RequestEnable(true);
+				//landingGear.GetActionWithName("OnOff_On").Apply(landingGear); // on
 				if (!builder.AutoLock)
 				{
 					log("setting autolock", "lockLanding()", Logger.severity.TRACE);
@@ -284,13 +294,14 @@ namespace Rynchodon.Autopilot
 			Ingame.IMyShipMergeBlock mergeBlock = CNS.landLocalBlock as Ingame.IMyShipMergeBlock;
 			if (mergeBlock != null)
 			{
-				MyObjectBuilder_MergeBlock builder = CNS.landLocalBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_MergeBlock;
-				if (builder.SubBlocks != null && builder.SubBlocks.Length > 0)
-					log("subblock[0]=" + builder.SubBlocks[0].SubGridName, "lockLanding()", Logger.severity.TRACE);
+				//MyObjectBuilder_MergeBlock builder = CNS.landLocalBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_MergeBlock;
+				//if (builder.SubBlocks != null && builder.SubBlocks.Length > 0)
+				//	log("subblock[0]=" + builder.SubBlocks[0].SubGridName, "lockLanding()", Logger.severity.TRACE);
 				if (!mergeBlock.IsFunctional || !mergeBlock.IsWorking) //&& mergeMonitor.mergeStatus == MergeMonitor.MergeStatus.OFF)
 				{
 					log("merge block set", "lockLanding()", Logger.severity.TRACE);
-					mergeBlock.GetActionWithName("OnOff_On").Apply(mergeBlock); // on
+					//mergeBlock.GetActionWithName("OnOff_On").Apply(mergeBlock); // on
+					mergeBlock.RequestEnable(true);
 				}
 				return false;
 			}
@@ -320,17 +331,20 @@ namespace Rynchodon.Autopilot
 				myNav.GET_OUT_OF_SEAT = false;
 
 				bool disconnected = true;
-				if ((CNS.landingSeparateBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_ShipConnector).Connected)
+				//if ((CNS.landingSeparateBlock.GetObjectBuilderCubeBlock() as MyObjectBuilder_ShipConnector).Connected)
+				if (connector.IsConnected)
 				{
 					disconnected = false;
 					log("switching lock", "unlockLanding()", Logger.severity.TRACE);
 					connector.GetActionWithName("SwitchLock").Apply(connector); // unlock
 				}
-				if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled)
+				//if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled)
+				if (connector.Enabled)
 				{
 					disconnected = false;
 					log("turning off", "unlockLanding()", Logger.severity.TRACE);
-					connector.GetActionWithName("OnOff_Off").Apply(connector); // off
+					//connector.GetActionWithName("OnOff_Off").Apply(connector); // off
+					connector.RequestEnable(false);
 				}
 				return disconnected;
 			}
@@ -368,11 +382,13 @@ namespace Rynchodon.Autopilot
 			if (mergeBlock != null)
 			{
 				bool disconnected = true;
-				if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled)
+				//if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled)
+				if (mergeBlock.Enabled)
 				{
 					disconnected = false;
 					log("turning off merge block", "unlockLanding()", Logger.severity.TRACE);
-					mergeBlock.GetActionWithName("OnOff_Off").Apply(connector); // off
+					//mergeBlock.GetActionWithName("OnOff_Off").Apply(connector); // off
+					mergeBlock.RequestEnable(false);
 				}
 				return disconnected;
 			}
@@ -424,10 +440,6 @@ namespace Rynchodon.Autopilot
 			}
 			if (block is Ingame.IMyShipMergeBlock)
 			{
-				//if (block.CubeGrid.GridSizeEnum == MyCubeSize.Large)
-				//{ } //return Base6Directions.Direction.Right;
-				//else // small grid
-				//	(new Logger(block.CubeGrid.DisplayName, "Lander")).log(Logger.severity.TRACE, "landingDirection()", "small ship");
 				result = Base6Directions.Direction.Right;
 				return true;
 			}
