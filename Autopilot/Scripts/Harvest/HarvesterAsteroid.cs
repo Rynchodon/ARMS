@@ -81,7 +81,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 				if (CreativeMode)
 				{
-					myLogger.debugLog("Disabling use converyors for dills", "Start()");
+					myLogger.debugLog("Disabling use converyors for drills", "Start()");
 					foreach (Ingame.IMyShipDrill drill in GetDrills())
 						if (drill.UseConveyorSystem)
 							drill.GetActionWithName("UseConveyor").Apply(drill);
@@ -176,9 +176,13 @@ namespace Rynchodon.Autopilot.Harvest
 		private void ApproachAsteroid()
 		{
 			LogEntered("ApproachAsteroid()");
-			if (IsInsideAsteroid() || myNav.MM.distToWayDest < 10)
+			bool inside = IsInsideAsteroid(true);
+			if (inside || myNav.MM.distToWayDest < 10)
 			{
-				myLogger.debugLog("Reached point (possibly)", "ApproachAsteroid()");
+				if (inside)
+					myLogger.debugLog("inside asteroid", "ApproachAsteroid()");
+				else
+					myLogger.debugLog("Reached point", "ApproachAsteroid()");
 				myNav.fullStop("close to asteroid");
 				CNS_SetHarvest();
 				CNS.setDestination(targetVoxel);
@@ -229,7 +233,7 @@ namespace Rynchodon.Autopilot.Harvest
 				return;
 			}
 
-			if (IsInsideAsteroid())
+			if (IsInsideAsteroid(true))
 			{
 				myLogger.debugLog("now inside asteroid", "StartHarvest()");
 				SetNextStage(Harvest, true);
@@ -260,7 +264,7 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartBackout, false);
 				return;
 			}
-			if (!IsInsideAsteroid())
+			if (!IsInsideAsteroid(false))
 			{
 				//myLogger.debugLog("harvester reached far side", "Harvest()");
 				myNav.fullStop("harvester reached far side");
@@ -321,13 +325,15 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
-			if (!IsInsideAsteroid() || myNav.MM.distToWayDest < 10)
+			if (!IsInsideAsteroid(false))// || myNav.MM.distToWayDest < 10)
 			{
 				myLogger.debugLog("harvester backed out successfully", "Backout()");
 				myNav.fullStop("backed away from asteroid");
 				SetNextStage(Ready, false);
 				return;
 			}
+			if (myNav.MM.distToWayDest < 10)
+				myLogger.debugLog("close to way dest, still inside asteroid", "Backout()");
 
 			myNav.collisionCheckMoveAndRotate();
 		}
@@ -374,7 +380,7 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
-			if (!IsInsideAsteroid())
+			if (!IsInsideAsteroid(false))
 			{
 				myLogger.debugLog("tunneled out the other side", "TunnelThrough()");
 				SetNextStage(Ready, false);
@@ -403,10 +409,39 @@ namespace Rynchodon.Autopilot.Harvest
 
 		#endregion
 
-		private bool IsInsideAsteroid()
+		//private DateTime LastInside = DateTime.MinValue;
+
+		private bool IsInsideAsteroid(bool approaching)
 		{
 			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
-			return allAsteroids.Count > 0;
+
+			BoundingSphereD volume = myCubeGrid.WorldVolume;
+			volume.Radius += 10;
+			foreach (IMyVoxelMap asteroid in allAsteroids)
+			{
+				if (asteroid.GetIntersectionWithSphere(ref volume))
+				{
+					//if (asteroid.DoOverlapSphereTest(volume.Radius + 10, volume.Center))
+					myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
+					return true;
+				}
+				else
+					myLogger.debugLog("not intersect sphere: asteroid (" + asteroid.getBestName() + ")", "IsInsideAsteroid()");
+			}
+
+			return false;
+
+			//if (approaching)
+			//	return allAsteroids.Count > 0;
+
+			//if (allAsteroids.Count > 0)
+			//{
+			//	LastInside = DateTime.UtcNow;
+			//	return true;
+			//}
+
+			//myLogger.debugLog("comparing now(" + DateTime.UtcNow + ") to LastInside(" + LastInside + ")", "IsInsideAsteroid()");
+			//return DateTime.UtcNow > LastInside + new TimeSpan(0, 0, 10);
 		}
 
 		private ReadOnlyList<Ingame.IMyTerminalBlock> GetDrills()
@@ -471,8 +506,7 @@ namespace Rynchodon.Autopilot.Harvest
 			double y = randRadius * Math.Sin(randAngle1) * Math.Sin(randAngle2);
 			double z = randRadius * Math.Cos(randAngle1);
 
-			Vector3D RandomPoint = new Vector3D(x, y, z) + sphere.Center;
-			return RandomPoint;
+			return new Vector3D(x, y, z) + sphere.Center;
 		}
 
 		/// <summary>
@@ -486,7 +520,11 @@ namespace Rynchodon.Autopilot.Harvest
 				Vector3 point = GetRandomTarget(sphere);
 				if (VoxelsBetweenNavAndPoint(point))
 				{
-					myLogger.debugLog("got a useful point: " + point, "GetUsefulTarget()");
+					Vector3D p0 = point;
+					Vector3D travelVector = Vector3D.Normalize(point - NavigationDrill.GetPosition());
+					point += travelVector * 128;
+					myLogger.debugLog("got a useful point: " + p0 + ", moved forward to " + point, "GetUsefulTarget()");
+
 					return point;
 				}
 				myLogger.debugLog("totally useless: " + point, "GetUsefulTarget()");
@@ -540,14 +578,25 @@ namespace Rynchodon.Autopilot.Harvest
 		#region Enable/Disable Drills
 
 		private bool DrillsOn = false;
+		private bool DrillState = true;
 
 		private void SetDrills()
 		{
 			bool enable = DrillsOn;
 
-			if (enable)
-				enable = CNS.moveState != NavSettings.Moving.STOP_MOVE && (myNav.currentMove != Vector3.Zero || myNav.MM.movementSpeed > 0.1);
+			if (enable && CNS.moveState == NavSettings.Moving.STOP_MOVE)
+				enable = false;
+				//else
+				//{
 
+				//}
+				//if (enable)
+				//	enable = CNS.moveState != NavSettings.Moving.STOP_MOVE && (myNav.currentMove != Vector3.Zero || myNav.MM.movementSpeed > 0.1);
+
+			if (enable == DrillState)
+				return;
+
+			DrillState = enable;
 			foreach (Ingame.IMyShipDrill drill in GetDrills())
 				drill.RequestEnable(enable);
 		}
