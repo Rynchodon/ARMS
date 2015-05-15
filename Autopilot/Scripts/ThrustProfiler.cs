@@ -165,6 +165,19 @@ namespace Rynchodon.Autopilot
 			return dampingForce;
 		}
 
+		/// <summary>
+		/// get the force in a direction
+		/// </summary>
+		private float GetForceInDirection(Base6Directions.Direction direction)
+		{
+			float force = 0;
+			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
+				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+					force += thruster.force * thruster.thruster.ThrustMultiplier;
+
+			return force;
+		}
+
 		#region Public Methods
 
 		/// <summary>
@@ -179,26 +192,30 @@ namespace Rynchodon.Autopilot
 
 			Vector3 displacementGrid = displacement.getLocal();
 
-			// get force-determinant direction
-			// for each thrusting direction, compare needed thrust to max available
+			Dictionary<Base6Directions.Direction, float> directionalForces = new Dictionary<Base6Directions.Direction, float>();
+
+			// find determinant thrust
 			float minForce = float.MaxValue;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
+			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 			{
 				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
 				if (movementInDirection > 0)
 				{
-					minForce = Math.Min(minForce,  GetDampingInDirection(direction));
+					float inDirection = GetForceInDirection(direction);
+					directionalForces.Add(direction, inDirection);
+					minForce = Math.Min(minForce, inDirection);
 				}
 			}
 
 			// scale thrust to min
 			Vector3 scaledMovement = Vector3.Zero;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
+			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 			{
 				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
 				if (movementInDirection > 0)
 				{
-					float scaleFactor = minForce / GetDampingInDirection(direction);
+					float forceInDirection = directionalForces[direction];
+					float scaleFactor = minForce / forceInDirection;
 					scaledMovement += movementInDirection * scaleFactor * Base6Directions.GetVector(direction);
 				}
 			}
