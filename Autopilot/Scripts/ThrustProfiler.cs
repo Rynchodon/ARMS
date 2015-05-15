@@ -5,17 +5,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-//using Sandbox.Common;
-//using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Common.ObjectBuilders.Definitions;
 using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot
 {
@@ -31,42 +25,41 @@ namespace Rynchodon.Autopilot
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.WARNING)
 		{ myLogger.log(level, method, toLog); }
 
-		private IMyCubeGrid myGrid;
-
 		/// <summary>
-		/// need to remember information about thrusters, so they can close without affect this class
+		/// it is less expensive to remember some information about thrusters
 		/// </summary>
 		private class ThrusterProperties
 		{
-			public float forceDamping;
-			public Base6Directions.Direction forceDirect;
-			public bool isEnabled;
+			/// <summary>from definition</summary>
+			public readonly float force;
+			/// <summary>force * 10</summary>
+			public readonly float dampingForce;
+			/// <summary>direction of force</summary>
+			public readonly Base6Directions.Direction forceDirect;
+			public readonly IMyThrust thruster;
 
-			public ThrusterProperties(float forceDamping, Base6Directions.Direction forceDirect)
+			public ThrusterProperties(IMyThrust thruster)
 			{
-				this.forceDamping = forceDamping;
-				this.forceDirect = forceDirect;
-				this.isEnabled = false;
+				thruster.throwIfNull_argument("thruster");
+
+				this.thruster = thruster;
+				this.force = (MyDefinitionManager.Static.GetCubeBlockDefinition((thruster as IMyCubeBlock).getSlimObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
+				this.dampingForce = force * 10;
+				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
 			}
 
 			public override string ToString()
-			{ return "force = " + forceDamping + ", direction = " + forceDirect + ", enabled = " + isEnabled; }
+			{ return "force = " + force + ", direction = " + forceDirect; }
 		}
 
-		private Dictionary<IMyCubeBlock, ThrusterProperties> allMyThrusters = new Dictionary<IMyCubeBlock, ThrusterProperties>();
-
-		/// <summary>
-		/// direction shall be direction of force on ship (opposite of thruster direction)
-		/// float shall be force of maximum damping
-		/// </summary>
-		private Dictionary<Base6Directions.Direction, float> thrustProfile;
-
-		private static readonly MyObjectBuilderType thrusterID = (new MyObjectBuilder_Thrust()).TypeId;
+		private IMyCubeGrid myGrid;
+		private Dictionary<IMyThrust, ThrusterProperties> allMyThrusters;
+		private Dictionary<Base6Directions.Direction, List<ThrusterProperties>> thrustersInDirection;
 
 		/// <summary>
 		/// Thrusters which are disabled by Autopilot and should not be removed from profile.
 		/// </summary>
-		private HashSet<IMyCubeBlock> thrustersDisabledByAutopilot = new HashSet<IMyCubeBlock>();
+		private HashSet<IMyThrust> thrustersDisabledByAutopilot = new HashSet<IMyThrust>();
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -81,19 +74,19 @@ namespace Rynchodon.Autopilot
 		private void init()
 		{
 			log("initializing", "init()", Logger.severity.TRACE);
-			thrustProfile = new Dictionary<Base6Directions.Direction, float>();
-			allMyThrusters = new Dictionary<IMyCubeBlock, ThrusterProperties>();
+			allMyThrusters = new Dictionary<IMyThrust, ThrusterProperties>();
+
+			thrustersInDirection = new Dictionary<Base6Directions.Direction, List<ThrusterProperties>>();
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-				thrustProfile.Add(direction, 0);
+				thrustersInDirection.Add(direction, new List<ThrusterProperties>());
 
 			List<IMySlimBlock> thrusters = new List<IMySlimBlock>();
-			myGrid.GetBlocks(thrusters, block => block.FatBlock != null && block.FatBlock.BlockDefinition.TypeId == thrusterID);
+			myGrid.GetBlocks(thrusters, block => block.FatBlock != null && block.FatBlock is IMyThrust); // .BlockDefinition.TypeId == thrusterID);
 			foreach (IMySlimBlock thrust in thrusters)
 				newThruster(thrust);
 
 			myGrid.OnBlockAdded += grid_OnBlockAdded;
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
-			//enableAllThrusters(); // up to Navigator
 		}
 
 		/// <summary>
@@ -103,37 +96,10 @@ namespace Rynchodon.Autopilot
 		private void newThruster(IMySlimBlock thruster)
 		{
 			float dampingForce = 10 * (MyDefinitionManager.Static.GetCubeBlockDefinition(thruster.GetObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
-			ThrusterProperties properties = new ThrusterProperties(dampingForce, Base6Directions.GetFlippedDirection(thruster.FatBlock.Orientation.Forward));
-			allMyThrusters.Add(thruster.FatBlock, properties);
-			thruster.FatBlock.IsWorkingChanged += block_IsWorkingChanged;
-			if (thruster.FatBlock.IsWorking)
-				enableDisableThruster(properties, true);
+			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust);
+			allMyThrusters.Add(thruster.FatBlock as IMyThrust, properties);
+			thrustersInDirection[properties.forceDirect].Add(properties);
 			return;
-		}
-
-		/// <summary>
-		/// Add or remove a thruster from thrustProfile, if appropriate.
-		/// </summary>
-		private void enableDisableThruster(ThrusterProperties properties, bool enable)
-		{
-			if (properties.isEnabled == enable)
-			{
-				if (enable)
-					log("already enabled. " + properties, "enableDisableThruster()", Logger.severity.DEBUG);
-				else
-					log("already disabled. " + properties, "enableDisableThruster()", Logger.severity.DEBUG);
-				return;
-			}
-			properties.isEnabled = enable;
-
-			float change = properties.forceDamping;
-			Base6Directions.Direction direction = properties.forceDirect;
-
-			if (!enable)
-				change = -change;
-
-			thrustProfile[direction] += change;
-			//log("thrust power change = " + change + ", total power = " + thrustProfile[direction] + ", direction = " + direction, "enableDisableThruster()", Logger.severity.TRACE);
 		}
 
 		/// <summary>
@@ -144,14 +110,14 @@ namespace Rynchodon.Autopilot
 		{
 			try
 			{
-				if (added.FatBlock == null || added.FatBlock.BlockDefinition.TypeId != thrusterID) // not a thruster
+				if (added.FatBlock == null)
 					return;
-				newThruster(added);
-				return;
+
+				if (added.FatBlock is IMyThrust)
+					newThruster(added);
 			}
 			catch (Exception e)
 			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockAdded()", "Exception: " + e); }
-			//init();
 		}
 
 		/// <summary>
@@ -165,14 +131,18 @@ namespace Rynchodon.Autopilot
 		{
 			try
 			{
-				if (removed.FatBlock == null || removed.FatBlock.BlockDefinition.TypeId != thrusterID) // not a thruster
+				if (removed.FatBlock == null) 
 					return;
+
+				IMyThrust asThrust = removed.FatBlock as IMyThrust;
+				if (asThrust == null)
+					return;
+
 				ThrusterProperties properties;
-				if (allMyThrusters.TryGetValue(removed.FatBlock, out properties))
+				if (allMyThrusters.TryGetValue(asThrust, out properties))
 				{
-					removed.FatBlock.IsWorkingChanged -= block_IsWorkingChanged;
-					enableDisableThruster(properties, false);
-					allMyThrusters.Remove(removed.FatBlock);
+					allMyThrusters.Remove(asThrust);
+					thrustersInDirection[properties.forceDirect].Remove(properties);
 					log("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + ", " + properties, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
 					return;
 				}
@@ -180,41 +150,32 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception e)
 			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockRemoved()", "Exception: " + e); }
-			//init();
 		}
 
-		// 
 		/// <summary>
-		/// <para>if block is in allMyThrusters, calls enableDisableThruster(properties, changed.IsWorking)</para>
-		/// <para>ignores blocks disabled by Autopilot</para>
+		/// get the damping force in a direction
 		/// </summary>
-		/// <remarks>
-		/// <para>Only registered for thrusters.</para>
-		/// <para>if a block is detached, grid_OnBlockRemoved() is called first</para>
-		/// </remarks>
-		/// <param name="changed">block whose state has changed</param>
-		private void block_IsWorkingChanged(IMyCubeBlock changed)
+		private float GetDampingInDirection(Base6Directions.Direction direction)
 		{
-			try
-			{
-				ThrusterProperties properties;
-				if (allMyThrusters.TryGetValue(changed, out properties))
-				{
-					if (!changed.IsWorking && thrustersDisabledByAutopilot.Contains(changed))
-					{
-						myLogger.debugLog("thruster disabled by Autopilot: " + changed.DisplayNameText, "block_IsWorkingChanged()", Logger.severity.TRACE);
-						return;
-					}
-					log("changed block = " + changed.DefinitionDisplayNameText + ", IsWorking = " + changed.IsWorking + ", " + properties, "block_IsWorkingChanged()", Logger.severity.DEBUG);
-					enableDisableThruster(properties, changed.IsWorking);
-					return;
-				}
-				myLogger.debugLog("could not get properties, assuming block has been detached", "block_IsWorkingChanged()", Logger.severity.INFO);
-				return;
-			}
-			catch (Exception e)
-			{ myLogger.log(Logger.severity.ERROR, "block_IsWorkingChanged()", "Exception: " + e); }
-			//init();
+			float dampingForce = 0;
+			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
+				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+					dampingForce += thruster.dampingForce * thruster.thruster.ThrustMultiplier;
+
+			return dampingForce;
+		}
+
+		/// <summary>
+		/// get the force in a direction
+		/// </summary>
+		private float GetForceInDirection(Base6Directions.Direction direction)
+		{
+			float force = 0;
+			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
+				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+					force += thruster.force * thruster.thruster.ThrustMultiplier;
+
+			return force;
 		}
 
 		#region Public Methods
@@ -227,28 +188,34 @@ namespace Rynchodon.Autopilot
 		/// <returns>scaled vector</returns>
 		public RelativeVector3F scaleByForce(RelativeVector3F displacement, IMyCubeBlock remote)
 		{
+			allMyThrusters.throwIfNull_variable("allMyThrusters");
+
 			Vector3 displacementGrid = displacement.getLocal();
 
-			// get force-determinant direction
-			// for each thrusting direction, compare needed thrust to max available
+			Dictionary<Base6Directions.Direction, float> directionalForces = new Dictionary<Base6Directions.Direction, float>();
+
+			// find determinant thrust
 			float minForce = float.MaxValue;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
+			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 			{
 				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
 				if (movementInDirection > 0)
 				{
-					minForce = Math.Min(minForce, thrustProfile[direction]);
+					float inDirection = GetForceInDirection(direction);
+					directionalForces.Add(direction, inDirection);
+					minForce = Math.Min(minForce, inDirection);
 				}
 			}
 
 			// scale thrust to min
 			Vector3 scaledMovement = Vector3.Zero;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
+			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 			{
 				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
 				if (movementInDirection > 0)
 				{
-					float scaleFactor = minForce / thrustProfile[direction];
+					float forceInDirection = directionalForces[direction];
+					float scaleFactor = minForce / forceInDirection;
 					scaledMovement += movementInDirection * scaleFactor * Base6Directions.GetVector(direction);
 				}
 			}
@@ -267,6 +234,8 @@ namespace Rynchodon.Autopilot
 		/// <returns>A distance larger than the distance required to stop</returns>
 		public float getStoppingDistance()
 		{
+			allMyThrusters.throwIfNull_variable("allMyThrusters");
+
 			RelativeVector3F velocity = RelativeVector3F.createFromWorld(myGrid.Physics.LinearVelocity, myGrid);
 
 			float maxStopDistance = 0;
@@ -275,7 +244,7 @@ namespace Rynchodon.Autopilot
 				float velocityInDirection = velocity.getLocal().Dot(Base6Directions.GetVector(direction));
 				if (velocityInDirection < -0.1) // direction is opposite of velocityGrid
 				{
-					float acceleration = Math.Min(Math.Abs(thrustProfile[direction] / myGrid.Physics.Mass), Math.Abs(velocityInDirection / 2));
+					float acceleration = Math.Min(Math.Abs(GetDampingInDirection(direction) / myGrid.Physics.Mass), Math.Abs(velocityInDirection / 2));
 					float stoppingDistance = velocityInDirection * velocityInDirection / acceleration;
 					maxStopDistance = Math.Max(stoppingDistance, maxStopDistance);
 				}
@@ -290,11 +259,14 @@ namespace Rynchodon.Autopilot
 		/// <param name="direction">direction of force on ship</param>
 		public void disableThrusters(Base6Directions.Direction direction)
 		{
-			foreach (KeyValuePair<IMyCubeBlock, ThrusterProperties> singleThrustProfile in allMyThrusters)
+			if (allMyThrusters == null)
+				return;
+
+			foreach (KeyValuePair<IMyThrust, ThrusterProperties> singleThrustProfile in allMyThrusters)
 				if (singleThrustProfile.Value.forceDirect == direction)
 				{
 					thrustersDisabledByAutopilot.Add(singleThrustProfile.Key);
-					(singleThrustProfile.Key as IMyFunctionalBlock).RequestEnable(false);
+					singleThrustProfile.Key.RequestEnable(false);
 				}
 		}
 
@@ -303,6 +275,9 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public void enableAllThrusters()
 		{
+			if (allMyThrusters == null)
+				return;
+
 			foreach (IMyCubeBlock thruster in allMyThrusters.Keys)
 			{
 				Ingame.IMyThrust ingame = thruster as Ingame.IMyThrust;
@@ -312,7 +287,7 @@ namespace Rynchodon.Autopilot
 					ingame.RequestEnable(true);
 			}
 
-			thrustersDisabledByAutopilot = new HashSet<IMyCubeBlock>();
+			thrustersDisabledByAutopilot = new HashSet<IMyThrust>();
 		}
 
 		/// <summary>
