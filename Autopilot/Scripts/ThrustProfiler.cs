@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot
 				thruster.throwIfNull_argument("thruster");
 
 				this.thruster = thruster;
-				this.force = (MyDefinitionManager.Static.GetCubeBlockDefinition((thruster as IMyCubeBlock).GetSlimObjectBuilder_Safe()) as MyThrustDefinition).ForceMagnitude;
+				this.force = (MyDefinitionManager.Static.GetCubeBlockDefinition((thruster as IMyCubeBlock).getSlimObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
 				this.dampingForce = force * 10;
 				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
 			}
@@ -96,7 +96,7 @@ namespace Rynchodon.Autopilot
 		private void newThruster(IMySlimBlock thruster)
 		{
 			float dampingForce = 10 * (MyDefinitionManager.Static.GetCubeBlockDefinition(thruster.GetObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
-			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust); // new ThrusterProperties(dampingForce, Base6Directions.GetFlippedDirection(thruster.FatBlock.Orientation.Forward));
+			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust);
 			allMyThrusters.Add(thruster.FatBlock as IMyThrust, properties);
 			thrustersInDirection[properties.forceDirect].Add(properties);
 			return;
