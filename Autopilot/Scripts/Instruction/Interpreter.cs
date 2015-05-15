@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private List<string> instructionQueueString;
 
 		public string getCurrentInstructionString()
-		{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
+		{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count - 1]; }
 
 		/// <summary>
 		/// If errors occured while parsing instructions, will contain all their indecies.

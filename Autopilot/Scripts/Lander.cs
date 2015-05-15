@@ -235,10 +235,11 @@ namespace Rynchodon.Autopilot
 
 		private bool hasPilot()
 		{
-			ReadOnlyList<Ingame.IMyTerminalBlock> allCockpits = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof( MyObjectBuilder_Cockpit));
+			ReadOnlyList<Ingame.IMyTerminalBlock> allCockpits = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Cockpit));
 
-			//List<Sandbox.ModAPI.IMySlimBlock> allCockpits = new List<Sandbox.ModAPI.IMySlimBlock>();
-			//myGrid.GetBlocks(allCockpits, block => block.FatBlock != null && block.FatBlock is Ingame.IMyCockpit);
+			if (allCockpits == null)
+				return false;
+
 			foreach (Ingame.IMyTerminalBlock cockpit in allCockpits)
 			{
 				MyObjectBuilder_Character pilot = ((cockpit as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_Cockpit).Pilot;

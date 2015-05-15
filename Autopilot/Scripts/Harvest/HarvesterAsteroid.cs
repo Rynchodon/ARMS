@@ -136,7 +136,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// Prepare for harvesting
 		/// </summary>
 		/// <remarks>
-		/// <para>If drills are full, change stage to Finished.</para>
+		/// <para>If drills are full, change stage to MoveAway.</para>
 		/// <para>Get closest asteroid, pick a random point.</para>
 		/// <para>Set CNS settings</para>
 		/// <para>Enables Drills.</para>
@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot.Harvest
 			if (DrillFullness(GetDrills()) > FullAmount_Return)
 			{
 				myLogger.debugLog("Drills are full: " + DrillFullness(GetDrills()) + " > " + FullAmount_Return, "Ready()");
-				SetNextStage(Finished, false);
+				SetNextStage(StartMoveAway, false);
 				return;
 			}
 
@@ -176,7 +176,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void ApproachAsteroid()
 		{
 			LogEntered("ApproachAsteroid()");
-			bool inside = IsInsideAsteroid(true);
+			bool inside = IsInsideAsteroid();
 			if (inside || myNav.MM.distToWayDest < 10)
 			{
 				if (inside)
@@ -233,7 +233,7 @@ namespace Rynchodon.Autopilot.Harvest
 				return;
 			}
 
-			if (IsInsideAsteroid(true))
+			if (IsInsideAsteroid())
 			{
 				myLogger.debugLog("now inside asteroid", "StartHarvest()");
 				SetNextStage(Harvest, true);
@@ -249,7 +249,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <para>Fly towards destination.</para>
 		/// <para>If ship becomes full goto backout</para>
 		/// <para>If ship gets stuck goto backout</para>
-		/// <para>If ship flies all the way through goto finished</para>
+		/// <para>If ship flies all the way through goto Ready</para>
 		/// </remarks>
 		private void Harvest()
 		{
@@ -264,7 +264,7 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartBackout, false);
 				return;
 			}
-			if (!IsInsideAsteroid(false))
+			if (!IsInsideAsteroid())
 			{
 				//myLogger.debugLog("harvester reached far side", "Harvest()");
 				myNav.fullStop("harvester reached far side");
@@ -314,7 +314,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <remarks>
 		/// <para>disable drills, fly drills-backwards out of asteroid aabb/volume</para>
 		///	<para>if ship gets stuck goto tunnel-through</para>
-		///	<para>if backed-out goto finished</para>
+		///	<para>if backed-out goto Ready</para>
 		/// </remarks>
 		private void Backout()
 		{
@@ -325,7 +325,7 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
-			if (!IsInsideAsteroid(false))// || myNav.MM.distToWayDest < 10)
+			if (!IsInsideAsteroid())// || myNav.MM.distToWayDest < 10)
 			{
 				myLogger.debugLog("harvester backed out successfully", "Backout()");
 				myNav.fullStop("backed away from asteroid");
@@ -380,7 +380,7 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
-			if (!IsInsideAsteroid(false))
+			if (!IsInsideAsteroid())
 			{
 				myLogger.debugLog("tunneled out the other side", "TunnelThrough()");
 				SetNextStage(Ready, false);
@@ -390,14 +390,53 @@ namespace Rynchodon.Autopilot.Harvest
 			myNav.collisionCheckMoveAndRotate();
 		}
 
+		private void StartMoveAway()
+		{
+			LogEntered("StartMoveAway()");
+
+			CNS_RestorePrevious();
+
+			// set dest to a point away from centre
+			Vector3D navDrillPos = NavigationDrill.GetPosition();
+			Vector3D directionAway = Vector3D.Normalize(navDrillPos - GetClosestAsteroid().WorldVolume.Center);
+			Vector3D pointAway = navDrillPos + directionAway * 128;
+
+			CNS.setDestination(pointAway);
+			myLogger.debugLog("navDrillPos = "+navDrillPos+", directionAway = "+directionAway+", pointAway = "+pointAway, "StartMoveAway()");
+
+			CNS.ignoreAsteroids = true;
+			SetNextStage(MoveAway, false);
+		}
+
 		/// <summary>
-		/// Either reset for another harvest or stop harvesting.
+		/// Move out of asteroid's Bounding Sphere
 		/// </summary>
-		/// <remarks>
-		/// <para>disable drills</para>
-		///	<para>enable asteroid avoidance</para>
-		/// <para>clear speed limits</para>
-		/// </remarks>
+		private void MoveAway()
+		{
+			LogEntered("MoveAway()");
+
+			// if outside bounds of asteroid, goto finished
+			if (!myCubeGrid.IntersectsAABBVolume(GetClosestAsteroid()))
+			{
+				myLogger.debugLog("moved away from asteroid", "MoveAway()");
+				SetNextStage(Finished, false);
+				return;
+			}
+
+			// if reached point, goto StartMoveAway
+			if (myNav.MM.distToWayDest < 10)
+			{
+				myLogger.debugLog("reached wayDest", "MoveAway()");
+				SetNextStage(StartMoveAway, false);
+				return;
+			}
+
+			myNav.collisionCheckMoveAndRotate();
+		}
+
+		/// <summary>
+		/// Quit harvesting.
+		/// </summary>
 		private void Finished()
 		{
 			LogEntered("Finished()");
@@ -411,7 +450,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		//private DateTime LastInside = DateTime.MinValue;
 
-		private bool IsInsideAsteroid(bool approaching)
+		private bool IsInsideAsteroid()
 		{
 			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
 

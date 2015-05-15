@@ -1029,7 +1029,7 @@ namespace Rynchodon.Autopilot
 			newName.Append(displayName);
 
 			(currentRemoteControl_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
-			log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
+			//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 		}
 
 		private ReportableState GetState()
