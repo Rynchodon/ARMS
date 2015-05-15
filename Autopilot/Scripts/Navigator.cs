@@ -209,6 +209,18 @@ namespace Rynchodon.Autopilot
 		{
 			updateCount++;
 			reportState();
+			if (needToInit)
+				init();
+			if (CNS.lockOnTarget != NavSettings.TARGET.OFF)
+				myTargeter.tryLockOn();
+			if (CNS.waitUntilNoCheck.CompareTo(DateTime.UtcNow) > 0)
+				return;
+			if (CNS.waitUntil.CompareTo(DateTime.UtcNow) > 0 || CNS.EXIT)
+			{
+				if (!remoteControlIsReady(currentRCblock)) // if something changes, stop waiting!
+					reset("wait interrupted");
+				return;
+			}
 			if (gridCanNavigate())
 			{
 				// when regaining the ability to navigate, reset
@@ -221,18 +233,6 @@ namespace Rynchodon.Autopilot
 			else
 			{
 				pass_gridCanNavigate = false;
-				return;
-			}
-			if (needToInit)
-				init();
-			if (CNS.lockOnTarget != NavSettings.TARGET.OFF)
-				myTargeter.tryLockOn();
-			if (CNS.waitUntilNoCheck.CompareTo(DateTime.UtcNow) > 0)
-				return;
-			if (CNS.waitUntil.CompareTo(DateTime.UtcNow) > 0 || CNS.EXIT)
-			{
-				if (!remoteControlIsReady(currentRCblock)) // if something changes, stop waiting!
-					reset("wait interrupted");
 				return;
 			}
 
