@@ -13,7 +13,7 @@ using VRageMath;
 namespace Rynchodon
 {
 	// TODO: If MyAPIGateway.Entities.GetEntityById(long entityId) works for blocks, use it as a replacement for tracking/searching attached parts of grids.
-	// TODO: Rework so we can get the largest attached grid (public), and use the largest attached grid for isGridAttached()
+	// TODO: want to iterate over attached grids (or blocks rather)
 	public class AttachedGrids
 	{
 		private static Dictionary<IMyCubeGrid, AttachedGrids> registry = new Dictionary<IMyCubeGrid, AttachedGrids>();
@@ -23,8 +23,8 @@ namespace Rynchodon
 		private HashSet<IMySlimBlock> allPistonTops = new HashSet<IMySlimBlock>();
 		private HashSet<IMySlimBlock> allMotorBases = new HashSet<IMySlimBlock>(); // for objectbuilder.RotorEntityId
 		private HashSet<IMySlimBlock> allMotorRotors = new HashSet<IMySlimBlock>();
-		private Dictionary<IMySlimBlock, wasConnected> allConnectors = new Dictionary<IMySlimBlock, wasConnected>(); // for objectbuilder.ConnectedEntityId
-		private HashSet<IMySlimBlock> allLandingGears = new HashSet<IMySlimBlock>(); // horribly complicated
+		private Dictionary<IMySlimBlock, wasConnected> allConnectors = new Dictionary<IMySlimBlock, wasConnected>(); // for objectbuilder.ConnectedEntityId TODO: Use OtherConnector instead of object builder
+		private HashSet<IMySlimBlock> allLandingGears = new HashSet<IMySlimBlock>(); // TODO: use GetAttachedEntity() to make this work. This needs to be separate from everything else since there should be no terminal access.
 
 		private class wasConnected { public bool connected = false; }
 

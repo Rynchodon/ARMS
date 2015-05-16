@@ -4,12 +4,12 @@ Suggest a new feature here.
 
 [b]In Progress[/b]
 Autopilot block
-jump drive
+aim & fire weapons
 
 [b]Future Features[/b]
-aim & fire weapons
+jump drive
 save (resume commands when game is loaded)
-mine asteroid / grind grid
+grind grid
 repair grid
 check for grids connected via landing gear
 support for decoy blocks (confuse radar)
@@ -21,4 +21,5 @@ separate thread
 orbiting
 control via programmable block
 TextPanel status reports
-harvest by ore type
+harvest by ore type & ignore mined-out asteroids
+G.P.S. for detected grids
