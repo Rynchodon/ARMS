@@ -4,6 +4,7 @@ major:
 
 minor:
 harvester improvements
+more reported states
 support for thruster modules
 Navigator will not be reset by player control if waiting / off
-various bug fixes
+various bug fixes (mostly for ships getting stuck)

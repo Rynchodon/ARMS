@@ -13,6 +13,7 @@ namespace Rynchodon.Autopilot.Harvest
 	/// <summary>
 	/// Controls the movement of a ship for purposes of harvesting from an asteroid.
 	/// </summary>
+	/// It is critical that there is always a destination until Harvester is finished.
 	internal class HarvesterAsteroid
 	{
 		private static bool CreativeMode = MyAPIGateway.Session.CreativeMode;
@@ -394,18 +395,33 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			LogEntered("StartMoveAway()");
 
-			CNS_RestorePrevious();
-
 			// set dest to a point away from centre
 			Vector3D navDrillPos = NavigationDrill.GetPosition();
 			Vector3D directionAway = Vector3D.Normalize(navDrillPos - GetClosestAsteroid().WorldVolume.Center);
 			Vector3D pointAway = navDrillPos + directionAway * 128;
 
+			CNS_SetHarvest(); // might be inside asteroid
 			CNS.setDestination(pointAway);
+			CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_Any;
 			myLogger.debugLog("navDrillPos = "+navDrillPos+", directionAway = "+directionAway+", pointAway = "+pointAway, "StartMoveAway()");
 
-			CNS.ignoreAsteroids = true;
-			SetNextStage(MoveAway, false);
+			SetNextStage(RotateToMoveAway, false);
+		}
+
+		/// <summary>
+		/// Rotate to face drill towards waypoint
+		/// </summary>
+		private void RotateToMoveAway()
+		{
+			LogEntered("RotateToMoveAway()");
+			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
+			{
+				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
+
+				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
+				return;
+			}
+			myNav.calcAndRotate();
 		}
 
 		/// <summary>
@@ -416,9 +432,11 @@ namespace Rynchodon.Autopilot.Harvest
 			LogEntered("MoveAway()");
 
 			// if outside bounds of asteroid, goto finished
-			if (!myCubeGrid.IntersectsAABBVolume(GetClosestAsteroid()))
+			float distance;
+			IMyVoxelMap closest = GetClosestAsteroid(out distance);
+			if (distance > 10)
 			{
-				myLogger.debugLog("moved away from asteroid", "MoveAway()");
+				myLogger.debugLog("moved away from asteroid: " + closest.getBestName(), "MoveAway()");
 				SetNextStage(Finished, false);
 				return;
 			}
@@ -448,8 +466,6 @@ namespace Rynchodon.Autopilot.Harvest
 
 		#endregion
 
-		//private DateTime LastInside = DateTime.MinValue;
-
 		private bool IsInsideAsteroid()
 		{
 			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
@@ -460,7 +476,6 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				if (asteroid.GetIntersectionWithSphere(ref volume))
 				{
-					//if (asteroid.DoOverlapSphereTest(volume.Radius + 10, volume.Center))
 					myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
 					return true;
 				}
@@ -469,18 +484,6 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			return false;
-
-			//if (approaching)
-			//	return allAsteroids.Count > 0;
-
-			//if (allAsteroids.Count > 0)
-			//{
-			//	LastInside = DateTime.UtcNow;
-			//	return true;
-			//}
-
-			//myLogger.debugLog("comparing now(" + DateTime.UtcNow + ") to LastInside(" + LastInside + ")", "IsInsideAsteroid()");
-			//return DateTime.UtcNow > LastInside + new TimeSpan(0, 0, 10);
 		}
 
 		private ReadOnlyList<Ingame.IMyTerminalBlock> GetDrills()
@@ -516,17 +519,24 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private IMyVoxelMap GetClosestAsteroid()
 		{
+			float distance;
+			return GetClosestAsteroid(out distance);
+		}
+
+		private IMyVoxelMap GetClosestAsteroid(out float distance)
+		{
 			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe();
 			SortedDictionary<float, IMyVoxelMap> sortedAsteroids = new SortedDictionary<float, IMyVoxelMap>();
 			foreach (IMyVoxelMap asteroid in allAsteroids)
 			{
-				float distance = (float)myCubeGrid.WorldVolume.Distance(asteroid.WorldVolume);
-				while (sortedAsteroids.ContainsKey(distance))
-					distance.IncrementSignificand();
-				sortedAsteroids.Add(distance, asteroid);
+				float distanceCurrent = (float)myCubeGrid.WorldAABB.Distance(asteroid.WorldAABB);
+				while (sortedAsteroids.ContainsKey(distanceCurrent))
+					distanceCurrent.IncrementSignificand();
+				sortedAsteroids.Add(distanceCurrent, asteroid);
 			}
 			var enumerator = sortedAsteroids.GetEnumerator();
 			enumerator.MoveNext();
+			distance = enumerator.Current.Key;
 			return enumerator.Current.Value;
 		}
 
@@ -625,12 +635,6 @@ namespace Rynchodon.Autopilot.Harvest
 
 			if (enable && CNS.moveState == NavSettings.Moving.STOP_MOVE)
 				enable = false;
-				//else
-				//{
-
-				//}
-				//if (enable)
-				//	enable = CNS.moveState != NavSettings.Moving.STOP_MOVE && (myNav.currentMove != Vector3.Zero || myNav.MM.movementSpeed > 0.1);
 
 			if (enable == DrillState)
 				return;

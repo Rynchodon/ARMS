@@ -60,10 +60,10 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </remarks>
 		public MyQueue<Action> instructionQueue;
 
-		private List<string> instructionQueueString;
+		//private List<string> instructionQueueString;
 
-		public string getCurrentInstructionString()
-		{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count - 1]; }
+		//public string getCurrentInstructionString()
+		//{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
 
 		/// <summary>
 		/// If errors occured while parsing instructions, will contain all their indecies.
@@ -91,7 +91,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionErrorIndex = null;
 			currentInstruction = 0;
 			instructionQueue = new MyQueue<Action>(8);
-			instructionQueueString = new List<string>();
+			//instructionQueueString = new List<string>();
 
 			myLogger.debugLog("block: " + block.DisplayNameText + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
@@ -164,18 +164,18 @@ namespace Rynchodon.Autopilot.Instruction
 			if (getAction_word(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
-				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			if (getAction_multiple(instruction))
 			{
-				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			if (getAction_single(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
-				instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			return false;

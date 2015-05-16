@@ -159,7 +159,7 @@ namespace Rynchodon.Autopilot
 		{
 			float dampingForce = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+				if (!thruster.thruster.Closed && (thruster.thruster.IsWorking || thrustersDisabledByAutopilot.Contains(thruster.thruster)))
 					dampingForce += thruster.dampingForce * thruster.thruster.ThrustMultiplier;
 
 			return dampingForce;
@@ -172,7 +172,7 @@ namespace Rynchodon.Autopilot
 		{
 			float force = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+				if (!thruster.thruster.Closed && (thruster.thruster.IsWorking || thrustersDisabledByAutopilot.Contains(thruster.thruster)))
 					force += thruster.force * thruster.thruster.ThrustMultiplier;
 
 			return force;

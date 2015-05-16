@@ -244,7 +244,7 @@ namespace Rynchodon.Autopilot
 				{
 					while (myInterpreter.hasInstructions())
 					{
-						myLogger.debugLog("invoking instruction: " + myInterpreter.getCurrentInstructionString(), "update()");
+						//myLogger.debugLog("invoking instruction: " + myInterpreter.getCurrentInstructionString(), "update()");
 						Action instruction = myInterpreter.instructionQueue.Dequeue();
 						try { instruction.Invoke(); }
 						catch (Exception ex)
@@ -609,7 +609,7 @@ namespace Rynchodon.Autopilot
 					{
 						double newDistToWayDest = MM.distToWayDest;
 						//myLogger.debugLog("newDistToWayDest = " + newDistToWayDest + ", prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
-						if (newDistToWayDest > prevDistToWayDest)
+						if (newDistToWayDest > prevDistToWayDest + 1)
 						{
 							myLogger.debugLog("Moving away from destination, newDistToWayDest = " + newDistToWayDest + " > prevDistToWayDest = " + prevDistToWayDest, "calcMoveAndRotate()");
 							fullStop("moving away from destination");
