@@ -62,7 +62,7 @@
         <Component Subtype="Construction" Count="1" />
         <Component Subtype="Motor" Count="1" />
         <Component Subtype="Computer" Count="10" />
-        <Component Subtype="InteriorPlate" Count="1" />
+        <Component Subtype="InteriorPlate" Count="15" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <MountPoints>
