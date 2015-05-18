@@ -1161,7 +1161,7 @@ namespace Rynchodon.Autopilot
 
 			var definition = block.BlockDefinition;
 
-			if (definition.TypeId == type_remoteControl)
+			if (definition.TypeId == type_remoteControl)// && Settings.boolSettings[Settings.BoolSetName.bUseRemoteControl])
 				return true;
 
 			if (definition.TypeId == type_cockpit && definition.SubtypeId.Contains(subtype_autopilotBlock))

@@ -2,9 +2,7 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
 using System.Text;
-
 using Sandbox.Common;
 using Sandbox.ModAPI;
 
@@ -13,7 +11,7 @@ namespace Rynchodon
 	public static class Settings
 	{
 		#region settings
-		public enum BoolSetName : byte { /*bAllowJumpCreative, bAllowJumpSurvival,*/ bAllowAutopilot, bAllowRadar, bAllowTurretControl }
+		public enum BoolSetName : byte { /*bAllowJumpCreative, bAllowJumpSurvival,*/ bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl }
 		public enum IntSetName : byte { }
 		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
 		public enum DoubleSetName : byte { }
@@ -60,6 +58,7 @@ namespace Rynchodon
 			boolSettings.Add(BoolSetName.bAllowAutopilot, true);
 			boolSettings.Add(BoolSetName.bAllowRadar, true);
 			boolSettings.Add(BoolSetName.bAllowTurretControl, true);
+			boolSettings.Add(BoolSetName.bUseRemoteControl, false);
 
 			floatSettings.Add(FloatSetName.fDefaultSpeed, 100);
 			floatSettings.Add(FloatSetName.fMaxSpeed, float.MaxValue);
