@@ -954,6 +954,8 @@ namespace Rynchodon.Autopilot
 
 		internal bool GET_OUT_OF_SEAT = false;
 
+		private Color currentAPcolour = Color.Pink;
+
 		internal void reportState(ReportableState newState = ReportableState.Off, bool forced = false)
 		{
 			if (currentAutopilotBlock_Value == null)
@@ -971,6 +973,14 @@ namespace Rynchodon.Autopilot
 
 			if (newState == ReportableState.None)
 				return;
+
+			Color reportColour = ReportableColour[newState];
+			if (reportColour != currentAPcolour)
+			{
+				currentAPcolour = reportColour;
+				var position = (currentAutopilotBlock_Value as IMyCubeBlock).Position;
+				myGrid.ColorBlocks(position, position, reportColour.ColorToHSV());
+			}
 
 			//// did state actually change?
 			//if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
@@ -1010,8 +1020,13 @@ namespace Rynchodon.Autopilot
 			newName.Append('>');
 			newName.Append(displayName);
 
-			(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
-			//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
+			string newNameString = newName.ToString();
+
+			if (newNameString != displayName)
+			{
+				(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newNameString);
+				//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
+			}
 		}
 
 		private ReportableState GetState()
@@ -1079,6 +1094,52 @@ namespace Rynchodon.Autopilot
 				return ReportableState.Stop_Roll;
 
 			return ReportableState.None;
+		}
+
+		private static Dictionary<ReportableState, Color> value_ReportableColour;
+		private static Dictionary<ReportableState, Color> ReportableColour
+		{
+			get
+			{
+				if (value_ReportableColour == null)
+				{
+					value_ReportableColour = new Dictionary<ReportableState, Color>();
+
+					// pink is used for a state that is not intended to be reported
+					value_ReportableColour.Add(ReportableState.None, Color.Pink);
+					value_ReportableColour.Add(ReportableState.Off, Color.Black);
+					value_ReportableColour.Add(ReportableState.No_Dest, Color.Purple);
+					value_ReportableColour.Add(ReportableState.Waiting, Color.Yellow);
+
+					value_ReportableColour.Add(ReportableState.Path_OK, Color.Pink);
+					value_ReportableColour.Add(ReportableState.Pathfinding, Color.DarkGreen);
+					value_ReportableColour.Add(ReportableState.No_Path, Color.Purple);
+
+					value_ReportableColour.Add(ReportableState.Rotating, Color.Green);
+					value_ReportableColour.Add(ReportableState.Moving, Color.Green);
+					value_ReportableColour.Add(ReportableState.Hybrid, Color.Green);
+					value_ReportableColour.Add(ReportableState.Sidel, Color.Green);
+					value_ReportableColour.Add(ReportableState.Roll, Color.Green);
+
+					value_ReportableColour.Add(ReportableState.Stop_Move, Color.Green);
+					value_ReportableColour.Add(ReportableState.Stop_Rotate, Color.Green);
+					value_ReportableColour.Add(ReportableState.Stop_Roll, Color.Green);
+
+					value_ReportableColour.Add(ReportableState.H_Ready, Color.Cyan);
+					value_ReportableColour.Add(ReportableState.Harvest, Color.Cyan);
+					value_ReportableColour.Add(ReportableState.H_Stuck, Color.Cyan);
+					value_ReportableColour.Add(ReportableState.H_Back, Color.Cyan);
+					value_ReportableColour.Add(ReportableState.H_Tunnel, Color.Cyan);
+
+					value_ReportableColour.Add(ReportableState.Missile, Color.Red);
+					value_ReportableColour.Add(ReportableState.Engaging, Color.Orange);
+					value_ReportableColour.Add(ReportableState.Landed, Color.Yellow);
+					value_ReportableColour.Add(ReportableState.Player, Color.Blue);
+					value_ReportableColour.Add(ReportableState.Jump, Color.Blue);
+					value_ReportableColour.Add(ReportableState.GET_OUT_OF_SEAT, Color.Purple);
+				}
+				return value_ReportableColour;
+			}
 		}
 
 		#endregion
