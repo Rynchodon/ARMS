@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- Cube Blocks -->
+
+  <CubeBlocks>
+	<Definition xsi:type="MyObjectBuilder_RemoteControlDefinition">
+      <Id>
+        <TypeId>RemoteControl</TypeId>
+        <SubtypeId>Autopilot-Block_Large</SubtypeId>
+      </Id>
+      <DisplayName>Autopilot Block</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\Autopilot-Block.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Large\Autopilot-Block_Large.mwm</Model>
+      <Components>
+        <Component Subtype="InteriorPlate" Count="5" />
+        <Component Subtype="Construction" Count="100" />
+        <Component Subtype="Motor" Count="1" />
+        <Component Subtype="RadioCommunication" Count="5" />
+        <Component Subtype="Detector" Count="30" />
+        <Component Subtype="Computer" Count="150" />
+        <Component Subtype="InteriorPlate" Count="50" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+		<BuildProgressModels>
+			<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\Autopilot-Block_Large_Constr1.mwm" />
+			<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Large\Autopilot-Block_Large_Constr2.mwm" />
+			<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\Autopilot-Block_Large_Constr3.mwm" />
+		</BuildProgressModels>
+      <MountPoints>
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
+      </MountPoints>
+      <BlockPairName>Autopilot-Block</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>50</BuildTimeSeconds>
+      <MirroringY>Z</MirroringY>
+      <RequiredPowerInput>0.0003</RequiredPowerInput>
+      <EnableFirstPerson>false</EnableFirstPerson>
+      <EnableShipControl>true</EnableShipControl>
+      <Public>true</Public>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+    <Definition xsi:type="MyObjectBuilder_RemoteControlDefinition">
+      <Id>
+        <TypeId>RemoteControl</TypeId>
+        <SubtypeId>Autopilot-Block_Small</SubtypeId>
+      </Id>
+      <DisplayName>Autopilot Block</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\Autopilot-Block.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Small\Autopilot-Block_Small.mwm</Model>
+      <Components>
+        <Component Subtype="InteriorPlate" Count="10" />
+        <Component Subtype="Construction" Count="5" />
+		<Component Subtype="RadioCommunication" Count="2" />
+        <Component Subtype="Motor" Count="1" />
+		<Component Subtype="Detector" Count="15" />
+        <Component Subtype="Computer" Count="10" />
+        <Component Subtype="InteriorPlate" Count="15" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+      <MountPoints>
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
+      </MountPoints>
+      <BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Small\Autopilot-Block_Small_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Small\Autopilot-Block_Small_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\Autopilot-Block_Small_Constr3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>Autopilot-Block</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <RequiredPowerInput>0.0003</RequiredPowerInput>
+      <EnableFirstPerson>false</EnableFirstPerson>
+      <EnableShipControl>true</EnableShipControl>
+      <Public>true</Public>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+  </CubeBlocks>
+
+  <!-- Category Classes -->
+
+  <CategoryClasses>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
+      <Name>LargeBlocks</Name>
+      <ItemIds>
+		<string>RemoteControl/LargeBlockAutopilot</string>
+      </ItemIds>
+    </Category>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
+      <Name>SmallBlocks</Name>
+      <ItemIds>
+		<string>RemoteControl/SmallBlockAutopilot</string>
+      </ItemIds>
+    </Category>
+  </CategoryClasses>
+
+  <!-- Assembler Blueprints -->
+
+  <BlueprintClassEntries>
+	<Entry Class="LargeBlocks" BlueprintSubtypeId="RemoteControl/Autopilot-Block_Large" />
+	<Entry Class="SmallBlocks" BlueprintSubtypeId="RemoteControl/Autopilot-Block_Small" />
+  </BlueprintClassEntries>
+
+</Definitions>

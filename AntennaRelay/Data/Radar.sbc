@@ -108,6 +108,7 @@
   </CategoryClasses>
 
   <!-- LCD Textures -->
+
   <LCDTextures>
 	<LCDTextureDefinition>
       <Id>
@@ -117,4 +118,12 @@
      <TexturePath>Textures\Models\radar.dds</TexturePath>
     </LCDTextureDefinition>
   </LCDTextures>
+
+  <!-- Assembler Blueprints -->
+
+  <BlueprintClassEntries>
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/LargeBlockRadarRynAR" />
+	<Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/SmallBlockRadarRynAR" />
+  </BlueprintClassEntries>
+
 </Definitions>
