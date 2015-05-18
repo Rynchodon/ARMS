@@ -3,8 +3,8 @@
 	<BlueprintClasses>
 	</BlueprintClasses>
 	<BlueprintClassEntries>
-		
-	<Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/LargeBlockRadarRynAR" />
-<Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/SmallBlockRadarRynAR" />
+		>
+	<Entry Class="LargeBlocks" BlueprintSubtypeId="RemoteControl/Autopilot-Block_Large" />
+<Entry Class="SmallBlocks" BlueprintSubtypeId="RemoteControl/Autopilot-Block_Small" />
 	</BlueprintClassEntries>
 </Definitions>
