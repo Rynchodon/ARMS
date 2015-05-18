@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Autopilot-Block_Large</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Autopilot-Block.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="1" y="1" z="2" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Autopilot-Block_Large.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\Autopilot-Block_Large_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\Autopilot-Block_Large_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\Autopilot-Block_Large_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
+	</MountPoints>
+	<BlockPairName>Autopilot-Block</BlockPairName>
+</Definition>
