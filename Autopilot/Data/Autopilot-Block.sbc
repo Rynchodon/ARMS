@@ -20,9 +20,11 @@
         <Component Subtype="InteriorPlate" Count="5" />
         <Component Subtype="Construction" Count="100" />
         <Component Subtype="Motor" Count="1" />
-        <Component Subtype="Computer" Count="200" />
+        <Component Subtype="RadioCommunication" Count="5" />
+        <Component Subtype="Detector" Count="30" />
+        <Component Subtype="Computer" Count="150" />
         <Component Subtype="InteriorPlate" Count="50" />
-      </Components>
+         </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
 			<BuildProgressModels>
 				<Model BuildPercentUpperBound="0.33" File="Models\Autopilot-Block_Large_Constr1.mwm" />
@@ -59,8 +61,10 @@
       <Model>Models\Autopilot-Block_Small.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="10" />
-        <Component Subtype="Construction" Count="1" />
+        <Component Subtype="Construction" Count="5" />
+<Component Subtype="RadioCommunication" Count="2" />
         <Component Subtype="Motor" Count="1" />
+<Component Subtype="Detector" Count="15" />
         <Component Subtype="Computer" Count="10" />
         <Component Subtype="InteriorPlate" Count="15" />
       </Components>
