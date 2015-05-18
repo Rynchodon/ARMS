@@ -2,21 +2,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-
-using Sandbox.Common;
+using Rynchodon.Autopilot.Harvest;
+using Rynchodon.Autopilot.Instruction;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
-using Ingame = Sandbox.ModAPI.Ingame;
-
-using VRage.Library.Utils;
 using VRageMath;
-
-using Rynchodon.Autopilot.Instruction;
-using Rynchodon.AntennaRelay;
-using Rynchodon.Autopilot.Harvest;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot
 {
@@ -37,7 +30,7 @@ namespace Rynchodon.Autopilot
 
 		public Sandbox.ModAPI.IMyCubeGrid myGrid { get; private set; }
 
-		private List<Sandbox.ModAPI.IMySlimBlock> remoteControlBlocks;
+		private List<Sandbox.ModAPI.IMySlimBlock> autopilotBlocks;
 
 		/// <summary>
 		/// overrids fetching commands from display name when true
@@ -56,28 +49,28 @@ namespace Rynchodon.Autopilot
 		private Rotator myRotator;
 		internal HarvesterAsteroid myHarvester { get; private set; }
 
-		private IMyControllableEntity currentRemoteControl_Value;
+		private IMyControllableEntity currentAutopilotBlock_Value;
 		/// <summary>
 		/// Primary remote control value.
 		/// </summary>
-		public IMyControllableEntity currentRCcontrol
+		public IMyControllableEntity currentAPcontrollable
 		{
-			get { return currentRemoteControl_Value; }
+			get { return currentAutopilotBlock_Value; }
 			set
 			{
-				if (currentRemoteControl_Value == value)
+				if (currentAutopilotBlock_Value == value)
 					return;
 
-				if (currentRemoteControl_Value != null)
+				if (currentAutopilotBlock_Value != null)
 				{
 					// actions on old RC
 					fullStop("unsetting RC");
 					reportState(ReportableState.Off, true);
 				}
 
-				currentRemoteControl_Value = value;
+				currentAutopilotBlock_Value = value;
 				myLand = null;
-				if (currentRemoteControl_Value == null)
+				if (currentAutopilotBlock_Value == null)
 				{
 					myPathfinder = null;
 					CNS = new NavSettings(null);
@@ -86,7 +79,7 @@ namespace Rynchodon.Autopilot
 				{
 					myPathfinder = new Pathfinder.Pathfinder(myGrid);
 					CNS = new NavSettings(this);
-					myLogger.debugLog("have a new RC: " + currentRCblock.getNameOnly(), "set_currentRCcontrol()");
+					myLogger.debugLog("have a new RC: " + currentAPblock.getNameOnly(), "set_currentRCcontrol()");
 
 					// actions on new RC
 					fullStop("new RC");
@@ -100,16 +93,18 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// Secondary remote control value.
 		/// </summary>
-		public Sandbox.ModAPI.IMyCubeBlock currentRCblock
+		public Sandbox.ModAPI.IMyCubeBlock currentAPblock
 		{
-			get { return currentRemoteControl_Value as Sandbox.ModAPI.IMyCubeBlock; }
-			set { currentRCcontrol = value as IMyControllableEntity; }
+			get { return currentAutopilotBlock_Value as Sandbox.ModAPI.IMyCubeBlock; }
+			set { currentAPcontrollable = value as IMyControllableEntity; }
 		}
 		/// <summary>
 		/// Secondary remote control value.
 		/// </summary>
-		public IMyTerminalBlock currentRCterminal
-		{ get { return currentRemoteControl_Value as IMyTerminalBlock; } }
+		public IMyTerminalBlock currentAPterminal
+		{ get { return currentAutopilotBlock_Value as IMyTerminalBlock; } }
+		public Ingame.IMyShipController currentAPcontroller
+		{ get { return currentAutopilotBlock_Value as Ingame.IMyShipController; } }
 
 		/// <summary>
 		/// only use for position or distance, for rotation it is simpler to only use RC directions
@@ -121,7 +116,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (myHarvester.NavigationDrill != null)
 					return myHarvester.NavigationDrill;
-				return currentRCblock;
+				return currentAPblock;
 			}
 			else
 			{
@@ -143,8 +138,8 @@ namespace Rynchodon.Autopilot
 		private void init()
 		{
 			//	find remote control blocks
-			remoteControlBlocks = new List<Sandbox.ModAPI.IMySlimBlock>();
-			myGrid.GetBlocks(remoteControlBlocks, block => block.FatBlock != null && block.FatBlock.BlockDefinition.TypeId == remoteControlType);
+			autopilotBlocks = new List<Sandbox.ModAPI.IMySlimBlock>();
+			myGrid.GetBlocks(autopilotBlocks, block => IsAutopilotBlock(block.FatBlock));
 
 			// register for events
 			myGrid.OnBlockAdded += OnBlockAdded;
@@ -167,7 +162,7 @@ namespace Rynchodon.Autopilot
 				myGrid.OnBlockAdded -= OnBlockAdded;
 				myGrid.OnBlockRemoved -= OnBlockRemoved;
 			}
-			currentRCcontrol = null;
+			currentAPcontrollable = null;
 		}
 
 		private void OnClose()
@@ -179,21 +174,16 @@ namespace Rynchodon.Autopilot
 		private void OnClose(IMyEntity closing)
 		{ try { OnClose(); } catch { } }
 
-		private static MyObjectBuilderType remoteControlType = typeof(MyObjectBuilder_RemoteControl);
-
 		private void OnBlockAdded(Sandbox.ModAPI.IMySlimBlock addedBlock)
 		{
-			if (addedBlock.FatBlock != null && addedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
-				remoteControlBlocks.Add(addedBlock);
+			if (IsAutopilotBlock(addedBlock.FatBlock))
+				autopilotBlocks.Add(addedBlock);
 		}
 
 		private void OnBlockRemoved(Sandbox.ModAPI.IMySlimBlock removedBlock)
 		{
-			if (removedBlock.FatBlock != null)
-			{
-				if (removedBlock.FatBlock.BlockDefinition.TypeId == remoteControlType)
-					remoteControlBlocks.Remove(removedBlock);
-			}
+			if (IsAutopilotBlock(removedBlock.FatBlock))
+				autopilotBlocks.Remove(removedBlock);
 		}
 
 		private long updateCount = 0;
@@ -217,7 +207,7 @@ namespace Rynchodon.Autopilot
 				return;
 			if (CNS.waitUntil.CompareTo(DateTime.UtcNow) > 0 || CNS.EXIT)
 			{
-				if (!remoteControlIsReady(currentRCblock)) // if something changes, stop waiting!
+				if (!autopilotBlockIsReady(currentAPblock)) // if something changes, stop waiting!
 					reset("wait interrupted");
 				return;
 			}
@@ -240,7 +230,7 @@ namespace Rynchodon.Autopilot
 				navigate();
 			else // no waypoints
 			{
-				if (currentRCcontrol != null && myInterpreter.hasInstructions())
+				if (currentAPcontrollable != null && myInterpreter.hasInstructions())
 				{
 					while (myInterpreter.hasInstructions())
 					{
@@ -292,17 +282,17 @@ namespace Rynchodon.Autopilot
 				{
 					// find a remote control with NavSettings allInstructions
 					CNS.waitUntilNoCheck = DateTime.UtcNow.AddSeconds(1);
-					foreach (Sandbox.ModAPI.IMySlimBlock remoteControlBlock in remoteControlBlocks)
+					foreach (Sandbox.ModAPI.IMySlimBlock apBlock in autopilotBlocks)
 					{
-						Sandbox.ModAPI.IMyCubeBlock fatBlock = remoteControlBlock.FatBlock;
-						if (remoteControlIsReady(fatBlock))
+						Sandbox.ModAPI.IMyCubeBlock fatBlock = apBlock.FatBlock;
+						if (autopilotBlockIsReady(fatBlock))
 						{
 							if (AIOverride)
 							{
-								if (currentRCcontrol == null)
+								if (currentAPcontrollable == null)
 								{
 									myLogger.debugLog("chose a block for AIOverride", "update()");
-									currentRCcontrol = (fatBlock as IMyControllableEntity);
+									currentAPcontrollable = (fatBlock as IMyControllableEntity);
 								}
 							}
 							else
@@ -313,7 +303,7 @@ namespace Rynchodon.Autopilot
 									continue;
 
 								myLogger.debugLog("trying block: " + fatBlock.DisplayNameText, "update()");
-								currentRCcontrol = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
+								currentAPcontrollable = (fatBlock as IMyControllableEntity); // necessary to enqueue actions
 								if (myInterpreter == null)
 									myInterpreter = new Interpreter(this);
 								myInterpreter.enqueueAllActions(fatBlock);
@@ -324,7 +314,7 @@ namespace Rynchodon.Autopilot
 									return;
 								}
 								myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
-								currentRCcontrol = null;
+								currentAPcontrollable = null;
 								continue;
 							}
 						}
@@ -383,58 +373,50 @@ namespace Rynchodon.Autopilot
 			return true;
 		}
 
-		private bool remoteControlIsNotReady = false;
-
 		/// <summary>
 		/// checks the working flag, current player owns it, display name has not changed
 		/// </summary>
-		/// <param name="remoteControl">remote control to check</param>
+		/// <param name="autopilotBlock">remote control to check</param>
 		/// <returns>true iff the remote control is ready</returns>
-		public bool remoteControlIsReady(Sandbox.ModAPI.IMyCubeBlock remoteControl)
+		public bool autopilotBlockIsReady(Sandbox.ModAPI.IMyCubeBlock autopilotBlock)
 		{
-			if (remoteControlIsNotReady)
+			if (autopilotBlock == null)
 			{
-				reset("remote not ready");
-				remoteControlIsNotReady = false;
+				log("no remote control", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			if (remoteControl == null)
+			if (!autopilotBlock.IsWorking)
 			{
-				log("no remote control", "remoteControlIsReady()", Logger.severity.TRACE);
+				log("not working", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			if (!remoteControl.IsWorking)
+			if (autopilotBlock.CubeGrid.BigOwners.Count == 0) // no owner
 			{
-				log("not working", "remoteControlIsReady()", Logger.severity.TRACE);
+				log("no owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			if (remoteControl.CubeGrid.BigOwners.Count == 0) // no owner
+			if (autopilotBlock.OwnerId != autopilotBlock.CubeGrid.BigOwners[0]) // remote control is not owned by grid's owner
 			{
-				log("no owner", "remoteControlIsReady()", Logger.severity.TRACE);
+				log("remote has different owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
-			if (remoteControl.OwnerId != remoteControl.CubeGrid.BigOwners[0]) // remote control is not owned by grid's owner
+			if (!(autopilotBlock as Ingame.IMyShipController).ControlThrusters)
 			{
-				log("remote has different owner", "remoteControlIsReady()", Logger.severity.TRACE);
-				return false;
-			}
-			if (!(remoteControl as Ingame.IMyShipController).ControlThrusters)
-			{
-				//log("no thruster control", "remoteControlIsReady()", Logger.severity.TRACE);
+				//log("no thruster control", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
 
-			//myLogger.debugLog("remote is ready: " + remoteControl.DisplayNameText, "remoteControlIsReady()");
+			//myLogger.debugLog("remote is ready: " + autopilotBlock.DisplayNameText, "autopilotBlockIsReady()");
 			return true;
 		}
 
-		public bool remoteControlIsReady(IMyControllableEntity remoteControl)
-		{ return remoteControlIsReady(remoteControl as Sandbox.ModAPI.IMyCubeBlock); }
+		public bool autopilotBlockIsReady(IMyControllableEntity autopilotBlock)
+		{ return autopilotBlockIsReady(autopilotBlock as Sandbox.ModAPI.IMyCubeBlock); }
 
 		private void reset(string reason)
 		{
 			myLogger.debugLog("reset reason = " + reason, "reset()");
-			currentRCcontrol = null;
+			currentAPcontrollable = null;
 		}
 
 		private DateTime maxRotateTime;
@@ -444,9 +426,9 @@ namespace Rynchodon.Autopilot
 		{
 			myLogger.debugLog("entered navigate()", "navigate()");
 
-			if (currentRCblock == null)
+			if (currentAPblock == null)
 				return;
-			if (!remoteControlIsReady(currentRCblock))
+			if (!autopilotBlockIsReady(currentAPblock))
 			{
 				reportState(ReportableState.Off, true);
 				reset("remote control is not ready");
@@ -795,7 +777,7 @@ namespace Rynchodon.Autopilot
 				else // not sidel
 				{
 					Vector3 NavForward = getNavigationBlock().LocalMatrix.Forward;
-					Vector3 RemFromNF = Base6Directions.GetVector(currentRCblock.LocalMatrix.GetClosestDirection(ref NavForward));
+					Vector3 RemFromNF = Base6Directions.GetVector(currentAPblock.LocalMatrix.GetClosestDirection(ref NavForward));
 
 					moveOrder(RemFromNF); // move forward
 					log("forward = " + RemFromNF + ", moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
@@ -864,7 +846,7 @@ namespace Rynchodon.Autopilot
 			prevDistToWayDest = float.MaxValue;
 
 			EnableDampeners();
-			currentRCcontrol.MoveAndRotateStopped();
+			currentAPcontrollable.MoveAndRotateStopped();
 
 			CNS.moveState = NavSettings.Moving.STOP_MOVE;
 			CNS.rotateState = NavSettings.Rotating.STOP_ROTA;
@@ -893,7 +875,7 @@ namespace Rynchodon.Autopilot
 
 		internal void moveOrder(RelativeVector3F move, bool normalize = true)
 		{
-			moveOrder(move.getBlock(currentRCblock), normalize);
+			moveOrder(move.getBlock(currentAPblock), normalize);
 		}
 
 		internal void moveAndRotate()
@@ -901,18 +883,18 @@ namespace Rynchodon.Autopilot
 			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0)
 			{
 				log("MAR is actually stop", "moveAndRotate()");
-				currentRCcontrol.MoveAndRotateStopped();
+				currentAPcontrollable.MoveAndRotateStopped();
 			}
 			else
 			{
 				if (CNS.moveState != NavSettings.Moving.HYBRID)
 					log("doing MAR(" + currentMove + ", " + currentRotate + ", " + currentRoll + ")", "moveAndRotate()");
-				currentRCcontrol.MoveAndRotate(currentMove, currentRotate, currentRoll);
+				currentAPcontrollable.MoveAndRotate(currentMove, currentRotate, currentRoll);
 			}
 		}
 
 		public bool dampenersEnabled()
-		{ return ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
+		{ return ((currentAPcontrollable as Ingame.IMyShipController).DampenersOverride) && !currentThrust.disabledThrusters(); }
 
 		internal void DisableReverseThrust()
 		{
@@ -938,9 +920,9 @@ namespace Rynchodon.Autopilot
 
 			try
 			{
-				if ((currentRCcontrol as Ingame.IMyShipController).DampenersOverride != dampenersOn)
+				if ((currentAPcontrollable as Ingame.IMyShipController).DampenersOverride != dampenersOn)
 				{
-					currentRCcontrol.SwitchDamping(); // sometimes SwitchDamping() throws a NullReferenceException while grid is being destroyed
+					currentAPcontrollable.SwitchDamping(); // sometimes SwitchDamping() throws a NullReferenceException while grid is being destroyed
 					if (!dampenersOn)
 						log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
 					else
@@ -974,10 +956,10 @@ namespace Rynchodon.Autopilot
 
 		internal void reportState(ReportableState newState = ReportableState.Off, bool forced = false)
 		{
-			if (currentRemoteControl_Value == null)
+			if (currentAutopilotBlock_Value == null)
 				return;
 
-			string displayName = (currentRemoteControl_Value as Sandbox.ModAPI.IMyCubeBlock).DisplayNameText;
+			string displayName = (currentAutopilotBlock_Value as Sandbox.ModAPI.IMyCubeBlock).DisplayNameText;
 			if (displayName == null)
 			{
 				alwaysLog(Logger.severity.WARNING, "reportState()", "cannot report without display name");
@@ -1028,7 +1010,7 @@ namespace Rynchodon.Autopilot
 			newName.Append('>');
 			newName.Append(displayName);
 
-			(currentRemoteControl_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
+			(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newName);
 			//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 		}
 
@@ -1038,8 +1020,6 @@ namespace Rynchodon.Autopilot
 				return ReportableState.Off;
 			if (player_controlling)
 				return ReportableState.Player;
-			if (remoteControlIsNotReady)
-				return ReportableState.Off;
 
 			// landing
 			if (GET_OUT_OF_SEAT) // must override LANDED
@@ -1102,5 +1082,31 @@ namespace Rynchodon.Autopilot
 		}
 
 		#endregion
+
+		private static readonly MyObjectBuilderType type_cockpit = typeof(MyObjectBuilder_Cockpit);
+		private const string subtype_autopilotBlock = "Autopilot-Block";
+
+		private static readonly MyObjectBuilderType type_remoteControl = typeof(MyObjectBuilder_RemoteControl);
+
+		/// <summary>
+		/// Tests if a block can be used by Navigator as an Autopilot block
+		/// </summary>
+		/// <param name="block">block to test</param>
+		/// <returns>true iff block can be used as Autopilot block</returns>
+		public static bool IsAutopilotBlock(IMyCubeBlock block)
+		{
+			if (block == null || !(block is Ingame.IMyShipController))
+				return false;
+
+			var definition = block.BlockDefinition;
+
+			if (definition.TypeId == type_remoteControl)
+				return true;
+
+			if (definition.TypeId == type_cockpit && definition.SubtypeId.Contains(subtype_autopilotBlock))
+				return true;
+
+			return false;
+		}
 	}
 }

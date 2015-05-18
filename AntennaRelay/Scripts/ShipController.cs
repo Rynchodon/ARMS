@@ -3,40 +3,33 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Text;
-
-using Sandbox.Common;
-using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using VRage;
 
 namespace Rynchodon.AntennaRelay
 {
 	/// <summary>
 	/// Keeps track of transmissions for a remote control. A remote control cannot relay, so it should only receive messages for iteself.
 	/// </summary>
-	public class RemoteControl :  Receiver
+	public class ShipController : Receiver
 	{
-		internal static Dictionary<IMyCubeBlock, RemoteControl> registry = new Dictionary<IMyCubeBlock, RemoteControl>();
+		internal static Dictionary<IMyCubeBlock, ShipController> registry = new Dictionary<IMyCubeBlock, ShipController>();
 
-		private Ingame.IMyRemoteControl myRemote;
+		private Ingame.IMyShipController myController;
 		private Logger myLogger;
 
-		public RemoteControl(IMyCubeBlock block)
+		public ShipController(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger("RemoteControl", () => CubeBlock.CubeGrid.DisplayName);
-			myRemote = CubeBlock as Ingame.IMyRemoteControl;
+			myLogger = new Logger("ShipController", () => CubeBlock.CubeGrid.DisplayName);
+			myController = CubeBlock as Ingame.IMyShipController;
 			registry.Add(CubeBlock, this);
 
 			//log("init as remote: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 
 			// for my German friends...
-			if (!myRemote.DisplayNameText.Contains('[') && !myRemote.DisplayNameText.Contains(']'))
-				myRemote.SetCustomName(myRemote.DisplayNameText + " []");
+			if (!myController.DisplayNameText.Contains('[') && !myController.DisplayNameText.Contains(']'))
+				myController.SetCustomName(myController.DisplayNameText + " []");
 		}
 
 		protected override void Close(IMyEntity entity)
@@ -49,7 +42,7 @@ namespace Rynchodon.AntennaRelay
 			catch (Exception e)
 			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
-			myRemote = null;
+			myController = null;
 		}
 
 		public IEnumerator<LastSeen> lastSeenEnumerator()
@@ -77,7 +70,7 @@ namespace Rynchodon.AntennaRelay
 			return sorted;
 		}
 
-		public static bool TryGet(IMyCubeBlock block, out RemoteControl result)
+		public static bool TryGet(IMyCubeBlock block, out ShipController result)
 		{ return registry.TryGetValue(block, out result); }
 	}
 }

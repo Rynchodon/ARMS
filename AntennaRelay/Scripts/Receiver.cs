@@ -151,7 +151,7 @@ namespace Rynchodon.AntennaRelay
 						laserAnt.receive(seen);
 
 			// to remote control
-			foreach (RemoteControl remote in RemoteControl.registry.Values)
+			foreach (ShipController remote in ShipController.registry.Values)
 				if (sender.canSendTo(remote.CubeBlock, true))
 					foreach (LastSeen seen in toSend)
 						remote.receive(seen);
@@ -172,8 +172,8 @@ namespace Rynchodon.AntennaRelay
 					if (AttachedGrids.isGridAttached(sender.CubeGrid, mes.DestCubeBlock.CubeGrid))
 					{
 						// get receiver for block
-						RemoteControl remote;
-						if (RemoteControl.registry.TryGetValue(mes.DestCubeBlock, out remote))
+						ShipController remote;
+						if (ShipController.registry.TryGetValue(mes.DestCubeBlock, out remote))
 						{
 							remote.receive(mes);
 							mes.isValid = false;

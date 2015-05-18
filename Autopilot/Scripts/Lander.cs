@@ -91,8 +91,8 @@ namespace Rynchodon.Autopilot
 				{ matchOrientation_clear(); return; }
 
 				// roll time
-				double up = myNav.currentRCblock.WorldMatrix.Up.Dot((Vector3D)targetRoll);
-				double right = myNav.currentRCblock.WorldMatrix.Right.Dot((Vector3D)targetRoll);
+				double up = myNav.currentAPblock.WorldMatrix.Up.Dot((Vector3D)targetRoll);
+				double right = myNav.currentAPblock.WorldMatrix.Right.Dot((Vector3D)targetRoll);
 				double roll = Math.Atan2(right, up);
 				if (CNS.rollState != NavSettings.Rolling.NOT_ROLL || Math.Abs(roll) > rotLen_orientRoll)
 				{
@@ -101,7 +101,7 @@ namespace Rynchodon.Autopilot
 				}
 				else
 				{
-					log("roll successfully matched, roll=" + roll + ", rotLen_orient = " + rotLen_orientRoll + ", up = " + myNav.currentRCblock.WorldMatrix.Up + ", target = " + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
+					log("roll successfully matched, roll=" + roll + ", rotLen_orient = " + rotLen_orientRoll + ", up = " + myNav.currentAPblock.WorldMatrix.Up + ", target = " + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
 					//fullStop();
 					matchOrientation_clear(); return;
 				}
@@ -469,7 +469,7 @@ namespace Rynchodon.Autopilot
 				return false;
 			}
 
-			IMyCubeBlock myRC = myNav.currentRCblock;
+			IMyCubeBlock myRC = myNav.currentAPblock;
 			if (myRC.Orientation.Left == gridDirection)
 			{
 				result = Base6Directions.Direction.Left;
