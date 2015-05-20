@@ -39,8 +39,6 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 
 Each antenna and remote control keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
-It is not possible for Autopilot to display entities on the HUD.
-
 [h1]Block Communication[/h1]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] This script [/url] can be used to send and receive messages, filter detected grids, and execute actions based on detected grids.
 Messages can be sent from one programmable block to another. Block communication will use antenna relay to send messages to other grids.
@@ -67,6 +65,8 @@ To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bAllowTurretControl - enables Smart Turret Control
+bUseRemoteControl - currently disabled. set to true if you want Autopilot to use remote controls
+bUseColourState - Autopilot will change colour of Autopilot block
 fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
@@ -75,12 +75,13 @@ These are all the known issues with Autopilot. If an issue is not listed here, I
 
 Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the remote control will display <NO_PATH>.
 
-There is a bug in Space Engineers that occurs when unlocking a connector or landing gear while a player is in a cockpit or passenger seat. Autopilot will not take control if this bug occurs.
-Autopilot will not unlock a connector or landing gear while any player is in a cockpit or passenger seat. The remote control will display <GET_OUT_OF_SEAT> until all cockpits and passenger seats are empty, then it will unlock the connector or landing gear.
-
 Merging grids, particularly with the landing (L) command, can cause unexpected behaviour. Autopilot cannot detect a merge, so you will have to sort it out yourself.
 
 Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
+
+Autopilot cannot fly near asteroids unless using Asteroid command.
+
+If using colour states, the model for the Autopilot block may become displaced. You can disable bUseColourState in the settings file.
 
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07

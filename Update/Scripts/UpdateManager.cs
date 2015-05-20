@@ -54,12 +54,12 @@ namespace Rynchodon.Update
 				});
 
 			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (Navigator.IsAutopilotBlock(block))
+					if (Navigator.IsControllableBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (Navigator.IsAutopilotBlock(block))
+				if (Navigator.IsControllableBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
 				});

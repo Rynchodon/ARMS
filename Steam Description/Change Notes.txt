@@ -1,5 +1,8 @@
 Will be moved to steam every release.
 
 major:
+Autopilot block
 
 minor:
+Controlling block will be coloured based on Autopilot's status
+no more GET_OUT_OF_SEAT

@@ -139,7 +139,7 @@ namespace Rynchodon.Autopilot
 		{
 			//	find remote control blocks
 			autopilotBlocks = new List<Sandbox.ModAPI.IMySlimBlock>();
-			myGrid.GetBlocks(autopilotBlocks, block => IsAutopilotBlock(block.FatBlock));
+			myGrid.GetBlocks(autopilotBlocks, block => IsControllableBlock(block.FatBlock));
 
 			// register for events
 			myGrid.OnBlockAdded += OnBlockAdded;
@@ -176,13 +176,13 @@ namespace Rynchodon.Autopilot
 
 		private void OnBlockAdded(Sandbox.ModAPI.IMySlimBlock addedBlock)
 		{
-			if (IsAutopilotBlock(addedBlock.FatBlock))
+			if (IsControllableBlock(addedBlock.FatBlock))
 				autopilotBlocks.Add(addedBlock);
 		}
 
 		private void OnBlockRemoved(Sandbox.ModAPI.IMySlimBlock removedBlock)
 		{
-			if (IsAutopilotBlock(removedBlock.FatBlock))
+			if (IsControllableBlock(removedBlock.FatBlock))
 				autopilotBlocks.Remove(removedBlock);
 		}
 
@@ -942,12 +942,12 @@ namespace Rynchodon.Autopilot
 
 		public enum ReportableState : byte
 		{
-			None, Off, No_Dest, Waiting,
+			None, Off, No_Dest, Waiting, Landed,
 			Path_OK, Pathfinding, No_Path,
 			Rotating, Moving, Hybrid, Sidel, Roll,
 			Stop_Move, Stop_Rotate, Stop_Roll,
 			H_Ready, Harvest, H_Stuck, H_Back, H_Tunnel,
-			Missile, Engaging, Landed, Player, Jump, GET_OUT_OF_SEAT
+			Missile, Engaging, Player, Jump //, GET_OUT_OF_SEAT
 		};
 		/// <summary>The state of the pathinfinder</summary>
 		private ReportableState pathfinderState = ReportableState.Path_OK;
@@ -975,17 +975,6 @@ namespace Rynchodon.Autopilot
 				return;
 
 			Color reportColour = ReportableColour[newState];
-			if (reportColour != currentAPcolour)
-			{
-				currentAPcolour = reportColour;
-				var position = (currentAutopilotBlock_Value as IMyCubeBlock).Position;
-				myGrid.ColorBlocks(position, position, reportColour.ColorToHSV());
-			}
-
-			//// did state actually change?
-			//if (newState == currentReportable && newState != ReportableState.Jump && newState != ReportableState.Waiting && newState != ReportableState.Landed) // jump, land, and waiting update times
-			//	return;
-			//currentReportable = newState;
 
 			// cut old state, if any
 			if (displayName[0] == '<')
@@ -1003,6 +992,7 @@ namespace Rynchodon.Autopilot
 			{
 				myLogger.debugLog("adding error, index = " + myInterpreter.instructionErrorIndex, "reportState()");
 				newName.Append("ERROR(" + myInterpreter.instructionErrorIndex + ") : ");
+				reportColour = Color.Purple;
 			}
 			// actual state
 			newName.Append(newState);
@@ -1027,6 +1017,21 @@ namespace Rynchodon.Autopilot
 				(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newNameString);
 				//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 			}
+			if (IsAutopilotBlock(currentAPblock) && Settings.boolSettings[Settings.BoolSetName.bUseColourState] && reportColour != currentAPcolour)
+			{
+				currentAPcolour = reportColour;
+				var position = (currentAutopilotBlock_Value as IMyCubeBlock).Position;
+				Vector3 HSV = reportColour.ColorToHSV();
+
+				//myLogger.debugLog("colour = " + HSV, "reportState()");
+
+				HSV.Y = HSV.Y * 2 - 1;
+				HSV.Z = HSV.Z * 2 - 1;
+
+				//myLogger.debugLog("mod colour = " + HSV, "reportState()");
+
+				myGrid.ColorBlocks(position, position, HSV);
+			}
 		}
 
 		private ReportableState GetState()
@@ -1037,8 +1042,8 @@ namespace Rynchodon.Autopilot
 				return ReportableState.Player;
 
 			// landing
-			if (GET_OUT_OF_SEAT) // must override LANDED
-				return ReportableState.GET_OUT_OF_SEAT;
+			//if (GET_OUT_OF_SEAT) // must override LANDED
+			//	return ReportableState.GET_OUT_OF_SEAT;
 			if (CNS.landingState == NavSettings.LANDING.LOCKED)
 				return ReportableState.Landed;
 
@@ -1108,8 +1113,9 @@ namespace Rynchodon.Autopilot
 					// pink is used for a state that is not intended to be reported
 					value_ReportableColour.Add(ReportableState.None, Color.Pink);
 					value_ReportableColour.Add(ReportableState.Off, Color.Black);
-					value_ReportableColour.Add(ReportableState.No_Dest, Color.Purple);
+					value_ReportableColour.Add(ReportableState.No_Dest, Color.DarkGreen);
 					value_ReportableColour.Add(ReportableState.Waiting, Color.Yellow);
+					value_ReportableColour.Add(ReportableState.Landed, Color.Yellow);
 
 					value_ReportableColour.Add(ReportableState.Path_OK, Color.Pink);
 					value_ReportableColour.Add(ReportableState.Pathfinding, Color.DarkGreen);
@@ -1133,10 +1139,9 @@ namespace Rynchodon.Autopilot
 
 					value_ReportableColour.Add(ReportableState.Missile, Color.Red);
 					value_ReportableColour.Add(ReportableState.Engaging, Color.Orange);
-					value_ReportableColour.Add(ReportableState.Landed, Color.Yellow);
-					value_ReportableColour.Add(ReportableState.Player, Color.Blue);
+					value_ReportableColour.Add(ReportableState.Player, Color.Gray);
 					value_ReportableColour.Add(ReportableState.Jump, Color.Blue);
-					value_ReportableColour.Add(ReportableState.GET_OUT_OF_SEAT, Color.Purple);
+					//value_ReportableColour.Add(ReportableState.GET_OUT_OF_SEAT, Color.Purple);
 				}
 				return value_ReportableColour;
 			}
@@ -1150,24 +1155,30 @@ namespace Rynchodon.Autopilot
 		private static readonly MyObjectBuilderType type_remoteControl = typeof(MyObjectBuilder_RemoteControl);
 
 		/// <summary>
+		/// Tests if a block is an acutal Autopilot block
+		/// </summary>
+		/// <param name="block"></param>
+		/// <returns></returns>
+		public static bool IsAutopilotBlock(IMyCubeBlock block)
+		{
+			var definition = block.BlockDefinition;
+			return definition.TypeId == type_cockpit && definition.SubtypeId.Contains(subtype_autopilotBlock);
+		}
+
+		/// <summary>
 		/// Tests if a block can be used by Navigator as an Autopilot block
 		/// </summary>
 		/// <param name="block">block to test</param>
 		/// <returns>true iff block can be used as Autopilot block</returns>
-		public static bool IsAutopilotBlock(IMyCubeBlock block)
+		public static bool IsControllableBlock(IMyCubeBlock block)
 		{
 			if (block == null || !(block is Ingame.IMyShipController))
 				return false;
 
-			var definition = block.BlockDefinition;
-
-			if (definition.TypeId == type_remoteControl)// && Settings.boolSettings[Settings.BoolSetName.bUseRemoteControl])
+			if (block.BlockDefinition.TypeId == type_remoteControl)// && Settings.boolSettings[Settings.BoolSetName.bUseRemoteControl])
 				return true;
 
-			if (definition.TypeId == type_cockpit && definition.SubtypeId.Contains(subtype_autopilotBlock))
-				return true;
-
-			return false;
+			return IsAutopilotBlock(block);
 		}
 	}
 }

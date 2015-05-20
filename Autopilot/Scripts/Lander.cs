@@ -1,21 +1,10 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-//using Sandbox.Common;
-//using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Common.ObjectBuilders.Definitions;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot
 {
@@ -231,29 +220,29 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		private MyObjectBuilder_Character hasPilot_value = null;
+		//private MyObjectBuilder_Character hasPilot_value = null;
 
-		private bool hasPilot()
-		{
-			ReadOnlyList<Ingame.IMyTerminalBlock> allCockpits = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Cockpit));
+		//private bool hasPilot()
+		//{
+		//	ReadOnlyList<Ingame.IMyTerminalBlock> allCockpits = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Cockpit));
 
-			if (allCockpits == null)
-				return false;
+		//	if (allCockpits == null)
+		//		return false;
 
-			foreach (Ingame.IMyTerminalBlock cockpit in allCockpits)
-			{
-				MyObjectBuilder_Character pilot = ((cockpit as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_Cockpit).Pilot;
-				if (pilot != null)
-				{
-					if (hasPilot_value != pilot)
-						log("got a pilot in " + cockpit.DisplayNameText + ", pilot is " + pilot.DisplayName, "hasPilot()", Logger.severity.DEBUG);
-					hasPilot_value = pilot;
-					return true;
-				}
-			}
-			hasPilot_value = null;
-			return false;
-		}
+		//	foreach (Ingame.IMyTerminalBlock cockpit in allCockpits)
+		//	{
+		//		MyObjectBuilder_Character pilot = ((cockpit as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_Cockpit).Pilot;
+		//		if (pilot != null)
+		//		{
+		//			if (hasPilot_value != pilot)
+		//				log("got a pilot in " + cockpit.DisplayNameText + ", pilot is " + pilot.DisplayName, "hasPilot()", Logger.severity.DEBUG);
+		//			hasPilot_value = pilot;
+		//			return true;
+		//		}
+		//	}
+		//	hasPilot_value = null;
+		//	return false;
+		//}
 
 		private bool lockLanding()
 		{
@@ -323,12 +312,12 @@ namespace Rynchodon.Autopilot
 			if (connector != null)
 			{
 				// due to a bug in Space Engineers, Autopilot should not unlock a connector while a player is in any passenger seat
-				if (hasPilot())
-				{
-					myNav.GET_OUT_OF_SEAT = true;
-					myNav.reportState(Navigator.ReportableState.GET_OUT_OF_SEAT);
-					return false;
-				}
+				//if (hasPilot())
+				//{
+				//	myNav.GET_OUT_OF_SEAT = true;
+				//	myNav.reportState(Navigator.ReportableState.GET_OUT_OF_SEAT);
+				//	return false;
+				//}
 				myNav.GET_OUT_OF_SEAT = false;
 
 				bool disconnected = true;
@@ -354,12 +343,12 @@ namespace Rynchodon.Autopilot
 			if (landingGear != null)
 			{
 				// due to a bug in Space Engineers, Autopilot should not unlock a landing gear while a player is in any passenger seat
-				if (hasPilot())
-				{
-					myNav.GET_OUT_OF_SEAT = true;
-					myNav.reportState(Navigator.ReportableState.GET_OUT_OF_SEAT);
-					return false;
-				}
+				//if (hasPilot())
+				//{
+				//	myNav.GET_OUT_OF_SEAT = true;
+				//	myNav.reportState(Navigator.ReportableState.GET_OUT_OF_SEAT);
+				//	return false;
+				//}
 				myNav.GET_OUT_OF_SEAT = false;
 
 				bool disconnected = true;
@@ -427,7 +416,7 @@ namespace Rynchodon.Autopilot
 			return true;
 		}
 
-		public static bool landingDirection(IMyCubeBlock block, out  Base6Directions.Direction? result )
+		public static bool landingDirection(IMyCubeBlock block, out  Base6Directions.Direction? result)
 		{
 			if (block is Ingame.IMyShipConnector)
 			{

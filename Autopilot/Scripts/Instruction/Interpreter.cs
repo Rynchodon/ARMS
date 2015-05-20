@@ -435,7 +435,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				//log("testing: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
 				// name test
-				if (Navigator.IsAutopilotBlock(fatblock))
+				if (Navigator.IsControllableBlock(fatblock))
 				{
 					string nameOnly = fatblock.getNameOnly();
 					if (nameOnly == null || !nameOnly.Contains(blockName))
