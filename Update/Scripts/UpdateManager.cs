@@ -2,8 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
 
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
@@ -11,7 +9,6 @@ using Sandbox.ModAPI;
 
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
-//using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
@@ -35,49 +32,47 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts()
 		{
-			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
 					Beacon newBeacon = new Beacon(block);
 					RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
 					TextPanel newTextPanel = new TextPanel(block);
 					RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
 					LaserAntenna newLA = new LaserAntenna(block);
 					RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
 					ProgrammableBlock newPB = new ProgrammableBlock(block);
 					RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
 					RadioAntenna newRA = new RadioAntenna(block);
 					RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) =>
-				{
-					RemoteControl newRC = new RemoteControl(block);
+
+			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (Navigator.IsControllableBlock(block))
+						new ShipController(block);
 					// Does not receive Updates
 				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (Navigator.IsControllableBlock(block))
+					new ShipController(block);
+				// Does not receive Updates
+				});
 
-			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) => {
 					TurretLargeGatling newTurret = new TurretLargeGatling(block);
 					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) => {
 					TurretLargeRocket newTurret = new TurretLargeRocket(block);
 					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) =>
-				{
+			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) => {
 					TurretInterior newTurret = new TurretInterior(block);
 					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
 				});
@@ -117,10 +112,14 @@ namespace Rynchodon.Update
 
 				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && !MyAPIGateway.Multiplayer.IsServer)
 				{
-					myLogger.debugLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
+					myLogger.log("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
 					MangerStatus = Status.Terminated;
 					return;
 				}
+				if (MyAPIGateway.Multiplayer.MultiplayerActive)
+					myLogger.log("Is server, running scripts", "Init()", Logger.severity.INFO);
+				else
+					myLogger.log("Single player, running scripts", "Init()", Logger.severity.INFO);
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();

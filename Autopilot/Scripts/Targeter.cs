@@ -2,14 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-
-using Sandbox.Common;
-using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using VRageMath;
-
 using Rynchodon.AntennaRelay;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot
 {
@@ -21,7 +15,7 @@ namespace Rynchodon.Autopilot
 		{ alwaysLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "NewTargeter");
+			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Targeter");
 			myLogger.log(level, method, toLog);
 		}
 
@@ -46,7 +40,7 @@ namespace Rynchodon.Autopilot
 			}
 
 			log("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
-			
+
 			IMyCubeBlock bestMatchBlock;
 			LastSeen bestMatchGrid;
 			if (!lastSeenHostile(out bestMatchGrid, out bestMatchBlock, owner.CNS.lockOnBlock)) // did not find a target
@@ -69,7 +63,7 @@ namespace Rynchodon.Autopilot
 
 			owner.CNS.target_locked = true;
 			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
-			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentRCblock);
+			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentAPblock);
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
 			{
@@ -93,10 +87,10 @@ namespace Rynchodon.Autopilot
 			bestMatchBlock = null;
 			int bestMatchLength = -1;
 
-			RemoteControl myAR;
-			if (!RemoteControl.TryGet(owner.currentRCblock, out myAR))
+			ShipController myAR;
+			if (!ShipController.TryGet(owner.currentAPblock, out myAR))
 			{
-				alwaysLog("failed to get ARRemoteControl for currentRC(" + owner.currentRCblock.getNameOnly() + ")", "lastSeenFriendly()", Logger.severity.WARNING);
+				alwaysLog("failed to get ARShipController for currentAP(" + owner.currentAPblock.getNameOnly() + ")", "lastSeenFriendly()", Logger.severity.WARNING);
 				//log("needs update is " + owner.currentRCblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
 				return false;
 			}
@@ -109,13 +103,13 @@ namespace Rynchodon.Autopilot
 				//log("testing " + grid.DisplayName + " contains " + gridNameContains, "lastSeenFriendly()", Logger.severity.TRACE);
 				if (grid.DisplayName.looseContains(gridNameContains))
 				{
-					log("compare match "+grid.DisplayName+"(" + grid.DisplayName.Length + ") to " + bestMatchLength, "lastSeenFriendly()", Logger.severity.TRACE);
+					log("compare match " + grid.DisplayName + "(" + grid.DisplayName.Length + ") to " + bestMatchLength, "lastSeenFriendly()", Logger.severity.TRACE);
 					if (bestMatchGrid == null || grid.DisplayName.Length < bestMatchLength) // if better grid match
 					{
 						IMyCubeBlock matchBlock = null;
 						if (!string.IsNullOrEmpty(blockContains) && !findBestFriendly(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block
 						{
-							log("no matching block in "+grid.DisplayName, "lastSeenFriendly()", Logger.severity.TRACE);
+							log("no matching block in " + grid.DisplayName, "lastSeenFriendly()", Logger.severity.TRACE);
 							continue;
 						}
 
@@ -138,18 +132,18 @@ namespace Rynchodon.Autopilot
 			bestMatchBlock = null;
 			double bestMatchValue = -1;
 
-			RemoteControl myAR;
-			if (!RemoteControl.TryGet(owner.currentRCblock, out myAR))
+			ShipController myAR;
+			if (!ShipController.TryGet(owner.currentAPblock, out myAR))
 			{
-				alwaysLog("failed to get ARRemoteControl for currentRC(" + owner.currentRCblock.DisplayNameText + ")", "lastSeenHostile()", Logger.severity.WARNING);
-				log("needs update is " + owner.currentRCblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
+				alwaysLog("failed to get ARShipController for currentRC(" + owner.currentAPblock.DisplayNameText + ")", "lastSeenHostile()", Logger.severity.WARNING);
+				log("needs update is " + owner.currentAPblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
 				return false;
 			}
 			IEnumerator<LastSeen> allLastSeen = myAR.lastSeenEnumerator();
 			while (allLastSeen.MoveNext())
 			{
 				IMyCubeGrid grid = allLastSeen.Current.Entity as IMyCubeGrid;
-				if (grid == null || grid == owner.myGrid || !owner.currentRCblock.canConsiderHostile(grid))
+				if (grid == null || grid == owner.myGrid || !owner.currentAPblock.canConsiderHostile(grid))
 					continue;
 
 				myLogger.debugLog("checking hostile grid: " + grid.DisplayName, "lastSeenHostile()");
@@ -176,7 +170,7 @@ namespace Rynchodon.Autopilot
 		private string getBlockName(IMyCubeBlock Fatblock)
 		{
 			string blockName;
-			if (Fatblock is Ingame.IMyRemoteControl)
+			if (Navigator.IsControllableBlock(Fatblock))
 			{
 				blockName = Fatblock.getNameOnly();
 				if (blockName == null)
@@ -191,7 +185,7 @@ namespace Rynchodon.Autopilot
 		{
 			IMyCubeBlock Fatblock = slim.FatBlock;
 			if (Fatblock == null // armour or something
-				|| !owner.currentRCblock.canControlBlock(Fatblock)) // neutral is OK too
+				|| !owner.currentAPblock.canControlBlock(Fatblock)) // neutral is OK too
 				return false;
 
 			string blockName = getBlockName(Fatblock);
@@ -220,12 +214,12 @@ namespace Rynchodon.Autopilot
 				string blockName = getBlockName(Fatblock);
 
 				//log("checking " + blockName + " contains " + blockContains, "findBestFriendly()", Logger.severity.TRACE);
-					log("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
-					if ((bestMatchBlock == null || blockName.Length < bestMatchLength)) // if better match
-					{
-						bestMatchBlock = Fatblock;
-						bestMatchLength = grid.DisplayName.Length;
-					}
+				log("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
+				if ((bestMatchBlock == null || blockName.Length < bestMatchLength)) // if better match
+				{
+					bestMatchBlock = Fatblock;
+					bestMatchLength = grid.DisplayName.Length;
+				}
 			}
 			return bestMatchBlock != null;
 		}
@@ -235,7 +229,7 @@ namespace Rynchodon.Autopilot
 			IMyCubeBlock Fatblock = slim.FatBlock;
 			return Fatblock != null // not armour
 				&& Fatblock.IsWorking // ignore inactive hostile blocks
-				&& owner.currentRCblock.canConsiderHostile(Fatblock) // block must be hostile
+				&& owner.currentAPblock.canConsiderHostile(Fatblock) // block must be hostile
 				&& Fatblock.DefinitionDisplayNameText.looseContains(blockContains); // must contain blockContains
 		}
 

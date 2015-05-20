@@ -393,7 +393,8 @@ namespace Rynchodon.Autopilot.Turret
 
 			foreach (IMyEntity entity in entitiesInRange)
 			{
-				if (entity.Transparent) // part of a ship / station being pasted
+				// if grid is being pasted or a projection, ignore it
+				if (!ent.Save)
 					continue;
 
 				IMyCubeBlock asBlock = entity as IMyCubeBlock;

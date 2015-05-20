@@ -1,14 +1,13 @@
 [url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
 
-Suggest a new feature here.
+Suggest a new feature here. Please explain why you want a feature, it will help me determine the best way to implement it.
 
 [b]In Progress[/b]
-Autopilot block
 aim & fire weapons
+jump drive
 
 [b]Future Features[/b]
-jump drive
-save (resume commands when game is loaded)
+save data - resume commands & remember detected objects
 grind grid
 repair grid
 check for grids connected via landing gear
@@ -22,4 +21,5 @@ orbiting
 control via programmable block
 TextPanel status reports
 harvest by ore type & ignore mined-out asteroids
-G.P.S. for detected grids
+add players to antenna relay (track locations, fly to)
+G.P.S. for detected objects

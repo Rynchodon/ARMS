@@ -2,17 +2,13 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
 using System.Text.RegularExpressions;
-
+using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
-
 using VRage.Collections;
 using VRageMath;
-
-using Rynchodon.AntennaRelay;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Instruction
 {
@@ -131,7 +127,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (splitInstructions == null || splitInstructions.Length == 0)
 				return;
 
-			for (int i = 0; i < splitInstructions.Length; i++)
+			for (int i = 0 ; i < splitInstructions.Length ; i++)
 			{
 				if (!enqueueAction(splitInstructions[i]))
 				{
@@ -243,9 +239,9 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "reset":
 					{
-						IMyTerminalBlock RCterminal = owner.currentRCterminal;
+						IMyTerminalBlock RCterminal = owner.currentAPterminal;
 						wordAction = () => {
-							if ((owner.currentRCblock as Ingame.IMyRemoteControl).ControlThrusters)
+							if (owner.currentAPcontroller.ControlThrusters)
 								RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
 							Core.remove(owner);
 						};
@@ -429,7 +425,7 @@ namespace Rynchodon.Autopilot.Instruction
 				if (fatblock == null)
 					continue;
 
-				Sandbox.Common.MyRelationsBetweenPlayerAndBlock relationship = fatblock.GetUserRelationToOwner(owner.currentRCblock.OwnerId);
+				Sandbox.Common.MyRelationsBetweenPlayerAndBlock relationship = fatblock.GetUserRelationToOwner(owner.currentAPblock.OwnerId);
 				if (relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.Owner && relationship != Sandbox.Common.MyRelationsBetweenPlayerAndBlock.FactionShare)
 				{
 					//log("failed relationship test for " + fatblock.DisplayNameText + ", result was " + relationship.ToString(), "runActionOnBlock()", Logger.severity.TRACE);
@@ -439,7 +435,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				//log("testing: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
 				// name test
-				if (fatblock is Ingame.IMyRemoteControl)
+				if (Navigator.IsControllableBlock(fatblock))
 				{
 					string nameOnly = fatblock.getNameOnly();
 					if (nameOnly == null || !nameOnly.Contains(blockName))
@@ -480,8 +476,7 @@ namespace Rynchodon.Autopilot.Instruction
 			string[] dataParts = dataLowerCase.Split(',');
 			if (dataParts.Length != 2)
 			{
-				instructionAction = () =>
-				{
+				instructionAction = () => {
 					owner.CNS.tempBlockName = dataLowerCase;
 					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataLowerCase = " + dataLowerCase, "getAction_blockSearch()");
 				};
@@ -490,8 +485,7 @@ namespace Rynchodon.Autopilot.Instruction
 			Base6Directions.Direction? dataDir = stringToDirection(dataParts[1]);
 			if (dataDir != null)
 			{
-				instructionAction = () =>
-				{
+				instructionAction = () => {
 					owner.CNS.landDirection = dataDir;
 					owner.CNS.tempBlockName = dataParts[0];
 					myLogger.debugLog("owner.CNS.tempBlockName = " + owner.CNS.tempBlockName + ", dataParts[0] = " + dataParts[0], "getAction_blockSearch()");
@@ -514,7 +508,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (coordsString.Length == 3)
 			{
 				double[] coordsDouble = new double[3];
-				for (int i = 0; i < coordsDouble.Length; i++)
+				for (int i = 0 ; i < coordsDouble.Length ; i++)
 					if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
 					{
 						// failed to parse
@@ -524,8 +518,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				// successfully parsed
 				Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-				instructionAction = () =>
-				{
+				instructionAction = () => {
 					if (owner == null)
 						myLogger.debugLog("owner is null", "getAction_coordinates()");
 					if (owner.CNS == null)
@@ -551,8 +544,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			//string searchBlockName = CNS.tempBlockName;
 			//CNS.tempBlockName = null;
-			instructionAction = () =>
-			{
+			instructionAction = () => {
 				double parsed;
 				if (Double.TryParse(dataLowerCase, out parsed))
 				{
@@ -577,10 +569,10 @@ namespace Rynchodon.Autopilot.Instruction
 			execute = null;
 			RelativeVector3F result;
 			log("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
-			if (!flyOldStyle(out result, owner.currentRCblock, instruction))
+			if (!flyOldStyle(out result, owner.currentAPblock, instruction))
 			{
 				log("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
-				if (!flyTo_generic(out result, owner.currentRCblock, instruction))
+				if (!flyTo_generic(out result, owner.currentAPblock, instruction))
 				{
 					log("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
 					return false;
@@ -588,8 +580,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			//log("passed, centreDestination will be "+result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
-			execute = () =>
-			{
+			execute = () => {
 				log("setting " + owner.CNS.ToString() + " centreDestination to " + result.getWorldAbsolute(), "getAction_flyTo()", Logger.severity.TRACE);
 				owner.CNS.setDestination(result.getWorldAbsolute());
 			};
@@ -613,7 +604,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return false;
 
 			double[] coordsDouble = new double[3];
-			for (int i = 0; i < coordsDouble.Length; i++)
+			for (int i = 0 ; i < coordsDouble.Length ; i++)
 				if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
 					return false;
 
@@ -649,8 +640,7 @@ namespace Rynchodon.Autopilot.Instruction
 			//owner.CNS.tempBlockName = null;
 			int myInstructionIndex = currentInstruction;
 
-			execute = () =>
-			{
+			execute = () => {
 				IMyCubeBlock blockBestMatch;
 				LastSeen gridBestMatch;
 				myLogger.debugLog("calling lastSeenFriendly with (" + instruction + ", " + owner.CNS.tempBlockName + ")", "getAction_gridDest()");
@@ -674,12 +664,12 @@ namespace Rynchodon.Autopilot.Instruction
 					else // no landing direction
 					{
 						if (blockBestMatch != null)
-							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + ", " + blockBestMatch.DisplayNameText + " seen by " + owner.currentAPblock.getNameOnly(), "getAction_gridDest()");
 						else
-							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentRCblock.getNameOnly(), "getAction_gridDest()");
+							myLogger.debugLog("setting centreDestination to " + gridBestMatch.Entity.getBestName() + " seen by " + owner.currentAPblock.getNameOnly(), "getAction_gridDest()");
 					}
 
-					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentRCblock);
+					owner.CNS.setDestination(gridBestMatch, blockBestMatch, owner.currentAPblock);
 					return;
 				}
 				// did not find grid
@@ -700,8 +690,7 @@ namespace Rynchodon.Autopilot.Instruction
 			IMyCubeBlock landLocalBlock;
 			int myInstructionIndex = currentInstruction;
 
-			execute = () =>
-			{
+			execute = () => {
 				myLogger.debugLog("searching for local block: " + instruction, "getAction_localBlock()");
 				if (owner.myTargeter.findBestFriendly(owner.myGrid, out landLocalBlock, instruction))
 				{
@@ -727,8 +716,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			//string searchBlockName = CNS.tempBlockName;
 			//CNS.tempBlockName = null;
-			instructionAction = () =>
-			{
+			instructionAction = () => {
 				double parsed;
 				if (Double.TryParse(dataLowerCase, out parsed))
 				{
@@ -757,8 +745,7 @@ namespace Rynchodon.Autopilot.Instruction
 					execute = null;
 					return false;
 				}
-			execute = () =>
-			{
+			execute = () => {
 				//myLogger.debugLog("setting offset vector to " + offsetVector, "getAction_offset()");
 				owner.CNS.destination_offset = offsetVector;
 			};
@@ -772,7 +759,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (coordsString.Length == 3)
 			{
 				float[] coordsFloat = new float[3];
-				for (int i = 0; i < coordsFloat.Length; i++)
+				for (int i = 0 ; i < coordsFloat.Length ; i++)
 					if (!float.TryParse(coordsString[i], out coordsFloat[i]))
 					{
 						log("failed to parse: " + coordsString[i], "offset_oldStyle()", Logger.severity.TRACE);
@@ -799,8 +786,7 @@ namespace Rynchodon.Autopilot.Instruction
 			float distance;
 			if (stringToDistance(out distance, instruction))
 			{
-				execute = () =>
-				{
+				execute = () => {
 					owner.CNS.destinationRadius = (int)distance;
 					//log("proximity action executed " + instruction + " to " + distance + ", radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 				};
@@ -847,8 +833,7 @@ namespace Rynchodon.Autopilot.Instruction
 				instructionAction = null;
 				return false;
 			}
-			instructionAction = () =>
-			{
+			instructionAction = () => {
 				owner.CNS.match_direction = (Base6Directions.Direction)dir;
 				owner.CNS.match_roll = (Base6Directions.Direction)roll;
 			};
@@ -861,7 +846,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (speeds.Length == 2)
 			{
 				double[] parsedArray = new double[2];
-				for (int i = 0; i < parsedArray.Length; i++)
+				for (int i = 0 ; i < parsedArray.Length ; i++)
 				{
 					if (!Double.TryParse(speeds[i], out parsedArray[i]))
 					{
@@ -869,8 +854,7 @@ namespace Rynchodon.Autopilot.Instruction
 						return false;
 					}
 				}
-				instructionAction = () =>
-				{
+				instructionAction = () => {
 					owner.CNS.speedCruise_external = (int)parsedArray[0];
 					owner.CNS.speedSlow_external = (int)parsedArray[1];
 				};
@@ -894,8 +878,7 @@ namespace Rynchodon.Autopilot.Instruction
 			double seconds = 0;
 			if (Double.TryParse(dataLowerCase, out seconds))
 			{
-				instructionAction = () =>
-				{
+				instructionAction = () => {
 					if (owner.CNS.waitUntil < DateTime.UtcNow)
 						owner.CNS.waitUntil = DateTime.UtcNow.AddSeconds(seconds);
 				};

@@ -1,14 +1,9 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
+using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
 using VRageMath;
-
-using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot
 {
@@ -19,7 +14,7 @@ namespace Rynchodon.Autopilot
 		public LastSeen gridLastSeen { get { return seenBy.getLastSeen(Entity.EntityId); } }
 
 		//public LastSeen gridLastSeen { get; private set; }
-		private RemoteControl seenBy;
+		private ShipController seenBy;
 		public IMyCubeGrid Grid { get; private set; }
 		public IMyCubeBlock Block { get; private set; }
 
@@ -28,8 +23,8 @@ namespace Rynchodon.Autopilot
 			this.myNav = owner;
 			this.Entity = gridLastSeen.Entity;
 			//this.gridLastSeen = gridLastSeen;
-			if (!RemoteControl.TryGet(seenBy, out this.seenBy))
-				alwaysLog("failed to get ARRemoteControl", ".ctor()", Logger.severity.ERROR);
+			if (!ShipController.TryGet(seenBy, out this.seenBy))
+				alwaysLog("failed to get ARShipController", ".ctor()", Logger.severity.ERROR);
 			this.Grid = gridLastSeen.Entity as IMyCubeGrid;
 			if (Grid == null)
 				(new Logger(null, "GridDestination")).log(Logger.severity.FATAL, ".ctor()", "Entity is not a grid");
@@ -118,7 +113,7 @@ namespace Rynchodon.Autopilot
 			double myAccel = myNav.myGrid.Physics.GetLinearAcceleration().Length();
 
 			double secondsToTarget = distanceTo_PathOfTarget / mySpeed;
-			
+
 			return targetPosition + targetVelocity * secondsToTarget + targetAcceleration * secondsToTarget * secondsToTarget / 2;
 		}
 

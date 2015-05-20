@@ -102,14 +102,14 @@ namespace Rynchodon.Autopilot
 			Vector3D dirNorm;
 			if (targetDirection == null)
 			{
-				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition();
+				Vector3D displacement = currentWaypoint - owner.currentAPblock.GetPosition();
 				dirNorm = Vector3D.Normalize(displacement);
 			}
 			else
 				dirNorm = (Vector3D)targetDirection;
 
 			IMyCubeBlock NavBlock = owner.getNavigationBlock();
-			IMyCubeBlock RemBlock = owner.currentRCblock;
+			IMyCubeBlock RemBlock = owner.currentAPblock;
 
 			RelativeVector3F direction = RelativeVector3F.createFromWorld(dirNorm, owner.myGrid);
 
@@ -146,15 +146,15 @@ namespace Rynchodon.Autopilot
 			Vector3D dirNorm;
 			if (targetDirection == null)
 			{
-				Vector3D displacement = currentWaypoint - owner.currentRCblock.GetPosition();
+				Vector3D displacement = currentWaypoint - owner.currentAPblock.GetPosition();
 				dirNorm = Vector3D.Normalize(displacement);
 			}
 			else
 				dirNorm = (Vector3D)targetDirection;
 
-			double right = owner.currentRCblock.WorldMatrix.Right.Dot(dirNorm);
-			double down = owner.currentRCblock.WorldMatrix.Down.Dot(dirNorm);
-			double forward = owner.currentRCblock.WorldMatrix.Forward.Dot(dirNorm);
+			double right = owner.currentAPblock.WorldMatrix.Right.Dot(dirNorm);
+			double down = owner.currentAPblock.WorldMatrix.Down.Dot(dirNorm);
+			double forward = owner.currentAPblock.WorldMatrix.Forward.Dot(dirNorm);
 
 			value__pitch = (float)Math.Atan2(down, forward);
 			value__yaw = (float)Math.Atan2(right, forward);

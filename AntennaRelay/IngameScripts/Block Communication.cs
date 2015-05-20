@@ -52,9 +52,9 @@ namespace Programmable
 		const bool useProximityAlarm = false;
 
 		/// <summary>
-		/// This value is set later in the program.
+		/// Time between sounding alarm (hours, minutes, seconds)
 		/// </summary>
-		bool alarmIsSounding;
+		static readonly TimeSpan repeatAlarm = new TimeSpan(0, 0, 10);
 
 
 		// Handling of Messages
@@ -98,7 +98,6 @@ namespace Programmable
 		/// </summary>
 		void beforeHandleDetected()
 		{
-			alarmIsSounding = false; // reset every run or alarm will only sound once
 		}
 
 		/// <summary>
@@ -112,12 +111,12 @@ namespace Programmable
 
 			// sound an alarm if an enemy is near
 			if (useProximityAlarm // proximity alarm is enabled
-				&& !alarmIsSounding // have not found an enemy this run
+				&& DateTime.UtcNow > nextAlarmTime // enough time has passed since last alarm
 
 				&& grid.distance < 10000 // closer than 10km
-				&& grid.volume > 100 // larger than 100m³
+				&& (grid.volume > 100 || grid.volume <= 0) // larger than 100m³ OR volume unknown
 				&& grid.seconds < 60 // seen in the past minute
-				&& (grid.relations == "Enemy")) // grid is enemy
+				&& grid.relations == "Enemy") // grid is enemy
 			{
 				soundProximityAlarm(); // sounds the alarm
 			}
@@ -129,6 +128,7 @@ namespace Programmable
 
 		IMyTerminalBlock ThisBlock;
 		Dictionary<string, StringBuilder> outputText;
+		DateTime nextAlarmTime = DateTime.UtcNow;
 
 		const string startOfSend = "[.[", endOfSend = "].]", startOfReceive = "<.<", endOfReceive = ">.>"; // has to match MessageParser.cs
 		const char separator = ':'; // has to match MessageParser.cs and TextPanel.cs
@@ -279,11 +279,7 @@ namespace Programmable
 			// build from data and invoke handler
 			for (int lineIndex = 0; lineIndex < splitByLine.Length; lineIndex++)
 				if (!string.IsNullOrWhiteSpace(splitByLine[lineIndex]))
-				{
-					//string distanceString = splitByLine[lineIndex].Split(separator)[4];
-					//debug("distance = "+distanceString+" => "+);
 					handle_detectedGrid(new Detected(splitByLine[lineIndex]));
-				}
 		}
 
 		/// <summary>
@@ -335,14 +331,14 @@ namespace Programmable
 		/// </summary>
 		void soundProximityAlarm()
 		{
-			if (alarmIsSounding)
+			if (DateTime.UtcNow < nextAlarmTime)
 				return;
-			alarmIsSounding = true;
+			nextAlarmTime = DateTime.UtcNow + repeatAlarm;
 
 			List<IMyTerminalBlock> proximityAlarms = new List<IMyTerminalBlock>();
 			search_collect_BlockName = ProximityAlarmName;
 			GridTerminalSystem.GetBlocksOfType<IMySoundBlock>(proximityAlarms, collect_BlockName);
-			for (int index = 0; index < proximityAlarms.Count; index++)
+			for (int index = 0 ; index < proximityAlarms.Count ; index++)
 				proximityAlarms[index].ApplyAction("PlaySound");
 		}
 
@@ -359,7 +355,7 @@ namespace Programmable
 		//		GridTerminalSystem.GetBlocksOfType<IMyTextPanel>(DebugPanels, collect_BlockName);
 		//	}
 
-		//	for (int index = 0; index < DebugPanels.Count; index++)
+		//	for (int index = 0 ; index < DebugPanels.Count ; index++)
 		//		((IMyTextPanel)DebugPanels[index]).WritePublicText(line + '\n', append);
 		//}
 

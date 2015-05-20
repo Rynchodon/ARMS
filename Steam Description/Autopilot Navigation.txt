@@ -19,21 +19,23 @@ The direction that the Remote Control is facing is the direction the ship will f
 When the end of the commands is reached, Autopilot will start back at the first command.
 
 [h1]Autopilot States[/h1]
-<Off> remote control has not searched for commands, EXIT was reached, or the remote control is not ready
-<Pathfinding> searching for a path towards the destination
-<No_Path> could not find a path to the destination
-<No_Dest> could not find a valid target or destination, this state is usually temporary
-<ERROR:(index)> Displays the index of the commands that could not be executed. The first command is at 0.
-<Waiting:(time)> a wait command was reached, display time remaining
-<Rotating> / <Roll> rotating the ship
-<Moving> / <Hybrid> / <Sidel> heading towards the next stop
-<Stopping> stopping the ship
-<Missile> found a target, going to hit it
-<Engaging> found a target, flying towards it
-<Landed> grid is landed
-<Harvest> / <H_Stuck> / <H_Back> <H_Tunnel> harvesting an asteroid
-<Player> A player is controlling grid
-<GET_OUT_OF_SEAT> Autopilot cannot disconnect a connector or landing gear while a player is in a seat.
+<Off> (black) remote control has not searched for commands, EXIT was reached, or the remote control is not ready
+<Player> (grey) A player is controlling grid
+<ERROR:(index)> (purple) Displays the index of the commands that could not be executed. The first command is at 0.
+<No_Path> (purple) could not find a path to the destination
+
+<Waiting:(time)> (yellow) a wait command was reached, display time remaining
+<Landed:(time)> (yellow) grid is landed
+
+<No_Dest> (dark green) could not find a valid target or destination, this state is usually temporary
+<Pathfinding> (DarkGreen) searching for a path towards the destination
+<Moving> / <Hybrid> / <Sidel> (green) heading towards the next stop
+<Rotating> / <Roll> (green) rotating the ship
+<Stop_Move> / <Stop_Rotate> / <Stop_Roll> (green) stopping the ship
+<Harvest> / <H_Stuck> / <H_Back> <H_Tunnel> (cyan) harvesting an asteroid
+
+<Missile> (red) found a target, going to hit it
+<Engaging> (orange) found a target, flying towards it
 
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
