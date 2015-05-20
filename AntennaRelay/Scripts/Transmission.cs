@@ -2,8 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
 
 using Sandbox.ModAPI;
 using VRageMath;
@@ -72,9 +70,12 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>true iff an update was performed</returns>
 		public bool update(ref LastSeen toUpdate)
 		{
-			if ((!this.EntityHasRadar && toUpdate.EntityHasRadar) ||
-				(toUpdate.Info != null && (this.Info == null || this.Info.IsNewerThan(toUpdate.Info))) ||
-				(this.isNewerThan(toUpdate)))
+			if (this.isNewerThan(toUpdate)
+				|| (this.Info != null && (toUpdate.Info == null || this.Info.IsNewerThan(toUpdate.Info)))
+				|| this.EntityHasRadar && !toUpdate.EntityHasRadar)
+			//if ((!this.EntityHasRadar && toUpdate.EntityHasRadar) ||
+			//	(toUpdate.Info != null && (this.Info == null || this.Info.IsNewerThan(toUpdate.Info))) ||
+			//	(this.isNewerThan(toUpdate)))
 			{
 				LastSeen param = toUpdate;
 				toUpdate = new LastSeen(this, toUpdate);
@@ -118,7 +119,7 @@ namespace Rynchodon.AntennaRelay
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{ alwaysLog(toLog, method, level); }
-		private static  void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		private static void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
 			if (myLogger == null)
 				myLogger = new Logger(null, ClassName);
@@ -186,7 +187,7 @@ namespace Rynchodon.AntennaRelay
 			log("testing " + ProgrammableBlock.registry.Count + " programmable blocks", "buildMessages()", Logger.severity.TRACE);
 			foreach (IMyCubeBlock DestBlock in ProgrammableBlock.registry.Keys)
 			{
-				log("testing "+DestBlock.gridBlockName(), "buildMessages()", Logger.severity.TRACE);
+				log("testing " + DestBlock.gridBlockName(), "buildMessages()", Logger.severity.TRACE);
 				//IMyCubeBlock DestBlock = Pair.Key;
 				IMyCubeGrid DestGrid = DestBlock.CubeGrid;
 				if (DestGrid.DisplayName.looseContains(DestGridName) // grid matches
@@ -205,7 +206,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			get
 			{
-				if (value_isValid && (DestCubeBlock == null 
+				if (value_isValid && (DestCubeBlock == null
 					|| DestCubeBlock.Closed
 					|| destOwnerID != DestCubeBlock.OwnerId // dest owner changed
 					|| (DateTime.UtcNow - created).CompareTo(MaximumLifetime) > 0)) // expired

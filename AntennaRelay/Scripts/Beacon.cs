@@ -133,6 +133,9 @@ namespace Rynchodon.AntennaRelay
 				foreach (IMyEntity ent in allGrids)
 				//if (ent is IMyCubeGrid || ent is IMyCharacter)
 				{
+					if (!ent.Save)
+						continue;
+
 					// get detection distance
 					float volume = ent.LocalAABB.Volume();
 					float power = (volume + radarPower_A) / (volume + radarPower_B) / radarPower_C * powerLevel;

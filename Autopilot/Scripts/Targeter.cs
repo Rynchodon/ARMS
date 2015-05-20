@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot
 		{ alwaysLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "NewTargeter");
+			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Targeter");
 			myLogger.log(level, method, toLog);
 		}
 

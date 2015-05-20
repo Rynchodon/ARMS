@@ -112,10 +112,14 @@ namespace Rynchodon.Update
 
 				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && !MyAPIGateway.Multiplayer.IsServer)
 				{
-					myLogger.debugLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
+					myLogger.log("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
 					MangerStatus = Status.Terminated;
 					return;
 				}
+				if (MyAPIGateway.Multiplayer.MultiplayerActive)
+					myLogger.log("Is server, running scripts", "Init()", Logger.severity.INFO);
+				else
+					myLogger.log("Single player, running scripts", "Init()", Logger.severity.INFO);
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
