@@ -394,7 +394,7 @@ namespace Rynchodon.Autopilot.Turret
 			foreach (IMyEntity entity in entitiesInRange)
 			{
 				// if grid is being pasted or a projection, ignore it
-				if (!ent.Save)
+				if (!entity.Save)
 					continue;
 
 				IMyCubeBlock asBlock = entity as IMyCubeBlock;

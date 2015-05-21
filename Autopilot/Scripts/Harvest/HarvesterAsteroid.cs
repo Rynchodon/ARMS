@@ -468,7 +468,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private bool IsInsideAsteroid()
 		{
-			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
+			List<IMyVoxelBase> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe((asteroid) => { return myCubeGrid.IntersectsAABBVolume(asteroid); });
 
 			BoundingSphereD volume = myCubeGrid.WorldVolume;
 			volume.Radius += 10;
@@ -525,7 +525,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private IMyVoxelMap GetClosestAsteroid(out float distance)
 		{
-			List<IMyVoxelMap> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe();
+			List<IMyVoxelBase> allAsteroids = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe();
 			SortedDictionary<float, IMyVoxelMap> sortedAsteroids = new SortedDictionary<float, IMyVoxelMap>();
 			foreach (IMyVoxelMap asteroid in allAsteroids)
 			{

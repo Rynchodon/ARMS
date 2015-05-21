@@ -150,9 +150,9 @@ namespace Rynchodon
 			}
 		}
 
-		public static List<IMyVoxelMap> GetInstances_Safe(this IMyVoxelMaps mapsObject,  Func<IMyVoxelMap, bool> collect = null)
+		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
 		{
-			List<IMyVoxelMap> outInstances = new List<IMyVoxelMap>();
+			List<IMyVoxelBase> outInstances = new List<IMyVoxelBase>();
 			using (Lock_MainThread.AcquireSharedUsing())
 				mapsObject.GetInstances(outInstances, collect);
 			return outInstances;
