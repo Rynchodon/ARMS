@@ -1,4 +1,4 @@
-[url=https://www.surveymonkey.com/s/3KCX6DL] Which feature do you most want to see added to Autopilot? [/url]
+[url=https://www.surveymonkey.com/s/3KCX6DL] Vote on the future of Autopilot [/url]
 
 Suggest a new feature here. Please explain why you want a feature, it will help me determine the best way to implement it.
 
@@ -23,3 +23,4 @@ TextPanel status reports
 harvest by ore type & ignore mined-out asteroids
 add players to antenna relay (track locations, fly to)
 G.P.S. for detected objects
+better detection for asteroids (fly much closer)

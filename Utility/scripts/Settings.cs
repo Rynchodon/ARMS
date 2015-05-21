@@ -29,7 +29,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
-		private static int latestVersion = 32; // in sequence of updates on steam
+		private static int latestVersion = 33; // in sequence of updates on steam
 
 		private static Logger myLogger = new Logger(null, "Settings");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
