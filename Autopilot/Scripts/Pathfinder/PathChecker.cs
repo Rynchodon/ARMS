@@ -149,9 +149,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			double distClosest = NearbyRange;
 			foreach (IMyEntity entity in offenders)
 			{
-					double distance = myCubeGrid.Distance_ShorterBounds(entity);
-					if (distance < distClosest)
-						distClosest = distance;
+				double distance = myCubeGrid.Distance_ShorterBounds(entity);
+				if (distance < distClosest)
+					distClosest = distance;
 			}
 			return distClosest;
 		}
@@ -284,9 +284,72 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 
 				// not a grid
-				if (IgnoreAsteroids && entity is IMyVoxelMap)
+
+				IMyVoxelMap asteroid = entity as IMyVoxelMap;
+				if (asteroid != null)
 				{
-					myLogger.debugLog("Ignoring asteroid: " + entity.getBestName(), "TestEntities()");
+					if (IgnoreAsteroids)
+					{
+						myLogger.debugLog("Ignoring asteroid: " + asteroid.getBestName(), "TestEntities()");
+						continue;
+					}
+
+					//Vector3 intersection0, intersection1;
+					//Vector3 intersection;
+					Vector3[] intersection = new Vector3[2];
+					if (!myPath.IntersectsAABB(asteroid, out  intersection[0]))
+					{
+						myLogger.debugLog("path does not intersect AABB. " + asteroid.getBestName(), "TestEntities()", Logger.severity.DEBUG);
+						continue;
+					}
+
+					//BoundingSphereD sphere = new BoundingSphereD(intersection[0], myPath.Radius);
+					//if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//{
+					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 1 at " + intersection[0] + " with radius " + myPath.Radius, "TestEntities()");
+					//	pointOfObstruction = intersection[0];
+					//	return entity;
+					//}
+					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 1 at " + intersection[0] + " with radius " + myPath.Radius, "TestEntities()");
+
+					if (!myPath.get_Reverse().IntersectsAABB(asteroid, out intersection[1]))
+					{
+						myLogger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + asteroid.getBestName(), "TestEntities()", Logger.severity.WARNING);
+						continue;
+					}
+
+					//sphere = new BoundingSphereD(intersection[1], myPath.Radius);
+					//if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//{
+					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 2 at " + intersection[1] + " with radius " + myPath.Radius, "TestEntities()");
+					//	pointOfObstruction = intersection[1];
+					//	return entity;
+					//}
+					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 2 at " + intersection[1] + " with radius " + myPath.Radius, "TestEntities()");
+
+					// test point in middle
+
+					//sphere = new BoundingSphereD((intersection[0] + intersection[1]) / 2, myPath.Radius);
+					//if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//{
+					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 3 at " + (intersection[0] + intersection[1]) / 2 + " with radius " + myPath.Radius, "TestEntities()");
+					//	pointOfObstruction = intersection[1];
+					//	return entity;
+					//}
+					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 3 at " + (intersection[0] + intersection[1]) / 2 + " with radius " + myPath.Radius, "TestEntities()");
+
+					//// test sphere that contains both points
+
+					//List<Vector3D> points = new List<Vector3D>(intersection);
+					//BoundingSphereD largeSphere = BoundingSphereD.CreateFromPoints(points);
+					//myLogger.debugLog("sphere from " + intersection[0] + " and " + intersection[1] + " is " + largeSphere.Center + ", " + largeSphere.Radius, "TestEntities()");
+					//if (asteroid.GetIntersectionWithSphere(ref largeSphere))
+					//{
+					//	myLogger.debugLog("sphere intersects " + entity.getBestName(), "TestEntities");
+					//	pointOfObstruction = largeSphere.Center;
+					//	return entity;
+					//}
+
 					continue;
 				}
 
@@ -294,7 +357,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (!path.IntersectsAABB(entity))
 					continue;
 
-				if (!path.IntersectsVolume(entity))
+				if (!path.IntersectsVolume(entity)) // TODO: is this ever a useful test? Perhaps for floating ore?
 					continue;
 
 				myLogger.debugLog("no more tests for non-grids are implemented", "TestEntities()", Logger.severity.DEBUG);

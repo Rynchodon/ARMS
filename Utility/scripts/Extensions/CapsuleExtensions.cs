@@ -22,6 +22,46 @@ namespace Rynchodon
 		{ return new Line(cap.P0, cap.P1, false); }
 
 		/// <summary>
+		/// Gets a Capsule where P0 and P1 are reversed.
+		/// </summary>
+		/// <param name="cap">Capsule to reverse</param>
+		/// <returns>A capsule where P0 and P1 are reversed.</returns>
+		public static Capsule get_Reverse(this Capsule cap)
+		{ return new Capsule(cap.P1, cap.P0, cap.Radius); }
+
+		///// <summary>
+		///// Gets the RayD from P0 towards P1.
+		///// </summary>
+		///// <param name="cap">Capsule to get ray for</param>
+		///// <returns>A RayD from P0 in the direction of P1</returns>
+		//public static RayD get_RayD(this Capsule cap)
+		//{ return new RayD(cap.P0, Vector3.Normalize(cap.P1 - cap.P0)); }
+
+		///// <summary>
+		///// Gets the RayD from P1 towards P0.
+		///// </summary>
+		///// <param name="cap">Capsule to get ray for</param>
+		///// <returns>A RayD from P1 in the direction of P0</returns>
+		//public static RayD get_RayD_reversed(this Capsule cap)
+		//{ return new RayD(cap.P1, Vector3.Normalize(cap.P0 - cap.P1)); }
+
+		/// <summary>
+		/// Tests the WorldAABB of an entity for intersection with a capsule
+		/// </summary>
+		/// <param name="cap">Capsule to test for intersection</param>
+		/// <param name="entity">WorldAABB will be tested against capsule</param>
+		/// <param name="distance">Distance at which path intersects AABB</param>
+		/// <returns>true if there is an intersection (including boundary)</returns>
+		public static bool IntersectsAABB(this Capsule cap, IMyEntity entity, out float distance)
+		{
+			BoundingBox AABB = (BoundingBox)entity.WorldAABB;
+			Vector3 Radius = new Vector3(cap.Radius, cap.Radius, cap.Radius);
+			AABB = new BoundingBox(AABB.Min - Radius, AABB.Max + Radius);
+			//myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
+			return (AABB.Intersects(cap.get_Line(), out distance));
+		}
+
+		/// <summary>
 		/// Tests the WorldAABB of an entity for intersection with a capsule
 		/// </summary>
 		/// <param name="cap">Capsule to test for intersection</param>
@@ -29,12 +69,33 @@ namespace Rynchodon
 		/// <returns>true if there is an intersection (including boundary)</returns>
 		public static bool IntersectsAABB(this Capsule cap, IMyEntity entity)
 		{
+			float distance;
+			return IntersectsAABB(cap, entity, out  distance);
+		}
+
+		/// <summary>
+		/// Tests the WorldAABB of an entity for intersection with a capsule
+		/// </summary>
+		/// <param name="cap">Capsule to test for intersection</param>
+		/// <param name="entity">WorldAABB will be tested against capsule</param>
+		/// <param name="intersection0">A point along the line of Capsule near the intersection</param>
+		/// <returns>true if there is an intersection (including boundary)</returns>
+		public static bool IntersectsAABB(this Capsule cap, IMyEntity entity, out Vector3 intersection0)
+		{
 			BoundingBox AABB = (BoundingBox)entity.WorldAABB;
 			Vector3 Radius = new Vector3(cap.Radius, cap.Radius, cap.Radius);
 			AABB = new BoundingBox(AABB.Min - Radius, AABB.Max + Radius);
+
+			Line capLine = cap.get_Line();
 			float distance;
-			//myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
-			return (AABB.Intersects(cap.get_Line(), out distance));
+			if (AABB.Intersects(capLine, out distance))
+			{
+				intersection0 = capLine.From + capLine.Direction * distance;
+				return true;
+			}
+
+			intersection0 = new Vector3();
+			return false;
 		}
 
 		/// <summary>
