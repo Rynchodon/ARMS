@@ -1,18 +1,18 @@
-<?xml version="1.0"?>
-<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <CubeBlocks>
     <Definition xsi:type="MyObjectBuilder_BatteryBlockDefinition">
       <Id>
         <TypeId>BatteryBlock</TypeId>
-        <SubtypeId>LargeBlockJumpDriveCharger</SubtypeId>
+        <SubtypeId>JumpDriveCharger_Large</SubtypeId>
       </Id>
       <DisplayName>Jump Drive Charger</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\Battery.dds</Icon>
+      <Icon>Textures\Icons\JumpDriveCharger.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\BatteryLarge.mwm</Model>
+      <Model>Models\JumpDriveCharger_Large.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="20" />
         <Component Subtype="Construction" Count="10" />
@@ -23,12 +23,24 @@
         <Component Subtype="SteelPlate" Count="60" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
-      <MountPoints />
-      <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\BatteryLargeConstruction_1.mwm" />
-        <Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\BatteryLargeConstruction_2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\BatteryLargeConstruction_3.mwm" />
-      </BuildProgressModels>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\JumpDriveCharger_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\JumpDriveCharger_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\JumpDriveCharger_Large_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Back" StartX="0.66" StartY="0.03" EndX="0.96" EndY="0.33" />
+				<MountPoint Side="Front" StartX="0.50" StartY="0.01" EndX="0.99" EndY="0.41" />
+				<MountPoint Side="Left" StartX="0.09" StartY="0.02" EndX="0.87" EndY="0.34" />
+				<MountPoint Side="Right" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.32" />
+				<MountPoint Side="Bottom" StartX="0.00" StartY="0.00" EndX="1.00" EndY="1.00" />
+				<MountPoint Side="Back" StartX="0.01" StartY="0.01" EndX="0.61" EndY="0.43" />
+				<MountPoint Side="Front" StartX="0.39" StartY="0.41" EndX="0.99" EndY="0.43" />
+				<MountPoint Side="Front" StartX="0.39" StartY="0.01" EndX="0.50" EndY="0.43" />
+				<MountPoint Side="Back" StartX="0.50" StartY="0.01" EndX="1.00" EndY="0.41" />
+				<MountPoint Side="Front" StartX="0.04" StartY="0.03" EndX="1.01" EndY="0.33" />
+				<MountPoint Side="Back" StartX="-0.01" StartY="0.03" EndX="0.66" EndY="0.33" />
+			</MountPoints>
       <BlockPairName>JumpDriveCharger</BlockPairName>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>45</BuildTimeSeconds>
