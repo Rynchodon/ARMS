@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<BlueprintClasses>
+	</BlueprintClasses>
+	<BlueprintClassEntries>
+		>
+	<Entry Class="LargeBlocks" BlueprintSubtypeId="BatteryBlock/JumpDriveCharger_Large" />
+        <Entry Class="SmallBlocks" BlueprintSubtypeId="BatteryBlock/JumpDriveCharger_Small" />
+	</BlueprintClassEntries>
+</Definitions>
