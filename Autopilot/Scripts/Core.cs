@@ -3,19 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Text;
 
 using Sandbox.Common;
-//using Sandbox.Common.Components;
-//using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
 using Sandbox.ModAPI;
-//using Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
-
-//using VrageLib = System.Runtime.CompilerServices;
 
 namespace Rynchodon.Autopilot
 {
@@ -65,12 +55,7 @@ namespace Rynchodon.Autopilot
 				else
 					myLogger.debugLog("I do not get to control any grids.", "init()", Logger.severity.INFO);
 
-			bool AutopilotAllowed;
-			if (!Settings.boolSettings.TryGetValue(Settings.BoolSetName.bAllowAutopilot, out AutopilotAllowed))
-			{
-				myLogger.debugLog("Failed to get bAllowAutopilot", "init()", Logger.severity.WARNING);
-			}
-			else if (!AutopilotAllowed)
+			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowAutopilot))
 			{
 				myLogger.debugLog("Autopilot disabled", "init()", Logger.severity.INFO);
 				controlGrids = false;

@@ -2,39 +2,46 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
-using Sandbox.Common;
 using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
 	public static class Settings
 	{
-		#region settings
-		public enum BoolSetName : byte { /*bAllowJumpCreative, bAllowJumpSurvival,*/ bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState }
-		public enum IntSetName : byte { }
-		public enum FloatSetName : byte { fDefaultSpeed, fMaxSpeed }
-		public enum DoubleSetName : byte { }
-		public enum StringSetName : byte { sSmartTurretDefaultPlayer, sSmartTurretDefaultNPC }
+		public enum SettingName : byte
+		{
+			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
+			yParallelPathCheck,
+			fDefaultSpeed, fMaxSpeed,
+			sSmartTurretDefaultNPC, sSmartTurretDefaultPlayer
+		}
 
-		public static Dictionary<BoolSetName, bool> boolSettings = new Dictionary<BoolSetName, bool>();
-		public static Dictionary<IntSetName, int> intSettings = new Dictionary<IntSetName, int>();
-		public static Dictionary<FloatSetName, float> floatSettings = new Dictionary<FloatSetName, float>();
-		public static Dictionary<DoubleSetName, double> doubleSettings = new Dictionary<DoubleSetName, double>();
-		public static Dictionary<StringSetName, string> stringSettings = new Dictionary<StringSetName, string>();
-		#endregion
+		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 
+		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
+		public static T GetSetting<T>(SettingName name) where T : struct
+		{
+			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
+			return set.Value;
+		}
+
+		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
+		public static string GetSettingString(SettingName name)
+		{
+			SettingString set = AllSettings[name] as SettingString;
+			return set.Value;
+		}
+
+		private const string modName = "Autopilot";
 		private static string settings_file_name = "AutopilotSettings.txt";
-		private static System.IO.TextReader settingsReader;
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
 		private static int latestVersion = 33; // in sequence of updates on steam
 
 		private static Logger myLogger = new Logger(null, "Settings");
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ myLogger.log(level, method, toLog); }
 
 		static Settings()
 		{
@@ -42,30 +49,30 @@ namespace Rynchodon
 
 			int fileVersion = readAll();
 			if (fileVersion != latestVersion)
-				MyAPIGateway.Utilities.ShowNotification("Autopilot has been updated.", 10000, MyFontEnum.White);
-			log("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowNotification(modName + " has been updated.", 10000);
+			myLogger.log("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
 
 			writeAll(); // writing immediately decreases user errors & whining
 		}
 
 		/// <summary>
-		/// put each setting into a dictionary with its default value
+		/// put each setting into AllSettings with its default value
 		/// </summary>
 		private static void buildSettings()
 		{
-			//boolSettings.Add(BoolSetName.bAllowJumpCreative, true);
-			//boolSettings.Add(BoolSetName.bAllowJumpSurvival, true);
-			boolSettings.Add(BoolSetName.bAllowAutopilot, true);
-			boolSettings.Add(BoolSetName.bAllowRadar, true);
-			boolSettings.Add(BoolSetName.bAllowTurretControl, true);
-			boolSettings.Add(BoolSetName.bUseRemoteControl, false);
-			boolSettings.Add(BoolSetName.bUseColourState, true);
+			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowTurretControl, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));
 
-			floatSettings.Add(FloatSetName.fDefaultSpeed, 100);
-			floatSettings.Add(FloatSetName.fMaxSpeed, float.MaxValue);
+			AllSettings.Add(SettingName.yParallelPathCheck, new SettingMinMax<byte>(1, 100, 1));
 
-			stringSettings.Add(StringSetName.sSmartTurretDefaultNPC, "[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]");
-			stringSettings.Add(StringSetName.sSmartTurretDefaultPlayer, "");
+			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
+			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, 100));
+
+			AllSettings.Add(SettingName.sSmartTurretDefaultNPC, new SettingString("[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]"));
+			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
 		}
 
 		/// <summary>
@@ -76,6 +83,8 @@ namespace Rynchodon
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(Settings)))
 				return -1;
+
+			TextReader settingsReader = null;
 			try
 			{
 				settingsReader = MyAPIGateway.Utilities.ReadFileInLocalStorage(settings_file_name, typeof(Settings));
@@ -91,7 +100,6 @@ namespace Rynchodon
 				while (true)
 				{
 					string line = settingsReader.ReadLine();
-					//log("got a line: " + line, "readAll()", Logger.severity.TRACE);
 					if (line == null)
 						break;
 					parse(line);
@@ -101,8 +109,11 @@ namespace Rynchodon
 			}
 			finally
 			{
-				settingsReader.Close();
-				settingsReader = null;
+				if (settingsReader != null)
+				{
+					settingsReader.Close();
+					settingsReader = null;
+				}
 			}
 		}
 
@@ -113,23 +124,13 @@ namespace Rynchodon
 		{
 			try
 			{
-				// write to file
 				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(Settings));
 
 				write(strVersion, latestVersion.ToString()); // must be first line
 
 				// write settings
-				foreach (KeyValuePair<BoolSetName, bool> pair in boolSettings)
-					write(pair.Key.ToString(), pair.Value.ToString());
-				foreach (KeyValuePair<IntSetName, int> pair in intSettings)
-					write(pair.Key.ToString(), pair.Value.ToString());
-				foreach (KeyValuePair<FloatSetName, float> pair in floatSettings)
-					write(pair.Key.ToString(), pair.Value.ToString());
-				foreach (KeyValuePair<DoubleSetName, double> pair in doubleSettings)
-					write(pair.Key.ToString(), pair.Value.ToString());
-				foreach (KeyValuePair<StringSetName, string> pair in stringSettings)
-					write(pair.Key.ToString(), pair.Value.ToString());
-
+				foreach (KeyValuePair<SettingName, Setting> pair in AllSettings)
+					write(pair.Key.ToString(), pair.Value.ValueAsString());
 			}
 			finally
 			{
@@ -156,132 +157,81 @@ namespace Rynchodon
 		/// <summary>
 		/// convert a line of format name=value into a setting and apply it
 		/// </summary>
-		/// <remarks>
-		/// guesses setting type based on first letter of name, but will check against all setting types
-		/// </remarks>
 		private static void parse(string line)
 		{
-			if (line.Length < 4)
-			{
-				log("line too short: " + line, "parse()", Logger.severity.WARNING);
-				return;
-			}
-
-			char first = line[0];
 			string[] split = line.Split('=');
 
 			if (split.Length != 2)
 			{
-				log("split wrong length: " + split.Length, "parse()", Logger.severity.WARNING);
+				myLogger.log("split wrong length: " + split.Length + ", line: " + line, "parse()", Logger.severity.WARNING);
 				return;
 			}
 
-			string name = split[0];
-			string value = split[1];
+			SettingName name;
+			if (Enum.TryParse<SettingName>(split[0], out name))
+				try
+				{ AllSettings[name].ValueFromString(split[1]); }
+				catch (Exception)
+				{ myLogger.log("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
+		}
 
-			switch (first)
+		private interface Setting
+		{
+			string ValueAsString();
+			void ValueFromString(string value);
+		}
+
+		private class SettingSimple<T> : Setting where T : struct
+		{
+			public readonly T DefaultValue;
+			public T Value { get; protected set; }
+
+			public SettingSimple(T defaultValue)
+			{ this.DefaultValue = defaultValue; }
+
+			public string ValueAsString()
+			{ return Value.ToString(); }
+
+			public virtual void ValueFromString(string value)
+			{ Value = (T)Convert.ChangeType(value, typeof(T)); }
+		}
+
+		private class SettingMinMax<T> : SettingSimple<T> where T : struct
+		{
+			public readonly T Min;
+			public readonly T Max;
+
+			public SettingMinMax(T min, T max, T defaultValue)
+				: base(defaultValue)
 			{
-				case 'b':
-				default:
-					if (parseAsBool(name, value)
-						|| parseAsInt(name, value)
-						|| parseAsFloat(name, value)
-						|| parseAsDouble(name, value)
-						|| parseAsString(name, value))
-						return;
-					break;
-				case 'd':
-					if (parseAsDouble(name, value)
-						|| parseAsBool(name, value)
-						|| parseAsInt(name, value)
-						|| parseAsFloat(name, value)
-						|| parseAsString(name, value))
-						return;
-					break;
-				case 'i':
-					if (parseAsInt(name, value)
-						|| parseAsBool(name, value)
-						|| parseAsFloat(name, value)
-						|| parseAsDouble(name, value)
-						|| parseAsString(name, value))
-						return;
-					break;
-				case 'f':
-					if (parseAsFloat(name, value)
-						|| parseAsBool(name, value)
-						|| parseAsInt(name, value)
-						|| parseAsDouble(name, value)
-						|| parseAsString(name, value))
-						return;
-					break;
-				case 's':
-					if (parseAsString(name, value)
-						|| parseAsBool(name, value)
-						|| parseAsInt(name, value)
-						|| parseAsFloat(name, value)
-						|| parseAsDouble(name, value))
-						return;
-					break;
+				this.Min = min;
+				this.Max = max;
+				this.Value = defaultValue;
 			}
-			log("failed to parse: " + line, "parse()", Logger.severity.WARNING);
+
+			public override void ValueFromString(string value)
+			{
+				Value = (T)Convert.ChangeType(value, typeof(T));
+				if (Comparer<T>.Default.Compare(Value, Min) < 0)
+					Value = Min;
+				if (Comparer<T>.Default.Compare(Value, Max) > 0)
+					Value = Max;
+			}
 		}
 
-		#region parse methods
-
-		private static bool parseAsBool(string name, string value)
+		private class SettingString : Setting
 		{
-			BoolSetName bsn;
-			bool bValue;
-			if (!Enum.TryParse<BoolSetName>(name, out bsn) || !bool.TryParse(value, out bValue))
-				return false;
-			log("got bool setting: " + bsn + ", with value: " + bValue, "parseAsBool()", Logger.severity.DEBUG);
-			boolSettings[bsn] = bValue;
-			return true;
-		}
+			public readonly string defaultValue;
+			public string Value { get; protected set; }
 
-		private static bool parseAsInt(string name, string value)
-		{
-			IntSetName isn;
-			int iValue;
-			if (!Enum.TryParse<IntSetName>(name, out isn) || !int.TryParse(value, out iValue))
-				return false;
-			log("got int setting: " + isn + ", with value: " + iValue, "parseAsInt()", Logger.severity.DEBUG);
-			intSettings[isn] = iValue;
-			return false;
-		}
+			public SettingString(string defaultValue)
+			{ this.defaultValue = defaultValue; }
 
-		private static bool parseAsFloat(string name, string value)
-		{
-			FloatSetName fsn;
-			float fValue;
-			if (!Enum.TryParse<FloatSetName>(name, out fsn) || !float.TryParse(value, out fValue))
-				return false;
-			floatSettings[fsn] = fValue;
-			log("got float setting: " + fsn + ", with value: " + fValue, "parseAsFloat()", Logger.severity.DEBUG);
-			return true;
-		}
+			public string ValueAsString()
+			{ return Value; }
 
-		private static bool parseAsDouble(string name, string value)
-		{
-			DoubleSetName dsn;
-			double dValue;
-			if (!Enum.TryParse<DoubleSetName>(name, out dsn) || !double.TryParse(value, out dValue))
-				return false;
-			doubleSettings[dsn] = dValue;
-			log("got double setting: " + dsn + ", with value: " + dValue, "parseAsDouble()", Logger.severity.DEBUG);
-			return true;
+			public virtual void ValueFromString(string value)
+			{ this.Value = value; }
 		}
-
-		private static bool parseAsString(string name, string value)
-		{
-			StringSetName ssn;
-			if (!Enum.TryParse<StringSetName>(name, out ssn))
-				return false;
-			stringSettings[ssn] = value;
-			log("got string setting: " + ssn + ", with value: " + value, "parseAsString()", Logger.severity.DEBUG);
-			return true;
-		}
-
-		#endregion
 	}
 }

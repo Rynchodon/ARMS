@@ -99,8 +99,8 @@ namespace Rynchodon.Autopilot
 			lockOnRangeEnemy = 0;
 			lockOnBlock = null;
 			tempBlockName = null;
-			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
-			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
+			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
+			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 
 			// private vars
 			myWaypoint = null;
@@ -118,14 +118,8 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public void startOfCommands()
 		{
-			//if (myLogger != null)
-			//	log("reached end of commands", "startOfCommands()", Logger.severity.TRACE);
-			float setting;
-			if (Settings.floatSettings.TryGetValue(Settings.FloatSetName.fDefaultSpeed, out setting))
-				speedCruise_external = setting;
-			else
-				speedCruise_external = 100;
-			speedSlow_external = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
+			speedCruise_external = Settings.GetSetting<float>(Settings.SettingName.fDefaultSpeed);
+			speedSlow_external = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 			destinationRadius = 100;
 		}
 
@@ -156,7 +150,7 @@ namespace Rynchodon.Autopilot
 		public float speedSlow_external
 		{
 			get { return value_speedSlow_external; }
-			set { value_speedSlow_external = MathHelper.Min(value, Settings.floatSettings[Settings.FloatSetName.fMaxSpeed]); }
+			set { value_speedSlow_external = MathHelper.Min(value, Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed));}
 		}
 		//public const float speedSlow_minimum = 0.25f;
 
@@ -178,8 +172,8 @@ namespace Rynchodon.Autopilot
 		public void clearSpeedInternal()
 		{
 			//myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
-			speedCruise_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
-			speedSlow_internal = Settings.floatSettings[Settings.FloatSetName.fMaxSpeed];
+			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
+			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 		}
 
 		private Logger myLogger = new Logger(null, "NavSettings");
