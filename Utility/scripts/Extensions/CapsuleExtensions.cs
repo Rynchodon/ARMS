@@ -10,6 +10,21 @@ namespace Rynchodon
 	{
 		private static Logger myLogger = new Logger(null, "CapsuleExtensions");
 
+		public static Vector3 get_Middle(this Capsule cap)
+		{ return (cap.P0 + cap.P1) / 2f; }
+
+		/// <summary>
+		/// Length Squared P0 to P1
+		/// </summary>
+		public static float get_lengthSquared(this Capsule cap)
+		{ return (cap.P0 - cap.P1).LengthSquared(); }
+
+		/// <summary>
+		/// Length P0 to P1
+		/// </summary>
+		public static float get_length(this Capsule cap)
+		{ return (cap.P0 - cap.P1).Length(); }
+
 		/// <summary>
 		/// Gets the line from P0 to P1.
 		/// </summary>
@@ -28,22 +43,6 @@ namespace Rynchodon
 		/// <returns>A capsule where P0 and P1 are reversed.</returns>
 		public static Capsule get_Reverse(this Capsule cap)
 		{ return new Capsule(cap.P1, cap.P0, cap.Radius); }
-
-		///// <summary>
-		///// Gets the RayD from P0 towards P1.
-		///// </summary>
-		///// <param name="cap">Capsule to get ray for</param>
-		///// <returns>A RayD from P0 in the direction of P1</returns>
-		//public static RayD get_RayD(this Capsule cap)
-		//{ return new RayD(cap.P0, Vector3.Normalize(cap.P1 - cap.P0)); }
-
-		///// <summary>
-		///// Gets the RayD from P1 towards P0.
-		///// </summary>
-		///// <param name="cap">Capsule to get ray for</param>
-		///// <returns>A RayD from P1 in the direction of P0</returns>
-		//public static RayD get_RayD_reversed(this Capsule cap)
-		//{ return new RayD(cap.P1, Vector3.Normalize(cap.P0 - cap.P1)); }
 
 		/// <summary>
 		/// Tests the WorldAABB of an entity for intersection with a capsule
@@ -90,7 +89,7 @@ namespace Rynchodon
 			float distance;
 			if (AABB.Intersects(capLine, out distance))
 			{
-				intersection0 = capLine.From + capLine.Direction * distance;
+				intersection0 = capLine.From + capLine.Direction / capLine.Length * distance;
 				return true;
 			}
 
@@ -125,7 +124,7 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Tests whether of not a position is intersecting a capsule
+		/// Tests whether or not a position is intersecting a capsule
 		/// </summary>
 		/// <param name="cap">capsule to test for intersection</param>
 		/// <param name="worldPosition">position to test for intersection</param>
@@ -135,7 +134,7 @@ namespace Rynchodon
 		{ return cap.get_Line().DistanceLessEqual(worldPosition, cap.Radius + buffer); }
 
 		/// <summary>
-		/// Tests whether of not a position is intersecting a capsule
+		/// Tests whether or not a position is intersecting a capsule
 		/// </summary>
 		/// <param name="cap">capsule to test for intersection</param>
 		/// <param name="worldPosition">position to test for intersection</param>
@@ -161,6 +160,35 @@ namespace Rynchodon
 			float radiiSquared = capsule.Radius + other.Radius;
 			radiiSquared *= radiiSquared;
 			return shortestDistanceSquared <= radiiSquared;
+		}
+
+		/// <summary>
+		/// Performs a binary search for intersection using spheres.
+		/// <para>I doubt this is faster than sequential checks but there should never be a case of false-negatives.</para>
+		/// </summary>
+		/// <param name="pointOfObstruction">a point on the capsule's line close to obstruction</param>
+		public static bool Intersects(this Capsule capsule, IMyVoxelMap asteroid, out Vector3? pointOfObstruction, float capsuleLength = -1)
+		{
+			if (capsuleLength < 0)
+				capsuleLength = capsule.get_length();
+			float halfLength = capsuleLength / 2;
+			Vector3 middle = capsule.get_Middle();
+
+			BoundingSphereD containingSphere = new BoundingSphereD(middle, halfLength + capsule.Radius);
+			if (!asteroid.GetIntersectionWithSphere(ref containingSphere))
+			{
+				pointOfObstruction = null;
+				return false;
+			}
+
+			if (capsuleLength < 1f)
+			{
+				pointOfObstruction = containingSphere.Center;
+				return true;
+			}
+
+			return Intersects(new Capsule(capsule.P0, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength)
+				|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength);
 		}
 	}
 }

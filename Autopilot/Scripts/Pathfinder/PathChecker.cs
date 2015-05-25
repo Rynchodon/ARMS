@@ -180,6 +180,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (IMyEntity entity in offenders)
 			{
 				CheckInterrupt();
+
 				float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
 				while (sortedOffenders.ContainsKey(distance))
 					distance = distance.IncrementSignificand();
@@ -294,8 +295,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 						continue;
 					}
 
-					//Vector3 intersection0, intersection1;
-					//Vector3 intersection;
 					Vector3[] intersection = new Vector3[2];
 					if (!myPath.IntersectsAABB(asteroid, out  intersection[0]))
 					{
@@ -303,52 +302,33 @@ namespace Rynchodon.Autopilot.Pathfinder
 						continue;
 					}
 
-					//BoundingSphereD sphere = new BoundingSphereD(intersection[0], myPath.Radius);
-					//if (asteroid.GetIntersectionWithSphere(ref sphere))
-					//{
-					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 1 at " + intersection[0] + " with radius " + myPath.Radius, "TestEntities()");
-					//	pointOfObstruction = intersection[0];
-					//	return entity;
-					//}
-					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 1 at " + intersection[0] + " with radius " + myPath.Radius, "TestEntities()");
-
 					if (!myPath.get_Reverse().IntersectsAABB(asteroid, out intersection[1]))
 					{
 						myLogger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + asteroid.getBestName(), "TestEntities()", Logger.severity.WARNING);
 						continue;
 					}
 
-					//sphere = new BoundingSphereD(intersection[1], myPath.Radius);
-					//if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//// test a series of spheres, 1 m apart for intersection. Obviously not very efficient or accurate.
+					//Line intersectionTest = new Line(intersection[0], intersection[1], false);
+					//Vector3 direction = intersectionTest.Direction / intersectionTest.Length;
+					//for (int sphereIndex = 0; sphereIndex < intersectionTest.Length; sphereIndex++)
 					//{
-					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 2 at " + intersection[1] + " with radius " + myPath.Radius, "TestEntities()");
-					//	pointOfObstruction = intersection[1];
-					//	return entity;
+					//	CheckInterrupt();
+
+					//	Vector3 centre = intersectionTest.From + direction * sphereIndex;
+					//	BoundingSphereD sphere = new BoundingSphere(centre, myPath.Radius);
+						
+					//	if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//	{
+					//		myLogger.debugLog("asteroid intersects sphere at " + sphere.Center + ", with radius " + sphere.Radius + ", from " + intersectionTest.From + " + " + direction + " * " + sphereIndex, "TestEntities()");
+					//		pointOfObstruction = sphere.Center;
+					//		return entity;
+					//	}
 					//}
-					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 2 at " + intersection[1] + " with radius " + myPath.Radius, "TestEntities()");
 
-					// test point in middle
-
-					//sphere = new BoundingSphereD((intersection[0] + intersection[1]) / 2, myPath.Radius);
-					//if (asteroid.GetIntersectionWithSphere(ref sphere))
-					//{
-					//	myLogger.debugLog(asteroid.getBestName() + " failed overlap test 3 at " + (intersection[0] + intersection[1]) / 2 + " with radius " + myPath.Radius, "TestEntities()");
-					//	pointOfObstruction = intersection[1];
-					//	return entity;
-					//}
-					//myLogger.debugLog(asteroid.getBestName() + " passed overlap test 3 at " + (intersection[0] + intersection[1]) / 2 + " with radius " + myPath.Radius, "TestEntities()");
-
-					//// test sphere that contains both points
-
-					//List<Vector3D> points = new List<Vector3D>(intersection);
-					//BoundingSphereD largeSphere = BoundingSphereD.CreateFromPoints(points);
-					//myLogger.debugLog("sphere from " + intersection[0] + " and " + intersection[1] + " is " + largeSphere.Center + ", " + largeSphere.Radius, "TestEntities()");
-					//if (asteroid.GetIntersectionWithSphere(ref largeSphere))
-					//{
-					//	myLogger.debugLog("sphere intersects " + entity.getBestName(), "TestEntities");
-					//	pointOfObstruction = largeSphere.Center;
-					//	return entity;
-					//}
+					Capsule testSection = new Capsule(intersection[0], intersection[1], myPath.Radius);
+					if (testSection.Intersects(asteroid, out pointOfObstruction))
+						return entity;
 
 					continue;
 				}

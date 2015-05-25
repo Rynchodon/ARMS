@@ -1,7 +1,0 @@
-; Top-most EditorConfig file
-root = true
-
-; 2-column tab indentation
-[*.cs]
-indent_style = tab
-indent_size = 2
