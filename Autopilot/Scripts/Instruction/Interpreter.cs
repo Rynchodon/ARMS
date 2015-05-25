@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot.Instruction
 			enqueueAllActions_continue(instructions);
 		}
 
-		private static readonly Regex GPS_tag = new Regex(@"GPS:.*:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
+		private static readonly Regex GPS_tag = new Regex(@"GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
 		private static readonly string replaceWith = @"$1, $2, $3";
 
 		/// <summary>

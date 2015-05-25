@@ -108,8 +108,8 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 			double closestDistance = nav.myPathfinder_Output.DistanceToClosest;
-			float slowSpeed = MathHelper.Max((float)closestDistance + 10f, 10f),
-				cruiseSpeed = slowSpeed / 2;
+			float cruiseSpeed = MathHelper.Max((float)closestDistance + 10f, 10f),
+				slowSpeed = cruiseSpeed * 1.5f;
 			if (nav.CNS.getSpeedSlow() > slowSpeed)
 			{
 				//myLogger.debugLog("slow speed is now " + slowSpeed, "adjustSpeedsByClosest()");
