@@ -19,7 +19,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// </remarks>
 	internal class PathChecker
 	{
-		private static FastResourceLock lock_Static = new FastResourceLock();
+		//private static FastResourceLock lock_Static = new FastResourceLock();
 
 		public IMyCubeGrid myCubeGrid { get; private set; }
 
@@ -45,47 +45,44 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// I considered keeping track of the closest entity, in the event there was no obstruction. This would have been, at best, unreliable due to initial AABB test.
 		public IMyEntity TestPath(Vector3D worldDestination, IMyCubeBlock navigationBlock, bool IgnoreAsteroids, out Vector3? pointOfObstruction, IMyCubeGrid DestGrid)
 		{
-			using (lock_Static.AcquireExclusiveUsing())
+			worldDestination.throwIfNull_argument("destination");
+			worldDestination.throwIfNull_argument("navigationBlock");
+
+			Interrupt = false;
+			this.NavigationBlock = navigationBlock;
+			this.IgnoreAsteroids = IgnoreAsteroids;
+			this.DestGrid = DestGrid;
+
+			myLogger.debugLog("Test path to (world absolute) " + worldDestination, "TestPath()");
+			//myLogger.debugLog("destination (local) = " + worldDestination.getLocal(), "TestPath()");
+			//myLogger.debugLog("destination (nav block) = " + worldDestination.getBlock(navigationBlock), "TestPath()");
+
+			Vector3D Displacement = worldDestination - navigationBlock.GetPosition();
+			myLogger.debugLog("Displacement = " + Displacement, "TestPath()");
+
+			// entities in large AABB
+			BoundingBoxD AtDest = myCubeGrid.WorldAABB.Translate(Displacement);
+			ICollection<IMyEntity> offenders = EntitiesInLargeAABB(myCubeGrid.WorldAABB, AtDest);
+			if (offenders.Count == 0)
 			{
-				worldDestination.throwIfNull_argument("destination");
-				worldDestination.throwIfNull_argument("navigationBlock");
-
-				Interrupt = false;
-				this.NavigationBlock = navigationBlock;
-				this.IgnoreAsteroids = IgnoreAsteroids;
-				this.DestGrid = DestGrid;
-
-				myLogger.debugLog("Test path to (world absolute) " + worldDestination, "TestPath()");
-				//myLogger.debugLog("destination (local) = " + worldDestination.getLocal(), "TestPath()");
-				//myLogger.debugLog("destination (nav block) = " + worldDestination.getBlock(navigationBlock), "TestPath()");
-
-				Vector3D Displacement = worldDestination - navigationBlock.GetPosition();
-				myLogger.debugLog("Displacement = " + Displacement, "TestPath()");
-
-				// entities in large AABB
-				BoundingBoxD AtDest = myCubeGrid.WorldAABB.Translate(Displacement);
-				ICollection<IMyEntity> offenders = EntitiesInLargeAABB(myCubeGrid.WorldAABB, AtDest);
-				if (offenders.Count == 0)
-				{
-					myLogger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
-					pointOfObstruction = null;
-					return null;
-				}
-				myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
-
-				// sort offenders by distance
-				offenders = SortByDistance(offenders);
-
-				// set destination
-				GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
-				//myLogger.debugLog("destination = " + worldDestination.getWorldAbsolute() + ", navigationBlock = " + navigationBlock.GetPosition(), "TestPath()");
-				myGridShape.SetDestination(RelativeVector3F.createFromWorldAbsolute(worldDestination, myCubeGrid), navigationBlock);
-				myPath = myGridShape.myPath;
-				myLogger.debugLog("got path from " + myPath.P0 + " to " + myPath.P1 + " with radius " + myPath.Radius, "TestPath()");
-
-				// test path
-				return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction, this.DestGrid);
+				myLogger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
+				pointOfObstruction = null;
+				return null;
 			}
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
+
+			// sort offenders by distance
+			offenders = SortByDistance(offenders);
+
+			// set destination
+			GridShapeProfiler myGridShape = GridShapeProfiler.getFor(myCubeGrid);
+			//myLogger.debugLog("destination = " + worldDestination.getWorldAbsolute() + ", navigationBlock = " + navigationBlock.GetPosition(), "TestPath()");
+			myGridShape.SetDestination(RelativeVector3F.createFromWorldAbsolute(worldDestination, myCubeGrid), navigationBlock);
+			myPath = myGridShape.myPath;
+			myLogger.debugLog("got path from " + myPath.P0 + " to " + myPath.P1 + " with radius " + myPath.Radius, "TestPath()");
+
+			// test path
+			return TestEntities(offenders, myPath, myGridShape, out pointOfObstruction, this.DestGrid);
 		}
 
 		/// <summary>
@@ -98,43 +95,34 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <returns>distance from the destination that can be reached</returns>
 		public float distanceCanTravel(Line canTravel)
 		{
-			using (lock_Static.AcquireExclusiveUsing())
+			Vector3D navBlockPos = NavigationBlock.GetPosition();
+
+			Vector3D DisplacementStart = canTravel.From - navBlockPos;
+			Vector3D DisplacementEnd = canTravel.To - navBlockPos;
+
+			BoundingBoxD atStart = myCubeGrid.WorldAABB.Translate(DisplacementStart);
+			BoundingBoxD atDest = myCubeGrid.WorldAABB.Translate(DisplacementEnd);
+
+			ICollection<IMyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
+			if (offenders.Count == 0)
 			{
-				Vector3D navBlockPos = NavigationBlock.GetPosition();
-
-				Vector3D DisplacementStart = canTravel.From - navBlockPos;
-				Vector3D DisplacementEnd = canTravel.To - navBlockPos;
-
-				BoundingBoxD atStart = myCubeGrid.WorldAABB.Translate(DisplacementStart);
-				BoundingBoxD atDest = myCubeGrid.WorldAABB.Translate(DisplacementEnd);
-
-				ICollection<IMyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
-				if (offenders.Count == 0)
-				{
-					myLogger.debugLog("AABB is empty", "distanceCanTravel()");
-					return 0;
-				}
-				myLogger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
-				offenders = SortByDistance(offenders);
-				//if (offenders.Count == 0)
-				//{
-				//	myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
-				//	return 0;
-				//}
-				//myLogger.debugLog("remaining after ignore list: " + offenders.Count, "distanceCanTravel()");
-
-				Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
-				Vector3? pointOfObstruction;
-				IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
-				if (obstruction == null)
-				{
-					myLogger.debugLog("no obstruction", "distanceCanTravel()");
-					return 0;
-				}
-
-				myLogger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
-				return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
+				myLogger.debugLog("AABB is empty", "distanceCanTravel()");
+				return 0;
 			}
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
+			offenders = SortByDistance(offenders);
+
+			Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
+			Vector3? pointOfObstruction;
+			IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
+			if (obstruction == null)
+			{
+				myLogger.debugLog("no obstruction", "distanceCanTravel()");
+				return 0;
+			}
+
+			myLogger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
+			return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
 		}
 
 		public const double NearbyRange = 2000;
@@ -145,29 +133,26 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <returns>Distance to closest Entity, may be negative</returns>
 		public double ClosestEntity()
 		{
-			using (lock_Static.AcquireExclusiveUsing())
+			BoundingBoxD NearbyBox = myCubeGrid.WorldAABB;
+			NearbyBox.Inflate(NearbyRange);
+
+			HashSet<IMyEntity> offenders = new HashSet<IMyEntity>();// = MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref NearbyBox);
+			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(NearbyBox, offenders, collect_Entities);
+			if (offenders.Count == 0)
 			{
-				BoundingBoxD NearbyBox = myCubeGrid.WorldAABB;
-				NearbyBox.Inflate(NearbyRange);
-
-				HashSet<IMyEntity> offenders = new HashSet<IMyEntity>();// = MyAPIGateway.Entities.GetEntitiesInAABB_Safe(ref NearbyBox);
-				MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(NearbyBox, offenders, collect_Entities);
-				if (offenders.Count == 0)
-				{
-					myLogger.debugLog("AABB is empty", "ClosestEntity()");
-					return NearbyRange;
-				}
-				myLogger.debugLog("collected entities to test: " + offenders.Count, "ClosestEntity()");
-
-				double distClosest = NearbyRange;
-				foreach (IMyEntity entity in offenders)
-				{
-					double distance = myCubeGrid.Distance_ShorterBounds(entity);
-					if (distance < distClosest)
-						distClosest = distance;
-				}
-				return distClosest;
+				myLogger.debugLog("AABB is empty", "ClosestEntity()");
+				return NearbyRange;
 			}
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "ClosestEntity()");
+
+			double distClosest = NearbyRange;
+			foreach (IMyEntity entity in offenders)
+			{
+				double distance = myCubeGrid.Distance_ShorterBounds(entity);
+				if (distance < distClosest)
+					distClosest = distance;
+			}
+			return distClosest;
 		}
 
 		#endregion
@@ -331,7 +316,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 					//	Vector3 centre = intersectionTest.From + direction * sphereIndex;
 					//	BoundingSphereD sphere = new BoundingSphere(centre, myPath.Radius);
-						
+
 					//	if (asteroid.GetIntersectionWithSphere(ref sphere))
 					//	{
 					//		myLogger.debugLog("asteroid intersects sphere at " + sphere.Center + ", with radius " + sphere.Radius + ", from " + intersectionTest.From + " + " + direction + " * " + sphereIndex, "TestEntities()");

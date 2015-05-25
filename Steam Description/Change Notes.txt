@@ -1,5 +1,7 @@
 Will be moved to steam every release.
 
 major:
+tighter path checking for asteroids (working on performance cost)
 
 minor:
+Put those cores to work! Can run multiple path checking tasks in parallel, see Settings.
