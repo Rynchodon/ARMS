@@ -1046,6 +1046,8 @@ namespace Rynchodon.Autopilot
 			//	return ReportableState.GET_OUT_OF_SEAT;
 			if (CNS.landingState == NavSettings.LANDING.LOCKED)
 				return ReportableState.Landed;
+			if (CNS.waitUntil.CompareTo(DateTime.UtcNow) > 0)
+				return ReportableState.Waiting;
 
 			// pathfinding
 			switch (pathfinderState)

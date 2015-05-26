@@ -60,7 +60,7 @@ namespace Rynchodon.Autopilot
 			bestMatchGrid.throwIfNull_variable("bestMatchGrid");
 			bestMatchGrid.Entity.throwIfNull_variable("bestMatchGrid.Entity");
 
-			// found an enemy, setting as centreDestination
+			// found an enemy, setting as destination
 			if (bestMatchBlock != null)
 				log("found an enemy: " + bestMatchGrid.Entity.DisplayName + ":" + bestMatchBlock.DisplayNameText, "tryLockOn()");
 			else
