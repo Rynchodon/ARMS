@@ -205,13 +205,13 @@ namespace Rynchodon.Autopilot.Turret
 
 					if (myAntenna == null || myAntenna.CubeBlock == null || !myAntenna.CubeBlock.canSendTo(myCubeBlock, true))
 					{
-						//myLogger.debugLog("searching for attached antenna", "UpdateAfterSimulation10()");
+						//myLogger.debugLog("searching for attached antenna", "UpdateAfterSimulation()");
 
 						myAntenna = null;
 						foreach (Receiver antenna in RadioAntenna.registry)
 							if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 							{
-								myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+								myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation()", Logger.severity.INFO);
 								myAntenna = antenna;
 								break;
 							}
@@ -219,12 +219,12 @@ namespace Rynchodon.Autopilot.Turret
 							foreach (Receiver antenna in LaserAntenna.registry)
 								if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 								{
-									myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation10()", Logger.severity.INFO);
+									myLogger.debugLog("found attached antenna: " + antenna.CubeBlock.DisplayNameText, "UpdateAfterSimulation()", Logger.severity.INFO);
 									myAntenna = antenna;
 									break;
 								}
 						//if (myAntenna == null)
-						//myLogger.debugLog("did not find attached antenna", "UpdateAfterSimulation10()");
+						//	myLogger.debugLog("did not find attached antenna", "UpdateAfterSimulation()");
 					}
 
 					MyObjectBuilder_TurretBase builder = myCubeBlock.getSlimObjectBuilder() as MyObjectBuilder_TurretBase;
@@ -393,13 +393,16 @@ namespace Rynchodon.Autopilot.Turret
 
 			foreach (IMyEntity entity in entitiesInRange)
 			{
-				// if grid is being pasted or a projection, ignore it
-				if (!entity.Save)
-					continue;
-
 				IMyCubeBlock asBlock = entity as IMyCubeBlock;
 				if (asBlock != null)
 				{
+					// if grid is being pasted or a projection, ignore it
+					if (!asBlock.CubeGrid.Save)
+					{
+						myLogger.debugLog("ignoring: " + entity.getBestName(), "getValidTargets()");
+						continue;
+					}
+
 					if (asBlock.IsWorking && enemyNear() && targetGridFlagSet(asBlock.CubeGrid) && myCubeBlock.canConsiderHostile(asBlock))
 						validTarget_block.Add(entity);
 					continue;
@@ -407,6 +410,13 @@ namespace Rynchodon.Autopilot.Turret
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
+					// if grid is being pasted or a projection, ignore it
+					if (!asGrid.Save)
+					{
+						myLogger.debugLog("ignoring: " + entity.getBestName(), "getValidTargets()");
+						continue;
+					}
+
 					if (myCubeBlock.canConsiderHostile(asGrid))
 					{
 						if (targetMoving && enemyNear() && targetGridFlagSet(asGrid))
