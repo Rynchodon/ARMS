@@ -4,4 +4,5 @@ major:
 tighter path checking for asteroids (working on performance cost)
 
 minor:
+settings now have minimum and maximum values
 Put those cores to work! Can run multiple path checking tasks in parallel, see Settings.
