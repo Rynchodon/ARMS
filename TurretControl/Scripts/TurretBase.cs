@@ -58,7 +58,7 @@ namespace Rynchodon.Autopilot.Turret
 		{
 			try
 			{
-				if (Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
+				if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
 					return;
 
 				this.myCubeBlock = CubeBlock;
