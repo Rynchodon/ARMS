@@ -14,8 +14,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// <summary>
 	/// Checks paths for obstructing entities
 	/// </summary>
+	/// <remarks>
+	/// Only one PathChecker can run at a time.
+	/// </remarks>
 	internal class PathChecker
 	{
+		//private static FastResourceLock lock_Static = new FastResourceLock();
+
 		public IMyCubeGrid myCubeGrid { get; private set; }
 
 		private IMyCubeGrid DestGrid;
@@ -104,14 +109,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				myLogger.debugLog("AABB is empty", "distanceCanTravel()");
 				return 0;
 			}
-			myLogger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
+			myLogger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
 			offenders = SortByDistance(offenders);
-			//if (offenders.Count == 0)
-			//{
-			//	myLogger.debugLog("all offenders ignored", "distanceCanTravel()");
-			//	return 0;
-			//}
-			//myLogger.debugLog("remaining after ignore list: " + offenders.Count, "TestPath()");
 
 			Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
 			Vector3? pointOfObstruction;
@@ -149,9 +148,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			double distClosest = NearbyRange;
 			foreach (IMyEntity entity in offenders)
 			{
-					double distance = myCubeGrid.Distance_ShorterBounds(entity);
-					if (distance < distClosest)
-						distClosest = distance;
+				double distance = myCubeGrid.Distance_ShorterBounds(entity);
+				if (distance < distClosest)
+					distClosest = distance;
 			}
 			return distClosest;
 		}
@@ -180,6 +179,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (IMyEntity entity in offenders)
 			{
 				CheckInterrupt();
+
 				float distance = (float)myCubeGrid.Distance_ShorterBounds(entity);
 				while (sortedOffenders.ContainsKey(distance))
 					distance = distance.IncrementSignificand();
@@ -284,9 +284,51 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 
 				// not a grid
-				if (IgnoreAsteroids && entity is IMyVoxelMap)
+
+				IMyVoxelMap asteroid = entity as IMyVoxelMap;
+				if (asteroid != null)
 				{
-					myLogger.debugLog("Ignoring asteroid: " + entity.getBestName(), "TestEntities()");
+					if (IgnoreAsteroids)
+					{
+						myLogger.debugLog("Ignoring asteroid: " + asteroid.getBestName(), "TestEntities()");
+						continue;
+					}
+
+					Vector3[] intersection = new Vector3[2];
+					if (!myPath.IntersectsAABB(asteroid, out  intersection[0]))
+					{
+						myLogger.debugLog("path does not intersect AABB. " + asteroid.getBestName(), "TestEntities()", Logger.severity.DEBUG);
+						continue;
+					}
+
+					if (!myPath.get_Reverse().IntersectsAABB(asteroid, out intersection[1]))
+					{
+						myLogger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + asteroid.getBestName(), "TestEntities()", Logger.severity.WARNING);
+						continue;
+					}
+
+					//// test a series of spheres, 1 m apart for intersection. Obviously not very efficient or accurate.
+					//Line intersectionTest = new Line(intersection[0], intersection[1], false);
+					//Vector3 direction = intersectionTest.Direction / intersectionTest.Length;
+					//for (int sphereIndex = 0; sphereIndex < intersectionTest.Length; sphereIndex++)
+					//{
+					//	CheckInterrupt();
+
+					//	Vector3 centre = intersectionTest.From + direction * sphereIndex;
+					//	BoundingSphereD sphere = new BoundingSphere(centre, myPath.Radius);
+
+					//	if (asteroid.GetIntersectionWithSphere(ref sphere))
+					//	{
+					//		myLogger.debugLog("asteroid intersects sphere at " + sphere.Center + ", with radius " + sphere.Radius + ", from " + intersectionTest.From + " + " + direction + " * " + sphereIndex, "TestEntities()");
+					//		pointOfObstruction = sphere.Center;
+					//		return entity;
+					//	}
+					//}
+
+					Capsule testSection = new Capsule(intersection[0], intersection[1], myPath.Radius);
+					if (testSection.Intersects(asteroid, out pointOfObstruction))
+						return entity;
+
 					continue;
 				}
 
@@ -294,7 +336,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (!path.IntersectsAABB(entity))
 					continue;
 
-				if (!path.IntersectsVolume(entity))
+				if (!path.IntersectsVolume(entity)) // TODO: is this ever a useful test? Perhaps for floating ore?
 					continue;
 
 				myLogger.debugLog("no more tests for non-grids are implemented", "TestEntities()", Logger.severity.DEBUG);

@@ -17,7 +17,7 @@ namespace Rynchodon.Update
 	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
 	/// <para>Will send updates after creating object, until object is closing.</para>
 	/// <para>Creation of script objects is delayed until MyAPIGateway Fields are filled.</para>
-	/// <para>If an update script throws an exception, it will not stop receiving updates.</para>
+	/// <para>If an update script throws an exception, it will stop receiving updates.</para>
 	/// </summary>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase

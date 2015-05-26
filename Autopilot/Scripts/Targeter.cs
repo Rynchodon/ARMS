@@ -29,6 +29,8 @@ namespace Rynchodon.Autopilot
 		public void tryLockOn()
 		{
 			//log("entered tryLockOn");
+			owner.throwIfNull_variable("owner");
+			owner.CNS.throwIfNull_variable("owner.CNS");
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.OFF)
 				return;
@@ -54,6 +56,9 @@ namespace Rynchodon.Autopilot
 				nextTryLockOn = DateTime.UtcNow.AddSeconds(1);
 				return;
 			}
+
+			bestMatchGrid.throwIfNull_variable("bestMatchGrid");
+			bestMatchGrid.Entity.throwIfNull_variable("bestMatchGrid.Entity");
 
 			// found an enemy, setting as centreDestination
 			if (bestMatchBlock != null)

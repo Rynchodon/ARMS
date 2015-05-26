@@ -33,7 +33,7 @@ namespace Rynchodon.AntennaRelay
 			myBeacon = block as Ingame.IMyBeacon;
 
 			isSmallBlock =  block.CubeGrid.GridSizeEnum == MyCubeSize.Small;
-			if (Settings.boolSettings[Settings.BoolSetName.bAllowRadar] && CubeBlock.BlockDefinition.SubtypeName.Contains(SubTypeSearchRadar))
+			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowRadar) && CubeBlock.BlockDefinition.SubtypeName.Contains(SubTypeSearchRadar))
 			{
 				isRadar = true;
 				log("init as radar: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);

@@ -156,7 +156,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in rejectionCells)
-				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < GridSize + 3 * myCubeGrid.GridSize)
+				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < 2 * GridSize + 2 * myCubeGrid.GridSize)
 					return true;
 			return false;
 		}

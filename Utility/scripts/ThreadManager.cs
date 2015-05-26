@@ -13,21 +13,25 @@ namespace Rynchodon
 		private MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
 		private FastResourceLock lock_ActionQueue = new FastResourceLock();
 
-		private bool IsRunning = false;
-		private FastResourceLock lock_IsRunning = new FastResourceLock();
+		public byte AllowedParallel { get; private set; }
+		public byte parallelTasks { get; private set; }
+		private FastResourceLock lock_parallelTasks = new FastResourceLock();
 
-		public ThreadManager() { }
+		public ThreadManager(byte AllowedParallel = 1)
+		{
+			this.AllowedParallel = AllowedParallel;
+		}
 
 		public void EnqueueAction(Action toQueue)
 		{
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 				ActionQueue.Enqueue(toQueue);
-			
-			using (lock_IsRunning.AcquireExclusiveUsing())
+
+			using (lock_parallelTasks.AcquireExclusiveUsing())
 			{
-				if (IsRunning)
+				if (parallelTasks >= AllowedParallel)
 					return;
-				IsRunning = true;
+				parallelTasks++;
 			}
 
 			MyAPIGateway.Parallel.Start(Run);
@@ -49,7 +53,11 @@ namespace Rynchodon
 					currentItem();
 				}
 			}
-			finally { IsRunning = false; }
+			finally
+			{
+				using (lock_parallelTasks.AcquireExclusiveUsing())
+					parallelTasks--;
+			}
 		}
 	}
 }

@@ -58,7 +58,7 @@ namespace Rynchodon.Autopilot.Turret
 		{
 			try
 			{
-				if (!Settings.boolSettings[Settings.BoolSetName.bAllowTurretControl])
+				if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
 					return;
 
 				this.myCubeBlock = CubeBlock;
@@ -75,9 +75,9 @@ namespace Rynchodon.Autopilot.Turret
 				if (!(myTurretBase.DisplayNameText.Contains("[") || myTurretBase.DisplayNameText.Contains("]")))
 				{
 					if (myTurretBase.OwnerId.Is_ID_NPC())
-						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultNPC]);
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.GetSettingString(Settings.SettingName.sSmartTurretDefaultNPC));
 					else
-						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.stringSettings[Settings.StringSetName.sSmartTurretDefaultPlayer]);
+						myTurretBase.SetCustomName(myTurretBase.DisplayNameText + " " + Settings.GetSettingString(Settings.SettingName.sSmartTurretDefaultPlayer));
 				}
 
 				TurretBase_CustomNameChanged(null);

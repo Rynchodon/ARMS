@@ -1017,7 +1017,7 @@ namespace Rynchodon.Autopilot
 				(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newNameString);
 				//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 			}
-			if (IsAutopilotBlock(currentAPblock) && Settings.boolSettings[Settings.BoolSetName.bUseColourState] && reportColour != currentAPcolour)
+			if (IsAutopilotBlock(currentAPblock) && Settings.GetSetting<bool>(Settings.SettingName.bUseColourState) && reportColour != currentAPcolour)
 			{
 				currentAPcolour = reportColour;
 				var position = (currentAutopilotBlock_Value as IMyCubeBlock).Position;

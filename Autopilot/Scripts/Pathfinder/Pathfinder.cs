@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private NavSettings.SpecialFlying SpecialFyingInstructions;// { get; private set; }
 
 		private PathChecker myPathChecker;
-		private static ThreadManager PathFinderThread = new ThreadManager();
+		private static ThreadManager PathFinderThread = new ThreadManager(Settings.GetSetting<byte>(Settings.SettingName.yParallelPathCheck));
 
 		/// <summary>next time CheckPath() is allowed to run</summary>
 		private DateTime nextRun = DateTime.MinValue;
@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 		}
 
-		private PathfinderOutput myOutput;// = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
+		private PathfinderOutput myOutput;
 		private FastResourceLock lock_myOutput = new FastResourceLock();
 
 		private void SetOutput(PathfinderOutput newOutput)
@@ -149,8 +149,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 			DistanceToDest = (float)(Destination - NavBlockPosition).Length();
 
 			IMyEntity ObstructingEntity = null;
-			//if (CNS.landingState == NavSettings.LANDING.OFF
-			//	&& (!FlyTheLine || Waypoint == null)) // if flying a line and has a waypoint, do not reroute to destination
 			if (SpecialFyingInstructions == NavSettings.SpecialFlying.None || Waypoint == null)
 			{
 				myLogger.debugLog("testing path to destination", "CheckPath()");
@@ -201,12 +199,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 				//Vector3 direction = WayDest - NavBlockPosition;
 				if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
 					return;
-				//if (SpecialFyingInstructions == NavSettings.SpecialFlying.Line_Any && CanMoveInDirection(NavBlockPosition, NavBlockPosition - WayDest, "backward", false))
-				//{
-				//	myLogger.debugLog("Changing special instructions to Line_SidelForward", "CheckPath()");
-				//	CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
-				//	return;
-				//}
 
 				myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
 				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
@@ -273,20 +265,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private bool CanMoveInDirection(Vector3D NavBlockPos, Vector3D direction, string dirName, bool countDown = true)
 		{
 			direction = Vector3D.Normalize(direction);
-			//Vector3D NavBlockPos = NavigationBlock.GetPosition();
-
-			//float pathwiseDistanceToDest = myPathChecker.distanceCanTravel(new Line(NavBlockPos, Destination, false));
-			//float distance = DistanceToDest - pathwiseDistanceToDest - CubeGrid.GetLongestDim();
-			//if (distance > 0)
-			//{
-			//	Vector3 pointOnLine = NavBlockPos + direction * distance;
-			//	if (TestAltPath(pointOnLine, false))
-			//		return true;
-
-			//	SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, pointOnLine));
-			//	myLogger.debugLog("Found a new path: " + pointOnLine, "CanMoveInDirection()", Logger.severity.DEBUG);
-			//	return true;
-			//}
 
 			int distance;
 			if (countDown)

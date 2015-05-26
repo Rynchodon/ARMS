@@ -67,6 +67,7 @@ bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bAllowTurretControl - enables Smart Turret Control
 bUseRemoteControl - currently disabled. set to true if you want Autopilot to use remote controls
 bUseColourState - Autopilot will change colour of Autopilot block
+yParallelPathCheck - Number of path checking tasks that can run in parallel
 fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
