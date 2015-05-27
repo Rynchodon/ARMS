@@ -112,14 +112,14 @@ namespace Rynchodon.Update
 
 				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && !MyAPIGateway.Multiplayer.IsServer)
 				{
-					myLogger.log("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
 					MangerStatus = Status.Terminated;
 					return;
 				}
 				if (MyAPIGateway.Multiplayer.MultiplayerActive)
-					myLogger.log("Is server, running scripts", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("Is server, running scripts", "Init()", Logger.severity.INFO);
 				else
-					myLogger.log("Single player, running scripts", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("Single player, running scripts", "Init()", Logger.severity.INFO);
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
@@ -142,7 +142,7 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.log("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
+				myLogger.alwaysLog("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
 				MangerStatus = Status.Terminated;
 			}
 		}
@@ -174,14 +174,14 @@ namespace Rynchodon.Update
 							{ item.Invoke(); }
 							catch (Exception ex2)
 							{
-								myLogger.log("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
+								myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
 								UnRegisterForUpdates(pair.Key, item);
 							}
 					}
 			}
 			catch (Exception ex)
 			{
-				myLogger.log("Exception: " + ex, "UpdateAfterSimulation()", Logger.severity.FATAL);
+				myLogger.alwaysLog("Exception: " + ex, "UpdateAfterSimulation()", Logger.severity.FATAL);
 				MangerStatus = Status.Terminated;
 			}
 			finally

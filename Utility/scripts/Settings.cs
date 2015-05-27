@@ -50,7 +50,7 @@ namespace Rynchodon
 			int fileVersion = readAll();
 			if (fileVersion != latestVersion)
 				MyAPIGateway.Utilities.ShowNotification(modName + " has been updated.", 10000);
-			myLogger.log("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
+			myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
 
 			writeAll(); // writing immediately decreases user errors & whining
 		}
@@ -163,16 +163,21 @@ namespace Rynchodon
 
 			if (split.Length != 2)
 			{
-				myLogger.log("split wrong length: " + split.Length + ", line: " + line, "parse()", Logger.severity.WARNING);
+				myLogger.alwaysLog("split wrong length: " + split.Length + ", line: " + line, "parse()", Logger.severity.WARNING);
 				return;
 			}
 
 			SettingName name;
 			if (Enum.TryParse<SettingName>(split[0], out name))
 				try
-				{ AllSettings[name].ValueFromString(split[1]); }
+				{ 
+					AllSettings[name].ValueFromString(split[1]);
+					myLogger.debugLog("AllSettings[" + name + "] = " + split[1], "parse()");
+				}
 				catch (Exception)
-				{ myLogger.log("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
+			else
+				myLogger.alwaysLog("failed to get enum for " + split[0], "parse()", Logger.severity.WARNING);
 		}
 
 		private interface Setting

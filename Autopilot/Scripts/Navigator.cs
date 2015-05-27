@@ -226,7 +226,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			if (CNS.getTypeOfWayDest() != NavSettings.TypeOfWayDest.NULL)
+			if (CNS.getTypeOfWayDest() != NavSettings.TypeOfWayDest.NONE)
 				navigate();
 			else // no waypoints
 			{
@@ -239,7 +239,7 @@ namespace Rynchodon.Autopilot
 						try { instruction.Invoke(); }
 						catch (Exception ex)
 						{
-							myLogger.log("Exception while invoking instruction: " + ex, "update()", Logger.severity.ERROR);
+							myLogger.alwaysLog("Exception while invoking instruction: " + ex, "update()", Logger.severity.ERROR);
 							continue;
 						}
 						switch (CNS.getTypeOfWayDest())
@@ -259,7 +259,7 @@ namespace Rynchodon.Autopilot
 							case NavSettings.TypeOfWayDest.LAND:
 								log("got a new landing destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								return;
-							case NavSettings.TypeOfWayDest.NULL:
+							case NavSettings.TypeOfWayDest.NONE:
 								break; // keep searching
 							case NavSettings.TypeOfWayDest.WAYPOINT:
 								log("got a new waypoint destination (harvesting) " + CNS.getWayDest(), "update()", Logger.severity.INFO);
@@ -483,7 +483,7 @@ namespace Rynchodon.Autopilot
 			if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.WAYPOINT)
 			{
 				CNS.atWayDest();
-				if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.NULL)
+				if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.NONE)
 				{
 					alwaysLog(Logger.severity.ERROR, "checkAt_wayDest()", "Error no more destinations at Navigator.checkAt_wayDest() // at waypoint");
 					fullStop("No more dest");
@@ -556,7 +556,7 @@ namespace Rynchodon.Autopilot
 							PathfinderAllowsMovement = false;
 							return;
 						default:
-							myLogger.log("Error, invalid case: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()", Logger.severity.FATAL);
+							myLogger.alwaysLog("Error, invalid case: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()", Logger.severity.FATAL);
 							fullStop("Invalid Pathfinder.PathfinderOutput");
 							pathfinderState = ReportableState.No_Path;
 							PathfinderAllowsMovement = false;
@@ -1063,7 +1063,7 @@ namespace Rynchodon.Autopilot
 				if (myHarvester.HarvestState != ReportableState.H_Ready)
 					return myHarvester.HarvestState;
 
-			if (CNS.getWayDest() == null)
+			if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.NONE)
 				return ReportableState.No_Dest;
 
 			// targeting

@@ -263,7 +263,7 @@ namespace Rynchodon
 				{ return new CubeGridCache(grid); }
 				catch (Exception e)
 				{
-					(new Logger(null, "CubeGridCache")).log("Exception on creation: " + e, "GetFor()", Logger.severity.WARNING);
+					(new Logger(null, "CubeGridCache")).alwaysLog("Exception on creation: " + e, "GetFor()", Logger.severity.WARNING);
 					return null;
 				}
 			}

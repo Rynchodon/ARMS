@@ -257,6 +257,9 @@ namespace Rynchodon.Autopilot
 				case TypeOfWayDest.WAYPOINT:
 					myWaypoint = null;
 					return;
+				case TypeOfWayDest.NONE:
+					// sometimes destinations get cleared twice, so ignore
+					return;
 				default:
 					log("unknown type " + typeToRemove, "atWayDest()", Logger.severity.ERROR);
 					return;
@@ -290,7 +293,7 @@ namespace Rynchodon.Autopilot
 					return CurrentGridDest.GetGridPos();
 				case TypeOfWayDest.WAYPOINT:
 					return myWaypoint;
-				case TypeOfWayDest.NULL:
+				case TypeOfWayDest.NONE:
 					return null;
 				default:
 					log("unknown type " + type, "getWayDest()", Logger.severity.ERROR);
@@ -298,7 +301,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public enum TypeOfWayDest : byte { NULL, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
+		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 		public TypeOfWayDest getTypeOfWayDest(bool getWaypoint = true)
 		{
 			if (getWaypoint && myWaypoint != null)
@@ -306,7 +309,7 @@ namespace Rynchodon.Autopilot
 
 			if (CurrentGridDest != null)
 			{
-				if (CurrentGridDest.Block != null)
+				if (CurrentGridDest.ValidBlock())
 				{
 					if (landLocalBlock != null)
 						return TypeOfWayDest.LAND;
@@ -315,14 +318,14 @@ namespace Rynchodon.Autopilot
 					else
 						return TypeOfWayDest.BLOCK;
 				}
-				else
+				else if (CurrentGridDest.ValidGrid())
 					return TypeOfWayDest.GRID;
 			}
 
 			if (coordDestination != null)
 				return TypeOfWayDest.COORDINATES;
 
-			return TypeOfWayDest.NULL;
+			return TypeOfWayDest.NONE;
 		}
 
 		private Vector3D offsetToWorld()
@@ -387,10 +390,24 @@ namespace Rynchodon.Autopilot
 		}
 
 		public string GridDestName
-		{ get { return CurrentGridDest.Grid.DisplayName; } }
+		{
+			get
+			{
+				if (CurrentGridDest == null || CurrentGridDest.Grid == null)
+					return null;
+				return CurrentGridDest.Grid.DisplayName;
+			}
+		}
 
 		public string BlockDestName
-		{ get { return CurrentGridDest.Block.DisplayNameText; } }
+		{
+			get
+			{
+				if (CurrentGridDest == null || CurrentGridDest.Block == null)
+					return null;
+				return CurrentGridDest.Block.DisplayNameText;
+			}
+		}
 
 		public GridDestination CurrentGridDest { get; private set; }
 	}

@@ -40,7 +40,7 @@ namespace Rynchodon.AntennaRelay
 					registry.Remove(CubeBlock);
 			}
 			catch (Exception e)
-			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myController = null;
 		}

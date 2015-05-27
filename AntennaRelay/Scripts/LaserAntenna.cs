@@ -42,7 +42,7 @@ namespace Rynchodon.AntennaRelay
 					value_registry.Remove(this);
 			}
 			catch (Exception e)
-			{ myLogger.log("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
+			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myLaserAntenna = null;
 			myLastSeen = null;
@@ -80,7 +80,7 @@ namespace Rynchodon.AntennaRelay
 				UpdateEnemyNear();
 			}
 			catch (Exception e)
-			{ myLogger.log("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 	}
 }

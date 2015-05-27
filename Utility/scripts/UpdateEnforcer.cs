@@ -235,7 +235,7 @@ namespace Rynchodon
 		{
 			if (myLogger == null)
 				myLogger = new Logger(null, "UpdateEnforcer");
-			myLogger.log(toLog, method, level);
+			myLogger.alwaysLog(toLog, method, level);
 		}
 	}
 }

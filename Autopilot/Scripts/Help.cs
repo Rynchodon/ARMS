@@ -123,7 +123,7 @@ namespace Rynchodon.Autopilot.Chat
 			LinkedList<Command> bucket;
 			if (!help_messages.TryGetValue(command, out bucket))
 			{
-				myLogger.log("failed to get a bucket for: "+command, "printSingleCommand()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get a bucket for: "+command, "printSingleCommand()", Logger.severity.WARNING);
 				return false;
 			}
 			foreach (Command current in bucket)

@@ -99,7 +99,7 @@ namespace Rynchodon.AntennaRelay
 				myProgBlock = null;
 			}
 			catch (Exception ex)
-			{ myLogger.log("Exception: " + ex, "TextPanel_CustomNameChanged()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + ex, "TextPanel_CustomNameChanged()", Logger.severity.ERROR); }
 		}
 
 		public void UpdateAfterSimulation100()
@@ -113,7 +113,7 @@ namespace Rynchodon.AntennaRelay
 				displayLastSeen();
 				TextPanel_CustomNameChanged(null);
 			}
-			catch (Exception ex) { myLogger.log("Exception: " + ex, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
+			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
 
 		/// <summary>
@@ -326,7 +326,7 @@ namespace Rynchodon.AntennaRelay
 					IMyCubeGrid cubeGrid = seen.Entity as IMyCubeGrid;
 					if (cubeGrid == null)
 					{
-						myLogger.log("cubeGrid from LastSeen is null", "replaceEntityIdsWithLastSeen()", Logger.severity.WARNING);
+						myLogger.alwaysLog("cubeGrid from LastSeen is null", "replaceEntityIdsWithLastSeen()", Logger.severity.WARNING);
 						continue;
 					}
 					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).mostHostile();

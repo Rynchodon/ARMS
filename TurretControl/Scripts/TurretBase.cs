@@ -64,7 +64,7 @@ namespace Rynchodon.Autopilot.Turret
 				this.myCubeBlock = CubeBlock;
 				this.myTerminal = CubeBlock as IMyTerminalBlock;
 				this.myTurretBase = CubeBlock as Ingame.IMyLargeTurretBase;
-				this.myLogger = new Logger(myCubeBlock.CubeGrid.DisplayName, "TurretBase", myCubeBlock.DisplayNameText);
+				this.myLogger = new Logger("TurretBase", () => myCubeBlock.CubeGrid.DisplayName, () => myCubeBlock.DisplayNameText);
 
 				this.myCubeBlock.throwIfNull_variable("myCubeBlock");
 				this.myTerminal.throwIfNull_variable("myTerminal");
@@ -102,9 +102,9 @@ namespace Rynchodon.Autopilot.Turret
 			catch (Exception e)
 			{
 				if (myCubeBlock == null)
-					myLogger.log("failed to initialize myCubeBlock == null, Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
+					myLogger.alwaysLog("failed to initialize myCubeBlock == null, Exception:" + e, "DelayedInit()", Logger.severity.ERROR);
 				else
-					myLogger.log("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.WARNING);
+					myLogger.alwaysLog("failed to initialize for " + myCubeBlock.DisplayNameText + ", Exception:" + e, "DelayedInit()", Logger.severity.WARNING);
 				Close(null);
 				return;
 			}
@@ -302,7 +302,7 @@ namespace Rynchodon.Autopilot.Turret
 					TurretThread.EnqueueAction(Update);
 				}
 			}
-			catch (Exception e) { myLogger.log("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation10()", Logger.severity.ERROR); }
 			finally
 			{
 				updateCount++;
@@ -357,7 +357,7 @@ namespace Rynchodon.Autopilot.Turret
 					if (CurrentState == State.HAS_TARGET && !currentTargetIsMissile)
 						setNoTarget();
 			}
-			catch (Exception e) { myLogger.log("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "UpdateThread()", Logger.severity.ERROR); }
 			finally { queued = false; }
 		}
 

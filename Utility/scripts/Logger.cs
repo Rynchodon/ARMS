@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-//using System.Linq;
 using System.Text;
 
 using Sandbox.Common;
-using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage;
 
@@ -37,7 +34,7 @@ namespace Rynchodon
 		/// take precedence over strings
 		/// </summary>
 		private Func<string> f_gridName, f_state_primary, f_state_secondary;
-		private string gridName, className, default_primary, default_secondary;
+		private string gridName, className; //, default_primary, default_secondary;
 
 		/// <summary>
 		/// needed for MySessionComponentBase, not useful for logging
@@ -45,7 +42,7 @@ namespace Rynchodon
 		public Logger() { }
 
 		/// <summary>
-		/// Creates a Logger without default states.
+		/// Deprecated. Creates a Logger without default states.
 		/// </summary>
 		/// <param name="gridName">the name of the grid this Logger belongs to, may be null</param>
 		/// <param name="className">the name of the class this Logger belongs to</param>
@@ -56,41 +53,13 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Creates a Logger with default states.
-		/// </summary>
-		/// <param name="gridName">the name of the grid this Logger belongs to, may be null</param>
-		/// <param name="className">the name of the class this Logger belongs to</param>
-		/// <param name="default_primary">the primary state used when one is not supplied to log() or debugLog()</param>
-		/// <param name="default_secondary">the secondary state used when one is not supplied to log() or debugLog()</param>
-		public Logger(string gridName, string className, string default_primary, string default_secondary = null)
-			: this(gridName, className)
-		{
-			this.default_primary = default_primary;
-			this.default_secondary = default_secondary;
-		}
-
-		/// <summary>
-		/// Creates a Logger that gets the states from supplied functions.
-		/// </summary>
-		/// <param name="gridName">the name of the grid this Logger belongs to, may be null</param>
-		/// <param name="className">the name of the class this Logger belongs to</param>
-		/// <param name="default_primary">the primary state used when one is not supplied to log() or debugLog()</param>
-		/// <param name="default_secondary">the secondary state used when one is not supplied to log() or debugLog()</param>
-		public Logger(string gridName, string className, Func<string> default_primary, Func<string> default_secondary = null)
-			: this(gridName, className)
-		{
-			this.f_state_primary = default_primary;
-			this.f_state_secondary = default_secondary;
-		}
-
-		/// <summary>
 		/// Creates a Logger that gets the grid name and states from supplied functions.
 		/// </summary>
 		/// <param name="gridName">the name of the grid this Logger belongs to</param>
 		/// <param name="className">the name of the class this Logger belongs to</param>
 		/// <param name="default_primary">the primary state used when one is not supplied to log() or debugLog()</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to log() or debugLog()</param>
-		public Logger(string className, Func<string> gridName, Func<string> default_primary = null, Func<string> default_secondary = null)
+		public Logger(string className, Func<string> gridName = null, Func<string> default_primary = null, Func<string> default_secondary = null)
 		{
 			this.className = className;
 			this.f_gridName = gridName;
@@ -106,8 +75,6 @@ namespace Rynchodon
 
 		private bool createLog()
 		{
-			//using (lock_log.AcquireExclusiveUsing())
-			//{
 			try
 			{ deleteIfExists("Autopilot.log"); }
 			catch { }
@@ -124,7 +91,6 @@ namespace Rynchodon
 					catch { }
 
 			return logWriter != null;
-			//}
 		}
 
 		private static FastResourceLock lock_log = new FastResourceLock();
@@ -149,11 +115,11 @@ namespace Rynchodon
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		public void log(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		public void alwaysLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
 
 		/// <summary>
-		/// For logging WARNING and higher severity.
+		/// Do not call from outside Logger class, use debugLog or alwaysLog.
 		/// </summary>
 		/// <param name="level">severity level</param>
 		/// <param name="methodName">calling method</param>
@@ -176,14 +142,12 @@ namespace Rynchodon
 				if (primaryState == null)
 				{
 					if (f_state_primary != null)
-						default_primary = f_state_primary.Invoke();
-					primaryState = default_primary;
+						primaryState = f_state_primary.Invoke();
 				}
 				if (secondaryState == null)
 				{
 					if (f_state_secondary != null)
-						default_secondary = f_state_secondary.Invoke();
-					secondaryState = default_secondary;
+						secondaryState = f_state_secondary.Invoke();
 				}
 
 				if (toLog == null)

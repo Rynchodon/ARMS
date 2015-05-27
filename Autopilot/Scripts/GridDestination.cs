@@ -13,22 +13,26 @@ namespace Rynchodon.Autopilot
 		private IMyEntity Entity;
 		public LastSeen gridLastSeen { get { return seenBy.getLastSeen(Entity.EntityId); } }
 
-		//public LastSeen gridLastSeen { get; private set; }
 		private ShipController seenBy;
 		public IMyCubeGrid Grid { get; private set; }
 		public IMyCubeBlock Block { get; private set; }
 
+		private Logger myLogger;
+
 		public GridDestination(LastSeen gridLastSeen, IMyCubeBlock destBlock, IMyCubeBlock seenBy, Navigator owner)
 		{
+			myLogger = new Logger("GridDestination");
+
 			this.myNav = owner;
 			this.Entity = gridLastSeen.Entity;
-			//this.gridLastSeen = gridLastSeen;
 			if (!ShipController.TryGet(seenBy, out this.seenBy))
-				alwaysLog("failed to get ARShipController", ".ctor()", Logger.severity.ERROR);
+				myLogger.alwaysLog("failed to get ARShipController", ".ctor()", Logger.severity.ERROR);
 			this.Grid = gridLastSeen.Entity as IMyCubeGrid;
 			if (Grid == null)
-				(new Logger(null, "GridDestination")).log(Logger.severity.FATAL, ".ctor()", "Entity is not a grid");
+				myLogger.alwaysLog("Entity is not a grid", "GridDestination()", Logger.severity.FATAL);
 			this.Block = destBlock;
+
+			myLogger = new Logger("GridDestination", () => this.Grid.DisplayName, () => this.Block.DisplayNameText);
 		}
 
 		public bool seenRecently()
@@ -40,17 +44,12 @@ namespace Rynchodon.Autopilot
 		/// <returns></returns>
 		public Vector3D GetGridPos()
 		{
-			return calculateInterceptionPoint(false);
-			//if (myNav.CNS.isAMissile)
-			//	return calculateInterceptionPoint(false);
+			if (Grid == null)
+				throw new NullReferenceException("Grid");
+			if (Grid.Closed)
+				throw new NullReferenceException("Grid is closed");
 
-			//if (seenRecently())
-			//{
-			//	log("seen recently(" + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + "), using actual grid centre: " + Grid.WorldAABB.Center, "GetGridPos()", Logger.severity.TRACE);
-			//	return Grid.WorldAABB.Center;
-			//}
-			//log("it has been a while(" + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + "), using prediction " + gridLastSeen.predictPosition(), "GetGridPos()", Logger.severity.TRACE);
-			//return gridLastSeen.predictPosition();
+			return calculateInterceptionPoint(false);
 		}
 
 		/// <summary>
@@ -59,29 +58,37 @@ namespace Rynchodon.Autopilot
 		/// <returns></returns>
 		public Vector3D GetBlockPos()
 		{
-			return calculateInterceptionPoint(true);
-			//if (myNav.CNS.isAMissile)
-			//	return calculateInterceptionPoint(true);
+			if (Grid == null)
+				throw new NullReferenceException("Grid");
+			if (Grid.Closed)
+				throw new NullReferenceException("Grid is closed");
+			if (Block == null)
+				throw new NullReferenceException("Block");
+			if (Block.Closed)
+				throw new NullReferenceException("Block is closed");
 
-			//if (seenRecently())
-			//{
-			//	log("seen recently(" + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + "), using actual block position: " + Block.GetPosition(), "GetBlockPos()", Logger.severity.TRACE);
-			//	return Block.GetPosition();
-			//}
-			//else
-			//{
-			//	log("it has been a while(" + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + "), using prediction " + gridLastSeen.predictPosition(), "GetBlockPos()", Logger.severity.TRACE);
-			//	return gridLastSeen.predictPosition();
-			//}
+			return calculateInterceptionPoint(true);
 		}
 
-		private Vector3D calculateInterceptionPoint(bool block)
+		/// <summary>
+		/// Checks if this GridDestination has a valid grid.
+		/// </summary>
+		public bool ValidGrid()
+		{ return Grid != null && !Grid.Closed; }
+
+		/// <summary>
+		/// Checks if this GridDestination has a valid block.
+		/// </summary>
+		public bool ValidBlock()
+		{ return Block != null && !Block.Closed; }
+
+		private Vector3D calculateInterceptionPoint(bool fromBlock)
 		{
 			//log("entered calculateInterceptionPoint(" + block + ")", "calculateInterceptionPoint()");
 			Vector3D targetPosition, targetVelocity, targetAcceleration;
 			if (seenRecently())
 			{
-				if (block)
+				if (fromBlock)
 				{
 					targetPosition = Block.GetPosition();
 					//log("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
@@ -115,25 +122,6 @@ namespace Rynchodon.Autopilot
 			double secondsToTarget = distanceTo_PathOfTarget / mySpeed;
 
 			return targetPosition + targetVelocity * secondsToTarget + targetAcceleration * secondsToTarget * secondsToTarget / 2;
-		}
-
-
-		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-			{
-				if (seenBy == null || Grid == null || Block == null)
-				{
-					(new Logger(null, "GridDestination")).log(level, method, toLog);
-					return;
-				}
-				myLogger = new Logger(seenBy.CubeBlock.CubeGrid.DisplayName, "GridDestination");
-			}
-			myLogger.log(level, method, toLog, Grid.DisplayName, Block.DisplayNameText);
 		}
 	}
 }

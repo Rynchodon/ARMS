@@ -151,11 +151,11 @@ namespace Rynchodon.Autopilot
 					try { current.update(); }
 					catch (Exception updateEx)
 					{
-						myLogger.log("Exception on update: " + updateEx, null, Logger.severity.ERROR);
+						myLogger.alwaysLog("Exception on update: " + updateEx, null, Logger.severity.ERROR);
 
 						try { remove(current, true); }
 						catch (Exception resetEx)
-						{ myLogger.log("Exception on reset: " + resetEx, null, Logger.severity.FATAL); }
+						{ myLogger.alwaysLog("Exception on reset: " + resetEx, null, Logger.severity.FATAL); }
 					}
 				}
 				//log("end update", "UpdateBeforeSimulation()", Logger.severity.TRACE);
@@ -164,7 +164,7 @@ namespace Rynchodon.Autopilot
 			catch (Exception coreEx)
 			{
 				terminate();
-				myLogger.log("Exception in core: " + coreEx, "remove()", Logger.severity.FATAL);
+				myLogger.alwaysLog("Exception in core: " + coreEx, "remove()", Logger.severity.FATAL);
 			}
 		}
 
@@ -203,7 +203,7 @@ namespace Rynchodon.Autopilot
 			Instance.myLogger.debugNotify("Autopilot removed: " + dead.myGrid.DisplayName, 3000, level);
 
 			if (!Instance.allNavigators.Remove(dead.myGrid))
-				Instance.myLogger.log("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
+				Instance.myLogger.alwaysLog("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
 
 			dead.Close();
 		}

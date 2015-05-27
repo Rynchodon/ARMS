@@ -29,8 +29,8 @@ namespace Rynchodon.Autopilot
 		public void tryLockOn()
 		{
 			//log("entered tryLockOn");
-			owner.throwIfNull_variable("owner");
-			owner.CNS.throwIfNull_variable("owner.CNS");
+			//owner.throwIfNull_variable("owner");
+			//owner.CNS.throwIfNull_variable("owner.CNS");
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.OFF)
 				return;
@@ -47,6 +47,7 @@ namespace Rynchodon.Autopilot
 			LastSeen bestMatchGrid;
 			if (!lastSeenHostile(out bestMatchGrid, out bestMatchBlock, owner.CNS.lockOnBlock)) // did not find a target
 			{
+				myLogger.debugLog("found nothing", "tryLockOn()");
 				if (owner.CNS.target_locked)
 				{
 					log("lost lock on " + owner.CNS.GridDestName);
@@ -57,8 +58,10 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			bestMatchGrid.throwIfNull_variable("bestMatchGrid");
-			bestMatchGrid.Entity.throwIfNull_variable("bestMatchGrid.Entity");
+			//bestMatchGrid.throwIfNull_variable("bestMatchGrid");
+			//bestMatchGrid.Entity.throwIfNull_variable("bestMatchGrid.Entity");
+
+			//myLogger.debugLog("found something", "tryLockOn()");
 
 			// found an enemy, setting as destination
 			if (bestMatchBlock != null)
