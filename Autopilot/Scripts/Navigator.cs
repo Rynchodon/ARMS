@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Instruction;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;

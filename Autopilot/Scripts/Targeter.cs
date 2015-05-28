@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot

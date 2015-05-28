@@ -8,31 +8,64 @@ using VRageMath;
 
 using Rynchodon.AntennaRelay;
 
-namespace Rynchodon.Autopilot
+namespace Rynchodon.Autopilot.NavigationSettings
 {
 	internal class NavSettings
 	{
+		#region Enums
+
 		public enum Moving : byte { NOT_MOVE, MOVING, STOP_MOVE, SIDELING, HYBRID }
 		public enum Rotating : byte { NOT_ROTA, ROTATING, STOP_ROTA }
 		public enum Rolling : byte { NOT_ROLL, ROLLING, STOP_ROLL }
+		public enum TARGET : byte { OFF, MISSILE, ENEMY }
+		public enum LANDING : byte { OFF, ORIENT, LINEUP, LAND, LOCKED, SEPARATE }
+		/// <summary>Special Flying Instructions</summary>
+		public enum SpecialFlying : byte
+		{
+			/// <summary>no special instructions</summary>
+			None,
+			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
+			Line_Any,
+			/// <summary>pathfinder can fly forwards, sidel only</summary>
+			Line_SidelForward
+		}
+		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
+
+		#region States
 
 		public Moving moveState = Moving.NOT_MOVE;
 		public Rotating rotateState = Rotating.NOT_ROTA;
 		public Rolling rollState = Rolling.NOT_ROLL;
+		public LANDING landingState = LANDING.OFF;
+		public TARGET lockOnTarget = TARGET.OFF;
+		public SpecialFlying SpecialFlyingInstructions = SpecialFlying.None;
 
-		public int destinationRadius;
-		public bool isAMissile;
-		public DateTime waitUntil;
-		public DateTime waitUntilNoCheck;
-		public TARGET lockOnTarget;
-		public int lockOnRangeEnemy;
-		public string lockOnBlock;
-		public string tempBlockName;
-		public bool EXIT = false;
+		#endregion
+		#endregion
+
+		private Navigator myNav;
+		private IMyCubeGrid myCubeGrid
+		{
+			get
+			{
+				if (myNav == null)
+					return null;
+				return myNav.myGrid;
+			}
+		}
+
+		public DateTime waitUntil = DateTime.UtcNow;
+		public DateTime waitUntilNoCheck = DateTime.UtcNow;
+
+		public Vector3D? myWaypoint { get; private set; }
+		private Vector3D? coordDestination = null;
+		public GridDestination CurrentGridDest { get; private set; }
+
 		public Vector3 destination_offset = Vector3.Zero;
 		public Base6Directions.Direction? match_direction = null; // reset on reached dest
 		public Base6Directions.Direction? match_roll = null;
-		public Sandbox.ModAPI.IMyCubeBlock landLocalBlock = null; // for landing or docking (primary)
+
+		public IMyCubeBlock landLocalBlock = null; // for landing or docking (primary)
 		private Base6Directions.Direction? landDirection_value;
 		public Base6Directions.Direction? landDirection
 		{
@@ -49,56 +82,35 @@ namespace Rynchodon.Autopilot
 		private Vector3 landOffset_value;
 		public Vector3 landOffset { get { return landOffset_value; } }
 		public Vector3D? landingSeparateWaypoint;
-		public Sandbox.ModAPI.IMyCubeBlock landingSeparateBlock;
+		public IMyCubeBlock landingSeparateBlock;
 
+		/// <summary>Set by B command, before use of block is known</summary>
+		public string tempBlockName = null;
+		/// <summary>The name of the block to lock onto.</summary>
+		public string lockOnBlock = null;
+
+		/// <summary>How close to get to the destination.</summary>
+		public int destinationRadius;
+		/// <summary>Ignore enemies that are further than. 0 == infinite.</summary>
+		public int lockOnRangeEnemy = 0;
+
+		/// <summary>Indicates that the ship is currently a missile, not the same as lockOnTarget == Target.MISSILE</summary>
+		public bool isAMissile = false;
+		/// <summary>Targeter has found a target.</summary>
+		public bool target_locked = false;
+		/// <summary>Reached an EXIT instruction</summary>
+		public bool EXIT = false;
 		public bool jump_to_dest
 		{
 			get { return false; }
 			set { }
 		}
-
-		public enum TARGET : byte { OFF, MISSILE, ENEMY }
-		public bool target_locked = false;
-
-		public enum LANDING : byte { OFF, ORIENT, LINEUP, LAND, LOCKED, SEPARATE }
-		public LANDING landingState = LANDING.OFF;
-
-		private Navigator myNav;
-		private IMyCubeGrid myCubeGrid
-		{
-			get
-			{
-				if (myNav == null)
-					return null;
-				return myNav.myGrid;
-			}
-		}
-
+		/// <summary>Pathfinder should ignore asteroids.</summary>
 		public bool ignoreAsteroids = false;
-
-		/// <summary>Special Flying Instructions</summary>
-		public enum SpecialFlying : byte
-		{
-			/// <summary>no special instructions</summary>
-			None,
-			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
-			Line_Any,
-			/// <summary>pathfinder can fly forwards, sidel only</summary>
-			Line_SidelForward
-		}
-
-		public SpecialFlying SpecialFlyingInstructions = SpecialFlying.None;
 
 		public NavSettings(Navigator owner)
 		{
 			this.myNav = owner;
-			isAMissile = false;
-			waitUntil = DateTime.UtcNow;
-			waitUntilNoCheck = DateTime.UtcNow;
-			lockOnTarget = TARGET.OFF;
-			lockOnRangeEnemy = 0;
-			lockOnBlock = null;
-			tempBlockName = null;
 			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 
@@ -134,8 +146,7 @@ namespace Rynchodon.Autopilot
 			myCubeGrid.throwIfNull_variable("myCubeGrid");
 		}
 
-		public Vector3D? myWaypoint { get; private set; }
-		private Vector3D? coordDestination;
+		#region Speed
 
 		/// <summary>
 		/// reset on Navigator.FullStop()
@@ -175,6 +186,8 @@ namespace Rynchodon.Autopilot
 			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
 		}
+
+		#endregion
 
 		private Logger myLogger = new Logger(null, "NavSettings");
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
@@ -301,7 +314,6 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 		public TypeOfWayDest getTypeOfWayDest(bool getWaypoint = true)
 		{
 			if (getWaypoint && myWaypoint != null)
@@ -409,6 +421,5 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public GridDestination CurrentGridDest { get; private set; }
 	}
 }

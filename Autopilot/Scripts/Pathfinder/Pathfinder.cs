@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using VRage;
 using VRageMath;
+using Rynchodon.Autopilot.NavigationSettings;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {

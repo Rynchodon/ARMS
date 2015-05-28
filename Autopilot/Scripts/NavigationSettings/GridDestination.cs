@@ -5,7 +5,7 @@ using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot
+namespace Rynchodon.Autopilot.NavigationSettings
 {
 	public class GridDestination
 	{

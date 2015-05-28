@@ -1,19 +1,7 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Sandbox.Common;
-//using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
-using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
+using Rynchodon.Autopilot.NavigationSettings;
 using VRageMath;
 
 namespace Rynchodon.Autopilot

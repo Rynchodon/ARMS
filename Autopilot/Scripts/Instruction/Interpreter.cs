@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -56,11 +57,6 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </remarks>
 		public MyQueue<Action> instructionQueue;
 
-		//private List<string> instructionQueueString;
-
-		//public string getCurrentInstructionString()
-		//{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
-
 		/// <summary>
 		/// If errors occured while parsing instructions, will contain all their indecies.
 		/// </summary>
@@ -87,7 +83,6 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionErrorIndex = null;
 			currentInstruction = 0;
 			instructionQueue = new MyQueue<Action>(8);
-			//instructionQueueString = new List<string>();
 
 			myLogger.debugLog("block: " + block.DisplayNameText + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
@@ -171,7 +166,6 @@ namespace Rynchodon.Autopilot.Instruction
 			if (getAction_single(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
-				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			return false;
@@ -184,6 +178,9 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
+			if (instruction.Contains(","))
+				return getAction_wordPlus(instruction, out wordAction);
+
 			string lowerCase = instruction.ToLower();
 			switch (lowerCase)
 			{
@@ -228,7 +225,7 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => {
 							if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
 							{
-								log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "getAction_word()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
+								log("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "getAction_word()", Logger.severity.TRACE);
 								owner.CNS.landingState = NavSettings.LANDING.OFF;
 								owner.CNS.landingSeparateBlock = null;
 								owner.CNS.landingSeparateWaypoint = null;
@@ -248,6 +245,25 @@ namespace Rynchodon.Autopilot.Instruction
 						return true;
 					}
 			}
+
+			wordAction = null;
+			return false;
+		}
+
+		/// <summary>
+		/// Try to match instruction against keywords. Accepts comma separated params.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_wordPlus(string instruction, out Action wordAction)
+		{
+			string[] split = instruction.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+			if (split.Length > 1)
+				switch (split[0].ToLower())
+				{
+				}
+
 			wordAction = null;
 			return false;
 		}
