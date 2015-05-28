@@ -47,6 +47,13 @@ namespace Rynchodon
 			return Physics.LinearAcceleration;
 		}
 
+		public static Vector3 GetLinearVelocity(this IMyEntity entity)
+		{
+			if (entity.Physics == null)
+				return Vector3.Zero;
+			return entity.Physics.LinearVelocity;
+		}
+
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
 		{ return RelativeVector3F.createFromLocal(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
 

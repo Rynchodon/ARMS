@@ -155,6 +155,9 @@ namespace Rynchodon
 		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeGrid target)
 		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
 
+		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCharacter character)
+		{ return toIsHostile(block.getRelationsTo(character.GetPlayer_Safe().PlayerID)); }
+
 
 		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
 		{
