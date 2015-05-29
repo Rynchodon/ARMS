@@ -41,12 +41,16 @@ namespace Rynchodon.Autopilot.Weapons
 
 		#endregion
 
-		private class Target
+		public class Target
 		{
 			public readonly IMyEntity Entity;
 			public readonly TargetType TType;
 			public Vector3? FiringDirection;
+			public Vector3? InterceptionPoint;
 
+			/// <summary>
+			/// Creates a target of type None with Entity as null.
+			/// </summary>
 			public Target()
 			{
 				this.Entity = null;
@@ -60,6 +64,8 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 		}
 
+		/// <summary>Required length squared between current direction and target direction to fire.</summary>
+		private const float firingThreshold = 0.01f;
 		private static Dictionary<uint, MyAmmoDefinition> AmmoDefinition = new Dictionary<uint, MyAmmoDefinition>();
 
 		public readonly IMyCubeBlock weapon;
@@ -71,8 +77,9 @@ namespace Rynchodon.Autopilot.Weapons
 
 		private MyAmmoDefinition LoadedAmmo = null;
 
-		private Target CurrentTarget = new Target();
-		public Vector3? FiringDirection { get { return CurrentTarget.FiringDirection; } }
+		protected Target CurrentTarget { get; private set; }
+		//public Vector3? FiringDirection { get { return CurrentTarget.FiringDirection; } }
+		private HashSet<long> Blacklist = new HashSet<long>();
 
 		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
 
@@ -95,42 +102,55 @@ namespace Rynchodon.Autopilot.Weapons
 
 		private byte updateCount = 0;
 
+		protected bool IsControllingWeapon { get; private set; }
+		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
+		protected bool IsShooting { get; private set; }
+
 		private Logger myLogger;
 
 		public WeaponTargeting(IMyCubeBlock weapon)
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
-			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !(weapon is IMyInventoryOwner))
+			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !(weapon is IMyInventoryOwner) || !(weapon is Ingame.IMyUserControllableGun))
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.weapon = weapon;
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger("WeaponTargeting", () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
+
+			this.CurrentTarget = new Target();
+			this.IsControllingWeapon = false;
 		}
 
 		/// <summary>
-		/// Determines the FiringDirection
+		/// Determines firing direction & intersection point.
 		/// </summary>
-		protected void Update1()
+		public void Update1()
 		{
+			if (!IsControllingWeapon)
+				return;
+
 			if (LoadedAmmo == null)
 				return;
 
 			if (CurrentTarget.TType == TargetType.None)
-				CurrentTarget.FiringDirection = null;
-			else
 			{
-				CurrentTarget.FiringDirection = GetFiringDirection(CurrentTarget.Entity);
-				myLogger.debugLog("Target entity = " + CurrentTarget.Entity + ", position = " + CurrentTarget.Entity.GetPosition() + ", predicted = " + CurrentTarget.FiringDirection, "Update1()");
+				CurrentTarget.FiringDirection = null;
+				CurrentTarget.InterceptionPoint = null;
 			}
+			else
+				SetFiringDirection();
 		}
 
 		/// <summary>
-		/// Checks for ammo and chooses a target (if necessary).
+		/// Updates can control weapon. Checks for ammo and chooses a target (if necessary).
 		/// </summary>
-		protected void Update10()
+		public void Update10()
 		{
+			if (!CanControlWeapon())
+				return;
+
 			UpdateAmmo();
 			if (LoadedAmmo == null)
 				return;
@@ -143,9 +163,87 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>
 		/// Gets targeting options from name.
 		/// </summary>
-		protected void Update100()
+		public void Update100()
 		{
+			if (!IsControllingWeapon) 
+				return;
+
 			TargetOptionsFromName();
+			Blacklist = new HashSet<long>();
+		}
+
+		/// <summary>
+		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
+		/// </summary>
+		/// <param name="targetPoint">The point of the target.</param>
+		/// <returns>true if the rotation is allowed</returns>
+		protected abstract bool CanRotateTo(Vector3D targetPoint);
+
+		private bool CanControlWeapon()
+		{
+			if (weapon.IsWorking
+				&& (myTurret == null || !myTurret.IsUnderControl)
+				&& weapon.DisplayNameText.Contains("[") && weapon.DisplayNameText.Contains("]"))
+			{
+				if (!IsControllingWeapon)
+				{
+					//myLogger.debugLog("Now controlling weapon", "CanControlWeapon()");
+					IsControllingWeapon = true;
+					IsShooting = false;
+
+					// stop shooting
+					var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+					if (builder.IsShootingFromTerminal)
+					{
+						myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
+						(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					}
+					else
+					{
+						myLogger.debugLog("Now controlling weapon, not shooting", "CanControlWeapon()");
+					}
+
+					// disable default targeting
+					if (myTurret != null)
+					{
+						//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
+						myTurret.SetTarget(myTurret);
+						myTurret.EnableIdleRotation = false;
+						myTurret.SyncEnableIdleRotation();
+					}
+				}
+
+				return true;
+			}
+			else
+			{
+				if (IsControllingWeapon)
+				{
+					//myLogger.debugLog("No longer controlling weapon", "CanControlWeapon()");
+					IsControllingWeapon = false;
+					IsShooting = false;
+
+					// remove target
+					CurrentTarget = new Target();
+
+					// stop shooting
+					var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+					if (builder.IsShootingFromTerminal)
+					{
+						myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
+						(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					}
+					else
+					{
+						myLogger.debugLog("No longer controlling weapon, not shooting", "CanControlWeapon()");
+					}
+
+					// enable default targeting
+					if (myTurret != null)
+						myTurret.ResetTargetingToDefault();
+				}
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -161,7 +259,7 @@ namespace Rynchodon.Autopilot.Weapons
 			List<IMyInventoryItem> loaded = (weapon as IMyInventoryOwner).GetInventory(0).GetItems();
 			if (loaded.Count == 0 || loaded[0].Amount < 1)
 			{
-				myLogger.debugLog("No ammo loaded.", "UpdateAmmo()");
+				//myLogger.debugLog("No ammo loaded.", "UpdateAmmo()");
 				LoadedAmmo = null;
 				return;
 			}
@@ -170,16 +268,16 @@ namespace Rynchodon.Autopilot.Weapons
 			if (!AmmoDefinition.TryGetValue(loaded[0].ItemId, out ammoDef))
 			{
 				MyDefinitionId magazineId = loaded[0].Content.GetObjectId();
-				myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
+				//myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
 				MyDefinitionId ammoDefId = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId).AmmoDefinitionId;
-				myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");
+				//myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");
 				ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoDefId);
-				myLogger.debugLog("ammoDef = " + ammoDef, "UpdateAmmo()");
+				//myLogger.debugLog("ammoDef = " + ammoDef, "UpdateAmmo()");
 
 				AmmoDefinition.Add(loaded[0].ItemId, ammoDef);
 			}
-			else
-				myLogger.debugLog("Got ammo from Dictionary: " + ammoDef, "UpdateAmmo()");
+			//else
+			//	myLogger.debugLog("Got ammo from Dictionary: " + ammoDef, "UpdateAmmo()");
 
 			LoadedAmmo = ammoDef;
 		}
@@ -189,12 +287,48 @@ namespace Rynchodon.Autopilot.Weapons
 			MyMissileAmmoDefinition missileAmmo = LoadedAmmo as MyMissileAmmoDefinition;
 			if (missileAmmo == null)
 			{
-				myLogger.debugLog("speed of " + LoadedAmmo + " is " + LoadedAmmo.DesiredSpeed, "LoadedAmmoSpeed()");
+				//myLogger.debugLog("speed of " + LoadedAmmo + " is " + LoadedAmmo.DesiredSpeed, "LoadedAmmoSpeed()");
 				return LoadedAmmo.DesiredSpeed;
 			}
 
+			// TODO: missile ammo
+
 			myLogger.alwaysLog("Missile ammo not implemented, using desired speed: " + LoadedAmmo.DesiredSpeed, "LoadedAmmoSpeed()", Logger.severity.WARNING);
 			return LoadedAmmo.DesiredSpeed;
+		}
+
+		/// <summary>
+		/// <para>If supplied value is small, fire the weapon.</para>
+		/// <para>If supplied value is large, stop firing.</para>
+		/// </summary>
+		protected void CheckFire(float lengthSquared)
+		{
+			if (lengthSquared < firingThreshold)
+			{
+				if (!IsShooting)
+				{
+					// start firing
+					myLogger.debugLog("Open fire LS: "+lengthSquared, "CheckFire()");
+
+					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					IsShooting = true;
+				}
+				else
+					myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
+			}
+			else
+			{
+				if (IsShooting)
+				{
+					// stop firing
+					myLogger.debugLog("Hold fire LS: " + lengthSquared, "CheckFire()");
+
+					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					IsShooting = false;
+				}
+				else
+					myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
+			}
 		}
 
 		/// <summary>
@@ -202,7 +336,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		private void CollectTargets()
 		{
-			myLogger.debugLog("Entered CollectTargets", "CollectTargets()");
+			//myLogger.debugLog("Entered CollectTargets", "CollectTargets()");
 
 			Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 			//Available_Targets_Grid = new List<IMyCubeGrid>();
@@ -211,23 +345,30 @@ namespace Rynchodon.Autopilot.Weapons
 			BoundingSphereD nearbySphere = new BoundingSphereD(myTurret.GetPosition(), TargetingRange);
 			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
+			//List<IMyEntity> nearbyEntities = MyAPIGateway.Entities.GetEntitiesInSphere_Safe(ref nearbySphere);
 
-			myLogger.debugLog("found " + nearbyEntities.Count + " entities", "CollectTargets()");
+			//myLogger.debugLog("found " + nearbyEntities.Count + " entities", "CollectTargets()");
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
+				//if (entity is IMyCubeBlock)
+				//	continue;
+
+				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
+
+				if (Blacklist.Contains(entity.EntityId))
+					continue;
 
 				if (entity is IMyFloatingObject)
 				{
-					myLogger.debugLog("floater: " + entity.getBestName(), "CollectTargets()");
+					//myLogger.debugLog("floater: " + entity.getBestName(), "CollectTargets()");
 					AddTarget(TargetType.Moving, entity);
 					continue;
 				}
 
 				if (entity is IMyMeteor)
 				{
-					myLogger.debugLog("meteor: " + entity.getBestName(), "CollectTargets()");
+					//myLogger.debugLog("meteor: " + entity.getBestName(), "CollectTargets()");
 					AddTarget(TargetType.Meteor, entity);
 					continue;
 				}
@@ -255,7 +396,7 @@ namespace Rynchodon.Autopilot.Weapons
 				{
 					if (!asGrid.Save)
 					{
-						myLogger.debugLog("No Save Grid: " + entity.getBestName(), "CollectTargets()");
+						//myLogger.debugLog("No Save Grid: " + entity.getBestName(), "CollectTargets()");
 						continue;
 					}
 
@@ -264,23 +405,23 @@ namespace Rynchodon.Autopilot.Weapons
 						AddTarget(TargetType.Moving, entity);
 						if (asGrid.IsStatic)
 						{
-							myLogger.debugLog("Hostile Platform: " + entity.getBestName(), "CollectTargets()");
+							//myLogger.debugLog("Hostile Platform: " + entity.getBestName(), "CollectTargets()");
 							AddTarget(TargetType.Station, entity);
 						}
 						else if (asGrid.GridSizeEnum == MyCubeSize.Large)
 						{
-							myLogger.debugLog("Hostile Large Ship: " + entity.getBestName(), "CollectTargets()");
+							//myLogger.debugLog("Hostile Large Ship: " + entity.getBestName(), "CollectTargets()");
 							AddTarget(TargetType.LargeGrid, entity);
 						}
 						else
 						{
-							myLogger.debugLog("Hostile Small Ship: " + entity.getBestName(), "CollectTargets()");
+							//myLogger.debugLog("Hostile Small Ship: " + entity.getBestName(), "CollectTargets()");
 							AddTarget(TargetType.SmallGrid, entity);
 						}
 					}
 					else
 					{
-						myLogger.debugLog("Friendly Grid: " + entity.getBestName(), "CollectTargets()");
+						//myLogger.debugLog("Friendly Grid: " + entity.getBestName(), "CollectTargets()");
 						PotentialObstruction.Add(entity);
 					}
 					continue;
@@ -288,16 +429,17 @@ namespace Rynchodon.Autopilot.Weapons
 
 				if (entity.ToString().StartsWith("MyMissile"))
 				{
+					//myLogger.debugLog("Missile: " + entity.getBestName(), "CollectTargets()");
 					AddTarget(TargetType.Missile, entity);
 					continue;
 				}
 
-				myLogger.debugLog("Some Useless Entity: " + entity.getBestName(), "CollectTargets()");
+				//myLogger.debugLog("Some Useless Entity: " + entity + " - " + entity.getBestName() + " - " + entity.GetType(), "CollectTargets()");
 			}
 
-			myLogger.debugLog("Target Type Count = " + Available_Targets.Count, "CollectTargets()");
-			foreach (var Pair in Available_Targets)
-				myLogger.debugLog("Targets = " + Pair.Key + ", Count = " + Pair.Value.Count, "CollectTargets()");
+			//myLogger.debugLog("Target Type Count = " + Available_Targets.Count, "CollectTargets()");
+			//foreach (var Pair in Available_Targets)
+			//	myLogger.debugLog("Targets = " + Pair.Key + ", Count = " + Pair.Value.Count, "CollectTargets()");
 		}
 
 		/// <summary>
@@ -306,10 +448,10 @@ namespace Rynchodon.Autopilot.Weapons
 		private void AddTarget(TargetType tType, IMyEntity target)
 		{
 			if (!CanTargetType(tType))
-			{
-				myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
+			//{
+			//	myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
 				return;
-			}
+			//}
 
 			List<IMyEntity> list;
 			if (!Available_Targets.TryGetValue(tType, out list))
@@ -332,7 +474,7 @@ namespace Rynchodon.Autopilot.Weapons
 				case TargetType.Meteor:
 				case TargetType.Moving:
 					{
-						if (ProjectileIsThreat(CurrentTarget.Entity))
+						if (ProjectileIsThreat(CurrentTarget.Entity, CurrentTarget.TType))
 							return;
 						CurrentTarget = new Target();
 						return;
@@ -401,14 +543,19 @@ namespace Rynchodon.Autopilot.Weapons
 			List<IMyEntity> targetsOfType;
 			if (Available_Targets.TryGetValue(tType, out targetsOfType))
 			{
+				//myLogger.debugLog("picking projectile of type " + tType + " from " + targetsOfType.Count, "PickAProjectile()");
+
 				bool isFixed = myTurret == null;
 
 				foreach (IMyEntity projectile in targetsOfType)
-					if (ProjectileIsThreat(projectile) && Obstructed(projectile.GetPosition(), isFixed))
+					if (ProjectileIsThreat(projectile, tType) && !Obstructed(projectile.GetPosition(), isFixed))
 					{
+						//myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
 						CurrentTarget = new Target(projectile, tType);
 						return true;
 					}
+					//else
+					//	myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
 			}
 
 			return false;
@@ -417,87 +564,38 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>
 		/// <para>Approaching, going to intersect protection area.</para>
 		/// </summary>
-		private bool ProjectileIsThreat(IMyEntity projectile)
+		private bool ProjectileIsThreat(IMyEntity projectile, TargetType tType)
 		{
 			if (projectile.Closed)
 				return false;
 
 			Vector3 projectileVelocity = projectile.GetLinearVelocity();
-			if (projectileVelocity.LengthSquared() < 100)
+			// there are mods that add slow missiles and meteors, so ignore speed for those
+			if (tType != TargetType.Missile && tType != TargetType.Meteor && projectileVelocity.LengthSquared() < 100)
+			{
+				//myLogger.debugLog("too slow to be a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
 				return false;
+			}
 
 			Vector3D projectilePosition = projectile.GetPosition();
-			BoundingSphereD protectionArea = new BoundingSphereD(weapon.GetPosition(), LoadedAmmoSpeed(projectilePosition) / 10f);
-			if (protectionArea.Contains(projectilePosition) == ContainmentType.Disjoint)
+			BoundingSphereD protectionArea = new BoundingSphereD(weapon.GetPosition(), TargetingRange / 10f);
+			if (protectionArea.Contains(projectilePosition) == ContainmentType.Contains)
+			{
 				// too late to stop it (also, no test for moving away)
+				//myLogger.debugLog("projectile is inside protection area: " + projectile.getBestName(), "ProjectileIsThreat()");
 				return false;
+			}
 
 			RayD projectileRay = new RayD(projectilePosition, Vector3D.Normalize(projectileVelocity));
-			return projectileRay.Intersects(protectionArea) != null;
+			if (projectileRay.Intersects(protectionArea) != null)
+			{
+				//myLogger.debugLog("projectile is a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
+				return true;
+			}
+
+			//myLogger.debugLog("projectile not headed towards protection area: " + projectile.getBestName(), "ProjectileIsThreat()");
+			return false;
 		}
-
-		#region Target Prediction
-
-		/// <summary>
-		/// Determines the direction a projectile must be fired in to hit the target.
-		/// </summary>
-		/// <param name="target">target</param>
-		/// <returns>the required direction</returns>
-		/// Do we also need point of intersection? - This test might preceed Unobstructed, then we could test the trajectory not sight-to-target
-		private Vector3? GetFiringDirection(IMyEntity target)
-		{
-			if (weapon == null)
-				throw new ArgumentNullException("weapon");
-			if (target == null)
-				throw new ArgumentNullException("target");
-
-			Vector3D targetPosition = target.GetPosition();
-			myLogger.debugLog("targetPosition = " + targetPosition, "GetFiringDirection()");
-
-			Vector3D relativePos = targetPosition - weapon.GetPosition();
-			Vector3 relativeVelocity = target.GetLinearVelocity() - weapon.GetLinearVelocity();
-			myLogger.debugLog("relativePos = " + relativePos + ", relativeVelocity = " + relativeVelocity, "GetFiringDirection()");
-
-			return GetFiringDirection(relativePos, relativeVelocity, LoadedAmmoSpeed(targetPosition));
-		}
-
-		/// <remarks>
-		/// Based on http://stackoverflow.com/a/17749335
-		/// </remarks>
-		private static Vector3? GetFiringDirection(Vector3 relativePosition, Vector3 relativeVelocity, float projectileSpeed)
-		{
-			float a = projectileSpeed * projectileSpeed - relativeVelocity.LengthSquared();
-			float b = -2 * relativePosition.Dot(relativeVelocity);
-			float c = -relativePosition.LengthSquared();
-
-			float? time = SmallPositiveRoot(a, b, c);
-			if (time == null)
-				return null;
-
-			return relativeVelocity + relativePosition / time.Value;
-		}
-
-		/// <summary>
-		/// Gets the smallest positive root of the quadratic equation.
-		/// </summary>
-		private static float? SmallPositiveRoot(float a, float b, float c)
-		{
-			float sqrt = b * b - 4 * a * c;
-			if (sqrt < 0)
-				return null;
-			sqrt = (float)Math.Sqrt(sqrt);
-
-			float root = -b - sqrt / (2 * a);
-			if (root > 0)
-				return root;
-			root = -b + sqrt / (2 * a);
-			if (root > 0)
-				return root;
-
-			return null;
-		}
-
-		#endregion
 
 		/// <summary>
 		/// <para>Test line segment between weapon and target for obstructing entities.</para>
@@ -509,6 +607,9 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
+
+			if (!CanRotateTo(targetPos))
+				return true;
 
 			Vector3D weaponPos = weapon.GetPosition();
 
@@ -561,6 +662,94 @@ namespace Rynchodon.Autopilot.Weapons
 
 			// no obstruction found
 			return false;
+		}
+
+		/// <summary>
+		/// Calculates FiringDirection & InterceptionPoint
+		/// </summary>
+		/// TODO: if target is accelerating, look ahead (missiles and such)
+		private void SetFiringDirection()
+		{
+			IMyEntity target = CurrentTarget.Entity;
+			Vector3D TargetPosition;// = target.GetPosition();
+
+			if (target is IMyCharacter)
+				// GetPosition() is near feet
+				TargetPosition = target.WorldMatrix.Up * 1.25 + target.GetPosition();
+			else
+				TargetPosition = target.GetPosition();
+
+			Vector3D RelativeVelocity = target.GetLinearVelocity() - weapon.GetLinearVelocity();
+
+			//myLogger.debugLog("weapon position = " + weapon.GetPosition() + ", ammo speed = " + LoadedAmmoSpeed(TargetPosition) + ", TargetPosition = " + TargetPosition + ", target velocity = " + target.GetLinearVelocity(), "GetFiringDirection()");
+			FindInterceptVector(weapon.GetPosition(), LoadedAmmoSpeed(TargetPosition), TargetPosition, RelativeVelocity);
+			if (CurrentTarget.FiringDirection == null)
+			{
+				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
+				Blacklist.Add(target.EntityId);
+				return;
+			}
+			if (Obstructed(CurrentTarget.InterceptionPoint.Value, myTurret == null))
+			{
+				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
+				Blacklist.Add(target.EntityId);
+				return;
+			}
+		}
+
+		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/ </remarks>
+		private void FindInterceptVector(Vector3 shotOrigin, float shotSpeed, Vector3 targetOrigin, Vector3 targetVel)
+		{
+			Vector3 displacementToTarget = targetOrigin - shotOrigin;
+			float distanceToTarget = displacementToTarget.Length();
+			Vector3 directionToTarget = displacementToTarget / distanceToTarget;
+
+			// Decompose the target's velocity into the part parallel to the
+			// direction to the cannon and the part tangential to it.
+			// The part towards the cannon is found by projecting the target's
+			// velocity on directionToTarget using a dot product.
+			float targetSpeedOrth = Vector3.Dot(targetVel, directionToTarget);
+			Vector3 targetVelOrth = targetSpeedOrth* directionToTarget;
+
+			// The tangential part is then found by subtracting the
+			// result from the target velocity.
+			Vector3 targetVelTang = targetVel - targetVelOrth;
+
+			// The tangential component of the velocities should be the same
+			// (or there is no chance to hit)
+			// THIS IS THE MAIN INSIGHT!
+			Vector3 shotVelTang = targetVelTang;
+
+			// Now all we have to find is the orthogonal velocity of the shot
+
+			float shotVelSpeed = shotVelTang.Length();
+			if (shotVelSpeed > shotSpeed)
+			{
+				//// Shot is too slow to intercept target, it will never catch up.
+				//// Do our best by aiming in the direction of the targets velocity.
+				//return Vector3.Normalize(targetVel) * shotSpeed;
+				CurrentTarget.FiringDirection = null;
+				CurrentTarget.InterceptionPoint = null;
+				return;
+			}
+			else
+			{
+				// We know the shot speed, and the tangential velocity.
+				// Using pythagoras we can find the orthogonal velocity.
+				float shotSpeedOrth = (float)Math.Sqrt(shotSpeed * shotSpeed - shotVelSpeed * shotVelSpeed);
+				Vector3 shotVelOrth = directionToTarget * shotSpeedOrth;
+
+				// Finally, add the tangential and orthogonal velocities.
+				//return shotVelOrth + shotVelTang;
+				CurrentTarget.FiringDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
+
+				// Find the time of collision (distance / relative velocity)
+				float timeToCollision = distanceToTarget / (shotSpeedOrth - targetSpeedOrth);
+
+				// Calculate where the shot will be at the time of collision
+				Vector3 shotVel = shotVelOrth + shotVelTang;
+				CurrentTarget.InterceptionPoint = shotOrigin + shotVel * timeToCollision;
+			}
 		}
 	}
 }

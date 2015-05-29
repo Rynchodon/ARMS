@@ -274,5 +274,8 @@ namespace Rynchodon
 				&& first.WorldVolume.Intersects(second.WorldAABB)
 				&& first.WorldVolume.Intersects(second.WorldVolume);
 		}
+
+		public static bool IsValid(this float number)
+		{ return number != float.NaN && !float.IsInfinity(number); }
 	}
 }

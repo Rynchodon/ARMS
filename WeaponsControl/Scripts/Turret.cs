@@ -2,6 +2,7 @@
 
 using System;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -13,13 +14,31 @@ namespace Rynchodon.Autopilot.Weapons
 	/// </summary>
 	public class Turret : WeaponTargeting
 	{
+		/// <summary>
+		/// limits to determine whether or not a turret can face a target
+		/// </summary>
+		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
+
 		private Logger myLogger;
 
 		public Turret(IMyCubeBlock block)
 			: base(block)
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
-			myTurret.SetTarget(Vector3D.Zero);
+
+			// definition limits
+			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(weapon.getSlimObjectBuilder()) as MyLargeTurretBaseDefinition;
+
+			if (definition == null)
+				throw new NullReferenceException("definition");
+
+			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
+			maxElevation = (float)Math.Min(definition.MaxElevationDegrees / 180 * Math.PI, Math.PI / 2);
+			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
+			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
+
+			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "DelayedInit()");
+			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "DelayedInit()");
 		}
 
 		/// <summary>
@@ -51,44 +70,63 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			base.Update1();
 
-			RotateToTarget();
-			// fire of course
+			RotateAndFire();
 		}
 
-		public new void Update10()
-		{ base.Update10(); }
+		//public new void Update10()
+		//{
+		//	base.Update10();
+		//}
 
 		public new void Update100()
 		{
 			base.Update100();
 
 			TargetOptionsFromTurret();
-			myLogger.debugLog("CanTarget: " + CanTarget, "Update100()");
+			//myLogger.debugLog("CanTarget: " + CanTarget, "Update100()");
 		}
 
-		private void RotateToTarget()
+		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
-			Vector3? RotateTo = FiringDirection;
-			if (!RotateTo.HasValue)
-				return;
-
-			myTurret.SetTarget(RotateTo.Value);
-			return;
-
+			Vector3 RotateTo = RelativeVector3F.createFromWorld(CurrentTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
 			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(RotateTo.Value, out azimuth, out elevation);
-			if (azimuth == float.NaN || elevation == float.NaN)
+			Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
+
+			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth < +maxAzimuth;
+		}
+
+		private void RotateAndFire()
+		{
+			if (!CurrentTarget.FiringDirection.HasValue)
 			{
-				myLogger.debugLog("cannot rotate, invalid az(" + azimuth + ") or el(" + elevation + ")", "RotateToTarget()");
+				CheckFire(1f);
 				return;
 			}
 
-			myTurret.Azimuth = azimuth;
-			myTurret.SyncAzimuth();
-			myTurret.Elevation = elevation;
-			myTurret.SyncElevation();
+			Vector3 RotateTo = RelativeVector3F.createFromWorld(CurrentTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
+			float azimuth, elevation;
+			Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
+			if (!azimuth.IsValid() || !elevation.IsValid())
+			{
+				myLogger.debugLog("cannot rotate, invalid az(" + azimuth + ") or el(" + elevation + ")", "RotateAndFire()");
+				return;
+			}
 
-			myLogger.debugLog("Firing Direction = " + FiringDirection + ", Rotating to az = " + azimuth + ", and el = " + elevation, "RotateToTarget()");
+			//if (myTurret.AIEnabled)
+				myTurret.SetTarget(CurrentTarget.InterceptionPoint.Value);
+			//else
+			//{
+			//	myTurret.Azimuth = azimuth;
+			//	myTurret.SyncAzimuth();
+			//	myTurret.Elevation = elevation;
+			//	myTurret.SyncElevation();
+			//}
+
+			//myLogger.debugLog("Firing Direction = " + FiringDirection + ", Rotating to az = " + azimuth + ", and el = " + elevation, "RotateAndFire()");
+
+			Vector2 Difference = new Vector2(elevation - myTurret.Elevation, azimuth - myTurret.Azimuth);
+			//myLogger.debugLog("Difference = " + Difference, "RotateAndFire()");
+			CheckFire(Difference.LengthSquared());
 		}
 	}
 }
