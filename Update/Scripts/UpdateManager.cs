@@ -2,14 +2,12 @@
 
 using System;
 using System.Collections.Generic;
-
+using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Weapons;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-
-using Rynchodon.AntennaRelay;
-using Rynchodon.Autopilot;
-using Rynchodon.Autopilot.Turret;
 
 namespace Rynchodon.Update
 {
@@ -33,55 +31,43 @@ namespace Rynchodon.Update
 		private void RegisterScripts()
 		{
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
-					Beacon newBeacon = new Beacon(block);
-					RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
-				});
+				Beacon newBeacon = new Beacon(block);
+				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
-					TextPanel newTextPanel = new TextPanel(block);
-					RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
-				});
+				TextPanel newTextPanel = new TextPanel(block);
+				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
-					LaserAntenna newLA = new LaserAntenna(block);
-					RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
-				});
+				LaserAntenna newLA = new LaserAntenna(block);
+				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
-					ProgrammableBlock newPB = new ProgrammableBlock(block);
-					RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-				});
+				ProgrammableBlock newPB = new ProgrammableBlock(block);
+				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-					RadioAntenna newRA = new RadioAntenna(block);
-					RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-				});
+				RadioAntenna newRA = new RadioAntenna(block);
+				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
+			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (Navigator.IsControllableBlock(block))
-						new ShipController(block);
-					// Does not receive Updates
-				});
+				if (Navigator.IsControllableBlock(block))
+					new ShipController(block);
+				// Does not receive Updates
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (Navigator.IsControllableBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
-				});
+			});
 
-			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) => {
-					TurretLargeGatling newTurret = new TurretLargeGatling(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) => {
-					TurretLargeRocket newTurret = new TurretLargeRocket(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) => {
-					TurretInterior newTurret = new TurretInterior(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
-				});
-
-			//RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
-			//	{
-			//		OreDetector newOD = new OreDetector(block);
-			//		RegisterForUpdates(100, newOD.Update100, block);
-			//	});
+			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
+				Turret t = new Turret(block);
+				RegisterForUpdates(1, t.Update1, block);
+				RegisterForUpdates(10, t.Update10, block);
+				RegisterForUpdates(100, t.Update100, block);
+			});
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;
@@ -166,6 +152,8 @@ namespace Rynchodon.Update
 					case Status.Terminated:
 						return;
 				}
+				Dictionary<uint, Action> Unregister = null;
+
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
 					{
@@ -175,9 +163,16 @@ namespace Rynchodon.Update
 							catch (Exception ex2)
 							{
 								myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
-								UnRegisterForUpdates(pair.Key, item);
+								myLogger.debugNotify("A script has been terminated", 10000, Logger.severity.FATAL);
+								if (Unregister == null)
+									Unregister = new Dictionary<uint, Action>();
+								Unregister.Add(pair.Key, item);
 							}
 					}
+
+				if (Unregister != null)
+					foreach (KeyValuePair<uint, Action> pair in Unregister)
+						UnRegisterForUpdates(pair.Key, pair.Value);
 			}
 			catch (Exception ex)
 			{
@@ -340,4 +335,3 @@ namespace Rynchodon.Update
 		}
 	}
 }
-

@@ -14,7 +14,7 @@ namespace Rynchodon
 		{
 			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
 			yParallelPathCheck,
-			fDefaultSpeed, fMaxSpeed,
+			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sSmartTurretDefaultNPC, sSmartTurretDefaultPlayer
 		}
 
@@ -70,6 +70,7 @@ namespace Rynchodon
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, 100));
+			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
 			AllSettings.Add(SettingName.sSmartTurretDefaultNPC, new SettingString("[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]"));
 			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
