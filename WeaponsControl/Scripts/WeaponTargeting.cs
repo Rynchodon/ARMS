@@ -67,6 +67,30 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 		}
 
+		public class Ammo
+		{
+			public readonly MyAmmoDefinition Definition;
+			public readonly float TimeToMaxSpeed;
+			public readonly float DistanceToMaxSpeed;
+
+			public Ammo(MyAmmoDefinition Definiton)
+			{
+				this.Definition = Definiton;
+
+				MyMissileAmmoDefinition asMissile = Definition as MyMissileAmmoDefinition;
+				if (asMissile != null && !asMissile.MissileSkipAcceleration)
+				{
+					this.TimeToMaxSpeed = (asMissile.DesiredSpeed - asMissile.MissileInitialSpeed) / asMissile.MissileAcceleration;
+					this.DistanceToMaxSpeed = (asMissile.DesiredSpeed + asMissile.MissileInitialSpeed) / 2 * TimeToMaxSpeed;
+				}
+				else
+				{
+					this.TimeToMaxSpeed = 0;
+					this.DistanceToMaxSpeed = 0;
+				}
+			}
+		}
+
 		/// <summary>Required length squared between current direction and target direction to fire.</summary>
 		private const float firingThreshold = 0.01f;
 		private static Dictionary<uint, MyAmmoDefinition> AmmoDefinition = new Dictionary<uint, MyAmmoDefinition>();
@@ -77,7 +101,7 @@ namespace Rynchodon.Autopilot.Weapons
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
 		private List<IMyEntity> PotentialObstruction;
 
-		private MyAmmoDefinition LoadedAmmo = null;
+		private Ammo LoadedAmmo;
 
 		protected Target CurrentTarget { get; private set; }
 		private HashSet<long> Blacklist = new HashSet<long>();
@@ -290,12 +314,12 @@ namespace Rynchodon.Autopilot.Weapons
 				TargetType tType;
 				if (Enum.TryParse(instruction, true, out tType))
 				{
-					myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
+					//myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
 					CanTarget |= tType;
 					continue;
 				}
 
-				myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
+				//myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
 				blocksToTarget.Add(instruction);
 			}
 		}
@@ -325,22 +349,42 @@ namespace Rynchodon.Autopilot.Weapons
 			//else
 			//	myLogger.debugLog("Got ammo from Dictionary: " + ammoDef, "UpdateAmmo()");
 
-			LoadedAmmo = ammoDef;
+			if (LoadedAmmo == null || LoadedAmmo.Definition != ammoDef) // ammo has changed
+			{
+				myLogger.debugLog("Ammo changed to: " + ammoDef.DisplayNameText, "UpdateAmmo()");
+				LoadedAmmo = new Ammo(ammoDef);
+			}
 		}
 
 		private float LoadedAmmoSpeed(Vector3D target)
 		{
-			MyMissileAmmoDefinition missileAmmo = LoadedAmmo as MyMissileAmmoDefinition;
+			if (LoadedAmmo.DistanceToMaxSpeed < 1)
+				return LoadedAmmo.Definition.DesiredSpeed;
+
+			MyMissileAmmoDefinition missileAmmo = LoadedAmmo.Definition as MyMissileAmmoDefinition;
 			if (missileAmmo == null)
 			{
-				//myLogger.debugLog("speed of " + LoadedAmmo + " is " + LoadedAmmo.DesiredSpeed, "LoadedAmmoSpeed()");
-				return LoadedAmmo.DesiredSpeed;
+				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.Definition.DisplayNameText, "LoadedAmmoSpeed()", Logger.severity.ERROR);
+				return LoadedAmmo.Definition.DesiredSpeed;
 			}
 
-			// TODO: missile ammo
+			float distance = Vector3.Distance(weapon.GetPosition(), target);
 
-			myLogger.alwaysLog("Missile ammo not implemented, using desired speed: " + LoadedAmmo.DesiredSpeed, "LoadedAmmoSpeed()", Logger.severity.WARNING);
-			return LoadedAmmo.DesiredSpeed;
+			if (distance < LoadedAmmo.DistanceToMaxSpeed)
+			{
+				float finalSpeed = (float)Math.Sqrt(missileAmmo.MissileInitialSpeed * missileAmmo.MissileInitialSpeed + 2 * missileAmmo.MissileAcceleration * distance);
+
+				myLogger.debugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
+				return (missileAmmo.MissileInitialSpeed + finalSpeed) / 2;
+			}
+			else
+			{
+				float distanceAfterMaxVel = distance - LoadedAmmo.DistanceToMaxSpeed;
+				float timeAfterMaxVel = distanceAfterMaxVel / missileAmmo.DesiredSpeed;
+
+				myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+				return distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel);
+			}
 		}
 
 		/// <summary>

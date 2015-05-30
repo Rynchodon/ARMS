@@ -68,6 +68,13 @@ namespace Rynchodon.Update
 				RegisterForUpdates(10, t.Update10, block);
 				RegisterForUpdates(100, t.Update100, block);
 			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
+				Turret t = new Turret(block);
+				RegisterForUpdates(1, t.Update1, block);
+				RegisterForUpdates(10, t.Update10, block);
+				RegisterForUpdates(100, t.Update100, block);
+			});
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;
