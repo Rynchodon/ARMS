@@ -153,6 +153,21 @@ namespace Rynchodon.Autopilot.Weapons
 			if (LoadedAmmo == null)
 				return;
 
+			switch (CurrentTarget.TType)
+			{
+				case TargetType.Missile:
+				case TargetType.Meteor:
+					{
+						if (ProjectileIsThreat(CurrentTarget.Entity, CurrentTarget.TType))
+						{
+							myLogger.debugLog("Keeping Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
+							return;
+						}
+						CurrentTarget = new Target();
+						break;
+					}
+			}
+
 			CollectTargets();
 			PickATarget();
 			myLogger.debugLog("Current Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
@@ -169,18 +184,21 @@ namespace Rynchodon.Autopilot.Weapons
 			TargetOptionsFromName();
 			Blacklist = new HashSet<long>();
 
-			if (!CanTargetType(CurrentTarget.TType))
+			if (CurrentTarget.TType != TargetType.None)
 			{
-				myLogger.debugLog("current target type no longer allowed", "Update100()");
-				CurrentTarget = new Target();
-			}
-			else
-			{
-				IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
-				if (targetAsBlock != null && !targetAsBlock.IsWorking)
+				if (!CanTargetType(CurrentTarget.TType))
 				{
-					myLogger.debugLog("current target is no longer working", "Update100()");
+					myLogger.debugLog("current target type no longer allowed", "Update100()");
 					CurrentTarget = new Target();
+				}
+				else
+				{
+					IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
+					if (targetAsBlock != null && !targetAsBlock.IsWorking)
+					{
+						myLogger.debugLog("current target is no longer working", "Update100()");
+						CurrentTarget = new Target();
+					}
 				}
 			}
 		}
@@ -200,7 +218,6 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				if (!IsControllingWeapon)
 				{
-					//myLogger.debugLog("Now controlling weapon", "CanControlWeapon()");
 					IsControllingWeapon = true;
 					IsShooting = false;
 
@@ -220,9 +237,8 @@ namespace Rynchodon.Autopilot.Weapons
 					if (myTurret != null)
 					{
 						//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
-						myTurret.SetTarget(myTurret);
-						myTurret.EnableIdleRotation = false;
-						myTurret.SyncEnableIdleRotation();
+						//myTurret.SetTarget(myTurret);
+						myTurret.SetTarget(weapon.GetPosition() + weapon.WorldMatrix.Forward * 10);
 					}
 				}
 
@@ -369,21 +385,16 @@ namespace Rynchodon.Autopilot.Weapons
 			//myLogger.debugLog("Entered CollectTargets", "CollectTargets()");
 
 			Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
-			//Available_Targets_Grid = new List<IMyCubeGrid>();
 			PotentialObstruction = new List<IMyEntity>();
 
-			BoundingSphereD nearbySphere = new BoundingSphereD(myTurret.GetPosition(), TargetingRange);
+			BoundingSphereD nearbySphere = new BoundingSphereD(weapon.GetPosition(), TargetingRange);
 			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
-			//List<IMyEntity> nearbyEntities = MyAPIGateway.Entities.GetEntitiesInSphere_Safe(ref nearbySphere);
 
 			//myLogger.debugLog("found " + nearbyEntities.Count + " entities", "CollectTargets()");
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				//if (entity is IMyCubeBlock)
-				//	continue;
-
 				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
 
 				if (Blacklist.Contains(entity.EntityId))
@@ -406,16 +417,26 @@ namespace Rynchodon.Autopilot.Weapons
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{
-					IMyPlayer asPlayer = asChar.GetPlayer_Safe();
-
-					if (asPlayer == null || weapon.canConsiderHostile(asPlayer.PlayerID))
+					IMyIdentity asIdentity = asChar.GetIdentity_Safe();
+					if (asIdentity != null)
 					{
-						myLogger.debugLog("Hostile Character(" + asPlayer + "): " + entity.getBestName(), "CollectTargets()");
+						if (asIdentity.IsDead)
+						{
+							myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName(), "CollectTargets()");
+							continue;
+						}
+					}
+					else
+						myLogger.debugLog("Found a robot! : " + asChar + " . " + entity.getBestName(), "CollectTargets()");
+
+					if (asIdentity == null || weapon.canConsiderHostile(asIdentity.PlayerId))
+					{
+						//myLogger.debugLog("Hostile Character(" + asIdentity + "): " + entity.getBestName(), "CollectTargets()");
 						AddTarget(TargetType.Character, entity);
 					}
 					else
 					{
-						myLogger.debugLog("Non-Hostile Character: " + entity.getBestName(), "CollectTargets()");
+						//myLogger.debugLog("Non-Hostile Character: " + entity.getBestName(), "CollectTargets()");
 						PotentialObstruction.Add(entity);
 					}
 					continue;
@@ -493,24 +514,10 @@ namespace Rynchodon.Autopilot.Weapons
 		}
 
 		/// <summary>
-		/// <para>If current target is a projectile, check that it is valid</para>
 		/// <para>Choose a target from Available_Targets.</para>
 		/// </summary>
 		private void PickATarget()
 		{
-			switch (CurrentTarget.TType)
-			{
-				case TargetType.Missile:
-				case TargetType.Meteor:
-				case TargetType.Moving:
-					{
-						if (ProjectileIsThreat(CurrentTarget.Entity, CurrentTarget.TType))
-							return;
-						CurrentTarget = new Target();
-						return;
-					}
-			}
-
 			if (PickAProjectile(TargetType.Missile) || PickAProjectile(TargetType.Meteor) || PickAProjectile(TargetType.Moving))
 				return;
 
@@ -642,24 +649,11 @@ namespace Rynchodon.Autopilot.Weapons
 
 			// get decoy block, ignoring distance
 			{
-				//Ingame.IMyTerminalBlock closest = null;
 				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
 				if (decoyBlockList != null)
 					foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
-						//{
 						if (block.IsWorking)
 							return block as IMyCubeBlock;
-
-					//double distance = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-					//myLogger.debugLog("search decoy, block = " + block + ", distance = " + distance, "GetTargetBlock()");
-					//if (distance < closestDistance)
-					//{
-					//	closestDistance = distance;
-					//	closest = block;
-					//}
-				//}
-				//if (closest != null)
-				//	return closest as IMyCubeBlock;
 			}
 
 			// get best block from blocksToTarget
@@ -796,7 +790,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 			// Voxel Test
 			Vector3 boundary;
-			if (MyAPIGateway.Entities.RayCastVoxel(weaponPos, targetPos, out boundary))
+			if (MyAPIGateway.Entities.RayCastVoxel_Safe(weaponPos, targetPos, out boundary))
 				return true;
 
 			LineD laser = new LineD(weaponPos, targetPos);

@@ -586,7 +586,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// Determines if there are voxels between navigation drill and given point
 		/// </summary>
 		private bool VoxelsBetweenNavAndPoint(Vector3D point)
-		{ return MyAPIGateway.Entities.RayCastVoxel(NavigationDrill.GetPosition(), point, out closestVoxel); }
+		{ return MyAPIGateway.Entities.RayCastVoxel_Safe(NavigationDrill.GetPosition(), point, out closestVoxel); }
 
 		#region CNS Variables
 

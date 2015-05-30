@@ -82,7 +82,7 @@ namespace Rynchodon
 			if (preCollect == null)
 				collector = (entity) => boundingBox.Intersects(entity.WorldAABB);
 			else
-				collector = (entity) => { return  preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
+				collector = (entity) => { return preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
 			entitiesObject.GetEntities_Safe(entities, collector);
 		}
 
@@ -132,24 +132,6 @@ namespace Rynchodon
 			}
 		}
 
-		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
-		{
-			List<IMyPlayer> matchingPlayer = new List<IMyPlayer>();
-			using (Lock_MainThread.AcquireSharedUsing())
-				MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.IdentityId == (character as IMyEntity).EntityId; });
-
-			switch (matchingPlayer.Count)
-			{
-				case 0:
-					return null;
-				case 1:
-					return matchingPlayer[0];
-				default:
-					VRage.Exceptions.ThrowIf<InvalidOperationException>(true, "too many matching players (" + matchingPlayer.Count + ")");
-					return null;
-			}
-		}
-
 		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
 		{
 			List<IMyVoxelBase> outInstances = new List<IMyVoxelBase>();
@@ -159,13 +141,24 @@ namespace Rynchodon
 		}
 
 		/// <remarks>I have not tested IsInsideVoxel for thread-safety, I assumed it is not.</remarks>
-		public static bool RayCastVoxel(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
+		public static bool RayCastVoxel_Safe(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
 			{
 				entities.IsInsideVoxel(from, to, out boundary);
 				return (boundary != from);
 			}
+		}
+
+		public static IMyIdentity GetIdentity_Safe(this IMyCharacter character)
+		{
+			string DisplayName = (character as IMyEntity).DisplayName;
+			List<IMyIdentity> match = new List<IMyIdentity>();
+			using (Lock_MainThread.AcquireSharedUsing())
+				MyAPIGateway.Players.GetAllIdentites(match, (id) => { return id.DisplayName == DisplayName; });
+			if (match.Count == 1)
+				return match[0];
+			return null;
 		}
 	}
 }
