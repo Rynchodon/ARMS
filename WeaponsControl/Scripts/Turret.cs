@@ -88,11 +88,20 @@ namespace Rynchodon.Autopilot.Weapons
 
 		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
-			Vector3 RotateTo = RelativeVector3F.createFromWorld(CurrentTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
+			Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
 
-			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth < +maxAzimuth;
+			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth;
+
+			//if (elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth)
+			//{
+			//	myLogger.debugLog("allowing target " + targetPoint + " elevation = " + elevation + ", azimuth = " + azimuth, "CanRotateTo()");
+			//	return true;
+			//}
+
+			//myLogger.debugLog("denying target " + targetPoint + " elevation = " + elevation + ", azimuth = " + azimuth, "CanRotateTo()");
+			//return false;
 		}
 
 		private void RotateAndFire()

@@ -50,5 +50,7 @@ namespace Rynchodon
 			myList.set_ReadOnly();
 			return myList;
 		}
+
+		public int Count { get { return myList.Count; } }
 	}
 }

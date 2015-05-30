@@ -2,18 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common;
-using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-
 using VRage;
-using VRage.Collections;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -74,25 +66,6 @@ namespace Rynchodon
 					knownDefinitions.Add(definition);
 		}
 
-		/// <summary>
-		/// Get the shortest definition that looseContains(contains).
-		/// </summary>
-		/// <param name="contains"></param>
-		/// <returns></returns>
-		public string getKnownDefinition(string contains)
-		{
-			int bestLength = int.MaxValue;
-			string bestMatch = null;
-			using (lock_knownDefinitions.AcquireSharedUsing())
-				foreach (string match in knownDefinitions)
-					if (match.looseContains(contains) && match.Length < bestLength)
-					{
-						bestLength = match.Length;
-						bestMatch = match;
-					}
-			return bestMatch;
-		}
-
 		private void CubeGrid_OnBlockAdded(IMySlimBlock obj)
 		{
 			IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
@@ -105,13 +78,10 @@ namespace Rynchodon
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
-				//log("adding " + termType + " : " + definition, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-
 				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type;
 				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
-					//log("new lists for " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
 					setBlocks_Type = new ListSnapshots<Ingame.IMyTerminalBlock>();
 					CubeBlocks_Type.Add(myOBtype, setBlocks_Type);
 				}
@@ -122,20 +92,6 @@ namespace Rynchodon
 					addKnownDefinition(definition);
 				}
 
-				////log("checking for dirty lists: " + asTerm.DefinitionDisplayNameText, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
-				//// replace dirty list
-				//if (!setBlocks_Def.IsClean)
-				//{
-				//	setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Def);
-				//	CubeBlocks_Definition[definition] = setBlocks_Def;
-				//}
-				//if (!setBlocks_Type.IsClean)
-				//{
-				//	setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Type);
-				//	CubeBlocks_Type[myOBtype] = setBlocks_Type;
-				//}
-
-				//log("adding: " + asTerm.DefinitionDisplayNameText + ", termType = " + myOBtype, "CubeGrid_OnBlockAdded()", Logger.severity.TRACE);
 				setBlocks_Type.mutable().Add(asTerm);
 				setBlocks_Def.mutable().Add(asTerm);
 			}
@@ -158,18 +114,6 @@ namespace Rynchodon
 				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
 				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 
-				//// replace dirty list
-				//if (!setBlocks_Def.IsClean)
-				//{
-				//	setBlocks_Def = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Def);
-				//	CubeBlocks_Definition[definition] = setBlocks_Def;
-				//}
-				//if (!setBlocks_Type.IsClean)
-				//{
-				//	setBlocks_Type = new ListCacher<Ingame.IMyTerminalBlock>(setBlocks_Type);
-				//	CubeBlocks_Type[myOBtype] = setBlocks_Type;
-				//}
-
 				setBlocks_Type.mutable().Remove(asTerm);
 				setBlocks_Def.mutable().Remove(asTerm);
 			}
@@ -184,16 +128,11 @@ namespace Rynchodon
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
-			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
-				{
 					return value.immutable();
-					//value.IsClean = false;
-					//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
-				}
 				return null;
 			}
 		}
@@ -205,15 +144,14 @@ namespace Rynchodon
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefinition(string definition)
 		{
+			if (definition == null)
+				return null;
+
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
-				{
 					return value.immutable();
-					//value.IsClean = false;
-					//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
-				}
 				return null;
 			}
 		}
@@ -225,25 +163,22 @@ namespace Rynchodon
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contains)
-		{
-			return GetBlocksByDefinition(getKnownDefinition(contains));
+		{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
 
-			//using (lock_CubeBlocks.AcquireSharedUsing())
-			//{
-			//	foreach (string key in CubeBlocks_Definition.Keys)
-			//		if (key.looseContains(contained))
-			//		{
-			//			ListCacher<Ingame.IMyTerminalBlock> value = CubeBlocks_Definition[key];
-			//			return value.immutable();
-			//			//value.IsClean = false;
-			//			//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
-			//		}
-			//	return null;
-			//}
+		public bool ContainsByDefinition(string definition)
+		{
+			if (definition == null)
+				return false;
+
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				ListSnapshots<Ingame.IMyTerminalBlock> value;
+				return CubeBlocks_Definition.TryGetValue(definition, out value) && value.Count > 0;
+			}
 		}
 
 		/// <summary>
-		/// will return null if grid is closed, or CubeGridCache cannot be created
+		/// will return null if grid is closed or CubeGridCache cannot be created
 		/// </summary>
 		public static CubeGridCache GetFor(IMyCubeGrid grid)
 		{
@@ -267,6 +202,23 @@ namespace Rynchodon
 					return null;
 				}
 			}
+		}
+
+		/// <summary>
+		/// Get the shortest definition that looseContains(contains).
+		/// </summary>
+		public static string getKnownDefinition(string contains)
+		{
+			int bestLength = int.MaxValue;
+			string bestMatch = null;
+			using (lock_knownDefinitions.AcquireSharedUsing())
+				foreach (string match in knownDefinitions)
+					if (match.looseContains(contains) && match.Length < bestLength)
+					{
+						bestLength = match.Length;
+						bestMatch = match;
+					}
+			return bestMatch;
 		}
 
 

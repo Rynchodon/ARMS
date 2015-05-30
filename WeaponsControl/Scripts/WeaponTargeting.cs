@@ -14,6 +14,7 @@ namespace Rynchodon.Autopilot.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
+	/// TODO: instructions from text panel
 	public abstract class WeaponTargeting
 	{
 		#region Targeting Options
@@ -38,6 +39,8 @@ namespace Rynchodon.Autopilot.Weapons
 		public TargetType CanTarget = TargetType.None;
 		public bool CanTargetType(TargetType type)
 		{ return (CanTarget & type) != 0; }
+
+		List<Lazy<string>> blocksToTarget = new List<Lazy<string>>();
 
 		#endregion
 
@@ -72,13 +75,11 @@ namespace Rynchodon.Autopilot.Weapons
 		public readonly Ingame.IMyLargeTurretBase myTurret;
 
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
-		//private List<IMyCubeGrid> Available_Targets_Grid;
 		private List<IMyEntity> PotentialObstruction;
 
 		private MyAmmoDefinition LoadedAmmo = null;
 
 		protected Target CurrentTarget { get; private set; }
-		//public Vector3? FiringDirection { get { return CurrentTarget.FiringDirection; } }
 		private HashSet<long> Blacklist = new HashSet<long>();
 
 		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
@@ -170,6 +171,9 @@ namespace Rynchodon.Autopilot.Weapons
 
 			TargetOptionsFromName();
 			Blacklist = new HashSet<long>();
+
+			if (!CanTargetType(CurrentTarget.TType))
+				CurrentTarget = new Target();
 		}
 
 		/// <summary>
@@ -251,7 +255,24 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		private void TargetOptionsFromName()
 		{
-			// TODO: ...
+			blocksToTarget = new List<Lazy<string>>();
+			CanTarget = TargetType.None;
+
+			string[] allInstructions = weapon.DisplayNameText.getInstructions().RemoveWhitespace().Split(new char[] { ',',';', ':' });
+
+			foreach (string instruction in allInstructions)
+			{
+				TargetType tType;
+				if (Enum.TryParse(instruction, true, out tType))
+				{
+					myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
+					CanTarget |= tType;
+					continue;
+				}
+
+				myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
+				blocksToTarget.Add(new Lazy<string>(() => CubeGridCache.getKnownDefinition(instruction)));
+			}
 		}
 
 		private void UpdateAmmo()
@@ -313,8 +334,8 @@ namespace Rynchodon.Autopilot.Weapons
 					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 					IsShooting = true;
 				}
-				else
-					myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
+				//else
+				//	myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
 			}
 			else
 			{
@@ -326,8 +347,8 @@ namespace Rynchodon.Autopilot.Weapons
 					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 					IsShooting = false;
 				}
-				else
-					myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
+				//else
+				//	myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
 			}
 		}
 
@@ -485,19 +506,19 @@ namespace Rynchodon.Autopilot.Weapons
 				return;
 
 			double closerThan = double.MaxValue;
-			if (GetClosest(TargetType.Character, ref closerThan))
+			if (SetClosest(TargetType.Character, ref closerThan))
 				return;
 
 			// do not short for grid test
-			GetClosest(TargetType.LargeGrid, ref closerThan);
-			GetClosest(TargetType.SmallGrid, ref closerThan);
-			GetClosest(TargetType.Station, ref closerThan);
+			SetClosest(TargetType.LargeGrid, ref closerThan);
+			SetClosest(TargetType.SmallGrid, ref closerThan);
+			SetClosest(TargetType.Station, ref closerThan);
 		}
 
 		/// <summary>
 		/// Get the closest target of the specified type from Available_Targets[tType].
 		/// </summary>
-		private bool GetClosest(TargetType tType, ref double closerThan)
+		private bool SetClosest(TargetType tType, ref double closerThan)
 		{
 			List<IMyEntity> targetsOfType;
 			if (Available_Targets.TryGetValue(tType, out targetsOfType))
@@ -514,15 +535,34 @@ namespace Rynchodon.Autopilot.Weapons
 					if (Obstructed(targetPosition, isFixed))
 						continue;
 
-					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition);
+					int distanceMultiplier = 0;
+					IMyCubeGrid asGrid = target as IMyCubeGrid;
+					// should target moving even if it does not match any blocks
+					if (asGrid != null && tType != TargetType.Moving)
+					{
+						distanceMultiplier = GridTest(asGrid);
+						if (distanceMultiplier < 0) // does not contain any blocksToTarget
+						{
+							myLogger.debugLog("does not contain any blocksToTarget: " + asGrid.DisplayName, "SetClosest()");
+							continue;
+						}
+						else
+							myLogger.debugLog(asGrid.DisplayName + " contains block " + blocksToTarget[distanceMultiplier].Value, "SetClosest()");
+					}
+
+					distanceMultiplier++;
+
+					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition) * distanceMultiplier;
 					if (distance < closestDistance)
 					{
-						// TODO: test grids for containing blocks and return those blocks
-
 						closest = target;
 						closestDistance = distance;
 					}
 				}
+
+				IMyCubeGrid closestAsGrid = closest as IMyCubeGrid;
+				if (closestAsGrid != null)
+					closest = GetTargetBlock(closestAsGrid);
 
 				if (closest != null)
 				{
@@ -534,6 +574,77 @@ namespace Rynchodon.Autopilot.Weapons
 
 			return false;
 		}
+
+		#region Test Grids
+
+		/// <summary>
+		/// Test a grid for blocksToTarget
+		/// </summary>
+		/// <returns>index of found block from blocksToTarget</returns>
+		private int GridTest(IMyCubeGrid grid)
+		{
+			for (int index = 0; index < blocksToTarget.Count; index++)
+				if (CubeGridCache.GetFor(grid).ContainsByDefinition(blocksToTarget[index].Value))
+					return index;
+
+			return -1;
+		}
+
+		/// <summary>
+		/// Gets the best block to target from a grid, first by checking blocksToTarget, then just grabs the closest IMyCubeBlock.
+		/// </summary>
+		private IMyCubeBlock GetTargetBlock(IMyCubeGrid grid)
+		{
+			Vector3D myPosition = weapon.GetPosition();
+			double closestDistance = value_TargetingRange * value_TargetingRange;
+
+			// get best block from blocksToTarget
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			foreach (Lazy<string> blocksSearch in blocksToTarget)
+			{
+				ReadOnlyList<Ingame.IMyTerminalBlock> blocksWithDef = cache.GetBlocksByDefinition(blocksSearch.Value);
+				if (blocksWithDef != null)
+				{
+					Ingame.IMyTerminalBlock closest = null;
+					foreach (Ingame.IMyTerminalBlock block in blocksWithDef)
+					{
+						if (!block.IsWorking)
+							continue;
+
+						double distance = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+						if (distance < closestDistance)
+						{
+							closestDistance = distance;
+							closest = block;
+						}
+					}
+					if (closest != null)
+						return closest as IMyCubeBlock;
+				}
+			}
+
+			// get closest IMyCubeBlock
+			{
+				IMyCubeBlock closest = null;
+				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
+				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
+				foreach (IMySlimBlock slim in allSlims)
+				{
+					if (!slim.FatBlock.IsWorking)
+						continue;
+
+					double distance = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
+					if (distance < closestDistance)
+					{
+						closestDistance = distance;
+						closest = slim.FatBlock;
+					}
+				}
+				return closest;
+			}
+		}
+
+		#endregion
 
 		/// <summary>
 		/// Get any projectile which is a threat from Available_Targets[tType].
@@ -693,6 +804,7 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
 				Blacklist.Add(target.EntityId);
+				CurrentTarget = new Target();
 				return;
 			}
 		}
