@@ -135,6 +135,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 			Vector2 Difference = new Vector2(elevation - myTurret.Elevation, azimuth - myTurret.Azimuth);
 			//myLogger.debugLog("Difference = " + Difference, "RotateAndFire()");
+			myLogger.debugLog("Difference = " + Difference + ", elevation = " + elevation + ", myTurret.Elevation = " + myTurret.Elevation + ", azimuth = " + azimuth + ", myTurret.Azimuth = " + myTurret.Azimuth, "RotateAndFire()");
 			CheckFire(Difference.LengthSquared());
 		}
 	}

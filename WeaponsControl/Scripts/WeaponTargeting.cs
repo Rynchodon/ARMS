@@ -40,7 +40,7 @@ namespace Rynchodon.Autopilot.Weapons
 		public bool CanTargetType(TargetType type)
 		{ return (CanTarget & type) != 0; }
 
-		List<Lazy<string>> blocksToTarget = new List<Lazy<string>>();
+		List<string> blocksToTarget = new List<string>();
 
 		#endregion
 
@@ -129,10 +129,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		public void Update1()
 		{
-			if (!IsControllingWeapon)
-				return;
-
-			if (LoadedAmmo == null)
+			if (!IsControllingWeapon || LoadedAmmo == null || (CurrentTarget.Entity != null && CurrentTarget.Entity.Closed))
 				return;
 
 			if (CurrentTarget.TType == TargetType.None)
@@ -173,7 +170,19 @@ namespace Rynchodon.Autopilot.Weapons
 			Blacklist = new HashSet<long>();
 
 			if (!CanTargetType(CurrentTarget.TType))
+			{
+				myLogger.debugLog("current target type no longer allowed", "Update100()");
 				CurrentTarget = new Target();
+			}
+			else
+			{
+				IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
+				if (targetAsBlock != null && !targetAsBlock.IsWorking)
+				{
+					myLogger.debugLog("current target is no longer working", "Update100()");
+					CurrentTarget = new Target();
+				}
+			}
 		}
 
 		/// <summary>
@@ -255,7 +264,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		private void TargetOptionsFromName()
 		{
-			blocksToTarget = new List<Lazy<string>>();
+			blocksToTarget = new List<string>();
 			CanTarget = TargetType.None;
 
 			string[] allInstructions = weapon.DisplayNameText.getInstructions().RemoveWhitespace().Split(new char[] { ',',';', ':' });
@@ -271,7 +280,7 @@ namespace Rynchodon.Autopilot.Weapons
 				}
 
 				myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
-				blocksToTarget.Add(new Lazy<string>(() => CubeGridCache.getKnownDefinition(instruction)));
+				blocksToTarget.Add(instruction);
 			}
 		}
 
@@ -531,26 +540,34 @@ namespace Rynchodon.Autopilot.Weapons
 
 				foreach (IMyEntity target in targetsOfType)
 				{
+					if (target.Closed)
+						continue;
+
 					Vector3D targetPosition = target.GetPosition();
 					if (Obstructed(targetPosition, isFixed))
 						continue;
 
-					int distanceMultiplier = 0;
+					int distanceMultiplier = 1;
 					IMyCubeGrid asGrid = target as IMyCubeGrid;
 					// should target moving even if it does not match any blocks
 					if (asGrid != null && tType != TargetType.Moving)
 					{
 						distanceMultiplier = GridTest(asGrid);
-						if (distanceMultiplier < 0) // does not contain any blocksToTarget
+						if (distanceMultiplier == 0)
+						{
+							myLogger.debugLog(asGrid.DisplayName + " contains decoy block", "SetClosest()");
+							closest = target;
+							closestDistance = 0;
+							break;
+						}
+						else if (distanceMultiplier < 0) // does not contain any blocksToTarget
 						{
 							myLogger.debugLog("does not contain any blocksToTarget: " + asGrid.DisplayName, "SetClosest()");
 							continue;
 						}
 						else
-							myLogger.debugLog(asGrid.DisplayName + " contains block " + blocksToTarget[distanceMultiplier].Value, "SetClosest()");
+							myLogger.debugLog(asGrid.DisplayName + " contains block " + blocksToTarget[distanceMultiplier - 1], "SetClosest()");
 					}
-
-					distanceMultiplier++;
 
 					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition) * distanceMultiplier;
 					if (distance < closestDistance)
@@ -580,12 +597,36 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>
 		/// Test a grid for blocksToTarget
 		/// </summary>
-		/// <returns>index of found block from blocksToTarget</returns>
+		/// <returns>
+		/// <para>if the grid has a decoy, 0</para>
+		/// <para>if the grid has any blocks from blocksToTarget, index + 1</para>
+		/// </returns>
 		private int GridTest(IMyCubeGrid grid)
 		{
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+
+			var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
+			if (decoyBlockList != null)
+				foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
+					if (block.IsWorking)
+						return 0;
+
 			for (int index = 0; index < blocksToTarget.Count; index++)
-				if (CubeGridCache.GetFor(grid).ContainsByDefinition(blocksToTarget[index].Value))
-					return index;
+			{
+				//myLogger.debugLog("block def = " + blocksToTarget[index], "GridTest()");
+				var master = cache.GetBlocksByDefLooseContains(blocksToTarget[index]);
+				//myLogger.debugLog("master = " + master, "GridTest()");
+				foreach (var blocksWithDef in master)
+				{
+					//myLogger.debugLog("blocksWithDef = " + blocksWithDef, "GridTest()");
+					foreach (var block in blocksWithDef)
+					{
+						//myLogger.debugLog("block = " + block, "GridTest()");
+						if (block.IsWorking)
+							return index + 1;
+					}
+				}
+			}
 
 			return -1;
 		}
@@ -597,30 +638,53 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			Vector3D myPosition = weapon.GetPosition();
 			double closestDistance = value_TargetingRange * value_TargetingRange;
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+
+			// get decoy block, ignoring distance
+			{
+				//Ingame.IMyTerminalBlock closest = null;
+				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
+				if (decoyBlockList != null)
+					foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
+						//{
+						if (block.IsWorking)
+							return block as IMyCubeBlock;
+
+					//double distance = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+					//myLogger.debugLog("search decoy, block = " + block + ", distance = " + distance, "GetTargetBlock()");
+					//if (distance < closestDistance)
+					//{
+					//	closestDistance = distance;
+					//	closest = block;
+					//}
+				//}
+				//if (closest != null)
+				//	return closest as IMyCubeBlock;
+			}
 
 			// get best block from blocksToTarget
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			foreach (Lazy<string> blocksSearch in blocksToTarget)
+			foreach (string blocksSearch in blocksToTarget)
 			{
-				ReadOnlyList<Ingame.IMyTerminalBlock> blocksWithDef = cache.GetBlocksByDefinition(blocksSearch.Value);
-				if (blocksWithDef != null)
+				Ingame.IMyTerminalBlock closest = null;
+				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
+				foreach (var blocksWithDef in master)
 				{
-					Ingame.IMyTerminalBlock closest = null;
 					foreach (Ingame.IMyTerminalBlock block in blocksWithDef)
 					{
 						if (!block.IsWorking)
 							continue;
 
 						double distance = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+						myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block + ", distance = " + distance, "GetTargetBlock()");
 						if (distance < closestDistance)
 						{
 							closestDistance = distance;
 							closest = block;
 						}
 					}
-					if (closest != null)
-						return closest as IMyCubeBlock;
 				}
+				if (closest != null)
+					return closest as IMyCubeBlock;
 			}
 
 			// get closest IMyCubeBlock
@@ -634,6 +698,7 @@ namespace Rynchodon.Autopilot.Weapons
 						continue;
 
 					double distance = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
+					myLogger.debugLog("search any, block = " + slim.FatBlock + ", distance = " + distance, "GetTargetBlock()");
 					if (distance < closestDistance)
 					{
 						closestDistance = distance;
@@ -659,6 +724,10 @@ namespace Rynchodon.Autopilot.Weapons
 				bool isFixed = myTurret == null;
 
 				foreach (IMyEntity projectile in targetsOfType)
+				{
+					if (projectile.Closed)
+						continue;
+
 					if (ProjectileIsThreat(projectile, tType) && !Obstructed(projectile.GetPosition(), isFixed))
 					{
 						//myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
@@ -667,6 +736,7 @@ namespace Rynchodon.Autopilot.Weapons
 					}
 					//else
 					//	myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
+				}
 			}
 
 			return false;
@@ -736,6 +806,9 @@ namespace Rynchodon.Autopilot.Weapons
 			// Test each entity
 			foreach (IMyEntity entity in PotentialObstruction)
 			{
+				if (entity.Closed)
+					continue;
+
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{

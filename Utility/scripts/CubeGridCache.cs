@@ -157,25 +157,39 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// <para>shortcut for GetBlocksByDefinition(getKnownDefinition(contains))</para>
 		/// <para>slower than GetBlocksByDefinition(), as contained is compared to each definition.</para>
 		/// </summary>
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contains)
-		{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
-
-		public bool ContainsByDefinition(string definition)
+		public List<ReadOnlyList<Ingame.IMyTerminalBlock>> GetBlocksByDefLooseContains(string contains)
+		//{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
 		{
-			if (definition == null)
-				return false;
-
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListSnapshots<Ingame.IMyTerminalBlock> value;
-				return CubeBlocks_Definition.TryGetValue(definition, out value) && value.Count > 0;
+				List<ReadOnlyList<Ingame.IMyTerminalBlock>> master = new List<ReadOnlyList<Ingame.IMyTerminalBlock>>();
+				foreach (var definition in CubeBlocks_Definition)
+					if (definition.Key.looseContains(contains))
+						master.Add(definition.Value.immutable());
+				return master;
 			}
 		}
+
+		///// <summary>
+		///// <para>Checks each definition for looseContains(contains)</para>
+		///// </summary>
+		///// <param name="contains">string to search for</param>
+		///// <returns>true if there are any blocks with definitions containing contains</returns>
+		//public bool ContainsByDefinitionLooseContains(string contains)
+		//{
+		//	using (lock_CubeBlocks.AcquireSharedUsing())
+		//	{
+		//		foreach (var definition in CubeBlocks_Definition)
+		//			if (definition.Key.looseContains(contains) && definition.Value.Count > 0)
+		//				return true;
+
+		//		return false;
+		//	}
+		//}
 
 		/// <summary>
 		/// will return null if grid is closed or CubeGridCache cannot be created

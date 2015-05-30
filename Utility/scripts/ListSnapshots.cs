@@ -51,6 +51,6 @@ namespace Rynchodon
 			return myList;
 		}
 
-		public int Count { get { return myList.Count; } }
+		//public int Count { get { return myList.Count; } }
 	}
 }
