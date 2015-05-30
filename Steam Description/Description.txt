@@ -80,8 +80,6 @@ Merging grids, particularly with the landing (L) command, can cause unexpected b
 
 Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
 
-Autopilot cannot fly near asteroids unless using Asteroid command.
-
 If using colour states, the model for the Autopilot block may become displaced. You can disable bUseColourState in the settings file.
 
 [h1]Credits[/h1]

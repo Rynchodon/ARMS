@@ -39,7 +39,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
-		private static int latestVersion = 33; // in sequence of updates on steam
+		private static int latestVersion = 34; // in sequence of updates on steam
 
 		private static Logger myLogger = new Logger(null, "Settings");
 
@@ -170,7 +170,7 @@ namespace Rynchodon
 			SettingName name;
 			if (Enum.TryParse<SettingName>(split[0], out name))
 				try
-				{ 
+				{
 					AllSettings[name].ValueFromString(split[1]);
 					myLogger.debugLog("AllSettings[" + name + "] = " + split[1], "parse()");
 				}
