@@ -159,7 +159,7 @@ namespace Rynchodon.Update
 					case Status.Terminated:
 						return;
 				}
-				Dictionary<uint, Action> Unregister = null;
+				Dictionary<Action, uint> Unregister = null;
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
@@ -169,17 +169,20 @@ namespace Rynchodon.Update
 							{ item.Invoke(); }
 							catch (Exception ex2)
 							{
-								myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
-								myLogger.debugNotify("A script has been terminated", 10000, Logger.severity.FATAL);
 								if (Unregister == null)
-									Unregister = new Dictionary<uint, Action>();
-								Unregister.Add(pair.Key, item);
+									Unregister = new Dictionary<Action, uint>();
+								if (!Unregister.ContainsKey(item))
+								{
+									myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
+									myLogger.debugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
+									Unregister.Add(item, pair.Key);
+								}
 							}
 					}
 
 				if (Unregister != null)
-					foreach (KeyValuePair<uint, Action> pair in Unregister)
-						UnRegisterForUpdates(pair.Key, pair.Value);
+					foreach (KeyValuePair<Action, uint> pair in Unregister)
+						UnRegisterForUpdates(pair.Value, pair.Key);
 			}
 			catch (Exception ex)
 			{

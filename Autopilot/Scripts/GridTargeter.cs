@@ -8,7 +8,7 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot
 {
-	internal class Targeter
+	internal class GridTargeter
 	{
 		private Logger myLogger;
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot
 
 		private Navigator owner;
 
-		internal Targeter(Navigator owner)
+		internal GridTargeter(Navigator owner)
 		{ this.owner = owner; }
 
 		private DateTime nextTryLockOn;

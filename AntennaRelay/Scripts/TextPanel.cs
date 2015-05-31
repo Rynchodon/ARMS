@@ -162,14 +162,14 @@ namespace Rynchodon.AntennaRelay
 
 			myLogger.debugLog("searching for a programmable block: " + destName, "searchForAntenna()", Logger.severity.TRACE);
 
-			ReadOnlyList<Ingame.IMyTerminalBlock> progBlocks = CubeGridCache.GetFor(myCubeBlock.CubeGrid).GetBlocksOfType(ProgOBtype);
+			ReadOnlyList<IMyTerminalBlock> progBlocks = CubeGridCache.GetFor(myCubeBlock.CubeGrid).GetBlocksOfType(ProgOBtype);
 			if (progBlocks == null)
 			{
 				myLogger.debugLog("no programmable blocks", "searchForAntenna()", Logger.severity.TRACE);
 				return false;
 			}
 
-			foreach (Ingame.IMyTerminalBlock block in progBlocks)
+			foreach (IMyTerminalBlock block in progBlocks)
 				if (block.DisplayNameText.looseContains(destName))
 					if (ProgrammableBlock.TryGet(block as IMyCubeBlock, out myProgBlock))
 					{

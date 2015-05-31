@@ -487,9 +487,9 @@ namespace Rynchodon.Autopilot.Harvest
 			return false;
 		}
 
-		private ReadOnlyList<Ingame.IMyTerminalBlock> GetDrills()
+		private ReadOnlyList<IMyTerminalBlock> GetDrills()
 		{
-			ReadOnlyList<Ingame.IMyTerminalBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			ReadOnlyList<IMyTerminalBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			return allDrills;
 		}
 
@@ -497,7 +497,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <para>In survival, returns fraction of drills filled</para>
 		/// <para>In creative, returns content per drill * 0.01</para>
 		/// </summary>
-		private float DrillFullness(ReadOnlyList<Ingame.IMyTerminalBlock> allDrills)
+		private float DrillFullness(ReadOnlyList<IMyTerminalBlock> allDrills)
 		{
 			MyFixedPoint content = 0, capacity = 0;
 			int drillCount = 0;

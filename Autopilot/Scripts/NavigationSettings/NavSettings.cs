@@ -96,7 +96,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 
 		/// <summary>Indicates that the ship is currently a missile, not the same as lockOnTarget == Target.MISSILE</summary>
 		public bool isAMissile = false;
-		/// <summary>Targeter has found a target.</summary>
+		/// <summary>GridTargeter has found a target.</summary>
 		public bool target_locked = false;
 		/// <summary>Reached an EXIT instruction</summary>
 		public bool EXIT = false;

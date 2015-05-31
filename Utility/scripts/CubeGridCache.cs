@@ -20,8 +20,8 @@ namespace Rynchodon
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
-		private Dictionary<MyObjectBuilderType, ListSnapshots<Ingame.IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<Ingame.IMyTerminalBlock>>();
-		private Dictionary<string, ListSnapshots<Ingame.IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<Ingame.IMyTerminalBlock>>();
+		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyTerminalBlock>>();
+		private Dictionary<string, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
 
 		private readonly IMyCubeGrid CubeGrid;
@@ -78,16 +78,16 @@ namespace Rynchodon
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
-				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type;
-				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def;
+				ListSnapshots<IMyTerminalBlock> setBlocks_Type;
+				ListSnapshots<IMyTerminalBlock> setBlocks_Def;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
-					setBlocks_Type = new ListSnapshots<Ingame.IMyTerminalBlock>();
+					setBlocks_Type = new ListSnapshots<IMyTerminalBlock>();
 					CubeBlocks_Type.Add(myOBtype, setBlocks_Type);
 				}
 				if (!CubeBlocks_Definition.TryGetValue(definition, out setBlocks_Def))
 				{
-					setBlocks_Def = new ListSnapshots<Ingame.IMyTerminalBlock>();
+					setBlocks_Def = new ListSnapshots<IMyTerminalBlock>();
 					CubeBlocks_Definition.Add(definition, setBlocks_Def);
 					addKnownDefinition(definition);
 				}
@@ -111,8 +111,8 @@ namespace Rynchodon
 				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
 				string definition = asTerm.DefinitionDisplayNameText;
 
-				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
-				ListSnapshots<Ingame.IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
+				ListSnapshots<IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
+				ListSnapshots<IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 
 				setBlocks_Type.mutable().Remove(asTerm);
 				setBlocks_Def.mutable().Remove(asTerm);
@@ -126,11 +126,11 @@ namespace Rynchodon
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
-		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
+		public ReadOnlyList<IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListSnapshots<Ingame.IMyTerminalBlock> value;
+				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.immutable();
 				return null;
@@ -142,14 +142,14 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="definition"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefinition(string definition)
+		public ReadOnlyList<IMyTerminalBlock> GetBlocksByDefinition(string definition)
 		{
 			if (definition == null)
 				return null;
 
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListSnapshots<Ingame.IMyTerminalBlock> value;
+				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 					return value.immutable();
 				return null;
@@ -161,12 +161,12 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
-		public List<ReadOnlyList<Ingame.IMyTerminalBlock>> GetBlocksByDefLooseContains(string contains)
+		public List<ReadOnlyList<IMyTerminalBlock>> GetBlocksByDefLooseContains(string contains)
 		//{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				List<ReadOnlyList<Ingame.IMyTerminalBlock>> master = new List<ReadOnlyList<Ingame.IMyTerminalBlock>>();
+				List<ReadOnlyList<IMyTerminalBlock>> master = new List<ReadOnlyList<IMyTerminalBlock>>();
 				foreach (var definition in CubeBlocks_Definition)
 					if (definition.Key.looseContains(contains))
 						master.Add(definition.Value.immutable());

@@ -46,7 +46,7 @@ namespace Rynchodon.Autopilot
 		internal Pathfinder.PathfinderOutput myPathfinder_Output { get; private set; }
 		//internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
-		internal Targeter myTargeter;
+		internal GridTargeter myTargeter;
 		private Rotator myRotator;
 		internal HarvesterAsteroid myHarvester { get; private set; }
 
@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot
 
 			currentThrust = new ThrustProfiler(myGrid);
 			CNS = new NavSettings(null);
-			myTargeter = new Targeter(this);
+			myTargeter = new GridTargeter(this);
 			myInterpreter = new Interpreter(this);
 			needToInit = false;
 		}

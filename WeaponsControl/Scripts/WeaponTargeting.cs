@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -17,80 +18,6 @@ namespace Rynchodon.Autopilot.Weapons
 	/// TODO: instructions from text panel
 	public abstract class WeaponTargeting
 	{
-		#region Targeting Options
-
-		/// <summary>
-		/// Defined in the order of precedence
-		/// </summary>
-		[Flags]
-		public enum TargetType : byte
-		{
-			None = 0,
-			Missile = 1 << 0,
-			Meteor = 1 << 1,
-			Character = 1 << 2,
-			/// <summary>Will track floating object and large and small grids</summary>
-			Moving = 1 << 3,
-			LargeGrid = 1 << 4,
-			SmallGrid = 1 << 5,
-			Station = 1 << 6
-		}
-
-		public TargetType CanTarget = TargetType.None;
-		public bool CanTargetType(TargetType type)
-		{ return (CanTarget & type) != 0; }
-
-		List<string> blocksToTarget = new List<string>();
-
-		#endregion
-
-		public class Target
-		{
-			public readonly IMyEntity Entity;
-			public readonly TargetType TType;
-			public Vector3? FiringDirection;
-			public Vector3? InterceptionPoint;
-
-			/// <summary>
-			/// Creates a target of type None with Entity as null.
-			/// </summary>
-			public Target()
-			{
-				this.Entity = null;
-				this.TType = TargetType.None;
-			}
-
-			public Target(IMyEntity entity, TargetType tType)
-			{
-				this.Entity = entity;
-				this.TType = tType;
-			}
-		}
-
-		public class Ammo
-		{
-			public readonly MyAmmoDefinition Definition;
-			public readonly float TimeToMaxSpeed;
-			public readonly float DistanceToMaxSpeed;
-
-			public Ammo(MyAmmoDefinition Definiton)
-			{
-				this.Definition = Definiton;
-
-				MyMissileAmmoDefinition asMissile = Definition as MyMissileAmmoDefinition;
-				if (asMissile != null && !asMissile.MissileSkipAcceleration)
-				{
-					this.TimeToMaxSpeed = (asMissile.DesiredSpeed - asMissile.MissileInitialSpeed) / asMissile.MissileAcceleration;
-					this.DistanceToMaxSpeed = (asMissile.DesiredSpeed + asMissile.MissileInitialSpeed) / 2 * TimeToMaxSpeed;
-				}
-				else
-				{
-					this.TimeToMaxSpeed = 0;
-					this.DistanceToMaxSpeed = 0;
-				}
-			}
-		}
-
 		/// <summary>Required length squared between current direction and target direction to fire.</summary>
 		private const float firingThreshold = 0.01f;
 		private static Dictionary<uint, MyAmmoDefinition> AmmoDefinition = new Dictionary<uint, MyAmmoDefinition>();
@@ -101,6 +28,9 @@ namespace Rynchodon.Autopilot.Weapons
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
 		private List<IMyEntity> PotentialObstruction;
 
+		protected TargetingOptions Options = new TargetingOptions();
+		private InterpreterWeapon Interpreter = new InterpreterWeapon();
+		private int InterpreterErrorCount = int.MaxValue;
 		private Ammo LoadedAmmo;
 
 		protected Target CurrentTarget { get; private set; }
@@ -181,15 +111,16 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				case TargetType.Missile:
 				case TargetType.Meteor:
+					if (ProjectileIsThreat(CurrentTarget.Entity, CurrentTarget.TType))
 					{
-						if (ProjectileIsThreat(CurrentTarget.Entity, CurrentTarget.TType))
-						{
-							myLogger.debugLog("Keeping Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
-							return;
-						}
-						CurrentTarget = new Target();
-						break;
+						myLogger.debugLog("Keeping Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
+						return;
 					}
+					goto case TargetType.None;
+				case TargetType.None:
+				default:
+					CurrentTarget = new Target();
+					break;
 			}
 
 			CollectTargets();
@@ -202,29 +133,39 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		public void Update100()
 		{
-			if (!IsControllingWeapon) 
+			if (!IsControllingWeapon)
 				return;
 
-			TargetOptionsFromName();
 			Blacklist = new HashSet<long>();
 
-			if (CurrentTarget.TType != TargetType.None)
+			TargetingOptions newOptions;
+			List<string> Errors;
+			Interpreter.Parse(weapon, out newOptions, out Errors);
+			if (Errors.Count <= InterpreterErrorCount)
 			{
-				if (!CanTargetType(CurrentTarget.TType))
-				{
-					myLogger.debugLog("current target type no longer allowed", "Update100()");
-					CurrentTarget = new Target();
-				}
-				else
-				{
-					IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
-					if (targetAsBlock != null && !targetAsBlock.IsWorking)
-					{
-						myLogger.debugLog("current target is no longer working", "Update100()");
-						CurrentTarget = new Target();
-					}
-				}
+				myLogger.debugLog("updating Options, Error Count = " + Errors.Count, "Update100()");
+				Options = newOptions;
+				InterpreterErrorCount = Errors.Count;
 			}
+			WriteErrors(Errors);
+
+			//if (CurrentTarget.TType != TargetType.None)
+			//{
+			//	if (!CanTargetType(CurrentTarget.TType))
+			//	{
+			//		myLogger.debugLog("current target type no longer allowed", "Update100()");
+			//		CurrentTarget = new Target();
+			//	}
+			//	else
+			//	{
+			//		IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
+			//		if (targetAsBlock != null && !targetAsBlock.IsWorking)
+			//		{
+			//			myLogger.debugLog("current target is no longer working", "Update100()");
+			//			CurrentTarget = new Target();
+			//		}
+			//	}
+			//}
 		}
 
 		/// <summary>
@@ -299,30 +240,31 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 		}
 
-		/// <summary>
-		/// Get the targeting options from the name.
-		/// </summary>
-		private void TargetOptionsFromName()
-		{
-			blocksToTarget = new List<string>();
-			CanTarget = TargetType.None;
+		///// <summary>
+		///// Get the targeting options from the name.
+		///// </summary>
+		//private void TargetOptionsFromName()
+		//{
+		//	blocksToTarget = new List<string>();
+		//	CanTarget = TargetType.None;
 
-			string[] allInstructions = weapon.DisplayNameText.getInstructions().RemoveWhitespace().Split(new char[] { ',',';', ':' });
+		//	string unsplitInstructions = weapon.DisplayNameText.getInstructions();
+		//	string[] allInstructions = weapon.DisplayNameText.getInstructions().RemoveWhitespace().Split(new char[] { ',',';', ':' });
 
-			foreach (string instruction in allInstructions)
-			{
-				TargetType tType;
-				if (Enum.TryParse(instruction, true, out tType))
-				{
-					//myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
-					CanTarget |= tType;
-					continue;
-				}
+		//	foreach (string instruction in allInstructions)
+		//	{
+		//		TargetType tType;
+		//		if (Enum.TryParse(instruction, true, out tType))
+		//		{
+		//			//myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
+		//			CanTarget |= tType;
+		//			continue;
+		//		}
 
-				//myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
-				blocksToTarget.Add(instruction);
-			}
-		}
+		//		//myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
+		//		blocksToTarget.Add(instruction);
+		//	}
+		//}
 
 		private void UpdateAmmo()
 		{
@@ -398,7 +340,7 @@ namespace Rynchodon.Autopilot.Weapons
 				if (!IsShooting)
 				{
 					// start firing
-					myLogger.debugLog("Open fire LS: "+lengthSquared, "CheckFire()");
+					myLogger.debugLog("Open fire LS: " + lengthSquared, "CheckFire()");
 
 					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 					IsShooting = true;
@@ -542,9 +484,9 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		private void AddTarget(TargetType tType, IMyEntity target)
 		{
-			if (!CanTargetType(tType))
-			//{
-			//	myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
+			if (!Options.CanTargetType(tType))
+				//{
+				//	myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
 				return;
 			//}
 
@@ -617,7 +559,7 @@ namespace Rynchodon.Autopilot.Weapons
 							continue;
 						}
 						else
-							myLogger.debugLog(asGrid.DisplayName + " contains block " + blocksToTarget[distanceMultiplier - 1], "SetClosest()");
+							myLogger.debugLog(asGrid.DisplayName + " contains block " + Options.blocksToTarget[distanceMultiplier - 1], "SetClosest()");
 					}
 
 					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition) * distanceMultiplier;
@@ -662,10 +604,10 @@ namespace Rynchodon.Autopilot.Weapons
 					if (block.IsWorking)
 						return 0;
 
-			for (int index = 0; index < blocksToTarget.Count; index++)
+			for (int index = 0; index < Options.blocksToTarget.Count; index++)
 			{
 				//myLogger.debugLog("block def = " + blocksToTarget[index], "GridTest()");
-				var master = cache.GetBlocksByDefLooseContains(blocksToTarget[index]);
+				var master = cache.GetBlocksByDefLooseContains(Options.blocksToTarget[index]);
 				//myLogger.debugLog("master = " + master, "GridTest()");
 				foreach (var blocksWithDef in master)
 				{
@@ -701,7 +643,7 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 
 			// get best block from blocksToTarget
-			foreach (string blocksSearch in blocksToTarget)
+			foreach (string blocksSearch in Options.blocksToTarget)
 			{
 				Ingame.IMyTerminalBlock closest = null;
 				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
@@ -932,7 +874,7 @@ namespace Rynchodon.Autopilot.Weapons
 			// The part towards the cannon is found by projecting the target's
 			// velocity on directionToTarget using a dot product.
 			float targetSpeedOrth = Vector3.Dot(targetVel, directionToTarget);
-			Vector3 targetVelOrth = targetSpeedOrth* directionToTarget;
+			Vector3 targetVelOrth = targetSpeedOrth * directionToTarget;
 
 			// The tangential part is then found by subtracting the
 			// result from the target velocity.
@@ -973,6 +915,40 @@ namespace Rynchodon.Autopilot.Weapons
 				Vector3 shotVel = shotVelOrth + shotVelTang;
 				CurrentTarget.InterceptionPoint = shotOrigin + shotVel * timeToCollision;
 			}
+		}
+
+		/// <summary>
+		/// Write errors to weapon, using angle brackets.
+		/// </summary>
+		private void WriteErrors(List<string> Errors)
+		{
+			string DisplayName = weapon.DisplayNameText;
+			myLogger.debugLog("initial name: " + DisplayName, "WriteErrors()");
+			int start = DisplayName.IndexOf('>') + 1;
+			if (start > 0)
+				DisplayName = DisplayName.Substring(start);
+
+			myLogger.debugLog("chopped name: " + DisplayName, "WriteErrors()");
+
+			StringBuilder build = new StringBuilder();
+			if (Errors.Count > 0)
+			{
+				build.Append("<ERROR(");
+				for (int index = 0; index < Errors.Count; index++)
+				{
+					myLogger.debugLog("Error: " + Errors[index], "WriteErrors()");
+					build.Append(Errors[index]);
+					if (index + 1 < Errors.Count)
+						build.Append(',');
+				}
+				build.Append(")>");
+				build.Append(DisplayName);
+
+				myLogger.debugLog("New name: " + build, "WriteErrors()");
+				(weapon as IMyTerminalBlock).SetCustomName(build);
+			}
+			else
+				(weapon as IMyTerminalBlock).SetCustomName(DisplayName);
 		}
 	}
 }

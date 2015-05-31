@@ -12,6 +12,7 @@ namespace Rynchodon.Autopilot.Weapons
 	/// <summary>
 	/// Class is designed to replace / merge with TurretBase
 	/// </summary>
+	/// TODO: if turret breaks, restore default targeting, apply BROKEN state
 	public class Turret : WeaponTargeting
 	{
 		/// <summary>
@@ -46,22 +47,22 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		public void TargetOptionsFromTurret()
 		{
-			CanTarget = WeaponTargeting.TargetType.None;
+			Options. CanTarget = TargetType.None;
 			MyObjectBuilder_TurretBase builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
 			if (builder.TargetMissiles)
-				CanTarget |= WeaponTargeting.TargetType.Missile;
+				Options.CanTarget |= TargetType.Missile;
 			if (builder.TargetMeteors)
-				CanTarget |= WeaponTargeting.TargetType.Meteor;
+				Options.CanTarget |= TargetType.Meteor;
 			if (builder.TargetCharacters)
-				CanTarget |= WeaponTargeting.TargetType.Character;
+				Options.CanTarget |= TargetType.Character;
 			if (builder.TargetMoving)
-				CanTarget |= WeaponTargeting.TargetType.Moving;
+				Options.CanTarget |= TargetType.Moving;
 			if (builder.TargetLargeGrids)
-				CanTarget |= WeaponTargeting.TargetType.LargeGrid;
+				Options.CanTarget |= TargetType.LargeGrid;
 			if (builder.TargetSmallGrids)
-				CanTarget |= WeaponTargeting.TargetType.SmallGrid;
+				Options.CanTarget |= TargetType.SmallGrid;
 			if (builder.TargetStations)
-				CanTarget |= WeaponTargeting.TargetType.Station;
+				Options.CanTarget |= TargetType.Station;
 
 			TargetingRange = myTurret.Range;
 		}
@@ -135,7 +136,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 			Vector2 Difference = new Vector2(elevation - myTurret.Elevation, azimuth - myTurret.Azimuth);
 			//myLogger.debugLog("Difference = " + Difference, "RotateAndFire()");
-			myLogger.debugLog("Difference = " + Difference + ", elevation = " + elevation + ", myTurret.Elevation = " + myTurret.Elevation + ", azimuth = " + azimuth + ", myTurret.Azimuth = " + myTurret.Azimuth, "RotateAndFire()");
+			//myLogger.debugLog("Difference = " + Difference + ", elevation = " + elevation + ", myTurret.Elevation = " + myTurret.Elevation + ", azimuth = " + azimuth + ", myTurret.Azimuth = " + myTurret.Azimuth, "RotateAndFire()");
 			CheckFire(Difference.LengthSquared());
 		}
 	}
