@@ -200,6 +200,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (asGrid == myCubeGrid)
 					return false;
 
+				if (!asGrid.Save)
+					return false;
+
 				if (AttachedGrids.isGridAttached(myCubeGrid, asGrid))
 					return false;
 			}
