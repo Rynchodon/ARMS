@@ -275,10 +275,11 @@ namespace Rynchodon
 		public static Vector3 LocalPosition(this IMyCubeBlock block)
 		{ return block.Position * block.CubeGrid.GridSize; }
 
-		//public static void DistanceToEdge(this IMyCubeBlock block, Base6Directions.Direction direction)
-		//{
-
-
-		//}
+		public static bool OwnedNPC(this IMyCubeBlock block)
+		{
+			long Owner = block.OwnerId;
+			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == Owner; });
+			return match.Count == 0;
+		}
 	}
 }

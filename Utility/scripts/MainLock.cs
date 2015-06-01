@@ -160,5 +160,13 @@ namespace Rynchodon
 				return match[0];
 			return null;
 		}
+
+		public static List<IMyPlayer> GetPlayers_Safe(this IMyPlayerCollection PlayColl, Func<IMyPlayer, bool> collect = null)
+		{
+			List<IMyPlayer> players = new List<IMyPlayer>();
+			using (Lock_MainThread.AcquireSharedUsing())
+				PlayColl.GetPlayers(players, collect);
+			return players;
+		}
 	}
 }

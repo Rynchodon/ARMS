@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
-	/// TODO: instructions from text panel
+	/// TODO: fix range issues
 	public abstract class WeaponTargeting
 	{
 		/// <summary>Required length squared between current direction and target direction to fire.</summary>
@@ -29,7 +29,7 @@ namespace Rynchodon.Autopilot.Weapons
 		private List<IMyEntity> PotentialObstruction;
 
 		protected TargetingOptions Options = new TargetingOptions();
-		private InterpreterWeapon Interpreter = new InterpreterWeapon();
+		private InterpreterWeapon Interpreter;// = new InterpreterWeapon();
 		private int InterpreterErrorCount = int.MaxValue;
 		private Ammo LoadedAmmo;
 
@@ -74,6 +74,7 @@ namespace Rynchodon.Autopilot.Weapons
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger("WeaponTargeting", () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
 
+			this.Interpreter = new InterpreterWeapon(weapon);
 			this.CurrentTarget = new Target();
 			this.IsControllingWeapon = false;
 		}
@@ -140,13 +141,15 @@ namespace Rynchodon.Autopilot.Weapons
 
 			TargetingOptions newOptions;
 			List<string> Errors;
-			Interpreter.Parse(weapon, out newOptions, out Errors);
+			Interpreter.Parse(out newOptions, out Errors);
 			if (Errors.Count <= InterpreterErrorCount)
 			{
-				myLogger.debugLog("updating Options, Error Count = " + Errors.Count, "Update100()");
+				//myLogger.debugLog("updating Options, Error Count = " + Errors.Count, "Update100()");
 				Options = newOptions;
 				InterpreterErrorCount = Errors.Count;
 			}
+			else
+				myLogger.debugLog("not updation Options, Error Count = " + Errors.Count, "Update100()");
 			WriteErrors(Errors);
 
 			//if (CurrentTarget.TType != TargetType.None)
@@ -440,6 +443,7 @@ namespace Rynchodon.Autopilot.Weapons
 					if (weapon.canConsiderHostile(asGrid))
 					{
 						AddTarget(TargetType.Moving, entity);
+						AddTarget(TargetType.Destroy, entity);
 						if (asGrid.IsStatic)
 						{
 							//myLogger.debugLog("Hostile Platform: " + entity.getBestName(), "CollectTargets()");
@@ -485,10 +489,11 @@ namespace Rynchodon.Autopilot.Weapons
 		private void AddTarget(TargetType tType, IMyEntity target)
 		{
 			if (!Options.CanTargetType(tType))
-				//{
+			{
+				//if (tType == TargetType.Destroy)
 				//	myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
 				return;
-			//}
+			}
 
 			List<IMyEntity> list;
 			if (!Available_Targets.TryGetValue(tType, out list))
@@ -515,6 +520,13 @@ namespace Rynchodon.Autopilot.Weapons
 			SetClosest(TargetType.LargeGrid, ref closerThan);
 			SetClosest(TargetType.SmallGrid, ref closerThan);
 			SetClosest(TargetType.Station, ref closerThan);
+
+			// if weapon does not have a target yet, check for destroy
+			if (CurrentTarget.TType == TargetType.None)
+			//{
+			//	myLogger.debugLog("No targets yet, checking for destroy", "PickATarget()");
+				SetClosest(TargetType.Destroy, ref closerThan);
+			//}
 		}
 
 		/// <summary>
@@ -533,6 +545,9 @@ namespace Rynchodon.Autopilot.Weapons
 
 				foreach (IMyEntity target in targetsOfType)
 				{
+					//if (tType == TargetType.Destroy)
+					//	myLogger.debugLog("Destroy, Grid = " + target.getBestName(), "SetClosest()");
+
 					if (target.Closed)
 						continue;
 
@@ -542,27 +557,34 @@ namespace Rynchodon.Autopilot.Weapons
 
 					int distanceMultiplier = 1;
 					IMyCubeGrid asGrid = target as IMyCubeGrid;
+
+					// for destroy, only interested if there are some terminal blocks
+					if (tType == TargetType.Destroy && CubeGridCache.GetFor(asGrid).TotalByDefinition() == 0)
+						continue;
+
 					// should target moving even if it does not match any blocks
-					if (asGrid != null && tType != TargetType.Moving)
+					if (asGrid != null && tType != TargetType.Moving )
 					{
 						distanceMultiplier = GridTest(asGrid);
 						if (distanceMultiplier == 0)
 						{
-							myLogger.debugLog(asGrid.DisplayName + " contains decoy block", "SetClosest()");
+							myLogger.debugLog("for type: " + tType + ", " + asGrid.DisplayName + " contains decoy block", "SetClosest()");
 							closest = target;
 							closestDistance = 0;
 							break;
 						}
 						else if (distanceMultiplier < 0) // does not contain any blocksToTarget
 						{
-							myLogger.debugLog("does not contain any blocksToTarget: " + asGrid.DisplayName, "SetClosest()");
+							myLogger.debugLog("for type: " + tType + ", does not contain any blocksToTarget: " + asGrid.DisplayName, "SetClosest()");
 							continue;
 						}
 						else
-							myLogger.debugLog(asGrid.DisplayName + " contains block " + Options.blocksToTarget[distanceMultiplier - 1], "SetClosest()");
+							myLogger.debugLog("for type: " + tType + ", " + asGrid.DisplayName + " contains block " + Options.blocksToTarget[distanceMultiplier - 1], "SetClosest()");
 					}
 
 					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition) * distanceMultiplier;
+					//if (tType == TargetType.Destroy)
+					//	myLogger.debugLog("Destroy, Grid = " + target.getBestName() + ", distance = " + distance + ", closest = " + closestDistance, "SetClosest()");
 					if (distance < closestDistance)
 					{
 						closest = target;
@@ -572,7 +594,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 				IMyCubeGrid closestAsGrid = closest as IMyCubeGrid;
 				if (closestAsGrid != null)
-					closest = GetTargetBlock(closestAsGrid);
+					closest = GetTargetBlock(closestAsGrid, tType);
 
 				if (closest != null)
 				{
@@ -627,7 +649,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>
 		/// Gets the best block to target from a grid, first by checking blocksToTarget, then just grabs the closest IMyCubeBlock.
 		/// </summary>
-		private IMyCubeBlock GetTargetBlock(IMyCubeGrid grid)
+		private IMyCubeBlock GetTargetBlock(IMyCubeGrid grid, TargetType tType)
 		{
 			Vector3D myPosition = weapon.GetPosition();
 			double closestDistance = value_TargetingRange * value_TargetingRange;
@@ -667,26 +689,32 @@ namespace Rynchodon.Autopilot.Weapons
 					return closest as IMyCubeBlock;
 			}
 
-			// get closest IMyCubeBlock
+			// get any IMyCubeBlock
 			{
-				IMyCubeBlock closest = null;
+				//IMyCubeBlock closest = null;
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
-				foreach (IMySlimBlock slim in allSlims)
-				{
-					if (!slim.FatBlock.IsWorking)
-						continue;
+				//foreach (IMySlimBlock slim in allSlims)
+				//{
+				//	if (!slim.FatBlock.IsWorking)
+				//		continue;
 
-					double distance = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
-					myLogger.debugLog("search any, block = " + slim.FatBlock + ", distance = " + distance, "GetTargetBlock()");
-					if (distance < closestDistance)
-					{
-						closestDistance = distance;
-						closest = slim.FatBlock;
-					}
-				}
-				return closest;
+				//	double distance = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
+				//	myLogger.debugLog("search any, block = " + slim.FatBlock + ", distance = " + distance, "GetTargetBlock()");
+				//	if (distance < closestDistance)
+				//	{
+				//		closestDistance = distance;
+				//		closest = slim.FatBlock;
+				//	}
+				//}
+				//return closest;
+
+				foreach (IMySlimBlock slim in allSlims)
+					if (tType == TargetType.Destroy || slim.FatBlock.IsWorking)
+						return slim.FatBlock;
 			}
+
+			return null;
 		}
 
 		#endregion
@@ -923,12 +951,12 @@ namespace Rynchodon.Autopilot.Weapons
 		private void WriteErrors(List<string> Errors)
 		{
 			string DisplayName = weapon.DisplayNameText;
-			myLogger.debugLog("initial name: " + DisplayName, "WriteErrors()");
+			//myLogger.debugLog("initial name: " + DisplayName, "WriteErrors()");
 			int start = DisplayName.IndexOf('>') + 1;
 			if (start > 0)
 				DisplayName = DisplayName.Substring(start);
 
-			myLogger.debugLog("chopped name: " + DisplayName, "WriteErrors()");
+			//myLogger.debugLog("chopped name: " + DisplayName, "WriteErrors()");
 
 			StringBuilder build = new StringBuilder();
 			if (Errors.Count > 0)
@@ -936,7 +964,7 @@ namespace Rynchodon.Autopilot.Weapons
 				build.Append("<ERROR(");
 				for (int index = 0; index < Errors.Count; index++)
 				{
-					myLogger.debugLog("Error: " + Errors[index], "WriteErrors()");
+					//myLogger.debugLog("Error: " + Errors[index], "WriteErrors()");
 					build.Append(Errors[index]);
 					if (index + 1 < Errors.Count)
 						build.Append(',');
@@ -944,7 +972,7 @@ namespace Rynchodon.Autopilot.Weapons
 				build.Append(")>");
 				build.Append(DisplayName);
 
-				myLogger.debugLog("New name: " + build, "WriteErrors()");
+				//myLogger.debugLog("New name: " + build, "WriteErrors()");
 				(weapon as IMyTerminalBlock).SetCustomName(build);
 			}
 			else

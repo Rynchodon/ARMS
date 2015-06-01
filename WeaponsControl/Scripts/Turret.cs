@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		public void TargetOptionsFromTurret()
 		{
-			Options. CanTarget = TargetType.None;
+			//Options. CanTarget = TargetType.None;
 			MyObjectBuilder_TurretBase builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
 			if (builder.TargetMissiles)
 				Options.CanTarget |= TargetType.Missile;
@@ -65,6 +65,8 @@ namespace Rynchodon.Autopilot.Weapons
 				Options.CanTarget |= TargetType.Station;
 
 			TargetingRange = myTurret.Range;
+
+			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
 
 		public new void Update1()

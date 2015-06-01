@@ -62,19 +62,24 @@ namespace Rynchodon.Update
 				// Does not receive Updates
 			});
 
-			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
-				Turret t = new Turret(block);
-				RegisterForUpdates(1, t.Update1, block);
-				RegisterForUpdates(10, t.Update10, block);
-				RegisterForUpdates(100, t.Update100, block);
-			});
+			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
+			{
+				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
+					Turret t = new Turret(block);
+					RegisterForUpdates(1, t.Update1, block);
+					RegisterForUpdates(10, t.Update10, block);
+					RegisterForUpdates(100, t.Update100, block);
+				});
 
-			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
-				Turret t = new Turret(block);
-				RegisterForUpdates(1, t.Update1, block);
-				RegisterForUpdates(10, t.Update10, block);
-				RegisterForUpdates(100, t.Update100, block);
-			});
+				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
+					Turret t = new Turret(block);
+					RegisterForUpdates(1, t.Update1, block);
+					RegisterForUpdates(10, t.Update10, block);
+					RegisterForUpdates(100, t.Update100, block);
+				});
+			}
+			else
+				myLogger.debugLog("Turret Control is disabled", "RegisterScripts()", Logger.severity.INFO);
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;

@@ -15,7 +15,7 @@ namespace Rynchodon
 			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
 			yParallelPathCheck,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
-			sSmartTurretDefaultNPC, sSmartTurretDefaultPlayer
+			sSmartTurretCommandsNPC, sSmartTurretDefaultPlayer
 		}
 
 		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
@@ -72,7 +72,7 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sSmartTurretDefaultNPC, new SettingString("[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]"));
+			AllSettings.Add(SettingName.sSmartTurretCommandsNPC, new SettingString("Destroy ; (Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar)"));
 			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
 		}
 

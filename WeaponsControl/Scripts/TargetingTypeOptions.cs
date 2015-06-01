@@ -10,7 +10,7 @@ namespace Rynchodon.Autopilot.Weapons
 	/// Defined in the order of precedence
 	/// </summary>
 	[Flags]
-	public enum TargetType : byte
+	public enum TargetType : ushort
 	{
 		None = 0,
 		Missile = 1 << 0,
@@ -20,7 +20,9 @@ namespace Rynchodon.Autopilot.Weapons
 		Moving = 1 << 3,
 		LargeGrid = 1 << 4,
 		SmallGrid = 1 << 5,
-		Station = 1 << 6
+		Station = 1 << 6,
+		/// <summary>Destroy every terminal block on grids</summary>
+		Destroy = 1 << 8
 	}
 
 	public class TargetingOptions

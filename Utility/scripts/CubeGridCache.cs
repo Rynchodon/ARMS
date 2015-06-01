@@ -126,6 +126,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
+		/// TODO: return IMySlimBlock
 		public ReadOnlyList<IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
@@ -174,22 +175,84 @@ namespace Rynchodon
 			}
 		}
 
-		///// <summary>
-		///// <para>Checks each definition for looseContains(contains)</para>
-		///// </summary>
-		///// <param name="contains">string to search for</param>
-		///// <returns>true if there are any blocks with definitions containing contains</returns>
-		//public bool ContainsByDefinitionLooseContains(string contains)
-		//{
-		//	using (lock_CubeBlocks.AcquireSharedUsing())
-		//	{
-		//		foreach (var definition in CubeBlocks_Definition)
-		//			if (definition.Key.looseContains(contains) && definition.Value.Count > 0)
-		//				return true;
+		/// <summary>
+		/// Return the number of blocks of the given type.
+		/// </summary>
+		/// <param name="objBuildType">Type to search for</param>
+		/// <returns>The number of blocks of the given type</returns>
+		public int CountByType(MyObjectBuilderType objBuildType)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				ListSnapshots<IMyTerminalBlock> value;
+				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
+					return value.Count;
+				return 0;
+			}
+		}
 
-		//		return false;
-		//	}
-		//}
+		/// <summary>
+		/// Return the number of blocks with the given definition
+		/// </summary>
+		/// <param name="definition">Definition to search for</param>
+		/// <returns>The number of blocks with the given definition</returns>
+		public int CountByDefinition(string definition)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				ListSnapshots<IMyTerminalBlock> value;
+				if (CubeBlocks_Definition.TryGetValue(definition, out value))
+					return value.Count;
+				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Return the number of blocks containing the given definition
+		/// </summary>
+		/// <param name="contains">substring of definition to search for</param>
+		/// <returns>The number of blocks containing the given definition</returns>
+		public int CountByDefLooseContains(string contains)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				int count = 0;
+				foreach (var definition in CubeBlocks_Definition)
+					if (definition.Key.looseContains(contains))
+						count += definition.Value.Count;
+				return count;
+			}
+		}
+
+		/// <summary>
+		/// Return the total number of blocks cached by type.
+		/// </summary>
+		/// <returns>The total number of blocks cached by type</returns>
+		public int TotalByType()
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				int count = 0;
+				foreach (var byType in CubeBlocks_Type)
+					count += byType.Value.Count;
+				return count;
+			}
+		}
+
+		/// <summary>
+		/// Returns the total number of blocks cached by definition.
+		/// </summary>
+		/// <returns>The total number of blocks cached by definition.</returns>
+		public int TotalByDefinition()
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				int count = 0;
+				foreach (var definition in CubeBlocks_Definition)
+					count += definition.Value.Count;
+				return count;
+			}
+		}
 
 		/// <summary>
 		/// will return null if grid is closed or CubeGridCache cannot be created

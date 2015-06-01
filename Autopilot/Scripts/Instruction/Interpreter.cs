@@ -22,6 +22,7 @@ namespace Rynchodon.Autopilot.Instruction
 	/// <summary>
 	/// Parses instructions into Actions
 	/// </summary>
+	/// TODO: organize errors so it works like InterpreterWeapon
 	public class Interpreter
 	{
 		/// <summary>

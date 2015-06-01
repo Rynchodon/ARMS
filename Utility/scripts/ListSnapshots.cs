@@ -51,6 +51,11 @@ namespace Rynchodon
 			return myList;
 		}
 
-		//public int Count { get { return myList.Count; } }
+		/// <summary>
+		/// Safe and fast Count
+		/// </summary>
+		/// <returns>The number of items in the list</returns>
+		public int Count
+		{ get { return myList.Count; } }
 	}
 }
