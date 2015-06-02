@@ -111,35 +111,48 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			if (!CurrentTarget.FiringDirection.HasValue)
 			{
-				CheckFire(1f);
+				StopFiring();
 				return;
 			}
 
-			Vector3 RotateTo = RelativeVector3F.createFromWorld(CurrentTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
-			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
-			if (!azimuth.IsValid() || !elevation.IsValid())
-			{
-				myLogger.debugLog("cannot rotate, invalid az(" + azimuth + ") or el(" + elevation + ")", "RotateAndFire()");
-				return;
-			}
+			Vector3 direction;
+			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out direction);
+			//float azimuth, elevation;
+			//Vector3.GetAzimuthAndElevation(direction, out azimuth, out elevation);
+			//myLogger.debugLog("azimuth = " + myTurret.Azimuth + " : " + azimuth + ", elevation = " + myTurret.Elevation + " : " + elevation, "RotateAndFire()");
 
-			//if (myTurret.AIEnabled)
-				myTurret.SetTarget(CurrentTarget.InterceptionPoint.Value);
-			//else
+			Vector3 directionBlock = direction;
+			direction = RelativeVector3F.createFromBlock(direction, weapon, false).getWorld();
+			myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + direction, "RotateAndFire()");
+
+			CheckFire(direction);
+			myTurret.SetTarget(CurrentTarget.InterceptionPoint.Value);
+
+			//Vector3 RotateTo = RelativeVector3F.createFromWorld(CurrentTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
+			//float azimuth, elevation;
+			//Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
+			//if (!azimuth.IsValid() || !elevation.IsValid())
 			//{
-			//	myTurret.Azimuth = azimuth;
-			//	myTurret.SyncAzimuth();
-			//	myTurret.Elevation = elevation;
-			//	myTurret.SyncElevation();
+			//	myLogger.debugLog("cannot rotate, invalid az(" + azimuth + ") or el(" + elevation + ")", "RotateAndFire()");
+			//	return;
 			//}
 
-			//myLogger.debugLog("Firing Direction = " + FiringDirection + ", Rotating to az = " + azimuth + ", and el = " + elevation, "RotateAndFire()");
+			////if (myTurret.AIEnabled)
+			//	myTurret.SetTarget(CurrentTarget.InterceptionPoint.Value);
+			////else
+			////{
+			////	myTurret.Azimuth = azimuth;
+			////	myTurret.SyncAzimuth();
+			////	myTurret.Elevation = elevation;
+			////	myTurret.SyncElevation();
+			////}
 
-			Vector2 Difference = new Vector2(elevation - myTurret.Elevation, azimuth - myTurret.Azimuth);
-			//myLogger.debugLog("Difference = " + Difference, "RotateAndFire()");
-			//myLogger.debugLog("Difference = " + Difference + ", elevation = " + elevation + ", myTurret.Elevation = " + myTurret.Elevation + ", azimuth = " + azimuth + ", myTurret.Azimuth = " + myTurret.Azimuth, "RotateAndFire()");
-			CheckFire(Difference.LengthSquared());
+			////myLogger.debugLog("Firing Direction = " + FiringDirection + ", Rotating to az = " + azimuth + ", and el = " + elevation, "RotateAndFire()");
+
+			//Vector2 Difference = new Vector2(elevation - myTurret.Elevation, azimuth - myTurret.Azimuth);
+			////myLogger.debugLog("Difference = " + Difference, "RotateAndFire()");
+			////myLogger.debugLog("Difference = " + Difference + ", elevation = " + elevation + ", myTurret.Elevation = " + myTurret.Elevation + ", azimuth = " + azimuth + ", myTurret.Azimuth = " + myTurret.Azimuth, "RotateAndFire()");
+			//CheckFire(Difference.LengthSquared());
 		}
 	}
 }

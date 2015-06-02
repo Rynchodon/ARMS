@@ -92,6 +92,12 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <param name="Errors">indices of parsing errors</param>
 		private void Parse(string instructions, bool fromPanel)
 		{
+			if (instructions == null)
+			{
+				myLogger.debugLog("no instructions", "Parse()");
+				return;
+			}
+
 			if (CurrentIndex >= 1000)
 			{
 				myLogger.debugLog("Instruction limit", "Parse()", Logger.severity.WARNING);

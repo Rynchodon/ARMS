@@ -49,6 +49,7 @@ namespace Rynchodon
 
 		public static Vector3 GetLinearVelocity(this IMyEntity entity)
 		{
+			entity = entity.GetTopMostParent();
 			if (entity.Physics == null)
 				return Vector3.Zero;
 			return entity.Physics.LinearVelocity;

@@ -1,10 +1,5 @@
 ﻿#define LOG_ENABLED //remove on build
 
-using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -26,6 +21,8 @@ namespace Rynchodon
 
 		private IMyCubeGrid cubeGrid; // always set on create
 		private IMyCubeBlock cubeBlock = null;
+
+		private bool BlockIsPosition;
 
 		private RelativeVector3F() { }
 
@@ -64,13 +61,15 @@ namespace Rynchodon
 
 		/// <summary>
 		/// create from a vector relative to a block (including block orientation)
+		/// <para>Use to create a position vector from a block.</para>
 		/// </summary>
-		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block)
+		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block, bool BlockIsPosition = true)
 		{
 			RelativeVector3F result = new RelativeVector3F();
 			result.value__block = fromBlock;
 			result.cubeGrid = block.CubeGrid;
 			result.cubeBlock = block;
+			result.BlockIsPosition = BlockIsPosition;
 			return result;
 		}
 
@@ -123,20 +122,22 @@ namespace Rynchodon
 			}
 
 			// create from block
-			// create from block
 			// orient according to block
-			Vector3D resultant = Vector3D.Zero;
-			Vector3D blockRelative = (Vector3D)value__block;
+			Vector3 resultant = Vector3.Zero;
+			Vector3 blockRelative = (Vector3)value__block;
 			Base6Directions.Direction RCdirection = cubeBlock.Orientation.Left;
-			resultant -= (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.X;
+			resultant -= (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.X;
 			RCdirection = cubeBlock.Orientation.Up;
-			resultant += (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.Y;
+			resultant += (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.Y;
 			RCdirection = cubeBlock.Orientation.Forward;
-			resultant -= (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.Z;
+			resultant -= (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.Z;
 
-			// add block position
-			value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
-			return (Vector3D)value__grid;
+			if (BlockIsPosition)
+				// add block position
+				value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
+			else
+				value__grid = resultant;
+			return (Vector3)value__grid;
 		}
 
 		/// <summary>

@@ -7,6 +7,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Collections;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -18,9 +19,9 @@ namespace Rynchodon.Autopilot.Weapons
 	/// TODO: fix range issues
 	public abstract class WeaponTargeting
 	{
-		/// <summary>Required length squared between current direction and target direction to fire.</summary>
-		private const float firingThreshold = 0.01f;
-		private static Dictionary<uint, MyAmmoDefinition> AmmoDefinition = new Dictionary<uint, MyAmmoDefinition>();
+		/// <summary>how close shots need to be to the target, in metres</summary>
+		private const float firingThreshold = 10f;
+		private static Dictionary<uint, Ammo> KnownAmmo = new Dictionary<uint, Ammo>();
 
 		public readonly IMyCubeBlock weapon;
 		public readonly Ingame.IMyLargeTurretBase myTurret;
@@ -34,7 +35,8 @@ namespace Rynchodon.Autopilot.Weapons
 		private Ammo LoadedAmmo;
 
 		protected Target CurrentTarget { get; private set; }
-		private HashSet<long> Blacklist = new HashSet<long>();
+		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
+		private int Blacklist_Index = 0;
 
 		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
 
@@ -52,8 +54,10 @@ namespace Rynchodon.Autopilot.Weapons
 					value_TargetingRange = value;
 				else
 					value_TargetingRange = GlobalMaxRange;
+				TargetingRangeSquared = value_TargetingRange * value_TargetingRange;
 			}
 		}
+		protected float TargetingRangeSquared { get; private set; }
 
 		private byte updateCount = 0;
 
@@ -126,7 +130,8 @@ namespace Rynchodon.Autopilot.Weapons
 
 			CollectTargets();
 			PickATarget();
-			myLogger.debugLog("Current Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
+			if (CurrentTarget.Entity != null)
+				myLogger.debugLog("Current Target = " + CurrentTarget.Entity.getBestName(), "Update10()");
 		}
 
 		/// <summary>
@@ -137,7 +142,7 @@ namespace Rynchodon.Autopilot.Weapons
 			if (!IsControllingWeapon)
 				return;
 
-			Blacklist = new HashSet<long>();
+			TryClearBlackList();
 
 			TargetingOptions newOptions;
 			List<string> Errors;
@@ -151,24 +156,6 @@ namespace Rynchodon.Autopilot.Weapons
 			else
 				myLogger.debugLog("not updation Options, Error Count = " + Errors.Count, "Update100()");
 			WriteErrors(Errors);
-
-			//if (CurrentTarget.TType != TargetType.None)
-			//{
-			//	if (!CanTargetType(CurrentTarget.TType))
-			//	{
-			//		myLogger.debugLog("current target type no longer allowed", "Update100()");
-			//		CurrentTarget = new Target();
-			//	}
-			//	else
-			//	{
-			//		IMyCubeBlock targetAsBlock = CurrentTarget.Entity as IMyCubeBlock;
-			//		if (targetAsBlock != null && !targetAsBlock.IsWorking)
-			//		{
-			//			myLogger.debugLog("current target is no longer working", "Update100()");
-			//			CurrentTarget = new Target();
-			//		}
-			//	}
-			//}
 		}
 
 		/// <summary>
@@ -182,6 +169,7 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			if (weapon.IsWorking
 				&& (myTurret == null || !myTurret.IsUnderControl)
+				&& weapon.OwnerId != 0
 				&& weapon.DisplayNameText.Contains("[") && weapon.DisplayNameText.Contains("]"))
 			{
 				if (!IsControllingWeapon)
@@ -222,6 +210,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 					// remove target
 					CurrentTarget = new Target();
+					Blacklist = new MyUniqueList<IMyEntity>();
 
 					// stop shooting
 					var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
@@ -243,32 +232,6 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 		}
 
-		///// <summary>
-		///// Get the targeting options from the name.
-		///// </summary>
-		//private void TargetOptionsFromName()
-		//{
-		//	blocksToTarget = new List<string>();
-		//	CanTarget = TargetType.None;
-
-		//	string unsplitInstructions = weapon.DisplayNameText.getInstructions();
-		//	string[] allInstructions = weapon.DisplayNameText.getInstructions().RemoveWhitespace().Split(new char[] { ',',';', ':' });
-
-		//	foreach (string instruction in allInstructions)
-		//	{
-		//		TargetType tType;
-		//		if (Enum.TryParse(instruction, true, out tType))
-		//		{
-		//			//myLogger.debugLog("adding to CanTarget: " + instruction, "TargetOptionsFromName()");
-		//			CanTarget |= tType;
-		//			continue;
-		//		}
-
-		//		//myLogger.debugLog("adding to block search: " + instruction, "TargetOptionsFromName()");
-		//		blocksToTarget.Add(instruction);
-		//	}
-		//}
-
 		private void UpdateAmmo()
 		{
 			List<IMyInventoryItem> loaded = (weapon as IMyInventoryOwner).GetInventory(0).GetItems();
@@ -279,25 +242,25 @@ namespace Rynchodon.Autopilot.Weapons
 				return;
 			}
 
-			MyAmmoDefinition ammoDef;
-			if (!AmmoDefinition.TryGetValue(loaded[0].ItemId, out ammoDef))
+			Ammo currentAmmo;
+			if (!KnownAmmo.TryGetValue(loaded[0].ItemId, out currentAmmo))
 			{
 				MyDefinitionId magazineId = loaded[0].Content.GetObjectId();
 				//myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
 				MyDefinitionId ammoDefId = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId).AmmoDefinitionId;
 				//myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");
-				ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoDefId);
-				//myLogger.debugLog("ammoDef = " + ammoDef, "UpdateAmmo()");
+				currentAmmo = new Ammo( MyDefinitionManager.Static.GetAmmoDefinition(ammoDefId));
+				//myLogger.debugLog("currentAmmo = " + currentAmmo, "UpdateAmmo()");
 
-				AmmoDefinition.Add(loaded[0].ItemId, ammoDef);
+				KnownAmmo.Add(loaded[0].ItemId, currentAmmo);
 			}
 			//else
-			//	myLogger.debugLog("Got ammo from Dictionary: " + ammoDef, "UpdateAmmo()");
+			//	myLogger.debugLog("Got ammo from Dictionary: " + currentAmmo, "UpdateAmmo()");
 
-			if (LoadedAmmo == null || LoadedAmmo.Definition != ammoDef) // ammo has changed
+			if (LoadedAmmo == null || LoadedAmmo != currentAmmo) // ammo has changed
 			{
-				myLogger.debugLog("Ammo changed to: " + ammoDef.DisplayNameText, "UpdateAmmo()");
-				LoadedAmmo = new Ammo(ammoDef);
+				myLogger.debugLog("Ammo changed to: " + currentAmmo.Definition.DisplayNameText, "UpdateAmmo()");
+				LoadedAmmo = currentAmmo;
 			}
 		}
 
@@ -319,7 +282,7 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				float finalSpeed = (float)Math.Sqrt(missileAmmo.MissileInitialSpeed * missileAmmo.MissileInitialSpeed + 2 * missileAmmo.MissileAcceleration * distance);
 
-				myLogger.debugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
+				//myLogger.debugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
 				return (missileAmmo.MissileInitialSpeed + finalSpeed) / 2;
 			}
 			else
@@ -327,43 +290,87 @@ namespace Rynchodon.Autopilot.Weapons
 				float distanceAfterMaxVel = distance - LoadedAmmo.DistanceToMaxSpeed;
 				float timeAfterMaxVel = distanceAfterMaxVel / missileAmmo.DesiredSpeed;
 
-				myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+				//myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
 				return distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel);
 			}
 		}
 
+		///// <summary>
+		///// <para>If supplied value is small, fire the weapon.</para>
+		///// <para>If supplied value is large, stop firing.</para>
+		///// </summary>
+		//protected void CheckFire(float lengthSquared)
+		//{
+		//	if (lengthSquared < firingThreshold)
+		//	{
+		//		if (!IsShooting)
+		//		{
+		//			// start firing
+		//			myLogger.debugLog("Open fire LS: " + lengthSquared, "CheckFire()");
+
+		//			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+		//			IsShooting = true;
+		//		}
+		//		//else
+		//		//	myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
+		//	}
+		//	else
+		//	{
+		//		if (IsShooting)
+		//		{
+		//			// stop firing
+		//			myLogger.debugLog("Hold fire LS: " + lengthSquared, "CheckFire()");
+
+		//			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+		//			IsShooting = false;
+		//		}
+		//		//else
+		//		//	myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
+		//	}
+		//}
+
 		/// <summary>
-		/// <para>If supplied value is small, fire the weapon.</para>
-		/// <para>If supplied value is large, stop firing.</para>
+		/// <para>If the direction will put shots on target, fire the weapon.</para>
+		/// <para>If the direction will miss the target, stop firing.</para>
 		/// </summary>
-		protected void CheckFire(float lengthSquared)
+		/// <param name="direction">The direction the weapon is pointing in.</param>
+		protected void CheckFire(Vector3 direction)
 		{
-			if (lengthSquared < firingThreshold)
-			{
-				if (!IsShooting)
-				{
-					// start firing
-					myLogger.debugLog("Open fire LS: " + lengthSquared, "CheckFire()");
+			Vector3 weaponPosition = weapon.GetPosition();
+			Vector3 finalPosition = weaponPosition + Vector3.Normalize( direction) * TargetingRange;
+			Line shot = new Line(weaponPosition, finalPosition, false);
 
-					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-					IsShooting = true;
-				}
-				//else
-				//	myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
-			}
+			//myLogger.debugLog("shot is from " + weaponPosition + " to " + finalPosition + ", target is at " + CurrentTarget.InterceptionPoint.Value, "CheckFire()");
+			//myLogger.debugLog("100 m out: " + (weaponPosition + Vector3.Normalize(direction) * 100), "CheckFire()");
+			//myLogger.debugLog("distance between weapon and target is " + Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value) + ", distance between finalPosition and target is " + Vector3.Distance(finalPosition, CurrentTarget.InterceptionPoint.Value), "CheckFire()");
+			//myLogger.debugLog("distance between shot and target is " + shot.Distance(CurrentTarget.InterceptionPoint.Value), "CheckFire()");
+
+			if (shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
+				FireWeapon();
 			else
-			{
-				if (IsShooting)
-				{
-					// stop firing
-					myLogger.debugLog("Hold fire LS: " + lengthSquared, "CheckFire()");
+				StopFiring();
+		}
 
-					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-					IsShooting = false;
-				}
-				//else
-				//	myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
-			}
+		private void FireWeapon()
+		{
+			if (IsShooting)
+				return;
+
+			myLogger.debugLog("Open fire", "CheckFire()");
+
+			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+			IsShooting = true;
+		}
+
+		protected void StopFiring()
+		{
+			if (!IsShooting)
+				return;
+
+			myLogger.debugLog("Hold fire", "CheckFire()");
+
+			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+			IsShooting = false;
 		}
 
 		/// <summary>
@@ -386,7 +393,7 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
 
-				if (Blacklist.Contains(entity.EntityId))
+				if (Blacklist.Contains(entity))
 					continue;
 
 				if (entity is IMyFloatingObject)
@@ -491,9 +498,12 @@ namespace Rynchodon.Autopilot.Weapons
 			if (!Options.CanTargetType(tType))
 			{
 				//if (tType == TargetType.Destroy)
-				//	myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
+				//myLogger.debugLog("Cannot add type: " + tType, "AddTarget()");
 				return;
 			}
+
+			//if (tType == TargetType.Moving)
+			//	myLogger.debugLog("Adding type: " + tType + ", target = " + target.getBestName(), "AddTarget()");
 
 			List<IMyEntity> list;
 			if (!Available_Targets.TryGetValue(tType, out list))
@@ -535,189 +545,198 @@ namespace Rynchodon.Autopilot.Weapons
 		private bool SetClosest(TargetType tType, ref double closerThan)
 		{
 			List<IMyEntity> targetsOfType;
-			if (Available_Targets.TryGetValue(tType, out targetsOfType))
-			{
-				IMyEntity closest = null;
-				double closestDistance = double.MaxValue;
-
-				Vector3D weaponPosition = weapon.GetPosition();
-				bool isFixed = myTurret == null;
-
-				foreach (IMyEntity target in targetsOfType)
-				{
-					//if (tType == TargetType.Destroy)
-					//	myLogger.debugLog("Destroy, Grid = " + target.getBestName(), "SetClosest()");
-
-					if (target.Closed)
-						continue;
-
-					Vector3D targetPosition = target.GetPosition();
-					if (Obstructed(targetPosition, isFixed))
-						continue;
-
-					int distanceMultiplier = 1;
-					IMyCubeGrid asGrid = target as IMyCubeGrid;
-
-					// for destroy, only interested if there are some terminal blocks
-					if (tType == TargetType.Destroy && CubeGridCache.GetFor(asGrid).TotalByDefinition() == 0)
-						continue;
-
-					// should target moving even if it does not match any blocks
-					if (asGrid != null && tType != TargetType.Moving )
-					{
-						distanceMultiplier = GridTest(asGrid);
-						if (distanceMultiplier == 0)
-						{
-							myLogger.debugLog("for type: " + tType + ", " + asGrid.DisplayName + " contains decoy block", "SetClosest()");
-							closest = target;
-							closestDistance = 0;
-							break;
-						}
-						else if (distanceMultiplier < 0) // does not contain any blocksToTarget
-						{
-							myLogger.debugLog("for type: " + tType + ", does not contain any blocksToTarget: " + asGrid.DisplayName, "SetClosest()");
-							continue;
-						}
-						else
-							myLogger.debugLog("for type: " + tType + ", " + asGrid.DisplayName + " contains block " + Options.blocksToTarget[distanceMultiplier - 1], "SetClosest()");
-					}
-
-					double distance = Vector3D.DistanceSquared(targetPosition, weaponPosition) * distanceMultiplier;
-					//if (tType == TargetType.Destroy)
-					//	myLogger.debugLog("Destroy, Grid = " + target.getBestName() + ", distance = " + distance + ", closest = " + closestDistance, "SetClosest()");
-					if (distance < closestDistance)
-					{
-						closest = target;
-						closestDistance = distance;
-					}
-				}
-
-				IMyCubeGrid closestAsGrid = closest as IMyCubeGrid;
-				if (closestAsGrid != null)
-					closest = GetTargetBlock(closestAsGrid, tType);
-
-				if (closest != null)
-				{
-					CurrentTarget = new Target(closest, tType);
-					return true;
-				}
+			if (!Available_Targets.TryGetValue(tType, out targetsOfType))
 				return false;
+
+			IMyEntity closest = null;
+
+			Vector3D weaponPosition = weapon.GetPosition();
+			bool isFixed = myTurret == null;
+
+			foreach (IMyEntity entity in targetsOfType)
+			{
+				//if (tType == TargetType.Destroy)
+				//	myLogger.debugLog("Destroy, Grid = " + target.getBestName(), "SetClosest()");
+
+				if (entity.Closed)
+					continue;
+
+				IMyEntity target;
+				Vector3D targetPosition;
+				double distanceValue;
+
+				// get block from grid before obstruction test
+				IMyCubeGrid asGrid = entity as IMyCubeGrid;
+				if (asGrid != null)
+				{
+					IMyCubeBlock targetBlock;
+					if (GetTargetBlock(asGrid, tType, out targetBlock, out distanceValue))
+						target = targetBlock;
+					else
+						continue;
+					targetPosition = target.GetPosition();
+				}
+				else
+				{
+					target = entity;
+					targetPosition = target.GetPosition();
+
+					distanceValue = Vector3D.DistanceSquared(targetPosition, weaponPosition);
+					if (distanceValue > TargetingRangeSquared)
+					{
+						myLogger.debugLog("for type: " + tType + ", too far to target: " + target.getBestName(), "SetClosest()");
+						continue;
+					}
+
+					if (Obstructed(targetPosition))//, isFixed))
+						continue;
+				}
+
+				if (distanceValue < closerThan)
+				{
+					closest = target;
+					closerThan = distanceValue;
+				}
 			}
 
+			if (closest != null)
+			{
+				CurrentTarget = new Target(closest, tType);
+				return true;
+			}
 			return false;
 		}
 
-		#region Test Grids
-
-		/// <summary>
-		/// Test a grid for blocksToTarget
-		/// </summary>
-		/// <returns>
-		/// <para>if the grid has a decoy, 0</para>
-		/// <para>if the grid has any blocks from blocksToTarget, index + 1</para>
-		/// </returns>
-		private int GridTest(IMyCubeGrid grid)
+		/// <remarks>
+		/// <para>Targeting non-terminal blocks would cause confusion.</para>
+		/// <para>Open doors should not be targeted.</para>
+		/// </remarks>
+		private bool TargetableBlock(IMyCubeBlock block)
 		{
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			if (!(block is IMyTerminalBlock))
+				return false;
 
-			var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
-			if (decoyBlockList != null)
-				foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
-					if (block.IsWorking)
-						return 0;
-
-			for (int index = 0; index < Options.blocksToTarget.Count; index++)
-			{
-				//myLogger.debugLog("block def = " + blocksToTarget[index], "GridTest()");
-				var master = cache.GetBlocksByDefLooseContains(Options.blocksToTarget[index]);
-				//myLogger.debugLog("master = " + master, "GridTest()");
-				foreach (var blocksWithDef in master)
-				{
-					//myLogger.debugLog("blocksWithDef = " + blocksWithDef, "GridTest()");
-					foreach (var block in blocksWithDef)
-					{
-						//myLogger.debugLog("block = " + block, "GridTest()");
-						if (block.IsWorking)
-							return index + 1;
-					}
-				}
-			}
-
-			return -1;
+			IMyDoor asDoor = block as IMyDoor;
+			return asDoor == null || asDoor.OpenRatio < 0.01;
 		}
 
 		/// <summary>
-		/// Gets the best block to target from a grid, first by checking blocksToTarget, then just grabs the closest IMyCubeBlock.
+		/// Gets the best block to target from a grid.
 		/// </summary>
-		private IMyCubeBlock GetTargetBlock(IMyCubeGrid grid, TargetType tType)
+		/// <param name="grid">The grid to search</param>
+		/// <param name="tType">Checked for destroy</param>
+		/// <param name="target">The best block fromt the grid</param>
+		/// <param name="distanceValue">The value assigned based on distance and position in blocksToTarget.</param>
+		/// <remarks>
+		/// <para>Decoy blocks will be given a distanceValue of the distance squared to weapon.</para>
+		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * (2 + index)^2.</para>
+		/// <para>Other blocks will be given a distanceValue of the distance squared * (1e12).</para>
+		/// </remarks>
+		private bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue)
 		{
 			Vector3D myPosition = weapon.GetPosition();
-			double closestDistance = value_TargetingRange * value_TargetingRange;
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
-			// get decoy block, ignoring distance
+			target = null;
+			distanceValue = TargetingRangeSquared;
+
+			if (cache.TotalByDefinition() == 0)
+			{
+				myLogger.debugLog("no terminal blocks on grid: " + grid.DisplayName, "GetTargetBlock()");
+				return false;
+			}
+
+			// get decoy block
 			{
 				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
 				if (decoyBlockList != null)
 					foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
-						if (block.IsWorking)
-							return block as IMyCubeBlock;
-			}
-
-			// get best block from blocksToTarget
-			foreach (string blocksSearch in Options.blocksToTarget)
-			{
-				Ingame.IMyTerminalBlock closest = null;
-				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
-				foreach (var blocksWithDef in master)
-				{
-					foreach (Ingame.IMyTerminalBlock block in blocksWithDef)
 					{
 						if (!block.IsWorking)
 							continue;
 
-						double distance = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block + ", distance = " + distance, "GetTargetBlock()");
-						if (distance < closestDistance)
+						if (Blacklist.Contains(block))
+							continue;
+
+						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+						if (distanceSq > TargetingRangeSquared)
+							continue;
+
+						//myLogger.debugLog("decoy search, block = " + block.DisplayNameText + ", distance = " + distance, "GetTargetBlock()");
+
+						if (distanceSq < distanceValue)
 						{
-							closestDistance = distance;
-							closest = block;
+							target = block as IMyCubeBlock;
+							distanceValue = distanceSq;
 						}
 					}
+				if (target != null)
+				{
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a decoy block: " + target.DisplayNameText + ", distanceValue: " + distanceValue, "GetTargetBlock()");
+					return true;
 				}
-				if (closest != null)
-					return closest as IMyCubeBlock;
 			}
 
-			// get any IMyCubeBlock
+			// get block from blocksToTarget
+			int multiplier = 1;
+			foreach (string blocksSearch in Options.blocksToTarget)
 			{
-				//IMyCubeBlock closest = null;
+				multiplier++;
+				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
+				foreach (var blocksWithDef in master)
+					foreach (IMyCubeBlock block in blocksWithDef)
+					{
+						if (!block.IsWorking || !TargetableBlock(block))
+							continue;
+
+						if (Blacklist.Contains(block))
+							continue;
+
+						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+						if (distanceSq > TargetingRangeSquared)
+							continue;
+						distanceSq *= multiplier * multiplier;
+
+						//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance = " + distance, "GetTargetBlock()");
+						if (distanceSq < distanceValue)
+						{
+							target = block;
+							distanceValue = distanceSq;
+						}
+					}
+				if (target != null) // found a block from blocksToTarget
+				{
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + blocksSearch + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()"); 
+					return true;
+				}
+			}
+
+			// get any terminal block
+			if (tType == TargetType.Moving || tType == TargetType.Destroy)
+			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
-				//foreach (IMySlimBlock slim in allSlims)
-				//{
-				//	if (!slim.FatBlock.IsWorking)
-				//		continue;
-
-				//	double distance = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
-				//	myLogger.debugLog("search any, block = " + slim.FatBlock + ", distance = " + distance, "GetTargetBlock()");
-				//	if (distance < closestDistance)
-				//	{
-				//		closestDistance = distance;
-				//		closest = slim.FatBlock;
-				//	}
-				//}
-				//return closest;
 
 				foreach (IMySlimBlock slim in allSlims)
-					if (tType == TargetType.Destroy || slim.FatBlock.IsWorking)
-						return slim.FatBlock;
+					if (TargetableBlock(slim.FatBlock))
+					{
+						if (Blacklist.Contains(slim.FatBlock))
+							continue;
+
+						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
+						if (distanceSq > TargetingRangeSquared)
+							continue;
+						distanceSq *= 1e12;
+
+						target = slim.FatBlock;
+						distanceValue = distanceSq;
+						myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+						return true;
+					}
 			}
 
-			return null;
+			return false;
 		}
-
-		#endregion
 
 		/// <summary>
 		/// Get any projectile which is a threat from Available_Targets[tType].
@@ -731,19 +750,42 @@ namespace Rynchodon.Autopilot.Weapons
 
 				bool isFixed = myTurret == null;
 
-				foreach (IMyEntity projectile in targetsOfType)
+				foreach (IMyEntity entity in targetsOfType)
 				{
-					if (projectile.Closed)
+					if (entity.Closed)
 						continue;
 
-					if (ProjectileIsThreat(projectile, tType) && !Obstructed(projectile.GetPosition(), isFixed))
+					// meteors and missiles are dangerous even if they are slow
+					if (!(entity is IMyMeteor || entity.ToString().StartsWith("MyMissile") || entity.GetLinearVelocity().LengthSquared() > 100))
 					{
-						//myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
+						//myLogger.debugLog("type = " + tType + ", entity = " + entity.getBestName() + " is too slow, speed = " + entity.GetLinearVelocity().Length(), "PickAProjectile()");
+						continue;
+					}
+
+					IMyEntity projectile = entity;
+
+					IMyCubeGrid asGrid = projectile as IMyCubeGrid;
+					if (asGrid != null)
+					{
+						IMyCubeBlock targetBlock;
+						double distanceValue;
+						if (GetTargetBlock(asGrid, tType, out targetBlock, out distanceValue))
+							projectile = targetBlock;
+						else
+						{
+							myLogger.debugLog("failed to get a block from: " + asGrid.DisplayName, "PickAProjectile()");
+							continue;
+						}
+					}
+
+					if (ProjectileIsThreat(projectile, tType) && !Obstructed(projectile.GetPosition()))//, isFixed))
+					{
+						myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
 						CurrentTarget = new Target(projectile, tType);
 						return true;
 					}
-					//else
-					//	myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
+					else
+						myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
 				}
 			}
 
@@ -758,32 +800,37 @@ namespace Rynchodon.Autopilot.Weapons
 			if (projectile.Closed)
 				return false;
 
-			Vector3 projectileVelocity = projectile.GetLinearVelocity();
-			// there are mods that add slow missiles and meteors, so ignore speed for those
-			if (tType != TargetType.Missile && tType != TargetType.Meteor && projectileVelocity.LengthSquared() < 100)
-			{
-				//myLogger.debugLog("too slow to be a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
-				return false;
-			}
-
 			Vector3D projectilePosition = projectile.GetPosition();
-			BoundingSphereD protectionArea = new BoundingSphereD(weapon.GetPosition(), TargetingRange / 10f);
-			if (protectionArea.Contains(projectilePosition) == ContainmentType.Contains)
+			BoundingSphereD ignoreArea = new BoundingSphereD(weapon.GetPosition(), TargetingRange / 10f);
+			if (ignoreArea.Contains(projectilePosition) == ContainmentType.Contains)
 			{
-				// too late to stop it (also, no test for moving away)
-				//myLogger.debugLog("projectile is inside protection area: " + projectile.getBestName(), "ProjectileIsThreat()");
+				//myLogger.debugLog("projectile is inside ignore area: " + projectile.getBestName(), "ProjectileIsThreat()");
 				return false;
 			}
 
-			RayD projectileRay = new RayD(projectilePosition, Vector3D.Normalize(projectileVelocity));
-			if (projectileRay.Intersects(protectionArea) != null)
+			Vector3D weaponPosition = weapon.GetPosition();
+			Vector3D nextPosition = projectilePosition + projectile.GetLinearVelocity() / 60f;
+			if (Vector3D.DistanceSquared(weaponPosition, nextPosition) < Vector3D.DistanceSquared(weaponPosition, projectilePosition))
 			{
-				//myLogger.debugLog("projectile is a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
+				myLogger.debugLog("projectile: " + projectile.getBestName() + ", is moving towards weapon. D0 = " + Vector3D.DistanceSquared(weaponPosition, nextPosition) + ", D1 = " + Vector3D.DistanceSquared(weaponPosition, projectilePosition), "ProjectileIsThreat()");
 				return true;
 			}
+			else
+			{
+				myLogger.debugLog("projectile: " + projectile.getBestName() + ", is moving away from weapon. D0 = " + Vector3D.DistanceSquared(weaponPosition, nextPosition) + ", D1 = " + Vector3D.DistanceSquared(weaponPosition, projectilePosition), "ProjectileIsThreat()");
+				return false;
+			}
+
+			//RayD projectileRay = new RayD(projectilePosition, Vector3D.Normalize(projectile.GetLinearVelocity()));
+			//double? Intersects = projectileRay.Intersects(ignoreArea);
+			//if (Intersects != null && Intersects > 0)
+			//{
+			//	myLogger.debugLog("projectile is a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
+			//	return true;
+			//}
 
 			//myLogger.debugLog("projectile not headed towards protection area: " + projectile.getBestName(), "ProjectileIsThreat()");
-			return false;
+			//return false;
 		}
 
 		/// <summary>
@@ -792,13 +839,15 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		/// <param name="targetPos">entity to shoot</param>
 		/// <param name="ignoreSourceGrid">ignore intersections with grid that weapon is part of</param>
-		private bool Obstructed(Vector3D targetPos, bool ignoreSourceGrid = false)
+		private bool Obstructed(Vector3D targetPos)//, bool readyToFire = false)
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
 
 			if (!CanRotateTo(targetPos))
 				return true;
+
+			bool ignoreSourceGrid = myTurret == null;
 
 			Vector3D weaponPos = weapon.GetPosition();
 
@@ -871,20 +920,22 @@ namespace Rynchodon.Autopilot.Weapons
 			else
 				TargetPosition = target.GetPosition();
 
-			Vector3D RelativeVelocity = target.GetLinearVelocity() - weapon.GetLinearVelocity();
+			Vector3 TargetVelocity = target.GetLinearVelocity();
+
+			Vector3D RelativeVelocity = TargetVelocity - weapon.GetLinearVelocity();
 
 			//myLogger.debugLog("weapon position = " + weapon.GetPosition() + ", ammo speed = " + LoadedAmmoSpeed(TargetPosition) + ", TargetPosition = " + TargetPosition + ", target velocity = " + target.GetLinearVelocity(), "GetFiringDirection()");
 			FindInterceptVector(weapon.GetPosition(), LoadedAmmoSpeed(TargetPosition), TargetPosition, RelativeVelocity);
 			if (CurrentTarget.FiringDirection == null)
 			{
 				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
-				Blacklist.Add(target.EntityId);
+				Blacklist.Add(target);
 				return;
 			}
-			if (Obstructed(CurrentTarget.InterceptionPoint.Value, myTurret == null))
+			if (Obstructed(CurrentTarget.InterceptionPoint.Value))//, myTurret == null))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
-				Blacklist.Add(target.EntityId);
+				Blacklist.Add(target);
 				CurrentTarget = new Target();
 				return;
 			}
@@ -977,6 +1028,33 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 			else
 				(weapon as IMyTerminalBlock).SetCustomName(DisplayName);
+		}
+
+		/// <summary>
+		/// attempts to remove some blacklisted items by checking for obstructions
+		/// </summary>
+		private void TryClearBlackList()
+		{
+			bool FixedGun = myTurret ==null;
+			int i;
+			for (i = 0; i < 10; i++)
+			{
+				int index = Blacklist_Index + i;
+				if (index >= Blacklist.Count)
+				{
+					Blacklist_Index = 0;
+					return;
+				}
+				IMyEntity entity = Blacklist[index];
+				if (entity.Closed || !Obstructed(entity.GetPosition()))//, FixedGun))
+				{
+					myLogger.debugLog("removing from blacklist: " + entity.getBestName(), "TryClearBlackList()");
+					Blacklist.Remove(entity);
+				}
+				else
+					myLogger.debugLog("leaving in blacklist: " + entity.getBestName(), "TryClearBlackList()");
+			}
+			Blacklist_Index += i;
 		}
 	}
 }
