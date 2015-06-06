@@ -1,34 +1,11 @@
 ﻿#define LOG_ENABLED //remove on build
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Sandbox.Common;
-//using Sandbox.Common.Components;
-//using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
-using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-//using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
 	internal static class SpeedControl
 	{
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void log(Logger logger, string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(logger, toLog, method, level); }
-		private static void alwaysLog(Logger logger, string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (logger == null) logger = new Logger(null, "SpeedControl");
-			logger.log(level, method, toLog);
-		}
-
 		public static void controlSpeed(Navigator nav)
 		{
 			Logger myLogger = new Logger(nav.myGrid.DisplayName, "SpeedControl");
@@ -142,7 +119,7 @@ namespace Rynchodon.Autopilot
 					if (nav.MM.movementSpeed > 1 && !nav.dampenersEnabled())
 					{
 						nav.EnableDampeners();
-						log(myLogger, "wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
+						myLogger.debugLog("wrong state(" + nav.CNS.moveState + "), enabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					}
 					else
 						myLogger.debugLog("wrong state: " + nav.CNS.moveState, "checkAndCruise()", Logger.severity.TRACE);
@@ -157,7 +134,7 @@ namespace Rynchodon.Autopilot
 				myLogger.debugLog("too fast, checking dampeners = " + nav.dampenersEnabled() + ", and current move = " + nav.currentMove, "checkAndCruise()", Logger.severity.TRACE);
 				if (!nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
-					log(myLogger, "too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
+					myLogger.debugLog("too fast(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), slowing", "checkAndCruise()", Logger.severity.TRACE);
 					nav.EnableDampeners();
 					nav.moveOrder(Vector3.Zero);
 				}
@@ -170,7 +147,7 @@ namespace Rynchodon.Autopilot
 				myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
 				if ((nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) && !nav.movingTooSlow)
 				{
-					log(myLogger, "too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
+					myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;
 					//nav.EnableDampeners();
 				}
@@ -182,7 +159,7 @@ namespace Rynchodon.Autopilot
 			//{
 				if (nav.dampenersEnabled() || nav.currentMove != Vector3.Zero)
 				{
-					log(myLogger, "speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
+					myLogger.debugLog("speed is good(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), disabling dampeners", "checkAndCruise()", Logger.severity.TRACE);
 					//// disable dampeners
 					//nav.setDampeners(false);
 					nav.DisableReverseThrust();

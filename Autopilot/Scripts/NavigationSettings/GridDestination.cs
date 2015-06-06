@@ -3,6 +3,7 @@
 using System;
 using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot
@@ -84,31 +85,31 @@ namespace Rynchodon.Autopilot
 
 		private Vector3D calculateInterceptionPoint(bool fromBlock)
 		{
-			//log("entered calculateInterceptionPoint(" + block + ")", "calculateInterceptionPoint()");
+			//myLogger.debugLog("entered calculateInterceptionPoint(" + block + ")", "calculateInterceptionPoint()");
 			Vector3D targetPosition, targetVelocity, targetAcceleration;
 			if (seenRecently())
 			{
 				if (fromBlock)
 				{
 					targetPosition = Block.GetPosition();
-					//log("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
+					//myLogger.debugLog("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				}
 				else
 					targetPosition = Grid.WorldAABB.Center;
-				//log("grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
+				//myLogger.debugLog("grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				targetVelocity = Grid.Physics.LinearVelocity;
 				targetAcceleration = Grid.Physics.GetLinearAcceleration();
 			}
 			else
 			{
-				//log("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds+" seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
+				//myLogger.debugLog("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds+" seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
 				targetPosition = gridLastSeen.predictPosition();
 				targetVelocity = gridLastSeen.LastKnownVelocity;
 				targetAcceleration = Vector3.Zero;
 			}
 			if (targetVelocity == Vector3D.Zero)
 			{
-				//log("shorting: target velocity is zero. position = " + targetPosition, "calculateInterceptionPoint()", Logger.severity.TRACE);
+				//myLogger.debugLog("shorting: target velocity is zero. position = " + targetPosition, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				return targetPosition;
 			}
 

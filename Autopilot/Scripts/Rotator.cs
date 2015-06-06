@@ -1,19 +1,6 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Sandbox.Common;
-//using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
-//using Sandbox.Definitions;
-//using Sandbox.Engine;
-//using Sandbox.Game;
-using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
 namespace Rynchodon.Autopilot
@@ -251,7 +238,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Rolling.STOP_ROLL:
 					if (isRotating())
 						return;
-					myLogger.debugLog("get off the log", "calcAndRoll()", Logger.severity.DEBUG);
+					myLogger.debugLog("get off the debugLog", "calcAndRoll()", Logger.severity.DEBUG);
 
 					int overUnder = testOverUnder(roll, needToRotate_roll);
 					if (overUnder != 0)

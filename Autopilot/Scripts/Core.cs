@@ -3,9 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-using Sandbox.Common;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 
 namespace Rynchodon.Autopilot
 {
@@ -158,7 +157,7 @@ namespace Rynchodon.Autopilot
 						{ myLogger.alwaysLog("Exception on reset: " + resetEx, null, Logger.severity.FATAL); }
 					}
 				}
-				//log("end update", "UpdateBeforeSimulation()", Logger.severity.TRACE);
+				//myLogger.debugLog("end update", "UpdateBeforeSimulation()", Logger.severity.TRACE);
 				updateCount++;
 			}
 			catch (Exception coreEx)

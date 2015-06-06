@@ -10,38 +10,26 @@ namespace Rynchodon.Autopilot
 	internal class Targeter
 	{
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "Targeter");
-			myLogger.log(level, method, toLog);
-		}
 
 		private Navigator owner;
 
 		internal Targeter(Navigator owner)
-		{ this.owner = owner; }
+		{
+			this.owner = owner;
+			this.myLogger = new Logger("Targeter", () => owner.myGrid.DisplayName);
+		}
 
 		private DateTime nextTryLockOn;
 
 		public void tryLockOn()
 		{
-			//log("entered tryLockOn");
-			//owner.throwIfNull_variable("owner");
-			//owner.CNS.throwIfNull_variable("owner.CNS");
-
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.OFF)
 				return;
 
 			if (DateTime.UtcNow.CompareTo(nextTryLockOn) < 0)
-			{
-				//log("bailing, too soon to retarget", "tryLockOn()", Logger.severity.TRACE);
 				return;
-			}
 
-			log("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
+			myLogger.debugLog("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
 
 			IMyCubeBlock bestMatchBlock;
 			LastSeen bestMatchGrid;
@@ -50,7 +38,7 @@ namespace Rynchodon.Autopilot
 				myLogger.debugLog("found nothing", "tryLockOn()");
 				if (owner.CNS.target_locked)
 				{
-					log("lost lock on " + owner.CNS.GridDestName);
+					myLogger.debugLog("lost lock on " + owner.CNS.GridDestName, "tryLockOn()");
 					owner.CNS.target_locked = false;
 					owner.CNS.atWayDest();
 				}
@@ -58,16 +46,11 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			//bestMatchGrid.throwIfNull_variable("bestMatchGrid");
-			//bestMatchGrid.Entity.throwIfNull_variable("bestMatchGrid.Entity");
-
-			//myLogger.debugLog("found something", "tryLockOn()");
-
 			// found an enemy, setting as destination
 			if (bestMatchBlock != null)
-				log("found an enemy: " + bestMatchGrid.Entity.DisplayName + ":" + bestMatchBlock.DisplayNameText, "tryLockOn()");
+				myLogger.debugLog("found an enemy: " + bestMatchGrid.Entity.DisplayName + ":" + bestMatchBlock.DisplayNameText, "tryLockOn()");
 			else
-				log("found an enemy: " + bestMatchGrid.Entity.DisplayName, "tryLockOn()");
+				myLogger.debugLog("found an enemy: " + bestMatchGrid.Entity.DisplayName, "tryLockOn()");
 
 			owner.CNS.target_locked = true;
 			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
@@ -90,7 +73,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="gridNameContains"></param>
 		public bool lastSeenFriendly(string gridNameContains, out LastSeen bestMatchGrid, out IMyCubeBlock bestMatchBlock, string blockContains = null)
 		{
-			log("entered lastSeenFriendly(" + gridNameContains + ", " + blockContains + ")", "lastSeenFriendly()", Logger.severity.TRACE);
+			myLogger.debugLog("entered lastSeenFriendly(" + gridNameContains + ", " + blockContains + ")", "lastSeenFriendly()", Logger.severity.TRACE);
 			bestMatchGrid = null;
 			bestMatchBlock = null;
 			int bestMatchLength = -1;
@@ -98,8 +81,7 @@ namespace Rynchodon.Autopilot
 			ShipController myAR;
 			if (!ShipController.TryGet(owner.currentAPblock, out myAR))
 			{
-				alwaysLog("failed to get ARShipController for currentAP(" + owner.currentAPblock.getNameOnly() + ")", "lastSeenFriendly()", Logger.severity.WARNING);
-				//log("needs update is " + owner.currentRCblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
+				myLogger.alwaysLog("failed to get ARShipController for currentAP(" + owner.currentAPblock.getNameOnly() + ")", "lastSeenFriendly()", Logger.severity.WARNING);
 				return false;
 			}
 			IEnumerator<LastSeen> allLastSeen = myAR.lastSeenEnumerator();
@@ -108,16 +90,15 @@ namespace Rynchodon.Autopilot
 				IMyCubeGrid grid = allLastSeen.Current.Entity as IMyCubeGrid;
 				if (grid == null || grid == owner.myGrid)
 					continue;
-				//log("testing " + grid.DisplayName + " contains " + gridNameContains, "lastSeenFriendly()", Logger.severity.TRACE);
 				if (grid.DisplayName.looseContains(gridNameContains))
 				{
-					log("compare match " + grid.DisplayName + "(" + grid.DisplayName.Length + ") to " + bestMatchLength, "lastSeenFriendly()", Logger.severity.TRACE);
+					myLogger.debugLog("compare match " + grid.DisplayName + "(" + grid.DisplayName.Length + ") to " + bestMatchLength, "lastSeenFriendly()", Logger.severity.TRACE);
 					if (bestMatchGrid == null || grid.DisplayName.Length < bestMatchLength) // if better grid match
 					{
 						IMyCubeBlock matchBlock = null;
 						if (!string.IsNullOrEmpty(blockContains) && !findBestFriendly(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block
 						{
-							log("no matching block in " + grid.DisplayName, "lastSeenFriendly()", Logger.severity.TRACE);
+							myLogger.debugLog("no matching block in " + grid.DisplayName, "lastSeenFriendly()", Logger.severity.TRACE);
 							continue;
 						}
 
@@ -143,8 +124,8 @@ namespace Rynchodon.Autopilot
 			ShipController myAR;
 			if (!ShipController.TryGet(owner.currentAPblock, out myAR))
 			{
-				alwaysLog("failed to get ARShipController for currentRC(" + owner.currentAPblock.DisplayNameText + ")", "lastSeenHostile()", Logger.severity.WARNING);
-				log("needs update is " + owner.currentAPblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
+				myLogger.alwaysLog("failed to get ARShipController for currentRC(" + owner.currentAPblock.DisplayNameText + ")", "lastSeenHostile()", Logger.severity.WARNING);
+				myLogger.debugLog("needs update is " + owner.currentAPblock.NeedsUpdate, "lastSeenFriendly()", Logger.severity.DEBUG);
 				return false;
 			}
 			IEnumerator<LastSeen> allLastSeen = myAR.lastSeenEnumerator();
@@ -217,12 +198,10 @@ namespace Rynchodon.Autopilot
 			{
 				IMyCubeBlock Fatblock = block.FatBlock;
 
-				//log("checking block: "+fatblock.DisplayNameText, "findBestFriendly()", Logger.severity.TRACE);
-
 				string blockName = getBlockName(Fatblock);
 
-				//log("checking " + blockName + " contains " + blockContains, "findBestFriendly()", Logger.severity.TRACE);
-				log("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
+				//myLogger.debugLog("checking " + blockName + " contains " + blockContains, "findBestFriendly()", Logger.severity.TRACE);
+				myLogger.debugLog("compare match " + blockName + "(" + blockName.Length + ") to " + bestMatchLength, "findBestFriendly()", Logger.severity.TRACE);
 				if ((bestMatchBlock == null || blockName.Length < bestMatchLength)) // if better match
 				{
 					bestMatchBlock = Fatblock;

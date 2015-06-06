@@ -2,23 +2,15 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common;
-using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
-
-//using Rynchodon.Update;
+using VRage.ModAPI;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_Beacon))]
-	//public class Beacon : UpdateEnforcer
-	public class Beacon //: EntityScript<IMyCubeBlock>
+	public class Beacon
 	{
 		internal readonly bool isRadar = false;
 
@@ -31,28 +23,25 @@ namespace Rynchodon.AntennaRelay
 		{
 			CubeBlock = block;
 			myBeacon = block as Ingame.IMyBeacon;
+			myLogger = new Logger("Beacon", CubeBlock);
 
-			isSmallBlock =  block.CubeGrid.GridSizeEnum == MyCubeSize.Small;
+			isSmallBlock = block.CubeGrid.GridSizeEnum == MyCubeSize.Small;
 			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowRadar) && CubeBlock.BlockDefinition.SubtypeName.Contains(SubTypeSearchRadar))
 			{
 				isRadar = true;
-				log("init as radar: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+				myLogger.debugLog("init as radar: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			}
 			else
-				log("init as beacon: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
+				myLogger.debugLog("init as beacon: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
 			//UpdateManager.RegisterForUpdates(100, UpdateAfterSimulation100);
 
 			CubeBlock.OnClosing += Close;
 		}
 
-		//private bool isClosed = false;
 		private void Close(IMyEntity myEntity)
 		{
-			//radarCanSee = null;
 			CubeBlock = null;
 			myBeacon = null;
-			//MyObjectBuilder = null;
-			//isClosed = true;
 		}
 
 		/// <summary>Is this a small block?</summary>
@@ -74,7 +63,6 @@ namespace Rynchodon.AntennaRelay
 
 		public void UpdateAfterSimulation100()
 		{
-			//if (!IsInitialized) return;
 			if (CubeBlock == null || CubeBlock.Closed || CubeBlock.CubeGrid == null) return;
 			try
 			{
@@ -131,7 +119,6 @@ namespace Rynchodon.AntennaRelay
 				HashSet<IMyEntity> allGrids = new HashSet<IMyEntity>();
 				MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
 				foreach (IMyEntity ent in allGrids)
-				//if (ent is IMyCubeGrid || ent is IMyCharacter)
 				{
 					if (!ent.Save)
 						continue;
@@ -142,39 +129,20 @@ namespace Rynchodon.AntennaRelay
 					if (!CubeBlock.canSendTo(ent, false, power)) // not in range
 						continue;
 
-					//log("radar found a grid: " + (ent as IMyCubeGrid).DisplayName, "UpdateAfterSimulation100()", Logger.severity.TRACE);
-
 					// report to attached antennas and remotes
 					LastSeen seen = new LastSeen(ent, false, new RadarInfo(volume));
 					radarSees.AddLast(seen);
-
-					//foreach (RadioAntenna ant in RadioAntenna.registry)
-					//	if (CubeBlock.canSendTo(ant.CubeBlock, true))
-					//		ant.receive(seen);
-					//foreach (RemoteControl rem in RemoteControl.registry.Values)
-					//	if (CubeBlock.canSendTo(rem.CubeBlock, true))
-					//		rem.receive(seen);
 				}
 
 				Receiver.sendToAttached(CubeBlock, radarSees);
 			}
 			catch (Exception e)
-			{ alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
 		}
-
 
 		public override string ToString()
 		{ return CubeBlock.CubeGrid.DisplayName + "-" + myBeacon.DisplayNameText; }
 
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, "Beacon");
-			myLogger.log(level, method, toLog, CubeBlock.DisplayNameText);
-		}
 	}
 }

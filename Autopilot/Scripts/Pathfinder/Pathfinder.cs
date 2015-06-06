@@ -1,9 +1,10 @@
 ﻿#define LOG_ENABLED // remove on build
 
-using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
+using Sandbox.ModAPI;
 using VRage;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder

@@ -8,6 +8,8 @@ using Rynchodon.Autopilot.Instruction;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -17,16 +19,10 @@ namespace Rynchodon.Autopilot
 	{
 		private Logger myLogger = null;
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(level, method, toLog); }
+		private void debugLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		{ myLogger.debugLog(toLog, method, level); }
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.WARNING)
-		{ alwaysLog(level, method, toLog); }
-		private void alwaysLog(Logger.severity level, string method, string toLog)
-		{
-			try
-			{ myLogger.log(level, method, toLog, CNS.moveState.ToString() + ":" + CNS.rotateState.ToString(), CNS.landingState.ToString()); }
-			catch (Exception) { }
-		}
+		{ myLogger.alwaysLog(toLog, method, level); }
 
 		public Sandbox.ModAPI.IMyCubeGrid myGrid { get; private set; }
 
@@ -245,24 +241,24 @@ namespace Rynchodon.Autopilot
 						switch (CNS.getTypeOfWayDest())
 						{
 							case NavSettings.TypeOfWayDest.BLOCK:
-								log("got a block as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
+								debugLog("got a block as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
 								return;
 							case NavSettings.TypeOfWayDest.OFFSET:
-								log("got an offset as a destination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
+								debugLog("got an offset as a destination: " + CNS.GridDestName + ":" + CNS.BlockDestName + ":" + CNS.destination_offset, "update()", Logger.severity.INFO);
 								return;
 							case NavSettings.TypeOfWayDest.GRID:
-								log("got a grid as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
+								debugLog("got a grid as a destination: " + CNS.GridDestName, "update()", Logger.severity.INFO);
 								return;
 							case NavSettings.TypeOfWayDest.COORDINATES:
-								log("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								debugLog("got a new destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								return;
 							case NavSettings.TypeOfWayDest.LAND:
-								log("got a new landing destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								debugLog("got a new landing destination " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								return;
 							case NavSettings.TypeOfWayDest.NONE:
 								break; // keep searching
 							case NavSettings.TypeOfWayDest.WAYPOINT:
-								log("got a new waypoint destination (harvesting) " + CNS.getWayDest(), "update()", Logger.severity.INFO);
+								debugLog("got a new waypoint destination (harvesting) " + CNS.getWayDest(), "update()", Logger.severity.INFO);
 								return;
 							default:
 								alwaysLog("got an invalid TypeOfWayDest: " + CNS.getTypeOfWayDest(), "update()", Logger.severity.FATAL);
@@ -310,7 +306,7 @@ namespace Rynchodon.Autopilot
 								if (myInterpreter.hasInstructions())
 								{
 									CNS.startOfCommands();
-									log("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instruction", "update()", Logger.severity.TRACE);
+									debugLog("remote control: " + fatBlock.getNameOnly() + " finished queuing " + myInterpreter.instructionQueue.Count + " instruction", "update()", Logger.severity.TRACE);
 									return;
 								}
 								myLogger.debugLog("failed to enqueue actions from " + fatBlock.getNameOnly(), "update()", Logger.severity.DEBUG);
@@ -344,7 +340,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (myGrid == null || myGrid.Closed)
 			{
-				log("grid is gone...", "gridCanNavigate()", Logger.severity.INFO);
+				debugLog("grid is gone...", "gridCanNavigate()", Logger.severity.INFO);
 				OnClose();
 				return false;
 			}
@@ -358,7 +354,7 @@ namespace Rynchodon.Autopilot
 					IMyPlayer controllingPlayer = MyAPIGateway.Players.GetPlayerControllingEntity(myGrid);
 					if (controllingPlayer != null)
 					{
-						log("player is controlling grid: " + controllingPlayer.DisplayName, "gridCanNavigate()", Logger.severity.TRACE);
+						debugLog("player is controlling grid: " + controllingPlayer.DisplayName, "gridCanNavigate()", Logger.severity.TRACE);
 						player_controlling = true;
 					}
 				}
@@ -366,7 +362,7 @@ namespace Rynchodon.Autopilot
 			}
 			if (player_controlling)
 			{
-				log("player(s) released controls", "gridCanNavigate()", Logger.severity.TRACE);
+				debugLog("player(s) released controls", "gridCanNavigate()", Logger.severity.TRACE);
 				player_controlling = false;
 			}
 
@@ -382,22 +378,22 @@ namespace Rynchodon.Autopilot
 		{
 			if (autopilotBlock == null)
 			{
-				log("no remote control", "autopilotBlockIsReady()", Logger.severity.TRACE);
+				debugLog("no remote control", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
 			if (!autopilotBlock.IsWorking)
 			{
-				log("not working", "autopilotBlockIsReady()", Logger.severity.TRACE);
+				debugLog("not working", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
 			if (autopilotBlock.CubeGrid.BigOwners.Count == 0) // no owner
 			{
-				log("no owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
+				debugLog("no owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
 			if (autopilotBlock.OwnerId != autopilotBlock.CubeGrid.BigOwners[0]) // remote control is not owned by grid's owner
 			{
-				log("remote has different owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
+				debugLog("remote has different owner", "autopilotBlockIsReady()", Logger.severity.TRACE);
 				return false;
 			}
 			if (!(autopilotBlock as Ingame.IMyShipController).ControlThrusters)
@@ -485,18 +481,18 @@ namespace Rynchodon.Autopilot
 				CNS.atWayDest();
 				if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.NONE)
 				{
-					alwaysLog(Logger.severity.ERROR, "checkAt_wayDest()", "Error no more destinations at Navigator.checkAt_wayDest() // at waypoint");
+					alwaysLog("Error no more destinations at Navigator.checkAt_wayDest() // at waypoint", "checkAt_wayDest()", Logger.severity.ERROR);
 					fullStop("No more dest");
 				}
 				else
-					log("reached waypoint, next type is " + CNS.getTypeOfWayDest() + ", coords: " + CNS.getWayDest(), "checkAt_wayDest()", Logger.severity.INFO);
+					debugLog("reached waypoint, next type is " + CNS.getTypeOfWayDest() + ", coords: " + CNS.getWayDest(), "checkAt_wayDest()", Logger.severity.INFO);
 				return true;
 			}
 
 			if (CNS.match_direction == null && CNS.landLocalBlock == null)
 			{
 				fullStop("At dest");
-				log("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
+				debugLog("reached destination dist = " + MM.distToWayDest + ", proximity = " + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.INFO);
 				CNS.atWayDest();
 				return true;
 			}
@@ -505,13 +501,13 @@ namespace Rynchodon.Autopilot
 				fullStop("At dest, orient or land");
 				if (CNS.landLocalBlock != null)
 				{
-					log("near dest, start landing. dist=" + MM.distToWayDest + ", radius=" + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.DEBUG);
+					debugLog("near dest, start landing. dist=" + MM.distToWayDest + ", radius=" + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.DEBUG);
 					myLand = new Lander(this);
 					myLand.landGrid(MM); // start landing
 				}
 				else // CNS.match_direction != null
 				{
-					log("near dest, start orient. dist=" + MM.distToWayDest + ", radius=" + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.DEBUG);
+					debugLog("near dest, start orient. dist=" + MM.distToWayDest + ", radius=" + CNS.destinationRadius, "checkAt_wayDest()", Logger.severity.DEBUG);
 					myLand = new Lander(this);
 					myLand.matchOrientation(); // start match
 				}
@@ -628,7 +624,7 @@ namespace Rynchodon.Autopilot
 					{
 						if (CNS.isAMissile)
 						{
-							log("missile needs to stop sideling", "calcMoveAndRotate()", Logger.severity.DEBUG);
+							debugLog("missile needs to stop sideling", "calcMoveAndRotate()", Logger.severity.DEBUG);
 							fullStop("stop sidel: converted to missile");
 							break;
 						}
@@ -643,7 +639,7 @@ namespace Rynchodon.Autopilot
 					}
 				default:
 					{
-						log("Not Yet Implemented, state = " + CNS.moveState, "calcMoveAndRotate()", Logger.severity.ERROR);
+						debugLog("Not Yet Implemented, state = " + CNS.moveState, "calcMoveAndRotate()", Logger.severity.ERROR);
 						break;
 					}
 			}
@@ -762,8 +758,8 @@ namespace Rynchodon.Autopilot
 								if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
 								{
 									moveDirection = course;
-									log("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
-									log("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
+									debugLog("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
+									debugLog("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
 								}
 								break;
 							}
@@ -780,7 +776,7 @@ namespace Rynchodon.Autopilot
 					Vector3 RemFromNF = Base6Directions.GetVector(currentAPblock.LocalMatrix.GetClosestDirection(ref NavForward));
 
 					moveOrder(RemFromNF); // move forward
-					log("forward = " + RemFromNF + ", moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
+					debugLog("forward = " + RemFromNF + ", moving " + MM.distToWayDest + " to " + CNS.getWayDest(), "calcAndMove()", Logger.severity.DEBUG);
 				}
 			}
 			finally
@@ -839,7 +835,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		internal void fullStop(string reason)
 		{
-			log("full stop: " + reason, "fullStop()", Logger.severity.INFO);
+			debugLog("full stop: " + reason, "fullStop()", Logger.severity.INFO);
 			currentMove = Vector3.Zero;
 			currentRotate = Vector2.Zero;
 			currentRoll = 0;
@@ -882,13 +878,13 @@ namespace Rynchodon.Autopilot
 		{
 			if (currentMove == Vector3.Zero && currentRotate == Vector2.Zero && currentRoll == 0)
 			{
-				log("MAR is actually stop", "moveAndRotate()");
+				debugLog("MAR is actually stop", "moveAndRotate()");
 				currentAPcontrollable.MoveAndRotateStopped();
 			}
 			else
 			{
 				if (CNS.moveState != NavSettings.Moving.HYBRID)
-					log("doing MAR(" + currentMove + ", " + currentRotate + ", " + currentRoll + ")", "moveAndRotate()");
+					debugLog("doing MAR(" + currentMove + ", " + currentRotate + ", " + currentRoll + ")", "moveAndRotate()");
 				currentAPcontrollable.MoveAndRotate(currentMove, currentRotate, currentRoll);
 			}
 		}
@@ -924,13 +920,13 @@ namespace Rynchodon.Autopilot
 				{
 					currentAPcontrollable.SwitchDamping(); // sometimes SwitchDamping() throws a NullReferenceException while grid is being destroyed
 					if (!dampenersOn)
-						log("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+						debugLog("speed control: disabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
 					else
-						log("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
+						debugLog("speed control: enabling dampeners. speed=" + MM.movementSpeed + ", cruise=" + CNS.getSpeedCruise() + ", slow=" + CNS.getSpeedSlow(), "setDampeners()", Logger.severity.TRACE);
 				}
 			}
 			catch (NullReferenceException)
-			{ log("setDampeners() threw NullReferenceException", "setDampeners()", Logger.severity.DEBUG); }
+			{ debugLog("setDampeners() threw NullReferenceException", "setDampeners()", Logger.severity.DEBUG); }
 		}
 
 		public override string ToString()
@@ -964,7 +960,7 @@ namespace Rynchodon.Autopilot
 			string displayName = (currentAutopilotBlock_Value as Sandbox.ModAPI.IMyCubeBlock).DisplayNameText;
 			if (displayName == null)
 			{
-				alwaysLog(Logger.severity.WARNING, "reportState()", "cannot report without display name");
+				alwaysLog("cannot report without display name", "reportState()", Logger.severity.WARNING);
 				return;
 			}
 

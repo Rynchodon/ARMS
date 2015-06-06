@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
-using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Components;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -32,11 +31,6 @@ namespace Rynchodon
 					}
 				}
 			}
-			//MyObjectBuilder_EntityBase builder = entity.GetObjectBuilder();
-			//if (builder != null)
-			//	name += "." + builder.TypeId;
-			//else
-			//	name += "." + entity.EntityId;
 			return name;
 		}
 

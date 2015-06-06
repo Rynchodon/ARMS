@@ -2,18 +2,11 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common;
-using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-
 using VRage;
-using VRage.Collections;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -36,6 +29,7 @@ namespace Rynchodon
 
 		private CubeGridCache(IMyCubeGrid grid)
 		{
+			myLogger = new Logger("CubeGridCache", () => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock is IMyTerminalBlock);
@@ -48,7 +42,7 @@ namespace Rynchodon
 			CubeGrid.OnClose += CubeGrid_OnClose;
 
 			registry.Add(CubeGrid, this); // protected by GetFor()
-			log("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
+			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
 		private void CubeGrid_OnClose(IMyEntity grid)
@@ -139,7 +133,7 @@ namespace Rynchodon
 				setBlocks_Type.mutable().Add(asTerm);
 				setBlocks_Def.mutable().Add(asTerm);
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
@@ -173,7 +167,7 @@ namespace Rynchodon
 				setBlocks_Type.mutable().Remove(asTerm);
 				setBlocks_Def.mutable().Remove(asTerm);
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
@@ -271,14 +265,5 @@ namespace Rynchodon
 
 
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(CubeGrid.DisplayName, "CubeGridCache");
-			myLogger.log(level, method, toLog);
-		}
 	}
 }

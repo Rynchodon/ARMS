@@ -5,7 +5,6 @@ using System.Text;
 
 using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
-using Sandbox.Common.ObjectBuilders;
 using VRageMath;
 using VRage;
 

@@ -2,8 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.AntennaRelay
@@ -27,7 +27,6 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="knownName"></param>
 		public LastSeen(IMyEntity entity, bool EntityHasRadar = false, RadarInfo info = null)
 		{
-			//(new Logger(null, "LastSeen")).log(Logger.severity.TRACE, ".ctor()", "entity = " + entity + ", entity name = " + entity.getBestName() + ", EntityHasRadar = " + EntityHasRadar);
 			this.Entity = entity;
 			this.LastSeenAt = DateTime.UtcNow;
 			this.LastKnownPosition = entity.WorldAABB.Center;
@@ -73,9 +72,6 @@ namespace Rynchodon.AntennaRelay
 			if (this.isNewerThan(toUpdate)
 				|| (this.Info != null && (toUpdate.Info == null || this.Info.IsNewerThan(toUpdate.Info)))
 				|| this.EntityHasRadar && !toUpdate.EntityHasRadar)
-			//if ((!this.EntityHasRadar && toUpdate.EntityHasRadar) ||
-			//	(toUpdate.Info != null && (this.Info == null || this.Info.IsNewerThan(toUpdate.Info))) ||
-			//	(this.isNewerThan(toUpdate)))
 			{
 				LastSeen param = toUpdate;
 				toUpdate = new LastSeen(this, toUpdate);
@@ -113,18 +109,6 @@ namespace Rynchodon.AntennaRelay
 		/// <returns></returns>
 		public bool isRecent()
 		{ return (DateTime.UtcNow - LastSeenAt).TotalSeconds < 10; }
-
-		private static string ClassName = "LastSeen";
-		private static Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private static void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(null, ClassName);
-			myLogger.log(level, method, toLog);
-		}
 	}
 
 	public class RadarInfo
@@ -184,11 +168,8 @@ namespace Rynchodon.AntennaRelay
 		public static List<Message> buildMessages(string Content, string DestGridName, string DestBlockName, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
 		{
 			List<Message> result = new List<Message>();
-			log("testing " + ProgrammableBlock.registry.Count + " programmable blocks", "buildMessages()", Logger.severity.TRACE);
 			foreach (IMyCubeBlock DestBlock in ProgrammableBlock.registry.Keys)
 			{
-				log("testing " + DestBlock.gridBlockName(), "buildMessages()", Logger.severity.TRACE);
-				//IMyCubeBlock DestBlock = Pair.Key;
 				IMyCubeGrid DestGrid = DestBlock.CubeGrid;
 				if (DestGrid.DisplayName.looseContains(DestGridName) // grid matches
 					&& DestBlock.DisplayNameText.looseContains(DestBlockName)) // block matches
@@ -218,18 +199,6 @@ namespace Rynchodon.AntennaRelay
 				if (value == false)
 					value_isValid = false;
 			}
-		}
-
-
-		private static Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private static void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(null, "Message");
-			myLogger.log(level, method, toLog);
 		}
 	}
 }
