@@ -2,8 +2,7 @@ Demonstration world for Autopilot
 
 Requires [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] Autopilot [/url]
 
-All of the Remote Controls are initially turned off.
-I have renamed some of the remotes "RC".
+All of the Autopilot blocks are initially turned off.
 Where the "Commands" group exists, the Autopilot will be reading commands from that text panel.
 
 Drones:
