@@ -62,8 +62,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 			myCubeGrid.OnBlockRemoved += Grid_OnBlockRemoved;
 			myCubeGrid.OnClose += Grid_OnClose;
 
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Add(this.myCubeGrid, this);
+			lock_registry.AcquireExclusive();
+			try
+			{ registry.Add(this.myCubeGrid, this); }
+			finally
+			{ lock_registry.ReleaseExclusive(); }
 		}
 
 		/// <summary>
@@ -71,8 +74,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnBlockAdded(IMySlimBlock slim)
 		{
-			using (lock_SlimBlocks.AcquireExclusiveUsing())
-				SlimBlocks.mutable().Add(slim);
+			lock_SlimBlocks.AcquireExclusive();
+			try
+			{ SlimBlocks.mutable().Add(slim); }
+			finally
+			{ lock_SlimBlocks.ReleaseExclusive(); }
 		}
 
 		/// <summary>
@@ -80,8 +86,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnBlockRemoved(IMySlimBlock slim)
 		{
-			using (lock_SlimBlocks.AcquireExclusiveUsing())
-				SlimBlocks.mutable().Add(slim);
+			lock_SlimBlocks.AcquireExclusive();
+			try
+			{ SlimBlocks.mutable().Add(slim); }
+			finally
+			{ lock_SlimBlocks.ReleaseExclusive(); }
 		}
 
 		/// <summary>
@@ -90,16 +99,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void Grid_OnClose(IMyEntity obj)
 		{
 			// remove references to this
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(myCubeGrid);
+			lock_registry.AcquireExclusive();
+			try
+			{ registry.Remove(myCubeGrid); }
+			finally
+			{ lock_registry.ReleaseExclusive(); }
 
 			myCubeGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			myCubeGrid.OnBlockRemoved -= Grid_OnBlockRemoved;
 			myCubeGrid.OnClose -= Grid_OnClose;
 
 			// invalidate
-			using (lock_SlimBlocks.AcquireExclusiveUsing())
-				SlimBlocks = null;
+			lock_SlimBlocks.AcquireExclusive();
+			try
+			{ SlimBlocks = null; }
+			finally
+			{ lock_SlimBlocks.ReleaseExclusive(); }
 			myCubeGrid = null;
 		}
 
@@ -113,9 +128,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public static GridShapeProfiler getFor(IMyCubeGrid grid)
 		{
 			GridShapeProfiler result;
-			using (lock_registry.AcquireSharedUsing())
+			lock_registry.AcquireShared();
+			try
+			{
 				if (registry.TryGetValue(grid, out result))
 					return result;
+			}
+			finally
+			{ lock_registry.ReleaseShared(); }
 
 			return new GridShapeProfiler(grid);
 		}
@@ -172,8 +192,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 			rejectionCells = new MyUniqueList<Vector3>();
 
 			ReadOnlyList<IMySlimBlock> immutable;
-			using (lock_SlimBlocks.AcquireSharedUsing())
-				immutable = SlimBlocks.immutable();
+			lock_SlimBlocks.AcquireShared();
+			try
+			{ immutable = SlimBlocks.immutable(); }
+			finally
+			{ lock_SlimBlocks.ReleaseShared(); }
 
 			CentreRejection = RejectMetres(Centre);
 			foreach (IMySlimBlock slim in immutable)

@@ -24,15 +24,18 @@ namespace Rynchodon
 
 		public void EnqueueAction(Action toQueue)
 		{
-			using (lock_ActionQueue.AcquireExclusiveUsing())
-				ActionQueue.Enqueue(toQueue);
+			lock_ActionQueue.AcquireExclusive();
+			try { ActionQueue.Enqueue(toQueue); }
+			finally { lock_ActionQueue.ReleaseExclusive(); }
 
-			using (lock_parallelTasks.AcquireExclusiveUsing())
+			lock_parallelTasks.AcquireExclusive();
+			try
 			{
 				if (parallelTasks >= AllowedParallel)
 					return;
 				parallelTasks++;
 			}
+			finally { lock_parallelTasks.ReleaseExclusive(); }
 
 			MyAPIGateway.Parallel.Start(Run);
 		}
@@ -44,19 +47,23 @@ namespace Rynchodon
 				Action currentItem;
 				while (true)
 				{
-					using (lock_ActionQueue.AcquireExclusiveUsing())
+					lock_ActionQueue.AcquireExclusive();
+					try
 					{
 						if (ActionQueue.Count == 0)
 							return;
 						currentItem = ActionQueue.Dequeue();
 					}
+					finally { lock_ActionQueue.ReleaseExclusive(); }
 					currentItem();
 				}
 			}
 			finally
 			{
-				using (lock_parallelTasks.AcquireExclusiveUsing())
-					parallelTasks--;
+				lock_parallelTasks.AcquireExclusive();
+				try
+				{ parallelTasks--; }
+				finally { lock_parallelTasks.ReleaseExclusive(); }
 			}
 		}
 	}
