@@ -13,7 +13,7 @@ namespace Rynchodon
 		public enum SettingName : byte
 		{
 			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
-			yParallelPathCheck,
+			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed,
 			sSmartTurretDefaultNPC, sSmartTurretDefaultPlayer
 		}
@@ -66,21 +66,13 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));
 
-			AllSettings.Add(SettingName.yParallelPathCheck, new SettingMinMax<byte>(1, 100, 1));
+			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
-			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, 100));
+			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
 
 			AllSettings.Add(SettingName.sSmartTurretDefaultNPC, new SettingString("[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]"));
 			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
-		}
-
-		/// <summary>
-		/// write bool settings to log if they are different from defaults
-		/// </summary>
-		private static void ReportBoolSettings()
-		{
-
 		}
 
 		/// <summary>
@@ -200,14 +192,10 @@ namespace Rynchodon
 
 		private class SettingSimple<T> : Setting where T : struct
 		{
-			public readonly T DefaultValue;
 			public T Value { get; protected set; }
 
 			public SettingSimple(T defaultValue)
-			{
-				this.DefaultValue = defaultValue;
-				this.Value = defaultValue;
-			}
+			{ this.Value = defaultValue; }
 
 			public string ValueAsString()
 			{ return Value.ToString(); }
