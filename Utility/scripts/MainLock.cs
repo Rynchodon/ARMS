@@ -14,20 +14,24 @@ namespace Rynchodon
 	public static class MainLock
 	{
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
-		private static bool ExclusiveHeld = false;
+		private static FastResourceLock Lock_Lock = new FastResourceLock();
+
+		static MainLock()
+		{ Lock_MainThread.AcquireExclusive(); }
 
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
 		/// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
-		public static bool MainThread_TryAcquireExclusive()
+		public static void MainThread_TryAcquireExclusive()
 		{
-			if (ExclusiveHeld)
-				return false;
+			using (Lock_Lock.AcquireExclusiveUsing())
+			{
+				if (Lock_MainThread.Owned && Lock_MainThread.SharedOwners == 0)
+					throw new InvalidOperationException("Exclusive lock is already held.");
 
-			Lock_MainThread.AcquireExclusive();
-			ExclusiveHeld = true;
-			return true;
+				Lock_MainThread.AcquireExclusive();
+			}
 		}
 
 		/// <summary>
@@ -36,22 +40,42 @@ namespace Rynchodon
 		/// <returns>true if exclusive lock was released, false if it is not held</returns>
 		public static bool MainThread_TryReleaseExclusive()
 		{
-			if (!ExclusiveHeld)
-				return false;
+			using (Lock_Lock.AcquireExclusiveUsing())
+			{
+				if (!Lock_MainThread.Owned || Lock_MainThread.SharedOwners != 0)
+					throw new InvalidOperationException("Exclusive lock is not held.");
 
-			Lock_MainThread.ReleaseExclusive();
-			ExclusiveHeld = false;
-			return true;
+				Lock_MainThread.ReleaseExclusive();
+				return true;
+			}
 		}
 
 		/// <summary>
 		/// perform an Action while using a shared lock on main thread.
 		/// </summary>
 		/// <param name="safeAction">Action to perform</param>
-		public static void UsingShared(Action safeAction)
+		public static void UsingShared(Action unsafeAction)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
-				safeAction.Invoke();
+				unsafeAction.Invoke();
+		}
+
+		/// <summary>
+		/// As UsingShared() but only performs action if no wait is required.
+		/// </summary>
+		/// <param name="unsafeAction">Action to perform</param>
+		/// <returns>true iff unsafeAction was performed</returns>
+		public static bool TryUsingShared(Action unsafeAction)
+		{
+			if (!Lock_MainThread.TryAcquireShared())
+				return false;
+
+			try
+			{
+				unsafeAction.Invoke();
+				return true;
+			}
+			finally { Lock_MainThread.ReleaseShared(); }
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
