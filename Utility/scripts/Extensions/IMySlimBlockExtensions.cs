@@ -1,8 +1,5 @@
-﻿using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System;
+using Sandbox.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -37,26 +34,6 @@ namespace Rynchodon
 				FatBlock. Min.ForEachVector(FatBlock.Max, invokeOnEach);
 			}
 		}
-
-		///// <summary>
-		///// performs an action on each cell a block occupies plus all the surrounding cells
-		///// </summary>
-		///// <param name="invokeOnEach">function to call for each vector, if it return true short-curcuit</param>
-		//public static void ForEachCellSurround(this IMySlimBlock block, Func<Vector3I, bool> invokeOnEach, int extend = 1)
-		//{
-		//	IMyCubeBlock FatBlock = block.FatBlock;
-		//	if (FatBlock == null)
-		//	{
-		//		Vector3I min, max;
-		//		min.ForEachVector(max, invokeOnEach);
-		//	}
-		//	else
-		//	{
-		//		float gridSize = block.CubeGrid.GridSize;
-		//		Vector3I min, max;
-		//		min.ForEachVector(max, invokeOnEach);
-		//	}
-		//}
 
 		public static Vector3 LocalPosition(this IMySlimBlock block)
 		{ return block.Position * block.CubeGrid.GridSize; }

@@ -3,9 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
@@ -29,14 +26,19 @@ namespace Rynchodon.Autopilot.Turret
 
 		public static void EnqueueAction(Action item, FastResourceLock lock_MyAPIGateway = null)
 		{
-			using (lock_TurretActions.AcquireExclusiveUsing())
-				TurretActions.Push(item);
-			using (lock_isRunning.AcquireExclusiveUsing())
+			lock_TurretActions.AcquireExclusive();
+			try { TurretActions.Push(item); }
+			finally { lock_TurretActions.ReleaseExclusive(); }
+
+			lock_isRunning.AcquireExclusive();
+			try
 			{
 				if (isRunning)
 					return;
 				isRunning = true;
 			}
+			finally { lock_isRunning.ReleaseExclusive(); }
+
 			if (lock_MyAPIGateway != null)
 				lock_MyAPIGateway.AcquireShared();
 			try { MyAPIGateway.Parallel.Start(Run); }
@@ -51,13 +53,18 @@ namespace Rynchodon.Autopilot.Turret
 		{
 			while (true)
 			{
-				using (lock_TurretActions.AcquireSharedUsing())
+				lock_TurretActions.AcquireShared();
+				try
+				{
 					if (TurretActions.Count == 0)
 						break;
+				}
+				finally { lock_TurretActions.ReleaseShared(); }
 
 				Action currentItem;
-				using (lock_TurretActions.AcquireExclusiveUsing())
-					currentItem = TurretActions.Pop();
+				lock_TurretActions.AcquireExclusive();
+				try { currentItem = TurretActions.Pop(); }
+				finally { lock_TurretActions.ReleaseExclusive(); }
 
 				currentItem();
 				//logFinished();
@@ -68,8 +75,9 @@ namespace Rynchodon.Autopilot.Turret
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private static void logFinished()
 		{
-			using (lock_TurretActions.AcquireSharedUsing())
-				myLogger.debugLog("finished invoke, " + TurretActions.Count + " remaining", "Run()");
+			lock_TurretActions.AcquireShared();
+			try { myLogger.debugLog("finished invoke, " + TurretActions.Count + " remaining", "Run()"); }
+			finally { lock_TurretActions.ReleaseShared(); }
 		}
 	}
 }

@@ -1,13 +1,8 @@
 ﻿#define LOG_ENABLED //remove on build
 
-using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common.Components;
 using Sandbox.ModAPI;
-using VRage.Collections;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.AntennaRelay
@@ -26,7 +21,6 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		protected Receiver(IMyCubeBlock block)
 		{
-			//(new Logger(null, "Receiver")).log("init", "DelayedInit()", Logger.severity.TRACE);
 			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
 			EnemyNear = false;
@@ -35,13 +29,6 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		protected abstract void Close(IMyEntity entity);
-		//{
-		//	myLastSeen = null;
-		//	CubeBlock = null;
-		//	myMessages = null;
-		//}
-
-		//public abstract void Init(Sandbox.Common.ObjectBuilders.MyObjectBuilder_EntityBase objectBuilder);
 
 		private void CubeGrid_OnBlockOwnershipChanged(IMyCubeGrid obj)
 		{
@@ -76,30 +63,19 @@ namespace Rynchodon.AntennaRelay
 		public void receive(LastSeen seen, bool forced = false)
 		{
 			if (seen.Entity == CubeBlock.CubeGrid && !forced)
-				//{
-				//	alwaysLog("do not tell me about myself: ", "receive()", Logger.severity.TRACE);
 				return;
-			//}
 
 			LastSeen toUpdate;
 			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
 			{
 				if (seen.update(ref toUpdate))
 				{
-					//if (toUpdate.Entity.getBestName().looseContains("Leo"))// toUpdate.LastSeenAt.secondsSince() > 3)
-					//	log("updating: " + seen.Entity.getBestName(), "receive()", Logger.severity.TRACE);
 					myLastSeen.Remove(toUpdate.Entity.EntityId);
 					myLastSeen.Add(toUpdate.Entity.EntityId, toUpdate);
 				}
-				//else
-				//	if (toUpdate.Entity.getBestName().looseContains("Leo"))
-				//		log("not updating: " + seen.Entity.getBestName(), "receive()", Logger.severity.TRACE);
 			}
 			else
-				//{
 				myLastSeen.Add(seen.Entity.EntityId, seen);
-			//	log("got a new last seen: " + seen.Entity.DisplayName, "receive()", Logger.severity.TRACE);
-			//}
 		}
 
 		/// <summary>
@@ -246,15 +222,6 @@ namespace Rynchodon.AntennaRelay
 		{ return myLastSeen.Values.GetEnumerator(); }
 
 		private Logger myLogger = new Logger(null, "Receiver");
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
-		//protected void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{ alwaysLog(toLog, method, level); }
-		//protected override void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		//{
-		//	if (myLogger == null)
-		//		myLogger = new Logger(CubeBlock.CubeGrid.DisplayName, ClassName);
-		//	myLogger.log(level, method, toLog, CubeBlock.getNameOnly());
-		//}
 	}
 
 	public static class ReceiverExtensions

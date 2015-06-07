@@ -15,24 +15,23 @@ namespace Rynchodon.Autopilot
 	class Lander
 	{
 		private Logger myLogger = null;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
+		private void debugLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
 			if (myLogger == null)
 				myLogger = new Logger(myGrid.DisplayName, "Lander");
-			myLogger.log(level, method, toLog);
+			myLogger.debugLog(toLog, method, level);
 		}
 		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
 		{
 			if (myLogger == null)
 				myLogger = new Logger(myGrid.DisplayName, "Lander");
-			myLogger.log(level, method, toLog);
+			myLogger.alwaysLog(toLog, method, level);
 		}
 		private void alwaysLog(Logger.severity level, string method, string toLog)
 		{
 			if (myLogger == null)
 				myLogger = new Logger(myGrid.DisplayName, "Lander");
-			myLogger.log(level, method, toLog);
+			myLogger.alwaysLog(toLog, method, level);
 		}
 
 		private Navigator myNav;
@@ -44,6 +43,8 @@ namespace Rynchodon.Autopilot
 			this.myNav = myNav;
 			this.CNS = myNav.CNS;
 			this.myGrid = myNav.myGrid;
+
+			this.myLogger = new Logger("Lander", () => myGrid.DisplayName);
 		}
 
 		internal Vector3D? targetDirection = null;
@@ -60,7 +61,7 @@ namespace Rynchodon.Autopilot
 				CNS.getOrientationOfDest(out targetDirection, out targetRoll);
 				if (targetDirection == null)
 				{ matchOrientation_clear(); return; }
-				log("targetDirection=" + targetDirection + ", targetRoll=" + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
+				debugLog("targetDirection=" + targetDirection + ", targetRoll=" + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
 				matchOrientation_finished_rotating = false;
 			}
 			myNav.MM = new MovementMeasure(myNav, targetDirection, true);
@@ -72,7 +73,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (!matchOrientation_finished_rotating)
 				{
-					log("direction successfully matched pitch=" + myNav.MM.pitch + ", yaw=" + myNav.MM.yaw + ", " + myNav.MM.rotLenSq + " < " + rotLenSq_orientRota, "matchOrientation()", Logger.severity.DEBUG);
+					debugLog("direction successfully matched pitch=" + myNav.MM.pitch + ", yaw=" + myNav.MM.yaw + ", " + myNav.MM.rotLenSq + " < " + rotLenSq_orientRota, "matchOrientation()", Logger.severity.DEBUG);
 					//fullStop();
 					matchOrientation_finished_rotating = true;
 				}
@@ -91,7 +92,7 @@ namespace Rynchodon.Autopilot
 				}
 				else
 				{
-					log("roll successfully matched, roll=" + roll + ", rotLen_orient = " + rotLen_orientRoll + ", up = " + myNav.currentAPblock.WorldMatrix.Up + ", target = " + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
+					debugLog("roll successfully matched, roll=" + roll + ", rotLen_orient = " + rotLen_orientRoll + ", up = " + myNav.currentAPblock.WorldMatrix.Up + ", target = " + targetRoll, "matchOrientation()", Logger.severity.DEBUG);
 					//fullStop();
 					matchOrientation_clear(); return;
 				}
@@ -100,7 +101,7 @@ namespace Rynchodon.Autopilot
 
 		private void matchOrientation_clear()
 		{
-			log("clearing", "matchOrientation_clear()", Logger.severity.DEBUG);
+			debugLog("clearing", "matchOrientation_clear()", Logger.severity.DEBUG);
 			CNS.match_direction = null;
 			CNS.match_roll = null;
 			targetDirection = null;
@@ -112,7 +113,7 @@ namespace Rynchodon.Autopilot
 			if ((CNS.landLocalBlock != null && (CNS.landLocalBlock.Closed || !CNS.landLocalBlock.IsFunctional)) // test landLocalBlock for functional, we can turn it on
 				|| (CNS.CurrentGridDest != null && CNS.CurrentGridDest.Block != null && (CNS.CurrentGridDest.Block.Closed || !CNS.CurrentGridDest.Block.IsWorking)))
 			{
-				log("cannot land with broken block. " + CNS.landLocalBlock.Closed + " : " + CNS.CurrentGridDest.Block.Closed + " : " + !CNS.landLocalBlock.IsFunctional + " && " + !CNS.CurrentGridDest.Block.IsWorking, "landGrid()", Logger.severity.DEBUG);
+				debugLog("cannot land with broken block. " + CNS.landLocalBlock.Closed + " : " + CNS.CurrentGridDest.Block.Closed + " : " + !CNS.landLocalBlock.IsFunctional + " && " + !CNS.CurrentGridDest.Block.IsWorking, "landGrid()", Logger.severity.DEBUG);
 				CNS.landLocalBlock = null;
 				CNS.landingState = NavSettings.LANDING.OFF;
 				if (CNS.landingSeparateBlock != null)
@@ -124,7 +125,7 @@ namespace Rynchodon.Autopilot
 			{
 				case NavSettings.LANDING.OFF:
 					{
-						log("started landing procedures local=" + CNS.landLocalBlock.DisplayNameText + ", target=" + CNS.BlockDestName, "landGrid()", Logger.severity.DEBUG);
+						debugLog("started landing procedures local=" + CNS.landLocalBlock.DisplayNameText + ", target=" + CNS.BlockDestName, "landGrid()", Logger.severity.DEBUG);
 						CNS.landingSeparateWaypoint = CNS.getWayDest();
 						CNS.landingSeparateBlock = CNS.landLocalBlock;
 						calcOrientationFromBlockDirection(CNS.landLocalBlock);
@@ -140,7 +141,7 @@ namespace Rynchodon.Autopilot
 							matchOrientation(); //continue
 						else
 						{
-							log("starting to land", "landGrid()", Logger.severity.DEBUG);
+							debugLog("starting to land", "landGrid()", Logger.severity.DEBUG);
 							CNS.landingState = NavSettings.LANDING.LINEUP;
 							CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
 						}
@@ -262,7 +263,7 @@ namespace Rynchodon.Autopilot
 					//connector.GetActionWithName("OnOff_On").Apply(connector); // on
 					return false;
 				}
-				log("trying to lock connector", "lockLanding()", Logger.severity.TRACE);
+				debugLog("trying to lock connector", "lockLanding()", Logger.severity.TRACE);
 				connector.GetActionWithName("SwitchLock").Apply(connector); // lock
 				return false;
 			}
@@ -275,7 +276,7 @@ namespace Rynchodon.Autopilot
 				//landingGear.GetActionWithName("OnOff_On").Apply(landingGear); // on
 				if (!builder.AutoLock)
 				{
-					log("setting autolock", "lockLanding()", Logger.severity.TRACE);
+					debugLog("setting autolock", "lockLanding()", Logger.severity.TRACE);
 					landingGear.GetActionWithName("Autolock").Apply(landingGear); // autolock on
 					return false;
 				}
@@ -290,14 +291,14 @@ namespace Rynchodon.Autopilot
 				//	log("subblock[0]=" + builder.SubBlocks[0].SubGridName, "lockLanding()", Logger.severity.TRACE);
 				if (!mergeBlock.IsFunctional || !mergeBlock.IsWorking) //&& mergeMonitor.mergeStatus == MergeMonitor.MergeStatus.OFF)
 				{
-					log("merge block set", "lockLanding()", Logger.severity.TRACE);
+					debugLog("merge block set", "lockLanding()", Logger.severity.TRACE);
 					//mergeBlock.GetActionWithName("OnOff_On").Apply(mergeBlock); // on
 					mergeBlock.RequestEnable(true);
 				}
 				return false;
 			}
 
-			log("unknown lander block type " + CNS.landLocalBlock.DefinitionDisplayNameText, "lockLanding()", Logger.severity.INFO);
+			debugLog("unknown lander block type " + CNS.landLocalBlock.DefinitionDisplayNameText, "lockLanding()", Logger.severity.INFO);
 			return true; // assume there is nothing to lock
 		}
 
@@ -326,14 +327,14 @@ namespace Rynchodon.Autopilot
 				if (connector.IsConnected)
 				{
 					disconnected = false;
-					log("switching lock", "unlockLanding()", Logger.severity.TRACE);
+					debugLog("switching lock", "unlockLanding()", Logger.severity.TRACE);
 					connector.GetActionWithName("SwitchLock").Apply(connector); // unlock
 				}
 				//if ((CNS.landingSeparateBlock as Ingame.IMyFunctionalBlock).Enabled)
 				if (connector.Enabled)
 				{
 					disconnected = false;
-					log("turning off", "unlockLanding()", Logger.severity.TRACE);
+					debugLog("turning off", "unlockLanding()", Logger.severity.TRACE);
 					//connector.GetActionWithName("OnOff_Off").Apply(connector); // off
 					connector.RequestEnable(false);
 				}
@@ -357,13 +358,13 @@ namespace Rynchodon.Autopilot
 				if (builder.AutoLock)
 				{
 					disconnected = false;
-					log("autolock off", "unlockLanding()", Logger.severity.TRACE);
+					debugLog("autolock off", "unlockLanding()", Logger.severity.TRACE);
 					landingGear.GetActionWithName("Autolock").Apply(landingGear); // autolock off
 				}
 				if (builder.IsLocked)
 				{
 					disconnected = false;
-					log("landing gear switching lock", "unlockLanding()", Logger.severity.TRACE);
+					debugLog("landing gear switching lock", "unlockLanding()", Logger.severity.TRACE);
 					landingGear.GetActionWithName("SwitchLock").Apply(landingGear); // unlock
 				}
 				return disconnected;
@@ -377,14 +378,14 @@ namespace Rynchodon.Autopilot
 				if (mergeBlock.Enabled)
 				{
 					disconnected = false;
-					log("turning off merge block", "unlockLanding()", Logger.severity.TRACE);
+					debugLog("turning off merge block", "unlockLanding()", Logger.severity.TRACE);
 					//mergeBlock.GetActionWithName("OnOff_Off").Apply(connector); // off
 					mergeBlock.RequestEnable(false);
 				}
 				return disconnected;
 			}
 
-			log("unknown separate block type: " + CNS.landingSeparateBlock.DefinitionDisplayNameText, "unlockLanding()", Logger.severity.INFO);
+			debugLog("unknown separate block type: " + CNS.landingSeparateBlock.DefinitionDisplayNameText, "unlockLanding()", Logger.severity.INFO);
 			return true; // assume there is nothing to unlock
 		}
 
@@ -435,7 +436,7 @@ namespace Rynchodon.Autopilot
 				return true;
 			}
 
-			(new Logger(block.CubeGrid.DisplayName, "Lander")).log(Logger.severity.DEBUG, "landingDirection()", "failed to get direction for block: " + block.DefinitionDisplayNameText);
+			(new Logger(block.CubeGrid.DisplayName, "Lander")).debugLog("failed to get direction for block: " + block.DefinitionDisplayNameText, "landingDirection()", Logger.severity.DEBUG);
 			result = null;
 			return false;
 		}
@@ -491,7 +492,7 @@ namespace Rynchodon.Autopilot
 				return true;
 			}
 
-			myLogger.log(Logger.severity.ERROR, "direction_RCfromGrid", "failed to match direction: " + gridDirection);
+			myLogger.debugLog("failed to match direction: " + gridDirection, "direction_RCfromGrid", Logger.severity.ERROR);
 			result = null;
 			return false;
 		}
@@ -500,14 +501,14 @@ namespace Rynchodon.Autopilot
 		{
 			if (CNS.match_direction != null)
 			{
-				log("already have an orientation: " + CNS.match_direction + ":" + CNS.match_roll, "calcOrientationFromBlockDirection()", Logger.severity.TRACE);
+				debugLog("already have an orientation: " + CNS.match_direction + ":" + CNS.match_roll, "calcOrientationFromBlockDirection()", Logger.severity.TRACE);
 				return;
 			}
 
 			Base6Directions.Direction? landDirLocal;
 			if (!landingDirectionLocal(block, out landDirLocal))
 			{
-				log("could not get landing direction from block: " + block.DefinitionDisplayNameText, "calcOrientationFromBlockDirection()", Logger.severity.INFO);
+				debugLog("could not get landing direction from block: " + block.DefinitionDisplayNameText, "calcOrientationFromBlockDirection()", Logger.severity.INFO);
 				return;
 			}
 			Base6Directions.Direction? blockDirection;
@@ -540,7 +541,7 @@ namespace Rynchodon.Autopilot
 					CNS.match_roll = Base6Directions.GetCross((Base6Directions.Direction)CNS.match_direction, (Base6Directions.Direction)CNS.landDirection); //CNS.match_direction = Base6Directions.Direction.Right;
 					break;
 			}
-			log("landDirection = " + landDirLocal + ", blockDirection = " + blockDirection + ", match_direction = " + CNS.match_direction + ", match_roll = " + CNS.match_roll, "calcOrientationFromBlockDirection()", Logger.severity.DEBUG);
+			debugLog("landDirection = " + landDirLocal + ", blockDirection = " + blockDirection + ", match_direction = " + CNS.match_direction + ", match_roll = " + CNS.match_roll, "calcOrientationFromBlockDirection()", Logger.severity.DEBUG);
 		}
 	}
 }

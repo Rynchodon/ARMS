@@ -3,20 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common.Components;
+using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-
-using VRage;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
-
-using Rynchodon.AntennaRelay;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Turret
 {

@@ -39,7 +39,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
-		private static int latestVersion = 33; // in sequence of updates on steam
+		private static int latestVersion = 34; // in sequence of updates on steam
 
 		private static Logger myLogger = new Logger(null, "Settings");
 
@@ -63,7 +63,7 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowTurretControl, new SettingSimple<bool>(true));
-			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));
 
 			AllSettings.Add(SettingName.yParallelPathCheck, new SettingMinMax<byte>(1, 100, 1));
@@ -74,6 +74,14 @@ namespace Rynchodon
 
 			AllSettings.Add(SettingName.sSmartTurretCommandsNPC, new SettingString("Destroy ; (Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar)"));
 			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
+		}
+
+		/// <summary>
+		/// write bool settings to log if they are different from defaults
+		/// </summary>
+		private static void ReportBoolSettings()
+		{
+
 		}
 
 		/// <summary>
@@ -171,9 +179,9 @@ namespace Rynchodon
 			SettingName name;
 			if (Enum.TryParse<SettingName>(split[0], out name))
 				try
-				{ 
+				{
 					AllSettings[name].ValueFromString(split[1]);
-					myLogger.debugLog("AllSettings[" + name + "] = " + split[1], "parse()");
+					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()");
 				}
 				catch (Exception)
 				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
@@ -183,7 +191,11 @@ namespace Rynchodon
 
 		private interface Setting
 		{
+			/// <summary>Gets the Value of this Setting as a string.</summary>
+			/// <returns>string representation of Value.</returns>
 			string ValueAsString();
+			/// <summary>Sets the Value of this Setting from a string.</summary>
+			/// <param name="value">the string to get Value from</param>
 			void ValueFromString(string value);
 		}
 
@@ -193,7 +205,10 @@ namespace Rynchodon
 			public T Value { get; protected set; }
 
 			public SettingSimple(T defaultValue)
-			{ this.DefaultValue = defaultValue; }
+			{
+				this.DefaultValue = defaultValue;
+				this.Value = defaultValue;
+			}
 
 			public string ValueAsString()
 			{ return Value.ToString(); }
@@ -236,7 +251,7 @@ namespace Rynchodon
 			public string ValueAsString()
 			{ return Value; }
 
-			public virtual void ValueFromString(string value)
+			public void ValueFromString(string value)
 			{ this.Value = value; }
 		}
 	}

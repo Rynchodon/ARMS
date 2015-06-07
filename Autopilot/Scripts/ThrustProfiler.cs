@@ -2,10 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRageMath;
@@ -19,11 +15,6 @@ namespace Rynchodon.Autopilot
 	class ThrustProfiler
 	{
 		private Logger myLogger = null;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ myLogger.log(level, method, toLog); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.WARNING)
-		{ myLogger.log(level, method, toLog); }
 
 		/// <summary>
 		/// it is less expensive to remember some information about thrusters
@@ -64,7 +55,9 @@ namespace Rynchodon.Autopilot
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
 			if (grid == null)
-			{ (new Logger("", "ThrustProfiler")).log(Logger.severity.FATAL, "..ctor", "null parameter"); }
+				throw new NullReferenceException("grid");
+
+			myLogger = new Logger("ThrustProfiler", () => grid.DisplayName);
 			myLogger = new Logger(grid.DisplayName, "ThrustProfiler");
 			myGrid = grid;
 
@@ -73,7 +66,7 @@ namespace Rynchodon.Autopilot
 
 		private void init()
 		{
-			log("initializing", "init()", Logger.severity.TRACE);
+			myLogger.debugLog("initializing", "init()", Logger.severity.TRACE);
 			allMyThrusters = new Dictionary<IMyThrust, ThrusterProperties>();
 
 			thrustersInDirection = new Dictionary<Base6Directions.Direction, List<ThrusterProperties>>();
@@ -117,7 +110,7 @@ namespace Rynchodon.Autopilot
 					newThruster(added);
 			}
 			catch (Exception e)
-			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockAdded()", "Exception: " + e); }
+			{ myLogger.alwaysLog("Exception: " + e,"grid_OnBlockAdded()", Logger.severity.ERROR); }
 		}
 
 		/// <summary>
@@ -143,13 +136,13 @@ namespace Rynchodon.Autopilot
 				{
 					allMyThrusters.Remove(asThrust);
 					thrustersInDirection[properties.forceDirect].Remove(properties);
-					log("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + ", " + properties, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
+					myLogger.debugLog("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + ", " + properties, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
 					return;
 				}
 				myLogger.debugLog("could not get properties for thruster", "grid_OnBlockRemoved()", Logger.severity.ERROR);
 			}
 			catch (Exception e)
-			{ myLogger.log(Logger.severity.ERROR, "grid_OnBlockRemoved()", "Exception: " + e); }
+			{ myLogger.alwaysLog("Exception: " + e, "grid_OnBlockRemoved()", Logger.severity.ERROR); }
 		}
 
 		/// <summary>

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
-using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Weapons

@@ -1,12 +1,9 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
-using System.Collections.Generic;
-
+using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
 using VRageMath;
-
-using Rynchodon.AntennaRelay;
 
 namespace Rynchodon.Autopilot.NavigationSettings
 {
@@ -169,7 +166,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		{
 			float minSetting = Math.Max(Math.Min(speedCruise_internal, speedCruise_external), 0.2f);
 			float maxSetting = getSpeedSlow();
-			//log("min of (" + speedCruise_internal + ", " + speedCruise_external + ", " + maxSetting + ")", "getCruiseSpeed", Logger.severity.TRACE);
+			//myLogger.debugLog("min of (" + speedCruise_internal + ", " + speedCruise_external + ", " + maxSetting + ")", "getCruiseSpeed", Logger.severity.TRACE);
 			if (minSetting < maxSetting)
 				return minSetting;
 			else
@@ -177,7 +174,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		}
 		public float getSpeedSlow()
 		{
-			//log("min of (" + speedSlow_internal + ", " + speedSlow_external +")", "getSpeedSlow", Logger.severity.TRACE);
+			//myLogger.debugLog("min of (" + speedSlow_internal + ", " + speedSlow_external +")", "getSpeedSlow", Logger.severity.TRACE);
 			return Math.Max(Math.Min(speedSlow_internal, speedSlow_external), 0.3f);
 		}
 		public void clearSpeedInternal()
@@ -190,9 +187,6 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		#endregion
 
 		private Logger myLogger = new Logger(null, "NavSettings");
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ myLogger.log(level, method, toLog); }
 
 		/// <summary>
 		/// sets coordinates as centreDestination
@@ -255,7 +249,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 				case TypeOfWayDest.GRID:
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
-					log("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
+					myLogger.debugLog("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
 					CurrentGridDest = null;
 					coordDestination = null;
 					destination_offset = Vector3.Zero;
@@ -274,7 +268,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					// sometimes destinations get cleared twice, so ignore
 					return;
 				default:
-					log("unknown type " + typeToRemove, "atWayDest()", Logger.severity.ERROR);
+					myLogger.debugLog("unknown type " + typeToRemove, "atWayDest()", Logger.severity.ERROR);
 					return;
 			}
 		}
@@ -309,7 +303,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 				case TypeOfWayDest.NONE:
 					return null;
 				default:
-					log("unknown type " + type, "getWayDest()", Logger.severity.ERROR);
+					myLogger.debugLog("unknown type " + type, "getWayDest()", Logger.severity.ERROR);
 					return null;
 			}
 		}
@@ -356,11 +350,11 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					case LANDING.LINEUP:
 					case LANDING.SEPARATE:
 						useLandOffset = landOffset * 10f;
-						//log("landingState=" + landingState + ", useLandOffset=" + useLandOffset + ", landOffset=" + landOffset, "offsetToWorld()", Logger.severity.TRACE);
+						//myLogger.debugLog("landingState=" + landingState + ", useLandOffset=" + useLandOffset + ", landOffset=" + landOffset, "offsetToWorld()", Logger.severity.TRACE);
 						break;
 					case LANDING.LAND:
 						useLandOffset = Vector3.Zero;
-						//log("landingState=" + landingState + ", useLandOffset=" + useLandOffset + ", landOffset=" + landOffset, "offsetToWorld()", Logger.severity.TRACE);
+						//myLogger.debugLog("landingState=" + landingState + ", useLandOffset=" + useLandOffset + ", landOffset=" + landOffset, "offsetToWorld()", Logger.severity.TRACE);
 						break;
 				}
 			}
@@ -369,8 +363,8 @@ namespace Rynchodon.Autopilot.NavigationSettings
 			world += (destination_offset.Y + useLandOffset.Y) * CurrentGridDest.Block.WorldMatrix.Up;
 			world += (destination_offset.Z + useLandOffset.Z) * CurrentGridDest.Block.WorldMatrix.Backward;
 
-			//log("grabbed vectors: " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Left) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Up) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Forward), "offsetToWorld()");
-			//log("destination_offset=" + destination_offset + ", landingState=" + landingState + ", landOffset is " + landOffset + ", useLandOffset is " + useLandOffset + ", world vector is " + world, "offsetToWorld()", Logger.severity.TRACE);
+			//myLogger.debugLog("grabbed vectors: " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Left) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Up) + ", " + Base6Directions.GetVector(CurrentGridDest.Block.Orientation.Forward), "offsetToWorld()");
+			//myLogger.debugLog("destination_offset=" + destination_offset + ", landingState=" + landingState + ", landOffset is " + landOffset + ", useLandOffset is " + useLandOffset + ", world vector is " + world, "offsetToWorld()", Logger.severity.TRACE);
 			return world;
 		}
 
@@ -381,7 +375,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 				case TypeOfWayDest.BLOCK:
 				case TypeOfWayDest.OFFSET:
 				case TypeOfWayDest.LAND:
-					log("match_direction=" + match_direction + ", match_roll=" + match_roll);
+					myLogger.debugLog("match_direction=" + match_direction + ", match_roll=" + match_roll, "getOrientationOfDest()");
 					if (match_direction == null) { direction = null; roll = null; return; }
 
 					// do direction
@@ -395,7 +389,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					return;
 				default:
 					{
-						log("orientation not supported for " + getTypeOfWayDest(), "getOrientationOfDest()", Logger.severity.DEBUG);
+						myLogger.debugLog("orientation not supported for " + getTypeOfWayDest(), "getOrientationOfDest()", Logger.severity.DEBUG);
 						direction = null; roll = null; return;
 					}
 			}

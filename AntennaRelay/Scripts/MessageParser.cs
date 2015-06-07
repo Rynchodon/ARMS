@@ -1,20 +1,9 @@
 ﻿#define LOG_ENABLED // remove on build
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
-using Sandbox.Common;
-using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Definitions;
-using Sandbox.Engine;
-using Sandbox.Game;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -36,7 +25,7 @@ namespace Rynchodon.AntennaRelay
 			int length = name.LastIndexOf(endOfSend) - start;
 			if (start <= startOfSend.Length || length < 1) // nothing to send
 			{
-				log("nothing to send for " + name, "getFromName()", Logger.severity.TRACE);
+				myLogger.debugLog("nothing to send for " + name, "getFromName()", Logger.severity.TRACE);
 				return null;
 			}
 
@@ -48,7 +37,7 @@ namespace Rynchodon.AntennaRelay
 			string message;
 			if (sent.Length < 3) // not possible to send
 			{
-				log("cannot send while split has length " + sent.Length + ", for " + name, "getFromName()", Logger.severity.DEBUG);
+				myLogger.debugLog("cannot send while split has length " + sent.Length + ", for " + name, "getFromName()", Logger.severity.DEBUG);
 				return null;
 			}
 			else if (sent.Length == 3)
@@ -83,11 +72,5 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private static Logger myLogger = new Logger(null, "MessageParser");
-
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private static void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ myLogger.log(level, method, toLog); }
 	}
 }

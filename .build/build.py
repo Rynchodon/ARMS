@@ -132,17 +132,25 @@ def copyFiles(l_source):
 			l_destFile = destScript + "\\" + l_destFileName
 			l_destFileDev = destScriptDev + "\\" + l_destFileName
 
-			if ("remove on build" in lines[0]):
-				#print ("removing first line" +" in "+file)
-				lines[0] = "// line removed by build.py "
-				destFile = open(l_destFile, 'w')
-				for line in lines:
-					destFile.write(line)
-				destFile.close()
-			else:
-				shutil.copy(file, l_destFile)
+			# fake the pre-processor
+			# remove symbols so scripts will compile
+			# remove Conditional in Dev version
+			# compiler will still remove Conditional statements in released version
+			destFile = open(l_destFile, 'w')
+			destFileDev = open(l_destFileDev, 'w')
+			for line in lines:
+				if (not line.lstrip().startswith("//")):
+					if ("#define LOG_ENABLED" in line): # could not make startswith work
+						destFile.write("// pre-processor symbol removed by build.py\n")
+						destFileDev.write("// pre-processor symbol removed by build.py\n")
+						continue
+					if ("System.Diagnostics.Conditional" in line):
+						destFile.write(line)
+						destFileDev.write("// Conditional removed by build.py\n")
+						continue
+				destFile.write(line)
+				destFileDev.write(line)
 
-			shutil.copy(file, l_destFileDev)
 
 			# for archive, add date and time to file name
 			d = datetime.datetime.fromtimestamp(os.path.getmtime(file))

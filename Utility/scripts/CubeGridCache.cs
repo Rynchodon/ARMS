@@ -2,10 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage;
-using Ingame = Sandbox.ModAPI.Ingame;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
 
 namespace Rynchodon
 {
@@ -28,6 +28,7 @@ namespace Rynchodon
 
 		private CubeGridCache(IMyCubeGrid grid)
 		{
+			myLogger = new Logger("CubeGridCache", () => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock is IMyTerminalBlock);
@@ -40,7 +41,7 @@ namespace Rynchodon
 			CubeGrid.OnClose += CubeGrid_OnClose;
 
 			registry.Add(CubeGrid, this); // protected by GetFor()
-			log("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
+			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
 		private void CubeGrid_OnClose(IMyEntity grid)
@@ -52,18 +53,29 @@ namespace Rynchodon
 			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
 
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeGrid);
+			lock_registry.AcquireExclusive();
+			try
+			{ registry.Remove(CubeGrid); }
+			finally
+			{ lock_registry.ReleaseExclusive(); }
 		}
 
 		private void addKnownDefinition(string definition)
 		{
-			bool definitionIsKnown;
-			using (lock_knownDefinitions.AcquireSharedUsing())
-				definitionIsKnown = knownDefinitions.Contains(definition);
-			if (!definitionIsKnown)
-				using (lock_knownDefinitions.AcquireExclusiveUsing())
-					knownDefinitions.Add(definition);
+			lock_knownDefinitions.AcquireShared();
+			try
+			{
+				if (knownDefinitions.Contains(definition))
+					return;
+			}
+			finally
+			{ lock_knownDefinitions.ReleaseShared(); }
+
+			lock_knownDefinitions.AcquireExclusive();
+			try
+			{ knownDefinitions.Add(definition); }
+			finally
+			{ lock_knownDefinitions.ReleaseExclusive(); }
 		}
 
 		private void CubeGrid_OnBlockAdded(IMySlimBlock obj)
@@ -95,7 +107,7 @@ namespace Rynchodon
 				setBlocks_Type.mutable().Add(asTerm);
 				setBlocks_Def.mutable().Add(asTerm);
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
@@ -117,7 +129,7 @@ namespace Rynchodon
 				setBlocks_Type.mutable().Remove(asTerm);
 				setBlocks_Def.mutable().Remove(asTerm);
 			}
-			catch (Exception e) { alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
@@ -129,13 +141,16 @@ namespace Rynchodon
 		/// TODO: return IMySlimBlock
 		public ReadOnlyList<IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.immutable();
 				return null;
 			}
+			finally
+			{ lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -148,13 +163,16 @@ namespace Rynchodon
 			if (definition == null)
 				return null;
 
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 					return value.immutable();
 				return null;
 			}
+			finally
+			{ lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -163,9 +181,9 @@ namespace Rynchodon
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public List<ReadOnlyList<IMyTerminalBlock>> GetBlocksByDefLooseContains(string contains)
-		//{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				List<ReadOnlyList<IMyTerminalBlock>> master = new List<ReadOnlyList<IMyTerminalBlock>>();
 				foreach (var definition in CubeBlocks_Definition)
@@ -173,6 +191,7 @@ namespace Rynchodon
 						master.Add(definition.Value.immutable());
 				return master;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -182,13 +201,15 @@ namespace Rynchodon
 		/// <returns>The number of blocks of the given type</returns>
 		public int CountByType(MyObjectBuilderType objBuildType)
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.Count;
 				return 0;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -198,13 +219,15 @@ namespace Rynchodon
 		/// <returns>The number of blocks with the given definition</returns>
 		public int CountByDefinition(string definition)
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				ListSnapshots<IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
 					return value.Count;
 				return 0;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -214,7 +237,8 @@ namespace Rynchodon
 		/// <returns>The number of blocks containing the given definition</returns>
 		public int CountByDefLooseContains(string contains)
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				int count = 0;
 				foreach (var definition in CubeBlocks_Definition)
@@ -222,6 +246,7 @@ namespace Rynchodon
 						count += definition.Value.Count;
 				return count;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -230,13 +255,15 @@ namespace Rynchodon
 		/// <returns>The total number of blocks cached by type</returns>
 		public int TotalByType()
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				int count = 0;
 				foreach (var byType in CubeBlocks_Type)
 					count += byType.Value.Count;
 				return count;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -245,13 +272,15 @@ namespace Rynchodon
 		/// <returns>The total number of blocks cached by definition.</returns>
 		public int TotalByDefinition()
 		{
-			using (lock_CubeBlocks.AcquireSharedUsing())
+			lock_CubeBlocks.AcquireShared();
+			try
 			{
 				int count = 0;
 				foreach (var definition in CubeBlocks_Definition)
 					count += definition.Value.Count;
 				return count;
 			}
+			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -263,11 +292,17 @@ namespace Rynchodon
 				return null;
 
 			CubeGridCache value;
-			using (lock_registry.AcquireSharedUsing())
+			lock_registry.AcquireShared();
+			try
+			{
 				if (registry.TryGetValue(grid, out value))
 					return value;
+			}
+			finally
+			{ lock_registry.ReleaseShared(); }
 
-			using (lock_registry.AcquireExclusiveUsing())
+			lock_registry.AcquireExclusive();
+			try
 			{
 				if (registry.TryGetValue(grid, out value))
 					return value;
@@ -279,6 +314,7 @@ namespace Rynchodon
 					return null;
 				}
 			}
+			finally { lock_registry.ReleaseExclusive(); }
 		}
 
 		/// <summary>
@@ -288,26 +324,21 @@ namespace Rynchodon
 		{
 			int bestLength = int.MaxValue;
 			string bestMatch = null;
-			using (lock_knownDefinitions.AcquireSharedUsing())
+			lock_knownDefinitions.AcquireShared();
+			try
+			{
 				foreach (string match in knownDefinitions)
 					if (match.looseContains(contains) && match.Length < bestLength)
 					{
 						bestLength = match.Length;
 						bestMatch = match;
 					}
+			}
+			finally { lock_knownDefinitions.ReleaseShared(); }
 			return bestMatch;
 		}
 
 
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null)
-				myLogger = new Logger(CubeGrid.DisplayName, "CubeGridCache");
-			myLogger.log(level, method, toLog);
-		}
 	}
 }

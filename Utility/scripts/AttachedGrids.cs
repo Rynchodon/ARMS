@@ -2,13 +2,12 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using ingame = Sandbox.ModAPI.Ingame;
+using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -31,16 +30,9 @@ namespace Rynchodon
 		private IMyCubeGrid myGrid;
 
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null) myLogger = new Logger(myGrid.DisplayName, "AttachedGrids");
-			myLogger.log(level, method, toLog);
-		}
 
-		private AttachedGrids() { }
+		private AttachedGrids()
+		{ myLogger = new Logger("AttachedGrids", () => myGrid.DisplayName); }
 
 		public static AttachedGrids getFor(IMyCubeGrid myGrid)
 		{
@@ -51,7 +43,7 @@ namespace Rynchodon
 			instance.myGrid = myGrid;
 
 			List<IMySlimBlock> allBlocks = new List<IMySlimBlock>();
-			myGrid.GetBlocks(allBlocks);
+			myGrid.GetBlocks_Safe(allBlocks);
 			foreach (IMySlimBlock block in allBlocks)
 				instance.myGrid_OnBlockAdded(block);
 
@@ -59,7 +51,7 @@ namespace Rynchodon
 			myGrid.OnBlockRemoved += instance.myGrid_OnBlockRemoved;
 			myGrid.OnClosing += instance.myGrid_OnClosing;
 			registry.Add(myGrid, instance);
-			instance.log("created for: " + myGrid.DisplayName, "getFor()");
+			instance.myLogger.debugLog("created for: " + myGrid.DisplayName, "getFor()");
 			return instance;
 		}
 
@@ -85,11 +77,11 @@ namespace Rynchodon
 				addRemove(allPistonBases, block, add);
 			else if (fatblock.BlockDefinition.TypeId == type_pistonTop)
 				addRemove(allPistonTops, block, add);
-			else if (fatblock is ingame.IMyMotorBase)
+			else if (fatblock is Ingame.IMyMotorBase)
 				addRemove(allMotorBases, block, add);
 			else if (fatblock.BlockDefinition.TypeId == type_motorRotor)
 				addRemove(allMotorRotors, block, add);
-			else if (fatblock is ingame.IMyShipConnector)
+			else if (fatblock is Ingame.IMyShipConnector)
 				addRemove(allConnectors, block, add);
 			else if (fatblock is IMyLandingGear)
 				addRemove(allLandingGears, block, add);
@@ -117,7 +109,7 @@ namespace Rynchodon
 		{
 			if (attachedToMe.Count == 0)
 				return;
-			log("destruct for : " + myGrid.DisplayName, "destructAttached()", Logger.severity.TRACE);
+			myLogger.debugLog("destruct for : " + myGrid.DisplayName, "destructAttached()", Logger.severity.TRACE);
 			HashSet<AttachedGrids> tempAttached = attachedToMe;
 			attachedToMe = new HashSet<AttachedGrids>();
 			foreach (AttachedGrids attached in tempAttached)
@@ -141,7 +133,7 @@ namespace Rynchodon
 				return;
 			}
 			last_build_ID = buildID;
-			log("building for : " + myGrid.DisplayName, "buildAttached()", Logger.severity.TRACE);
+			myLogger.debugLog("building for : " + myGrid.DisplayName, "buildAttached()", Logger.severity.TRACE);
 
 			// get all the potentially attached grids
 			BoundingBoxD world = myGrid.WorldAABB;
@@ -161,7 +153,7 @@ namespace Rynchodon
 				}
 
 				// check each grid for isAttached
-				log("checking grid: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
+				myLogger.debugLog("checking grid: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
 				if (isAttached_piston(partner) || partner.isAttached_piston(this)
 					|| isAttached_motor(partner) || partner.isAttached_motor(this)
 					|| isAttached_connector(partner) || partner.isAttached_connector(this)
@@ -185,7 +177,7 @@ namespace Rynchodon
 			}
 			attachedToMe.Add(toAttach);
 			toAttach.tryAddAttached(this);
-			log("attached " + toAttach.myGrid.DisplayName, "tryAddAttached()", Logger.severity.TRACE);
+			myLogger.debugLog("attached " + toAttach.myGrid.DisplayName, "tryAddAttached()", Logger.severity.TRACE);
 			return true;
 		}
 
@@ -203,7 +195,7 @@ namespace Rynchodon
 				foreach (IMySlimBlock pistonTop in partner.allPistonTops)
 					if (topBlockId == pistonTop.FatBlock.EntityId)
 					{
-						log("matched " + myGrid.DisplayName + " : " + pistonBase.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + pistonTop.FatBlock.DefinitionDisplayNameText, "isAttached_piston()", Logger.severity.TRACE);
+						myLogger.debugLog("matched " + myGrid.DisplayName + " : " + pistonBase.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + pistonTop.FatBlock.DefinitionDisplayNameText, "isAttached_piston()", Logger.severity.TRACE);
 						tryAddAttached(partner);
 						return true;
 					}
@@ -220,7 +212,7 @@ namespace Rynchodon
 				foreach (IMySlimBlock motorRotor in partner.allMotorRotors)
 					if (rotorEntityId == motorRotor.FatBlock.EntityId)
 					{
-						log("matched " + myGrid.DisplayName + " : " + motorBase.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + motorRotor.FatBlock.DefinitionDisplayNameText, "isAttached_motor()", Logger.severity.TRACE);
+						myLogger.debugLog("matched " + myGrid.DisplayName + " : " + motorBase.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + motorRotor.FatBlock.DefinitionDisplayNameText, "isAttached_motor()", Logger.severity.TRACE);
 						tryAddAttached(partner);
 						return true;
 					}
@@ -242,7 +234,7 @@ namespace Rynchodon
 				foreach (IMySlimBlock connectPartner in partner.allConnectors.Keys)
 					if (connectedEntityId == connectPartner.FatBlock.EntityId)
 					{
-						log("matched " + myGrid.DisplayName + " : " + connector.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + connectPartner.FatBlock.DefinitionDisplayNameText, "isAttached_connector()", Logger.severity.TRACE);
+						myLogger.debugLog("matched " + myGrid.DisplayName + " : " + connector.FatBlock.DefinitionDisplayNameText + " to " + partner.myGrid.DisplayName + " : " + connectPartner.FatBlock.DefinitionDisplayNameText, "isAttached_connector()", Logger.severity.TRACE);
 						tryAddAttached(partner);
 						return true;
 					}

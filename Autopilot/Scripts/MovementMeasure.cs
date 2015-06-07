@@ -3,10 +3,6 @@
 using System;
 using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.ModAPI;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
 using VRageMath;
 
 namespace Rynchodon.Autopilot
@@ -199,15 +195,6 @@ namespace Rynchodon.Autopilot
 		private double shortestDistanceToDestGrid()
 		{ return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); }
 
-
 		private Logger myLogger;
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void log(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{ alwaysLog(toLog, method, level); }
-		private void alwaysLog(string toLog, string method = null, Logger.severity level = Logger.severity.DEBUG)
-		{
-			if (myLogger == null) myLogger = new Logger(owner.myGrid.DisplayName, "MovementMeasure");
-			myLogger.log(level, method, toLog);
-		}
 	}
 }

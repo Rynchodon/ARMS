@@ -239,7 +239,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Rolling.STOP_ROLL:
 					if (isRotating())
 						return;
-					myLogger.debugLog("get off the log", "calcAndRoll()", Logger.severity.DEBUG);
+					myLogger.debugLog("get off the debugLog", "calcAndRoll()", Logger.severity.DEBUG);
 
 					int overUnder = testOverUnder(roll, needToRotate_roll);
 					if (overUnder != 0)

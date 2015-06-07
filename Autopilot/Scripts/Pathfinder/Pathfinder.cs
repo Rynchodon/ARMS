@@ -1,9 +1,10 @@
 ﻿#define LOG_ENABLED // remove on build
 
-using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
+using Sandbox.ModAPI;
 using VRage;
+using VRage.ModAPI;
 using VRageMath;
 using Rynchodon.Autopilot.NavigationSettings;
 
@@ -58,19 +59,23 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (myPathChecker != null && myPathChecker.Interrupt)
 				return;
-			using (lock_myOutput.AcquireExclusiveUsing())
-				myOutput = newOutput;
+
+			lock_myOutput.AcquireExclusive();
+			try { myOutput = newOutput; }
+			finally { lock_myOutput.ReleaseExclusive(); }
 		}
 
 		public PathfinderOutput GetOutput()
 		{
-			using (lock_myOutput.AcquireSharedUsing())
+			lock_myOutput.AcquireShared();
+			try
 			{
 				PathfinderOutput temp = myOutput;
 				if (temp.PathfinderResult != PathfinderOutput.Result.Incomplete)
 					myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 				return temp;
 			}
+			finally { lock_myOutput.ReleaseShared(); }
 		}
 
 		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)

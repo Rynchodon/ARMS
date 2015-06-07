@@ -1,23 +1,24 @@
 ﻿using System;
 using System.Text;
-
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
 
 namespace Rynchodon
 {
-	// 
 	/// <summary>
 	/// Generates log files to be read by GamutLogViewer.
 	/// </summary>
 	/// <remarks>
 	/// <para>The prefered way to use Logger is as follows:</para>
 	///	<para>    each class shall have "#define LOG_ENABLED // remove on build" as its first line to enable debug logging</para>
-	///	<para>    each class shall declare a Logger field (usually myLogger) that must be initialized</para>
-	///	<para>    the constructor/initializer may replace myLogger with a more verbose one</para>
-	///	<para>    all logging actions shall be performed by calling myLogger.log() or myLogger.debugLog()</para>
+	///	<para>    each class shall declare a Logger field (usually myLogger)</para>
+	///	<para>    all logging actions shall be performed by calling myLogger.alwaysLog() or myLogger.debugLog()</para>
 	///	<para>    notifications shall use myLogger.notify() or myLogger.debugNotify()</para>
+	///	<para>WARNING: Because Keen has murdered pre-processor symbols, build.py now searches for lines containing any of the following and removes them:</para>
+	///	<para>    #define LOG_ENABLED</para>
+	///	<para>removed for Dev version:</para>
+	///	<para>    System.Diagnostics.Conditional</para>
 	/// <para> </para>
 	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Grid][%Class][%Method][%PriState][%SecState]%Message</para>
 	/// </remarks>
@@ -65,6 +66,14 @@ namespace Rynchodon
 			this.f_gridName = gridName;
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
+		}
+
+		public Logger(string className, IMyCubeBlock Block)
+		{
+			this.className = className;
+			this.f_gridName = () => Block.CubeGrid.DisplayName;
+			this.f_state_primary = () => Block.DefinitionDisplayNameText;
+			this.f_state_secondary = () => Block.DisplayNameText;
 		}
 
 		private void deleteIfExists(string filename)
@@ -126,7 +135,7 @@ namespace Rynchodon
 		/// <param name="toLog">message to log</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		public void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
+		private void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
 		{
 			if (closed)
 				return;
@@ -191,13 +200,16 @@ namespace Rynchodon
 		{
 			if (logWriter == null)
 				return;
-			using (lock_log.AcquireExclusiveUsing())
+			lock_log.AcquireExclusive();
+			try
 			{
 				logWriter.Flush();
 				logWriter.Close();
 				logWriter = null;
 				closed = true;
 			}
+			finally
+			{ lock_log.ReleaseExclusive(); }
 		}
 
 		protected override void UnloadData()
@@ -209,20 +221,16 @@ namespace Rynchodon
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
-		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
-		{ 
-			notify(message, disappearTimeMs, level);
-		}
-		
+		{ notify(message, disappearTimeMs, level); }
+
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
-		/// <returns>true iff the message was displayed</returns>
 		public void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
 			MyFontEnum font = fontForSeverity(level);

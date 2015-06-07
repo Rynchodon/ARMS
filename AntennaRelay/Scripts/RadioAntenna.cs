@@ -2,16 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-
-using Sandbox.Common;
-using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using VRage;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -29,9 +23,6 @@ namespace Rynchodon.AntennaRelay
 			myLogger = new Logger("RadioAntenna", () => CubeBlock.CubeGrid.DisplayName);
 			myRadioAntenna = CubeBlock as Ingame.IMyRadioAntenna;
 			value_registry.Add(this);
-
-			//log("init as antenna: " + CubeBlock.BlockDefinition.SubtypeName, "Init()", Logger.severity.TRACE);
-			//EnforcedUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
 		}
 
 		protected override void Close(IMyEntity entity)
