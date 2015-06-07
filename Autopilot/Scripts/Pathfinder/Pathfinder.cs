@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private NavSettings.SpecialFlying SpecialFyingInstructions;// { get; private set; }
 
 		private PathChecker myPathChecker;
-		private static ThreadManager PathFinderThread = new ThreadManager(Settings.GetSetting<byte>(Settings.SettingName.yParallelPathCheck));
+		private static ThreadManager PathFinderThread = new ThreadManager(Settings.GetSetting<byte>(Settings.SettingName.yParallelPathfinder));
 
 		/// <summary>next time CheckPath() is allowed to run</summary>
 		private DateTime nextRun = DateTime.MinValue;
@@ -59,23 +59,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (myPathChecker != null && myPathChecker.Interrupt)
 				return;
-
-			lock_myOutput.AcquireExclusive();
-			try { myOutput = newOutput; }
-			finally { lock_myOutput.ReleaseExclusive(); }
+			using (lock_myOutput.AcquireExclusiveUsing())
+				myOutput = newOutput;
 		}
 
 		public PathfinderOutput GetOutput()
 		{
-			lock_myOutput.AcquireShared();
-			try
+			using (lock_myOutput.AcquireSharedUsing())
 			{
 				PathfinderOutput temp = myOutput;
 				if (temp.PathfinderResult != PathfinderOutput.Result.Incomplete)
 					myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 				return temp;
 			}
-			finally { lock_myOutput.ReleaseShared(); }
 		}
 
 		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)

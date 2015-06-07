@@ -1,6 +1,7 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using System.Collections.Generic;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;

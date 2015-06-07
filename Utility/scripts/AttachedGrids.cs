@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -34,16 +35,17 @@ namespace Rynchodon
 		private AttachedGrids()
 		{ myLogger = new Logger("AttachedGrids", () => myGrid.DisplayName); }
 
-		public static AttachedGrids getFor(IMyCubeGrid myGrid)
+		private static bool tryGetFor(IMyCubeGrid myGrid, out AttachedGrids instance)
 		{
-			AttachedGrids instance;
 			if (registry.TryGetValue(myGrid, out instance))
-				return instance;
+				return true;
 			instance = new AttachedGrids();
 			instance.myGrid = myGrid;
 
 			List<IMySlimBlock> allBlocks = new List<IMySlimBlock>();
-			myGrid.GetBlocks_Safe(allBlocks);
+			if (!MainLock.TryUsingShared(() => { myGrid.GetBlocks(allBlocks); }))
+				return false;
+			
 			foreach (IMySlimBlock block in allBlocks)
 				instance.myGrid_OnBlockAdded(block);
 
@@ -52,7 +54,7 @@ namespace Rynchodon
 			myGrid.OnClosing += instance.myGrid_OnClosing;
 			registry.Add(myGrid, instance);
 			instance.myLogger.debugLog("created for: " + myGrid.DisplayName, "getFor()");
-			return instance;
+			return true;
 		}
 
 		private void myGrid_OnClosing(IMyEntity obj)
@@ -145,20 +147,23 @@ namespace Rynchodon
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid == null || grid == myGrid)
 					continue;
-				AttachedGrids partner = getFor(grid);
-				if (attachedToMe.Contains(partner))
+				AttachedGrids partner;// = getFor(grid);
+				if (tryGetFor(grid, out partner))
 				{
-					//log("already attached: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
-					continue;
-				}
+					if (attachedToMe.Contains(partner))
+					{
+						//log("already attached: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
+						continue;
+					}
 
-				// check each grid for isAttached
-				myLogger.debugLog("checking grid: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
-				if (isAttached_piston(partner) || partner.isAttached_piston(this)
-					|| isAttached_motor(partner) || partner.isAttached_motor(this)
-					|| isAttached_connector(partner) || partner.isAttached_connector(this)
-					|| isAttached_landingGear(partner) || partner.isAttached_landingGear(this))
-					continue;
+					// check each grid for isAttached
+					myLogger.debugLog("checking grid: " + grid.DisplayName, "buildAttached()", Logger.severity.TRACE);
+					if (isAttached_piston(partner) || partner.isAttached_piston(this)
+						|| isAttached_motor(partner) || partner.isAttached_motor(this)
+						|| isAttached_connector(partner) || partner.isAttached_connector(this)
+						|| isAttached_landingGear(partner) || partner.isAttached_landingGear(this))
+						continue;
+				}
 			}
 			HashSet<AttachedGrids> copy = new HashSet<AttachedGrids>(attachedToMe);
 			foreach (AttachedGrids attached in copy)
@@ -249,17 +254,26 @@ namespace Rynchodon
 
 		private static int searchAttached_ID = 0;
 		private int mySearchAttached_ID = 0;
+		private static FastResourceLock lock_search = new FastResourceLock();
 
 		private bool needsRebuild = true;
 
 		public static bool isGridAttached(IMyCubeGrid grid1, IMyCubeGrid grid2)
 		{
-			if (grid1 == grid2)
-				return true;
-			return getFor(grid1).isGridAttached(grid2);
+			using (lock_search.AcquireExclusiveUsing())
+			{
+				if (grid1 == grid2)
+					return true;
+
+				AttachedGrids attached;
+				if (tryGetFor(grid1, out attached))
+					return attached.isGridAttached(grid2);
+
+				return false;
+			}
 		}
 
-		public bool isGridAttached(IMyCubeGrid grid)
+		private bool isGridAttached(IMyCubeGrid grid)
 		{
 			if (myGrid == grid)
 				return true;
@@ -273,7 +287,12 @@ namespace Rynchodon
 				rebuildAttached();
 				needsRebuild = false;
 			}
-			return isGridAttached(getFor(grid), ++searchAttached_ID); 
+
+			AttachedGrids attached;
+			if (tryGetFor(grid, out attached))
+				return isGridAttached(attached, ++searchAttached_ID);
+			
+			return false;
 		}
 
 		private bool isGridAttached(AttachedGrids searchFor, int searchID)
