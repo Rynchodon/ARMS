@@ -53,11 +53,13 @@ namespace Rynchodon.Update
 					RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
 				});
 
-			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+			if (Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
 					if (Navigator.IsControllableBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
+
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (Navigator.IsControllableBlock(block))
 					new ShipController(block);

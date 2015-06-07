@@ -1173,7 +1173,7 @@ namespace Rynchodon.Autopilot
 			if (block == null || !(block is Ingame.IMyShipController))
 				return false;
 
-			if (block.BlockDefinition.TypeId == type_remoteControl)// && Settings.boolSettings[Settings.BoolSetName.bUseRemoteControl])
+			if (block.BlockDefinition.TypeId == type_remoteControl && Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
 				return true;
 
 			return IsAutopilotBlock(block);
