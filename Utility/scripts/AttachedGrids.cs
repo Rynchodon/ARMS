@@ -43,7 +43,7 @@ namespace Rynchodon
 			instance.myGrid = myGrid;
 
 			List<IMySlimBlock> allBlocks = new List<IMySlimBlock>();
-			myGrid.GetBlocks_Safe(allBlocks);
+			myGrid.GetBlocks(allBlocks);
 			foreach (IMySlimBlock block in allBlocks)
 				instance.myGrid_OnBlockAdded(block);
 

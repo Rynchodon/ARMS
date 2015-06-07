@@ -54,29 +54,18 @@ namespace Rynchodon
 			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
 
-			lock_registry.AcquireExclusive();
-			try
-			{ registry.Remove(CubeGrid); }
-			finally
-			{ lock_registry.ReleaseExclusive(); }
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Remove(CubeGrid);
 		}
 
 		private void addKnownDefinition(string definition)
 		{
-			lock_knownDefinitions.AcquireShared();
-			try
-			{
-				if (knownDefinitions.Contains(definition))
-					return;
-			}
-			finally
-			{ lock_knownDefinitions.ReleaseShared(); }
-
-			lock_knownDefinitions.AcquireExclusive();
-			try
-			{ knownDefinitions.Add(definition); }
-			finally
-			{ lock_knownDefinitions.ReleaseExclusive(); }
+			bool definitionIsKnown;
+			using (lock_knownDefinitions.AcquireSharedUsing())
+				definitionIsKnown = knownDefinitions.Contains(definition);
+			if (!definitionIsKnown)
+				using (lock_knownDefinitions.AcquireExclusiveUsing())
+					knownDefinitions.Add(definition);
 		}
 
 		/// <summary>
@@ -88,18 +77,13 @@ namespace Rynchodon
 		{
 			int bestLength = int.MaxValue;
 			string bestMatch = null;
-			lock_knownDefinitions.AcquireShared();
-			try
-			{
+			using (lock_knownDefinitions.AcquireSharedUsing())
 				foreach (string match in knownDefinitions)
 					if (match.looseContains(contains) && match.Length < bestLength)
 					{
 						bestLength = match.Length;
 						bestMatch = match;
 					}
-			}
-			finally
-			{ lock_knownDefinitions.ReleaseShared(); }
 			return bestMatch;
 		}
 
@@ -195,8 +179,7 @@ namespace Rynchodon
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
 			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
-			lock_CubeBlocks.AcquireShared();
-			try
+			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
@@ -207,8 +190,6 @@ namespace Rynchodon
 				}
 				return null;
 			}
-			finally
-			{ lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -218,8 +199,7 @@ namespace Rynchodon
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefinition(string definition)
 		{
-			lock_CubeBlocks.AcquireShared();
-			try
+			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				ListSnapshots<Ingame.IMyTerminalBlock> value;
 				if (CubeBlocks_Definition.TryGetValue(definition, out value))
@@ -230,8 +210,6 @@ namespace Rynchodon
 				}
 				return null;
 			}
-			finally
-			{ lock_CubeBlocks.ReleaseShared(); }
 		}
 
 		/// <summary>
@@ -241,7 +219,22 @@ namespace Rynchodon
 		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public ReadOnlyList<Ingame.IMyTerminalBlock> GetBlocksByDefLooseContains(string contains)
-		{ return GetBlocksByDefinition(getKnownDefinition(contains)); }
+		{
+			return GetBlocksByDefinition(getKnownDefinition(contains));
+
+			//using (lock_CubeBlocks.AcquireSharedUsing())
+			//{
+			//	foreach (string key in CubeBlocks_Definition.Keys)
+			//		if (key.looseContains(contained))
+			//		{
+			//			ListCacher<Ingame.IMyTerminalBlock> value = CubeBlocks_Definition[key];
+			//			return value.immutable();
+			//			//value.IsClean = false;
+			//			//return new ReadOnlyList<Ingame.IMyTerminalBlock>(value);
+			//		}
+			//	return null;
+			//}
+		}
 
 		/// <summary>
 		/// will return null if grid is closed, or CubeGridCache cannot be created
@@ -252,17 +245,11 @@ namespace Rynchodon
 				return null;
 
 			CubeGridCache value;
-			lock_registry.AcquireShared();
-			try
-			{
+			using (lock_registry.AcquireSharedUsing())
 				if (registry.TryGetValue(grid, out value))
 					return value;
-			}
-			finally
-			{ lock_registry.ReleaseShared(); }
 
-			lock_registry.AcquireExclusive();
-			try
+			using (lock_registry.AcquireExclusiveUsing())
 			{
 				if (registry.TryGetValue(grid, out value))
 					return value;
@@ -274,7 +261,6 @@ namespace Rynchodon
 					return null;
 				}
 			}
-			finally { lock_registry.ReleaseExclusive(); }
 		}
 
 

@@ -58,23 +58,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (myPathChecker != null && myPathChecker.Interrupt)
 				return;
-
-			lock_myOutput.AcquireExclusive();
-			try { myOutput = newOutput; }
-			finally { lock_myOutput.ReleaseExclusive(); }
+			using (lock_myOutput.AcquireExclusiveUsing())
+				myOutput = newOutput;
 		}
 
 		public PathfinderOutput GetOutput()
 		{
-			lock_myOutput.AcquireShared();
-			try
+			using (lock_myOutput.AcquireSharedUsing())
 			{
 				PathfinderOutput temp = myOutput;
 				if (temp.PathfinderResult != PathfinderOutput.Result.Incomplete)
 					myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
 				return temp;
 			}
-			finally { lock_myOutput.ReleaseShared(); }
 		}
 
 		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)

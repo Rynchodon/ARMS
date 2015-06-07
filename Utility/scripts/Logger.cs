@@ -200,16 +200,13 @@ namespace Rynchodon
 		{
 			if (logWriter == null)
 				return;
-			lock_log.AcquireExclusive();
-			try
+			using (lock_log.AcquireExclusiveUsing())
 			{
 				logWriter.Flush();
 				logWriter.Close();
 				logWriter = null;
 				closed = true;
 			}
-			finally
-			{ lock_log.ReleaseExclusive(); }
 		}
 
 		protected override void UnloadData()
@@ -221,16 +218,20 @@ namespace Rynchodon
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
+		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
-		{ notify(message, disappearTimeMs, level); }
-
+		{ 
+			notify(message, disappearTimeMs, level);
+		}
+		
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
+		/// <returns>true iff the message was displayed</returns>
 		public void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
 			MyFontEnum font = fontForSeverity(level);

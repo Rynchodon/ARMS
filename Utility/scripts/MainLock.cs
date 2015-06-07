@@ -50,31 +50,22 @@ namespace Rynchodon
 		/// <param name="safeAction">Action to perform</param>
 		public static void UsingShared(Action safeAction)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ safeAction.Invoke(); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				safeAction.Invoke();
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ grid.GetBlocks(blocks, collect); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				grid.GetBlocks(blocks, collect);
 		}
 
 		#region IMyEntities
 
 		public static void GetEntities_Safe(this IMyEntities entitiesObject, HashSet<IMyEntity> entities, Func<IMyEntity, bool> collect = null)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ entitiesObject.GetEntities(entities, collect); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				entitiesObject.GetEntities(entities, collect);
 		}
 
 		/// <summary>
@@ -88,7 +79,7 @@ namespace Rynchodon
 			if (preCollect == null)
 				collector = (entity) => boundingBox.Intersects(entity.WorldAABB);
 			else
-				collector = (entity) => { return preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
+				collector = (entity) => { return  preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
 			entitiesObject.GetEntities_Safe(entities, collector);
 		}
 
@@ -110,54 +101,39 @@ namespace Rynchodon
 		/// <summary>Consider using GetEntitiesInAABB_Safe_NoBlock instead.</summary>
 		public static List<IMyEntity> GetEntitiesInAABB_Safe(this IMyEntities entitiesObject, ref BoundingBoxD boundingBox)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ return entitiesObject.GetEntitiesInAABB(ref boundingBox); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				return entitiesObject.GetEntitiesInAABB(ref boundingBox);
 		}
 
 		/// <summary>Consider using GetEntitiesInSphere_Safe_NoBlock instead.</summary>
 		public static List<IMyEntity> GetEntitiesInSphere_Safe(this IMyEntities entitiesObject, ref BoundingSphereD boundingSphere)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ return entitiesObject.GetEntitiesInSphere(ref boundingSphere); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				return entitiesObject.GetEntitiesInSphere(ref boundingSphere);
 		}
 
 		#endregion
 
 		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMySlimBlock block)
 		{
-			Lock_MainThread.AcquireShared();
-			try
-			{ return block.GetObjectBuilder(); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				return block.GetObjectBuilder();
 		}
 
 		public static MyObjectBuilder_CubeBlock GetSlimObjectBuilder_Safe(this IMyCubeBlock block)
 		{
-			Lock_MainThread.AcquireShared();
-			try
+			using (Lock_MainThread.AcquireSharedUsing())
 			{
 				IMySlimBlock slim = block.CubeGrid.GetCubeBlock(block.Position);
 				return slim.GetObjectBuilder();
 			}
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
 		}
 
 		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
 		{
 			List<IMyPlayer> matchingPlayer = new List<IMyPlayer>();
-			Lock_MainThread.AcquireShared();
-			try
-			{ MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.IdentityId == (character as IMyEntity).EntityId; }); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.IdentityId == (character as IMyEntity).EntityId; });
 
 			switch (matchingPlayer.Count)
 			{
@@ -174,25 +150,19 @@ namespace Rynchodon
 		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
 		{
 			List<IMyVoxelBase> outInstances = new List<IMyVoxelBase>();
-			Lock_MainThread.AcquireShared();
-			try
-			{ mapsObject.GetInstances(outInstances, collect); }
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
+			using (Lock_MainThread.AcquireSharedUsing())
+				mapsObject.GetInstances(outInstances, collect);
 			return outInstances;
 		}
 
 		/// <remarks>I have not tested IsInsideVoxel for thread-safety, I assumed it is not.</remarks>
 		public static bool RayCastVoxel(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
 		{
-			Lock_MainThread.AcquireShared();
-			try
+			using (Lock_MainThread.AcquireSharedUsing())
 			{
 				entities.IsInsideVoxel(from, to, out boundary);
 				return (boundary != from);
 			}
-			finally
-			{ Lock_MainThread.ReleaseShared(); }
 		}
 	}
 }
