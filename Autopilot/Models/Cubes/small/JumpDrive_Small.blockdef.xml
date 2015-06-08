@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>JumpDrive_Small</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\JumpDrive.dds</Icon>
+	<CubeSize>Small</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="3" y="2" z="1" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\JumpDrive_Small.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\JumpDrive_Small_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\JumpDrive_Small_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\JumpDrive_Small_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Top" StartX="0.01" StartY="0.03" EndX="0.95" EndY="0.97" />
+		<MountPoint Side="Bottom" StartX="2.04" StartY="0.03" EndX="2.98" EndY="0.97" />
+		<MountPoint Side="Bottom" StartX="0.01" StartY="0.03" EndX="2.04" EndY="0.97" />
+		<MountPoint Side="Top" StartX="0.95" StartY="0.03" EndX="2.98" EndY="0.97" />
+	</MountPoints>
+	<BlockPairName>JumpDrive</BlockPairName>
+</Definition>
