@@ -159,7 +159,7 @@ namespace Rynchodon
 		/// </summary>
 		private static void parse(string line)
 		{
-			string[] split = line.RemoveWhitespace().Split('=');
+			string[] split = line.Split('=');
 
 			if (split.Length != 2)
 			{
