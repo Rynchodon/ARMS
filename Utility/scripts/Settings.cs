@@ -35,11 +35,12 @@ namespace Rynchodon
 		}
 
 		private const string modName = "Autopilot";
-		private static string settings_file_name = "AutopilotSettings.txt";
+		private const string settings_file_name = "AutopilotSettings.txt";
 		private static System.IO.TextWriter settingsWriter;
 
-		private static string strVersion = "Version";
-		private static int latestVersion = 34; // in sequence of updates on steam
+		private static readonly string strVersion = "Version";
+		public static readonly int latestVersion = 34; // in sequence of updates on steam
+		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger(null, "Settings");
 
@@ -47,7 +48,7 @@ namespace Rynchodon
 		{
 			buildSettings();
 
-			int fileVersion = readAll();
+			fileVersion = readAll();
 			if (fileVersion != latestVersion)
 				MyAPIGateway.Utilities.ShowNotification(modName + " has been updated.", 10000);
 			myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
@@ -72,7 +73,7 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
 			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sSmartTurretCommandsNPC, new SettingString("Destroy ; (Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar)"));
+			AllSettings.Add(SettingName.sSmartTurretCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Functional ; Destroy]"));
 			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
 		}
 
@@ -230,11 +231,10 @@ namespace Rynchodon
 
 		private class SettingString : Setting
 		{
-			public readonly string defaultValue;
 			public string Value { get; protected set; }
 
 			public SettingString(string defaultValue)
-			{ this.defaultValue = defaultValue; }
+			{ this.Value = defaultValue; }
 
 			public string ValueAsString()
 			{ return Value; }

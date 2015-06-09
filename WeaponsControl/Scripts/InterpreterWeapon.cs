@@ -2,10 +2,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Sandbox.ModAPI;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Weapons
@@ -24,8 +22,12 @@ namespace Rynchodon.Autopilot.Weapons
 		private List<string> Errors;
 		private int CurrentIndex;
 
-		public static TargetingOptions ForNPC_Options = null;
-		public static List<string> ForNPC_Errors = null;
+		public static bool allowedNPC { get; private set; }
+		private static TargetingOptions ForNPC_Options = null;
+		private static List<string> ForNPC_Errors = null;
+
+		static InterpreterWeapon()
+		{ allowedNPC = true; }
 
 		private InterpreterWeapon()
 		{ myLogger = new Logger("InterpreterWeapon", null, () => { return "For NPC"; }); }
@@ -57,8 +59,22 @@ namespace Rynchodon.Autopilot.Weapons
 					myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
 					instructions = Settings.GetSettingString(Settings.SettingName.sSmartTurretCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
-					ForNPC_IW.Parse(out ForNPC_Options, out ForNPC_Errors, instructions);
-					myLogger.debugLog("Parsed OK", "Parse()");
+
+					if (instructions != null)
+						instructions = instructions.getInstructions();
+
+					if (string.IsNullOrWhiteSpace(instructions))
+					{
+						myLogger.debugLog("No settings for N.P.C. turrets", "Parse()", Logger.severity.INFO);
+						allowedNPC = false;
+						ForNPC_Options = new TargetingOptions();
+						ForNPC_Errors = new List<string>();
+					}
+					else
+					{
+						ForNPC_IW.Parse(out ForNPC_Options, out ForNPC_Errors, instructions);
+						myLogger.debugLog("Parsed OK", "Parse()");
+					}
 				}
 				Options = ForNPC_Options;
 				Errors = ForNPC_Errors;
@@ -79,7 +95,7 @@ namespace Rynchodon.Autopilot.Weapons
 			this.Errors = Errors;
 			this.CurrentIndex = -1;
 
-			Parse(instructions, false);
+			Parse(instructions);
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "Parse()");
 		}
@@ -90,7 +106,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <param name="instructions">string to parse</param>
 		/// <param name="Options">results of parse</param>
 		/// <param name="Errors">indices of parsing errors</param>
-		private void Parse(string instructions, bool fromPanel)
+		private void Parse(string instructions)
 		{
 			if (instructions == null)
 			{
@@ -107,21 +123,6 @@ namespace Rynchodon.Autopilot.Weapons
 
 			string[] splitInstructions = instructions.RemoveWhitespace().ToLower().Split(new char[] { ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
 
-			// conflicts with text panel
-			//// for backwards compatibility, allow [ block name 1, block name 2, etc. ] for turrets
-			//if (!fromPanel && splitInstructions.Length == 1 && Block is Ingame.IMyLargeTurretBase)
-			//{
-			//	string blockList = splitInstructions[0];
-				
-			//	if (blockList.StartsWith("(") && blockList.EndsWith(")"))
-			//		blockList = blockList.Substring(1, blockList.Length - 2);
-			//	else
-			//		myLogger.debugLog("retro instructions: " + blockList, "Parse()"); 
-
-			//	ParseBlockList(blockList);
-			//	return;
-			//}
-
 			foreach (string instruct in splitInstructions)
 			{
 				myLogger.debugLog("instruct = " + instruct, "Parse()");
@@ -133,11 +134,12 @@ namespace Rynchodon.Autopilot.Weapons
 				}
 				else
 					if (!ParseTargetType(instruct))
-						if (!GetFromPanel(instruct))
-						{
-							myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
-							Errors.Add(CurrentIndex.ToString());
-						}
+						if (!ParseTargetFlag(instruct))
+							if (!GetFromPanel(instruct))
+							{
+								myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
+								Errors.Add(CurrentIndex.ToString());
+							}
 			}
 		}
 
@@ -159,7 +161,6 @@ namespace Rynchodon.Autopilot.Weapons
 		/// If toParse can be parsed to TargetType, add that type to Options.
 		/// </summary>
 		/// <param name="toParse">string to parse</param>
-		/// <param name="Options">TargetType will be added to</param>
 		/// <returns>true iff parse succeeded</returns>
 		private bool ParseTargetType(string toParse)
 		{
@@ -168,6 +169,22 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				//myLogger.debugLog("Adding target type: " + toParse, "ParseTargetType()");
 				Options.CanTarget |= result;
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// If toParse can be parsed to TargetingFlags, add that flag to Options.
+		/// </summary>
+		/// <param name="toParse">string to parse</param>
+		/// <returns>true iff parse succeeded</returns>
+		private bool ParseTargetFlag(string toParse)
+		{
+			TargetingFlags result;
+			if (Enum.TryParse<TargetingFlags>(toParse, true, out result))
+			{
+				Options.Flags |= result;
 				return true;
 			}
 			return false;
@@ -257,7 +274,7 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 
 			myLogger.debugLog("fetching commands from panel: " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
-			Parse(panelText.Substring(startOfCommands, endOfCommands - startOfCommands), true);
+			Parse(panelText.Substring(startOfCommands, endOfCommands - startOfCommands));
 
 			return true; // this instruction was successfully executed, even if sub instructions were not
 		}

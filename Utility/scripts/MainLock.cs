@@ -16,14 +16,16 @@ namespace Rynchodon
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
 		private static FastResourceLock Lock_Lock = new FastResourceLock();
 
+		private static Logger myLogger = new Logger("MainLock");
+
 		static MainLock()
-		{ Lock_MainThread.AcquireExclusive(); }
+		{ MainThread_AcquireExclusive(); }
 
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		/// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
-		public static void MainThread_TryAcquireExclusive()
+		///// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
+		public static void MainThread_AcquireExclusive()
 		{
 			using (Lock_Lock.AcquireExclusiveUsing())
 			{
@@ -32,13 +34,14 @@ namespace Rynchodon
 
 				Lock_MainThread.AcquireExclusive();
 			}
+			//myLogger.debugLog("Main thread is locked", "MainThread_TryAcquireExclusive()");
 		}
 
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		/// <returns>true if exclusive lock was released, false if it is not held</returns>
-		public static bool MainThread_TryReleaseExclusive()
+		///// <returns>true if exclusive lock was released, false if it is not held</returns>
+		public static void MainThread_ReleaseExclusive()
 		{
 			using (Lock_Lock.AcquireExclusiveUsing())
 			{
@@ -46,8 +49,8 @@ namespace Rynchodon
 					throw new InvalidOperationException("Exclusive lock is not held.");
 
 				Lock_MainThread.ReleaseExclusive();
-				return true;
 			}
+			//myLogger.debugLog("Main thread is released", "MainThread_TryAcquireExclusive()");
 		}
 
 		/// <summary>
@@ -202,10 +205,14 @@ namespace Rynchodon
 
 		public static List<IMyPlayer> GetPlayers_Safe(this IMyPlayerCollection PlayColl, Func<IMyPlayer, bool> collect = null)
 		{
+			//LogLockStats("GetPlayers_Safe()");
 			List<IMyPlayer> players = new List<IMyPlayer>();
 			using (Lock_MainThread.AcquireSharedUsing())
 				PlayColl.GetPlayers(players, collect);
 			return players;
 		}
+
+		private static void LogLockStats(string source)
+		{ myLogger.debugLog("Lock Stats: Owned = " + Lock_MainThread.Owned + ", Shared Owners = " + Lock_MainThread.SharedOwners + ", Exclusive Waiters = " + Lock_MainThread.ExclusiveWaiters + ", Shared Waiters = " + Lock_MainThread.SharedWaiters, source); }
 	}
 }

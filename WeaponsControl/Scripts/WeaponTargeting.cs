@@ -9,6 +9,7 @@ using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -20,8 +21,8 @@ namespace Rynchodon.Autopilot.Weapons
 	/// TODO: fix range issues
 	public abstract class WeaponTargeting
 	{
-		/// <summary>how close shots need to be to the target, in metres</summary>
-		private const float firingThreshold = 10f;
+		private static readonly List<Vector3> obstructionOffsets = new List<Vector3>();
+
 		private static Dictionary<uint, Ammo> KnownAmmo = new Dictionary<uint, Ammo>();
 
 		public readonly IMyCubeBlock weapon;
@@ -67,6 +68,24 @@ namespace Rynchodon.Autopilot.Weapons
 		protected bool IsShooting { get; private set; }
 
 		private Logger myLogger;
+
+		static WeaponTargeting()
+		{
+			obstructionOffsets.Add(new Vector3(0, -1.25f, 0));
+			obstructionOffsets.Add(new Vector3(2.5f, 5f, 2.5f));
+			obstructionOffsets.Add(new Vector3(2.5f, 5f, -2.5f));
+			obstructionOffsets.Add(new Vector3(-2.5f, 5f, 2.5f));
+			obstructionOffsets.Add(new Vector3(-2.5f, 5f, -2.5f));
+
+			//obstructionOffsets.Add(Vector2.Zero);
+			//obstructionOffsets.Add(new Vector2(-2.5f, 2.5f));
+			//obstructionOffsets.Add(new Vector2(2.5f, 2.5f));
+
+			//obstructionOffsets.Add(new Vector2(-2.5f, -2.5f));
+			//obstructionOffsets.Add(new Vector2(-2.5f, 2.5f));
+			//obstructionOffsets.Add(new Vector2(2.5f, -2.5f));
+			//obstructionOffsets.Add(new Vector2(2.5f, 2.5f));
+		}
 
 		public WeaponTargeting(IMyCubeBlock weapon)
 		{
@@ -159,6 +178,32 @@ namespace Rynchodon.Autopilot.Weapons
 			WriteErrors(Errors);
 		}
 
+		public Vector3D BarrelPositionWorld()
+		{
+			return weapon.GetPosition();
+		}
+
+		/// <summary>
+		///// Check for the spawning location of a projectile to find turret offset.
+		///// </summary>
+		///// <param name="entity">IMyEntity added to world</param>
+		//private void CheckProjectileSpawn(IMyEntity entity)
+		//{
+		//	if (entity.ToString().StartsWith("MyMissile"))
+		//	{
+		//		Vector3D entityPosition = entity.GetPosition();
+		//		if (weapon.WorldAABB.Distance(entityPosition) < 1) // near enough to belong to this weapon
+		//		{
+		//			Vector3 offset = RelativeVector3F.createFromWorldAbsolute(entityPosition, weapon.CubeGrid).getLocal() - weapon.GetPosition();
+		//			myLogger.debugLog("Spawned a missile, offset = " + offset, "CheckProjectileSpawn()");
+		//		}
+		//		else
+		//			myLogger.debugLog("Not my missile: " + entity.ToString(), "CheckProjectileSpawn()");
+		//	}
+		//	else
+		//		myLogger.debugLog("Not a missile: " + entity.getBestName(), "CheckProjectileSpawn()");
+		//}
+
 		/// <summary>
 		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
 		/// </summary>
@@ -168,68 +213,96 @@ namespace Rynchodon.Autopilot.Weapons
 
 		private bool CanControlWeapon()
 		{
-			if (weapon.IsWorking
-				&& (myTurret == null || !myTurret.IsUnderControl)
-				&& weapon.OwnerId != 0
-				&& weapon.DisplayNameText.Contains("[") && weapon.DisplayNameText.Contains("]"))
+			if (!weapon.IsWorking)
 			{
-				if (!IsControllingWeapon)
-				{
-					IsControllingWeapon = true;
-					IsShooting = false;
-
-					// stop shooting
-					var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-					if (builder.IsShootingFromTerminal)
-					{
-						myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
-						(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-					}
-					else
-					{
-						myLogger.debugLog("Now controlling weapon, not shooting", "CanControlWeapon()");
-					}
-
-					// disable default targeting
-					if (myTurret != null)
-					{
-						//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
-						//myTurret.SetTarget(myTurret);
-						myTurret.SetTarget(weapon.GetPosition() + weapon.WorldMatrix.Forward * 10);
-					}
-				}
-
-				return true;
-			}
-			else
-			{
-				if (IsControllingWeapon)
-				{
-					//myLogger.debugLog("No longer controlling weapon", "CanControlWeapon()");
-					IsControllingWeapon = false;
-					IsShooting = false;
-
-					// remove target
-					CurrentTarget = new Target();
-					Blacklist = new MyUniqueList<IMyEntity>();
-
-					// stop shooting
-					var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-					if (builder.IsShootingFromTerminal)
-					{
-						myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
-						(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-					}
-					else
-					{
-						myLogger.debugLog("No longer controlling weapon, not shooting", "CanControlWeapon()");
-					}
-
-					// enable default targeting
-					if (myTurret != null)
-						myTurret.ResetTargetingToDefault();
-				}
+				SetCanNotControl();
 				return false;
+			}
+
+			if (myTurret != null && myTurret.IsUnderControl)
+			{
+				SetCanNotControl();
+				return false;
+			}
+
+			if (weapon.OwnerId == 0)
+			{
+				SetCanNotControl();
+				return false;
+			}
+
+			if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+			{
+				SetCanNotControl();
+				return false;
+			}
+
+			if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
+			{
+				SetCanNotControl();
+				return false;
+			}
+
+			SetCanControl();
+			return true;
+		}
+
+		private void SetCanControl()
+		{
+			if (!IsControllingWeapon)
+			{
+				IsControllingWeapon = true;
+				IsShooting = false;
+
+				// stop shooting
+				var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				if (builder.IsShootingFromTerminal)
+				{
+					myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
+					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+				}
+				else
+				{
+					myLogger.debugLog("Now controlling weapon, not shooting", "CanControlWeapon()");
+				}
+
+				// disable default targeting
+				if (myTurret != null)
+				{
+					//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
+					//myTurret.SetTarget(myTurret);
+					myTurret.SetTarget(BarrelPositionWorld() + weapon.WorldMatrix.Forward * 10);
+				}
+			}
+		}
+
+		private void SetCanNotControl()
+		{
+			if (IsControllingWeapon)
+			{
+				//myLogger.debugLog("No longer controlling weapon", "CanControlWeapon()");
+				IsControllingWeapon = false;
+				IsShooting = false;
+
+				// remove target
+				CurrentTarget = new Target();
+				Blacklist = new MyUniqueList<IMyEntity>();
+
+				// stop shooting
+				var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				if (builder.IsShootingFromTerminal)
+				{
+					myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
+					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+				}
+				else
+				{
+					myLogger.debugLog("No longer controlling weapon, not shooting", "CanControlWeapon()");
+				}
+
+				// enable default targeting
+				if (myTurret != null)
+					myTurret.ResetTargetingToDefault();
 			}
 		}
 
@@ -250,7 +323,7 @@ namespace Rynchodon.Autopilot.Weapons
 				//myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
 				MyDefinitionId ammoDefId = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId).AmmoDefinitionId;
 				//myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");
-				currentAmmo = new Ammo( MyDefinitionManager.Static.GetAmmoDefinition(ammoDefId));
+				currentAmmo = new Ammo(MyDefinitionManager.Static.GetAmmoDefinition(ammoDefId));
 				//myLogger.debugLog("currentAmmo = " + currentAmmo, "UpdateAmmo()");
 
 				KnownAmmo.Add(loaded[0].ItemId, currentAmmo);
@@ -277,7 +350,7 @@ namespace Rynchodon.Autopilot.Weapons
 				return LoadedAmmo.Definition.DesiredSpeed;
 			}
 
-			float distance = Vector3.Distance(weapon.GetPosition(), target);
+			float distance = Vector3.Distance(BarrelPositionWorld(), target);
 
 			if (distance < LoadedAmmo.DistanceToMaxSpeed)
 			{
@@ -296,39 +369,9 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 		}
 
-		///// <summary>
-		///// <para>If supplied value is small, fire the weapon.</para>
-		///// <para>If supplied value is large, stop firing.</para>
-		///// </summary>
-		//protected void CheckFire(float lengthSquared)
-		//{
-		//	if (lengthSquared < firingThreshold)
-		//	{
-		//		if (!IsShooting)
-		//		{
-		//			// start firing
-		//			myLogger.debugLog("Open fire LS: " + lengthSquared, "CheckFire()");
-
-		//			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-		//			IsShooting = true;
-		//		}
-		//		//else
-		//		//	myLogger.debugLog("Keep firing LS: " + lengthSquared, "CheckFire()");
-		//	}
-		//	else
-		//	{
-		//		if (IsShooting)
-		//		{
-		//			// stop firing
-		//			myLogger.debugLog("Hold fire LS: " + lengthSquared, "CheckFire()");
-
-		//			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-		//			IsShooting = false;
-		//		}
-		//		//else
-		//		//	myLogger.debugLog("Continue holding LS: " + lengthSquared, "CheckFire()");
-		//	}
-		//}
+		//private const float SpeedThreshold = 0.1f;
+		private Vector3 previousFiringDirection;
+		//private DateTime rotatingAt = DateTime.MaxValue;
 
 		/// <summary>
 		/// <para>If the direction will put shots on target, fire the weapon.</para>
@@ -337,8 +380,9 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <param name="direction">The direction the weapon is pointing in.</param>
 		protected void CheckFire(Vector3 direction)
 		{
-			Vector3 weaponPosition = weapon.GetPosition();
-			Vector3 finalPosition = weaponPosition + Vector3.Normalize( direction) * TargetingRange;
+			Vector3 weaponPosition = BarrelPositionWorld();
+			float distanceToTarget = Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value);
+			Vector3 finalPosition = weaponPosition + Vector3.Normalize(direction) * distanceToTarget;
 			Line shot = new Line(weaponPosition, finalPosition, false);
 
 			//myLogger.debugLog("shot is from " + weaponPosition + " to " + finalPosition + ", target is at " + CurrentTarget.InterceptionPoint.Value, "CheckFire()");
@@ -346,10 +390,29 @@ namespace Rynchodon.Autopilot.Weapons
 			//myLogger.debugLog("distance between weapon and target is " + Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value) + ", distance between finalPosition and target is " + Vector3.Distance(finalPosition, CurrentTarget.InterceptionPoint.Value), "CheckFire()");
 			//myLogger.debugLog("distance between shot and target is " + shot.Distance(CurrentTarget.InterceptionPoint.Value), "CheckFire()");
 
-			if (shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
-				FireWeapon();
+			float distance;
+			Vector3.Distance(ref direction, ref previousFiringDirection, out distance);
+			previousFiringDirection = direction;
+			
+			float firingThreshold = 5.0f + distanceToTarget / 200f - distance * 100;
+			myLogger.debugLog("change in direction = " + distance + ", threshold is " + firingThreshold, "CheckFire()");
+
+			if (firingThreshold > 0 && shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
+			{
+				if (Obstructed(finalPosition))
+				{
+					myLogger.debugLog("final position is obstructed", "CheckFire()");
+					Blacklist.Add(CurrentTarget.Entity);
+					StopFiring();
+				}
+				else
+					FireWeapon();
+			}
 			else
+			{
+				myLogger.debugLog("shot is off target", "CheckFire()");
 				StopFiring();
+			}
 		}
 
 		private void FireWeapon()
@@ -361,6 +424,8 @@ namespace Rynchodon.Autopilot.Weapons
 
 			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 			IsShooting = true;
+			//if (LoadedAmmo.Definition is MyMissileAmmoDefinition)
+			//MyAPIGateway.Entities.OnEntityAdd += CheckProjectileSpawn;
 		}
 
 		protected void StopFiring()
@@ -372,6 +437,8 @@ namespace Rynchodon.Autopilot.Weapons
 
 			(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 			IsShooting = false;
+			//if (LoadedAmmo.Definition is MyMissileAmmoDefinition)
+			//MyAPIGateway.Entities.OnEntityAdd -= CheckProjectileSpawn;
 		}
 
 		/// <summary>
@@ -384,7 +451,7 @@ namespace Rynchodon.Autopilot.Weapons
 			Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 			PotentialObstruction = new List<IMyEntity>();
 
-			BoundingSphereD nearbySphere = new BoundingSphereD(weapon.GetPosition(), TargetingRange);
+			BoundingSphereD nearbySphere = new BoundingSphereD(BarrelPositionWorld(), TargetingRange);
 			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
 
@@ -534,8 +601,8 @@ namespace Rynchodon.Autopilot.Weapons
 
 			// if weapon does not have a target yet, check for destroy
 			if (CurrentTarget.TType == TargetType.None)
-			//{
-			//	myLogger.debugLog("No targets yet, checking for destroy", "PickATarget()");
+				//{
+				//	myLogger.debugLog("No targets yet, checking for destroy", "PickATarget()");
 				SetClosest(TargetType.Destroy, ref closerThan);
 			//}
 		}
@@ -551,7 +618,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 			IMyEntity closest = null;
 
-			Vector3D weaponPosition = weapon.GetPosition();
+			Vector3D weaponPosition = BarrelPositionWorld();
 			bool isFixed = myTurret == null;
 
 			foreach (IMyEntity entity in targetsOfType)
@@ -612,10 +679,26 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <para>Targeting non-terminal blocks would cause confusion.</para>
 		/// <para>Open doors should not be targeted.</para>
 		/// </remarks>
-		private bool TargetableBlock(IMyCubeBlock block)
+		private bool TargetableBlock(IMyCubeBlock block, bool Disable)
 		{
 			if (!(block is IMyTerminalBlock))
 				return false;
+
+			if (Disable && !block.IsWorking)
+				return block.IsFunctional && Options.FlagSet(TargetingFlags.Functional);
+
+			//myLogger.debugLog("mass of " + block.DisplayNameText + " is " + block.Mass, "TargetableBlock()");
+
+			if (block.Mass < 100)
+				return false;
+
+			// control panels are too small
+			//if (block.BlockDefinition.TypeId == type_ControlPanel)
+			//{
+			//	myLogger.debugLog("is a control panel: " + block.DisplayNameText, "TargetableBlock()");
+			//	return false;
+			//}
+			//myLogger.debugLog("not a control panel: " + block.DisplayNameText, "TargetableBlock()");
 
 			IMyDoor asDoor = block as IMyDoor;
 			return asDoor == null || asDoor.OpenRatio < 0.01;
@@ -635,7 +718,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </remarks>
 		private bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue)
 		{
-			Vector3D myPosition = weapon.GetPosition();
+			Vector3D myPosition = BarrelPositionWorld();
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
 			target = null;
@@ -687,7 +770,7 @@ namespace Rynchodon.Autopilot.Weapons
 				foreach (var blocksWithDef in master)
 					foreach (IMyCubeBlock block in blocksWithDef)
 					{
-						if (!block.IsWorking || !TargetableBlock(block))
+						if (!TargetableBlock(block, true))
 							continue;
 
 						if (Blacklist.Contains(block))
@@ -696,7 +779,7 @@ namespace Rynchodon.Autopilot.Weapons
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
 						if (distanceSq > TargetingRangeSquared)
 							continue;
-						distanceSq *= multiplier * multiplier;
+						distanceSq *= multiplier * multiplier * multiplier;
 
 						//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance = " + distance, "GetTargetBlock()");
 						if (distanceSq < distanceValue)
@@ -707,7 +790,7 @@ namespace Rynchodon.Autopilot.Weapons
 					}
 				if (target != null) // found a block from blocksToTarget
 				{
-					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + blocksSearch + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()"); 
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + blocksSearch + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
 					return true;
 				}
 			}
@@ -719,7 +802,7 @@ namespace Rynchodon.Autopilot.Weapons
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
 
 				foreach (IMySlimBlock slim in allSlims)
-					if (TargetableBlock(slim.FatBlock))
+					if (TargetableBlock(slim.FatBlock, false))
 					{
 						if (Blacklist.Contains(slim.FatBlock))
 							continue;
@@ -802,14 +885,14 @@ namespace Rynchodon.Autopilot.Weapons
 				return false;
 
 			Vector3D projectilePosition = projectile.GetPosition();
-			BoundingSphereD ignoreArea = new BoundingSphereD(weapon.GetPosition(), TargetingRange / 10f);
+			BoundingSphereD ignoreArea = new BoundingSphereD(BarrelPositionWorld(), TargetingRange / 10f);
 			if (ignoreArea.Contains(projectilePosition) == ContainmentType.Contains)
 			{
 				//myLogger.debugLog("projectile is inside ignore area: " + projectile.getBestName(), "ProjectileIsThreat()");
 				return false;
 			}
 
-			Vector3D weaponPosition = weapon.GetPosition();
+			Vector3D weaponPosition = BarrelPositionWorld();
 			Vector3D nextPosition = projectilePosition + projectile.GetLinearVelocity() / 60f;
 			if (Vector3D.DistanceSquared(weaponPosition, nextPosition) < Vector3D.DistanceSquared(weaponPosition, projectilePosition))
 			{
@@ -821,45 +904,49 @@ namespace Rynchodon.Autopilot.Weapons
 				myLogger.debugLog("projectile: " + projectile.getBestName() + ", is moving away from weapon. D0 = " + Vector3D.DistanceSquared(weaponPosition, nextPosition) + ", D1 = " + Vector3D.DistanceSquared(weaponPosition, projectilePosition), "ProjectileIsThreat()");
 				return false;
 			}
-
-			//RayD projectileRay = new RayD(projectilePosition, Vector3D.Normalize(projectile.GetLinearVelocity()));
-			//double? Intersects = projectileRay.Intersects(ignoreArea);
-			//if (Intersects != null && Intersects > 0)
-			//{
-			//	myLogger.debugLog("projectile is a threat: " + projectile.getBestName(), "ProjectileIsThreat()");
-			//	return true;
-			//}
-
-			//myLogger.debugLog("projectile not headed towards protection area: " + projectile.getBestName(), "ProjectileIsThreat()");
-			//return false;
 		}
 
 		/// <summary>
 		/// <para>Test line segment between weapon and target for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, non-hostile character, or non-hostile grid.</para>
 		/// </summary>
-		/// <param name="targetPos">entity to shoot</param>
+		/// <param name="targetPosition">position of entity to shoot</param>
 		/// <param name="ignoreSourceGrid">ignore intersections with grid that weapon is part of</param>
-		private bool Obstructed(Vector3D targetPos)//, bool readyToFire = false)
+		private bool Obstructed(Vector3D targetPosition)//, bool readyToFire = false)
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
 
-			if (!CanRotateTo(targetPos))
+			if (!CanRotateTo(targetPosition))
 				return true;
 
 			bool ignoreSourceGrid = myTurret == null;
 
-			Vector3D weaponPos = weapon.GetPosition();
+			// if turret, build offset rays
+			List<Line> AllTestLines = new List<Line>();
+			if (myTurret == null || Options.FlagSet(TargetingFlags.Interior))
+				AllTestLines.Add(new Line(BarrelPositionWorld(), targetPosition, false));
+			else
+			{
+				Vector3D BarrelPosition = BarrelPositionWorld();
+
+				foreach (Vector3 offsetBlock in obstructionOffsets)
+				{
+					Vector3 offsetWorld;
+					//if (offsetBlock == Vector3.Zero)
+					//	offsetWorld = Vector3.Zero;
+					//else
+					offsetWorld = RelativeVector3F.createFromBlock(offsetBlock, weapon, false).getWorld();
+
+					AllTestLines.Add(new Line(BarrelPosition + offsetWorld, targetPosition + offsetWorld, false));
+				}
+			}
 
 			// Voxel Test
 			Vector3 boundary;
-			if (MyAPIGateway.Entities.RayCastVoxel_Safe(weaponPos, targetPos, out boundary))
-				return true;
-
-			LineD laser = new LineD(weaponPos, targetPos);
-			//Vector3I position = new Vector3I();
-			double distance;
+			foreach (Line testLine in AllTestLines)
+				if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
+					return true;
 
 			// Test each entity
 			foreach (IMyEntity entity in PotentialObstruction)
@@ -870,8 +957,10 @@ namespace Rynchodon.Autopilot.Weapons
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{
-					if (entity.WorldAABB.Intersects(laser, out distance))
-						return true;
+					double distance;
+					foreach (Line testLine in AllTestLines)
+						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
+							return true;
 					continue;
 				}
 
@@ -881,13 +970,29 @@ namespace Rynchodon.Autopilot.Weapons
 					if (ignoreSourceGrid && asGrid == weapon.CubeGrid)
 						continue;
 
-					// use raycast cells so that weapon can be ignored and shot is less likely to hit a moving friendly
-					List<Vector3I> cells = new List<Vector3I>();
-					asGrid.RayCastCells(weaponPos, targetPos, cells);
-					if (cells.Count == 0)
-						continue;
+					ICollection<Vector3I> allHitCells;
 
-					foreach (Vector3I pos in cells)
+					if (AllTestLines.Count == 1)
+					{
+						List<Vector3I> hitCells = new List<Vector3I>();
+						asGrid.RayCastCells(AllTestLines[0].From, AllTestLines[0].To, hitCells);
+
+						allHitCells = hitCells;
+					}
+					else
+					{
+						allHitCells = new HashSet<Vector3I>();
+						foreach (Line testLine in AllTestLines)
+						{
+							List<Vector3I> hitCells = new List<Vector3I>();
+							asGrid.RayCastCells(testLine.From, testLine.To, hitCells);
+
+							foreach (Vector3I cell in hitCells)
+								allHitCells.Add(cell);
+						}
+					}
+
+					foreach (Vector3I pos in allHitCells)
 					{
 						if (asGrid.CubeExists(pos))
 							if (!ignoreSourceGrid && asGrid == weapon.CubeGrid)
@@ -925,8 +1030,8 @@ namespace Rynchodon.Autopilot.Weapons
 
 			Vector3D RelativeVelocity = TargetVelocity - weapon.GetLinearVelocity();
 
-			//myLogger.debugLog("weapon position = " + weapon.GetPosition() + ", ammo speed = " + LoadedAmmoSpeed(TargetPosition) + ", TargetPosition = " + TargetPosition + ", target velocity = " + target.GetLinearVelocity(), "GetFiringDirection()");
-			FindInterceptVector(weapon.GetPosition(), LoadedAmmoSpeed(TargetPosition), TargetPosition, RelativeVelocity);
+			//myLogger.debugLog("weapon position = " + BarrelPositionWorld() + ", ammo speed = " + LoadedAmmoSpeed(TargetPosition) + ", TargetPosition = " + TargetPosition + ", target velocity = " + target.GetLinearVelocity(), "GetFiringDirection()");
+			FindInterceptVector(BarrelPositionWorld(), LoadedAmmoSpeed(TargetPosition), TargetPosition, RelativeVelocity);
 			if (CurrentTarget.FiringDirection == null)
 			{
 				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
@@ -1036,7 +1141,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// </summary>
 		private void TryClearBlackList()
 		{
-			bool FixedGun = myTurret ==null;
+			bool FixedGun = myTurret == null;
 			int i;
 			for (i = 0; i < 10; i++)
 			{

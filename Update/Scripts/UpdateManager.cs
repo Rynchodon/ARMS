@@ -8,6 +8,8 @@ using Rynchodon.Autopilot.Weapons;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage;
+using VRage.Collections;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -102,6 +104,9 @@ namespace Rynchodon.Update
 		private enum Status : byte { Not_Initialized, Initialized, Terminated }
 		private Status MangerStatus = Status.Not_Initialized;
 
+		private MyQueue<Action> AddActions = new MyQueue<Action>(8);
+		private FastResourceLock lock_AddActions = new FastResourceLock();
+
 		private Logger myLogger = new Logger(null, "UpdateManager");
 		private static UpdateManager Instance;
 
@@ -143,7 +148,7 @@ namespace Rynchodon.Update
 
 				//myLogger.debugLog("Adding all entities", "Init()");
 				foreach (IMyEntity entity in allEntities)
-					Entities_OnEntityAdd(entity);
+					AddEntity(entity);
 
 				MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 
@@ -163,7 +168,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			MainLock.MainThread_TryReleaseExclusive();
+			MainLock.MainThread_ReleaseExclusive();
 			try
 			{
 				switch (MangerStatus)
@@ -176,6 +181,14 @@ namespace Rynchodon.Update
 						return;
 				}
 				Dictionary<Action, uint> Unregister = null;
+
+				try
+				{
+					for (int i = 0; i < AddActions.Count; i++)
+						AddActions[i].Invoke();
+				}
+				catch (Exception ex)
+				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
@@ -208,9 +221,11 @@ namespace Rynchodon.Update
 			finally
 			{
 				Update++;
-				MainLock.MainThread_TryAcquireExclusive();
+				MainLock.MainThread_AcquireExclusive();
 			}
 		}
+
+		#region Register
 
 		/// <summary>
 		/// register an Action for updates
@@ -269,11 +284,20 @@ namespace Rynchodon.Update
 			GridScriptConstructors.Add(constructor);
 		}
 
+		#endregion
+		#region Events
+
+		private void Entities_OnEntityAdd(IMyEntity entity)
+		{
+			using (lock_AddActions.AcquireExclusiveUsing())
+				AddActions.Enqueue(() => AddEntity(entity));
+		}
+
 		/// <summary>
 		/// if necessary, builds script for an entity
 		/// </summary>
 		/// <param name="entity"></param>
-		private void Entities_OnEntityAdd(IMyEntity entity)
+		private void AddEntity(IMyEntity entity)
 		{
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
@@ -281,7 +305,7 @@ namespace Rynchodon.Update
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
-					Grid_OnBlockAdded(slim);
+					AddBlock(slim);
 				asGrid.OnBlockAdded += Grid_OnBlockAdded;
 				asGrid.OnClosing += Grid_OnClosing;
 
@@ -298,12 +322,18 @@ namespace Rynchodon.Update
 			}
 		}
 
+		private void Grid_OnBlockAdded(IMySlimBlock block)
+		{
+			using (lock_AddActions.AcquireExclusiveUsing())
+				AddActions.Enqueue(() => { AddBlock(block); });
+		}
+
 		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
 
 		/// <summary>
 		/// if necessary, builds script for a block
 		/// </summary>
-		private void Grid_OnBlockAdded(IMySlimBlock block)
+		private void AddBlock(IMySlimBlock block)
 		{
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
@@ -330,6 +360,14 @@ namespace Rynchodon.Update
 			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			asGrid.OnClosing -= Grid_OnClosing;
+		}
+
+		#endregion
+
+		protected override void UnloadData()
+		{
+			base.UnloadData();
+			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
 		}
 
 		/// <summary>

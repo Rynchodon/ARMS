@@ -25,6 +25,16 @@ namespace Rynchodon.Autopilot.Weapons
 		Destroy = 1 << 8
 	}
 
+	[Flags]
+	public enum TargetingFlags : byte
+	{
+		None = 0,
+		/// <summary>Check for blocks are functional, rather than working.</summary>
+		Functional = 1 << 0,
+		/// <summary>Reduce the number of rays to check for obstructions.</summary>
+		Interior = 1 << 1
+	}
+
 	public class TargetingOptions
 	{
 		public TargetType CanTarget = TargetType.None;
@@ -32,6 +42,10 @@ namespace Rynchodon.Autopilot.Weapons
 		{ return (CanTarget & type) != 0; }
 
 		public List<string> blocksToTarget = new List<string>();
+
+		public TargetingFlags Flags = TargetingFlags.None;
+		public bool FlagSet(TargetingFlags flag)
+		{ return (Flags & flag) != 0; }
 	}
 
 	public class Target

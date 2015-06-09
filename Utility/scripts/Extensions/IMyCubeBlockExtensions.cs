@@ -273,9 +273,14 @@ namespace Rynchodon
 		public static Vector3 LocalPosition(this IMyCubeBlock block)
 		{ return block.Position * block.CubeGrid.GridSize; }
 
+		/// <summary>
+		/// Determines if a block is owned by "hostile NPC"
+		/// </summary>
 		public static bool OwnedNPC(this IMyCubeBlock block)
 		{
 			long Owner = block.OwnerId;
+			if (Owner == 0)
+				return false;
 			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == Owner; });
 			return match.Count == 0;
 		}

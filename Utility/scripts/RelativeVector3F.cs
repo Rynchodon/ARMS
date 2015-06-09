@@ -63,13 +63,14 @@ namespace Rynchodon
 		/// create from a vector relative to a block (including block orientation)
 		/// <para>Use to create a position vector from a block.</para>
 		/// </summary>
-		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block, bool BlockIsPosition = true)
+		/// <param name="IsPosition">If true, the resultant RelativeVector3F represents a position. If false, it represents a direction</param>
+		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block, bool IsPosition = true)
 		{
 			RelativeVector3F result = new RelativeVector3F();
 			result.value__block = fromBlock;
 			result.cubeGrid = block.CubeGrid;
 			result.cubeBlock = block;
-			result.BlockIsPosition = BlockIsPosition;
+			result.BlockIsPosition = IsPosition;
 			return result;
 		}
 
