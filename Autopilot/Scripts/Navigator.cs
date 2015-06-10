@@ -527,8 +527,9 @@ namespace Rynchodon.Autopilot
 					switch (myPathfinder_Output.PathfinderResult)
 					{
 						case Pathfinder.PathfinderOutput.Result.Incomplete:
-							//PathfinderAllowsMovement = true;
-							// leave PathfinderAllowsMovement as it was
+							// if ship is not moving, wait for a path. if ship is moving, keep previous PathfinderAllowsMovement
+							if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+								PathfinderAllowsMovement = false;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
