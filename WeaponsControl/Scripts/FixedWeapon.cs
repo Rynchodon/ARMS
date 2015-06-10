@@ -1,14 +1,17 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot.Weapons
 {
-	/// <summary>
-	/// At first this will be set up to turn a grid into a turret.
-	/// </summary>
-	public class FixedWeapon
+	public class FixedWeapon //: WeaponTargeting
 	{
 
+		//public FixedWeapon(IMyCubeBlock block)
+		//	: base(block)
+		//{
+
+		//}
 	}
 }

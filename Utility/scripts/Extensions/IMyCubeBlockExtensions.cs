@@ -284,5 +284,14 @@ namespace Rynchodon
 			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == Owner; });
 			return match.Count == 0;
 		}
+
+		public static Vector3 directionToWorld(this IMyCubeBlock block, Vector3 blockDirection)
+		{
+			Matrix WorldMatrix = block.WorldMatrix;
+			return
+					WorldMatrix.Right * blockDirection.X
+					+ WorldMatrix.Up * blockDirection.Y
+					+ WorldMatrix.Backward * blockDirection.Z;
+		}
 	}
 }

@@ -22,8 +22,6 @@ namespace Rynchodon
 		private IMyCubeGrid cubeGrid; // always set on create
 		private IMyCubeBlock cubeBlock = null;
 
-		private bool BlockIsPosition;
-
 		private RelativeVector3F() { }
 
 		/// <summary>
@@ -64,13 +62,12 @@ namespace Rynchodon
 		/// <para>Use to create a position vector from a block.</para>
 		/// </summary>
 		/// <param name="IsPosition">If true, the resultant RelativeVector3F represents a position. If false, it represents a direction</param>
-		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block, bool IsPosition = true)
+		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block)
 		{
 			RelativeVector3F result = new RelativeVector3F();
 			result.value__block = fromBlock;
 			result.cubeGrid = block.CubeGrid;
 			result.cubeBlock = block;
-			result.BlockIsPosition = IsPosition;
 			return result;
 		}
 
@@ -133,11 +130,8 @@ namespace Rynchodon
 			RCdirection = cubeBlock.Orientation.Forward;
 			resultant -= (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.Z;
 
-			if (BlockIsPosition)
-				// add block position
-				value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
-			else
-				value__grid = resultant;
+			// add block position
+			value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
 			return (Vector3)value__grid;
 		}
 

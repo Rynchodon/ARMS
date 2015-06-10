@@ -72,23 +72,17 @@ namespace Rynchodon.Update
 			{
 				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update1, block);
-					RegisterForUpdates(10, t.Update10, block);
-					RegisterForUpdates(100, t.Update100, block);
+					RegisterForUpdates(1, t.Update, block);
 				});
 
 				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update1, block);
-					RegisterForUpdates(10, t.Update10, block);
-					RegisterForUpdates(100, t.Update100, block);
+					RegisterForUpdates(1, t.Update, block);
 				});
 
 				RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update1, block);
-					RegisterForUpdates(10, t.Update10, block);
-					RegisterForUpdates(100, t.Update100, block);
+					RegisterForUpdates(1, t.Update, block);
 				});
 			}
 			else
@@ -184,8 +178,9 @@ namespace Rynchodon.Update
 
 				try
 				{
-					for (int i = 0; i < AddActions.Count; i++)
-						AddActions[i].Invoke();
+					using (lock_AddActions.AcquireExclusiveUsing())
+						for (int i = 0; i < AddActions.Count; i++)
+							AddActions[i].Invoke();
 				}
 				catch (Exception ex)
 				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }

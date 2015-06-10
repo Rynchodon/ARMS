@@ -182,7 +182,9 @@ namespace Rynchodon
 			return outInstances;
 		}
 
-		/// <remarks>I have not tested IsInsideVoxel for thread-safety, I assumed it is not.</remarks>
+		/// <remarks>
+		/// Running multiple simultaneous ray casts seems to throw an exception.
+		/// </remarks>
 		public static bool RayCastVoxel_Safe(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
 		{
 			using (Lock_MainThread.AcquireSharedUsing())
