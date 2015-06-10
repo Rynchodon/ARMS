@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>LargeJumpDriveCharger_Small</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\LargeJumpDriveCharger.dds</Icon>
+	<CubeSize>Small</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="3" y="3" z="3" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\LargeJumpDriveCharger_Small.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\LargeJumpDriveCharger_Small_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\LargeJumpDriveCharger_Small_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\LargeJumpDriveCharger_Small_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="0.08" StartY="0.08" EndX="2.92" EndY="2.92" />
+	</MountPoints>
+	<BlockPairName>LargeJumpDriveCharger</BlockPairName>
+</Definition>

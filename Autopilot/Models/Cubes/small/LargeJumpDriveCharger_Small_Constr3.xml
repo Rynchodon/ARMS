@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Model Name="LargeJumpDriveCharger">
+	<Parameter Name="RescaleFactor">1.0</Parameter>
+	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
+	<Parameter Name="Centered">false</Parameter>
+	<Parameter Name="SpecularPower">0.0</Parameter>
+	<Parameter Name="SpecularShininess">0.0</Parameter>
+	<Material Name="CS2">
+		<Parameter Name="Technique">MESH</Parameter>
+		<Parameter Name="SpecularIntensity">0.0</Parameter>
+		<Parameter Name="SpecularPower">0.0</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="NormalTexture" />
+	</Material>
+	<Material Name="CS3">
+		<Parameter Name="Technique">MESH</Parameter>
+		<Parameter Name="SpecularIntensity">0.0</Parameter>
+		<Parameter Name="SpecularPower">0.0</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="NormalTexture" />
+	</Material>
+	<Material Name="CS1">
+		<Parameter Name="Technique">MESH</Parameter>
+		<Parameter Name="SpecularIntensity">0.0</Parameter>
+		<Parameter Name="SpecularPower">0.0</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="NormalTexture" />
+	</Material>
+</Model>

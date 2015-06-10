@@ -12,7 +12,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\JumpDriveCharger_Large.mwm</Model>
+      <Model>Models\Cubes\large\JumpDriveCharger_Large.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="20" />
         <Component Subtype="Construction" Count="10" />
@@ -24,9 +24,9 @@
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\JumpDriveCharger_Large_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\JumpDriveCharger_Large_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\JumpDriveCharger_Large_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\JumpDriveCharger_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\JumpDriveCharger_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\JumpDriveCharger_Large_Constr3.mwm" />
 			</BuildProgressModels>
 			<MountPoints>
 				<MountPoint Side="Back" StartX="0.66" StartY="0.03" EndX="0.96" EndY="0.33" />
@@ -55,6 +55,9 @@
       <Public>true</Public>
 	  <DamageEffectId>214</DamageEffectId>
     </Definition>
+
+
+
 	
 	<Definition xsi:type="MyObjectBuilder_BatteryBlockDefinition">
       <Id>
@@ -67,7 +70,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\JumpDriveCharger_Small.mwm</Model>
+      <Model>Models\Cubes\small\JumpDriveCharger_Small.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="5" />
         <Component Subtype="Construction" Count="2" />
@@ -92,9 +95,9 @@
 				<MountPoint Side="Back" StartX="-0.01" StartY="0.03" EndX="0.66" EndY="0.33" />
 			</MountPoints>
       <BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\JumpDriveCharger_Small_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\JumpDriveCharger_Small_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\JumpDriveCharger_Small_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\small\JumpDriveCharger_Small_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\small\JumpDriveCharger_Small_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\JumpDriveCharger_Small_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>JumpDriveCharger</BlockPairName>
       <EdgeType>Light</EdgeType>
@@ -110,19 +113,23 @@
       <Public>true</Public>
 	  <DamageEffectId>214</DamageEffectId>
     </Definition>
+
+
+
+
 	
     <Definition xsi:type="MyObjectBuilder_GravityGeneratorSphereDefinition">
       <Id>
         <TypeId>GravityGeneratorSphere</TypeId>
-        <SubtypeId>LargeBlockJumpDrive</SubtypeId>
+        <SubtypeId>JumpDrive_Large</SubtypeId>
       </Id>
       <DisplayName>Jump Drive</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\gravity_generator_spherical.dds</Icon>
+      <Icon>Textures\Icons\Jump-Drive.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="1" z="1" />
+      <Size x="3" y="2" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\GravityGeneratorSpherical.mwm</Model>
+      <Model>Models\Cubes\large\JumpDrive_Large.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="54" />
         <Component Subtype="GravityGenerator" Count="6" />
@@ -134,14 +141,17 @@
         <Component Subtype="SteelPlate" Count="40" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
-      <MountPoints>
-        <MountPoint Side="Bottom" StartX="0.25" StartY="0.25" EndX="0.75" EndY="0.75" />
-      </MountPoints>
-      <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\GravityGeneratorSphericalConstruction_1.mwm" />
-        <Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\GravityGeneratorSphericalConstruction_2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\GravityGeneratorSphericalConstruction_3.mwm" />
-      </BuildProgressModels>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\JumpDrive_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\JumpDrive_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\JumpDrive_Large_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Top" StartX="0.01" StartY="0.03" EndX="0.95" EndY="0.97" />
+				<MountPoint Side="Bottom" StartX="2.04" StartY="0.03" EndX="2.98" EndY="0.97" />
+				<MountPoint Side="Bottom" StartX="0.01" StartY="0.03" EndX="2.04" EndY="0.97" />
+				<MountPoint Side="Top" StartX="0.95" StartY="0.03" EndX="2.98" EndY="0.97" />
+			</MountPoints>
       <BlockPairName>JumpDrive</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
@@ -157,15 +167,15 @@
 	<Definition xsi:type="MyObjectBuilder_GravityGeneratorSphereDefinition">
       <Id>
         <TypeId>GravityGeneratorSphere</TypeId>
-        <SubtypeId>SmallBlockJumpDrive</SubtypeId>
+        <SubtypeId>JumpDrive_Small</SubtypeId>
       </Id>
       <DisplayName>Jump Drive</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\decoy.dds</Icon>
+      <Icon>Textures\Icons\Jump-Drive.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="1" z="1" />
+      <Size x="3" y="2" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Small\decoy.mwm</Model>
+      <Model>Models\Cubes\small\JumpDrive_Small.mwm</Model>
       <Components>
         <Component Subtype="Construction" Count="1" />
         <Component Subtype="Computer" Count="1" />
@@ -175,10 +185,17 @@
       </Components>
       <BuildTimeSeconds>5</BuildTimeSeconds>
       <CriticalComponent Subtype="RadioCommunication" Index="0" />
-      <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Small\DecoyConstruction_1.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\DecoyConstruction_2.mwm" />
-      </BuildProgressModels>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\small\JumpDrive_Small_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\small\JumpDrive_Small_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\JumpDrive_Small_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Top" StartX="0.01" StartY="0.03" EndX="0.95" EndY="0.97" />
+				<MountPoint Side="Bottom" StartX="2.04" StartY="0.03" EndX="2.98" EndY="0.97" />
+				<MountPoint Side="Bottom" StartX="0.01" StartY="0.03" EndX="2.04" EndY="0.97" />
+				<MountPoint Side="Top" StartX="0.95" StartY="0.03" EndX="2.98" EndY="0.97" />
+			</MountPoints>
       <BlockPairName>JumpDrive</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
@@ -190,5 +207,98 @@
       <ConsumptionPower>3</ConsumptionPower>
 	  <DamageEffectId>214</DamageEffectId>
     </Definition>
+
+
+<Definition xsi:type="MyObjectBuilder_BatteryBlockDefinition">
+      <Id>
+        <TypeId>BatteryBlock</TypeId>
+        <SubtypeId>LargeJumpDriveCharger_Large</SubtypeId>
+      </Id>
+      <DisplayName>Large Jump Drive Charger</DisplayName>
+      <Icon>Textures\Icons\LargeJumpDriveCharger.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\large\LargeJumpDriveCharger_Large.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="10" />
+        <Component Subtype="MetalGrid" Count="5" />
+        <Component Subtype="PowerCell" Count="120" />
+        <Component Subtype="Computer" Count="25" />
+        <Component Subtype="Construction" Count="20" />
+        <Component Subtype="SteelPlate" Count="60" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\LargeJumpDriveCharger_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\LargeJumpDriveCharger_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\LargeJumpDriveCharger_Large_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.08" StartY="0.08" EndX="2.92" EndY="2.92" />
+			</MountPoints>
+			<BlockPairName>LargeJumpDriveCharger</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>45</BuildTimeSeconds>
+      <MaxPowerOutput>1000</MaxPowerOutput>
+      <RequiredPowerInput>11.1</RequiredPowerInput>
+      <MaxStoredPower>2.78</MaxStoredPower>
+      <InventorySize>
+        <X>1</X>
+        <Y>1</Y>
+        <Z>1</Z>
+      </InventorySize>
+      <Public>true</Public>
+	  <DamageEffectId>214</DamageEffectId>
+    </Definition>
+
+
+<Definition xsi:type="MyObjectBuilder_BatteryBlockDefinition">
+      <Id>
+        <TypeId>BatteryBlock</TypeId>
+        <SubtypeId>LargeJumpDriveCharger_Small</SubtypeId>
+      </Id>
+      <DisplayName>Large Jump Drive Charger</DisplayName>
+      <Icon>Textures\Icons\LargeJumpDriveCharger.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\small\LargeJumpDriveCharger_Small.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="20" />
+        <Component Subtype="Construction" Count="10" />
+        <Component Subtype="MetalGrid" Count="5" />
+        <Component Subtype="PowerCell" Count="120" />
+        <Component Subtype="Computer" Count="25" />
+        <Component Subtype="Construction" Count="20" />
+        <Component Subtype="SteelPlate" Count="60" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\small\LargeJumpDriveCharger_Small_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\small\LargeJumpDriveCharger_Small_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\LargeJumpDriveCharger_Small_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.08" StartY="0.08" EndX="2.92" EndY="2.92" />
+			</MountPoints>
+			<BlockPairName>LargeJumpDriveCharger</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>45</BuildTimeSeconds>
+      <MaxPowerOutput>1000</MaxPowerOutput>
+      <RequiredPowerInput>11.1</RequiredPowerInput>
+      <MaxStoredPower>2.78</MaxStoredPower>
+      <InventorySize>
+        <X>1</X>
+        <Y>1</Y>
+        <Z>1</Z>
+      </InventorySize>
+      <Public>true</Public>
+	  <DamageEffectId>214</DamageEffectId>
+    </Definition>
+
   </CubeBlocks>
 </Definitions>

@@ -3,8 +3,14 @@
 	<BlueprintClasses>
 	</BlueprintClasses>
 	<BlueprintClassEntries>
-		>
+		
 	<Entry Class="LargeBlocks" BlueprintSubtypeId="BatteryBlock/JumpDriveCharger_Large" />
         <Entry Class="SmallBlocks" BlueprintSubtypeId="BatteryBlock/JumpDriveCharger_Small" />
+        <Entry Class="LargeBlocks" BlueprintSubtypeId="GravityGeneratorSphere/JumpDrive_Large" />
+        <Entry Class="SmallBlocks" BlueprintSubtypeId="GravityGeneratorSphere/JumpDrive_Small" />
+        <Entry Class="LargeBlocks" BlueprintSubtypeId="BatteryBlock/LargeJumpDriveCharger_Large" />
+        <Entry Class="SmallBlocks" BlueprintSubtypeId="BatteryBlock/LargeJumpDriveCharger_Small" />
+
+
 	</BlueprintClassEntries>
 </Definitions>
