@@ -14,7 +14,7 @@ Speed Control
 Obstacle detection & collision avoidance
 Engage Enemy ships/stations
 Radar
-Act as a missle and target a block on a an enemy ship/station
+Act as a missile and target a block on an enemy ship/station
 Smart Turret Control - Allows you to set priorities for your turrets.
 Harvest - Extract resources from asteroids
 
@@ -67,7 +67,7 @@ bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bAllowTurretControl - enables Smart Turret Control
 bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
 bUseColourState - Autopilot will change colour of Autopilot block
-yParallelPathCheck - Number of path checking tasks that can run in parallel
+yParallelPathfinder - Number of pathfinding tasks that can run in parallel
 fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 
@@ -76,7 +76,7 @@ These are all the known issues with Autopilot. If an issue is not listed here, I
 
 Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the Autopilot block will display <NO_PATH>.
 
-Merging grids, particularly with the landing (L) command, can cause unexpected behaviour. Autopilot cannot detect a merge, so you will have to sort it out yourself.
+Merging grids will cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
 
 Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
 

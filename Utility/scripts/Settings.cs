@@ -82,7 +82,7 @@ namespace Rynchodon
 		private static int readAll()
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(Settings)))
-				return -1;
+				return -1; // no file
 
 			TextReader settingsReader = null;
 			try
@@ -107,13 +107,15 @@ namespace Rynchodon
 
 				return fileVersion;
 			}
-			finally
+			catch (Exception ex)
 			{
+				myLogger.alwaysLog("Failed to read settings: " + ex, "writeAll()", Logger.severity.WARNING);
 				if (settingsReader != null)
 				{
 					settingsReader.Close();
 					settingsReader = null;
 				}
+				return -4; // exception while reading
 			}
 		}
 
@@ -131,12 +133,20 @@ namespace Rynchodon
 				// write settings
 				foreach (KeyValuePair<SettingName, Setting> pair in AllSettings)
 					write(pair.Key.ToString(), pair.Value.ValueAsString());
-			}
-			finally
-			{
+
 				settingsWriter.Flush();
 				settingsWriter.Close();
 				settingsWriter = null;
+			}
+			catch (Exception ex)
+			{
+				myLogger.alwaysLog("Failed to write settings: " + ex, "writeAll()", Logger.severity.WARNING);
+				if (settingsWriter != null)
+				{
+					// do not flush, do not want a partial-file
+					settingsWriter.Close();
+					settingsWriter = null;
+				}
 			}
 		}
 
