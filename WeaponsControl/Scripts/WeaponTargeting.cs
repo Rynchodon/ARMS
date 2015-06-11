@@ -19,7 +19,6 @@ namespace Rynchodon.Autopilot.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
-	/// TODO: fix range issues
 	public abstract class WeaponTargeting
 	{
 		protected static ThreadManager Thread = new ThreadManager();
@@ -40,9 +39,8 @@ namespace Rynchodon.Autopilot.Weapons
 		private Ammo LoadedAmmo;
 
 		protected Target CurrentTarget { get; private set; }
-		//protected readonly FastResourceLock lock_CurrentTarget = new FastResourceLock();
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
-		private readonly FastResourceLock lock_Blacklist = new FastResourceLock();
+		private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 		private int Blacklist_Index = 0;
 
 		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
@@ -71,9 +69,8 @@ namespace Rynchodon.Autopilot.Weapons
 		protected bool IsControllingWeapon { get; private set; }
 		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
 		protected bool IsShooting { get; private set; }
-		//private bool ToggleShooting = false;
 
-		public bool IsTurret { get; protected set; }
+		public bool IsTurret { get; private set; }
 
 		private Logger myLogger;
 
@@ -84,15 +81,6 @@ namespace Rynchodon.Autopilot.Weapons
 			obstructionOffsets.Add(new Vector3(2.5f, 5f, -2.5f));
 			obstructionOffsets.Add(new Vector3(-2.5f, 5f, 2.5f));
 			obstructionOffsets.Add(new Vector3(-2.5f, 5f, -2.5f));
-
-			//obstructionOffsets.Add(Vector2.Zero);
-			//obstructionOffsets.Add(new Vector2(-2.5f, 2.5f));
-			//obstructionOffsets.Add(new Vector2(2.5f, 2.5f));
-
-			//obstructionOffsets.Add(new Vector2(-2.5f, -2.5f));
-			//obstructionOffsets.Add(new Vector2(-2.5f, 2.5f));
-			//obstructionOffsets.Add(new Vector2(2.5f, -2.5f));
-			//obstructionOffsets.Add(new Vector2(2.5f, 2.5f));
 		}
 
 		public WeaponTargeting(IMyCubeBlock weapon)
@@ -204,28 +192,7 @@ namespace Rynchodon.Autopilot.Weapons
 		{
 			return weapon.GetPosition();
 		}
-
-		/// <summary>
-		///// Check for the spawning location of a projectile to find turret offset.
-		///// </summary>
-		///// <param name="entity">IMyEntity added to world</param>
-		//private void CheckProjectileSpawn(IMyEntity entity)
-		//{
-		//	if (entity.ToString().StartsWith("MyMissile"))
-		//	{
-		//		Vector3D entityPosition = entity.GetPosition();
-		//		if (weapon.WorldAABB.Distance(entityPosition) < 1) // near enough to belong to this weapon
-		//		{
-		//			Vector3 offset = RelativeVector3F.createFromWorldAbsolute(entityPosition, weapon.CubeGrid).getLocal() - weapon.GetPosition();
-		//			myLogger.debugLog("Spawned a missile, offset = " + offset, "CheckProjectileSpawn()");
-		//		}
-		//		else
-		//			myLogger.debugLog("Not my missile: " + entity.ToString(), "CheckProjectileSpawn()");
-		//	}
-		//	else
-		//		myLogger.debugLog("Not a missile: " + entity.getBestName(), "CheckProjectileSpawn()");
-		//}
-
+		
 		/// <summary>
 		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
 		/// </summary>
@@ -444,8 +411,9 @@ namespace Rynchodon.Autopilot.Weapons
 				previousFiringDirection = CurrentDirection;
 			}
 
-			//float firingThreshold = 10.0f - speed * 200 + weapon.CubeGrid.GetLinearVelocity().Length();
-			float firingThreshold = 2.5f;
+			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), weapon.CubeGrid.GetLinearVelocity());
+			float firingThreshold = 2.5f + relativeSpeed / 10f;
+
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
 
 			if (firingThreshold > 0 && shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
@@ -482,10 +450,7 @@ namespace Rynchodon.Autopilot.Weapons
 				(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 			});
 
-			//ToggleShooting = !ToggleShooting;
 			IsShooting = true;
-			//if (LoadedAmmo.Definition is MyMissileAmmoDefinition)
-			//MyAPIGateway.Entities.OnEntityAdd += CheckProjectileSpawn;
 		}
 
 		protected void StopFiring()
@@ -499,23 +464,8 @@ namespace Rynchodon.Autopilot.Weapons
 				(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
 			});
 
-			//ToggleShooting = !ToggleShooting;
 			IsShooting = false;
-			//if (LoadedAmmo.Definition is MyMissileAmmoDefinition)
-			//MyAPIGateway.Entities.OnEntityAdd -= CheckProjectileSpawn;
 		}
-
-		///// <summary>
-		///// Must be called from game thread to update shooting.
-		///// </summary>
-		//protected void UpdateShooting()
-		//{
-		//	if (ToggleShooting)
-		//	{
-		//		(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
-		//		ToggleShooting = !ToggleShooting;
-		//	}
-		//}
 
 		/// <summary>
 		/// Fills Available_Targets and PotentialObstruction
@@ -824,7 +774,7 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
 				if (decoyBlockList != null)
-					foreach (Ingame.IMyTerminalBlock block in decoyBlockList)
+					foreach (IMyTerminalBlock block in decoyBlockList)
 					{
 						if (!block.IsWorking)
 							continue;
@@ -839,7 +789,7 @@ namespace Rynchodon.Autopilot.Weapons
 
 						//myLogger.debugLog("decoy search, block = " + block.DisplayNameText + ", distance = " + distance, "GetTargetBlock()");
 
-						if (distanceSq < distanceValue)
+						if (distanceSq < distanceValue && weapon.canConsiderHostile(block as IMyCubeBlock))
 						{
 							target = block as IMyCubeBlock;
 							distanceValue = distanceSq;
@@ -883,7 +833,7 @@ namespace Rynchodon.Autopilot.Weapons
 						distanceSq *= multiplier * multiplier * multiplier;
 
 						myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
-						if (distanceSq < distanceValue)
+						if (distanceSq < distanceValue && weapon.canConsiderHostile(block))
 						{
 							target = block;
 							distanceValue = distanceSq;
@@ -916,10 +866,13 @@ namespace Rynchodon.Autopilot.Weapons
 							continue;
 						distanceSq *= 1e12;
 
-						target = slim.FatBlock;
-						distanceValue = distanceSq;
-						myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
-						return true;
+						if (weapon.canConsiderHostile(slim.FatBlock))
+						{
+							target = slim.FatBlock;
+							distanceValue = distanceSq;
+							myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+							return true;
+						}
 					}
 			}
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Sandbox.Definitions;
 using VRage.ModAPI;
 using VRageMath;
@@ -7,7 +8,8 @@ using VRageMath;
 namespace Rynchodon.Autopilot.Weapons
 {
 	/// <summary>
-	/// Defined in the order of precedence
+	/// <para>These are all types of targets that the weapon can shoot. A target may be in more than one category.</para>
+	/// <para>Defined in the order of precedence</para>
 	/// </summary>
 	[Flags]
 	public enum TargetType : ushort
@@ -46,6 +48,27 @@ namespace Rynchodon.Autopilot.Weapons
 		public TargetingFlags Flags = TargetingFlags.None;
 		public bool FlagSet(TargetingFlags flag)
 		{ return (Flags & flag) != 0; }
+
+		public TargetingOptions() { }
+
+		public TargetingOptions Clone()
+		{
+			return new TargetingOptions()
+			{
+				blocksToTarget = this.blocksToTarget,
+				CanTarget = this.CanTarget,
+				Flags = this.Flags
+			};
+		}
+
+		public override string ToString()
+		{
+			StringBuilder blocks = new StringBuilder();
+			foreach (string block in blocksToTarget)
+				blocks.Append(block);
+
+			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Blocks = " + blocks;
+		}
 	}
 
 	public class Target

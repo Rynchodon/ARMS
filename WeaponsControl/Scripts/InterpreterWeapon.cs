@@ -54,9 +54,9 @@ namespace Rynchodon.Autopilot.Weapons
 				myLogger.debugLog(Block.DisplayNameText + " is owned by a N.P.C.", "Parse()");
 				if (ForNPC_Options == null)
 				{
-					myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
+					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
 					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
-					myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
+					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
 					instructions = Settings.GetSettingString(Settings.SettingName.sSmartTurretCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
 
@@ -73,10 +73,10 @@ namespace Rynchodon.Autopilot.Weapons
 					else
 					{
 						ForNPC_IW.Parse(out ForNPC_Options, out ForNPC_Errors, instructions);
-						myLogger.debugLog("Parsed OK", "Parse()");
+						myLogger.debugLog("Parsed NPC OK, Options: " + ForNPC_Options, "Parse()");
 					}
 				}
-				Options = ForNPC_Options;
+				Options = ForNPC_Options.Clone();
 				Errors = ForNPC_Errors;
 				return;
 			}
