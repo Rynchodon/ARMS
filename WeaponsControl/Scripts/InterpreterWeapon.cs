@@ -6,7 +6,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.Autopilot.Weapons
+namespace Rynchodon.Weapons
 {
 	/// <summary>
 	/// Interpreter for weapons
@@ -57,7 +57,7 @@ namespace Rynchodon.Autopilot.Weapons
 					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
 					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
 					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
-					instructions = Settings.GetSettingString(Settings.SettingName.sSmartTurretCommandsNPC);
+					instructions = Settings.GetSettingString(Settings.SettingName.sTurretCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
 
 					if (instructions != null)
@@ -210,6 +210,8 @@ namespace Rynchodon.Autopilot.Weapons
 			}
 			myLogger.debugLog("Trying to parse: " + toParse, "GetFromPanel()");
 
+			toParse = toParse.Substring(1);
+
 			string[] split = toParse.Split(',');
 
 			string panelName;
@@ -219,7 +221,7 @@ namespace Rynchodon.Autopilot.Weapons
 				panelName = toParse;
 
 			var TextPanels = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(MyObjectBuilder_TextPanel));
-			Ingame.IMyTerminalBlock bestMatch = null;
+			IMyCubeBlock bestMatch = null;
 			int bestMatchLength = int.MaxValue;
 			foreach (var panel in TextPanels)
 				if (panel.DisplayNameText.Length < bestMatchLength && Block.canControlBlock(panel as IMyCubeBlock) && panel.DisplayNameText.looseContains(panelName))

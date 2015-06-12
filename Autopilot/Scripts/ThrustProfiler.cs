@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -34,7 +35,7 @@ namespace Rynchodon.Autopilot
 				thruster.throwIfNull_argument("thruster");
 
 				this.thruster = thruster;
-				this.force = (MyDefinitionManager.Static.GetCubeBlockDefinition((thruster as IMyCubeBlock).getSlimObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
+				this.force = (DefinitionCache.GetCubeBlockDefinition(thruster) as MyThrustDefinition).ForceMagnitude;
 				this.dampingForce = force * 10;
 				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
 			}
@@ -88,7 +89,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="thruster">The new thruster</param>
 		private void newThruster(IMySlimBlock thruster)
 		{
-			float dampingForce = 10 * (MyDefinitionManager.Static.GetCubeBlockDefinition(thruster.GetObjectBuilder()) as MyThrustDefinition).ForceMagnitude;
+			float dampingForce = 10 * (DefinitionCache.GetCubeBlockDefinition(thruster.FatBlock) as MyThrustDefinition).ForceMagnitude;
 			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust);
 			allMyThrusters.Add(thruster.FatBlock as IMyThrust, properties);
 			thrustersInDirection[properties.forceDirect].Add(properties);

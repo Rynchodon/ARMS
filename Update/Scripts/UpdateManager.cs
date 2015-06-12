@@ -3,8 +3,9 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.AttachedGrid;
 using Rynchodon.Autopilot;
-using Rynchodon.Autopilot.Weapons;
+using Rynchodon.Weapons;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -34,6 +35,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts()
 		{
+			// Antenna Communication
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
 				Beacon newBeacon = new Beacon(block);
 				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
@@ -55,38 +57,68 @@ namespace Rynchodon.Update
 				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
 			});
 
+			// Navigation
 			if (Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
 					if (Navigator.IsControllableBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
-
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (Navigator.IsControllableBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
 			});
 
+			// Weapons
 			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
 			{
+				// Turrets
 				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update, block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
 				});
-
 				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update, block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
 				});
-
 				RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (block) => {
 					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update, block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
+				});
+
+				// Fixed
+				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
 				});
 			}
 			else
-				myLogger.debugLog("Turret Control is disabled", "RegisterScripts()", Logger.severity.INFO);
+				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts()", Logger.severity.INFO);
+
+			// Attached Blocks
+			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
+				StatorRotor.Stator stator = new StatorRotor.Stator(block);
+				RegisterForUpdates(1, stator.Update10, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedStator), (block) => {
+				StatorRotor.Stator stator = new StatorRotor.Stator(block);
+				RegisterForUpdates(1, stator.Update10, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
+				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
+				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+			});
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;

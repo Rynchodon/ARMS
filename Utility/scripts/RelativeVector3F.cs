@@ -6,6 +6,7 @@ using VRageMath;
 namespace Rynchodon
 {
 	/// <summary>
+	/// <para>Deprecated, use RelativePosition3F or RelativeDirection3F</para>
 	/// <para>For converting between local and world Vectors.</para>
 	/// <para>References should be transient; the longer it is held the less accurate it becomes.</para>
 	/// </summary>

@@ -7,6 +7,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -285,13 +286,40 @@ namespace Rynchodon
 			return match.Count == 0;
 		}
 
-		public static Vector3 directionToWorld(this IMyCubeBlock block, Vector3 blockDirection)
+		/// <remarks>
+		/// <para>Ship Controllers: forward</para>
+		/// <para>Weapons: forward</para>
+		/// <para>Solar Panel: forward, backward</para>
+		/// <para>Solar Farm: forward, backward</para>
+		/// <para>Directional Antenna: upward, forward, rightward, backward, leftward</para>
+		/// </remarks>
+		public static List<Base6Directions.Direction> GetFaceDirection(this IMyCubeBlock block)
 		{
-			Matrix WorldMatrix = block.WorldMatrix;
-			return
-					WorldMatrix.Right * blockDirection.X
-					+ WorldMatrix.Up * blockDirection.Y
-					+ WorldMatrix.Backward * blockDirection.Z;
+			List<Base6Directions.Direction> result = new List<Base6Directions.Direction>();
+			if (block is Ingame.IMySolarPanel || block is Ingame.IMyOxygenFarm)
+			{
+				result.Add(Base6Directions.Direction.Forward);
+				result.Add(Base6Directions.Direction.Backward);
+			}
+			else if (block is Ingame.IMyLaserAntenna)
+			{
+				result.Add(Base6Directions.Direction.Up);
+				result.Add(Base6Directions.Direction.Forward);
+				result.Add(Base6Directions.Direction.Right);
+				result.Add(Base6Directions.Direction.Backward);
+				result.Add(Base6Directions.Direction.Left);
+			}
+			else
+				result.Add(Base6Directions.Direction.Forward);
+
+			return result;
 		}
+
+		//public static Base6Directions.Direction GetFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
+		//{
+		//	Vector3 blockDirection = deprecated_RelativeVector3F.createFromWorld(worldDirection, block.CubeGrid).getBlock(block);
+
+
+		//}
 	}
 }

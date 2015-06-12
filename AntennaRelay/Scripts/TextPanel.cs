@@ -157,7 +157,7 @@ namespace Rynchodon.AntennaRelay
 
 			myLogger.debugLog("searching for a programmable block: " + destName, "searchForAntenna()", Logger.severity.TRACE);
 
-			ReadOnlyList<IMyTerminalBlock> progBlocks = CubeGridCache.GetFor(myCubeBlock.CubeGrid).GetBlocksOfType(ProgOBtype);
+			ReadOnlyList<IMyCubeBlock> progBlocks = CubeGridCache.GetFor(myCubeBlock.CubeGrid).GetBlocksOfType(ProgOBtype);
 			if (progBlocks == null)
 			{
 				myLogger.debugLog("no programmable blocks", "searchForAntenna()", Logger.severity.TRACE);

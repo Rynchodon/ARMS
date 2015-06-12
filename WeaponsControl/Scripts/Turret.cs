@@ -8,7 +8,7 @@ using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 using VRage;
 
-namespace Rynchodon.Autopilot.Weapons
+namespace Rynchodon.Weapons
 {
 	/// <summary>
 	/// Class is designed to replace / merge with TurretBase
@@ -24,9 +24,7 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>value set by Turret, updated when not controlling</summary>
 		private float setElevation, setAzimuth;
 
-		private long UpdateNumber = 0;
 		private bool Initialized = false;
-		private bool UpdateQueued = false;
 
 		private Logger myLogger;
 
@@ -42,7 +40,7 @@ namespace Rynchodon.Autopilot.Weapons
 		private void Initialize()
 		{
 			// definition limits
-			MyLargeTurretBaseDefinition definition = MyDefinitionManager.Static.GetCubeBlockDefinition(weapon.GetSlimObjectBuilder_Safe()) as MyLargeTurretBaseDefinition;
+			MyLargeTurretBaseDefinition definition = DefinitionCache.GetCubeBlockDefinition(weapon) as MyLargeTurretBaseDefinition;
 
 			if (definition == null)
 				throw new NullReferenceException("definition");
@@ -66,7 +64,7 @@ namespace Rynchodon.Autopilot.Weapons
 			{
 				myLogger.debugLog("writing defaults", "Turret()");
 				// write defaults
-				(weapon as IMyTerminalBlock).SetCustomName(weapon.DisplayNameText + Settings.GetSettingString(Settings.SettingName.sSmartTurretDefaultPlayer));
+				(weapon as IMyTerminalBlock).SetCustomName(weapon.DisplayNameText + Settings.GetSettingString(Settings.SettingName.sTurretCommandsDefaultPlayer));
 			}
 			//else
 			//{
@@ -86,13 +84,14 @@ namespace Rynchodon.Autopilot.Weapons
 				}
 			}
 
+			EnableWeaponTargeting();
 			Initialized = true;
 		}
 
 		/// <summary>
 		/// Fill CanTarget from turret
 		/// </summary>
-		public void TargetOptionsFromTurret()
+		protected override void Update_Options(TargetingOptions Options)
 		{
 			//Options. CanTarget = TargetType.None;
 			MyObjectBuilder_TurretBase builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
@@ -114,105 +113,30 @@ namespace Rynchodon.Autopilot.Weapons
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
 				Options.Flags |= TargetingFlags.Interior;
 
-			TargetingRange = myTurret.Range;
+			Options.TargetingRange = myTurret.Range;
 
 			myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
 
-		/// <summary>
-		/// UpdateManager invokes this every update
-		/// </summary>
-		public void Update()
+		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
-			try
-			{
-				if (!UpdateQueued)
-				{
-					UpdateQueued = true;
-					Thread.EnqueueAction(Update_Thread);
-				}
+			//Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
+			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(weapon.CubeGrid, targetPoint).NormToBlock(weapon));
 
-				FireAndRotate();
-			}
-			catch (Exception ex)
-			{
-				myLogger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
-				// TODO: if turret breaks, restore default targeting, apply BROKEN state
-				StopFiring();
-			}
+			float azimuth, elevation;
+			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
+
+			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth;
 		}
 
-		/// <summary>
-		/// Invoked on targeting thread
-		/// </summary>
-		private void Update_Thread()
-		{
-			try
-			{
-				UpdateQueued = false;
-				if (UpdateNumber % 10 == 0)
-				{
-					if (UpdateNumber % 100 == 0)
-					{
-						if (UpdateNumber % 1000 == 0)
-							Update1000();
-						Update100();
-					}
-					Update10();
-				}
-				Update1();
-
-				UpdateNumber++;
-			}
-			catch (Exception ex)
-			{
-				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.ERROR);
-				// TODO: if turret breaks, restore default targeting, apply BROKEN state
-				StopFiring();
-			}
-		}
-
-		private bool Queued_Update1, Queued_Update10, Queue_Update100;
-
-		private new void Update1()
-		{
-			base.Update1();
-		}
-
-		private new void Update100()
+		/// <remarks>
+		/// Must execute regularly on game thread.
+		/// </remarks>
+		protected override void Update()
 		{
 			if (!Initialized)
 				Initialize();
 
-			base.Update100();
-
-			if (!IsControllingWeapon)
-				return;
-
-			TargetOptionsFromTurret();
-			//myLogger.debugLog("CanTarget: " + CanTarget, "Update100()");
-		}
-
-		protected override bool CanRotateTo(Vector3D targetPoint)
-		{
-			Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
-			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(RotateTo, out azimuth, out elevation);
-
-			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth;
-
-			//if (elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth)
-			//{
-			//	myLogger.debugLog("allowing target " + targetPoint + " elevation = " + elevation + ", azimuth = " + azimuth, "CanRotateTo()");
-			//	return true;
-			//}
-
-			//myLogger.debugLog("denying target " + targetPoint + " elevation = " + elevation + ", azimuth = " + azimuth, "CanRotateTo()");
-			//return false;
-		}
-
-		private void FireAndRotate()
-		{
 			if (!IsControllingWeapon)
 			{
 				setElevation = myTurret.Elevation;
@@ -222,21 +146,20 @@ namespace Rynchodon.Autopilot.Weapons
 
 			// CurrentTarget may be removed by WeaponTargeting
 			Target GotTarget = CurrentTarget;
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue)
+			if (GotTarget.Entity == null)
 			{
-				StopFiring();
+				StopFiring("No target.");
 				return;
 			}
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue)
+				return;
 
 			// check firing direction
 			Vector3 directionBlock;
 			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
 
-			//Vector3 directionBlock = direction;
-			//direction = RelativeVector3F.createFromBlock(direction, weapon, false).getWorld();
-			//myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + direction, "RotateAndFire()");
-
-			Vector3 directionWorld = weapon.directionToWorld(directionBlock);
+			//Vector3 directionWorld = weapon.directionToWorld(directionBlock);
+			Vector3 directionWorld = RelativeDirection3F.FromBlock(weapon, directionBlock).NormToWorld();
 
 			//myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
 			myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
@@ -249,9 +172,12 @@ namespace Rynchodon.Autopilot.Weapons
 				return;
 			}
 
-			Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
+			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
+			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(weapon.CubeGrid, GotTarget.FiringDirection.Value).NormToBlock(weapon);
+			myLogger.debugLog("FiringDirection = " + GotTarget.FiringDirection.Value + ", RotateToDirection = " + RotateToDirection, "Update()");
+
 			float targetElevation, targetAzimuth; // the position of the target
-			Vector3.GetAzimuthAndElevation(RotateTo, out targetAzimuth, out targetElevation);
+			Vector3.GetAzimuthAndElevation(RotateToDirection, out targetAzimuth, out targetElevation);
 			if (!targetElevation.IsValid() || !targetAzimuth.IsValid())
 			{
 				myLogger.debugLog("cannot rotate, invalid el(" + targetElevation + ") or az(" + targetAzimuth + ")", "RotateAndFire()");

@@ -1,0 +1,46 @@
+Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets (W.I.P.), and fixed-weapons (W.I.P.).
+
+All commands are in the display name of a weapon block.
+[] All commands are contained within a single set of square brackets
+<> Do not use angle brackets in your weapon's name
+:; Commands are separated by colons and/or semicolons
+    Interpreter ignores all spaces
+Aa Interpreter is case insensitive
+
+Weapon Control will display error indices in the weapon's name, the first command is at 0.
+N.P.C. turrets get commands from settings file rather than from turret's name.
+
+[h1]Obstruction testing[/h1]
+An obstruction can be an asteroid, a friendly character, or a friendly grid. Blocks are considered to take up as much space as is required to place them.
+Weapon Control assumes that fixed weapons will not be able to hit the grid they are part of.
+
+For fixed weapons and vanilla interior turrets, Weapon Control will test a single line from the weapon to the target for obstructions.
+For other turrets, Weapon Control will test several lines from points placed around the turret to the target. You can disable this behaviour (at your own peril) with the Interior command.
+
+[h1]Commands[/h1]
+Where turrets have a toggle, command is on if toggle is on or command appears in [].
+
+Functional - Test block is functional rather than is working. A block that is in good condition is functional, a block that is functional and is using or producing power is working.
+Interior - Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.
+Turret - Used to indicate that a fixed weapon is actually part of a rotor-turret and should behave as a turret.
+(<block1>, <block2>, <block3>, ...) - Blocks to target are a comma-separated list inside round brackets.
+T <panel name>, <identifier> - Commands can be fetched from a text panel, similar to navigation. Weapon control will remember the commands retrieved from the text panel even if it is destroyed.
+
+[u]These commands are given priority based on the order here.[/u]
+Missile - Target approaching missiles, does not consider who fired the missile.
+Meteor - Target approaching meteors.
+Character - Target hostile characters.
+Moving - Target approaching "floating objects" and approaching hostile grids.
+
+[u]These commands use a complex priority system based on distance to the block and the block's position in block list.[/u]
+LargeGrid - Target large grids
+SmallGrid - Target small grids
+Station - Target stations
+
+[u]Lowest priority[/u]
+Destroy - destroys all terminal blocks in hostile grids in range.
+
+[h1]Known Issues[/h1]
+It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
+
+A turret that does not have an A.I. can be used but it is dangerous. Due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.

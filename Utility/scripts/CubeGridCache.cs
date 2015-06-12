@@ -10,7 +10,7 @@ using VRage.ObjectBuilders;
 namespace Rynchodon
 {
 	/// <summary>
-	/// A better way to get terminal blocks of type from a grid.
+	/// A better way to get cube blocks of type from a grid.
 	/// </summary>
 	public class CubeGridCache
 	{
@@ -20,7 +20,7 @@ namespace Rynchodon
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
-		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyTerminalBlock>>();
+		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>>();
 		private Dictionary<string, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
 
@@ -31,7 +31,7 @@ namespace Rynchodon
 			myLogger = new Logger("CubeGridCache", () => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock is IMyTerminalBlock);
+			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock != null);
 
 			foreach (IMySlimBlock slim in allSlims)
 				CubeGrid_OnBlockAdded(slim);
@@ -69,31 +69,36 @@ namespace Rynchodon
 
 		private void CubeGrid_OnBlockAdded(IMySlimBlock obj)
 		{
-			IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
-			if (asTerm == null)
-				return; // only track IMyTerminalBlock
+			IMyCubeBlock fatblock = obj.FatBlock;
+			if (fatblock == null)
+				return;
 
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
-				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
-				string definition = asTerm.DefinitionDisplayNameText;
-
-				ListSnapshots<IMyTerminalBlock> setBlocks_Type;
-				ListSnapshots<IMyTerminalBlock> setBlocks_Def;
+				// by type
+				MyObjectBuilderType myOBtype = fatblock.BlockDefinition.TypeId;
+				ListSnapshots<IMyCubeBlock> setBlocks_Type;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
-					setBlocks_Type = new ListSnapshots<IMyTerminalBlock>();
+					setBlocks_Type = new ListSnapshots<IMyCubeBlock>();
 					CubeBlocks_Type.Add(myOBtype, setBlocks_Type);
 				}
+				setBlocks_Type.mutable().Add(fatblock);
+
+				// by definition
+				IMyTerminalBlock asTerm = fatblock as IMyTerminalBlock;
+				if (asTerm == null)
+					return;
+
+				string definition = asTerm.DefinitionDisplayNameText;
+				ListSnapshots<IMyTerminalBlock> setBlocks_Def;
 				if (!CubeBlocks_Definition.TryGetValue(definition, out setBlocks_Def))
 				{
 					setBlocks_Def = new ListSnapshots<IMyTerminalBlock>();
 					CubeBlocks_Definition.Add(definition, setBlocks_Def);
 					addKnownDefinition(definition);
 				}
-
-				setBlocks_Type.mutable().Add(asTerm);
 				setBlocks_Def.mutable().Add(asTerm);
 			}
 			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
@@ -102,48 +107,44 @@ namespace Rynchodon
 
 		private void CubeGrid_OnBlockRemoved(IMySlimBlock obj)
 		{
-			IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
-			if (asTerm == null)
-				return; // only track IMyTerminalBlock
+			IMyCubeBlock fatblock = obj.FatBlock;
+			if (fatblock == null)
+				return;
 
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
-				MyObjectBuilderType myOBtype = asTerm.BlockDefinition.TypeId;
+				// by type
+				MyObjectBuilderType myOBtype = fatblock.BlockDefinition.TypeId;
+				ListSnapshots<IMyCubeBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
+				setBlocks_Type.mutable().Remove(fatblock);
+
+				// by definition
+				IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
+				if (asTerm == null)
+					return;
+
 				string definition = asTerm.DefinitionDisplayNameText;
-
-				ListSnapshots<IMyTerminalBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
 				ListSnapshots<IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
-
-				setBlocks_Type.mutable().Remove(asTerm);
 				setBlocks_Def.mutable().Remove(asTerm);
 			}
 			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
-		/// TODO: return IMySlimBlock
-		public ReadOnlyList<IMyTerminalBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
+		public ReadOnlyList<IMyCubeBlock> GetBlocksOfType(MyObjectBuilderType objBuildType)
 		{
 			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
-				ListSnapshots<IMyTerminalBlock> value;
+				ListSnapshots<IMyCubeBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.immutable();
 				return null;
 			}
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="definition"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public ReadOnlyList<IMyTerminalBlock> GetBlocksByDefinition(string definition)
 		{
@@ -163,7 +164,6 @@ namespace Rynchodon
 		/// <summary>
 		/// <para>slower than GetBlocksByDefinition(), as contained is compared to each definition.</para>
 		/// </summary>
-		/// <param name="contained"></param>
 		/// <returns>an immutable read only list or null if there are no blocks matching definition</returns>
 		public List<ReadOnlyList<IMyTerminalBlock>> GetBlocksByDefLooseContains(string contains)
 		{
@@ -189,7 +189,7 @@ namespace Rynchodon
 			lock_CubeBlocks.AcquireShared();
 			try
 			{
-				ListSnapshots<IMyTerminalBlock> value;
+				ListSnapshots<IMyCubeBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.Count;
 				return 0;

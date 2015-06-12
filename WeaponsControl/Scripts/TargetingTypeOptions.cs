@@ -5,7 +5,7 @@ using Sandbox.Definitions;
 using VRage.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Weapons
+namespace Rynchodon.Weapons
 {
 	/// <summary>
 	/// <para>These are all types of targets that the weapon can shoot. A target may be in more than one category.</para>
@@ -34,7 +34,9 @@ namespace Rynchodon.Autopilot.Weapons
 		/// <summary>Check for blocks are functional, rather than working.</summary>
 		Functional = 1 << 0,
 		/// <summary>Reduce the number of rays to check for obstructions.</summary>
-		Interior = 1 << 1
+		Interior = 1 << 1,
+		/// <summary>Causes a fixed weapon to be treated as a rotor-turret.</summary>
+		Turret = 1 << 2
 	}
 
 	public class TargetingOptions
@@ -69,6 +71,26 @@ namespace Rynchodon.Autopilot.Weapons
 
 			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Blocks = " + blocks;
 		}
+
+		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
+		private float value_TargetingRange;
+		/// <summary>
+		/// <para>The range for targeting objects</para>
+		/// <para>set will be tested against fMaxWeaponRange but does not test against ammunition range</para>
+		/// </summary>
+		public float TargetingRange
+		{
+			get { return value_TargetingRange; }
+			set
+			{
+				if (value <= GlobalMaxRange)
+					value_TargetingRange = value;
+				else
+					value_TargetingRange = GlobalMaxRange;
+				TargetingRangeSquared = value_TargetingRange * value_TargetingRange;
+			}
+		}
+		public float TargetingRangeSquared { get; private set; }
 	}
 
 	public class Target

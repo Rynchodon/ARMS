@@ -74,7 +74,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			try
 			{
-				IEnumerator<Ingame.IMyTerminalBlock> drillEnum = GetDrills().GetEnumerator();
+				IEnumerator<IMyCubeBlock> drillEnum = GetDrills().GetEnumerator();
 				drillEnum.MoveNext();
 				NavigationDrill = drillEnum.Current as IMyCubeBlock; // while harvester is random, drill choice does not matter (assuming all drills face the same way)
 
@@ -487,9 +487,9 @@ namespace Rynchodon.Autopilot.Harvest
 			return false;
 		}
 
-		private ReadOnlyList<IMyTerminalBlock> GetDrills()
+		private ReadOnlyList<IMyCubeBlock> GetDrills()
 		{
-			ReadOnlyList<IMyTerminalBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			ReadOnlyList<IMyCubeBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			return allDrills;
 		}
 
@@ -497,7 +497,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <para>In survival, returns fraction of drills filled</para>
 		/// <para>In creative, returns content per drill * 0.01</para>
 		/// </summary>
-		private float DrillFullness(ReadOnlyList<IMyTerminalBlock> allDrills)
+		private float DrillFullness(ReadOnlyList<IMyCubeBlock> allDrills)
 		{
 			MyFixedPoint content = 0, capacity = 0;
 			int drillCount = 0;
