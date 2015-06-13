@@ -35,7 +35,7 @@ namespace Rynchodon
 		}
 
 		private const string modName = "Autopilot";
-		private static string settings_file_name = "AutopilotSettings.txt";
+		private const string settings_file_name = "AutopilotSettings.txt";
 		private static System.IO.TextWriter settingsWriter;
 
 		private static string strVersion = "Version";
@@ -109,13 +109,13 @@ namespace Rynchodon
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to read settings: " + ex, "writeAll()", Logger.severity.WARNING);
-				if (settingsReader != null)
-				{
-					settingsReader.Close();
-					settingsReader = null;
-				}
+				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING);
 				return -4; // exception while reading
+			}
+			finally
+			{
+				if (settingsReader != null)
+					settingsReader.Close();
 			}
 		}
 
@@ -135,15 +135,13 @@ namespace Rynchodon
 					write(pair.Key.ToString(), pair.Value.ValueAsString());
 
 				settingsWriter.Flush();
-				settingsWriter.Close();
-				settingsWriter = null;
 			}
 			catch (Exception ex)
+			{ myLogger.alwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING); }
+			finally
 			{
-				myLogger.alwaysLog("Failed to write settings: " + ex, "writeAll()", Logger.severity.WARNING);
 				if (settingsWriter != null)
 				{
-					// do not flush, do not want a partial-file
 					settingsWriter.Close();
 					settingsWriter = null;
 				}
@@ -182,12 +180,12 @@ namespace Rynchodon
 				try
 				{
 					AllSettings[name].ValueFromString(split[1]);
-					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()");
+					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()", Logger.severity.INFO);
 				}
 				catch (Exception)
 				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
 			else
-				myLogger.alwaysLog("failed to get enum for " + split[0], "parse()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Setting does not exist: " + split[0], "parse()", Logger.severity.WARNING);
 		}
 
 		private interface Setting
@@ -239,11 +237,10 @@ namespace Rynchodon
 
 		private class SettingString : Setting
 		{
-			public readonly string defaultValue;
 			public string Value { get; protected set; }
 
 			public SettingString(string defaultValue)
-			{ this.defaultValue = defaultValue; }
+			{ this.Value = defaultValue; }
 
 			public string ValueAsString()
 			{ return Value; }

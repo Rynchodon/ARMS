@@ -4,3 +4,4 @@ major:
 
 minor:
 harvester can start from inside a tunnel
+fixed not being able to write settings file
