@@ -15,6 +15,11 @@ namespace Rynchodon
 			direction_local = null,
 			direction_block = null;
 
+		private Vector3?
+			norm_world = null,
+			norm_local = null,
+			norm_block = null;
+
 		private readonly IMyCubeGrid CubeGrid;
 		private IMyCubeBlock CubeBlock;
 
@@ -115,13 +120,28 @@ namespace Rynchodon
 			return result;
 		}
 
-		public Vector3 NormToWorld()
-		{ return Vector3.Normalize(ToWorld()); }
+		public Vector3 ToWorldNormalized()
+		{ 
+			if (!norm_world.HasValue)
+				norm_world = Vector3.Normalize(ToWorld());
+			return norm_world.Value;
+		}
 
-		public Vector3 NormToLocal()
-		{ return Vector3.Normalize(ToLocal()); }
+		public Vector3 ToLocalNormalized()
+		{
+			if (!norm_world.HasValue)
+				norm_world = Vector3.Normalize(ToLocal());
+			return norm_local.Value;
+		}
 
-		public Vector3 NormToBlock(IMyCubeBlock block)
-		{ return Vector3.Normalize(ToBlock(block)); }
+		public Vector3 ToBlockNormalized(IMyCubeBlock block)
+		{
+			if (block == CubeBlock && norm_block.HasValue)
+				return norm_block.Value;
+			Vector3 NormalizedBlock = Vector3.Normalize(ToBlock(block));
+			if (block == CubeBlock) // CubeBlock may have been set by ToBlock()
+				norm_block = NormalizedBlock;
+			return NormalizedBlock;
+		}
 	}
 }

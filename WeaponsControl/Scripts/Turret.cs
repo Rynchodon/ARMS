@@ -121,7 +121,7 @@ namespace Rynchodon.Weapons
 		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
 			//Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
-			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(weapon.CubeGrid, targetPoint).NormToBlock(weapon));
+			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(weapon.CubeGrid, targetPoint).ToBlockNormalized(weapon));
 
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
@@ -159,7 +159,7 @@ namespace Rynchodon.Weapons
 			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
 
 			//Vector3 directionWorld = weapon.directionToWorld(directionBlock);
-			Vector3 directionWorld = RelativeDirection3F.FromBlock(weapon, directionBlock).NormToWorld();
+			Vector3 directionWorld = RelativeDirection3F.FromBlock(weapon, directionBlock).ToWorldNormalized();
 
 			//myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
 			myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
@@ -173,7 +173,7 @@ namespace Rynchodon.Weapons
 			}
 
 			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
-			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(weapon.CubeGrid, GotTarget.FiringDirection.Value).NormToBlock(weapon);
+			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(weapon.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(weapon);
 			myLogger.debugLog("FiringDirection = " + GotTarget.FiringDirection.Value + ", RotateToDirection = " + RotateToDirection, "Update()");
 
 			float targetElevation, targetAzimuth; // the position of the target

@@ -91,7 +91,7 @@ namespace Rynchodon
 				return;
 			}
 
-			Base6Directions.Direction face = FaceBlock.GetFaceDirection(TargetDirection.NormToWorld());
+			Base6Directions.Direction face = FaceBlock.GetFaceDirection(TargetDirection.ToWorldNormalized());
 			if (face == FaceDirection)
 			{
 				myLogger.debugLog("Face direction has not changed: "+face, "SetupOffsets()");

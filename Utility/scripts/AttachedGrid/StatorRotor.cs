@@ -15,6 +15,7 @@ namespace Rynchodon.AttachedGrid
 		/// <param name="stator">stator attached to rotor</param>
 		/// <param name="rotor">rotor attached to stator</param>
 		/// <returns>true iff successful</returns>
+		/// Not an extension because TryGetStator() is not an extension.
 		public static bool TryGetRotor(IMyMotorStator stator, out IMyCubeBlock rotor)
 		{
 			Stator value;
@@ -39,6 +40,7 @@ namespace Rynchodon.AttachedGrid
 		/// <param name="rotor">rotor attached to stator</param>
 		/// <param name="stator">stator attached to rotor</param>
 		/// <returns>true iff successful</returns>
+		/// Not an extension because IMyCubeBlock are rarely rotors.
 		public static bool TryGetStator(IMyCubeBlock rotor, out IMyMotorStator stator)
 		{
 			Rotor value;

@@ -292,9 +292,12 @@ namespace Rynchodon
 		/// <remarks>
 		/// <para>Ship Controllers: forward</para>
 		/// <para>Weapons: forward</para>
+		/// <para>Connector: forward</para>
 		/// <para>Solar Panel: forward, backward</para>
 		/// <para>Solar Farm: forward, backward</para>
 		/// <para>Directional Antenna: upward, forward, rightward, backward, leftward</para>
+		/// <para>Landing Gear: downward</para>
+		/// <para>Merge Block: rightward</para>
 		/// </remarks>
 		public static List<Base6Directions.Direction> GetFaceDirection(this IMyCubeBlock block)
 		{
@@ -312,6 +315,10 @@ namespace Rynchodon
 				result.Add(Base6Directions.Direction.Backward);
 				result.Add(Base6Directions.Direction.Left);
 			}
+			else if (block is Ingame.IMyLandingGear)
+				result.Add(Base6Directions.Direction.Down);
+			else if (block is Ingame.IMyShipMergeBlock)
+				result.Add(Base6Directions.Direction.Right);
 			else
 				result.Add(Base6Directions.Direction.Forward);
 
