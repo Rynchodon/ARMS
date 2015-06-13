@@ -50,7 +50,7 @@ namespace Rynchodon.Weapons
 			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
 			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
 
-			Can360 = definition.MinAzimuthDegrees <= -180 && definition.MaxAzimuthDegrees >= 180;
+			Can360 = Math.Abs(definition.MaxAzimuthDegrees - definition.MinAzimuthDegrees) >= 360;
 
 			// speeds are in rads per ms (from S.E. source)
 			speedElevation = definition.ElevationSpeed * 100f / 6f;
@@ -72,7 +72,7 @@ namespace Rynchodon.Weapons
 			//}
 
 			// upgrade
-			if (Settings.fileVersion > 0 && Settings.fileVersion < 34)
+			if (Settings.fileVersion > 0 && Settings.fileVersion < 35)
 			{
 				string instructions = weapon.DisplayNameText.getInstructions();
 				if (instructions != null && !instructions.Contains("(") && !instructions.Contains(")"))

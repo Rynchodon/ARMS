@@ -286,6 +286,9 @@ namespace Rynchodon
 			return match.Count == 0;
 		}
 
+		/// <summary>
+		/// Get all the face directions for a block.
+		/// </summary>
 		/// <remarks>
 		/// <para>Ship Controllers: forward</para>
 		/// <para>Weapons: forward</para>
@@ -315,11 +318,35 @@ namespace Rynchodon
 			return result;
 		}
 
-		//public static Base6Directions.Direction GetFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
-		//{
-		//	Vector3 blockDirection = deprecated_RelativeVector3F.createFromWorld(worldDirection, block.CubeGrid).getBlock(block);
+		/// <summary>
+		/// Gets the closest face direction to worldDirection.
+		/// </summary>
+		public static Base6Directions.Direction GetFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
+		{
+			List<Base6Directions.Direction> faceDirections = GetFaceDirection(block);
+			if (faceDirections.Count == 1)
+				return faceDirections[0];
 
+			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
+			Base6Directions.Direction? bestDirection = null;
+			float bestDirectionCloseness = float.MaxValue;
 
-		//}
+			foreach (Base6Directions.Direction direction in faceDirections)
+			{
+				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
+				float closeness = directionVector.Dot(worldDirection);
+
+				if (closeness < bestDirectionCloseness)
+				{
+					bestDirection = direction;
+					bestDirectionCloseness = closeness;
+				}
+			}
+
+			if (bestDirection == null)
+				throw new NullReferenceException("bestDirection");
+
+			return bestDirection.Value;
+		}
 	}
 }

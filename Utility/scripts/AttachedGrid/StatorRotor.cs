@@ -93,7 +93,7 @@ namespace Rynchodon.AttachedGrid
 						{
 							if (Rotor.registry.TryGetValue((rotorE as IMyCubeBlock), out partner))
 							{
-								myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()");
+								myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
 								partner.partner = this;
 							}
 							else
