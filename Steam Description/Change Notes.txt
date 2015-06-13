@@ -3,3 +3,4 @@ Will be moved to steam every release.
 major:
 
 minor:
+harvester can start from inside a tunnel

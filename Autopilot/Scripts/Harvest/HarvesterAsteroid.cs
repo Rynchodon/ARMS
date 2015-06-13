@@ -66,10 +66,17 @@ namespace Rynchodon.Autopilot.Harvest
 
 		/// <summary>Start harvesting.</summary>
 		/// <returns>true iff harvesting could be started</returns>
-		public bool Start()
+		public void Start()
 		{
 			LogEntered("Start()");
 			HarvestState = Navigator.ReportableState.H_Ready;
+
+			if (DrillFullness(GetDrills()) > FullAmount_Return)
+			{
+				myLogger.debugLog("drills are already full", "Start()");
+				Finished();
+				return;
+			}
 
 			try
 			{
@@ -90,12 +97,12 @@ namespace Rynchodon.Autopilot.Harvest
 
 				myLogger.debugLog("Started harvester", "Start()");
 				SetNextStage(Ready, false);
-				return true;
+				return;
 			}
 			catch (Exception ex)
 			{
 				myLogger.debugLog("Failed to start, Ex: " + ex, "Start()");
-				return false;
+				return;
 			}
 		}
 
@@ -105,12 +112,12 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			if (CurrentAction == null)
 			{
-				myLogger.debugLog("no action to take", "Run()");
+				//myLogger.debugLog("no action to take", "Run()");
 				return false;
 			}
 
-			//myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared(), "Run()");
-			if (myNav.MM.movementSpeed > 0.25f)
+			myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Velocity Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
+			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() >  0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
 				IsStuck = false;
@@ -202,6 +209,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void RotateToWaypoint()
 		{
 			LogEntered("RotateToWaypoint()");
+
 			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
 			{
 				myLogger.debugLog("Finished rotating", "RotateToWaypoint()");
@@ -209,6 +217,13 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartHarvest, true);
 				return;
 			}
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "RotateToWaypoint()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
+
 			myNav.calcAndRotate();
 		}
 
@@ -333,8 +348,12 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(Ready, false);
 				return;
 			}
-			if (myNav.MM.distToWayDest < 10)
-				myLogger.debugLog("close to way dest, still inside asteroid", "Backout()");
+			if (myNav.MM.distToWayDest < 1)
+			{
+				myLogger.debugLog("reached way dest, still inside asteroid", "Backout()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
 
 			myNav.collisionCheckMoveAndRotate();
 		}
@@ -395,6 +414,8 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			LogEntered("StartMoveAway()");
 
+			myNav.fullStop("StartMoveAway");
+
 			// set dest to a point away from centre
 			Vector3D navDrillPos = NavigationDrill.GetPosition();
 			Vector3D directionAway = Vector3D.Normalize(navDrillPos - GetClosestAsteroid().WorldVolume.Center);
@@ -414,6 +435,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void RotateToMoveAway()
 		{
 			LogEntered("RotateToMoveAway()");
+
 			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
 			{
 				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
@@ -421,6 +443,14 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
 				return;
 			}
+
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "RotateToMoveAway()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
+
 			myNav.calcAndRotate();
 		}
 
@@ -446,6 +476,13 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				myLogger.debugLog("reached wayDest", "MoveAway()");
 				SetNextStage(StartMoveAway, false);
+				return;
+			}
+
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "MoveAway()");
+				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
 
@@ -633,7 +670,7 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			bool enable = DrillsOn;
 
-			if (enable && CNS.moveState == NavSettings.Moving.STOP_MOVE)
+			if (enable && (CNS.moveState == NavSettings.Moving.STOP_MOVE || CNS.moveState == NavSettings.Moving.NOT_MOVE))
 				enable = false;
 
 			if (enable == DrillState)
