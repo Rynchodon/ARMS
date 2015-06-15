@@ -97,8 +97,8 @@ namespace Rynchodon.Weapons
 	{
 		public readonly IMyEntity Entity;
 		public readonly TargetType TType;
-		public Vector3? FiringDirection;
-		public Vector3? InterceptionPoint;
+		public readonly Vector3? FiringDirection;
+		public readonly Vector3? InterceptionPoint;
 
 		/// <summary>
 		/// Creates a target of type None with Entity as null.
@@ -109,11 +109,16 @@ namespace Rynchodon.Weapons
 			this.TType = TargetType.None;
 		}
 
-		public Target(IMyEntity entity, TargetType tType)
+		public Target(IMyEntity entity, TargetType tType, Vector3? firingDirection = null, Vector3? interceptionPoint = null)
 		{
 			this.Entity = entity;
 			this.TType = tType;
+			this.FiringDirection = firingDirection;
+			this.InterceptionPoint = interceptionPoint;
 		}
+
+		public Target AddDirectionPoint(Vector3? firingDirection, Vector3? interceptionPoint)
+		{ return new Target(Entity, TType, firingDirection, interceptionPoint); }
 	}
 
 	public class Ammo

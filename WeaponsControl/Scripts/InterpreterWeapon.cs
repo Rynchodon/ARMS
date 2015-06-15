@@ -133,13 +133,14 @@ namespace Rynchodon.Weapons
 					ParseBlockList(blockList);
 				}
 				else
-					if (!ParseTargetType(instruct))
-						if (!ParseTargetFlag(instruct))
-							if (!GetFromPanel(instruct))
-							{
-								myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
-								Errors.Add(CurrentIndex.ToString());
-							}
+					if (!(ParseTargetType(instruct)
+						|| ParseTargetFlag(instruct)
+						|| ParseRange(instruct)
+						|| GetFromPanel(instruct)))
+					{
+						myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
+						Errors.Add(CurrentIndex.ToString());
+					}
 			}
 		}
 
@@ -187,6 +188,41 @@ namespace Rynchodon.Weapons
 				Options.Flags |= result;
 				return true;
 			}
+			return false;
+		}
+
+		/// <summary>
+		/// Tries to get radius/range from toParse
+		/// </summary>
+		/// <param name="toParse">string to parse</param>
+		/// <returns>true iff parse succeeded</returns>
+		private bool ParseRange(string toParse)
+		{
+			const string word_radius = "radius", word_range = "range";
+			string rangeString;
+
+			int index = toParse.IndexOf(word_radius);
+			//myLogger.debugLog("in " + toParse + " index of " + word_radius + " is " + index, "ParseRadius()");
+			if (index == 0)
+				rangeString = toParse.Remove(index, word_radius.Length);
+			else
+			{
+				index = toParse.IndexOf(word_range);
+				//myLogger.debugLog("in " + toParse + " index of " + word_range + " is " + index, "ParseRadius()");
+				if (index == 0)
+					rangeString = toParse.Remove(index, word_range.Length);
+				else
+					return false;
+			}
+
+			int range;
+			if (int.TryParse(rangeString, out range))
+			{
+				myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString, "ParseRadius()");
+				Options.TargetingRange = range;
+				return true;
+			}
+			myLogger.debugLog("failed to parse:" + rangeString, "ParseRadius()");
 			return false;
 		}
 

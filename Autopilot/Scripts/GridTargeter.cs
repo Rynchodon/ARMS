@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot
 		internal GridTargeter(Navigator owner)
 		{
 			this.owner = owner;
-			this.myLogger = new Logger("Targeter", () => owner.myGrid.DisplayName);
+			this.myLogger = new Logger("GridTargeter", () => owner.myGrid.DisplayName);
 		}
 
 		private DateTime nextTryLockOn;
@@ -41,6 +41,10 @@ namespace Rynchodon.Autopilot
 				{
 					myLogger.debugLog("lost lock on " + owner.CNS.GridDestName, "tryLockOn()");
 					owner.CNS.target_locked = false;
+					{
+						owner.myEngager.Disarm();
+						owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
+					}
 					owner.CNS.atWayDest();
 				}
 				nextTryLockOn = DateTime.UtcNow.AddSeconds(1);
@@ -54,6 +58,10 @@ namespace Rynchodon.Autopilot
 				myLogger.debugLog("found an enemy: " + bestMatchGrid.Entity.DisplayName, "tryLockOn()");
 
 			owner.CNS.target_locked = true;
+			{
+				owner.myEngager.Arm();
+				owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
+			}
 			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
 			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentAPblock);
 

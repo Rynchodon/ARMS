@@ -6,6 +6,7 @@ using System.Text;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -40,11 +41,11 @@ namespace Rynchodon.Autopilot
 		internal NavSettings CNS;
 		private Pathfinder.Pathfinder myPathfinder;
 		internal Pathfinder.PathfinderOutput myPathfinder_Output { get; private set; }
-		//internal GridDimensions myGridDim;
 		internal ThrustProfiler currentThrust;
 		internal GridTargeter myTargeter;
 		private Rotator myRotator;
 		internal HarvesterAsteroid myHarvester { get; private set; }
+		internal Engager myEngager;
 
 		private IMyControllableEntity currentAutopilotBlock_Value;
 		/// <summary>
@@ -113,6 +114,12 @@ namespace Rynchodon.Autopilot
 			{
 				if (myHarvester.NavigationDrill != null)
 					return myHarvester.NavigationDrill;
+				if (myEngager.IsArmed)
+				{
+					FixedWeapon primary = myEngager.PrimaryWeapon;
+					if (primary != null)
+						return primary.weapon;
+				}
 				return currentAPblock;
 			}
 			else
@@ -143,6 +150,7 @@ namespace Rynchodon.Autopilot
 			myGrid.OnBlockRemoved += OnBlockRemoved;
 			myGrid.OnClose += OnClose;
 
+			myEngager = new Engager(myGrid);
 			currentThrust = new ThrustProfiler(myGrid);
 			CNS = new NavSettings(null);
 			myTargeter = new GridTargeter(this);
@@ -184,7 +192,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		private long updateCount = 0;
-		private bool pass_gridCanNavigate = true;
+		private bool previous_gridCanNavigate = false;
 
 		/// <summary>
 		/// Causes the ship to fly around, following commands.
@@ -210,16 +218,15 @@ namespace Rynchodon.Autopilot
 			}
 			if (gridCanNavigate())
 			{
-				// when regaining the ability to navigate, reset
-				if (!pass_gridCanNavigate)
-				{
-					reset("cannot navigate");
-					pass_gridCanNavigate = true;
-				}
+				previous_gridCanNavigate = true;
 			}
 			else
 			{
-				pass_gridCanNavigate = false;
+				if (previous_gridCanNavigate)
+				{
+					reset("grid lost ability to navigate");
+					previous_gridCanNavigate = false;
+				}
 				return;
 			}
 
@@ -414,6 +421,7 @@ namespace Rynchodon.Autopilot
 		{
 			myLogger.debugLog("reset reason = " + reason, "reset()");
 			currentAPcontrollable = null;
+			myEngager.Disarm();
 		}
 
 		private DateTime maxRotateTime;
@@ -433,7 +441,15 @@ namespace Rynchodon.Autopilot
 			}
 
 			// before navigate
-			MM = new MovementMeasure(this);
+			if (myEngager.IsArmed)
+			{
+				Vector3? FiringDirection = myEngager.PrimaryWeapon.CurrentTarget.FiringDirection;
+				if (!FiringDirection.HasValue)
+					FiringDirection = Vector3.Zero;
+				MM = new MovementMeasure(this, FiringDirection);
+			}
+			else
+				MM = new MovementMeasure(this);
 
 			navigateSub();
 
@@ -476,6 +492,11 @@ namespace Rynchodon.Autopilot
 				return false;
 			if (CNS.landLocalBlock != null && MM.distToWayDest > radiusLandWay) // distance to start landing
 				return false;
+			if (myEngager.IsArmed)
+			{
+				moveOrder(Vector3.Zero, false);
+				return false;
+			}
 
 			if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.WAYPOINT)
 			{
@@ -614,7 +635,7 @@ namespace Rynchodon.Autopilot
 						if (movingTooSlow
 							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
 							calcAndMove(true); // continue in current state
-						if (MM.rotLenSq < rotLenSq_switchToMove)
+						if (CNS.SpecialFlyingInstructions != NavSettings.SpecialFlying.Split_MoveRotate && MM.rotLenSq < rotLenSq_switchToMove)
 						{
 							myLogger.debugLog("switching to move", "calcMoveAndRotate()", Logger.severity.DEBUG);
 							StartMoveMove();
@@ -653,12 +674,17 @@ namespace Rynchodon.Autopilot
 		{
 			if (PathfinderAllowsMovement)
 			{
-				if (CNS.isAMissile)
+				if (MM.distToWayDest < CNS.destinationRadius)
+				{
+					myLogger.debugLog("inside destination radius", "MoveIfPossible()");
+					return false;
+				}
+				if (CNS.isAMissile || CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Split_MoveRotate)
 				{
 					StartMoveHybrid();
 					return true;
 				}
-				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)// || MM.rotLenSq > rotLenSq_switchToMove)
+				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)
 				{
 					StartMoveSidel();
 					return true;

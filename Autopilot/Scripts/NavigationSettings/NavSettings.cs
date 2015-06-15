@@ -2,6 +2,7 @@
 
 using System;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Weapons;
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -24,7 +25,9 @@ namespace Rynchodon.Autopilot.NavigationSettings
 			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
 			Line_Any,
 			/// <summary>pathfinder can fly forwards, sidel only</summary>
-			Line_SidelForward
+			Line_SidelForward,
+			/// <summary>Only allow hybrid move state. Flying to different point than rotating to.</summary>
+			Split_MoveRotate
 		}
 		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 
@@ -137,10 +140,9 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		/// </summary>
 		private void onWayDestAddedRemoved()
 		{
+			myCubeGrid.throwIfNull_variable("myCubeGrid");
 			//collisionUpdateSinceWaypointAdded = 0;
 			clearSpeedInternal();
-
-			myCubeGrid.throwIfNull_variable("myCubeGrid");
 		}
 
 		#region Speed

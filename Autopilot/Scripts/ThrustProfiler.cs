@@ -102,6 +102,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="added">block that was added</param>
 		private void grid_OnBlockAdded(IMySlimBlock added)
 		{
+			MainLock.MainThread_ReleaseExclusive();
 			try
 			{
 				if (added.FatBlock == null)
@@ -111,7 +112,9 @@ namespace Rynchodon.Autopilot
 					newThruster(added);
 			}
 			catch (Exception e)
-			{ myLogger.alwaysLog("Exception: " + e,"grid_OnBlockAdded()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + e, "grid_OnBlockAdded()", Logger.severity.ERROR); }
+			finally
+			{ MainLock.MainThread_AcquireExclusive(); }
 		}
 
 		/// <summary>

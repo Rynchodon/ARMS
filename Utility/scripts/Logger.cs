@@ -73,7 +73,7 @@ namespace Rynchodon
 			this.className = className;
 			this.f_gridName = () => Block.CubeGrid.DisplayName;
 			this.f_state_primary = () => Block.DefinitionDisplayNameText;
-			this.f_state_secondary = () => Block.DisplayNameText;
+			this.f_state_secondary = () => Block.getNameOnly();
 		}
 
 		private void deleteIfExists(string filename)

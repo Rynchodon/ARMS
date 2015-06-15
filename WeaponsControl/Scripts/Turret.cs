@@ -144,14 +144,14 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			// CurrentTarget may be removed by WeaponTargeting
+			// CurrentTarget may be changed by WeaponTargeting
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
 				StopFiring("No target.");
 				return;
 			}
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue)
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
 				return;
 
 			// check firing direction

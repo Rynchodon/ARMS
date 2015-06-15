@@ -109,10 +109,11 @@ namespace Rynchodon
 					return;
 				}
 
-
-
-			//StatorA_AzimuthOffset = GetOffset(motorPart);
+			StatorA_AzimuthOffset = GetOffset(motorPart, FaceDirection.Value);
 			// maybe use GetAzimuthAndElevation() and reverse if a stator?
+
+
+
 
 			// compare facedirection to rotor/stator forward
 		}
@@ -156,45 +157,37 @@ namespace Rynchodon
 			return false;
 		}
 
-		//private float GetOffset(IMyCubeBlock motorPart)
-		//{
-		//	if (FaceDirection == motorPart.Orientation.Forward)
-		//	{
-		//		return 0f;
-		//	}
-		//	else if (FaceDirection == Base6Directions.GetFlippedDirection(motorPart.Orientation.Forward))
-		//	{
-		//		return MathHelper.Pi;
-		//	}
-		//	else
-		//	{
-		//		Base6Directions.Direction rotorLeft, rotorRight;
-		//		// if part is a stator, need to swap rotorLeft and rotorRight 
-		//		if (motorPart is IMyMotorStator)
-		//		{
-		//			rotorLeft = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
-		//			rotorRight = motorPart.Orientation.Left;
-		//		}
-		//		else
-		//		{
-		//			rotorLeft = motorPart.Orientation.Left;
-		//			rotorRight = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
-		//		}
+		private float GetOffset(IMyCubeBlock motorPart, Base6Directions.Direction faceDirection)
+		{
+			if (faceDirection == motorPart.Orientation.Forward)
+				return 0f;
+			else if (faceDirection == Base6Directions.GetFlippedDirection(motorPart.Orientation.Forward))
+				return MathHelper.Pi;
+			else
+			{
+				Base6Directions.Direction rotorLeft, rotorRight;
+				// if part is a stator, need to swap rotorLeft and rotorRight 
+				if (motorPart is IMyMotorStator)
+				{
+					rotorLeft = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
+					rotorRight = motorPart.Orientation.Left;
+				}
+				else
+				{
+					rotorLeft = motorPart.Orientation.Left;
+					rotorRight = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
+				}
 
-		//		if (FaceDirection == rotorLeft)
-		//		{
-		//			return MathHelper.PiOver2;
-		//		}
-		//		else if (FaceDirection == rotorRight)
-		//		{
-		//			return -MathHelper.PiOver2;
-		//		}
-		//		else // none of those directions
-		//		{
-		//			myLogger.debugLog("Useless rotor part:" + motorPart.DisplayNameText, "GetOffset()");
-		//			return 0f;
-		//		}
-		//	}
-		//}
+				if (faceDirection == rotorLeft)
+					return MathHelper.PiOver2;
+				else if (faceDirection == rotorRight)
+					return -MathHelper.PiOver2;
+				else // none of those directions
+				{
+					myLogger.debugLog("Useless rotor part:" + motorPart.DisplayNameText, "GetOffset()");
+					return 0f;
+				}
+			}
+		}
 	}
 }

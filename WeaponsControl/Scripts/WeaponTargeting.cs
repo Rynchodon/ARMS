@@ -27,8 +27,8 @@ namespace Rynchodon.Weapons
 
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
-		protected readonly IMyCubeBlock weapon;
-		protected readonly Ingame.IMyLargeTurretBase myTurret;
+		public readonly IMyCubeBlock weapon;
+		public readonly Ingame.IMyLargeTurretBase myTurret;
 
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
 		private List<IMyEntity> PotentialObstruction;
@@ -38,7 +38,7 @@ namespace Rynchodon.Weapons
 		private int InterpreterErrorCount = int.MaxValue;
 		private Ammo LoadedAmmo;
 
-		protected Target CurrentTarget { get; private set; }
+		public Target CurrentTarget { get; private set; }
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 		private int Blacklist_Index = 0;
@@ -47,11 +47,13 @@ namespace Rynchodon.Weapons
 
 		protected bool IsControllingWeapon { get; private set; }
 		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
+		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private bool IsShooting;
+		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
 
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
-		protected bool IsNormalTurret { get; private set; }
+		private readonly bool IsNormalTurret;
 
 		private bool WeaponTargetingEnabled = false;
 
@@ -78,7 +80,7 @@ namespace Rynchodon.Weapons
 
 			this.weapon = weapon;
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
+			this.myLogger = new Logger("WeaponTargeting", weapon);// () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.CurrentTarget = new Target();
@@ -106,7 +108,7 @@ namespace Rynchodon.Weapons
 		protected void EnableWeaponTargeting()
 		{ WeaponTargetingEnabled = true; }
 
-		protected void DisableWeaponTargeting(bool broken)
+		protected void DisableWeaponTargeting(bool broken=false)
 		{
 			// TODO: report broken
 			WeaponTargetingEnabled = false;
@@ -127,6 +129,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		/// <param name="targetPoint">The point of the target.</param>
 		/// <returns>true if the rotation is allowed</returns>
+		/// <remarks>Invoked on targeting thread.</remarks>
 		protected abstract bool CanRotateTo(Vector3D targetPoint);
 
 		/// <summary>
@@ -166,12 +169,13 @@ namespace Rynchodon.Weapons
 			if (!IsControllingWeapon || LoadedAmmo == null || (CurrentTarget.Entity != null && CurrentTarget.Entity.Closed))
 				return;
 
-			if (CurrentTarget.TType == TargetType.None)
-			{
-				CurrentTarget.FiringDirection = null;
-				CurrentTarget.InterceptionPoint = null;
-			}
-			else
+			//if (CurrentTarget.TType == TargetType.None)
+			//{
+			//	CurrentTarget.FiringDirection = null;
+			//	CurrentTarget.InterceptionPoint = null;
+			//}
+			//else
+			if (CurrentTarget.TType != TargetType.None)
 				SetFiringDirection();
 
 			CheckFire();
@@ -256,37 +260,18 @@ namespace Rynchodon.Weapons
 			return weapon.GetPosition();
 		}
 
-		private bool CanControlWeapon()
+		/// <param name="testEnabled">set to false to ignore WeaponTargetingEnabled</param>
+		protected bool CanControlWeapon(bool testEnabled = true)
 		{
-			if (!weapon.IsWorking)
+			if (!weapon.IsWorking
+				|| (IsNormalTurret && myTurret.IsUnderControl)
+				|| (testEnabled && !WeaponTargetingEnabled)
+				|| weapon.OwnerId == 0
+				|| (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+				|| (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
+				|| (!IsNormalTurret && weapon.CubeGrid.IsStatic))
 			{
-				SetCanNotControl();
-				return false;
-			}
-
-			if (!WeaponTargetingEnabled)
-				return false;
-
-			if (IsNormalTurret && myTurret.IsUnderControl)
-			{
-				SetCanNotControl();
-				return false;
-			}
-
-			if (weapon.OwnerId == 0)
-			{
-				SetCanNotControl();
-				return false;
-			}
-
-			if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-			{
-				SetCanNotControl();
-				return false;
-			}
-
-			if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
-			{
+				//LogWhyNotControl();
 				SetCanNotControl();
 				return false;
 			}
@@ -294,6 +279,31 @@ namespace Rynchodon.Weapons
 			SetCanControl();
 			return true;
 		}
+
+		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//private void LogWhyNotControl()
+		//{
+		//	string why;
+
+		//	if (!weapon.IsWorking)
+		//		why = "not working";
+		//	else if (!WeaponTargetingEnabled)
+		//		why = "weapon targeting disabled";
+		//	else if (IsNormalTurret && myTurret.IsUnderControl)
+		//		why = "turret controlled";
+		//	else if (weapon.OwnerId == 0)
+		//		why = "no owner";
+		//	else if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+		//		why = "NPC";
+		//	else if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
+		//		why = "no brackets";
+		//	else if (!IsNormalTurret && weapon.CubeGrid.IsStatic)
+		//		why = "static";
+		//	else
+		//		why = "wtf";
+
+		//	myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
+		//}
 
 		private void SetCanControl()
 		{
@@ -305,14 +315,14 @@ namespace Rynchodon.Weapons
 				//var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
 				using (lock_IsShooting.AcquireExclusiveUsing())
 					if (IsShooting)
-					//{
-					//	myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
+						//{
+						//	myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
 						StopFiring("Now controlling weapon.");
 					//}
 					else
-					//{
+						//{
 						myLogger.debugLog("Now controlling weapon, not shooting", "CanControlWeapon()");
-					//}
+				//}
 
 				// disable default targeting
 				if (IsNormalTurret)
@@ -339,12 +349,12 @@ namespace Rynchodon.Weapons
 				// stop shooting
 				var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
 				if (builder.IsShootingFromTerminal)
-				//{
+					//{
 					//myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
 					StopFiring("No longer controlling weapon.");
 				//}
 				else
-				//{
+					//{
 					myLogger.debugLog("No longer controlling weapon, not shooting", "CanControlWeapon()");
 				//}
 
@@ -1203,8 +1213,7 @@ namespace Rynchodon.Weapons
 				//// Shot is too slow to intercept target, it will never catch up.
 				//// Do our best by aiming in the direction of the targets velocity.
 				//return Vector3.Normalize(targetVel) * shotSpeed;
-				CurrentTarget.FiringDirection = null;
-				CurrentTarget.InterceptionPoint = null;
+				CurrentTarget = CurrentTarget.AddDirectionPoint(null, null);
 				return;
 			}
 			else
@@ -1216,14 +1225,16 @@ namespace Rynchodon.Weapons
 
 				// Finally, add the tangential and orthogonal velocities.
 				//return shotVelOrth + shotVelTang;
-				CurrentTarget.FiringDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
+				Vector3 firingDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
 
 				// Find the time of collision (distance / relative velocity)
 				float timeToCollision = distanceToTarget / (shotSpeedOrth - targetSpeedOrth);
 
 				// Calculate where the shot will be at the time of collision
 				Vector3 shotVel = shotVelOrth + shotVelTang;
-				CurrentTarget.InterceptionPoint = shotOrigin + shotVel * timeToCollision;
+				Vector3 interceptionPoint = shotOrigin + shotVel * timeToCollision;
+
+				CurrentTarget = CurrentTarget.AddDirectionPoint(firingDirection, interceptionPoint);
 			}
 		}
 

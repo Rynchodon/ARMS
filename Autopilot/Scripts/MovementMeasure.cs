@@ -31,6 +31,7 @@ namespace Rynchodon.Autopilot
 
 			lazy_navBlockPosition = new Lazy<Vector3D>(() => { return owner.getNavigationBlock().GetPosition(); });
 			lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
+
 			lazy_distToWayDest = new Lazy<double>(() => {
 				switch (owner.CNS.getTypeOfWayDest())
 				{
@@ -98,12 +99,17 @@ namespace Rynchodon.Autopilot
 
 			Vector3D dirNorm;
 			if (targetDirection == null)
-			{
-				Vector3D displacement = currentWaypoint - owner.currentAPblock.GetPosition();
-				dirNorm = Vector3D.Normalize(displacement);
-			}
+				dirNorm = Vector3D.Normalize(displacement.getWorld());
 			else
 				dirNorm = (Vector3D)targetDirection;
+
+			if (dirNorm == Vector3D.Zero)
+			{
+				value__pitch = 0;
+				value__yaw = 0;
+				value__roll = 0;
+				return;
+			}
 
 			IMyCubeBlock NavBlock = owner.getNavigationBlock();
 			IMyCubeBlock RemBlock = owner.currentAPblock;
@@ -166,6 +172,10 @@ namespace Rynchodon.Autopilot
 
 		private Lazy<Vector3D> lazy_currentWaypoint;
 		public Vector3D currentWaypoint { get { return lazy_currentWaypoint.Value; } }
+
+		private Lazy<Vector3> lazy_faceDirection;
+		/// <summary>Which direction the Navigation block should face.</summary>
+		public Vector3 FaceDirection { get { return lazy_faceDirection.Value; } }
 
 		private Lazy<float> lazy_movementSpeed;
 		public float movementSpeed { get { return lazy_movementSpeed.Value; } }
