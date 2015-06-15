@@ -116,7 +116,7 @@ namespace Rynchodon.Autopilot.Harvest
 				return false;
 			}
 
-			myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Velocity Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
+			//myLogger.debugLog("Linear Speed Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Speed Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
 			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() >  0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
@@ -440,7 +440,7 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
 
-				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
+				SetNextStage(MoveAway, false); // might be inside asteroid, enable drills to escape!
 				return;
 			}
 
@@ -455,7 +455,7 @@ namespace Rynchodon.Autopilot.Harvest
 		}
 
 		/// <summary>
-		/// Move out of asteroid's Bounding Sphere
+		/// Move out of asteroid's Bounding Box
 		/// </summary>
 		private void MoveAway()
 		{
@@ -513,11 +513,11 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				if (asteroid.GetIntersectionWithSphere(ref volume))
 				{
-					myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
+					//myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
 					return true;
 				}
-				else
-					myLogger.debugLog("not intersect sphere: asteroid (" + asteroid.getBestName() + ")", "IsInsideAsteroid()");
+				//else
+				//	myLogger.debugLog("not intersect sphere: asteroid (" + asteroid.getBestName() + ")", "IsInsideAsteroid()");
 			}
 
 			return false;
@@ -567,8 +567,13 @@ namespace Rynchodon.Autopilot.Harvest
 			foreach (IMyVoxelMap asteroid in allAsteroids)
 			{
 				float distanceCurrent = (float)myCubeGrid.WorldAABB.Distance(asteroid.WorldAABB);
+				if (distanceCurrent < 1)
+				{
+					distance = distanceCurrent;
+					return asteroid;
+				}
 				while (sortedAsteroids.ContainsKey(distanceCurrent))
-					distanceCurrent.IncrementSignificand();
+					distanceCurrent = distanceCurrent.IncrementSignificand();
 				sortedAsteroids.Add(distanceCurrent, asteroid);
 			}
 			var enumerator = sortedAsteroids.GetEnumerator();
@@ -668,7 +673,25 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private void SetDrills()
 		{
-			bool enable = DrillsOn;
+			bool enable;
+
+			if (DrillsOn)
+			{
+				if (IsInsideAsteroid())
+				{
+					enable = true;
+					CNS.speedCruise_external = 0.5f;
+					CNS.speedSlow_external = 2;
+				}
+				else
+				{
+					enable = false;
+					CNS.speedCruise_external = 5f;
+					CNS.speedSlow_external = 10;
+				}
+			}
+			else
+				enable = false;
 
 			if (enable && (CNS.moveState == NavSettings.Moving.STOP_MOVE || CNS.moveState == NavSettings.Moving.NOT_MOVE))
 				enable = false;

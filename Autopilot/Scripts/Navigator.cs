@@ -796,7 +796,7 @@ namespace Rynchodon.Autopilot
 		internal void calcAndRoll(float roll)
 		{ myRotator.calcAndRoll(roll); }
 
-		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 0, 1);
+		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 1);
 		private DateTime stoppedMovingAt;
 		private static float stoppedPrecision = 0.2f;
 
