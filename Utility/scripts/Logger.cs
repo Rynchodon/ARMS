@@ -102,7 +102,7 @@ namespace Rynchodon
 			return logWriter != null;
 		}
 
-		private static FastResourceLock lock_log = new FastResourceLock();
+		private static VRage.FastResourceLock lock_log = new VRage.FastResourceLock();
 
 		/// <summary>
 		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
