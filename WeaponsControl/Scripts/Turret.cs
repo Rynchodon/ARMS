@@ -59,18 +59,6 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			//myLogger.debugLog("assessment: " + (!weapon.OwnedNPC()) + ", " + (!weapon.DisplayNameText.Contains("[")) + ", " + (!weapon.DisplayNameText.Contains("]")), "Initialize()");
-			if (!weapon.OwnedNPC() && !weapon.DisplayNameText.Contains("[") && !weapon.DisplayNameText.Contains("]"))
-			{
-				myLogger.debugLog("writing defaults", "Turret()");
-				// write defaults
-				(weapon as IMyTerminalBlock).SetCustomName(weapon.DisplayNameText + Settings.GetSettingString(Settings.SettingName.sTurretCommandsDefaultPlayer));
-			}
-			//else
-			//{
-			//	myLogger.debugLog("not writing defaults: "+weapon.DisplayNameText, "Turret()");
-			//}
-
 			// upgrade
 			if (Settings.fileVersion > 0 && Settings.fileVersion < 35)
 			{

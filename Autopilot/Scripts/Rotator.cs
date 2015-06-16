@@ -56,10 +56,20 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
+		public const float rotComp_minimum_norm = 0.0349f; // 2°
 		/// <summary>
-		/// minimum component (2°)
+		/// minimum component
 		/// </summary>
-		public const float rotComp_minimum = 0.0349f;
+		public float rotComp_minimum
+		{
+			get
+			{
+				if (owner.myEngager.IsArmed)
+					return 2.91E-4f; // 1'
+				else
+					return rotComp_minimum_norm;
+			}
+		}
 
 		///// <summary>
 		///// stop and rotate when greater than (90°)
@@ -105,6 +115,8 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public void calcAndRotate()
 		{
+			float rotComp_minimum = this.rotComp_minimum;
+
 			switch (CNS.rotateState)
 			{
 				case NavSettings.Rotating.NOT_ROTA:
@@ -291,7 +303,7 @@ namespace Rynchodon.Autopilot
 		/// <returns>-1 if under, 1 if over, 0 if very close</returns>
 		private int testOverUnder( float currentRotate, float needToRotate)
 		{
-			if (Math.Abs(currentRotate) > rotComp_minimum && Math.Abs(needToRotate) > rotComp_minimum)
+			if (Math.Abs(currentRotate) > rotComp_minimum_norm && Math.Abs(needToRotate) > rotComp_minimum_norm)
 				if (Math.Sign(currentRotate) == Math.Sign(needToRotate))
 					return -1; // under rotated
 				else

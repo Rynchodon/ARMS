@@ -33,7 +33,7 @@ namespace Rynchodon.Weapons
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
 		private List<IMyEntity> PotentialObstruction;
 
-		private TargetingOptions Options = new TargetingOptions();
+		internal TargetingOptions Options = new TargetingOptions();
 		private InterpreterWeapon Interpreter;
 		private int InterpreterErrorCount = int.MaxValue;
 		private Ammo LoadedAmmo;

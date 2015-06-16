@@ -106,7 +106,7 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			if (CurrentAction == null)
 			{
-				myLogger.debugLog("no action to take", "Run()");
+				//myLogger.debugLog("no action to take", "Run()");
 				return false;
 			}
 

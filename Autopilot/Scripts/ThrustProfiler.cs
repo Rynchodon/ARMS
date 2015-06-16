@@ -183,11 +183,11 @@ namespace Rynchodon.Autopilot
 		/// <param name="displacement">displacement vector</param>
 		/// <param name="remote">controlling remote</param>
 		/// <returns>scaled vector</returns>
-		public RelativeVector3F scaleByForce(RelativeVector3F displacement, IMyCubeBlock remote)
+		public RelativeDirection3F scaleByForce(RelativeDirection3F displacement, IMyCubeBlock remote)
 		{
 			allMyThrusters.throwIfNull_variable("allMyThrusters");
 
-			Vector3 displacementGrid = displacement.getLocal();
+			Vector3 displacementGrid = displacement.ToLocal();
 
 			Dictionary<Base6Directions.Direction, float> directionalForces = new Dictionary<Base6Directions.Direction, float>();
 
@@ -217,7 +217,7 @@ namespace Rynchodon.Autopilot
 				}
 			}
 
-			return RelativeVector3F.createFromLocal(scaledMovement, remote.CubeGrid);
+			return RelativeDirection3F.FromLocal(remote.CubeGrid, scaledMovement);
 		}
 
 		/// <summary>

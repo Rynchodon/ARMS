@@ -30,7 +30,12 @@ namespace Rynchodon.Autopilot
 			lazy_movementSpeed = new Lazy<float>(() => { return owner.myGrid.Physics.LinearVelocity.Length(); });
 
 			lazy_navBlockPosition = new Lazy<Vector3D>(() => { return owner.getNavigationBlock().GetPosition(); });
-			lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
+			//lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
+
+			lazy_displacement = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, currentWaypoint - navBlockPos); });
+
+			lazy_distToPoint = new Lazy<double>(() => { return displacement.ToWorld().Length(); });
+			lazy_distToDestGrid = new Lazy<double>(() => { return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); });
 
 			lazy_distToWayDest = new Lazy<double>(() => {
 				switch (owner.CNS.getTypeOfWayDest())
@@ -39,11 +44,9 @@ namespace Rynchodon.Autopilot
 					case NavSettings.TypeOfWayDest.GRID:
 						return distToDestGrid;
 					default:
-						return displacement.getWorld().Length();
+						return distToPoint;
 				}
 			});
-
-			lazy_distToDestGrid = new Lazy<double>(shortestDistanceToDestGrid);
 		}
 
 		// these are all built together so we will not be using lazy
@@ -99,7 +102,7 @@ namespace Rynchodon.Autopilot
 
 			Vector3D dirNorm;
 			if (targetDirection == null)
-				dirNorm = Vector3D.Normalize(displacement.getWorld());
+				dirNorm = displacement.ToWorldNormalized();
 			else
 				dirNorm = (Vector3D)targetDirection;
 
@@ -184,11 +187,11 @@ namespace Rynchodon.Autopilot
 		private Lazy<Vector3D> lazy_navBlockPosition;
 		public Vector3D navBlockPos { get { return lazy_navBlockPosition.Value; } }
 
-		private Lazy<RelativeVector3F> lazy_displacementToPoint;
-		/// <summary>
-		/// from nav block to way/dest point
-		/// </summary>
-		public RelativeVector3F displacement { get { return lazy_displacementToPoint.Value; } }
+		//private Lazy<RelativeVector3F> lazy_displacementToPoint;
+		///// <summary>
+		///// from nav block to way/dest point
+		///// </summary>
+		//public RelativeVector3F displacement { get { return lazy_displacementToPoint.Value; } }
 
 		private Lazy<double> lazy_distToWayDest;
 		/// <summary>
@@ -196,14 +199,20 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public double distToWayDest { get { return lazy_distToWayDest.Value; } }
 
+		private Lazy<double> lazy_distToPoint;
+		public double distToPoint { get { return lazy_distToPoint.Value; } }
+
+		private Lazy<RelativeDirection3F> lazy_displacement;
+		public RelativeDirection3F displacement { get { return lazy_displacement.Value; } }
+
 		private Lazy<double> lazy_distToDestGrid;
 		/// <summary>
 		/// shortest distance between AABB
 		/// </summary>
 		private double distToDestGrid { get { return lazy_distToDestGrid.Value; } }
 
-		private double shortestDistanceToDestGrid()
-		{ return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); }
+		//private double shortestDistanceToDestGrid()
+		//{ return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); }
 
 		private Logger myLogger;
 	}

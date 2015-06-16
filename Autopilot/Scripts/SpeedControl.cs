@@ -58,7 +58,7 @@ namespace Rynchodon.Autopilot
 			else // distance is not small
 				if (distanceToDestination > stopMultiplierSpeedUp * stoppingDistance) // distance is great
 				{
-					if (nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) // not speeding up
+					if (nav.currentMove == Vector3.Zero) // not speeding up
 					{
 						float initialSpeedCruise = nav.CNS.getSpeedCruise();
 
@@ -100,7 +100,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public static readonly Vector3 cruiseForward = new Vector3(0, 0, -0.01); // 10 * observed minimum
+		//public static readonly Vector3 cruiseForward = new Vector3(0, 0, -0.01); // 10 * observed minimum
 		/// <summary>
 		/// call every run, needed to enable dampeners
 		/// two options for cruise: use cruiseForward, or disable dampeners
@@ -146,7 +146,7 @@ namespace Rynchodon.Autopilot
 				// as long as there is acceleration, do not calcAndMove
 				myLogger.debugLog("current move = " + nav.currentMove + ", moving too slow = " + nav.movingTooSlow, "checkAndCruise()", Logger.severity.TRACE);
 				myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + ")", "checkAndCruise()", Logger.severity.TRACE);
-				if ((nav.currentMove == Vector3.Zero || nav.currentMove == cruiseForward) && !nav.movingTooSlow)
+				if ((nav.currentMove == Vector3.Zero) && !nav.movingTooSlow)
 				{
 					myLogger.debugLog("too slow(" + nav.CNS.getSpeedCruise() + " : " + nav.MM.movementSpeed + " : " + nav.CNS.getSpeedSlow() + "), setting nav.movingTooSlow", "checkAndCruise()", Logger.severity.TRACE);
 					nav.movingTooSlow = true;

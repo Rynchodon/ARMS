@@ -3,3 +3,4 @@
 @echo off
 python .build/build.py
 timeout 10
+exit

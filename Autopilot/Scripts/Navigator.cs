@@ -492,9 +492,12 @@ namespace Rynchodon.Autopilot
 				return false;
 			if (CNS.landLocalBlock != null && MM.distToWayDest > radiusLandWay) // distance to start landing
 				return false;
-			if (myEngager.IsArmed)
+
+			myLogger.debugLog("engager IsArmed = " + myEngager.IsArmed + ", distToWayDest = " + MM.distToWayDest + ", MinWeaponRange / 2 = " + myEngager.MinWeaponRange / 2f, "checkAt_wayDest()");
+			if (myEngager.IsArmed && MM.distToWayDest < myEngager.MinWeaponRange / 2f)
 			{
-				moveOrder(Vector3.Zero, false);
+				CNS.setWaypoint(myEngager.GetWaypoint(MM.currentWaypoint));
+				myLogger.debugLog("engager changing waypoint, distToWayDest = " + MM.distToWayDest + ", MinWeaponRange / 2 = " + myEngager.MinWeaponRange / 2 + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
 				return false;
 			}
 
@@ -632,14 +635,16 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.HYBRID:
 					{
 						//myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", currentMove = " + currentMove, "calcMoveAndRotate()");
-						if (movingTooSlow
-							|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
-							calcAndMove(true); // continue in current state
+						//if (movingTooSlow
+						//	|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
+						//	calcAndMove(true); // continue in current state
 						if (CNS.SpecialFlyingInstructions != NavSettings.SpecialFlying.Split_MoveRotate && MM.rotLenSq < rotLenSq_switchToMove)
 						{
 							myLogger.debugLog("switching to move", "calcMoveAndRotate()", Logger.severity.DEBUG);
 							StartMoveMove();
 						}
+						else
+							calcAndMove(true); // continue in current state
 						break;
 					}
 				case NavSettings.Moving.SIDELING:
@@ -744,9 +749,9 @@ namespace Rynchodon.Autopilot
 			{
 				if (sidel)
 				{
-					Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
-					RelativeVector3F displacement = RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
-					Vector3 course = Vector3.Normalize(displacement.getWorld());
+					//Vector3 worldDisplacement = ((Vector3D)CNS.getWayDest() - (Vector3D)getNavigationBlock().GetPosition());
+					//RelativeDirection3F displacement = MM.displacement; //RelativeVector3F.createFromWorld(worldDisplacement, myGrid); // Only direction matters, we will normalize later. A multiplier helps prevent precision issues.
+					Vector3 course = MM.displacement.ToWorldNormalized();
 					float offCourse = Vector3.RectangularDistance(course, moveDirection);
 
 					switch (CNS.moveState)
@@ -757,38 +762,46 @@ namespace Rynchodon.Autopilot
 								{
 									if (movingTooSlow)
 										goto case NavSettings.Moving.NOT_MOVE;
-									return;
 								}
 								else
 								{
 									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 									fullStop("change course: sidel");
-									return;
 								}
+								return;
 							}
 						case NavSettings.Moving.HYBRID:
 							{
-								if (offCourse < onCourse_hybrid)
+								if (movingTooSlow)
 									goto case NavSettings.Moving.NOT_MOVE;
-								else
+
+								if (MM.movementSpeed > 1 && offCourse > onCourse_hybrid)
 								{
+									if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Split_MoveRotate)
+										fullStop("off course");
+
 									myLogger.debugLog("rectangular distance between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 									CNS.moveState = NavSettings.Moving.MOVING;
 									calcAndMove();
 									return;
 								}
+
+								if (currentMove != Vector3.Zero)
+									goto case NavSettings.Moving.NOT_MOVE;
+
+								return;
 							}
 						case NavSettings.Moving.NOT_MOVE:
 							{
-								RelativeVector3F scaled = currentThrust.scaleByForce(displacement, getNavigationBlock());
+								RelativeDirection3F scaled = currentThrust.scaleByForce(MM.displacement, getNavigationBlock());
 								moveOrder(scaled);
 								if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
 								{
 									moveDirection = course;
-									debugLog("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + worldDisplacement + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
-									debugLog("... scaled=" + scaled.getWorld() + ":" + scaled.getLocal() + ":" + scaled.getBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
+									debugLog("sideling. wayDest=" + CNS.getWayDest() + ", worldDisplacement=" + MM.displacement.ToWorld() + ", RCdirection=" + course, "calcAndMove()", Logger.severity.DEBUG);
+									debugLog("... scaled=" + scaled.ToWorld() + ":" + scaled.ToLocal() + ":" + scaled.ToBlock(getNavigationBlock()), "calcAndMove()", Logger.severity.DEBUG);
 								}
-								break;
+								return;
 							}
 						default:
 							{
@@ -879,10 +892,10 @@ namespace Rynchodon.Autopilot
 		internal Vector2 currentRotate = Vector2.Zero;
 		internal float currentRoll = 0;
 
-		internal void moveOrder(Vector3 move, bool normalize = true)
+		internal void moveOrder(Vector3 move)
 		{
-			if (normalize)
-				move = Vector3.Normalize(move);
+			//if (normalize)
+			//	move = Vector3.Normalize(move);
 			if (!move.IsValid())
 				move = Vector3.Zero;
 			if (currentMove == move)
@@ -896,9 +909,9 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		internal void moveOrder(RelativeVector3F move, bool normalize = true)
+		internal void moveOrder(RelativeDirection3F move)
 		{
-			moveOrder(move.getBlock(currentAPblock), normalize);
+			moveOrder(move.ToBlockNormalized(currentAPblock));
 		}
 
 		internal void moveAndRotate()
@@ -923,7 +936,7 @@ namespace Rynchodon.Autopilot
 		{
 			switch (CNS.moveState)
 			{
-				case NavSettings.Moving.HYBRID:
+				//case NavSettings.Moving.HYBRID:
 				case NavSettings.Moving.MOVING:
 					myLogger.debugLog("disabling reverse thrust", "DisableReverseThrust()");
 					EnableDampeners();
