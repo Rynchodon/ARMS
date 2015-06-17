@@ -1,10 +1,7 @@
 Will be moved to steam every release.
 
 major:
-tighter path checking for asteroids (still working on performance cost)
 
 minor:
-settings now have minimum and maximum values
-Put those cores to work! Can run multiple path checking tasks in parallel, see Settings.
-fixed turrets not firing at blocks
-fixed reset when target block / grid is destroyed
+harvester can start from inside a tunnel
+fixed not being able to write settings file

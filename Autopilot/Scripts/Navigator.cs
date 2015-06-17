@@ -575,8 +575,9 @@ namespace Rynchodon.Autopilot
 					switch (myPathfinder_Output.PathfinderResult)
 					{
 						case Pathfinder.PathfinderOutput.Result.Incomplete:
-							//PathfinderAllowsMovement = true;
-							// leave PathfinderAllowsMovement as it was
+							// if ship is not moving, wait for a path. if ship is moving, keep previous PathfinderAllowsMovement
+							if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
+								PathfinderAllowsMovement = false;
 							break;
 						case Pathfinder.PathfinderOutput.Result.Searching_Alt:
 							fullStop("searching for a path");
@@ -862,7 +863,7 @@ namespace Rynchodon.Autopilot
 		internal void calcAndRoll(float roll)
 		{ myRotator.calcAndRoll(roll); }
 
-		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 0, 1);
+		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 1);
 		private DateTime stoppedMovingAt;
 		private const float stoppedPrecision_normal = 0.2f;
 		private const float stoppedPrecision_engage = 10f;

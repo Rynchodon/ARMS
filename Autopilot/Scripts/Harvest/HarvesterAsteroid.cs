@@ -67,10 +67,17 @@ namespace Rynchodon.Autopilot.Harvest
 
 		/// <summary>Start harvesting.</summary>
 		/// <returns>true iff harvesting could be started</returns>
-		public bool Start()
+		public void Start()
 		{
 			LogEntered("Start()");
 			HarvestState = Navigator.ReportableState.H_Ready;
+
+			if (DrillFullness(GetDrills()) > FullAmount_Return)
+			{
+				myLogger.debugLog("drills are already full", "Start()");
+				Finished();
+				return;
+			}
 
 			try
 			{
@@ -91,12 +98,12 @@ namespace Rynchodon.Autopilot.Harvest
 
 				myLogger.debugLog("Started harvester", "Start()");
 				SetNextStage(Ready, false);
-				return true;
+				return;
 			}
 			catch (Exception ex)
 			{
 				myLogger.debugLog("Failed to start, Ex: " + ex, "Start()");
-				return false;
+				return;
 			}
 		}
 
@@ -110,8 +117,8 @@ namespace Rynchodon.Autopilot.Harvest
 				return false;
 			}
 
-			//myLogger.debugLog("Linear Velocity Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared(), "Run()");
-			if (myNav.MM.movementSpeed > 0.25f)
+			//myLogger.debugLog("Linear Speed Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Speed Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
+			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() >  0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
 				IsStuck = false;
@@ -203,6 +210,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private void RotateToWaypoint()
 		{
 			LogEntered("RotateToWaypoint()");
+
 			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
 			{
 				myLogger.debugLog("Finished rotating", "RotateToWaypoint()");
@@ -210,6 +218,13 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(StartHarvest, true);
 				return;
 			}
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "RotateToWaypoint()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
+
 			myNav.calcAndRotate();
 		}
 
@@ -334,8 +349,12 @@ namespace Rynchodon.Autopilot.Harvest
 				SetNextStage(Ready, false);
 				return;
 			}
-			if (myNav.MM.distToWayDest < 10)
-				myLogger.debugLog("close to way dest, still inside asteroid", "Backout()");
+			if (myNav.MM.distToWayDest < 1)
+			{
+				myLogger.debugLog("reached way dest, still inside asteroid", "Backout()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
 
 			myNav.collisionCheckMoveAndRotate();
 		}
@@ -396,6 +415,8 @@ namespace Rynchodon.Autopilot.Harvest
 		{
 			LogEntered("StartMoveAway()");
 
+			myNav.fullStop("StartMoveAway");
+
 			// set dest to a point away from centre
 			Vector3D navDrillPos = NavigationDrill.GetPosition();
 			Vector3D directionAway = Vector3D.Normalize(navDrillPos - GetClosestAsteroid().WorldVolume.Center);
@@ -415,18 +436,27 @@ namespace Rynchodon.Autopilot.Harvest
 		private void RotateToMoveAway()
 		{
 			LogEntered("RotateToMoveAway()");
+
 			if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA && myNav.MM.rotLenSq < rotLenSq_rotate)
 			{
 				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
 
-				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
+				SetNextStage(MoveAway, false); // might be inside asteroid, enable drills to escape!
 				return;
 			}
+
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "RotateToMoveAway()");
+				SetNextStage(StartTunnelThrough, true);
+				return;
+			}
+
 			myNav.calcAndRotate();
 		}
 
 		/// <summary>
-		/// Move out of asteroid's Bounding Sphere
+		/// Move out of asteroid's Bounding Box
 		/// </summary>
 		private void MoveAway()
 		{
@@ -447,6 +477,13 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				myLogger.debugLog("reached wayDest", "MoveAway()");
 				SetNextStage(StartMoveAway, false);
+				return;
+			}
+
+			if (IsStuck)
+			{
+				myLogger.debugLog("harvester is stuck", "MoveAway()");
+				SetNextStage(StartTunnelThrough, true);
 				return;
 			}
 
@@ -477,11 +514,11 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				if (asteroid.GetIntersectionWithSphere(ref volume))
 				{
-					myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
+					//myLogger.debugLog("asteroid: " + asteroid.getBestName() + " intersects sphere", "IsInsideAsteroid()");
 					return true;
 				}
-				else
-					myLogger.debugLog("not intersect sphere: asteroid (" + asteroid.getBestName() + ")", "IsInsideAsteroid()");
+				//else
+				//	myLogger.debugLog("not intersect sphere: asteroid (" + asteroid.getBestName() + ")", "IsInsideAsteroid()");
 			}
 
 			return false;
@@ -531,8 +568,13 @@ namespace Rynchodon.Autopilot.Harvest
 			foreach (IMyVoxelMap asteroid in allAsteroids)
 			{
 				float distanceCurrent = (float)myCubeGrid.WorldAABB.Distance(asteroid.WorldAABB);
+				if (distanceCurrent < 1)
+				{
+					distance = distanceCurrent;
+					return asteroid;
+				}
 				while (sortedAsteroids.ContainsKey(distanceCurrent))
-					distanceCurrent.IncrementSignificand();
+					distanceCurrent = distanceCurrent.IncrementSignificand();
 				sortedAsteroids.Add(distanceCurrent, asteroid);
 			}
 			var enumerator = sortedAsteroids.GetEnumerator();
@@ -632,9 +674,27 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private void SetDrills()
 		{
-			bool enable = DrillsOn;
+			bool enable;
 
-			if (enable && CNS.moveState == NavSettings.Moving.STOP_MOVE)
+			if (DrillsOn)
+			{
+				if (IsInsideAsteroid())
+				{
+					enable = true;
+					CNS.speedCruise_external = 0.5f;
+					CNS.speedSlow_external = 2;
+				}
+				else
+				{
+					enable = false;
+					CNS.speedCruise_external = 5f;
+					CNS.speedSlow_external = 10;
+				}
+			}
+			else
+				enable = false;
+
+			if (enable && (CNS.moveState == NavSettings.Moving.STOP_MOVE || CNS.moveState == NavSettings.Moving.NOT_MOVE))
 				enable = false;
 
 			if (enable == DrillState)

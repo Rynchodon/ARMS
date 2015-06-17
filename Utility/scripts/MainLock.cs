@@ -9,14 +9,13 @@ using VRageMath;
 namespace Rynchodon
 {
 	/// <summary>
-	/// Obtains a shared lock on core thread while performing an action. Locks can only be obtained while main thread is running.
+	/// Obtains a shared lock on core thread while performing an action.
 	/// </summary>
 	public static class MainLock
 	{
-		private static FastResourceLock Lock_MainThread = new FastResourceLock();
-		private static FastResourceLock Lock_Lock = new FastResourceLock();
-
 		private static Logger myLogger = new Logger("MainLock");
+		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
+		private static FastResourceLock Lock_Lock = new FastResourceLock("Lock_Lock");
 
 		static MainLock()
 		{ MainThread_AcquireExclusive(); }
@@ -40,7 +39,6 @@ namespace Rynchodon
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		///// <returns>true if exclusive lock was released, false if it is not held</returns>
 		public static void MainThread_ReleaseExclusive()
 		{
 			using (Lock_Lock.AcquireExclusiveUsing())

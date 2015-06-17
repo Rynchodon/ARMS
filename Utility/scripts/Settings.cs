@@ -83,7 +83,7 @@ namespace Rynchodon
 		private static int readAll()
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(Settings)))
-				return -1;
+				return -1; // no file
 
 			TextReader settingsReader = null;
 			try
@@ -108,13 +108,15 @@ namespace Rynchodon
 
 				return fileVersion;
 			}
+			catch (Exception ex)
+			{
+				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING);
+				return -4; // exception while reading
+			}
 			finally
 			{
 				if (settingsReader != null)
-				{
 					settingsReader.Close();
-					settingsReader = null;
-				}
 			}
 		}
 
@@ -132,12 +134,18 @@ namespace Rynchodon
 				// write settings
 				foreach (KeyValuePair<SettingName, Setting> pair in AllSettings)
 					write(pair.Key.ToString(), pair.Value.ValueAsString());
+
+				settingsWriter.Flush();
 			}
+			catch (Exception ex)
+			{ myLogger.alwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING); }
 			finally
 			{
-				settingsWriter.Flush();
-				settingsWriter.Close();
-				settingsWriter = null;
+				if (settingsWriter != null)
+				{
+					settingsWriter.Close();
+					settingsWriter = null;
+				}
 			}
 		}
 
@@ -173,12 +181,12 @@ namespace Rynchodon
 				try
 				{
 					AllSettings[name].ValueFromString(split[1]);
-					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()");
+					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()", Logger.severity.INFO);
 				}
 				catch (Exception)
 				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
 			else
-				myLogger.alwaysLog("failed to get enum for " + split[0], "parse()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Setting does not exist: " + split[0], "parse()", Logger.severity.WARNING);
 		}
 
 		private interface Setting
