@@ -23,7 +23,8 @@ namespace Rynchodon.Weapons
 	{
 		private static ThreadManager Thread = new ThreadManager();
 
-		private static readonly List<Vector3> obstructionOffsets = new List<Vector3>();
+		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
+		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
@@ -64,11 +65,17 @@ namespace Rynchodon.Weapons
 
 		static WeaponTargeting()
 		{
-			obstructionOffsets.Add(new Vector3(0, -1.25f, 0));
-			obstructionOffsets.Add(new Vector3(2.5f, 5f, 2.5f));
-			obstructionOffsets.Add(new Vector3(2.5f, 5f, -2.5f));
-			obstructionOffsets.Add(new Vector3(-2.5f, 5f, 2.5f));
-			obstructionOffsets.Add(new Vector3(-2.5f, 5f, -2.5f));
+			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
+
+			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
 		}
 
 		public WeaponTargeting(IMyCubeBlock weapon)
@@ -1049,26 +1056,22 @@ namespace Rynchodon.Weapons
 			if (!CanRotateTo(targetPosition))
 				return true;
 
-			// if turret, build offset rays
+			// build offset rays
 			List<Line> AllTestLines = new List<Line>();
-			if (!IsNormalTurret || Options.FlagSet(TargetingFlags.Interior))
+			if (Options.FlagSet(TargetingFlags.Interior))
 				AllTestLines.Add(new Line(BarrelPositionWorld(), targetPosition, false));
 			else
 			{
-				Vector3D BarrelPosition = BarrelPositionWorld();
+				List<Vector3> obstructionOffsets;
+				if (IsNormalTurret)
+					obstructionOffsets = obstructionOffsets_turret;
+				else
+					obstructionOffsets = obstructionOffsets_fixed;
 
+				Vector3D BarrelPosition = BarrelPositionWorld();
 				foreach (Vector3 offsetBlock in obstructionOffsets)
 				{
-					//Vector3 offsetWorld;
-					//if (offsetBlock == Vector3.Zero)
-					//	offsetWorld = Vector3.Zero;
-					//else
-					//offsetWorld = RelativeVector3F.createFromBlock(offsetBlock, weapon, false).getWorld();
-
-					//Vector3 offsetWorld = weapon.directionToWorld(offsetBlock);
-
 					Vector3 offsetWorld = RelativeDirection3F.FromBlock(weapon, offsetBlock).ToWorld();
-
 					AllTestLines.Add(new Line(BarrelPosition + offsetWorld, targetPosition + offsetWorld, false));
 				}
 			}

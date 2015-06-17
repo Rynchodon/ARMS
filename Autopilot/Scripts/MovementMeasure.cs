@@ -33,6 +33,7 @@ namespace Rynchodon.Autopilot
 			//lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
 
 			lazy_displacement = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, currentWaypoint - navBlockPos); });
+			lazy_displacementToDest = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, owner.CNS.getWayDest(false).Value - navBlockPos); });
 
 			lazy_distToPoint = new Lazy<double>(() => { return displacement.ToWorld().Length(); });
 			lazy_distToDestGrid = new Lazy<double>(() => { return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); });
@@ -102,7 +103,12 @@ namespace Rynchodon.Autopilot
 
 			Vector3D dirNorm;
 			if (targetDirection == null)
-				dirNorm = displacement.ToWorldNormalized();
+			{
+				if (owner.CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Split_MoveRotate)
+					dirNorm = displacementToDest.ToWorldNormalized();
+				else
+					dirNorm = displacement.ToWorldNormalized();
+			}
 			else
 				dirNorm = (Vector3D)targetDirection;
 
@@ -204,6 +210,9 @@ namespace Rynchodon.Autopilot
 
 		private Lazy<RelativeDirection3F> lazy_displacement;
 		public RelativeDirection3F displacement { get { return lazy_displacement.Value; } }
+
+		private Lazy<RelativeDirection3F> lazy_displacementToDest;
+		public RelativeDirection3F displacementToDest { get { return lazy_displacementToDest.Value; } }
 
 		private Lazy<double> lazy_distToDestGrid;
 		/// <summary>

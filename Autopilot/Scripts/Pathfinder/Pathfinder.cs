@@ -97,19 +97,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				// decide whether to use collision avoidance or slowdown
 				this.DestGrid = null;
-				switch (CNS.getTypeOfWayDest())
-				{
-					case NavSettings.TypeOfWayDest.BLOCK:
-					case NavSettings.TypeOfWayDest.GRID:
-						// run slowdown. see Navigator.calcMoveAndRotate()
-						this.DestGrid = CNS.CurrentGridDest.Grid;
-						break;
-					case NavSettings.TypeOfWayDest.LAND:
-					default:
-						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
+				// if target is locked, we are not flying to CurrentGridDest
+				if (!CNS.target_locked)
+					switch (CNS.getTypeOfWayDest())
+					{
+						case NavSettings.TypeOfWayDest.BLOCK:
+						case NavSettings.TypeOfWayDest.GRID:
+							// run slowdown. see Navigator.calcMoveAndRotate()
 							this.DestGrid = CNS.CurrentGridDest.Grid;
-						break;
-				}
+							break;
+						case NavSettings.TypeOfWayDest.LAND:
+						default:
+							if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
+								this.DestGrid = CNS.CurrentGridDest.Grid;
+							break;
+					}
 			}
 
 			// not a race, this function is only called from one thread
@@ -196,15 +198,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			CheckInterrupt();
-			if (SpecialFyingInstructions != NavSettings.SpecialFlying.None)
+			switch (SpecialFyingInstructions)
 			{
-				//Vector3 direction = WayDest - NavBlockPosition;
-				if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
-					return;
+				case NavSettings.SpecialFlying.Line_Any:
+				case NavSettings.SpecialFlying.Line_SidelForward:
+					{
+						if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
+							return;
 
-				myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
-				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
-				return;
+						myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
+						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
+						return;
+					}
 			}
 
 			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Searching_Alt, ObstructingEntity));

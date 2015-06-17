@@ -57,13 +57,13 @@ namespace Rynchodon.Autopilot
 			else
 				myLogger.debugLog("found an enemy: " + bestMatchGrid.Entity.DisplayName, "tryLockOn()");
 
+			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
 			owner.CNS.target_locked = true;
+			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentAPblock);
 			{
 				owner.myEngager.Arm();
 				owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
 			}
-			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
-			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentAPblock);
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
 			{

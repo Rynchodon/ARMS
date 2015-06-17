@@ -24,7 +24,9 @@ namespace Rynchodon.Weapons
 		SmallGrid = 1 << 5,
 		Station = 1 << 6,
 		/// <summary>Destroy every terminal block on grids</summary>
-		Destroy = 1 << 8
+		Destroy = 1 << 8,
+
+		AllGrid = LargeGrid + SmallGrid + Station
 	}
 
 	[Flags]
