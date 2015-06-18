@@ -38,17 +38,19 @@ namespace Rynchodon
 
 			CubeGrid.OnBlockAdded += CubeGrid_OnBlockAdded;
 			CubeGrid.OnBlockRemoved += CubeGrid_OnBlockRemoved;
-			CubeGrid.OnClose += CubeGrid_OnClose;
+			CubeGrid.OnMarkForClose += CubeGrid_OnMarkForClose;
 
 			registry.Add(CubeGrid, this); // protected by GetFor()
 			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
-		private void CubeGrid_OnClose(IMyEntity grid)
+		private void CubeGrid_OnMarkForClose(IMyEntity grid)
 		{
 			CubeGrid.OnBlockAdded -= CubeGrid_OnBlockAdded;
 			CubeGrid.OnBlockRemoved -= CubeGrid_OnBlockRemoved;
-			CubeGrid.OnClose -= CubeGrid_OnClose;
+			CubeGrid.OnClose -= CubeGrid_OnMarkForClose;
+
+			myLogger.debugLog("closing", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 
 			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
@@ -273,7 +275,7 @@ namespace Rynchodon
 		/// </summary>
 		public static CubeGridCache GetFor(IMyCubeGrid grid)
 		{
-			if (grid.Closed)
+			if (grid.Closed || grid.MarkedForClose)
 				return null;
 
 			CubeGridCache value;

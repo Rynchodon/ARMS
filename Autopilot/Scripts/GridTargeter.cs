@@ -30,6 +30,13 @@ namespace Rynchodon.Autopilot
 			if (DateTime.UtcNow.CompareTo(nextTryLockOn) < 0)
 				return;
 
+			if (owner.myEngager.GetHasTarget())
+			{
+				myLogger.debugLog("engager has a target", "tryLockOn()");
+				nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
+				return;
+			}
+
 			myLogger.debugLog("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
 
 			IMyCubeBlock bestMatchBlock;

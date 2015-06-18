@@ -46,19 +46,20 @@ namespace Rynchodon
 		}
 
 		public static bool HasFlagFast(this Relations rel, Relations flag)
-		{ return (rel & flag) > 0; }
+		{ return (rel & flag) == flag; }
 
 		private static bool toIsFriendly(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return false;
-			if (rel.HasFlagFast(Relations.Neutral))
-				return false;
+			//if (rel.HasFlagFast(Relations.Neutral))
+			//	return false;
 
-			if (rel == Relations.None)
-				return false;
+			//if (rel == Relations.None)
+			//	return false;
 
-			return true;
+			//return true;
+			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
 		}
 
 		private static bool toIsHostile(Relations rel)

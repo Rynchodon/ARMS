@@ -12,10 +12,10 @@ namespace Rynchodon
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
+			bAllowAutopilot, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
 			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
-			sTurretCommandsNPC
+			sWeaponCommandsNPC
 		}
 
 		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
@@ -63,9 +63,9 @@ namespace Rynchodon
 		{
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
-			AllSettings.Add(SettingName.bAllowTurretControl, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
 
@@ -73,7 +73,7 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
 			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sTurretCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Functional ; Destroy]"));
+			AllSettings.Add(SettingName.sWeaponCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Range 800 ; AllGrid ; Destroy ]"));
 		}
 
 		/// <summary>

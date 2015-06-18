@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Sandbox.Common.ObjectBuilders;
+﻿using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Collections;
 using VRage.ObjectBuilders;
 using VRageMath;
 
@@ -16,11 +13,12 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class Engager
 	{
+		private static readonly MyObjectBuilderType[] WeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
+
 		private readonly IMyCubeGrid myGrid;
 		private readonly Logger myLogger;
 
-		private MyObjectBuilderType[] WeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
-		private List<FixedWeapon> myWeapons;
+		private CachingList<FixedWeapon> myFixedWeapons;
 		private FixedWeapon value_primary;
 		private float value_MinWeaponRange;
 
@@ -33,29 +31,6 @@ namespace Rynchodon.Weapons
 		~Engager()
 		{ Disarm(); }
 
-		/// <summary>
-		/// The weapon that should be aimed.
-		/// </summary>
-		public FixedWeapon PrimaryWeapon
-		{
-			get
-			{
-				if (value_primary == null || value_primary.Closed)
-				{
-					value_primary = null;
-					if (myWeapons != null)
-						foreach (FixedWeapon weapon in myWeapons)
-							if (!weapon.Closed)
-							{
-								value_primary = weapon;
-								break;
-							}
-				}
-
-				return value_primary;
-			}
-		}
-
 		public float MinWeaponRange
 		{
 			get
@@ -63,27 +38,69 @@ namespace Rynchodon.Weapons
 				if (value_MinWeaponRange < 1 || value_MinWeaponRange == float.MaxValue)
 				{
 					value_MinWeaponRange = float.MaxValue;
-					foreach (FixedWeapon weapon in myWeapons)
+					foreach (FixedWeapon weapon in myFixedWeapons)
 						if (weapon.Options.TargetingRange < value_MinWeaponRange)
 							value_MinWeaponRange = weapon.Options.TargetingRange;
 				}
 				return value_MinWeaponRange;
 			}
 		}
-		public bool IsArmed { get { return PrimaryWeapon != null; } }
+		public bool IsArmed { get { return myFixedWeapons != null && myFixedWeapons.Count > 0; } }
+		public bool IsApproaching { get; private set; }
 
 
 		/// <summary>
-		/// Sets all the weapons to fire as they bear. Does nothing if armed.
+		/// The weapon that should be aimed.
 		/// </summary>
+		public FixedWeapon GetPrimaryWeapon()
+		{
+			if (value_primary != null && !value_primary.Closed && value_primary.CurrentTarget.FiringDirection.HasValue)
+				return value_primary;
+
+			value_primary = null;
+			if (myFixedWeapons != null)
+			{
+				foreach (FixedWeapon weapon in myFixedWeapons)
+					if (!weapon.Closed)
+					{
+						value_primary = weapon;
+						// it is preferable to choose a PrimaryWeapon that has a target
+						if (weapon.CurrentTarget.Entity != null)
+							break;
+					}
+					else
+						myFixedWeapons.Remove(weapon);
+
+				myFixedWeapons.ApplyRemovals();
+			}
+
+			return value_primary;
+		}
+
+		public bool GetHasTarget()
+		{
+			FixedWeapon Primary = GetPrimaryWeapon();
+			if (Primary == null)
+				return false;
+			return Primary.CurrentTarget.Entity != null;
+		}
+
+		/// <summary>
+		/// If not armed, sets all the weapons to fire as they bear
+		/// </summary>
+		/// <remarks>
+		/// <para>Sets IsAproaching = true</para>
+		/// </remarks>
 		public void Arm()
 		{
-			if (myWeapons != null)
+			IsApproaching = true;
+
+			if (myFixedWeapons != null)
 				return;
 
 			myLogger.debugLog("Arming all weapons", "Arm()");
 
-			myWeapons = new List<FixedWeapon>();
+			myFixedWeapons = new CachingList<FixedWeapon>();
 			value_MinWeaponRange = 0;
 			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
 
@@ -99,32 +116,43 @@ namespace Rynchodon.Weapons
 							//if (weapon.Options.TargetingRange < MinWeaponRange)
 							//	MinWeaponRange = weapon.Options.TargetingRange;
 							myLogger.debugLog("Took control of " + weapon.weapon.DisplayNameText, "Arm()");
-							myWeapons.Add(weapon);
+							myFixedWeapons.Add(weapon);
 						}
 					}
 			}
 
+			myFixedWeapons.ApplyAdditions();
 			//myLogger.debugLog("MinWeaponRange = " + MinWeaponRange, "Arm()");
 		}
 
 		/// <summary>
-		/// Stops tracking targets for all the weapons. Does nothing if not armed.
+		/// If armed, stops tracking targets for all the weapons.
 		/// </summary>
+		/// <remarks>
+		/// <para>Sets IsAproaching = false</para>
+		/// </remarks>
 		public void Disarm()
 		{
-			if (myWeapons == null)
+			IsApproaching = false;
+
+			if (myFixedWeapons == null)
 				return;
 
 			myLogger.debugLog("Disarming all weapons", "Arm()");
 
-			foreach (FixedWeapon weapon in myWeapons)
+			foreach (FixedWeapon weapon in myFixedWeapons)
 				weapon.EngagerReleaseControl(this);
 
-			myWeapons = null;
+			myFixedWeapons = null;
 		}
 
+		/// <remarks>
+		/// <para>Sets IsAproaching = false</para>
+		/// </remarks>
 		public Vector3D GetWaypoint(Vector3D target)
 		{
+			IsApproaching = false;
+
 			Vector3D perpendicular;
 			(target - myGrid.GetPosition()).CalculatePerpendicularVector(out perpendicular);
 			perpendicular.Normalize();

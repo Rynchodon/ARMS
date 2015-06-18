@@ -26,14 +26,14 @@ namespace Rynchodon.Autopilot
 			myLogger = new Logger(owner.myGrid.DisplayName, "MovementMeasure");
 
 			lazy_rotationLengthSquared = new Lazy<double>(() => { return pitch * pitch + yaw * yaw + roll * roll; });
-			lazy_currentWaypoint = new Lazy<Vector3D>(() => { return (Vector3D)owner.CNS.getWayDest(); });
+			lazy_currentWaypoint = new Lazy<Vector3D>(() => { return owner.CNS.getWayDest().GetValueOrDefault(); });
 			lazy_movementSpeed = new Lazy<float>(() => { return owner.myGrid.Physics.LinearVelocity.Length(); });
 
 			lazy_navBlockPosition = new Lazy<Vector3D>(() => { return owner.getNavigationBlock().GetPosition(); });
 			//lazy_displacementToPoint = new Lazy<RelativeVector3F>(() => { return RelativeVector3F.createFromWorld(navBlockPos - currentWaypoint, owner.myGrid); });
 
 			lazy_displacement = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, currentWaypoint - navBlockPos); });
-			lazy_displacementToDest = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, owner.CNS.getWayDest(false).Value - navBlockPos); });
+			lazy_displacementToDest = new Lazy<RelativeDirection3F>(() => { return RelativeDirection3F.FromWorld(owner.myGrid, owner.CNS.getWayDest(false).GetValueOrDefault() - navBlockPos); });
 
 			lazy_distToPoint = new Lazy<double>(() => { return displacement.ToWorld().Length(); });
 			lazy_distToDestGrid = new Lazy<double>(() => { return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); });

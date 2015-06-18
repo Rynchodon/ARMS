@@ -71,7 +71,7 @@ namespace Rynchodon.Update
 			});
 
 			// Weapons
-			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowTurretControl))
+			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
 			{
 				// Turrets
 				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
@@ -130,8 +130,8 @@ namespace Rynchodon.Update
 		private enum Status : byte { Not_Initialized, Initialized, Terminated }
 		private Status MangerStatus = Status.Not_Initialized;
 
-		private MyQueue<Action> AddActions = new MyQueue<Action>(8);
-		private FastResourceLock lock_AddActions = new FastResourceLock();
+		private MyQueue<Action> AddRemoveActions = new MyQueue<Action>(8);
+		private FastResourceLock lock_AddRemoveActions = new FastResourceLock();
 
 		private Logger myLogger = new Logger(null, "UpdateManager");
 		private static UpdateManager Instance;
@@ -210,9 +210,9 @@ namespace Rynchodon.Update
 
 				try
 				{
-					using (lock_AddActions.AcquireExclusiveUsing())
-						for (int i = 0; i < AddActions.Count; i++)
-							AddActions[i].Invoke();
+					using (lock_AddRemoveActions.AcquireExclusiveUsing())
+						for (int i = 0; i < AddRemoveActions.Count; i++)
+							AddRemoveActions[i].Invoke();
 				}
 				catch (Exception ex)
 				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
@@ -316,8 +316,8 @@ namespace Rynchodon.Update
 
 		private void Entities_OnEntityAdd(IMyEntity entity)
 		{
-			using (lock_AddActions.AcquireExclusiveUsing())
-				AddActions.Enqueue(() => AddEntity(entity));
+			using (lock_AddRemoveActions.AcquireExclusiveUsing())
+				AddRemoveActions.Enqueue(() => AddEntity(entity));
 		}
 
 		/// <summary>
@@ -351,8 +351,8 @@ namespace Rynchodon.Update
 
 		private void Grid_OnBlockAdded(IMySlimBlock block)
 		{
-			using (lock_AddActions.AcquireExclusiveUsing())
-				AddActions.Enqueue(() => { AddBlock(block); });
+			using (lock_AddRemoveActions.AcquireExclusiveUsing())
+				AddRemoveActions.Enqueue(() => { AddBlock(block); });
 		}
 
 		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();

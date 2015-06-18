@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 using VRage.ModAPI;
-using VRage.ObjectBuilders;
-using VRageMath;
 
 namespace Rynchodon.Weapons
 {

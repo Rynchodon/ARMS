@@ -61,7 +61,8 @@ namespace Rynchodon.Weapons
 			{
 				blocksToTarget = this.blocksToTarget,
 				CanTarget = this.CanTarget,
-				Flags = this.Flags
+				Flags = this.Flags,
+				TargetingRange = this.TargetingRange
 			};
 		}
 
@@ -69,9 +70,12 @@ namespace Rynchodon.Weapons
 		{
 			StringBuilder blocks = new StringBuilder();
 			foreach (string block in blocksToTarget)
+			{
 				blocks.Append(block);
+				blocks.Append(", ");
+			}
 
-			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Blocks = " + blocks;
+			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", Blocks = (" + blocks + ")";
 		}
 
 		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);

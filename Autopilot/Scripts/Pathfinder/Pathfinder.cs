@@ -74,9 +74,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)
+		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock, Rynchodon.Weapons.Engager myEngager)
 		{
-			Vector3D destination = (Vector3D)CNS.getWayDest(false);
+			if (!CNS.getWayDest(false).HasValue)
+			{
+				myLogger.debugLog("no destination", "Run()");
+				return;
+			}
+
+			Vector3D destination = CNS.getWayDest(false).Value;
 			Vector3D? waypoint = CNS.myWaypoint;
 			bool ignoreAsteroids = CNS.ignoreAsteroids;
 			NavSettings.SpecialFlying SpecialFyingInstructions = CNS.SpecialFlyingInstructions;
@@ -97,8 +103,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				// decide whether to use collision avoidance or slowdown
 				this.DestGrid = null;
-				// if target is locked, we are not flying to CurrentGridDest
-				if (!CNS.target_locked)
+				if (!myEngager.IsArmed || myEngager.IsApproaching)
 					switch (CNS.getTypeOfWayDest())
 					{
 						case NavSettings.TypeOfWayDest.BLOCK:

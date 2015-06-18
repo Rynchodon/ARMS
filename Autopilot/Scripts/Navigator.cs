@@ -116,7 +116,7 @@ namespace Rynchodon.Autopilot
 					return myHarvester.NavigationDrill;
 				if (myEngager.IsArmed)
 				{
-					FixedWeapon primary = myEngager.PrimaryWeapon;
+					FixedWeapon primary = myEngager.GetPrimaryWeapon();
 					if (primary != null)
 						return primary.weapon;
 				}
@@ -160,7 +160,7 @@ namespace Rynchodon.Autopilot
 
 		internal void Close()
 		{
-			myLogger.debugLog("entered Close()", "Close()()");
+			myLogger.debugLog("entered Close()", "Close()");
 			if (myGrid != null)
 			{
 				myGrid.OnClose -= OnClose;
@@ -429,7 +429,7 @@ namespace Rynchodon.Autopilot
 
 		private void navigate()
 		{
-			myLogger.debugLog("entered navigate()", "navigate()");
+			//myLogger.debugLog("entered navigate()", "navigate()");
 
 			if (currentAPblock == null)
 				return;
@@ -443,7 +443,14 @@ namespace Rynchodon.Autopilot
 			// before navigate
 			if (myEngager.IsArmed)
 			{
-				Vector3? FiringDirection = myEngager.PrimaryWeapon.CurrentTarget.FiringDirection;
+				FixedWeapon primary = myEngager.GetPrimaryWeapon();
+				if (primary == null)
+				{
+					myLogger.debugLog("no weapons remain", "navigate()", Logger.severity.DEBUG);
+					fullStop("no weapons");
+					return;
+				}
+				Vector3? FiringDirection = myEngager.GetPrimaryWeapon().CurrentTarget.FiringDirection;
 				MM = new MovementMeasure(this, FiringDirection);
 			}
 			else
@@ -474,11 +481,11 @@ namespace Rynchodon.Autopilot
 			}
 			if (myHarvester.Run())
 				return;
-			if (myEngager.IsArmed && CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.GRID)
-			{
-				CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
-				myLogger.debugLog("engager changing waypoint, distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
-			}
+			//if (myEngager.IsArmed && CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.GRID)
+			//{
+			//	CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
+			//	myLogger.debugLog("engager changing waypoint, distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
+			//}
 
 			if (!checkAt_wayDest())
 				collisionCheckMoveAndRotate();
@@ -495,32 +502,24 @@ namespace Rynchodon.Autopilot
 			if (CNS.isAMissile)
 				return false;
 
-			//myLogger.debugLog("engager IsArmed = " + myEngager.IsArmed + ", TypeOfWayDest = " + CNS.getTypeOfWayDest() + ", distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange, "checkAt_wayDest()");
+			myLogger.debugLog("Engager IsArmed = " + myEngager.IsArmed + ", IsApproaching = " + myEngager.IsApproaching + ", TypeOfWayDest = " + CNS.getTypeOfWayDest() + ", distToDest = " + MM.displacementToDest.ToWorld().Length() +
+				", distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange, "checkAt_wayDest()");
+			if (myEngager.IsArmed && myEngager.IsApproaching && MM.displacementToDest.ToWorld().Length() < myEngager.MinWeaponRange)
+			{
+				CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
+				myLogger.debugLog("Engager finished approach, changing waypoint. distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
+				return false;
+			}
 
 			if (MM.distToWayDest > CNS.destinationRadius)
 				return false;
 			if (CNS.landLocalBlock != null && MM.distToWayDest > radiusLandWay) // distance to start landing
 				return false;
 
-			//myLogger.debugLog("engager IsArmed = " + myEngager.IsArmed + ", distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange, "checkAt_wayDest()");
 			if (myEngager.IsArmed)
 			{
-				//if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.WAYPOINT)
-				//{
-				//if (MM.distToWayDest < CNS.destinationRadius)
-				//{
-					CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
-					myLogger.debugLog("engager changing waypoint, distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
-				//}
-				//}
-				//else
-				//{
-				//	if (MM.distToWayDest < myEngager.MinWeaponRange)
-				//	{
-				//		CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
-				//		myLogger.debugLog("in weapon range, chaging waypoint. distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
-				//	}
-				//}
+				CNS.setWaypoint(myEngager.GetWaypoint(CNS.CurrentGridDest.Grid.GetPosition()));
+				myLogger.debugLog("Engager reached waypoint, changing waypoint. distToWayDest = " + MM.distToWayDest + ", MinWeaponRange = " + myEngager.MinWeaponRange + ", new waypoint = " + CNS.myWaypoint, "checkAt_wayDest()");
 				return false;
 			}
 
@@ -568,7 +567,7 @@ namespace Rynchodon.Autopilot
 			if (!CNS.isAMissile)
 			{
 				myPathfinder_Output = myPathfinder.GetOutput();
-				myPathfinder.Run(CNS, getNavigationBlock());
+				myPathfinder.Run(CNS, getNavigationBlock(), myEngager);
 				if (myPathfinder_Output != null)
 				{
 					//myLogger.debugLog("result: " + myPathfinder_Output.PathfinderResult, "collisionCheckMoveAndRotate()");
@@ -887,7 +886,7 @@ namespace Rynchodon.Autopilot
 			}
 			else
 			{
-				if (myEngager.IsArmed && CNS.moveState == NavSettings.Moving.STOP_MOVE)
+				if (myEngager.IsArmed && (CNS.moveState == NavSettings.Moving.STOP_MOVE || CNS.moveState == NavSettings.Moving.NOT_MOVE))
 					isStopped = true;
 				else
 					isStopped = DateTime.UtcNow > stoppedMovingAt;

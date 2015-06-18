@@ -57,7 +57,7 @@ namespace Rynchodon.Weapons
 					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
 					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
 					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
-					instructions = Settings.GetSettingString(Settings.SettingName.sTurretCommandsNPC);
+					instructions = Settings.GetSettingString(Settings.SettingName.sWeaponCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
 
 					if (instructions != null)
@@ -122,6 +122,12 @@ namespace Rynchodon.Weapons
 			}
 
 			string[] splitInstructions = instructions.RemoveWhitespace().ToLower().Split(new char[] { ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
+
+			if (splitInstructions.Length == 0)
+			{
+				myLogger.debugLog("No instructions after split: " + instructions, "Parse()", Logger.severity.WARNING);
+				return;
+			}
 
 			foreach (string instruct in splitInstructions)
 			{

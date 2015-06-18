@@ -119,7 +119,7 @@ namespace Rynchodon.Weapons
 		{
 			// TODO: report broken
 			WeaponTargetingEnabled = false;
-			StopFiring("Broken");
+			StopFiring("DisableWeaponTargeting, broken = " + broken);
 			IsControllingWeapon = false;
 			if (IsNormalTurret)
 				myTurret.ResetTargetingToDefault();
@@ -237,14 +237,14 @@ namespace Rynchodon.Weapons
 			Interpreter.Parse(out newOptions, out Errors);
 			if (Errors.Count <= InterpreterErrorCount)
 			{
-				myLogger.debugLog("updating Options, Error Count = " + Errors.Count + ", CanTarget = " + Options.CanTarget, "Update100()");
 				Options = newOptions;
 				InterpreterErrorCount = Errors.Count;
+				Update_Options(Options);
+				myLogger.debugLog("updating Options, Error Count = " + Errors.Count + ", Options: " + Options, "Update100()");
 			}
 			else
 				myLogger.debugLog("not updation Options, Error Count = " + Errors.Count, "Update100()");
 			WriteErrors(Errors);
-			Update_Options(Options);
 		}
 
 		/// <summary>Verifies that the weapon is in correct firing state.</summary>
@@ -278,7 +278,7 @@ namespace Rynchodon.Weapons
 				|| (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
 				|| (!IsNormalTurret && weapon.CubeGrid.IsStatic))
 			{
-				//LogWhyNotControl();
+				LogWhyNotControl();
 				SetCanNotControl();
 				return false;
 			}
@@ -287,30 +287,30 @@ namespace Rynchodon.Weapons
 			return true;
 		}
 
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
-		//private void LogWhyNotControl()
-		//{
-		//	string why;
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		private void LogWhyNotControl()
+		{
+			string why;
 
-		//	if (!weapon.IsWorking)
-		//		why = "not working";
-		//	else if (!WeaponTargetingEnabled)
-		//		why = "weapon targeting disabled";
-		//	else if (IsNormalTurret && myTurret.IsUnderControl)
-		//		why = "turret controlled";
-		//	else if (weapon.OwnerId == 0)
-		//		why = "no owner";
-		//	else if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-		//		why = "NPC";
-		//	else if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
-		//		why = "no brackets";
-		//	else if (!IsNormalTurret && weapon.CubeGrid.IsStatic)
-		//		why = "static";
-		//	else
-		//		why = "wtf";
+			if (!weapon.IsWorking)
+				why = "not working";
+			else if (!WeaponTargetingEnabled)
+				why = "weapon targeting disabled";
+			else if (IsNormalTurret && myTurret.IsUnderControl)
+				why = "turret controlled";
+			else if (weapon.OwnerId == 0)
+				why = "no owner";
+			else if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+				why = "NPC";
+			else if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
+				why = "no brackets";
+			else if (!IsNormalTurret && weapon.CubeGrid.IsStatic)
+				why = "static";
+			else
+				why = "wtf";
 
-		//	myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
-		//}
+			myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
+		}
 
 		private void SetCanControl()
 		{
@@ -488,6 +488,9 @@ namespace Rynchodon.Weapons
 
 			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), weapon.CubeGrid.GetLinearVelocity());
 			float firingThreshold = 2.5f + relativeSpeed / 10f;
+
+			if (!IsNormalTurret && !Options.FlagSet(TargetingFlags.Turret))
+				firingThreshold += 5;
 
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
 
