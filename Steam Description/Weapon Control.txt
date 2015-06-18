@@ -11,10 +11,10 @@ Aa Interpreter is case insensitive
 Weapon Control will display error indices in the weapon's name, the first command is at 0.
 N.P.C. turrets get commands from settings file rather than from turret's name.
 
-Even in creative mode, weapons must be loaded with ammunition or they will be ignored by Weapon Control.
+Even in creative mode, weapons must be loaded with ammunition or they will not function.
+
 By default, Weapon Control will target working blocks, if you would prefer to target functional blocks (vanilla behaviour) use the Functional command.
-Functional means the block is fully constructed and not damaged. Working means the block is functional and
-is on.
+Functional means the block is fully constructed and not damaged (health is above blue line). Working means the block is functional and is on.
 
 [h1]Obstruction testing[/h1]
 An obstruction can be an asteroid, a friendly character, or a friendly grid. Blocks are considered to take up as much space as is required to place them.
