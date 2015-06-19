@@ -93,6 +93,13 @@ namespace Rynchodon.Weapons
 			this.CurrentTarget = new Target();
 			this.IsControllingWeapon = false;
 			this.IsNormalTurret = myTurret != null;
+			this.weapon.OnClose += weapon_OnClose;
+		}
+
+		private void weapon_OnClose(IMyEntity obj)
+		{
+			weapon.OnClose -= weapon_OnClose;
+			DisableWeaponTargeting();
 		}
 
 		/// <summary>
@@ -164,7 +171,7 @@ namespace Rynchodon.Weapons
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.ERROR);
-				DisableWeaponTargeting(true);
+				//DisableWeaponTargeting(true); // was doing more harm then good, all exceptions caught could be recovered from
 			}
 		}
 

@@ -44,17 +44,17 @@ namespace Rynchodon.Weapons
 			if (ControllingEngager != null)
 				return ControllingEngager == controller;
 
-			if (CanControlWeapon(false) && !TurretFlagSet)
+			if (CanControlWeapon(false) && !TurretFlagSet)// && Options.TargetingRange > 0)
 			{
 				myLogger.debugLog("no issues", "EngagerTakeControl()");
 				ControllingEngager = controller;
 				EnableWeaponTargeting();
 				return true;
 			}
-			if (IsControllingWeapon)
-				myLogger.debugLog("turret flag set", "EngagerTakeControl()");
-			else
-				myLogger.debugLog("not controlling weapon", "EngagerTakeControl()");
+			//if (IsControllingWeapon)
+			//	myLogger.debugLog("turret flag set", "EngagerTakeControl()");
+			//else
+			//	myLogger.debugLog("not controlling weapon", "EngagerTakeControl()");
 
 			return false;
 		}

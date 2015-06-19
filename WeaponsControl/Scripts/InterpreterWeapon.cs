@@ -131,7 +131,7 @@ namespace Rynchodon.Weapons
 
 			foreach (string instruct in splitInstructions)
 			{
-				myLogger.debugLog("instruct = " + instruct, "Parse()");
+				//myLogger.debugLog("instruct = " + instruct, "Parse()");
 				CurrentIndex++;
 				if (instruct.StartsWith("(") && instruct.EndsWith(")"))
 				{
@@ -224,11 +224,11 @@ namespace Rynchodon.Weapons
 			int range;
 			if (int.TryParse(rangeString, out range))
 			{
-				myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString, "ParseRadius()");
+				//myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString, "ParseRadius()");
 				Options.TargetingRange = range;
 				return true;
 			}
-			myLogger.debugLog("failed to parse:" + rangeString, "ParseRadius()");
+			myLogger.debugLog("failed to parse:" + rangeString, "ParseRadius()", Logger.severity.WARNING);
 			return false;
 		}
 
@@ -247,10 +247,10 @@ namespace Rynchodon.Weapons
 
 			if (!toParse.StartsWith("t"))
 			{
-				myLogger.debugLog("does not start with t: " + toParse, "GetFromPanel()");
+				//myLogger.debugLog("does not start with t: " + toParse, "GetFromPanel()");
 				return false;
 			}
-			myLogger.debugLog("Trying to parse: " + toParse, "GetFromPanel()");
+			//myLogger.debugLog("Trying to parse: " + toParse, "GetFromPanel()");
 
 			toParse = toParse.Substring(1);
 
@@ -278,7 +278,7 @@ namespace Rynchodon.Weapons
 				return false;
 			}
 
-			myLogger.debugLog("Found panel: " + bestMatch.DisplayNameText, "GetFromPanel()");
+			//myLogger.debugLog("Found panel: " + bestMatch.DisplayNameText, "GetFromPanel()");
 
 			string panelText = (bestMatch as Ingame.IMyTextPanel).GetPublicText();
 			string lowerText = panelText.ToLower();
@@ -317,7 +317,7 @@ namespace Rynchodon.Weapons
 				return false;
 			}
 
-			myLogger.debugLog("fetching commands from panel: " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
+			//myLogger.debugLog("fetching commands from panel: " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
 			Parse(panelText.Substring(startOfCommands, endOfCommands - startOfCommands));
 
 			return true; // this instruction was successfully executed, even if sub instructions were not

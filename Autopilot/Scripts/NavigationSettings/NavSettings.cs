@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 			/// <summary>pathfinder can fly forwards, sidel only</summary>
 			Line_SidelForward,
 			/// <summary>Only allow hybrid move state. Flying to different point than rotating to.</summary>
-			Split_MoveRotate
+			HybridOnly
 		}
 		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 
@@ -60,6 +60,22 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		public Vector3D? myWaypoint { get; private set; }
 		private Vector3D? coordDestination = null;
 		public GridDestination CurrentGridDest { get; private set; }
+		private Vector3D? value_rotateToPoint = null;
+		public Vector3D? rotateToPoint
+		{
+			get { return value_rotateToPoint; }
+			set
+			{
+				if (value == value_rotateToPoint)
+					return;
+
+				value_rotateToPoint = value;
+				if (value.HasValue)
+					SpecialFlyingInstructions = SpecialFlying.HybridOnly;
+				else
+					SpecialFlyingInstructions = SpecialFlying.None;
+			}
+		}
 
 		public Vector3 destination_offset = Vector3.Zero;
 		public Base6Directions.Direction? match_direction = null; // reset on reached dest
@@ -230,12 +246,10 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		{ return myCubeGrid.WorldAABB.Distance(waypoint) > destinationRadius; }
 
 		/// <summary>
-		/// removes the waypoint if one exists, otherwise removes the centreDestination
+		/// removes the waypoint if one exists, otherwise removes the destination
 		/// </summary>
 		public void atWayDest()
-		{
-			atWayDest(getTypeOfWayDest());
-		}
+		{ atWayDest(getTypeOfWayDest()); }
 
 		/// <summary>
 		/// removes one waypoint or centreDestination of the specified type
@@ -254,6 +268,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					myLogger.debugLog("clearing destination variables", "atWayDest()", Logger.severity.TRACE);
 					CurrentGridDest = null;
 					coordDestination = null;
+					rotateToPoint = null;
 					destination_offset = Vector3.Zero;
 					match_direction = null;
 					match_roll = null;

@@ -103,20 +103,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				// decide whether to use collision avoidance or slowdown
 				this.DestGrid = null;
-				if (!myEngager.IsArmed || myEngager.IsApproaching)
-					switch (CNS.getTypeOfWayDest())
-					{
-						case NavSettings.TypeOfWayDest.BLOCK:
-						case NavSettings.TypeOfWayDest.GRID:
+				switch (CNS.getTypeOfWayDest())
+				{
+					case NavSettings.TypeOfWayDest.BLOCK:
+					case NavSettings.TypeOfWayDest.GRID:
+						if (!CNS.CurrentGridDest.Offset.HasValue)
 							// run slowdown. see Navigator.calcMoveAndRotate()
 							this.DestGrid = CNS.CurrentGridDest.Grid;
-							break;
-						case NavSettings.TypeOfWayDest.LAND:
-						default:
-							if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
-								this.DestGrid = CNS.CurrentGridDest.Grid;
-							break;
-					}
+						break;
+					case NavSettings.TypeOfWayDest.LAND:
+					default:
+						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
+							this.DestGrid = CNS.CurrentGridDest.Grid;
+						break;
+				}
 			}
 
 			// not a race, this function is only called from one thread

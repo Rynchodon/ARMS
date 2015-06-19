@@ -47,15 +47,17 @@ namespace Rynchodon.Autopilot
 				if (owner.CNS.target_locked)
 				{
 					myLogger.debugLog("lost lock on " + owner.CNS.GridDestName, "tryLockOn()");
+					owner.myEngager.Disarm();
 					owner.CNS.target_locked = false;
-					{
-						owner.myEngager.Disarm();
-						owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
-					}
 					owner.CNS.atWayDest();
 				}
 				nextTryLockOn = DateTime.UtcNow.AddSeconds(1);
 				return;
+			}
+
+			if (!owner.myEngager.SetTarget(bestMatchGrid.Entity as IMyCubeGrid))
+			{
+				myLogger.debugLog("engager not allowing target (not implemented): " + bestMatchGrid.Entity.DisplayName, "tryLockOn()", Logger.severity.WARNING);
 			}
 
 			// found an enemy, setting as destination
@@ -67,10 +69,7 @@ namespace Rynchodon.Autopilot
 			nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
 			owner.CNS.target_locked = true;
 			owner.CNS.setDestination(bestMatchGrid, bestMatchBlock, owner.currentAPblock);
-			{
-				owner.myEngager.Arm();
-				owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
-			}
+			//owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Split_MoveRotate;
 
 			if (owner.CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
 			{

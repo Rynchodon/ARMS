@@ -60,7 +60,7 @@ namespace Rynchodon.Weapons
 			setAzimuth = myTurret.Azimuth;
 
 			// upgrade
-			if (Settings.fileVersion > 0 && Settings.fileVersion < 35)
+			if (Settings.fileVersion > 0 && Settings.fileVersion < 34)
 			{
 				string instructions = weapon.DisplayNameText.getInstructions();
 				if (instructions != null && !instructions.Contains("(") && !instructions.Contains(")"))
@@ -103,7 +103,7 @@ namespace Rynchodon.Weapons
 
 			Options.TargetingRange = myTurret.Range;
 
-			myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
+			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
 
 		protected override bool CanRotateTo(Vector3D targetPoint)

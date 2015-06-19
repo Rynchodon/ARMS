@@ -16,7 +16,7 @@ namespace Rynchodon
 		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
 		private MyQueue<string> recentActivity = new MyQueue<string>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
-		private TimeSpan timeout = new TimeSpan(0, 1, 0);
+		private TimeSpan timeout = new TimeSpan(0, 0, 1);
 
 		static FastResourceLock()
 		{ Set_Debug_Conditional(); }

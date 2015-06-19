@@ -102,15 +102,15 @@ namespace Rynchodon.Autopilot
 			isValid__pitchYaw = true;
 
 			Vector3D dirNorm;
-			if (targetDirection == null)
+			if (!targetDirection.HasValue)
 			{
-				if (owner.CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Split_MoveRotate)
-					dirNorm = displacementToDest.ToWorldNormalized();
+				if (owner.CNS.rotateToPoint.HasValue)
+					dirNorm = Vector3D.Normalize(owner.CNS.rotateToPoint.Value - owner.getNavigationBlock().GetPosition());
 				else
 					dirNorm = displacement.ToWorldNormalized();
 			}
 			else
-				dirNorm = (Vector3D)targetDirection;
+				dirNorm = targetDirection.Value;
 
 			if (dirNorm == Vector3D.Zero)
 			{
@@ -218,7 +218,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// shortest distance between AABB
 		/// </summary>
-		private double distToDestGrid { get { return lazy_distToDestGrid.Value; } }
+		public double distToDestGrid { get { return lazy_distToDestGrid.Value; } }
 
 		//private double shortestDistanceToDestGrid()
 		//{ return owner.myGrid.WorldAABB.Distance(owner.CNS.CurrentGridDest.Grid.WorldAABB); }
