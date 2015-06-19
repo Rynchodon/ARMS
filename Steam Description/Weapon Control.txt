@@ -12,41 +12,42 @@
 [list][*]Example: [(Turret, Rocket, Gatling) ; AllGrid ; Range 600][/list]
 [*]<> - Do not use angle brackets in your weapon's name
 [*]:; - Commands are separated by colons and/or semicolons
-[*]Any spaces used in the command line is ignored.[/list]
+[*]  Any spaces used in the command line are ignored.[/list]
 
 [b][u]Basic Information[/u][/b]
-[list][*]Commands are [u]NOT[/u] case-sensitive
+[list][*]Commands are [u]NOT[/u] case-sensitive.
 [*]The term "Grid" refers to any ship or station.
 [*]Ignore all quotation marks "" used in this document, they are for explanation purposes only.
-[*]"Fixed Weapons" refers to weapons that only fire in one direction and in the vanilla game without autopilot, are not AI controlled.
-[*]Even in creative mode, weapons must be loaded with ammunition or they will not function.[/list]
+[*]"Fixed Weapons" refers to weapons that only fire in one direction. In vanilla, these are Gatling Gun, Rocket Launcher, and Reloadable-Rocket Launcher.
+[*]"Turret" referse to Interior Turret, Gatling Turret, Missile Turret, and mod-added turrets.
+[*]"Rotor-Turret" is what happens when you stick a fixed weapon on top of a couple of rotors. (not working yet)
+[*]Even in creative mode, weapons must be loaded with ammunition or they will not function.
+[*]Vanilla means Space Engineers without any mods.[/list]
 
 [b][u]Debugging[/u][/b]
-[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the end of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is technically 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
+[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is technically 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
 
 [u]Example:[/u]
 You want to have a specific gun to fire at all ships or stations guns, that are within 600 meters. However, you type the following:
 
 [list] 
-[list][(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
+[list]Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
  [/list]
-
 
 If the above command is used, the display name will change to the following:
 
 [list] 
-[list][(Turret, Rocket, Gatling) ; All-Grid ; Range 600]  <ERROR:1> [/list]
+[list]<ERROR:1>Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
  [/list]
 
-
-As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is technically 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely attempted to be used was the command "AllGrid" for which ther would be a valid command for.[/list]
+As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is technically 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
 
 [b][u]Important Information[/u][/b]
 [list][*]N.P.C. weapons obtain their commands from a settings file rather than from their weapons's block name.
-[list][*]This is any weapon who's ownership is set to NPC and not a player.[/list]
+[list][*]This is any weapon who's ownership is set to N.P.C. and not a player.[/list]
 [*]By default, Weapon Control will target working blocks, if you would prefer to target functional blocks use the Functional command.
 [list][*]Working means the block is "ON"
-[*]Functional means the block is able to be turned on but isn't necessarily in the "ON" position. (Similar to default game)
+[*]Functional means the block is able to be turned on but isn't necessarily in the "ON" position.
 [*]For additional information on this, see the "Commands List" below.[/list][/list]
 
 [b][u]Understanding Obstructions[/u][/b]
@@ -57,7 +58,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [list]For vanilla (default game) interior turrets, Autopilot's Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Autopilot's Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior command. See the "Commands List" for more information.[/list]
 
 [b][u]Targeting On/Off Toggles and Commands[/u][/b]
-[list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targetting toggles found in the control panel for all non-fixed weapons. All fixed weapons however must be told what to target and shoot through commands.[/list]
+[list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targetting toggles found in the control panel for all turret weapons. All fixed weapons, however, must be told what to target and shoot through commands.[/list]
 
 [b][u]Command List[/u][/b]
 
@@ -73,12 +74,12 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i][/list]
 
 [u]Priority Commands[/u]
-[list]Commands here will be given priority based on the order they are used in the Command Line.
+[list]Missile has the highest priority, followed by Meteor, then Character, then Moving. All of these have higher priority than targeting specific blocks.
 [list] [/list]
 [*]Missile - [i]Target approaching missiles, does not consider who fired the missile.[/i]
 [*]Meteor - [i]Target approaching meteors.[/i]
 [*]Character - [i]Target hostile characters.[/i]
-[*]Moving - [i]Target approaching "floating objects" and approaching hostile grids.[/i][/list]
+[*]Moving - [i]Target approaching "floating objects" and approaching hostile grids (small & large).[/i][/list]
 
 [u]Advanced Priority Commands[/u]
 [list]These commands use a complex priority system based on distance to the block and the block's position in the block list command.
@@ -96,9 +97,9 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [list]Will disable functional warheads, turrets, rocket launchers, gatling guns, reactors, batteries, and solar panels on grids in range. Should only be used on a turret because range and grid types have not been specified. Once none of those can be found, destroy everything.[/list]
 [(Turret, Rocket, Gatling) ; AllGrid ; Range 600]
 [list]Disable all enemy weapons within 600 m.[/list]
-[ T Command Panel, {Line 4} ]
-[list]Grabs the list of Commands found in the LCD panel named "Command Panel" and uses those for itself. However, it only grabs commands from the fourth line down from the top.[/list][/list]
+[ T Command Panel, {Subset 4} ]
+[list]Grabs the list of Commands found in the LCD panel named "Command Panel" and uses those for itself. However, it only grabs commands that occur after "{Subset 4}".[/list][/list]
 
 [b][u]Known Issues[/u][/b]
-[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret. A turret that does not have an A.I. can be used but it is dangerous. 
-[*]Due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.[/list]
+[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
+[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.[/list]
