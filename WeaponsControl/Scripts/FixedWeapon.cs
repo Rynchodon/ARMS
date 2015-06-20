@@ -10,8 +10,6 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class FixedWeapon : WeaponTargeting
 	{
-		public bool Closed { get { return weapon.Closed; } }
-
 		private static Dictionary<IMyCubeBlock, FixedWeapon> registry = new Dictionary<IMyCubeBlock, FixedWeapon>();
 
 		/// <remarks>Before becoming a turret this will need to be checked.</remarks>
@@ -25,12 +23,12 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("FixedWeapon", block);
-			registry.Add(weapon, this);
-			weapon.OnClose += weapon_OnClose;
+			registry.Add(CubeBlock, this);
+			CubeBlock.OnClose += weapon_OnClose;
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
-		{ registry.Remove(weapon); }
+		{ registry.Remove(CubeBlock); }
 
 		internal static FixedWeapon GetFor(IMyCubeBlock weapon)
 		{ return registry[weapon]; }
@@ -98,7 +96,7 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
 				return;
 
-			CheckFire(weapon.WorldMatrix.Forward);
+			CheckFire(CubeBlock.WorldMatrix.Forward);
 		}
 	}
 }

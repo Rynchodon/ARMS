@@ -64,7 +64,7 @@ namespace Rynchodon.Autopilot
 		{
 			get
 			{
-				if (owner.myEngager.IsArmed)
+				if (owner.CNS.rotateToPoint.HasValue)
 					return 2.91E-4f; // 1'
 				else
 					return rotComp_minimum_norm;

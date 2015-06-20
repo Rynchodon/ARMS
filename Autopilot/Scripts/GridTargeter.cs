@@ -30,12 +30,14 @@ namespace Rynchodon.Autopilot
 			if (DateTime.UtcNow.CompareTo(nextTryLockOn) < 0)
 				return;
 
-			if (owner.myEngager.GetHasTarget())
-			{
-				myLogger.debugLog("engager has a target", "tryLockOn()");
-				nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
-				return;
-			}
+			//GridDestination GridDest = owner.CNS.CurrentGridDest;
+			//if (GridDest != null && owner.myEngager.CurrentStage == Weapons.Engager.Stage.Engaging && owner.myEngager.CanTarget(GridDest.Grid))
+			//{
+			//	myLogger.debugLog("Engager can continue.", "tryLockOn()");
+			//	nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
+			//	return;
+			//}
+			owner.myEngager.Arm();
 
 			myLogger.debugLog("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
 
@@ -49,15 +51,10 @@ namespace Rynchodon.Autopilot
 					myLogger.debugLog("lost lock on " + owner.CNS.GridDestName, "tryLockOn()");
 					owner.myEngager.Disarm();
 					owner.CNS.target_locked = false;
-					owner.CNS.atWayDest();
+					owner.CNS.atWayDest(NavSettings.TypeOfWayDest.GRID);
 				}
 				nextTryLockOn = DateTime.UtcNow.AddSeconds(1);
 				return;
-			}
-
-			if (!owner.myEngager.SetTarget(bestMatchGrid.Entity as IMyCubeGrid))
-			{
-				myLogger.debugLog("engager not allowing target (not implemented): " + bestMatchGrid.Entity.DisplayName, "tryLockOn()", Logger.severity.WARNING);
 			}
 
 			// found an enemy, setting as destination
@@ -80,6 +77,7 @@ namespace Rynchodon.Autopilot
 				owner.reportState(Navigator.ReportableState.Engaging);
 			owner.CNS.waitUntil = DateTime.UtcNow; // stop waiting
 			owner.CNS.clearSpeedInternal();
+			owner.myEngager.Engage();
 		}
 
 		/// <summary>
@@ -152,6 +150,12 @@ namespace Rynchodon.Autopilot
 
 				myLogger.debugLog("checking hostile grid: " + grid.DisplayName, "lastSeenHostile()");
 
+				if (!owner.myEngager.CanTarget(grid))
+				{
+					myLogger.debugLog("engager cannot target grid: " + grid.DisplayName, "lastSeenHostile()");
+					continue;
+				}
+
 				IMyCubeBlock matchBlock = null;
 				if (!string.IsNullOrEmpty(blockContains) && !findBestHostile(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block
 					continue;
@@ -161,7 +165,7 @@ namespace Rynchodon.Autopilot
 				if (owner.CNS.lockOnRangeEnemy > 0 && distance > owner.CNS.lockOnRangeEnemy)
 					continue;
 				double matchValue = distance + timeSinceSeen.TotalMilliseconds;
-				if (bestMatchGrid == null || matchValue < bestMatchValue) // if better grid match
+				if ((bestMatchGrid == null || matchValue < bestMatchValue)) // if better grid match
 				{
 					bestMatchGrid = allLastSeen.Current;
 					bestMatchValue = matchValue;

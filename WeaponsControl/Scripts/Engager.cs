@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
 
@@ -14,12 +16,17 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class Engager
 	{
-		private static readonly MyObjectBuilderType[] WeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
+		public enum Stage : byte { Disarmed, Armed, Engaging }
+
+		private static readonly MyObjectBuilderType[] FixedWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
+		private static readonly MyObjectBuilderType[] TurretWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_LargeGatlingTurret), typeof(MyObjectBuilder_LargeMissileTurret), typeof(MyObjectBuilder_InteriorTurret) };
+		private static readonly Random RandomOffset = new Random();
 
 		private readonly IMyCubeGrid myGrid;
 		private readonly Logger myLogger;
 
-		private CachingList<FixedWeapon> myFixedWeapons;
+		private CachingList<FixedWeapon> myWeapons_Fixed;
+		private CachingList<Turret> myWeapons_Turret;
 		private FixedWeapon value_primary;
 		private float value_MinWeaponRange, value_MaxWeaponRange;
 
@@ -27,11 +34,13 @@ namespace Rynchodon.Weapons
 		{
 			this.myGrid = grid;
 			this.myLogger = new Logger("Engager", () => myGrid.DisplayName);
+			this.CurrentStage = Stage.Disarmed;
 		}
 
 		~Engager()
 		{ Disarm(); }
 
+		public Stage CurrentStage { get; private set; }
 		public float MinWeaponRange
 		{
 			get
@@ -50,60 +59,23 @@ namespace Rynchodon.Weapons
 				return value_MaxWeaponRange;
 			}
 		}
-		public bool IsArmed { get { return myFixedWeapons != null && myFixedWeapons.Count > 0; } }
-		//public bool IsApproaching { get; private set; }
-
-		/// <summary>
-		/// The weapon that should be aimed.
-		/// </summary>
-		public FixedWeapon GetPrimaryWeapon()
-		{
-			if (value_primary != null && !value_primary.Closed && value_primary.CurrentTarget.FiringDirection.HasValue)
-				return value_primary;
-
-			value_primary = null;
-			if (myFixedWeapons != null)
-			{
-				foreach (FixedWeapon weapon in myFixedWeapons)
-					if (!weapon.Closed)
-					{
-						value_primary = weapon;
-						// it is preferable to choose a PrimaryWeapon that has a target
-						if (weapon.CurrentTarget.Entity != null)
-							break;
-					}
-					else
-						myFixedWeapons.Remove(weapon);
-
-				myFixedWeapons.ApplyRemovals();
-			}
-
-			return value_primary;
-		}
-
-		public bool GetHasTarget()
-		{
-			FixedWeapon Primary = GetPrimaryWeapon();
-			if (Primary == null)
-				return false;
-			return Primary.CurrentTarget.Entity != null;
-		}
 
 		/// <summary>
 		/// If not armed, sets all the weapons to fire as they bear
 		/// </summary>
-		private void Arm()
+		public void Arm()
 		{
-			if (myFixedWeapons != null)
+			if (CurrentStage != Stage.Disarmed)
 				return;
 
 			myLogger.debugLog("Arming all weapons", "Arm()");
 
-			myFixedWeapons = new CachingList<FixedWeapon>();
+			myWeapons_Fixed = new CachingList<FixedWeapon>();
+			myWeapons_Turret = new CachingList<Turret>();
 			value_MinWeaponRange = 0;
 			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
 
-			foreach (MyObjectBuilderType weaponType in WeaponTypes)
+			foreach (MyObjectBuilderType weaponType in FixedWeaponTypes)
 			{
 				ReadOnlyList<IMyCubeBlock> weaponBlocks = cache.GetBlocksOfType(weaponType);
 				if (weaponBlocks != null)
@@ -112,16 +84,45 @@ namespace Rynchodon.Weapons
 						FixedWeapon weapon = FixedWeapon.GetFor(block);
 						if (weapon.EngagerTakeControl(this))
 						{
-							//if (weapon.Options.TargetingRange < MinWeaponRange)
-							//	MinWeaponRange = weapon.Options.TargetingRange;
-							myLogger.debugLog("Took control of " + weapon.weapon.DisplayNameText, "Arm()");
-							myFixedWeapons.Add(weapon);
+							myLogger.debugLog("Took control of " + weapon.CubeBlock.DisplayNameText, "Arm()");
+							myWeapons_Fixed.Add(weapon);
+						}
+					}
+			}
+			foreach (MyObjectBuilderType weaponType in TurretWeaponTypes)
+			{
+				ReadOnlyList<IMyCubeBlock> weaponBlocks = cache.GetBlocksOfType(weaponType);
+				if (weaponBlocks != null)
+					foreach (IMyCubeBlock block in weaponBlocks)
+					{
+						Turret weapon = Turret.GetFor(block);
+						if (weapon.IsControllingWeapon)
+						{
+							myLogger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
+							myWeapons_Turret.Add(weapon);
 						}
 					}
 			}
 
-			myFixedWeapons.ApplyAdditions();
+			myWeapons_Fixed.ApplyAdditions();
+			myWeapons_Turret.ApplyAdditions();
+
 			//myLogger.debugLog("MinWeaponRange = " + MinWeaponRange, "Arm()");
+
+			if (myWeapons_Fixed.Count != 0 || myWeapons_Turret.Count != 0)
+			{
+				myLogger.debugLog("now armed", "Arm()");
+				CurrentStage = Stage.Armed;
+			}
+		}
+
+		public void Engage()
+		{
+			if (CurrentStage != Stage.Armed)
+				return;
+
+			myLogger.debugLog("now engaging", "Engage()");
+			CurrentStage = Stage.Engaging;
 		}
 
 		/// <summary>
@@ -129,97 +130,106 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public void Disarm()
 		{
-			if (myFixedWeapons == null)
+			if (CurrentStage == Stage.Disarmed)
 				return;
 
 			myLogger.debugLog("Disarming all weapons", "Arm()");
 
-			foreach (FixedWeapon weapon in myFixedWeapons)
+			foreach (FixedWeapon weapon in myWeapons_Fixed)
 				weapon.EngagerReleaseControl(this);
 
-			myFixedWeapons = null;
-			targetGrid = null;
+			myWeapons_Fixed = null;
+			myWeapons_Turret = null;
+
+			myLogger.debugLog("now disarmed", "Disarm()");
+			CurrentStage = Stage.Disarmed;
 		}
-
-		///// <remarks>
-		///// <para>Sets IsAproaching = false</para>
-		///// </remarks>
-		//public Vector3D GetWaypoint(Vector3D target)
-		//{
-		//	Vector3D perpendicular;
-		//	(target - myGrid.GetPosition()).CalculatePerpendicularVector(out perpendicular);
-		//	perpendicular.Normalize();
-
-		//	return perpendicular * MinWeaponRange * 0.75f + target;
-		//}
-
-		private static readonly TimeSpan updateWaypoint = new TimeSpan(0, 0, 10);
-		private IMyCubeGrid targetGrid;
-		private Vector3D? PreviousWaypoint;
-		//private DateTime nextWaypointUpdate = DateTime.MinValue;
 
 		/// <summary>
-		/// If any weapons can target, set the target and return true.
+		/// The weapon that should be aimed.
 		/// </summary>
-		public bool SetTarget(IMyCubeGrid targetGrid)
+		public FixedWeapon GetPrimaryWeapon()
 		{
-			Arm();
-			if (!IsArmed)
-				return false;
+			if (CurrentStage == Stage.Disarmed)
+			{
+				myLogger.debugLog("cannot get primary while disarmed.", "GetPrimaryWeapon()");
+				return null;
+			}
 
-			this.targetGrid = targetGrid;
-			PreviousWaypoint = null;
-			return true;
+			if (value_primary != null && !value_primary.CubeBlock.Closed && value_primary.CurrentTarget.FiringDirection.HasValue)
+				return value_primary;
+
+			value_primary = null;
+			if (myWeapons_Fixed != null)
+			{
+				foreach (FixedWeapon weapon in myWeapons_Fixed)
+					if (!weapon.CubeBlock.Closed)
+					{
+						if (weapon.CubeBlock.IsWorking)
+						{
+							value_primary = weapon;
+							// it is preferable to choose a PrimaryWeapon that has a target
+							if (weapon.CurrentTarget.Entity != null)
+								break;
+						}
+					}
+					else
+						myWeapons_Fixed.Remove(weapon);
+
+				myWeapons_Fixed.ApplyRemovals();
+			}
+
+			return value_primary;
 		}
 
-		///// <summary>
-		///// <para>Gets the point that Navigator should fly to.</para>
-		///// </summary>
-		//public Vector3D GetWaypoint()//(double distanceToWaypoint, out Vector3D waypoint)
-		//{
-		//	if (targetGrid == null)
-		//		throw new InvalidOperationException("No target grid.");
+		public bool CanTarget(IMyEntity entity)
+		{
+			IMyCubeGrid asGrid = entity as IMyCubeGrid;
+			if (asGrid != null)
+				return CanTarget(asGrid);
 
-		//	//if (!PreviousWaypoint.HasValue)
-		//	//{
-		//	//	PreviousWaypoint = waypoint = targetGrid.GetPosition();
-		//	//	return true;
-		//	//}
+			myLogger.debugLog("cannot target " + entity.getBestName() + ", only grids are allowed", "CanTarget()");
+			return false;
+		}
 
-		//	//if (DateTime.UtcNow < nextWaypointUpdate)
-		//	//if (PreviousWaypoint.HasValue && distanceToWaypoint > 25)
-		//	//{
-		//	//	waypoint = PreviousWaypoint.Value;
-		//	//	return false;
-		//	//}
-		//	//nextWaypointUpdate = DateTime.UtcNow + updateWaypoint;
+		public bool CanTarget(IMyCubeGrid grid)
+		{
+			if (CurrentStage == Stage.Disarmed)
+			{
+				myLogger.debugLog("cannot target while disarmed.", "CanTarget()");
+				return false;
+			}
 
-		//	Vector3D targetPos = targetGrid.GetPosition();
-		//	Vector3D perpendicular;
-		//	(targetPos - myGrid.GetPosition()).CalculatePerpendicularVector(out perpendicular);
-		//	perpendicular.Normalize();
+			foreach (FixedWeapon weapon in myWeapons_Fixed)
+				if (CanTarget(weapon, grid))
+					return true;
 
-		//	PreviousWaypoint = perpendicular * MinWeaponRange * 0.75f + targetPos;
-		//	myLogger.debugLog("setting new waypoint to: " + PreviousWaypoint + ", targetPos = " + targetPos + ", myGridPos = " + myGrid.GetPosition() + ", perpendicular = " + perpendicular + ", MinWeaponRange = " + MinWeaponRange, "GetWaypoint()");
-		//	//return true;
-		//	return PreviousWaypoint.Value;
-		//}
+			foreach (Turret weapon in myWeapons_Turret)
+				if (CanTarget(weapon, grid))
+					return true;
 
-		private static readonly Random RandomOffset = new Random();
+			return false;
+		}
 
+		/// <remarks>
+		/// Equation from https://www.jasondavies.com/maps/random-points/
+		/// </remarks>
 		public Vector3D GetRandomOffset()
 		{
-			double half = MinWeaponRange / 2;
-			return new Vector3D(RandomOffset.NextDouble() * half + half,
-				RandomOffset.NextDouble() * half + half,
-				RandomOffset.NextDouble() * half + half);
+			double angle1 = RandomOffset.NextDouble() * Math.PI * 2 - Math.PI;
+			double angle2 = Math.Acos(RandomOffset.NextDouble() * 2 - 1);
+
+			return MinWeaponRange * new Vector3D(
+				Math.Sin(angle1) * Math.Cos(angle2),
+				Math.Sin(angle1) * Math.Sin(angle2),
+				Math.Cos(angle1));
 		}
 
 		private void GetWeaponRanges()
 		{
 			value_MinWeaponRange = float.MaxValue;
 			value_MaxWeaponRange = 0;
-			foreach (FixedWeapon weapon in myFixedWeapons)
+			foreach (FixedWeapon weapon in myWeapons_Fixed)
 			{
 				float TargetingRange = weapon.Options.TargetingRange;
 				if (TargetingRange < 1)
@@ -230,6 +240,65 @@ namespace Rynchodon.Weapons
 				if (TargetingRange > value_MaxWeaponRange)
 					value_MaxWeaponRange = TargetingRange;
 			}
+			foreach (Turret weapon in myWeapons_Turret)
+			{
+				float TargetingRange = weapon.Options.TargetingRange;
+				if (TargetingRange < 1)
+					continue;
+
+				if (TargetingRange < value_MinWeaponRange)
+					value_MinWeaponRange = TargetingRange;
+				if (TargetingRange > value_MaxWeaponRange)
+					value_MaxWeaponRange = TargetingRange;
+			}
+		}
+
+		private bool CanTarget(WeaponTargeting weapon, IMyCubeGrid grid)
+		{
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+
+			if (weapon.Options.CanTargetType(TargetType.Destroy) && cache.TotalByDefinition() != 0)
+				return true;
+
+			// check can target type
+			if (grid.IsStatic)
+			{
+				if (!weapon.Options.CanTargetType(TargetType.Station))
+				{
+					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target stations", "CanTarget()");
+					return false;
+				}
+			}
+			else if (grid.GridSizeEnum == MyCubeSize.Large)
+			{
+				if (!weapon.Options.CanTargetType(TargetType.LargeGrid))
+				{
+					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target large ships", "CanTarget()");
+					return false;
+				}
+			}
+			else
+				if (!weapon.Options.CanTargetType(TargetType.SmallGrid))
+				{
+					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target small ships", "CanTarget()");
+					return false;
+				}
+
+			// check for contains block
+			foreach (string search in weapon.Options.blocksToTarget)
+			{
+				var allBlocks = cache.GetBlocksByDefLooseContains(search);
+				foreach (var typeBlocks in allBlocks)
+					foreach (var block in typeBlocks)
+						if (block.IsWorking || (weapon.Options.FlagSet(TargetingFlags.Functional) && block.IsFunctional))
+						{
+							myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " can target " + search, "CanTarget()");
+							return true;
+						}
+			}
+
+			myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target, no blocks match", "CanTarget()");
+			return false;
 		}
 	}
 }

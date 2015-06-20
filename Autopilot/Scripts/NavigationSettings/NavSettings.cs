@@ -2,7 +2,6 @@
 
 using System;
 using Rynchodon.AntennaRelay;
-using Rynchodon.Weapons;
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -21,13 +20,16 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		public enum SpecialFlying : byte
 		{
 			/// <summary>no special instructions</summary>
-			None,
+			None = 0,
 			/// <summary>pathfinder can fly forwards/backwards, any move type allowed</summary>
-			Line_Any,
+			Line_Any = 1 << 0,
 			/// <summary>pathfinder can fly forwards, sidel only</summary>
-			Line_SidelForward,
-			/// <summary>Only allow hybrid move state. Flying to different point than rotating to.</summary>
-			HybridOnly
+			Line_SidelForward = 1 << 1,
+			/// <summary>
+			/// <para>Only allow hybrid move state. Flying to different point than rotating to.</para>
+			/// <para>This state should never be set directly.</para>
+			/// </summary>
+			HybridOnly = 1 << 2
 		}
 		public enum TypeOfWayDest : byte { NONE, COORDINATES, GRID, BLOCK, WAYPOINT, OFFSET, LAND }
 
@@ -71,9 +73,9 @@ namespace Rynchodon.Autopilot.NavigationSettings
 
 				value_rotateToPoint = value;
 				if (value.HasValue)
-					SpecialFlyingInstructions = SpecialFlying.HybridOnly;
+					SpecialFlyingInstructions |= SpecialFlying.HybridOnly;
 				else
-					SpecialFlyingInstructions = SpecialFlying.None;
+					SpecialFlyingInstructions &= ~SpecialFlying.HybridOnly;
 			}
 		}
 

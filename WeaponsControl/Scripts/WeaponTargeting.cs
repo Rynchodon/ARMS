@@ -7,10 +7,8 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
-using VRage;
 using VRage.Collections;
 using VRage.ModAPI;
-using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -28,7 +26,7 @@ namespace Rynchodon.Weapons
 
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
-		public readonly IMyCubeBlock weapon;
+		public readonly IMyCubeBlock CubeBlock;
 		public readonly Ingame.IMyLargeTurretBase myTurret;
 
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
@@ -46,7 +44,7 @@ namespace Rynchodon.Weapons
 
 		private byte updateCount = 0;
 
-		protected bool IsControllingWeapon { get; private set; }
+		public bool IsControllingWeapon { get; private set; }
 		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
 		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private bool IsShooting;
@@ -85,7 +83,7 @@ namespace Rynchodon.Weapons
 			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !(weapon is IMyInventoryOwner) || !(weapon is Ingame.IMyUserControllableGun))
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
-			this.weapon = weapon;
+			this.CubeBlock = weapon;
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger("WeaponTargeting", weapon);// () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
 
@@ -93,12 +91,12 @@ namespace Rynchodon.Weapons
 			this.CurrentTarget = new Target();
 			this.IsControllingWeapon = false;
 			this.IsNormalTurret = myTurret != null;
-			this.weapon.OnClose += weapon_OnClose;
+			this.CubeBlock.OnClose += weapon_OnClose;
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
-			weapon.OnClose -= weapon_OnClose;
+			CubeBlock.OnClose -= weapon_OnClose;
 			DisableWeaponTargeting();
 		}
 
@@ -260,7 +258,7 @@ namespace Rynchodon.Weapons
 			if (!IsControllingWeapon)
 				return;
 
-			var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+			var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
 			using (lock_IsShooting.AcquireExclusiveUsing())
 				if (IsShooting != builder.IsShootingFromTerminal)
 				{
@@ -271,21 +269,21 @@ namespace Rynchodon.Weapons
 
 		private Vector3D BarrelPositionWorld()
 		{
-			return weapon.GetPosition();
+			return CubeBlock.GetPosition();
 		}
 
 		/// <param name="testEnabled">set to false to ignore WeaponTargetingEnabled</param>
 		protected bool CanControlWeapon(bool testEnabled = true)
 		{
-			if (!weapon.IsWorking
+			if (!CubeBlock.IsWorking
 				|| (IsNormalTurret && myTurret.IsUnderControl)
 				|| (testEnabled && !WeaponTargetingEnabled)
-				|| weapon.OwnerId == 0
-				|| (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-				|| (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
-				|| (!IsNormalTurret && weapon.CubeGrid.IsStatic))
+				|| CubeBlock.OwnerId == 0
+				|| (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+				|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
+				|| (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic))
 			{
-				LogWhyNotControl();
+				//LogWhyNotControl();
 				SetCanNotControl();
 				return false;
 			}
@@ -294,30 +292,30 @@ namespace Rynchodon.Weapons
 			return true;
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void LogWhyNotControl()
-		{
-			string why;
+		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//private void LogWhyNotControl()
+		//{
+		//	string why;
 
-			if (!weapon.IsWorking)
-				why = "not working";
-			else if (!WeaponTargetingEnabled)
-				why = "weapon targeting disabled";
-			else if (IsNormalTurret && myTurret.IsUnderControl)
-				why = "turret controlled";
-			else if (weapon.OwnerId == 0)
-				why = "no owner";
-			else if (weapon.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-				why = "NPC";
-			else if (!weapon.DisplayNameText.Contains("[") || !weapon.DisplayNameText.Contains("]"))
-				why = "no brackets";
-			else if (!IsNormalTurret && weapon.CubeGrid.IsStatic)
-				why = "static";
-			else
-				why = "wtf";
+		//	if (!CubeBlock.IsWorking)
+		//		why = "not working";
+		//	else if (!WeaponTargetingEnabled)
+		//		why = "weapon targeting disabled";
+		//	else if (IsNormalTurret && myTurret.IsUnderControl)
+		//		why = "turret controlled";
+		//	else if (CubeBlock.OwnerId == 0)
+		//		why = "no owner";
+		//	else if (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+		//		why = "NPC";
+		//	else if (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
+		//		why = "no brackets";
+		//	else if (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic)
+		//		why = "static";
+		//	else
+		//		why = "wtf";
 
-			myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
-		}
+		//	myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
+		//}
 
 		private void SetCanControl()
 		{
@@ -343,7 +341,7 @@ namespace Rynchodon.Weapons
 				{
 					//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
 					//myTurret.SetTarget(myTurret);
-					myTurret.SetTarget(BarrelPositionWorld() + weapon.WorldMatrix.Forward * 10);
+					myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10);
 				}
 			}
 		}
@@ -361,7 +359,7 @@ namespace Rynchodon.Weapons
 					Blacklist = new MyUniqueList<IMyEntity>();
 
 				// stop shooting
-				var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
 				if (builder.IsShootingFromTerminal)
 					//{
 					//myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
@@ -380,7 +378,7 @@ namespace Rynchodon.Weapons
 
 		private void UpdateAmmo()
 		{
-			List<IMyInventoryItem> loaded = (weapon as IMyInventoryOwner).GetInventory(0).GetItems();
+			List<IMyInventoryItem> loaded = (CubeBlock as IMyInventoryOwner).GetInventory(0).GetItems();
 			if (loaded.Count == 0 || loaded[0].Amount < 1)
 			{
 				LoadedAmmo = null;
@@ -493,7 +491,7 @@ namespace Rynchodon.Weapons
 				previousFiringDirection = CurrentDirection;
 			}
 
-			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), weapon.CubeGrid.GetLinearVelocity());
+			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
 			float firingThreshold = 2.5f + relativeSpeed / 10f;
 
 			if (!IsNormalTurret && !Options.FlagSet(TargetingFlags.Turret))
@@ -531,7 +529,7 @@ namespace Rynchodon.Weapons
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
 				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
 				});
 
 				IsShooting = true;
@@ -548,7 +546,7 @@ namespace Rynchodon.Weapons
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
 				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-					(weapon as IMyTerminalBlock).GetActionWithName("Shoot").Apply(weapon);
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
 				});
 
 				IsShooting = false;
@@ -611,7 +609,7 @@ namespace Rynchodon.Weapons
 					else
 						myLogger.debugLog("Found a robot! : " + asChar + " . " + entity.getBestName(), "CollectTargets()");
 
-					if (asIdentity == null || weapon.canConsiderHostile(asIdentity.PlayerId))
+					if (asIdentity == null || CubeBlock.canConsiderHostile(asIdentity.PlayerId))
 					{
 						//myLogger.debugLog("Hostile Character(" + asIdentity + "): " + entity.getBestName(), "CollectTargets()");
 						AddTarget(TargetType.Character, entity);
@@ -633,7 +631,7 @@ namespace Rynchodon.Weapons
 						continue;
 					}
 
-					if (weapon.canConsiderHostile(asGrid))
+					if (CubeBlock.canConsiderHostile(asGrid))
 					{
 						AddTarget(TargetType.Moving, entity);
 						AddTarget(TargetType.Destroy, entity);
@@ -880,7 +878,7 @@ namespace Rynchodon.Weapons
 
 						//myLogger.debugLog("decoy search, block = " + block.DisplayNameText + ", distance = " + distance, "GetTargetBlock()");
 
-						if (distanceSq < distanceValue && weapon.canConsiderHostile(block as IMyCubeBlock))
+						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block as IMyCubeBlock))
 						{
 							target = block as IMyCubeBlock;
 							distanceValue = distanceSq;
@@ -924,7 +922,7 @@ namespace Rynchodon.Weapons
 						distanceSq *= multiplier * multiplier * multiplier;
 
 						myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
-						if (distanceSq < distanceValue && weapon.canConsiderHostile(block))
+						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
 						{
 							target = block;
 							distanceValue = distanceSq;
@@ -957,7 +955,7 @@ namespace Rynchodon.Weapons
 							continue;
 						distanceSq *= 1e12;
 
-						if (weapon.canConsiderHostile(slim.FatBlock))
+						if (CubeBlock.canConsiderHostile(slim.FatBlock))
 						{
 							target = slim.FatBlock;
 							distanceValue = distanceSq;
@@ -1060,7 +1058,7 @@ namespace Rynchodon.Weapons
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		private bool Obstructed(Vector3D targetPosition)
 		{
-			if (weapon == null)
+			if (CubeBlock == null)
 				throw new ArgumentNullException("weapon");
 
 			if (!CanRotateTo(targetPosition))
@@ -1081,7 +1079,7 @@ namespace Rynchodon.Weapons
 				Vector3D BarrelPosition = BarrelPositionWorld();
 				foreach (Vector3 offsetBlock in obstructionOffsets)
 				{
-					Vector3 offsetWorld = RelativeDirection3F.FromBlock(weapon, offsetBlock).ToWorld();
+					Vector3 offsetWorld = RelativeDirection3F.FromBlock(CubeBlock, offsetBlock).ToWorld();
 					AllTestLines.Add(new Line(BarrelPosition + offsetWorld, targetPosition + offsetWorld, false));
 				}
 			}
@@ -1111,7 +1109,7 @@ namespace Rynchodon.Weapons
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
-					if (!IsNormalTurret && asGrid == weapon.CubeGrid)
+					if (!IsNormalTurret && asGrid == CubeBlock.CubeGrid)
 						continue;
 
 					ICollection<Vector3I> allHitCells;
@@ -1139,10 +1137,10 @@ namespace Rynchodon.Weapons
 					foreach (Vector3I pos in allHitCells)
 					{
 						if (asGrid.CubeExists(pos))
-							if (IsNormalTurret && asGrid == weapon.CubeGrid)
+							if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
 							{
 								IMySlimBlock block = asGrid.GetCubeBlock(pos);
-								if (block.FatBlock == null || block.FatBlock != weapon)
+								if (block.FatBlock == null || block.FatBlock != CubeBlock)
 									return true;
 							}
 							else
@@ -1172,7 +1170,7 @@ namespace Rynchodon.Weapons
 
 			Vector3 TargetVelocity = target.GetLinearVelocity();
 
-			Vector3D RelativeVelocity = TargetVelocity - weapon.GetLinearVelocity();
+			Vector3D RelativeVelocity = TargetVelocity - CubeBlock.GetLinearVelocity();
 
 			//TargetPosition += RelativeVelocity / 60f;
 
@@ -1256,7 +1254,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void WriteErrors(List<string> Errors)
 		{
-			string DisplayName = weapon.DisplayNameText;
+			string DisplayName = CubeBlock.DisplayNameText;
 			//myLogger.debugLog("initial name: " + DisplayName, "WriteErrors()");
 			int start = DisplayName.IndexOf('>') + 1;
 			if (start > 0)
@@ -1279,10 +1277,10 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				(weapon as IMyTerminalBlock).SetCustomName(build);
+				(CubeBlock as IMyTerminalBlock).SetCustomName(build);
 			}
 			else
-				(weapon as IMyTerminalBlock).SetCustomName(DisplayName);
+				(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName);
 		}
 
 		/// <summary>

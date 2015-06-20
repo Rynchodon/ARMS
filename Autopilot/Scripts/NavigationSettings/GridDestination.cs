@@ -99,7 +99,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					targetPosition = Block.GetPosition();
 					if (Offset.HasValue)
 						targetPosition += Offset.Value;
-					myLogger.debugLog("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
+					//myLogger.debugLog("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				}
 				else
 				{
@@ -109,7 +109,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 					targetPosition = Grid.WorldAABB.Center;
 					if (Offset.HasValue)
 						targetPosition += Offset.Value;
-					myLogger.debugLog("grid is at " + targetPosition + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
+					//myLogger.debugLog("grid is at " + targetPosition + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				}
 
 				targetVelocity = Grid.Physics.LinearVelocity;
@@ -117,12 +117,12 @@ namespace Rynchodon.Autopilot.NavigationSettings
 			}
 			else
 			{
-				myLogger.debugLog("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + " seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
+				//myLogger.debugLog("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + " seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
 				targetPosition = gridLastSeen.predictPosition();
 				targetVelocity = gridLastSeen.LastKnownVelocity;
 				targetAcceleration = Vector3.Zero;
 			}
-			if (targetVelocity == Vector3D.Zero)
+			if (targetVelocity.LengthSquared() < 100 || Grid.GetLinearVelocity().LengthSquared() < 100)
 			{
 				//myLogger.debugLog("shorting: target velocity is zero. position = " + targetPosition, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				return targetPosition;

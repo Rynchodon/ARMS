@@ -107,7 +107,12 @@ namespace Rynchodon.Autopilot
 				if (owner.CNS.rotateToPoint.HasValue)
 					dirNorm = Vector3D.Normalize(owner.CNS.rotateToPoint.Value - owner.getNavigationBlock().GetPosition());
 				else
-					dirNorm = displacement.ToWorldNormalized();
+				{
+					if (owner.myEngager.CurrentStage == Weapons.Engager.Stage.Engaging)
+						dirNorm = Vector3.Zero;
+					else
+						dirNorm = displacement.ToWorldNormalized();
+				}
 			}
 			else
 				dirNorm = targetDirection.Value;

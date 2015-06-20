@@ -114,11 +114,11 @@ namespace Rynchodon.Autopilot
 			{
 				if (myHarvester.NavigationDrill != null)
 					return myHarvester.NavigationDrill;
-				if (myEngager.IsArmed)
+				if (myEngager.CurrentStage == Engager.Stage.Engaging)
 				{
 					FixedWeapon primary = myEngager.GetPrimaryWeapon();
 					if (primary != null)
-						return primary.weapon;
+						return primary.CubeBlock;
 				}
 				return currentAPblock;
 			}
@@ -168,6 +168,8 @@ namespace Rynchodon.Autopilot
 				myGrid.OnBlockRemoved -= OnBlockRemoved;
 			}
 			currentAPcontrollable = null;
+			if (myEngager != null)
+				myEngager.Disarm();
 		}
 
 		private void OnClose()
@@ -420,8 +422,8 @@ namespace Rynchodon.Autopilot
 		private void reset(string reason)
 		{
 			myLogger.debugLog("reset reason = " + reason, "reset()");
-			currentAPcontrollable = null;
 			myEngager.Disarm();
+			currentAPcontrollable = null;
 		}
 
 		private DateTime maxRotateTime;
@@ -440,24 +442,35 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			// before navigate
+			if (myEngager == null)
+				throw new NullReferenceException("myEngager");
 
-			if (myEngager.IsArmed)
+			// before navigate
+			if (myEngager.CurrentStage == Engager.Stage.Engaging)
 			{
+				//myLogger.debugLog("engager is armed", "navigate()");
 				// set rotate to point
 				FixedWeapon primary = myEngager.GetPrimaryWeapon();
 				if (primary == null)
 				{
 					myLogger.debugLog("no weapons remain", "navigate()", Logger.severity.DEBUG);
-					fullStop("no weapons");
+					fullStop("no weapons remain");
 					myEngager.Disarm();
+					CNS.atWayDest(NavSettings.TypeOfWayDest.GRID);
 					return;
 				}
+				//myLogger.debugLog("have a primary weapon: " + primary.CubeBlock.DisplayNameText, "navigate()");
 				CNS.rotateToPoint = primary.CurrentTarget.InterceptionPoint;
 				if (!CNS.rotateToPoint.HasValue)
 				{
-					CNS.rotateToPoint = CNS.CurrentGridDest.Grid.GetCentre();
-					myLogger.debugLog("primary weapon does not have a target.", "navigate()");
+					//myLogger.debugLog("primary weapon does not have a target.", "navigate()");
+					//if (CNS.CurrentGridDest != null)
+					//{
+					myLogger.debugLog("primary weapon does not have a target, setting rotateToPoint to centre of target grid", "navigate()");
+						CNS.rotateToPoint = CNS.CurrentGridDest.Grid.GetCentre();
+					//}
+					//else
+					//	myLogger.debugLog("not setting a rotateToPoint", "navigate()");
 				}
 				else
 					myLogger.debugLog("primary weapon has a target: " + CNS.rotateToPoint, "navigate()");
@@ -467,15 +480,15 @@ namespace Rynchodon.Autopilot
 
 			MM = new MovementMeasure(this);
 
-			if (myEngager.IsArmed && CNS.getTypeOfWayDest() != NavSettings.TypeOfWayDest.WAYPOINT) // engager flies to waypoints normally
+			if (myEngager.CurrentStage == Engager.Stage.Engaging && CNS.getTypeOfWayDest() != NavSettings.TypeOfWayDest.WAYPOINT) // engager flies to waypoints normally
 			{
-				myLogger.debugLog("Engager is armed. TypeOfWayDest = " + CNS.getTypeOfWayDest() + ", distToWayDest = " + MM.distToWayDest + ", distToDestGrid = " + MM.distToDestGrid + ", MaxWeaponRange = " + myEngager.MaxWeaponRange, "navigate()");
+				myLogger.debugLog("Engager is armed. TypeOfWayDest = " + CNS.getTypeOfWayDest() + ", distToPoint = " + MM.distToPoint + ", distToDestGrid = " + MM.distToDestGrid + ", MaxWeaponRange = " + myEngager.MaxWeaponRange, "navigate()");
 				if (CNS.CurrentGridDest.Offset.HasValue)
 				{
-					if (MM.distToWayDest < 100)
+					if (MM.distToPoint < 100)
 					{
 						CNS.CurrentGridDest.Offset = myEngager.GetRandomOffset();
-						myLogger.debugLog("Setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
+						myLogger.debugLog("Near way/dest, setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
 						return;
 					}
 					else
@@ -483,14 +496,16 @@ namespace Rynchodon.Autopilot
 				}
 				else
 				{
-					if (MM.distToDestGrid < myEngager.MaxWeaponRange * 2)
-					{
-						CNS.CurrentGridDest.Offset = myEngager.GetRandomOffset();
-						myLogger.debugLog("Setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
-						return;
-					}
-					else
-						myLogger.debugLog("far away, flying normally", "navigate()");
+					//myLogger.debugLog("no offset value", "checkAt_wayDest()");
+					//if (MM.distToDestGrid < myEngager.MaxWeaponRange * 2)
+					//{
+					CNS.CurrentGridDest.Offset = myEngager.GetRandomOffset();
+					//	myLogger.debugLog("Near weapon range, setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
+					myLogger.debugLog("Setting first offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
+					return;
+					//}
+					//else
+					//	myLogger.debugLog("far away, flying normally", "navigate()");
 				}
 			}
 
@@ -532,7 +547,7 @@ namespace Rynchodon.Autopilot
 		/// <returns>skip collisionCheckMoveAndRotate()</returns>
 		private bool checkAt_wayDest()
 		{
-			if (CNS.isAMissile || myEngager.IsArmed)
+			if (CNS.isAMissile)
 				return false;
 			if (MM.distToWayDest > CNS.destinationRadius)
 				return false;
@@ -551,6 +566,9 @@ namespace Rynchodon.Autopilot
 					debugLog("reached waypoint, next type is " + CNS.getTypeOfWayDest() + ", coords: " + CNS.getWayDest(), "checkAt_wayDest()", Logger.severity.INFO);
 				return true;
 			}
+
+			if (myEngager.CurrentStage == Engager.Stage.Engaging)
+				return false;
 
 			if (CNS.match_direction == null && CNS.landLocalBlock == null)
 			{
@@ -667,18 +685,18 @@ namespace Rynchodon.Autopilot
 					break;
 				case NavSettings.Moving.STOP_MOVE:
 					{
-						if (myEngager.IsArmed && MM.movementSpeed < 10)
-							StartMoveHybrid();
-						else if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.None)
+						//if (CNS.rotateToPoint.HasValue)
+						//{
+						//	if (MM.movementSpeed < 10)
+						//		StartMoveHybrid();
+						//}
+						//else
+						if (PathfinderAllowsMovement && MM.rotLenSq < myRotator.rotLenSq_stopAndRot && CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.None)
 							StartMoveMove();
 					}
 					break;
 				case NavSettings.Moving.HYBRID:
 					{
-						//myLogger.debugLog("movingTooSlow = " + movingTooSlow + ", currentMove = " + currentMove, "calcMoveAndRotate()");
-						//if (movingTooSlow
-						//	|| (currentMove != Vector3.Zero && currentMove != SpeedControl.cruiseForward))
-						//	calcAndMove(true); // continue in current state
 						// when tight to destination, switch to move
 						if (!CNS.rotateToPoint.HasValue && MM.rotLenSq < rotLenSq_switchToMove)
 						{
@@ -703,7 +721,7 @@ namespace Rynchodon.Autopilot
 				case NavSettings.Moving.NOT_MOVE:
 					{
 						//if (CNS.rotateState == NavSettings.Rotating.NOT_ROTA) // why do we care?
-							MoveIfPossible();
+						MoveIfPossible();
 						break;
 					}
 				default:
@@ -718,15 +736,15 @@ namespace Rynchodon.Autopilot
 		{
 			if (PathfinderAllowsMovement)
 			{
-				if (MM.distToWayDest < CNS.destinationRadius)
-				{
-					myLogger.debugLog("inside destination radius", "MoveIfPossible()");
-					return false;
-				}
 				if (CNS.isAMissile || CNS.rotateToPoint.HasValue)
 				{
 					StartMoveHybrid();
 					return true;
+				}
+				if (MM.distToWayDest < CNS.destinationRadius)
+				{
+					myLogger.debugLog("inside destination radius", "MoveIfPossible()");
+					return false;
 				}
 				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)
 				{
@@ -777,7 +795,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// stop when greater than
 		/// </summary>
-		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f, onCourse_engage = 1.0f;
+		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f, onCourse_engage = MathHelper.Pi / 8;
 
 		private Vector3 moveDirection = Vector3.Zero;
 
@@ -815,11 +833,11 @@ namespace Rynchodon.Autopilot
 									goto case NavSettings.Moving.NOT_MOVE;
 
 								float onCourse;
-								if (myEngager.IsArmed)
+								if (CNS.rotateToPoint.HasValue)
 									onCourse = onCourse_engage;
 								else
 									onCourse = onCourse_hybrid;
-								if (MM.movementSpeed > 1 && offCourse > onCourse)
+								if (MM.movementSpeed > 10 && offCourse > onCourse)
 								{
 									myLogger.debugLog("distance squared between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 									if (CNS.rotateToPoint.HasValue)
@@ -839,7 +857,6 @@ namespace Rynchodon.Autopilot
 								return;
 							}
 						case NavSettings.Moving.NOT_MOVE:
-						case NavSettings.Moving.STOP_MOVE: // no idea how this will go but let's try it
 							{
 								RelativeDirection3F scaled = currentThrust.scaleByForce(MM.displacement, getNavigationBlock());
 								moveOrder(scaled);
@@ -885,46 +902,36 @@ namespace Rynchodon.Autopilot
 
 		private static TimeSpan stoppedAfter = new TimeSpan(0, 0, 1);
 		private DateTime stoppedMovingAt;
-		private const float stoppedPrecision_normal = 0.2f;
-		private const float stoppedPrecision_engage = 10f;
+		private const float stoppedPrecision = 0.2f;
 
 		public bool checkStopped()
 		{
 			if (CNS.moveState == NavSettings.Moving.NOT_MOVE)
 				return true;
 
-			bool isStopped;
-			float stoppedPrecision;
-			if (myEngager.IsArmed)
-				stoppedPrecision = stoppedPrecision_engage;
-			else
-				stoppedPrecision = stoppedPrecision_normal;
-
 			if (MM.movementSpeed == null || MM.movementSpeed > stoppedPrecision)
 			{
 				stoppedMovingAt = DateTime.UtcNow + stoppedAfter;
-				isStopped = false;
+				//myLogger.debugLog("Still moving, stopped at " + stoppedMovingAt, "checkStopped()");
 			}
 			else
 			{
-				//if (myEngager.IsArmed && (CNS.moveState == NavSettings.Moving.STOP_MOVE || CNS.moveState == NavSettings.Moving.NOT_MOVE))
-				//	isStopped = true;
-				//else
-					isStopped = DateTime.UtcNow > stoppedMovingAt;
-			}
-
-			if (isStopped)
-			{
-				if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
+				if (DateTime.UtcNow > stoppedMovingAt)
 				{
-					CNS.moveState = NavSettings.Moving.NOT_MOVE;
-					CNS.clearSpeedInternal();
+					if (CNS.moveState == NavSettings.Moving.STOP_MOVE)
+					{
+						CNS.moveState = NavSettings.Moving.NOT_MOVE;
+						CNS.clearSpeedInternal();
+					}
+					else
+						fullStop("not moving");
+					//myLogger.debugLog("not moving for a time: " + (DateTime.UtcNow - stoppedMovingAt).TotalSeconds, "checkStopped()");
+					return true;
 				}
-				else
-					fullStop("not moving");
+				//myLogger.debugLog("speed is low, for a short time: " + (DateTime.UtcNow - stoppedMovingAt).TotalSeconds, "checkStopped()");
 			}
 
-			return isStopped;
+			return false;
 		}
 
 		/// <summary>
@@ -1159,6 +1166,15 @@ namespace Rynchodon.Autopilot
 			if (CNS.getTypeOfWayDest() == NavSettings.TypeOfWayDest.NONE)
 				return ReportableState.No_Dest;
 
+			// targeting
+			if (CNS.target_locked)
+			{
+				if (CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+					return ReportableState.Engaging;
+				if (CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
+					return ReportableState.Missile;
+			}
+
 			// moving
 			switch (CNS.moveState)
 			{
@@ -1168,16 +1184,6 @@ namespace Rynchodon.Autopilot
 					return ReportableState.Hybrid;
 				case NavSettings.Moving.MOVING:
 					return ReportableState.Moving;
-			}
-
-			// moved here for testing, should be moved back later
-			// targeting
-			if (CNS.target_locked)
-			{
-				if (CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
-					return ReportableState.Engaging;
-				if (CNS.lockOnTarget == NavSettings.TARGET.MISSILE)
-					return ReportableState.Missile;
 			}
 
 			// rotating

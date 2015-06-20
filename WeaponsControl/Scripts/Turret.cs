@@ -1,12 +1,13 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
-using VRage;
 
 namespace Rynchodon.Weapons
 {
@@ -15,6 +16,8 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class Turret : WeaponTargeting
 	{
+		private static Dictionary<IMyCubeBlock, Turret> registry = new Dictionary<IMyCubeBlock, Turret>();
+
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
@@ -32,15 +35,21 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
-
+			registry.Add(CubeBlock, this);
 			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
+		private void weapon_OnClose(IMyEntity obj)
+		{ registry.Remove(CubeBlock); }
+
+		internal static Turret GetFor(IMyCubeBlock weapon)
+		{ return registry[weapon]; }
+
 		private void Initialize()
 		{
 			// definition limits
-			MyLargeTurretBaseDefinition definition = DefinitionCache.GetCubeBlockDefinition(weapon) as MyLargeTurretBaseDefinition;
+			MyLargeTurretBaseDefinition definition = DefinitionCache.GetCubeBlockDefinition(CubeBlock) as MyLargeTurretBaseDefinition;
 
 			if (definition == null)
 				throw new NullReferenceException("definition");
@@ -62,12 +71,12 @@ namespace Rynchodon.Weapons
 			// upgrade
 			if (Settings.fileVersion > 0 && Settings.fileVersion < 34)
 			{
-				string instructions = weapon.DisplayNameText.getInstructions();
+				string instructions = CubeBlock.DisplayNameText.getInstructions();
 				if (instructions != null && !instructions.Contains("(") && !instructions.Contains(")"))
 				{
-					string name = weapon.DisplayNameText.Replace("[", "[(");
+					string name = CubeBlock.DisplayNameText.Replace("[", "[(");
 					name = name.Replace("]", ")]");
-					(weapon as IMyTerminalBlock).SetCustomName(name);
+					(CubeBlock as IMyTerminalBlock).SetCustomName(name);
 					myLogger.debugLog("upgraded from previous version, brackets added", "Turret()");
 				}
 			}
@@ -82,7 +91,7 @@ namespace Rynchodon.Weapons
 		protected override void Update_Options(TargetingOptions Options)
 		{
 			//Options. CanTarget = TargetType.None;
-			MyObjectBuilder_TurretBase builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
+			MyObjectBuilder_TurretBase builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
 			if (builder.TargetMissiles)
 				Options.CanTarget |= TargetType.Missile;
 			if (builder.TargetMeteors)
@@ -109,7 +118,7 @@ namespace Rynchodon.Weapons
 		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
 			//Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
-			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(weapon.CubeGrid, targetPoint).ToBlockNormalized(weapon));
+			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, targetPoint).ToBlockNormalized(CubeBlock));
 
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
@@ -147,7 +156,7 @@ namespace Rynchodon.Weapons
 			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
 
 			//Vector3 directionWorld = weapon.directionToWorld(directionBlock);
-			Vector3 directionWorld = RelativeDirection3F.FromBlock(weapon, directionBlock).ToWorldNormalized();
+			Vector3 directionWorld = RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
 
 			//myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
 			myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
@@ -161,7 +170,7 @@ namespace Rynchodon.Weapons
 			}
 
 			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
-			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(weapon.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(weapon);
+			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(CubeBlock);
 			myLogger.debugLog("FiringDirection = " + GotTarget.FiringDirection.Value + ", RotateToDirection = " + RotateToDirection, "Update()");
 
 			float targetElevation, targetAzimuth; // the position of the target
