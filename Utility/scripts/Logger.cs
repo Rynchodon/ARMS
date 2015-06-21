@@ -73,7 +73,7 @@ namespace Rynchodon
 			this.className = className;
 			this.f_gridName = () => Block.CubeGrid.DisplayName;
 			this.f_state_primary = () => Block.DefinitionDisplayNameText;
-			this.f_state_secondary = () => Block.DisplayNameText;
+			this.f_state_secondary = () => Block.getNameOnly();
 		}
 
 		private void deleteIfExists(string filename)
@@ -115,6 +115,22 @@ namespace Rynchodon
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
+
+		/// <summary>
+		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
+		/// </summary>
+		/// <param name="condition">only log if true</param>
+		/// <param name="toLog">message to log</param>
+		/// <param name="methodName">calling method</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		public void debugLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		{
+			if (condition)
+				log(level, methodName, toLog, primaryState, secondaryState);
+		}
 
 		/// <summary>
 		/// For logging WARNING and higher severity.

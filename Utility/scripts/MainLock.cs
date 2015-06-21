@@ -16,15 +16,16 @@ namespace Rynchodon
 		private static Logger myLogger = new Logger("MainLock");
 		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
 		private static FastResourceLock Lock_Lock = new FastResourceLock("Lock_Lock");
+		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
 		static MainLock()
-		{ Lock_MainThread.AcquireExclusive(); }
+		{ MainThread_AcquireExclusive(); }
 
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		/// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
-		public static void MainThread_TryAcquireExclusive()
+		///// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
+		public static void MainThread_AcquireExclusive()
 		{
 			using (Lock_Lock.AcquireExclusiveUsing())
 			{
@@ -33,13 +34,13 @@ namespace Rynchodon
 
 				Lock_MainThread.AcquireExclusive();
 			}
+			//myLogger.debugLog("Main thread is locked", "MainThread_TryAcquireExclusive()");
 		}
 
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		/// <returns>true if exclusive lock was released, false if it is not held</returns>
-		public static void MainThread_TryReleaseExclusive()
+		public static void MainThread_ReleaseExclusive()
 		{
 			using (Lock_Lock.AcquireExclusiveUsing())
 			{
@@ -47,8 +48,8 @@ namespace Rynchodon
 					throw new InvalidOperationException("Exclusive lock is not held.");
 
 				Lock_MainThread.ReleaseExclusive();
-				return;
 			}
+			//myLogger.debugLog("Main thread is released", "MainThread_TryAcquireExclusive()");
 		}
 
 		/// <summary>
@@ -115,11 +116,17 @@ namespace Rynchodon
 		/// <param name="preCollect">applied before intersection test</param>
 		public static void GetEntitiesInSphere_Safe_NoBlock(this IMyEntities entitiesObject, BoundingSphereD boundingSphere, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
 		{
+			//HashSet<IMyEntity> collectedEntities = new HashSet<IMyEntity>();
+			//entitiesObject.GetEntities_Safe(collectedEntities, preCollect);
+			//foreach (IMyEntity entity in collectedEntities)
+			//	if (boundingSphere.Intersects(entity.WorldVolume))
+			//		entities.Add(entity);
+
 			Func<IMyEntity, bool> collector;
 			if (preCollect == null)
-				collector = (entity) => boundingSphere.Intersects(entity.WorldAABB);
+				collector = (entity) => boundingSphere.Intersects(entity.WorldVolume);
 			else
-				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldAABB); };
+				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldVolume); };
 			entitiesObject.GetEntities_Safe(entities, collector);
 		}
 
@@ -180,14 +187,42 @@ namespace Rynchodon
 			return outInstances;
 		}
 
-		/// <remarks>I have not tested IsInsideVoxel for thread-safety, I assumed it is not.</remarks>
-		public static bool RayCastVoxel(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
+		/// <remarks>
+		/// Running multiple simultaneous ray casts seems to throw an exception.
+		/// </remarks>
+		public static bool RayCastVoxel_Safe(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
 		{
-			using (Lock_MainThread.AcquireSharedUsing())
+			using (lock_RayCast.AcquireExclusiveUsing())
 			{
-				entities.IsInsideVoxel(from, to, out boundary);
-				return (boundary != from);
+				using (Lock_MainThread.AcquireSharedUsing())
+				{
+					entities.IsInsideVoxel(from, to, out boundary);
+					return (boundary != from);
+				}
 			}
 		}
+
+		public static IMyIdentity GetIdentity_Safe(this IMyCharacter character)
+		{
+			string DisplayName = (character as IMyEntity).DisplayName;
+			List<IMyIdentity> match = new List<IMyIdentity>();
+			using (Lock_MainThread.AcquireSharedUsing())
+				MyAPIGateway.Players.GetAllIdentites(match, (id) => { return id.DisplayName == DisplayName; });
+			if (match.Count == 1)
+				return match[0];
+			return null;
+		}
+
+		public static List<IMyPlayer> GetPlayers_Safe(this IMyPlayerCollection PlayColl, Func<IMyPlayer, bool> collect = null)
+		{
+			//LogLockStats("GetPlayers_Safe()");
+			List<IMyPlayer> players = new List<IMyPlayer>();
+			using (Lock_MainThread.AcquireSharedUsing())
+				PlayColl.GetPlayers(players, collect);
+			return players;
+		}
+
+		private static void LogLockStats(string source)
+		{ myLogger.debugLog("Lock Stats: Owned = " + Lock_MainThread.Owned + ", Shared Owners = " + Lock_MainThread.SharedOwners + ", Exclusive Waiters = " + Lock_MainThread.ExclusiveWaiters + ", Shared Waiters = " + Lock_MainThread.SharedWaiters, source); }
 	}
 }

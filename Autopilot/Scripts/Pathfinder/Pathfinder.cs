@@ -6,6 +6,7 @@ using Sandbox.ModAPI;
 using VRage;
 using VRage.ModAPI;
 using VRageMath;
+using Rynchodon.Autopilot.NavigationSettings;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {
@@ -73,9 +74,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock)
+		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock, Rynchodon.Weapons.Engager myEngager)
 		{
-			Vector3D destination = (Vector3D)CNS.getWayDest(false);
+			if (!CNS.getWayDest(false).HasValue)
+			{
+				myLogger.debugLog("no destination", "Run()");
+				return;
+			}
+
+			Vector3D destination = CNS.getWayDest(false).Value;
 			Vector3D? waypoint = CNS.myWaypoint;
 			bool ignoreAsteroids = CNS.ignoreAsteroids;
 			NavSettings.SpecialFlying SpecialFyingInstructions = CNS.SpecialFlyingInstructions;
@@ -100,8 +107,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					case NavSettings.TypeOfWayDest.BLOCK:
 					case NavSettings.TypeOfWayDest.GRID:
-						// run slowdown. see Navigator.calcMoveAndRotate()
-						this.DestGrid = CNS.CurrentGridDest.Grid;
+						// hostile grids should always be avoided (slowdown not available)
+						if (!CNS.target_locked)
+						{
+							// run slowdown. see Navigator.calcMoveAndRotate()
+							this.DestGrid = CNS.CurrentGridDest.Grid;
+						}
 						break;
 					case NavSettings.TypeOfWayDest.LAND:
 					default:
@@ -195,15 +206,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			CheckInterrupt();
-			if (SpecialFyingInstructions != NavSettings.SpecialFlying.None)
+			switch (SpecialFyingInstructions)
 			{
-				//Vector3 direction = WayDest - NavBlockPosition;
-				if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
-					return;
+				case NavSettings.SpecialFlying.Line_Any:
+				case NavSettings.SpecialFlying.Line_SidelForward:
+					{
+						if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
+							return;
 
-				myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
-				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
-				return;
+						myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
+						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
+						return;
+					}
 			}
 
 			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Searching_Alt, ObstructingEntity));

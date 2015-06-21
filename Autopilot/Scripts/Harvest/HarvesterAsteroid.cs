@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage;
@@ -80,7 +81,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			try
 			{
-				IEnumerator<Ingame.IMyTerminalBlock> drillEnum = GetDrills().GetEnumerator();
+				IEnumerator<IMyCubeBlock> drillEnum = GetDrills().GetEnumerator();
 				drillEnum.MoveNext();
 				NavigationDrill = drillEnum.Current as IMyCubeBlock; // while harvester is random, drill choice does not matter (assuming all drills face the same way)
 
@@ -117,7 +118,7 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			//myLogger.debugLog("Linear Speed Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Speed Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
-			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() >  0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
+			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() > 0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
 				IsStuck = false;
@@ -424,7 +425,7 @@ namespace Rynchodon.Autopilot.Harvest
 			CNS_SetHarvest(); // might be inside asteroid
 			CNS.setDestination(pointAway);
 			CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_Any;
-			myLogger.debugLog("navDrillPos = "+navDrillPos+", directionAway = "+directionAway+", pointAway = "+pointAway, "StartMoveAway()");
+			myLogger.debugLog("navDrillPos = " + navDrillPos + ", directionAway = " + directionAway + ", pointAway = " + pointAway, "StartMoveAway()");
 
 			SetNextStage(RotateToMoveAway, false);
 		}
@@ -440,7 +441,7 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
 
-				SetNextStage(MoveAway, false); // might be inside asteroid, enable drills to escape!
+				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
 				return;
 			}
 
@@ -523,9 +524,9 @@ namespace Rynchodon.Autopilot.Harvest
 			return false;
 		}
 
-		private ReadOnlyList<Ingame.IMyTerminalBlock> GetDrills()
+		private ReadOnlyList<IMyCubeBlock> GetDrills()
 		{
-			ReadOnlyList<Ingame.IMyTerminalBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			ReadOnlyList<IMyCubeBlock> allDrills = myCache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			return allDrills;
 		}
 
@@ -533,7 +534,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <para>In survival, returns fraction of drills filled</para>
 		/// <para>In creative, returns content per drill * 0.01</para>
 		/// </summary>
-		private float DrillFullness(ReadOnlyList<Ingame.IMyTerminalBlock> allDrills)
+		private float DrillFullness(ReadOnlyList<IMyCubeBlock> allDrills)
 		{
 			MyFixedPoint content = 0, capacity = 0;
 			int drillCount = 0;
@@ -606,7 +607,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private Vector3D? GetUsefulTarget(BoundingSphereD sphere)
 		{
 			Vector3 navPos = NavigationDrill.GetPosition();
-			for (int attempt = 0 ; attempt < 10 ; attempt++)
+			for (int attempt = 0; attempt < 10; attempt++)
 			{
 				Vector3 point = GetRandomTarget(sphere);
 				if (VoxelsBetweenNavAndPoint(point))
@@ -627,7 +628,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// Determines if there are voxels between navigation drill and given point
 		/// </summary>
 		private bool VoxelsBetweenNavAndPoint(Vector3D point)
-		{ return MyAPIGateway.Entities.RayCastVoxel(NavigationDrill.GetPosition(), point, out closestVoxel); }
+		{ return MyAPIGateway.Entities.RayCastVoxel_Safe(NavigationDrill.GetPosition(), point, out closestVoxel); }
 
 		#region CNS Variables
 
@@ -728,7 +729,7 @@ namespace Rynchodon.Autopilot.Harvest
 			else
 				navEnabledString = (NavigationDrill as IMyFunctionalBlock).Enabled.ToString();
 			if (myNav.MM != null && myNav.CNS != null)
-				myLogger.debugLog("entered " + method + ", DrillsOn = " + DrillsOn + ", stuck = " + IsStuck + ", nav drill enabled = " + navEnabledString
+				myLogger.debugLog("entered " + method + ", DrillsOn = " + DrillsOn + ", DrillState = " + DrillState + ", stuck = " + IsStuck + ", nav drill enabled = " + navEnabledString
 					+ ", speed = " + myNav.MM.movementSpeed + ", cruise = " + CNS.getSpeedCruise() + ", slow = " + CNS.getSpeedSlow(), method);
 		}
 	}

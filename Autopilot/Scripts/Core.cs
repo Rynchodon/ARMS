@@ -88,7 +88,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			MainLock.MainThread_TryReleaseExclusive();
+			MainLock.MainThread_ReleaseExclusive();
 			try
 			{
 				if (isUpdating || terminated)
@@ -98,7 +98,7 @@ namespace Rynchodon.Autopilot
 				doUpdate();
 				isUpdating = false;
 			}
-			finally { MainLock.MainThread_TryAcquireExclusive(); }
+			finally { MainLock.MainThread_AcquireExclusive(); }
 		}
 
 		// cannot log here, Logger is closed/closing

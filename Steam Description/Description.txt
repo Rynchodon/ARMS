@@ -70,6 +70,8 @@ bUseColourState - Autopilot will change colour of Autopilot block
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
 fDefaultSpeed - the desired minimum speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
+sTurretCommandsNPC - commands that N.P.C. turrets will used
+sTurretCommandsDefaultPlayer - commands that will be automatically added to players' turrets
 
 [h1]Known Issues[/h1]
 These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.

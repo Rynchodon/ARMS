@@ -12,10 +12,10 @@ namespace Rynchodon
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowRadar, bAllowTurretControl, bUseRemoteControl, bUseColourState,
+			bAllowAutopilot, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
 			yParallelPathfinder,
-			fDefaultSpeed, fMaxSpeed,
-			sSmartTurretDefaultNPC, sSmartTurretDefaultPlayer
+			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
+			sWeaponCommandsNPC
 		}
 
 		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
@@ -38,8 +38,9 @@ namespace Rynchodon
 		private const string settings_file_name = "AutopilotSettings.txt";
 		private static System.IO.TextWriter settingsWriter;
 
-		private static string strVersion = "Version";
-		private static int latestVersion = 35; // in sequence of updates on steam
+		private static readonly string strVersion = "Version";
+		public static readonly int latestVersion = 34; // in sequence of updates on steam
+		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger(null, "Settings");
 
@@ -47,7 +48,7 @@ namespace Rynchodon
 		{
 			buildSettings();
 
-			int fileVersion = readAll();
+			fileVersion = readAll();
 			if (fileVersion != latestVersion)
 				MyAPIGateway.Utilities.ShowNotification(modName + " has been updated.", 10000);
 			myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
@@ -62,17 +63,17 @@ namespace Rynchodon
 		{
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
-			AllSettings.Add(SettingName.bAllowTurretControl, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
+			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sSmartTurretDefaultNPC, new SettingString("[ Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar ]"));
-			AllSettings.Add(SettingName.sSmartTurretDefaultPlayer, new SettingString(""));
+			AllSettings.Add(SettingName.sWeaponCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Range 800 ; AllGrid ; Destroy ]"));
 		}
 
 		/// <summary>

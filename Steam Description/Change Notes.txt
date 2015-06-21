@@ -1,7 +1,10 @@
 Will be moved to steam every release.
 
 major:
+WeaponControl
 
 minor:
 harvester can start from inside a tunnel
 fixed not being able to write settings file
+relations are now ordered: enemy, owner, friend, neutral
+fixed some freezes and behaviour bugs

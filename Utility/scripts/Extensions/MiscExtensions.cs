@@ -41,6 +41,14 @@ namespace Rynchodon
 			return Physics.LinearAcceleration;
 		}
 
+		public static Vector3 GetLinearVelocity(this IMyEntity entity)
+		{
+			entity = entity.GetTopMostParent();
+			if (entity.Physics == null)
+				return Vector3.Zero;
+			return entity.Physics.LinearVelocity;
+		}
+
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
 		{ return RelativeVector3F.createFromLocal(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
 
@@ -261,5 +269,14 @@ namespace Rynchodon
 				&& first.WorldVolume.Intersects(second.WorldAABB)
 				&& first.WorldVolume.Intersects(second.WorldVolume);
 		}
+
+		public static bool IsValid(this float number)
+		{ return number != float.NaN && !float.IsInfinity(number); }
+
+		public static MatrixD RotationOnly(this MatrixD source)
+		{ return new MatrixD(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
+
+		public static Matrix RotationOnly(this Matrix source)
+		{ return new Matrix(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
 	}
 }

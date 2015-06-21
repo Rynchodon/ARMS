@@ -6,7 +6,7 @@ using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot
+namespace Rynchodon.Autopilot.NavigationSettings
 {
 	public class GridDestination
 	{
@@ -17,6 +17,7 @@ namespace Rynchodon.Autopilot
 		private ShipController seenBy;
 		public IMyCubeGrid Grid { get; private set; }
 		public IMyCubeBlock Block { get; private set; }
+		public Vector3D? Offset { get; set; }
 
 		private Logger myLogger;
 
@@ -33,7 +34,10 @@ namespace Rynchodon.Autopilot
 				myLogger.alwaysLog("Entity is not a grid", "GridDestination()", Logger.severity.FATAL);
 			this.Block = destBlock;
 
-			myLogger = new Logger("GridDestination", () => this.Grid.DisplayName, () => this.Block.DisplayNameText);
+			if (Block != null)
+				myLogger = new Logger("GridDestination", () => this.Grid.DisplayName, () => this.Block.DisplayNameText);
+			else
+				myLogger = new Logger("GridDestination", () => this.Grid.DisplayName);
 		}
 
 		public bool seenRecently()
@@ -42,7 +46,6 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// if seen within 10seconds, get the actual position. otherwise, use LastSeen.predictPosition
 		/// </summary>
-		/// <returns></returns>
 		public Vector3D GetGridPos()
 		{
 			if (Grid == null)
@@ -56,7 +59,6 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// if seen within 10seconds, get the actual position. otherwise, use LastSeen.predictPosition
 		/// </summary>
-		/// <returns></returns>
 		public Vector3D GetBlockPos()
 		{
 			if (Grid == null)
@@ -91,23 +93,36 @@ namespace Rynchodon.Autopilot
 			{
 				if (fromBlock)
 				{
+					//if (Offset.HasValue)
+					//	targetPosition = RelativePosition3F.FromBlock(Block, Offset.Value).ToWorld();
+					//else
 					targetPosition = Block.GetPosition();
-					//myLogger.debugLog("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
+					if (Offset.HasValue)
+						targetPosition += Offset.Value;
+					//myLogger.debugLog("block is at " + targetPosition + ", grid is at " + Grid.WorldAABB.Center + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				}
 				else
+				{
+					//if (Offset.HasValue)
+					//	targetPosition = RelativePosition3F.FromLocal(Grid, Offset.Value).ToWorld();
+					//else
 					targetPosition = Grid.WorldAABB.Center;
-				//myLogger.debugLog("grid is at " + Grid.WorldAABB.Center, "calculateInterceptionPoint()", Logger.severity.TRACE);
+					if (Offset.HasValue)
+						targetPosition += Offset.Value;
+					//myLogger.debugLog("grid is at " + targetPosition + ", Offset = " + Offset, "calculateInterceptionPoint()", Logger.severity.TRACE);
+				}
+
 				targetVelocity = Grid.Physics.LinearVelocity;
 				targetAcceleration = Grid.Physics.GetLinearAcceleration();
 			}
 			else
 			{
-				//myLogger.debugLog("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds+" seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
+				//myLogger.debugLog("not seen recently " + (DateTime.UtcNow - gridLastSeen.LastSeenAt).TotalSeconds + " seconds since last seen", "calculateInterceptionPoint()", Logger.severity.TRACE);
 				targetPosition = gridLastSeen.predictPosition();
 				targetVelocity = gridLastSeen.LastKnownVelocity;
 				targetAcceleration = Vector3.Zero;
 			}
-			if (targetVelocity == Vector3D.Zero)
+			if (targetVelocity.LengthSquared() < 100 || Grid.GetLinearVelocity().LengthSquared() < 100)
 			{
 				//myLogger.debugLog("shorting: target velocity is zero. position = " + targetPosition, "calculateInterceptionPoint()", Logger.severity.TRACE);
 				return targetPosition;

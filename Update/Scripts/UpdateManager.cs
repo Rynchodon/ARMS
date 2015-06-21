@@ -3,11 +3,14 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.AttachedGrid;
 using Rynchodon.Autopilot;
-using Rynchodon.Autopilot.Turret;
+using Rynchodon.Weapons;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage;
+using VRage.Collections;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -32,58 +35,90 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts()
 		{
+			// Antenna Communication
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
-					Beacon newBeacon = new Beacon(block);
-					RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
-				});
+				Beacon newBeacon = new Beacon(block);
+				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
-					TextPanel newTextPanel = new TextPanel(block);
-					RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
-				});
+				TextPanel newTextPanel = new TextPanel(block);
+				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
-					LaserAntenna newLA = new LaserAntenna(block);
-					RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
-				});
+				LaserAntenna newLA = new LaserAntenna(block);
+				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
-					ProgrammableBlock newPB = new ProgrammableBlock(block);
-					RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-				});
+				ProgrammableBlock newPB = new ProgrammableBlock(block);
+				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
+			});
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-					RadioAntenna newRA = new RadioAntenna(block);
-					RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-				});
+				RadioAntenna newRA = new RadioAntenna(block);
+				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
+			});
 
+			// Navigation
 			if (Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
 					if (Navigator.IsControllableBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
-
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (Navigator.IsControllableBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
+			});
+
+			// Weapons
+			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			{
+				// Turrets
+				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
+					Turret t = new Turret(block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
+					Turret t = new Turret(block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (block) => {
+					Turret t = new Turret(block);
+					RegisterForUpdates(1, t.Update_Targeting, block);
 				});
 
-			RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (IMyCubeBlock block) => {
-					TurretLargeGatling newTurret = new TurretLargeGatling(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				// Fixed
+				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (IMyCubeBlock block) => {
-					TurretLargeRocket newTurret = new TurretLargeRocket(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (IMyCubeBlock block) => {
-					TurretInterior newTurret = new TurretInterior(block);
-					RegisterForUpdates(1, newTurret.UpdateAfterSimulation, block);
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
 				});
+			}
+			else
+				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts()", Logger.severity.INFO);
 
-			//RegisterForBlock(typeof(MyObjectBuilder_OreDetector), (IMyCubeBlock block) =>
-			//	{
-			//		OreDetector newOD = new OreDetector(block);
-			//		RegisterForUpdates(100, newOD.Update100, block);
-			//	});
+			// Attached Blocks
+			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
+				StatorRotor.Stator stator = new StatorRotor.Stator(block);
+				RegisterForUpdates(1, stator.Update10, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedStator), (block) => {
+				StatorRotor.Stator stator = new StatorRotor.Stator(block);
+				RegisterForUpdates(1, stator.Update10, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
+				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
+				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+			});
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;
@@ -94,6 +129,9 @@ namespace Rynchodon.Update
 
 		private enum Status : byte { Not_Initialized, Initialized, Terminated }
 		private Status MangerStatus = Status.Not_Initialized;
+
+		private MyQueue<Action> AddRemoveActions = new MyQueue<Action>(8);
+		private FastResourceLock lock_AddRemoveActions = new FastResourceLock();
 
 		private Logger myLogger = new Logger(null, "UpdateManager");
 		private static UpdateManager Instance;
@@ -136,7 +174,7 @@ namespace Rynchodon.Update
 
 				//myLogger.debugLog("Adding all entities", "Init()");
 				foreach (IMyEntity entity in allEntities)
-					Entities_OnEntityAdd(entity);
+					AddEntity(entity);
 
 				MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 
@@ -156,7 +194,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			MainLock.MainThread_TryReleaseExclusive();
+			MainLock.MainThread_ReleaseExclusive();
 			try
 			{
 				switch (MangerStatus)
@@ -168,6 +206,17 @@ namespace Rynchodon.Update
 					case Status.Terminated:
 						return;
 				}
+				Dictionary<Action, uint> Unregister = null;
+
+				try
+				{
+					using (lock_AddRemoveActions.AcquireExclusiveUsing())
+						for (int i = 0; i < AddRemoveActions.Count; i++)
+							AddRemoveActions[i].Invoke();
+				}
+				catch (Exception ex)
+				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
+
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
 					{
@@ -176,10 +225,20 @@ namespace Rynchodon.Update
 							{ item.Invoke(); }
 							catch (Exception ex2)
 							{
-								myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
-								UnRegisterForUpdates(pair.Key, item);
+								if (Unregister == null)
+									Unregister = new Dictionary<Action, uint>();
+								if (!Unregister.ContainsKey(item))
+								{
+									myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
+									myLogger.debugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
+									Unregister.Add(item, pair.Key);
+								}
 							}
 					}
+
+				if (Unregister != null)
+					foreach (KeyValuePair<Action, uint> pair in Unregister)
+						UnRegisterForUpdates(pair.Value, pair.Key);
 			}
 			catch (Exception ex)
 			{
@@ -189,9 +248,11 @@ namespace Rynchodon.Update
 			finally
 			{
 				Update++;
-				MainLock.MainThread_TryAcquireExclusive();
+				MainLock.MainThread_AcquireExclusive();
 			}
 		}
+
+		#region Register
 
 		/// <summary>
 		/// register an Action for updates
@@ -250,11 +311,20 @@ namespace Rynchodon.Update
 			GridScriptConstructors.Add(constructor);
 		}
 
+		#endregion
+		#region Events
+
+		private void Entities_OnEntityAdd(IMyEntity entity)
+		{
+			using (lock_AddRemoveActions.AcquireExclusiveUsing())
+				AddRemoveActions.Enqueue(() => AddEntity(entity));
+		}
+
 		/// <summary>
 		/// if necessary, builds script for an entity
 		/// </summary>
 		/// <param name="entity"></param>
-		private void Entities_OnEntityAdd(IMyEntity entity)
+		private void AddEntity(IMyEntity entity)
 		{
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
@@ -262,21 +332,29 @@ namespace Rynchodon.Update
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
-					Grid_OnBlockAdded(slim);
+					AddBlock(slim);
 				asGrid.OnBlockAdded += Grid_OnBlockAdded;
 				asGrid.OnClosing += Grid_OnClosing;
 
 				foreach (var constructor in GridScriptConstructors)
-					constructor.Invoke(asGrid);
+					try { constructor.Invoke(asGrid); }
+					catch (Exception ex) { myLogger.alwaysLog("Exception in grid constructor: " + ex, "AddEntity()", Logger.severity.ERROR); }
 				return;
 			}
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
 				foreach (var constructor in CharacterScriptConstructors)
-					constructor.Invoke(asCharacter);
+					try { constructor.Invoke(asCharacter); }
+					catch (Exception ex) { myLogger.alwaysLog("Exception in character constructor: " + ex, "AddEntity()", Logger.severity.ERROR); }
 				return;
 			}
+		}
+
+		private void Grid_OnBlockAdded(IMySlimBlock block)
+		{
+			using (lock_AddRemoveActions.AcquireExclusiveUsing())
+				AddRemoveActions.Enqueue(() => { AddBlock(block); });
 		}
 
 		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
@@ -284,7 +362,7 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// if necessary, builds script for a block
 		/// </summary>
-		private void Grid_OnBlockAdded(IMySlimBlock block)
+		private void AddBlock(IMySlimBlock block)
 		{
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
@@ -298,7 +376,8 @@ namespace Rynchodon.Update
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
-						constructor.Invoke(fatblock);
+						try { constructor.Invoke(fatblock); }
+						catch (Exception ex) { myLogger.alwaysLog("Exception in " + typeId + " constructor: " + ex, "AddBlock()", Logger.severity.ERROR); }
 				return;
 			}
 		}
@@ -311,6 +390,14 @@ namespace Rynchodon.Update
 			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			asGrid.OnClosing -= Grid_OnClosing;
+		}
+
+		#endregion
+
+		protected override void UnloadData()
+		{
+			base.UnloadData();
+			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
 		}
 
 		/// <summary>
@@ -342,4 +429,3 @@ namespace Rynchodon.Update
 		}
 	}
 }
-

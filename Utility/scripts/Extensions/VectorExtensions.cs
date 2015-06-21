@@ -78,45 +78,5 @@ namespace Rynchodon
 						if (invokeOnEach.Invoke(new Vector3I(X, Y, Z)))
 							return;
 		}
-
-		///// <summary>
-		///// <para>invokes a function on each vector between min and max (inclusive)</para>
-		///// <para>breaks when toInvoke return true</para>
-		///// </summary>
-		//public static void ForEach(this Vector3I min, Vector3I max, int step, Func<Vector3I, bool> toInvoke)
-		//{
-		//	for (int x = min.X; x <= max.X; x += step)
-		//		for (int y = min.Y; y <= max.Y; y += step)
-		//			for (int z = min.Z; z <= max.Z; z += step)
-		//				if (toInvoke(new Vector3I(x, y, z)))
-		//					return;
-		//}
-
-		///// <summary>
-		///// <para>invokes a function on each vector between min and max (inclusive)</para>
-		///// <para>breaks when toInvoke return true</para>
-		///// </summary>
-		//public static void ForEach(this Vector3I min, Vector3I max, Func<Vector3I, bool> toInvoke)
-		//{ ForEach(min, max, 1, toInvoke); }
-
-		///// <summary>
-		///// <para>invokes a function on each vector between min and max (inclusive)</para>
-		///// <para>breaks when toInvoke return true</para>
-		///// </summary>
-		//public static void ForEach(this Vector3 min, Vector3 max, float step, Func<Vector3, bool> toInvoke)
-		//{
-		//	for (float x = min.X; x <= max.X; x += step)
-		//		for (float y = min.Y; y <= max.Y; y += step)
-		//			for (float z = min.Z; z <= max.Z; z += step)
-		//				if (toInvoke(new Vector3(x, y, z)))
-		//					return;
-		//}
-
-		///// <summary>
-		///// <para>invokes a function on each vector between min and max (inclusive)</para>
-		///// <para>breaks when toInvoke return true</para>
-		///// </summary>
-		//public static void ForEach(this Vector3 min, Vector3 max, Func<Vector3, bool> toInvoke)
-		//{ ForEach(min, max, 1, toInvoke); }
 	}
 }
