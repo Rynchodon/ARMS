@@ -5,7 +5,7 @@
 (Rotor-turrets are not working yet!)[/list]
 
 [b][u]Engaging[/u][/b]
-In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected. There is a performance cost for having an engage command for an Autopilot, so it is recommended to only use it when there is an enemy until this issue is resolved.
+In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected.
 
 [b][u]Info: Command Instructions[/u][/b]
 [list][*]All commands are to be used/typed in the display name of the weapon block.

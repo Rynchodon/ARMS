@@ -236,7 +236,7 @@ namespace Rynchodon
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		public static void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{ 
 			notify(message, disappearTimeMs, level);
 		}
@@ -248,18 +248,18 @@ namespace Rynchodon
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
-		public void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
 			MyFontEnum font = fontForSeverity(level);
 			if (MyAPIGateway.Utilities != null)
 				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
-			else
-				log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
+			//else
+			//	log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
 		}
 
 		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL }
 		
-		private MyFontEnum fontForSeverity(severity level = severity.TRACE) {
+		private static MyFontEnum fontForSeverity(severity level = severity.TRACE) {
 			switch (level) {
 				case severity.INFO:
 					return MyFontEnum.Green;

@@ -14,4 +14,4 @@ Missile
 
 Other:
 Antenna Relay & Radar with Display
-Smart Turrets
+Weapon Control

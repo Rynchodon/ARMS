@@ -39,7 +39,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static readonly string strVersion = "Version";
-		public static readonly int latestVersion = 34; // in sequence of updates on steam
+		public static readonly int latestVersion = 35; // in sequence of updates on steam
 		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger(null, "Settings");
@@ -50,7 +50,7 @@ namespace Rynchodon
 
 			fileVersion = readAll();
 			if (fileVersion != latestVersion)
-				MyAPIGateway.Utilities.ShowNotification(modName + " has been updated.", 10000);
+				Logger.debugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
 			myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
 
 			writeAll(); // writing immediately decreases user errors & whining
