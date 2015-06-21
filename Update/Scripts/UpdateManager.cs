@@ -230,7 +230,7 @@ namespace Rynchodon.Update
 								if (!Unregister.ContainsKey(item))
 								{
 									myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, "UpdateAfterSimulation()", Logger.severity.ERROR);
-									myLogger.debugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
+									Logger.debugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
 									Unregister.Add(item, pair.Key);
 								}
 							}
