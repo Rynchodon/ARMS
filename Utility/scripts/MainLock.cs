@@ -16,6 +16,7 @@ namespace Rynchodon
 		private static Logger myLogger = new Logger("MainLock");
 		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
 		private static FastResourceLock Lock_Lock = new FastResourceLock("Lock_Lock");
+		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
 		static MainLock()
 		{ MainThread_AcquireExclusive(); }
@@ -115,11 +116,17 @@ namespace Rynchodon
 		/// <param name="preCollect">applied before intersection test</param>
 		public static void GetEntitiesInSphere_Safe_NoBlock(this IMyEntities entitiesObject, BoundingSphereD boundingSphere, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
 		{
+			//HashSet<IMyEntity> collectedEntities = new HashSet<IMyEntity>();
+			//entitiesObject.GetEntities_Safe(collectedEntities, preCollect);
+			//foreach (IMyEntity entity in collectedEntities)
+			//	if (boundingSphere.Intersects(entity.WorldVolume))
+			//		entities.Add(entity);
+
 			Func<IMyEntity, bool> collector;
 			if (preCollect == null)
-				collector = (entity) => boundingSphere.Intersects(entity.WorldAABB);
+				collector = (entity) => boundingSphere.Intersects(entity.WorldVolume);
 			else
-				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldAABB); };
+				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldVolume); };
 			entitiesObject.GetEntities_Safe(entities, collector);
 		}
 
@@ -185,10 +192,13 @@ namespace Rynchodon
 		/// </remarks>
 		public static bool RayCastVoxel_Safe(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
 		{
-			using (Lock_MainThread.AcquireSharedUsing())
+			using (lock_RayCast.AcquireExclusiveUsing())
 			{
-				entities.IsInsideVoxel(from, to, out boundary);
-				return (boundary != from);
+				using (Lock_MainThread.AcquireSharedUsing())
+				{
+					entities.IsInsideVoxel(from, to, out boundary);
+					return (boundary != from);
+				}
 			}
 		}
 

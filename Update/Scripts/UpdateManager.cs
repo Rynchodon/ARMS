@@ -337,14 +337,16 @@ namespace Rynchodon.Update
 				asGrid.OnClosing += Grid_OnClosing;
 
 				foreach (var constructor in GridScriptConstructors)
-					constructor.Invoke(asGrid);
+					try { constructor.Invoke(asGrid); }
+					catch (Exception ex) { myLogger.alwaysLog("Exception in grid constructor: " + ex, "AddEntity()", Logger.severity.ERROR); }
 				return;
 			}
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
 				foreach (var constructor in CharacterScriptConstructors)
-					constructor.Invoke(asCharacter);
+					try { constructor.Invoke(asCharacter); }
+					catch (Exception ex) { myLogger.alwaysLog("Exception in character constructor: " + ex, "AddEntity()", Logger.severity.ERROR); }
 				return;
 			}
 		}
@@ -374,7 +376,8 @@ namespace Rynchodon.Update
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
-						constructor.Invoke(fatblock);
+						try { constructor.Invoke(fatblock); }
+						catch (Exception ex) { myLogger.alwaysLog("Exception in " + typeId + " constructor: " + ex, "AddBlock()", Logger.severity.ERROR); }
 				return;
 			}
 		}

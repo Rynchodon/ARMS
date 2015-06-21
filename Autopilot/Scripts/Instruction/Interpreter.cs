@@ -545,11 +545,21 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <summary>
 		/// set engage nearest enemy
 		/// </summary>
-		/// <param name="instructionAction"></param>
-		/// <param name="dataLowerCase"></param>
 		/// <returns>true</returns>
+		/// <remarks>
+		/// <para>This command will be renamed to "enemy" and take the form: [ E range(, first action)(, second action).. ]</para>
+		/// <para>Action could be engage, flee, missile, or self-destruct. If an action cannot be taken, try the next one.</para>
+		/// <para>Engage would be possible as long as weapons are working. Flee and missile would be possible as long as the ship can move. Self destruct would require warheads on the ship.</para>
+		/// </remarks>
 		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
 		{
+			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			{
+				myLogger.debugLog("Cannot engage, weapon control is disabled.", "getAction_engage()", Logger.severity.WARNING);
+				instructionAction = () => { };
+				return true;
+			}
+
 			//string searchBlockName = CNS.tempBlockName;
 			//CNS.tempBlockName = null;
 			instructionAction = () => {

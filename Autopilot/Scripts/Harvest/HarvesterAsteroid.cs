@@ -118,7 +118,7 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			//myLogger.debugLog("Linear Speed Squared = " + myCubeGrid.Physics.LinearVelocity.LengthSquared() + ", Angular Speed Squared = " + myCubeGrid.Physics.AngularVelocity.LengthSquared(), "Run()");
-			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() >  0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
+			if (myCubeGrid.Physics.LinearVelocity.LengthSquared() > 0.0625f || myCubeGrid.Physics.AngularVelocity.LengthSquared() > 0.0625)
 			{
 				StuckAt = DateTime.UtcNow + StuckAfter;
 				IsStuck = false;
@@ -425,7 +425,7 @@ namespace Rynchodon.Autopilot.Harvest
 			CNS_SetHarvest(); // might be inside asteroid
 			CNS.setDestination(pointAway);
 			CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_Any;
-			myLogger.debugLog("navDrillPos = "+navDrillPos+", directionAway = "+directionAway+", pointAway = "+pointAway, "StartMoveAway()");
+			myLogger.debugLog("navDrillPos = " + navDrillPos + ", directionAway = " + directionAway + ", pointAway = " + pointAway, "StartMoveAway()");
 
 			SetNextStage(RotateToMoveAway, false);
 		}
@@ -441,7 +441,7 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				myLogger.debugLog("Finished rotating", "RotateToMoveAway()");
 
-				SetNextStage(MoveAway, false); // might be inside asteroid, enable drills to escape!
+				SetNextStage(MoveAway, true); // might be inside asteroid, enable drills to escape!
 				return;
 			}
 
@@ -607,7 +607,7 @@ namespace Rynchodon.Autopilot.Harvest
 		private Vector3D? GetUsefulTarget(BoundingSphereD sphere)
 		{
 			Vector3 navPos = NavigationDrill.GetPosition();
-			for (int attempt = 0 ; attempt < 10 ; attempt++)
+			for (int attempt = 0; attempt < 10; attempt++)
 			{
 				Vector3 point = GetRandomTarget(sphere);
 				if (VoxelsBetweenNavAndPoint(point))
@@ -729,7 +729,7 @@ namespace Rynchodon.Autopilot.Harvest
 			else
 				navEnabledString = (NavigationDrill as IMyFunctionalBlock).Enabled.ToString();
 			if (myNav.MM != null && myNav.CNS != null)
-				myLogger.debugLog("entered " + method + ", DrillsOn = " + DrillsOn + ", stuck = " + IsStuck + ", nav drill enabled = " + navEnabledString
+				myLogger.debugLog("entered " + method + ", DrillsOn = " + DrillsOn + ", DrillState = " + DrillState + ", stuck = " + IsStuck + ", nav drill enabled = " + navEnabledString
 					+ ", speed = " + myNav.MM.movementSpeed + ", cruise = " + CNS.getSpeedCruise() + ", slow = " + CNS.getSpeedSlow(), method);
 		}
 	}

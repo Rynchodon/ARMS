@@ -162,11 +162,15 @@ namespace Rynchodon.Autopilot
 							addToRotate((float)CMM.pitch, (float)CMM.yaw);
 							CNS.rotateState = NavSettings.Rotating.ROTATING;
 							return;
+						case NavSettings.Moving.SIDELING:
+							if (current_pitch != 0 || current_roll != 0 || current_yaw != 0)
+								stopRotateRoll();
+							return;
 						default:
 							return;
 					}
 				case NavSettings.Rotating.ROTATING:
-					//myLogger.debugLog("entered ROTATING, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw, "calcAndRotate()");
+					myLogger.debugLog("entered ROTATING, pitch = " + CMM.pitch + ", yaw = " + CMM.yaw + ", need pitch = " + needToRotate_pitch + ", need yaw = " + needToRotate_yaw, "calcAndRotate()");
 					float whichDecel = currentRotateProfile().decelPortion;
 					if (needToRotate_pitch > rotComp_minimum && CMM.pitch < needToRotate_pitch * whichDecel)
 					{

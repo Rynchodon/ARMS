@@ -4,6 +4,9 @@
 [list]Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.
 (Rotor-turrets are not working yet!)[/list]
 
+[b][u]Engaging[/u][/b]
+In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected. There is a performance cost for having an engage command for an Autopilot, so it is recommended to only use it when there is an enemy until this issue is resolved.
+
 [b][u]Info: Command Instructions[/u][/b]
 [list][*]All commands are to be used/typed in the display name of the weapon block.
 [list][*]This is found in the Control Panel for the specified block
@@ -93,7 +96,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [list][*]Destroy - [i]Destroys all terminal blocks in hostile grids in range (small, large, & station).[/i][/list]
 
 [b][u]Examples:[/u][/b]
-[list][(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Functional ; Destroy] 
+[list][(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Functional ; Destroy]
 [list]Will disable functional warheads, turrets, rocket launchers, gatling guns, reactors, batteries, and solar panels on grids in range. Should only be used on a turret because range and grid types have not been specified. Once none of those can be found, destroy everything.[/list]
 [(Turret, Rocket, Gatling) ; AllGrid ; Range 600]
 [list]Disable all enemy weapons within 600 m.[/list]

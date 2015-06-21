@@ -99,7 +99,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private static void checkAndCruise(Navigator nav, Logger myLogger) //float rotLengthSq)
 		{
-			myLogger.debugLog("entered checkAndCruise, speed=" + nav.MM.movementSpeed + ", slow=" + nav.CNS.getSpeedSlow() + ", cruise=" + nav.CNS.getSpeedCruise(), "checkAndCruise()");
+			//myLogger.debugLog("entered checkAndCruise, speed=" + nav.MM.movementSpeed + ", slow=" + nav.CNS.getSpeedSlow() + ", cruise=" + nav.CNS.getSpeedCruise(), "checkAndCruise()");
 
 			switch (nav.CNS.moveState)
 			{

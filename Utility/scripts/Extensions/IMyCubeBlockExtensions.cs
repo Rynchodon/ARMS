@@ -73,9 +73,9 @@ namespace Rynchodon
 			return false;
 		}
 
-		public static Relations mostHostile(this Relations rel)
+		public static Relations highestPriority(this Relations rel)
 		{
-			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Neutral, Relations.Faction, Relations.Owner })
+			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral })
 				if (rel.HasFlagFast(flag))
 					return flag;
 			return Relations.None;

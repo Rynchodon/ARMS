@@ -26,7 +26,8 @@ namespace Rynchodon.Weapons
 		private readonly Logger myLogger;
 
 		private CachingList<FixedWeapon> myWeapons_Fixed;
-		private CachingList<Turret> myWeapons_Turret;
+		//private CachingList<Turret> myWeapons_Turret;
+		private CachingList<WeaponTargeting> myWeapons_All;
 		private FixedWeapon value_primary;
 		private float value_MinWeaponRange, value_MaxWeaponRange;
 
@@ -68,10 +69,17 @@ namespace Rynchodon.Weapons
 			if (CurrentStage != Stage.Disarmed)
 				return;
 
+			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			{
+				myLogger.debugLog("Cannot arm, weapon control is disabled.", "Arm()", Logger.severity.WARNING);
+				return;
+			}
+
 			myLogger.debugLog("Arming all weapons", "Arm()");
 
 			myWeapons_Fixed = new CachingList<FixedWeapon>();
-			myWeapons_Turret = new CachingList<Turret>();
+			//myWeapons_Turret = new CachingList<Turret>();
+			myWeapons_All = new CachingList<WeaponTargeting>();
 			value_MinWeaponRange = 0;
 			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
 
@@ -86,6 +94,7 @@ namespace Rynchodon.Weapons
 						{
 							myLogger.debugLog("Took control of " + weapon.CubeBlock.DisplayNameText, "Arm()");
 							myWeapons_Fixed.Add(weapon);
+							myWeapons_All.Add(weapon);
 						}
 					}
 			}
@@ -99,17 +108,20 @@ namespace Rynchodon.Weapons
 						if (weapon.IsControllingWeapon)
 						{
 							myLogger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
-							myWeapons_Turret.Add(weapon);
+							//myWeapons_Turret.Add(weapon);
+							myWeapons_All.Add(weapon);
 						}
 					}
 			}
 
 			myWeapons_Fixed.ApplyAdditions();
-			myWeapons_Turret.ApplyAdditions();
+			//myWeapons_Turret.ApplyAdditions();
+			myWeapons_All.ApplyAdditions();
 
 			//myLogger.debugLog("MinWeaponRange = " + MinWeaponRange, "Arm()");
 
-			if (myWeapons_Fixed.Count != 0 || myWeapons_Turret.Count != 0)
+			//if (myWeapons_Fixed.Count != 0 || myWeapons_Turret.Count != 0)
+			if (myWeapons_All .Count != 0)
 			{
 				myLogger.debugLog("now armed", "Arm()");
 				CurrentStage = Stage.Armed;
@@ -139,7 +151,8 @@ namespace Rynchodon.Weapons
 				weapon.EngagerReleaseControl(this);
 
 			myWeapons_Fixed = null;
-			myWeapons_Turret = null;
+			//myWeapons_Turret = null;
+			myWeapons_All = null;
 
 			myLogger.debugLog("now disarmed", "Disarm()");
 			CurrentStage = Stage.Disarmed;
@@ -182,6 +195,17 @@ namespace Rynchodon.Weapons
 			return value_primary;
 		}
 
+		/// <summary>
+		/// Checks if this Engager has any weapon that it can use.
+		/// </summary>
+		public bool HasWeaponControl()
+		{
+			foreach (WeaponTargeting weapon in myWeapons_All)
+				if (weapon.IsControllingWeapon)
+					return true;
+			return false;
+		}
+
 		public bool CanTarget(IMyEntity entity)
 		{
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
@@ -200,14 +224,25 @@ namespace Rynchodon.Weapons
 				return false;
 			}
 
-			foreach (FixedWeapon weapon in myWeapons_Fixed)
+			foreach (WeaponTargeting weapon in myWeapons_All)
+			{
+				if (weapon.CubeBlock.Closed)
+				{
+					myWeapons_All.Remove(weapon);
+					FixedWeapon asFixed = weapon as FixedWeapon;
+					if (asFixed != null)
+						myWeapons_Fixed.Remove(asFixed);
+				}
+
+				if (!weapon.IsControllingWeapon)
+					continue;
+
 				if (CanTarget(weapon, grid))
 					return true;
+			}
 
-			foreach (Turret weapon in myWeapons_Turret)
-				if (CanTarget(weapon, grid))
-					return true;
-
+			myWeapons_All.ApplyRemovals();
+			myWeapons_Fixed.ApplyRemovals();
 			return false;
 		}
 
@@ -229,18 +264,29 @@ namespace Rynchodon.Weapons
 		{
 			value_MinWeaponRange = float.MaxValue;
 			value_MaxWeaponRange = 0;
-			foreach (FixedWeapon weapon in myWeapons_Fixed)
-			{
-				float TargetingRange = weapon.Options.TargetingRange;
-				if (TargetingRange < 1)
-					continue;
+			//foreach (FixedWeapon weapon in myWeapons_Fixed)
+			//{
+			//	float TargetingRange = weapon.Options.TargetingRange;
+			//	if (TargetingRange < 1)
+			//		continue;
 
-				if (TargetingRange < value_MinWeaponRange)
-					value_MinWeaponRange = TargetingRange;
-				if (TargetingRange > value_MaxWeaponRange)
-					value_MaxWeaponRange = TargetingRange;
-			}
-			foreach (Turret weapon in myWeapons_Turret)
+			//	if (TargetingRange < value_MinWeaponRange)
+			//		value_MinWeaponRange = TargetingRange;
+			//	if (TargetingRange > value_MaxWeaponRange)
+			//		value_MaxWeaponRange = TargetingRange;
+			//}
+			//foreach (Turret weapon in myWeapons_Turret)
+			//{
+			//	float TargetingRange = weapon.Options.TargetingRange;
+			//	if (TargetingRange < 1)
+			//		continue;
+
+			//	if (TargetingRange < value_MinWeaponRange)
+			//		value_MinWeaponRange = TargetingRange;
+			//	if (TargetingRange > value_MaxWeaponRange)
+			//		value_MaxWeaponRange = TargetingRange;
+			//}
+			foreach (WeaponTargeting weapon in myWeapons_All)
 			{
 				float TargetingRange = weapon.Options.TargetingRange;
 				if (TargetingRange < 1)
@@ -265,7 +311,7 @@ namespace Rynchodon.Weapons
 			{
 				if (!weapon.Options.CanTargetType(TargetType.Station))
 				{
-					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target stations", "CanTarget()");
+					//myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target stations", "CanTarget()");
 					return false;
 				}
 			}
@@ -273,14 +319,14 @@ namespace Rynchodon.Weapons
 			{
 				if (!weapon.Options.CanTargetType(TargetType.LargeGrid))
 				{
-					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target large ships", "CanTarget()");
+					//myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target large ships", "CanTarget()");
 					return false;
 				}
 			}
 			else
 				if (!weapon.Options.CanTargetType(TargetType.SmallGrid))
 				{
-					myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target small ships", "CanTarget()");
+					//myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target small ships", "CanTarget()");
 					return false;
 				}
 
@@ -292,12 +338,12 @@ namespace Rynchodon.Weapons
 					foreach (var block in typeBlocks)
 						if (block.IsWorking || (weapon.Options.FlagSet(TargetingFlags.Functional) && block.IsFunctional))
 						{
-							myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " can target " + search, "CanTarget()");
+							//myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " can target " + search, "CanTarget()");
 							return true;
 						}
 			}
 
-			myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target, no blocks match", "CanTarget()");
+			//myLogger.debugLog(weapon.CubeBlock.DisplayNameText + " cannot target, no blocks match", "CanTarget()");
 			return false;
 		}
 	}

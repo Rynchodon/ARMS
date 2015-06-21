@@ -68,19 +68,6 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			// upgrade
-			if (Settings.fileVersion > 0 && Settings.fileVersion < 34)
-			{
-				string instructions = CubeBlock.DisplayNameText.getInstructions();
-				if (instructions != null && !instructions.Contains("(") && !instructions.Contains(")"))
-				{
-					string name = CubeBlock.DisplayNameText.Replace("[", "[(");
-					name = name.Replace("]", ")]");
-					(CubeBlock as IMyTerminalBlock).SetCustomName(name);
-					myLogger.debugLog("upgraded from previous version, brackets added", "Turret()");
-				}
-			}
-
 			EnableWeaponTargeting();
 			Initialized = true;
 		}

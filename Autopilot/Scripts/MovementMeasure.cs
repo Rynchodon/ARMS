@@ -105,17 +105,29 @@ namespace Rynchodon.Autopilot
 			if (!targetDirection.HasValue)
 			{
 				if (owner.CNS.rotateToPoint.HasValue)
+				{
 					dirNorm = Vector3D.Normalize(owner.CNS.rotateToPoint.Value - owner.getNavigationBlock().GetPosition());
+					myLogger.debugLog("dirNorm from rotateToPoint: " + dirNorm, "buildPitchYaw()");
+				}
 				else
 				{
 					if (owner.myEngager.CurrentStage == Weapons.Engager.Stage.Engaging)
+					{
 						dirNorm = Vector3.Zero;
+						myLogger.debugLog("dirNorm is Zero, engager has not set rotateToPoint", "buildPitchYaw()");
+					}
 					else
+					{
 						dirNorm = displacement.ToWorldNormalized();
+						myLogger.debugLog("dirNorm from displacement: " + dirNorm + ", waypoint = " + currentWaypoint + ", block pos = " + navBlockPos, "buildPitchYaw()");
+					}
 				}
 			}
 			else
+			{
 				dirNorm = targetDirection.Value;
+				myLogger.debugLog("dirNorm from targetDirection: " + dirNorm, "buildPitchYaw()");
+			}
 
 			if (dirNorm == Vector3D.Zero)
 			{

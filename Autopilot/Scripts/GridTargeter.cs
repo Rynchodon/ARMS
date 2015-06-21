@@ -37,7 +37,8 @@ namespace Rynchodon.Autopilot
 			//	nextTryLockOn = DateTime.UtcNow.AddSeconds(10);
 			//	return;
 			//}
-			owner.myEngager.Arm();
+			if (owner.CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+				owner.myEngager.Arm();
 
 			myLogger.debugLog("trying to lock on type=" + owner.CNS.lockOnTarget, "tryLockOn()", Logger.severity.TRACE);
 
@@ -49,7 +50,9 @@ namespace Rynchodon.Autopilot
 				if (owner.CNS.target_locked)
 				{
 					myLogger.debugLog("lost lock on " + owner.CNS.GridDestName, "tryLockOn()");
-					owner.myEngager.Disarm();
+					owner.fullStop("lost lock on " + owner.CNS.GridDestName);
+					if (owner.CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+						owner.myEngager.Disarm();
 					owner.CNS.target_locked = false;
 					owner.CNS.atWayDest(NavSettings.TypeOfWayDest.GRID);
 				}
@@ -77,7 +80,8 @@ namespace Rynchodon.Autopilot
 				owner.reportState(Navigator.ReportableState.Engaging);
 			owner.CNS.waitUntil = DateTime.UtcNow; // stop waiting
 			owner.CNS.clearSpeedInternal();
-			owner.myEngager.Engage();
+			if (owner.CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+				owner.myEngager.Engage();
 		}
 
 		/// <summary>
@@ -150,11 +154,12 @@ namespace Rynchodon.Autopilot
 
 				myLogger.debugLog("checking hostile grid: " + grid.DisplayName, "lastSeenHostile()");
 
-				if (!owner.myEngager.CanTarget(grid))
-				{
-					myLogger.debugLog("engager cannot target grid: " + grid.DisplayName, "lastSeenHostile()");
-					continue;
-				}
+				if (owner.CNS.lockOnTarget == NavSettings.TARGET.ENEMY)
+					if (!owner.myEngager.CanTarget(grid))
+					{
+						myLogger.debugLog("engager cannot target grid: " + grid.DisplayName, "lastSeenHostile()");
+						continue;
+					}
 
 				IMyCubeBlock matchBlock = null;
 				if (!string.IsNullOrEmpty(blockContains) && !findBestHostile(grid, out matchBlock, blockContains)) // grid does not contain at least one matching block

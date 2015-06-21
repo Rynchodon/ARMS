@@ -85,7 +85,7 @@ namespace Rynchodon.Weapons
 
 			this.CubeBlock = weapon;
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon);// () => weapon.CubeGrid.DisplayName, () => weapon.DefinitionDisplayNameText, () => weapon.getNameOnly());
+			this.myLogger = new Logger("WeaponTargeting", weapon);
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.CurrentTarget = new Target();
@@ -455,7 +455,7 @@ namespace Rynchodon.Weapons
 		/// <para>If the direction will put shots on target, fire the weapon.</para>
 		/// <para>If the direction will miss the target, stop firing.</para>
 		/// </summary>
-		/// <param name="direction">The direction the weapon is pointing in.</param>
+		/// <param name="direction">The direction the weapon is pointing in. Must be normalized.</param>
 		protected void CheckFire(Vector3 direction)
 		{
 			using (lock_CurrentDirection.AcquireExclusiveUsing())
@@ -471,14 +471,16 @@ namespace Rynchodon.Weapons
 			}
 
 			Vector3 weaponPosition = BarrelPositionWorld();
-			float distanceToTarget = Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value);
+
+			//float distance = Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value); // check for obstructions between weapon and target
+			float distance = LoadedAmmo.Definition.MaxTrajectory; // test for obstructions between weapon and max range of weapon
 
 			Vector3 finalPosition;
 			Line shot;
 			float speed;
 			using (lock_CurrentDirection.AcquireSharedUsing())
 			{
-				finalPosition = weaponPosition + Vector3.Normalize(CurrentDirection) * distanceToTarget;
+				finalPosition = weaponPosition + CurrentDirection * distance;
 				shot = new Line(weaponPosition, finalPosition, false);
 
 				//myLogger.debugLog("final position = " + finalPosition + ", weaponPosition = " + weaponPosition + ", direction = " + Vector3.Normalize(direction) + ", distanceToTarget = " + distanceToTarget, "CheckFire()");

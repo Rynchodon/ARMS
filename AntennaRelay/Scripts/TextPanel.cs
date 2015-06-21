@@ -223,7 +223,7 @@ namespace Rynchodon.AntennaRelay
 				if (grid == null || AttachedGrids.isGridAttached(grid, myCubeBlock.CubeGrid))
 					continue;
 
-				IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(grid, IMyCubeBlockExtensions.Relations.Enemy).mostHostile();
+				IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(grid, IMyCubeBlockExtensions.Relations.Enemy).highestPriority();
 				sortableSeen.Add(new sortableLastSeen(myPos, toDisplay.Current, relations));
 			}
 			sortableSeen.Sort();
@@ -324,7 +324,7 @@ namespace Rynchodon.AntennaRelay
 						myLogger.alwaysLog("cubeGrid from LastSeen is null", "replaceEntityIdsWithLastSeen()", Logger.severity.WARNING);
 						continue;
 					}
-					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).mostHostile();
+					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).highestPriority();
 					newText.Append((new sortableLastSeen(myPos, seen, relations)).TextForPlayer(count++));
 					//myLogger.debugLog("append OK", "replaceEntityIdsWithLastSeen()");
 				}

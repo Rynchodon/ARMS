@@ -107,9 +107,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					case NavSettings.TypeOfWayDest.BLOCK:
 					case NavSettings.TypeOfWayDest.GRID:
-						if (!CNS.CurrentGridDest.Offset.HasValue)
+						// hostile grids should always be avoided (slowdown not available)
+						if (!CNS.target_locked)
+						{
 							// run slowdown. see Navigator.calcMoveAndRotate()
 							this.DestGrid = CNS.CurrentGridDest.Grid;
+						}
 						break;
 					case NavSettings.TypeOfWayDest.LAND:
 					default:

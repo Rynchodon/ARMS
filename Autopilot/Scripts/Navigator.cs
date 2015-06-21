@@ -453,14 +453,26 @@ namespace Rynchodon.Autopilot
 				FixedWeapon primary = myEngager.GetPrimaryWeapon();
 				if (primary == null)
 				{
-					myLogger.debugLog("no weapons remain", "navigate()", Logger.severity.DEBUG);
-					fullStop("no weapons remain");
-					myEngager.Disarm();
-					CNS.atWayDest(NavSettings.TypeOfWayDest.GRID);
-					return;
+					if (myEngager.HasWeaponControl())
+					{
+						myLogger.debugLog("only turrets remain", "navigate()");
+						CNS.rotateToPoint = null;
+					}
+					else
+					{
+						myLogger.debugLog("no weapons remain", "navigate()", Logger.severity.DEBUG);
+						fullStop("no weapons remain");
+						myEngager.Disarm();
+						CNS.atWayDest(NavSettings.TypeOfWayDest.GRID);
+						return;
+					}
 				}
-				//myLogger.debugLog("have a primary weapon: " + primary.CubeBlock.DisplayNameText, "navigate()");
-				CNS.rotateToPoint = primary.CurrentTarget.InterceptionPoint;
+				else // primary != null
+				{
+					//myLogger.debugLog("have a primary weapon: " + primary.CubeBlock.DisplayNameText, "navigate()");
+					CNS.rotateToPoint = primary.CurrentTarget.InterceptionPoint;
+				}
+
 				if (!CNS.rotateToPoint.HasValue)
 				{
 					//myLogger.debugLog("primary weapon does not have a target.", "navigate()");
@@ -488,7 +500,7 @@ namespace Rynchodon.Autopilot
 					if (MM.distToPoint < 100)
 					{
 						CNS.CurrentGridDest.Offset = myEngager.GetRandomOffset();
-						myLogger.debugLog("Near way/dest, setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
+						myLogger.debugLog("Near way/dest, setting random offset: " + CNS.CurrentGridDest.Offset, "navigate()");
 						return;
 					}
 					else
@@ -496,12 +508,12 @@ namespace Rynchodon.Autopilot
 				}
 				else
 				{
-					//myLogger.debugLog("no offset value", "checkAt_wayDest()");
+					//myLogger.debugLog("no offset value", "navigate()");
 					//if (MM.distToDestGrid < myEngager.MaxWeaponRange * 2)
 					//{
 					CNS.CurrentGridDest.Offset = myEngager.GetRandomOffset();
-					//	myLogger.debugLog("Near weapon range, setting random offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
-					myLogger.debugLog("Setting first offset: " + CNS.CurrentGridDest.Offset, "checkAt_wayDest()");
+					//	myLogger.debugLog("Near weapon range, setting random offset: " + CNS.CurrentGridDest.Offset, "navigate()");
+					myLogger.debugLog("Setting first offset: " + CNS.CurrentGridDest.Offset, "navigate()");
 					return;
 					//}
 					//else
@@ -538,8 +550,8 @@ namespace Rynchodon.Autopilot
 			if (!checkAt_wayDest())
 				collisionCheckMoveAndRotate();
 
-			if (CNS.moveState != NavSettings.Moving.SIDELING)
-				calcAndRotate();
+			//if (CNS.moveState != NavSettings.Moving.SIDELING)
+			calcAndRotate();
 		}
 
 		internal const int radiusLandWay = 10;
@@ -741,11 +753,6 @@ namespace Rynchodon.Autopilot
 					StartMoveHybrid();
 					return true;
 				}
-				if (MM.distToWayDest < CNS.destinationRadius)
-				{
-					myLogger.debugLog("inside destination radius", "MoveIfPossible()");
-					return false;
-				}
 				if (CNS.SpecialFlyingInstructions == NavSettings.SpecialFlying.Line_SidelForward)
 				{
 					StartMoveSidel();
@@ -775,6 +782,9 @@ namespace Rynchodon.Autopilot
 
 		private void StartMoveSidel()
 		{
+			//if (CNS.rotateState != NavSettings.Rotating.NOT_ROTA)
+			//	throw new InvalidOperationException("Cannot sidel while rotating.");
+
 			calcAndMove(true);
 			CNS.moveState = NavSettings.Moving.SIDELING;
 		}
@@ -795,7 +805,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// stop when greater than
 		/// </summary>
-		private const float onCourse_sidel = 0.1f, onCourse_hybrid = 0.1f, onCourse_engage = MathHelper.Pi / 8;
+		private const float offCourse_sidel = 0.1f, offCourse_hybrid = 0.1f, offCourse_engage = MathHelper.PiOver2;
 
 		private Vector3 moveDirection = Vector3.Zero;
 
@@ -815,9 +825,9 @@ namespace Rynchodon.Autopilot
 					{
 						case NavSettings.Moving.SIDELING:
 							{
-								if (offCourse < onCourse_sidel)
+								if (offCourse < offCourse_sidel)
 								{
-									if (movingTooSlow)
+									if (movingTooSlow || currentMove != Vector3.Zero)
 										goto case NavSettings.Moving.NOT_MOVE;
 								}
 								else
@@ -829,15 +839,12 @@ namespace Rynchodon.Autopilot
 							}
 						case NavSettings.Moving.HYBRID:
 							{
-								if (movingTooSlow)
-									goto case NavSettings.Moving.NOT_MOVE;
-
-								float onCourse;
+								float offCourseThresh;
 								if (CNS.rotateToPoint.HasValue)
-									onCourse = onCourse_engage;
+									offCourseThresh = offCourse_engage;
 								else
-									onCourse = onCourse_hybrid;
-								if (MM.movementSpeed > 10 && offCourse > onCourse)
+									offCourseThresh = offCourse_hybrid;
+								if (MM.movementSpeed > 10 && offCourse > offCourseThresh)
 								{
 									myLogger.debugLog("distance squared between " + course + " and " + moveDirection + " is " + offCourse, "calcAndMove()");
 									if (CNS.rotateToPoint.HasValue)
@@ -850,6 +857,9 @@ namespace Rynchodon.Autopilot
 									calcAndMove();
 									return;
 								}
+
+								if (movingTooSlow || currentMove != Vector3.Zero)
+									goto case NavSettings.Moving.NOT_MOVE;
 
 								if (currentMove != Vector3.Zero)
 									goto case NavSettings.Moving.NOT_MOVE;
