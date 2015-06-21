@@ -17,6 +17,7 @@ Radar
 Act as a missile and target a block on an enemy ship/station
 Smart Turret Control - Allows you to set priorities for your turrets.
 Harvest - Extract resources from asteroids
+Weapon Control - Targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.
 
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.
