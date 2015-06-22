@@ -229,7 +229,7 @@ namespace Rynchodon
 		{ close(); }
 
 		/// <summary>
-		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED. Logs a warning iff message cannot be displayed.
+		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
@@ -242,7 +242,7 @@ namespace Rynchodon
 		}
 		
 		/// <summary>
-		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.
+		/// For a safe way to display a message as a notification, not conditional.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>

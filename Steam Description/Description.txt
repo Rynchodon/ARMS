@@ -76,6 +76,7 @@ If using colour states, the model for the Autopilot block may become displaced. 
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07
 GitMaster Extraordinaire - [uRxP]DrChocolate
+Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 
 [h1]Links[/h1]

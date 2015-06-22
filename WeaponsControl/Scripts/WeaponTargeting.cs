@@ -530,7 +530,7 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
-				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				MainLock.UsingShared(() => {
 					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
 				});
 
@@ -547,7 +547,7 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
-				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				MainLock.UsingShared(() => {
 					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
 				});
 

@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot
 				findNavigators();
 			}
 
-			myLogger.debugNotify("Autopilot Dev loaded", 10000);
+			Logger.debugNotify("Autopilot Dev loaded", 10000);
 			Instance = this;
 			initialized = true;
 		}
@@ -74,7 +74,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (!terminated)
 				terminated = true;
-			myLogger.debugNotify("Autopilot encountered an exception and has been terminated.", 10000, Logger.severity.FATAL);
+			Logger.debugNotify("Autopilot encountered an exception and has been terminated.", 10000, Logger.severity.FATAL);
 		}
 
 		#endregion
@@ -199,7 +199,7 @@ namespace Rynchodon.Autopilot
 		{
 			Instance.myLogger.debugLog("removing navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.INFO);
 			Logger.severity level = exception ? Logger.severity.ERROR : Logger.severity.INFO;
-			Instance.myLogger.debugNotify("Autopilot removed: " + dead.myGrid.DisplayName, 3000, level);
+			Logger.debugNotify("Autopilot removed: " + dead.myGrid.DisplayName, 3000, level);
 
 			if (!Instance.allNavigators.Remove(dead.myGrid))
 				Instance.myLogger.alwaysLog("failed to remove navigator " + dead.myGrid.DisplayName, "remove()", Logger.severity.WARNING);
