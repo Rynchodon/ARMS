@@ -68,7 +68,7 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			EnableWeaponTargeting();
+			AllowedState = State.On;
 			Initialized = true;
 		}
 
@@ -121,7 +121,7 @@ namespace Rynchodon.Weapons
 			if (!Initialized)
 				Initialize();
 
-			if (!IsControllingWeapon)
+			if (CurrentState_NotFlag(State.Targeting))
 			{
 				setElevation = myTurret.Elevation;
 				setAzimuth = myTurret.Azimuth;
