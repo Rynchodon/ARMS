@@ -1,5 +1,5 @@
-<?xml version="1.0"  encoding="utf-8"?>
-<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
   <!-- Cube Blocks -->
 
@@ -10,12 +10,12 @@
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
       </Id>
       <DisplayName>Radar</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\radar.dds</Icon>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="3" y="3" z="3" />
-      <ModelOffset x="-0.8" y="-0.4" z="0.8" />
-      <Model>Models\Cubes\Large\Radar.mwm</Model>
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\large\LargeBlockRadarRynAR.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="90" />
         <Component Subtype="Construction" Count="55" />
@@ -28,14 +28,15 @@
         <Component Subtype="SteelPlate" Count="25" />
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
-      <MountPoints>
-        <MountPoint Side="Bottom" StartX="0.1" StartY="2.1" EndX="0.9" EndY="2.9" />
-      </MountPoints>
-      <BuildProgressModels>
-	    <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Large\Radar_Construction2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\Radar_Construction1.mwm" />
-      </BuildProgressModels>
-      <BlockPairName>RadarRynAR</BlockPairName>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\LargeBlockRadarRynAR_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\LargeBlockRadarRynAR_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\LargeBlockRadarRynAR_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="1.38" StartY="0.31" EndX="2.66" EndY="1.59" />
+			</MountPoints>
+      <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>150</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
@@ -46,12 +47,12 @@
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
       </Id>
       <DisplayName>Radar</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\radar.dds</Icon>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="3" y="3" z="3" />
-      <ModelOffset x="-0.15" y="-0.15" z="0.15" />
-      <Model>Models\Cubes\Small\Radar.mwm</Model>
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\small\SmallBlockRadarRynAR.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="18" />
         <Component Subtype="Construction" Count="11" />
@@ -64,14 +65,15 @@
         <Component Subtype="SteelPlate" Count="5" />
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
-	  <MountPoints>
-        <MountPoint Side="Bottom" StartX="0.1" StartY="2.1" EndX="0.9" EndY="2.9" />
-      </MountPoints>
-      <BuildProgressModels>
-	    <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Small\Radar_Construction2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\Radar_Construction1.mwm" />
-      </BuildProgressModels>
-      <BlockPairName>RadarRynAR</BlockPairName>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\small\SmallBlockRadarRynAR_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\small\SmallBlockRadarRynAR_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\SmallBlockRadarRynAR_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="1.38" StartY="0.31" EndX="2.66" EndY="1.59" />
+			</MountPoints>
+	  <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
@@ -86,7 +88,7 @@
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
       <Id>
         <TypeId>GuiBlockCategoryDefinition</TypeId>
-        <SubtypeId/>
+        <SubtypeId />
       </Id>
       <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
       <Name>LargeBlocks</Name>
@@ -97,7 +99,7 @@
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
       <Id>
         <TypeId>GuiBlockCategoryDefinition</TypeId>
-        <SubtypeId/>
+        <SubtypeId />
       </Id>
       <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
       <Name>SmallBlocks</Name>
