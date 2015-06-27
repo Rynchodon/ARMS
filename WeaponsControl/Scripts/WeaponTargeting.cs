@@ -391,7 +391,7 @@ namespace Rynchodon.Weapons
 			Ammo currentAmmo;
 			if (!KnownAmmo.TryGetValue(loaded[0].Content.SubtypeName, out currentAmmo))
 			{
-				MyDefinitionId magazineId = loaded[0].Content.GetObjectId();
+				MyDefinitionId magazineId = loaded[0].Content.GetId();
 				//myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
 				MyDefinitionId ammoDefId = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId).AmmoDefinitionId;
 				//myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");

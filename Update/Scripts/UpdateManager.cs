@@ -19,9 +19,24 @@ namespace Rynchodon.Update
 	/// <summary>
 	/// <para>Completely circumvents MyGameLogicComponent to avoid conflicts, and offers a bit more flexibility.</para>
 	/// <para>Will send updates after creating object, until object is closing.</para>
-	/// <para>Creation of script objects is delayed until MyAPIGateway Fields are filled.</para>
+	/// <para>Creation of script objects is delayed until MyAPIGateway fields are filled.</para>
 	/// <para>If an update script throws an exception, it will stop receiving updates.</para>
 	/// </summary>
+	/// <remarks>
+	/// <para>Comparision to MyGameLogicComponent</para>
+	/// <para>    Disadvantages of MyGameLogicComponent:</para>
+	/// <para>        NeedsUpdate can be changed by the game after you set it, so you have to work around that. i.e. For remotes it is set to NONE and UpdatingStopped() never gets called.</para>
+	/// <para>        Scripts can get created before MyAPIGateway fields are filled, which can be a serious problem for initializing.</para>
+	/// <para>    Advantages of MyGameLogicComponent</para>
+	/// <para>        An object builder is available, I assume this can be used to save data (have not tried it).</para>
+	/// <para> </para>
+	/// <para>    Advantages of UpdateManager:</para>
+	/// <para>        Scripts can be registered conditionally. MyGameLogicComponent now supports subtypes but UpdateManager can technically do any condition.</para>
+	/// <para>        Elegant handling of Exception thrown by script.</para>
+	/// <para>        You don't have to create a new object for every entity if you don't need one.</para>
+	/// <para>        You can set any update frequency you like without having to create a counter.</para>
+	/// <para>        UpdateManager supports characters and could be improved to include any entity.</para>
+	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class UpdateManager : MySessionComponentBase
 	{
