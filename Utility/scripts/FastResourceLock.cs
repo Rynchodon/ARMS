@@ -75,43 +75,25 @@ namespace Rynchodon
 
 		public bool TryAcquireExclusive()
 		{
-			return FastLock.TryAcquireExclusive();
-			//myLogger.debugLog("entered TryAcquireExclusive(). " + State(), "TryAcquireExclusive()");
-			//try
-			//{ return FastLock.TryAcquireExclusive(); }
-			//finally
-			//{ myLogger.debugLog("leaving TryAcquireExclusive(). " + State(), "TryAcquireExclusive()"); }
+			if (Debug)
+				return TryAcquireExclusive_Debug();
+			else
+				return FastLock.TryAcquireExclusive();
 		}
 
 		public bool TryAcquireShared()
 		{
-			return FastLock.TryAcquireShared();
-			//myLogger.debugLog("entered TryAcquireShared(). " + State(), "TryAcquireShared()");
-			//try
-			//{ return FastLock.TryAcquireShared(); }
-			//finally
-			//{ myLogger.debugLog("leaving TryAcquireShared(). " + State(), "TryAcquireShared()"); }
+			if (Debug)
+				return TryAcquireShared_Debug();
+			else
+				return FastLock.TryAcquireShared();
 		}
 
 		public ExclusiveLock AcquireExclusiveUsing()
-		{
-			return new ExclusiveLock(this);
-			//myLogger.debugLog("entered AcquireExclusiveUsing(). " + State(), "AcquireExclusiveUsing()");
-			//try
-			//{ return new ExclusiveLock(this); }
-			//finally
-			//{ myLogger.debugLog("leaving AcquireExclusiveUsing(). " + State(), "AcquireExclusiveUsing()"); }
-		}
+		{ return new ExclusiveLock(this); }
 
 		public SharedLock AcquireSharedUsing()
-		{
-			return new SharedLock(this);
-			//myLogger.debugLog("entered AcquireSharedUsing(). " + State(), "AcquireSharedUsing()");
-			//try
-			//{ return new SharedLock(this); }
-			//finally
-			//{ myLogger.debugLog("leaving AcquireSharedUsing(). " + State(), "AcquireSharedUsing()"); }
-		}
+		{ return new SharedLock(this); }
 
 		#endregion
 		#region Debug
@@ -215,6 +197,26 @@ namespace Rynchodon
 				myLogger.alwaysLog("Released shared lock successfully.", "ReleaseShared_Debug()", Logger.severity.WARNING);
 
 			AddRecent("leaving ReleaseShared_Debug().");
+		}
+
+		private bool TryAcquireExclusive_Debug()
+		{
+			bool success = FastLock.TryAcquireExclusive();
+			if (success)
+				AddRecent("Try acquired an exclusive lock");
+			else
+				AddRecent("Try failed to acquire an exclusive lock");
+			return success;
+		}
+
+		private bool TryAcquireShared_Debug()
+		{
+			bool success = FastLock.TryAcquireShared();
+			if (success)
+				AddRecent("Try acquired an shared lock");
+			else
+				AddRecent("Try failed to acquire an shared lock");
+			return success;
 		}
 
 		#endregion

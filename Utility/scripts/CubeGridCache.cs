@@ -130,7 +130,7 @@ namespace Rynchodon
 				ListSnapshots<IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 				setBlocks_Def.mutable().Remove(asTerm);
 			}
-			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockRemoved()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
