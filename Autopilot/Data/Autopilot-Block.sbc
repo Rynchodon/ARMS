@@ -27,9 +27,9 @@
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
 		<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\large\Autopilot-Block_Large_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\large\Autopilot-Block_Large_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\large\Autopilot-Block_Large_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\large\Autopilot-Block_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\large\Autopilot-Block_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\large\Autopilot-Block_Large_Constr3.mwm" />
 		</BuildProgressModels>
       <MountPoints>
 				<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
@@ -76,9 +76,9 @@
 				<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
       </MountPoints>
       <BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\small\Autopilot-Block_Small_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\small\Autopilot-Block_Small_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\small\Autopilot-Block_Small_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\small\Autopilot-Block_Small_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\small\Autopilot-Block_Small_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\small\Autopilot-Block_Small_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>Autopilot-Block</BlockPairName>
       <MirroringY>Z</MirroringY>
