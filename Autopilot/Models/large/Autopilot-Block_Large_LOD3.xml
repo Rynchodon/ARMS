@@ -5,29 +5,15 @@
 	<Parameter Name="Centered">false</Parameter>
 	<Parameter Name="SpecularPower">5.0</Parameter>
 	<Parameter Name="SpecularShininess">5.0</Parameter>
-	<Material Name="DX11.001">
-		<Parameter Name="Technique">ALPHAMASK</Parameter>
+	<Material Name="Paintable">
+		<Parameter Name="Technique">MESH</Parameter>
 		<Parameter Name="SpecularIntensity">0.0</Parameter>
 		<Parameter Name="SpecularPower">0.0</Parameter>
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
-		<!--material has no NormalTexture-->
-		<Parameter Name="ColorMetalTexture">C:\Users\Chris\AppData\Roaming\SpaceEngineers\Mods\Textures\Cubes\LargeBattery_cm.dds</Parameter>
-		<Parameter Name="NormalGlossTexture">C:\Users\Chris\AppData\Roaming\SpaceEngineers\Mods\Textures\Cubes\LargeBattery_ng.dds</Parameter>
-		<Parameter Name="AddMapsTexture">C:\Users\Chris\AppData\Roaming\SpaceEngineers\Mods\Textures\Cubes\LargeBattery_add.dds</Parameter>
-		<Parameter Name="AlphamaskTexture">Textures\Cubes\dx11_alphamask.dds</Parameter>
-	</Material>
-	<Material Name="Name">
-		<Parameter Name="Technique">MESH</Parameter>
-		<Parameter Name="SpecularIntensity">0.0</Parameter>
-		<Parameter Name="SpecularPower">0.0</Parameter>
-		<Parameter Name="DiffuseColorX">255</Parameter>
-		<Parameter Name="DiffuseColorY">0</Parameter>
-		<Parameter Name="DiffuseColorZ">0</Parameter>
 		<Parameter Name="DiffuseTexture">C:\Users\Chris\AppData\Roaming\SpaceEngineers\Mods\Textures\Cubes\autopilot_me.dds</Parameter>
-		<Parameter Name="NormalTexture">Textures\Models\Cubes\autopilot_ns.dds</Parameter>
+		<!--material has no NormalTexture-->
 		<Parameter Name="ColorMetalTexture">Textures\Cubes\autopilot_cm.dds</Parameter>
 		<Parameter Name="NormalGlossTexture">Textures\Cubes\autopilot_ng.dds</Parameter>
 		<Parameter Name="AddMapsTexture">Textures\Cubes\autopilot_add.dds</Parameter>
@@ -61,7 +47,4 @@
 		<Parameter Name="AddMapsTexture">Textures\Cubes\radar_add.dds</Parameter>
 		<Parameter Name="AlphamaskTexture">Textures\Cubes\dx11_alphamask.dds</Parameter>
 	</Material>
-	<LOD Distance="50">
-		<Model>Models\Autopilot-Block_Large_LOD3</Model>
-	</LOD>
 </Model>

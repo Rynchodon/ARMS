@@ -3,9 +3,9 @@
 	<Parameter Name="RescaleFactor">1.0</Parameter>
 	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
 	<Parameter Name="Centered">false</Parameter>
-	<Parameter Name="SpecularPower">0.0</Parameter>
-	<Parameter Name="SpecularShininess">0.0</Parameter>
-	<Material Name="ASDF">
+	<Parameter Name="SpecularPower">5.0</Parameter>
+	<Parameter Name="SpecularShininess">5.0</Parameter>
+	<Material Name="DX11">
 		<Parameter Name="Technique">MESH</Parameter>
 		<Parameter Name="SpecularIntensity">0.0</Parameter>
 		<Parameter Name="SpecularPower">0.0</Parameter>
@@ -13,16 +13,10 @@
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
 		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
-		<Parameter Name="NormalTexture" />
-	</Material>
-	<Material Name="Material.000">
-		<Parameter Name="Technique">MESH</Parameter>
-		<Parameter Name="SpecularIntensity">50.0</Parameter>
-		<Parameter Name="SpecularPower">50.0</Parameter>
-		<Parameter Name="DiffuseColorX">255</Parameter>
-		<Parameter Name="DiffuseColorY">255</Parameter>
-		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
-		<Parameter Name="NormalTexture" />
+		<!--material has no NormalTexture-->
+		<Parameter Name="ColorMetalTexture">Textures\Cubes\LargeBattery_cm.dds</Parameter>
+		<Parameter Name="NormalGlossTexture">Textures\Cubes\LargeBattery_ng.dds</Parameter>
+		<Parameter Name="AddMapsTexture">Textures\Cubes\LargeBattery_add.dds</Parameter>
+		<!--material has no AlphamaskTexture-->
 	</Material>
 </Model>
