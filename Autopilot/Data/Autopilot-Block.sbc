@@ -10,7 +10,7 @@
         <SubtypeId>Autopilot-Block_Large</SubtypeId>
       </Id>
       <DisplayName>Autopilot Block</DisplayName>
-      <Icon>Textures\Icons\Autopilot-Block.dds</Icon>
+      <Icon>Textures\Icon\Autopilot-Block.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
