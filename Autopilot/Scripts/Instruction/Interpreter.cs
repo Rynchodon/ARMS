@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -21,6 +22,7 @@ namespace Rynchodon.Autopilot.Instruction
 	/// <summary>
 	/// Parses instructions into Actions
 	/// </summary>
+	/// TODO: organize errors so it works like InterpreterWeapon
 	public class Interpreter
 	{
 		/// <summary>
@@ -46,11 +48,6 @@ namespace Rynchodon.Autopilot.Instruction
 		/// System.Collections.Queue is behaving oddly. If MyQueue does not work any better, switch to LinkedList. 
 		/// </remarks>
 		public MyQueue<Action> instructionQueue;
-
-		//private List<string> instructionQueueString;
-
-		//public string getCurrentInstructionString()
-		//{ return instructionQueueString[instructionQueueString.Count - instructionQueue.Count]; }
 
 		/// <summary>
 		/// If errors occured while parsing instructions, will contain all their indecies.
@@ -78,7 +75,6 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionErrorIndex = null;
 			currentInstruction = 0;
 			instructionQueue = new MyQueue<Action>(8);
-			//instructionQueueString = new List<string>();
 
 			myLogger.debugLog("block: " + block.DisplayNameText + ", preParse = " + preParse(block) + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
@@ -162,7 +158,6 @@ namespace Rynchodon.Autopilot.Instruction
 			if (getAction_single(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
-				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			return false;
@@ -175,6 +170,9 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
+			//if (instruction.Contains(","))
+			//	return getAction_wordPlus(instruction, out wordAction);
+
 			string lowerCase = instruction.ToLower();
 			switch (lowerCase)
 			{
@@ -239,9 +237,28 @@ namespace Rynchodon.Autopilot.Instruction
 						return true;
 					}
 			}
+
 			wordAction = null;
 			return false;
 		}
+
+		///// <summary>
+		///// Try to match instruction against keywords. Accepts comma separated params.
+		///// </summary>
+		///// <param name="instruction">unparsed instruction</param>
+		///// <returns>true iff successful</returns>
+		//private bool getAction_wordPlus(string instruction, out Action wordAction)
+		//{
+		//	string[] split = instruction.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+		//	if (split.Length > 1)
+		//		switch (split[0].ToLower())
+		//		{
+		//		}
+
+		//	wordAction = null;
+		//	return false;
+		//}
 
 		/// <summary>
 		/// <para>Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.</para>
@@ -528,11 +545,21 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <summary>
 		/// set engage nearest enemy
 		/// </summary>
-		/// <param name="instructionAction"></param>
-		/// <param name="dataLowerCase"></param>
 		/// <returns>true</returns>
+		/// <remarks>
+		/// <para>This command will be renamed to "enemy" and take the form: [ E range(, first action)(, second action).. ]</para>
+		/// <para>Action could be engage, flee, missile, or self-destruct. If an action cannot be taken, try the next one.</para>
+		/// <para>Engage would be possible as long as weapons are working. Flee and missile would be possible as long as the ship can move. Self destruct would require warheads on the ship.</para>
+		/// </remarks>
 		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
 		{
+			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			{
+				myLogger.debugLog("Cannot engage, weapon control is disabled.", "getAction_engage()", Logger.severity.WARNING);
+				instructionAction = () => { };
+				return true;
+			}
+
 			//string searchBlockName = CNS.tempBlockName;
 			//CNS.tempBlockName = null;
 			instructionAction = () => {

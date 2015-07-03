@@ -1,11 +1,13 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using System.Collections.Generic;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -44,19 +46,20 @@ namespace Rynchodon
 		}
 
 		public static bool HasFlagFast(this Relations rel, Relations flag)
-		{ return (rel & flag) > 0; }
+		{ return (rel & flag) == flag; }
 
 		private static bool toIsFriendly(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return false;
-			if (rel.HasFlagFast(Relations.Neutral))
-				return false;
+			//if (rel.HasFlagFast(Relations.Neutral))
+			//	return false;
 
-			if (rel == Relations.None)
-				return false;
+			//if (rel == Relations.None)
+			//	return false;
 
-			return true;
+			//return true;
+			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
 		}
 
 		private static bool toIsHostile(Relations rel)
@@ -70,9 +73,9 @@ namespace Rynchodon
 			return false;
 		}
 
-		public static Relations mostHostile(this Relations rel)
+		public static Relations highestPriority(this Relations rel)
 		{
-			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Neutral, Relations.Faction, Relations.Owner })
+			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral })
 				if (rel.HasFlagFast(flag))
 					return flag;
 			return Relations.None;
@@ -272,10 +275,86 @@ namespace Rynchodon
 		public static Vector3 LocalPosition(this IMyCubeBlock block)
 		{ return block.Position * block.CubeGrid.GridSize; }
 
-		//public static void DistanceToEdge(this IMyCubeBlock block, Base6Directions.Direction direction)
-		//{
+		/// <summary>
+		/// Determines if a block is owned by "hostile NPC"
+		/// </summary>
+		public static bool OwnedNPC(this IMyCubeBlock block)
+		{
+			long Owner = block.OwnerId;
+			if (Owner == 0)
+				return false;
+			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == Owner; });
+			return match.Count == 0;
+		}
 
+		/// <summary>
+		/// Get all the face directions for a block.
+		/// </summary>
+		/// <remarks>
+		/// <para>Ship Controllers: forward</para>
+		/// <para>Weapons: forward</para>
+		/// <para>Connector: forward</para>
+		/// <para>Solar Panel: forward, backward</para>
+		/// <para>Solar Farm: forward, backward</para>
+		/// <para>Directional Antenna: upward, forward, rightward, backward, leftward</para>
+		/// <para>Landing Gear: downward</para>
+		/// <para>Merge Block: rightward</para>
+		/// </remarks>
+		public static List<Base6Directions.Direction> GetFaceDirection(this IMyCubeBlock block)
+		{
+			List<Base6Directions.Direction> result = new List<Base6Directions.Direction>();
+			if (block is Ingame.IMySolarPanel || block is Ingame.IMyOxygenFarm)
+			{
+				result.Add(Base6Directions.Direction.Forward);
+				result.Add(Base6Directions.Direction.Backward);
+			}
+			else if (block is Ingame.IMyLaserAntenna)
+			{
+				result.Add(Base6Directions.Direction.Up);
+				result.Add(Base6Directions.Direction.Forward);
+				result.Add(Base6Directions.Direction.Right);
+				result.Add(Base6Directions.Direction.Backward);
+				result.Add(Base6Directions.Direction.Left);
+			}
+			else if (block is Ingame.IMyLandingGear)
+				result.Add(Base6Directions.Direction.Down);
+			else if (block is Ingame.IMyShipMergeBlock)
+				result.Add(Base6Directions.Direction.Right);
+			else
+				result.Add(Base6Directions.Direction.Forward);
 
-		//}
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the closest face direction to worldDirection.
+		/// </summary>
+		public static Base6Directions.Direction GetFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
+		{
+			List<Base6Directions.Direction> faceDirections = GetFaceDirection(block);
+			if (faceDirections.Count == 1)
+				return faceDirections[0];
+
+			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
+			Base6Directions.Direction? bestDirection = null;
+			float bestDirectionCloseness = float.MaxValue;
+
+			foreach (Base6Directions.Direction direction in faceDirections)
+			{
+				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
+				float closeness = directionVector.Dot(worldDirection);
+
+				if (closeness < bestDirectionCloseness)
+				{
+					bestDirection = direction;
+					bestDirectionCloseness = closeness;
+				}
+			}
+
+			if (bestDirection == null)
+				throw new NullReferenceException("bestDirection");
+
+			return bestDirection.Value;
+		}
 	}
 }

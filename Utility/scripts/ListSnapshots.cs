@@ -50,5 +50,12 @@ namespace Rynchodon
 			myList.set_ReadOnly();
 			return myList;
 		}
+
+		/// <summary>
+		/// Safe and fast Count
+		/// </summary>
+		/// <returns>The number of items in the list</returns>
+		public int Count
+		{ get { return myList.Count; } }
 	}
 }

@@ -73,7 +73,7 @@ namespace Rynchodon
 			this.className = className;
 			this.f_gridName = () => Block.CubeGrid.DisplayName;
 			this.f_state_primary = () => Block.DefinitionDisplayNameText;
-			this.f_state_secondary = () => Block.DisplayNameText;
+			this.f_state_secondary = () => Block.getNameOnly();
 		}
 
 		private void deleteIfExists(string filename)
@@ -102,7 +102,7 @@ namespace Rynchodon
 			return logWriter != null;
 		}
 
-		private static FastResourceLock lock_log = new FastResourceLock();
+		private static VRage.FastResourceLock lock_log = new VRage.FastResourceLock();
 
 		/// <summary>
 		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
@@ -115,6 +115,22 @@ namespace Rynchodon
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
 		{ log(level, methodName, toLog, primaryState, secondaryState); }
+
+		/// <summary>
+		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
+		/// </summary>
+		/// <param name="condition">only log if true</param>
+		/// <param name="toLog">message to log</param>
+		/// <param name="methodName">calling method</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		public void debugLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		{
+			if (condition)
+				log(level, methodName, toLog, primaryState, secondaryState);
+		}
 
 		/// <summary>
 		/// For logging WARNING and higher severity.
@@ -213,37 +229,37 @@ namespace Rynchodon
 		{ close(); }
 
 		/// <summary>
-		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED. Logs a warning iff message cannot be displayed.
+		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		public static void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{ 
 			notify(message, disappearTimeMs, level);
 		}
 		
 		/// <summary>
-		/// For a safe way to display a message as a notification, not conditional. Logs a warning iff message cannot be displayed.
+		/// For a safe way to display a message as a notification, not conditional.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
-		public void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
 			MyFontEnum font = fontForSeverity(level);
 			if (MyAPIGateway.Utilities != null)
 				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
-			else
-				log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
+			//else
+			//	log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
 		}
 
 		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL }
 		
-		private MyFontEnum fontForSeverity(severity level = severity.TRACE) {
+		private static MyFontEnum fontForSeverity(severity level = severity.TRACE) {
 			switch (level) {
 				case severity.INFO:
 					return MyFontEnum.Green;

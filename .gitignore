@@ -1,6 +1,7 @@
 # Build Files
 Archive/
 Archive.7z
+*.tmp*
 **/mwmBuilder/
 **/MwmBuilder.log
 

@@ -6,6 +6,7 @@ using VRageMath;
 namespace Rynchodon
 {
 	/// <summary>
+	/// <para>Deprecated, use RelativePosition3F or RelativeDirection3F</para>
 	/// <para>For converting between local and world Vectors.</para>
 	/// <para>References should be transient; the longer it is held the less accurate it becomes.</para>
 	/// </summary>
@@ -59,7 +60,9 @@ namespace Rynchodon
 
 		/// <summary>
 		/// create from a vector relative to a block (including block orientation)
+		/// <para>Use to create a position vector from a block.</para>
 		/// </summary>
+		/// <param name="IsPosition">If true, the resultant RelativeVector3F represents a position. If false, it represents a direction</param>
 		public static RelativeVector3F createFromBlock(Vector3 fromBlock, IMyCubeBlock block)
 		{
 			RelativeVector3F result = new RelativeVector3F();
@@ -118,20 +121,19 @@ namespace Rynchodon
 			}
 
 			// create from block
-			// create from block
 			// orient according to block
-			Vector3D resultant = Vector3D.Zero;
-			Vector3D blockRelative = (Vector3D)value__block;
+			Vector3 resultant = Vector3.Zero;
+			Vector3 blockRelative = (Vector3)value__block;
 			Base6Directions.Direction RCdirection = cubeBlock.Orientation.Left;
-			resultant -= (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.X;
+			resultant -= (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.X;
 			RCdirection = cubeBlock.Orientation.Up;
-			resultant += (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.Y;
+			resultant += (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.Y;
 			RCdirection = cubeBlock.Orientation.Forward;
-			resultant -= (Vector3D)Base6Directions.GetVector(RCdirection) * blockRelative.Z;
+			resultant -= (Vector3)Base6Directions.GetVector(RCdirection) * blockRelative.Z;
 
 			// add block position
 			value__grid = resultant + cubeBlock.Position * cubeGrid.GridSize;
-			return (Vector3D)value__grid;
+			return (Vector3)value__grid;
 		}
 
 		/// <summary>

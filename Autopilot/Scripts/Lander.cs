@@ -1,6 +1,7 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System;
+using Rynchodon.Autopilot.NavigationSettings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRageMath;
@@ -203,7 +204,7 @@ namespace Rynchodon.Autopilot
 					}
 				case NavSettings.LANDING.SEPARATE:
 					{
-						if (CNS.moveState == NavSettings.Moving.NOT_MOVE && forDistNav.distToWayDest < Navigator.radiusLandWay)
+						if (/*CNS.moveState == NavSettings.Moving.NOT_MOVE &&*/ forDistNav.distToWayDest < Navigator.radiusLandWay)
 						{
 							myNav.fullStop("At Dest: Separated");
 							CNS.landingState = NavSettings.LANDING.OFF;
