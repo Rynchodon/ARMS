@@ -96,8 +96,10 @@ namespace Rynchodon.Weapons
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
+			MainLock.MainThread_ReleaseExclusive();
 			CubeBlock.OnClose -= weapon_OnClose;
 			DisableWeaponTargeting();
+			MainLock.MainThread_AcquireExclusive();
 		}
 
 		/// <summary>
@@ -120,14 +122,13 @@ namespace Rynchodon.Weapons
 		protected void EnableWeaponTargeting()
 		{ WeaponTargetingEnabled = true; }
 
-		protected void DisableWeaponTargeting(bool broken=false)
+		protected void DisableWeaponTargeting(bool broken = false)
 		{
-			// TODO: report broken
-			WeaponTargetingEnabled = false;
+			WeaponTargetingEnabled = false; // important because failure to initialize will end up here
 			StopFiring("DisableWeaponTargeting, broken = " + broken);
 			IsControllingWeapon = false;
 			if (IsNormalTurret)
-				myTurret.ResetTargetingToDefault();
+				MainLock.UsingShared(() => myTurret.ResetTargetingToDefault());
 		}
 
 		/// <summary>Invoked on game thread, every update.</summary>
@@ -340,8 +341,7 @@ namespace Rynchodon.Weapons
 				if (IsNormalTurret)
 				{
 					//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
-					//myTurret.SetTarget(myTurret);
-					myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10);
+					MainLock.UsingShared(() => myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10));
 				}
 			}
 		}
@@ -372,7 +372,7 @@ namespace Rynchodon.Weapons
 
 				// enable default targeting
 				if (IsNormalTurret)
-					myTurret.ResetTargetingToDefault();
+					MainLock.UsingShared(() => myTurret.ResetTargetingToDefault());
 			}
 		}
 
@@ -1279,10 +1279,10 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				(CubeBlock as IMyTerminalBlock).SetCustomName(build);
+				MainLock.UsingShared(() => (CubeBlock as IMyTerminalBlock).SetCustomName(build));
 			}
 			else
-				(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName);
+				MainLock.UsingShared(() => (CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
 
 		/// <summary>

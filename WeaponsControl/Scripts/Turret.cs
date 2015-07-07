@@ -36,11 +36,12 @@ namespace Rynchodon.Weapons
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
 			registry.Add(CubeBlock, this);
+			CubeBlock.OnClosing += CubeBlock_OnClosing;
 			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
-		private void weapon_OnClose(IMyEntity obj)
+		private void CubeBlock_OnClosing(IMyEntity obj)
 		{ registry.Remove(CubeBlock); }
 
 		internal static Turret GetFor(IMyCubeBlock weapon)

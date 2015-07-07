@@ -331,8 +331,9 @@ namespace Rynchodon.Update
 
 		private void Entities_OnEntityAdd(IMyEntity entity)
 		{
-			using (lock_AddRemoveActions.AcquireExclusiveUsing())
-				AddRemoveActions.Enqueue(() => AddEntity(entity));
+			if (entity.Save)
+				using (lock_AddRemoveActions.AcquireExclusiveUsing())
+					AddRemoveActions.Enqueue(() => AddEntity(entity));
 		}
 
 		/// <summary>
