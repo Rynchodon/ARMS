@@ -15,7 +15,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="3" y="3" z="3" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Model\Cubes\large\LargeBlockRadarRynAR.mwm</Model>
+      <Model>Model\large\LargeBlockRadarRynAR.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="90" />
         <Component Subtype="Construction" Count="55" />
@@ -29,9 +29,9 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Model\Cubes\large\LargeBlockRadarRynAR_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Model\Cubes\large\LargeBlockRadarRynAR_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Model\Cubes\large\LargeBlockRadarRynAR_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Model\large\LargeBlockRadarRynAR_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Model\large\LargeBlockRadarRynAR_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Model\large\LargeBlockRadarRynAR_Constr3.mwm" />
 			</BuildProgressModels>
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="1.38" StartY="0.31" EndX="2.66" EndY="1.59" />
@@ -66,9 +66,9 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Model\Cubes\small\SmallBlockRadarRynAR_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Model\Cubes\small\SmallBlockRadarRynAR_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Model\Cubes\small\SmallBlockRadarRynAR_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Model\small\SmallBlockRadarRynAR_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Model\small\SmallBlockRadarRynAR_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Model\small\SmallBlockRadarRynAR_Constr3.mwm" />
 			</BuildProgressModels>
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="1.38" StartY="0.31" EndX="2.66" EndY="1.59" />
