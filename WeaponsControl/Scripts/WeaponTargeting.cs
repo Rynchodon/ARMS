@@ -34,6 +34,7 @@ namespace Rynchodon.Weapons
 		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
+		/// <remarks>Not locked because there is only one thread allowed.</remarks>
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
 		public readonly IMyCubeBlock CubeBlock;
@@ -59,8 +60,7 @@ namespace Rynchodon.Weapons
 		private int InterpreterErrorCount = int.MaxValue;
 
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
-		private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
-		private int Blacklist_Index = 0;
+		//private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 
 		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
 		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
@@ -68,10 +68,10 @@ namespace Rynchodon.Weapons
 		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
 
-		//private List<IMySlimBlock> value_ObstructIgnore;
-		//private IMyCubeGrid value_ObstructIgnore;
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
+
+		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 
 		static WeaponTargeting()
 		{
@@ -108,9 +108,13 @@ namespace Rynchodon.Weapons
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
+			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+
 			CubeBlock.OnClose -= weapon_OnClose;
 			value_AllowedState = State.Off;
 			value_CurrentState = State.Off;
+
+			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
 		/// <summary>
@@ -119,7 +123,11 @@ namespace Rynchodon.Weapons
 		public void Update_Targeting()
 		{
 			try
-			{ Update(); }
+			{
+				while (GameThreadActions.Count > 0)
+					GameThreadActions.Dequeue().Invoke();
+				Update();
+			}
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
@@ -137,11 +145,11 @@ namespace Rynchodon.Weapons
 			{
 				value_AllowedState = value;
 
-				CurrentState &= value; // not safe
+				CurrentState &= value;
 				StopFiring("AllowedState changed");
 
-				if (IsNormalTurret && (value & State.Targeting) == 0)
-					myTurret.ResetTargetingToDefault();
+				//if (IsNormalTurret && (value & State.Targeting) == 0)
+				//	GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
 			}
 		}
 
@@ -168,17 +176,15 @@ namespace Rynchodon.Weapons
 				if (IsNormalTurret)
 				{
 					if ((value & State.Targeting) == State.Targeting) // now targeting
-						myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10);	// disable default targeting
+						GameThreadActions.Enqueue(() =>	myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
 					else // not targeting
-						myTurret.ResetTargetingToDefault();
+						GameThreadActions.Enqueue(() =>	myTurret.ResetTargetingToDefault());
 				}
 
 				value_CurrentState = value;
 			}
 		}
 
-		//protected List<IMySlimBlock> ObstructionIgnore
-		//protected IMyCubeGrid ObstructionIgnore
 		protected List<IMyEntity> ObstructionIgnore
 		{
 			private get
@@ -299,7 +305,7 @@ namespace Rynchodon.Weapons
 			if (CurrentState_NotFlag(State.GetOptions))
 				return;
 
-			using (lock_Blacklist.AcquireExclusiveUsing())
+			//using (lock_Blacklist.AcquireExclusiveUsing())
 				Blacklist = new MyUniqueList<IMyEntity>();
 
 			TargetingOptions newOptions;
@@ -491,7 +497,7 @@ namespace Rynchodon.Weapons
 					if (speed < 0.01)
 					{
 						myLogger.debugLog("blacklisting: " + CurrentTarget.Entity.getBestName(), "CheckFire()");
-						using (lock_Blacklist.AcquireExclusiveUsing())
+						//using (lock_Blacklist.AcquireExclusiveUsing())
 							Blacklist.Add(CurrentTarget.Entity);
 					}
 					StopFiring("Obstructed");
@@ -557,7 +563,7 @@ namespace Rynchodon.Weapons
 			{
 				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
 
-				using (lock_Blacklist.AcquireSharedUsing())
+				//using (lock_Blacklist.AcquireSharedUsing())
 					if (Blacklist.Contains(entity))
 						continue;
 
@@ -765,7 +771,7 @@ namespace Rynchodon.Weapons
 					if (Obstructed(targetPosition))
 					{
 						myLogger.debugLog("can't target: " + target.getBestName() + ", obstructed", "SetClosest()");
-						using (lock_Blacklist.AcquireExclusiveUsing())
+						//using (lock_Blacklist.AcquireExclusiveUsing())
 							Blacklist.Add(target);
 						continue;
 					}
@@ -852,7 +858,7 @@ namespace Rynchodon.Weapons
 						if (!block.IsWorking)
 							continue;
 
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(block))
 								continue;
 
@@ -890,7 +896,7 @@ namespace Rynchodon.Weapons
 							continue;
 						}
 
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(block))
 							{
 								myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
@@ -930,7 +936,7 @@ namespace Rynchodon.Weapons
 				foreach (IMySlimBlock slim in allSlims)
 					if (TargetableBlock(slim.FatBlock, false))
 					{
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(slim.FatBlock))
 								continue;
 
@@ -1208,14 +1214,14 @@ namespace Rynchodon.Weapons
 			if (CurrentTarget.FiringDirection == null)
 			{
 				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
-				using (lock_Blacklist.AcquireExclusiveUsing())
+				//using (lock_Blacklist.AcquireExclusiveUsing())
 					Blacklist.Add(target);
 				return;
 			}
 			if (Obstructed(CurrentTarget.InterceptionPoint.Value))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
-				using (lock_Blacklist.AcquireExclusiveUsing())
+				//using (lock_Blacklist.AcquireExclusiveUsing())
 					Blacklist.Add(target);
 				CurrentTarget = new Target();
 				return;
@@ -1306,10 +1312,12 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				(CubeBlock as IMyTerminalBlock).SetCustomName(build);
+				MainLock.UsingShared(() =>
+					(CubeBlock as IMyTerminalBlock).SetCustomName(build));
 			}
 			else
-				(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName);
+				MainLock.UsingShared(() =>
+					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
 	}
 }

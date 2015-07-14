@@ -13,6 +13,7 @@ namespace Rynchodon.Weapons
 	public class FixedWeapon : WeaponTargeting
 	{
 		private static Dictionary<IMyCubeBlock, FixedWeapon> registry = new Dictionary<IMyCubeBlock, FixedWeapon>();
+		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
 		/// <remarks>Before becoming a turret this will need to be checked.</remarks>
 		private Engager ControllingEngager = null;
@@ -24,7 +25,8 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("FixedWeapon", block);
-			registry.Add(CubeBlock, this);
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Add(CubeBlock, this);
 			CubeBlock.OnClose += weapon_OnClose;
 			myLogger.debugLog("Initialized", "FixedWeapon()");
 
@@ -32,10 +34,20 @@ namespace Rynchodon.Weapons
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
-		{ registry.Remove(CubeBlock); }
+		{
+			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Remove(CubeBlock);
+
+			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
+		}
 
 		internal static FixedWeapon GetFor(IMyCubeBlock weapon)
-		{ return registry[weapon]; }
+		{
+			using (lock_registry.AcquireSharedUsing())
+				return registry[weapon];
+		}
 
 		/// <summary>
 		/// <para>If this FixedWeapon is already being controlled, returns if the given controller is controlling it.</para>
@@ -96,9 +108,9 @@ namespace Rynchodon.Weapons
 			if (MyMotorTurret != null && MyMotorTurret.StatorAz != null && MyMotorTurret.StatorEl != null && CurrentTarget.InterceptionPoint.HasValue)
 			{
 
-				Vector3 offset = MyMotorTurret.StatorAz.GetPosition() - CubeBlock.GetPosition();
-				Vector3 offsetTarget = CurrentTarget.InterceptionPoint.Value + offset;
-				RelativeDirection3F direction = RelativeDirection3F.FromWorld(
+				//Vector3 offset = MyMotorTurret.StatorAz.GetPosition() - CubeBlock.GetPosition();
+				//Vector3 offsetTarget = CurrentTarget.InterceptionPoint.Value + offset;
+				//RelativeDirection3F direction = RelativeDirection3F.FromWorld(
 
 				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, CurrentTarget.FiringDirection.Value);
 				MyMotorTurret.FaceTowards(FiringDirection);

@@ -20,6 +20,7 @@ namespace Rynchodon
 	/// </remarks>
 	/// 
 	/// Just setting up a test that will work for a single configuration, then consider expanding to others.
+	/// If we take current facing direction and convert to elevation and azimuth, these can be compared to motor angles to get offsets.
 	public class MotorTurret
 	{
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
@@ -112,14 +113,16 @@ namespace Rynchodon
 			//StatorAz_Offset = float.NaN;
 
 			// get StatorEl from FaceBlock's grid
+			IMyMotorStator tempStator;
 			IMyCubeBlock RotorEl;
-			if (!GetStatorRotor(FaceBlock.CubeGrid, out StatorEl, out RotorEl))
+			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator, out RotorEl))
 			{
 				myLogger.debugLog("Failed to get StatorEl", "SetupStators()");
 				StatorEl = null;
 				OnStatorChange(StatorEl, StatorAz);
 				return false;
 			}
+			StatorEl = tempStator;
 
 			// get StatorAz from grid from either StatorEl or RotorEl, whichever is not on Faceblock's grid
 			IMyCubeGrid getBFrom;
@@ -129,13 +132,14 @@ namespace Rynchodon
 				getBFrom = RotorEl.CubeGrid;
 
 			IMyCubeBlock RotorAz;
-			if (!GetStatorRotor(getBFrom, out StatorAz, out RotorAz, StatorEl, RotorEl))
+			if (!GetStatorRotor(getBFrom, out tempStator, out RotorAz, StatorEl, RotorEl))
 			{
 				myLogger.debugLog("Failed to get StatorAz", "SetupStators()");
 				StatorAz = null;
 				OnStatorChange(StatorEl, StatorAz);
 				return false;
 			}
+			StatorAz = tempStator;
 
 			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText, "SetupStators()");
 				OnStatorChange(StatorEl, StatorAz);

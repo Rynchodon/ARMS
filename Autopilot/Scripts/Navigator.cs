@@ -174,8 +174,10 @@ namespace Rynchodon.Autopilot
 
 		private void OnClose()
 		{
+			myLogger.debugLog("entered OnClose()", "OnClose()");
 			Close();
 			Core.remove(this);
+			myLogger.debugLog("leaving OnClose()", "OnClose()");
 		}
 
 		private void OnClose(IMyEntity closing)
