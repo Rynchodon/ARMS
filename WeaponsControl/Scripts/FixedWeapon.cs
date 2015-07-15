@@ -105,15 +105,20 @@ namespace Rynchodon.Weapons
 
 			CheckFire(CubeBlock.WorldMatrix.Forward);
 
-			if (MyMotorTurret != null && MyMotorTurret.StatorAz != null && MyMotorTurret.StatorEl != null && CurrentTarget.InterceptionPoint.HasValue)
+			if (MyMotorTurret != null) // && /*MyMotorTurret.StatorAz != null && MyMotorTurret.StatorEl != null &&*/ CurrentTarget.InterceptionPoint.HasValue)
 			{
 
 				//Vector3 offset = MyMotorTurret.StatorAz.GetPosition() - CubeBlock.GetPosition();
 				//Vector3 offsetTarget = CurrentTarget.InterceptionPoint.Value + offset;
 				//RelativeDirection3F direction = RelativeDirection3F.FromWorld(
 
-				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, CurrentTarget.FiringDirection.Value);
-				MyMotorTurret.FaceTowards(FiringDirection);
+				if (CurrentTarget.InterceptionPoint.HasValue)
+				{
+					RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, CurrentTarget.FiringDirection.Value);
+					MyMotorTurret.FaceTowards(FiringDirection);
+				}
+				else
+					MyMotorTurret.Stop();
 			}
 		}
 

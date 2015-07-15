@@ -26,7 +26,7 @@ namespace Rynchodon
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 		public StatorChangeHandler OnStatorChange;
 
-		private const float RotationSpeedMultiplier =- MathHelper.Pi;
+		private const float RotationSpeedMultiplier = 100;
 		private static readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
 
 		private readonly IMyCubeBlock FaceBlock;
@@ -35,8 +35,8 @@ namespace Rynchodon
 		public IMyMotorStator StatorEl { get; private set; }
 		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
 		public IMyMotorStator StatorAz { get; private set; }
-		/// <summary>Difference between rotor and weapon directions.</summary>
-		private float StatorEl_Offset, StatorAz_Offset = -MathHelper.PiOver2;
+		///// <summary>Difference between rotor and weapon directions.</summary>
+		//private float StatorEl_Offset, StatorAz_Offset = -MathHelper.PiOver2;
 
 		/// <remarks>When this changes, offsets need to be recreated.</remarks>
 		private Base6Directions.Direction? FaceDirection = null;
@@ -47,6 +47,7 @@ namespace Rynchodon
 		{
 			this.FaceBlock = block;
 			this.myLogger = new Logger("MotorTurret", block);
+			//this.SetupStators();
 		}
 
 		//public void Update()
@@ -55,13 +56,13 @@ namespace Rynchodon
 		//	//SetupOffsets();
 		//}
 
-		/// <summary>
-		/// How close to a particular direction the motor-turret can get, 0 means perfect.
-		/// </summary>
-		public float HowClose(Vector3 targetDirection)
-		{
-			throw new Exception();
-		}
+		///// <summary>
+		///// How close to a particular direction the motor-turret can get, 0 means perfect.
+		///// </summary>
+		//public float HowClose(Vector3 targetDirection)
+		//{
+		//	throw new Exception();
+		//}
 
 		/// <summary>
 		/// Rotate to face FaceBlock towards a particular direction.
@@ -71,14 +72,32 @@ namespace Rynchodon
 			if (!SetupStators())
 				return;
 
-			Vector3 blockDir = direction.ToBlockNormalized(StatorAz as IMyCubeBlock);
+			// get the direction FaceBlock is currently facing
+			//RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.GetDirectionVector(FaceBlock.GetFaceDirection(direction.ToWorldNormalized())));
+			RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.Forward);
+			// get the elevation and azimuth from currentDir
+			float currentFaceEl, currentFaceAz;
+			Vector3.GetAzimuthAndElevation(currentDir.ToBlockNormalized(StatorAz as IMyCubeBlock), out currentFaceAz, out currentFaceEl);
+
+			//myLogger.debugLog("target direction = " + direction.ToWorldNormalized() + ", currentDir = " + currentDir.ToWorldNormalized() + ", currentFaceEl = " + currentFaceEl + ", currentFaceAz = " + currentFaceAz, "FaceTowards()");
+
+			//float StatorEl_Offset = StatorEl.Angle - currentFaceEl;
+			//float StatorAz_Offset = StatorAz.Angle - currentFaceAz;
+
+			//myLogger.debugLog("StatorEl_Offset = " + StatorEl_Offset + ", currentFaceEl = " + currentFaceEl + ", StatorEl.Angle = " + StatorEl.Angle, "FaceTowards()");
+			//myLogger.debugLog("StatorAz_Offset = " + StatorAz_Offset + ", currentFaceAz = " + currentFaceAz + ", StatorAz.Angle = " + StatorAz.Angle, "FaceTowards()");
+
+			Vector3 targetDir_block = direction.ToBlockNormalized(StatorAz as IMyCubeBlock);
 			float targetEl, targetAz;
-			Vector3.GetAzimuthAndElevation(blockDir, out targetAz, out targetEl);
-			// elevation and azimuth will change as weapon moves
+			Vector3.GetAzimuthAndElevation(targetDir_block, out targetAz, out targetEl);
+			// target elevation and azimuth will change as weapon moves
 
 			// elevation and azimuth are between -Pi and +Pi, stator angles are all over the place
-			float elevationChange = MathHelper.WrapAngle(StatorEl.Angle - targetEl + StatorEl_Offset);
-			float azimuthChange = MathHelper.WrapAngle(StatorAz.Angle - targetAz + StatorAz_Offset);
+			float elevationChange = MathHelper.WrapAngle(currentFaceEl - targetEl);
+			float azimuthChange = MathHelper.WrapAngle(currentFaceAz - targetAz);
+
+			//myLogger.debugLog("elevationChange = " + elevationChange + ", currentFaceEl = " + currentFaceEl + ", targetEl = " + targetEl, "FaceTowards()");
+			//myLogger.debugLog("azimuthChange = " + azimuthChange + ", currentFaceAz = " + currentFaceAz + ", targetAz = " + targetAz, "FaceTowards()");
 
 			//float elevationChange = MathHelper.WrapAngle(targetEl - MathHelper.WrapAngle(StatorEl.Angle) + StatorEl_Offset);
 			//float azimuthChange = MathHelper.WrapAngle(targetAz - MathHelper.WrapAngle(StatorAz.Angle) + StatorAz_Offset);
@@ -89,7 +108,16 @@ namespace Rynchodon
 			SetVelocity(StatorEl, elevationChange);
 			SetVelocity(StatorAz, azimuthChange);
 
-			myLogger.debugLog("target azimuth = " + targetAz + ", elevation = " + targetEl + "; current azimuth = " + StatorAz.Angle + ", elevation = " + StatorEl.Angle + ", change azimuth = " + azimuthChange + ", elevation = " + elevationChange, "FaceTowards()");
+			//myLogger.debugLog("target azimuth = " + targetAz + ", elevation = " + targetEl + "; current azimuth = " + StatorAz.Angle + ", elevation = " + StatorEl.Angle + ", change azimuth = " + azimuthChange + ", elevation = " + elevationChange, "FaceTowards()");
+		}
+
+		public void Stop()
+		{
+			if (!SetupStators())
+				return;
+
+			SetVelocity(StatorEl, 0);
+			SetVelocity(StatorAz, 0);
 		}
 
 		//private float WrapAngle(float angle)
@@ -142,7 +170,7 @@ namespace Rynchodon
 			StatorAz = tempStator;
 
 			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText, "SetupStators()");
-				OnStatorChange(StatorEl, StatorAz);
+			OnStatorChange(StatorEl, StatorAz);
 			return true;
 		}
 
@@ -220,38 +248,38 @@ namespace Rynchodon
 			return false;
 		}
 
-		private float GetOffset(IMyCubeBlock motorPart, Base6Directions.Direction faceDirection)
-		{
-			if (faceDirection == motorPart.Orientation.Forward)
-				return 0f;
-			else if (faceDirection == Base6Directions.GetFlippedDirection(motorPart.Orientation.Forward))
-				return MathHelper.Pi;
-			else
-			{
-				Base6Directions.Direction rotorLeft, rotorRight;
-				// if part is a stator, need to swap rotorLeft and rotorRight 
-				if (motorPart is IMyMotorStator)
-				{
-					rotorLeft = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
-					rotorRight = motorPart.Orientation.Left;
-				}
-				else
-				{
-					rotorLeft = motorPart.Orientation.Left;
-					rotorRight = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
-				}
+		//private float GetOffset(IMyCubeBlock motorPart, Base6Directions.Direction faceDirection)
+		//{
+		//	if (faceDirection == motorPart.Orientation.Forward)
+		//		return 0f;
+		//	else if (faceDirection == Base6Directions.GetFlippedDirection(motorPart.Orientation.Forward))
+		//		return MathHelper.Pi;
+		//	else
+		//	{
+		//		Base6Directions.Direction rotorLeft, rotorRight;
+		//		// if part is a stator, need to swap rotorLeft and rotorRight 
+		//		if (motorPart is IMyMotorStator)
+		//		{
+		//			rotorLeft = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
+		//			rotorRight = motorPart.Orientation.Left;
+		//		}
+		//		else
+		//		{
+		//			rotorLeft = motorPart.Orientation.Left;
+		//			rotorRight = Base6Directions.GetFlippedDirection(motorPart.Orientation.Left);
+		//		}
 
-				if (faceDirection == rotorLeft)
-					return MathHelper.PiOver2;
-				else if (faceDirection == rotorRight)
-					return -MathHelper.PiOver2;
-				else // none of those directions
-				{
-					myLogger.debugLog("Useless rotor part:" + motorPart.DisplayNameText, "GetOffset()");
-					return 0f;
-				}
-			}
-		}
+		//		if (faceDirection == rotorLeft)
+		//			return MathHelper.PiOver2;
+		//		else if (faceDirection == rotorRight)
+		//			return -MathHelper.PiOver2;
+		//		else // none of those directions
+		//		{
+		//			myLogger.debugLog("Useless rotor part:" + motorPart.DisplayNameText, "GetOffset()");
+		//			return 0f;
+		//		}
+		//	}
+		//}
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
