@@ -81,7 +81,7 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			AllowedState = State.On;
+			AllowedState = State.Targeting;
 			Initialized = true;
 		}
 

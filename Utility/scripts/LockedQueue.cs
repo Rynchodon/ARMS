@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using VRage.Collections;
 
 namespace Rynchodon
@@ -73,6 +74,20 @@ namespace Rynchodon
 		{
 			using (lock_Queue.AcquireExclusiveUsing())
 				Queue.TrimExcess();
+		}
+
+		public void DequeueAll(Action<T> invoke)
+		{
+			using (lock_Queue.AcquireExclusiveUsing())
+				while (Queue.Count > 0)
+					invoke(Queue.Dequeue());
+		}
+
+		public void ForEach(Action<T> invoke)
+		{
+			using (lock_Queue.AcquireSharedUsing())
+				for (int i = 0; i < Queue.Count; i++)
+					invoke(Queue[i]);
 		}
 	}
 }

@@ -60,9 +60,9 @@ namespace Rynchodon.Weapons
 
 			if (CanControl && MyMotorTurret == null)
 			{
-				myLogger.debugLog("no issues", "EngagerTakeControl()");
+				myLogger.debugLog("engager takes control: " + controller, "EngagerTakeControl()");
 				ControllingEngager = controller;
-				AllowedState = State.On;
+				AllowedState = State.Targeting;
 				return true;
 			}
 
@@ -83,21 +83,15 @@ namespace Rynchodon.Weapons
 		protected override void Update()
 		{
 			if (CurrentState_NotFlag(State.Targeting))
-			{
-				//if (MyMotorTurret != null)
-				//{
-				//	myLogger.debugLog("Turret is disabled", "Update()", Logger.severity.INFO);
-				//	MyMotorTurret = null;
-				//	AllowedState = State.Off;
-				//}
 				return;
-			}
 
 			// CurrentTarget may be changed by WeaponTargeting
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
 				StopFiring("No target.");
+				if (MyMotorTurret != null)
+					MyMotorTurret.Stop();
 				return;
 			}
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
@@ -105,20 +99,10 @@ namespace Rynchodon.Weapons
 
 			CheckFire(CubeBlock.WorldMatrix.Forward);
 
-			if (MyMotorTurret != null) // && /*MyMotorTurret.StatorAz != null && MyMotorTurret.StatorEl != null &&*/ CurrentTarget.InterceptionPoint.HasValue)
+			if (MyMotorTurret != null)
 			{
-
-				//Vector3 offset = MyMotorTurret.StatorAz.GetPosition() - CubeBlock.GetPosition();
-				//Vector3 offsetTarget = CurrentTarget.InterceptionPoint.Value + offset;
-				//RelativeDirection3F direction = RelativeDirection3F.FromWorld(
-
-				if (CurrentTarget.InterceptionPoint.HasValue)
-				{
-					RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, CurrentTarget.FiringDirection.Value);
-					MyMotorTurret.FaceTowards(FiringDirection);
-				}
-				else
-					MyMotorTurret.Stop();
+				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value);
+				MyMotorTurret.FaceTowards(FiringDirection);
 			}
 		}
 
@@ -127,6 +111,7 @@ namespace Rynchodon.Weapons
 			if (ControllingEngager != null)
 				return;
 
+			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
 			if (current.FlagSet(TargetingFlags.Turret))
 			{
 				if (MyMotorTurret == null && CanControl)
@@ -134,12 +119,12 @@ namespace Rynchodon.Weapons
 					myLogger.debugLog("Turret is now enabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = new MotorTurret(CubeBlock);
 					MyMotorTurret.OnStatorChange = MyMotorTurret_OnStatorChange;
-					AllowedState = State.On;
+					AllowedState = State.Targeting;
 				}
 			}
 			else
 			{
-				if (MyMotorTurret != null || !CanControl)
+				if (MyMotorTurret != null)
 				{
 					myLogger.debugLog("Turret is now disabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
@@ -163,21 +148,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void MyMotorTurret_OnStatorChange(IMyMotorStator statorEl, IMyMotorStator statorAz)
 		{
-			//List<IMySlimBlock> ignore = new List<IMySlimBlock>();
-
-			//foreach (IMyMotorStator stator in new IMyMotorStator[] { statorEl, statorAz })
-			//	if (stator != null)
-			//	{
-			//		ignore.Add((stator as IMyCubeBlock).getSlim());
-			//		IMyCubeBlock rotor;
-			//		if (StatorRotor.TryGetRotor(stator, out rotor))
-			//			ignore.Add(rotor.getSlim());
-			//	}
-
-			//myLogger.debugLog("updated ObstructionIgnore, " + ignore.Count + "entries", "MyMotorTurret_OnStatorChange()", Logger.severity.DEBUG);
-			//ObstructionIgnore = ignore;
-
-			//ObstructionIgnore = statorEl.CubeGrid as IMyCubeGrid;
+			myLogger.debugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
 
 			List<IMyEntity> ignore = new List<IMyEntity>();
 			if (statorEl != null)
@@ -189,6 +160,13 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorAz);
+
+				IMyCubeBlock statorAzRotor;
+				if (StatorRotor.TryGetRotor(statorAz, out statorAzRotor))
+				{
+					myLogger.debugLog("added statorAzRotor: " + statorAzRotor.getBestName(), "MyMotorTurret_OnStatorChange()");
+					ignore.Add(statorAzRotor);
+				}
 			}
 			ObstructionIgnore = ignore;
 		}

@@ -223,12 +223,9 @@ namespace Rynchodon.Update
 				Dictionary<Action, uint> Unregister = null;
 
 				try
-				{
-					while (AddRemoveActions.Count > 0)
-						AddRemoveActions.Dequeue().Invoke();
-				}
+				{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
 				catch (Exception ex)
-				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
+				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)

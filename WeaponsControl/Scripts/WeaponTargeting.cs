@@ -26,8 +26,7 @@ namespace Rynchodon.Weapons
 			/// <summary>Fetch options from name and Update_Options()</summary>
 			GetOptions = 1 << 0,
 			/// <summary>Indicates targeting is enabled, targeting may not be possible</summary>
-			Targeting = 1 << 1,
-			On = GetOptions | Targeting
+			Targeting = GetOptions | 1 << 1
 		}
 
 		private static readonly ThreadManager Thread = new ThreadManager();
@@ -124,8 +123,7 @@ namespace Rynchodon.Weapons
 		{
 			try
 			{
-				while (GameThreadActions.Count > 0)
-					GameThreadActions.Dequeue().Invoke();
+				GameThreadActions.DequeueAll(action => action.Invoke());
 				Update();
 			}
 			catch (Exception ex)
@@ -200,10 +198,10 @@ namespace Rynchodon.Weapons
 		}
 
 		public bool CurrentState_FlagSet(State flag)
-		{ return (CurrentState & flag) != 0; }
+		{ return (CurrentState & flag) == flag; }
 
 		public bool CurrentState_NotFlag(State flag)
-		{ return (CurrentState & flag) == 0; }
+		{ return (CurrentState & flag) != flag; }
 
 		/// <summary>Invoked on game thread, every update.</summary>
 		protected abstract void Update();
