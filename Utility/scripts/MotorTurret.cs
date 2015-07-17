@@ -21,13 +21,13 @@ namespace Rynchodon
 	public class MotorTurret
 	{
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
-		public StatorChangeHandler OnStatorChange;
 
 		private const float RotationSpeedMultiplier = 100;
 		private static readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
 
 		private readonly IMyCubeBlock FaceBlock;
 		private readonly Logger myLogger;
+		private readonly StatorChangeHandler OnStatorChange;
 
 		/// <summary>Shall be the stator that is closer to the FaceBlock (by grids).</summary>
 		public IMyMotorStator StatorEl { get; private set; }
@@ -36,10 +36,12 @@ namespace Rynchodon
 
 		private Dictionary<IMyMotorStator, float> PreviousSpeed = new Dictionary<IMyMotorStator, float>();
 
-		public MotorTurret(IMyCubeBlock block)
+		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler)
 		{
 			this.FaceBlock = block;
 			this.myLogger = new Logger("MotorTurret", block);
+			this.OnStatorChange = handler;
+			this.SetupStators();
 		}
 
 		/// <summary>
@@ -86,7 +88,10 @@ namespace Rynchodon
 		private bool SetupStators()
 		{
 			if (StatorOK())
+			{
+				//myLogger.debugLog("Stators are already set up", "SetupStators()");
 				return true;
+			}
 
 			// get StatorEl from FaceBlock's grid
 			IMyMotorStator tempStator;

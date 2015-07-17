@@ -117,8 +117,7 @@ namespace Rynchodon.Weapons
 				if (MyMotorTurret == null && CanControl)
 				{
 					myLogger.debugLog("Turret is now enabled", "Update_Options()", Logger.severity.INFO);
-					MyMotorTurret = new MotorTurret(CubeBlock);
-					MyMotorTurret.OnStatorChange = MyMotorTurret_OnStatorChange;
+					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
 					AllowedState = State.Targeting;
 				}
 			}

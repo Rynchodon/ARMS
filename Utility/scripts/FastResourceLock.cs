@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using VRage;
 using VRage.Collections;
 
@@ -14,7 +15,7 @@ namespace Rynchodon
 
 		private Logger myLogger;
 		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
-		private MyQueue<string> recentActivity = new MyQueue<string>(recentActivityCount);
+		private MyQueue<Func<string>> recentActivity = new MyQueue<Func<string>>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
 		private TimeSpan timeout = new TimeSpan(0, 1, 0);
 
@@ -104,7 +105,24 @@ namespace Rynchodon
 			{
 				if (recentActivity.Count == recentActivityCount)
 					recentActivity.Dequeue();
-				recentActivity.Enqueue(DateTime.UtcNow + " : " + message + " " + State());
+
+				recentActivity.Enqueue(() => DateTime.UtcNow.Second + "." + DateTime.UtcNow.Millisecond + " : " + message + '\n' + State());
+
+				//StringBuilder activity = new StringBuilder();
+				//activity.Append(DateTime.UtcNow.Second);
+				//activity.Append('.');
+				//activity.Append(DateTime.UtcNow.Millisecond);
+				//activity.Append(" : ");
+				//activity.Append(message);
+				//activity.AppendLine();
+				//activity.Append(State());
+
+				//var stack = new System.Diagnostics.StackTrace(); // not allowed in offical version of S.E.
+
+				//recentActivity.Enqueue(() => {
+				//	activity.Append(stack);
+				//	return activity.ToString();
+				//});
 			}
 		}
 
@@ -113,7 +131,7 @@ namespace Rynchodon
 			using (lock_recentActivity.AcquireExclusiveUsing())
 				while (recentActivity.Count != 0)
 				{
-					string recent = recentActivity.Dequeue();
+					string recent = recentActivity.Dequeue().Invoke();
 					myLogger.debugLog("Recent: " + recent, "PrintRecent()", Logger.severity.DEBUG);
 				}
 		}

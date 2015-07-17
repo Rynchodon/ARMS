@@ -15,7 +15,7 @@ namespace Rynchodon
 	{
 		private static Logger myLogger = new Logger("MainLock");
 		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
-		private static FastResourceLock Lock_Lock = new FastResourceLock("Lock_Lock");
+		//private static FastResourceLock Lock_Lock = new FastResourceLock("Lock_Lock");
 		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
 		static MainLock()
@@ -27,13 +27,14 @@ namespace Rynchodon
 		///// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
 		public static void MainThread_AcquireExclusive()
 		{
-			using (Lock_Lock.AcquireExclusiveUsing())
-			{
-				if (Lock_MainThread.Owned && Lock_MainThread.SharedOwners == 0)
-					throw new InvalidOperationException("Exclusive lock is already held.");
+			//using (Lock_Lock.AcquireExclusiveUsing())
+			//{
+			//	if (Lock_MainThread.Owned && Lock_MainThread.SharedOwners == 0)
+			//		throw new InvalidOperationException("Exclusive lock is already held.");
 
-				Lock_MainThread.AcquireExclusive();
-			}
+			//	Lock_MainThread.AcquireExclusive();
+			//}
+			Lock_MainThread.AcquireExclusive();
 			//myLogger.debugLog("Main thread is locked", "MainThread_TryAcquireExclusive()");
 		}
 
@@ -42,13 +43,14 @@ namespace Rynchodon
 		/// </summary>
 		public static void MainThread_ReleaseExclusive()
 		{
-			using (Lock_Lock.AcquireExclusiveUsing())
-			{
-				if (!Lock_MainThread.Owned || Lock_MainThread.SharedOwners != 0)
-					throw new InvalidOperationException("Exclusive lock is not held.");
+			//using (Lock_Lock.AcquireExclusiveUsing())
+			//{
+			//	if (!Lock_MainThread.Owned || Lock_MainThread.SharedOwners != 0)
+			//		throw new InvalidOperationException("Exclusive lock is not held.");
 
-				Lock_MainThread.ReleaseExclusive();
-			}
+			//	Lock_MainThread.ReleaseExclusive();
+			//}
+			Lock_MainThread.ReleaseExclusive();
 			//myLogger.debugLog("Main thread is released", "MainThread_TryAcquireExclusive()");
 		}
 

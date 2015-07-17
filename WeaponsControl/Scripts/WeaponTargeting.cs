@@ -130,6 +130,10 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
 				AllowedState = State.Off;
+
+				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
+				func.SetCustomName("<Broken>" + func.DisplayNameText);
+				func.RequestEnable(false);
 			}
 
 			if (AllowedState != State.Off && lock_Queued.TryAcquireExclusive())
@@ -229,8 +233,8 @@ namespace Rynchodon.Weapons
 				{
 					if (UpdateNumber % 100 == 0)
 					{
-						if (UpdateNumber % 1000 == 0)
-							Update1000();
+						//if (UpdateNumber % 1000 == 0)
+						//	Update1000();
 						Update100();
 					}
 					Update10();
@@ -241,7 +245,7 @@ namespace Rynchodon.Weapons
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.WARNING);
 				//DisableWeaponTargeting(true); // was doing more harm then good, all exceptions caught could be recovered from
 			}
 		}
@@ -321,20 +325,21 @@ namespace Rynchodon.Weapons
 			WriteErrors(Errors);
 		}
 
-		/// <summary>Verifies that the weapon is in correct firing state.</summary>
-		private void Update1000()
-		{
-			if (CurrentState_NotFlag(State.Targeting))
-				return;
+		// no longer appropriate as shooting toggle is delayed
+		///// <summary>Verifies that the weapon is in correct firing state.</summary>
+		//private void Update1000()
+		//{
+		//	if (CurrentState_NotFlag(State.Targeting))
+		//		return;
 
-			var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-			using (lock_IsShooting.AcquireExclusiveUsing())
-				if (IsShooting != builder.IsShootingFromTerminal)
-				{
-					myLogger.debugLog("Shooting toggled incorrectly", "Update1000()", Logger.severity.WARNING);
-					IsShooting = builder.IsShootingFromTerminal;
-				}
-		}
+		//	var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+		//	using (lock_IsShooting.AcquireExclusiveUsing())
+		//		if (IsShooting != builder.IsShootingFromTerminal)
+		//		{
+		//			myLogger.debugLog("Shooting toggled incorrectly", "Update1000()", Logger.severity.WARNING);
+		//			IsShooting = builder.IsShootingFromTerminal;
+		//		}
+		//}
 
 		private Vector3D BarrelPositionWorld()
 		{
@@ -516,9 +521,8 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
-				MainLock.UsingShared(() => {
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
-				});
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
 
 				IsShooting = true;
 			}
@@ -533,9 +537,8 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
-				MainLock.UsingShared(() => {
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
-				});
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
 
 				IsShooting = false;
 			}
@@ -1310,11 +1313,11 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				MainLock.UsingShared(() =>
+				GameThreadActions.Enqueue(() => 
 					(CubeBlock as IMyTerminalBlock).SetCustomName(build));
 			}
 			else
-				MainLock.UsingShared(() =>
+				GameThreadActions.Enqueue(() => 
 					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
 	}
