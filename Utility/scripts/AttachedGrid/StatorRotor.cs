@@ -5,6 +5,7 @@ using VRage.ModAPI;
 
 namespace Rynchodon.AttachedGrid
 {
+	/// Not derived from AttachableBlock because testing for attached is fast but getting attached block is slow.
 	public static class StatorRotor
 	{
 		private static readonly Logger myLogger = new Logger("StatorRotor");
@@ -95,9 +96,10 @@ namespace Rynchodon.AttachedGrid
 						IMyEntity rotorE;
 						if (MyAPIGateway.Entities.TryGetEntityById(statorBuilder.RotorEntityId, out rotorE))
 						{
-							if (Rotor.registry.TryGetValue((rotorE as IMyCubeBlock), out partner))
+							if (Rotor.registry.TryGetValue(rotorE as IMyCubeBlock, out partner))
 							{
 								myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
+								AttachedGrid.AddRemoveConnection(AttachedGrid.AttachmentKind.Motor, myStator.CubeGrid, partner.myRotor.CubeGrid, true);
 								partner.partner = this;
 							}
 							else
@@ -110,6 +112,7 @@ namespace Rynchodon.AttachedGrid
 				else // partner != null
 					if (!myStator.IsAttached)
 					{
+						AttachedGrid.AddRemoveConnection(AttachedGrid.AttachmentKind.Motor, myStator.CubeGrid, partner.myRotor.CubeGrid, false);
 						partner.partner = null;
 						partner = null;
 					}
