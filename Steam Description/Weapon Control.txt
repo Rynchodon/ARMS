@@ -1,8 +1,7 @@
 [h1]Autopilot: Weapon Control[/h1]
 
 [b][u]Introduction[/u][/b]
-[list]Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.
-(Rotor-turrets are not working yet!)[/list]
+[list]Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.[/list]
 
 [b][u]Engaging[/u][/b]
 In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected.
@@ -23,7 +22,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [*]Ignore all quotation marks "" used in this document, they are for explanation purposes only.
 [*]"Fixed Weapons" refers to weapons that only fire in one direction. In vanilla, these are Gatling Gun, Rocket Launcher, and Reloadable-Rocket Launcher.
 [*]"Turret" referse to Interior Turret, Gatling Turret, Missile Turret, and mod-added turrets.
-[*]"Rotor-Turret" is what happens when you stick a fixed weapon on top of a couple of rotors. (not working yet)
+[*]"Rotor-Turret" is what happens when you stick a fixed weapon on top of a couple of rotors.
 [*]Even in creative mode, weapons must be loaded with ammunition or they will not function.
 [*]Vanilla means Space Engineers without any mods.[/list]
 

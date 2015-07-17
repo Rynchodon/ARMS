@@ -145,8 +145,7 @@ namespace Rynchodon.Update
 		private enum Status : byte { Not_Initialized, Initialized, Terminated }
 		private Status MangerStatus = Status.Not_Initialized;
 
-		private MyQueue<Action> AddRemoveActions = new MyQueue<Action>(8);
-		private FastResourceLock lock_AddRemoveActions = new FastResourceLock();
+		private LockedQueue<Action> AddRemoveActions = new LockedQueue<Action>(8);
 
 		private Logger myLogger = new Logger(null, "UpdateManager");
 		private static UpdateManager Instance;
@@ -224,13 +223,9 @@ namespace Rynchodon.Update
 				Dictionary<Action, uint> Unregister = null;
 
 				try
-				{
-					using (lock_AddRemoveActions.AcquireExclusiveUsing())
-						for (int i = 0; i < AddRemoveActions.Count; i++)
-							AddRemoveActions[i].Invoke();
-				}
+				{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
 				catch (Exception ex)
-				{ myLogger.alwaysLog("Exception in addAction[i]: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
+				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Update % pair.Key == 0)
@@ -288,11 +283,13 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
 		{
+			myLogger.debugLog("entered UnRegisterForUpdates()", "UnRegisterForUpdates()");
 			List<Action> UpdateL = UpdateList(frequency);
 			UpdateL.Remove(toInvoke);
 
 			if (UpdateL.Count == 0)
 				UpdateRegistrar.Remove(frequency);
+			myLogger.debugLog("leaving UnRegisterForUpdates()", "UnRegisterForUpdates()");
 		}
 
 		/// <summary>
@@ -332,8 +329,7 @@ namespace Rynchodon.Update
 		private void Entities_OnEntityAdd(IMyEntity entity)
 		{
 			if (entity.Save)
-				using (lock_AddRemoveActions.AcquireExclusiveUsing())
-					AddRemoveActions.Enqueue(() => AddEntity(entity));
+				AddRemoveActions.Enqueue(() => AddEntity(entity));
 		}
 
 		/// <summary>
@@ -345,6 +341,8 @@ namespace Rynchodon.Update
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
+				myLogger.debugLog("adding grid: " + asGrid.DisplayName, "AddEntity()");
+
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
@@ -368,10 +366,7 @@ namespace Rynchodon.Update
 		}
 
 		private void Grid_OnBlockAdded(IMySlimBlock block)
-		{
-			using (lock_AddRemoveActions.AcquireExclusiveUsing())
-				AddRemoveActions.Enqueue(() => { AddBlock(block); });
-		}
+		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
 
 		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
 
@@ -403,9 +398,11 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void Grid_OnClosing(IMyEntity gridAsEntity)
 		{
+			myLogger.debugLog("entered Grid_OnClosing(): " + gridAsEntity.getBestName(), "Grid_OnClosing()");
 			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			asGrid.OnClosing -= Grid_OnClosing;
+			myLogger.debugLog("leaving Grid_OnClosing(): " + gridAsEntity.getBestName(), "Grid_OnClosing()");
 		}
 
 		#endregion

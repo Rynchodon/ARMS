@@ -57,6 +57,8 @@ namespace Rynchodon
 
 			using (lock_registry.AcquireExclusiveUsing())
 				registry.Remove(CubeGrid);
+
+			myLogger.debugLog("closed", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 		}
 
 		private void addKnownDefinition(string definition)
@@ -113,6 +115,7 @@ namespace Rynchodon
 			if (fatblock == null)
 				return;
 
+			myLogger.debugLog("block removed: " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
@@ -132,6 +135,7 @@ namespace Rynchodon
 			}
 			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockRemoved()", Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
+			myLogger.debugLog("leaving CubeGrid_OnBlockRemoved(): " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 		}
 
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>

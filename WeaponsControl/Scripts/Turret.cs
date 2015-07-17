@@ -17,6 +17,7 @@ namespace Rynchodon.Weapons
 	public class Turret : WeaponTargeting
 	{
 		private static Dictionary<IMyCubeBlock, Turret> registry = new Dictionary<IMyCubeBlock, Turret>();
+		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
@@ -35,17 +36,28 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
-			registry.Add(CubeBlock, this);
-			CubeBlock.OnClosing += CubeBlock_OnClosing;
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Add(CubeBlock, this);
+			CubeBlock.OnClose += CubeBlock_OnClose;
 			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
-		private void CubeBlock_OnClosing(IMyEntity obj)
-		{ registry.Remove(CubeBlock); }
+		private void CubeBlock_OnClose(IMyEntity obj)
+		{
+			myLogger.debugLog("entered CubeBlock_OnClose()", "CubeBlock_OnClose()");
+
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Remove(CubeBlock);
+
+			myLogger.debugLog("leaving CubeBlock_OnClose()", "CubeBlock_OnClose()");
+		}
 
 		internal static Turret GetFor(IMyCubeBlock weapon)
-		{ return registry[weapon]; }
+		{
+			using (lock_registry.AcquireSharedUsing())
+				return registry[weapon];
+		}
 
 		private void Initialize()
 		{
@@ -69,7 +81,7 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			EnableWeaponTargeting();
+			AllowedState = State.Targeting;
 			Initialized = true;
 		}
 
@@ -122,7 +134,7 @@ namespace Rynchodon.Weapons
 			if (!Initialized)
 				Initialize();
 
-			if (!IsControllingWeapon)
+			if (CurrentState_NotFlag(State.Targeting))
 			{
 				setElevation = myTurret.Elevation;
 				setAzimuth = myTurret.Azimuth;

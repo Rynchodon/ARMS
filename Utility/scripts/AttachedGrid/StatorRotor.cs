@@ -78,8 +78,10 @@ namespace Rynchodon.AttachedGrid
 
 			private void myStator_OnClosing(IMyEntity obj)
 			{
+				myLogger.debugLog("entered myStator_OnClosing()", "myStator_OnClosing()");
 				myStator.OnClosing -= myStator_OnClosing;
 				registry.Remove(myStator);
+				myLogger.debugLog("leaving myStator_OnClosing()", "myStator_OnClosing()");
 			}
 
 			/// This will not work correctly if a rotor is replaced in less than 10 updates.
@@ -130,8 +132,10 @@ namespace Rynchodon.AttachedGrid
 
 			private void myRotor_OnClosing(IMyEntity obj)
 			{
+				myLogger.debugLog("entered myRotor_OnClosing()", "myRotor_OnClosing()");
 				myRotor.OnClosing -= myRotor_OnClosing;
 				registry.Remove(myRotor);
+				myLogger.debugLog("leaving myRotor_OnClosing()", "myRotor_OnClosing()");
 			}
 		}
 	}
