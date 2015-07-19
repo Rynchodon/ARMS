@@ -1,9 +1,5 @@
 Will be moved to steam every release.
 
 major:
-DX11 Support
-Rotor-Turrets
-Fixed memory leaks and crashes
 
 minor:
-improved performance
