@@ -1,33 +1,36 @@
-[h1]Autopilot: Weapon Control[/h1]
-
 [b][u]Introduction[/u][/b]
 [list]Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.[/list]
 
 [b][u]Engaging[/u][/b]
-In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected.
+In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected. The engager will attempt to bring all of its weapons (fixed and turret) into range.
 
 [b][u]Info: Command Instructions[/u][/b]
 [list][*]All commands are to be used/typed in the display name of the weapon block.
 [list][*]This is found in the Control Panel for the specified block
-[*]The "Display Name" can also be refered to as the "Command Line" in this document.[/list]
+[*]The "Display Name" can also be referred to as the "Command Line" in this document.[/list]
 [*][] - All commands are contained within a single set of square brackets
 [list][*]Example: [(Turret, Rocket, Gatling) ; AllGrid ; Range 600][/list]
 [*]<> - Do not use angle brackets in your weapon's name
 [*]:; - Commands are separated by colons and/or semicolons
-[*]  Any spaces used in the command line are ignored.[/list]
+[*]  Any spaces used in the command line are ignored.
+[*]Commands are [u]NOT[/u] case-sensitive.[/list]
 
 [b][u]Basic Information[/u][/b]
-[list][*]Commands are [u]NOT[/u] case-sensitive.
-[*]The term "Grid" refers to any ship or station.
-[*]Ignore all quotation marks "" used in this document, they are for explanation purposes only.
+[list][*]The term "Grid" refers to any ship or station. Note that for pistons and rotors the base is on one grid and the top is on another.
 [*]"Fixed Weapons" refers to weapons that only fire in one direction. In vanilla, these are Gatling Gun, Rocket Launcher, and Reloadable-Rocket Launcher.
-[*]"Turret" referse to Interior Turret, Gatling Turret, Missile Turret, and mod-added turrets.
+[*]"Turret" refers to Interior Turret, Gatling Turret, Missile Turret, and mod-added turrets.
 [*]"Rotor-Turret" is what happens when you stick a fixed weapon on top of a couple of rotors.
 [*]Even in creative mode, weapons must be loaded with ammunition or they will not function.
 [*]Vanilla means Space Engineers without any mods.[/list]
 
 [b][u]Debugging[/u][/b]
-[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is technically 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
+[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is at 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
+
+[b][u]Known Issues[/u][/b]
+[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
+[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.
+[*]Engage command is not aware of rotor-turrets.
+[*]Rotor-turrets can only access text panels on the same grid as the weapon.[/list]
 
 [u]Example:[/u]
 You want to have a specific gun to fire at all ships or stations guns, that are within 600 meters. However, you type the following:
@@ -42,7 +45,7 @@ If the above command is used, the display name will change to the following:
 [list]<ERROR:1>Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
  [/list]
 
-As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is technically 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
+As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is at 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
 
 [b][u]Important Information[/u][/b]
 [list][*]N.P.C. weapons obtain their commands from a settings file rather than from their weapons's block name.
@@ -101,7 +104,3 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [list]Disable all enemy weapons within 600 m.[/list]
 [ T Command Panel, {Subset 4} ]
 [list]Grabs the list of Commands found in the LCD panel named "Command Panel" and uses those for itself. However, it only grabs commands that occur after "{Subset 4}".[/list][/list]
-
-[b][u]Known Issues[/u][/b]
-[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
-[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.[/list]

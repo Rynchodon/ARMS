@@ -178,14 +178,11 @@ namespace Rynchodon.Autopilot
 			foreach (IMyEntity entity in entities)
 			{
 				Sandbox.ModAPI.IMyCubeGrid grid = entity as Sandbox.ModAPI.IMyCubeGrid;
-				if (grid == null || grid.Closed || grid.MarkedForClose || grid.Physics == null)
+				if (grid == null || grid.Closed || grid.MarkedForClose || grid.Physics == null || !grid.Save || allNavigators.ContainsKey(grid))
 					continue;
-				if (!allNavigators.ContainsKey(grid))
-				{
-					myLogger.debugLog("new grid added " + grid.DisplayName, "build", Logger.severity.INFO);
-					Navigator cGridHandler = new Navigator(grid);
-					allNavigators.Add(grid, cGridHandler);
-				}
+				myLogger.debugLog("new grid added " + grid.DisplayName, "build", Logger.severity.INFO);
+				Navigator cGridHandler = new Navigator(grid);
+				allNavigators.Add(grid, cGridHandler);
 			}
 		}
 
