@@ -292,6 +292,8 @@ namespace Rynchodon.Weapons
 				if (TargetingRange < 1)
 					continue;
 
+				// TODO: ignore weapons that will not target grids
+
 				if (TargetingRange < value_MinWeaponRange)
 					value_MinWeaponRange = TargetingRange;
 				if (TargetingRange > value_MaxWeaponRange)
