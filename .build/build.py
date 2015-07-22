@@ -179,19 +179,12 @@ mwmProcess = []
 if os.path.exists(mwmBuilder):
 	print("\nrunning MwmBuilder")
 	for module in modules[:]:
-		modelDir = startDir + "\\" + module + "\\Model\\large"
+		modelDir = startDir + "\\" + module + "\\Models\\Cubes\\large"
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
-		modelDir = startDir + "\\" + module + "\\Model\\small"
-		if os.path.exists(modelDir):
-			os.chdir(modelDir)
-			mwmProcess.append(subprocess.Popen(["python", build_model]))
-		modelDir = startDir + "\\" + module + "\\Models\\large"
-		if os.path.exists(modelDir):
-			os.chdir(modelDir)
-			mwmProcess.append(subprocess.Popen(["python", build_model]))
-		modelDir = startDir + "\\" + module + "\\Models\\small"
+
+		modelDir = startDir + "\\" + module + "\\Models\\Cubes\\small"
 		if os.path.exists(modelDir):
 			os.chdir(modelDir)
 			mwmProcess.append(subprocess.Popen(["python", build_model]))
@@ -200,15 +193,17 @@ else:
 
 # copy textures
 for module in modules[:]:
-	textureDir = startDir + "\\" + module + "\\Textures\\Cubes"
+	textureDir = startDir + "\\" + module + "\\Textures\\Models\\Cubes"
 	if os.path.exists(textureDir):
 		copyWithExtension(textureDir, destTextureCube, ".dds")
 		copyWithExtension(textureDir, destTextureCubeDev, ".dds")
-	textureDir = startDir + "\\" + module + "\\Textures\\TextPanel"
+
+	textureDir = startDir + "\\" + module + "\\Textures\\Models"
 	if os.path.exists(textureDir):
 		copyWithExtension(textureDir, destTexturePanel, ".dds")
 		copyWithExtension(textureDir, destTexturePanelDev, ".dds")
-	textureDir = startDir + "\\" + module + "\\Textures\\Icon"
+
+	textureDir = startDir + "\\" + module + "\\Textures\\GUI\\Icons\\Cubes"
 	if os.path.exists(textureDir):
 		copyWithExtension(textureDir, destTextureIcon, ".dds")
 		copyWithExtension(textureDir, destTextureIconDev, ".dds")
@@ -297,22 +292,13 @@ if os.path.exists(mwmBuilder):
 # copy mwm files
 for module in modules[:]:
 	# large models
-	modelDir = startDir + "\\" + module + "\\Model\\large"
+	modelDir = startDir + "\\" + module + "\\Models\\Cubes\\large"
 	if os.path.exists(modelDir):
 		copyWithExtension(modelDir, destModel + "\\large", ".mwm")
 		copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
+
 	# small models
-	modelDir = startDir + "\\" + module + "\\Model\\small"
-	if os.path.exists(modelDir):
-		copyWithExtension(modelDir, destModel + "\\small", ".mwm")
-		copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
-	# large models
-	modelDir = startDir + "\\" + module + "\\Models\\large"
-	if os.path.exists(modelDir):
-		copyWithExtension(modelDir, destModel + "\\large", ".mwm")
-		copyWithExtension(modelDir, destModelDev + "\\large", ".mwm")
-	# small models
-	modelDir = startDir + "\\" + module + "\\Models\\small"
+	modelDir = startDir + "\\" + module + "\\Models\\Cubes\\small"
 	if os.path.exists(modelDir):
 		copyWithExtension(modelDir, destModel + "\\small", ".mwm")
 		copyWithExtension(modelDir, destModelDev + "\\small", ".mwm")
