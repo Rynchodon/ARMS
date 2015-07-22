@@ -73,6 +73,9 @@ destTexturePanelDev = endDirDev + r"\Textures\Models"
 destTextureIcon = endDir + r"\Textures\GUI\Icons\Cubes"
 destTextureIconDev = endDirDev + r"\Textures\GUI\Icons\Cubes"
 
+destTextureIcon2 = endDir + r"\Textures\Icons"
+destTextureIconDev2 = endDirDev + r"\Textures\Icons"
+
 def createDir(l_dir):
 	if not os.path.exists(l_dir):
 		#print ("making: "+l_dir)
@@ -207,6 +210,11 @@ for module in modules[:]:
 	if os.path.exists(textureDir):
 		copyWithExtension(textureDir, destTextureIcon, ".dds")
 		copyWithExtension(textureDir, destTextureIconDev, ".dds")
+
+	textureDir = startDir + "\\" + module + "\\Textures\\Icons"
+	if os.path.exists(textureDir):
+		copyWithExtension(textureDir, destTextureIcon2, ".dds")
+		copyWithExtension(textureDir, destTextureIconDev2, ".dds")
 
 # copy scripts, data
 for module in modules[:]:
