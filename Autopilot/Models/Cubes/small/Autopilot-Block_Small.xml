@@ -58,10 +58,10 @@
 		<Parameter Name="NormalTexture">Textures\Models\Cubes\LargeBattery_ns.dds</Parameter>
 		<Parameter Name="ColorMetalTexture">Textures\Models\Cubes\LargeBattery_cm.dds</Parameter>
 		<Parameter Name="NormalGlossTexture">Textures\Models\Cubes\LargeBattery_ng.dds</Parameter>
-		<Parameter Name="AddMapsTexture">Textures\Cubes\LargeBattery_add.dds</Parameter>
+		<Parameter Name="AddMapsTexture">Textures\Models\Cubes\LargeBattery_add.dds</Parameter>
 		<!--material has no AlphamaskTexture-->
 	</Material>
 	<LOD Distance="50">
-		<Model>Models\Cubes\Autopilot-Block_Small_LOD3</Model>
+		<Model>Models\Cubes\Small\Autopilot-Block_Small_LOD3</Model>
 	</LOD>
 </Model>
