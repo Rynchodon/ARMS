@@ -27,7 +27,7 @@ if not os.path.exists(mwmBuilder):
 			exec(open(buildIni).read())
 			
 		if not os.path.exists(mwmBuilder):
-			inScriptDir = scrip + "\\MwmBuilder.exe" # from script dir
+			inScriptDir = scriptDir + "\\MwmBuilder.exe" # from script dir
 			if (os.path.exists(inScriptDir)):
 				mwmBuilder = inScriptDir
 				
@@ -75,8 +75,6 @@ def copyWithExtension(l_from, l_to, l_ext):
 
 
 # set up directories for MwmBuilder
-emptyDir(startDir + "\\" + input)
-emptyDir(startDir + "\\" + output)
 createDir(input)
 createDir(output)
 copyWithExtension(startDir, input, ".fbx")
