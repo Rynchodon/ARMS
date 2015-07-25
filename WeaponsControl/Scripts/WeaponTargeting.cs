@@ -19,47 +19,58 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public abstract class WeaponTargeting
 	{
-		private static ThreadManager Thread = new ThreadManager();
+		[Flags]
+		public enum State : byte
+		{
+			Off = 0,
+			/// <summary>Fetch options from name and Update_Options()</summary>
+			GetOptions = 1 << 0,
+			/// <summary>Indicates targeting is enabled, targeting may not be possible</summary>
+			Targeting = GetOptions | 1 << 1
+		}
 
+		private static readonly ThreadManager Thread = new ThreadManager();
 		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
+		/// <remarks>Not locked because there is only one thread allowed.</remarks>
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly Ingame.IMyLargeTurretBase myTurret;
 
+		public Target CurrentTarget { get; private set; }
+		public TargetingOptions Options { get; private set; }
+		public bool CanControl { get; private set; }
+
+		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
+		private readonly bool IsNormalTurret;
+		private readonly FastResourceLock lock_Queued = new FastResourceLock();
+
+		private Logger myLogger;
+		private State value_AllowedState = State.Off;
+		private State value_CurrentState = State.Off;
 		private Dictionary<TargetType, List<IMyEntity>> Available_Targets;
 		private List<IMyEntity> PotentialObstruction;
+		private Ammo LoadedAmmo;
+		private long UpdateNumber = 0;
 
-		internal TargetingOptions Options = new TargetingOptions();
 		private InterpreterWeapon Interpreter;
 		private int InterpreterErrorCount = int.MaxValue;
-		private Ammo LoadedAmmo;
 
-		public Target CurrentTarget { get; private set; }
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
-		private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
-		private int Blacklist_Index = 0;
+		//private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 
-		private byte updateCount = 0;
-
-		public bool IsControllingWeapon { get; private set; }
 		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
 		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private bool IsShooting;
 		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
 		private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
 
-		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
-		private readonly bool IsNormalTurret;
+		private List<IMyEntity> value_ObstructIgnore;
+		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
-		private bool WeaponTargetingEnabled = false;
-
-		private readonly FastResourceLock lock_Queued = new FastResourceLock();
-		private long UpdateNumber = 0;
-
-		private Logger myLogger;
+		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 
 		static WeaponTargeting()
 		{
@@ -89,15 +100,20 @@ namespace Rynchodon.Weapons
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.CurrentTarget = new Target();
-			this.IsControllingWeapon = false;
+			this.Options = new TargetingOptions();
 			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
+			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+
 			CubeBlock.OnClose -= weapon_OnClose;
-			DisableWeaponTargeting();
+			value_AllowedState = State.Off;
+			value_CurrentState = State.Off;
+
+			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
 		/// <summary>
@@ -106,29 +122,90 @@ namespace Rynchodon.Weapons
 		public void Update_Targeting()
 		{
 			try
-			{ Update(); }
+			{
+				GameThreadActions.DequeueAll(action => action.Invoke());
+				Update();
+			}
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
-				DisableWeaponTargeting(true);
+				AllowedState = State.Off;
+
+				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
+				func.SetCustomName("<Broken>" + func.DisplayNameText);
+				func.RequestEnable(false);
 			}
 
-			if (WeaponTargetingEnabled && lock_Queued.TryAcquireExclusive())
+			if (AllowedState != State.Off && lock_Queued.TryAcquireExclusive())
 				Thread.EnqueueAction(Update_Thread);
 		}
 
-		protected void EnableWeaponTargeting()
-		{ WeaponTargetingEnabled = true; }
-
-		protected void DisableWeaponTargeting(bool broken=false)
+		protected State AllowedState
 		{
-			// TODO: report broken
-			WeaponTargetingEnabled = false;
-			StopFiring("DisableWeaponTargeting, broken = " + broken);
-			IsControllingWeapon = false;
-			if (IsNormalTurret)
-				myTurret.ResetTargetingToDefault();
+			get { return value_AllowedState; }
+			set
+			{
+				value_AllowedState = value;
+
+				CurrentState &= value;
+				StopFiring("AllowedState changed");
+
+				//if (IsNormalTurret && (value & State.Targeting) == 0)
+				//	GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
+			}
 		}
+
+		protected State CurrentState
+		{
+			get { return value_CurrentState; }
+			private set
+			{
+				if (value_CurrentState == value)
+					return;
+
+				// need to get builder because we have no idea what the player may have been up to
+				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				using (lock_IsShooting.AcquireExclusiveUsing())
+					if (IsShooting != builder.IsShootingFromTerminal)
+					{
+						myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
+						IsShooting = builder.IsShootingFromTerminal;
+					}
+
+				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
+				StopFiring("CurrentState changed to " + value);
+
+				if (IsNormalTurret)
+				{
+					if ((value & State.Targeting) == State.Targeting) // now targeting
+						GameThreadActions.Enqueue(() =>	myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
+					else // not targeting
+						GameThreadActions.Enqueue(() =>	myTurret.ResetTargetingToDefault());
+				}
+
+				value_CurrentState = value;
+			}
+		}
+
+		protected List<IMyEntity> ObstructionIgnore
+		{
+			private get
+			{
+				using (lock_ObstructIgnore.AcquireSharedUsing())
+					return value_ObstructIgnore;
+			}
+			set
+			{
+				using (lock_ObstructIgnore.AcquireExclusiveUsing())
+					value_ObstructIgnore = value;
+			}
+		}
+
+		public bool CurrentState_FlagSet(State flag)
+		{ return (CurrentState & flag) == flag; }
+
+		public bool CurrentState_NotFlag(State flag)
+		{ return (CurrentState & flag) != flag; }
 
 		/// <summary>Invoked on game thread, every update.</summary>
 		protected abstract void Update();
@@ -156,8 +233,8 @@ namespace Rynchodon.Weapons
 				{
 					if (UpdateNumber % 100 == 0)
 					{
-						if (UpdateNumber % 1000 == 0)
-							Update1000();
+						//if (UpdateNumber % 1000 == 0)
+						//	Update1000();
 						Update100();
 					}
 					Update10();
@@ -167,10 +244,7 @@ namespace Rynchodon.Weapons
 				UpdateNumber++;
 			}
 			catch (Exception ex)
-			{
-				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.ERROR);
-				//DisableWeaponTargeting(true); // was doing more harm then good, all exceptions caught could be recovered from
-			}
+			{				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.WARNING);			}
 		}
 
 		/// <summary>
@@ -178,15 +252,9 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (!IsControllingWeapon || LoadedAmmo == null || (CurrentTarget.Entity != null && CurrentTarget.Entity.Closed))
+			if (CurrentState_NotFlag(State.Targeting) || LoadedAmmo == null || (CurrentTarget.Entity != null && CurrentTarget.Entity.Closed))
 				return;
 
-			//if (CurrentTarget.TType == TargetType.None)
-			//{
-			//	CurrentTarget.FiringDirection = null;
-			//	CurrentTarget.InterceptionPoint = null;
-			//}
-			//else
 			if (CurrentTarget.TType != TargetType.None)
 				SetFiringDirection();
 
@@ -198,7 +266,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update10()
 		{
-			if (!CanControlWeapon())
+			if (CurrentState_NotFlag(State.Targeting))
 				return;
 
 			UpdateAmmo();
@@ -232,10 +300,12 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update100()
 		{
-			if (!IsControllingWeapon)
+			UpdateCurrentState();
+			if (CurrentState_NotFlag(State.GetOptions))
 				return;
 
-			TryClearBlackList();
+			//using (lock_Blacklist.AcquireExclusiveUsing())
+				Blacklist = new MyUniqueList<IMyEntity>();
 
 			TargetingOptions newOptions;
 			List<string> Errors;
@@ -252,128 +322,46 @@ namespace Rynchodon.Weapons
 			WriteErrors(Errors);
 		}
 
-		/// <summary>Verifies that the weapon is in correct firing state.</summary>
-		private void Update1000()
-		{
-			if (!IsControllingWeapon)
-				return;
+		// no longer appropriate as shooting toggle is delayed
+		///// <summary>Verifies that the weapon is in correct firing state.</summary>
+		//private void Update1000()
+		//{
+		//	if (CurrentState_NotFlag(State.Targeting))
+		//		return;
 
-			var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-			using (lock_IsShooting.AcquireExclusiveUsing())
-				if (IsShooting != builder.IsShootingFromTerminal)
-				{
-					myLogger.debugLog("Shooting toggled incorrectly", "Update1000()", Logger.severity.WARNING);
-					IsShooting = builder.IsShootingFromTerminal;
-				}
-		}
+		//	var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+		//	using (lock_IsShooting.AcquireExclusiveUsing())
+		//		if (IsShooting != builder.IsShootingFromTerminal)
+		//		{
+		//			myLogger.debugLog("Shooting toggled incorrectly", "Update1000()", Logger.severity.WARNING);
+		//			IsShooting = builder.IsShootingFromTerminal;
+		//		}
+		//}
 
 		private Vector3D BarrelPositionWorld()
 		{
 			return CubeBlock.GetPosition();
 		}
 
-		/// <param name="testEnabled">set to false to ignore WeaponTargetingEnabled</param>
-		protected bool CanControlWeapon(bool testEnabled = true)
+		private void UpdateCurrentState()
 		{
 			if (!CubeBlock.IsWorking
-				|| (IsNormalTurret && myTurret.IsUnderControl)
-				|| (testEnabled && !WeaponTargetingEnabled)
-				|| CubeBlock.OwnerId == 0
-				|| (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-				|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
-				|| (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic))
+			|| (IsNormalTurret && myTurret.IsUnderControl)
+			|| CubeBlock.OwnerId == 0
+			|| (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
+			|| (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic))
 			{
-				//LogWhyNotControl();
-				SetCanNotControl();
-				return false;
+				myLogger.debugLog(!CubeBlock.IsWorking + ", " + (IsNormalTurret && myTurret.IsUnderControl) + ", " + (CubeBlock.OwnerId == 0) + ", " + (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC) + ", "
+					+ (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")) + ", " + (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic), "UpdateCurrentState()");
+
+				CanControl = false;
+				CurrentState = State.Off;
+				return;
 			}
 
-			SetCanControl();
-			return true;
-		}
-
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
-		//private void LogWhyNotControl()
-		//{
-		//	string why;
-
-		//	if (!CubeBlock.IsWorking)
-		//		why = "not working";
-		//	else if (!WeaponTargetingEnabled)
-		//		why = "weapon targeting disabled";
-		//	else if (IsNormalTurret && myTurret.IsUnderControl)
-		//		why = "turret controlled";
-		//	else if (CubeBlock.OwnerId == 0)
-		//		why = "no owner";
-		//	else if (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-		//		why = "NPC";
-		//	else if (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
-		//		why = "no brackets";
-		//	else if (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic)
-		//		why = "static";
-		//	else
-		//		why = "wtf";
-
-		//	myLogger.debugLog("not controlling because: " + why, "LogWhyNotControl()");
-		//}
-
-		private void SetCanControl()
-		{
-			if (!IsControllingWeapon)
-			{
-				IsControllingWeapon = true;
-
-				// stop shooting
-				//var builder = weapon.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				using (lock_IsShooting.AcquireExclusiveUsing())
-					if (IsShooting)
-						//{
-						//	myLogger.debugLog("Now controlling weapon, stop shooting", "CanControlWeapon()");
-						StopFiring("Now controlling weapon.");
-					//}
-					else
-						//{
-						myLogger.debugLog("Now controlling weapon, not shooting", "CanControlWeapon()");
-				//}
-
-				// disable default targeting
-				if (IsNormalTurret)
-				{
-					//	myLogger.debugLog("disabling default targeting", "CanControlWeapon()");
-					//myTurret.SetTarget(myTurret);
-					myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10);
-				}
-			}
-		}
-
-		private void SetCanNotControl()
-		{
-			if (IsControllingWeapon)
-			{
-				//myLogger.debugLog("No longer controlling weapon", "CanControlWeapon()");
-				IsControllingWeapon = false;
-
-				// remove target
-				CurrentTarget = new Target();
-				using (lock_Blacklist.AcquireExclusiveUsing())
-					Blacklist = new MyUniqueList<IMyEntity>();
-
-				// stop shooting
-				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				if (builder.IsShootingFromTerminal)
-					//{
-					//myLogger.debugLog("No longer controlling weapon, stop shooting", "CanControlWeapon()");
-					StopFiring("No longer controlling weapon.");
-				//}
-				else
-					//{
-					myLogger.debugLog("No longer controlling weapon, not shooting", "CanControlWeapon()");
-				//}
-
-				// enable default targeting
-				if (IsNormalTurret)
-					myTurret.ResetTargetingToDefault();
-			}
+			CanControl = true;
+			CurrentState = AllowedState;
 		}
 
 		private void UpdateAmmo()
@@ -391,7 +379,7 @@ namespace Rynchodon.Weapons
 			Ammo currentAmmo;
 			if (!KnownAmmo.TryGetValue(loaded[0].Content.SubtypeName, out currentAmmo))
 			{
-				MyDefinitionId magazineId = loaded[0].Content.GetId();
+				MyDefinitionId magazineId = loaded[0].Content.GetId(); //.GetObjectId();
 				//myLogger.debugLog("magazineId = " + magazineId, "UpdateAmmo()");
 				MyDefinitionId ammoDefId = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId).AmmoDefinitionId;
 				//myLogger.debugLog("ammoDefId = " + ammoDefId, "UpdateAmmo()");
@@ -509,7 +497,7 @@ namespace Rynchodon.Weapons
 					if (speed < 0.01)
 					{
 						myLogger.debugLog("blacklisting: " + CurrentTarget.Entity.getBestName(), "CheckFire()");
-						using (lock_Blacklist.AcquireExclusiveUsing())
+						//using (lock_Blacklist.AcquireExclusiveUsing())
 							Blacklist.Add(CurrentTarget.Entity);
 					}
 					StopFiring("Obstructed");
@@ -530,9 +518,8 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
-				MainLock.UsingShared(() => {
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
-				});
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
 
 				IsShooting = true;
 			}
@@ -547,9 +534,8 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
-				MainLock.UsingShared(() => {
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock);
-				});
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
 
 				IsShooting = false;
 			}
@@ -575,7 +561,7 @@ namespace Rynchodon.Weapons
 			{
 				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
 
-				using (lock_Blacklist.AcquireSharedUsing())
+				//using (lock_Blacklist.AcquireSharedUsing())
 					if (Blacklist.Contains(entity))
 						continue;
 
@@ -783,7 +769,7 @@ namespace Rynchodon.Weapons
 					if (Obstructed(targetPosition))
 					{
 						myLogger.debugLog("can't target: " + target.getBestName() + ", obstructed", "SetClosest()");
-						using (lock_Blacklist.AcquireExclusiveUsing())
+						//using (lock_Blacklist.AcquireExclusiveUsing())
 							Blacklist.Add(target);
 						continue;
 					}
@@ -870,7 +856,7 @@ namespace Rynchodon.Weapons
 						if (!block.IsWorking)
 							continue;
 
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(block))
 								continue;
 
@@ -908,7 +894,7 @@ namespace Rynchodon.Weapons
 							continue;
 						}
 
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(block))
 							{
 								myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
@@ -948,7 +934,7 @@ namespace Rynchodon.Weapons
 				foreach (IMySlimBlock slim in allSlims)
 					if (TargetableBlock(slim.FatBlock, false))
 					{
-						using (lock_Blacklist.AcquireSharedUsing())
+						//using (lock_Blacklist.AcquireSharedUsing())
 							if (Blacklist.Contains(slim.FatBlock))
 								continue;
 
@@ -1064,7 +1050,10 @@ namespace Rynchodon.Weapons
 				throw new ArgumentNullException("weapon");
 
 			if (!CanRotateTo(targetPosition))
+			{
+				//myLogger.debugLog("cannot rotate to", "Obstructed()");
 				return true;
+			}
 
 			// build offset rays
 			List<Line> AllTestLines = new List<Line>();
@@ -1090,13 +1079,23 @@ namespace Rynchodon.Weapons
 			Vector3 boundary;
 			foreach (Line testLine in AllTestLines)
 				if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
+				{
+					//myLogger.debugLog("from "+testLine.From+" to "+testLine.To+ "obstructed by voxel", "Obstructed()");
 					return true;
+				}
 
 			// Test each entity
+			List<IMyEntity> ignore = ObstructionIgnore;
 			foreach (IMyEntity entity in PotentialObstruction)
 			{
 				if (entity.Closed)
 					continue;
+
+				if (ignore != null && ignore.Contains(entity))
+				{
+					myLogger.debugLog("ignoring " + entity.getBestName(), "Obstructed()");
+					continue;
+				}
 
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
@@ -1104,7 +1103,10 @@ namespace Rynchodon.Weapons
 					double distance;
 					foreach (Line testLine in AllTestLines)
 						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
+						{
+							//myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
 							return true;
+						}
 					continue;
 				}
 
@@ -1114,12 +1116,17 @@ namespace Rynchodon.Weapons
 					if (!IsNormalTurret && asGrid == CubeBlock.CubeGrid)
 						continue;
 
+					//if (ignore != null && asGrid == ignore)
+					//	continue;
+
 					ICollection<Vector3I> allHitCells;
 
 					if (AllTestLines.Count == 1)
 					{
 						List<Vector3I> hitCells = new List<Vector3I>();
 						asGrid.RayCastCells(AllTestLines[0].From, AllTestLines[0].To, hitCells);
+
+						//myLogger.debugLog("from " + AllTestLines[0].From + " to " + AllTestLines[0].To + " hits " + hitCells.Count + " cells of " + asGrid.getBestName(), "Obstructed()");
 
 						allHitCells = hitCells;
 					}
@@ -1131,6 +1138,8 @@ namespace Rynchodon.Weapons
 							List<Vector3I> hitCells = new List<Vector3I>();
 							asGrid.RayCastCells(testLine.From, testLine.To, hitCells);
 
+							//myLogger.debugLog("from " + testLine.From + " to " + testLine.To + " hits " + hitCells.Count + " cells of " + asGrid.getBestName(), "Obstructed()");
+
 							foreach (Vector3I cell in hitCells)
 								allHitCells.Add(cell);
 						}
@@ -1138,15 +1147,37 @@ namespace Rynchodon.Weapons
 
 					foreach (Vector3I pos in allHitCells)
 					{
-						if (asGrid.CubeExists(pos))
-							if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
+						IMySlimBlock slim = asGrid.GetCubeBlock(pos);
+						if (slim == null)
+							continue;
+
+						if (ignore != null && slim.FatBlock != null && ignore.Contains(slim.FatBlock))
+						{
+							myLogger.debugLog("ignoring " + slim.getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
+							continue;
+						}
+
+						//if (asGrid.CubeExists(pos))
+						//{
+						//List<IMySlimBlock> ignore = ObstructionIgnore;
+						//if (ignore != null && ignore.Contains(asGrid.GetCubeBlock(pos)))
+						//	continue;
+
+						if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
+						{
+							//IMySlimBlock block = asGrid.GetCubeBlock(pos);
+							if (slim.FatBlock == null || slim.FatBlock != CubeBlock)
 							{
-								IMySlimBlock block = asGrid.GetCubeBlock(pos);
-								if (block.FatBlock == null || block.FatBlock != CubeBlock)
-									return true;
-							}
-							else
+								myLogger.debugLog("normal turret obstructed by block: " + slim.getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
 								return true;
+							}
+						}
+						else // not normal turret and not my grid
+						{
+							myLogger.debugLog("fixed weapon obstructed by block: " + asGrid.GetCubeBlock(pos).getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
+							return true;
+						}
+						//}
 					}
 				}
 			}
@@ -1181,21 +1212,21 @@ namespace Rynchodon.Weapons
 			if (CurrentTarget.FiringDirection == null)
 			{
 				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
-				using (lock_Blacklist.AcquireExclusiveUsing())
+				//using (lock_Blacklist.AcquireExclusiveUsing())
 					Blacklist.Add(target);
 				return;
 			}
 			if (Obstructed(CurrentTarget.InterceptionPoint.Value))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
-				using (lock_Blacklist.AcquireExclusiveUsing())
+				//using (lock_Blacklist.AcquireExclusiveUsing())
 					Blacklist.Add(target);
 				CurrentTarget = new Target();
 				return;
 			}
 		}
 
-		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/ </remarks>
+		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/</remarks>
 		private void FindInterceptVector(Vector3 shotOrigin, float shotSpeed, Vector3 targetOrigin, Vector3 targetVel)
 		{
 			Vector3 displacementToTarget = targetOrigin - shotOrigin;
@@ -1279,37 +1310,12 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				(CubeBlock as IMyTerminalBlock).SetCustomName(build);
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).SetCustomName(build));
 			}
 			else
-				(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName);
-		}
-
-		/// <summary>
-		/// attempts to remove some blacklisted items by checking for obstructions
-		/// </summary>
-		private void TryClearBlackList()
-		{
-			int i;
-			using (lock_Blacklist.AcquireExclusiveUsing())
-				for (i = 0; i < 10; i++)
-				{
-					int index = Blacklist_Index + i;
-					if (index >= Blacklist.Count)
-					{
-						Blacklist_Index = 0;
-						return;
-					}
-					IMyEntity entity = Blacklist[index];
-					if (entity.Closed || !Obstructed(entity.GetPosition()))
-					{
-						myLogger.debugLog("removing from blacklist: " + entity.getBestName(), "TryClearBlackList()");
-						Blacklist.Remove(entity);
-					}
-					else
-						myLogger.debugLog("leaving in blacklist: " + entity.getBestName(), "TryClearBlackList()");
-				}
-			Blacklist_Index += i;
+				GameThreadActions.Enqueue(() => 
+					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
 	}
 }

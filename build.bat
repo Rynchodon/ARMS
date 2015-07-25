@@ -2,5 +2,5 @@
 
 @echo off
 python .build/build.py
-timeout 10
+timeout 60
 exit

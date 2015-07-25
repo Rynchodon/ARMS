@@ -39,7 +39,7 @@ namespace Rynchodon
 		private static System.IO.TextWriter settingsWriter;
 
 		private static readonly string strVersion = "Version";
-		public static readonly int latestVersion = 38; // in sequence of updates on steam
+		public static readonly int latestVersion = 39; // in sequence of updates on steam
 		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger(null, "Settings");

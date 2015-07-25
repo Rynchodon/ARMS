@@ -105,7 +105,7 @@ namespace Rynchodon.Weapons
 					foreach (IMyCubeBlock block in weaponBlocks)
 					{
 						Turret weapon = Turret.GetFor(block);
-						if (weapon.IsControllingWeapon)
+						if (weapon.CurrentState_FlagSet(WeaponTargeting.State.Targeting))
 						{
 							myLogger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
 							//myWeapons_Turret.Add(weapon);
@@ -201,7 +201,7 @@ namespace Rynchodon.Weapons
 		public bool HasWeaponControl()
 		{
 			foreach (WeaponTargeting weapon in myWeapons_All)
-				if (weapon.IsControllingWeapon)
+				if (weapon.CurrentState_FlagSet(WeaponTargeting.State.Targeting))
 					return true;
 			return false;
 		}
@@ -234,7 +234,7 @@ namespace Rynchodon.Weapons
 						myWeapons_Fixed.Remove(asFixed);
 				}
 
-				if (!weapon.IsControllingWeapon)
+				if (weapon.CurrentState_NotFlag(WeaponTargeting.State.Targeting))
 					continue;
 
 				if (CanTarget(weapon, grid))
@@ -291,6 +291,8 @@ namespace Rynchodon.Weapons
 				float TargetingRange = weapon.Options.TargetingRange;
 				if (TargetingRange < 1)
 					continue;
+
+				// TODO: ignore weapons that will not target grids
 
 				if (TargetingRange < value_MinWeaponRange)
 					value_MinWeaponRange = TargetingRange;

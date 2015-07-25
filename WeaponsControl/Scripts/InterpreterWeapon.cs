@@ -263,6 +263,14 @@ namespace Rynchodon.Weapons
 				panelName = toParse;
 
 			var TextPanels = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(MyObjectBuilder_TextPanel));
+
+			if (TextPanels == null)
+			{
+				myLogger.debugLog("no text panels", "GetFromPanel()");
+				return false;
+			}
+			myLogger.debugLog(TextPanels.Count+" text panels", "GetFromPanel()");
+
 			IMyCubeBlock bestMatch = null;
 			int bestMatchLength = int.MaxValue;
 			foreach (var panel in TextPanels)

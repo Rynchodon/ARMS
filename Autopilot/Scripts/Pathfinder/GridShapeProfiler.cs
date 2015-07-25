@@ -80,8 +80,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnBlockRemoved(IMySlimBlock slim)
 		{
+			myLogger.debugLog("entered Grid_OnBlockRemoved()", "Grid_OnBlockRemoved()");
+
 			using (lock_SlimBlocks.AcquireExclusiveUsing())
-				SlimBlocks.mutable().Add(slim);
+				SlimBlocks.mutable().Remove(slim);
+
+			myLogger.debugLog("leaving Grid_OnBlockRemoved()", "Grid_OnBlockRemoved()");
 		}
 
 		/// <summary>
@@ -89,6 +93,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void Grid_OnClose(IMyEntity obj)
 		{
+			myLogger.debugLog("entered Grid_OnClose()", "Grid_OnClose()");
+
 			// remove references to this
 			using (lock_registry.AcquireExclusiveUsing())
 				registry.Remove(myCubeGrid);
@@ -101,6 +107,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			using (lock_SlimBlocks.AcquireExclusiveUsing())
 				SlimBlocks = null;
 			myCubeGrid = null;
+
+			myLogger.debugLog("leaving Grid_OnClose()", "Grid_OnClose()");
 		}
 
 		#endregion

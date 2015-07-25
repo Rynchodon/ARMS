@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.AttachedGrid;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Weapons
 {
@@ -11,11 +13,11 @@ namespace Rynchodon.Weapons
 	public class FixedWeapon : WeaponTargeting
 	{
 		private static Dictionary<IMyCubeBlock, FixedWeapon> registry = new Dictionary<IMyCubeBlock, FixedWeapon>();
+		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
 		/// <remarks>Before becoming a turret this will need to be checked.</remarks>
 		private Engager ControllingEngager = null;
-
-		private bool TurretFlagSet = false;
+		private MotorTurret MyMotorTurret = null;
 
 		private Logger myLogger;
 
@@ -23,15 +25,29 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("FixedWeapon", block);
-			registry.Add(CubeBlock, this);
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Add(CubeBlock, this);
 			CubeBlock.OnClose += weapon_OnClose;
+			myLogger.debugLog("Initialized", "FixedWeapon()");
+
+			AllowedState = State.GetOptions;
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
-		{ registry.Remove(CubeBlock); }
+		{
+			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+
+			using (lock_registry.AcquireExclusiveUsing())
+				registry.Remove(CubeBlock);
+
+			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
+		}
 
 		internal static FixedWeapon GetFor(IMyCubeBlock weapon)
-		{ return registry[weapon]; }
+		{
+			using (lock_registry.AcquireSharedUsing())
+				return registry[weapon];
+		}
 
 		/// <summary>
 		/// <para>If this FixedWeapon is already being controlled, returns if the given controller is controlling it.</para>
@@ -42,17 +58,13 @@ namespace Rynchodon.Weapons
 			if (ControllingEngager != null)
 				return ControllingEngager == controller;
 
-			if (CanControlWeapon(false) && !TurretFlagSet)// && Options.TargetingRange > 0)
+			if (CanControl && MyMotorTurret == null)
 			{
-				myLogger.debugLog("no issues", "EngagerTakeControl()");
+				myLogger.debugLog("engager takes control: " + controller, "EngagerTakeControl()");
 				ControllingEngager = controller;
-				EnableWeaponTargeting();
+				AllowedState = State.Targeting;
 				return true;
 			}
-			//if (IsControllingWeapon)
-			//	myLogger.debugLog("turret flag set", "EngagerTakeControl()");
-			//else
-			//	myLogger.debugLog("not controlling weapon", "EngagerTakeControl()");
 
 			return false;
 		}
@@ -62,7 +74,62 @@ namespace Rynchodon.Weapons
 			if (ControllingEngager != controller)
 				throw new InvalidOperationException("Engager does not have authority to release control");
 			ControllingEngager = null;
-			DisableWeaponTargeting();
+			AllowedState = State.Off;
+		}
+
+		/// <summary>
+		/// Fires the weapon as it bears.
+		/// </summary>
+		protected override void Update()
+		{
+			if (CurrentState_NotFlag(State.Targeting))
+				return;
+
+			// CurrentTarget may be changed by WeaponTargeting
+			Target GotTarget = CurrentTarget;
+			if (GotTarget.Entity == null)
+			{
+				StopFiring("No target.");
+				if (MyMotorTurret != null)
+					MyMotorTurret.Stop();
+				return;
+			}
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
+				return;
+
+			CheckFire(CubeBlock.WorldMatrix.Forward);
+
+			if (MyMotorTurret != null)
+			{
+				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value);
+				MyMotorTurret.FaceTowards(FiringDirection);
+			}
+		}
+
+		protected override void Update_Options(TargetingOptions current)
+		{
+			if (ControllingEngager != null)
+				return;
+
+			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
+			if (current.FlagSet(TargetingFlags.Turret))
+			{
+				if (MyMotorTurret == null && CanControl)
+				{
+					myLogger.debugLog("Turret is now enabled", "Update_Options()", Logger.severity.INFO);
+					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
+					AllowedState = State.Targeting;
+				}
+			}
+			else
+			{
+				if (MyMotorTurret != null)
+				{
+					myLogger.debugLog("Turret is now disabled", "Update_Options()", Logger.severity.INFO);
+					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
+					AllowedState = State.GetOptions;
+				}
+			}
 		}
 
 		protected override bool CanRotateTo(VRageMath.Vector3D targetPoint)
@@ -72,31 +139,35 @@ namespace Rynchodon.Weapons
 				return true;
 
 			// if controlled by a turret (not implemented)
-			return false;
+			return true;
 		}
 
-		protected override void Update_Options(TargetingOptions current)
-		{ TurretFlagSet = current.FlagSet(TargetingFlags.Turret); }
-
 		/// <summary>
-		/// Fires the weapon as it bears.
+		/// Creates an obstruction list from stators and rotors.
 		/// </summary>
-		protected override void Update()
+		private void MyMotorTurret_OnStatorChange(IMyMotorStator statorEl, IMyMotorStator statorAz)
 		{
-			if (!IsControllingWeapon)
-				return;
+			myLogger.debugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
 
-			// CurrentTarget may be changed by WeaponTargeting
-			Target GotTarget = CurrentTarget;
-			if (GotTarget.Entity == null)
+			List<IMyEntity> ignore = new List<IMyEntity>();
+			if (statorEl != null)
 			{
-				StopFiring("No target.");
-				return;
+				myLogger.debugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
+				ignore.Add(statorEl.CubeGrid);
 			}
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
-				return;
+			if (statorAz != null)
+			{
+				myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
+				ignore.Add(statorAz);
 
-			CheckFire(CubeBlock.WorldMatrix.Forward);
+				IMyCubeBlock statorAzRotor;
+				if (StatorRotor.TryGetRotor(statorAz, out statorAzRotor))
+				{
+					myLogger.debugLog("added statorAzRotor: " + statorAzRotor.getBestName(), "MyMotorTurret_OnStatorChange()");
+					ignore.Add(statorAzRotor);
+				}
+			}
+			ObstructionIgnore = ignore;
 		}
 	}
 }
