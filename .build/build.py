@@ -40,6 +40,10 @@ toCopy_texture = dict()
 #     because L.O.D.s are referred to by primary model .xml file
 model_size = dict()
 
+# arrays to be printed later
+errors = []
+info = []
+
 # in case build.ini is missing variables
 mwmBuilder = os.devnull
 Zip7 = os.devnull
@@ -51,7 +55,6 @@ def investigateBadPath(s_printName, s_path):
     if s_path is os.devnull:
         print (s_printName + " set to null device")
     else:
-        print ("ERROR: incorrect path to " + s_printName)
         lastPath = s_path
         while (not os.path.exists(s_path)):
             if (len(s_path) == 0):
@@ -60,8 +63,7 @@ def investigateBadPath(s_printName, s_path):
                 s_path = s_path[:-1]
             lastPath = s_path
             s_path = os.path.dirname(s_path)
-        print ("\tbad path:  " + lastPath)
-        print ("\tgood path: " + s_path)
+        errors.append("ERROR: incorrect path to " + s_printName + "\tbad path:  " + lastPath + "\tgood path: " + s_path)
 
 
 def createDir(l_dir):
@@ -84,7 +86,7 @@ def parse_sbc(path):
 
         # Icon
         for Icon in BlockDefn.findall('./Icon'):
-            toCopy_icons[module + '\\' + Icon.text] = path
+            toCopy_icons[(module + '\\' + Icon.text).lower()] = path
             Icon.text = finalRelDir_icons + os.path.basename(Icon.text)
 
         # BlockSize
@@ -95,11 +97,11 @@ def parse_sbc(path):
         # Primary Model
         for Model in BlockDefn.findall('./Model'):
             if ('large' in blockSize.lower()):
-                toCopy_modelLarge[module + '\\' + Model.text] = path
-                model_size[module + '\\' + Model.text] = 'Large'
+                toCopy_modelLarge[(module + '\\' + Model.text).lower()] = path
+                model_size[(module + '\\' + Model.text).lower()] = 'Large'
             else:
-                toCopy_modelSmall[module + '\\' + Model.text] = path
-                model_size[module + '\\' + Model.text] = 'Small'
+                toCopy_modelSmall[(module + '\\' + Model.text).lower()] = path
+                model_size[(module + '\\' + Model.text).lower()] = 'Small'
             Model.text = finalRelDir_model + blockSize + '\\' + os.path.basename(Model.text)
 
         # BuildProgressModels
@@ -107,9 +109,9 @@ def parse_sbc(path):
             file = Model.get('File')
             if (file):
                 if ('large' in blockSize.lower()):
-                    toCopy_modelLarge[module + '\\' + file] = path
+                    toCopy_modelLarge[(module + '\\' + file).lower()] = path
                 else:
-                    toCopy_modelSmall[module + '\\' + file] = path
+                    toCopy_modelSmall[(module + '\\' + file).lower()] = path
                 Model.set('File', finalRelDir_model + blockSize + '\\' + os.path.basename(file))
 
     # write tree to finalDir
@@ -144,27 +146,30 @@ def parse_xml(path):
         if (name):
             if ('texture' in name.lower()):
                 if (Parameter.text):
-                    toCopy_texture[module + '\\' + Parameter.text] = path
+                    toCopy_texture[(module + '\\' + Parameter.text).lower()] = path
                     Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
 
     outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
     createDir(outDir)
     tree.write(outDir + os.path.basename(path), 'utf-8', True)
-    
+
     # find L.O.D. models
     for Model in root.findall('./LOD/Model'):
         primary_mwm = path[:-3].replace(startDir + '\\', '') + 'mwm'
         file = Model.text
         if not Model.text.endswith('.mwm'):
             file += '.mwm'
-        
-        print ('LOD: ' + file)
-        print ('primary: '+primary_mwm)
-        print ('model_size: ' + model_size[primary_mwm])
-        if model_size[primary_mwm] == 'Large':
-            toCopy_modelLarge[module + '\\' + file] = path
-        else:
-            toCopy_modelSmall[module + '\\' + file] = path
+
+        #print ('LOD: ' + file)
+        #print ('primary: '+primary_mwm)
+        #print ('model_size: ' + model_size[primary_mwm])
+        try:
+            if model_size[(primary_mwm).lower()] == 'Large':
+                toCopy_modelLarge[(module + '\\' + file).lower()] = path
+            else:
+                toCopy_modelSmall[(module + '\\' + file).lower()] = path
+        except KeyError:
+            errors.append('ERROR: Cannot find main file for ' + file + '\n' + primary_mwm + ' is not in data files')
 
 
 # find and parse all the .xml files, then start mwm builder
@@ -195,7 +200,7 @@ def find_xml(path):
 
 # method that takes a module name and moves the files
 def copyFiles(l_source):
-    print ("copying scripts from "+l_source)
+    info.append("copying scripts from "+l_source)
     l_sourceDir = startDir + "\\" + l_source + "\Scripts"
     l_dataDir = startDir + "\\" + l_source + "\Data"
     l_archiveDir = startDir + "\Archive\\" + l_source
@@ -339,7 +344,7 @@ def copyToFinal (fileMap, finalRelDir):
             shutil.copy2(startDir + '\\' + file, finalModDir)
             shutil.copy2(startDir + '\\' + file, finalModDirDev)
         except (FileNotFoundError, OSError):
-            print ('\n\nERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
+            errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
 
 
 def copyWithExtension(l_from, l_to, l_ext):
@@ -408,7 +413,11 @@ if os.path.exists(mwmBuilder):
     for process in mwmProcess[:]:
         process.wait()
 
-    print("\nfinished MwmBuilder")
+    print("\nfinished MwmBuilder\n")
+    
+# print info
+for message in info:
+    print (message)
 
 # copy panel textures
 for module in modules[:]:
@@ -419,14 +428,18 @@ for module in modules[:]:
         copyWithExtension(textureDir, finalDirDev + relDir, ".dds")
 
 # copy files from collected paths
-#    this should run after MwmBuilder is finished so errors are prominent
 print('\ncopying files found in .sbc and .xml')
 copyToFinal(toCopy_icons, finalRelDir_icons)
 copyToFinal(toCopy_modelLarge, finalRelDir_model + '\Large')
 copyToFinal(toCopy_modelSmall, finalRelDir_model + '\Small')
 copyToFinal(toCopy_texture, finalRelDir_texture)
 
-print("\nfinished build\n")
+if (len(errors) == 0):
+    print ('\n\nbuild finished without errors')
+else:
+    print ('\n\nbuild finished with '+str(len(errors))+' errors:')
+    for oneError in errors:
+        print ('\n'+oneError)
 
 #    Pack Archive
 
