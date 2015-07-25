@@ -1,0 +1,4 @@
+# Ingame editor does not support tabs and has limited width.
+[*.cs]
+indent_style = space
+indent_size = 2
