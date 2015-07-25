@@ -66,26 +66,27 @@ def emptyDir(l_dir):
 			if os.path.isfile(l_dir + "\\" + file):
 				os.remove(l_dir + "\\" + file)
 
-def copyWithExtension(l_from, l_to, l_ext):
+def copyWithExtension(l_from, l_to, l_ext, overwrite = False):
 	createDir(l_to)
 	os.chdir(l_from)
 	for file in os.listdir('.'):
 		if file.lower().endswith(l_ext.lower()):
-			shutil.copy2(file, l_to)
-
+			outFile = l_to + '\\' + os.path.basename(file)
+			if not os.path.exists(outFile) or overwrite:
+				shutil.copy2(file, l_to)
 
 # set up directories for MwmBuilder
 createDir(input)
 createDir(output)
 copyWithExtension(startDir, input, ".fbx")
-copyWithExtension(startDir, input, ".xml")
 copyWithExtension(startDir, input, ".hkt")
 copyWithExtension(startDir, output, ".mwm") # copying.mwm to output allows MwmBuilder to skip unchanged models
+copyWithExtension(startDir, input, ".xml")
 
 # run MwmBuilder
 mwmBuilderProcess = subprocess.Popen([mwmBuilder, "/s:" + input, "/o:" + output, "/l:" + startDir + "\\MwmBuilder.log"])
 mwmBuilderProcess.wait()
-copyWithExtension(output, startDir, ".mwm")
+copyWithExtension(output, startDir, ".mwm", True)
 
 # cannot delete directories, but we can empty them
 emptyDir(startDir + "\\" + input)
