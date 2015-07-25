@@ -29,19 +29,24 @@ finalScriptDev = finalDirDev + '\Data\Scripts\Autopilot\\'
 finalRelDir_icons = 'Textures\GUI\Icons\Cubes\\'
 finalRelDir_model = 'Models\Cubes\\' # Large/Small will be added
 finalRelDir_texture = 'Textures\Models\Cubes\\'
+finalRelDir_texturePanel = 'Textures\Models\\'
 
 # files that will need to be copied and the source (for errors)
 toCopy_icons = dict()
 toCopy_modelLarge = dict()
 toCopy_modelSmall = dict()
 toCopy_texture = dict()
+toCopy_texturePanel = dict()
 
 # tracks primary model sizes
 #     because L.O.D.s are referred to by primary model .xml file
 model_size = dict()
+# tracks primary model for construction files, extension-less
+primary_model = dict()
 
 # arrays to be printed later
 errors = []
+warning = []
 info = []
 
 # in case build.ini is missing variables
@@ -79,50 +84,58 @@ def eraseDir(l_dir):
 
 
 def parse_sbc(path):
-    tree = ET.parse(path)
-    root = tree.getroot()
+	tree = ET.parse(path)
+	root = tree.getroot()
+	
+	for BlockDefn in root.findall('./CubeBlocks/Definition'):
+	
+		# Icon
+		for Icon in BlockDefn.findall('./Icon'):
+			toCopy_icons[(module + '\\' + Icon.text).lower()] = path
+			Icon.text = finalRelDir_icons + os.path.basename(Icon.text)
+	
+		# BlockSize
+		blockSize = ''
+		for CubeSize in BlockDefn.findall('./CubeSize'):
+			blockSize = CubeSize.text
+	
+		# Primary Model
+		for Model in BlockDefn.findall('./Model'):
+			primary = (module + '\\' + Model.text).lower()
+			if ('large' in blockSize.lower()):
+				toCopy_modelLarge[primary] = path
+				model_size[primary] = 'Large'
+			else:
+				toCopy_modelSmall[primary] = path
+				model_size[primary] = 'Small'
+			Model.text = finalRelDir_model + blockSize + '\\' + os.path.basename(Model.text)
+	
+		# BuildProgressModels
+		for Model in BlockDefn.findall('./BuildProgressModels/Model'):
+			file = Model.get('File')
+			if (file):
+				file_path = (module + '\\' + file).lower()
+				if ('large' in blockSize.lower()):
+					toCopy_modelLarge[file_path] = path
+				else:
+					toCopy_modelSmall[file_path] = path
+				primary_model[file_path[:-4]] = primary[:-4]
+				Model.set('File', finalRelDir_model + blockSize + '\\' + os.path.basename(file))
 
-    for BlockDefn in root.findall('./CubeBlocks/Definition'):
-
-        # Icon
-        for Icon in BlockDefn.findall('./Icon'):
-            toCopy_icons[(module + '\\' + Icon.text).lower()] = path
-            Icon.text = finalRelDir_icons + os.path.basename(Icon.text)
-
-        # BlockSize
-        blockSize = ''
-        for CubeSize in BlockDefn.findall('./CubeSize'):
-            blockSize = CubeSize.text
-
-        # Primary Model
-        for Model in BlockDefn.findall('./Model'):
-            if ('large' in blockSize.lower()):
-                toCopy_modelLarge[(module + '\\' + Model.text).lower()] = path
-                model_size[(module + '\\' + Model.text).lower()] = 'Large'
-            else:
-                toCopy_modelSmall[(module + '\\' + Model.text).lower()] = path
-                model_size[(module + '\\' + Model.text).lower()] = 'Small'
-            Model.text = finalRelDir_model + blockSize + '\\' + os.path.basename(Model.text)
-
-        # BuildProgressModels
-        for Model in BlockDefn.findall('./BuildProgressModels/Model'):
-            file = Model.get('File')
-            if (file):
-                if ('large' in blockSize.lower()):
-                    toCopy_modelLarge[(module + '\\' + file).lower()] = path
-                else:
-                    toCopy_modelSmall[(module + '\\' + file).lower()] = path
-                Model.set('File', finalRelDir_model + blockSize + '\\' + os.path.basename(file))
-
-    # write tree to finalDir
-    outDir = finalDir + '\Data\\'
-    createDir(outDir)
-    outFile = outDir + os.path.basename(path)
-    tree.write(outFile, 'utf-8', True)
-
-    outDirDev = finalDirDev + '\Data\\'
-    createDir(outDirDev)
-    shutil.copy2(outFile, outDirDev + os.path.basename(path))
+	# LCD textures
+	for texture in root.findall('./LCDTextures/LCDTextureDefinition/TexturePath'):
+		toCopy_texturePanel[(module + '\\' + texture.text).lower()] = path
+		texture.text = finalRelDir_texturePanel + os.path.basename(texture.text)
+	
+	# write tree to finalDir
+	outDir = finalDir + '\Data\\'
+	createDir(outDir)
+	outFile = outDir + os.path.basename(path)
+	tree.write(outFile, 'utf-8', True)
+	
+	outDirDev = finalDirDev + '\Data\\'
+	createDir(outDirDev)
+	shutil.copy2(outFile, outDirDev + os.path.basename(path))
 
 
 def find_sbc(dataPath):
@@ -136,7 +149,7 @@ def parse_xml(path):
     root = tree.getroot()
 
     if (not root.tag == 'Model' or not root.get('Name')):
-        return
+        return False
 
     print ('\tparsing xml: '+os.path.basename(path))
 
@@ -150,8 +163,11 @@ def parse_xml(path):
                     Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
 
     outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
+    outFile = outDir + os.path.basename(path)
     createDir(outDir)
-    tree.write(outDir + os.path.basename(path), 'utf-8', True)
+    tree.write(outFile, 'utf-8', True)
+    # copy stats so Mwm Builder knows if xml was updated
+    shutil.copystat(path, outFile)
 
     # find L.O.D. models
     for Model in root.findall('./LOD/Model'):
@@ -160,17 +176,37 @@ def parse_xml(path):
         if not Model.text.endswith('.mwm'):
             file += '.mwm'
 
-        #print ('LOD: ' + file)
-        #print ('primary: '+primary_mwm)
-        #print ('model_size: ' + model_size[primary_mwm])
         try:
             if model_size[(primary_mwm).lower()] == 'Large':
                 toCopy_modelLarge[(module + '\\' + file).lower()] = path
             else:
                 toCopy_modelSmall[(module + '\\' + file).lower()] = path
         except KeyError:
-            errors.append('ERROR: Cannot find main file for ' + file + '\n' + primary_mwm + ' is not in data files')
+            errors.append('ERROR: Cannot find main file for:\n\t' + file + '\nnot in data files:\n\t' + primary_mwm)
+    return True
 
+
+def copyHavokFile(path):
+	model = path.replace(startDir +'\\', '').lower()[:-4]
+	my_havok = model + '.hkt'
+	
+	if not os.path.exists(my_havok):
+		try:
+			pri_havok = primary_model[model] + '.hkt'
+			if not os.path.exists(pri_havok):
+				warning.append('WARN: no havok file for ' + path)
+				return
+		except KeyError:
+			warning.append('WARN: no havok file for ' + path)
+			return
+	else:
+		pri_havok = my_havok
+	
+	outDir = os.path.dirname(model) + '\MwmBuilder\Content\\'
+	outFile = outDir + os.path.basename(my_havok)
+	createDir(outDir)
+	shutil.copy2(pri_havok, outFile)
+	
 
 # find and parse all the .xml files, then start mwm builder
 def find_xml(path):
@@ -190,8 +226,10 @@ def find_xml(path):
             print ('dir: '+dir)
             for file in os.listdir(dir):
                 if (file.endswith('.xml')):
-                    parse_xml(dir + '\\' + file)
-
+                    path = dir + '\\' + file
+                    if (parse_xml(path)):
+                        copyHavokFile(path)
+                   
             # run build-model
             if os.path.exists(mwmBuilder):
                 os.chdir(dir)
@@ -332,7 +370,7 @@ def build_help():
     #print("wrote(Dev): "+replaceIn_file)
 
 
-def copyToFinal (fileMap, finalRelDir):
+def copyToFinal(fileMap, finalRelDir):
     finalModDir = finalDir +'\\' + finalRelDir
     finalModDirDev = finalDirDev +'\\' + finalRelDir
     createDir(finalModDir)
@@ -433,13 +471,14 @@ copyToFinal(toCopy_icons, finalRelDir_icons)
 copyToFinal(toCopy_modelLarge, finalRelDir_model + '\Large')
 copyToFinal(toCopy_modelSmall, finalRelDir_model + '\Small')
 copyToFinal(toCopy_texture, finalRelDir_texture)
+copyToFinal(toCopy_texturePanel, finalRelDir_texturePanel)
 
-if (len(errors) == 0):
-    print ('\n\nbuild finished without errors')
-else:
-    print ('\n\nbuild finished with '+str(len(errors))+' errors:')
-    for oneError in errors:
-        print ('\n'+oneError)
+# print errors & warnings
+print ('\n\nbuild finished with '+ str(len(errors)) + ' errors and ' + str(len(warning)) + ' warnings:')
+for oneWarn in warning:
+	print ('\n'+oneWarn)
+for oneError in errors:
+	print ('\n'+oneError)
 
 #    Pack Archive
 
