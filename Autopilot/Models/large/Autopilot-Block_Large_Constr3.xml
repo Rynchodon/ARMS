@@ -12,7 +12,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Material.000">
@@ -22,7 +22,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 </Model>

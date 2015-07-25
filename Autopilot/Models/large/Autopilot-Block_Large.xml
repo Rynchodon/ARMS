@@ -12,7 +12,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Paintable">
@@ -22,7 +22,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\autopilot_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\autopilot_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Material.143">
@@ -32,7 +32,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Material.153">
@@ -42,7 +42,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Emissive">
@@ -52,7 +52,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\radar.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\radar.dds</Parameter>
 		<!--material has no normal-texture-->
 	</Material>
 	<Material Name="Name">
@@ -62,7 +62,7 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\autopilot_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\autopilot_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<Material Name="Material.154">
@@ -72,10 +72,10 @@
 		<Parameter Name="DiffuseColorX">255</Parameter>
 		<Parameter Name="DiffuseColorY">255</Parameter>
 		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\LargeBattery_me.dds</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
 		<Parameter Name="NormalTexture" />
 	</Material>
 	<LOD Distance="50">
-		<Model>Models\Autopilot-Block_Large_LOD3</Model>
+		<Model>Models\large\Autopilot-Block_Large_LOD3</Model>
 	</LOD>
 </Model>

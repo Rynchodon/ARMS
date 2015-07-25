@@ -117,7 +117,7 @@
         <TypeId>LCDTextureDefinition</TypeId>
         <SubtypeId>Radar</SubtypeId>
       </Id>
-     <TexturePath>Textures\Models\radar.dds</TexturePath>
+     <TexturePath>Textures\TextPanel\radar.dds</TexturePath>
     </LCDTextureDefinition>
   </LCDTextures>
 

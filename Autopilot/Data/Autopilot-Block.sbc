@@ -10,12 +10,12 @@
         <SubtypeId>Autopilot-Block_Large</SubtypeId>
       </Id>
       <DisplayName>Autopilot Block</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\Autopilot-Block.dds</Icon>
+      <Icon>Textures\Icon\Autopilot-Block.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Large\Autopilot-Block_Large.mwm</Model>
+      <Model>Models\Large\Autopilot-Block_Large.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="5" />
         <Component Subtype="Construction" Count="100" />
@@ -27,9 +27,9 @@
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
 		<BuildProgressModels>
-			<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\Autopilot-Block_Large_Constr1.mwm" />
-			<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Large\Autopilot-Block_Large_Constr2.mwm" />
-			<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\Autopilot-Block_Large_Constr3.mwm" />
+			<Model BuildPercentUpperBound="0.33" File="Models\Large\Autopilot-Block_Large_Constr1.mwm" />
+			<Model BuildPercentUpperBound="0.67" File="Models\Large\Autopilot-Block_Large_Constr2.mwm" />
+			<Model BuildPercentUpperBound="1.00" File="Models\Large\Autopilot-Block_Large_Constr3.mwm" />
 		</BuildProgressModels>
       <MountPoints>
 		<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
@@ -53,12 +53,12 @@
         <SubtypeId>Autopilot-Block_Small</SubtypeId>
       </Id>
       <DisplayName>Autopilot Block</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\Autopilot-Block.dds</Icon>
+      <Icon>Textures\Icon\Autopilot-Block.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Small\Autopilot-Block_Small.mwm</Model>
+      <Model>Models\Small\Autopilot-Block_Small.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="10" />
         <Component Subtype="Construction" Count="5" />
@@ -76,9 +76,9 @@
 		<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
       </MountPoints>
       <BuildProgressModels>
-		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Small\Autopilot-Block_Small_Constr1.mwm" />
-		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Small\Autopilot-Block_Small_Constr2.mwm" />
-		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\Autopilot-Block_Small_Constr3.mwm" />
+		<Model BuildPercentUpperBound="0.33" File="Models\Small\Autopilot-Block_Small_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Small\Autopilot-Block_Small_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Small\Autopilot-Block_Small_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>Autopilot-Block</BlockPairName>
       <MirroringY>Z</MirroringY>
