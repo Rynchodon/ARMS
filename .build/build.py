@@ -15,6 +15,7 @@ import datetime, errno, os.path, shutil, stat, subprocess, sys, xml.etree.Elemen
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 startDir = os.path.split(scriptDir)[0]
 buildIni = scriptDir + "\\build.ini"
+buildIniTemplate = scriptDir + "\\build-template.ini"
 build_model = scriptDir + "\\build-model.py"
 
 # paths files are moved to
@@ -68,7 +69,7 @@ def investigateBadPath(s_printName, s_path):
                 s_path = s_path[:-1]
             lastPath = s_path
             s_path = os.path.dirname(s_path)
-        errors.append("ERROR: incorrect path to " + s_printName + "\tbad path:  " + lastPath + "\tgood path: " + s_path)
+        errors.append("ERROR: incorrect path to " + s_printName + "\n\tbad path:  " + lastPath + "\n\tgood path: " + s_path)
 
 
 def createDir(l_dir):
@@ -395,6 +396,9 @@ def copyWithExtension(l_from, l_to, l_ext):
 
 print ('\n\n')
 
+if not os.path.exists(buildIni):
+	shutil.copy(buildIniTemplate, buildIni)
+
 if os.path.exists(buildIni):
     exec(open(buildIni).read())
 else:
@@ -485,8 +489,8 @@ for oneError in errors:
 os.chdir(startDir)
 
 if not os.path.exists(Zip7):
-    investigateBadPath("7-Zip", Zip7)
-    sys.exit()
+	print('\nNot running 7-Zip')
+	sys.exit()
 
 print("\n7-Zip running")
 
