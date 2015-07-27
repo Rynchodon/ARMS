@@ -403,6 +403,7 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 			if (!IsInsideAsteroid())
 			{
+				myNav.fullStop("tunneled out the other side");
 				myLogger.debugLog("tunneled out the other side", "TunnelThrough()");
 				SetNextStage(Ready, false);
 				return;
