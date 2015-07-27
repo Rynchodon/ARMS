@@ -145,6 +145,7 @@ namespace Rynchodon
 
 			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText, "SetupStators()");
 			OnStatorChange(StatorEl, StatorAz);
+			Stop();
 			return true;
 		}
 
