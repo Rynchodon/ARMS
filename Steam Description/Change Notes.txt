@@ -1,5 +1,7 @@
 Will be moved to steam every release.
 
 major:
+Face Sun command for Solar Panels and Oxygen Farms
 
 minor:
+fixed harvester bug

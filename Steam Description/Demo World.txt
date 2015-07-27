@@ -14,4 +14,5 @@ Missile
 
 Other:
 Antenna Relay & Radar with Display
-Weapon Control
+Solar arrays that track the sun
+Weapon Control including rotor-turret

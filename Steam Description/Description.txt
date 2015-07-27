@@ -62,6 +62,9 @@ fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
 sWeaponCommandsNPC - commands that N.P.C. weapons will use
 
+[h1]Misc[/h1]
+A solar array of panels or oxygen farms can be instructed to face the sun by adding [ Face Sun ] to the name of any solar panel or oxygen farm. See [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] Autopilot Demonstration World [/url].
+
 [h1]Known Issues[/h1]
 These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.
 
