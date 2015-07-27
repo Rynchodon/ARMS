@@ -13,6 +13,8 @@ namespace Rynchodon
 {
 	public static class IMyCubeBlockExtensions
 	{
+		private static Logger myLogger = new Logger("IMyCubeBlockExtensions");
+
 		#region Relations
 
 		/// <summary>
@@ -162,8 +164,10 @@ namespace Rynchodon
 			{
 				case Relations.Faction:
 				case Relations.Owner:
-				case Relations.None:
 					return true;
+				case Relations.None:
+					//myLogger.debugLog(block.DisplayNameText + " wants to control " + target.DisplayNameText + ", Relations == None, target OwnerId: " + target.OwnerId, "canControlBlock()");
+					return target.OwnerId == 0;
 				default:
 					return false;
 			}
@@ -337,17 +341,18 @@ namespace Rynchodon
 
 			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
 			Base6Directions.Direction? bestDirection = null;
-			float bestDirectionCloseness = float.MaxValue;
+			double bestDirectionAngle = double.MaxValue;
 
 			foreach (Base6Directions.Direction direction in faceDirections)
 			{
 				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
-				float closeness = directionVector.Dot(worldDirection);
+				double angle = Math.Acos(directionVector.Dot(worldDirection));
 
-				if (closeness < bestDirectionCloseness)
+				if (angle < bestDirectionAngle)
 				{
+					//myLogger.debugLog("angle: " + angle + ", bestDirectionAngle: " + bestDirectionAngle + ", direction: " + direction, "GetFaceDirection()");
 					bestDirection = direction;
-					bestDirectionCloseness = closeness;
+					bestDirectionAngle = angle;
 				}
 			}
 
