@@ -119,6 +119,20 @@ namespace Rynchodon.Update
 			else
 				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts()", Logger.severity.INFO);
 
+			// Solar
+			{
+				SunProperties sun = new SunProperties();
+				RegisterForUpdates(10, sun.Update10);
+			}
+			RegisterForBlock(typeof(MyObjectBuilder_OxygenFarm), (block) => {
+				Solar s = new Solar(block);
+				RegisterForUpdates(1, s.Update1, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_SolarPanel), (block) => {
+				Solar s = new Solar(block);
+				RegisterForUpdates(1, s.Update1, block);
+			});
+
 			// Attached Blocks
 			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
 				StatorRotor.Stator stator = new StatorRotor.Stator(block);
@@ -143,7 +157,7 @@ namespace Rynchodon.Update
 		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
 
 		private enum Status : byte { Not_Initialized, Initialized, Terminated }
-		private Status MangerStatus = Status.Not_Initialized;
+		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedQueue<Action> AddRemoveActions = new LockedQueue<Action>(8);
 
@@ -167,7 +181,7 @@ namespace Rynchodon.Update
 				if (ServerOnly && MyAPIGateway.Multiplayer.MultiplayerActive && !MyAPIGateway.Multiplayer.IsServer)
 				{
 					myLogger.alwaysLog("Not a server, disabling scripts", "Init()", Logger.severity.INFO);
-					MangerStatus = Status.Terminated;
+					ManagerStatus = Status.Terminated;
 					return;
 				}
 				if (MyAPIGateway.Multiplayer.MultiplayerActive)
@@ -192,12 +206,12 @@ namespace Rynchodon.Update
 
 				MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 
-				MangerStatus = Status.Initialized;
+				ManagerStatus = Status.Initialized;
 			}
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
-				MangerStatus = Status.Terminated;
+				ManagerStatus = Status.Terminated;
 			}
 		}
 
@@ -211,7 +225,7 @@ namespace Rynchodon.Update
 			MainLock.MainThread_ReleaseExclusive();
 			try
 			{
-				switch (MangerStatus)
+				switch (ManagerStatus)
 				{
 					case Status.Not_Initialized:
 						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
@@ -253,7 +267,7 @@ namespace Rynchodon.Update
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "UpdateAfterSimulation()", Logger.severity.FATAL);
-				MangerStatus = Status.Terminated;
+				ManagerStatus = Status.Terminated;
 			}
 			finally
 			{
