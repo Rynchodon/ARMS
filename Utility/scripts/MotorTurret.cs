@@ -22,7 +22,7 @@ namespace Rynchodon
 	{
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 
-		private const float RotationSpeedMultiplier = 100;
+		private const float def_RotationSpeedMultiplier = 100;
 		private static readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
 
 		private readonly IMyCubeBlock FaceBlock;
@@ -34,7 +34,14 @@ namespace Rynchodon
 		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
 		public IMyMotorStator StatorAz { get; private set; }
 
-		private Dictionary<IMyMotorStator, float> PreviousSpeed = new Dictionary<IMyMotorStator, float>();
+		private float previousSpeed_StatorEl;
+		private float previousSpeed_StatorAz;
+
+		public MotorTurret(IMyCubeBlock block) : this(block, delegate { }) { }
+
+		private float my_RotationSpeedMulitplier = def_RotationSpeedMultiplier;
+
+		private float mySpeedLimit = 30f;
 
 		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler)
 		{
@@ -42,6 +49,18 @@ namespace Rynchodon
 			this.myLogger = new Logger("MotorTurret", block);
 			this.OnStatorChange = handler;
 			this.SetupStators();
+		}
+
+		public float RotationSpeedMultiplier
+		{
+			get { return my_RotationSpeedMulitplier; }
+			set { my_RotationSpeedMulitplier = Math.Abs(value); }
+		}
+
+		public float SpeedLimt
+		{
+			get { return mySpeedLimit; }
+			set { mySpeedLimit = Math.Abs(value); }
 		}
 
 		/// <summary>
@@ -55,7 +74,9 @@ namespace Rynchodon
 				return;
 
 			// get the direction FaceBlock is currently facing
-			RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.Forward);
+			Base6Directions.Direction closestDirection = FaceBlock.GetFaceDirection(direction.ToWorld());
+			myLogger.debugLog("closest direction: " + closestDirection, "FaceTowards()");
+			RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.GetDirectionVector(closestDirection));
 			// get the elevation and azimuth from currentDir
 			float currentFaceEl, currentFaceAz;
 			Vector3.GetAzimuthAndElevation(currentDir.ToBlockNormalized(StatorAz as IMyCubeBlock), out currentFaceAz, out currentFaceEl);
@@ -124,6 +145,7 @@ namespace Rynchodon
 
 			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText, "SetupStators()");
 			OnStatorChange(StatorEl, StatorAz);
+			Stop();
 			return true;
 		}
 
@@ -139,12 +161,15 @@ namespace Rynchodon
 
 				foreach (IMyCubeBlock motorPart in blocksOfType)
 				{
+					if (!FaceBlock.canControlBlock(motorPart))
+						continue;
+
 					Stator = motorPart as IMyMotorStator;
 					if (Stator != null)
 					{
 						if (Stator == IgnoreStator)
 							continue;
-						if (StatorRotor.TryGetRotor(Stator, out Rotor))
+						if (StatorRotor.TryGetRotor(Stator, out Rotor) && FaceBlock.canControlBlock(Stator as IMyCubeBlock))
 							return true;
 					}
 					else
@@ -152,7 +177,7 @@ namespace Rynchodon
 						Rotor = motorPart;
 						if (Rotor == IgnoreRotor)
 							continue;
-						if (StatorRotor.TryGetStator(Rotor, out Stator))
+						if (StatorRotor.TryGetStator(Rotor, out Stator) && FaceBlock.canControlBlock(Stator as IMyCubeBlock))
 							return true;
 					}
 				}
@@ -165,18 +190,36 @@ namespace Rynchodon
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
-			var prop = Stator.GetProperty("Velocity").AsFloat();
 			float speed = angle * RotationSpeedMultiplier;
 
-			float prevSpeed;
-			if (PreviousSpeed.TryGetValue(Stator, out prevSpeed) && Math.Abs(speed - prevSpeed) < 0.1)
+			if (!speed.IsValid())
 			{
-				myLogger.debugLog("no change in speed", "SetVelocity()");
+				myLogger.debugLog("invalid speed: " + speed, "SetVelocity()");
+				speed = 0;
+			}
+			else
+				speed = MathHelper.Clamp(speed, -mySpeedLimit, mySpeedLimit);
+
+			float prevSpeed;
+			if (Stator == StatorEl)
+				prevSpeed = previousSpeed_StatorEl;
+			else
+				prevSpeed = previousSpeed_StatorAz;
+
+			if (Math.Abs(speed - prevSpeed) < 0.1)
+			{
+				myLogger.debugLog(Stator.DisplayNameText + ", no change in speed: " + speed, "SetVelocity()");
 				return;
 			}
 
-			myLogger.debugLog(Stator.DisplayNameText + " speed changed to " + speed, "SetVelocity()");
-			PreviousSpeed[Stator] = speed;
+			myLogger.debugLog(Stator.DisplayNameText + ", speed changed to " + speed, "SetVelocity()");
+			var prop = Stator.GetProperty("Velocity").AsFloat();
+
+			if (Stator == StatorEl)
+				previousSpeed_StatorEl = speed;
+			else
+				previousSpeed_StatorAz = speed;
+
 			prop.SetValue(Stator, speed);
 		}
 	}
