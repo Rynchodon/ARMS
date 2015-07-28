@@ -1,6 +1,7 @@
 Will be moved to steam every release.
 
 major:
+Radar Model: DX11 support, better construction stages, and smaller collision
 Face Sun command for Solar Panels and Oxygen Farms
 
 minor:
