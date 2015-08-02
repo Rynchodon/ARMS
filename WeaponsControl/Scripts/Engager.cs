@@ -264,35 +264,12 @@ namespace Rynchodon.Weapons
 		{
 			value_MinWeaponRange = float.MaxValue;
 			value_MaxWeaponRange = 0;
-			//foreach (FixedWeapon weapon in myWeapons_Fixed)
-			//{
-			//	float TargetingRange = weapon.Options.TargetingRange;
-			//	if (TargetingRange < 1)
-			//		continue;
 
-			//	if (TargetingRange < value_MinWeaponRange)
-			//		value_MinWeaponRange = TargetingRange;
-			//	if (TargetingRange > value_MaxWeaponRange)
-			//		value_MaxWeaponRange = TargetingRange;
-			//}
-			//foreach (Turret weapon in myWeapons_Turret)
-			//{
-			//	float TargetingRange = weapon.Options.TargetingRange;
-			//	if (TargetingRange < 1)
-			//		continue;
-
-			//	if (TargetingRange < value_MinWeaponRange)
-			//		value_MinWeaponRange = TargetingRange;
-			//	if (TargetingRange > value_MaxWeaponRange)
-			//		value_MaxWeaponRange = TargetingRange;
-			//}
 			foreach (WeaponTargeting weapon in myWeapons_All)
 			{
 				float TargetingRange = weapon.Options.TargetingRange;
-				if (TargetingRange < 1)
+				if (TargetingRange < 1 || !weapon.Options.CanTargetType(TargetType.AllGrid))
 					continue;
-
-				// TODO: ignore weapons that will not target grids
 
 				if (TargetingRange < value_MinWeaponRange)
 					value_MinWeaponRange = TargetingRange;

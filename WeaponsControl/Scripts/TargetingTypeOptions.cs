@@ -44,6 +44,8 @@ namespace Rynchodon.Weapons
 	public class TargetingOptions
 	{
 		public TargetType CanTarget = TargetType.None;
+
+		/// <summary>Returns true if any of the specified types can be targeted.</summary>
 		public bool CanTargetType(TargetType type)
 		{ return (CanTarget & type) != 0; }
 
