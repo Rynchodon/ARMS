@@ -1,4 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+
+#define LOG_ENABLED //remove on build
 
 using System;
 using Rynchodon.AntennaRelay;
@@ -7,7 +9,7 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.NavigationSettings
 {
-	internal class NavSettings
+	internal class NavSettingsDeprecated
 	{
 		#region Enums
 

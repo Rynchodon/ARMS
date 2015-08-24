@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Navigator;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -30,15 +31,17 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		public class InstructionQueueOverflow : Exception { }
 
-		private Navigator owner;
-		private NavSettings CNS { get { return owner.CNS; } }
+		public readonly AllNavigationSettings myNavSet;
+		public ANavigator currentNavigator;
 
-		private Logger myLogger = new Logger(null, "Interpreter");
+		private readonly ShipController_Block myBlock;
+		private readonly Logger myLogger;
 
-		public Interpreter(Navigator owner)
+		public Interpreter(ShipController_Block block)
 		{
-			this.owner = owner;
-			myLogger = new Logger(owner.myGrid.DisplayName, "Interpreter");
+			myBlock = block;
+			myLogger = new Logger("Interpreter", block);
+			myNavSet = new AllNavigationSettings();
 		}
 
 		/// <summary>
@@ -68,7 +71,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// convert instructions from block to Action, then enqueue to instructionQueue
 		/// </summary>
 		/// <param name="block">block with instructions</param>
-		public void enqueueAllActions(IMyCubeBlock block)
+		public void enqueueAllActions(ShipController_Block block)
 		{
 			string instructions = preParse(block).getInstructions();
 
@@ -87,18 +90,14 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <para>performs actions before splitting instructions by : & ;</para>
 		/// <para>Currently, performs a substitution for pasted GPS tags</para>
 		/// </summary>
-		private string preParse(IMyCubeBlock block)
+		private string preParse(ShipController_Block block)
 		{
 			string blockName = block.DisplayNameText;
 
 			blockName = GPS_tag.Replace(blockName, replaceWith);
 			//myLogger.debugLog("replaced name: " + blockName, "preParse()");
 
-			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
-			if (asTerm != null)
-				asTerm.SetCustomName(blockName);
-			else
-				myLogger.debugLog("not functional, name will not be updated: " + block.getBestName(), "preParse()", Logger.severity.WARNING);
+			block.SetCustomName(blockName);
 
 			return blockName;
 		}
@@ -178,28 +177,29 @@ namespace Rynchodon.Autopilot.Instruction
 			{
 				case "asteroid":
 					{
-						wordAction = () => { CNS.ignoreAsteroids = true; };
+						wordAction = () => { myNavSet.Settings_Task.IgnoreAsteroid = true; };
 						return true;
 					}
 				case "exit":
 					{
 						wordAction = () => {
-							owner.CNS.EXIT = true;
-							owner.reportState(Navigator.ReportableState.Off);
-							owner.fullStop("EXIT");
+							//owner.CNS.EXIT = true;
+							//owner.reportState(Navigator.ReportableState.Off);
+							//owner.fullStop("EXIT");
+							currentNavigator = new Stopper(myBlock, true);
 						};
 						return true;
 					}
 				case "harvest":
 					{
-						wordAction = () => { owner.myHarvester.Start(); };
+						wordAction = () => { currentNavigator = new HarvesterAsteroid(myBlock); };
 						return true;
 					}
 				case "jump":
 					{
 						wordAction = () => {
 							myLogger.debugLog("setting jump", "getAction_word()", Logger.severity.DEBUG);
-							owner.CNS.jump_to_dest = true;
+							myNavSet.Settings_Task.JumpToDest = true;
 							return;
 						};
 						return true;
@@ -207,39 +207,31 @@ namespace Rynchodon.Autopilot.Instruction
 				case "line":
 					{
 						wordAction = () => {
-							owner.CNS.SpecialFlyingInstructions = NavSettings.SpecialFlying.Line_SidelForward;
-							myLogger.debugLog("Set FlyTheLine", "getAction_word()");
+							myLogger.debugLog("set pathfinder cannot change course", "getAction_word()");
+							myNavSet.Settings_Task.PathPerm = AllNavigationSettings.PathfinderPermissions.None;
 						};
 						return true;
 					}
 				case "lock":
 					{
 						wordAction = () => {
-							if (owner.CNS.landingState == NavSettings.LANDING.LOCKED)
-							{
-								myLogger.debugLog("staying locked. local=" + owner.CNS.landingSeparateBlock.DisplayNameText, "getAction_word()", Logger.severity.TRACE);// + ", target=" + CNS.closestBlock + ", grid=" + CNS.gridDestination);
-								owner.CNS.landingState = NavSettings.LANDING.OFF;
-								owner.CNS.landingSeparateBlock = null;
-								owner.CNS.landingSeparateWaypoint = null;
-								owner.EnableDampeners(); // dampeners will have been turned off for docking
-							}
+							myLogger.debugLog("Staying locked", "getAction_word()");
+							currentNavigator = null;
+							myBlock.SetDamping(true); // dampeners will have been turned off for docking
 						};
 						return true;
 					}
-				case "reset":
+				case "stop":
 					{
-						IMyTerminalBlock RCterminal = owner.currentAPterminal;
-						wordAction = () => {
-							if (owner.currentAPcontroller.ControlThrusters)
-								RCterminal.GetActionWithName("ControlThrusters").Apply(RCterminal);
-							Core.remove(owner);
-						};
+						wordAction = () => { currentNavigator = new Stopper(myBlock, false); };
 						return true;
+					}
+				default:
+					{
+						wordAction = null;
+						return false;
 					}
 			}
-
-			wordAction = null;
-			return false;
 		}
 
 		///// <summary>
@@ -314,11 +306,13 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_speedLimits(out instructionAction, dataLowerCase);
 				case 'w':
 					return getAction_wait(out instructionAction, dataLowerCase);
+				default:
+					{
+						myLogger.debugLog("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+						instructionAction = null;
+						return false;
+					}
 			}
-
-			myLogger.debugLog("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
-			instructionAction = null;
-			return false;
 		}
 
 

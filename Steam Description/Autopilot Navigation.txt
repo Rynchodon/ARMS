@@ -119,6 +119,8 @@ Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, t
 R <f>, <u> : match orientation (direction and roll). <f> as above. <u> which block direction will be Autopilot block's Up
 Example - [ R Forward, Upward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Autopilot block to antenna forward, then roll so that Antenna's Upward will match Autopilot block's upward.
 
+STOP : Stop the ship before executing any more commands.
+
 T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]
 Example - [ T Command Panel ] - fetch commands from "Command Panel"
 T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.

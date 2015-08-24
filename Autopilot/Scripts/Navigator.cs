@@ -1,4 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+
+#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -17,7 +19,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot
 {
-	public class Navigator
+	public class NavigatorDeprecated
 	{
 		private Logger myLogger = null;
 		[System.Diagnostics.Conditional("LOG_ENABLED")]

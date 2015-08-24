@@ -1,4 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+
+#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +15,7 @@ namespace Rynchodon.Autopilot
 	/// This is the entry point for most of the Autopilot module's logic.
 	/// </summary>
 	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.BeforeSimulation)]
-	public class Core : Sandbox.Common.MySessionComponentBase
+	public class CoreDeprecated : Sandbox.Common.MySessionComponentBase
 	{
 		private bool initialized = false;
 		private bool terminated = false;

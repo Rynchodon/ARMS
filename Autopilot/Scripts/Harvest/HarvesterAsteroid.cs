@@ -1,4 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
+
+#define LOG_ENABLED //remove on build
 
 using System;
 using System.Collections.Generic;
@@ -15,7 +17,7 @@ namespace Rynchodon.Autopilot.Harvest
 	/// Controls the movement of a ship for purposes of harvesting from an asteroid.
 	/// </summary>
 	/// It is critical that there is always a destination until Harvester is finished.
-	internal class HarvesterAsteroid
+	internal class HarvesterAsteroidDeprecated
 	{
 		private static bool CreativeMode = MyAPIGateway.Session.CreativeMode;
 
