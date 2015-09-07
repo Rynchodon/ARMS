@@ -82,7 +82,7 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		public static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list)
+		public static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list)
 		{ sendToAttached(sender, list, null); }
 
 		/// <summary>
@@ -96,7 +96,7 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
+		private static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
 		{
 			ICollection<LastSeen> toSend;
 			if (list != null)
@@ -104,15 +104,18 @@ namespace Rynchodon.AntennaRelay
 			else
 				toSend = dictionary.Values;
 
-			LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
-			foreach (LastSeen seen in toSend)
-				if (!seen.isValid)
-					removeList.AddLast(seen);
-			foreach (LastSeen seen in removeList)
-				if (dictionary != null)
-					dictionary.Remove(seen.Entity.EntityId);
-				else
-					toSend.Remove(seen);
+			if (dictionary != null || !toSend.IsReadOnly)
+			{
+				LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
+				foreach (LastSeen seen in toSend)
+					if (!seen.isValid)
+						removeList.AddLast(seen);
+				foreach (LastSeen seen in removeList)
+					if (dictionary != null)
+						dictionary.Remove(seen.Entity.EntityId);
+					else
+						toSend.Remove(seen);
+			}
 
 			// to radio antenna
 			foreach (RadioAntenna radioAnt in RadioAntenna.registry)

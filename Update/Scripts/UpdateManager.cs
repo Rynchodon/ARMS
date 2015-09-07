@@ -43,6 +43,7 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// If true, all scripts will run only on server / single player
 		/// </summary>
+		/// TODO: per script setting
 		private const bool ServerOnly = true;
 
 		/// <summary>
@@ -71,6 +72,30 @@ namespace Rynchodon.Update
 				RadioAntenna newRA = new RadioAntenna(block);
 				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
 			});
+			if (Settings.GetSetting<bool>(Settings.SettingName.bAllowRadar))
+			{
+				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
+					if (Radar.IsRadar(block))
+					{
+						Radar r = new Radar(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
+					if (Radar.IsRadar(block))
+					{
+						Radar r = new Radar(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				//RegisterForEveryBlock((IMyCubeBlock block) => {
+				//	if (Radar.IsRadar(block))
+				//	{
+				//		Radar r = new Radar(block);
+				//		RegisterForUpdates(100, r.Update100, block);
+				//	}
+				//});
+			}
 
 			// Navigation
 			if (Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
@@ -153,6 +178,8 @@ namespace Rynchodon.Update
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;
 
 		private static Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
+		/// <summary>For scripts that use a separate condition to determine if they run for a block.</summary>
+		private static List<Action<IMyCubeBlock>> EveryBlockScriptConstructors;
 		private static List<Action<IMyCharacter>> CharacterScriptConstructors;
 		private static List<Action<IMyCubeGrid>> GridScriptConstructors;
 
@@ -191,6 +218,7 @@ namespace Rynchodon.Update
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
+				EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
 				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
 				GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
@@ -307,6 +335,15 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
+		/// Register a constructor for every block, it is highly recommended to include a condition in the Action.
+		/// </summary>
+		/// <param name="constructor">constructor wrapped in an Action</param>
+		private void RegisterForEveryBlock(Action<IMyCubeBlock> constructor)
+		{
+			EveryBlockScriptConstructors.Add(constructor);
+		}
+
+		/// <summary>
 		/// register a constructor Action for a block
 		/// </summary>
 		/// <param name="objBuildType">type of block to create for</param>
@@ -403,6 +440,12 @@ namespace Rynchodon.Update
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
 						try { constructor.Invoke(fatblock); }
 						catch (Exception ex) { myLogger.alwaysLog("Exception in " + typeId + " constructor: " + ex, "AddBlock()", Logger.severity.ERROR); }
+
+				if (EveryBlockScriptConstructors.Count > 0)
+					foreach (Action<IMyCubeBlock> constructor in EveryBlockScriptConstructors)
+						try { constructor.Invoke(fatblock); }
+						catch (Exception ex) { myLogger.alwaysLog("Exception in every block constructor: " + ex, "AddBlock()", Logger.severity.ERROR); }
+
 				return;
 			}
 		}

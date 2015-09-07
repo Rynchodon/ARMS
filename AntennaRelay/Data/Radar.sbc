@@ -46,6 +46,9 @@
         <TypeId>Beacon</TypeId>
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
       </Id>
+      <Description>
+        MaxPowerLevel=20000
+      </Description>
       <DisplayName>Radar</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
       <CubeSize>Small</CubeSize>
