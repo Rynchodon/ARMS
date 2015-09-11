@@ -251,7 +251,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly FastResourceLock myLock = new FastResourceLock();
 
 		/// <summary>size of radar signature/signal and object</summary>
-		private readonly Dictionary<float, LastSeen> detectedObjects;
+		private readonly SortedDictionary<float, LastSeen> detectedObjects;
 		private readonly HashSet<Radar> jamming;
 		private readonly Dictionary<Radar, float> beingJammedBy;
 
@@ -267,7 +267,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (myDefinition.IsRadar)
 			{
-				detectedObjects = new Dictionary<float, LastSeen>();
+				detectedObjects = new SortedDictionary<float, LastSeen>();
 				beingJammedBy = new Dictionary<Radar, float>();
 			}
 			else
@@ -296,8 +296,9 @@ namespace Rynchodon.AntennaRelay
 			if (myLock.TryAcquireExclusive())
 			{
 				CheckCustomInfo();
-				//myThread.EnqueueAction(Update_OnThread);
-				Update_OnThread();
+				if (detectedObjects != null && detectedObjects.Count > 0)
+					Receiver.sendToAttached(CubeBlock, detectedObjects.Values);
+				myThread.EnqueueAction(Update_OnThread);
 			}
 		}
 
@@ -321,7 +322,6 @@ namespace Rynchodon.AntennaRelay
 					detectedObjects.Clear();
 					ActiveDetection();
 					PassiveDetection();
-					Receiver.sendToAttached(CubeBlock, detectedObjects.Values);
 				}
 				else // is a jammer
 					JamRadar();
@@ -612,9 +612,10 @@ namespace Rynchodon.AntennaRelay
 
 		private void AddDetectedObject(float signalStrength, LastSeen obj)
 		{
-			if (myDefinition.MaximumTargets > 0 && detectedObjects.Count == myDefinition.MaximumTargets)
-				detectedObjects.Remove(detectedObjects.Keys.Last());
-			detectedObjects.Add(signalStrength, obj);
+			if (myDefinition.MaximumTargets > 0)
+				detectedObjects.AddIfBetter(signalStrength, obj, (int)myDefinition.MaximumTargets);
+			else
+				detectedObjects.AddIncrement(signalStrength, obj);
 		}
 
 		private void StopJamming()

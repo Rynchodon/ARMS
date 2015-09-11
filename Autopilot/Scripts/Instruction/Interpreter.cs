@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -553,7 +554,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </remarks>
 		private bool getAction_engage(out Action instructionAction, string dataLowerCase)
 		{
-			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
 			{
 				myLogger.debugLog("Cannot engage, weapon control is disabled.", "getAction_engage()", Logger.severity.WARNING);
 				instructionAction = () => { };

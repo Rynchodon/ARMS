@@ -4,6 +4,7 @@ using System;
 using Rynchodon.AntennaRelay;
 using Sandbox.ModAPI;
 using VRageMath;
+using Rynchodon.Settings;
 
 namespace Rynchodon.Autopilot.NavigationSettings
 {
@@ -129,8 +130,8 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		public NavSettings(Navigator owner)
 		{
 			this.myNav = owner;
-			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
-			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
+			speedCruise_internal = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
+			speedSlow_internal = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
 
 			// private vars
 			myWaypoint = null;
@@ -148,8 +149,8 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		/// </summary>
 		public void startOfCommands()
 		{
-			speedCruise_external = Settings.GetSetting<float>(Settings.SettingName.fDefaultSpeed);
-			speedSlow_external = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
+			speedCruise_external = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed);
+			speedSlow_external = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
 			destinationRadius = 100;
 		}
 
@@ -178,7 +179,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		public float speedSlow_external
 		{
 			get { return value_speedSlow_external; }
-			set { value_speedSlow_external = MathHelper.Min(value, Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed));}
+			set { value_speedSlow_external = MathHelper.Min(value, ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed)); }
 		}
 		//public const float speedSlow_minimum = 0.25f;
 
@@ -200,8 +201,8 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		public void clearSpeedInternal()
 		{
 			//myLogger.debugLog("entered clearSpeedInternal()", "clearSpeedInternal()", Logger.severity.TRACE);
-			speedCruise_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
-			speedSlow_internal = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
+			speedCruise_internal = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
+			speedSlow_internal = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
 		}
 
 		#endregion
