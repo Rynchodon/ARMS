@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.AntennaRelay;
@@ -77,23 +75,23 @@ namespace Rynchodon.Update
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{
 				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
-					if (Radar.IsRadar(block))
+					if (RadarEquipment.IsRadarOrJammer(block))
 					{
-						Radar r = new Radar(block);
+						RadarEquipment r = new RadarEquipment(block);
 						RegisterForUpdates(100, r.Update100, block);
 					}
 				});
 				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
-					if (Radar.IsRadar(block))
+					if (RadarEquipment.IsRadarOrJammer(block))
 					{
-						Radar r = new Radar(block);
+						RadarEquipment r = new RadarEquipment(block);
 						RegisterForUpdates(100, r.Update100, block);
 					}
 				});
 				//RegisterForEveryBlock((IMyCubeBlock block) => {
-				//	if (Radar.IsRadar(block))
+				//	if (RadarEquipment.IsRadarOrJammer(block))
 				//	{
-				//		Radar r = new Radar(block);
+				//		RadarEquipment r = new RadarEquipment(block);
 				//		RegisterForUpdates(100, r.Update100, block);
 				//	}
 				//});

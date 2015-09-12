@@ -172,6 +172,8 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
 
+			myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()"); 
+
 			int index;
 			for (index = 0; index < relateData.distanceSeen.Count; index++)
 			{
