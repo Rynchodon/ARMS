@@ -198,7 +198,8 @@ namespace Rynchodon.AntennaRelay
 				Vector3D coords = seen.LastKnownPosition;
 
 				// cheat the position a little to avoid clashes
-				coords.X += 0.001 / (double)(index + 1);
+				double cheat = 0.001 / (double)(index+1);
+				coords.ApplyOperation((d) => { return d + cheat; }, out coords);
 
 				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
 				//myLogger.debugLog("index >= relateData.activeGPS.Count: " + (index >= relateData.activeGPS.Count), "UpdateGPS()");
