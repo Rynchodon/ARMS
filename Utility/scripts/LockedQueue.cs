@@ -12,7 +12,7 @@ namespace Rynchodon
 		public LockedQueue(IEnumerable<T> collection)
 		{ Queue = new MyQueue<T>(collection); }
 
-		public LockedQueue(int capacity)
+		public LockedQueue(int capacity = 1)
 		{ Queue = new MyQueue<T>(capacity); }
 
 		public int Count

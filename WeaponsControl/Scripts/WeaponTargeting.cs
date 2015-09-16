@@ -17,6 +17,7 @@ namespace Rynchodon.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
+	/// TODO: much of the functionallity has been copied to TargetingBase, WeaponTargeting should extend that class.
 	public abstract class WeaponTargeting
 	{
 		[Flags]
@@ -72,6 +73,8 @@ namespace Rynchodon.Weapons
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 
+		private bool broken = false;
+
 		static WeaponTargeting()
 		{
 			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
@@ -121,6 +124,9 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public void Update_Targeting()
 		{
+			if (broken)
+				return;
+
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
@@ -134,6 +140,7 @@ namespace Rynchodon.Weapons
 				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
 				func.SetCustomName("<Broken>" + func.DisplayNameText);
 				func.RequestEnable(false);
+				broken = true;
 			}
 
 			if (AllowedState != State.Off && lock_Queued.TryAcquireExclusive())
@@ -312,9 +319,9 @@ namespace Rynchodon.Weapons
 			Interpreter.Parse(out newOptions, out Errors);
 			if (Errors.Count <= InterpreterErrorCount)
 			{
+				Update_Options(newOptions);
 				Options = newOptions;
 				InterpreterErrorCount = Errors.Count;
-				Update_Options(Options);
 				myLogger.debugLog("updating Options, Error Count = " + Errors.Count + ", Options: " + Options, "Update100()");
 			}
 			else
@@ -349,11 +356,13 @@ namespace Rynchodon.Weapons
 			|| (IsNormalTurret && myTurret.IsUnderControl)
 			|| CubeBlock.OwnerId == 0
 			|| (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
-			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]"))
-			|| (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic))
+			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")))
+			//|| (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic))
 			{
+				//myLogger.debugLog(!CubeBlock.IsWorking + ", " + (IsNormalTurret && myTurret.IsUnderControl) + ", " + (CubeBlock.OwnerId == 0) + ", " + (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC) + ", "
+				//	+ (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")) + ", " + (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic), "UpdateCurrentState()");
 				myLogger.debugLog(!CubeBlock.IsWorking + ", " + (IsNormalTurret && myTurret.IsUnderControl) + ", " + (CubeBlock.OwnerId == 0) + ", " + (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC) + ", "
-					+ (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")) + ", " + (!IsNormalTurret && CubeBlock.CubeGrid.IsStatic), "UpdateCurrentState()");
+				+ (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")), "UpdateCurrentState()");
 
 				CanControl = false;
 				CurrentState = State.Off;
@@ -1190,7 +1199,7 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Calculates FiringDirection & InterceptionPoint
 		/// </summary>
-		/// TODO: if target is accelerating, look ahead (missiles and such)
+		// TODO: if target is accelerating, look ahead (missiles and such)
 		private void SetFiringDirection()
 		{
 			IMyEntity target = CurrentTarget.Entity;

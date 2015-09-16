@@ -377,10 +377,12 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// For missiles
+		/// Not implemented. Was meant for radar-guided missiles but it is probably a waste of processing power as turrets are magical.
 		/// </summary>
 		public RadarEquipment(IMyEntity entity, IMyCubeBlock owner)
 		{
+			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
+
 			this.myLogger = new Logger("RadarEquipment", () => { return owner.CubeGrid.DisplayName; }, () => { return owner.DisplayNameText; }, () => { return entity.getBestName(); });
 
 			this.Entity = entity;

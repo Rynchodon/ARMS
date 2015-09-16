@@ -74,7 +74,7 @@ namespace Rynchodon.Weapons
 			if (ControllingEngager != controller)
 				throw new InvalidOperationException("Engager does not have authority to release control");
 			ControllingEngager = null;
-			AllowedState = State.Off;
+			AllowedState = State.GetOptions;
 		}
 
 		/// <summary>
