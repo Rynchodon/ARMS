@@ -9,7 +9,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class LaserAntenna : Receiver
+	public class LaserAntenna : ReceiverBlock
 	{
 		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
 		public static ReadOnlyList<LaserAntenna> registry { get { return new ReadOnlyList<LaserAntenna>(value_registry); } }
@@ -36,7 +36,6 @@ namespace Rynchodon.AntennaRelay
 			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
 			CubeBlock = null;
 			myLaserAntenna = null;
-			myLastSeen = null;
 			myMessages = null;
 		}
 
@@ -63,8 +62,8 @@ namespace Rynchodon.AntennaRelay
 							}
 
 				// send to attached receivers
-				Receiver.sendToAttached(CubeBlock, myLastSeen);
-				Receiver.sendToAttached(CubeBlock, myMessages);
+				ReceiverBlock.sendToAttached(CubeBlock, myLastSeen);
+				ReceiverBlock.sendToAttached(CubeBlock, myMessages);
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

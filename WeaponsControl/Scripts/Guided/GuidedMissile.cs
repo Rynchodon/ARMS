@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using Rynchodon.AntennaRelay;
 using Sandbox.Common;
 using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
@@ -13,6 +13,7 @@ using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
+using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage;
@@ -31,9 +32,40 @@ namespace Rynchodon.Weapons.Guided
 {
 	public class GuidedMissile : TargetingBase
 	{
+		public class Definition
+		{
+			public float RotationAttemptLimit = 3.1415926535897932384626433f; // 180°
+			/// <summary>In metres per second</summary>
+			public float Acceleration = 50f;
+
+			public float DetonateRange = 0f;
+			public float TargetRange = 400f;
+			public float RadarPower = 10000f;
+		}
+
+		private class MissileAntenna : Receiver
+		{
+			private object myMissile;
+
+			public override object ReceiverObject { get { return myMissile; } }
+
+			public Dictionary<long, LastSeen> MyLastSeen { get { return myLastSeen; } }
+
+			public MissileAntenna(IMyEntity missile)
+			{
+				this.myMissile = missile;
+				AllReceivers_NoBlock.Add(this);
+				missile.OnClose += (ent) => AllReceivers_NoBlock.Remove(this);
+			}
+		}
+
+		private const float Angle_ChangePerUpdate = 0.0174532925199433f; // 1°
+		private const float Angle_AccelerateWhen = 0.0174532925199433f; // 1°
+		private const float Angle_Detonate = 0.5235987755982988f; // 30°
+		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static readonly Logger staticLogger = new Logger("GuidedMissile");
-		private static readonly ThreadManager Thread = new ThreadManager(4);
+		private static readonly ThreadManager Thread = new ThreadManager();
 		private static readonly CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 		private static readonly FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
 
@@ -45,21 +77,22 @@ namespace Rynchodon.Weapons.Guided
 				lock_AllGuidedMissiles.ReleaseExclusive();
 			}
 
-
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (!missile.MyEntity.Closed && missile.CurrentTarget.TType != TargetType.None)
-						{
-							missile.SetFiringDirection();
-							missile.RotateTowardsTarget();
-						}
+						if (missile.MyEntity.Closed)
+							return;
+						if (missile.CurrentTarget.TType == TargetType.None)
+							missile.TargetLastSeen();
+						if (missile.CurrentTarget.TType == TargetType.None)
+							return;
+						missile.SetFiringDirection();
+						missile.Update();
 					});
 		}
 
 		public static void Update10()
 		{
-
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
@@ -70,7 +103,6 @@ namespace Rynchodon.Weapons.Guided
 
 		public static void Update100()
 		{
-
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
@@ -79,30 +111,32 @@ namespace Rynchodon.Weapons.Guided
 					});
 		}
 
-		public class Definition
-		{
-			public float MissileRotationPerUpdate = 0.0174532925199433f; // °
-			public float MissileRotationAttemptLimit = 1.570796326794897f; // 90°
-			//public float MissileBraking = 1f;
-			public float MissileTargetingRange = 400f;
-			public float MissileRadarRange = 0f;
-		}
-
 		private readonly Logger myLogger;
 		private readonly Definition myDef;
+		private readonly MissileAntenna myAntenna;
+
+		private IMyEntity myRock;
+		private DateTime failed_lastSeenTarget;
+		private long targetLastSeen;
+
+		private Dictionary<long, LastSeen> myLastSeen { get { return myAntenna.MyLastSeen; } }
 
 		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedby, Definition def, TargetingOptions opt)
 			: base(missile, firedby)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName());
 			myDef = def;
+			myAntenna = new MissileAntenna(missile);
 			Options = opt;
-			Options.TargetingRange = myDef.MissileTargetingRange;
+			Options.TargetingRange = myDef.TargetRange;
+			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
-			missile.OnClose += obj => AllGuidedMissiles.Remove(this); ;
+			missile.OnClose += obj => {
+				AllGuidedMissiles.Remove(this);
+				RemoveRock();
+			};
 
-			myLogger.debugLog("initialized, count is " + AllGuidedMissiles.Count, "GuidedMissile()");
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
 		}
 
@@ -110,11 +144,12 @@ namespace Rynchodon.Weapons.Guided
 		{
 			// test angle
 			Vector3 direction = targetPos - ProjectilePosition();
-			direction.Normalize();
+			myLogger.debugLog("targetPos: " + targetPos + ", ProjectilePosition: " + ProjectilePosition() + ", direction: " + direction, "PhysicalProblem()");
+			//direction.Normalize();
 			Vector3 velDirect = MyEntity.Physics.LinearVelocity;
-			velDirect.Normalize();
+			//velDirect.Normalize();
 			float angleBetween = direction.AngleBetween(velDirect);
-			if (!angleBetween.IsValid() || angleBetween > myDef.MissileRotationAttemptLimit)
+			if (!angleBetween.IsValid() || angleBetween > myDef.RotationAttemptLimit)
 			{
 				myLogger.debugLog("angle between too great. direction: " + direction + ", velDirect: " + velDirect + ", angle between: " + angleBetween, "PhysicalProblem()");
 				return true;
@@ -131,77 +166,170 @@ namespace Rynchodon.Weapons.Guided
 		{
 			// TODO: actual calculation for speed
 
-			return MyEntity.Physics.LinearVelocity.Length() + 100;
+			return myDef.Acceleration;
 		}
 
-		private void RotateTowardsTarget()
+		private void Update()
 		{
 			Target cached = CurrentTarget;
 			if (!cached.FiringDirection.HasValue)
-			{
-				myLogger.debugLog("no firing direction", "RotateTowardsTarget()");
 				return;
+
+			myLogger.debugLog("target position: " + cached.InterceptionPoint, "Update()");
+
+			Vector3 forward = MyEntity.WorldMatrix.Forward;
+			Vector3 newForward;
+
+			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition() + Braking(cached);
+			targetDirection.Normalize();
+
+			float angle = forward.AngleBetween(targetDirection);
+
+			{ // rotate missile
+				if (angle <= Angle_ChangePerUpdate)
+					newForward = targetDirection;
+				else
+				{
+					Vector3 axis = forward.Cross(targetDirection);
+					axis.Normalize();
+					Matrix rotation = Matrix.CreateFromAxisAngle(axis, Angle_ChangePerUpdate);
+
+					newForward = Vector3.Transform(forward, rotation);
+					newForward.Normalize();
+				}
+
+				MatrixD WorldMatrix = MyEntity.WorldMatrix;
+				WorldMatrix.Forward = newForward;
+
+				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+					if (!MyEntity.Closed)
+						MyEntity.WorldMatrix = WorldMatrix;
+				});
 			}
 
-			// rotate missile
-			Vector3 forward = MyEntity.WorldMatrix.Forward;
-			Vector3 velocity = MyEntity.Physics.LinearVelocity;
+			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward + ", newForward: " + newForward, "Update()");
 
-			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition() + Braking();
-			targetDirection.Normalize();
-			Vector3 axis = forward.Cross(targetDirection);
+			{ // accelerate if facing target
+				if (angle < Angle_AccelerateWhen)
+				{
+					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
+					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+						if (!MyEntity.Closed)
+							MyEntity.Physics.LinearVelocity += newForward * myDef.Acceleration / 60f;
+					});
+				}
+			}
 
-			//Vector3 axis = forward.Cross(cached.FiringDirection.Value);
-
-			axis.Normalize();
-			Matrix rotation = Matrix.CreateFromAxisAngle(axis, myDef.MissileRotationPerUpdate);
-
-			Vector3 newForward = Vector3.Transform(forward, rotation);
-
-			MatrixD WorldMatrix = MyEntity.WorldMatrix;
-			WorldMatrix.Forward = newForward;
-
-			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-				if (!MyEntity.Closed)
-					MyEntity.WorldMatrix = WorldMatrix;
-			});
-
-			myLogger.debugLog("targetDirection: " + targetDirection + ", velocity: " + velocity + ", forward: " + forward + ", newForward: " + newForward, "RotateTowardsTarget()");
-			//myLogger.debugLog("velocity: " + velocity + ", forward: " + forward + ", newForward: " + newForward, "RotateTowardsTarget()");
-
-
-			//// target velocity = velocity
-			//// target direction = newForward
-
-			//// apply tangental braking
-			//myLogger.debugLog("velocity: " + velocity, "RotateTowardsTarget()");
-			//myLogger.debugLog("newForward: " + newForward, "RotateTowardsTarget()");
-
-			//float speedOrth = Vector3.Dot(velocity, newForward);
-			////Vector3 velOrth = speedOrth * newForward;
-			////myLogger.debugLog("velOrth: " + velOrth, "RotateTowardsTarget()");
-			////Vector3 velTang = velocity - velOrth;
-			////myLogger.debugLog("velTang: " + velTang, "RotateTowardsTarget()");
-			//Vector3 brake = newForward * speedOrth - velocity;
-			////myLogger.debugLog("brake: " + brake, "RotateTowardsTarget()");
-			//brake.Normalize();
-			////brake *= myDef.MissileBraking;
-
-			//myLogger.debugLog("braking: " + brake, "RotateTowardsTarget()");
-			//MyEntity.Physics.LinearVelocity += brake;
-
-			////myLogger.debugLog("RotationPerUpdate: " + myDef.RotationPerUpdate, "RotateTowardsTarget()");
-			////myLogger.debugLog("target at " + cached.InterceptionPoint + ", forward: " + forward + ", missile new direction: " + newForward, "RotateTowardsTarget()");
-			////myLogger.debugLog("angle to target changed from " + MathHelper.ToDegrees(cached.FiringDirection.Value.AngleBetween(forward)) + " to " + MathHelper.ToDegrees(cached.FiringDirection.Value.AngleBetween(newForward)), "RotateTowardsTarget()");
+			{ // check for proxmity det
+				if (angle >= Angle_Detonate && myDef.DetonateRange > 0f)
+				{
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.Entity.GetPosition());
+					myLogger.debugLog("distSquared: " + distSquared, "Update()");
+					if (distSquared <= myDef.DetonateRange * myDef.DetonateRange)
+					{
+						Explode();
+						return;
+					}
+				}
+			}
 		}
 
-		private Vector3 Braking()
+		private Vector3 Braking(Target t)
 		{
-			Vector3 targetDirection = CurrentTarget.FiringDirection.Value;
+			Vector3 targetDirection = t.FiringDirection.Value;
 			Vector3 velocity = MyEntity.Physics.LinearVelocity;
 
 			float speedOrth = Vector3.Dot(velocity, targetDirection);
 			return targetDirection * speedOrth - velocity;
+		}
+
+		/// <summary>
+		/// Spawns a rock to explode the missile.
+		/// </summary>
+		private void Explode()
+		{
+			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				if (MyEntity.Closed)
+					return;
+
+				RemoveRock();
+
+				MyObjectBuilder_InventoryItem item = new MyObjectBuilder_InventoryItem() { Amount = 100, Content = new MyObjectBuilder_Ore() { SubtypeName = "Stone" } };
+
+				MyObjectBuilder_FloatingObject rockBuilder = new MyObjectBuilder_FloatingObject();
+				rockBuilder.Item = item;
+				rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
+				rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
+				{
+					Position = MyEntity.GetPosition() + MyEntity.Physics.LinearVelocity / 60f,
+					Forward = new SerializableVector3(0, 0, 1),
+					Up = new SerializableVector3(0, 1, 0)
+				};
+
+				myLogger.debugLog("creating rock", "Explode()");
+				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
+			});
+		}
+
+		/// <summary>
+		/// Only call from game thread! Remove the rock created by Explode().
+		/// </summary>
+		private void RemoveRock()
+		{
+			if (myRock == null || myRock.Closed)
+				return;
+
+			myLogger.debugLog("removing rock", "RemoveRock()");
+			myRock.Delete();
+		}
+
+		private void TargetLastSeen()
+		{
+			if (myLastSeen.Count == 0)
+				return;
+
+			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
+				return;
+
+			LastSeen previous;
+			if (myLastSeen.TryGetValue(targetLastSeen, out previous) && previous.isRecent())
+			{
+				myLogger.debugLog("using previous last seen: " + previous.Entity.getBestName(), "TargetLastSeen()");
+				myTarget = new Target(previous.Entity, TargetType.AllGrid);
+				SetFiringDirection();
+			}
+
+			Vector3D myPos = MyEntity.GetPosition();
+			LastSeen closest = null;
+			double closestDist = double.MaxValue;
+
+			myLogger.debugLog("last seen count: " + myLastSeen.Count, "TargetLastSeen()");
+			foreach (LastSeen seen in myLastSeen.Values)
+			{
+				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
+				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity))
+				{
+					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
+					if (dist < closestDist)
+					{
+						closestDist = dist;
+						closest = seen;
+					}
+				}
+			}
+
+			if (closest == null)
+			{
+				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
+				failed_lastSeenTarget = DateTime.UtcNow;
+			}
+			else
+			{
+				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
+				myTarget = new Target(closest.Entity, TargetType.AllGrid);
+				SetFiringDirection();
+			}
+			targetLastSeen = closest.Entity.EntityId;
 		}
 
 	}

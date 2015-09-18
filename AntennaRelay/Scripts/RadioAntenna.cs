@@ -9,7 +9,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class RadioAntenna : Receiver
+	public class RadioAntenna : ReceiverBlock
 	{
 		private static List<RadioAntenna> value_registry = new List<RadioAntenna>();
 		public static ReadOnlyList<RadioAntenna> registry { get { return new ReadOnlyList<RadioAntenna>(value_registry); } }
@@ -70,14 +70,14 @@ namespace Rynchodon.AntennaRelay
 							ant.receive(mes);
 					}
 
-				// relay information to friendly players
-				foreach (Player player in Player.AllPlayers)
-					if (CubeBlock.canSendTo(player.myPlayer, true, radiusSquared, true))
+				// relay information to friendly receivers
+				foreach (Receiver receive in Receiver.AllReceivers_NoBlock)
+					if (CubeBlock.canSendTo(receive.ReceiverObject, true, radiusSquared, true))
 						foreach (LastSeen seen in myLastSeen.Values)
-							player.receive(seen);
+							receive.receive(seen);
 
-				Receiver.sendToAttached(CubeBlock, myLastSeen);
-				Receiver.sendToAttached(CubeBlock, myMessages);
+				ReceiverBlock.sendToAttached(CubeBlock, myLastSeen);
+				ReceiverBlock.sendToAttached(CubeBlock, myMessages);
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

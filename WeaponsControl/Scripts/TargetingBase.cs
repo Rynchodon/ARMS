@@ -14,11 +14,15 @@ namespace Rynchodon.Weapons
 	{
 
 		public TargetingOptions Options { get; protected set; }
+		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget { get; private set; }
+
+		/// <summary>Iff true, the projectile will attempt to chase-down a target.</summary>
+		protected bool TryHard = false;
 
 		protected readonly IMyEntity MyEntity;
 		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
-		private readonly IMyCubeBlock CubeBlock;
+		protected readonly IMyCubeBlock CubeBlock;
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
@@ -26,7 +30,8 @@ namespace Rynchodon.Weapons
 
 		private readonly Logger myLogger;
 
-		private Target myTarget;
+		/// <summary>The target the is being processed.</summary>
+		protected Target myTarget;
 
 		public TargetingBase(IMyEntity entity, IMyCubeBlock controllingBlock)
 		{
@@ -565,11 +570,7 @@ namespace Rynchodon.Weapons
 			else
 				TargetPosition = target.GetPosition();
 
-			Vector3 TargetVelocity = target.GetLinearVelocity();
-
-			Vector3D RelativeVelocity = TargetVelocity - MyEntity.GetLinearVelocity();
-
-			FindInterceptVector(ProjectilePosition(), ProjectileSpeed(), TargetPosition, RelativeVelocity);
+			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(), TargetPosition, target.GetLinearVelocity());
 			if (myTarget.Entity != null && PhysicalProblem(myTarget.InterceptionPoint.Value))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
@@ -581,8 +582,9 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/</remarks>
-		private void FindInterceptVector(Vector3 shotOrigin, float shotSpeed, Vector3 targetOrigin, Vector3 targetVel)
+		private void FindInterceptVector(Vector3 shotOrigin, Vector3 shooterVel, float shotSpeed, Vector3 targetOrigin, Vector3 targetVel)
 		{
+			Vector3 relativeVel = targetVel - shooterVel;
 			Vector3 displacementToTarget = targetOrigin - shotOrigin;
 			float distanceToTarget = displacementToTarget.Length();
 			Vector3 directionToTarget = displacementToTarget / distanceToTarget;
@@ -591,12 +593,12 @@ namespace Rynchodon.Weapons
 			// direction to the cannon and the part tangential to it.
 			// The part towards the cannon is found by projecting the target's
 			// velocity on directionToTarget using a dot product.
-			float targetSpeedOrth = Vector3.Dot(targetVel, directionToTarget);
+			float targetSpeedOrth = Vector3.Dot(relativeVel, directionToTarget);
 			Vector3 targetVelOrth = targetSpeedOrth * directionToTarget;
 
 			// The tangential part is then found by subtracting the
 			// result from the target velocity.
-			Vector3 targetVelTang = targetVel - targetVelOrth;
+			Vector3 targetVelTang = relativeVel - targetVelOrth;
 
 			// The tangential component of the velocities should be the same
 			// (or there is no chance to hit)
@@ -608,7 +610,17 @@ namespace Rynchodon.Weapons
 			float shotVelSpeed = shotVelTang.Length();
 			if (shotVelSpeed > shotSpeed)
 			{
-				// Shot is too slow to intercept target, it will never catch up.
+				// Shot is too slow to intercept target.
+				if (TryHard)
+				{
+					//// Do our best by aiming in the direction of the targets velocity.
+					//Vector3 interceptDirection = Vector3.Normalize(targetVel);
+					//Vector3 interceptPoint = shotOrigin + interceptDirection;
+					//myTarget = myTarget.AddDirectionPoint(interceptDirection, interceptPoint);
+					// aim directly at the target
+					myTarget = myTarget.AddDirectionPoint(directionToTarget, targetOrigin);
+					return;
+				}
 				BlacklistTarget();
 				return;
 			}
@@ -627,7 +639,7 @@ namespace Rynchodon.Weapons
 
 				// Calculate where the shot will be at the time of collision
 				Vector3 shotVel = shotVelOrth + shotVelTang;
-				Vector3 interceptPoint = shotOrigin + shotVel * timeToCollision;
+				Vector3 interceptPoint = shotOrigin + (shotVel + shooterVel) * timeToCollision;
 
 				myTarget = myTarget.AddDirectionPoint(interceptDirection, interceptPoint);
 			}

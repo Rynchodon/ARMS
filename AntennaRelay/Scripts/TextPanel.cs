@@ -40,7 +40,7 @@ namespace Rynchodon.AntennaRelay
 		private Ingame.IMyTextPanel myTextPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
-		private Receiver myAntenna;
+		private ReceiverBlock myAntenna;
 		private ProgrammableBlock myProgBlock;
 		private IMyTerminalBlock myTermBlock;
 
@@ -120,14 +120,14 @@ namespace Rynchodon.AntennaRelay
 			if (myAntenna.IsOpen()) // already have one
 				return true;
 
-			foreach (Receiver antenna in RadioAntenna.registry)
+			foreach (ReceiverBlock antenna in RadioAntenna.registry)
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 					myAntenna = antenna;
 					return true;
 				}
-			foreach (Receiver antenna in LaserAntenna.registry)
+			foreach (ReceiverBlock antenna in LaserAntenna.registry)
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);

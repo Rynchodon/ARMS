@@ -84,7 +84,9 @@ namespace Rynchodon
 		/// </summary>
 		public static float AngleBetween(this Vector3 first, Vector3 second)
 		{
-			return (float)Math.Acos(first.Dot(second) / (first.Length() * second.Length()));
+			first.Normalize();
+			second.Normalize();
+			return (float)Math.Acos(first.Dot(second));
 		}
 
 		/// <summary>

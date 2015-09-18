@@ -101,18 +101,18 @@ namespace Rynchodon.Weapons.Guided
 
 				switch (propValue[0])
 				{
-					case "MissileRotationPerUpdate":
-						result.MissileRotationPerUpdate = value;
-						continue;
-					case "MissileRotationAttemptLimit":
-						result.MissileRotationAttemptLimit = value;
-						continue;
-					case "MissileTargetingRange":
-						result.MissileTargetingRange = value;
-						continue;
-					case "MissileRadarRange":
-						result.MissileRadarRange = value;
-						continue;
+					//case "Missile_RotationPerUpdate":
+					//	result.RotationPerUpdate = value;
+					//	continue;
+					//case "Missile_RotationAttemptLimit":
+					//	result.RotationAttemptLimit = value;
+					//	continue;
+					//case "Missile_TargetingRange":
+					//	result.Range_Target = value;
+					//	continue;
+					//case "Missile_RadarRange":
+					//	result.Range_Radar = value;
+					//	continue;
 					default:
 						staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", failed to match to a property: \"" + propValue[0] + '"', "GetDefinition()", Logger.severity.WARNING);
 						continue;

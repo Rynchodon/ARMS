@@ -419,7 +419,7 @@ namespace Rynchodon.AntennaRelay
 				// actions on main thread
 				CheckCustomInfo();
 				if (detectedObjects.Count > 0 && CubeBlock != null)
-					Receiver.sendToAttached(CubeBlock, detectedObjects.Values);
+					ReceiverBlock.sendToAttached(CubeBlock, detectedObjects.Values);
 
 				myThread.EnqueueAction(Update_OnThread);
 			}

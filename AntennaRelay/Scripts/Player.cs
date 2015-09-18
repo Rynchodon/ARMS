@@ -9,7 +9,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class Player
+	public class Player : Receiver
 	{
 
 		private class ForRelations
@@ -38,10 +38,10 @@ namespace Rynchodon.AntennaRelay
 
 		private static readonly Logger staticLogger = new Logger("static", "Player");
 		private static readonly Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
-		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
 
 		public static void OnLeave(IMyPlayer player)
 		{
+			AllReceivers_NoBlock.Remove(playersCached[player]);
 			playersCached.Remove(player);
 		}
 
@@ -49,9 +49,10 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Logger myLogger;
 
-		private readonly Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
-
 		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
+
+		public override object ReceiverObject
+		{ get { return myPlayer; } }
 
 		public Player(IMyPlayer player)
 		{
@@ -59,6 +60,7 @@ namespace Rynchodon.AntennaRelay
 			myPlayer = player;
 
 			playersCached.Add(player, this);
+			AllReceivers_NoBlock.Add(this);
 
 			Data.Add(ExtensionsRelations.Relations.Enemy, new ForRelations());
 			Data.Add(ExtensionsRelations.Relations.Neutral, new ForRelations());
@@ -84,24 +86,6 @@ namespace Rynchodon.AntennaRelay
 		public void Update100()
 		{
 			UpdateGPS();
-		}
-
-		public void receive(LastSeen seen)
-		{
-			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
-			{
-				if (seen.update(ref toUpdate))
-				{
-					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
-					//myLogger.debugLog("updated last seen for " + toUpdate.Entity.getBestName(), "receive()");
-				}
-			}
-			else
-			{
-				myLastSeen.Add(seen.Entity.EntityId, seen);
-				//myLogger.debugLog("new last seen for " + seen.Entity.getBestName(), "receive()");
-			}
 		}
 
 		private void UpdateGPS()
