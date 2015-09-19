@@ -13,9 +13,7 @@ using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
-using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage;
 using VRage.Collections;
 using VRage.Components;
@@ -27,22 +25,13 @@ using VRage.Utils;
 using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
+using Interfaces = Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.Guided
 {
+	// TODO: ARH, GOLIS, SARH, and semi-active magic homing
 	public class GuidedMissile : TargetingBase
 	{
-		public class Definition
-		{
-			public float RotationAttemptLimit = 3.1415926535897932384626433f; // 180°
-			/// <summary>In metres per second</summary>
-			public float Acceleration = 50f;
-
-			public float DetonateRange = 0f;
-			public float TargetRange = 400f;
-			public float RadarPower = 10000f;
-		}
-
 		private class MissileAntenna : Receiver
 		{
 			private object myMissile;
@@ -59,15 +48,26 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
+		private class Cluster
+		{
+			public IMyEntity[] Parts;
+			public byte NumCreated;
+
+			public Cluster(byte num)
+			{ Parts = new IMyEntity[num]; }
+		}
+
 		private const float Angle_ChangePerUpdate = 0.0174532925199433f; // 1°
 		private const float Angle_AccelerateWhen = 0.0174532925199433f; // 1°
-		private const float Angle_Detonate = 0.5235987755982988f; // 30°
+		private const float Angle_Detonate = 0.1745329251994329f; // 10°
 		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static readonly Logger staticLogger = new Logger("GuidedMissile");
 		private static readonly ThreadManager Thread = new ThreadManager();
 		private static readonly CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 		private static readonly FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
+
+		private static long UpdateCount;
 
 		public static void Update1()
 		{
@@ -80,8 +80,9 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (missile.MyEntity.Closed)
+						if (missile.Stopped)
 							return;
+						missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							missile.TargetLastSeen();
 						if (missile.CurrentTarget.TType == TargetType.None)
@@ -89,6 +90,8 @@ namespace Rynchodon.Weapons.Guided
 						missile.SetFiringDirection();
 						missile.Update();
 					});
+
+			UpdateCount++;
 		}
 
 		public static void Update10()
@@ -96,7 +99,7 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (!missile.MyEntity.Closed)
+						if (!missile.Stopped)
 							missile.UpdateTarget();
 					});
 		}
@@ -106,29 +109,36 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (!missile.MyEntity.Closed)
+						if (!missile.Stopped)
 							missile.ClearBlacklist();
 					});
 		}
 
 		private readonly Logger myLogger;
-		private readonly Definition myDef;
+		private readonly Ammo.Description myDescr;
 		private readonly MissileAntenna myAntenna;
+		private readonly long createdAt;
 
+		private Cluster myCluster;
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
 		private long targetLastSeen;
+		private bool exploded;
 
 		private Dictionary<long, LastSeen> myLastSeen { get { return myAntenna.MyLastSeen; } }
 
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedby, Definition def, TargetingOptions opt)
+		private bool Stopped
+		{ get { return MyEntity.Closed || exploded; } }
+
+		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedby, TargetingOptions opt, Ammo ammo)
 			: base(missile, firedby)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName());
-			myDef = def;
-			myAntenna = new MissileAntenna(missile);
+			myDescr = ammo.AmmoDescription;
+			if (ammo.AmmoDescription.HasAntenna)
+				myAntenna = new MissileAntenna(missile);
 			Options = opt;
-			Options.TargetingRange = myDef.TargetRange;
+			Options.TargetingRange = ammo.AmmoDescription.TargetRange;
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
@@ -138,24 +148,34 @@ namespace Rynchodon.Weapons.Guided
 			};
 
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
+			myLogger.debugLog("Description: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.Description>(myDescr), "GuidedMissile()");
+
+			if (myDescr.IsClusterMain)
+			{
+				myLogger.debugLog("adding the ammo mag", "GuidedMissile()");
+				(CubeBlock as IMyInventoryOwner).GetInventory(0).AddItems(1, myDescr.ClusterMagazine, 0);
+				myCluster = new Cluster(myDescr.ClusterCount);
+			}
+			createdAt = UpdateCount;
 		}
 
 		protected override bool PhysicalProblem(Vector3D targetPos)
 		{
 			// test angle
-			Vector3 direction = targetPos - ProjectilePosition();
-			myLogger.debugLog("targetPos: " + targetPos + ", ProjectilePosition: " + ProjectilePosition() + ", direction: " + direction, "PhysicalProblem()");
-			//direction.Normalize();
-			Vector3 velDirect = MyEntity.Physics.LinearVelocity;
-			//velDirect.Normalize();
-			float angleBetween = direction.AngleBetween(velDirect);
-			if (!angleBetween.IsValid() || angleBetween > myDef.RotationAttemptLimit)
+			if (myDescr.RotationAttemptLimit < 3.14f)
 			{
-				myLogger.debugLog("angle between too great. direction: " + direction + ", velDirect: " + velDirect + ", angle between: " + angleBetween, "PhysicalProblem()");
-				return true;
+				Vector3 direction = targetPos - ProjectilePosition();
+				myLogger.debugLog("targetPos: " + targetPos + ", ProjectilePosition: " + ProjectilePosition() + ", direction: " + direction, "PhysicalProblem()");
+				Vector3 forward = MyEntity.WorldMatrix.Forward;
+				float angleBetween = direction.AngleBetween(forward);
+				if (!angleBetween.IsValid() || angleBetween > myDescr.RotationAttemptLimit)
+				{
+					myLogger.debugLog("angle between too great. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
+					return true;
+				}
+				else
+					myLogger.debugLog("angle acceptable. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
 			}
-			else
-				myLogger.debugLog("angle acceptable. direction: " + direction + ", velDirect: " + velDirect + ", angle between: " + angleBetween, "PhysicalProblem()");
 
 			// obstruction test?
 
@@ -166,7 +186,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			// TODO: actual calculation for speed
 
-			return myDef.Acceleration;
+			return myDescr.Acceleration;
 		}
 
 		private void Update()
@@ -202,7 +222,7 @@ namespace Rynchodon.Weapons.Guided
 				WorldMatrix.Forward = newForward;
 
 				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-					if (!MyEntity.Closed)
+					if (!Stopped)
 						MyEntity.WorldMatrix = WorldMatrix;
 				});
 			}
@@ -214,21 +234,33 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-						if (!MyEntity.Closed)
-							MyEntity.Physics.LinearVelocity += newForward * myDef.Acceleration / 60f;
+						if (!Stopped)
+							MyEntity.Physics.LinearVelocity += newForward * myDescr.Acceleration / 60f;
 					});
 				}
 			}
 
 			{ // check for proxmity det
-				if (angle >= Angle_Detonate && myDef.DetonateRange > 0f)
+				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
 					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.Entity.GetPosition());
 					myLogger.debugLog("distSquared: " + distSquared, "Update()");
-					if (distSquared <= myDef.DetonateRange * myDef.DetonateRange)
+					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{
 						Explode();
 						return;
+					}
+				}
+			}
+
+			{ // check for cluster split
+				if (myCluster != null)
+				{
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.Entity.GetPosition());
+					if (distSquared <= myDescr.ClusterRadius * myDescr.ClusterRadius)
+					{
+						myLogger.debugLog("firing cluster", "Update()");
+						FireCluster();
 					}
 				}
 			}
@@ -248,27 +280,79 @@ namespace Rynchodon.Weapons.Guided
 		/// </summary>
 		private void Explode()
 		{
+			// do not check for exploded, might need to try again
+			if (MyEntity.Closed)
+				return;
+			exploded = true;
+
+			MyEntity.Physics.LinearVelocity = Vector3.Zero;
+
+			RemoveRock();
+
+			MyObjectBuilder_InventoryItem item = new MyObjectBuilder_InventoryItem() { Amount = 100, Content = new MyObjectBuilder_Ore() { SubtypeName = "Stone" } };
+
+			MyObjectBuilder_FloatingObject rockBuilder = new MyObjectBuilder_FloatingObject();
+			rockBuilder.Item = item;
+			rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
+			rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
+			{
+				Position = MyEntity.GetPosition() + MyEntity.Physics.LinearVelocity / 60f,
+				Forward = new SerializableVector3(0, 0, 1),
+				Up = new SerializableVector3(0, 1, 0)
+			};
+
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-				if (MyEntity.Closed)
-					return;
-
-				RemoveRock();
-
-				MyObjectBuilder_InventoryItem item = new MyObjectBuilder_InventoryItem() { Amount = 100, Content = new MyObjectBuilder_Ore() { SubtypeName = "Stone" } };
-
-				MyObjectBuilder_FloatingObject rockBuilder = new MyObjectBuilder_FloatingObject();
-				rockBuilder.Item = item;
-				rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
-				rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
-				{
-					Position = MyEntity.GetPosition() + MyEntity.Physics.LinearVelocity / 60f,
-					Forward = new SerializableVector3(0, 0, 1),
-					Up = new SerializableVector3(0, 1, 0)
-				};
-
 				myLogger.debugLog("creating rock", "Explode()");
 				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
 			});
+		}
+
+		private void UpdateCluster()
+		{
+			if (myCluster == null)
+				return;
+
+			if (myCluster.NumCreated < myCluster.Parts.Length)
+			{
+				if (UpdateCount >= createdAt + 100)
+				{
+					// add cluster
+					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+						myLogger.debugLog("shooting", "UpdateCluster()");
+						(CubeBlock as IMyMissileGunObject).ShootMissile(CubeBlock.WorldMatrix.Forward);
+					});
+				}
+				return;
+			}
+
+			// slave cluster missiles
+			myLogger.debugLog("slave cluster missiles", "UpdateCluster()");
+			MatrixD WorldMatrix = MyEntity.WorldMatrix;
+			WorldMatrix.Translation = MyEntity.GetPosition() + WorldMatrix.Backward * 2 + WorldMatrix.Up;
+			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				myCluster.Parts[0].SetWorldMatrix(WorldMatrix);
+				myCluster.Parts[0].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
+			});
+		}
+
+		public void AddToCluster(IMyEntity missile)
+		{
+			myCluster.Parts[myCluster.NumCreated++] = missile;
+			myLogger.debugLog("added to cluster, count is " + myCluster.NumCreated, "AddToCluster()");
+			if (myCluster.NumCreated == myCluster.Parts.Length)
+			{
+				myLogger.debugLog("removing ammo magazine", "AddToCluster()");
+				(CubeBlock as IMyInventoryOwner).GetInventory(0).RemoveItemsAt(0); // TODO: might be locking up the launchers
+			}
+		}
+
+		private void FireCluster()
+		{
+			if (myCluster == null)
+				return;
+
+			Cluster temp = myCluster;
+			myCluster = null;
 		}
 
 		/// <summary>
@@ -285,10 +369,9 @@ namespace Rynchodon.Weapons.Guided
 
 		private void TargetLastSeen()
 		{
-			if (myLastSeen.Count == 0)
-				return;
-
-			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
+			if (!myDescr.HasAntenna
+				|| myLastSeen.Count == 0
+				|| DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
 				return;
 
 			LastSeen previous;
@@ -322,14 +405,15 @@ namespace Rynchodon.Weapons.Guided
 			{
 				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
 				failed_lastSeenTarget = DateTime.UtcNow;
+				targetLastSeen = long.MinValue;
 			}
 			else
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
 				myTarget = new Target(closest.Entity, TargetType.AllGrid);
 				SetFiringDirection();
+				targetLastSeen = closest.Entity.EntityId;
 			}
-			targetLastSeen = closest.Entity.EntityId;
 		}
 
 	}

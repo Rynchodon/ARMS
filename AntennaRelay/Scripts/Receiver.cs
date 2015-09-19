@@ -20,8 +20,6 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public virtual void receive(LastSeen seen)
 		{
-			myLogger.debugLog("entered", "receive()");
-
 			LastSeen toUpdate;
 			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
 			{

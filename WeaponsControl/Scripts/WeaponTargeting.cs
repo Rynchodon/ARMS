@@ -402,7 +402,7 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo == null || LoadedAmmo != currentAmmo) // ammo has changed
 			{
-				myLogger.debugLog("Ammo changed to: " + currentAmmo.Definition, "UpdateAmmo()");
+				myLogger.debugLog("Ammo changed to: " + currentAmmo.AmmoDefinition, "UpdateAmmo()");
 				LoadedAmmo = currentAmmo;
 			}
 		}
@@ -411,15 +411,15 @@ namespace Rynchodon.Weapons
 		{
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
 			{
-				myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.Definition.DesiredSpeed, "LoadedAmmoSpeed()");
-				return LoadedAmmo.Definition.DesiredSpeed;
+				myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
+				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
-			MyMissileAmmoDefinition missileAmmo = LoadedAmmo.Definition as MyMissileAmmoDefinition;
+			MyMissileAmmoDefinition missileAmmo = LoadedAmmo.AmmoDefinition as MyMissileAmmoDefinition;
 			if (missileAmmo == null)
 			{
-				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.Definition.DisplayNameText, "LoadedAmmoSpeed()", Logger.severity.ERROR);
-				return LoadedAmmo.Definition.DesiredSpeed;
+				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.AmmoDefinition.DisplayNameText, "LoadedAmmoSpeed()", Logger.severity.ERROR);
+				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
 			float distance = Vector3.Distance(BarrelPositionWorld(), target);
@@ -470,7 +470,7 @@ namespace Rynchodon.Weapons
 			Vector3 weaponPosition = BarrelPositionWorld();
 
 			//float distance = Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value); // check for obstructions between weapon and target
-			float distance = LoadedAmmo.Definition.MaxTrajectory; // test for obstructions between weapon and max range of weapon
+			float distance = LoadedAmmo.AmmoDefinition.MaxTrajectory; // test for obstructions between weapon and max range of weapon
 
 			Vector3 finalPosition;
 			Line shot;

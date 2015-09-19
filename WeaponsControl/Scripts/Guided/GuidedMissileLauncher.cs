@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
 using Sandbox.Common;
 using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
@@ -13,8 +12,8 @@ using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
+using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage;
 using VRage.Collections;
 using VRage.Components;
@@ -26,15 +25,17 @@ using VRage.Utils;
 using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
+using Interfaces = Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.Guided
 {
 	public class GuidedMissileLauncher
 	{
+		private static readonly TimeSpan checkInventoryInterval = new TimeSpan(0, 0, 1);
+
 		#region Static
 
 		private static readonly Logger staticLogger = new Logger("GuidedMissileLauncher");
-		private static readonly Dictionary<string, GuidedMissile.Definition> AllDefinitions = new Dictionary<string, GuidedMissile.Definition>();
 		private static readonly List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
 
 		static GuidedMissileLauncher()
@@ -49,80 +50,10 @@ namespace Rynchodon.Weapons.Guided
 
 		private static void Entities_OnEntityAdd(IMyEntity obj)
 		{
-			if (obj.ToString().StartsWith("MyMissile"))
+			if (obj is MyAmmoBase && obj.ToString().StartsWith("MyMissile"))
 				foreach (GuidedMissileLauncher launcher in AllLaunchers)
 					if (launcher.MissileBelongsTo(obj))
 						return;
-		}
-
-		private static GuidedMissile.Definition GetDefinition(IMyCubeBlock block)
-		{
-			GuidedMissile.Definition result;
-			string ID = block.BlockDefinition.ToString();
-
-			if (AllDefinitions.TryGetValue(ID, out result))
-			{
-				staticLogger.debugLog("definition already loaded for " + ID, "GetDefinition()");
-				return result;
-			}
-
-			staticLogger.debugLog("creating new definition for " + ID, "GetDefinition()");
-			result = new GuidedMissile.Definition();
-
-			MyCubeBlockDefinition def = DefinitionCache.GetCubeBlockDefinition(block);
-			if (def == null)
-				throw new NullReferenceException("no block definition found for " + block.getBestName());
-
-			if (string.IsNullOrWhiteSpace(def.DescriptionString))
-			{
-				staticLogger.debugLog("no description in data file for " + ID, "GetDefinition()", Logger.severity.INFO);
-				AllDefinitions.Add(ID, result);
-				return result;
-			}
-
-			// parse description
-			string[] properties = def.DescriptionString.Split(new char[] { }, StringSplitOptions.RemoveEmptyEntries);
-			foreach (string prop in properties)
-			{
-				string[] propValue = prop.Split('=');
-				if (propValue.Length != 2)
-				{
-					staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", incorrect format for property: \"" + prop + '"', "GetDefinition()", Logger.severity.WARNING);
-					continue;
-				}
-
-				// remaining properties are floats, so test first
-				float value;
-				if (!float.TryParse(propValue[1], out value))
-				{
-					staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", not a float: \"" + propValue[1] + '"', "GetDefinition()", Logger.severity.WARNING);
-					continue;
-				}
-
-				switch (propValue[0])
-				{
-					//case "Missile_RotationPerUpdate":
-					//	result.RotationPerUpdate = value;
-					//	continue;
-					//case "Missile_RotationAttemptLimit":
-					//	result.RotationAttemptLimit = value;
-					//	continue;
-					//case "Missile_TargetingRange":
-					//	result.Range_Target = value;
-					//	continue;
-					//case "Missile_RadarRange":
-					//	result.Range_Radar = value;
-					//	continue;
-					default:
-						staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", failed to match to a property: \"" + propValue[0] + '"', "GetDefinition()", Logger.severity.WARNING);
-						continue;
-				}
-			}
-
-			staticLogger.debugLog("parsed description for " + ID, "GetDefinition()", Logger.severity.INFO);
-			staticLogger.debugLog("serialized definition:\n" + MyAPIGateway.Utilities.SerializeToXML(result), "GetDefinition()", Logger.severity.TRACE);
-			AllDefinitions.Add(ID, result);
-			return result;
 		}
 
 		#endregion
@@ -130,24 +61,33 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Logger myLogger;
 		private readonly FixedWeapon myFixed;
 		private IMyCubeBlock CubeBlock { get { return myFixed.CubeBlock; } }
-		//private readonly Ingame.IMyUserControllableGun ControlGun;
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
-		private readonly GuidedMissile.Definition myMissileDef;
+
+		private readonly Interfaces.IMyInventory myInventory;
+		private DateTime nextCheckInventory;
+		private MyFixedPoint prev_mass;
+		private MyFixedPoint prev_volume;
+		private Ammo loadedAmmo;
+		private GuidedMissile prev_clusterMain;
 
 		public GuidedMissileLauncher(FixedWeapon weapon)
 		{
 			myFixed = weapon;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
-			//ControlGun = block as Ingame.IMyUserControllableGun;
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
 			MissileSpawnBox.Max.Z = MissileSpawnBox.Min.Z;
 			MissileSpawnBox.Min.Z -= 1;
 
-			myMissileDef = GetDefinition(CubeBlock);
+			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
 
 			AllLaunchers.Add(this);
+		}
+
+		public void Update1()
+		{
+			UpdateLoadedMissile();
 		}
 
 		private bool MissileBelongsTo(IMyEntity missile)
@@ -158,14 +98,61 @@ namespace Rynchodon.Weapons.Guided
 			if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.001)
 				return false;
 
-			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
-			GuidedMissile gm = new GuidedMissile(missile, CubeBlock, myMissileDef, myFixed.Options.Clone());
-			//MyMissiles.Add(gm);
-			//missile.OnClose += m=> MyMissiles.Remove(gm);
+			if (loadedAmmo == null)
+			{
+				myLogger.debugLog("Mine but no loaded ammo!", "MissileBelongsTo()", Logger.severity.WARNING);
+				return true;
+			}
 
-			myLogger.debugLog("added a new missile", "MissileBelongsTo()");
+			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
+			try
+			{
+				if (loadedAmmo.AmmoDescription.IsClusterPart)
+				{
+					if (prev_clusterMain != null)
+						prev_clusterMain.AddToCluster(missile);
+					else
+						myLogger.debugLog("fired a cluster part without a main", "MissileBelongsTo()", Logger.severity.INFO);
+				}
+				else
+				{
+					GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
+					if (loadedAmmo.AmmoDescription.IsClusterMain)
+						prev_clusterMain = gm;
+					myLogger.debugLog("added a new missile", "MissileBelongsTo()");
+				}
+			}
+			catch (Exception ex)
+			{
+				myLogger.alwaysLog("failed to create GuidedMissile", "MissileBelongsTo()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, "MissileBelongsTo()",  Logger.severity.ERROR);
+			}
 
 			return true;
+		}
+
+		// TODO: determine if ammo can actually change
+		private void UpdateLoadedMissile()
+		{
+			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && nextCheckInventory > DateTime.UtcNow)
+				return;
+
+			nextCheckInventory = DateTime.UtcNow + checkInventoryInterval;
+			prev_mass = myInventory.CurrentMass;
+			prev_volume = myInventory.CurrentVolume;
+
+			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
+			if (newAmmo != null && newAmmo != loadedAmmo)
+			{
+				if (newAmmo.AmmoDescription == null)
+				{
+					myLogger.debugLog("ammo does not have a description: " + newAmmo.AmmoDefinition, "UpdateLoadedMissile()");
+					loadedAmmo = null;
+					return;
+				}
+				loadedAmmo = newAmmo;
+				myLogger.debugLog("loaded ammo: " + loadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
+			}
 		}
 
 	}

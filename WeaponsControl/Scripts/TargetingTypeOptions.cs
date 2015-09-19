@@ -129,28 +129,4 @@ namespace Rynchodon.Weapons
 		public Target AddDirectionPoint(Vector3? firingDirection, Vector3? interceptionPoint)
 		{ return new Target(Entity, TType, firingDirection, interceptionPoint); }
 	}
-
-	public class Ammo
-	{
-		public readonly MyAmmoDefinition Definition;
-		public readonly float TimeToMaxSpeed;
-		public readonly float DistanceToMaxSpeed;
-
-		public Ammo(MyAmmoDefinition Definiton)
-		{
-			this.Definition = Definiton;
-
-			MyMissileAmmoDefinition asMissile = Definition as MyMissileAmmoDefinition;
-			if (asMissile != null && !asMissile.MissileSkipAcceleration)
-			{
-				this.TimeToMaxSpeed = (asMissile.DesiredSpeed - asMissile.MissileInitialSpeed) / asMissile.MissileAcceleration;
-				this.DistanceToMaxSpeed = (asMissile.DesiredSpeed + asMissile.MissileInitialSpeed) / 2 * TimeToMaxSpeed;
-			}
-			else
-			{
-				this.TimeToMaxSpeed = 0;
-				this.DistanceToMaxSpeed = 0;
-			}
-		}
-	}
 }

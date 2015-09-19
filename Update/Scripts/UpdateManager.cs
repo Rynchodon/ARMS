@@ -138,7 +138,10 @@ namespace Rynchodon.Update
 					FixedWeapon w = new FixedWeapon(block);
 					RegisterForUpdates(1, w.Update_Targeting, block);
 					if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
-						new GuidedMissileLauncher(w);
+					{
+						GuidedMissileLauncher gml = new GuidedMissileLauncher(w);
+						RegisterForUpdates(10, gml.Update1, block);
+					}
 				};
 
 				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), fixed_);
