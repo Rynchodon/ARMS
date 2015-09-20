@@ -11,6 +11,9 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Track LastSeen objects by entityId</summary>
 		protected readonly Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
 
+		/// <summary>Not all Receivers will lock myLastSeen but some may.</summary>
+		protected readonly FastResourceLock lock_myLastSeen = new FastResourceLock();
+
 		public abstract object ReceiverObject { get; }
 
 		private readonly Logger myLogger = new Logger("Receiver");
@@ -20,14 +23,17 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public virtual void receive(LastSeen seen)
 		{
-			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
+			using (lock_myLastSeen.AcquireExclusiveUsing())
 			{
-				if (seen.update(ref toUpdate))
-					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
+				LastSeen toUpdate;
+				if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
+				{
+					if (seen.update(ref toUpdate))
+						myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
+				}
+				else
+					myLastSeen.Add(seen.Entity.EntityId, seen);
 			}
-			else
-				myLastSeen.Add(seen.Entity.EntityId, seen);
 		}
 
 		// TODO: function canSendTo, which can be overriden instead of using extension

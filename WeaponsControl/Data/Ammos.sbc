@@ -68,7 +68,8 @@
         ClusterMagazineSubtypeId=ApMissileMag_ClusterPart
         ClusterSplitRange=50
         ClusterRadius=10
-        ClusterCount=1
+        ClusterCount=4
+        ClusterSpawnDistance=10
         HasAntenna=true
       </Description>
       <BasicProperties>
@@ -82,8 +83,8 @@
         <MissileMass>45</MissileMass>
         <MissileExplosionRadius>1</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
-        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileAcceleration>1</MissileAcceleration>
+        <MissileInitialSpeed>5</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>500</MissileExplosionDamage>
       </MissileProperties>
@@ -105,7 +106,7 @@
         <MissileMass>45</MissileMass>
         <MissileExplosionRadius>1</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
+        <MissileAcceleration>1</MissileAcceleration>
         <MissileInitialSpeed>0</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>500</MissileExplosionDamage>

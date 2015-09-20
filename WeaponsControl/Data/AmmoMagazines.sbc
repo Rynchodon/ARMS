@@ -72,8 +72,8 @@
         <Y>0.2</Y>
         <Z>0.2</Z>
       </Size>
-      <Mass>0</Mass>
-      <Volume>0</Volume>
+      <Mass>1</Mass>
+      <Volume>1</Volume>
       <Model>Models\Weapons\Projectile_Missile.mwm</Model>
       <Capacity>1</Capacity>
       <AmmoDefinitionId Subtype="ApMissile_ClusterPart" />

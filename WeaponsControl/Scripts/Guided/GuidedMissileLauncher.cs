@@ -107,7 +107,7 @@ namespace Rynchodon.Weapons.Guided
 			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
 			try
 			{
-				if (loadedAmmo.AmmoDescription.IsClusterPart)
+				if (loadedAmmo.Description.IsClusterPart)
 				{
 					if (prev_clusterMain != null)
 						prev_clusterMain.AddToCluster(missile);
@@ -116,10 +116,18 @@ namespace Rynchodon.Weapons.Guided
 				}
 				else
 				{
-					GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
-					if (loadedAmmo.AmmoDescription.IsClusterMain)
-						prev_clusterMain = gm;
-					myLogger.debugLog("added a new missile", "MissileBelongsTo()");
+					if (prev_clusterMain != null && prev_clusterMain.IsAddingToCluster())
+					{
+						myLogger.debugLog("deleting extraneous missile: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
+						missile.Delete();
+					}
+					else
+					{
+						GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
+						if (loadedAmmo.IsClusterMain)
+							prev_clusterMain = gm;
+						myLogger.debugLog("added a new missile", "MissileBelongsTo()");
+					}
 				}
 			}
 			catch (Exception ex)
@@ -144,7 +152,7 @@ namespace Rynchodon.Weapons.Guided
 			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
 			if (newAmmo != null && newAmmo != loadedAmmo)
 			{
-				if (newAmmo.AmmoDescription == null)
+				if (newAmmo.Description == null)
 				{
 					myLogger.debugLog("ammo does not have a description: " + newAmmo.AmmoDefinition, "UpdateLoadedMissile()");
 					loadedAmmo = null;
@@ -152,6 +160,8 @@ namespace Rynchodon.Weapons.Guided
 				}
 				loadedAmmo = newAmmo;
 				myLogger.debugLog("loaded ammo: " + loadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
+				if (prev_clusterMain != null)
+					prev_clusterMain.OnAmmoChanged();
 			}
 		}
 

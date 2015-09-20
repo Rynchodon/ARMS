@@ -62,11 +62,11 @@ namespace Rynchodon.Weapons
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		//private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 
-		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
-		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
-		private bool IsShooting;
-		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
-		private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
+		///// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
+		///// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
+		//private bool IsShooting;
+		///// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
+		//private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
 
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
@@ -170,14 +170,14 @@ namespace Rynchodon.Weapons
 				if (value_CurrentState == value)
 					return;
 
-				// need to get builder because we have no idea what the player may have been up to
-				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				using (lock_IsShooting.AcquireExclusiveUsing())
-					if (IsShooting != builder.IsShootingFromTerminal)
-					{
-						myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
-						IsShooting = builder.IsShootingFromTerminal;
-					}
+				//// need to get builder because we have no idea what the player may have been up to
+				//var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				//using (lock_IsShooting.AcquireExclusiveUsing())
+				//	if (IsShooting != builder.IsShootingFromTerminal)
+				//	{
+				//		myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
+				//		IsShooting = builder.IsShootingFromTerminal;
+				//	}
 
 				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
 				StopFiring("CurrentState changed to " + value);
@@ -520,34 +520,43 @@ namespace Rynchodon.Weapons
 
 		private void FireWeapon()
 		{
-			using (lock_IsShooting.AcquireExclusiveUsing())
-			{
-				if (IsShooting)
-					return;
+			GameThreadActions.Enqueue(() => {
+				(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
+			});
 
-				myLogger.debugLog("Open fire", "FireWeapon()");
+			//using (lock_IsShooting.AcquireExclusiveUsing())
+			//{
+			//	if (IsShooting)
+			//		return;
 
-				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+			//	myLogger.debugLog("Open fire", "FireWeapon()");
 
-				IsShooting = true;
-			}
+			//	GameThreadActions.Enqueue(() => 
+
+
+			//	IsShooting = true;
+			//}
 		}
 
 		protected void StopFiring(string reason)
 		{
-			using (lock_IsShooting.AcquireExclusiveUsing())
-			{
-				if (!IsShooting)
-					return;
+			myLogger.debugLog("Hold fire: " + reason, "StopFiring()");
+			GameThreadActions.Enqueue(() => {
+				(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
+			});
 
-				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
+			//using (lock_IsShooting.AcquireExclusiveUsing())
+			//{
+			//	if (!IsShooting)
+			//		return;
 
-				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+			//	myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
-				IsShooting = false;
-			}
+			//	GameThreadActions.Enqueue(() => 
+			//		(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+
+			//	IsShooting = false;
+			//}
 		}
 
 		/// <summary>
