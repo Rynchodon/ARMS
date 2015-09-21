@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRageMath;
@@ -33,6 +34,8 @@ namespace Rynchodon.Weapons
 				}
 			}
 
+			public bool GuidedMissile = false;
+
 			#region Performance
 
 			public float RotationPerUpdate = 0.0349065850398866f; // 2°
@@ -60,26 +63,26 @@ namespace Rynchodon.Weapons
 			#region Cluster
 			#region Mandatory
 
-			/// <summary>Id of the magazine that contains the ammo that will be spawned.</summary>
-			public string ClusterMagazineSubtypeId = "blank";
+			// trying clusters without swapping ammo, might go back to main/part model later
+
 			/// <summary>Split the cluster when this far from target.</summary>
 			public float ClusterSplitRange;
-			/// <summary>Accuracy of the cluster.</summary>
-			public float ClusterRadius;
-			/// <summary>Number of missiles that are spawned.</summary>
-			public byte ClusterCount;
+			/// <summary>Seconds from last cluster missile being fired until it can fire again.</summary>
+			public float ClusterCooldown;
 
 			#endregion Mandatory
 			#region Optional
 
+			/// <summary>How far apart each cluster missile will be from main missile when they reach target. Units = squigglies.</summary>
+			public float ClusterSpread = 5f;
+			/// <summary>How far apart each cluster missile will be from main missile when they split. Units = squigglies.</summary>
+			public float ClusterInitSpread = 1f;
 			/// <summary>Circle of missiles will be this far behind main missile.</summary>
-			public float ClusterOffset_Back;
+			public float ClusterOffset_Back = 0f;
 			/// <summary>Distance along the circumference of the circle of missiles between missiles</summary>
-			public float ClusterOffset_Radial;
-			/// <summary>Distance primary missile must move before cluster is spawned.</summary>
-			public float ClusterSpawnDistance;
-			/// <summary>No need to set in Ammo.sbc</summary>
-			public bool IsClusterPart;
+			public float ClusterOffset_Radial = 1f;
+			/// <summary>Distance primary missile must move before cluster is formed.</summary>
+			public float ClusterFormDistance = 10f;
 
 			#endregion Optional
 			#endregion Cluster
@@ -101,7 +104,6 @@ namespace Rynchodon.Weapons
 		public const string ClusterDescriptionString = "IsClusterPart=true";
 		private static Dictionary<MyDefinitionId, Ammo> KnownDefinitions_Ammo = new Dictionary<MyDefinitionId, Ammo>();
 
-		// TODO: creative mode support
 		public static Ammo GetLoadedAmmo(IMyCubeBlock weapon)
 		{
 			var invOwn = (weapon as IMyInventoryOwner);
@@ -119,33 +121,34 @@ namespace Rynchodon.Weapons
 			MyAmmoMagazineDefinition magDef = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId);
 			if (magDef == null)
 				throw new InvalidOperationException("inventory contains item that is not a magazine: " + weapon.getBestName());
-			MyAmmoDefinition ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(magDef.AmmoDefinitionId);
 
-			value = new Ammo(ammoDef);
+			value = new Ammo(magDef);
 			KnownDefinitions_Ammo.Add(magazineId, value);
 			return value;
 		}
 
 		public readonly MyAmmoDefinition AmmoDefinition;
 		public readonly MyMissileAmmoDefinition MissileDefinition;
+		public readonly MyAmmoMagazineDefinition MagazineDefinition;
 
 		public readonly float TimeToMaxSpeed;
 		public readonly float DistanceToMaxSpeed;
 
 		public readonly AmmoDescription Description;
 
-		public readonly MyObjectBuilder_AmmoMagazine ClusterMagazine;
 		public readonly Vector3[] ClusterOffsets;
-		public readonly bool IsClusterMain;
+		public readonly bool IsCluster;
 
 		private readonly Logger myLogger;
 
-		public Ammo(MyAmmoDefinition Definiton)
+		public Ammo(MyAmmoMagazineDefinition ammoMagDef)
 		{
-			this.myLogger = new Logger("Ammo", null, () => Definiton.Id.ToString());
+			MyAmmoDefinition ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoMagDef.AmmoDefinitionId);
+			this.myLogger = new Logger("Ammo", () => ammoMagDef.Id.ToString(), () => ammoDef.Id.ToString());
 
-			this.AmmoDefinition = Definiton;
+			this.AmmoDefinition = ammoDef;
 			this.MissileDefinition = AmmoDefinition as MyMissileAmmoDefinition;
+			this.MagazineDefinition = ammoMagDef;
 
 			if (MissileDefinition != null && !MissileDefinition.MissileSkipAcceleration)
 			{
@@ -162,44 +165,34 @@ namespace Rynchodon.Weapons
 
 			#region Check Cluster
 
-			if (Description.ClusterSplitRange < 1 || Description.ClusterRadius < 1 || Description.ClusterCount < 1) // if any value is bad
+			if (Description.ClusterSplitRange < 1 || Description.ClusterCooldown < 1) // if any value is bad
 			{
-				if (Description.ClusterSplitRange >= 1 || Description.ClusterRadius >= 1 || Description.ClusterCount >= 1) // if any value is good
+				if (Description.ClusterSplitRange >= 1 || Description.ClusterCooldown >= 1) // if any value is good
 				{
 					Logger.debugNotify("Cluster description is incomplete", 10000, Logger.severity.ERROR);
-					myLogger.alwaysLog("Cluster description is incomplete: " + Description.ClusterMagazineSubtypeId + ", " + Description.ClusterSplitRange + ", " + Description.ClusterRadius + ", " + Description.ClusterCount, "VerifyCluster()", Logger.severity.ERROR);
+					//myLogger.alwaysLog("Cluster description is incomplete: " + Description.ClusterSplitRange + ", " + Description.ClusterSpread + ", " + Description.ClusterCooldown, "VerifyCluster()", Logger.severity.ERROR);
 				}
 				return;
 			}
 
-			ClusterMagazine = new MyObjectBuilder_AmmoMagazine() { SubtypeName = Description.ClusterMagazineSubtypeId };
-
-			// enforce constraints on cluster part
-			var magDef = MyDefinitionManager.Static.GetAmmoMagazineDefinition(ClusterMagazine.GetObjectId());
-			var ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(magDef.AmmoDefinitionId);
-			ammoDef.DescriptionString = ClusterDescriptionString;
-
-			myLogger.debugLog("cluster part: " + ammoDef.Id, "VerifyCluster()");
-
 			// BuildOffsets
-			Description.ClusterOffset_Radial = MathHelper.Max(Description.ClusterOffset_Radial, 1f);
-			ClusterOffsets = new Vector3[Description.ClusterCount];
-			float radius = Description.ClusterCount / MathHelper.TwoPi * Description.ClusterOffset_Radial;
-			float angle = MathHelper.TwoPi / Description.ClusterCount;
-			myLogger.debugLog("radius: " + radius + ", angle: " + angle, "VerifyCluster()");
+			// ClusterOffset_Back can be +/-
+			Description.ClusterOffset_Radial = MathHelper.Max(Description.ClusterOffset_Radial, 0f);
+			Description.ClusterFormDistance = MathHelper.Max(Description.ClusterFormDistance, 1f);
+			ClusterOffsets = new Vector3[ammoMagDef.Capacity - 1];
+			float radius = ClusterOffsets.Length / MathHelper.TwoPi * Description.ClusterOffset_Radial;
+			float angle = MathHelper.TwoPi / ClusterOffsets.Length;
 
-			for (int i = 0; i < Description.ClusterCount; i++)
+			for (int i = 0; i < ClusterOffsets.Length; i++)
 			{
 				float partAngle = angle * i;
 				float right = (float)Math.Sin(partAngle) * radius;
 				float up = (float)Math.Cos(partAngle) * radius;
 				ClusterOffsets[i] = new Vector3(right, up, Description.ClusterOffset_Back);
-				myLogger.debugLog("partAngle: " + partAngle + ", right: " + right + ", up: " + up, "VerifyCluster()");
-				myLogger.debugLog("offset: " + ClusterOffsets[i], "VerifyCluster()");
 			}
 
 			myLogger.debugLog("Is a cluster missile", "VerifyCluster()");
-			IsClusterMain = true;
+			IsCluster = true;
 
 			#endregion
 		}

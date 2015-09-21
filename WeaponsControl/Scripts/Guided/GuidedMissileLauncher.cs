@@ -61,6 +61,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Logger myLogger;
 		private readonly FixedWeapon myFixed;
 		private IMyCubeBlock CubeBlock { get { return myFixed.CubeBlock; } }
+		private IMyFunctionalBlock FuncBlock;
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
 
@@ -69,11 +70,16 @@ namespace Rynchodon.Weapons.Guided
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
 		private Ammo loadedAmmo;
-		private GuidedMissile prev_clusterMain;
+		private GuidedMissile clusterMain;
+
+		private bool onCooldown;
+		private bool restoreShootingToggle;
+		private DateTime cooldownUntil;
 
 		public GuidedMissileLauncher(FixedWeapon weapon)
 		{
 			myFixed = weapon;
+			FuncBlock = CubeBlock as IMyFunctionalBlock;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
@@ -88,6 +94,7 @@ namespace Rynchodon.Weapons.Guided
 		public void Update1()
 		{
 			UpdateLoadedMissile();
+			CheckCooldown();
 		}
 
 		private bool MissileBelongsTo(IMyEntity missile)
@@ -104,30 +111,41 @@ namespace Rynchodon.Weapons.Guided
 				return true;
 			}
 
+			if (loadedAmmo.Description == null || !loadedAmmo.Description.GuidedMissile)
+				return true;
+
 			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
 			try
 			{
-				if (loadedAmmo.Description.IsClusterPart)
+				if (clusterMain != null)
 				{
-					if (prev_clusterMain != null)
-						prev_clusterMain.AddToCluster(missile);
-					else
-						myLogger.debugLog("fired a cluster part without a main", "MissileBelongsTo()", Logger.severity.INFO);
-				}
-				else
-				{
-					if (prev_clusterMain != null && prev_clusterMain.IsAddingToCluster())
+					if (loadedAmmo.IsCluster)
 					{
-						myLogger.debugLog("deleting extraneous missile: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
+						if (clusterMain.AddToCluster(missile))
+						{
+							myLogger.debugLog("reached max cluster, on cooldown", "MissileBelongsTo()", Logger.severity.DEBUG);
+							StartCooldown();
+						}
+					}
+					else
+					{
+						myLogger.alwaysLog("deleting extraneous missile: " + missile, "MissileBelongsTo()", Logger.severity.WARNING);
 						missile.Delete();
 					}
-					else
-					{
-						GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
-						if (loadedAmmo.IsClusterMain)
-							prev_clusterMain = gm;
-						myLogger.debugLog("added a new missile", "MissileBelongsTo()");
-					}
+					return true;
+				}
+
+				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
+				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
+				if (loadedAmmo.IsCluster)
+				{
+					myLogger.debugLog("missile is a cluster missile", "MissileBelongsTo()");
+					clusterMain = gm;
+					missile.OnClose += m => {
+						myLogger.debugLog("clusterMain closed, on cooldown", "MissileBelongsTo()", Logger.severity.DEBUG);
+						StartCooldown();
+					};
+					FuncBlock.ApplyAction("Shoot_On");
 				}
 			}
 			catch (Exception ex)
@@ -139,7 +157,7 @@ namespace Rynchodon.Weapons.Guided
 			return true;
 		}
 
-		// TODO: determine if ammo can actually change
+		// TODO: determine if ammo can actually change // I don't remember what this means
 		private void UpdateLoadedMissile()
 		{
 			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && nextCheckInventory > DateTime.UtcNow)
@@ -152,16 +170,39 @@ namespace Rynchodon.Weapons.Guided
 			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
 			if (newAmmo != null && newAmmo != loadedAmmo)
 			{
-				if (newAmmo.Description == null)
-				{
-					myLogger.debugLog("ammo does not have a description: " + newAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-					loadedAmmo = null;
-					return;
-				}
+				//if (newAmmo.Description == null)
+				//{
+				//	myLogger.debugLog("ammo does not have a description: " + newAmmo.AmmoDefinition, "UpdateLoadedMissile()");
+				//	loadedAmmo = null;
+				//	return;
+				//}
 				loadedAmmo = newAmmo;
 				myLogger.debugLog("loaded ammo: " + loadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-				if (prev_clusterMain != null)
-					prev_clusterMain.OnAmmoChanged();
+				//if (prev_clusterMain != null)
+				//	prev_clusterMain.OnAmmoChanged();
+			}
+		}
+
+		private void StartCooldown()
+		{
+			clusterMain = null;
+			FuncBlock.RequestEnable(false);
+			onCooldown = true;
+			cooldownUntil = DateTime.UtcNow + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
+		}
+
+		private void CheckCooldown()
+		{
+			if (!onCooldown)
+				return;
+
+			if (cooldownUntil > DateTime.UtcNow)
+				FuncBlock.RequestEnable(false);
+			else
+			{
+				myLogger.debugLog("off cooldown", "CheckCooldown()");
+				onCooldown = false;
+				FuncBlock.RequestEnable(true);
 			}
 		}
 

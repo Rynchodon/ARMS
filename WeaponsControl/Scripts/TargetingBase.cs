@@ -23,6 +23,7 @@ namespace Rynchodon.Weapons
 		protected readonly IMyEntity MyEntity;
 		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
 		protected readonly IMyCubeBlock CubeBlock;
+		protected readonly IMyFunctionalBlock FuncBlock;
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
@@ -30,7 +31,7 @@ namespace Rynchodon.Weapons
 
 		private readonly Logger myLogger;
 
-		/// <summary>The target the is being processed.</summary>
+		/// <summary>The target that is being processed.</summary>
 		protected Target myTarget;
 
 		public TargetingBase(IMyEntity entity, IMyCubeBlock controllingBlock)
@@ -43,6 +44,7 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("TargetingBase", () => entity.getBestName());
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
+			FuncBlock = controllingBlock as IMyFunctionalBlock;
 
 			myTarget = new Target();
 			CurrentTarget = myTarget;
@@ -561,6 +563,9 @@ namespace Rynchodon.Weapons
 		/// TODO: if target is accelerating, look ahead (missiles and such)
 		protected void SetFiringDirection()
 		{
+			if (myTarget.Entity == null)
+				return;
+
 			IMyEntity target = myTarget.Entity;
 			Vector3D TargetPosition;
 

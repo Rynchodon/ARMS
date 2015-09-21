@@ -96,5 +96,15 @@ namespace Rynchodon
 		{
 			return Math.Acos(first.Dot(second) / (first.Length() * second.Length()));
 		}
+
+		public static string ToGpsTag(this Vector3 vec, string name = null)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
+
+		public static string ToGpsTag(this Vector3D vec, string name = null)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
 	}
 }
