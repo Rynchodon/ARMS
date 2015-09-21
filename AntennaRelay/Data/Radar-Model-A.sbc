@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions>
+
+  
+
+  <CubeBlocks>
+	<Definition>
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>Radar_A_Large</SubtypeId>
+      </Id>
+      <DisplayName>Radar</DisplayName>
+      <Icon>Textures\Icons\Radar_A.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Radar_A_Large.mwm</Model>
+      <Components>
+        <Component Count="50" Subtype="SteelPlate" />
+        <Component Count="10" Subtype="Construction" />
+        <Component Count="15" Subtype="SmallTube" />
+        <Component Count="10" Subtype="LargeTube" />
+        <Component Count="15" Subtype="Computer" />
+        <Component Count="55" Subtype="RadioCommunication" />
+        <Component Count="175" Subtype="Detector" />
+	<Component Subtype="Girder" Count="24" />
+        <Component Count="125" Subtype="Construction" />
+        <Component Count="275" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Radar_A_Large_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Radar_A_Large_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Radar_A_Large_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.32" StartY="0.17" EndX="2.76" EndY="1.83" />
+			</MountPoints>
+      <BlockPairName>Radar_A</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>60</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+
+
+
+    <Definition>
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>Radar_A_Small</SubtypeId>
+      </Id>
+      <DisplayName>Radar</DisplayName>
+      <Icon>Textures\Icons\Radar_A.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="2" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Radar_A_Small.mwm</Model>
+      <Components>
+        <Component Count="25" Subtype="SteelPlate" />
+        <Component Count="2" Subtype="Construction" />
+        <Component Count="8" Subtype="SmallTube" />
+        <Component Count="2" Subtype="LargeTube" />
+        <Component Count="10" Subtype="Computer" />
+        <Component Count="25" Subtype="RadioCommunication" />
+        <Component Count="90" Subtype="Detector" />
+	<Component Subtype="Girder" Count="12" />
+        <Component Count="75" Subtype="Construction" />
+        <Component Count="120" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Radar_A_Small_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Radar_A_Small_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Radar_A_Small_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.32" StartY="0.17" EndX="2.76" EndY="1.83" />
+			</MountPoints>
+	  <BlockPairName>Radar_A</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>30</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+  </CubeBlocks>
+
+  
+
+  
+
+</Definitions>
