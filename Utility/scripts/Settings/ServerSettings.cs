@@ -1,24 +1,23 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Linq;
 using Sandbox.ModAPI;
 
-namespace Rynchodon
+namespace Rynchodon.Settings
 {
-	public static class Settings
+	public static class ServerSettings
 	{
 		public enum SettingName : byte
 		{
 			bAllowAutopilot, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
-			yParallelPathfinder,
+			yParallelPathfinder, //yAllowedDetectedOnHud,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sWeaponCommandsNPC
 		}
 
-		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
+		private static readonly Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
 		public static T GetSetting<T>(SettingName name) where T : struct
@@ -44,7 +43,7 @@ namespace Rynchodon
 
 		private static Logger myLogger = new Logger(null, "Settings");
 
-		static Settings()
+		static ServerSettings()
 		{
 			buildSettings();
 
@@ -68,6 +67,7 @@ namespace Rynchodon
 			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
+			//AllSettings.Add(SettingName.yAllowedDetectedOnHud, new SettingSimple<byte>(255));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
@@ -82,13 +82,13 @@ namespace Rynchodon
 		/// <returns>version of file</returns>
 		private static int readAll()
 		{
-			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(Settings)))
+			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(ServerSettings)))
 				return -1; // no file
 
 			TextReader settingsReader = null;
 			try
 			{
-				settingsReader = MyAPIGateway.Utilities.ReadFileInLocalStorage(settings_file_name, typeof(Settings));
+				settingsReader = MyAPIGateway.Utilities.ReadFileInLocalStorage(settings_file_name, typeof(ServerSettings));
 
 				string[] versionLine = settingsReader.ReadLine().Split('=');
 				if (versionLine.Length != 2 || !versionLine[0].Equals(strVersion))
@@ -127,7 +127,7 @@ namespace Rynchodon
 		{
 			try
 			{
-				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(Settings));
+				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(ServerSettings));
 
 				write(strVersion, latestVersion.ToString()); // must be first line
 
@@ -180,8 +180,8 @@ namespace Rynchodon
 			if (Enum.TryParse<SettingName>(split[0], out name))
 				try
 				{
-					AllSettings[name].ValueFromString(split[1]);
-					myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()", Logger.severity.INFO);
+					if (AllSettings[name].ValueFromString(split[1]))
+						myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()", Logger.severity.INFO);
 				}
 				catch (Exception)
 				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
@@ -189,65 +189,5 @@ namespace Rynchodon
 				myLogger.alwaysLog("Setting does not exist: " + split[0], "parse()", Logger.severity.WARNING);
 		}
 
-		private interface Setting
-		{
-			/// <summary>Gets the Value of this Setting as a string.</summary>
-			/// <returns>string representation of Value.</returns>
-			string ValueAsString();
-			/// <summary>Sets the Value of this Setting from a string.</summary>
-			/// <param name="value">the string to get Value from</param>
-			void ValueFromString(string value);
-		}
-
-		private class SettingSimple<T> : Setting where T : struct
-		{
-			public T Value { get; protected set; }
-
-			public SettingSimple(T defaultValue)
-			{ this.Value = defaultValue; }
-
-			public string ValueAsString()
-			{ return Value.ToString(); }
-
-			public virtual void ValueFromString(string value)
-			{ Value = (T)Convert.ChangeType(value, typeof(T)); }
-		}
-
-		private class SettingMinMax<T> : SettingSimple<T> where T : struct
-		{
-			public readonly T Min;
-			public readonly T Max;
-
-			public SettingMinMax(T min, T max, T defaultValue)
-				: base(defaultValue)
-			{
-				this.Min = min;
-				this.Max = max;
-				this.Value = defaultValue;
-			}
-
-			public override void ValueFromString(string value)
-			{
-				Value = (T)Convert.ChangeType(value, typeof(T));
-				if (Comparer<T>.Default.Compare(Value, Min) < 0)
-					Value = Min;
-				if (Comparer<T>.Default.Compare(Value, Max) > 0)
-					Value = Max;
-			}
-		}
-
-		private class SettingString : Setting
-		{
-			public string Value { get; protected set; }
-
-			public SettingString(string defaultValue)
-			{ this.Value = defaultValue; }
-
-			public string ValueAsString()
-			{ return Value; }
-
-			public void ValueFromString(string value)
-			{ this.Value = value; }
-		}
 	}
 }

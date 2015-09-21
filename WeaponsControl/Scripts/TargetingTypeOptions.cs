@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Settings;
 using Sandbox.Definitions;
 using VRage.ModAPI;
 using VRageMath;
@@ -44,6 +45,8 @@ namespace Rynchodon.Weapons
 	public class TargetingOptions
 	{
 		public TargetType CanTarget = TargetType.None;
+
+		/// <summary>Returns true if any of the specified types can be targeted.</summary>
 		public bool CanTargetType(TargetType type)
 		{ return (CanTarget & type) != 0; }
 
@@ -78,7 +81,7 @@ namespace Rynchodon.Weapons
 			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", Blocks = (" + blocks + ")";
 		}
 
-		private static readonly float GlobalMaxRange = Settings.GetSetting<float>(Settings.SettingName.fMaxWeaponRange);
+		private static readonly float GlobalMaxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
 		private float value_TargetingRange;
 		/// <summary>
 		/// <para>The range for targeting objects</para>

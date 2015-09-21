@@ -16,14 +16,10 @@ namespace Rynchodon.AntennaRelay
 		public IMyCubeBlock CubeBlock { get; internal set; }
 		protected LinkedList<Message> myMessages = new LinkedList<Message>();
 
-		/// <summary>
-		/// Do not forget to call this!
-		/// </summary>
 		protected Receiver(IMyCubeBlock block)
 		{
 			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
-			EnemyNear = false;
 			myLogger = new Logger("Receiver", () => CubeBlock.CubeGrid.DisplayName);
 			CubeBlock.OnClosing += Close;
 		}
@@ -69,10 +65,7 @@ namespace Rynchodon.AntennaRelay
 			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
 			{
 				if (seen.update(ref toUpdate))
-				{
-					myLastSeen.Remove(toUpdate.Entity.EntityId);
-					myLastSeen.Add(toUpdate.Entity.EntityId, toUpdate);
-				}
+					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
 			}
 			else
 				myLastSeen.Add(seen.Entity.EntityId, seen);
@@ -82,7 +75,7 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		public static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list)
+		public static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list)
 		{ sendToAttached(sender, list, null); }
 
 		/// <summary>
@@ -96,7 +89,7 @@ namespace Rynchodon.AntennaRelay
 		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
 		/// removes invalids from the list
 		/// </summary>
-		private static void sendToAttached(IMyCubeBlock sender, LinkedList<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
+		private static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
 		{
 			ICollection<LastSeen> toSend;
 			if (list != null)
@@ -104,15 +97,18 @@ namespace Rynchodon.AntennaRelay
 			else
 				toSend = dictionary.Values;
 
-			LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
-			foreach (LastSeen seen in toSend)
-				if (!seen.isValid)
-					removeList.AddLast(seen);
-			foreach (LastSeen seen in removeList)
-				if (dictionary != null)
-					dictionary.Remove(seen.Entity.EntityId);
-				else
-					toSend.Remove(seen);
+			if (dictionary != null || !toSend.IsReadOnly)
+			{
+				LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
+				foreach (LastSeen seen in toSend)
+					if (!seen.isValid)
+						removeList.AddLast(seen);
+				foreach (LastSeen seen in removeList)
+					if (dictionary != null)
+						dictionary.Remove(seen.Entity.EntityId);
+					else
+						toSend.Remove(seen);
+			}
 
 			// to radio antenna
 			foreach (RadioAntenna radioAnt in RadioAntenna.registry)
@@ -184,32 +180,6 @@ namespace Rynchodon.AntennaRelay
 				if (sender.canSendTo(laserAnt.CubeBlock, true))
 					foreach (Message mes in toSend)
 						laserAnt.receive(mes);
-		}
-
-		/// <summary>
-		/// Is there any enemy within 3km, seen in the past 10 seconds? Not all Receiver update this; for Receiver that do not update, false.
-		/// </summary>
-		public bool EnemyNear { get; private set; }
-
-		protected void UpdateEnemyNear()
-		{
-			Vector3D myPosition = CubeBlock.GetPosition();
-			EnemyNear = false;
-			foreach (LastSeen seen in myLastSeen.Values)
-			{
-				IMyCubeGrid seenAsGrid = seen.Entity as IMyCubeGrid;
-				if (seenAsGrid != null)
-				{
-					//myLogger.debugLog("testing grid: " + seenAsGrid.DisplayName + ", recent = " + seen.isRecent() + ", hostile = " + CubeBlock.canConsiderHostile(seenAsGrid) + ", distance squared = " + (seen.LastKnownPosition - myPosition).LengthSquared(), "UpdateEnemyNear()");
-					if (seen.isRecent() && CubeBlock.canConsiderHostile(seenAsGrid) && (seen.LastKnownPosition - myPosition).LengthSquared() < 9000000) // 3km, squared = 9Mm
-					{
-						//myLogger.debugLog("nearby enemy: " + seen.Entity.getBestName(), "UpdateEnemyNear()");
-						EnemyNear = true;
-						return;
-					}
-				}
-			}
-			//myLogger.debugLog("no enemy nearby", "UpdateEnemyNear()");
 		}
 
 		public LastSeen getLastSeen(long entityId)

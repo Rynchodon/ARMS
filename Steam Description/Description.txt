@@ -23,8 +23,8 @@ I am looking for assistance with models, code, tutorials, and translations.
 If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
 
 [h1]Ingame Help[/h1]
-type "/Autopilot" ingame for a list of help topics
-type "/Autopilot <topic>" for information about a specific topic
+type "/Autopilot help" ingame for a list of help topics
+type "/Autopilot help <topic>" for information about a specific topic
 
 [h1]Autopilot Navigation[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]

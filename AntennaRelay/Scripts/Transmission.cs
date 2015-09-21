@@ -15,20 +15,19 @@ namespace Rynchodon.AntennaRelay
 
 		public readonly IMyEntity Entity;
 		public readonly DateTime LastSeenAt;
+		public readonly DateTime LastSeenBroadcast = DateTime.MinValue;
 		public readonly Vector3D LastKnownPosition;
 		public readonly Vector3D LastKnownVelocity;
 		public readonly bool EntityHasRadar;
 		public readonly RadarInfo Info;
 
-		/// <summary>
-		/// 
-		/// </summary>
 		/// <param name="entity">asteroid, grid, or player, never block</param>
-		/// <param name="knownName"></param>
 		public LastSeen(IMyEntity entity, bool EntityHasRadar = false, RadarInfo info = null)
 		{
 			this.Entity = entity;
 			this.LastSeenAt = DateTime.UtcNow;
+			if (info == null)
+				this.LastSeenBroadcast = DateTime.UtcNow;
 			this.LastKnownPosition = entity.WorldAABB.Center;
 			if (entity.Physics == null)
 				this.LastKnownVelocity = Vector3D.Zero;
@@ -51,6 +50,11 @@ namespace Rynchodon.AntennaRelay
 			else
 				newer = second;
 
+			if (first.isNewerThan_Broadcast(second))
+				this.LastSeenBroadcast = first.LastSeenBroadcast;
+			else
+				this.LastSeenBroadcast = second.LastSeenBroadcast;
+
 			this.Entity = newer.Entity;
 			this.LastSeenAt = newer.LastSeenAt;
 			this.LastKnownPosition = newer.LastKnownPosition;
@@ -61,6 +65,9 @@ namespace Rynchodon.AntennaRelay
 
 		private bool isNewerThan(LastSeen other)
 		{ return this.LastSeenAt.CompareTo(other.LastSeenAt) > 0; }
+
+		private bool isNewerThan_Broadcast(LastSeen other)
+		{ return this.LastSeenBroadcast.CompareTo(other.LastSeenBroadcast) > 0; }
 
 		/// <summary>
 		/// If necissary, update toUpdate with this.
@@ -106,9 +113,11 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Use this instead of hard-coding.
 		/// </summary>
-		/// <returns></returns>
 		public bool isRecent()
 		{ return (DateTime.UtcNow - LastSeenAt).TotalSeconds < 10; }
+
+		public bool isRecent_Broadcast()
+		{ return (DateTime.UtcNow - LastSeenBroadcast).TotalSeconds < 10; }
 	}
 
 	public class RadarInfo

@@ -7,6 +7,7 @@ using VRage;
 using VRage.ModAPI;
 using VRageMath;
 using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Settings;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {
@@ -36,7 +37,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private NavSettings.SpecialFlying SpecialFyingInstructions;// { get; private set; }
 
 		private PathChecker myPathChecker;
-		private static ThreadManager PathFinderThread = new ThreadManager(Settings.GetSetting<byte>(Settings.SettingName.yParallelPathfinder));
+		private static ThreadManager PathFinderThread = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder));
 
 		/// <summary>next time CheckPath() is allowed to run</summary>
 		private DateTime nextRun = DateTime.MinValue;

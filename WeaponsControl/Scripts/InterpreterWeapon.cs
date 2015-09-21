@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -57,7 +58,7 @@ namespace Rynchodon.Weapons
 					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
 					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
 					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
-					instructions = Settings.GetSettingString(Settings.SettingName.sWeaponCommandsNPC);
+					instructions = ServerSettings.GetSettingString(ServerSettings.SettingName.sWeaponCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
 
 					if (instructions != null)

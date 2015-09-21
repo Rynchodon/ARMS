@@ -65,8 +65,6 @@ namespace Rynchodon.AntennaRelay
 				// send to attached receivers
 				Receiver.sendToAttached(CubeBlock, myLastSeen);
 				Receiver.sendToAttached(CubeBlock, myMessages);
-
-				UpdateEnemyNear();
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

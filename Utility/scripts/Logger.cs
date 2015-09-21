@@ -155,6 +155,15 @@ namespace Rynchodon
 		{
 			if (closed)
 				return;
+
+			if (toLog.Contains("\n") || toLog.Contains("\r"))
+			{
+				string[] split = toLog.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+				foreach (string line in split)
+					log(level, methodName, line, primaryState, secondaryState);
+				return;
+			}
+
 			lock_log.AcquireExclusive();
 			try
 			{

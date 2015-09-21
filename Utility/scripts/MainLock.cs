@@ -163,24 +163,6 @@ namespace Rynchodon
 			}
 		}
 
-		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
-		{
-			List<IMyPlayer> matchingPlayer = new List<IMyPlayer>();
-			using (Lock_MainThread.AcquireSharedUsing())
-				MyAPIGateway.Players.GetPlayers(matchingPlayer, player => { return player.IdentityId == (character as IMyEntity).EntityId; });
-
-			switch (matchingPlayer.Count)
-			{
-				case 0:
-					return null;
-				case 1:
-					return matchingPlayer[0];
-				default:
-					VRage.Exceptions.ThrowIf<InvalidOperationException>(true, "too many matching players (" + matchingPlayer.Count + ")");
-					return null;
-			}
-		}
-
 		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
 		{
 			List<IMyVoxelBase> outInstances = new List<IMyVoxelBase>();
@@ -214,6 +196,17 @@ namespace Rynchodon
 				return match[0];
 			return null;
 		}
+
+		public static IMyPlayer GetPlayer_Safe(this IMyIdentity identity)
+		{
+			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == identity.PlayerId; });
+			if (match.Count == 1)
+				return match[0];
+			return null;
+		}
+
+		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
+		{ return character.GetIdentity_Safe().GetPlayer_Safe(); }
 
 		public static List<IMyPlayer> GetPlayers_Safe(this IMyPlayerCollection PlayColl, Func<IMyPlayer, bool> collect = null)
 		{

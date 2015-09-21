@@ -241,6 +241,31 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Count the number of blocks that match a particular condition.
+		/// </summary>
+		/// <param name="objBuildType">Type to search for</param>
+		/// <param name="condition">Condition that block must match</param>
+		/// <returns>The number of blocks of the given type that match the condition.</returns>
+		// TODO: conditional for CountByDefinition and CountByDefLooseContains
+		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				ListSnapshots<IMyCubeBlock> value;
+				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
+				{
+					int count = 0;
+					foreach (IMyCubeBlock block in value.myList)
+						if (condition(block))
+							count++;
+
+					return count;
+				}
+				return 0;
+			}
+		}
+
+		/// <summary>
 		/// Return the total number of blocks cached by type.
 		/// </summary>
 		/// <returns>The total number of blocks cached by type</returns>

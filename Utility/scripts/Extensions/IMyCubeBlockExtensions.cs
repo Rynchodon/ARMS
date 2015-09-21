@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
@@ -15,174 +14,10 @@ namespace Rynchodon
 	{
 		private static Logger myLogger = new Logger("IMyCubeBlockExtensions");
 
-		#region Relations
-
-		/// <summary>
-		/// <para>For a grid, we normally consider the worst relationship.</para>
-		/// <para>Eg. A grid that contains any Neutral blocks and no Enemy blocks shall be considered Neutral.</para>
-		/// <para>A grid that is completely unowned shall be considered Enemy.</para>
-		/// </summary>
-		[Flags]
-		public enum Relations : byte
-		{
-			/// <summary>
-			/// Owner/Player is "nobody"
-			/// </summary>
-			None = 0,
-			/// <summary>
-			/// Owner/Player is a member of an at war faction
-			/// </summary>
-			Enemy = 1,
-			/// <summary>
-			/// Owner/Player is a member of an at peace faction
-			/// </summary>
-			Neutral = 2,
-			/// <summary>
-			/// Owner/Player is a member of the same faction
-			/// </summary>
-			Faction = 4,
-			/// <summary>
-			/// Owner/Player is the same player
-			/// </summary>
-			Owner = 8
-		}
-
-		public static bool HasFlagFast(this Relations rel, Relations flag)
-		{ return (rel & flag) == flag; }
-
-		private static bool toIsFriendly(Relations rel)
-		{
-			if (rel.HasFlagFast(Relations.Enemy))
-				return false;
-			//if (rel.HasFlagFast(Relations.Neutral))
-			//	return false;
-
-			//if (rel == Relations.None)
-			//	return false;
-
-			//return true;
-			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
-		}
-
-		private static bool toIsHostile(Relations rel)
-		{
-			if (rel.HasFlagFast(Relations.Enemy))
-				return true;
-
-			if (rel == Relations.None)
-				return true;
-
-			return false;
-		}
-
-		public static Relations highestPriority(this Relations rel)
-		{
-			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral })
-				if (rel.HasFlagFast(flag))
-					return flag;
-			return Relations.None;
-		}
-
-		private static Relations getRelationsTo(this IMyCubeBlock block, long playerID)
-		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
-
-			switch (block.GetUserRelationToOwner(playerID))
-			{
-				case MyRelationsBetweenPlayerAndBlock.Enemies:
-					return Relations.Enemy;
-				case MyRelationsBetweenPlayerAndBlock.Neutral:
-					return Relations.Neutral;
-				case MyRelationsBetweenPlayerAndBlock.FactionShare:
-					return Relations.Faction;
-				case MyRelationsBetweenPlayerAndBlock.Owner:
-					return Relations.Owner;
-				default:
-					return Relations.None;
-			}
-		}
-
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeBlock target)
-		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
-
-			if (block.OwnerId == 0 || target.OwnerId == 0)
-				return Relations.None;
-			return block.getRelationsTo(target.OwnerId) ;
-		}
-
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
-		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
-
-			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
-				return Relations.Enemy;
-
-			Relations relationsToGrid = Relations.None;
-			foreach (long gridOwner in target.BigOwners)
-			{
-				relationsToGrid |= block.getRelationsTo(gridOwner); 
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
-					return relationsToGrid;
-			}
-
-			foreach (long gridOwner in target.SmallOwners)
-			{
-				relationsToGrid |= block.getRelationsTo(gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
-					return relationsToGrid;
-			}
-
-			return relationsToGrid;
- 		}
-
-		public static bool canConsiderFriendly(this IMyCubeBlock block, long playerID)
-		{ return toIsFriendly(block.getRelationsTo(playerID));}
-
-		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeBlock target)
-		{ return toIsFriendly(block.getRelationsTo(target)); }
-
-		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeGrid target)
-		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
-
-
-		public static bool canConsiderHostile(this IMyCubeBlock block, long playerID)
-		{ return toIsHostile(block.getRelationsTo(playerID)); }
-
-		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeBlock target)
-		{ return toIsHostile(block.getRelationsTo(target)); }
-
-		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeGrid target)
-		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
-
-
-		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
-		{
-			switch (block.getRelationsTo(target))
-			{
-				case Relations.Faction:
-				case Relations.Owner:
-					return true;
-				case Relations.None:
-					//myLogger.debugLog(block.DisplayNameText + " wants to control " + target.DisplayNameText + ", Relations == None, target OwnerId: " + target.OwnerId, "canControlBlock()");
-					return target.OwnerId == 0;
-				default:
-					return false;
-			}
-		}
-
-		#endregion
-
 		/// <summary>
 		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
 		/// </summary>
-		/// <param name="sendFrom"></param>
-		/// <param name="sendTo"></param>
-		/// <param name="range"></param>
-		/// <returns></returns>
-		public static bool canSendTo(this IMyCubeBlock sendFrom, IMyEntity sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
+		public static bool canSendTo(this IMyCubeBlock sendFrom, object sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
 			sendFrom.throwIfNull_argument("sendFrom");
 			sendTo.throwIfNull_argument("sendTo");
@@ -204,7 +39,7 @@ namespace Rynchodon
 
 				if (range > 0)
 				{
-					double distanceSquared = (sendFrom.GetPosition() - sendTo.GetPosition()).LengthSquared();
+					double distanceSquared = (sendFrom.GetPosition() - sendToAsBlock.GetPosition()).LengthSquared();
 					if (rangeIsSquared)
 						return distanceSquared < range;
 					else
@@ -222,15 +57,32 @@ namespace Rynchodon
 					if (Rynchodon.AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsGrid))
 						return true;
 				}
+			}
 
-				// may or may not be grid
-				if (range > 0)
+			if (range > 0)
+			{
+				IMyEntity asEntity = sendTo as IMyEntity;
+				if (asEntity != null)
 				{
-					double distance = sendTo.WorldAABB.Distance(sendFrom.GetPosition());
+					double distance = asEntity.WorldAABB.Distance(sendFrom.GetPosition());
+
 					if (rangeIsSquared)
 						return distance * distance < range;
 					else
 						return distance < range;
+				}
+				else
+				{
+					IMyPlayer asPlayer = sendTo as IMyPlayer;
+					if (asPlayer != null)
+					{
+						double distanceSq = Vector3D.DistanceSquared(sendFrom.GetPosition(), asPlayer.GetPosition());
+
+						if (rangeIsSquared)
+							return distanceSq < range;
+						else
+							return distanceSq < range * range;
+					}
 				}
 			}
 
@@ -338,6 +190,8 @@ namespace Rynchodon
 			List<Base6Directions.Direction> faceDirections = GetFaceDirection(block);
 			if (faceDirections.Count == 1)
 				return faceDirections[0];
+			if (faceDirections.Count == 0)
+				throw new InvalidOperationException("faceDirections.Count == 0");
 
 			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
 			Base6Directions.Direction? bestDirection = null;
@@ -347,6 +201,9 @@ namespace Rynchodon
 			{
 				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
 				double angle = Math.Acos(directionVector.Dot(worldDirection));
+
+				if (double.IsNaN(angle) || double.IsInfinity(angle))
+					throw new InvalidOperationException("angle is invalid: " + angle);
 
 				if (angle < bestDirectionAngle)
 				{
