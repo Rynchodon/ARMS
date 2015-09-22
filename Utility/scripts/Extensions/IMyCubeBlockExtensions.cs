@@ -105,7 +105,6 @@ namespace Rynchodon
 		/// <summary>
 		/// Extracts the identifier portion of a blocks name.
 		/// </summary>
-		/// <param name="rc"></param>
 		/// <returns>null iff name could not be extracted</returns>
 		public static string getNameOnly(this IMyCubeBlock rc)
 		{
@@ -125,7 +124,7 @@ namespace Rynchodon
 			{
 				return displayName.Substring(0, end);
 			}
-			return null;
+			return displayName;
 		}
 
 		public static Vector3 LocalPosition(this IMyCubeBlock block)

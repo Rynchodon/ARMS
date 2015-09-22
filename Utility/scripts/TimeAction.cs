@@ -125,7 +125,7 @@ namespace Rynchodon
 
 			if (extraFirst)
 				action.Invoke();
-			ListSnapshots<MyTimeSpan> unsortedResults = new ListSnapshots<MyTimeSpan>();
+			ListSnapshots<MyTimeSpan> unsortedResults = new ListSnapshots<MyTimeSpan>(iterations);
 			ReadOnlyList<MyTimeSpan> mutable = unsortedResults.mutable();
 			for (int i = 0; i < iterations; i++)
 			{
@@ -135,5 +135,19 @@ namespace Rynchodon
 			}
 			return new Results(unsortedResults);
 		}
+
+		public static double GetMean(Action action, int iterations = 1, bool extraFirst = false)
+		{
+			VRage.Exceptions.ThrowIf<ArgumentNullException>(action == null, "action");
+			VRage.Exceptions.ThrowIf<ArgumentOutOfRangeException>(iterations < 1, "iterations < 1");
+
+			if (extraFirst)
+				action.Invoke();
+			MyGameTimer actionTimer = new MyGameTimer();
+			for (int i = 0; i < iterations; i++)
+				action.Invoke();
+			return actionTimer.Elapsed.Seconds / iterations;
+		}
+
 	}
 }

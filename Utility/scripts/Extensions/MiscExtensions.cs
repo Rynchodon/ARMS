@@ -204,6 +204,14 @@ namespace Rynchodon
 		public static double Distance(this BoundingBoxD first, BoundingBoxD second)
 		{ return Math.Pow(first.DistanceSquared(second), 0.5); }
 
+		public static double DistanceSquared(this BoundingBoxD box, Vector3D point)
+		{
+			Vector3D closestPoint = Vector3D.Clamp(point, box.Min, box.Max);
+			double result;
+			Vector3D.DistanceSquared(ref point, ref closestPoint, out result);
+			return result;
+		}
+
 		/// <summary>
 		/// Finds the shorter of distance between AABB and distance between Volume
 		/// </summary>

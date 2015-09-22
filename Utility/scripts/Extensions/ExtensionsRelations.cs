@@ -1,6 +1,7 @@
 ﻿using System;
 using Sandbox.Common;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 
 namespace Rynchodon
 {
@@ -163,6 +164,32 @@ namespace Rynchodon
 			return relationsToGrid;
 		}
 
+		public static Relations getRelationsTo(this IMyCubeBlock block, object target, Relations breakOn = Relations.None)
+		{
+			IMyCubeBlock asBlock = target as IMyCubeBlock;
+			if (asBlock != null)
+				return block.getRelationsTo(asBlock);
+
+			IMyCubeGrid asGrid = target as IMyCubeGrid;
+			if (asGrid != null)
+				return block.getRelationsTo(asGrid, breakOn);
+
+			IMyCharacter asChar = target as IMyCharacter;
+			if (asChar != null)
+			{
+				IMyPlayer player = asChar.GetPlayer_Safe();
+				if (player != null)
+					return block.getRelationsTo(player.IdentityId);
+			}
+
+			IMyPlayer asPlayer = target as IMyPlayer;
+			if (asPlayer != null)
+				return block.getRelationsTo(asPlayer.IdentityId);
+
+			throw new InvalidOperationException("Cannot handle: " + target);
+		}
+
+
 		public static bool canConsiderFriendly(this IMyCubeBlock block, long playerID)
 		{ return toIsFriendly(block.getRelationsTo(playerID)); }
 
@@ -170,6 +197,9 @@ namespace Rynchodon
 		{ return toIsFriendly(block.getRelationsTo(target)); }
 
 		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeGrid target)
+		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
+
+		public static bool canConsdierFriendly(this IMyCubeBlock block, IMyEntity target)
 		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
 
 
@@ -180,6 +210,9 @@ namespace Rynchodon
 		{ return toIsHostile(block.getRelationsTo(target)); }
 
 		public static bool canConsiderHostile(this IMyCubeBlock block, IMyCubeGrid target)
+		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
+
+		public static bool canConsiderHostile(this IMyCubeBlock block, IMyEntity target)
 		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
 
 

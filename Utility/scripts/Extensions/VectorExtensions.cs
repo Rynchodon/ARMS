@@ -78,5 +78,33 @@ namespace Rynchodon
 						if (invokeOnEach.Invoke(new Vector3I(X, Y, Z)))
 							return;
 		}
+
+		/// <summary>
+		/// Returns the acute angle between two vectors.
+		/// </summary>
+		public static float AngleBetween(this Vector3 first, Vector3 second)
+		{
+			first.Normalize();
+			second.Normalize();
+			return (float)Math.Acos(first.Dot(second));
+		}
+
+		/// <summary>
+		/// Returns the acute angle between two vectors.
+		/// </summary>
+		public static double AngleBetween(this Vector3D first, Vector3D second)
+		{
+			return Math.Acos(first.Dot(second) / (first.Length() * second.Length()));
+		}
+
+		public static string ToGpsTag(this Vector3 vec, string name = null)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
+
+		public static string ToGpsTag(this Vector3D vec, string name = null)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
 	}
 }
