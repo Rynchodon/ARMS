@@ -30,14 +30,7 @@ type "/Autopilot help <topic>" for information about a specific topic
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
 
 [h1]Antenna Relay and Radar[/h1]
-Each radio antenna, beacon, and radar transmits its location to radio antennae that are inside its broadcast range.
-Each radio antenna relays the information that it has to friendly radio antennae inside its broadcast range.
-Each laser antenna relays the information that is has to the laser antenna it is connected to.
-Antennae, radars, and Autopilot blocks in attached grids share information.
-
-Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. The maximum distance a grid can be detected is 50% of the radar's power and the minimum distance is 5% of the radar's power. Radar must remain online for a period of time to function at full capacity.
-
-Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/523897653315556053/] Antenna Relay and Radar[/url]
 
 [h1]Block Communication[/h1]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=391453613] This script [/url] can be used to send and receive messages, filter detected grids, and execute actions based on detected grids.

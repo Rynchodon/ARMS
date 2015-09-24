@@ -7,7 +7,7 @@ using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
-	public abstract class Receiver //: UpdateEnforcer
+	public abstract class Receiver
 	{
 		/// <summary>
 		/// Track LastSeen objects by entityId

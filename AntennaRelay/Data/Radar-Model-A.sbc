@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Definitions>
-
-  
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
   <CubeBlocks>
-	<Definition>
+    <Definition>
       <Id>
         <TypeId>Beacon</TypeId>
-        <SubtypeId>Radar_A_Large</SubtypeId>
+        <SubtypeId>Radar_A_Large_Souper07</SubtypeId>
       </Id>
-      <DisplayName>Radar</DisplayName>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=30
+        SignalEnhance=1.1
+      </Description>
+      <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -24,7 +27,7 @@
         <Component Count="15" Subtype="Computer" />
         <Component Count="55" Subtype="RadioCommunication" />
         <Component Count="175" Subtype="Detector" />
-	<Component Subtype="Girder" Count="24" />
+        <Component Subtype="Girder" Count="24" />
         <Component Count="125" Subtype="Construction" />
         <Component Count="275" Subtype="SteelPlate" />
       </Components>
@@ -37,20 +40,24 @@
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="0.32" StartY="0.17" EndX="2.76" EndY="1.83" />
 			</MountPoints>
-      <BlockPairName>Radar_A</BlockPairName>
+      <BlockPairName>Radar_A_Souper07</BlockPairName>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>60</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
 
-
-
     <Definition>
       <Id>
         <TypeId>Beacon</TypeId>
-        <SubtypeId>Radar_A_Small</SubtypeId>
+        <SubtypeId>Radar_A_Small_Souper07</SubtypeId>
       </Id>
-      <DisplayName>Radar</DisplayName>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=15
+        MaxPowerLevel=20000
+        SignalEnhance=1.1
+      </Description>
+      <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -65,7 +72,7 @@
         <Component Count="10" Subtype="Computer" />
         <Component Count="25" Subtype="RadioCommunication" />
         <Component Count="90" Subtype="Detector" />
-	<Component Subtype="Girder" Count="12" />
+        <Component Subtype="Girder" Count="12" />
         <Component Count="75" Subtype="Construction" />
         <Component Count="120" Subtype="SteelPlate" />
       </Components>
@@ -78,7 +85,7 @@
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="0.32" StartY="0.17" EndX="2.76" EndY="1.83" />
 			</MountPoints>
-	  <BlockPairName>Radar_A</BlockPairName>
+	  <BlockPairName>Radar_A_Souper07</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
@@ -87,8 +94,38 @@
     </Definition>
   </CubeBlocks>
 
-  
+  <!-- Category Classes -->
 
-  
+  <CategoryClasses>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
+      <Name>LargeBlocks</Name>
+      <ItemIds>
+        <string>Beacon/Radar_A_Large_Souper07</string>
+      </ItemIds>
+    </Category>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
+      <Name>SmallBlocks</Name>
+      <ItemIds>
+        <string>Beacon/Radar_A_Small_Souper07</string>
+      </ItemIds>
+    </Category>
+  </CategoryClasses>
+
+  <!-- Assembler Blueprints -->
+
+  <BlueprintClassEntries>
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/Radar_A_Large_Souper07" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/Radar_A_Small_Souper07" />
+  </BlueprintClassEntries>
 
 </Definitions>

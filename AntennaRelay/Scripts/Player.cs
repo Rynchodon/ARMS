@@ -1,30 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rynchodon.Settings;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
 	public class Player
 	{
 
+		private struct DistanceSeen : IComparable<DistanceSeen>
+		{
+			public readonly float Distance;
+			public readonly LastSeen Seen;
+
+			public DistanceSeen(float distance, LastSeen seen)
+			{
+				this.Distance = distance;
+				this.Seen = seen;
+			}
+
+			public int CompareTo(DistanceSeen other)
+			{
+				return Math.Sign(this.Distance - other.Distance);
+			}
+		}
+
 		private class ForRelations
 		{
-			//public readonly ExtensionsRelations.Relations relate;
-
 			/// <summary>LastSeen sorted by distance squared</summary>
-			public readonly SortedDictionary<float, LastSeen> distanceSeen = new SortedDictionary<float, LastSeen>();
+			public readonly List<DistanceSeen> distanceSeen = new List<DistanceSeen>();
 			/// <summary>GPS entries that are currently being used</summary>
 			public readonly List<IMyGps> activeGPS = new List<IMyGps>();
 			/// <summary>The maximum GPS entries that are allowed</summary>
 			public byte MaxOnHUD;
-
-			//public ForRelations(ExtensionsRelations.Relations relate)
-			//{ this.relate = relate; }
 
 			public void Prepare()
 			{
@@ -159,7 +168,7 @@ namespace Rynchodon.AntennaRelay
 					continue;
 
 				float distance = Vector3.DistanceSquared(myPosition, seen.LastKnownPosition);
-				relateData.distanceSeen.AddIfBetter(distance, seen, relateData.MaxOnHUD);
+				relateData.distanceSeen.Add(new DistanceSeen( distance, seen));
 
 				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
 			}
@@ -172,13 +181,15 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
 
-			myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()"); 
+			myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()");
+
+			relateData.distanceSeen.Sort();
 
 			int index;
 			for (index = 0; index < relateData.distanceSeen.Count; index++)
 			{
 				//myLogger.debugLog("getting seen...", "UpdateGPS()");
-				LastSeen seen = relateData.distanceSeen.Values.ElementAt(index);
+				LastSeen seen = relateData.distanceSeen[index].Seen;
 
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
@@ -237,8 +248,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<string> parts = new List<string>();
 
-			if (seen.EntityHasRadar)
+			if (seen.isRecent_Radar())
 				parts.Add("Has Radar");
+
+			if (seen.isRecent_Jam())
+				parts.Add("Has Jammer");
 
 			if (seen.Info != null)
 				parts.Add(seen.Info.Pretty_Volume());

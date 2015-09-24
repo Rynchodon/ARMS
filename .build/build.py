@@ -85,7 +85,12 @@ def eraseDir(l_dir):
 
 
 def parse_sbc(path):
-	tree = ET.parse(path)
+	try:
+		tree = ET.parse(path)
+	except Exception as e:
+		print ('failed to parse: ' + path)
+		raise e
+		
 	root = tree.getroot()
 	
 	for BlockDefn in root.findall('./CubeBlocks/Definition'):

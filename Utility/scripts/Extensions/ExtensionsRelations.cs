@@ -37,6 +37,8 @@ namespace Rynchodon
 			Owner = 8
 		}
 
+		private static readonly Relations[] relationsPriority = new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral };
+
 		public static bool HasFlagFast(this Relations rel, Relations flag)
 		{ return (rel & flag) == flag; }
 
@@ -61,10 +63,18 @@ namespace Rynchodon
 
 		public static Relations highestPriority(this Relations rel)
 		{
-			foreach (Relations flag in new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral })
+			foreach (Relations flag in relationsPriority)
 				if (rel.HasFlagFast(flag))
 					return flag;
 			return Relations.None;
+		}
+
+		public static byte PriorityOrder(this Relations rel)
+		{
+			for (byte i = 0; i < relationsPriority.Length; i++)
+				if (rel.HasFlagFast(relationsPriority[i]))
+					return i;
+			return (byte)relationsPriority.Length;
 		}
 
 		private static Relations GetRelations(MyRelationsBetweenPlayerAndBlock relations)

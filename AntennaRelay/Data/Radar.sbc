@@ -10,13 +10,14 @@
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
-        Radar
+        Radar=true
+        MaxTargets_Tracking=10
         MinAzimuth=-2.356194490192345
         MaxAzimuth=0.7853981633974483
         MinElevation=-0.7853981633974483
         MaxElevation=2.356194490192345
       </Description>
-      <DisplayName>Radar</DisplayName>
+      <DisplayName>Radar Dish</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -54,14 +55,15 @@
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
-        Radar
+        Radar=true
+        MaxTargets_Tracking=5
         MaxPowerLevel=20000
         MinAzimuth=-2.356194490192345
         MaxAzimuth=0.7853981633974483
         MinElevation=-0.7853981633974483
         MaxElevation=2.356194490192345
       </Description>
-      <DisplayName>Radar</DisplayName>
+      <DisplayName>Radar Dish</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>

@@ -438,11 +438,18 @@ namespace Rynchodon.AntennaRelay
 					builder.Append(tab);
 				}
 				else
-					if (seen.EntityHasRadar)
+				{
+					if (seen.isRecent_Radar())
 					{
 						builder.Append("Has Radar");
 						builder.Append(tab);
 					}
+					if (seen.isRecent_Jam())
+					{
+						builder.Append("Has Jammer");
+						builder.Append(tab);
+					}
+				}
 				builder.Append(PrettySI.makePretty(distance));
 				builder.Append('m');
 				builder.Append(tab);
@@ -488,7 +495,7 @@ namespace Rynchodon.AntennaRelay
 				builder.Append(seen.Entity.EntityId); builder.Append(separator);
 				builder.Append(relations); builder.Append(separator);
 				builder.Append(bestName); builder.Append(separator);
-				builder.Append(seen.EntityHasRadar); builder.Append(separator);
+				builder.Append(seen.isRecent_Radar() || seen.isRecent_Jam()); builder.Append(separator);
 				builder.Append(distance); builder.Append(separator);
 				builder.Append(seconds); builder.Append(separator);
 				if (seen.Info != null)

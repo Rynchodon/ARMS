@@ -17,6 +17,8 @@ namespace Rynchodon.AntennaRelay
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 		private Logger myLogger;
 
+		private MyObjectBuilder_LaserAntenna builder;
+
 		public LaserAntenna(IMyCubeBlock block)
 			: base(block)
 		{
@@ -47,20 +49,22 @@ namespace Rynchodon.AntennaRelay
 				if (!myLaserAntenna.IsWorking)
 					return;
 
+				builder = CubeBlock.getSlimObjectBuilder() as MyObjectBuilder_LaserAntenna;
 
 				// stage 5 is the final stage. It is possible for one to be in stage 5, while the other is not
-				MyObjectBuilder_LaserAntenna builder = CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna;
 				if (builder.targetEntityId != null)
 					foreach (LaserAntenna lAnt in value_registry)
 						if (lAnt.CubeBlock.EntityId == builder.targetEntityId)
-							if (builder.State == 5 && (lAnt.CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna).State == 5)
+						{
+							if (lAnt.builder != null && builder.State == 5 && lAnt.builder.State == 5)
 							{
 								foreach (LastSeen seen in myLastSeen.Values)
 									lAnt.receive(seen);
 								foreach (Message mes in myMessages)
 									lAnt.receive(mes);
-								break;
 							}
+							break;
+						}
 
 				// send to attached receivers
 				Receiver.sendToAttached(CubeBlock, myLastSeen);
