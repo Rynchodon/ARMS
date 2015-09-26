@@ -4,7 +4,7 @@
   <!-- Cube Blocks -->
 
   <CubeBlocks>
-	<Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
@@ -46,10 +46,11 @@
       </BuildProgressModels>
       <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>150</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
@@ -94,6 +95,7 @@
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>30</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
