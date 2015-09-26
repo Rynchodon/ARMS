@@ -2,7 +2,7 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
   <CubeBlocks>
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>Radar_A_Large_Souper07</SubtypeId>
@@ -42,11 +42,12 @@
 			</MountPoints>
       <BlockPairName>Radar_A_Souper07</BlockPairName>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>60</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
 
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>Radar_A_Small_Souper07</SubtypeId>
@@ -89,6 +90,7 @@
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>30</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
