@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 
@@ -56,7 +57,7 @@ namespace Rynchodon.Autopilot
 				else
 					myLogger.debugLog("I do not get to control any grids.", "init()", Logger.severity.INFO);
 
-			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowAutopilot))
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowAutopilot))
 			{
 				myLogger.debugLog("Autopilot disabled", "init()", Logger.severity.INFO);
 				controlGrids = false;

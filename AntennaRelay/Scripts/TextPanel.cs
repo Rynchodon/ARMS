@@ -223,7 +223,7 @@ namespace Rynchodon.AntennaRelay
 				if (grid == null || AttachedGrids.isGridAttached(grid, myCubeBlock.CubeGrid))
 					continue;
 
-				IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(grid, IMyCubeBlockExtensions.Relations.Enemy).highestPriority();
+				ExtensionsRelations.Relations relations = myCubeBlock.getRelationsTo(grid, ExtensionsRelations.Relations.Enemy).highestPriority();
 				sortableSeen.Add(new sortableLastSeen(myPos, toDisplay.Current, relations));
 			}
 			sortableSeen.Sort();
@@ -324,7 +324,7 @@ namespace Rynchodon.AntennaRelay
 						myLogger.alwaysLog("cubeGrid from LastSeen is null", "replaceEntityIdsWithLastSeen()", Logger.severity.WARNING);
 						continue;
 					}
-					IMyCubeBlockExtensions.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, IMyCubeBlockExtensions.Relations.Enemy).highestPriority();
+					ExtensionsRelations.Relations relations = myCubeBlock.getRelationsTo(cubeGrid, ExtensionsRelations.Relations.Enemy).highestPriority();
 					newText.Append((new sortableLastSeen(myPos, seen, relations)).TextForPlayer(count++));
 					//myLogger.debugLog("append OK", "replaceEntityIdsWithLastSeen()");
 				}
@@ -401,7 +401,7 @@ namespace Rynchodon.AntennaRelay
 
 		private class sortableLastSeen : IComparable<sortableLastSeen>
 		{
-			private readonly IMyCubeBlockExtensions.Relations relations;
+			private readonly ExtensionsRelations.Relations relations;
 			private readonly double distance;
 			private readonly int seconds;
 			private readonly LastSeen seen;
@@ -413,7 +413,7 @@ namespace Rynchodon.AntennaRelay
 
 			private sortableLastSeen() { }
 
-			public sortableLastSeen(Vector3D myPos, LastSeen seen, IMyCubeBlockExtensions.Relations relations)
+			public sortableLastSeen(Vector3D myPos, LastSeen seen, ExtensionsRelations.Relations relations)
 			{
 				this.seen = seen;
 				this.relations = relations;
@@ -426,7 +426,7 @@ namespace Rynchodon.AntennaRelay
 			public StringBuilder TextForPlayer(int count)
 			{
 				string time = (seconds / 60).ToString("00") + separator + (seconds % 60).ToString("00");
-				bool friendly = relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Faction) || relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Owner);
+				bool friendly = relations.HasFlagFast(ExtensionsRelations.Relations.Faction) || relations.HasFlagFast(ExtensionsRelations.Relations.Owner);
 				string bestName = seen.Entity.getBestName();
 
 				StringBuilder builder = new StringBuilder();
@@ -438,11 +438,18 @@ namespace Rynchodon.AntennaRelay
 					builder.Append(tab);
 				}
 				else
-					if (seen.EntityHasRadar)
+				{
+					if (seen.isRecent_Radar())
 					{
 						builder.Append("Has Radar");
 						builder.Append(tab);
 					}
+					if (seen.isRecent_Jam())
+					{
+						builder.Append("Has Jammer");
+						builder.Append(tab);
+					}
+				}
 				builder.Append(PrettySI.makePretty(distance));
 				builder.Append('m');
 				builder.Append(tab);
@@ -477,7 +484,7 @@ namespace Rynchodon.AntennaRelay
 
 			public StringBuilder TextForProgram()
 			{
-				bool friendly = relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Faction) || relations.HasFlagFast(IMyCubeBlockExtensions.Relations.Owner);
+				bool friendly = relations.HasFlagFast(ExtensionsRelations.Relations.Faction) || relations.HasFlagFast(ExtensionsRelations.Relations.Owner);
 				string bestName;
 				if (friendly)
 					bestName = seen.Entity.getBestName();
@@ -488,7 +495,7 @@ namespace Rynchodon.AntennaRelay
 				builder.Append(seen.Entity.EntityId); builder.Append(separator);
 				builder.Append(relations); builder.Append(separator);
 				builder.Append(bestName); builder.Append(separator);
-				builder.Append(seen.EntityHasRadar); builder.Append(separator);
+				builder.Append(seen.isRecent_Radar() || seen.isRecent_Jam()); builder.Append(separator);
 				builder.Append(distance); builder.Append(separator);
 				builder.Append(seconds); builder.Append(separator);
 				if (seen.Info != null)

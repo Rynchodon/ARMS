@@ -3,5 +3,4 @@ Will be moved to steam every release.
 major:
 
 minor:
-Engager range ignores weapons that cannot target grids
 Stop command

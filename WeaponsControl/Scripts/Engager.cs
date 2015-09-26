@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Collections;
@@ -69,7 +70,7 @@ namespace Rynchodon.Weapons
 			if (CurrentStage != Stage.Disarmed)
 				return;
 
-			if (!Settings.GetSetting<bool>(Settings.SettingName.bAllowWeaponControl))
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
 			{
 				myLogger.debugLog("Cannot arm, weapon control is disabled.", "Arm()", Logger.severity.WARNING);
 				return;

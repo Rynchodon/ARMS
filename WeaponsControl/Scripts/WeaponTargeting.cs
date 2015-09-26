@@ -1044,6 +1044,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		/// <param name="targetPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
+		/// TODO: use RayCast class
 		private bool Obstructed(Vector3D targetPosition)
 		{
 			if (CubeBlock == null)

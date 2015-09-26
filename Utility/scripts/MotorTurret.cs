@@ -75,7 +75,7 @@ namespace Rynchodon
 
 			// get the direction FaceBlock is currently facing
 			Base6Directions.Direction closestDirection = FaceBlock.GetFaceDirection(direction.ToWorld());
-			myLogger.debugLog("closest direction: " + closestDirection, "FaceTowards()");
+			//myLogger.debugLog("closest direction: " + closestDirection, "FaceTowards()");
 			RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.GetDirectionVector(closestDirection));
 			// get the elevation and azimuth from currentDir
 			float currentFaceEl, currentFaceAz;
@@ -208,7 +208,7 @@ namespace Rynchodon
 
 			if (Math.Abs(speed - prevSpeed) < 0.1)
 			{
-				myLogger.debugLog(Stator.DisplayNameText + ", no change in speed: " + speed, "SetVelocity()");
+				//myLogger.debugLog(Stator.DisplayNameText + ", no change in speed: " + speed, "SetVelocity()");
 				return;
 			}
 

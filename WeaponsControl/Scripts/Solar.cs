@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Sandbox.Common.ObjectBuilders.Definitions;
-using Sandbox.Definitions;
 using Sandbox.ModAPI;
-using VRageMath;
 
 namespace Rynchodon.Weapons // Not a weapon but this seems the best place to put this for now
 {

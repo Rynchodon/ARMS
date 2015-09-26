@@ -8,6 +8,7 @@ using System.Text;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Settings;
 using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -1131,7 +1132,7 @@ namespace Rynchodon.Autopilot
 				(currentAutopilotBlock_Value as Ingame.IMyTerminalBlock).SetCustomName(newNameString);
 				//log("added ReportableState to RC: " + newName, "reportState()", Logger.severity.TRACE);
 			}
-			if (IsAutopilotBlock(currentAPblock) && Settings.GetSetting<bool>(Settings.SettingName.bUseColourState) && reportColour != currentAPcolour)
+			if (IsAutopilotBlock(currentAPblock) && ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseColourState) && reportColour != currentAPcolour)
 			{
 				currentAPcolour = reportColour;
 				var position = (currentAutopilotBlock_Value as IMyCubeBlock).Position;
@@ -1291,7 +1292,7 @@ namespace Rynchodon.Autopilot
 			if (block == null || !(block is Ingame.IMyShipController))
 				return false;
 
-			if (block.BlockDefinition.TypeId == type_remoteControl && Settings.GetSetting<bool>(Settings.SettingName.bUseRemoteControl))
+			if (block.BlockDefinition.TypeId == type_remoteControl && ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				return true;
 
 			return IsAutopilotBlock(block);

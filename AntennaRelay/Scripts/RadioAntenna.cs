@@ -56,7 +56,7 @@ namespace Rynchodon.AntennaRelay
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
 						canSeeMe.AddLast(ant);
 
-				LastSeen self = new LastSeen(CubeBlock.CubeGrid);
+				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
 				foreach (RadioAntenna ant in canSeeMe)
 					ant.receive(self);
 
@@ -70,10 +70,14 @@ namespace Rynchodon.AntennaRelay
 							ant.receive(mes);
 					}
 
+				// relay information to friendly players
+				foreach (Player player in Player.AllPlayers)
+					if (CubeBlock.canSendTo(player.myPlayer, true, radiusSquared, true))
+						foreach (LastSeen seen in myLastSeen.Values)
+							player.receive(seen);
+
 				Receiver.sendToAttached(CubeBlock, myLastSeen);
 				Receiver.sendToAttached(CubeBlock, myMessages);
-
-				UpdateEnemyNear();
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

@@ -86,7 +86,7 @@ namespace Rynchodon
 				using (Instance.lock_mySunDirection.AcquireExclusiveUsing())
 					mySunDirection = -sunDirection;
 			}
-			myLogger.debugLog("Sun Direction: " + (-sunDirection), "SetSunDirection()");
+			//myLogger.debugLog("Sun Direction: " + (-sunDirection), "SetSunDirection()");
 		}
 	}
 }

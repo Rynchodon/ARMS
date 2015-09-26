@@ -10,6 +10,8 @@ namespace Rynchodon
 {
 	public class ThreadManager
 	{
+		private const int QueueOverflow = 1000000;
+
 		private static Logger myLogger = new Logger("ThreadManager");
 
 		public byte AllowedParallel { get; private set; }
@@ -35,7 +37,11 @@ namespace Rynchodon
 		public void EnqueueAction(Action toQueue)
 		{
 			using (lock_ActionQueue.AcquireExclusiveUsing())
+			{
 				ActionQueue.Enqueue(toQueue);
+
+				VRage.Exceptions.ThrowIf<OverflowException>(ActionQueue.Count > QueueOverflow, "queue is too long");
+			}
 
 			using (lock_parallelTasks.AcquireExclusiveUsing())
 			{
@@ -45,6 +51,16 @@ namespace Rynchodon
 			}
 
 			MyAPIGateway.Parallel.Start(Run);
+		}
+
+		public void EnqueueIfIdle(Action toQueue)
+		{
+			bool idle;
+			using (lock_ActionQueue.AcquireSharedUsing())
+				idle = ActionQueue.Count == 0;
+
+			if (idle)
+				EnqueueAction(toQueue);
 		}
 
 		private void Run()
