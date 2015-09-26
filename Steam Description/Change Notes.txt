@@ -1,7 +1,5 @@
 Will be moved to steam every release.
 
 major:
-Radar overhaul
 
 minor:
-Engager range ignores weapons that cannot target grids
