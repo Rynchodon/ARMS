@@ -56,7 +56,7 @@ namespace Rynchodon.AntennaRelay
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
 						canSeeMe.AddLast(ant);
 
-				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.None);
+				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
 				foreach (RadioAntenna ant in canSeeMe)
 					ant.receive(self);
 

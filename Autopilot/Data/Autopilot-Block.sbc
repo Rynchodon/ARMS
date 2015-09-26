@@ -4,7 +4,7 @@
   <!-- Cube Blocks -->
 
   <CubeBlocks>
-	<Definition xsi:type="MyObjectBuilder_CockpitDefinition">
+    <Definition xsi:type="MyObjectBuilder_CockpitDefinition">
       <Id>
         <TypeId>Cockpit</TypeId>
         <SubtypeId>Autopilot-Block_Large</SubtypeId>
@@ -26,16 +26,16 @@
         <Component Subtype="InteriorPlate" Count="50" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
-		<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\large\Autopilot-Block_Large_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\large\Autopilot-Block_Large_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\large\Autopilot-Block_Large_Constr3.mwm" />
-		</BuildProgressModels>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\large\Autopilot-Block_Large_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\large\Autopilot-Block_Large_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\large\Autopilot-Block_Large_Constr3.mwm" />
+      </BuildProgressModels>
       <MountPoints>
-				<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
-				<MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
-				<MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
-				<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
+        <MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
+        <MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
+        <MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
+        <MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
       </MountPoints>
       <BlockPairName>Autopilot-Block</BlockPairName>
       <EdgeType>Light</EdgeType>
@@ -62,23 +62,23 @@
       <Components>
         <Component Subtype="InteriorPlate" Count="10" />
         <Component Subtype="Construction" Count="5" />
-		<Component Subtype="RadioCommunication" Count="2" />
+        <Component Subtype="RadioCommunication" Count="2" />
         <Component Subtype="Motor" Count="1" />
-		<Component Subtype="Detector" Count="15" />
+        <Component Subtype="Detector" Count="15" />
         <Component Subtype="Computer" Count="10" />
         <Component Subtype="InteriorPlate" Count="15" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <MountPoints>
-				<MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
-				<MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
-				<MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
-				<MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
+        <MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
+        <MountPoint Side="Top" StartX="0.20" StartY="0.08" EndX="0.80" EndY="0.87" />
+        <MountPoint Side="Top" StartX="0.20" StartY="0.87" EndX="0.80" EndY="1.97" />
+        <MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
       </MountPoints>
       <BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\small\Autopilot-Block_Small_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\small\Autopilot-Block_Small_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\small\Autopilot-Block_Small_Constr3.mwm" />
+        <Model BuildPercentUpperBound="0.33" File="Models\small\Autopilot-Block_Small_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\small\Autopilot-Block_Small_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\small\Autopilot-Block_Small_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>Autopilot-Block</BlockPairName>
       <MirroringY>Z</MirroringY>
@@ -104,7 +104,7 @@
       <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
       <Name>LargeBlocks</Name>
       <ItemIds>
-		<string>Cockpit/LargeBlockAutopilot</string>
+        <string>Cockpit/LargeBlockAutopilot</string>
       </ItemIds>
     </Category>
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
@@ -115,7 +115,7 @@
       <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
       <Name>SmallBlocks</Name>
       <ItemIds>
-		<string>Cockpit/SmallBlockAutopilot</string>
+        <string>Cockpit/SmallBlockAutopilot</string>
       </ItemIds>
     </Category>
   </CategoryClasses>
@@ -123,8 +123,8 @@
   <!-- Assembler Blueprints -->
 
   <BlueprintClassEntries>
-	<Entry Class="LargeBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Large" />
-	<Entry Class="SmallBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Small" />
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Large" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Small" />
   </BlueprintClassEntries>
 
 </Definitions>

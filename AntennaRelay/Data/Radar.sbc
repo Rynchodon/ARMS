@@ -4,7 +4,7 @@
   <!-- Cube Blocks -->
 
   <CubeBlocks>
-	<Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
@@ -37,12 +37,12 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-				<MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
       </MountPoints>
       <BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\LargeBlockRadarRynAR_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\LargeBlockRadarRynAR_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\LargeBlockRadarRynAR_Constr3.mwm" />
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\LargeBlockRadarRynAR_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\LargeBlockRadarRynAR_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\LargeBlockRadarRynAR_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <EdgeType>Light</EdgeType>
@@ -84,12 +84,12 @@
       </Components>
       <CriticalComponent Subtype="Detector" Index="0" />
       <MountPoints>
-				<MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
+         <MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
       </MountPoints>
       <BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\SmallBlockRadarRynAR_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\SmallBlockRadarRynAR_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\SmallBlockRadarRynAR_Constr3.mwm" />
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\SmallBlockRadarRynAR_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\SmallBlockRadarRynAR_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\SmallBlockRadarRynAR_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <MirroringY>Z</MirroringY>
@@ -131,7 +131,7 @@
   <!-- LCD Textures -->
 
   <LCDTextures>
-	<LCDTextureDefinition>
+    <LCDTextureDefinition>
       <Id>
         <TypeId>LCDTextureDefinition</TypeId>
         <SubtypeId>Radar</SubtypeId>
