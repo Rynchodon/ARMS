@@ -2,15 +2,17 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
   <CubeBlocks>
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>Radar_A_Large_Souper07</SubtypeId>
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=30
+        MaxTargets_Tracking=10
+        MaxPowerLevel=40000
         SignalEnhance=1.1
+        MinElevation=-0.70
       </Description>
       <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>
@@ -42,20 +44,22 @@
 			</MountPoints>
       <BlockPairName>Radar_A_Souper07</BlockPairName>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>60</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
 
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>Radar_A_Small_Souper07</SubtypeId>
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=15
-        MaxPowerLevel=20000
+        MaxTargets_Tracking=10
+        MaxPowerLevel=16000
         SignalEnhance=1.1
+        MinElevation=-0.70
       </Description>
       <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>
@@ -89,6 +93,7 @@
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>30</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>

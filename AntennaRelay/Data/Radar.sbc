@@ -4,18 +4,18 @@
   <!-- Cube Blocks -->
 
   <CubeBlocks>
-	<Definition>
+	<Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
-        MinAzimuth=-2.356194490192345
-        MaxAzimuth=0.7853981633974483
-        MinElevation=-0.7853981633974483
-        MaxElevation=2.356194490192345
+        MaxTargets_Tracking=3
+        MinAzimuth=-1.963495408493621
+        MaxAzimuth=0.3926990816987241
+        MinElevation=-0.3926990816987241
+        MaxElevation=1.963495408493621
       </Description>
       <DisplayName>Radar Dish</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
@@ -46,22 +46,23 @@
       </BuildProgressModels>
       <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>150</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
-    <Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=5
+        MaxTargets_Tracking=3
         MaxPowerLevel=20000
-        MinAzimuth=-2.356194490192345
-        MaxAzimuth=0.7853981633974483
-        MinElevation=-0.7853981633974483
-        MaxElevation=2.356194490192345
+        MinAzimuth=-1.963495408493621
+        MaxAzimuth=0.3926990816987241
+        MinElevation=-0.3926990816987241
+        MaxElevation=1.963495408493621
       </Description>
       <DisplayName>Radar Dish</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
@@ -94,6 +95,7 @@
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>30</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>

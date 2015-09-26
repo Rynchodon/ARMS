@@ -17,12 +17,12 @@ decoy
 [h1]Blocks[/h1]
 Radar equipment from other mods may be used. If they are not otherwise configured, they will be identical to Radar Dish but be capable of detecting objects in every direction.
 
-Radar Dish - Can only detect objects in front of it. Large and small dishes can detect up to 10 and 5 objects respectively.
+Radar Dish - Can only detect objects in front of it. Can detect up to 3 objects.
 
-Radar Dome - Can detect objects in all directions. Can detect objects further away than Radar Dish when they are at the same power level. Large and small domes can detect up to 30 and 15 objects respectively.
+Radar Dome - Can detect objects in all directions. 20% lower maximum power than Radar dish. Can detect objects further away than Radar Dish when they are at the same power level. Can detect up to 10 objects.
 
 [h1]GPS Markers[/h1]
-Autopilot will add GPS entries for detected grids.
+Autopilot will add GPS entries for detected grids. If you delete these bad things will happen.
 GPS entries will not be added for a player if the player can see a beacon or broadcasting antenna on the grid.
 By default, there will be 5 markers for the closest enemy, 5 for the closest neutral, 5 for the closest faction, and 5 for the closest owned grids.
 
