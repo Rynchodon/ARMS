@@ -280,11 +280,5 @@ namespace Rynchodon
 
 		public static bool IsValid(this float number)
 		{ return !float.IsNaN(number) && !float.IsInfinity(number); }
-
-		public static MatrixD RotationOnly(this MatrixD source)
-		{ return new MatrixD(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
-
-		public static Matrix RotationOnly(this Matrix source)
-		{ return new Matrix(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
 	}
 }

@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Sandbox.ModAPI.Interfaces;
+﻿using System.Text;
+using Rynchodon.Autopilot.Data;
+using Rynchodon.Autopilot.Movement;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -14,35 +13,42 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private const float StoppedThreshold = 0.001f;
 
-		private readonly ShipController_Block myBlock;
+		private readonly Logger _logger;
 		private readonly bool disableThrust;
 
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
-		/// <param name="block">block to stop</param>
 		/// <param name="disableThrust">iff true, disable thruster control after stopping</param>
-		public Stopper(ShipController_Block block, bool disableThrust)
+		public Stopper(Mover mover, AllNavigationSettings navSet, bool disableThrust)
+			: base (mover, navSet)
 		{
-			this.myBlock = block;
+			_logger = new Logger("Stopper", _block.Controller);
 			this.disableThrust = disableThrust;
 
-			block.MoveAndRotateStopped();
-			CurrentState = NavigatorState.Running;
-		}
+			_mover.FullStop();
 
-		public override string ReportableState
-		{ get { return "Stopping"; } }
+			_logger.debugLog("created, disableThrust: " + disableThrust, "Stopper()");
+		}
 
 		public override void PerformTask()
 		{
-			if (myBlock.Physics.LinearVelocity.Sum < StoppedThreshold)
+			if (_mover.Block.Physics.LinearVelocity.Sum < StoppedThreshold && _mover.Block.Physics.AngularVelocity.Sum < StoppedThreshold)
 			{
-				CurrentState = NavigatorState.Finished;
-				if (disableThrust && myBlock.EnabledThrusts)
-					myBlock.SwitchThrusts();
+				_logger.debugLog("stopped", "Stopper()");
+				_navSet.OnTaskComplete();
+				if (disableThrust && _mover.Block.Controller.ControlThrusters)
+				{
+					_logger.debugLog("disabling thrusters", "Stopper()");
+					_mover.Block.Terminal.GetActionWithName("ControlThrusters").Apply(_mover.Block.Terminal);
+				}
 			}
+			else
+				_logger.debugLog("not stopped", "Stopper()");
 		}
+
+		public override void AppendCustomInfo(StringBuilder customInfo)
+		{ customInfo.AppendLine("Stopping"); }
 
 	}
 }

@@ -4,7 +4,7 @@
 
 using System;
 using System.Collections.Generic;
-using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Data;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage;

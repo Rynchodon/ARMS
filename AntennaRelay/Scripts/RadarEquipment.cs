@@ -750,7 +750,7 @@ namespace Rynchodon.AntennaRelay
 			if (!myDefinition.EnforceAngle)
 				return false;
 
-			MatrixD Transform = Entity.WorldMatrixNormalizedInv.RotationOnly();
+			MatrixD Transform = Entity.WorldMatrixNormalizedInv.GetOrientation();
 			Vector3 directionToTarget = Vector3.Transform(target.GetPosition() - Entity.GetPosition(), Transform);
 			directionToTarget.Normalize();
 

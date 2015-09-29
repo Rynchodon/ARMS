@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -8,7 +6,7 @@ using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.Autopilot
+namespace Rynchodon.Autopilot.Data
 {
 	/// <summary>
 	/// Tracks the direction and power of a grids thrusters.
@@ -26,7 +24,7 @@ namespace Rynchodon.Autopilot
 			public readonly float force;
 			/// <summary>force * 10</summary>
 			public readonly float dampingForce;
-			/// <summary>direction of force</summary>
+			/// <summary>direction the thruster will move the ship in</summary>
 			public readonly Base6Directions.Direction forceDirect;
 			public readonly IMyThrust thruster;
 
@@ -152,7 +150,8 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// get the damping force in a direction
 		/// </summary>
-		private float GetDampingInDirection(Base6Directions.Direction direction)
+		/// <param name="direction">the direction of force / acceleration</param>
+		public float GetDampingInDirection(Base6Directions.Direction direction)
 		{
 			float dampingForce = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
@@ -165,7 +164,8 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// get the force in a direction
 		/// </summary>
-		private float GetForceInDirection(Base6Directions.Direction direction)
+		/// <param name="direction">the direction of force / acceleration</param>
+		public float GetForceInDirection(Base6Directions.Direction direction)
 		{
 			float force = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
@@ -183,7 +183,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="displacement">displacement vector</param>
 		/// <param name="remote">controlling remote</param>
 		/// <returns>scaled vector</returns>
-		public RelativeDirection3F scaleByForce(RelativeDirection3F displacement, IMyCubeBlock remote)
+		public RelativeDirection3F scaleByForce(RelativeDirection3F displacement)
 		{
 			allMyThrusters.throwIfNull_variable("allMyThrusters");
 
@@ -217,8 +217,33 @@ namespace Rynchodon.Autopilot
 				}
 			}
 
-			return RelativeDirection3F.FromLocal(remote.CubeGrid, scaledMovement);
+			return RelativeDirection3F.FromLocal(myGrid, scaledMovement);
 		}
+
+		//public float TotalForce(Vector3 worldDirection)
+		//{
+		//	Dictionary<Base6Directions.Direction, float> directionForces = new Dictionary<Base6Directions.Direction, float>();
+
+		//	// find determinant thrust
+		//	float minForce = float.MinValue;
+		//	foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
+		//	{
+		//		float cosAngle = Vector3.Dot(worldDirection, myGrid.WorldMatrix.GetDirectionVector(direction));
+		//		if (cosAngle > 0)
+		//		{
+		//			float forceInDirection = GetForceInDirection(direction);
+		//			directionForces.Add(direction, forceInDirection);
+		//			if (forceInDirection < minForce)
+		//				minForce = forceInDirection;
+		//		}
+		//	}
+
+		//	// scale thrust to min
+
+
+		//	Vector3 localDirection = Vector3.Transform(worldDirection, myGrid.WorldMatrixNormalizedInv.GetOrientation());
+
+		//}
 
 		/// <summary>
 		/// Finds a distance that will always be greater than the distance required to stop.

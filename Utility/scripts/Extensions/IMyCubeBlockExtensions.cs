@@ -192,23 +192,23 @@ namespace Rynchodon
 			if (faceDirections.Count == 0)
 				throw new InvalidOperationException("faceDirections.Count == 0");
 
-			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
+			worldDirection.Normalize();
 			Base6Directions.Direction? bestDirection = null;
 			double bestDirectionAngle = double.MaxValue;
 
 			foreach (Base6Directions.Direction direction in faceDirections)
 			{
 				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
-				double angle = Math.Acos(directionVector.Dot(worldDirection));
+				double cosAngle = directionVector.Dot(worldDirection);
 
-				if (double.IsNaN(angle) || double.IsInfinity(angle))
-					throw new InvalidOperationException("angle is invalid: " + angle);
+				myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds", "GetFaceDirection()", Logger.severity.ERROR);
+				myLogger.debugLog(double.IsNaN(cosAngle) || double.IsInfinity(cosAngle), "cosAngle invalid", "GetFaceDirection()", Logger.severity.ERROR);
 
-				if (angle < bestDirectionAngle)
+				if (cosAngle > bestDirectionAngle)
 				{
 					//myLogger.debugLog("angle: " + angle + ", bestDirectionAngle: " + bestDirectionAngle + ", direction: " + direction, "GetFaceDirection()");
 					bestDirection = direction;
-					bestDirectionAngle = angle;
+					bestDirectionAngle = cosAngle;
 				}
 			}
 

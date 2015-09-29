@@ -1,30 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
+using Rynchodon.Autopilot.Data;
+using Rynchodon.Autopilot.Movement;
 
 namespace Rynchodon.Autopilot.Navigator
 {
 	public abstract class ANavigator
 	{
+		protected readonly Mover _mover;
+		protected readonly AllNavigationSettings _navSet;
 
-		public enum NavigatorState : byte
+		protected ShipControllerBlock _block { get { return _mover.Block; } }
+
+		protected ANavigator(Mover mover, AllNavigationSettings navSet)
 		{
-			Off,
-			Running,
-			/// <summary>The INavigator is waiting for another INavigator to be created before it finishes.</summary>
-			Waiting,
-			Finished
+			this._mover = mover;
+			this._navSet = navSet;
 		}
 
-		public NavigatorState CurrentState { get; protected set; }
-
-		public ANavigator()
-		{ CurrentState = NavigatorState.Off; }
-
-		public abstract string ReportableState { get; }
-
 		public abstract void PerformTask();
-
+		public abstract void AppendCustomInfo(StringBuilder customInfo);
 	}
 }

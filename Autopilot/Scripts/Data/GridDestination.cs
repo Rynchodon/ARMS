@@ -1,4 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
 
 using System;
 using Rynchodon.AntennaRelay;
@@ -6,7 +6,7 @@ using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.NavigationSettings
+namespace Rynchodon.Autopilot.Data
 {
 	public class GridDestination
 	{

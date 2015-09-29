@@ -1,4 +1,4 @@
-﻿#define LOG_ENABLED // remove on build
+﻿// skip file on build
 
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using Sandbox.ModAPI;
 using VRage;
 using VRage.ModAPI;
 using VRageMath;
-using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Data;
 using Rynchodon.Settings;
 
 namespace Rynchodon.Autopilot.Pathfinder

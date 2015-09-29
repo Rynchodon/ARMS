@@ -1,13 +1,11 @@
 ﻿// skip file on build
 
-#define LOG_ENABLED //remove on build
-
 using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Instruction;
-using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Data;
 using Rynchodon.Settings;
 using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;

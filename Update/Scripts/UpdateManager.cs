@@ -46,6 +46,26 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts_Server()
 		{
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsControllableBlock(block))
+					{
+						var sca = new ShipController_Autopilot(block);
+						RegisterForUpdates(10, sca.Update10, block);
+					}
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsControllableBlock(block))
+				{
+					var sca = new ShipController_Autopilot(block);
+					RegisterForUpdates(10, sca.Update10, block);
+				}
+			});
+
+			#endregion
+
 			#region Antenna Communication
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
@@ -98,12 +118,12 @@ namespace Rynchodon.Update
 			}
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (Navigator.IsControllableBlock(block))
+					if (ShipController_Autopilot.IsControllableBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (Navigator.IsControllableBlock(block))
+				if (ShipController_Autopilot.IsControllableBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
 			});

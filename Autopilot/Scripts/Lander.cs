@@ -1,7 +1,7 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
 
 using System;
-using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Data;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRageMath;

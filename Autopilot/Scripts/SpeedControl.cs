@@ -1,6 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
+﻿// skip file on build
 
-using Rynchodon.Autopilot.NavigationSettings;
+using Rynchodon.Autopilot.Data;
 using VRageMath;
 
 namespace Rynchodon.Autopilot

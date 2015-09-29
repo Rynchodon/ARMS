@@ -1,71 +1,134 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
-using Rynchodon.Autopilot.NavigationSettings;
 using Rynchodon.Autopilot.Navigator;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
+using VRage.Components;
 
 namespace Rynchodon.Autopilot
 {
 
-	public interface ShipController_Block : IMyCubeBlock, IMyTerminalBlock, IMyControllableEntity { }
+	public class ShipControllerBlock
+	{
+		public readonly MyShipController Controller;
+		public readonly IMyTerminalBlock Terminal;
+
+		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
+		public MyPhysicsComponentBase Physics { get { return CubeGrid.Physics; } }
+
+		public ShipControllerBlock(IMyCubeBlock block)
+		{
+			Controller = block as MyShipController;
+			Terminal = block as IMyTerminalBlock;
+		}
+	}
 
 	public class ShipController_Autopilot
 	{
 
+		private const string subtype_autopilotBlock = "Autopilot-Block";
+
 		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 		private static readonly FastResourceLock lock_GridBeingControlled = new FastResourceLock();
+
+		/// <summary>
+		/// Does not check ServerSetting
+		/// </summary>
+		public static bool IsControllableBlock(IMyCubeBlock block)
+		{
+			if (block is MyCockpit)
+				return block.BlockDefinition.SubtypeId.Contains(subtype_autopilotBlock);
+
+			return block is MyRemoteControl;
+		}
+
+		public readonly ShipControllerBlock Block;
 
 		private readonly Logger myLogger;
 		private readonly Interpreter myInterpreter;
 
 		private IMyCubeGrid ControlledGrid;
+		private bool Enabled;
 
-		public ShipController_Block myBlock { get; private set; }
-		public AllNavigationSettings.SettingsLevel CurrentSettings { get { return myNavSet.CurrentSettings; } }
-
-		private AllNavigationSettings myNavSet { get { return myInterpreter.myNavSet; } }
-		private ANavigator myNavigator { get { return myInterpreter.currentNavigator; } }
+		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
 
 		public ShipController_Autopilot(IMyCubeBlock block)
 		{
-			myBlock = block as ShipController_Block;
-			myLogger = new Logger("ShipController_Autopilot", block);
+			this.Block = new ShipControllerBlock(block);
+			this.myLogger = new Logger("ShipController_Autopilot", block);
+			this.myInterpreter = new Interpreter(Block);
+
+			this.Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
+
+			myLogger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
 		}
 
-		public void Update()
+		public void Update10()
 		{
-			if (myNavigator != null && myNavigator.CurrentState == ANavigator.NavigatorState.Finished)
-				myInterpreter.currentNavigator = null;
-
 			if (!CheckControl())
+			{
+				if (Enabled)
+				{
+					myLogger.debugLog("lost control", "Update10()", Logger.severity.INFO);
+					Enabled = false;
+					this.Block.Terminal.RefreshCustomInfo();
+				}
 				return;
+			}
+			if (!Enabled)
+			{
+				myLogger.debugLog("gained control", "Update10()", Logger.severity.INFO);
+				myInterpreter.Mover.Destination = null;
+				myInterpreter.Mover.RotateDest = null;
+				Enabled = true;
+				myNavSet.OnStartOfCommands();
+			}
+
+			this.Block.Terminal.RefreshCustomInfo();
+
+			ANavigator nav = myNavSet.CurrentSettings.Navigator;
+			if (nav != null)
+			{
+				nav.PerformTask();
+				return;
+			}
 
 			if (myInterpreter.hasInstructions())
 			{
-				while (myInterpreter.instructionQueue.Count != 0 && myNavigator == null)
+				while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.Navigator == null) // this is a problem!!!
 					myInterpreter.instructionQueue.Dequeue().Invoke();
 
-				if (myNavigator == null)
+				if (myNavSet.CurrentSettings.Navigator == null)
 				{
 					myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
+					ReleaseControlledGrid();
 					return;
 				}
-
-				myNavigator.PerformTask();
+				return;
 			}
+
+			myInterpreter.enqueueAllActions();
+
+			if (myInterpreter.hasInstructions())
+				myNavSet.OnStartOfCommands();
 			else
-			{
-				myInterpreter.enqueueAllActions(myBlock);
+				ReleaseControlledGrid();
+		}
 
-				if (myInterpreter.hasInstructions())
-				{
-					myNavSet.OnStartOfCommands();
-				}
-				else
-					ReleaseControlledGrid();
+		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
+		{
+			if (ControlledGrid == null)
+			{
+				customInfo.AppendLine("Disabled");
+				return;
 			}
+
+			ANavigator nav = myNavSet.CurrentSettings.Navigator;
+			if (nav != null)
+				nav.AppendCustomInfo(customInfo);
 		}
 
 
@@ -74,7 +137,7 @@ namespace Rynchodon.Autopilot
 		private bool CheckControl()
 		{
 			// cache current grid in case it changes
-			IMyCubeGrid myGrid = myBlock.CubeGrid;
+			IMyCubeGrid myGrid = Block.Controller.CubeGrid;
 
 			if (ControlledGrid != null)
 			{
@@ -121,13 +184,13 @@ namespace Rynchodon.Autopilot
 			// is grid ready
 			if (grid.IsStatic
 				|| grid.BigOwners.Count == 0
-				|| MyAPIGateway.Players.GetPlayerControllingEntity(grid) != null)
+				|| MyAPIGateway.Players.GetPlayerControllingEntity(grid) != null) // getting false positives
 				return false;
 
 			// is block ready
-			if (!myBlock.IsWorking
-				|| !grid.BigOwners.Contains(myBlock.OwnerId)
-				|| !myBlock.EnabledThrusts)
+			if (! Block.Controller.IsWorking
+				|| !grid.BigOwners.Contains(Block.Controller.OwnerId)
+				|| !Block.Controller.ControlThrusters)
 				return false;
 
 			return true;
@@ -145,7 +208,7 @@ namespace Rynchodon.Autopilot
 					throw new InvalidOperationException("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled");
 				}
 
-			myLogger.debugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
+			//myLogger.debugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
 			ControlledGrid = null;
 		}
 

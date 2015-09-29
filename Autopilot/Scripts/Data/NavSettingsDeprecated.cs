@@ -8,7 +8,7 @@ using Sandbox.ModAPI;
 using VRageMath;
 using Rynchodon.Settings;
 
-namespace Rynchodon.Autopilot.NavigationSettings
+namespace Rynchodon.Autopilot.Data
 {
 	internal class NavSettingsDeprecated
 	{

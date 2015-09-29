@@ -1,7 +1,10 @@
-﻿using System;
+﻿// skip file on build
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
@@ -17,15 +20,15 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private enum HarvesterState : byte { H_Off, H_Ready, Harvest, H_Stuck, H_Back, H_Tunnel, H_Finished }
 
-		private readonly ShipController_Block myBlock;
+		private readonly ShipControllerBlock Controller;
 		private readonly Logger myLogger;
 
 		private HarvesterState CurrentHarvesterState = HarvesterState.H_Off;
 
-		public HarvesterAsteroid(ShipController_Block block)
+		public HarvesterAsteroid(ShipControllerBlock Controller)
 		{
-			myBlock = block;
-			myLogger = new Logger("HarvesterAsteroid", block);
+			this.Controller = Controller;
+			myLogger = new Logger("HarvesterAsteroid", Controller.Controller);
 		}
 
 		public override string ReportableState
@@ -33,7 +36,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void PerformTask()
 		{
-			throw new NotImplementedException();
 		}
 
 	}

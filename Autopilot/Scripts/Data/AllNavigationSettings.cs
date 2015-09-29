@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Settings;
+using Sandbox.ModAPI;
 
-namespace Rynchodon.Autopilot.NavigationSettings
+namespace Rynchodon.Autopilot.Data
 {
 	public class AllNavigationSettings
 	{
@@ -28,23 +31,30 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		{
 			private SettingsLevel parent;
 
+			private IMyCubeBlock m_navigationBlock;
+			private ANavigator m_navigator;
+
 			private PathfinderPermissions? m_pathPerm;
 			private MovementType? m_allowedMovement;
 
-			private float? m_maxSpeed, m_minSpeed;
+			private float? m_destRadius, m_speedTarget; //, m_maxSpeed, m_minSpeed;
 
 			private bool? m_ignoreAsteroid, m_jumpToDest;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
 			/// </summary>
-			internal SettingsLevel()
+			internal SettingsLevel(IMyCubeBlock NavBlock)
 			{
+				m_navigationBlock = NavBlock;
+
 				m_allowedMovement = MovementType.All;
 				m_pathPerm = PathfinderPermissions.All;
 
-				m_maxSpeed = Settings.GetSetting<float>(Settings.SettingName.fMaxSpeed);
-				m_minSpeed = 0.5f;
+				m_destRadius = 100f;
+				m_speedTarget = 100f;
+				//m_maxSpeed = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
+				//m_minSpeed = 0.5f;
 
 				m_ignoreAsteroid = false;
 				m_jumpToDest = false;
@@ -55,6 +65,23 @@ namespace Rynchodon.Autopilot.NavigationSettings
 			/// </summary>
 			internal SettingsLevel(SettingsLevel parent)
 			{ this.parent = parent; }
+
+			public IMyCubeBlock NavigationBlock
+			{
+				get { return m_navigationBlock ?? parent.NavigationBlock; }
+				set { m_navigationBlock = value; }
+			}
+
+			public ANavigator Navigator
+			{
+				get
+				{
+					if (parent == null)
+						return m_navigator;
+					return m_navigator ?? parent.Navigator;
+				}
+				set { m_navigator = value; }
+			}
 
 			public PathfinderPermissions PathPerm
 			{
@@ -68,17 +95,29 @@ namespace Rynchodon.Autopilot.NavigationSettings
 				set { m_allowedMovement = value; }
 			}
 
-			public float MaxSpeed
+			public float DestinationRadius
 			{
-				get { return m_maxSpeed ?? parent.MaxSpeed; }
-				set { m_maxSpeed = value; }
+				get { return m_destRadius ?? parent.DestinationRadius; }
+				set { m_destRadius = value; }
 			}
 
-			public float MinSpeed
+			public float SpeedTarget
 			{
-				get { return m_minSpeed ?? parent.MinSpeed; }
-				set { m_minSpeed = value; }
+				get { return m_speedTarget ?? parent.SpeedTarget; }
+				set { m_speedTarget = value; }
 			}
+
+			//public float MaxSpeed
+			//{
+			//	get { return m_maxSpeed ?? parent.MaxSpeed; }
+			//	set { m_maxSpeed = value; }
+			//}
+
+			//public float MinSpeed
+			//{
+			//	get { return m_minSpeed ?? parent.MinSpeed; }
+			//	set { m_minSpeed = value; }
+			//}
 
 			public bool IgnoreAsteroid
 			{
@@ -92,6 +131,8 @@ namespace Rynchodon.Autopilot.NavigationSettings
 				set { m_jumpToDest = value; }
 			}
 		}
+
+		private readonly IMyCubeBlock defaultNavBlock;
 
 		///// <summary>Settings that are reset when Autopilot gains control. Settings should be written here but not read.</summary>
 		//public SettingsLevel Settings_GainControl { get; private set; }
@@ -111,8 +152,11 @@ namespace Rynchodon.Autopilot.NavigationSettings
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
 		public SettingsLevel CurrentSettings { get { return Settings_Subtask; } }
 
-		public AllNavigationSettings()
-		{ OnStartOfCommands(); }
+		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
+		{
+			this.defaultNavBlock = defaultNavBlock;
+			OnStartOfCommands();
+		}
 
 		//public void OnGainControl()
 		//{
@@ -122,7 +166,7 @@ namespace Rynchodon.Autopilot.NavigationSettings
 
 		public void OnStartOfCommands()
 		{
-			Settings_Commands = new SettingsLevel();
+			Settings_Commands = new SettingsLevel(defaultNavBlock);
 			OnTaskComplete();
 		}
 
