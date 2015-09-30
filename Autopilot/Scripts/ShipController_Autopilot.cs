@@ -14,6 +14,7 @@ namespace Rynchodon.Autopilot
 	public class ShipControllerBlock
 	{
 		public readonly MyShipController Controller;
+		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyTerminalBlock Terminal;
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
@@ -22,6 +23,7 @@ namespace Rynchodon.Autopilot
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
 			Controller = block as MyShipController;
+			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
 		}
 	}
@@ -81,35 +83,51 @@ namespace Rynchodon.Autopilot
 			if (!Enabled)
 			{
 				myLogger.debugLog("gained control", "Update10()", Logger.severity.INFO);
-				myInterpreter.Mover.Destination = null;
-				myInterpreter.Mover.RotateDest = null;
+				//myInterpreter.Mover.Destination = null;
+				//myInterpreter.Mover.RotateDest = null;
 				Enabled = true;
 				myNavSet.OnStartOfCommands();
 			}
 
 			this.Block.Terminal.RefreshCustomInfo();
 
-			ANavigator nav = myNavSet.CurrentSettings.Navigator;
-			if (nav != null)
+			if (myNavSet.CurrentSettings.WaitUntil > DateTime.UtcNow)
+				return;
+
+			if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
+				// wait for player to give back control, do not reset
+				return;
+
+			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+			if (navM != null)
 			{
-				nav.PerformTask();
+				myLogger.debugLog("moving", "Update10()");
+
+				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+				if (navR != null)
+					navR.Rotate();
+
+				navM.Move();
+				myInterpreter.Mover.MoveAndRotate();
 				return;
 			}
 
 			if (myInterpreter.hasInstructions())
 			{
-				while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.Navigator == null) // this is a problem!!!
+				myLogger.debugLog("running instructions", "Update10()");
+
+				while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.NavigatorMover == null)
 					myInterpreter.instructionQueue.Dequeue().Invoke();
 
-				if (myNavSet.CurrentSettings.Navigator == null)
+				if (myNavSet.CurrentSettings.NavigatorMover == null)
 				{
-					myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
+					myLogger.debugLog("interpreter did not yield an INavigatorMover", "Update()", Logger.severity.INFO);
 					ReleaseControlledGrid();
-					return;
 				}
 				return;
 			}
 
+			myLogger.debugLog("enqueing instructions", "Update10()");
 			myInterpreter.enqueueAllActions();
 
 			if (myInterpreter.hasInstructions())
@@ -126,9 +144,43 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			ANavigator nav = myNavSet.CurrentSettings.Navigator;
-			if (nav != null)
-				nav.AppendCustomInfo(customInfo);
+			bool moving = true;
+
+			double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
+			if (wait > 0)
+			{
+				moving = false;
+				customInfo.Append("Waiting for ");
+				customInfo.Append((int)wait);
+				customInfo.AppendLine("s");
+			}
+
+			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
+			if (controlling != null)
+			{
+				moving = false;
+				customInfo.Append("Player controlling: ");
+				customInfo.AppendLine(controlling.DisplayName);
+			}
+
+			if (!moving)
+				return;
+
+			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+			if (navM != null)
+				navM.AppendCustomInfo(customInfo);
+
+			INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+			if (navR != null)
+				navR.AppendCustomInfo(customInfo);
+
+			//customInfo.Append("Speed Target: ");
+			//customInfo.Append(myNavSet.CurrentSettings.SpeedTarget);
+			//customInfo.AppendLine("m/s");
+
+			//customInfo.Append("Proxmity: ");
+			//customInfo.Append(myNavSet.CurrentSettings.DestinationRadius);
+			//customInfo.AppendLine("m");
 		}
 
 
@@ -183,12 +235,12 @@ namespace Rynchodon.Autopilot
 		{
 			// is grid ready
 			if (grid.IsStatic
-				|| grid.BigOwners.Count == 0
-				|| MyAPIGateway.Players.GetPlayerControllingEntity(grid) != null) // getting false positives
+				|| grid.BigOwners.Count == 0)
+				//|| MyAPIGateway.Players.GetPlayerControllingEntity(grid) != null)
 				return false;
 
 			// is block ready
-			if (! Block.Controller.IsWorking
+			if (!Block.Controller.IsWorking
 				|| !grid.BigOwners.Contains(Block.Controller.OwnerId)
 				|| !Block.Controller.ControlThrusters)
 				return false;

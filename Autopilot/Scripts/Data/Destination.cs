@@ -1,3 +1,5 @@
+// skip file on build
+
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;

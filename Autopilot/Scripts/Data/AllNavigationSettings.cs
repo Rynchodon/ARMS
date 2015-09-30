@@ -10,36 +10,39 @@ namespace Rynchodon.Autopilot.Data
 {
 	public class AllNavigationSettings
 	{
-		[Flags]
-		public enum PathfinderPermissions : byte
-		{
-			None = 0,
-			ChangeCourse = 1 << 0,
-			All = ChangeCourse
-		}
+		//[Flags]
+		//public enum PathfinderPermissions : byte
+		//{
+		//	None = 0,
+		//	ChangeCourse = 1 << 0,
+		//	All = ChangeCourse
+		//}
 
-		[Flags]
-		public enum MovementType : byte
-		{
-			None = 0,
-			Rotate = 1 << 0,
-			Move = 1 << 1,
-			All = Rotate | Move
-		}
+		//[Flags]
+		//public enum MovementType : byte
+		//{
+		//	None = 0,
+		//	Rotate = 1 << 0,
+		//	Move = 1 << 1,
+		//	All = Rotate | Move
+		//}
 
 		public class SettingsLevel
 		{
 			private SettingsLevel parent;
 
 			private IMyCubeBlock m_navigationBlock;
-			private ANavigator m_navigator;
+			private INavigatorMover m_navigatorMover;
+			private INavigatorRotator m_navigatorRotator;
 
-			private PathfinderPermissions? m_pathPerm;
-			private MovementType? m_allowedMovement;
+			private DateTime? m_waitUntil;
+
+			//private PathfinderPermissions? m_pathPerm;
+			//private MovementType? m_allowedMovement;
 
 			private float? m_destRadius, m_speedTarget; //, m_maxSpeed, m_minSpeed;
 
-			private bool? m_ignoreAsteroid, m_jumpToDest;
+			private bool? m_ignoreAsteroid;//, m_jumpToDest;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -48,8 +51,10 @@ namespace Rynchodon.Autopilot.Data
 			{
 				m_navigationBlock = NavBlock;
 
-				m_allowedMovement = MovementType.All;
-				m_pathPerm = PathfinderPermissions.All;
+				m_waitUntil = DateTime.MinValue;
+
+				//m_allowedMovement = MovementType.All;
+				//m_pathPerm = PathfinderPermissions.All;
 
 				m_destRadius = 100f;
 				m_speedTarget = 100f;
@@ -57,7 +62,7 @@ namespace Rynchodon.Autopilot.Data
 				//m_minSpeed = 0.5f;
 
 				m_ignoreAsteroid = false;
-				m_jumpToDest = false;
+				//m_jumpToDest = false;
 			}
 
 			/// <summary>
@@ -72,28 +77,51 @@ namespace Rynchodon.Autopilot.Data
 				set { m_navigationBlock = value; }
 			}
 
-			public ANavigator Navigator
+			/// <remarks>
+			/// <para>May be null</para>
+			/// </remarks>
+			public INavigatorMover NavigatorMover
 			{
 				get
 				{
 					if (parent == null)
-						return m_navigator;
-					return m_navigator ?? parent.Navigator;
+						return m_navigatorMover;
+					return m_navigatorMover ?? parent.NavigatorMover;
 				}
-				set { m_navigator = value; }
+				set { m_navigatorMover = value; }
 			}
 
-			public PathfinderPermissions PathPerm
+			/// <remarks>
+			/// <para>May be null</para>
+			/// </remarks>
+			public INavigatorRotator NavigatorRotator
 			{
-				get { return m_pathPerm ?? parent.PathPerm; }
-				set { m_pathPerm = value; }
+				get
+				{
+					if (parent == null)
+						return m_navigatorRotator;
+					return m_navigatorRotator ?? parent.NavigatorRotator;
+				}
+				set { m_navigatorRotator = value; }
 			}
 
-			public MovementType AllowedMovement
+			public DateTime WaitUntil
 			{
-				get { return m_allowedMovement ?? parent.AllowedMovement; }
-				set { m_allowedMovement = value; }
+				get { return m_waitUntil ?? parent.WaitUntil; }
+				set { m_waitUntil = value; }
 			}
+
+			//public PathfinderPermissions PathPerm
+			//{
+			//	get { return m_pathPerm ?? parent.PathPerm; }
+			//	set { m_pathPerm = value; }
+			//}
+
+			//public MovementType AllowedMovement
+			//{
+			//	get { return m_allowedMovement ?? parent.AllowedMovement; }
+			//	set { m_allowedMovement = value; }
+			//}
 
 			public float DestinationRadius
 			{
@@ -125,11 +153,11 @@ namespace Rynchodon.Autopilot.Data
 				set { m_ignoreAsteroid = value; }
 			}
 
-			public bool JumpToDest
-			{
-				get { return m_jumpToDest ?? parent.JumpToDest; }
-				set { m_jumpToDest = value; }
-			}
+			//public bool JumpToDest
+			//{
+			//	get { return m_jumpToDest ?? parent.JumpToDest; }
+			//	set { m_jumpToDest = value; }
+			//}
 		}
 
 		private readonly IMyCubeBlock defaultNavBlock;
@@ -140,17 +168,20 @@ namespace Rynchodon.Autopilot.Data
 		/// <summary>Settings that are reset at the start of commands. Settings should be written here but not read.</summary>
 		public SettingsLevel Settings_Commands { get; private set; }
 
-		/// <summary>Settings that are reset when a task is completed. Settings should be written here but not read.</summary>
-		public SettingsLevel Settings_Task { get; private set; }
+		/// <summary>Settings that are reset when a primary task is completed. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_Primary { get; private set; }
 
-		/// <summary>Settings that are reset when subtask is completed. Settings should be written here but not read.</summary>
-		public SettingsLevel Settings_Subtask { get; private set; }
+		/// <summary>Settings that are reset when a secondary task is completed. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_Secondary { get; private set; }
+
+		/// <summary>Settings that are reset when a tertiary task is completed. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_Tertiary { get; private set; }
 
 		///// <summary>Settings that are reset every time autopilot is updated. Settings should be written here but not read.</summary>
 		//public SettingLevel MySettings_Update { get; private set; }
 
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
-		public SettingsLevel CurrentSettings { get { return Settings_Subtask; } }
+		public SettingsLevel CurrentSettings { get { return Settings_Task_Tertiary; } }
 
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{
@@ -167,18 +198,24 @@ namespace Rynchodon.Autopilot.Data
 		public void OnStartOfCommands()
 		{
 			Settings_Commands = new SettingsLevel(defaultNavBlock);
-			OnTaskComplete();
+			OnTaskPrimaryComplete();
 		}
 
-		public void OnTaskComplete()
+		public void OnTaskPrimaryComplete()
 		{
-			Settings_Task = new SettingsLevel(Settings_Commands);
-			OnSubtaskComplete();
+			Settings_Task_Primary = new SettingsLevel(Settings_Commands);
+			OnTaskSecondaryComplete();
 		}
 
-		public void OnSubtaskComplete()
+		public void OnTaskSecondaryComplete()
 		{
-			Settings_Subtask = new SettingsLevel(Settings_Task);
+			Settings_Task_Secondary = new SettingsLevel(Settings_Task_Primary);
+			OnTaskTertiaryComplete();
+		}
+
+		public void OnTaskTertiaryComplete()
+		{
+			Settings_Task_Tertiary = new SettingsLevel(Settings_Task_Secondary);
 			//OnUpdate();
 		}
 

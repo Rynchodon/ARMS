@@ -322,8 +322,6 @@ namespace Rynchodon.Update
 			}
 		}
 
-		public ulong Update { get; private set; }
-
 		/// <summary>
 		/// Initializes if needed, issues updates.
 		/// </summary>
@@ -349,7 +347,7 @@ namespace Rynchodon.Update
 				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
-					if (Update % pair.Key == 0)
+					if (UpdateCount.Count % pair.Key == 0)
 					{
 						foreach (Action item in pair.Value)
 							try
@@ -378,7 +376,7 @@ namespace Rynchodon.Update
 			}
 			finally
 			{
-				Update++;
+				UpdateCount.Count++;
 				MainLock.MainThread_AcquireExclusive();
 			}
 		}

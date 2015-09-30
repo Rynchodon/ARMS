@@ -8,36 +8,41 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// <para>Stop the ship, then finished.</para>
 	/// </summary>
-	public class Stopper : ANavigator
+	public class Stopper : NavigatorMover
 	{
 
 		private const float StoppedThreshold = 0.001f;
 
 		private readonly Logger _logger;
-		private readonly bool disableThrust;
+		private readonly bool exitAfter;
 
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
-		/// <param name="disableThrust">iff true, disable thruster control after stopping</param>
-		public Stopper(Mover mover, AllNavigationSettings navSet, bool disableThrust)
-			: base (mover, navSet)
+		/// <param name="exitAfter">iff true, disable thruster control after stopping</param>
+		public Stopper(Mover mover, AllNavigationSettings navSet, bool exitAfter)
+			: base(mover, navSet)
 		{
 			_logger = new Logger("Stopper", _block.Controller);
-			this.disableThrust = disableThrust;
+			this.exitAfter = exitAfter;
 
 			_mover.FullStop();
 
-			_logger.debugLog("created, disableThrust: " + disableThrust, "Stopper()");
+			_logger.debugLog("created, disableThrust: " + exitAfter, "Stopper()");
+
+			if (exitAfter)
+				_navSet.Settings_Commands.NavigatorMover = this;
+			else
+				_navSet.Settings_Task_Secondary.NavigatorMover = this;
 		}
 
-		public override void PerformTask()
+		public override void Move()
 		{
-			if (_mover.Block.Physics.LinearVelocity.Sum < StoppedThreshold && _mover.Block.Physics.AngularVelocity.Sum < StoppedThreshold)
+			if (_mover.Block.Physics.LinearVelocity.Sum < StoppedThreshold )
 			{
 				_logger.debugLog("stopped", "Stopper()");
-				_navSet.OnTaskComplete();
-				if (disableThrust && _mover.Block.Controller.ControlThrusters)
+				_navSet.OnTaskSecondaryComplete();
+				if (exitAfter && _mover.Block.Controller.ControlThrusters)
 				{
 					_logger.debugLog("disabling thrusters", "Stopper()");
 					_mover.Block.Terminal.GetActionWithName("ControlThrusters").Apply(_mover.Block.Terminal);
@@ -51,4 +56,5 @@ namespace Rynchodon.Autopilot.Navigator
 		{ customInfo.AppendLine("Stopping"); }
 
 	}
+
 }

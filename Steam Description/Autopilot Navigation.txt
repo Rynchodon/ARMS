@@ -97,8 +97,8 @@ F <distance> <direction>, ... : generic form is a comma separated list of distan
 Example - [ F 1000 forward ] - fly 1000m forward
 Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m below Autopilot block
 
-L : landing block. the block on the same grid as the Autopilot block that will be used to land. To land there must be a landing block, a target block, and a target grid [ L <localBlock> : B <targetBlock> : G <targetGrid> ]. If there is a wait command before the next destination, the grid will wait while attached. If there is a LOCK command before the next destination, the grid will not separate. If there is an EXIT command before the next destination, the grid will stay attached. Autopilot can land connectors, landing gear, and merge blocks. If you land a merge block, you need to manually reset Autopilot.
-Example - [ L Connector : B Connector : G Platform : W60 : C 0,0,0 ] - attach local connector to connector on Platform, wait 60 seconds, detach, fly to {0,0,0}
+L : local block. Autopilot will bring this block to the destination. If possible, Autopilot will attempt to land or dock with the destination. Autopilot can land connectors, landing gear, and merge blocks. If you land a merge block, you need to manually reset Autopilot.
+Example - [ L Connector : B Connector : G Platform : W60 : Unlock : C 0,0,0 ] - attach local connector to connector on Platform, wait 60 seconds, detach, fly to {0,0,0}
 
 LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
 
@@ -112,7 +112,7 @@ Example - [ O 500 upward : B Antenna : G Platform ] - fly to 500m above Antenna 
 Example - [ O 100 forward, 500 upward : B Antenna : G Platform ] - fly to 100m ahead of and 500m above Antenna
 
 P <range> : how close the grid needs to fly to the destination, default is 100m. Ignored for M.
-Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward
+Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward, to within 10m
 
 R <f> : match direction, needs a target block. <f> is the target block's direction that the Autopilot block will face
 Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Autopilot block to antenna forward
@@ -126,10 +126,12 @@ Example - [ T Command Panel ] - fetch commands from "Command Panel"
 T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.
 Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
 
-V <cruise> : when travelling faster than <cruise> reduce thrust (zero or very little thrust)
-Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, cruising when above 10m/s. The default for <cruise> is set in the settings file.
-V <cruise>, <slow> : when speed is below <cruise>, accelerate; when speed is between <cruise> and <slow>, cruise; when speed is above <slow>, decelerate. The default for <cruise> is set in the settings file, the default for <slow> is infinity (practically).
-Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, staying between 10m/s and 20m/s.
+U <name> : unlock the specified block and move away from the attached object
+
+Unlock : unlock the most recently landed / docked block and move away from the attached object
+
+V <speed> : Autopilot will fly at the specified speed
+Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, at 10m/s
 
 [b]Directions[/b] : can be { Forward, Backward, Leftward, Rightward, Upward, Downward }. Autopilot only checks the first letter, so abbreviations will work. For example, "Forward" can be "Fore" or "F"
 [b]Distances[/b] : for F, O, and P can be modified by km(kilometres) or Mm(megametres). For example, "3.5M" or "3.5Mm" is 3.5 megametres or 3 500 kilometres.
