@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Sandbox.ModAPI;
 
@@ -203,12 +204,12 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// Finds the best matching block (shortest string matching blockContains).
+		/// Finds the best matching block (shortest string matching blockContains). Searches permanently attached grids.
 		/// </summary>
-		public static bool findBestFriendly(IMyCubeBlock doingSearch, IMyCubeGrid grid, out IMyCubeBlock bestMatchBlock, string blockContains)
+		public static IMyCubeBlock findBestControl(IMyCubeBlock doingSearch, IMyCubeGrid grid, string blockContains, bool searchAttached = true)
 		{
 			List<IMySlimBlock> collected = new List<IMySlimBlock>();
-			bestMatchBlock = null;
+			IMyCubeBlock bestMatchBlock = null;
 			int bestMatchLength = -1;
 			grid.GetBlocks(collected, block => collect_findBestFriendly(doingSearch, block, blockContains));
 
@@ -225,7 +226,14 @@ namespace Rynchodon.Autopilot
 					bestMatchLength = grid.DisplayName.Length;
 				}
 			}
-			return bestMatchBlock != null;
+
+			if (bestMatchBlock == null && searchAttached)
+				AttachedGrid.RunOnAttached(grid, AttachedGrid.AttachmentKind.Permanent, attGrid => {
+					bestMatchBlock = findBestControl(doingSearch, attGrid, blockContains, false);
+					return bestMatchBlock != null;
+				});
+
+			return bestMatchBlock;
 		}
 
 		//private bool collect_findBestHostile(IMySlimBlock slim, string blockContains)

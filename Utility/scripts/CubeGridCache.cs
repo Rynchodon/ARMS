@@ -20,6 +20,23 @@ namespace Rynchodon
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
+		/// <summary>
+		/// Get the shortest definition that looseContains(contains).
+		/// </summary>
+		public static string getKnownDefinition(string contains)
+		{
+			int bestLength = int.MaxValue;
+			string bestMatch = null;
+			using (lock_knownDefinitions.AcquireSharedUsing())
+				foreach (string match in knownDefinitions)
+					if (match.looseContains(contains) && match.Length < bestLength)
+					{
+						bestLength = match.Length;
+						bestMatch = match;
+					}
+			return bestMatch;
+		}
+
 		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>>();
 		private Dictionary<string, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
@@ -325,24 +342,6 @@ namespace Rynchodon
 				}
 			}
 		}
-
-		/// <summary>
-		/// Get the shortest definition that looseContains(contains).
-		/// </summary>
-		public string getKnownDefinition(string contains)
-		{
-			int bestLength = int.MaxValue;
-			string bestMatch = null;
-			using (lock_knownDefinitions.AcquireSharedUsing())
-				foreach (string match in knownDefinitions)
-					if (match.looseContains(contains) && match.Length < bestLength)
-					{
-						bestLength = match.Length;
-						bestMatch = match;
-					}
-			return bestMatch;
-		}
-
 
 		private Logger myLogger;
 	}

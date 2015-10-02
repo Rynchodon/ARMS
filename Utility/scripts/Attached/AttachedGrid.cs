@@ -4,7 +4,7 @@ using Sandbox.ModAPI;
 using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	public class AttachedGrid
 	{
@@ -34,7 +34,7 @@ namespace Rynchodon.AttachedGrid
 				}
 
 				count++;
-				myLogger.debugLog(kind + "count: " + count, "Add()");
+				myLogger.debugLog(kind + " count: " + count, "Add()");
 				dictionary[kind] = count;
 			}
 
@@ -93,11 +93,11 @@ namespace Rynchodon.AttachedGrid
 		/// </summary>
 		/// <param name="grid">The starting grid/</param>
 		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
-		/// <param name="appendTo">Collection that the attached grids will be added to.</param>
-		public static void GetAttached(IMyCubeGrid grid, AttachmentKind allowedConnections, ICollection<IMyCubeGrid> appendTo)
+		/// <param name="runFunc">Func that runs on attached grids, if it returns true short-circuit</param>
+		public static void RunOnAttached(IMyCubeGrid grid, AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc)
 		{
 			using (lock_search.AcquireExclusiveUsing())
-				GetFor(grid).GetAttached(allowedConnections, appendTo, searchIdPool++);
+				GetFor(grid).RunOnAttached(allowedConnections, runFunc, searchIdPool++);
 		}
 
 		internal static void AddRemoveConnection(AttachmentKind kind, Ingame.IMyCubeGrid grid1, Ingame.IMyCubeGrid grid2, bool add)
@@ -192,7 +192,7 @@ namespace Rynchodon.AttachedGrid
 			return false;
 		}
 
-		private void GetAttached(AttachmentKind allowedConnections, ICollection<IMyCubeGrid> appendTo, uint searchId)
+		private void RunOnAttached(AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, uint searchId)
 		{
 			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", "GetAttached()", Logger.severity.ERROR);
 			lastSearchId = searchId;
@@ -206,8 +206,10 @@ namespace Rynchodon.AttachedGrid
 					if ((gridAttachments.Value.attachmentKinds & allowedConnections) == 0)
 						continue;
 
-					appendTo.Add(gridAttachments.Key.myGrid);
-					gridAttachments.Key.GetAttached(allowedConnections, appendTo, searchId);
+					if (runFunc(gridAttachments.Key.myGrid))
+						return;
+
+					gridAttachments.Key.RunOnAttached(allowedConnections, runFunc, searchId);
 				}
 		}
 

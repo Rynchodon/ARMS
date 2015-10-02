@@ -1,7 +1,7 @@
 ﻿using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	public class Connector : AttachableBlockPair
 	{

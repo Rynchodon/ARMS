@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
@@ -34,7 +35,7 @@ namespace Rynchodon
 				if (friendsOnly && !sendFrom.canConsiderFriendly(sendToAsBlock))
 					return false;
 
-				if (AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsBlock.CubeGrid))
+				if (AttachedGrid.IsGridAttached(sendFrom.CubeGrid, sendToAsBlock.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
 					return true;
 
 				if (range > 0)
@@ -54,7 +55,7 @@ namespace Rynchodon
 					if (friendsOnly && !sendFrom.canConsiderFriendly(sendToAsGrid))
 						return false;
 
-					if (Rynchodon.AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsGrid))
+					if (AttachedGrid.IsGridAttached(sendFrom.CubeGrid, sendToAsGrid, AttachedGrid.AttachmentKind.Terminal))
 						return true;
 				}
 			}

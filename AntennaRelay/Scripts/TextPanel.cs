@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -220,7 +221,7 @@ namespace Rynchodon.AntennaRelay
 			while (toDisplay.MoveNext())
 			{
 				IMyCubeGrid grid = toDisplay.Current.Entity as IMyCubeGrid;
-				if (grid == null || AttachedGrids.isGridAttached(grid, myCubeBlock.CubeGrid))
+				if (grid == null || AttachedGrid.IsGridAttached(grid, myCubeBlock.CubeGrid, AttachedGrid.AttachmentKind.Physics))
 					continue;
 
 				ExtensionsRelations.Relations relations = myCubeBlock.getRelationsTo(grid, ExtensionsRelations.Relations.Enemy).highestPriority();

@@ -2,7 +2,7 @@ using System;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	/// <summary>
 	/// All attach &amp; detach should go through here. Handles block and/or grid closings.

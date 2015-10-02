@@ -1,6 +1,7 @@
 ﻿#define LOG_ENABLED //remove on build
 
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -141,7 +142,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (mes.isValid)
 				{
-					if (AttachedGrids.isGridAttached(sender.CubeGrid, mes.DestCubeBlock.CubeGrid))
+					if (AttachedGrid.IsGridAttached(sender.CubeGrid, mes.DestCubeBlock.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
 					{
 						// get receiver for block
 						ShipController remote;

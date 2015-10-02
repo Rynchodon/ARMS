@@ -61,8 +61,6 @@ A solar array of panels or oxygen farms can be instructed to face the sun by add
 [h1]Known Issues[/h1]
 These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.
 
-Autopilot cannot always control a grid if there are grids attached with landing gear. In this case, the Autopilot block will display <NO_PATH>.
-
 Merging grids will cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
 
 Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.

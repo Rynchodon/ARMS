@@ -3,7 +3,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	/// Not derived from AttachableBlockPair because testing for attached is fast but getting attached block is slow.
 	public static class StatorRotor

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Sandbox.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	/// <summary>
 	/// For tracking pairs of blocks that are attached.

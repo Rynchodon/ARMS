@@ -1,7 +1,7 @@
 ﻿using System;
 using Sandbox.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	public class LandingGear : AttachableBlockBase
 	{

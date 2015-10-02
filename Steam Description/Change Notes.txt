@@ -1,6 +1,9 @@
 Will be moved to steam every release.
 
 major:
+more precise navigation
+pathfinder checks for landing gear attachments
+block searches will check piston and rotor attached grids
 
 minor:
 Stop command

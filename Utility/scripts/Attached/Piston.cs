@@ -2,7 +2,7 @@
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
 	public static class Piston
 	{

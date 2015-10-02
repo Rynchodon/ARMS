@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Rynchodon.AttachedGrid;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;

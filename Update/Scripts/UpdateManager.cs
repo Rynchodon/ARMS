@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.AntennaRelay;
-using Rynchodon.AttachedGrid;
+using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Settings;
 using Rynchodon.Weapons;

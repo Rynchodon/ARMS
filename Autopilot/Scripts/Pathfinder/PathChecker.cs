@@ -1,6 +1,7 @@
 ﻿#define LOG_ENABLED // remove on build
 
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -199,7 +200,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (!asGrid.Save)
 					return false;
 
-				if (AttachedGrids.isGridAttached(myCubeGrid, asGrid))
+				if (AttachedGrid.IsGridAttached(myCubeGrid, asGrid, AttachedGrid.AttachmentKind.Physics))
 					return false;
 			}
 

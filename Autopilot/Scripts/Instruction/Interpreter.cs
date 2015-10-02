@@ -662,12 +662,12 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
-			IMyCubeBlock navBlock;
 			int myInstructionIndex = currentInstruction;
 
 			execute = () => {
 				myLogger.debugLog("searching for NavigationBlock: " + instruction, "getAction_localBlock()");
-				if (GridTargeter.findBestFriendly(Block.CubeBlock, Block.CubeGrid, out navBlock, instruction))
+				IMyCubeBlock navBlock = GridTargeter.findBestControl(Block.CubeBlock, Block.CubeGrid, instruction);
+				if (navBlock != null)
 				{
 					myLogger.debugLog("setting NavigationBlock to " + navBlock.DisplayNameText, "getAction_localBlock()");
 					NavSet.Settings_Commands.NavigationBlock = navBlock;
