@@ -1,57 +1,48 @@
-﻿using Sandbox.ModAPI;
-using VRage.ModAPI;
+﻿using System;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.AttachedGrid
 {
-	public class LandingGear
+	public class LandingGear : AttachableBlockBase
 	{
 		private readonly Logger myLogger;
-		private readonly IMyLandingGear myGear;
 
-		private IMyEntity value_Attached;
+		private IMyLandingGear myGear { get { return myBlock as IMyLandingGear; } }
 
 		public LandingGear(IMyCubeBlock block)
+			: base (block, AttachedGrid.AttachmentKind.LandingGear)
 		{
-			this.myGear = block as IMyLandingGear;
 			this.myLogger = new Logger("LandingGear", block);
-
 			this.myGear.StateChanged += myGear_StateChanged;
-		}
 
-		internal IMyEntity AttachedEntity
-		{
-			get { return value_Attached; }
-			private set
-			{
-				if (value_Attached != null)
-				{
-					IMyCubeGrid asGrid = value_Attached as IMyCubeGrid;
-					if (asGrid != null)
-						AttachedGrid.AddRemoveConnection(AttachedGrid.AttachmentKind.LandingGear, myGear.CubeGrid, asGrid, false);
-				}
-
-				value_Attached = value;
-
-				if (value_Attached != null)
-				{
-					IMyCubeGrid asGrid = value_Attached as IMyCubeGrid;
-					if (asGrid != null)
-						AttachedGrid.AddRemoveConnection(AttachedGrid.AttachmentKind.LandingGear, myGear.CubeGrid, asGrid, true);
-				}
-			}
+			IMyCubeGrid attached = myGear.GetAttachedEntity() as IMyCubeGrid;
+			if (attached != null)
+				Attach(attached);
 		}
 
 		private void myGear_StateChanged(bool obj)
 		{
-			if (myGear.IsLocked)
+			try
 			{
-				myLogger.debugLog("Is now attached to: " + myGear.GetAttachedEntity().getBestName(), "myGear_StateChanged()", Logger.severity.INFO);
-				AttachedEntity = myGear.GetAttachedEntity();
+				if (myGear.IsLocked)
+				{
+					myLogger.debugLog("Is now attached to: " + myGear.GetAttachedEntity().getBestName(), "myGear_StateChanged()", Logger.severity.INFO);
+					IMyCubeGrid attached = myGear.GetAttachedEntity() as IMyCubeGrid;
+					if (attached != null)
+						Attach(attached);
+					else
+						Detach();
+				}
+				else
+				{
+					myLogger.debugLog("Is now disconnected", "myGear_StateChanged()", Logger.severity.INFO);
+					Detach();
+				}
 			}
-			else
+			catch (Exception ex)
 			{
-				myLogger.debugLog("Is now disconnected", "myGear_StateChanged()", Logger.severity.INFO);
-				AttachedEntity = null;
+				myLogger.alwaysLog("Exception: " + ex, "myGear_StateChanged()", Logger.severity.ERROR);
+				Logger.debugNotify("LandingGear encountered an exception", 10000, Logger.severity.ERROR);
 			}
 		}
 	}

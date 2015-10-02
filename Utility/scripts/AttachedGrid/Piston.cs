@@ -6,18 +6,17 @@ namespace Rynchodon.AttachedGrid
 {
 	public static class Piston
 	{
-		public class PistonBase : AttachableBlock
+		public class PistonBase : AttachableBlockPair
 		{
 			private readonly Logger myLogger;
 
 			public PistonBase(IMyCubeBlock block)
-				: base(block)
+				: base(block, AttachedGrid.AttachmentKind.Piston)
 			{
 				myLogger = new Logger("PistonBase", block);
-				AttachmentKind = AttachedGrid.AttachmentKind.Piston;
 			}
 
-			protected override AttachableBlock GetPartner(AttachableBlock current)
+			protected override AttachableBlockPair GetPartner()
 			{
 				var builder = myBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_ExtendedPistonBase;
 				if (builder == null)
@@ -26,18 +25,17 @@ namespace Rynchodon.AttachedGrid
 			}
 		}
 
-		public class PistonTop : AttachableBlock
+		public class PistonTop : AttachableBlockPair
 		{
 			private readonly Logger myLogger;
 
 			public PistonTop(IMyCubeBlock block)
-				: base(block)
+				: base(block, AttachedGrid.AttachmentKind.Piston)
 			{
 				myLogger = new Logger("PistonTop", block);
-				AttachmentKind = AttachedGrid.AttachmentKind.Piston;
 			}
 
-			protected override AttachableBlock GetPartner(AttachableBlock current)
+			protected override AttachableBlockPair GetPartner()
 			{
 				var builder = myBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_PistonTop;
 				if (builder == null)

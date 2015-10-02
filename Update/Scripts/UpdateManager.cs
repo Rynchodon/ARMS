@@ -137,19 +137,20 @@ namespace Rynchodon.Update
 
 			RegisterForBlock(typeof(MyObjectBuilder_ExtendedPistonBase), (block) => {
 				Piston.PistonBase pistonBase = new Piston.PistonBase(block);
-				RegisterForUpdates(100, pistonBase.Update100, block);
+				RegisterForUpdates(100, pistonBase.Update, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
 				Piston.PistonTop pistonTop = new Piston.PistonTop(block);
-				RegisterForUpdates(100, pistonTop.Update100, block);
+				RegisterForUpdates(100, pistonTop.Update, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
 				Connector conn = new Connector(block);
-				RegisterForUpdates(10, conn.Update100, block);
+				RegisterForUpdates(10, conn.Update, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_LandingGear), (block) => {
 				new LandingGear(block);
 			});
+
 		}
 
 		private static Dictionary<uint, List<Action>> UpdateRegistrar;
