@@ -39,8 +39,6 @@ namespace Rynchodon.Weapons
 			using (lock_registry.AcquireExclusiveUsing())
 				registry.Add(CubeBlock, this);
 			CubeBlock.OnClose += CubeBlock_OnClose;
-			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
-			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		private void CubeBlock_OnClose(IMyEntity obj)
@@ -67,10 +65,10 @@ namespace Rynchodon.Weapons
 			if (definition == null)
 				throw new NullReferenceException("definition");
 
-			minElevation = (float)Math.Max(definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
-			maxElevation = (float)(definition.MaxElevationDegrees / 180 * Math.PI);
-			minAzimuth = (float)(definition.MinAzimuthDegrees / 180 * Math.PI);
-			maxAzimuth = (float)(definition.MaxAzimuthDegrees / 180 * Math.PI);
+			minElevation = (float)Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
+			maxElevation = (float)((float)definition.MaxElevationDegrees / 180 * Math.PI);
+			minAzimuth = (float)((float)definition.MinAzimuthDegrees / 180 * Math.PI);
+			maxAzimuth = (float)((float)definition.MaxAzimuthDegrees / 180 * Math.PI);
 
 			Can360 = Math.Abs(definition.MaxAzimuthDegrees - definition.MinAzimuthDegrees) >= 360;
 
@@ -83,6 +81,9 @@ namespace Rynchodon.Weapons
 
 			AllowedState = State.Targeting;
 			Initialized = true;
+
+			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
+			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		/// <summary>
@@ -122,6 +123,8 @@ namespace Rynchodon.Weapons
 
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
+
+			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
 			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth;
 		}
