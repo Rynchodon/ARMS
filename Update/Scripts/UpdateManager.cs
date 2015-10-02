@@ -201,10 +201,28 @@ namespace Rynchodon.Update
 				RegisterForUpdates(1, stator.Update10, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
-				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+				new StatorRotor.Rotor(block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
-				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+				new StatorRotor.Rotor(block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_ExtendedPistonBase), (block) => {
+				Piston.PistonBase pistonBase = new Piston.PistonBase(block);
+				RegisterForUpdates(100, pistonBase.Update, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
+				Piston.PistonTop pistonTop = new Piston.PistonTop(block);
+				RegisterForUpdates(100, pistonTop.Update, block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
+				Connector conn = new Connector(block);
+				RegisterForUpdates(10, conn.Update, block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_LandingGear), (block) => {
+				new LandingGear(block);
 			});
 
 			#endregion
@@ -542,7 +560,8 @@ namespace Rynchodon.Update
 		private void Grid_OnBlockAdded(IMySlimBlock block)
 		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
 
-		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
+		/// <remarks>Can't use Entity Ids because multiple blocks may share an Id.</remarks>
+		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
 
 		/// <summary>
 		/// if necessary, builds script for a block
@@ -552,13 +571,15 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				long EntityId = fatblock.EntityId;
-				if (CubeBlock_entityIds.Contains(EntityId))
+				if (CubeBlocks.Contains(fatblock))
 					return;
-				CubeBlock_entityIds.Add(EntityId);
-				fatblock.OnClosing += (alsoFatblock) => { CubeBlock_entityIds.Remove(EntityId); };
+				CubeBlocks.Add(fatblock);
+				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock); };
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
+				
+				//myLogger.debugLog("block definition: " + fatblock.DefinitionDisplayNameText + ", typeId: " + typeId, "AddBlock()"); // used to find which builder is associated with a block
+				
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
 						try { constructor.Invoke(fatblock); }
