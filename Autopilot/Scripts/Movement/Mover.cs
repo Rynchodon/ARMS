@@ -100,9 +100,22 @@ namespace Rynchodon.Autopilot.Movement
 			Block.Controller.SetDamping(true);
 		}
 
+		public void StopMove()
+		{
+			moveForceRatio = Vector3.Zero;
+		}
+
+		public void StopRotate()
+		{
+			rotateForceRatio = Vector3.Zero;
+		}
+
 		// genius or madness? time will tell...
 		public void CalcMove(IMyCubeBlock NavigationBlock, Vector3 destPoint, Vector3 destVelocity)
 		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
 			// using world vectors
 
 			Vector3 destDisp = destPoint - NavigationBlock.GetPosition();
@@ -121,7 +134,7 @@ namespace Rynchodon.Autopilot.Movement
 			relaVelocity = Vector3.Transform(relaVelocity, directionToLocal);
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
-			Vector3 targetVelocity = MaximumVelocity(destDisp) / 2;
+			Vector3 targetVelocity = MaximumVelocity(destDisp);
 
 			float tarSpeedSq = targetVelocity.LengthSquared();
 			float speedRequest = NavSet.CurrentSettings.SpeedTarget;
@@ -150,32 +163,32 @@ namespace Rynchodon.Autopilot.Movement
 				// if there is not enough force available for braking, use dampeners
 
 				float forceRatio = moveForceRatio.GetDim(i);
-				if (forceRatio < 1f)
+				if (forceRatio < 1f && forceRatio > -1f)
 					continue;
 
 				if (Math.Sign(forceRatio) * Math.Sign(velocity.GetDim(i)) < 0)
 				{
-					//myLogger.debugLog("damping, sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
+					myLogger.debugLog("damping, i: " + i + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
 					enableDampeners = true;
 				}
-				//else
-				//	myLogger.debugLog("not damping, sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
+				else
+					myLogger.debugLog("not damping, i: " + i + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
 			}
 
-			//if (enableDampeners)
-			//	Logger.debugNotify("Damping", 160);
+			if (enableDampeners)
+				Logger.debugNotify("Damping", 160);
 
 			Block.Controller.SetDamping(enableDampeners);
 
-			//myLogger.debugLog("destDisp: " + destDisp
-			//	//+ ", destDir: " + destDir
-			//	+ ", destVelocity: " + destVelocity
-			//	+ ", relaVelocity: " + relaVelocity
-			//	+ ", targetVelocity: " + targetVelocity
-			//	//+ ", diffVel: " + diffVel
-			//	+ ", accel: " + accel
-			//	+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
+			myLogger.debugLog("destDisp: " + destDisp
+				//+ ", destDir: " + destDir
+				+ ", destVelocity: " + destVelocity
+				+ ", relaVelocity: " + relaVelocity
+				+ ", targetVelocity: " + targetVelocity
+				//+ ", diffVel: " + diffVel
+				+ ", accel: " + accel
+				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 		}
 
 		private Vector3 MaximumVelocity(Vector3 localDisp)
@@ -235,6 +248,9 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void CalcRotate(IMyCubeBlock NavigationBlock, RelativeDirection3F Direction)
 		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
 			//myLogger.debugLog("forward: " + NavigationBlock.WorldMatrix.Forward
 			//	+ ", prev: " + prevForward
 			//	+ ", diff: " + (NavigationBlock.WorldMatrix.Forward - prevForward)
@@ -292,7 +308,7 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(disp) / 2;
+			Vector3 targetVelocity = MaxAngleVelocity(disp);
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
 			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * gyroForce);
@@ -360,7 +376,10 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void MoveAndRotate()
 		{
-			myLogger.debugLog("moveAccel: " + moveForceRatio + ", rotateAccel: " + rotateForceRatio, "MoveAndRotate()");
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio, "MoveAndRotate()");
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)

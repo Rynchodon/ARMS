@@ -5,6 +5,7 @@ using System.Text;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Sandbox.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Data
 {
@@ -31,7 +32,9 @@ namespace Rynchodon.Autopilot.Data
 		{
 			private SettingsLevel parent;
 
-			private IMyCubeBlock m_navigationBlock;
+			private IMyCubeBlock m_navigationBlock;//, m_rotationBlock;
+			//private Base6Directions.Direction? m_navBlockDir, m_rotBlockDir;
+
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
 
@@ -50,6 +53,7 @@ namespace Rynchodon.Autopilot.Data
 			internal SettingsLevel(IMyCubeBlock NavBlock)
 			{
 				m_navigationBlock = NavBlock;
+				//m_rotationBlock = NavBlock;
 
 				m_waitUntil = DateTime.MinValue;
 
@@ -74,8 +78,32 @@ namespace Rynchodon.Autopilot.Data
 			public IMyCubeBlock NavigationBlock
 			{
 				get { return m_navigationBlock ?? parent.NavigationBlock; }
-				set { m_navigationBlock = value; }
+				set
+				{
+					m_navigationBlock = value;
+					//m_navBlockDir = value.GetFaceDirection()[0];
+				}
 			}
+
+			//public IMyCubeBlock RotationBlock
+			//{
+			//	get { return m_rotationBlock ?? parent.RotationBlock; }
+			//	set
+			//	{
+			//		m_rotationBlock = value;
+			//		//m_rotBlockDir = value.GetFaceDirection()[0];
+			//	}
+			//}
+
+			//public Base6Directions.Direction NavBlockDir
+			//{
+			//	get { return (Base6Directions.Direction)(m_navBlockDir ?? parent.NavBlockDir); }
+			//}
+
+			//public Base6Directions.Direction RotBlockDir
+			//{
+			//	get { return (Base6Directions.Direction)(m_rotBlockDir ?? parent.RotBlockDir); }
+			//}
 
 			/// <remarks>
 			/// <para>May be null</para>

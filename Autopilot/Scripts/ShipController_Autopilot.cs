@@ -101,7 +101,7 @@ namespace Rynchodon.Autopilot
 			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
 			if (navM != null)
 			{
-				myLogger.debugLog("moving", "Update10()");
+				//myLogger.debugLog("moving", "Update10()");
 
 				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
 				if (navR != null)
@@ -135,54 +135,6 @@ namespace Rynchodon.Autopilot
 			else
 				ReleaseControlledGrid();
 		}
-
-		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
-		{
-			if (ControlledGrid == null)
-			{
-				customInfo.AppendLine("Disabled");
-				return;
-			}
-
-			bool moving = true;
-
-			double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
-			if (wait > 0)
-			{
-				moving = false;
-				customInfo.Append("Waiting for ");
-				customInfo.Append((int)wait);
-				customInfo.AppendLine("s");
-			}
-
-			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
-			if (controlling != null)
-			{
-				moving = false;
-				customInfo.Append("Player controlling: ");
-				customInfo.AppendLine(controlling.DisplayName);
-			}
-
-			if (!moving)
-				return;
-
-			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
-			if (navM != null)
-				navM.AppendCustomInfo(customInfo);
-
-			INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
-			if (navR != null)
-				navR.AppendCustomInfo(customInfo);
-
-			//customInfo.Append("Speed Target: ");
-			//customInfo.Append(myNavSet.CurrentSettings.SpeedTarget);
-			//customInfo.AppendLine("m/s");
-
-			//customInfo.Append("Proxmity: ");
-			//customInfo.Append(myNavSet.CurrentSettings.DestinationRadius);
-			//customInfo.AppendLine("m");
-		}
-
 
 		#region Control
 
@@ -266,6 +218,51 @@ namespace Rynchodon.Autopilot
 
 		#endregion
 
+		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
+		{
+			if (myInterpreter.Errors.Length != 0)
+			{
+				customInfo.AppendLine("Errors:");
+				customInfo.Append(myInterpreter.Errors);
+				customInfo.AppendLine();
+			}
+
+			if (ControlledGrid == null)
+			{
+				customInfo.AppendLine("Disabled");
+				return;
+			}
+
+			bool moving = true;
+
+			double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
+			if (wait > 0)
+			{
+				moving = false;
+				customInfo.Append("Waiting for ");
+				customInfo.Append((int)wait);
+				customInfo.AppendLine("s");
+			}
+
+			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
+			if (controlling != null)
+			{
+				moving = false;
+				customInfo.Append("Player controlling: ");
+				customInfo.AppendLine(controlling.DisplayName);
+			}
+
+			if (!moving)
+				return;
+
+			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+			if (navM != null)
+				navM.AppendCustomInfo(customInfo);
+
+			INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+			if (navR != null)
+				navR.AppendCustomInfo(customInfo);
+		}
 
 	}
 }

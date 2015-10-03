@@ -14,7 +14,6 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 
 		private readonly Logger myLogger;
-		//private readonly DestinationPoint destination;
 		private readonly IMyCubeBlock NavigationBlock;
 		private readonly Vector3 location;
 		private readonly float DestinationRadius;
@@ -25,8 +24,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location)
 			: base(mover, navSet)
 		{
-			this.myLogger = new Logger("GOLIS", _block.CubeBlock);
-			//this.destination = new DestinationPoint(location);
+			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);
 			this.NavigationBlock = _navSet.CurrentSettings.NavigationBlock;
 			this.location = location;
 			this.DestinationRadius = _navSet.CurrentSettings.DestinationRadius;
@@ -41,19 +39,6 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 				myLogger.debugLog("added as mover only", "GOLIS()");
-
-			//if (_mover.Destination == null)
-			//{
-			//	myLogger.debugLog("setting destination point: " + this.destination.Point, "GOLIS()", Logger.severity.DEBUG);
-			//	_mover.Destination = this.destination;
-			//}
-			//if (_mover.RotateDest == null)
-			//{
-			//	myLogger.debugLog("setting destination rotation: " + this.destination.Point, "GOLIS()", Logger.severity.DEBUG);
-			//	_mover.RotateDest = this.destination;
-			//}
-
-			//myLogger.debugLog("created GOLIS", "GOLIS()", Logger.severity.INFO);
 		}
 
 		public override void Move()
@@ -90,8 +75,10 @@ namespace Rynchodon.Autopilot.Navigator
 			if (distance > 100)
 			{
 				Vector3 direction = location - NavigationBlock.GetPosition();
-				_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(_block.CubeGrid, direction));
+				_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 			}
+			else
+				_mover.StopRotate();
 		}
 
 		void INavigatorRotator.AppendCustomInfo(StringBuilder customInfo) { }

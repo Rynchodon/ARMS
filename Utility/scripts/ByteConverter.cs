@@ -75,11 +75,6 @@ namespace Rynchodon
 
 		#region Append Bytes
 
-		public static void AppendBytes(byte b, byte[] bytes, ref int pos)
-		{
-			bytes[pos++] = b;
-		}
-
 		private static void AppendBytes(byteUnion16 u, byte[] bytes, ref int pos)
 		{
 			bytes[pos++] = u.b0;
@@ -104,6 +99,19 @@ namespace Rynchodon
 			bytes[pos++] = u.b5;
 			bytes[pos++] = u.b6;
 			bytes[pos++] = u.b7;
+		}
+
+		public static void AppendBytes(bool b, byte[] bytes, ref int pos)
+		{
+			if (b)
+				bytes[pos++] = 1;
+			else
+				bytes[pos++] = 0;
+		}
+
+		public static void AppendBytes(byte b, byte[] bytes, ref int pos)
+		{
+			bytes[pos++] = b;
 		}
 
 		public static void AppendBytes(short s, byte[] bytes, ref int pos)
@@ -150,11 +158,6 @@ namespace Rynchodon
 
 		#region From Byte Array
 
-		public static byte GetByte(byte[] bytes, ref int pos)
-		{
-			return bytes[pos++];
-		}
-
 		private static byteUnion16 GetByteUnion16(byte[] bytes, ref int pos)
 		{
 			return new byteUnion16()
@@ -188,6 +191,16 @@ namespace Rynchodon
 				b6 = bytes[pos++],
 				b7 = bytes[pos++]
 			};
+		}
+
+		public static bool GetBool(byte[] bytes, ref int pos)
+		{
+			return bytes[pos++] != 0;
+		}
+
+		public static byte GetByte(byte[] bytes, ref int pos)
+		{
+			return bytes[pos++];
 		}
 
 		public static short GetShort(byte[] bytes, ref int pos)

@@ -84,12 +84,12 @@ namespace Rynchodon
 			return true;
 		}
 
-		public static bool IsClient(this IMyMultiplayer multiplayer)
-		{
-			if (!multiplayer.MultiplayerActive)
-				return false;
-			return !multiplayer.IsServer;
-		}
+		//public static bool IsClient(this IMyMultiplayer multiplayer)
+		//{
+		//	if (!multiplayer.MultiplayerActive)
+		//		return false;
+		//	return !multiplayer.IsServer;
+		//}
 
 		public static void throwIfNull_argument(this object argument, string name)
 		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }

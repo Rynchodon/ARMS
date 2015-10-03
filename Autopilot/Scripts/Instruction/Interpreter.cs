@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
@@ -32,9 +33,6 @@ namespace Rynchodon.Autopilot.Instruction
 		public class InstructionQueueOverflow : Exception { }
 
 		public readonly AllNavigationSettings NavSet;
-		// TODO: make a property, when nav changes reset settings
-		//public ANavigator currentNavigator;
-		//public ANavigator currentRotator;
 
 		private readonly Logger myLogger;
 		private readonly ShipControllerBlock Block;
@@ -53,20 +51,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		public MyQueue<Action> instructionQueue;
 
-		/// <summary>
-		/// If errors occured while parsing instructions, will contain all their indecies.
-		/// </summary>
-		public string instructionErrorIndex = null;
-
-		private int currentInstruction;
-
-		private void instructionErrorIndex_add(int instructionNum)
-		{
-			if (instructionErrorIndex == null)
-				instructionErrorIndex = instructionNum.ToString();
-			else
-				instructionErrorIndex += ',' + instructionNum.ToString();
-		}
+		public readonly StringBuilder Errors = new StringBuilder();
 
 		/// <summary>
 		/// convert instructions from block to Action, then enqueue to instructionQueue
@@ -79,8 +64,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (instructions == null)
 				return;
 
-			instructionErrorIndex = null;
-			currentInstruction = 0;
+			Errors.Clear();
 			instructionQueue = new MyQueue<Action>(8);
 
 			myLogger.debugLog("block: " + Block.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions, "enqueueAllActions()");
@@ -111,7 +95,6 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		private void enqueueAllActions_continue(string allInstructions)
 		{
-			allInstructions = allInstructions.RemoveWhitespace();
 			string[] splitInstructions = allInstructions.Split(new char[] { ':', ';' });
 
 			if (splitInstructions == null || splitInstructions.Length == 0)
@@ -119,15 +102,13 @@ namespace Rynchodon.Autopilot.Instruction
 
 			for (int i = 0 ; i < splitInstructions.Length ; i++)
 			{
-				if (!enqueueAction(splitInstructions[i]))
+				if (!enqueueAction(splitInstructions[i].RemoveWhitespace()))
 				{
-					myLogger.debugLog("Failed to parse instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()", Logger.severity.INFO);
-					instructionErrorIndex_add(currentInstruction);
+					myLogger.debugLog("Failed to parse instruction " + splitInstructions[i], "enqueueAllActions()", Logger.severity.INFO);
+					Errors.AppendLine("Syntax:" + splitInstructions[i]);
 				}
 				else
-					myLogger.debugLog("Parsed instruction " + currentInstruction + " : " + splitInstructions[i], "enqueueAllActions()");
-
-				currentInstruction++;
+					myLogger.debugLog("Parsed instruction "  + splitInstructions[i], "enqueueAllActions()");
 			}
 		}
 
@@ -662,20 +643,26 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		private bool getAction_localBlock(out Action execute, string instruction)
 		{
-			int myInstructionIndex = currentInstruction;
+			// TODO: direction of local block
 
 			execute = () => {
 				myLogger.debugLog("searching for NavigationBlock: " + instruction, "getAction_localBlock()");
 				IMyCubeBlock navBlock = GridTargeter.findBestControl(Block.CubeBlock, Block.CubeGrid, instruction);
 				if (navBlock != null)
 				{
+					if (navBlock is IMyLaserAntenna || navBlock is Ingame.IMySolarPanel || navBlock is Ingame.IMyOxygenFarm)
+					{
+						new Facer(Mover, NavSet, navBlock);
+						//myLogger.debugLog("setting RotationBlock to " + navBlock.DisplayNameText, "getAction_localBlock()");
+						//NavSet.Settings_Commands.RotationBlock = navBlock;
+					}
 					myLogger.debugLog("setting NavigationBlock to " + navBlock.DisplayNameText, "getAction_localBlock()");
 					NavSet.Settings_Commands.NavigationBlock = navBlock;
 				}
 				else
 				{
 					myLogger.debugLog("could not get a NavigationBlock", "addInstruction()", Logger.severity.DEBUG);
-					instructionErrorIndex_add(myInstructionIndex);
+					Errors.AppendLine("Not Found: " + instruction);
 				}
 			};
 
@@ -832,6 +819,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (Double.TryParse(dataLowerCase, out seconds))
 			{
 				instructionAction = () => {
+					new Stopper(Mover, NavSet, false);
 					NavSet.Settings_Task_Tertiary.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
 				};
 				return true;

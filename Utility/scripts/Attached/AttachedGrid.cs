@@ -84,6 +84,9 @@ namespace Rynchodon.Attached
 		/// <returns>True iff the grids are attached.</returns>
 		public static bool IsGridAttached(IMyCubeGrid grid0, IMyCubeGrid grid1, AttachmentKind allowedConnections)
 		{
+			if (grid0 == grid1)
+				return true;
+
 			using (lock_search.AcquireExclusiveUsing())
 				return GetFor(grid0).IsGridAttached(GetFor(grid1), allowedConnections, searchIdPool++);
 		}

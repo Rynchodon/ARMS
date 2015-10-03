@@ -195,7 +195,7 @@ namespace Rynchodon
 
 			worldDirection.Normalize();
 			Base6Directions.Direction? bestDirection = null;
-			double bestDirectionAngle = double.MaxValue;
+			double bestDirectionAngle = double.MinValue;
 
 			foreach (Base6Directions.Direction direction in faceDirections)
 			{

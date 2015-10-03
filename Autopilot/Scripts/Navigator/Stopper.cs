@@ -23,7 +23,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Stopper(Mover mover, AllNavigationSettings navSet, bool exitAfter)
 			: base(mover, navSet)
 		{
-			_logger = new Logger("Stopper", _block.Controller);
+			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			this.exitAfter = exitAfter;
 
 			_mover.FullStop();

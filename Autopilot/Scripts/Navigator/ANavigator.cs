@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		protected readonly Mover _mover;
 		protected readonly AllNavigationSettings _navSet;
 
-		protected ShipControllerBlock _block { get { return _mover.Block; } }
+		protected ShipControllerBlock m_controlBlock { get { return _mover.Block; } }
 
 		protected ANavigator(Mover mover, AllNavigationSettings navSet)
 		{

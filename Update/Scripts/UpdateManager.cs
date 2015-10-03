@@ -46,26 +46,6 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts_Server()
 		{
-			#region Autopilot
-
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsControllableBlock(block))
-					{
-						var sca = new ShipController_Autopilot(block);
-						RegisterForUpdates(10, sca.Update10, block);
-					}
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsControllableBlock(block))
-				{
-					var sca = new ShipController_Autopilot(block);
-					RegisterForUpdates(10, sca.Update10, block);
-				}
-			});
-
-			#endregion
-
 			#region Antenna Communication
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
@@ -92,30 +72,6 @@ namespace Rynchodon.Update
 				Player p = new Player(player);
 				RegisterForUpdates(100, p.Update100, player, Player.OnLeave);
 			});
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
-			{
-				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
-				});
-				//RegisterForEveryBlock((IMyCubeBlock block) => {
-				//	if (RadarEquipment.IsRadarOrJammer(block))
-				//	{
-				//		RadarEquipment r = new RadarEquipment(block);
-				//		RegisterForUpdates(100, r.Update100, block);
-				//	}
-				//});
-			}
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
 					if (ShipController_Autopilot.IsControllableBlock(block))
@@ -236,6 +192,55 @@ namespace Rynchodon.Update
 		private void RegisterScripts_ClientAndServer()
 		{
 			UserSettings.CreateLocal();
+
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsControllableBlock(block))
+					{
+						var sca = new ShipController_Autopilot(block);
+						RegisterForUpdates(10, sca.Update10, block);
+					}
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsControllableBlock(block))
+				{
+					var sca = new ShipController_Autopilot(block);
+					RegisterForUpdates(10, sca.Update10, block);
+				}
+			});
+
+			#endregion
+
+			#region Radar
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
+			{
+				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
+					if (RadarEquipment.IsRadarOrJammer(block))
+					{
+						RadarEquipment r = new RadarEquipment(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
+					if (RadarEquipment.IsRadarOrJammer(block))
+					{
+						RadarEquipment r = new RadarEquipment(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				//RegisterForEveryBlock((IMyCubeBlock block) => {
+				//	if (RadarEquipment.IsRadarOrJammer(block))
+				//	{
+				//		RadarEquipment r = new RadarEquipment(block);
+				//		RegisterForUpdates(100, r.Update100, block);
+				//	}
+				//});
+			}
+
+			#endregion
 		}
 
 		private Dictionary<uint, List<Action>> UpdateRegistrar;
@@ -252,20 +257,23 @@ namespace Rynchodon.Update
 		private List<Action<IMyPlayer>> AnyPlayerLeaves;
 		private Dictionary<IMyPlayer, Action> PlayerLeaves;
 
-		private enum Status : byte { Not_Initialized, Initialized, Terminated }
+		private enum Status : byte { Not_Initialized, Initialized, Started, Terminated }
 		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedQueue<Action> AddRemoveActions;
 		private List<IMyPlayer> playersAPI;
 		private List<IMyPlayer> playersCached;
 
-		private Logger myLogger = new Logger(null, "UpdateManager");
+		private readonly Logger myLogger;
 		//private static UpdateManager Instance;
 
 		/// <summary>
 		/// For MySessionComponentBase
 		/// </summary>
-		public UpdateManager() { }
+		public UpdateManager()
+		{
+			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
+		}
 
 		public void Init()
 		{
@@ -305,32 +313,6 @@ namespace Rynchodon.Update
 					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
 
-				RegisterScripts_ClientAndServer();
-
-				if (AllBlockScriptConstructors.Count == 0
-					&& EveryBlockScriptConstructors.Count == 0
-					&& CharacterScriptConstructors.Count == 0
-					&& PlayerScriptConstructors.Count == 0
-					&& GridScriptConstructors.Count == 0)
-				{
-					myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
-					ManagerStatus = Status.Terminated;
-					return;
-				}
-
-				if (PlayerScriptConstructors.Count != 0)
-					RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
-
-				// create script for each entity
-				HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
-				MyAPIGateway.Entities.GetEntities(allEntities);
-
-				//myLogger.debugLog("Adding all entities", "Init()");
-				foreach (IMyEntity entity in allEntities)
-					AddEntity(entity);
-
-				MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
-
 				ManagerStatus = Status.Initialized;
 			}
 			catch (Exception ex)
@@ -338,6 +320,36 @@ namespace Rynchodon.Update
 				myLogger.alwaysLog("Failed to Init(): " + ex, "Init()", Logger.severity.FATAL);
 				ManagerStatus = Status.Terminated;
 			}
+		}
+
+		private void Start()
+		{
+			RegisterScripts_ClientAndServer();
+
+			if (AllBlockScriptConstructors.Count == 0
+				&& EveryBlockScriptConstructors.Count == 0
+				&& CharacterScriptConstructors.Count == 0
+				&& PlayerScriptConstructors.Count == 0
+				&& GridScriptConstructors.Count == 0)
+			{
+				myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
+				ManagerStatus = Status.Terminated;
+				return;
+			}
+
+			if (PlayerScriptConstructors.Count != 0)
+				RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
+
+			// create script for each entity
+			HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
+			MyAPIGateway.Entities.GetEntities(allEntities);
+
+			//myLogger.debugLog("Adding all entities", "Init()");
+			foreach (IMyEntity entity in allEntities)
+				AddEntity(entity);
+
+			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
+			ManagerStatus = Status.Started;
 		}
 
 		/// <summary>
@@ -354,6 +366,15 @@ namespace Rynchodon.Update
 						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
+
+					case Status.Initialized:
+						if (ServerSettings.ServerSettingsLoaded)
+						{
+							myLogger.debugLog("Server settings loaded", "UpdateAfterSimulation()");
+							Start();
+						}
+						return;
+
 					case Status.Terminated:
 						return;
 				}
@@ -577,9 +598,9 @@ namespace Rynchodon.Update
 				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock); };
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
-				
+
 				//myLogger.debugLog("block definition: " + fatblock.DefinitionDisplayNameText + ", typeId: " + typeId, "AddBlock()"); // used to find which builder is associated with a block
-				
+
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
 						try { constructor.Invoke(fatblock); }
@@ -621,7 +642,7 @@ namespace Rynchodon.Update
 
 			foreach (IMyPlayer player in playersAPI.Except(playersCached))
 				AddRemoveActions.Enqueue(() => {
-					myLogger.debugLog("player joined: " + player, "CheckPlayerJoinLeave()", Logger.severity.INFO);
+					myLogger.debugLog("player joined: " + player.DisplayName, "CheckPlayerJoinLeave()", Logger.severity.INFO);
 					playersCached.Add(player);
 
 					foreach (var constructor in PlayerScriptConstructors)

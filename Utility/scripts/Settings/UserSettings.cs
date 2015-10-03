@@ -9,6 +9,7 @@ namespace Rynchodon.Settings
 {
 	/// <summary>
 	/// <para>Per-user settings that will be saved locally and can be changed at any time.</para>
+	/// <para>The server will have a copy for each user.</para>
 	/// </summary>
 	public class UserSettings
 	{
@@ -25,12 +26,16 @@ namespace Rynchodon.Settings
 		private const string userSettings_fileName = "UserSettings.txt";
 		private const string chatDesignator = "/autopilot set";
 
-		private static readonly Dictionary<long, UserSettings> User = new Dictionary<long, UserSettings>();
+		private static readonly Dictionary<long, UserSettings> User;
 		private static readonly Logger staticLogger = new Logger("static", "UserSettings");
 
 		static UserSettings()
 		{
-			MyAPIGateway.Multiplayer.RegisterMessageHandler(UserSettings.ModID, ReceiveMessageUserSetting);
+			if (MyAPIGateway.Multiplayer.IsServer)
+			{
+				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, ReceiveMessageUserSetting);
+				User = new Dictionary<long, UserSettings>();
+			}
 		}
 
 		/// <summary>
@@ -250,16 +255,16 @@ namespace Rynchodon.Settings
 
 		private void SendSettingToServer(ByteSettingName name)
 		{
-			byte[] message = new byte[11];
+			byte[] message = new byte[10];
 			int pos = 0;
 			ByteConverter.AppendBytes(PlayerID, message, ref pos);
 			ByteConverter.AppendBytes((byte)name, message, ref pos);
 			ByteConverter.AppendBytes(GetSetting(name), message, ref pos);
 
 			if (!MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message, true))
-				myLogger.debugLog("message failed", "SendSettingToServer()", Logger.severity.ERROR);
+				myLogger.alwaysLog("message failed", "SendSettingToServer()", Logger.severity.ERROR);
 			else
-				myLogger.debugLog("sent setting to server", "SendSettingToServer()");
+				myLogger.debugLog("sent setting: " + name + " to server", "SendSettingToServer()");
 		}
 
 		private void ChatHandler(string message, ref bool sendToOthers)
