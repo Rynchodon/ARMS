@@ -97,8 +97,13 @@ F <distance> <direction>, ... : generic form is a comma separated list of distan
 Example - [ F 1000 forward ] - fly 1000m forward
 Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m below Autopilot block
 
-L : local block. Autopilot will bring this block to the destination. If possible, Autopilot will attempt to land or dock with the destination. Autopilot can land connectors, landing gear, and merge blocks. If you land a merge block, you need to manually reset Autopilot.
-Example - [ L Connector : B Connector : G Platform : W60 : Unlock : C 0,0,0 ] - attach local connector to connector on Platform, wait 60 seconds, detach, fly to {0,0,0}
+L <name> : Navigation block, Autopilot will bring this block to the destination. Dependant on the block chosen, Autopilot may face it in a particular direction or attempt to attach it to the destination.
+Example - [ N Flight Seat : C 0,0,0 ] - Fly to {0,0,0} with "Flight Seat" facing the destination
+Example - [ N Laser Antenna : C 0,0,0 ] - Face "Laser Antenna" towards its target coordinates and fly the ship to {0,0,0}
+Example - [ N Connector : B Connector : G Platform ] - attach local connector to connector on Platform
+Example - [ N Laser Antenna : N Connector : B Connector : G Platform ] - Autopilot will keep "Laser Antenna" pointed at its target until it gets close enough to the target to start docking. Then Autopilot will attach the local connector to connector on Platform.
+L <name>, <direction> : <direction> will be treated as the front of the block
+Example - [ N Laser Antenna, Back ] - Face the back of "Laser Antenna" towards its target
 
 LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
 

@@ -55,7 +55,7 @@ namespace Rynchodon.Autopilot.Data
 				m_navigationBlock = NavBlock;
 				//m_rotationBlock = NavBlock;
 
-				m_waitUntil = DateTime.MinValue;
+				m_waitUntil = DateTime.UtcNow.AddSeconds(1);
 
 				//m_allowedMovement = MovementType.All;
 				//m_pathPerm = PathfinderPermissions.All;

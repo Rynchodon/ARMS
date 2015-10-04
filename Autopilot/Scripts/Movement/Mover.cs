@@ -1,11 +1,13 @@
 using System;
 using Rynchodon.Autopilot.Data;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Movement
 {
+	/// <summary>
+	/// Performs the movement calculations and the movements.
+	/// </summary>
 	public class Mover
 	{
 		#region S.E. Constants
@@ -15,6 +17,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		#endregion
 
+		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
 
 		private readonly Logger myLogger;
@@ -23,13 +26,17 @@ namespace Rynchodon.Autopilot.Movement
 		private readonly AllNavigationSettings NavSet;
 
 		private Vector3 moveForceRatio = Vector3.Zero;
+		private Vector3 value_rotateForceRatio = Vector3.Zero;
 		private Vector3 rotateForceRatio = Vector3.Zero;
 
 		private ulong updated_prevAngleVel = 0;
 		private Vector3 prevAngleVel = Vector3.Zero;
-		//private Vector3 prevForward = Vector3.Zero;
-		private bool Stopping = false;
 
+		/// <summary>
+		/// Creates a Mover for a given ShipControllerBlock and AllNavigationSettings
+		/// </summary>
+		/// <param name="block">Controlling block for the grid</param>
+		/// <param name="NavSet">Navigation settings to use.</param>
 		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
 		{
 			this.myLogger = new Logger("Mover", block.Controller);
@@ -37,61 +44,14 @@ namespace Rynchodon.Autopilot.Movement
 			this.myThrust = new ThrustProfiler(block.Controller.CubeGrid);
 			this.myGyro = new GyroProfiler(block.Controller.CubeGrid);
 			this.NavSet = NavSet;
-			//this.NavigationBlock = this.Block.Controller;
 		}
 
-		//// these will be moved to nav settings
-		//// there will be two nav blocks, move and rotate
-		//public IMyCubeBlock NavigationBlock { get; set; }
-		//public IDestination Destination { get; set; }
-		//public IDestination RotateDest { get; set; }
-
-		//public void Update()
-		//{
-		//	if (Destination == null && RotateDest == null)
-		//	{
-		//		FullStop();
-		//		return;
-		//	}
-
-		//	if (Destination != null)
-		//		CalcMove();
-		//	else
-		//	{
-		//		moveForceRatio = Vector3.Zero;
-		//		Block.Controller.SetDamping(true);
-		//	}
-		//	if (RotateDest != null)
-		//		CalcRotate();
-		//	else
-		//		rotateForceRatio = Vector3.Zero;
-		//	MoveAndRotate();
-		//}
-
-		//public void StopDest(IDestination dest)
-		//{
-		//	if (dest == Destination)
-		//		Destination = null;
-		//	if (dest == RotateDest)
-		//		RotateDest = null;
-		//}
-
-		//public void StopMove()
-		//{ moveForceRatio = Vector3.Zero; }
-
-		//public void StopRotate()
-		//{ rotateForceRatio = Vector3.Zero; }
-
+		/// <summary>
+		/// Stops the grid, including rotation, immediately.
+		/// </summary>
 		public void FullStop()
 		{
-			myLogger.debugLog("entered", "FullStop()");
-
-			if (Stopping)
-				return;
-			Stopping = true;
-
-			//Destination = null;
-			//RotateDest = null;
+			myLogger.debugLog("stopping", "FullStop()");
 
 			moveForceRatio = Vector3.Zero;
 			rotateForceRatio = Vector3.Zero;
@@ -100,17 +60,29 @@ namespace Rynchodon.Autopilot.Movement
 			Block.Controller.SetDamping(true);
 		}
 
+		/// <summary>
+		/// Sets this Mover to stop when MoveAndRotate() is invoked.
+		/// </summary>
 		public void StopMove()
 		{
 			moveForceRatio = Vector3.Zero;
 		}
 
+		/// <summary>
+		/// Sets this Mover to stop rotating when MoveAndRotate() is invoked.
+		/// </summary>
 		public void StopRotate()
 		{
 			rotateForceRatio = Vector3.Zero;
 		}
 
 		// genius or madness? time will tell...
+		/// <summary>
+		/// Calculates the force necessary to move the grid.
+		/// </summary>
+		/// <param name="NavigationBlock">The block to bring to the destination</param>
+		/// <param name="destPoint">The world position of the destination</param>
+		/// <param name="destVelocity">The speed of the destination</param>
 		public void CalcMove(IMyCubeBlock NavigationBlock, Vector3 destPoint, Vector3 destVelocity)
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
@@ -127,7 +99,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			// switch to using local vectors
 
-			Matrix positionToLocal = Block.CubeGrid.WorldMatrixNormalizedInv;
+			Matrix positionToLocal = Block.CubeBlock.WorldMatrixNormalizedInv;
 			Matrix directionToLocal = positionToLocal.GetOrientation();
 
 			destDisp = Vector3.Transform(destDisp, directionToLocal);
@@ -141,6 +113,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (tarSpeedSq > speedRequest * speedRequest)
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
+			// set accel to differnce between velocites, reach target in 1s.
 			Vector3 accel = targetVelocity - relaVelocity;
 
 			moveForceRatio = ToForceRatio(accel);
@@ -166,18 +139,22 @@ namespace Rynchodon.Autopilot.Movement
 				if (forceRatio < 1f && forceRatio > -1f)
 					continue;
 
-				if (Math.Sign(forceRatio) * Math.Sign(velocity.GetDim(i)) < 0)
+				float velDim = velocity.GetDim(i);
+				if (velDim < 1f && velDim > -1f)
+					continue;
+
+				if (Math.Sign(forceRatio) * Math.Sign(velDim) < 0)
 				{
-					myLogger.debugLog("damping, i: " + i + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
+					myLogger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
 					enableDampeners = true;
 				}
 				else
-					myLogger.debugLog("not damping, i: " + i + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velocity.GetDim(i)), "CalcMove()");
+					myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 			}
 
 			if (enableDampeners)
-				Logger.debugNotify("Damping", 160);
+				Logger.debugNotify("Damping", 16);
 
 			Block.Controller.SetDamping(enableDampeners);
 
@@ -191,6 +168,11 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 		}
 
+		/// <summary>
+		/// Calculates the maximum velocity that will allow the grid to stop at the destination.
+		/// </summary>
+		/// <param name="localDisp">The displacement to the destination.</param>
+		/// <returns>The maximum velocity that will allow the grid to stop at the destination.</returns>
 		private Vector3 MaximumVelocity(Vector3 localDisp)
 		{
 			Vector3 result = Vector3.Zero;
@@ -213,6 +195,12 @@ namespace Rynchodon.Autopilot.Movement
 			return result;
 		}
 
+		/// <summary>
+		/// Calculates the maximum speed that will allow the grid to stop at the destination.
+		/// </summary>
+		/// <param name="dist">The distance to the destination</param>
+		/// <param name="direct">The directional thrusters to use</param>
+		/// <returns>The maximum speed that will allow the grid to stop at the destination.</returns>
 		private float MaximumSpeed(float dist, Base6Directions.Direction direct)
 		{
 			// v² = u² + 2 a · s
@@ -224,6 +212,11 @@ namespace Rynchodon.Autopilot.Movement
 			return (float)Math.Sqrt(-2 * accel * dist);
 		}
 
+		/// <summary>
+		/// Calculate the force ratio from acceleration.
+		/// </summary>
+		/// <param name="localAccel">Acceleration</param>
+		/// <returns>Force ratio</returns>
 		private Vector3 ToForceRatio(Vector3 localAccel)
 		{
 			Vector3 result = Vector3.Zero;
@@ -246,74 +239,110 @@ namespace Rynchodon.Autopilot.Movement
 			return result;
 		}
 
-		public void CalcRotate(IMyCubeBlock NavigationBlock, RelativeDirection3F Direction)
+		/// <summary>
+		/// Get the matrix that CalcRotate() will need for a given block and orientation.
+		/// </summary>
+		/// <param name="block">The block to calculate the matrix from.</param>
+		/// <param name="forward">The direction the block should face towards the target.</param>
+		/// <param name="up">A direction perpendicular to forward.</param>
+		/// <returns>The matrix to be used for CalcRotate()</returns>
+		public Matrix GetMatrix(IMyCubeBlock block, Base6Directions.Direction forward = Base6Directions.Direction.Forward, Base6Directions.Direction up = Base6Directions.Direction.Up)
 		{
-			if (!MyAPIGateway.Multiplayer.IsServer)
-				return;
+			Matrix result = Matrix.Zero;
 
-			//myLogger.debugLog("forward: " + NavigationBlock.WorldMatrix.Forward
-			//	+ ", prev: " + prevForward
-			//	+ ", diff: " + (NavigationBlock.WorldMatrix.Forward - prevForward)
-			//	+ ", diff angle: " + (NavigationBlock.WorldMatrix.Forward.AngleBetween(prevForward))
-			//	+ ", velocity: " + Block.Physics.AngularVelocity
-			//	+ ", speed: " + Block.Physics.AngularVelocity.Length()
-			//	+ ", ratio: " + Block.Physics.AngularVelocity.Length() / (NavigationBlock.WorldMatrix.Forward.AngleBetween(prevForward)), "CalcRotate()");
+			result.Forward = block.LocalMatrix.GetDirectionVector(forward);
+			result.Up = block.LocalMatrix.GetDirectionVector(up);
+			result.Right = block.LocalMatrix.GetDirectionVector(Base6Directions.GetCross(forward, up));
+			//result.M44 = 1f;
 
-			Vector3 angularVelocity = -Vector3.Transform(Block.Physics.AngularVelocity, Block.CubeGrid.WorldMatrixNormalizedInv.GetOrientation());
+			return result;
+		}
+
+		/// <summary>
+		/// Calculates the force necessary to rotate the grid.
+		/// </summary>
+		/// <param name="Direction">The direction to face the localMatrix in.</param>
+		/// <param name="localMatrix">The matrix to rotate to face the direction, use a block's local matrix or result of GetMatrix()</param>
+		/// <returns>True iff localMatrix is facing Direction</returns>
+		public bool CalcRotate(RelativeDirection3F Direction, Matrix localMatrix)
+		{
+			Vector3 angleVelocity, displacement;
+			CalcRotate(Direction, localMatrix, out angleVelocity, out displacement);
+			updated_prevAngleVel = UpdateCount.Count;
+			prevAngleVel = angleVelocity;
+
+			myLogger.debugLog("displacement.LengthSquared(): " + displacement.LengthSquared(), "CalcRotate()");
+			return displacement.LengthSquared() < 0.01f;
+		}
+
+		/// <summary>
+		/// Calculates the force necessary to rotate the grid.
+		/// </summary>
+		/// <param name="Direction">The direction to face the localMatrix in.</param>
+		/// <param name="localMatrix">The matrix to rotate to face the direction, use a block's local matrix or result of GetMatrix()</param>
+		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
+		/// <param name="displacement">Angular distance between localMatrix and Direction</param>
+		private void CalcRotate(RelativeDirection3F Direction, Matrix localMatrix, out Vector3 angularVelocity, out Vector3 displacement)
+		{
+			angularVelocity = -Vector3.Transform(Block.Physics.AngularVelocity, Block.CubeBlock.WorldMatrixNormalizedInv.GetOrientation());
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			if (UpdateCount.Count - updated_prevAngleVel == 10ul)
+			if (UpdateCount.Count - updated_prevAngleVel == 1ul)
 			{
 				Vector3 ratio = (angularVelocity - prevAngleVel) / (rotateForceRatio * gyroForce);
 
-				//myLogger.debugLog("accel: " + (angularVelocity - prevAngleVel)
-				//	+ ", torque: " + (rotateForceRatio * gyroForce)
-				//	+ ", ratio: " + ratio, "CalcRotate()");
+				//myLogger.debugLog("rotateForceRatio: " + rotateForceRatio + ", ratio: " + ratio + ", accel: " + (angularVelocity - prevAngleVel) + ", torque: " + (rotateForceRatio * gyroForce), "CalcRotate()");
 
-				//myLogger.debugLog("ratio: " + ratio, "CalcRotate()");
 				myGyro.Update_torqueAccelRatio(rotateForceRatio, ratio);
 			}
-			//else
-			//	myLogger.debugLog("prevAngleVel is old: " + (UpdateCount.Count - updated_prevAngleVel), "CalcRotate()", Logger.severity.INFO);
+			else
+				myLogger.debugLog("prevAngleVel is old: " + (UpdateCount.Count - updated_prevAngleVel), "CalcRotate()", Logger.severity.INFO);
 
-			// calculate pitch, yaw, roll angles
+			localMatrix.M41 = 0; localMatrix.M42 = 0; localMatrix.M43 = 0; localMatrix.M44 = 1;
+			Matrix inverted;  Matrix.Invert(ref localMatrix, out inverted);
 
-			Vector3 navDirection = Direction.ToBlock(NavigationBlock);
+			localMatrix = localMatrix.GetOrientation();
+			inverted = inverted.GetOrientation();
 
-			Vector3 navRight = NavigationBlock.LocalMatrix.Right;
-			Vector3 remFrNR = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref navRight));
+			//myLogger.debugLog("local matrix: right: " + localMatrix.Right + ", up: " + localMatrix.Up + ", back: " + localMatrix.Backward + ", trans: " + localMatrix.Translation, "CalcRotate()");
+			//myLogger.debugLog("inverted matrix: right: " + inverted.Right + ", up: " + inverted.Up + ", back: " + inverted.Backward + ", trans: " + inverted.Translation, "CalcRotate()");
 
-			Vector3 navUp = NavigationBlock.LocalMatrix.Up;
-			Vector3 remFrNU = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref navUp));
+			Vector3 localDirect = Direction.ToLocal();
+			Vector3 rotBlockDirect; Vector3.Transform(ref localDirect, ref inverted, out rotBlockDirect);
 
-			float right = navDirection.X, down = -navDirection.Y, forward = -navDirection.Z;
-			float pitch = (float)Math.Atan2(down, forward), yaw = (float)Math.Atan2(right, forward);
+			rotBlockDirect.Normalize();
 
-			Vector3 disp = pitch * remFrNR + yaw * remFrNU;
+			float azimuth, elevation; Vector3.GetAzimuthAndElevation(rotBlockDirect, out azimuth, out elevation);
 
-			//rotateForceRatio = mapped;
-			//return;
+			Vector3 rotaRight = localMatrix.Right;
+			Vector3 rotaUp = localMatrix.Up;
+
+			Vector3 NFR_right = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaRight));
+			Vector3 NFR_up = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaUp));
+
+			displacement = -elevation * NFR_right + -azimuth * NFR_up;
+
+			myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "CalcRotate()");
+
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
 
 			if (myGyro.torqueAccelRatio == 0)
 			{
 				// do a test
-				//myLogger.debugLog("torqueAccelRatio == 0", "CalcRotate()");
-
-				rotateForceRatio = new Vector3(0, -1, 0);
-
-				updated_prevAngleVel = UpdateCount.Count;
-				prevAngleVel = angularVelocity;
-				//prevForward = NavigationBlock.WorldMatrix.Forward;
+				myLogger.debugLog("torqueAccelRatio == 0", "CalcRotate()");
+				rotateForceRatio = new Vector3(0, 1f, 0);
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(disp);
+			Vector3 targetVelocity = MaxAngleVelocity(displacement);
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
 			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * gyroForce);
 
-			//myLogger.debugLog("disp: " + disp + ", targetVelocity: " + targetVelocity + ", diffVel: " + diffVel + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
+			//myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", diffVel: " + diffVel, "CalcRotate()");
+			//myLogger.debugLog("diffVel: " + diffVel + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)
@@ -321,30 +350,37 @@ namespace Rynchodon.Autopilot.Movement
 				// if targetVelocity is close to 0, use dampeners
 
 				float target = targetVelocity.GetDim(i);
-				if (target > -0.1f && target < 0.1f)
+				if (target > -0.01f && target < 0.01f)
 				{
-					//myLogger.debugLog("target near 0 for " + i, "CalcRotate()");
+					myLogger.debugLog("target near 0 for " + i + ", " + target, "CalcRotate()");
 					rotateForceRatio.SetDim(i, 0f);
 					continue;
 				}
+
+				float velDim = angularVelocity.GetDim(i);
+				if (velDim < 0.01f && velDim > -0.01f)
+					continue;
 
 				// where rotateForceRatio opposes angularVelocity, use dampeners
 
 				float dim = rotateForceRatio.GetDim(i);
 				if (Math.Sign(dim) * Math.Sign(angularVelocity.GetDim(i)) < 0)
-				//{
-				//	myLogger.debugLog("force ratio opposes velocity: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
+				{
+					myLogger.debugLog("force ratio(" + dim + ") opposes velocity(" + angularVelocity.GetDim(i) + "), index: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
 					rotateForceRatio.SetDim(i, 0f);
-				//}
-				//else
-				//	myLogger.debugLog("force ratio is aligned with velocity: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
+				}
+				else
+					myLogger.debugLog("force ratio is aligned with velocity: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
 			}
 
-			updated_prevAngleVel = UpdateCount.Count;
-			prevAngleVel = angularVelocity;
-			//prevForward = NavigationBlock.WorldMatrix.Forward;
+			return;
 		}
 
+		/// <summary>
+		/// Calulates the maximum angular velocity to stop at the destination.
+		/// </summary>
+		/// <param name="disp">Displacement to the destination.</param>
+		/// <returns>The maximum angular velocity to stop at the destination.</returns>
 		private Vector3 MaxAngleVelocity(Vector3 disp)
 		{
 			Vector3 result = Vector3.Zero;
@@ -366,14 +402,21 @@ namespace Rynchodon.Autopilot.Movement
 			return result;
 		}
 
+		/// <summary>
+		/// Calculates the maximum angular speed to stop at the destination.
+		/// </summary>
 		/// <param name="accel">negative number, maximum deceleration</param>
 		/// <param name="dist">positive number, distance to travel</param>
+		/// <returns>The maximum angular speed to stop the destination</returns>
 		private float MaxAngleSpeed(float accel, float dist)
 		{
 			//myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
 			return (float)Math.Sqrt(-2 * accel * dist);
 		}
 
+		/// <summary>
+		/// Apply the calculated force ratios to the controller.
+		/// </summary>
 		public void MoveAndRotate()
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
@@ -382,13 +425,13 @@ namespace Rynchodon.Autopilot.Movement
 			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio, "MoveAndRotate()");
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
-			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
+			if ( moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
 				Block.Controller.MoveAndRotateStopped();
 				return;
 			}
 
-			Stopping = false;
+			//Stopping = false;
 
 			// clamp values and invert operations MoveAndRotate will perform
 			Vector3 moveControl; moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
@@ -398,6 +441,8 @@ namespace Rynchodon.Autopilot.Movement
 			rotateControl.Y = MathHelper.Clamp(rotateForceRatio.Y, -1, 1) * pixelsForMaxRotation;
 
 			float rollControl = MathHelper.Clamp(rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
+
+			myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
 			Block.Controller.MoveAndRotate(moveControl, rotateControl, rollControl);
 		}

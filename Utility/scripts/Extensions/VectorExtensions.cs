@@ -106,5 +106,16 @@ namespace Rynchodon
 		{
 			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
 		}
+
+		public static string ToPretty(this Vector3 vec)
+		{
+			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+		}
+
+		public static string ToPretty(this Vector3D vec)
+		{
+			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+		}
+
 	}
 }

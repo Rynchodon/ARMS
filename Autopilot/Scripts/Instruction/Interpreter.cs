@@ -23,7 +23,8 @@ namespace Rynchodon.Autopilot.Instruction
 	}
 
 	/// <summary>
-	/// Parses instructions into Actions
+	/// Parses instructions into Actions.
+	/// Information on command usage can also be found in Steam Description/Autopilot Navigation.txt
 	/// </summary>
 	public class Interpreter
 	{
@@ -265,7 +266,7 @@ namespace Rynchodon.Autopilot.Instruction
 				//	return getAction_gridDest(out instructionAction, dataLowerCase);
 				////case 'h': // harvest
 				case 'l':
-					return getAction_localBlock(out instructionAction, dataLowerCase);
+					return getAction_navigationBlock(out instructionAction, dataLowerCase);
 				//case 'm':
 				//	return getAction_missile(out instructionAction, dataLowerCase);
 				//case 'o':
@@ -357,7 +358,7 @@ namespace Rynchodon.Autopilot.Instruction
 		//	}
 
 		//	myLogger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
-		//	enqueueAllActions_continue(panelText.Substring(startOfCommands, endOfCommands - startOfCommands));
+		//	enqueueAllActions_continue(GPS_tag.Replace(panelText.Substring(startOfCommands, endOfCommands - startOfCommands), replaceWith););
 
 		//	return true; // this instruction was successfully executed, even if sub instructions were not
 		//}
@@ -641,28 +642,57 @@ namespace Rynchodon.Autopilot.Instruction
 		/// The search happens when the action is executed.
 		/// When action is executed, the block may not be found and instructionErrorIndex will be updated.
 		/// </summary>
-		private bool getAction_localBlock(out Action execute, string instruction)
+		private bool getAction_navigationBlock(out Action execute, string instruction)
 		{
-			// TODO: direction of local block
+			string[] splitComma = instruction.Split(',');
+
+			Base6Directions.Direction? forward = null, up = null;
+
+			execute = null;
+			switch (splitComma.Length)
+			{
+				case 1:
+					break;
+				case 2:
+					forward = stringToDirection(splitComma[1]);
+					if (!forward.HasValue)
+						return false;
+					break;
+				case 3:
+					forward = stringToDirection(splitComma[1]);
+					up = stringToDirection(splitComma[2]);
+					if (!forward.HasValue || !up.HasValue)
+						return false;
+					break;
+				default:
+					return false;
+			}
 
 			execute = () => {
-				myLogger.debugLog("searching for NavigationBlock: " + instruction, "getAction_localBlock()");
-				IMyCubeBlock navBlock = GridTargeter.findBestControl(Block.CubeBlock, Block.CubeGrid, instruction);
+				myLogger.debugLog("searching for NavigationBlock: " + splitComma[0], "getAction_navigationBlock()");
+				IMyCubeBlock navBlock = GridTargeter.findBestControl(Block.CubeBlock, Block.CubeGrid, splitComma[0]);
 				if (navBlock != null)
 				{
 					if (navBlock is IMyLaserAntenna || navBlock is Ingame.IMySolarPanel || navBlock is Ingame.IMyOxygenFarm)
 					{
-						new Facer(Mover, NavSet, navBlock);
-						//myLogger.debugLog("setting RotationBlock to " + navBlock.DisplayNameText, "getAction_localBlock()");
+						if (forward.HasValue)
+							if (up.HasValue)
+								new Facer(Mover, NavSet, navBlock, forward.Value, up.Value);
+							else
+								new Facer(Mover, NavSet, navBlock, forward.Value);
+						else
+							new Facer(Mover, NavSet, navBlock);
+
+						//myLogger.debugLog("setting RotationBlock to " + navBlock.DisplayNameText, "getAction_navigationBlock()");
 						//NavSet.Settings_Commands.RotationBlock = navBlock;
 					}
-					myLogger.debugLog("setting NavigationBlock to " + navBlock.DisplayNameText, "getAction_localBlock()");
+					myLogger.debugLog("setting NavigationBlock to " + navBlock.DisplayNameText, "getAction_navigationBlock()");
 					NavSet.Settings_Commands.NavigationBlock = navBlock;
 				}
 				else
 				{
-					myLogger.debugLog("could not get a NavigationBlock", "addInstruction()", Logger.severity.DEBUG);
-					Errors.AppendLine("Not Found: " + instruction);
+					myLogger.debugLog("could not get a NavigationBlock", "getAction_navigationBlock()", Logger.severity.DEBUG);
+					Errors.AppendLine("Not Found: " + splitComma[0]);
 				}
 			};
 

@@ -166,7 +166,7 @@ namespace Rynchodon
 			}
 			else if (block is Ingame.IMyLaserAntenna)
 			{
-				result.Add(Base6Directions.Direction.Up);
+				//result.Add(Base6Directions.Direction.Up); // up is really bad for laser antenna, it can't pick an azimuth and spins constantly
 				result.Add(Base6Directions.Direction.Forward);
 				result.Add(Base6Directions.Direction.Right);
 				result.Add(Base6Directions.Direction.Backward);

@@ -31,6 +31,8 @@ namespace Rynchodon
 			mySunDirection = DefSunDirection;
 
 			myLogger.debugLog("Definition SunDirection: " + mySunDirection + ", EnableSunRotation: " + EnableSunRotation + ", SunRotationIntervalMinutes: " + SunRotationIntervalMinutes, "SunProperties()", Logger.severity.INFO);
+			float azimuth, elevation; Vector3.GetAzimuthAndElevation(mySunDirection, out azimuth, out elevation);
+			myLogger.debugLog("azimuth: " + azimuth + ", elevation: " + elevation, "SunProperties()", Logger.severity.DEBUG);
 			Instance = this;
 		}
 

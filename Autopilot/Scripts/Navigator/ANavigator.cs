@@ -5,47 +5,109 @@ using Rynchodon.Autopilot.Movement;
 namespace Rynchodon.Autopilot.Navigator
 {
 
+	/// <summary>
+	/// Interface that all navigators that move the grid must implement.
+	/// </summary>
 	public interface INavigatorMover
 	{
+		/// <summary>
+		/// Calculate the movement force necessary to reach the target.
+		/// </summary>
 		void Move();
+		/// <summary>
+		/// Appends navigator mover's status to customInfo 
+		/// </summary>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		void AppendCustomInfo(StringBuilder customInfo);
 	}
 
+	/// <summary>
+	/// Interface that all navigators that rotate the grid must implement.
+	/// </summary>
 	public interface INavigatorRotator
 	{
+		/// <summary>True iff the target direction has been reached.</summary>
+		bool DirectionMatched { get; }
+
+		/// <summary>
+		/// Calculate the angular force necessary to reach the target direction.
+		/// </summary>
 		void Rotate();
+		/// <summary>
+		/// Appends navigator rotator's status to customInfo
+		/// </summary>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		void AppendCustomInfo(StringBuilder customInfo);
 	}
 
 	public abstract class ANavigator
 	{
-		protected readonly Mover _mover;
-		protected readonly AllNavigationSettings _navSet;
+		/// <summary>The Mover this navigator is using.</summary>
+		protected readonly Mover m_mover;
+		/// <summary>The settings this navigator is using.</summary>
+		protected readonly AllNavigationSettings m_navSet;
 
-		protected ShipControllerBlock m_controlBlock { get { return _mover.Block; } }
+		/// <summary>The ship controller the mover is using.</summary>
+		protected ShipControllerBlock m_controlBlock { get { return m_mover.Block; } }
 
+		/// <summary>
+		/// Sets m_mover and m_navSet for the navigator.
+		/// </summary>
+		/// <param name="mover">The Mover to use</param>
+		/// <param name="navSet">The settings to use</param>
 		protected ANavigator(Mover mover, AllNavigationSettings navSet)
 		{
-			this._mover = mover;
-			this._navSet = navSet;
+			this.m_mover = mover;
+			this.m_navSet = navSet;
 		}
 	}
 
 	public abstract class NavigatorMover : ANavigator, INavigatorMover
 	{
+		/// <summary>
+		/// Sets m_mover and m_navSet for the navigator.
+		/// </summary>
+		/// <param name="mover">The Mover to use</param>
+		/// <param name="navSet">The settings to use</param>
 		protected NavigatorMover(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
 
+		/// <summary>A NavigatorMover does not need to match direction, so this value is always true.</summary>
+		public bool DirectionMatched
+		{ get { return true; } }
+
+		/// <summary>
+		/// Calculate the movement force necessary to reach the target.
+		/// </summary>
 		public abstract void Move();
+		/// <summary>
+		/// Appends navigator mover's status to customInfo 
+		/// </summary>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		public abstract void AppendCustomInfo(StringBuilder customInfo);
 	}
 
 	public abstract class NavigatorRotator : ANavigator, INavigatorRotator
 	{
+		/// <summary>
+		/// Sets m_mover and m_navSet for the navigator.
+		/// </summary>
+		/// <param name="mover">The Mover to use</param>
+		/// <param name="navSet">The settings to use</param>
 		protected NavigatorRotator(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
 
+		/// <summary>True iff the target direction has been reached.</summary>
+		public abstract bool DirectionMatched { get; }
+
+		/// <summary>
+		/// Calculate the angular force necessary to reach the target direction.
+		/// </summary>
 		public abstract void Rotate();
+		/// <summary>
+		/// Appends navigator rotator's status to customInfo
+		/// </summary>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		public abstract void AppendCustomInfo(StringBuilder customInfo);
 	}
 

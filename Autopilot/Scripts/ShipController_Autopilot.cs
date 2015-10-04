@@ -28,6 +28,9 @@ namespace Rynchodon.Autopilot
 		}
 	}
 
+	/// <summary>
+	/// Core class for all Autopilot functionality.
+	/// </summary>
 	public class ShipController_Autopilot
 	{
 
@@ -37,7 +40,7 @@ namespace Rynchodon.Autopilot
 		private static readonly FastResourceLock lock_GridBeingControlled = new FastResourceLock();
 
 		/// <summary>
-		/// Does not check ServerSetting
+		/// Determines if the given block is an autopilot block. Does not check ServerSetting.
 		/// </summary>
 		public static bool IsControllableBlock(IMyCubeBlock block)
 		{
@@ -47,7 +50,7 @@ namespace Rynchodon.Autopilot
 			return block is MyRemoteControl;
 		}
 
-		public readonly ShipControllerBlock Block;
+		private readonly ShipControllerBlock Block;
 
 		private readonly Logger myLogger;
 		private readonly Interpreter myInterpreter;
@@ -57,6 +60,10 @@ namespace Rynchodon.Autopilot
 
 		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
 
+		/// <summary>
+		/// Creates an Autopilot for the given ship controller.
+		/// </summary>
+		/// <param name="block">The ship controller to use</param>
 		public ShipController_Autopilot(IMyCubeBlock block)
 		{
 			this.Block = new ShipControllerBlock(block);
@@ -68,13 +75,16 @@ namespace Rynchodon.Autopilot
 			myLogger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
 		}
 
-		public void Update10()
+		/// <summary>
+		/// Run the autopilot
+		/// </summary>
+		public void Update()
 		{
 			if (!CheckControl())
 			{
 				if (Enabled)
 				{
-					myLogger.debugLog("lost control", "Update10()", Logger.severity.INFO);
+					myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
 					Enabled = false;
 					this.Block.Terminal.RefreshCustomInfo();
 				}
@@ -82,9 +92,7 @@ namespace Rynchodon.Autopilot
 			}
 			if (!Enabled)
 			{
-				myLogger.debugLog("gained control", "Update10()", Logger.severity.INFO);
-				//myInterpreter.Mover.Destination = null;
-				//myInterpreter.Mover.RotateDest = null;
+				myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
 				Enabled = true;
 				myNavSet.OnStartOfCommands();
 			}
@@ -101,33 +109,46 @@ namespace Rynchodon.Autopilot
 			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
 			if (navM != null)
 			{
-				//myLogger.debugLog("moving", "Update10()");
-
-				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+				navM.Move();
+				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator; // fetched here because stopper might remove it
 				if (navR != null)
 					navR.Rotate();
 
-				navM.Move();
 				myInterpreter.Mover.MoveAndRotate();
 				return;
 			}
 
 			if (myInterpreter.hasInstructions())
 			{
-				myLogger.debugLog("running instructions", "Update10()");
+				myLogger.debugLog("running instructions", "Update()");
 
 				while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.NavigatorMover == null)
 					myInterpreter.instructionQueue.Dequeue().Invoke();
 
 				if (myNavSet.CurrentSettings.NavigatorMover == null)
 				{
-					myLogger.debugLog("interpreter did not yield an INavigatorMover", "Update()", Logger.severity.INFO);
+					myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
 					ReleaseControlledGrid();
 				}
 				return;
 			}
 
-			myLogger.debugLog("enqueing instructions", "Update10()");
+			{
+				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+				if (navR != null)
+				{
+					//run the rotator by itself until direction is matched
+
+					navR.Rotate();
+					myInterpreter.Mover.MoveAndRotate();
+
+					if (!navR.DirectionMatched)
+						return;
+					myInterpreter.Mover.FullStop();
+				}
+			}
+
+			myLogger.debugLog("enqueing instructions", "Update()");
 			myInterpreter.enqueueAllActions();
 
 			if (myInterpreter.hasInstructions())
@@ -138,6 +159,10 @@ namespace Rynchodon.Autopilot
 
 		#region Control
 
+		/// <summary>
+		/// Checks if the Autopilot has permission to run.
+		/// </summary>
+		/// <returns>True iff the Autopilot has permission to run.</returns>
 		private bool CheckControl()
 		{
 			// cache current grid in case it changes
@@ -183,12 +208,12 @@ namespace Rynchodon.Autopilot
 		/// <summary>
 		/// Checks if block and grid can be controlled.
 		/// </summary>
+		/// <returns>True iff block and grid can be controlled.</returns>
 		private bool CanControlBlockGrid(IMyCubeGrid grid)
 		{
 			// is grid ready
 			if (grid.IsStatic
 				|| grid.BigOwners.Count == 0)
-				//|| MyAPIGateway.Players.GetPlayerControllingEntity(grid) != null)
 				return false;
 
 			// is block ready
@@ -200,6 +225,9 @@ namespace Rynchodon.Autopilot
 			return true;
 		}
 
+		/// <summary>
+		/// Release the grid so another Autopilot can control it.
+		/// </summary>
 		private void ReleaseControlledGrid()
 		{
 			if (ControlledGrid == null)
@@ -218,6 +246,11 @@ namespace Rynchodon.Autopilot
 
 		#endregion
 
+		/// <summary>
+		/// Appends Autopilot's status to customInfo
+		/// </summary>
+		/// <param name="arg1">The autopilot block</param>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
 		{
 			if (myInterpreter.Errors.Length != 0)
@@ -260,7 +293,7 @@ namespace Rynchodon.Autopilot
 				navM.AppendCustomInfo(customInfo);
 
 			INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
-			if (navR != null)
+			if (navR != null && navR != navM)
 				navR.AppendCustomInfo(customInfo);
 		}
 

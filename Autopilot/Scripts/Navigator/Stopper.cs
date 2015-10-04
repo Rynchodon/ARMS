@@ -6,7 +6,7 @@ using Sandbox.ModAPI;
 namespace Rynchodon.Autopilot.Navigator
 {
 	/// <summary>
-	/// <para>Stop the ship, then finished.</para>
+	/// <para>Stops the ship</para>
 	/// </summary>
 	public class Stopper : NavigatorMover
 	{
@@ -16,9 +16,13 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger _logger;
 		private readonly bool exitAfter;
 
+		//private bool exited;
+
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
+		/// <param name="mover">The Mover to use</param>
+		/// <param name="navSet">The settings to use</param>
 		/// <param name="exitAfter">iff true, disable thruster control after stopping</param>
 		public Stopper(Mover mover, AllNavigationSettings navSet, bool exitAfter)
 			: base(mover, navSet)
@@ -26,34 +30,67 @@ namespace Rynchodon.Autopilot.Navigator
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			this.exitAfter = exitAfter;
 
-			_mover.FullStop();
+			m_mover.FullStop();
 
 			_logger.debugLog("created, disableThrust: " + exitAfter, "Stopper()");
 
 			if (exitAfter)
-				_navSet.Settings_Commands.NavigatorMover = this;
+				m_navSet.Settings_Commands.NavigatorMover = this;
 			else
-				_navSet.Settings_Task_Secondary.NavigatorMover = this;
+				m_navSet.Settings_Task_Secondary.NavigatorMover = this;
 		}
 
+		#region NavigatorMover Members
+
+		/// <summary>
+		/// Waits for the grid to stop.
+		/// </summary>
 		public override void Move()
 		{
-			if (_mover.Block.Physics.LinearVelocity.Sum < StoppedThreshold )
+			//if (exited)
+			//	return;
+
+			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() < StoppedThreshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() < StoppedThreshold)
 			{
-				_logger.debugLog("stopped", "Stopper()");
-				_navSet.OnTaskSecondaryComplete();
-				if (exitAfter && _mover.Block.Controller.ControlThrusters)
+				INavigatorRotator rotator = m_navSet.CurrentSettings.NavigatorRotator;
+				if (rotator != null && !rotator.DirectionMatched)
 				{
+					_logger.debugLog("waiting for rotator to match", "Move()");
+					return;
+				}
+
+				_logger.debugLog("stopped", "Stopper()");
+				m_navSet.OnTaskSecondaryComplete();
+				if (exitAfter && m_mover.Block.Controller.ControlThrusters)
+				{
+					m_navSet.OnTaskPrimaryComplete();
+
+					//_logger.debugLog("setting exit", "Move()");
+					//exited = true;
 					_logger.debugLog("disabling thrusters", "Stopper()");
-					_mover.Block.Terminal.GetActionWithName("ControlThrusters").Apply(_mover.Block.Terminal);
+					m_mover.Block.Terminal.GetActionWithName("ControlThrusters").Apply(m_mover.Block.Terminal);
 				}
 			}
 			else
 				_logger.debugLog("not stopped", "Stopper()");
 		}
 
+		/// <summary>
+		/// Appends "Exit after stopping" or "Stopping"
+		/// </summary>
+		/// <param name="customInfo">The autopilot block's custom info</param>
 		public override void AppendCustomInfo(StringBuilder customInfo)
-		{ customInfo.AppendLine("Stopping"); }
+		{
+			//if (exited)
+			//	customInfo.AppendLine("Exited");
+			//else 
+			if (exitAfter)
+				customInfo.AppendLine("Exit after stopping");
+			else
+				customInfo.AppendLine("Stopping");
+		}
+
+		#endregion
 
 	}
 

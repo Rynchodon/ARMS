@@ -200,14 +200,14 @@ namespace Rynchodon.Update
 					if (ShipController_Autopilot.IsControllableBlock(block))
 					{
 						var sca = new ShipController_Autopilot(block);
-						RegisterForUpdates(10, sca.Update10, block);
+						RegisterForUpdates(1, sca.Update, block);
 					}
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (ShipController_Autopilot.IsControllableBlock(block))
 				{
 					var sca = new ShipController_Autopilot(block);
-					RegisterForUpdates(10, sca.Update10, block);
+					RegisterForUpdates(1, sca.Update, block);
 				}
 			});
 
