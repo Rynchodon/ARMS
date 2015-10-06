@@ -108,12 +108,15 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaximumVelocity(destDisp);
 
+			// project targetVelocity onto destination direction (take shortest path)
+			targetVelocity = destDisp.Project(targetVelocity);
+
 			float tarSpeedSq = targetVelocity.LengthSquared();
 			float speedRequest = NavSet.CurrentSettings.SpeedTarget;
 			if (tarSpeedSq > speedRequest * speedRequest)
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
-			// set accel to differnce between velocites, reach target in 1s.
+			// set accel to difference between velocites, reach target in 1s.
 			Vector3 accel = targetVelocity - relaVelocity;
 
 			moveForceRatio = ToForceRatio(accel);

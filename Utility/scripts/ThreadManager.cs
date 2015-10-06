@@ -15,15 +15,19 @@ namespace Rynchodon
 		private static Logger myLogger = new Logger("ThreadManager");
 
 		public byte AllowedParallel { get; private set; }
+
 		public byte parallelTasks { get; private set; }
-		private FastResourceLock lock_parallelTasks = new FastResourceLock();
+		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
-		private MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
-		private FastResourceLock lock_ActionQueue = new FastResourceLock();
+		public readonly bool Background;
+	
+		private readonly MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
+		private readonly FastResourceLock lock_ActionQueue = new FastResourceLock();
 
-		public ThreadManager(byte AllowedParallel = 1)
+		public ThreadManager(byte AllowedParallel = 1, bool background = false)
 		{
 			this.AllowedParallel = AllowedParallel;
+			this.Background = background;
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
@@ -31,7 +35,7 @@ namespace Rynchodon
 		{
 			myLogger.debugLog("stopping thread", "Entities_OnCloseAll()", Logger.severity.INFO);
 			using (lock_ActionQueue.AcquireExclusiveUsing())
-				ActionQueue = new MyQueue<Action>(0);
+				ActionQueue.Clear();
 		}
 
 		public void EnqueueAction(Action toQueue)
@@ -50,7 +54,10 @@ namespace Rynchodon
 				parallelTasks++;
 			}
 
-			MyAPIGateway.Parallel.Start(Run);
+			if (Background)
+				MyAPIGateway.Parallel.StartBackground(Run);
+			else
+				MyAPIGateway.Parallel.Start(Run);
 		}
 
 		public void EnqueueIfIdle(Action toQueue)

@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Weapons;
 using Sandbox.Common;
@@ -182,6 +183,11 @@ namespace Rynchodon.Update
 			});
 
 			#endregion
+
+			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
+				var od = new OreDetector(block);
+				RegisterForUpdates(100, od.Update, block);
+			});
 
 			RegisterForPlayerLeaves(UserSettings.OnPlayerLeave);
 		}

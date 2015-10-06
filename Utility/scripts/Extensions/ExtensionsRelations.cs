@@ -209,7 +209,7 @@ namespace Rynchodon
 		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeGrid target)
 		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
 
-		public static bool canConsdierFriendly(this IMyCubeBlock block, IMyEntity target)
+		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyEntity target)
 		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
 
 

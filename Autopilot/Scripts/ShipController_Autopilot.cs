@@ -37,7 +37,6 @@ namespace Rynchodon.Autopilot
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
 		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
-		private static readonly FastResourceLock lock_GridBeingControlled = new FastResourceLock();
 
 		/// <summary>
 		/// Determines if the given block is an autopilot block. Does not check ServerSetting.
@@ -194,12 +193,11 @@ namespace Rynchodon.Autopilot
 				return false;
 			}
 
-			using (lock_GridBeingControlled.AcquireExclusiveUsing())
-				if (!GridBeingControlled.Add(myGrid))
-				{
-					myLogger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
-					return false;
-				}
+			if (!GridBeingControlled.Add(myGrid))
+			{
+				myLogger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
+				return false;
+			}
 
 			ControlledGrid = myGrid;
 			return true;
@@ -233,12 +231,11 @@ namespace Rynchodon.Autopilot
 			if (ControlledGrid == null)
 				return;
 
-			using (lock_GridBeingControlled.AcquireExclusiveUsing())
-				if (!GridBeingControlled.Remove(ControlledGrid))
-				{
-					myLogger.alwaysLog("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled", "ReleaseControlledGrid()", Logger.severity.FATAL);
-					throw new InvalidOperationException("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled");
-				}
+			if (!GridBeingControlled.Remove(ControlledGrid))
+			{
+				myLogger.alwaysLog("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled", "ReleaseControlledGrid()", Logger.severity.FATAL);
+				throw new InvalidOperationException("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled");
+			}
 
 			//myLogger.debugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
 			ControlledGrid = null;

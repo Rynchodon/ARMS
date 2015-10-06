@@ -100,7 +100,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Rotate()
 		{
-			if (DirectionMatched)
 			v_matched = m_mover.CalcRotate(RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, TargetDirection()), m_localMatrix);
 		}
 
