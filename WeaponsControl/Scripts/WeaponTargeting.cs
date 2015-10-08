@@ -1,8 +1,7 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -29,7 +28,7 @@ namespace Rynchodon.Weapons
 			Targeting = GetOptions | 1 << 1
 		}
 
-		private static readonly ThreadManager Thread = new ThreadManager();
+		private static readonly ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
 		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -196,7 +197,7 @@ namespace Rynchodon.AntennaRelay
 		private const float decoyVolume = 10000f;
 
 		private static readonly Logger staticLogger = new Logger("N/A", "RadarEquipment");
-		private static readonly ThreadManager myThread = new ThreadManager();
+		private static readonly ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static readonly Dictionary<string, Definition> AllDefinitions = new Dictionary<string, Definition>();
 		private static readonly List<RadarEquipment> AllRadarAndJam = new List<RadarEquipment>();
 

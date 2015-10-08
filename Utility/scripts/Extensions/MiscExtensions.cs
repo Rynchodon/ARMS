@@ -263,6 +263,15 @@ namespace Rynchodon
 		/// <summary>
 		/// Longest of width, length, height.
 		/// </summary>
+		public static double GetLongestDim(this BoundingBoxD box)
+		{
+			Vector3 Size = box.Size;
+			return MathHelper.Max(Size.X, Size.Y, Size.Z);
+		}
+
+		/// <summary>
+		/// Longest of width, length, height.
+		/// </summary>
 		public static float GetLongestDim(this IMyCubeGrid grid)
 		{ return grid.LocalAABB.GetLongestDim(); }
 
@@ -280,5 +289,9 @@ namespace Rynchodon
 
 		public static bool IsValid(this float number)
 		{ return !float.IsNaN(number) && !float.IsInfinity(number); }
+
+		public static bool NullOrClosed(this IMyEntity entity)
+		{ return entity == null || entity.MarkedForClose || entity.Closed; }
+
 	}
 }

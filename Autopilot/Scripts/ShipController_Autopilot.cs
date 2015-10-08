@@ -4,6 +4,8 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Settings;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Components;
@@ -18,13 +20,31 @@ namespace Rynchodon.Autopilot
 		public readonly IMyTerminalBlock Terminal;
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
-		public MyPhysicsComponentBase Physics { get { return CubeGrid.Physics; } }
+		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
 
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
 			Controller = block as MyShipController;
 			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
+		}
+
+		public void ApplyAction(string action)
+		{
+			if (MyAPIGateway.Multiplayer.IsServer)
+				Terminal.GetActionWithName(action).Apply(Terminal);
+		}
+
+		public void SetControl(bool enable)
+		{
+			if (Controller.ControlThrusters != enable)
+				ApplyAction("ControlThrusters");
+		}
+
+		public void SetDamping(bool enable)
+		{
+			if ((Controller as IMyControllableEntity).EnabledDamping != enable)
+				Controller.SwitchDamping();
 		}
 	}
 
@@ -39,14 +59,45 @@ namespace Rynchodon.Autopilot
 		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
 		/// <summary>
-		/// Determines if the given block is an autopilot block. Does not check ServerSetting.
+		/// Determines if the given block is an autopilot block. Does not check ServerSettings.
 		/// </summary>
-		public static bool IsControllableBlock(IMyCubeBlock block)
+		/// <param name="block">The block to check</param>
+		/// <returns>True iff the given block is an autopilot block.</returns>
+		public static bool IsAutopilotBlock(IMyCubeBlock block)
 		{
 			if (block is MyCockpit)
 				return block.BlockDefinition.SubtypeId.Contains(subtype_autopilotBlock);
 
 			return block is MyRemoteControl;
+		}
+
+		/// <summary>
+		/// Determines if the given grid has an autopilot block. Does check ServerSettings.
+		/// </summary>
+		/// <param name="grid">The grid to search</param>
+		/// <returns>True iff the given grid contains one or more autopilot blocks.</returns>
+		public static bool HasAutopilotBlock(IMyCubeGrid grid)
+		{
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowAutopilot))
+				return false;
+
+			var cache = CubeGridCache.GetFor(grid);
+			var cockpits = cache.GetBlocksOfType(typeof(MyObjectBuilder_Cockpit));
+			if (cockpits != null)
+				foreach (IMyCubeBlock cockpit in cockpits)
+					if (IsAutopilotBlock(cockpit))
+						return true;
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+			{
+				var remotes = cache.GetBlocksOfType(typeof(MyObjectBuilder_RemoteControl));
+				if (remotes != null)
+					foreach (IMyCubeBlock remote in remotes)
+						if (IsAutopilotBlock(remote))
+							return true;
+			}
+
+			return false;
 		}
 
 		private readonly ShipControllerBlock Block;
@@ -55,7 +106,7 @@ namespace Rynchodon.Autopilot
 		private readonly Interpreter myInterpreter;
 
 		private IMyCubeGrid ControlledGrid;
-		private bool Enabled;
+		private bool Enabled, Halted;
 
 		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
 
@@ -79,81 +130,91 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public void Update()
 		{
-			if (!CheckControl())
+			try
 			{
-				if (Enabled)
+				if (Halted)
+					return;
+				if (!CheckControl())
 				{
-					myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
-					Enabled = false;
-					this.Block.Terminal.RefreshCustomInfo();
+					if (Enabled)
+					{
+						myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
+						Enabled = false;
+						this.Block.Terminal.RefreshCustomInfo();
+					}
+					return;
 				}
-				return;
-			}
-			if (!Enabled)
-			{
-				myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
-				Enabled = true;
-				myNavSet.OnStartOfCommands();
-			}
-
-			this.Block.Terminal.RefreshCustomInfo();
-
-			if (myNavSet.CurrentSettings.WaitUntil > DateTime.UtcNow)
-				return;
-
-			if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
-				// wait for player to give back control, do not reset
-				return;
-
-			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
-			if (navM != null)
-			{
-				navM.Move();
-				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator; // fetched here because stopper might remove it
-				if (navR != null)
-					navR.Rotate();
-
-				myInterpreter.Mover.MoveAndRotate();
-				return;
-			}
-
-			if (myInterpreter.hasInstructions())
-			{
-				myLogger.debugLog("running instructions", "Update()");
-
-				while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.NavigatorMover == null)
-					myInterpreter.instructionQueue.Dequeue().Invoke();
-
-				if (myNavSet.CurrentSettings.NavigatorMover == null)
+				if (!Enabled)
 				{
-					myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
-					ReleaseControlledGrid();
+					myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
+					Enabled = true;
+					myNavSet.OnStartOfCommands();
 				}
-				return;
-			}
 
-			{
-				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
-				if (navR != null)
+				this.Block.Terminal.RefreshCustomInfo();
+
+				if (myNavSet.CurrentSettings.WaitUntil > DateTime.UtcNow)
+					return;
+
+				if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
+					// wait for player to give back control, do not reset
+					return;
+
+				INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+				if (navM != null)
 				{
-					//run the rotator by itself until direction is matched
+					navM.Move();
 
-					navR.Rotate();
+					INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator; // fetched here because mover might remove it
+					if (navR != null)
+						navR.Rotate();
+
 					myInterpreter.Mover.MoveAndRotate();
-
-					if (!navR.DirectionMatched)
-						return;
-					myInterpreter.Mover.FullStop();
+					return;
 				}
-			}
 
-			myLogger.debugLog("enqueing instructions", "Update()");
-			myInterpreter.enqueueAllActions();
+				if (myInterpreter.hasInstructions())
+				{
+					myLogger.debugLog("running instructions", "Update()");
 
-			if (myInterpreter.hasInstructions())
+					while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.NavigatorMover == null)
+						myInterpreter.instructionQueue.Dequeue().Invoke();
+
+					if (myNavSet.CurrentSettings.NavigatorMover == null)
+					{
+						myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
+						ReleaseControlledGrid();
+					}
+					return;
+				}
+
+				{
+					INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+					if (navR != null)
+					{
+						//run the rotator by itself until direction is matched
+
+						navR.Rotate();
+						myInterpreter.Mover.MoveAndRotate();
+
+						if (!navR.DirectionMatched)
+							return;
+						myInterpreter.Mover.FullStop();
+					}
+				}
+
+				myLogger.debugLog("enqueing instructions", "Update()");
+				myInterpreter.enqueueAllActions();
+
+				if (!myInterpreter.hasInstructions())
+					ReleaseControlledGrid();
 				myNavSet.OnStartOfCommands();
-			else
-				ReleaseControlledGrid();
+			}
+			catch (Exception ex)
+			{
+				myLogger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
+				HCF();
+			}
 		}
 
 		#region Control
@@ -250,48 +311,86 @@ namespace Rynchodon.Autopilot
 		/// <param name="customInfo">The autopilot block's custom info</param>
 		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
 		{
-			if (myInterpreter.Errors.Length != 0)
+			try
 			{
-				customInfo.AppendLine("Errors:");
-				customInfo.Append(myInterpreter.Errors);
-				customInfo.AppendLine();
-			}
+				if (myInterpreter.Errors.Length != 0)
+				{
+					customInfo.AppendLine("Errors:");
+					customInfo.Append(myInterpreter.Errors);
+					customInfo.AppendLine();
+				}
 
-			if (ControlledGrid == null)
+				if (ControlledGrid == null)
+				{
+					customInfo.AppendLine("Disabled");
+					return;
+				}
+
+				bool moving = true;
+
+				double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
+				if (wait > 0)
+				{
+					moving = false;
+					customInfo.Append("Waiting for ");
+					customInfo.Append((int)wait);
+					customInfo.AppendLine("s");
+				}
+
+				IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
+				if (controlling != null)
+				{
+					moving = false;
+					customInfo.Append("Player controlling: ");
+					customInfo.AppendLine(controlling.DisplayName);
+				}
+
+				if (!moving)
+					return;
+
+				INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+				if (navM != null)
+					navM.AppendCustomInfo(customInfo);
+
+				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+				if (navR != null && navR != navM)
+					navR.AppendCustomInfo(customInfo);
+			}
+			catch (Exception ex)
 			{
-				customInfo.AppendLine("Disabled");
-				return;
+				myLogger.alwaysLog("Exception: " + ex, "Terminal_AppendingCustomInfo()", Logger.severity.ERROR);
+				HCF();
 			}
+		}
 
-			bool moving = true;
+		private void HCF()
+		{
+			Halted = true;
+			Enabled = false;
+			Block.Controller.MoveAndRotateStopped();
 
-			double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
-			if (wait > 0)
+			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
+			Block.Terminal.AppendingCustomInfo += HCF_AppendingCustomInfo;
+			Block.CubeBlock.IsWorkingChanged += HCF_RestoreCustomInfo;
+
+			Block.Terminal.RefreshCustomInfo();
+		}
+
+		private void HCF_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
+		{ customInfo.AppendLine("Autopilot crashed, see log for details"); }
+
+		private void HCF_RestoreCustomInfo(IMyCubeBlock block)
+		{
+			if (Block.Terminal.IsWorking)
 			{
-				moving = false;
-				customInfo.Append("Waiting for ");
-				customInfo.Append((int)wait);
-				customInfo.AppendLine("s");
+				Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
+				Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
+				Block.CubeBlock.IsWorkingChanged -= HCF_RestoreCustomInfo;
+
+				Block.Terminal.RefreshCustomInfo();
 			}
-
-			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
-			if (controlling != null)
-			{
-				moving = false;
-				customInfo.Append("Player controlling: ");
-				customInfo.AppendLine(controlling.DisplayName);
-			}
-
-			if (!moving)
-				return;
-
-			INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
-			if (navM != null)
-				navM.AppendCustomInfo(customInfo);
-
-			INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
-			if (navR != null && navR != navM)
-				navR.AppendCustomInfo(customInfo);
+			else
+				Halted = false;
 		}
 
 	}

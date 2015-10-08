@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot.Data
 			//private PathfinderPermissions? m_pathPerm;
 			//private MovementType? m_allowedMovement;
 
-			private float? m_destRadius, m_speedTarget; //, m_maxSpeed, m_minSpeed;
+			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget; //, m_maxSpeed, m_minSpeed;
 
 			private bool? m_ignoreAsteroid;//, m_jumpToDest;
 
@@ -61,6 +61,8 @@ namespace Rynchodon.Autopilot.Data
 				//m_pathPerm = PathfinderPermissions.All;
 
 				m_destRadius = 100f;
+				m_distance = float.MaxValue;
+				m_distanceAngle = float.MaxValue;
 				m_speedTarget = 100f;
 				//m_maxSpeed = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed);
 				//m_minSpeed = 0.5f;
@@ -155,6 +157,18 @@ namespace Rynchodon.Autopilot.Data
 			{
 				get { return m_destRadius ?? parent.DestinationRadius; }
 				set { m_destRadius = value; }
+			}
+
+			public float Distance
+			{
+				get { return m_distance ?? parent.Distance; }
+				set { m_distance = value; }
+			}
+
+			public float DistanceAngle
+			{
+				get { return m_distanceAngle ?? parent.DistanceAngle; }
+				set { m_distanceAngle = value; }
 			}
 
 			public float SpeedTarget

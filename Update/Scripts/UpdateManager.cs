@@ -6,6 +6,7 @@ using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
+using Rynchodon.Threading;
 using Rynchodon.Weapons;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
@@ -75,12 +76,12 @@ namespace Rynchodon.Update
 			});
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsControllableBlock(block))
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsControllableBlock(block))
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
 			});
@@ -186,7 +187,7 @@ namespace Rynchodon.Update
 
 			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
 				var od = new OreDetector(block);
-				RegisterForUpdates(100, od.Update, block);
+				RegisterForUpdates(1000, od.Update, block);
 			});
 
 			RegisterForPlayerLeaves(UserSettings.OnPlayerLeave);
@@ -203,14 +204,14 @@ namespace Rynchodon.Update
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsControllableBlock(block))
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
 					{
 						var sca = new ShipController_Autopilot(block);
 						RegisterForUpdates(1, sca.Update, block);
 					}
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsControllableBlock(block))
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
 				{
 					var sca = new ShipController_Autopilot(block);
 					RegisterForUpdates(1, sca.Update, block);
@@ -273,12 +274,10 @@ namespace Rynchodon.Update
 		private readonly Logger myLogger;
 		//private static UpdateManager Instance;
 
-		/// <summary>
-		/// For MySessionComponentBase
-		/// </summary>
 		public UpdateManager()
 		{
 			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
+			ThreadTracker.SetGameThread();
 		}
 
 		public void Init()
@@ -392,7 +391,7 @@ namespace Rynchodon.Update
 				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
-					if (UpdateCount.Count % pair.Key == 0)
+					if (Globals.UpdateCount % pair.Key == 0)
 					{
 						foreach (Action item in pair.Value)
 							try
@@ -421,7 +420,7 @@ namespace Rynchodon.Update
 			}
 			finally
 			{
-				UpdateCount.Count++;
+				Globals.UpdateCount++;
 				MainLock.MainThread_AcquireExclusive();
 			}
 		}

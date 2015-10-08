@@ -19,8 +19,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly float DestinationRadius;
 		private readonly bool Rotating;
 
-		private double distance;
-
 		/// <summary>
 		/// Creates a GOLIS
 		/// </summary>
@@ -54,8 +52,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			distance = Vector3D.Distance(location, NavigationBlock.GetPosition());
-			if (distance < DestinationRadius)
+			if (m_navSet.CurrentSettings.Distance < DestinationRadius)
 			{
 				myLogger.debugLog("Reached destination: " + location, "PerformTask()", Logger.severity.INFO);
 				m_navSet.OnTaskSecondaryComplete();
@@ -81,7 +78,7 @@ namespace Rynchodon.Autopilot.Navigator
 			customInfo.AppendLine(location.ToString());
 
 			customInfo.Append("Distance: ");
-			customInfo.Append(PrettySI.makePretty(distance));
+			customInfo.Append(PrettySI.makePretty(m_navSet.CurrentSettings.Distance));
 			customInfo.AppendLine("m");
 		}
 
@@ -94,7 +91,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public void Rotate()
 		{
-			if (distance > 100)
+			if (m_navSet.CurrentSettings.Distance > 100)
 			{
 				Vector3 direction = location - NavigationBlock.GetPosition();
 				m_mover.CalcRotate(RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction), NavigationBlock.LocalMatrix);

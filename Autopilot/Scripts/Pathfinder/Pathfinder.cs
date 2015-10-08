@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private NavSettings.SpecialFlying SpecialFyingInstructions;// { get; private set; }
 
 		private PathChecker myPathChecker;
-		private static ThreadManager PathFinderThread = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder));
+		private static ThreadManager PathFinderThread = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), threadName: "Pathfinder");
 
 		/// <summary>next time CheckPath() is allowed to run</summary>
 		private DateTime nextRun = DateTime.MinValue;

@@ -4,6 +4,7 @@ major:
 more precise navigation
 pathfinder checks for landing gear attachments
 block searches will check piston and rotor attached grids
+harvest by ore type
 
 minor:
 Stop command

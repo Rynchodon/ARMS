@@ -1,33 +1,48 @@
-﻿#define LOG_ENABLED //remove on build
-
-using Sandbox.ModAPI;
+﻿using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using VRage;
 using VRage.Collections;
 
-namespace Rynchodon
+namespace Rynchodon.Threading
 {
 	public class ThreadManager
 	{
+
 		private const int QueueOverflow = 1000000;
 
-		private static Logger myLogger = new Logger("ThreadManager");
+		private static readonly Logger myLogger = new Logger("ThreadManager");
 
-		public byte AllowedParallel { get; private set; }
+		private readonly bool Background;
+		private readonly string ThreadName;
 
-		public byte parallelTasks { get; private set; }
+		private byte value_parallelTasks;
 		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
-		public readonly bool Background;
-	
 		private readonly MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
 		private readonly FastResourceLock lock_ActionQueue = new FastResourceLock();
 
-		public ThreadManager(byte AllowedParallel = 1, bool background = false)
+		public byte AllowedParallel { get; private set; }
+
+		public byte ParallelTasks
+		{
+			get
+			{
+				using (lock_parallelTasks.AcquireSharedUsing())
+					return value_parallelTasks;
+			}
+			private set
+			{
+				using (lock_parallelTasks.AcquireExclusiveUsing())
+					value_parallelTasks = value;
+			}
+		}
+
+		public ThreadManager(byte AllowedParallel = 1, bool background = false, string threadName = null)
 		{
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
+			this.ThreadName = threadName;
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
@@ -38,26 +53,23 @@ namespace Rynchodon
 				ActionQueue.Clear();
 		}
 
-		public void EnqueueAction(Action toQueue)
+		public void EnqueueAction(Action toQueue, Action callback = null)
 		{
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 			{
 				ActionQueue.Enqueue(toQueue);
 
-				VRage.Exceptions.ThrowIf<OverflowException>(ActionQueue.Count > QueueOverflow, "queue is too long");
+				VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 			}
 
-			using (lock_parallelTasks.AcquireExclusiveUsing())
-			{
-				if (parallelTasks >= AllowedParallel)
-					return;
-				parallelTasks++;
-			}
+			if (ParallelTasks >= AllowedParallel)
+				return;
+			ParallelTasks++;
 
 			if (Background)
-				MyAPIGateway.Parallel.StartBackground(Run);
+				MyAPIGateway.Parallel.StartBackground(Run, callback);
 			else
-				MyAPIGateway.Parallel.Start(Run);
+				MyAPIGateway.Parallel.Start(Run, callback);
 		}
 
 		public void EnqueueIfIdle(Action toQueue)
@@ -74,6 +86,8 @@ namespace Rynchodon
 		{
 			try
 			{
+				if (ThreadName != null)
+					ThreadTracker.ThreadName = ThreadName + '(' + ThreadTracker.ThreadNumber + ')';
 				Action currentItem;
 				while (true)
 				{
@@ -89,9 +103,10 @@ namespace Rynchodon
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
 			finally
 			{
-				using (lock_parallelTasks.AcquireExclusiveUsing())
-					parallelTasks--;
+				ParallelTasks--;
+				ThreadTracker.ThreadName = null;
 			}
 		}
+
 	}
 }

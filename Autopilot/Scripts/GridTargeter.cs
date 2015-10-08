@@ -182,7 +182,7 @@ namespace Rynchodon.Autopilot
 		private static string getBlockName(IMyCubeBlock Fatblock)
 		{
 			string blockName;
-			if (ShipController_Autopilot.IsControllableBlock(Fatblock))
+			if (ShipController_Autopilot.IsAutopilotBlock(Fatblock))
 			{
 				blockName = Fatblock.getNameOnly();
 				if (blockName == null)

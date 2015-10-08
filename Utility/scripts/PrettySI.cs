@@ -69,7 +69,7 @@ namespace Rynchodon
 				}
 
 				// more than a thousand of highest multi
-				myLogger.debugLog("more than a thousand of highest multi", "makePretty()");
+				myLogger.debugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 
@@ -86,7 +86,7 @@ namespace Rynchodon
 				}
 
 				// less than a thousandth of lowest sub-multi
-				myLogger.debugLog("less than a thousandth of lowest sub-multi", "makePretty()");
+				myLogger.debugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 		}

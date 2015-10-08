@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Rynchodon.Threading;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
@@ -20,7 +21,7 @@ namespace Rynchodon
 	///	<para>removed for Dev version:</para>
 	///	<para>    System.Diagnostics.Conditional</para>
 	/// <para> </para>
-	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Grid][%Class][%Method][%PriState][%SecState]%Message</para>
+	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%Class][%Method][%PriState][%SecState]%Message</para>
 	/// </remarks>
 	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.NoUpdate)]
 	public class Logger : Sandbox.Common.MySessionComponentBase
@@ -31,11 +32,50 @@ namespace Rynchodon
 		private static int maxNumLines = 1000000;
 		private static int numLines = 0;
 
+		private readonly string m_classname;
 		/// <summary>
 		/// take precedence over strings
 		/// </summary>
-		private Func<string> f_gridName, f_state_primary, f_state_secondary;
-		private string gridName, className; //, default_primary, default_secondary;
+		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
+
+		/// <summary>
+		/// Creates a Logger that gets the context and states from supplied functions.
+		/// </summary>
+		/// <param name="calling_class">the name of the class this Logger belongs to</param>
+		/// <param name="context">the context of this logger</param>
+		/// <param name="default_primary">the primary state used when one is not supplied to alwaysLog() or debugLog()</param>
+		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
+		public Logger(string calling_class, Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null)
+		{
+			this.m_classname = calling_class;
+			this.f_context = context;
+			this.f_state_primary = default_primary;
+			this.f_state_secondary = default_secondary;
+		}
+
+		/// <summary>
+		/// Creates a Logger that gets the context and states from block and supplied function.
+		/// </summary>
+		/// <param name="calling_class">the name of the class this Logger belongs to</param>
+		/// <param name="block">The block to get context and states from</param>
+		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
+		public Logger(string calling_class, IMyCubeBlock block, Func<string> default_secondary = null)
+		{
+			this.m_classname = calling_class;
+
+			this.f_context = () => block.CubeGrid.DisplayName;
+			if (default_secondary == null)
+			{
+				this.f_state_primary = () => block.DefinitionDisplayNameText;
+				this.f_state_secondary = () => block.getNameOnly();
+			}
+			else
+			{
+				this.f_state_primary = () => block.getNameOnly();
+				this.f_state_secondary = default_secondary;
+			}
+			return;
+		}
 
 		/// <summary>
 		/// needed for MySessionComponentBase, not useful for logging
@@ -49,31 +89,8 @@ namespace Rynchodon
 		/// <param name="className">the name of the class this Logger belongs to</param>
 		public Logger(string gridName, string className)
 		{
-			this.gridName = gridName;
-			this.className = className;
-		}
-
-		/// <summary>
-		/// Creates a Logger that gets the grid name and states from supplied functions.
-		/// </summary>
-		/// <param name="gridName">the name of the grid this Logger belongs to</param>
-		/// <param name="className">the name of the class this Logger belongs to</param>
-		/// <param name="default_primary">the primary state used when one is not supplied to log() or debugLog()</param>
-		/// <param name="default_secondary">the secondary state used when one is not supplied to log() or debugLog()</param>
-		public Logger(string className, Func<string> gridName = null, Func<string> default_primary = null, Func<string> default_secondary = null)
-		{
-			this.className = className;
-			this.f_gridName = gridName;
-			this.f_state_primary = default_primary;
-			this.f_state_secondary = default_secondary;
-		}
-
-		public Logger(string className, IMyCubeBlock Block)
-		{
-			this.className = className;
-			this.f_gridName = () => Block.CubeGrid.DisplayName;
-			this.f_state_primary = () => Block.DefinitionDisplayNameText;
-			this.f_state_secondary = () => Block.getNameOnly();
+			this.f_context = () => gridName;
+			this.m_classname = className;
 		}
 
 		private void deleteIfExists(string filename)
@@ -171,8 +188,7 @@ namespace Rynchodon
 					if (MyAPIGateway.Utilities == null || !createLog())
 						return; // cannot log
 
-				if (f_gridName != null)
-					gridName = f_gridName.Invoke();
+				string context = f_context != null ? f_context.Invoke() : null;
 				if (primaryState == null)
 				{
 					if (f_state_primary != null)
@@ -192,8 +208,9 @@ namespace Rynchodon
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
 				appendWithBrackets(level.ToString());
-				appendWithBrackets(gridName);
-				appendWithBrackets(className);
+				appendWithBrackets(ThreadTracker.GetNameOrNumber());
+				appendWithBrackets(context);
+				appendWithBrackets(m_classname);
 				appendWithBrackets(methodName);
 				appendWithBrackets(primaryState);
 				appendWithBrackets(secondaryState);
@@ -246,10 +263,8 @@ namespace Rynchodon
 		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public static void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
-		{ 
-			notify(message, disappearTimeMs, level);
-		}
-		
+		{ notify(message, disappearTimeMs, level); }
+
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional.
 		/// </summary>
@@ -267,9 +282,11 @@ namespace Rynchodon
 		}
 
 		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL }
-		
-		private static MyFontEnum fontForSeverity(severity level = severity.TRACE) {
-			switch (level) {
+
+		private static MyFontEnum fontForSeverity(severity level = severity.TRACE)
+		{
+			switch (level)
+			{
 				case severity.INFO:
 					return MyFontEnum.Green;
 				case severity.TRACE:
@@ -283,9 +300,9 @@ namespace Rynchodon
 				case severity.FATAL:
 					return MyFontEnum.Red;
 				default:
-					return MyFontEnum.White;					
+					return MyFontEnum.White;
 			}
 		}
-		
+
 	}
 }

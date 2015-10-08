@@ -69,6 +69,9 @@ Example - [ E 0 : C 0, 0, 0 : EXIT ] - will target any enemy that comes into ran
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
+H <ore>, ... : Extract specified resources from an asteroid. All ores are treated the same; if you wish to prioritize, use multiple commands.
+Example - [ H Gold, Silver ] - Harvest either gold or silver, whichever is found first.
+Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
 Harvest : Extract resources from the nearest asteroid. It is recommended to put this command first so that Autopilot can tunnel out of an asteroid after the world is loaded.
 Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest the closest asteroid
 

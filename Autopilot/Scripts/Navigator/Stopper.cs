@@ -68,7 +68,7 @@ namespace Rynchodon.Autopilot.Navigator
 					//_logger.debugLog("setting exit", "Move()");
 					//exited = true;
 					_logger.debugLog("disabling thrusters", "Stopper()");
-					m_mover.Block.Terminal.GetActionWithName("ControlThrusters").Apply(m_mover.Block.Terminal);
+					m_mover.Block.SetControl(false);
 				}
 			}
 			else

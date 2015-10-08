@@ -4,9 +4,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -86,7 +88,8 @@ namespace Rynchodon.Autopilot.Instruction
 			blockName = GPS_tag.Replace(blockName, replaceWith);
 			//myLogger.debugLog("replaced name: " + blockName, "preParse()");
 
-			Block.Terminal.SetCustomName(blockName);
+			if (MyAPIGateway.Multiplayer.IsServer)
+				Block.Terminal.SetCustomName(blockName);
 
 			return blockName;
 		}
@@ -264,7 +267,8 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_flyTo(out instructionAction, dataLowerCase);
 				//case 'g':
 				//	return getAction_gridDest(out instructionAction, dataLowerCase);
-				////case 'h': // harvest
+				case 'h': // harvest
+					return getAction_harvestVoxel(out instructionAction, dataLowerCase);
 				case 'l':
 					return getAction_navigationBlock(out instructionAction, dataLowerCase);
 				//case 'm':
@@ -403,7 +407,7 @@ namespace Rynchodon.Autopilot.Instruction
 					continue;
 
 				// name test
-				if (ShipController_Autopilot.IsControllableBlock(fatblock))
+				if (ShipController_Autopilot.IsAutopilotBlock(fatblock))
 				{
 					string nameOnly = fatblock.getNameOnly();
 					if (nameOnly == null || !nameOnly.Contains(blockName))
@@ -636,6 +640,43 @@ namespace Rynchodon.Autopilot.Instruction
 
 		//	return true;
 		//}
+
+		/// <summary>
+		/// Create a MinerVoxel
+		/// </summary>
+		private bool getAction_harvestVoxel(out Action execute, string instruction)
+		{
+			byte[] oreType;
+
+			if (instruction.Equals("arvest", StringComparison.OrdinalIgnoreCase))
+				oreType = null;
+			else
+			{
+				string[] splitComma = instruction.Split(',');
+				List<byte> oreTypeList = new List<byte>();
+
+				for (int i = 0; i < splitComma.Length; i++)
+				{
+					string oreName = splitComma[i];
+
+					byte[] oreIds;
+					if (!OreDetector.TryGetMaterial(splitComma[i], out oreIds))
+					{
+						Errors.Append("Not ore: ");
+						Errors.AppendLine(oreName);
+						execute = null;
+						return false;
+					}
+
+					oreTypeList.AddArray(oreIds);
+				}
+
+				oreType = oreTypeList.ToArray();
+			}
+
+			execute = () => new MinerVoxel(Mover, NavSet, oreType);
+			return true;
+		}
 
 		/// <summary>
 		/// <para>Set the NavigationBlock.</para>

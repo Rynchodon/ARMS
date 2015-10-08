@@ -116,6 +116,8 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine(m_laser.TargetCoords.ToPretty());
 			else
 				customInfo.AppendLine("Sun");
+			customInfo.Append("Angle: ");
+			customInfo.AppendLine(PrettySI.makePretty( MathHelper.ToDegrees(m_navSet.CurrentSettings.DistanceAngle)));
 		}
 
 		#endregion
