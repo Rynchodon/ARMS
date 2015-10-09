@@ -50,34 +50,27 @@ namespace Rynchodon.AntennaRelay
 				else
 					radiusSquared = myRadioAntenna.Radius * myRadioAntenna.Radius;
 
+				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
+
 				// send antenna self to radio antennae
-				LinkedList<RadioAntenna> canSeeMe = new LinkedList<RadioAntenna>(); // friend and foe alike
 				foreach (RadioAntenna ant in RadioAntenna.registry)
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
-						canSeeMe.AddLast(ant);
-
-				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
-				foreach (RadioAntenna ant in canSeeMe)
-					ant.receive(self);
+						ant.Receive(self);
 
 				// relay information to friendlies
 				foreach (RadioAntenna ant in value_registry)
 					if (CubeBlock.canSendTo(ant.CubeBlock, true, radiusSquared, true))
-					{
-						foreach (LastSeen seen in myLastSeen.Values)
-							ant.receive(seen);
-						foreach (Message mes in myMessages)
-							ant.receive(mes);
-					}
+						Relay(ant);
 
 				// relay information to friendly players
-				foreach (Player player in Player.AllPlayers)
-					if (CubeBlock.canSendTo(player.myPlayer, true, radiusSquared, true))
-						foreach (LastSeen seen in myLastSeen.Values)
-							player.receive(seen);
+				ForEachLastSeen(seen => {
+					foreach (Player player in Player.AllPlayers)
+						if (CubeBlock.canSendTo(player.myPlayer, true, radiusSquared, true))
+								player.receive(seen);
+					return false;
+				});
 
-				Receiver.sendToAttached(CubeBlock, myLastSeen);
-				Receiver.sendToAttached(CubeBlock, myMessages);
+				RelayAttached();
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

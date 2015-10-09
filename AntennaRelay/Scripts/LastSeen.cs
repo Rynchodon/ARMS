@@ -121,7 +121,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private bool value_isValid;
-		public bool isValid
+		public bool IsValid
 		{
 			get
 			{

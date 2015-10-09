@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI;
@@ -42,34 +40,20 @@ namespace Rynchodon.AntennaRelay
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			CubeBlock = null;
 			myController = null;
 		}
 
-		public IEnumerator<LastSeen> lastSeenEnumerator()
-		{
-			LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
-			foreach (LastSeen seen in myLastSeen.Values)
-				if (!seen.isValid)
-					removeList.AddLast(seen);
-			foreach (LastSeen seen in removeList)
-				myLastSeen.Remove(seen.Entity.EntityId);
-
-			myLogger.debugLog("enumerator has " + myLastSeen.Count + " values", "lastSeenEnumerator()", Logger.severity.TRACE);
-			return myLastSeen.Values.GetEnumerator();
-		}
-
-		/// <summary>
-		///  This will clear all Message, be sure to process them all. All messages will be marked as invalid(received).
-		/// </summary>
-		/// <returns></returns>
-		public List<Message> popMessageOrderedByDate()
-		{
-			List<Message> sorted = myMessages.OrderBy(m => m.created).ToList();
-			myMessages = new LinkedList<Message>();
-			myLogger.debugLog("sorted " + sorted.Count + " messages", "popMessageOrderedByDate()", Logger.severity.TRACE);
-			return sorted;
-		}
+		///// <summary>
+		/////  This will clear all Message, be sure to process them all. All messages will be marked as invalid(received).
+		///// </summary>
+		///// <returns></returns>
+		//public List<Message> popMessageOrderedByDate()
+		//{
+		//	List<Message> sorted = myMessages.OrderBy(m => m.created).ToList();
+		//	myMessages = new LinkedList<Message>();
+		//	myLogger.debugLog("sorted " + sorted.Count + " messages", "popMessageOrderedByDate()", Logger.severity.TRACE);
+		//	return sorted;
+		//}
 
 		public static bool TryGet(IMyCubeBlock block, out ShipController result)
 		{ return registry.TryGetValue(block, out result); }

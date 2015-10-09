@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED // remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Attached;
@@ -210,23 +208,23 @@ namespace Rynchodon.AntennaRelay
 			if (!findAntenna())
 				return;
 
-			IEnumerator<LastSeen> toDisplay = myAntenna.getLastSeenEnum();
-
 			if (forProgram)
 				myLogger.debugLog("building display list for program", "informPlayer()", Logger.severity.TRACE);
 			else
 				myLogger.debugLog("building display list for player", "informPlayer()", Logger.severity.TRACE);
 			Vector3D myPos = myCubeBlock.GetPosition();
 			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
-			while (toDisplay.MoveNext())
-			{
-				IMyCubeGrid grid = toDisplay.Current.Entity as IMyCubeGrid;
+
+			myAntenna.ForEachLastSeen(seen => {
+				IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 				if (grid == null || AttachedGrid.IsGridAttached(grid, myCubeBlock.CubeGrid, AttachedGrid.AttachmentKind.Physics))
-					continue;
+					return false;
 
 				ExtensionsRelations.Relations relations = myCubeBlock.getRelationsTo(grid, ExtensionsRelations.Relations.Enemy).highestPriority();
-				sortableSeen.Add(new sortableLastSeen(myPos, toDisplay.Current, relations));
-			}
+				sortableSeen.Add(new sortableLastSeen(myPos, seen, relations));
+				return false;
+			});
+
 			sortableSeen.Sort();
 
 			int count = 0;
@@ -281,14 +279,14 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (findProgBlock())
 			{
-				if (myProgBlock.messageCount() > 0)
+				if (myProgBlock.messageCount > 0)
 				{
 					myLogger.debugLog("cannot send message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
 					return;
 				}
 				myLogger.debugLog("sending message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
 				Message toSend = new Message(messageToProgram, myProgBlock.CubeBlock, myCubeBlock);
-				myProgBlock.receive(toSend);
+				myProgBlock.Receive(toSend);
 				sentToProgram = true;
 			}
 			else

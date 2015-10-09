@@ -1,7 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -28,16 +25,12 @@ namespace Rynchodon.AntennaRelay
 			try
 			{
 				// send beacon self to radio antenna
-				LinkedList<RadioAntenna> canSeeMe = new LinkedList<RadioAntenna>(); // friend and foe alike
+				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
 
 				float radiusSquared = myBeacon.Radius * myBeacon.Radius;
 				foreach (RadioAntenna ant in RadioAntenna.registry)
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
-						canSeeMe.AddLast(ant);
-
-				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
-				foreach (RadioAntenna ant in canSeeMe)
-					ant.receive(self);
+						ant.Receive(self);
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

@@ -47,7 +47,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// can only be set to false, once invalid always invalid
 		/// </summary>
-		public bool isValid
+		public bool IsValid
 		{
 			get
 			{

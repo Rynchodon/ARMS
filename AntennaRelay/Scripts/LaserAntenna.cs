@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -36,10 +34,7 @@ namespace Rynchodon.AntennaRelay
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			CubeBlock = null;
 			myLaserAntenna = null;
-			myLastSeen = null;
-			myMessages = null;
 		}
 
 		public void UpdateAfterSimulation100()
@@ -57,18 +52,11 @@ namespace Rynchodon.AntennaRelay
 						if (lAnt.CubeBlock.EntityId == builder.targetEntityId)
 						{
 							if (lAnt.builder != null && builder.State == 5 && lAnt.builder.State == 5)
-							{
-								foreach (LastSeen seen in myLastSeen.Values)
-									lAnt.receive(seen);
-								foreach (Message mes in myMessages)
-									lAnt.receive(mes);
-							}
+								Relay(lAnt);
 							break;
 						}
 
-				// send to attached receivers
-				Receiver.sendToAttached(CubeBlock, myLastSeen);
-				Receiver.sendToAttached(CubeBlock, myMessages);
+				RelayAttached();
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }
