@@ -15,13 +15,22 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 [h1]Blocks[/h1]
 Radar equipment from other mods may be used. If they are not otherwise configured, they will be similar to Radar Dish but be capable of detecting objects in every direction.
 
-Radar Dish - Can only detect objects in front of it. Can detect up to 3 objects.
+[u]Radar Dish[/u]
+Very long range, inexpensive, unidirectional, single-target radar.
 
-Radar Dome - Can detect objects in all directions. 20% lower maximum power than Radar dish. Can detect objects further away than Radar Dish when they are at the same power level. Can detect up to 10 objects.
+[u]Radar Dome[/u]
+Long range, omnidirectional, multi-target radar.
+Cannot detect objects below it.
+
+[u]Phased Array Radar[/u]
+Medium range, expensive, omnidirectional, many-target radar.
+Cannot detect objects below it or directly above.
+Functions as an antenna and broadcasting can be disabled.
+Can detect other radar at long range.
 
 [h1]GPS Markers[/h1]
 Autopilot will add GPS entries for detected grids. If you delete these bad things will happen.
-GPS entries will not be added for a player if the player can see a beacon or broadcasting antenna on the grid.
+GPS entries will not be added for a player, if the player can see a beacon or broadcasting antenna on the grid.
 By default, there will be 5 markers for the closest enemy, 5 for the closest neutral, 5 for the closest faction, and 5 for the closest owned grids.
 
 You can configure the number of grids that will be displayed through chat commands.

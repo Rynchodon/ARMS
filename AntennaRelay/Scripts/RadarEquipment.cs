@@ -30,7 +30,7 @@ namespace Rynchodon.AntennaRelay
 			public bool Radar = false;
 
 			/// <summary>The maximum number of targets that can be detected (active + passive).</summary>
-			public int MaxTargets_Tracking = 10;
+			public int MaxTargets_Tracking = 1;
 
 			/// <summary>The maximum number of radar that can be jammed. No effect on passive detection.</summary>
 			public int MaxTargets_Jamming = 0;
@@ -61,10 +61,6 @@ namespace Rynchodon.AntennaRelay
 
 			/// <summary>Reduces the effective strength of electronic jamming by this amount.</summary>
 			public float JammingResistance = 0;
-
-			// not sure if this makes any senese
-			///// <summary>Not implemented. Resistance to mechanical jamming.</summary>
-			//public float JammingResistance_Mechanical = 0;
 
 			/// <summary>How much of the jamming effect is applied to friendly radar and radar beyond the MaximumTargets limit.</summary>
 			public float JamIncidental = 0.1f;
@@ -697,7 +693,7 @@ namespace Rynchodon.AntennaRelay
 				if (otherPowerLevel <= 0)
 					continue;
 
-				if (SignalCannotReach(otherDevice.Entity, detectionThreshold * myDefinition.SignalEnhance))
+				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel * myDefinition.SignalEnhance))
 					continue;
 
 				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition()) / myDefinition.SignalEnhance;

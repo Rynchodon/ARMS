@@ -9,10 +9,10 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
+        MaxTargets_Tracking=3
         MaxPowerLevel=40000
-        SignalEnhance=1.1
-        MinElevation=-0.70
+        SignalEnhance=1.125
+        MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>
@@ -56,10 +56,10 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
+        MaxTargets_Tracking=3
         MaxPowerLevel=16000
-        SignalEnhance=1.1
-        MinElevation=-0.70
+        SignalEnhance=1.125
+        MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
       <Icon>Textures\Icons\Radar_A.dds</Icon>

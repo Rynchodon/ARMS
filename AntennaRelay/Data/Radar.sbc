@@ -11,7 +11,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=3
+        MaxTargets_Tracking=1
         MinAzimuth=-1.963495408493621
         MaxAzimuth=0.3926990816987241
         MinElevation=-0.3926990816987241
@@ -57,7 +57,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=3
+        MaxTargets_Tracking=1
         MaxPowerLevel=20000
         MinAzimuth=-1.963495408493621
         MaxAzimuth=0.3926990816987241
@@ -127,18 +127,6 @@
       </ItemIds>
     </Category>
   </CategoryClasses>
-
-  <!-- LCD Textures -->
-
-  <LCDTextures>
-    <LCDTextureDefinition>
-      <Id>
-        <TypeId>LCDTextureDefinition</TypeId>
-        <SubtypeId>Radar</SubtypeId>
-      </Id>
-     <TexturePath>Textures\TextPanel\radar.dds</TexturePath>
-    </LCDTextureDefinition>
-  </LCDTextures>
 
   <!-- Assembler Blueprints -->
 

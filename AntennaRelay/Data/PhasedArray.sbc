@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-  
-
   <CubeBlocks>
-	<Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
-        <TypeId>Beacon</TypeId>
-        <SubtypeId>PhasedArray_Large</SubtypeId>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>PhasedArrayRadar_Large_Souper07</SubtypeId>
       </Id>
-      <DisplayName>Phased Array</DisplayName>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=10
+        MaxPowerLevel=20000
+        SignalEnhance=2
+        PassiveDetect_Radar=25000
+        MinElevation=-0.8
+        MaxElevation=1.4
+      </Description>
+      <DisplayName>Radar Phased Array</DisplayName>
       <Icon>Textures\Icons\PhasedArray.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -36,24 +43,31 @@
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="1.36" StartY="1.36" EndX="2.64" EndY="2.64" />
 			</MountPoints>
-			<BlockPairName>PhasedArray</BlockPairName>
+			<BlockPairName>PhasedArrayRadar_Souper07</BlockPairName>
 			<MirroringX>None</MirroringX>
 			<MirroringY>None</MirroringY>
 			<MirroringZ>None</MirroringZ>
       <EdgeType>Light</EdgeType>
-<ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <BuildTimeSeconds>120</BuildTimeSeconds>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
 
-
-
-    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
-        <TypeId>Beacon</TypeId>
-        <SubtypeId>PhasedArray_Small</SubtypeId>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>PhasedArrayRadar_Small_Souper07</SubtypeId>
       </Id>
-      <DisplayName>Phased Array</DisplayName>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=10
+        MaxPowerLevel=10000
+        SignalEnhance=2
+        PassiveDetect_Radar=35000
+        MinElevation=-0.8
+        MaxElevation=1.4
+      </Description>
+      <DisplayName>Radar Phased Array</DisplayName>
       <Icon>Textures\Icons\PhasedArray.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -80,19 +94,49 @@
 			<MountPoints>
 				<MountPoint Side="Bottom" StartX="1.36" StartY="1.36" EndX="2.64" EndY="2.64" />
 			</MountPoints>
-			<BlockPairName>PhasedArray</BlockPairName>
+			<BlockPairName>PhasedArrayRadar_Souper07</BlockPairName>
 			<MirroringX>None</MirroringX>
       <MirroringY>None</MirroringY>
       <MirroringZ>None</MirroringZ>
       <EdgeType>Light</EdgeType>
       <BuildTimeSeconds>30</BuildTimeSeconds>
-<ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <DamageEffectId>214</DamageEffectId>
     </Definition>
   </CubeBlocks>
 
-  
+  <!-- Category Classes -->
 
-  
+  <CategoryClasses>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
+      <Name>LargeBlocks</Name>
+      <ItemIds>
+        <string>RadioAntenna/PhasedArrayRadar_Large_Souper07</string>
+      </ItemIds>
+    </Category>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
+      <Name>SmallBlocks</Name>
+      <ItemIds>
+        <string>RadioAntenna/PhasedArrayRadar_Small_Souper07</string>
+      </ItemIds>
+    </Category>
+  </CategoryClasses>
+
+  <!-- Assembler Blueprints -->
+
+  <BlueprintClassEntries>
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="RadioAntenna/PhasedArrayRadar_Large_Souper07" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="RadioAntenna/PhasedArrayRadar_Small_Souper07" />
+  </BlueprintClassEntries>
 
 </Definitions>

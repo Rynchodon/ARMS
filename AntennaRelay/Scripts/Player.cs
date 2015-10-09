@@ -167,7 +167,7 @@ namespace Rynchodon.AntennaRelay
 				if (relateData.MaxOnHUD == 0)
 					continue;
 
-				float distance = Vector3.DistanceSquared(myPosition, seen.LastKnownPosition);
+				float distance = Vector3.DistanceSquared(myPosition, seen.predictPosition());
 				relateData.distanceSeen.Add(new DistanceSeen( distance, seen));
 
 				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
@@ -206,7 +206,7 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				string description = GetDescription(seen);
-				Vector3D coords = seen.LastKnownPosition;
+				Vector3D coords = seen.predictPosition();
 
 				// cheat the position a little to avoid clashes
 				double cheat = 0.001 / (double)(index+1);
