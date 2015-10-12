@@ -14,9 +14,9 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 
 		private readonly Logger myLogger;
-		private readonly IMyCubeBlock NavigationBlock;
+		private readonly PseudoBlock NavigationBlock;
 		private readonly Vector3 location;
-		private readonly float DestinationRadius;
+		//private readonly float DestinationRadius;
 		private readonly bool Rotating;
 
 		/// <summary>
@@ -29,9 +29,9 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(mover, navSet)
 		{
 			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);
-			this.NavigationBlock = m_navSet.CurrentSettings.NavigationBlock;
+			this.NavigationBlock = m_navSet.Settings_Current.NavigationBlock;
 			this.location = location;
-			this.DestinationRadius = m_navSet.CurrentSettings.DestinationRadius;
+			//this.DestinationRadius = m_navSet.Settings_Current.DestinationRadius;
 
 			var atLevel = m_navSet.Settings_Task_Secondary;
 			atLevel.NavigatorMover = this;
@@ -52,11 +52,12 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			if (m_navSet.CurrentSettings.Distance < DestinationRadius)
+			if (m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
 			{
 				myLogger.debugLog("Reached destination: " + location, "PerformTask()", Logger.severity.INFO);
 				m_navSet.OnTaskSecondaryComplete();
-				m_mover.FullStop();
+				m_mover.StopMove();
+				m_mover.StopRotate();
 			}
 			else
 				m_mover.CalcMove(NavigationBlock, location, Vector3.Zero);
@@ -78,7 +79,7 @@ namespace Rynchodon.Autopilot.Navigator
 			customInfo.AppendLine(location.ToString());
 
 			customInfo.Append("Distance: ");
-			customInfo.Append(PrettySI.makePretty(m_navSet.CurrentSettings.Distance));
+			customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
 			customInfo.AppendLine("m");
 		}
 
@@ -91,10 +92,10 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public void Rotate()
 		{
-			if (m_navSet.CurrentSettings.Distance > 100)
+			if (m_navSet.Settings_Current.Distance > 10)
 			{
-				Vector3 direction = location - NavigationBlock.GetPosition();
-				m_mover.CalcRotate(RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction), NavigationBlock.LocalMatrix);
+				Vector3 direction = location - NavigationBlock.WorldPosition;
+				m_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 			}
 			else
 				m_mover.StopRotate();

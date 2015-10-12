@@ -293,5 +293,20 @@ namespace Rynchodon
 		public static bool NullOrClosed(this IMyEntity entity)
 		{ return entity == null || entity.MarkedForClose || entity.Closed; }
 
+		/// <summary>
+		/// Try to perform an Action on game thread, if it fails do not crash the game.
+		/// </summary>
+		public static void TryOnGameThread(this IMyUtilities util, Action invoke, Logger logTo)
+		{
+			util.InvokeOnGameThread(() => {
+				try { invoke.Invoke(); }
+				catch (Exception ex)
+				{
+					if (logTo != null)
+						logTo.alwaysLog("Exception: " + ex, "TryOnGameThread()", Logger.severity.ERROR);
+				}
+			});
+		}
+
 	}
 }

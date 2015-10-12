@@ -92,15 +92,42 @@ namespace Rynchodon.Attached
 		}
 
 		/// <summary>
-		/// Gets all the attached grids.
+		/// Runs a function on all the attached grids.
 		/// </summary>
-		/// <param name="grid">The starting grid/</param>
+		/// <param name="startGrid">The starting grid/</param>
 		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
-		/// <param name="runFunc">Func that runs on attached grids, if it returns true short-circuit</param>
-		public static void RunOnAttached(IMyCubeGrid grid, AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc)
+		/// <param name="runFunc">Func that runs on attached grids, if it returns true, short-circuit</param>
+		/// <param name="runOnStartGrid">Iff true, action will be run on startGrid.</param>
+		public static void RunOnAttached(IMyCubeGrid startGrid, AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, bool runOnStartGrid = false)
 		{
+			if (runOnStartGrid && runFunc(startGrid))
+				return;
 			using (lock_search.AcquireExclusiveUsing())
-				GetFor(grid).RunOnAttached(allowedConnections, runFunc, searchIdPool++);
+				GetFor(startGrid).RunOnAttached(allowedConnections, runFunc, searchIdPool++);
+		}
+
+		/// <summary>
+		/// Runs a function on all the blocks in all the attached grids.
+		/// </summary>
+		/// <param name="startGrid">Grid to start at.</param>
+		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
+		/// <param name="runFunc">Func that runs on blocks of attached grids, if it returns true, short-circuit</param>
+		/// <param name="runOnStartGrid">Iff true, action will be run on blocks of startGrid.</param>
+		public static void RunOnAttachedBlock(IMyCubeGrid startGrid, AttachmentKind allowedConnections, Func<IMySlimBlock, bool> runFunc, bool runOnStartGrid = false)
+		{
+			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
+			bool terminated = false;
+
+			Func<IMyCubeGrid, bool> runOnGrid = grid => {
+				grid.GetBlocks_Safe(dummy, slim => {
+					if (!terminated)
+						terminated = runFunc(slim);
+					return false;
+				});
+				return terminated;
+			};
+
+			RunOnAttached(startGrid, allowedConnections, runOnGrid, runOnStartGrid);
 		}
 
 		internal static void AddRemoveConnection(AttachmentKind kind, Ingame.IMyCubeGrid grid1, Ingame.IMyCubeGrid grid2, bool add)

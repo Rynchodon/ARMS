@@ -481,7 +481,7 @@ namespace Rynchodon.AntennaRelay
 
 		private void UpdatePowerLevel()
 		{
-			if (CubeBlock == null)
+			if (this.CubeBlock == null)
 			{
 				myLogger.debugLog("not updating power levels, not a block", "UpdateTargetPowerLevel()");
 				return;
@@ -499,22 +499,30 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (PowerLevel_Target > myDefinition.MaxPowerLevel)
 				{
-					myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
 					PowerLevel_Target = myDefinition.MaxPowerLevel;
-
-					string instructions = GetInstructions();
-					if (instructions != null)
-						TermBlock.SetCustomName(CubeBlock.DisplayNameText.Replace(instructions, myDefinition.MaxPowerLevel.ToString()));
-
-					// turn down slider
-					Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
-					if (asBeacon != null)
-						asBeacon.SetValueFloat("Radius", PowerLevel_Target);
-					else
+					if (MyAPIGateway.Multiplayer.IsServer)
 					{
-						Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-						if (asRadio != null)
-							asRadio.SetValueFloat("Radius", PowerLevel_Target);
+						IMyTerminalBlock TermBlock = this.TermBlock;
+						IMyCubeBlock CubeBlock = this.CubeBlock;
+
+						MyAPIGateway.Utilities.TryOnGameThread(() => {
+							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
+
+							string instructions = GetInstructions();
+							if (instructions != null)
+								TermBlock.SetCustomName(CubeBlock.DisplayNameText.Replace(instructions, myDefinition.MaxPowerLevel.ToString()));
+
+							// turn down slider
+							Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
+							if (asBeacon != null)
+								asBeacon.SetValueFloat("Radius", PowerLevel_Target);
+							else
+							{
+								Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
+								if (asRadio != null)
+									asRadio.SetValueFloat("Radius", PowerLevel_Target);
+							}
+						}, myLogger);
 					}
 				}
 			}
@@ -788,7 +796,7 @@ namespace Rynchodon.AntennaRelay
 
 		private string GetInstructions()
 		{
-			if (CubeBlock == null)
+			if (CubeBlock == null || CubeBlock.Closed)
 				return null;
 			return CubeBlock.getInstructions();
 		}

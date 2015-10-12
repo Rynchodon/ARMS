@@ -110,17 +110,17 @@ namespace Rynchodon
 		public static string getNameOnly(this IMyCubeBlock rc)
 		{
 			string displayName = rc.DisplayNameText;
-			int start = displayName.IndexOf('>') + 1;
+			//int start = displayName.IndexOf('>') + 1;
 			int end = displayName.IndexOf('[');
-			if (start > 0 && end > start)
-			{
-				int length = end - start;
-				return displayName.Substring(start, length);
-			}
-			if (start > 0)
-			{
-				return displayName.Substring(start);
-			}
+			//if (start > 0 && end > start)
+			//{
+			//	int length = end - start;
+			//	return displayName.Substring(start, length);
+			//}
+			//if (start > 0)
+			//{
+			//	return displayName.Substring(start);
+			//}
 			if (end > 0)
 			{
 				return displayName.Substring(0, end);
@@ -218,5 +218,24 @@ namespace Rynchodon
 
 			return bestDirection.Value;
 		}
+
+		public static float GetLengthInDirection(this IMyCubeBlock block, Base6Directions.Direction direction)
+		{
+			switch (direction)
+			{
+				case Base6Directions.Direction.Right:
+				case Base6Directions.Direction.Left:
+					return block.LocalAABB.Size.X;
+				case Base6Directions.Direction.Up:
+				case Base6Directions.Direction.Down:
+					return block.LocalAABB.Size.Y;
+				case Base6Directions.Direction.Backward:
+				case Base6Directions.Direction.Forward:
+					return block.LocalAABB.Size.Z;
+			}
+			VRage.Exceptions.ThrowIf<NotImplementedException>(true, "direction not implemented: " + direction);
+			throw new Exception();
+		}
+
 	}
 }

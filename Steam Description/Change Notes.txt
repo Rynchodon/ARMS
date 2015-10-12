@@ -1,10 +1,13 @@
 Will be moved to steam every release.
 
 major:
-more precise navigation
+more precise movement and rotation
+speed matching for target grid
 pathfinder checks for landing gear attachments
-block searches will check piston and rotor attached grids
+block searches will check piston and rotor attached grids (A & B commands)
 harvest by ore type
+landing is faster and can dock to a moving ship
 
 minor:
 Stop command
+separate thread for Autopilot

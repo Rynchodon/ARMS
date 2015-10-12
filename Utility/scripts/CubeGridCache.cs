@@ -139,7 +139,10 @@ namespace Rynchodon
 				// by type
 				MyObjectBuilderType myOBtype = fatblock.BlockDefinition.TypeId;
 				ListSnapshots<IMyCubeBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
-				setBlocks_Type.mutable().Remove(fatblock);
+				if (setBlocks_Type.Count == 1)
+					CubeBlocks_Type.Remove(myOBtype);
+				else
+					setBlocks_Type.mutable().Remove(fatblock);
 
 				// by definition
 				IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;

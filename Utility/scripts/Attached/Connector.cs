@@ -15,7 +15,11 @@ namespace Rynchodon.Attached
 
 		protected override AttachableBlockPair GetPartner()
 		{
-			Ingame.IMyShipConnector other = (myBlock as Ingame.IMyShipConnector).OtherConnector;
+			Ingame.IMyShipConnector myConn = myBlock as Ingame.IMyShipConnector;
+			if (!myConn.IsConnected)
+				return null;
+
+			Ingame.IMyShipConnector other = myConn.OtherConnector;
 			if (other == null)
 				return null;
 			return GetPartner(other.EntityId);

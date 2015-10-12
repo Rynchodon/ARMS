@@ -9,8 +9,6 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage;
-using VRage.Components;
-using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -20,7 +18,6 @@ namespace Rynchodon.Autopilot.Navigator
 	 * TODO:
 	 * Escape if inside tunnel while autopilot gains control (regardless of commands)
 	 * Antenna relay & multiple ore detectors
-	 * Symbols for ores
 	 */
 
 	/// <summary>
@@ -30,76 +27,19 @@ namespace Rynchodon.Autopilot.Navigator
 	public class MinerVoxel : NavigatorMover, INavigatorRotator
 	{
 
-		private class NavigationDrill
+		public static bool IsNearVoxel(IMyCubeGrid grid)
 		{
-
-			public readonly IMyCubeGrid Grid;
-
-			private readonly Logger m_logger;
-
-			public int FunctionalDrills { get; private set; }
-			public Matrix LocalMatrix { get; private set; }
-			public MyPhysicsComponentBase Physics { get { return Grid.Physics; } }
-
-			public NavigationDrill(IMyCubeBlock block)
-			{
-				if (!(block is IMyShipDrill))
-					throw new NullReferenceException("block is not a drill");
-
-				this.FunctionalDrills = 1;
-				this.LocalMatrix = block.LocalMatrix;
-				this.Grid = block.CubeGrid;
-			}
-
-			public NavigationDrill(IMyCubeGrid grid)
-			{
-				this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
-				this.Grid = grid;
-				calculateLocalMatrix();
-			}
-
-			public Vector3D GetPosition()
-			{ return Vector3D.Transform(LocalMatrix.Translation, Grid.WorldMatrix); }
-
-			public MatrixD WorldMatrix()
-			{ return LocalMatrix * Grid.WorldMatrix; }
-
-			private void block_OnClose(IMyEntity obj)
-			{
-				try
+			BoundingSphereD surround = new BoundingSphereD(grid.GetCentre(), grid.GetLongestDim());
+			List<MyVoxelBase> voxels = new List<MyVoxelBase>();
+			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref surround, voxels);
+			if (voxels != null)
+				foreach (IMyVoxelMap vox in voxels)
 				{
-					m_logger.debugLog("Closed drill: " + obj.getBestName(), "block_OnClose()");
-					calculateLocalMatrix();
+					if (vox.GetIntersectionWithSphere(ref surround))
+						return true;
 				}
-				catch (Exception ex)
-				{ m_logger.debugLog("Exception: " + ex, "block_OnClose()"); }
-			}
 
-			private void calculateLocalMatrix()
-			{
-				if (Grid.MarkedForClose)
-					return;
-
-				var Drills = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-
-				FunctionalDrills = 0;
-				LocalMatrix = Matrix.Zero;
-				foreach (IMyCubeBlock drill in Drills)
-					if (drill.IsFunctional)
-					{
-						FunctionalDrills++;
-						LocalMatrix += drill.LocalMatrix;
-						drill.OnClose -= block_OnClose;
-						drill.OnClose += block_OnClose;
-					}
-
-				if (FunctionalDrills == 0)
-					return;
-
-				LocalMatrix = LocalMatrix / FunctionalDrills;
-				return;
-			}
-
+			return false;
 		}
 
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
@@ -111,14 +51,15 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly OreDetector m_oreDetector;
 		private readonly byte[] OreTargets;
 
-		// Not normally changed, but things might break and we still want to escape voxel
-		private NavigationDrill m_navDrill;
+		private MultiBlock<MyObjectBuilder_Drill> m_navDrill;
 		private readonly List<MyVoxelBase> voxels = new List<MyVoxelBase>();
 		private State value_state;
 		private Line m_approach;
 		private Vector3D m_depositPos;
 		private Vector3 m_currentTarget;
 		private string m_depostitOre;
+		private bool m_lastNearVoxel;
+		private ulong m_lastCheck_nearVoxel;
 
 		private float speedLinear = float.MaxValue, speedAngular = float.MaxValue;
 
@@ -139,13 +80,15 @@ namespace Rynchodon.Autopilot.Navigator
 						{
 							m_logger.debugLog("Drills are full, time to go home", "m_state()");
 							m_navSet.OnTaskPrimaryComplete();
-							m_mover.FullStop();
+							m_mover.StopMove();
+							m_mover.StopRotate();
 							return;
 						}
 						else
 						{
 							// request ore detector update
 							m_logger.debugLog("Requesting ore update", "m_state()");
+							m_navSet.OnTaskSecondaryComplete();
 							m_oreDetector.OnUpdateComplete.Enqueue(OreDetectorFinished);
 							m_oreDetector.UpdateOreLocations();
 						}
@@ -154,27 +97,25 @@ namespace Rynchodon.Autopilot.Navigator
 						break;
 					case State.Rotating:
 						m_currentTarget = m_approach.To;
-						m_navSet.Settings_Task_Secondary.NavigatorRotator = this;
+						m_navSet.Settings_Task_Primary.NavigatorRotator = this;
 						break;
 					case State.MoveTo:
 						EnableDrills(true);
+						m_navSet.Settings_Task_Secondary.IgnoreAsteroid = true;
 						break;
 					case State.Mining:
-						Vector3 pos = m_navDrill.GetPosition();
+						Vector3 pos = m_navDrill.WorldPosition;
 						m_currentTarget = pos + (m_depositPos - pos) * 2f;
-
-						m_navSet.Settings_Task_Secondary.IgnoreAsteroid = true;
 						m_navSet.Settings_Task_Secondary.SpeedTarget = 1f;
-
 						EnableDrills(true);
 						break;
 					case State.Mining_Escape:
-						//EnableDrills(false);
-						m_currentTarget = m_navDrill.GetPosition() + m_navDrill.WorldMatrix().Backward * 100f;
+						EnableDrills(false);
+						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f;
 						break;
 					case State.Mining_Tunnel:
 						EnableDrills(true);
-						m_currentTarget = m_navDrill.GetPosition() + m_navDrill.WorldMatrix().Forward * 100f;
+						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f;
 						break;
 					default:
 						VRage.Exceptions.ThrowIf<NotImplementedException>(true, "State not implemented: " + value);
@@ -208,13 +149,13 @@ namespace Rynchodon.Autopilot.Navigator
 						drill.ApplyAction("UseConveyor");
 
 			// if a drill has been chosen by player, use it
-			IMyCubeBlock navBlock = m_navSet.CurrentSettings.NavigationBlock;
-			if (navBlock is IMyShipDrill)
-				m_navDrill = new NavigationDrill(navBlock);
+			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
+			if (navBlock.Block is IMyShipDrill)
+				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(navBlock.Block);
 			else
-				m_navDrill = new NavigationDrill(m_mover.Block.CubeGrid);
+				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(m_mover.Block.CubeGrid);
 
-			if (m_navDrill.FunctionalDrills == 0)
+			if (m_navDrill.FunctionalBlocks == 0)
 			{
 				m_logger.debugLog("no working drills", "MinerVoxel()", Logger.severity.INFO);
 				return;
@@ -225,10 +166,10 @@ namespace Rynchodon.Autopilot.Navigator
 				m_oreDetector = OreDetector.registry[detectors[0].EntityId];
 
 			m_navSet.Settings_Task_Primary.NavigatorMover = this;
-			if (m_navSet.Settings_Task_Secondary.NavigatorRotator == null)
+			if (m_navSet.Settings_Current.NavigatorRotator == null)
 			{
 				m_logger.debugLog("Taking control of rotation immediately", "MinerVoxel()");
-				m_navSet.Settings_Task_Secondary.NavigatorRotator = this;
+				m_navSet.Settings_Task_Primary.NavigatorRotator = this;
 			}
 
 			m_state = State.GetTarget;
@@ -236,7 +177,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			if (m_state != State.Mining_Escape && m_navDrill.FunctionalDrills == 0)
+			if (m_state != State.Mining_Escape && m_navDrill.FunctionalBlocks == 0)
 			{
 				m_logger.debugLog("No drills, must escape!", "Move()");
 				m_state = State.Mining_Escape;
@@ -251,79 +192,101 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.StopMove();
 					return;
 				case State.Approaching:
-					if (m_navSet.CurrentSettings.Distance < 10f)
+					if (m_navSet.Settings_Current.Distance < 10f)
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
 						m_state = State.Rotating;
 						return;
 					}
-					m_currentTarget = m_approach.ClosestPoint(m_navDrill.GetPosition());
-					break;
-				case State.Rotating:
-					m_mover.StopMove();
-					return;
-				case State.MoveTo:
-					if (m_navSet.CurrentSettings.Distance < 10f)
-					{
-						m_logger.debugLog("Reached asteroid", "Move()", Logger.severity.DEBUG);
-						m_state = State.Mining;
-						return;
-					}
-					break;
-				case State.Mining:
-					// do not check for inside asteroid as we may not have reached it yet and target is inside asteroid
 					if (IsStuck())
 					{
 						m_state = State.Mining_Escape;
 						return;
 					}
+					m_currentTarget = m_approach.ClosestPoint(m_navDrill.WorldPosition);
+					break;
+				case State.Rotating:
+					m_mover.StopMove();
+					if (IsStuck())
+					{
+						m_state = State.Mining_Escape;
+						return;
+					}
+					return;
+				case State.MoveTo:
+					if (m_navSet.Settings_Current.Distance < 10f)
+					{
+						m_logger.debugLog("Reached asteroid", "Move()", Logger.severity.DEBUG);
+						m_state = State.Mining;
+						return;
+					}
+					if (IsStuck())
+					{
+						m_state = State.Mining_Escape;
+						return;
+					}
+					break;
+				case State.Mining:
+					// do not check for inside asteroid as we may not have reached it yet and target is inside asteroid
 					if (DrillFullness() > FullAmount_Abort)
 					{
 						m_logger.debugLog("Drills are full, aborting", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
-					if (m_navSet.CurrentSettings.Distance < 1f)
+					if (m_navSet.Settings_Current.Distance < 1f)
 					{
 						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
+						m_state = State.Mining_Escape;
+						return;
+					}
+					if (IsStuck())
+					{
 						m_state = State.Mining_Escape;
 						return;
 					}
 					break;
 				case State.Mining_Escape:
-					if (!IsInsideAsteroid())
+					if (!IsNearVoxel())
 					{
-						m_logger.debugLog("left asteroid", "Mine()");
+						m_logger.debugLog("left asteroid", "Move()");
 						m_state = State.GetTarget;
 						return;
 					}
-					if (IsStuck())
-					{
-						m_state = State.Mining_Tunnel;
-						return;
-					}
-					if (m_navSet.CurrentSettings.Distance < 1f)
+					if (m_navSet.Settings_Current.Distance < 1f)
 					{
 						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
+						return;
+					}
+
+					// trying to prevent bug where ship gets stuck
+					if (m_navDrill.Physics.LinearVelocity.LengthSquared() <= 0.01f)
+						m_navDrill.Physics.LinearVelocity += m_navDrill.WorldMatrix.Backward * 0.1;
+
+					if (IsStuck())
+					{
+						m_logger.debugLog("Stuck", "Move()");
+						Logger.debugNotify("Stuck", 16);
+						m_state = State.Mining_Tunnel;
 						return;
 					}
 					break;
 				case State.Mining_Tunnel:
-					if (!IsInsideAsteroid())
+					if (!IsNearVoxel())
 					{
 						m_logger.debugLog("left asteroid", "Mine()");
 						m_state = State.GetTarget;
 						return;
 					}
-					if (IsStuck())
-					{
-						m_state = State.Mining_Escape;
-						return;
-					}
-					if (m_navSet.CurrentSettings.Distance < 1f)
+					if (m_navSet.Settings_Current.Distance < 1f)
 					{
 						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
+						m_state = State.Mining_Tunnel;
+						return;
+					}
+					if (IsStuck())
+					{
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -335,20 +298,26 @@ namespace Rynchodon.Autopilot.Navigator
 			MoveCurrent();
 		}
 
+		private static readonly Random myRand = new Random();
+
 		public void Rotate()
 		{
-			if (m_navDrill.FunctionalDrills == 0)
+			if (m_navDrill.FunctionalBlocks == 0)
 				return;
 
+			Vector3 direction;
 			switch (m_state)
 			{
 				case State.GetTarget:
 				case State.Mining_Escape:
 					return;
+				default:
+					direction = m_currentTarget - m_navDrill.WorldPosition;
+					break;
 			}
 
-			Vector3 direction = m_currentTarget - m_navDrill.GetPosition();
-			if (m_mover.CalcRotate(RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction), m_navDrill.LocalMatrix))
+			m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+			if (m_navSet.DirectionMatched())
 				if (m_state == State.Rotating)
 				{
 					m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
@@ -365,20 +334,20 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			customInfo.AppendLine("State: " + m_state);
+			customInfo.AppendLine("Mining State: " + m_state);
 
 			switch (m_state)
 			{
 				case State.Approaching:
 					customInfo.AppendLine("Approaching asteroid");
 					customInfo.Append("Distance: ");
-					customInfo.Append(PrettySI.makePretty(m_navSet.CurrentSettings.Distance));
+					customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
 					customInfo.AppendLine("m");
 					break;
 				case State.Rotating:
 					customInfo.AppendLine("Rotating to face ore deposit");
 					customInfo.Append("Angle: ");
-					customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.CurrentSettings.DistanceAngle)));
+					customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)));
 					break;
 				case State.Mining:
 					customInfo.AppendLine("Mining ore deposit");
@@ -389,7 +358,7 @@ namespace Rynchodon.Autopilot.Navigator
 					customInfo.AppendLine(m_depositPos.ToPretty());
 
 					customInfo.Append("Distance: ");
-					customInfo.Append(PrettySI.makePretty(m_navSet.CurrentSettings.Distance));
+					customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
 					customInfo.AppendLine("m");
 					break;
 			}
@@ -423,18 +392,17 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void EnableDrills(bool enable)
 		{
-			if (!MyAPIGateway.Multiplayer.IsServer)
-				return;
-
 			var allDrills = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			foreach (IMyShipDrill drill in allDrills)
-				if (!drill.Closed)
-					drill.RequestEnable(enable);
+			MyAPIGateway.Utilities.TryOnGameThread(() => {
+				foreach (IMyShipDrill drill in allDrills)
+					if (!drill.Closed)
+						drill.RequestEnable(enable);
+			}, m_logger);
 		}
 
 		private bool GetDeposit()
 		{
-			Vector3D pos = m_navDrill.GetPosition();
+			Vector3D pos = m_navDrill.WorldPosition;
 			IMyVoxelMap foundMap;
 			if (m_oreDetector.FindClosestOre(pos, OreTargets, out m_depositPos, out foundMap, out m_depostitOre))
 			{
@@ -466,19 +434,15 @@ namespace Rynchodon.Autopilot.Navigator
 			return false;
 		}
 
-		private bool IsInsideAsteroid()
+		private bool IsNearVoxel()
 		{
-			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_navDrill.Grid.GetLongestDim());
-			voxels.Clear();
-			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref surround, voxels);
-			if (voxels != null)
-				foreach (IMyVoxelMap vox in voxels)
-				{
-					if (vox.GetIntersectionWithSphere(ref surround))
-						return true;
-				}
-
-			return false;
+			if (Globals.UpdateCount - m_lastCheck_nearVoxel > 100ul)
+			{
+				m_lastNearVoxel = IsNearVoxel(m_navDrill.Grid);
+				m_lastCheck_nearVoxel = Globals.UpdateCount;
+			}
+			
+			return m_lastNearVoxel;
 		}
 
 		private bool IsStuck()
@@ -488,8 +452,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void MoveCurrent()
 		{
-			m_logger.debugLog("current target: " + m_currentTarget.ToGpsTag("m_currentTarget"), "MoveCurrent()");
-			m_mover.CalcMove(m_navDrill.GetPosition(), m_currentTarget, Vector3.Zero);
+			//m_logger.debugLog("current target: " + m_currentTarget.ToGpsTag("m_currentTarget"), "MoveCurrent()");
+			m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero);
 		}
 
 		private void OreDetectorFinished()

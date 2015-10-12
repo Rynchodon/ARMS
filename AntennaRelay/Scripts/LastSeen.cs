@@ -17,11 +17,12 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
+		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
 
 		public readonly IMyEntity Entity;
 		public readonly DateTime LastSeenAt;
 		public readonly Vector3D LastKnownPosition;
-		public readonly Vector3D LastKnownVelocity;
+		public readonly Vector3 LastKnownVelocity;
 		public readonly RadarInfo Info;
 
 		/// <summary>The last time Entity was broadcasting</summary>
@@ -108,16 +109,19 @@ namespace Rynchodon.AntennaRelay
 			return false;
 		}
 
-		public Vector3D predictPosition(TimeSpan elapsedTime)
-		{ return LastKnownPosition + LastKnownVelocity * elapsedTime.TotalSeconds; }
-
+		/// <summary>
+		/// Deprecated, use GetPosition()
+		/// </summary>
 		public Vector3D predictPosition()
-		{ return LastKnownPosition + LastKnownVelocity * (DateTime.UtcNow - LastSeenAt).TotalSeconds; }
+		{ return LastKnownPosition + LastKnownVelocity * (float)(DateTime.UtcNow - LastSeenAt).TotalSeconds; }
 
+		/// <summary>
+		/// Deprecated, use GetPosition()
+		/// </summary>
 		public Vector3D predictPosition(out TimeSpan sinceLastSeen)
 		{
 			sinceLastSeen = DateTime.UtcNow - LastSeenAt;
-			return LastKnownPosition + LastKnownVelocity * sinceLastSeen.TotalSeconds;
+			return LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 
 		private bool value_isValid;
@@ -135,16 +139,41 @@ namespace Rynchodon.AntennaRelay
 		/// Use this instead of hard-coding.
 		/// </summary>
 		public bool isRecent()
-		{ return (DateTime.UtcNow - LastSeenAt).TotalSeconds < 10; }
+		{ return GetTimeSinceLastSeen() < Recent; }
 
 		public bool isRecent_Broadcast()
-		{ return (DateTime.UtcNow - LastBroadcast).TotalSeconds < 10; }
+		{ return (DateTime.UtcNow - LastBroadcast) < Recent; }
 
 		public bool isRecent_Jam()
-		{ return (DateTime.UtcNow - LastJam).TotalSeconds < 10; }
+		{ return (DateTime.UtcNow - LastJam) < Recent; }
 
 		public bool isRecent_Radar()
-		{ return (DateTime.UtcNow - LastRadar).TotalSeconds < 10; }
+		{ return (DateTime.UtcNow - LastRadar) < Recent; }
+
+		/// <summary>A time span object representing the difference between the current time and the last time this LastSeen was updated</summary>
+		public TimeSpan GetTimeSinceLastSeen()
+		{ return DateTime.UtcNow - LastSeenAt; }
+
+		/// <summary>
+		/// If Entity has been seen recently, gets its position. Otherwise, predicts its position.
+		/// </summary>
+		/// <returns>The position of the Entity or its predicted position.</returns>
+		public Vector3D GetPosition()
+		{
+			TimeSpan sinceLastSeen = GetTimeSinceLastSeen();
+			return sinceLastSeen < Recent ? Entity.GetPosition()
+				: LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
+		}
+
+		/// <summary>
+		/// If Entity has been seen recently, gets its current velocity. Otherwise, returns LastKnownVelocity
+		/// </summary>
+		public Vector3 GetLinearVelocity()
+		{
+			return isRecent() ? Entity.Physics.LinearVelocity
+				: (Vector3)LastKnownVelocity;
+		}
+
 	}
 
 	public class RadarInfo

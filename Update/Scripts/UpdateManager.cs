@@ -48,6 +48,26 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts_Server()
 		{
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
+					{
+						var sca = new ShipController_Autopilot(block);
+						RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+					}
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
+				{
+					var sca = new ShipController_Autopilot(block);
+					RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+				}
+			});
+
+			#endregion
+
 			#region Antenna Communication
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
@@ -200,26 +220,6 @@ namespace Rynchodon.Update
 		{
 			UserSettings.CreateLocal();
 
-			#region Autopilot
-
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
-					{
-						var sca = new ShipController_Autopilot(block);
-						RegisterForUpdates(1, sca.Update, block);
-					}
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
-				{
-					var sca = new ShipController_Autopilot(block);
-					RegisterForUpdates(1, sca.Update, block);
-				}
-			});
-
-			#endregion
-
 			#region Radar
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
@@ -272,7 +272,6 @@ namespace Rynchodon.Update
 		private List<IMyPlayer> playersCached;
 
 		private readonly Logger myLogger;
-		//private static UpdateManager Instance;
 
 		public UpdateManager()
 		{
@@ -288,6 +287,8 @@ namespace Rynchodon.Update
 				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
 					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
 					return;
+
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
@@ -355,6 +356,25 @@ namespace Rynchodon.Update
 
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 			ManagerStatus = Status.Started;
+		}
+
+		private void Entities_OnCloseAll()
+		{
+			ManagerStatus = Status.Terminated;
+
+			UpdateRegistrar = null;
+			AllBlockScriptConstructors = null;
+			EveryBlockScriptConstructors = null;
+			CharacterScriptConstructors = null;
+			PlayerScriptConstructors = null;
+			GridScriptConstructors = null;
+
+			PlayerLeaves = null;
+			AnyPlayerLeaves = null;
+			playersAPI = null;
+			playersCached = null;
+
+			AddRemoveActions = null;
 		}
 
 		/// <summary>
@@ -438,7 +458,7 @@ namespace Rynchodon.Update
 			UpdateList(frequency).Add(toInvoke);
 
 			if (unregisterOnClosing != null)
-				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
+				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke);
 		}
 
 		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyPlayer unregisterOnLeaving, Action<IMyPlayer> onLeaving = null)
@@ -465,6 +485,9 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
 		{
+			if (UpdateRegistrar == null)
+				return;
+
 			myLogger.debugLog("entered UnRegisterForUpdates()", "UnRegisterForUpdates()");
 			List<Action> UpdateL = UpdateList(frequency);
 			UpdateL.Remove(toInvoke);

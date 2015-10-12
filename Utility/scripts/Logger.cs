@@ -173,6 +173,9 @@ namespace Rynchodon
 			if (closed)
 				return;
 
+			if (level <= severity.WARNING)
+				debugNotify("Logger: " + level, 2000, level);
+
 			if (toLog.Contains("\n") || toLog.Contains("\r"))
 			{
 				string[] split = toLog.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -188,22 +191,32 @@ namespace Rynchodon
 					if (MyAPIGateway.Utilities == null || !createLog())
 						return; // cannot log
 
-				string context = f_context != null ? f_context.Invoke() : null;
+				string context;
+				if (f_context != null)
+					try { context = f_context.Invoke(); }
+					catch { context = string.Empty; }
+				else
+					context = string.Empty;
 				if (primaryState == null)
 				{
 					if (f_state_primary != null)
-						primaryState = f_state_primary.Invoke();
+						try { primaryState = f_state_primary.Invoke(); }
+						catch { primaryState = string.Empty; }
 				}
 				if (secondaryState == null)
 				{
 					if (f_state_secondary != null)
-						secondaryState = f_state_secondary.Invoke();
+						try { secondaryState = f_state_secondary.Invoke(); }
+						catch { secondaryState = string.Empty; }
 				}
 
 				if (toLog == null)
 					toLog = "no message";
 				if (numLines >= maxNumLines)
+				{
+					debugNotify("max lines");
 					return;
+				}
 
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
@@ -220,7 +233,8 @@ namespace Rynchodon
 				logWriter.Flush();
 				stringCache.Clear();
 			}
-			catch { }
+			catch (Exception)
+			{ debugNotify("Exception while logging"); }
 			finally { lock_log.ReleaseExclusive(); }
 		}
 
@@ -228,6 +242,7 @@ namespace Rynchodon
 		{
 			if (append == null)
 				append = String.Empty;
+			append = append.Replace('[', '{').Replace(']', '}');
 			stringCache.Append('[');
 			stringCache.Append(append);
 			stringCache.Append(']');
@@ -274,6 +289,9 @@ namespace Rynchodon
 		/// <returns>true iff the message was displayed</returns>
 		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
+			if (closed)
+				return;
+
 			MyFontEnum font = fontForSeverity(level);
 			if (MyAPIGateway.Utilities != null)
 				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);

@@ -16,8 +16,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger _logger;
 		private readonly bool exitAfter;
 
-		//private bool exited;
-
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
@@ -30,14 +28,15 @@ namespace Rynchodon.Autopilot.Navigator
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			this.exitAfter = exitAfter;
 
-			m_mover.FullStop();
+			m_mover.StopMove();
+			m_mover.StopRotate();
 
 			_logger.debugLog("created, disableThrust: " + exitAfter, "Stopper()");
 
 			if (exitAfter)
 				m_navSet.Settings_Commands.NavigatorMover = this;
 			else
-				m_navSet.Settings_Task_Secondary.NavigatorMover = this;
+				m_navSet.Settings_Task_Primary.NavigatorMover = this;
 		}
 
 		#region NavigatorMover Members
@@ -47,26 +46,19 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			//if (exited)
-			//	return;
-
 			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() < StoppedThreshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() < StoppedThreshold)
 			{
-				INavigatorRotator rotator = m_navSet.CurrentSettings.NavigatorRotator;
-				if (rotator != null && !rotator.DirectionMatched)
+				INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
+				if (rotator != null && !m_navSet.DirectionMatched())
 				{
 					_logger.debugLog("waiting for rotator to match", "Move()");
 					return;
 				}
 
 				_logger.debugLog("stopped", "Stopper()");
-				m_navSet.OnTaskSecondaryComplete();
+				m_navSet.OnTaskPrimaryComplete();
 				if (exitAfter && m_mover.Block.Controller.ControlThrusters)
 				{
-					m_navSet.OnTaskPrimaryComplete();
-
-					//_logger.debugLog("setting exit", "Move()");
-					//exited = true;
 					_logger.debugLog("disabling thrusters", "Stopper()");
 					m_mover.Block.SetControl(false);
 				}
@@ -81,9 +73,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="customInfo">The autopilot block's custom info</param>
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			//if (exited)
-			//	customInfo.AppendLine("Exited");
-			//else 
 			if (exitAfter)
 				customInfo.AppendLine("Exit after stopping");
 			else

@@ -1,14 +1,21 @@
 using System;
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon.Attached
 {
 	/// <summary>
-	/// All attach &amp; detach should go through here. Handles block and/or grid closings.
+	/// All attach and detach should go through here. Handles block and/or grid closings.
 	/// </summary>
 	public abstract class AttachableBlockBase
 	{
+
+		private static readonly Dictionary<long, AttachableBlockBase> registry = new Dictionary<long, AttachableBlockBase>();
+
+		public static bool TryGet(long entityId, out AttachableBlockBase attachable)
+		{ return registry.TryGetValue(entityId, out attachable); }
+
 		private readonly Logger myLogger;
 		public readonly AttachedGrid.AttachmentKind AttachmentKind;
 		public readonly IMyCubeBlock myBlock;
@@ -17,7 +24,7 @@ namespace Rynchodon.Attached
 		private IMyCubeGrid curAttTo;
 		private IMyCubeBlock curAttToBlock;
 
-		protected bool IsAttached
+		public bool IsAttached
 		{ get { return curAttTo != null; } }
 
 		protected AttachableBlockBase(IMyCubeBlock block, AttachedGrid.AttachmentKind kind)
@@ -26,7 +33,9 @@ namespace Rynchodon.Attached
 			AttachmentKind = kind;
 			myBlock = block;
 
+			registry.Add(block.EntityId, this);
 			block.OnClose += Detach;
+			block.OnMarkForClose += b => registry.Remove(b.EntityId);
 		}
 
 		protected void Attach(IMyCubeBlock block)

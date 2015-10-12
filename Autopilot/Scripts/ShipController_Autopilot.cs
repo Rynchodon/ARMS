@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
+using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -15,15 +16,19 @@ namespace Rynchodon.Autopilot
 
 	public class ShipControllerBlock
 	{
+
 		public readonly MyShipController Controller;
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyTerminalBlock Terminal;
+
+		private readonly Logger m_logger;
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
 
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
+			m_logger = new Logger(GetType().Name, block);
 			Controller = block as MyShipController;
 			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
@@ -31,8 +36,7 @@ namespace Rynchodon.Autopilot
 
 		public void ApplyAction(string action)
 		{
-			if (MyAPIGateway.Multiplayer.IsServer)
-				Terminal.GetActionWithName(action).Apply(Terminal);
+			MyAPIGateway.Utilities.TryOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
 		}
 
 		public void SetControl(bool enable)
@@ -43,8 +47,15 @@ namespace Rynchodon.Autopilot
 
 		public void SetDamping(bool enable)
 		{
-			if ((Controller as IMyControllableEntity).EnabledDamping != enable)
-				Controller.SwitchDamping();
+			IMyControllableEntity controllable = Controller as IMyControllableEntity;
+			if (controllable.EnabledDamping != enable)
+			{
+				m_logger.debugLog("setting switch damp, EnabledDamping: " + controllable.EnabledDamping + ", enable: " + enable, "SetDamping()");
+				MyAPIGateway.Utilities.TryOnGameThread(() => {
+					if (controllable.EnabledDamping != enable)
+						Controller.SwitchDamping();
+				}, m_logger);
+			}
 		}
 	}
 
@@ -53,9 +64,11 @@ namespace Rynchodon.Autopilot
 	/// </summary>
 	public class ShipController_Autopilot
 	{
+		public const uint UpdateFrequency = 3u;
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
+		private static readonly ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
 		/// <summary>
@@ -105,6 +118,8 @@ namespace Rynchodon.Autopilot
 		private readonly Logger myLogger;
 		private readonly Interpreter myInterpreter;
 
+		private readonly FastResourceLock lock_execution = new FastResourceLock();
+
 		private IMyCubeGrid ControlledGrid;
 		private bool Enabled, Halted;
 
@@ -125,10 +140,16 @@ namespace Rynchodon.Autopilot
 			myLogger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
 		}
 
+		public void Update()
+		{
+			if (lock_execution.TryAcquireExclusive())
+				AutopilotThread.EnqueueAction(UpdateThread);
+		}
+
 		/// <summary>
 		/// Run the autopilot
 		/// </summary>
-		public void Update()
+		private void UpdateThread()
 		{
 			try
 			{
@@ -149,23 +170,24 @@ namespace Rynchodon.Autopilot
 					myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
 					Enabled = true;
 					myNavSet.OnStartOfCommands();
+					myInterpreter.instructionQueue.Clear();
 				}
 
 				this.Block.Terminal.RefreshCustomInfo();
 
-				if (myNavSet.CurrentSettings.WaitUntil > DateTime.UtcNow)
+				if (myNavSet.Settings_Current.WaitUntil > DateTime.UtcNow)
 					return;
 
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
 					// wait for player to give back control, do not reset
 					return;
 
-				INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
 				if (navM != null)
 				{
 					navM.Move();
 
-					INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator; // fetched here because mover might remove it
+					INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator; // fetched here because mover might remove it
 					if (navR != null)
 						navR.Rotate();
 
@@ -177,10 +199,10 @@ namespace Rynchodon.Autopilot
 				{
 					myLogger.debugLog("running instructions", "Update()");
 
-					while (myInterpreter.instructionQueue.Count != 0 && myNavSet.CurrentSettings.NavigatorMover == null)
+					while (myInterpreter.instructionQueue.Count != 0 && myNavSet.Settings_Current.NavigatorMover == null)
 						myInterpreter.instructionQueue.Dequeue().Invoke();
 
-					if (myNavSet.CurrentSettings.NavigatorMover == null)
+					if (myNavSet.Settings_Current.NavigatorMover == null)
 					{
 						myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
 						ReleaseControlledGrid();
@@ -189,7 +211,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				{
-					INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+					INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator;
 					if (navR != null)
 					{
 						//run the rotator by itself until direction is matched
@@ -197,9 +219,9 @@ namespace Rynchodon.Autopilot
 						navR.Rotate();
 						myInterpreter.Mover.MoveAndRotate();
 
-						if (!navR.DirectionMatched)
+						if (!myNavSet.DirectionMatched())
 							return;
-						myInterpreter.Mover.FullStop();
+						myInterpreter.Mover.StopRotate();
 					}
 				}
 
@@ -215,6 +237,8 @@ namespace Rynchodon.Autopilot
 				myLogger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
 				HCF();
 			}
+			finally
+			{ lock_execution.ReleaseExclusive(); }
 		}
 
 		#region Control
@@ -226,7 +250,7 @@ namespace Rynchodon.Autopilot
 		private bool CheckControl()
 		{
 			// cache current grid in case it changes
-			IMyCubeGrid myGrid = Block.Controller.CubeGrid;
+			IMyCubeGrid myGrid = Block.CubeGrid;
 
 			if (ControlledGrid != null)
 			{
@@ -281,6 +305,10 @@ namespace Rynchodon.Autopilot
 				|| !Block.Controller.ControlThrusters)
 				return false;
 
+			MyCubeGrid mcg = grid as MyCubeGrid;
+			if (mcg.HasMainCockpit() && !Block.Controller.IsMainCockpit)
+				return false;
+
 			return true;
 		}
 
@@ -328,7 +356,7 @@ namespace Rynchodon.Autopilot
 
 				bool moving = true;
 
-				double wait = (myNavSet.CurrentSettings.WaitUntil - DateTime.UtcNow).TotalSeconds;
+				double wait = (myNavSet.Settings_Current.WaitUntil - DateTime.UtcNow).TotalSeconds;
 				if (wait > 0)
 				{
 					moving = false;
@@ -348,11 +376,11 @@ namespace Rynchodon.Autopilot
 				if (!moving)
 					return;
 
-				INavigatorMover navM = myNavSet.CurrentSettings.NavigatorMover;
+				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
 				if (navM != null)
 					navM.AppendCustomInfo(customInfo);
 
-				INavigatorRotator navR = myNavSet.CurrentSettings.NavigatorRotator;
+				INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator;
 				if (navR != null && navR != navM)
 					navR.AppendCustomInfo(customInfo);
 			}

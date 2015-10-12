@@ -5,6 +5,7 @@ using Rynchodon.Threading;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -42,7 +43,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>();
 			private readonly FastResourceLock lock_materialLocations = new FastResourceLock();
-			
+
 			private readonly FastResourceLock lock_readVoxels = new FastResourceLock();
 
 			private DateTime m_expiresAt = DateTime.UtcNow + LifeSpan;
@@ -58,9 +59,10 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			public bool IsValid()
-			{ 
+			{
 				using (lock_expiresAt.AcquireSharedUsing())
-				return DateTime.UtcNow < m_expiresAt; }
+					return DateTime.UtcNow < m_expiresAt;
+			}
 
 			public bool GetClosest(byte[] oreType, ref Vector3I voxelCoord, out Vector3I closest, out byte foundOre)
 			{
@@ -104,7 +106,7 @@ namespace Rynchodon.Autopilot.Harvest
 				try
 				{
 					using (lock_expiresAt.AcquireExclusiveUsing())
-					m_expiresAt = DateTime.UtcNow + LifeSpan;
+						m_expiresAt = DateTime.UtcNow + LifeSpan;
 
 					Vector3D odPos = m_oreDetector.GetPosition();
 					Vector3D minWorld = odPos - m_oreDetector.Range;
@@ -146,7 +148,7 @@ namespace Rynchodon.Autopilot.Harvest
 				{
 					m_logger.alwaysLog("Exception: " + ex, "StartRead()", Logger.severity.ERROR);
 					using (lock_expiresAt.AcquireExclusiveUsing())
-					m_expiresAt = DateTime.MinValue; // get this VoxelData thrown out instead of guessing at lock state
+						m_expiresAt = DateTime.MinValue; // get this VoxelData thrown out instead of guessing at lock state
 					throw ex;
 				}
 				return true;
@@ -185,35 +187,99 @@ namespace Rynchodon.Autopilot.Harvest
 
 		}
 
+		#region Static
+
 		private static readonly TimeSpan UpdateStationary = new TimeSpan(0, 10, 0);
 
 		public static readonly Dictionary<long, OreDetector> registry = new Dictionary<long, OreDetector>();
 
-		private static Dictionary<string, byte[]> MaterialGroupByName = new Dictionary<string, byte[]>();
+		/// <summary>
+		/// Material indecies by chemical symbol, subtype, and MinedOre.
+		/// </summary>
+		private static Dictionary<string, byte[]> MaterialGroup;
 
 		static OreDetector()
 		{
-			// group materials together
 			var defs = MyDefinitionManager.Static.GetVoxelMaterialDefinitions();
-			Dictionary<string, List<byte>> groups = new Dictionary<string, List<byte>>();
+			Dictionary<string, List<byte>> MaterialGroup = new Dictionary<string, List<byte>>();
 			foreach (var def in defs)
 			{
-				string groupName = def.Id.SubtypeName.Split('_')[0];
-				List<byte> list;
-				if (!groups.TryGetValue(groupName, out list))
+				string subtype = def.Id.SubtypeName.Split('_')[0].Trim().ToLower();
+				string minedOre = def.MinedOre.Trim().ToLower();
+
+				List<byte> addTo;
+				if (!MaterialGroup.TryGetValue(subtype, out addTo))
 				{
-					list = new List<byte>();
-					groups.Add(groupName, list);
+					addTo = new List<byte>();
+					MaterialGroup.Add(subtype, addTo);
 				}
-				list.Add(def.Index);
+				addTo.Add(def.Index);
+
+				if (!MaterialGroup.TryGetValue(minedOre, out addTo))
+				{
+					addTo = new List<byte>();
+					MaterialGroup.Add(minedOre, addTo);
+				}
+				addTo.Add(def.Index);
+
+				string symbol;
+				if (GetChemicalSymbol(subtype, out symbol))
+				{
+					if (!MaterialGroup.TryGetValue(symbol, out addTo))
+					{
+						addTo = new List<byte>();
+						MaterialGroup.Add(symbol, addTo);
+					}
+					addTo.Add(def.Index);
+				}
 			}
 
-			foreach (var pair in groups)
-				MaterialGroupByName.Add(pair.Key.Trim().ToLower(), pair.Value.ToArray());
+			OreDetector.MaterialGroup = new Dictionary<string, byte[]>();
+			foreach (var pair in MaterialGroup)
+				OreDetector.MaterialGroup.Add(pair.Key, pair.Value.ToArray());
 		}
 
 		public static bool TryGetMaterial(string oreName, out byte[] oreTypes)
-		{ return MaterialGroupByName.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
+		{ return MaterialGroup.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
+
+		/// <param name="subtypeName">SubtypeId without the _##</param>
+		private static bool GetChemicalSymbol(string subtypeName, out string symbol)
+		{
+			switch (subtypeName)
+			{
+				case "cobalt":
+					symbol = "co";
+					return true;
+				case "gold":
+					symbol = "au";
+					return true;
+				case "iron":
+					symbol = "fe";
+					return true;
+				case "magnesium":
+					symbol = "mg";
+					return true;
+				case "nickel":
+					symbol = "ni";
+					return true;
+				case "platinum":
+					symbol = "pt";
+					return true;
+				case "silicon":
+					symbol = "si";
+					return true;
+				case "silver":
+					symbol = "ag";
+					return true;
+				case "uraninite":
+					symbol = "u";
+					return true;
+			}
+			symbol = null;
+			return false;
+		}
+
+		#endregion
 
 		public readonly IMyCubeBlock Block;
 

@@ -26,8 +26,8 @@ namespace Rynchodon.Autopilot.Navigator
 	/// </summary>
 	public interface INavigatorRotator
 	{
-		/// <summary>True iff the target direction has been reached.</summary>
-		bool DirectionMatched { get; }
+		///// <summary>True iff the target direction has been reached.</summary>
+		//bool DirectionMatched { get; }
 
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.
@@ -72,9 +72,9 @@ namespace Rynchodon.Autopilot.Navigator
 		protected NavigatorMover(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
 
-		/// <summary>A NavigatorMover does not need to match direction, so this value is always true.</summary>
-		public bool DirectionMatched
-		{ get { return true; } }
+		///// <summary>A NavigatorMover does not need to match direction, so this value is always true.</summary>
+		//public bool DirectionMatched
+		//{ get { return true; } }
 
 		/// <summary>
 		/// Calculate the movement force necessary to reach the target.
@@ -97,8 +97,8 @@ namespace Rynchodon.Autopilot.Navigator
 		protected NavigatorRotator(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
 
-		/// <summary>True iff the target direction has been reached.</summary>
-		public abstract bool DirectionMatched { get; }
+		///// <summary>True iff the target direction has been reached.</summary>
+		//public abstract bool DirectionMatched { get; }
 
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.

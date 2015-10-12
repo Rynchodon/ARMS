@@ -26,8 +26,9 @@ namespace Rynchodon.Autopilot.Data
 			this.torqueAccelRatio = 0f;
 
 			ReadOnlyList<IMyCubeBlock> blocks = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
-			foreach (MyGyro g in blocks)
-				Gyros.Add(g);
+			if (blocks != null)
+				foreach (MyGyro g in blocks)
+					Gyros.Add(g);
 
 			grid.OnBlockAdded += grid_OnBlockAdded;
 			grid.OnBlockRemoved += grid_OnBlockRemoved;
@@ -59,8 +60,8 @@ namespace Rynchodon.Autopilot.Data
 						myLogger.debugLog("torqueAccelRatio changed from " + torqueAccelRatio + " to " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);
 						torqueAccelRatio = dim;
 					}
-					else
-						myLogger.alwaysLog("dim <= 0 : " + dim, "Update_torqueAccelRatio()", Logger.severity.WARNING);
+					else // caused by bumping into things
+						myLogger.debugLog("dim <= 0 : " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);
 				}
 			}
 		}
