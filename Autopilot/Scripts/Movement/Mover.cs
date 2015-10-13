@@ -81,7 +81,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="block">To get world position from.</param>
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
-		public void CalcMove( PseudoBlock block, Vector3 destPoint, Vector3 destVelocity)
+		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
+		public void CalcMove( PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
 			// using world vectors
 
@@ -115,8 +116,8 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
 			Vector3 accel =  targetVelocity - velocity;
-			if (distance < 9f)
-				accel *= 10f - distance;
+			if (landing)
+				accel *= 10f;
 
 			moveForceRatio = ToForceRatio(accel);
 
@@ -303,7 +304,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="localMatrix">The matrix to rotate to face the direction, use a block's local matrix or result of GetMatrix()</param>
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
-		/// <param name="displacement">Angular distance between localMatrix and Direction</param>
+		///// <param name="displacement">Angular distance between localMatrix and Direction</param>
 		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, out Vector3 angularVelocity)//, out Vector3 displacement)
 		{
 			myLogger.debugLog(Direction == null, "Direction == null", "CalcRotate()", Logger.severity.ERROR);
@@ -416,25 +417,28 @@ namespace Rynchodon.Autopilot.Movement
 
 			//myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
 
-			// reduce speed if near movement destination
-			float speedCap;
-			float distance = NavSet.Settings_Current.Distance;
-			if (float.IsNaN(distance))
-				speedCap = float.MaxValue;
-			else if (distance < 1f)
-				speedCap = 0.1f;
-			else
-				speedCap = distance / 10f;
+			// not allways a good idea, Miner will have to cope
+			//// reduce speed if near movement destination
+			//float speedCap;
+			//float distance = NavSet.Settings_Current.Distance;
+			//if (float.IsNaN(distance))
+			//	speedCap = float.MaxValue;
+			//else if (distance < 1f)
+			//	speedCap = 0.1f;
+			//else
+			//	speedCap = distance / 10f;
 
-			myLogger.debugLog("speed cap: " + speedCap, "MaxAngleVelocity()");
+			//myLogger.debugLog("speed cap: " + speedCap, "MaxAngleVelocity()");
 
 			for (int i = 0; i < 3; i++)
 			{
 				float dim = disp.GetDim(i);
 				if (dim > 0)
-					result.SetDim(i, Math.Min(MaxAngleSpeed(accel, dim), speedCap));
+					//result.SetDim(i, Math.Min(MaxAngleSpeed(accel, dim), speedCap));
+					result.SetDim(i, MaxAngleSpeed(accel, dim));
 				else if (dim < 0)
-					result.SetDim(i, -Math.Min(MaxAngleSpeed(accel, -dim), speedCap));
+					//result.SetDim(i, -Math.Min(MaxAngleSpeed(accel, -dim), speedCap));
+					result.SetDim(i, -MaxAngleSpeed(accel, -dim));
 			}
 
 			return result;
@@ -463,7 +467,7 @@ namespace Rynchodon.Autopilot.Movement
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
-				MyAPIGateway.Utilities.TryOnGameThread(() => controller.MoveAndRotateStopped(), myLogger);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotateStopped(), myLogger);
 				return;
 			}
 
@@ -478,7 +482,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
-			MyAPIGateway.Utilities.TryOnGameThread(() => controller.MoveAndRotate(moveControl, rotateControl, rollControl), myLogger);
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotate(moveControl, rotateControl, rollControl), myLogger);
 		}
 
 	}

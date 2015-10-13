@@ -163,7 +163,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var detectors = cache.GetBlocksOfType(typeof(MyObjectBuilder_OreDetector));
 			if (detectors != null && detectors.Count > 0)
-				m_oreDetector = OreDetector.registry[detectors[0].EntityId];
+			{
+				if (!OreDetector.TryGetDetector(detectors[0].EntityId, out m_oreDetector))
+					m_logger.debugLog("failed to get ore detector from block", "MinerVoxel()", Logger.severity.FATAL);
+			}
 
 			m_navSet.Settings_Task_Primary.NavigatorMover = this;
 			if (m_navSet.Settings_Current.NavigatorRotator == null)
@@ -189,6 +192,7 @@ namespace Rynchodon.Autopilot.Navigator
 			switch (m_state)
 			{
 				case State.GetTarget:
+					m_logger.debugLog("waiting for target", "Move()");
 					m_mover.StopMove();
 					return;
 				case State.Approaching:
@@ -305,25 +309,31 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navDrill.FunctionalBlocks == 0)
 				return;
 
-			Vector3 direction;
 			switch (m_state)
 			{
 				case State.GetTarget:
 				case State.Mining_Escape:
+					m_mover.StopRotate();
 					return;
+				case State.Rotating:
+					if (m_navSet.DirectionMatched())
+					{
+						m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
+						m_state = State.MoveTo;
+						m_mover.StopRotate();
+						return;
+					}
+					break;
+				case State.MoveTo:
+				case State.Mining:
+				case State.Mining_Tunnel:
+					// TODO: stop ship from rotating if near destination or reduce roation?
 				default:
-					direction = m_currentTarget - m_navDrill.WorldPosition;
 					break;
 			}
 
+			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 			m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
-			if (m_navSet.DirectionMatched())
-				if (m_state == State.Rotating)
-				{
-					m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
-					m_state = State.MoveTo;
-					return;
-				}
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -392,8 +402,13 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void EnableDrills(bool enable)
 		{
+			if (enable)
+				m_logger.debugLog("Enabling drills", "EnableDrills()", Logger.severity.DEBUG);
+			else
+				m_logger.debugLog("Disabling drills", "EnableDrills()", Logger.severity.DEBUG);
+
 			var allDrills = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			MyAPIGateway.Utilities.TryOnGameThread(() => {
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyShipDrill drill in allDrills)
 					if (!drill.Closed)
 						drill.RequestEnable(enable);

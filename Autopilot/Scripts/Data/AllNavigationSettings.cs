@@ -236,6 +236,8 @@ namespace Rynchodon.Autopilot.Data
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
 		public SettingsLevel Settings_Current { get { return Settings_Task_Tertiary; } }
 
+		public PseudoBlock LastLandingBlock { get; set; }
+
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{
 			this.defaultNavBlock = defaultNavBlock;
@@ -293,6 +295,19 @@ namespace Rynchodon.Autopilot.Data
 			if (float.IsNaN(angle))
 				return false;
 			return angle < 0.1f;
+		}
+
+		public bool DistanceLessThan(float value)
+		{
+			float distance = Settings_Current.Distance;
+			if (float.IsNaN(distance))
+				return false;
+			return distance < value;
+		}
+
+		public bool DistanceLessThanDestRadius()
+		{
+			return DistanceLessThan(Settings_Current.DestinationRadius);
 		}
 
 	}

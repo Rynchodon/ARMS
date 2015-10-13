@@ -505,7 +505,7 @@ namespace Rynchodon.AntennaRelay
 						IMyTerminalBlock TermBlock = this.TermBlock;
 						IMyCubeBlock CubeBlock = this.CubeBlock;
 
-						MyAPIGateway.Utilities.TryOnGameThread(() => {
+						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
 
 							string instructions = GetInstructions();

@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public Vector3D GetPostition(Vector3D NavPos, Vector3D blockOffset)
+		public Vector3D GetPosition(Vector3D NavPos, Vector3D blockOffset)
 		{
 			return !Grid.isRecent() ? Grid.predictPosition()
 				: Block != null ? GetBlockPosition(blockOffset)
@@ -95,7 +95,7 @@ namespace Rynchodon.Autopilot
 					bestNameLength = grid.DisplayName.Length;
 					if (bestNameLength == m_targetGridName.Length)
 					{
-						m_logger.debugLog("perfect matching LastSeen: " + seen.Entity.getBestName(), "GridSearch()");
+						m_logger.debugLog("perfect match LastSeen: " + seen.Entity.getBestName(), "GridSearch()");
 						return true;
 					}
 				}

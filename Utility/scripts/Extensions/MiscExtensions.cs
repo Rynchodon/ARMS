@@ -50,7 +50,7 @@ namespace Rynchodon
 		}
 
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
-		{ return RelativeVector3F.createFromLocal(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
+		{ return Vector3D.Transform(grid.LocalAABB.Center, grid.WorldMatrix); }
 
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{
@@ -296,7 +296,7 @@ namespace Rynchodon
 		/// <summary>
 		/// Try to perform an Action on game thread, if it fails do not crash the game.
 		/// </summary>
-		public static void TryOnGameThread(this IMyUtilities util, Action invoke, Logger logTo)
+		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, Logger logTo)
 		{
 			util.InvokeOnGameThread(() => {
 				try { invoke.Invoke(); }

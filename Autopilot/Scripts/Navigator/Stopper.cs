@@ -63,8 +63,8 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.Block.SetControl(false);
 				}
 			}
-			else
-				_logger.debugLog("not stopped", "Stopper()");
+			//else
+			//	_logger.debugLog("not stopped", "Stopper()");
 		}
 
 		/// <summary>

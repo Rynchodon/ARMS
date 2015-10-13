@@ -52,9 +52,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			if (m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
+			if (m_navSet.DistanceLessThanDestRadius())
 			{
-				myLogger.debugLog("Reached destination: " + location, "PerformTask()", Logger.severity.INFO);
+				myLogger.debugLog("Reached destination: " + location, "Move()", Logger.severity.INFO);
 				m_navSet.OnTaskSecondaryComplete();
 				m_mover.StopMove();
 				m_mover.StopRotate();

@@ -175,11 +175,6 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => Controller.SetControl(false);
 						return true;
 					}
-				//case "harvest":
-				//	{
-				//		wordAction = () => { currentNavigator = new HarvesterAsteroid(myTerm); };
-				//		return true;
-				//	}
 				//case "jump":
 				//	{
 				//		wordAction = null;
@@ -198,11 +193,11 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => { new Stopper(Mover, NavSet, false); };
 						return true;
 					}
-				//case "unlock":
-				//	{
-				//		wordAction = null;
-				//		return false ;
-				//	}
+				case "unlock":
+					{
+						wordAction = () => new UnLander(Mover, NavSet);
+						return true;
+					}
 				default:
 					{
 						wordAction = null;
@@ -278,6 +273,8 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_offset(out instructionAction, dataLowerCase);
 				case 'p':
 					return getAction_Proximity(out instructionAction, dataLowerCase);
+				case 'u':
+					return getAction_unlandBlock(out instructionAction, dataLowerCase);
 				case 'v':
 					return getAction_speedLimit(out instructionAction, dataLowerCase);
 				case 'w':
@@ -406,7 +403,7 @@ namespace Rynchodon.Autopilot.Instruction
 				if (ShipController_Autopilot.IsAutopilotBlock(fatblock))
 				{
 					string nameOnly = fatblock.getNameOnly();
-					if (nameOnly == null || !nameOnly.Contains(blockName))
+					if (nameOnly == null || !nameOnly.looseContains(blockName))
 						return false;
 				}
 				else
@@ -706,6 +703,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				myLogger.debugLog("setting LandingBlock to " + landingBlock.DisplayNameText, "GetLocalBlock()");
 				NavSet.Settings_Task_Primary.LandingBlock = asPB;
+				NavSet.LastLandingBlock = asPB;
 			};
 
 			return true;
@@ -836,6 +834,25 @@ namespace Rynchodon.Autopilot.Instruction
 		//	};
 		//	return true;
 		//}
+
+		private bool getAction_unlandBlock(out Action instructionAction, string instruction)
+		{
+			IMyCubeBlock unlandBlock;
+			Base6Directions.Direction? forward, upward;
+			if (!GetLocalBlock(instruction, out unlandBlock, out forward, out upward))
+			{
+				instructionAction = null;
+				return false;
+			}
+
+			instructionAction = () => {
+				PseudoBlock asPB = new PseudoBlock(unlandBlock, forward, upward);
+				myLogger.debugLog("unlanding " + unlandBlock.DisplayNameText, "GetLocalBlock()");
+				new UnLander(Mover, NavSet, asPB);
+			};
+
+			return true;
+		}
 
 		private bool getAction_speedLimit(out Action instructionAction, string dataLowerCase)
 		{
@@ -1122,8 +1139,10 @@ namespace Rynchodon.Autopilot.Instruction
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
 					string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().ToLower()
-						: Fatblock.DisplayNameText.ToLower();
+						? Fatblock.getNameOnly().LowerRemoveWhitespace()
+						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
+
+					//myLogger.debugLog("checking: " + blockName, "GetLocalBlock()");
 
 					if (blockName.Length < bestNameLength && blockName.Contains(searchFor))
 					{
@@ -1141,7 +1160,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (foundBlock == null)
 			{
-				myLogger.debugLog("could not get a localBlock for " + searchFor, "GetLocalBlock()", Logger.severity.WARNING);
+				myLogger.debugLog("could not get a localBlock for " + searchFor, "GetLocalBlock()", Logger.severity.INFO);
 				Errors.AppendLine("Not Found: " + searchFor);
 				localBlock = null;
 				return false;

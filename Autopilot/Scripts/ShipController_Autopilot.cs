@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot
 
 		public void ApplyAction(string action)
 		{
-			MyAPIGateway.Utilities.TryOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
 		}
 
 		public void SetControl(bool enable)
@@ -51,12 +51,13 @@ namespace Rynchodon.Autopilot
 			if (controllable.EnabledDamping != enable)
 			{
 				m_logger.debugLog("setting switch damp, EnabledDamping: " + controllable.EnabledDamping + ", enable: " + enable, "SetDamping()");
-				MyAPIGateway.Utilities.TryOnGameThread(() => {
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (controllable.EnabledDamping != enable)
 						Controller.SwitchDamping();
 				}, m_logger);
 			}
 		}
+
 	}
 
 	/// <summary>
@@ -113,6 +114,8 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
+		private enum State : byte { Disabled, Enabled, Halted }
+
 		private readonly ShipControllerBlock Block;
 
 		private readonly Logger myLogger;
@@ -121,7 +124,7 @@ namespace Rynchodon.Autopilot
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 
 		private IMyCubeGrid ControlledGrid;
-		private bool Enabled, Halted;
+		private State m_state = State.Disabled;
 
 		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
 
@@ -153,27 +156,35 @@ namespace Rynchodon.Autopilot
 		{
 			try
 			{
-				if (Halted)
-					return;
-				if (!CheckControl())
-				{
-					if (Enabled)
-					{
-						myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
-						Enabled = false;
-						this.Block.Terminal.RefreshCustomInfo();
-					}
-					return;
-				}
-				if (!Enabled)
-				{
-					myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
-					Enabled = true;
-					myNavSet.OnStartOfCommands();
-					myInterpreter.instructionQueue.Clear();
-				}
+				this.Block.Terminal.RefreshCustomInfo(); // going to be removed anyway
 
-				this.Block.Terminal.RefreshCustomInfo();
+				switch (m_state)
+				{
+					case State.Disabled:
+						if (CheckControl())
+						{
+							myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
+							myNavSet.OnStartOfCommands();
+							myInterpreter.instructionQueue.Clear();
+							m_state = State.Enabled;
+							break;
+						}
+						return;
+					case State.Enabled:
+						if (CheckControl())
+							break;
+						myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
+						m_state = State.Disabled;
+						return;
+					case State.Halted:
+						if (!Block.Controller.ControlThrusters)
+						{
+							m_state = State.Disabled;
+							Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
+							Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
+						}
+						return;
+				}
 
 				if (myNavSet.Settings_Current.WaitUntil > DateTime.UtcNow)
 					return;
@@ -393,33 +404,15 @@ namespace Rynchodon.Autopilot
 
 		private void HCF()
 		{
-			Halted = true;
-			Enabled = false;
+			m_state = State.Halted;
 			Block.Controller.MoveAndRotateStopped();
 
 			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
 			Block.Terminal.AppendingCustomInfo += HCF_AppendingCustomInfo;
-			Block.CubeBlock.IsWorkingChanged += HCF_RestoreCustomInfo;
-
-			Block.Terminal.RefreshCustomInfo();
 		}
 
 		private void HCF_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
 		{ customInfo.AppendLine("Autopilot crashed, see log for details"); }
-
-		private void HCF_RestoreCustomInfo(IMyCubeBlock block)
-		{
-			if (Block.Terminal.IsWorking)
-			{
-				Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
-				Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
-				Block.CubeBlock.IsWorkingChanged -= HCF_RestoreCustomInfo;
-
-				Block.Terminal.RefreshCustomInfo();
-			}
-			else
-				Halted = false;
-		}
 
 	}
 }

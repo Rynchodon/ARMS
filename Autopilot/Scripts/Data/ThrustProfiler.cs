@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
-using VRage.ObjectBuilders;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Data
 {
@@ -45,11 +43,6 @@ namespace Rynchodon.Autopilot.Data
 		private IMyCubeGrid myGrid;
 		private Dictionary<IMyThrust, ThrusterProperties> allMyThrusters;
 		private Dictionary<Base6Directions.Direction, List<ThrusterProperties>> thrustersInDirection;
-
-		/// <summary>
-		/// Thrusters which are disabled by Autopilot and should not be removed from profile.
-		/// </summary>
-		private HashSet<IMyThrust> thrustersDisabledByAutopilot = new HashSet<IMyThrust>();
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -155,7 +148,7 @@ namespace Rynchodon.Autopilot.Data
 		{
 			float dampingForce = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && (thruster.thruster.IsWorking || thrustersDisabledByAutopilot.Contains(thruster.thruster)))
+				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
 					dampingForce += thruster.dampingForce * thruster.thruster.ThrustMultiplier;
 
 			return dampingForce;
@@ -169,156 +162,11 @@ namespace Rynchodon.Autopilot.Data
 		{
 			float force = 0;
 			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && (thruster.thruster.IsWorking || thrustersDisabledByAutopilot.Contains(thruster.thruster)))
+				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
 					force += thruster.force * thruster.thruster.ThrustMultiplier;
 
 			return force;
 		}
 
-		#region Public Methods
-
-		/// <summary>
-		/// scales a movement vector by available thrust force
-		/// </summary>
-		/// <param name="displacement">displacement vector</param>
-		/// <param name="remote">controlling remote</param>
-		/// <returns>scaled vector</returns>
-		public RelativeDirection3F scaleByForce(RelativeDirection3F displacement)
-		{
-			allMyThrusters.throwIfNull_variable("allMyThrusters");
-
-			Vector3 displacementGrid = displacement.ToLocal();
-
-			Dictionary<Base6Directions.Direction, float> directionalForces = new Dictionary<Base6Directions.Direction, float>();
-
-			// find determinant thrust
-			float minForce = float.MaxValue;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-			{
-				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
-				if (movementInDirection > 0)
-				{
-					float inDirection = GetForceInDirection(direction);
-					directionalForces.Add(direction, inDirection);
-					minForce = Math.Min(minForce, inDirection);
-				}
-			}
-
-			// scale thrust to min
-			Vector3 scaledMovement = Vector3.Zero;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-			{
-				float movementInDirection = displacementGrid.Dot(Base6Directions.GetVector(direction));
-				if (movementInDirection > 0)
-				{
-					float forceInDirection = directionalForces[direction];
-					float scaleFactor = minForce / forceInDirection;
-					scaledMovement += movementInDirection * scaleFactor * Base6Directions.GetVector(direction);
-				}
-			}
-
-			return RelativeDirection3F.FromLocal(myGrid, scaledMovement);
-		}
-
-		//public float TotalForce(Vector3 worldDirection)
-		//{
-		//	Dictionary<Base6Directions.Direction, float> directionForces = new Dictionary<Base6Directions.Direction, float>();
-
-		//	// find determinant thrust
-		//	float minForce = float.MinValue;
-		//	foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-		//	{
-		//		float cosAngle = Vector3.Dot(worldDirection, myGrid.WorldMatrix.GetDirectionVector(direction));
-		//		if (cosAngle > 0)
-		//		{
-		//			float forceInDirection = GetForceInDirection(direction);
-		//			directionForces.Add(direction, forceInDirection);
-		//			if (forceInDirection < minForce)
-		//				minForce = forceInDirection;
-		//		}
-		//	}
-
-		//	// scale thrust to min
-
-
-		//	Vector3 localDirection = Vector3.Transform(worldDirection, myGrid.WorldMatrixNormalizedInv.GetOrientation());
-
-		//}
-
-		/// <summary>
-		/// Finds a distance that will always be greater than the distance required to stop.
-		/// </summary>
-		/// <remarks>
-		/// <para>the approximation that is used by this method is: stopping distance = speed * speed / max acceleration</para>
-		/// <para>max acceleration is the smaller of available force / mass (exact) and speed / 2 (approximation)</para>
-		/// <para>where there is sufficient thrust, this could be simplified to stopping distance = 2 * speed</para>
-		/// </remarks>
-		/// <returns>A distance larger than the distance required to stop</returns>
-		public float getStoppingDistance()
-		{
-			allMyThrusters.throwIfNull_variable("allMyThrusters");
-
-			RelativeVector3F velocity = RelativeVector3F.createFromWorld(myGrid.Physics.LinearVelocity, myGrid);
-
-			float maxStopDistance = 0;
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections) //Enum.GetValues(typeof(Base6Directions.Direction)))
-			{
-				float velocityInDirection = velocity.getLocal().Dot(Base6Directions.GetVector(direction));
-				if (velocityInDirection < -0.1) // direction is opposite of velocityGrid
-				{
-					float acceleration = Math.Min(Math.Abs(GetDampingInDirection(direction) / myGrid.Physics.Mass), Math.Abs(velocityInDirection / 2));
-					float stoppingDistance = velocityInDirection * velocityInDirection / acceleration;
-					maxStopDistance = Math.Max(stoppingDistance, maxStopDistance);
-				}
-			}
-
-			return maxStopDistance;
-		}
-
-		/// <summary>
-		/// toggle thrusters in a direction off, this shall not affect stopping distance.
-		/// </summary>
-		/// <param name="direction">direction of force on ship</param>
-		public void disableThrusters(Base6Directions.Direction direction)
-		{
-			if (allMyThrusters == null)
-				return;
-
-			foreach (KeyValuePair<IMyThrust, ThrusterProperties> singleThrustProfile in allMyThrusters)
-				if (singleThrustProfile.Value.forceDirect == direction)
-				{
-					thrustersDisabledByAutopilot.Add(singleThrustProfile.Key);
-					singleThrustProfile.Key.RequestEnable(false);
-				}
-		}
-
-		/// <summary>
-		/// enable all the thrusters of this grid. disables any thruster with an override
-		/// </summary>
-		public void enableAllThrusters()
-		{
-			if (allMyThrusters == null)
-				return;
-
-			foreach (IMyCubeBlock thruster in allMyThrusters.Keys)
-			{
-				Ingame.IMyThrust ingame = thruster as Ingame.IMyThrust;
-				if (ingame.ThrustOverride > 0)
-					ingame.RequestEnable(false);
-				else
-					ingame.RequestEnable(true);
-			}
-
-			thrustersDisabledByAutopilot = new HashSet<IMyThrust>();
-		}
-
-		/// <summary>
-		/// Are there any thrusters that are currently disabled by Autopilot?
-		/// </summary>
-		/// <returns>true iff any thrusters are disabled by Autopilot</returns>
-		public bool disabledThrusters()
-		{ return thrustersDisabledByAutopilot.Count > 0; }
-
-		#endregion
 	}
 }

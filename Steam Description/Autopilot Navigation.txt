@@ -83,7 +83,7 @@ F <distance> <direction>, ... : generic form is a comma separated list of distan
 Example - [ F 1000 forward ] - fly 1000m forward
 Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m below Autopilot block
 
-L <block name> : Landing block. Autopilot will attempt to land the block on the target.
+L <block name> : Landing block. Autopilot will attempt to land the block on the target. Unless landing block is a Landing Gear, you must specify a target block with B.
 Example - [ L Connector : B Connector : G Platform ] - attach local connector to connector on Platform
 Example - [ N Laser Antenna : L Connector : B Connector : G Platform ] - Autopilot will keep "Laser Antenna" pointed at its target until it gets close enough to the target to start docking. Then Autopilot will attach the local connector to connector on Platform.
 L <name>, <f> : <f> is the direction of the landing block that will be treated as the front of the block
@@ -130,3 +130,4 @@ Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0
 [P 10 : F 0,0,-100 : M 0] Fly forward 100 metres then convert to missile. If no enemy is found, keep moving forward 100m at a time. Can lock onto an enemy any time after first move.
 [P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the Autopilot block to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
+[ L Landing Gear ; G Dog Toy ; G Home ; Stop ; Exit ] Attach the Landing Gear to Dog Toy and bring it to Home.

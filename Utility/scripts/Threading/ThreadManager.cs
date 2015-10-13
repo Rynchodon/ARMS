@@ -11,7 +11,7 @@ namespace Rynchodon.Threading
 
 		private const int QueueOverflow = 1000000;
 
-		private static readonly Logger myLogger = new Logger("ThreadManager");
+		private readonly Logger myLogger = new Logger("ThreadManager");
 
 		private readonly bool Background;
 		private readonly string ThreadName;
@@ -40,6 +40,7 @@ namespace Rynchodon.Threading
 
 		public ThreadManager(byte AllowedParallel = 1, bool background = false, string threadName = null)
 		{
+			this.myLogger = new Logger("ThreadManager", () => threadName ?? string.Empty, () => value_parallelTasks.ToString());
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
 			this.ThreadName = threadName;
@@ -58,18 +59,21 @@ namespace Rynchodon.Threading
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 			{
 				ActionQueue.Enqueue(toQueue);
-
+				//myLogger.debugLog("queued items: " + ActionQueue.Count, "EnqueueAction()");
 				VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 			}
 
 			if (ParallelTasks >= AllowedParallel)
 				return;
 			ParallelTasks++;
+			//myLogger.debugLog("ParallelTasks: " + ParallelTasks, "EnqueueAction()");
 
-			if (Background)
-				MyAPIGateway.Parallel.StartBackground(Run, callback);
-			else
-				MyAPIGateway.Parallel.Start(Run, callback);
+			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				if (Background)
+					MyAPIGateway.Parallel.StartBackground(Run, callback);
+				else
+					MyAPIGateway.Parallel.Start(Run, callback);
+			});
 		}
 
 		public void EnqueueIfIdle(Action toQueue)
@@ -98,6 +102,7 @@ namespace Rynchodon.Threading
 						currentItem = ActionQueue.Dequeue();
 					}
 					currentItem();
+					//myLogger.debugLog("finished item, queued items: " + ActionQueue.Count + ", ParallelTasks: " + ParallelTasks, "Run()");
 				}
 			}
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
