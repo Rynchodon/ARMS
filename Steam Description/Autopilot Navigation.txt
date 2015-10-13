@@ -48,10 +48,10 @@ Example - [ L Connector ; B Connector ; G Red Ship ; Exit ] - Will switch Autopi
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : STOP : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
-H <ore>, ... : Extract specified resources from an asteroid. Requires a working ore detector on the ship. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can also be specified by chemical symbol. It is recommended to put this command first so that Autopilot can tunnel out of an asteroid after the world is loaded.
+H <ore>, ... : Extract specified resources from an asteroid. Requires a working ore detector on the ship. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by rock name, ore name, or chemical symbol.
 Example - [ H Gold, Silver ] - Harvest either gold or silver, whichever is found first.
 Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
-Harvest : Extract resources from the nearest asteroid. Requires a working ore detector on the ship. It is recommended to put this command first so that Autopilot can tunnel out of an asteroid after the world is loaded.
+Harvest : Extract resources from the nearest asteroid. Requires a working ore detector on the ship.
 Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest the closest asteroid
 
 STOP : Stop the ship before executing any more commands. Clears all commands except P and V.
@@ -116,7 +116,11 @@ T <name>, <sub> : as above, the search for [ and ] will begin after the first oc
 Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
 
 U <name> : unlock the specified block and move away from the attached object
-Unlock : unlock the most recently landed / docked block and move away from the attached object
+Example - [ U Landing Gear ]
+U <name>, <f>, <u> : If directions were used to land the block, they should also be used to unland it.
+Unlock : unlock the most recently landed / docked block and move away from the attached object. The L command can also be used in combination with Unlock.
+Example - [ L Landing Gear ; B Landing Pad, D ; G Platform ; W 60 ; Unlock ] - Attach Landing Gear to top of Landing Pad, wait 60 seconds, detach and move away.
+Example - [ L Landing Gear ; Unlock ] - Detach Landing Gear from whatever it is connected to and move away.
 
 V <speed> : Autopilot will fly at the specified speed
 Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, at 10m/s
@@ -125,9 +129,7 @@ Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0
 [b]Distances[/b] : for F, O, and P can be modified by km(kilometres) or Mm(megametres). For example, "3.5M" or "3.5Mm" is 3.5 megametres or 3 500 kilometres.
 
 [h1]More Examples[/h1]
-[B Thrust : M 0] Attempt to crash into the nearest enemy grid's thrusters.
 [E 300 : C 0,0,0 : C 1000,0,0] Patrol between two points until an enemy grid comes into range (300m), then fly towards enemy grid.
-[P 10 : F 0,0,-100 : M 0] Fly forward 100 metres then convert to missile. If no enemy is found, keep moving forward 100m at a time. Can lock onto an enemy any time after first move.
 [P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the Autopilot block to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
 [ L Landing Gear ; G Dog Toy ; G Home ; Stop ; Exit ] Attach the Landing Gear to Dog Toy and bring it to Home.

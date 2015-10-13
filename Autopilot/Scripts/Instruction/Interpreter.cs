@@ -235,9 +235,8 @@ namespace Rynchodon.Autopilot.Instruction
 
 			switch (lowerCase[0])
 			{
-				//case 't':
-				//	addAction_textPanel(lowerCase.Substring(1));
-				//	return true;
+				case 't':
+					return addAction_textPanel(lowerCase.Substring(1));
 			}
 
 			return false;
@@ -292,76 +291,75 @@ namespace Rynchodon.Autopilot.Instruction
 		#region MULTI ACTIONS
 
 
-		///// <summary>
-		///// <para>add actions from a text panel</para>
-		///// <para>Format for instruction is [ t (Text Panel Name), (Identifier) ]</para>
-		///// </summary>
-		//private bool addAction_textPanel(string dataLowerCase)
-		//{
-		//	string[] split = dataLowerCase.Split(',');
+		/// <summary>
+		/// <para>add actions from a text panel</para>
+		/// <para>Format for instruction is [ t (Text Panel Name), (Identifier) ]</para>
+		/// </summary>
+		private bool addAction_textPanel(string dataLowerCase)
+		{
+			string[] split = dataLowerCase.Split(',');
 
-		//	string panelName;
-		//	if (split.Length == 2)
-		//		panelName = split[0];
-		//	else
-		//		panelName = dataLowerCase;
+			string panelName;
+			if (split.Length == 2)
+				panelName = split[0];
+			else
+				panelName = dataLowerCase;
 
-		//	IMyCubeBlock bestMatch;
-		//	if (!owner.myTargeter.findBestFriendly(owner.myGrid, out bestMatch, panelName))
-		//	{
-		//		myLogger.debugLog("could not find " + panelName + " on " + owner.myGrid.DisplayName, "addAction_textPanel()", Logger.severity.DEBUG);
-		//		return false;
-		//	}
+			IMyCubeBlock panelAsCubeBlock;
+			if (!GetLocalBlock(panelName, out panelAsCubeBlock, AttachedGrid.AttachmentKind.Permanent))
+			{
+				return false;
+			}
 
-		//	Ingame.IMyTextPanel panel = bestMatch as Ingame.IMyTextPanel;
-		//	if (panel == null)
-		//	{
-		//		myLogger.debugLog("not a Text Panel: " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-		//		return false;
-		//	}
+			Ingame.IMyTextPanel panel = panelAsCubeBlock as Ingame.IMyTextPanel;
+			if (panel == null)
+			{
+				myLogger.debugLog("not a Text Panel: " + panelAsCubeBlock.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
 
-		//	string panelText = panel.GetPublicText();
-		//	string lowerText = panelText.ToLower();
+			string panelText = panel.GetPublicText();
+			string lowerText = panelText.ToLower();
 
-		//	string identifier;
-		//	int identifierIndex, startOfCommands;
+			string identifier;
+			int identifierIndex, startOfCommands;
 
-		//	if (split.Length == 2)
-		//	{
-		//		identifier = split[1];
-		//		identifierIndex = lowerText.IndexOf(identifier);
-		//		if (identifierIndex < 0)
-		//		{
-		//			myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-		//			return false;
-		//		}
-		//		startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
-		//	}
-		//	else
-		//	{
-		//		identifier = null;
-		//		identifierIndex = -1;
-		//		startOfCommands = panelText.IndexOf('[') + 1;
-		//	}
+			if (split.Length == 2)
+			{
+				identifier = split[1];
+				identifierIndex = lowerText.IndexOf(identifier);
+				if (identifierIndex < 0)
+				{
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					return false;
+				}
+				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
+			}
+			else
+			{
+				identifier = null;
+				identifierIndex = -1;
+				startOfCommands = panelText.IndexOf('[') + 1;
+			}
 
-		//	if (startOfCommands < 0)
-		//	{
-		//		myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-		//		return false;
-		//	}
+			if (startOfCommands < 0)
+			{
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
 
-		//	int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
-		//	if (endOfCommands < 0)
-		//	{
-		//		myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-		//		return false;
-		//	}
+			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
+			if (endOfCommands < 0)
+			{
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				return false;
+			}
 
-		//	myLogger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
-		//	enqueueAllActions_continue(GPS_tag.Replace(panelText.Substring(startOfCommands, endOfCommands - startOfCommands), replaceWith););
+			myLogger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
+			enqueueAllActions_continue(GPS_tag.Replace(panelText.Substring(startOfCommands, endOfCommands - startOfCommands), replaceWith));
 
-		//	return true; // this instruction was successfully executed, even if sub instructions were not
-		//}
+			return true; // this instruction was successfully executed, even if sub instructions were not
+		}
 
 
 		#endregion
@@ -1109,32 +1107,18 @@ namespace Rynchodon.Autopilot.Instruction
 		}
 
 		/// <summary>
-		/// Finds a block that is part of Controller's grid
+		/// Finds a block that is attached to Controller
 		/// </summary>
 		/// <remarks>
 		/// Search is performed immediately.
-		/// Do not enabled attached grids, it would be a nightmare for navigation.
 		/// </remarks>
-		private bool GetLocalBlock(string instruction, out IMyCubeBlock localBlock, out Base6Directions.Direction? forward, out Base6Directions.Direction? upward)
+		private bool GetLocalBlock(string searchFor, out IMyCubeBlock localBlock, AttachedGrid.AttachmentKind allowedAttachments = AttachedGrid.AttachmentKind.None)
 		{
-			string searchFor;
-
-			if (!SplitNameDirections(instruction, out searchFor, out forward, out upward))
-			{
-				localBlock = null;
-				return false;
-			}
-
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
-			bool perfect = false;
-			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
 			myLogger.debugLog("searching for localBlock: " + searchFor, "GetLocalBlock()");
 
-			Controller.CubeGrid.GetBlocks_Safe(dummy, slim => {
-				if (perfect)
-					return false;
-
+			AttachedGrid.RunOnAttachedBlock(Controller.CubeGrid, allowedAttachments, slim => {
 				IMyCubeBlock Fatblock = slim.FatBlock;
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
@@ -1151,12 +1135,12 @@ namespace Rynchodon.Autopilot.Instruction
 						if (searchFor.Length == bestNameLength)
 						{
 							myLogger.debugLog("found a perfect match for: " + searchFor + ", block name: " + blockName, "GetLocalBlock()");
-							perfect = true;
+							return true;
 						}
 					}
 				}
 				return false;
-			});
+			}, true);
 
 			if (foundBlock == null)
 			{
@@ -1170,6 +1154,26 @@ namespace Rynchodon.Autopilot.Instruction
 			myLogger.debugLog("found localBlock: " + foundBlock.DisplayNameText, "GetLocalBlock()");
 
 			return true;
+		}
+
+		/// <summary>
+		/// Finds a block that is part of Controller's grid
+		/// </summary>
+		/// <remarks>
+		/// Search is performed immediately.
+		/// Do not enabled attached grids, it would be a nightmare for navigation.
+		/// </remarks>
+		private bool GetLocalBlock(string instruction, out IMyCubeBlock localBlock, out Base6Directions.Direction? forward, out Base6Directions.Direction? upward)
+		{
+			string searchFor;
+
+			if (!SplitNameDirections(instruction, out searchFor, out forward, out upward))
+			{
+				localBlock = null;
+				return false;
+			}
+
+			return GetLocalBlock(searchFor, out localBlock, AttachedGrid.AttachmentKind.None);
 		}
 
 		#endregion

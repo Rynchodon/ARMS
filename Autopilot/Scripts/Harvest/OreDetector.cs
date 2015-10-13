@@ -5,7 +5,6 @@ using Rynchodon.Threading;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -20,15 +19,16 @@ namespace Rynchodon.Autopilot.Harvest
 			#region SE Constants
 
 			private const int QUERY_LOD = 1;
+			/// <summary>I think this comes from 1 &lt;&lt; QUERY_LOD</summary>
+			private const int MAGIC_NUMBER = 2;
 
 			#endregion
 
-			private const byte VOXEL_ISO_LEVEL = 127;
 			private static readonly TimeSpan LifeSpan = new TimeSpan(0, 1, 0);
 			private static readonly bool[] RareMaterials;
 			private static readonly Vector3I OneOneOne = new Vector3I(1, 1, 1);
 
-			private static readonly ThreadManager m_thread = new ThreadManager(1, true, "VoxelData");
+			private static readonly ThreadManager m_thread = new ThreadManager(2, true, "VoxelData");
 
 			static VoxelData()
 			{
@@ -42,7 +42,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly IMyVoxelMap m_voxel;
 
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>();
-			//private readonly FastResourceLock lock_materialLocations = new FastResourceLock();
+			private readonly MyStorageDataCache m_storage = new MyStorageDataCache();
 
 			private readonly FastResourceLock lock_readVoxels = new FastResourceLock();
 
@@ -54,6 +54,7 @@ namespace Rynchodon.Autopilot.Harvest
 				this.m_logger = new Logger(GetType().Name, () => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
 				this.m_voxel = voxel;
+				this.m_storage.Resize(OneOneOne);
 
 				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner, "VoxelData()");
 			}
@@ -93,12 +94,17 @@ namespace Rynchodon.Autopilot.Harvest
 				return found;
 			}
 
+			private Vector3I minLocal, maxLocal;
+			private Vector3I odPosVoxelCoord;
+			private float rangeSquared;
+			private Action onFinished;
+
 			/// <summary>
 			/// Start the reads if it is not already running.
 			/// </summary>
-			/// <param name="callback">Invoked when reads finish, not invoked if already running.</param>
+			/// <param name="onFinished">Invoked when reads finish, not invoked if already running.</param>
 			/// <returns>True if started, false if already running.</returns>
-			public bool StartRead(Action callback)
+			public bool StartRead(Action onFinished)
 			{
 				// if already queued/running, just skip the update
 				if (!lock_readVoxels.TryAcquireExclusive())
@@ -111,6 +117,7 @@ namespace Rynchodon.Autopilot.Harvest
 					using (lock_expiresAt.AcquireExclusiveUsing())
 						m_expiresAt = DateTime.UtcNow + LifeSpan;
 
+					this.onFinished = onFinished;
 					Vector3D odPos = m_oreDetector.GetPosition();
 					Vector3D minWorld = odPos - m_oreDetector.Range;
 					Vector3D maxWorld = odPos + m_oreDetector.Range;
@@ -119,42 +126,20 @@ namespace Rynchodon.Autopilot.Harvest
 					Vector3D worldSize = maxWorld - minWorld;
 					m_logger.debugLog("range: " + m_oreDetector.Range + ", world size: " + worldSize.X * worldSize.Y * worldSize.Z, "StartRead()");
 
-					Vector3I odPosVoxelCoord; MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref odPos, out odPosVoxelCoord);
-					float rangeSquared = m_oreDetector.Range * m_oreDetector.Range;
+					// ore detector position in voxel coordinates
+					 MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref odPos, out odPosVoxelCoord);
+					rangeSquared = m_oreDetector.Range * m_oreDetector.Range;
 
-					Vector3I minLocal, maxLocal;
 					MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref minWorld, out minLocal);
 					MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref maxWorld, out maxLocal);
 
 					MyVoxelMap vox = m_voxel as MyVoxelMap;
-					minLocal = Vector3I.Clamp(minLocal, vox.StorageMin, vox.StorageMax);
-					maxLocal = Vector3I.Clamp(maxLocal, vox.StorageMin, vox.StorageMax);
-
-					maxLocal -= OneOneOne;
+					minLocal = Vector3I.Clamp(minLocal, vox.StorageMin, vox.StorageMax / MAGIC_NUMBER);
+					maxLocal = Vector3I.Clamp(maxLocal, vox.StorageMin, vox.StorageMax / MAGIC_NUMBER);
 
 					m_logger.debugLog("Queueing read", "StartRead()");
 
-					m_thread.EnqueueAction(() => {
-						try
-						{
-							Vector3I size = maxLocal - minLocal;
-							m_logger.debugLog("performing read of " + size.X * size.Y * size.Z + " voxel coords", "StartRead()");
-							Vector3I prevVector = minLocal;
-							minLocal.ForEachVector(maxLocal, vector => {
-								if (vector.DistanceSquared(odPosVoxelCoord) > rangeSquared)
-									return false;
-								ReadVoxels(prevVector, vector);
-								prevVector = vector;
-								return false;
-							});
-							m_logger.debugLog("finished reads", "StartRead()");
-						}
-						finally
-						{
-							lock_readVoxels.ReleaseExclusive();
-							callback.Invoke();
-						}
-					});
+					m_thread.EnqueueAction(PerformRead);
 				}
 				catch (Exception ex)
 				{
@@ -166,35 +151,56 @@ namespace Rynchodon.Autopilot.Harvest
 				return true;
 			}
 
-			private void ReadVoxels(Vector3I lodVoxelRangeMin, Vector3I lodVoxelRangeMax)
+			private void PerformRead()
 			{
-				if (m_voxel == null || m_voxel.Storage == null)
-					return;
+				try
+				{
+					if (m_voxel == null || m_voxel.Storage == null)
+						return;
 
-				MyStorageDataCache storage = new MyStorageDataCache();
-				storage.Resize(lodVoxelRangeMin, lodVoxelRangeMax);
+					Vector3I size = maxLocal - minLocal;
+					m_logger.debugLog("number of voxel coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1), "PerformRead()");
+					ulong processed = 0;
 
-				m_voxel.Storage.ReadRange(storage, MyStorageDataTypeFlags.ContentAndMaterial, QUERY_LOD, lodVoxelRangeMin, lodVoxelRangeMax);
+					Vector3I vector = new Vector3I();
+					for (vector.X = minLocal.X; vector.X <= maxLocal.X; vector.X++)
+						for (vector.Y = minLocal.Y; vector.Y <= maxLocal.Y; vector.Y++)
+							for (vector.Z = minLocal.Z; vector.Z <= maxLocal.Z; vector.Z++)
+								if (vector.DistanceSquared(odPosVoxelCoord) < rangeSquared)
+								{
+									m_voxel.Storage.ReadRange(m_storage, MyStorageDataTypeFlags.ContentAndMaterial, QUERY_LOD, vector, vector);
+									Vector3I depositPosition = vector * MAGIC_NUMBER;
 
-				Vector3I depositPosition = lodVoxelRangeMin * 2;
+									int iMax = m_storage.SizeLinear / m_storage.StepLinear;
+									for (int i = 0; i < iMax; i += m_storage.StepLinear)
+										if (m_storage.Content(i) > MyVoxelConstants.VOXEL_ISO_LEVEL)
+										{
+											byte mat = m_storage.Material(i);
+											if (RareMaterials[mat])
+											{
+												m_materialLocations[depositPosition] = mat;
+												processed++;
+												goto Finished_Deposit;
+											}
+										}
 
-				int iMax = storage.SizeLinear / storage.StepLinear;
-				for (int i = 0; i < iMax; i += storage.StepLinear)
-					if (storage.Content(i) > VOXEL_ISO_LEVEL)
-					{
-						byte mat = storage.Material(i);
-						if (RareMaterials[mat])
-						//using (lock_materialLocations.AcquireExclusiveUsing())
-						{
-							m_materialLocations[depositPosition] = mat;
-							return;
-						}
-					}
+									// nothing found
+									if (m_materialLocations.Remove(depositPosition))
+										m_logger.debugLog("removed ore at: " + depositPosition, "PerformRead()");
+									processed++;
 
-				// nothing found
-				//using (lock_materialLocations.AcquireExclusiveUsing())
-				if (m_materialLocations.Remove(depositPosition))
-					m_logger.debugLog("removed ore at: " + depositPosition, "ReadVoxels()");
+Finished_Deposit: ;
+								}
+
+					m_logger.debugLog("read " + processed + " voxel coords"
+						+ ", number of mats: " + m_materialLocations.Count
+						, "PerformRead()");
+				}
+				finally
+				{
+					lock_readVoxels.ReleaseExclusive();
+					onFinished.Invoke();
+				}
 			}
 
 		}

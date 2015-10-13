@@ -18,6 +18,7 @@ namespace Rynchodon.Autopilot.Navigator
 	 * TODO:
 	 * Escape if inside tunnel while autopilot gains control (regardless of commands)
 	 * Antenna relay & multiple ore detectors
+	 * Sort VoxelMaps by distance before searching for ores
 	 */
 
 	/// <summary>
@@ -192,7 +193,6 @@ namespace Rynchodon.Autopilot.Navigator
 			switch (m_state)
 			{
 				case State.GetTarget:
-					m_logger.debugLog("waiting for target", "Move()");
 					m_mover.StopMove();
 					return;
 				case State.Approaching:
@@ -324,10 +324,6 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 					break;
-				case State.MoveTo:
-				case State.Mining:
-				case State.Mining_Tunnel:
-					// TODO: stop ship from rotating if near destination or reduce roation?
 				default:
 					break;
 			}
@@ -415,7 +411,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}, m_logger);
 		}
 
-		private bool GetDeposit()
+		private void GetDeposit()
 		{
 			Vector3D pos = m_navDrill.WorldPosition;
 			IMyVoxelMap foundMap;
@@ -434,19 +430,29 @@ namespace Rynchodon.Autopilot.Navigator
 
 				// get the point on the asteroids surface (need this later anyway)
 				Vector3 surfacePoint;
-				MyAPIGateway.Entities.RayCastVoxel_Safe(boxEdge, m_depositPos, out surfacePoint);
-				m_approach = new Line(boxEdge, surfacePoint);
 
-				m_logger.debugLog("centre: " + centre.ToGpsTag("centre")
-					+ ", deposit: " + m_depositPos.ToGpsTag("deposit")
-					+ ", boxEdge: " + boxEdge.ToGpsTag("boxEdge")
-					+ ", m_approach: " + m_approach.From.ToGpsTag("m_approach From")
-					+ ", " + m_approach.To.ToGpsTag("m_approach To")
-					, "GetDeposit()");
-				return true;
+				// was getting memory access violation, so not using MainLock.RayCastVoxel_Safe()
+				// I think this is safe without locking m_depositPos, m_approach, or m_state
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_depositPos, out surfacePoint);
+					m_approach = new Line(boxEdge, surfacePoint);
+
+					m_logger.debugLog("centre: " + centre.ToGpsTag("centre")
+						+ ", deposit: " + m_depositPos.ToGpsTag("deposit")
+						+ ", boxEdge: " + boxEdge.ToGpsTag("boxEdge")
+						+ ", m_approach: " + m_approach.From.ToGpsTag("m_approach From")
+						+ ", " + m_approach.To.ToGpsTag("m_approach To")
+						, "GetDeposit()");
+
+					m_logger.debugLog("Got a target: " + m_currentTarget, "Move()", Logger.severity.INFO);
+					m_state = State.Approaching;
+				}, m_logger);
+
+				return;
 			}
 
-			return false;
+			m_logger.debugLog("No ore target found", "Move()", Logger.severity.INFO);
+			m_navSet.OnTaskPrimaryComplete();
 		}
 
 		private bool IsNearVoxel()
@@ -474,18 +480,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private void OreDetectorFinished()
 		{
 			try
-			{
-				if (GetDeposit())
-				{
-					m_logger.debugLog("Got a target: " + m_currentTarget, "Move()", Logger.severity.INFO);
-					m_state = State.Approaching;
-				}
-				else
-				{
-					m_logger.debugLog("No ore target found", "Move()", Logger.severity.INFO);
-					m_navSet.OnTaskPrimaryComplete();
-				}
-			}
+			{ GetDeposit(); }
 			catch (Exception ex)
 			{ m_logger.alwaysLog("Exception: " + ex, "OreDetectorFinished()", Logger.severity.ERROR); }
 		}

@@ -131,6 +131,9 @@ namespace Rynchodon
 			return outInstances;
 		}
 
+		/// <summary>
+		/// Now I'm getting memory access violations...
+		/// </summary>
 		/// <remarks>
 		/// Only one ray cast can be performed at a time.
 		/// </remarks>
