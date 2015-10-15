@@ -212,15 +212,15 @@ namespace Rynchodon
 			return result;
 		}
 
-		/// <summary>
-		/// Finds the shorter of distance between AABB and distance between Volume
-		/// </summary>
-		public static double Distance_ShorterBounds(this IMyEntity first, IMyEntity second)
-		{
-			double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
-			double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
-			return Math.Min(distanceAABB, distanceVolume);
-		}
+		///// <summary>
+		///// Finds the shorter of distance between AABB and distance between Volume
+		///// </summary>
+		//public static double Distance_ShorterBounds(this IMyEntity first, IMyEntity second)
+		//{
+		//	double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
+		//	double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
+		//	return Math.Min(distanceAABB, distanceVolume);
+		//}
 
 		#endregion
 		#region Float Significand++/--
@@ -296,7 +296,7 @@ namespace Rynchodon
 		/// <summary>
 		/// Try to perform an Action on game thread, if it fails do not crash the game.
 		/// </summary>
-		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, Logger logTo)
+		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, Logger logTo = null)
 		{
 			util.InvokeOnGameThread(() => {
 				try { invoke.Invoke(); }

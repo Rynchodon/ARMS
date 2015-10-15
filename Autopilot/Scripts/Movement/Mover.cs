@@ -84,6 +84,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
 		public void CalcMove( PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
+			NavSet.Settings_Task_Tertiary.Destination = destPoint;
+
 			// using world vectors
 
 			Vector3 destDisp = destPoint - block.WorldPosition;

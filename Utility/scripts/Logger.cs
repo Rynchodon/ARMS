@@ -310,7 +310,7 @@ namespace Rynchodon
 
 			MyFontEnum font = fontForSeverity(level);
 			if (MyAPIGateway.Utilities != null)
-				MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font));
 			//else
 			//	log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
 		}

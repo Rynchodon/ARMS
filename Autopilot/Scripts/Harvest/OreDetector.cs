@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly Ingame.IMyOreDetector m_oreDetector;
 			private readonly IMyVoxelMap m_voxel;
 
-			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>();
+			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(10000);
 			private readonly MyStorageDataCache m_storage = new MyStorageDataCache();
 
 			private readonly FastResourceLock lock_readVoxels = new FastResourceLock();

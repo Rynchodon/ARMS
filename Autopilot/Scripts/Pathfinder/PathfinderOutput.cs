@@ -10,6 +10,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public readonly Result PathfinderResult;
 		public readonly IMyEntity Obstruction;
 		public readonly Vector3D Waypoint;
+
 		/// <summary>
 		/// <para>Distance to closest entity, has nothing to do with obstruction.</para>
 		/// <para>May be negative.</para>
@@ -17,24 +18,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public double DistanceToClosest { get { return lazy_DistanceToClosest.Value; } }
 		private Lazy<double> lazy_DistanceToClosest;
 
-		public PathfinderOutput(PathChecker getClosestFrom, Result PathfinderResult, IMyEntity Obstruction = null, Vector3D Waypoint = new Vector3D())
+		public PathfinderOutput(Result PathfinderResult, PathChecker getClosestFrom = null, IMyEntity Obstruction = null, Vector3D Waypoint = new Vector3D())
 		{
 			this.PathfinderResult = PathfinderResult;
 			this.Obstruction = Obstruction;
 			this.Waypoint = Waypoint;
 
-			switch (PathfinderResult)
-			{
-				case Result.Incomplete:
-				case Result.Path_Clear:
-				case Result.Alternate_Path:
-					this.lazy_DistanceToClosest = new Lazy<double>(() => { return getClosestFrom.ClosestEntity(); });
-					break;
-				case Result.Searching_Alt:
-				case Result.No_Way_Forward:
-					this.lazy_DistanceToClosest = new Lazy<double>(() => { return PathChecker.NearbyRange; });
-					break;
-			}
+			//if (getClosestFrom != null)
+			//switch (PathfinderResult)
+			//{
+			//	case Result.Incomplete:
+			//	case Result.Path_Clear:
+			//	case Result.Alternate_Path:
+			//		this.lazy_DistanceToClosest = new Lazy<double>(() => { return getClosestFrom.ClosestEntity(); });
+			//		break;
+			//	case Result.Searching_Alt:
+			//	case Result.No_Way_Forward:
+			//		this.lazy_DistanceToClosest = new Lazy<double>(() => { return PathChecker.NearbyRange; });
+			//		break;
+			//}
 		}
 	}
 }

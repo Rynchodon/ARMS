@@ -107,20 +107,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navBlock = landingBlock ?? m_navSet.Settings_Current.NavigationBlock;
 
 			if (landingBlock != null)
-			{
-				m_logger.debugLog("landing block: " + landingBlock, "FlyToGrid()");
-				m_logger.debugLog("landing block: " + landingBlock.Block, "FlyToGrid()");
-				m_logger.debugLog("landing block: " + landingBlock.Block.DisplayNameText, "FlyToGrid()");
-
-				//if (!(landingBlock.Block is IMyShipMergeBlock) && !AttachableBlockBase.TryGet(landingBlock.Block.EntityId, out m_landAttach))
-				//{
-				//	m_logger.debugLog("Failed to get AttachableBlockBase for " + landingBlock.Block.DisplayNameText, "FlyToGrid()", Logger.severity.DEBUG);
-				//	m_landAttach = null;
-				//}
-				//else
-				//	m_logger.debugLog("Got AttachableBlockBase for " + landingBlock.Block.DisplayNameText, "FlyToGrid()", Logger.severity.DEBUG);
-
-				if (landingBlock.Block is IMyFunctionalBlock)
+			{if (landingBlock.Block is IMyFunctionalBlock)
 					m_landingState = LandingState.Approach;
 				else
 				{
@@ -165,12 +152,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
 				m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
 			}
-
-			//m_logger.debugLog("m_targetBlock: " + m_targetBlock, "FlyToGrid()");
-			//m_logger.debugLog("blockName: " + blockName, "FlyToGrid()");
-			//m_logger.debugLog(m_targetBlock != null, "target block exists", "FlyToGrid()");
-			//m_logger.debugLog(m_targetBlock != null, ()=> "target block forward: " + m_targetBlock.Forward + ", upward: " + m_targetBlock.Upward, "FlyToGrid()");
-			//m_logger.debugLog("getting on with life", "FlyToGrid()");
 
 			m_navSet.Settings_Task_Secondary.NavigatorMover = this;
 			if (m_navSet.Settings_Current.NavigatorRotator == null)
@@ -358,6 +339,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case LandingState.Approach:
 					{
 						m_navSet.Settings_Task_Primary.NavigatorRotator = this;
+						m_navSet.Settings_Task_Primary.NavigationBlock = m_navBlock;
 						if (m_landGearWithoutTargetBlock)
 						{
 							m_landingState = LandingState.Catch;

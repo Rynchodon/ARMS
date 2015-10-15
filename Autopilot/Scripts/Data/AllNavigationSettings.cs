@@ -45,6 +45,7 @@ namespace Rynchodon.Autopilot.Data
 			private DateTime? m_waitUntil;
 
 			private Vector3D? m_destinationOffset;
+			private Vector3D? m_destination;
 
 			//private PathfinderPermissions? m_pathPerm;
 			//private MovementType? m_allowedMovement;
@@ -62,7 +63,8 @@ namespace Rynchodon.Autopilot.Data
 
 				m_waitUntil = DateTime.UtcNow.AddSeconds(1);
 
-				m_destinationOffset = Vector3.Zero;
+				m_destinationOffset = Vector3D.NegativeInfinity;
+				m_destination = Vector3D.NegativeInfinity;
 
 				//m_allowedMovement = MovementType.All;
 				//m_pathPerm = PathfinderPermissions.All;
@@ -141,6 +143,12 @@ namespace Rynchodon.Autopilot.Data
 			{
 				get { return m_destinationOffset ?? parent.DestinationOffset; }
 				set { m_destinationOffset = value; }
+			}
+
+			public Vector3D Destination
+			{
+				get { return m_destination ?? parent.Destination; }
+				set { m_destination = value; }
 			}
 
 			//public PathfinderPermissions PathPerm

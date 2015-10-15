@@ -6,7 +6,7 @@ namespace Rynchodon
 {
 	public class LockedQueue<T>
 	{
-		private MyQueue<T> Queue;
+		private readonly MyQueue<T> Queue;
 		private readonly FastResourceLock lock_Queue = new FastResourceLock();
 
 		public LockedQueue(IEnumerable<T> collection)
@@ -49,7 +49,7 @@ namespace Rynchodon
 		public void Clear()
 		{
 			using (lock_Queue.AcquireExclusiveUsing())
-				Queue = new MyQueue<T>(Queue.Count);
+				Queue.Clear();
 		}
 
 		public T Dequeue()
