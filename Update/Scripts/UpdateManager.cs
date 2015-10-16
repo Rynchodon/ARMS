@@ -288,8 +288,6 @@ namespace Rynchodon.Update
 					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
 					return;
 
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
 				EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
@@ -356,25 +354,6 @@ namespace Rynchodon.Update
 
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 			ManagerStatus = Status.Started;
-		}
-
-		private void Entities_OnCloseAll()
-		{
-			ManagerStatus = Status.Terminated;
-
-			UpdateRegistrar = null;
-			AllBlockScriptConstructors = null;
-			EveryBlockScriptConstructors = null;
-			CharacterScriptConstructors = null;
-			PlayerScriptConstructors = null;
-			GridScriptConstructors = null;
-
-			PlayerLeaves = null;
-			AnyPlayerLeaves = null;
-			playersAPI = null;
-			playersCached = null;
-
-			AddRemoveActions = null;
 		}
 
 		/// <summary>
@@ -703,6 +682,22 @@ namespace Rynchodon.Update
 		{
 			base.UnloadData();
 			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+
+			ManagerStatus = Status.Terminated;
+
+			UpdateRegistrar = null;
+			AllBlockScriptConstructors = null;
+			EveryBlockScriptConstructors = null;
+			CharacterScriptConstructors = null;
+			PlayerScriptConstructors = null;
+			GridScriptConstructors = null;
+
+			PlayerLeaves = null;
+			AnyPlayerLeaves = null;
+			playersAPI = null;
+			playersCached = null;
+
+			AddRemoveActions = null;
 		}
 
 		/// <summary>

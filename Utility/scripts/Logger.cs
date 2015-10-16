@@ -229,10 +229,7 @@ namespace Rynchodon
 				if (toLog == null)
 					toLog = "no message";
 				if (numLines >= maxNumLines)
-				{
-					debugNotify("max lines");
 					return;
-				}
 
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
@@ -283,7 +280,10 @@ namespace Rynchodon
 		}
 
 		protected override void UnloadData()
-		{ close(); }
+		{
+			base.UnloadData();
+			close();
+		}
 
 		/// <summary>
 		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED.

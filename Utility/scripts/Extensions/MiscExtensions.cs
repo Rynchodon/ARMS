@@ -13,12 +13,18 @@ namespace Rynchodon
 		public static string getBestName(this IMyEntity entity)
 		{
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
+			string name;
 			if (asBlock != null)
-				return asBlock.DisplayNameText;
+			{
+				name = asBlock.DisplayNameText;
+				if (string.IsNullOrEmpty(name))
+					name = asBlock.DefinitionDisplayNameText;
+				return name;
+			}
 
 			if (entity == null)
-				return null;
-			string name = entity.DisplayName;
+				return "N/A";
+			name = entity.DisplayName;
 			if (string.IsNullOrEmpty(name))
 			{
 				name = entity.Name;
@@ -126,6 +132,32 @@ namespace Rynchodon
 
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
 			return Vector3.DistanceSquared(point, closestPoint);
+		}
+
+		public static bool PointInCylinder(this Line line, float radius, Vector3 point)
+		{
+			radius *= radius;
+
+			//Logger m_logger = new Logger("Misc_PointInCylinder");
+			//m_logger.debugLog("line: " + line.From + " to " + line.To + ", radius: " + radius + ", point: " + point, "PointInCylinder()");
+
+			if (line.From == line.To)
+				return Vector3.DistanceSquared(line.From, point) < radius;
+
+			Vector3 line_disp = line.To - line.From;
+			float line_distSq = line_disp.LengthSquared();
+
+			float fraction = Vector3.Dot(point - line.From, line_disp) / line_distSq; // projection as a fraction of line_disp
+			//m_logger.debugLog("fraction: " + fraction, "PointInCylinder()");
+
+			if (fraction < 0) // extends past From
+				return false;
+			else if (fraction > 1) // extends past To
+				return false;
+
+			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
+			//m_logger.debugLog("closestPoint: " + closestPoint.ToGpsTag("closest point"), "PointInCylinder()");
+			return Vector3.DistanceSquared(point, closestPoint) < radius;
 		}
 
 		/// <summary>

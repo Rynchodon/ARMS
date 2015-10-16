@@ -49,6 +49,7 @@ namespace Rynchodon.Threading
 
 		private void Entities_OnCloseAll()
 		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			myLogger.debugLog("stopping thread", "Entities_OnCloseAll()", Logger.severity.INFO);
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 				ActionQueue.Clear();

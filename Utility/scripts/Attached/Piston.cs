@@ -18,7 +18,7 @@ namespace Rynchodon.Attached
 
 			protected override AttachableBlockPair GetPartner()
 			{
-				var builder = myBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_ExtendedPistonBase;
+				var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_ExtendedPistonBase;
 				if (builder == null)
 					throw new NullReferenceException("builder");
 				return GetPartner(builder.TopBlockId);
@@ -37,7 +37,7 @@ namespace Rynchodon.Attached
 
 			protected override AttachableBlockPair GetPartner()
 			{
-				var builder = myBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_PistonTop;
+				var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_PistonTop;
 				if (builder == null)
 					throw new NullReferenceException("builder");
 				return GetPartner(builder.PistonBlockId);

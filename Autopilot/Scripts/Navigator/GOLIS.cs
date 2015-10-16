@@ -16,8 +16,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger myLogger;
 		private readonly PseudoBlock NavigationBlock;
 		private readonly Vector3 location;
-		//private readonly float DestinationRadius;
 		private readonly bool Rotating;
+		private readonly bool Tertiary;
 
 		/// <summary>
 		/// Creates a GOLIS
@@ -25,15 +25,15 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="mover">The mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="location">The location to fly to</param>
-		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location)
+		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location, bool tertiary = false)
 			: base(mover, navSet)
 		{
 			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);
 			this.NavigationBlock = m_navSet.Settings_Current.NavigationBlock;
 			this.location = location;
-			//this.DestinationRadius = m_navSet.Settings_Current.DestinationRadius;
+			this.Tertiary = tertiary;
 
-			var atLevel = m_navSet.Settings_Task_Secondary;
+			var atLevel = tertiary ? m_navSet.Settings_Task_Tertiary : m_navSet.Settings_Task_Secondary;
 			atLevel.NavigatorMover = this;
 			if (atLevel.NavigatorRotator == null)
 			{
@@ -55,7 +55,10 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
 				myLogger.debugLog("Reached destination: " + location, "Move()", Logger.severity.INFO);
-				m_navSet.OnTaskSecondaryComplete();
+				if (Tertiary)
+					m_navSet.OnTaskTertiaryComplete();
+				else
+					m_navSet.OnTaskSecondaryComplete();
 				m_mover.StopMove();
 				m_mover.StopRotate();
 			}

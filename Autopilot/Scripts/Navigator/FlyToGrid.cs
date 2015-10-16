@@ -197,6 +197,8 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 			{
 				//if (m_gridFinder.m_targetBlockName == null || m_gridFinder.Block != null)
+				if (m_gridFinder.Block != null)
+					m_navSet.Settings_Task_Secondary.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
 
 				if (m_landingState > LandingState.Approach || m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
@@ -206,6 +208,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 
 				m_targetPosition = m_gridFinder.GetPosition(m_navBlock.WorldPosition, m_navSet.Settings_Current.DestinationOffset);
+				m_logger.debugLog("flying to " + m_targetPosition, "Move()");
 				m_mover.CalcMove(m_navBlock, m_targetPosition, m_gridFinder.Grid.GetLinearVelocity());
 			}
 		}
@@ -385,7 +388,7 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
-						if (m_navSet.Settings_Current.Distance < 1)
+						if (m_navSet.Settings_Current.Distance < 3f)
 						{
 							m_logger.debugLog("Reached line: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 							m_landingState = LandingState.Landing;
@@ -395,7 +398,7 @@ namespace Rynchodon.Autopilot.Navigator
 						// move to line from target block outwards
 						Vector3D targetBlockPosition = m_gridFinder.GetPosition(m_navBlock.WorldPosition,  m_navSet.Settings_Current.DestinationOffset);
 						Vector3D landFaceVector = GetLandingFaceVector();
-						Line destinationLine = new Line(targetBlockPosition + landFaceVector * 10, targetBlockPosition + landFaceVector * 1000);
+						Line destinationLine = new Line(targetBlockPosition + landFaceVector * 20, targetBlockPosition + landFaceVector * 1000);
 						Vector3D closestPoint = destinationLine.ClosestPoint(m_navBlock.WorldPosition);
 
 						//m_logger.debugLog("Flying to closest point on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint, "Move_Land()");
@@ -435,6 +438,7 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
+						// TODO: ray cast from ship to centre to get closest cell
 						Vector3D targetPosition = m_gridFinder.Grid.Entity.Physics.CenterOfMassWorld;
 						//m_logger.debugLog("targetPosition: " + targetPosition.ToGpsTag("target position"), "Move_Land()");
 						m_mover.CalcMove(m_navBlock, targetPosition, m_gridFinder.Grid.GetLinearVelocity(), true);

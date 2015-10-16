@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.ModAPI;
@@ -22,6 +23,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private class GridCellCache
 		{
+
+			private static Dictionary<IMyCubeGrid, GridCellCache> CellCache = new Dictionary<IMyCubeGrid, GridCellCache>();
+			private static FastResourceLock lock_cellCache = new FastResourceLock();
+
+			public static GridCellCache GetCellCache(IMyCubeGrid grid)
+			{
+				GridCellCache cache;
+				using (lock_cellCache.AcquireExclusiveUsing())
+					if (!CellCache.TryGetValue(grid, out cache))
+					{
+						cache = new GridCellCache(grid);
+						CellCache.Add(grid, cache);
+					}
+				return cache;
+			}
+
 			public HashSet<Vector3I> CellPositions = new HashSet<Vector3I>();
 			public readonly FastResourceLock lock_cellPositions = new FastResourceLock();
 
@@ -52,6 +69,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				grid.OnClosing -= grid_OnClosing;
 				using (lock_cellPositions.AcquireExclusiveUsing())
 					CellPositions = null;
+				using (lock_cellCache.AcquireExclusiveUsing())
+					CellCache.Remove(grid);
 			}
 
 			private void grid_OnBlockAdded(IMySlimBlock slim)
@@ -72,19 +91,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 					});
 			}
 
-		}
-
-		private static Dictionary<IMyCubeGrid, GridCellCache> CellCache = new Dictionary<IMyCubeGrid, GridCellCache>();
-
-		private static GridCellCache GetCellCache(IMyCubeGrid grid)
-		{
-			GridCellCache cache;
-			if (!CellCache.TryGetValue(grid, out cache))
-			{
-				cache = new GridCellCache(grid);
-				CellCache.Add(grid, cache);
-			}
-			return cache;
 		}
 
 		#endregion
@@ -108,7 +114,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				this.m_grid = grid;
 				this.m_logger = new Logger("GridShapeProfiler", () => m_grid.DisplayName);
-				this.m_cellCache = GetCellCache(grid);
+				this.m_cellCache = GridCellCache.GetCellCache(grid);
 			}
 
 			m_directNorm = Vector3.Normalize(destination.ToLocal() - navBlockLocalPosition);
@@ -122,25 +128,29 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="grid">Grid whose cells will be rejected and compared to the profiled grid's rejections.</param>
 		/// <returns>True iff there is a collision</returns>
-		public bool rejectionIntersects(IMyCubeGrid grid, out IMyEntity entity, out Vector3? pointOfObstruction)
+		public bool rejectionIntersects(IMyCubeGrid grid, IMyCubeBlock ignore, out MyEntity entity, out Vector3? pointOfObstruction)
 		{
 			m_logger.debugLog(m_grid == null, "m_grid == null", "Init()", Logger.severity.FATAL);
 
 			m_logger.debugLog("testing grid: " + grid.getBestName(), "rejectionIntersects()");
 
-			GridCellCache gridCache = GetCellCache(grid);
+			GridCellCache gridCache = GridCellCache.GetCellCache(grid);
 			MatrixD toLocal = m_grid.WorldMatrixNormalizedInv;
+			Line pathLine = Path.get_Line();
 
 			using (gridCache.lock_cellPositions.AcquireSharedUsing())
 				foreach (Vector3I cell in gridCache.CellPositions)
 				{
 					Vector3 world = grid.GridIntegerToWorld(cell);
-					if (Path.Intersects(world, grid.GridSize))
+					if (pathLine.PointInCylinder(Path.Radius, world))
 					{
 						Vector3 local = Vector3.Transform(world, toLocal);
 						if (rejectionIntersects(local, grid.GridSize))
 						{
-							entity = grid.GetCubeBlock(cell).FatBlock as IMyEntity ?? grid as IMyEntity;
+							entity = grid.GetCubeBlock(cell).FatBlock as MyEntity ?? grid as MyEntity;
+							if (ignore != null && entity == ignore)
+								continue;
+
 							pointOfObstruction = Path.get_Line().ClosestPoint(world);
 							return true;
 						}
@@ -195,13 +205,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (distanceSquared > longestDistanceSquared)
 					longestDistanceSquared = distanceSquared;
 			}
-			Vector3D P0 = RelativeVector3F.createFromLocal(Centre, m_grid).getWorldAbsolute();
+			Vector3D P0 = RelativePosition3F.FromLocal(m_grid, Centre).ToWorld();
 
-			// need to extend capsule past destination by distance between remote and front of ship
-			Ray navTowardsDest = new Ray(localPosition, m_directNorm);
-			float tMin, tMax;
-			m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
-			Vector3D P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
+			//// need to extend capsule past destination by distance between remote and front of ship
+			//Ray navTowardsDest = new Ray(localPosition, m_directNorm);
+			//float tMin, tMax;
+			//m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
+			//Vector3D P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
+			Vector3D P1 = RelativePosition3F.FromLocal(m_grid, centreDestination).ToWorld();
 
 			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + 3 * m_grid.GridSize);
 			Path = new Capsule(P0, P1, CapsuleRadius);

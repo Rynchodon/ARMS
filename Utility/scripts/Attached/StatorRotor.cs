@@ -93,7 +93,7 @@ namespace Rynchodon.Attached
 				{
 					if (myStator.IsAttached)
 					{
-						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_MotorStator;
+						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetObjectBuilder_Safe() as MyObjectBuilder_MotorStator;
 						if (Rotor.registry.TryGetValue(statorBuilder.RotorEntityId, out partner))
 						{
 							myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);

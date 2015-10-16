@@ -423,7 +423,7 @@ namespace Rynchodon.AntennaRelay
 					{
 						DetectedInfo detFo = detectedObjects_list[i];
 						myLastSeen.Add(new LastSeen(detFo.Entity, detFo.Times, detFo.Info));
-						myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName(), "Update_OnThread()");
+						//myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName(), "Update_OnThread()");
 					}
 				}
 			}
@@ -660,7 +660,7 @@ namespace Rynchodon.AntennaRelay
 			MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
 			foreach (IMyCubeGrid otherGrid in allGrids)
 			{
-				if (!otherGrid.Save)
+				if (otherGrid.MarkedForClose || !otherGrid.Save)
 					continue;
 
 				if (SignalCannotReach(otherGrid, effectivePowerLevel * myDefinition.SignalEnhance))
@@ -674,7 +674,7 @@ namespace Rynchodon.AntennaRelay
 
 				if (radarSignature > 0)
 				{
-					myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
+					//myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
 
 					DetectedInfo detFo = new DetectedInfo(otherGrid, RelationsBlock.getRelationsTo(otherGrid));
 					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * WorkingDecoys(otherGrid)));

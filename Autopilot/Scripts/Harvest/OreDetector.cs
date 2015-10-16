@@ -42,7 +42,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly IMyVoxelMap m_voxel;
 
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(10000);
-			private readonly MyStorageDataCache m_storage = new MyStorageDataCache();
+			private readonly MyStorageData m_storage = new MyStorageData();
 
 			private readonly FastResourceLock lock_readVoxels = new FastResourceLock();
 

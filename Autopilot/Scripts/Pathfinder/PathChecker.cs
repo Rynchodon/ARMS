@@ -2,8 +2,8 @@
 using System.Linq;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -20,11 +20,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly Logger m_logger = new Logger(null, "PathChecker");
 		private readonly IMyCubeGrid m_grid;
 
+		private MyEntity m_ignoreEntity;
 		private bool m_ignoreAsteroid;
 
 		private GridShapeProfiler m_profiler;
-		private IEnumerable<IMyEntity> m_offendingEntities;
-		private readonly HashSet<IMyEntity> prev_offenders = new HashSet<IMyEntity>();
+		private IEnumerable<MyEntity> m_offendingEntities;
+		private readonly List<MyEntity> m_offenders = new List<MyEntity>();
+		private readonly List<MyEntity> m_offRemove = new List<MyEntity>();
 
 		private Capsule m_path { get { return m_profiler.Path; } }
 
@@ -45,12 +47,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// Performs a fast test to see if the path is clear.
 		/// </summary>
 		/// <returns>True if path is clear. False if slow test needs to be run.</returns>
-		public bool TestFast(PseudoBlock NavigationBlock, Vector3D worldDestination, bool ignoreAsteroid)
+		public bool TestFast(PseudoBlock NavigationBlock, Vector3D worldDestination, bool ignoreAsteroid, MyEntity ignoreEntity)
 		{
 			m_logger.debugLog(NavigationBlock.Grid != m_grid, "NavigationBlock.CubeGrid != m_grid", "TestFast()", Logger.severity.FATAL);
 
 			//CheckInterrupt();
 
+			this.m_ignoreEntity = ignoreEntity;
 			this.m_ignoreAsteroid = ignoreAsteroid;
 			this.m_profiler.Init(m_grid, RelativePosition3F.FromWorld(m_grid, worldDestination), NavigationBlock.LocalPosition);
 
@@ -59,7 +62,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// entities in large AABB
 			BoundingBoxD AtDest = m_grid.WorldAABB.Translate(Displacement);
-			ICollection<IMyEntity> offenders = EntitiesInLargeAABB(m_grid.WorldAABB, AtDest);
+			ICollection<MyEntity> offenders = EntitiesInLargeAABB(m_grid.WorldAABB, AtDest);
 			if (offenders.Count == 0)
 			{
 				m_logger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
@@ -68,14 +71,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_logger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
 
 			// perform capsule vs AABB test
-			List<IMyEntity> remove = new List<IMyEntity>();
-			foreach (IMyEntity offending in offenders)
+			List<MyEntity> remove = new List<MyEntity>();
+			foreach (MyEntity offending in offenders)
 				if (!m_path.IntersectsAABB(offending))
 				{
 					m_logger.debugLog("no AABB intersection: " + offending.getBestName(), "TestEntities()");
 					remove.Add(offending);
 				}
-			foreach (IMyEntity entity in remove)
+			foreach (MyEntity entity in remove)
 				offenders.Remove(entity);
 
 			if (offenders.Count == 0)
@@ -85,16 +88,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			m_logger.debugLog("entities intersecting path: " + offenders.Count, "TestPath()");
 
-			m_offendingEntities = offenders.OrderBy(entity => m_grid.WorldAABB.Distance(entity.WorldAABB));
+			m_offendingEntities = offenders.OrderBy(entity => m_grid.WorldAABB.Distance(entity.PositionComp.WorldAABB));
 
 			return false;
 		}
 
-		public bool TestSlow(out IMyEntity blockingPath, out Vector3? pointOfObstruction)
+		public bool TestSlow(out MyEntity blockingPath, out IMyCubeGrid blockingGrid, out Vector3? pointOfObstruction)
 		{
 			m_logger.debugLog(m_offendingEntities == null, "m_offendingEntities == null, did you remember to call TestFast()?", "TestSlow()", Logger.severity.FATAL);
 
-			foreach (IMyEntity entity in m_offendingEntities)
+			IMyCubeBlock ignoreBlock = m_ignoreEntity as IMyCubeBlock;
+
+			foreach (MyEntity entity in m_offendingEntities)
 			{
 				//CheckInterrupt();
 
@@ -124,6 +129,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (testSection.Intersects(voxel, out pointOfObstruction))
 					{
 						blockingPath = entity;
+						blockingGrid = null;
 						return false;
 					}
 
@@ -133,8 +139,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid != null)
 				{
-					if (m_profiler.rejectionIntersects(grid, out blockingPath, out pointOfObstruction))
+					if (m_profiler.rejectionIntersects(grid, ignoreBlock, out blockingPath, out pointOfObstruction))
+					{
+						blockingGrid = grid;
 						return false;
+					}
 					continue;
 				}
 
@@ -148,13 +157,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_logger.debugLog("no more tests for non-grids are implemented", "TestEntities()", Logger.severity.DEBUG);
 				pointOfObstruction = m_path.get_Line().ClosestPoint(entity.GetCentre());
 				blockingPath = entity;
+				blockingGrid = null;
 				return false;
 			}
 
 			blockingPath = null;
+			blockingGrid = null;
 			pointOfObstruction = null;
 			return true;
 		}
+
+		#region Do not delete
 
 		///// <summary>
 		///// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
@@ -174,7 +187,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		//	BoundingBoxD atStart = myCubeGrid.WorldAABB.Translate(DisplacementStart);
 		//	BoundingBoxD atDest = myCubeGrid.WorldAABB.Translate(DisplacementEnd);
 
-		//	ICollection<IMyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
+		//	ICollection<MyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
 		//	if (offenders.Count == 0)
 		//	{
 		//		myLogger.debugLog("AABB is empty", "distanceCanTravel()");
@@ -185,7 +198,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		//	Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
 		//	Vector3? pointOfObstruction;
-		//	IMyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
+		//	MyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
 		//	if (obstruction == null)
 		//	{
 		//		myLogger.debugLog("no obstruction", "distanceCanTravel()");
@@ -207,7 +220,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		//	BoundingBoxD NearbyBox = myCubeGrid.WorldAABB;
 		//	NearbyBox.Inflate(NearbyRange);
 
-		//	HashSet<IMyEntity> offenders = new HashSet<IMyEntity>();
+		//	HashSet<MyEntity> offenders = new HashSet<MyEntity>();
 		//	MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(NearbyBox, offenders, collect_Entities);
 		//	if (offenders.Count == 0)
 		//	{
@@ -217,7 +230,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		//	myLogger.debugLog("collected entities to test: " + offenders.Count, "ClosestEntity()");
 
 		//	double distClosest = NearbyRange;
-		//	foreach (IMyEntity entity in offenders)
+		//	foreach (MyEntity entity in offenders)
 		//	{
 		//		double distance = myCubeGrid.Distance_ShorterBounds(entity);
 		//		if (distance < distClosest)
@@ -226,9 +239,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 		//	return distClosest;
 		//}
 
+		#endregion
+
 		#region Private Test Functions
 
-		private HashSet<IMyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
+		private List<MyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
 		{
 			Vector3D[] pathPoints = new Vector3D[4];
 			pathPoints[0] = start.Min;
@@ -238,13 +253,21 @@ namespace Rynchodon.Autopilot.Pathfinder
 			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(pathPoints);
 			m_logger.debugLog("Path AABB = " + PathAABB, "EntitiesInLargeAABB()");
 
-			prev_offenders.Clear();
-			MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(PathAABB, prev_offenders, collect_Entities);
-			return prev_offenders;
+			m_offenders.Clear();
+			MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref PathAABB, m_offenders);
+			m_offRemove.Clear();
+			for (int i = 0; i < m_offenders.Count; i++)
+				if (!collect_Entity(m_grid, m_offenders[i])
+					|| (m_ignoreEntity != null && m_ignoreEntity == m_offenders[i]))
+					m_offRemove.Add(m_offenders[i]);
+			for (int i = 0; i < m_offRemove.Count; i++)
+				m_offenders.Remove(m_offRemove[i]);
+
+			return m_offenders;
 		}
 
 		/// <returns>true iff the entity should be kept</returns>
-		private bool collect_Entities(IMyEntity entity)
+		public static bool collect_Entity(IMyCubeGrid myGrid, MyEntity entity)
 		{
 			if (!(entity is IMyCubeGrid) && !(entity is IMyVoxelMap) && !(entity is IMyFloatingObject))
 				return false;
@@ -252,13 +275,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
-				if (asGrid == m_grid)
+				if (asGrid == myGrid)
 					return false;
 
 				if (!asGrid.Save)
 					return false;
 
-				if (AttachedGrid.IsGridAttached(m_grid, asGrid, AttachedGrid.AttachmentKind.Physics))
+				if (AttachedGrid.IsGridAttached(myGrid, asGrid, AttachedGrid.AttachmentKind.Physics))
 					return false;
 			}
 

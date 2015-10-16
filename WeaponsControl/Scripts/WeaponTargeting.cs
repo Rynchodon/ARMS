@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -162,17 +163,17 @@ namespace Rynchodon.Weapons
 				if (value_CurrentState == value)
 					return;
 
-				// need to get builder because we have no idea what the player may have been up to
-				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				using (lock_IsShooting.AcquireExclusiveUsing())
-					if (IsShooting != builder.IsShootingFromTerminal)
-					{
-						myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
-						IsShooting = builder.IsShootingFromTerminal;
-					}
+				//// need to get builder because we have no idea what the player may have been up to
+				//var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				//using (lock_IsShooting.AcquireExclusiveUsing())
+				//	if (IsShooting != builder.IsShootingFromTerminal)
+				//	{
+				//		myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
+				//		IsShooting = builder.IsShootingFromTerminal;
+				//	}
 
 				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
-				StopFiring("CurrentState changed to " + value);
+				StopFiring("CurrentState changed to " + value, true);
 
 				if (IsNormalTurret)
 				{
@@ -508,33 +509,33 @@ namespace Rynchodon.Weapons
 				StopFiring("shot is off target");
 		}
 
-		private void FireWeapon()
+		private void FireWeapon(bool force = false)
 		{
 			using (lock_IsShooting.AcquireExclusiveUsing())
 			{
-				if (IsShooting)
+				if (IsShooting && ! force)
 					return;
 
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
 				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock));
 
 				IsShooting = true;
 			}
 		}
 
-		protected void StopFiring(string reason)
+		protected void StopFiring(string reason, bool force = false)
 		{
 			using (lock_IsShooting.AcquireExclusiveUsing())
 			{
-				if (!IsShooting)
+				if (!IsShooting && ! force)
 					return;
 
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
 				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
 
 				IsShooting = false;
 			}
@@ -551,8 +552,8 @@ namespace Rynchodon.Weapons
 			PotentialObstruction = new List<IMyEntity>();
 
 			BoundingSphereD nearbySphere = new BoundingSphereD(BarrelPositionWorld(), Options.TargetingRange);
-			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
+			List<MyEntity> nearbyEntities = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearbySphere, nearbyEntities);
 
 			//myLogger.debugLog("found " + nearbyEntities.Count + " entities", "CollectTargets()");
 

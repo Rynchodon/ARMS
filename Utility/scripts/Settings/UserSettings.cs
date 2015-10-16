@@ -107,8 +107,14 @@ namespace Rynchodon.Settings
 			{
 				readAll();
 				MyAPIGateway.Utilities.MessageEntered += ChatHandler;
-				MyAPIGateway.Entities.OnCloseAll += () => { MyAPIGateway.Utilities.MessageEntered -= ChatHandler; };
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			}
+		}
+
+		private void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyAPIGateway.Utilities.MessageEntered -= ChatHandler;
 		}
 
 		public byte GetSetting(ByteSettingName name)

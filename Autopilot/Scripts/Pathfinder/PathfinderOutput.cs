@@ -1,4 +1,6 @@
-﻿using VRage.ModAPI;
+﻿// skip file on build
+
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -8,7 +10,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public enum Result : byte { Incomplete, Path_Clear, Searching_Alt, Alternate_Path, No_Way_Forward }
 
 		public readonly Result PathfinderResult;
-		public readonly IMyEntity Obstruction;
+		//public readonly IMyEntity Obstruction;
 		public readonly Vector3D Waypoint;
 
 		/// <summary>
@@ -18,10 +20,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public double DistanceToClosest { get { return lazy_DistanceToClosest.Value; } }
 		private Lazy<double> lazy_DistanceToClosest;
 
-		public PathfinderOutput(Result PathfinderResult, PathChecker getClosestFrom = null, IMyEntity Obstruction = null, Vector3D Waypoint = new Vector3D())
+		public PathfinderOutput(Result PathfinderResult, /*PathChecker getClosestFrom = null, IMyEntity Obstruction = null,*/ Vector3D Waypoint = new Vector3D())
 		{
 			this.PathfinderResult = PathfinderResult;
-			this.Obstruction = Obstruction;
+			//this.Obstruction = Obstruction;
 			this.Waypoint = Waypoint;
 
 			//if (getClosestFrom != null)

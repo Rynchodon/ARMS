@@ -91,7 +91,7 @@ namespace Rynchodon.Weapons
 		protected override void Update_Options(TargetingOptions Options)
 		{
 			//Options. CanTarget = TargetType.None;
-			MyObjectBuilder_TurretBase builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
+			MyObjectBuilder_TurretBase builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
 			if (builder.TargetMissiles)
 				Options.CanTarget |= TargetType.Missile;
 			if (builder.TargetMeteors)

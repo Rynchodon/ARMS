@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.ModAPI;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -19,8 +19,12 @@ namespace Rynchodon
 		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
 		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
+		private static bool Closed;
+
 		static MainLock()
-		{ MainThread_AcquireExclusive(); }
+		{
+			MainThread_AcquireExclusive();
+		}
 
 		/// <summary>
 		/// This should only ever be called from main thread.
@@ -49,7 +53,8 @@ namespace Rynchodon
 				unsafeAction.Invoke();
 			else
 				using (Lock_MainThread.AcquireSharedUsing())
-					unsafeAction.Invoke();
+					if (!Closed)
+						unsafeAction.Invoke();
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
@@ -64,52 +69,6 @@ namespace Rynchodon
 			UsingShared(() => entitiesObject.GetEntities(entities, collect));
 		}
 
-		/// <summary>
-		/// <para>Uses IMyEntities.GetEntities to get entities in AABB</para>
-		/// <para>Always use over GetEntitiesInAABB_Safe() when blocks are not needed, much faster.</para>
-		/// </summary>
-		/// <param name="preCollect">applied before intersection test</param>
-		public static void GetEntitiesInAABB_Safe_NoBlock(this IMyEntities entitiesObject, BoundingBoxD boundingBox, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
-		{
-			Func<IMyEntity, bool> collector;
-			if (preCollect == null)
-				collector = (entity) => boundingBox.Intersects(entity.WorldAABB);
-			else
-				collector = (entity) => { return  preCollect(entity) && boundingBox.Intersects(entity.WorldAABB); };
-			entitiesObject.GetEntities_Safe(entities, collector);
-		}
-
-		/// <summary>
-		/// <para>Uses IMyEntities.GetEntities to get entities in Sphere</para>
-		/// <para>Always use over GetEntitiesInSphere_Safe() when blocks are not needed, much faster.</para>
-		/// </summary>
-		/// <param name="preCollect">applied before intersection test</param>
-		public static void GetEntitiesInSphere_Safe_NoBlock(this IMyEntities entitiesObject, BoundingSphereD boundingSphere, HashSet<IMyEntity> entities, Func<IMyEntity, bool> preCollect = null)
-		{
-			Func<IMyEntity, bool> collector;
-			if (preCollect == null)
-				collector = (entity) => boundingSphere.Intersects(entity.WorldVolume);
-			else
-				collector = (entity) => { return preCollect(entity) && boundingSphere.Intersects(entity.WorldVolume); };
-			entitiesObject.GetEntities_Safe(entities, collector);
-		}
-
-		/// <summary>Consider using GetEntitiesInAABB_Safe_NoBlock instead.</summary>
-		public static List<IMyEntity> GetEntitiesInAABB_Safe(this IMyEntities entitiesObject, BoundingBoxD boundingBox)
-		{
-			List<IMyEntity> result = null;
-			UsingShared(() => result = entitiesObject.GetEntitiesInAABB(ref boundingBox));
-			return result;
-		}
-
-		/// <summary>Consider using GetEntitiesInSphere_Safe_NoBlock instead.</summary>
-		public static List<IMyEntity> GetEntitiesInSphere_Safe(this IMyEntities entitiesObject, BoundingSphereD boundingSphere)
-		{
-			List<IMyEntity> result = null;
-			UsingShared(() => entitiesObject.GetEntitiesInSphere(ref boundingSphere));
-			return result;
-		}
-
 		#endregion
 
 		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMySlimBlock block)
@@ -119,9 +78,16 @@ namespace Rynchodon
 			return result;
 		}
 
-		public static MyObjectBuilder_CubeBlock GetSlimObjectBuilder_Safe(this IMyCubeBlock block)
+		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMyCubeBlock block)
 		{
-			return block.getSlim().GetObjectBuilder_Safe();
+			MyObjectBuilder_CubeBlock result = null;
+			UsingShared(() => result = block.GetObjectBuilderCubeBlock());
+			return result;
+		}
+
+		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this Ingame.IMyCubeBlock block)
+		{
+			return (block as IMyCubeBlock).getSlim().GetObjectBuilder_Safe();
 		}
 
 		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)

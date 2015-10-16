@@ -2,6 +2,7 @@
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Data
@@ -22,15 +23,6 @@ namespace Rynchodon.Autopilot.Data
 		//	All = ChangeCourse
 		//}
 
-		//[Flags]
-		//public enum MovementType : byte
-		//{
-		//	None = 0,
-		//	Rotate = 1 << 0,
-		//	Move = 1 << 1,
-		//	All = Rotate | Move
-		//}
-
 		public class SettingsLevel
 		{
 			private SettingsLevel parent;
@@ -41,14 +33,14 @@ namespace Rynchodon.Autopilot.Data
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
 			private BlockNameOrientation m_destBlock;
+			private IMyEntity m_destEntity;
 
 			private DateTime? m_waitUntil;
 
 			private Vector3D? m_destinationOffset;
-			private Vector3D? m_destination;
+			//private Vector3D? m_destination;
 
 			//private PathfinderPermissions? m_pathPerm;
-			//private MovementType? m_allowedMovement;
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget;
 
@@ -63,10 +55,9 @@ namespace Rynchodon.Autopilot.Data
 
 				m_waitUntil = DateTime.UtcNow.AddSeconds(1);
 
-				m_destinationOffset = Vector3D.NegativeInfinity;
-				m_destination = Vector3D.NegativeInfinity;
+				m_destinationOffset = Vector3D.Zero;
+				//m_destination = Vector3D.NegativeInfinity;
 
-				//m_allowedMovement = MovementType.All;
 				//m_pathPerm = PathfinderPermissions.All;
 
 				m_destRadius = 100f;
@@ -145,22 +136,16 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destinationOffset = value; }
 			}
 
-			public Vector3D Destination
-			{
-				get { return m_destination ?? parent.Destination; }
-				set { m_destination = value; }
-			}
+			//public Vector3D Destination
+			//{
+			//	get { return m_destination ?? parent.Destination; }
+			//	set { m_destination = value; }
+			//}
 
 			//public PathfinderPermissions PathPerm
 			//{
 			//	get { return m_pathPerm ?? parent.PathPerm; }
 			//	set { m_pathPerm = value; }
-			//}
-
-			//public MovementType AllowedMovement
-			//{
-			//	get { return m_allowedMovement ?? parent.AllowedMovement; }
-			//	set { m_allowedMovement = value; }
 			//}
 
 			/// <summary>
@@ -175,6 +160,17 @@ namespace Rynchodon.Autopilot.Data
 					return m_destBlock ?? parent.DestinationBlock;
 				}
 				set { m_destBlock = value; }
+			}
+
+			public IMyEntity DestinationEntity
+			{
+				get
+				{
+					if (parent == null)
+						return m_destEntity;
+					return m_destEntity ?? parent.DestinationEntity;
+				}
+				set { m_destEntity = value; }
 			}
 
 			public float DestinationRadius

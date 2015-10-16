@@ -19,7 +19,7 @@ namespace Rynchodon
 
 			if (!KnownDefinitions_CubeBlock.TryGetValue(ID, out result))
 			{
-				result = MyDefinitionManager.Static.GetCubeBlockDefinition(block.GetSlimObjectBuilder_Safe());
+				result = MyDefinitionManager.Static.GetCubeBlockDefinition(block.GetObjectBuilder_Safe());
 				KnownDefinitions_CubeBlock.Add(ID, result);
 			}
 

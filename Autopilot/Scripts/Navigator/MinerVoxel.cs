@@ -14,6 +14,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Navigator
 {
+
 	/*
 	 * TODO:
 	 * Escape if inside tunnel while autopilot gains control (regardless of commands)

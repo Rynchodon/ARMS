@@ -120,7 +120,6 @@ namespace Rynchodon.Autopilot
 
 		private readonly Logger myLogger;
 		private readonly Interpreter myInterpreter;
-		private readonly Pathfinder.Pathfinder myPathfinder;
 
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 
@@ -138,7 +137,6 @@ namespace Rynchodon.Autopilot
 			this.Block = new ShipControllerBlock(block);
 			this.myLogger = new Logger("ShipController_Autopilot", block);
 			this.myInterpreter = new Interpreter(Block);
-			this.myPathfinder = new Pathfinder.Pathfinder(block.CubeGrid, myNavSet);
 
 			this.Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
 
@@ -195,8 +193,6 @@ namespace Rynchodon.Autopilot
 					// wait for player to give back control, do not reset
 					return;
 
-				myPathfinder.Update();
-
 				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
 				if (navM != null)
 				{
@@ -232,6 +228,7 @@ namespace Rynchodon.Autopilot
 						//run the rotator by itself until direction is matched
 
 						navR.Rotate();
+						
 						myInterpreter.Mover.MoveAndRotate();
 
 						if (!myNavSet.DirectionMatched())
