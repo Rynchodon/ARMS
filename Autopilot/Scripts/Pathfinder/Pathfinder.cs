@@ -15,6 +15,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// </summary>
 	internal class Pathfinder
 	{
+
 		private enum PathState : byte { Not_Run, No_Obstruction, Searching, No_Way_Forward }
 
 		private static readonly ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
@@ -36,7 +37,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private MyEntity m_destEntity;
 		private bool m_ignoreAsteroid;
 
-		private Vector3D m_prevDest;
 		private PathState m_pathState = PathState.Not_Run;
 		private PathState m_rotateState = PathState.Not_Run;
 
@@ -59,14 +59,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public void TestPath(Vector3D destination)
 		{
-			if (Vector3D.DistanceSquared(destination, m_prevDest) > 100d) // something that resets on tertiary would be more appropriate
+			if (m_navSet.Settings_Current.DestinationChanged)
 			{
 				m_logger.debugLog("new destination: " + destination, "TestPath()");
+				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
 				m_runId = RunIdPool++;
 				m_pathLow.Clear();
 				m_pathState = PathState.Not_Run;
 			}
-			m_prevDest = destination;
 
 			if (Globals.UpdateCount < m_nextRun)
 				return;

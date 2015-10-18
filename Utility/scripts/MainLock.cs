@@ -24,6 +24,14 @@ namespace Rynchodon
 		static MainLock()
 		{
 			MainThread_AcquireExclusive();
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Closed = true;
+			MainThread_ReleaseExclusive();
 		}
 
 		/// <summary>

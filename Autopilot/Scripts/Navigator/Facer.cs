@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			m_navSet.Settings_Task_Primary.NavigatorRotator = this;
+			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 		}
 
 		///// <summary>

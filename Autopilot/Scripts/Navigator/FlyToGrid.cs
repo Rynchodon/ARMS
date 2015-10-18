@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 				}
 
-				m_navSet.OnTaskTertiaryComplete();
+				m_navSet.OnTaskComplete_NavWay();
 			}
 		}
 
@@ -153,11 +153,11 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
 			}
 
-			m_navSet.Settings_Task_Secondary.NavigatorMover = this;
+			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
 			if (m_navSet.Settings_Current.NavigatorRotator == null)
 			{
 				m_logger.debugLog("added as mover and rotator", "FlyToGrid()");
-				m_navSet.Settings_Task_Secondary.NavigatorRotator = this;
+				m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
 			}
 			else
 				m_logger.debugLog("added as mover only", "FlyToGrid()");
@@ -180,7 +180,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (DateTime.UtcNow > m_searchTimeoutAt)
 				{
 					m_logger.debugLog("Search timed out", "Move()", Logger.severity.INFO);
-					m_navSet.OnTaskSecondaryComplete();
+					m_navSet.OnTaskComplete_NavMove();
 					m_mover.StopMove();
 					m_mover.StopRotate();
 					return;
@@ -198,7 +198,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				//if (m_gridFinder.m_targetBlockName == null || m_gridFinder.Block != null)
 				if (m_gridFinder.Block != null)
-					m_navSet.Settings_Task_Secondary.DestinationEntity = m_gridFinder.Block;
+					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
 
 				if (m_landingState > LandingState.Approach || m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
@@ -251,11 +251,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_targetBlock.Forward.HasValue)
 			{
-				m_navSet.Settings_Task_Primary.NavigatorRotator = this;
+				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 				if (m_navSet.DirectionMatched())
 				{
 					m_logger.debugLog("Direction matched", "Rotate()", Logger.severity.INFO);
-					m_navSet.OnTaskPrimaryComplete();
+					m_navSet.OnTaskComplete_NavRot();
 					m_mover.StopMove(true);
 					m_mover.StopRotate();
 					return;
@@ -315,7 +315,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (IsLocked())
 			{
 				m_logger.debugLog("Attached!", "Move_Land()", Logger.severity.INFO);
-				m_navSet.OnTaskPrimaryComplete();
+				m_navSet.OnTaskComplete_NavRot();
 				m_mover.StopMove(false);
 				m_mover.StopRotate();
 				return;
@@ -328,7 +328,7 @@ namespace Rynchodon.Autopilot.Navigator
 						//if (formation)
 						{
 							m_logger.debugLog("Arrived at target", "Move_Land()", Logger.severity.INFO);
-							m_navSet.OnTaskSecondaryComplete();
+							m_navSet.OnTaskComplete_NavMove();
 							m_mover.StopMove();
 							m_mover.StopRotate();
 						}
@@ -341,8 +341,8 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				case LandingState.Approach:
 					{
-						m_navSet.Settings_Task_Primary.NavigatorRotator = this;
-						m_navSet.Settings_Task_Primary.NavigationBlock = m_navBlock;
+						m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
+						m_navSet.Settings_Task_NavRot.NavigationBlock = m_navBlock;
 						if (m_landGearWithoutTargetBlock)
 						{
 							m_landingState = LandingState.Catch;

@@ -64,7 +64,22 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			rotateForceRatio = Vector3.Zero;
 		}
-		
+
+		public void MoveAndRotateStop()
+		{
+			moveForceRatio = Vector3.Zero;
+			rotateForceRatio = Vector3.Zero;
+			Block.SetDamping(true);
+			Block.Controller.MoveAndRotateStopped();
+		}
+
+		public bool CanMoveForward(PseudoBlock block)
+		{
+			CheckGrid();
+
+			return myThrust.CanMoveAnyDirection();
+		}
+
 		///// <summary>
 		///// Calculates the force necessary to move the grid.
 		///// </summary>
@@ -83,7 +98,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		public void CalcMove( PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
+		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
 			CheckGrid();
 
@@ -104,7 +119,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 targetVelocity = MaximumVelocity(destDisp);
 
 			float distance = destDisp.Length();
-			NavSet.Settings_Task_Tertiary.Distance = distance;
+			NavSet.Settings_Task_NavWay.Distance = distance;
 
 			// project targetVelocity onto destination direction (take shortest path)
 			Vector3 destDir = destDisp / distance;
@@ -118,7 +133,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (tarSpeedSq > speedRequest * speedRequest)
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
-			Vector3 accel =  targetVelocity - velocity;
+			Vector3 accel = targetVelocity - velocity;
 			if (landing && targetVelocity.LengthSquared() < velocity.LengthSquared())
 				accel *= 10f;
 
@@ -173,7 +188,8 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", accel: " + accel
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 
-			myPathfinder.TestPath(destPoint);
+			if (NavSet.Settings_Current.CollisionAvoidance)
+				myPathfinder.TestPath(destPoint);
 		}
 
 		/// <summary>
@@ -277,11 +293,11 @@ namespace Rynchodon.Autopilot.Movement
 				forward = Base6Directions.Direction.Forward;
 			//if (upward == null)
 			//	upward = Base6Directions.Direction.Up;
-			
+
 			//myLogger.debugLog(forward.Value == upward.Value || forward.Value == Base6Directions.GetFlippedDirection(upward.Value),
 			//	"Invalid orienation: " + forward + ", " + upward, "CalcRotate()", Logger.severity.FATAL);
 
-			RelativeDirection3F faceForward = RelativeDirection3F.FromWorld(block.Grid , destBlock.WorldMatrix.GetDirectionVector(forward.Value));
+			RelativeDirection3F faceForward = RelativeDirection3F.FromWorld(block.Grid, destBlock.WorldMatrix.GetDirectionVector(forward.Value));
 
 			CalcRotate(block, faceForward);
 		}
@@ -302,7 +318,8 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("displacement.LengthSquared(): " + displacement.LengthSquared(), "CalcRotate()");
 			//return displacement.LengthSquared() < 0.01f;
 
-			myPathfinder.TestRotate(displacement);
+			if (NavSet.Settings_Current.CollisionAvoidance)
+				myPathfinder.TestRotate(displacement);
 		}
 
 		/// <summary>
@@ -361,7 +378,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			displacement = -elevation * NFR_right + -azimuth * NFR_up;
 
-			NavSet.Settings_Task_Tertiary.DistanceAngle = displacement.Length();
+			NavSet.Settings_Task_NavWay.DistanceAngle = displacement.Length();
 
 			//myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "CalcRotate()");
 
@@ -402,8 +419,8 @@ namespace Rynchodon.Autopilot.Movement
 
 				float dim = rotateForceRatio.GetDim(i);
 				if (Math.Sign(dim) * Math.Sign(angularVelocity.GetDim(i)) < 0)
-				//{
-				//	myLogger.debugLog("force ratio(" + dim + ") opposes velocity(" + angularVelocity.GetDim(i) + "), index: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
+					//{
+					//	myLogger.debugLog("force ratio(" + dim + ") opposes velocity(" + angularVelocity.GetDim(i) + "), index: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
 					rotateForceRatio.SetDim(i, 0f);
 				//}
 				//else
@@ -471,12 +488,12 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			if (!myPathfinder.CanMove)
+			if (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanMove)
 			{
 				myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
 				StopMove();
 			}
-			if (!myPathfinder.CanRotate)
+			if (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanRotate)
 			{
 				myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
 				StopRotate();

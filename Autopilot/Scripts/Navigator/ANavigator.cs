@@ -1,6 +1,8 @@
 ﻿using System.Text;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -26,9 +28,6 @@ namespace Rynchodon.Autopilot.Navigator
 	/// </summary>
 	public interface INavigatorRotator
 	{
-		///// <summary>True iff the target direction has been reached.</summary>
-		//bool DirectionMatched { get; }
-
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.
 		/// </summary>
@@ -38,6 +37,13 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		/// <param name="customInfo">The autopilot block's custom info</param>
 		void AppendCustomInfo(StringBuilder customInfo);
+	}
+
+	public interface IEnemyResponse : INavigatorMover, INavigatorRotator
+	{
+		bool CanRespond();
+		bool CanTarget(IMyCubeGrid grid);
+		void UpdateTarget(LastSeen enemy);
 	}
 
 	public abstract class ANavigator
@@ -60,6 +66,7 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_mover = mover;
 			this.m_navSet = navSet;
 		}
+
 	}
 
 	public abstract class NavigatorMover : ANavigator, INavigatorMover
@@ -71,10 +78,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="navSet">The settings to use</param>
 		protected NavigatorMover(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
-
-		///// <summary>A NavigatorMover does not need to match direction, so this value is always true.</summary>
-		//public bool DirectionMatched
-		//{ get { return true; } }
 
 		/// <summary>
 		/// Calculate the movement force necessary to reach the target.
@@ -96,9 +99,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="navSet">The settings to use</param>
 		protected NavigatorRotator(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet) { }
-
-		///// <summary>True iff the target direction has been reached.</summary>
-		//public abstract bool DirectionMatched { get; }
 
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.

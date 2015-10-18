@@ -9,9 +9,6 @@ namespace Rynchodon.Autopilot.Data
 {
 	/// <summary>
 	/// <para>Separates navigation settings into distinct levels.</para>
-	/// <para>Primary Navigation requires rotation</para>
-	/// <para>Secondary Navigation does not require rotation</para>
-	/// <para>Tertiary Navigation need not be completed</para>
 	/// </summary>
 	public class AllNavigationSettings
 	{
@@ -30,6 +27,7 @@ namespace Rynchodon.Autopilot.Data
 			private PseudoBlock m_navigationBlock;
 			private PseudoBlock m_landingBlock;
 
+			private EnemyFinder m_enemyFinder;
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
 			private BlockNameOrientation m_destBlock;
@@ -44,7 +42,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget;
 
-			private bool? m_ignoreAsteroid;//, m_jumpToDest;
+			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -66,7 +64,8 @@ namespace Rynchodon.Autopilot.Data
 				m_speedTarget = 100f;
 
 				m_ignoreAsteroid = false;
-				//m_jumpToDest = false;
+				m_destChanged = true;
+				m_collisionAvoidance = true;
 			}
 
 			/// <summary>
@@ -83,7 +82,8 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>
-			/// May be null
+			/// <para>May be null</para>
+			/// <para>The block that will be landed</para>
 			/// </summary>
 			public PseudoBlock LandingBlock
 			{
@@ -96,8 +96,20 @@ namespace Rynchodon.Autopilot.Data
 				set { m_landingBlock = value; }
 			}
 
+			public EnemyFinder EnemyFinder
+			{
+				get
+				{
+					if (parent == null)
+						return m_enemyFinder;
+					return m_enemyFinder ?? parent.EnemyFinder;
+				}
+				set { m_enemyFinder = value; }
+			}
+
 			/// <summary>
 			/// <para>May be null</para>
+			/// <para>The navigator that is moving the ship</para>
 			/// </summary>
 			public INavigatorMover NavigatorMover
 			{
@@ -112,6 +124,7 @@ namespace Rynchodon.Autopilot.Data
 
 			/// <summary>
 			/// <para>May be null</para>
+			/// <para>The navigator that is rotating the ship.</para>
 			/// </summary>
 			public INavigatorRotator NavigatorRotator
 			{
@@ -124,12 +137,14 @@ namespace Rynchodon.Autopilot.Data
 				set { m_navigatorRotator = value; }
 			}
 
+			/// <summary>ShipController will not run the navigator until after this time.</summary>
 			public DateTime WaitUntil
 			{
 				get { return m_waitUntil ?? parent.WaitUntil; }
 				set { m_waitUntil = value; }
 			}
 
+			/// <summary>Added to position of target block</summary>
 			public Vector3D DestinationOffset
 			{
 				get { return m_destinationOffset ?? parent.DestinationOffset; }
@@ -149,7 +164,8 @@ namespace Rynchodon.Autopilot.Data
 			//}
 
 			/// <summary>
-			/// May be null
+			/// <para>May be null</para>
+			/// <para>Information about which block to target</para>
 			/// </summary>
 			public BlockNameOrientation DestinationBlock
 			{
@@ -162,6 +178,10 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destBlock = value; }
 			}
 
+			/// <summary>
+			/// <para>The entity that is the target of the navigator, will be ignored by pathfinder.</para>
+			/// <para>Block is used instead of grid.</para>
+			/// </summary>
 			public IMyEntity DestinationEntity
 			{
 				get
@@ -173,6 +193,7 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destEntity = value; }
 			}
 
+			/// <summary>How close the navigation block needs to be to the destination</summary>
 			public float DestinationRadius
 			{
 				get { return m_destRadius ?? parent.DestinationRadius; }
@@ -180,7 +201,8 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>
-			/// Will be NaN if Mover.Move() has not been called
+			/// <para>Will be NaN if Mover.Move() has not been called</para>
+			/// <para>Distance between current position and destination.</para>
 			/// </summary>
 			public float Distance
 			{
@@ -189,7 +211,8 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>
-			/// Will be NaN if Mover.Rotate() has not been called
+			/// <para>Will be NaN if Mover.Rotate() has not been called</para>
+			/// <para>Angular distance between current direction and desired direction.</para>
 			/// </summary>
 			public float DistanceAngle
 			{
@@ -204,10 +227,24 @@ namespace Rynchodon.Autopilot.Data
 				set { m_speedTarget = value; }
 			}
 
+			/// <summary>Pathfinder should not run voxel tests.</summary>
 			public bool IgnoreAsteroid
 			{
 				get { return m_ignoreAsteroid ?? parent.IgnoreAsteroid; }
 				set { m_ignoreAsteroid = value; }
+			}
+
+			/// <summary>Pathfinder uses this to track when OnTaskTertiaryComplete() is invoked.</summary>
+			public bool DestinationChanged
+			{
+				get { return m_destChanged ?? parent.DestinationChanged; }
+				set { m_destChanged = value; }
+			}
+
+			public bool CollisionAvoidance
+			{
+				get { return m_collisionAvoidance ?? parent.CollisionAvoidance; }
+				set { m_collisionAvoidance = value; }
 			}
 
 			//public bool JumpToDest
@@ -225,20 +262,23 @@ namespace Rynchodon.Autopilot.Data
 		/// <summary>Settings that are reset at the start of commands. Settings should be written here but not read.</summary>
 		public SettingsLevel Settings_Commands { get; private set; }
 
-		/// <summary>Settings that are reset when a primary task is completed. Settings should be written here but not read.</summary>
-		public SettingsLevel Settings_Task_Primary { get; private set; }
+		/// <summary>Settings that are reset when a navigator rotator is finished. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_NavRot { get; private set; }
 
-		/// <summary>Settings that are reset when a secondary task is completed. Settings should be written here but not read.</summary>
-		public SettingsLevel Settings_Task_Secondary { get; private set; }
+		/// <summary>Settings that are reset when a navigator mover is finished. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_NavMove { get; private set; }
 
-		/// <summary>Settings that are reset when a tertiary task is completed. Settings should be written here but not read.</summary>
-		public SettingsLevel Settings_Task_Tertiary { get; private set; }
+		/// <summary>Settings that are reset when an engager is finished. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_NavEngage { get; private set; }
+
+		/// <summary>Settings that are reset when a waypoint navigator is finished. Settings should be written here but not read.</summary>
+		public SettingsLevel Settings_Task_NavWay { get; private set; }
 
 		///// <summary>Settings that are reset every time autopilot is updated. Settings should be written here but not read.</summary>
 		//public SettingLevel MySettings_Update { get; private set; }
 
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
-		public SettingsLevel Settings_Current { get { return Settings_Task_Tertiary; } }
+		public SettingsLevel Settings_Current { get { return Settings_Task_NavWay; } }
 
 		public PseudoBlock LastLandingBlock { get; set; }
 
@@ -257,24 +297,30 @@ namespace Rynchodon.Autopilot.Data
 		public void OnStartOfCommands()
 		{
 			Settings_Commands = new SettingsLevel(defaultNavBlock);
-			OnTaskPrimaryComplete();
+			OnTaskComplete_NavRot();
 		}
 
-		public void OnTaskPrimaryComplete()
+		public void OnTaskComplete_NavRot()
 		{
-			Settings_Task_Primary = new SettingsLevel(Settings_Commands);
-			OnTaskSecondaryComplete();
+			Settings_Task_NavRot = new SettingsLevel(Settings_Commands);
+			OnTaskComplete_NavMove();
 		}
 
-		public void OnTaskSecondaryComplete()
+		public void OnTaskComplete_NavMove()
 		{
-			Settings_Task_Secondary = new SettingsLevel(Settings_Task_Primary);
-			OnTaskTertiaryComplete();
+			Settings_Task_NavMove = new SettingsLevel(Settings_Task_NavRot);
+			OnTaskComplete_NavEngage();
 		}
 
-		public void OnTaskTertiaryComplete()
+		public void OnTaskComplete_NavEngage()
 		{
-			Settings_Task_Tertiary = new SettingsLevel(Settings_Task_Secondary);
+			Settings_Task_NavEngage = new SettingsLevel(Settings_Task_NavMove);
+			OnTaskComplete_NavWay();
+		}
+
+		public void OnTaskComplete_NavWay()
+		{
+			Settings_Task_NavWay = new SettingsLevel(Settings_Task_NavEngage);
 			//OnUpdate();
 		}
 

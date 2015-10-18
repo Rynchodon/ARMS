@@ -266,8 +266,8 @@ namespace Rynchodon
 		/// <param name="objBuildType">Type to search for</param>
 		/// <param name="condition">Condition that block must match</param>
 		/// <returns>The number of blocks of the given type that match the condition.</returns>
-		// TODO: conditional for CountByDefinition and CountByDefLooseContains
-		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition)
+		// TODO: conditional for CountByDefinition
+		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition, int stopCaringAt = int.MaxValue)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
@@ -277,11 +277,39 @@ namespace Rynchodon
 					int count = 0;
 					foreach (IMyCubeBlock block in value.myList)
 						if (condition(block))
+						{
 							count++;
+							if (count >= stopCaringAt)
+								return count;
+						}
 
 					return count;
 				}
 				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Count the number of blocks that match a particular condition.
+		/// </summary>
+		/// <param name="contains">substring of definition to search for</param>
+		/// <param name="condition">Condition that block must match</param>
+		/// <returns>The number of blocks containing the given definition that match the condition.</returns>
+		public int CountByDefLooseContains(string contains, Func<IMyFunctionalBlock, bool> condition, int stopCaringAt = int.MaxValue)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				int count = 0;
+				foreach (var definition in CubeBlocks_Definition)
+					if (definition.Key.looseContains(contains))
+						foreach (IMyFunctionalBlock block in definition.Value.myList)
+							if (condition(block))
+							{
+								count++;
+								if (count >= stopCaringAt)
+									return count;
+							}
+				return count;
 			}
 		}
 

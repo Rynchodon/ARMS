@@ -237,5 +237,11 @@ namespace Rynchodon
 			throw new Exception();
 		}
 
+		public static void ApplyAction(this Ingame.IMyCubeBlock block, string actionName)
+		{
+			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
+			asTerm.GetActionWithName(actionName).Apply(asTerm);
+		}
+
 	}
 }

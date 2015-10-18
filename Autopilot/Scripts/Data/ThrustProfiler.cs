@@ -168,5 +168,25 @@ namespace Rynchodon.Autopilot.Data
 			return force;
 		}
 
+		/// <summary>
+		/// Determines if there are working thrusters in every direction.
+		/// </summary>
+		public bool CanMoveAnyDirection()
+		{
+			foreach (List<ThrusterProperties> thrusterGroup in thrustersInDirection.Values)
+			{
+				bool found = false;
+				foreach (ThrusterProperties prop in thrusterGroup)
+					if (!prop.thruster.Closed && prop.thruster.IsWorking)
+					{
+						found = true;
+						break;
+					}
+				if (!found)
+					return false;
+			}
+			return true;
+		}
+
 	}
 }

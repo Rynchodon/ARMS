@@ -20,6 +20,7 @@ namespace Rynchodon.Autopilot
 		public readonly MyShipController Controller;
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyTerminalBlock Terminal;
+		public readonly PseudoBlock Pseudo;
 
 		private readonly Logger m_logger;
 
@@ -32,6 +33,7 @@ namespace Rynchodon.Autopilot
 			Controller = block as MyShipController;
 			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
+			Pseudo = new PseudoBlock(block);
 		}
 
 		public void ApplyAction(string action)
@@ -71,6 +73,7 @@ namespace Rynchodon.Autopilot
 
 		private static readonly ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
+		private static readonly TimeSpan MinTimeInstructions = new TimeSpan(0, 1, 0);
 
 		/// <summary>
 		/// Determines if the given block is an autopilot block. Does not check ServerSettings.
@@ -125,6 +128,7 @@ namespace Rynchodon.Autopilot
 
 		private IMyCubeGrid ControlledGrid;
 		private State m_state = State.Disabled;
+		private DateTime m_nextAllowedInstructions = DateTime.MinValue;
 
 		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
 
@@ -175,6 +179,7 @@ namespace Rynchodon.Autopilot
 							break;
 						myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
 						m_state = State.Disabled;
+						m_nextAllowedInstructions = DateTime.UtcNow;
 						return;
 					case State.Halted:
 						if (!Block.Controller.ControlThrusters)
@@ -186,11 +191,15 @@ namespace Rynchodon.Autopilot
 						return;
 				}
 
-				if (myNavSet.Settings_Current.WaitUntil > DateTime.UtcNow)
-					return;
-
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
 					// wait for player to give back control, do not reset
+					return;
+
+				EnemyFinder ef = myNavSet.Settings_Current.EnemyFinder;
+				if (ef != null)
+					ef.Update();
+
+				if (myNavSet.Settings_Current.WaitUntil > DateTime.UtcNow)
 					return;
 
 				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
@@ -237,7 +246,15 @@ namespace Rynchodon.Autopilot
 					}
 				}
 
-				myLogger.debugLog("enqueing instructions", "Update()");
+				if (m_nextAllowedInstructions > DateTime.UtcNow)
+				{
+					myLogger.debugLog("Delaying instructions", "UpdateThread()", Logger.severity.INFO);
+					myNavSet.Settings_Task_NavWay.WaitUntil = m_nextAllowedInstructions;
+					return;
+				}
+
+				myLogger.debugLog("enqueing instructions", "Update()", Logger.severity.DEBUG);
+				m_nextAllowedInstructions = DateTime.UtcNow + MinTimeInstructions;
 				myInterpreter.enqueueAllActions();
 
 				if (!myInterpreter.hasInstructions())
@@ -406,6 +423,7 @@ namespace Rynchodon.Autopilot
 		private void HCF()
 		{
 			m_state = State.Halted;
+			Block.SetDamping(true);
 			Block.Controller.MoveAndRotateStopped();
 
 			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;

@@ -48,11 +48,11 @@ Example - [ L Connector ; B Connector ; G Red Ship ; Exit ] - Will switch Autopi
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : STOP : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
-H <ore>, ... : Extract specified resources from an asteroid. Requires a working ore detector on the ship. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by rock name, ore name, or chemical symbol.
+H <ore>, ... : Extract specified ores from an asteroid. The ore must be detected by an ore detector on autopilot's grid. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by ore name or chemical symbol.
 Example - [ H Gold, Silver ] - Harvest either gold or silver, whichever is found first.
 Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
-Harvest : Extract resources from the nearest asteroid. Requires a working ore detector on the ship.
-Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest the closest asteroid
+Harvest : Extract any ore from an asteroid. Ore must be detected by an ore detector on autopilot's grid.
+Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest any ore.
 
 STOP : Stop the ship before executing any more commands. Clears all commands except P and V.
 
@@ -73,9 +73,19 @@ B <name>, <f> : <f> indicates which direction to face the landing block when lan
 Example - [ L Landing Gear : B Beacon, Right : G Platform : EXIT ] - Attach landing gear to the left side of beacon on Platform
 B <name>, <f>, <u> : <f> will be used as forward direction and <u> will be used as upward direction
 
-// this is going to change a lot
-E <range> : Any time after E is set, engage an enemy grid. While no enemy is in range, continue following commands. Use 0 for infinite range. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
-Example - [ E 0 ] - move towards any detected enemy
+E <range>, <response> : Start searching for an enemy. While no enemy is found, will continue following commands. Use 0 for infinite range. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
+E <range>, Fight : Use weapons to attack enemy ship, will stop attack if autopilot's weapons are disabled.
+Example - [ E 0, Fight ] - Fight any detected enemy.
+E <range>, Flee : Escape from enemy, will stop fleeing if thrusters become disabled.
+Example - [ E 2000, Flee ] - Flee from any enemy that comes within 2 km.
+Example - [ E 0, Fight ; E 2000, Flee ] - Fight any enemy that is detected. If weapons are disabled, flee from any enemy within 2 km.
+E <range>, Ram : Ram the enemy, will stop trying to ram if thrusters become disabled.
+Example - [ E 0, Fight, Ram ] - If weapons become disabled while fighting, ram the enemy.
+E <range>, Grind : Use grinders to de-construct the enemy, will stop trying to grind if grinders become disabled.
+Example - [ E 1000, Grind ] - Will attempt to grind any enemy within 1 km.
+E <range>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
+Example - [ E 100, Self-Destruct ] : Explode if an enemy comes within 100 m.
+Example - [ E 0, Fight, Ram, Self-Destruct ] - Fight the enemy. If weapons become disabled, ram the enemy. If thrusters become disabled, explode.
 
 F <r>, <u>, <b> : fly a distance relative to self. coordinates are rightward, upward, backwards
 Example - [ F 0, 0, -1000 ] - fly 1000m forward

@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (exitAfter)
 				m_navSet.Settings_Commands.NavigatorMover = this;
 			else
-				m_navSet.Settings_Task_Primary.NavigatorMover = this;
+				m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 		}
 
 		#region NavigatorMover Members
@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 
 				_logger.debugLog("stopped", "Stopper()");
-				m_navSet.OnTaskPrimaryComplete();
+				m_navSet.OnTaskComplete_NavRot();
 				if (exitAfter && m_mover.Block.Controller.ControlThrusters)
 				{
 					_logger.debugLog("disabling thrusters", "Stopper()");

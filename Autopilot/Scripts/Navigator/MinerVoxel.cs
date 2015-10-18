@@ -81,7 +81,7 @@ namespace Rynchodon.Autopilot.Navigator
 						if (DrillFullness() >= FullAmount_Return)
 						{
 							m_logger.debugLog("Drills are full, time to go home", "m_state()");
-							m_navSet.OnTaskPrimaryComplete();
+							m_navSet.OnTaskComplete_NavRot();
 							m_mover.StopMove();
 							m_mover.StopRotate();
 							return;
@@ -90,7 +90,7 @@ namespace Rynchodon.Autopilot.Navigator
 						{
 							// request ore detector update
 							m_logger.debugLog("Requesting ore update", "m_state()");
-							m_navSet.OnTaskSecondaryComplete();
+							m_navSet.OnTaskComplete_NavMove();
 							m_oreDetector.OnUpdateComplete.Enqueue(OreDetectorFinished);
 							m_oreDetector.UpdateOreLocations();
 						}
@@ -99,16 +99,16 @@ namespace Rynchodon.Autopilot.Navigator
 						break;
 					case State.Rotating:
 						m_currentTarget = m_approach.To;
-						m_navSet.Settings_Task_Primary.NavigatorRotator = this;
+						m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 						break;
 					case State.MoveTo:
 						EnableDrills(true);
-						m_navSet.Settings_Task_Secondary.IgnoreAsteroid = true;
+						m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 						break;
 					case State.Mining:
 						Vector3 pos = m_navDrill.WorldPosition;
 						m_currentTarget = pos + (m_depositPos - pos) * 2f;
-						m_navSet.Settings_Task_Secondary.SpeedTarget = 1f;
+						m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
 						EnableDrills(true);
 						break;
 					case State.Mining_Escape:
@@ -126,7 +126,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Current target: " + m_currentTarget, "m_state()");
 				m_mover.StopMove();
 				m_mover.StopRotate();
-				m_navSet.OnTaskTertiaryComplete();
+				m_navSet.OnTaskComplete_NavWay();
 			}
 		}
 
@@ -170,11 +170,11 @@ namespace Rynchodon.Autopilot.Navigator
 					m_logger.debugLog("failed to get ore detector from block", "MinerVoxel()", Logger.severity.FATAL);
 			}
 
-			m_navSet.Settings_Task_Primary.NavigatorMover = this;
+			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			if (m_navSet.Settings_Current.NavigatorRotator == null)
 			{
 				m_logger.debugLog("Taking control of rotation immediately", "MinerVoxel()");
-				m_navSet.Settings_Task_Primary.NavigatorRotator = this;
+				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 			}
 
 			m_state = State.GetTarget;
@@ -453,7 +453,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_logger.debugLog("No ore target found", "Move()", Logger.severity.INFO);
-			m_navSet.OnTaskPrimaryComplete();
+			m_navSet.OnTaskComplete_NavRot();
 		}
 
 		private bool IsNearVoxel()

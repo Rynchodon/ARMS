@@ -15,8 +15,7 @@ namespace Rynchodon.Weapons
 		private static Dictionary<IMyCubeBlock, FixedWeapon> registry = new Dictionary<IMyCubeBlock, FixedWeapon>();
 		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
-		/// <remarks>Before becoming a turret this will need to be checked.</remarks>
-		private Engager ControllingEngager = null;
+		private bool ControllingEngager;
 		private MotorTurret MyMotorTurret = null;
 
 		private Logger myLogger;
@@ -43,7 +42,7 @@ namespace Rynchodon.Weapons
 			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
-		internal static FixedWeapon GetFor(IMyCubeBlock weapon)
+		public static FixedWeapon GetFor(IMyCubeBlock weapon)
 		{
 			using (lock_registry.AcquireSharedUsing())
 				return registry[weapon];
@@ -53,15 +52,12 @@ namespace Rynchodon.Weapons
 		/// <para>If this FixedWeapon is already being controlled, returns if the given controller is controlling it.</para>
 		/// <para>Otherwise, attempts to take control of this FixedWeapon. Control requires that targeting options be set-up and turret not set.</para>
 		/// </summary>
-		internal bool EngagerTakeControl(Engager controller)
+		public bool EngagerTakeControl()
 		{
-			if (ControllingEngager != null)
-				return ControllingEngager == controller;
-
 			if (CanControl && MyMotorTurret == null)
 			{
-				myLogger.debugLog("engager takes control: " + controller, "EngagerTakeControl()");
-				ControllingEngager = controller;
+				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
+				ControllingEngager = true;
 				AllowedState = State.Targeting;
 				return true;
 			}
@@ -69,11 +65,9 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
-		internal void EngagerReleaseControl(Engager controller)
+		public void EngagerReleaseControl()
 		{
-			if (ControllingEngager != controller)
-				throw new InvalidOperationException("Engager does not have authority to release control");
-			ControllingEngager = null;
+			ControllingEngager = false;
 			AllowedState = State.Off;
 		}
 
@@ -108,7 +102,7 @@ namespace Rynchodon.Weapons
 
 		protected override void Update_Options(TargetingOptions current)
 		{
-			if (ControllingEngager != null)
+			if (ControllingEngager)
 				return;
 
 			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
@@ -135,7 +129,7 @@ namespace Rynchodon.Weapons
 		protected override bool CanRotateTo(VRageMath.Vector3D targetPoint)
 		{
 			// if controlled by an engager, can always rotate
-			if (ControllingEngager != null)
+			if (ControllingEngager)
 				return true;
 
 			// if controlled by a turret (not implemented)

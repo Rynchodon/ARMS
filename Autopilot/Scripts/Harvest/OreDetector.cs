@@ -24,7 +24,8 @@ namespace Rynchodon.Autopilot.Harvest
 
 			#endregion
 
-			private static readonly TimeSpan LifeSpan = new TimeSpan(0, 1, 0);
+			private static readonly TimeSpan LifeSpan_Materials = new TimeSpan(0, 1, 0);
+			private static readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
 			private static readonly bool[] RareMaterials;
 			private static readonly Vector3I OneOneOne = new Vector3I(1, 1, 1);
 
@@ -46,8 +47,9 @@ namespace Rynchodon.Autopilot.Harvest
 
 			private readonly FastResourceLock lock_readVoxels = new FastResourceLock();
 
-			private DateTime m_expiresAt = DateTime.UtcNow + LifeSpan;
-			private readonly FastResourceLock lock_expiresAt = new FastResourceLock();
+			private DateTime m_throwOutMaterials = DateTime.UtcNow + LifeSpan_Materials;
+			private DateTime m_throwOutVoxelData = DateTime.UtcNow + LifeSpan_VoxelData;
+			private readonly FastResourceLock lock_throwOut = new FastResourceLock();
 
 			public VoxelData(Ingame.IMyOreDetector oreDetector, IMyVoxelMap voxel)
 			{
@@ -59,10 +61,21 @@ namespace Rynchodon.Autopilot.Harvest
 				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner, "VoxelData()");
 			}
 
+			/// <summary>
+			/// Clears data if it is old.
+			/// </summary>
+			/// <returns>False iff VoxelData is very old and should be disposed of.</returns>
 			public bool IsValid()
 			{
-				using (lock_expiresAt.AcquireSharedUsing())
-					return DateTime.UtcNow < m_expiresAt;
+				using (lock_throwOut.AcquireExclusiveUsing())
+				{
+					if (DateTime.UtcNow > m_throwOutMaterials)
+					{
+						m_materialLocations.Clear();
+						m_throwOutMaterials = DateTime.MaxValue;
+					}
+					return DateTime.UtcNow < m_throwOutVoxelData;
+				}
 			}
 
 			public bool GetClosest(byte[] oreType, ref Vector3I voxelCoord, out Vector3I closest, out byte foundOre)
@@ -114,8 +127,11 @@ namespace Rynchodon.Autopilot.Harvest
 				}
 				try
 				{
-					using (lock_expiresAt.AcquireExclusiveUsing())
-						m_expiresAt = DateTime.UtcNow + LifeSpan;
+					using (lock_throwOut.AcquireExclusiveUsing())
+					{
+						m_throwOutMaterials = DateTime.UtcNow + LifeSpan_Materials;
+						m_throwOutVoxelData = DateTime.UtcNow + LifeSpan_VoxelData;
+					}
 
 					this.onFinished = onFinished;
 					Vector3D odPos = m_oreDetector.GetPosition();
@@ -127,7 +143,7 @@ namespace Rynchodon.Autopilot.Harvest
 					m_logger.debugLog("range: " + m_oreDetector.Range + ", world size: " + worldSize.X * worldSize.Y * worldSize.Z, "StartRead()");
 
 					// ore detector position in voxel coordinates
-					 MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref odPos, out odPosVoxelCoord);
+					MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref odPos, out odPosVoxelCoord);
 					rangeSquared = m_oreDetector.Range * m_oreDetector.Range;
 
 					MyVoxelCoordSystems.WorldPositionToVoxelCoord(referenceVoxelMapPosition, ref minWorld, out minLocal);
@@ -144,8 +160,7 @@ namespace Rynchodon.Autopilot.Harvest
 				catch (Exception ex)
 				{
 					m_logger.alwaysLog("Exception: " + ex, "StartRead()", Logger.severity.ERROR);
-					using (lock_expiresAt.AcquireExclusiveUsing())
-						m_expiresAt = DateTime.MinValue; // get this VoxelData thrown out instead of guessing at lock state
+					m_throwOutVoxelData = DateTime.MinValue;
 					throw ex;
 				}
 				return true;
@@ -370,6 +385,14 @@ Finished_Deposit: ;
 
 			MainLock.UsingShared(() => MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, nearby));
 
+			if (nearby.Count == 0)
+			{
+				using (l_waitingOn.AcquireExclusiveUsing())
+					m_waitingOn++;
+				OnVoxelFinish();
+				return;
+			}
+
 			foreach (MyVoxelMap nearbyMap in nearby)
 			{
 				VoxelData data;
@@ -395,7 +418,6 @@ Finished_Deposit: ;
 		/// <param name="voxel">The voxel map that contains the ore that was found</param>
 		/// <param name="oreName">The name of the ore that was found</param>
 		/// <returns>True iff an ore was found</returns>
-		/// TODO: make static and take a collection of OreDetector
 		public bool FindClosestOre(Vector3D position, byte[] oreType, out Vector3D orePosition, out IMyVoxelMap voxel, out string oreName)
 		{
 			m_logger.debugLog("searching for: " + oreType, "FindClosestOre()");
