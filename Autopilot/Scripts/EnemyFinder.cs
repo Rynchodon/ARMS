@@ -118,7 +118,7 @@ namespace Rynchodon.Autopilot
 			this.m_navSet = navSet;
 			this.m_autopilot = mover.Block;
 
-			if (!ShipController.TryGet(m_autopilot.CubeBlock, out this.m_controller))
+			if (!Registrar.TryGetValue(m_autopilot.CubeBlock.EntityId, out this.m_controller))
 				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
 
 			m_logger.debugLog("Initialized", "EnemyFinder()");

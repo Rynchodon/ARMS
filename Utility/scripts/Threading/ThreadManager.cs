@@ -19,8 +19,8 @@ namespace Rynchodon.Threading
 		private byte value_parallelTasks;
 		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
-		private readonly MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
-		private readonly FastResourceLock lock_ActionQueue = new FastResourceLock();
+		private MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
+		private FastResourceLock lock_ActionQueue = new FastResourceLock();
 
 		public byte AllowedParallel { get; private set; }
 
@@ -51,8 +51,8 @@ namespace Rynchodon.Threading
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			myLogger.debugLog("stopping thread", "Entities_OnCloseAll()", Logger.severity.INFO);
-			using (lock_ActionQueue.AcquireExclusiveUsing())
-				ActionQueue.Clear();
+			ActionQueue = null;
+			lock_ActionQueue = null;
 		}
 
 		public void EnqueueAction(Action toQueue, Action callback = null)

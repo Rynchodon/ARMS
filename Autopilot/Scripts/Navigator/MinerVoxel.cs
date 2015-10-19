@@ -166,7 +166,8 @@ namespace Rynchodon.Autopilot.Navigator
 			var detectors = cache.GetBlocksOfType(typeof(MyObjectBuilder_OreDetector));
 			if (detectors != null && detectors.Count > 0)
 			{
-				if (!OreDetector.TryGetDetector(detectors[0].EntityId, out m_oreDetector))
+				if (!Registrar.TryGetValue(detectors[0].EntityId, out m_oreDetector))
+				//if (!OreDetector.TryGetDetector(detectors[0].EntityId, out m_oreDetector))
 					m_logger.debugLog("failed to get ore detector from block", "MinerVoxel()", Logger.severity.FATAL);
 			}
 
@@ -327,6 +328,12 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 				default:
 					break;
+			}
+
+			if (m_navSet.Settings_Current.Distance < 10f)
+			{
+				m_mover.StopRotate();
+				return;
 			}
 
 			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;

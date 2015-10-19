@@ -21,6 +21,17 @@ namespace Rynchodon
 		private Vector3 mySunDirection;
 		private readonly FastResourceLock lock_mySunDirection = new FastResourceLock();
 
+		static SunProperties()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Instance = null;
+		}
+
 		public SunProperties()
 		{
 			MyObjectBuilder_EnvironmentDefinition environmentDefinition = MyDefinitionManager.Static.EnvironmentDefinition.GetObjectBuilder() as MyObjectBuilder_EnvironmentDefinition;

@@ -18,10 +18,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private enum PathState : byte { Not_Run, No_Obstruction, Searching, No_Way_Forward }
 
-		private static readonly ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
-		private static readonly ThreadManager Thread_Low = new ThreadManager(1, true, "Path_Low");
+		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
+		private static ThreadManager Thread_Low = new ThreadManager(1, true, "Path_Low");
 
 		private static short RunIdPool;
+
+		static Pathfinder()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Thread_High = null;
+			Thread_Low = null;
+		}
 
 		private readonly Logger m_logger;
 		private readonly IMyCubeGrid m_grid;

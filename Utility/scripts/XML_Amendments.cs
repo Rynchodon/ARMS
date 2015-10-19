@@ -11,7 +11,7 @@ namespace Rynchodon
 	/// <typeparam name="T">The type of object to ammend.</typeparam>
 	public class XML_Amendments<T>
 	{
-		private static readonly Logger myLogger = new Logger("XML_Amendments");
+		private readonly Logger myLogger = new Logger("XML_Amendments");
 		private string _serial;
 
 		/// <summary>Will contain the keys that could not be matched and their values.</summary>

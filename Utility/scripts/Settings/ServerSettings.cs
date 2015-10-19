@@ -23,7 +23,7 @@ namespace Rynchodon.Settings
 
 		private const ushort ModID = 54310; // no idea what this is supposed to be
 
-		private static readonly Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
+		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
 		public static T GetSetting<T>(SettingName name) where T : struct
@@ -48,18 +48,19 @@ namespace Rynchodon.Settings
 
 		private const string modName = "Autopilot";
 		private const string settings_file_name = "AutopilotSettings.txt";
+		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		private static readonly string strVersion = "Version";
-		public static readonly int latestVersion = 41; // in sequence of updates on steam
+		public const int latestVersion = 41; // in sequence of updates on steam
 		public static readonly int fileVersion;
 
-		private static readonly Logger myLogger = new Logger("ServerSettings");
+		private static Logger myLogger = new Logger("ServerSettings");
 
 		public static bool ServerSettingsLoaded { get; private set; }
 
 		static ServerSettings()
 		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			buildSettings();
 
 			if (MyAPIGateway.Multiplayer.IsServer)
@@ -87,6 +88,12 @@ namespace Rynchodon.Settings
 				else
 					myLogger.alwaysLog("Failed to send request to server", "ServerSettings()", Logger.severity.ERROR);
 			}
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			AllSettings = null;
+			myLogger = null;
 		}
 
 		private static void Server_ReceiveMessage(byte[] message)

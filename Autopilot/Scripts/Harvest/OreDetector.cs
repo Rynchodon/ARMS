@@ -26,16 +26,24 @@ namespace Rynchodon.Autopilot.Harvest
 
 			private static readonly TimeSpan LifeSpan_Materials = new TimeSpan(0, 1, 0);
 			private static readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
-			private static readonly bool[] RareMaterials;
+			private static bool[] RareMaterials;
 			private static readonly Vector3I OneOneOne = new Vector3I(1, 1, 1);
 
-			private static readonly ThreadManager m_thread = new ThreadManager(2, true, "VoxelData");
+			private static ThreadManager m_thread = new ThreadManager(2, true, "VoxelData");
 
 			static VoxelData()
 			{
 				RareMaterials = new bool[MyDefinitionManager.Static.VoxelMaterialCount];
 				for (byte materialIndex = 0; materialIndex < MyDefinitionManager.Static.VoxelMaterialCount; materialIndex++)
 					RareMaterials[materialIndex] = MyDefinitionManager.Static.GetVoxelMaterialDefinition(materialIndex).IsRare;
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			}
+
+			private static void Entities_OnCloseAll()
+			{
+				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+				RareMaterials = null;
+				m_thread = null;
 			}
 
 			private readonly Logger m_logger;
@@ -224,9 +232,6 @@ Finished_Deposit: ;
 
 		private static readonly TimeSpan UpdateStationary = new TimeSpan(0, 10, 0);
 
-		private static readonly Dictionary<long, OreDetector> registry = new Dictionary<long, OreDetector>();
-		private static readonly FastResourceLock lock_registry = new FastResourceLock();
-
 		/// <summary>
 		/// Material indecies by chemical symbol, subtype, and MinedOre.
 		/// </summary>
@@ -275,12 +280,6 @@ Finished_Deposit: ;
 
 		public static bool TryGetMaterial(string oreName, out byte[] oreTypes)
 		{ return MaterialGroup.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
-
-		public static bool TryGetDetector(long entityId, out OreDetector value)
-		{
-			using (lock_registry.AcquireSharedUsing())
-				return registry.TryGetValue(entityId, out value);
-		}
 
 		/// <param name="subtypeName">SubtypeId without the _##</param>
 		private static bool GetChemicalSymbol(string subtypeName, out string symbol)
@@ -345,12 +344,7 @@ Finished_Deposit: ;
 			this.Block = oreDetector;
 			this.m_oreDetector = oreDetector as Ingame.IMyOreDetector;
 
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Add(Block.EntityId, this);
-			m_oreDetector.OnClose += obj => {
-				using (lock_registry.AcquireExclusiveUsing())
-					registry.Remove(Block.EntityId);
-			};
+			Registrar.Add(Block, this);
 		}
 
 		/// <summary>

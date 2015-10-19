@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Attached
@@ -71,9 +70,19 @@ namespace Rynchodon.Attached
 			Physics = LandingGear | Terminal
 		}
 
-		private static readonly Dictionary<IMyCubeGrid, AttachedGrid> registry = new Dictionary<IMyCubeGrid, AttachedGrid>();
-		private static readonly FastResourceLock lock_search = new FastResourceLock();
+		private static FastResourceLock lock_search = new FastResourceLock();
 		private static uint searchIdPool = 1;
+
+		static AttachedGrid()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			lock_search = null;
+		}
 
 		/// <summary>
 		/// Determines if two grids are attached.
@@ -149,7 +158,7 @@ namespace Rynchodon.Attached
 		private static AttachedGrid GetFor(IMyCubeGrid grid)
 		{
 			AttachedGrid attached;
-			if (!registry.TryGetValue(grid, out attached))
+			if (!Registrar.TryGetValue(grid.EntityId, out attached))
 				attached = new AttachedGrid(grid);
 
 			return attached;
@@ -171,14 +180,7 @@ namespace Rynchodon.Attached
 		{
 			this.myLogger = new Logger("AttachedGrid", () => grid.DisplayName);
 			this.myGrid = grid;
-			registry.Add(grid, this);
-			grid.OnClose += grid_OnClose;
-		}
-
-		private void grid_OnClose(IMyEntity obj)
-		{
-			obj.OnClose -= grid_OnClose;
-			registry.Remove(obj as IMyCubeGrid);
+			Registrar.Add(grid, this);
 		}
 
 		private void AddRemoveConnection(AttachmentKind kind, AttachedGrid attached, bool add)

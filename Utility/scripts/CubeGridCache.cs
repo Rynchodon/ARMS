@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage;
@@ -14,11 +12,22 @@ namespace Rynchodon
 	/// </summary>
 	public class CubeGridCache
 	{
-		private static Dictionary<IMyCubeGrid, CubeGridCache> registry = new Dictionary<IMyCubeGrid, CubeGridCache>();
-		private static FastResourceLock lock_registry = new FastResourceLock();
-
+		private static FastResourceLock lock_constructing = new FastResourceLock();
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
+
+		static CubeGridCache()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			lock_constructing = null;
+			lock_knownDefinitions = null;
+			knownDefinitions = null;
+		}
 
 		/// <summary>
 		/// Get the shortest definition that looseContains(contains).
@@ -37,6 +46,7 @@ namespace Rynchodon
 			return bestMatch;
 		}
 
+		private readonly Logger myLogger;
 		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>>();
 		private Dictionary<string, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
@@ -57,7 +67,7 @@ namespace Rynchodon
 			CubeGrid.OnBlockRemoved += CubeGrid_OnBlockRemoved;
 			CubeGrid.OnMarkForClose += CubeGrid_OnMarkForClose;
 
-			registry.Add(CubeGrid, this); // protected by GetFor()
+			Registrar.Add(CubeGrid, this);
 			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
@@ -71,9 +81,6 @@ namespace Rynchodon
 
 			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
-
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeGrid);
 
 			myLogger.debugLog("closed", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 		}
@@ -356,14 +363,14 @@ namespace Rynchodon
 				return null;
 
 			CubeGridCache value;
-			using (lock_registry.AcquireSharedUsing())
-				if (registry.TryGetValue(grid, out value))
+				if(	Registrar.TryGetValue(grid.EntityId, out value))
 					return value;
 
-			using (lock_registry.AcquireExclusiveUsing())
+			using (lock_constructing.AcquireExclusiveUsing())
 			{
-				if (registry.TryGetValue(grid, out value))
+				if (Registrar.TryGetValue(grid.EntityId, out value))
 					return value;
+
 				try
 				{ return new CubeGridCache(grid); }
 				catch (Exception e)
@@ -374,6 +381,5 @@ namespace Rynchodon
 			}
 		}
 
-		private Logger myLogger;
 	}
 }

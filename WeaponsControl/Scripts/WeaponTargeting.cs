@@ -29,12 +29,37 @@ namespace Rynchodon.Weapons
 			Targeting = GetOptions | 1 << 1
 		}
 
-		private static readonly ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
-		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
-		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
+		private static ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
+		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
+		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
 		/// <remarks>Not locked because there is only one thread allowed.</remarks>
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
+
+		static WeaponTargeting()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
+
+			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Thread = null;
+			obstructionOffsets_turret = null;
+			obstructionOffsets_fixed = null;
+			KnownAmmo = null;
+		}
 
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly Ingame.IMyLargeTurretBase myTurret;
@@ -71,21 +96,6 @@ namespace Rynchodon.Weapons
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
-
-		static WeaponTargeting()
-		{
-			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
-
-			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
-		}
 
 		public WeaponTargeting(IMyCubeBlock weapon)
 		{

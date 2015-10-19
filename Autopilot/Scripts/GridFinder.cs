@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(targetGrid == null, "targetGrid == null", "GridFinder()", Logger.severity.FATAL);
 
-			if (!ShipController.TryGet(controller.CubeBlock, out this.m_controller))
+			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_controller))
 				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
 			this.m_targetGridName = targetGrid.LowerRemoveWhitespace();
 			if (targetBlock != null)

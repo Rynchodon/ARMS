@@ -12,8 +12,6 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class FixedWeapon : WeaponTargeting
 	{
-		private static Dictionary<IMyCubeBlock, FixedWeapon> registry = new Dictionary<IMyCubeBlock, FixedWeapon>();
-		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
 		private bool ControllingEngager;
 		private MotorTurret MyMotorTurret = null;
@@ -24,28 +22,10 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("FixedWeapon", block);
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Add(CubeBlock, this);
-			CubeBlock.OnClose += weapon_OnClose;
+			Registrar.Add(CubeBlock, this);
 			myLogger.debugLog("Initialized", "FixedWeapon()");
 
 			AllowedState = State.GetOptions;
-		}
-
-		private void weapon_OnClose(IMyEntity obj)
-		{
-			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
-
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeBlock);
-
-			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
-		}
-
-		public static FixedWeapon GetFor(IMyCubeBlock weapon)
-		{
-			using (lock_registry.AcquireSharedUsing())
-				return registry[weapon];
 		}
 
 		/// <summary>

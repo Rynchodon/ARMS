@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
 	public class LaserAntenna : Receiver
 	{
-		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
-		public static ReadOnlyList<LaserAntenna> registry { get { return new ReadOnlyList<LaserAntenna>(value_registry); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 		private Logger myLogger;
@@ -22,19 +18,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			myLaserAntenna = CubeBlock as Ingame.IMyLaserAntenna;
 			myLogger = new Logger("LaserAntenna", () => CubeBlock.CubeGrid.DisplayName);
-			value_registry.Add(this);
-		}
-
-		protected override void Close(IMyEntity entity)
-		{
-			try
-			{
-				if (CubeBlock != null)
-					value_registry.Remove(this);
-			}
-			catch (Exception e)
-			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			myLaserAntenna = null;
+			Registrar.Add(block, this);
 		}
 
 		public void UpdateAfterSimulation100()
@@ -46,15 +30,14 @@ namespace Rynchodon.AntennaRelay
 
 				builder = CubeBlock.getSlimObjectBuilder() as MyObjectBuilder_LaserAntenna;
 
-				// stage 5 is the final stage. It is possible for one to be in stage 5, while the other is not
+				// state 5 is the final state. It is possible for one to be in state 5, while the other is not
 				if (builder.targetEntityId != null)
-					foreach (LaserAntenna lAnt in value_registry)
-						if (lAnt.CubeBlock.EntityId == builder.targetEntityId)
-						{
-							if (lAnt.builder != null && builder.State == 5 && lAnt.builder.State == 5)
-								Relay(lAnt);
-							break;
-						}
+				{
+					LaserAntenna lAnt;
+					if (Registrar.TryGetValue(builder.targetEntityId.Value, out lAnt))
+						if (lAnt.builder != null && builder.State == 5 && lAnt.builder.State == 5)
+							Relay(lAnt);
+				}
 
 				RelayAttached();
 			}

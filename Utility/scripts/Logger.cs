@@ -31,6 +31,8 @@ namespace Rynchodon
 
 		private static int maxNumLines = 1000000;
 		private static int numLines = 0;
+		//private static int numLoggers = 0;
+		private static bool worldClosed, loggingClosed;
 
 		private readonly string m_classname;
 		/// <summary>
@@ -74,11 +76,10 @@ namespace Rynchodon
 				this.f_state_primary = () => block.getNameOnly();
 				this.f_state_secondary = default_secondary;
 			}
-			return;
 		}
 
 		/// <summary>
-		/// needed for MySessionComponentBase, not useful for logging
+		/// needed for MySessionComponentBase
 		/// </summary>
 		public Logger() { }
 
@@ -174,7 +175,9 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		public void alwaysLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
-		{ log(level, methodName, toLog, primaryState, secondaryState); }
+		{
+			log(level, methodName, toLog, primaryState, secondaryState);
+		}
 
 		/// <summary>
 		/// Do not call from outside Logger class, use debugLog or alwaysLog.
@@ -186,7 +189,10 @@ namespace Rynchodon
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		private void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
 		{
-			if (closed)
+			if (loggingClosed)
+				return;
+
+			if (numLines >= maxNumLines)
 				return;
 
 			if (level <= severity.WARNING)
@@ -226,15 +232,11 @@ namespace Rynchodon
 						catch { secondaryState = string.Empty; }
 				}
 
-				if (toLog == null)
-					toLog = "no message";
-				if (numLines >= maxNumLines)
-					return;
-
 				numLines++;
 				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
 				appendWithBrackets(level.ToString());
-				appendWithBrackets(ThreadTracker.GetNameOrNumber());
+				try { appendWithBrackets(ThreadTracker.GetNameOrNumber()); }
+				catch { appendWithBrackets("N/A"); }
 				appendWithBrackets(context);
 				appendWithBrackets(m_classname);
 				appendWithBrackets(methodName);
@@ -246,8 +248,11 @@ namespace Rynchodon
 				logWriter.Flush();
 				stringCache.Clear();
 			}
-			catch (Exception)
-			{ debugNotify("Exception while logging"); }
+			catch (Exception ex)
+			{
+				debugNotify("Exception while logging", 2000, severity.ERROR);
+				MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
+			}
 			finally { lock_log.ReleaseExclusive(); }
 		}
 
@@ -261,27 +266,28 @@ namespace Rynchodon
 			stringCache.Append(']');
 		}
 
-		private static bool closed = false;
-
-		/// <summary>
-		/// closes the static log file
-		/// </summary>
-		private static void close()
+		private void close()
 		{
-			if (logWriter == null)
-				return;
-			using (lock_log.AcquireExclusiveUsing())
+			try
 			{
-				logWriter.Flush();
-				logWriter.Close();
-				logWriter = null;
-				closed = true;
+				if (logWriter == null)
+					return;
+				log(severity.INFO, "close()", "Closing log.");
+				using (lock_log.AcquireExclusiveUsing())
+				{
+					logWriter.Flush();
+					logWriter.Close();
+					logWriter = null;
+					loggingClosed = true;
+				}
 			}
+			catch (ObjectDisposedException) { }
 		}
 
 		protected override void UnloadData()
 		{
 			base.UnloadData();
+			worldClosed = true;
 			close();
 		}
 
@@ -305,7 +311,7 @@ namespace Rynchodon
 		/// <returns>true iff the message was displayed</returns>
 		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
-			if (closed)
+			if (worldClosed)
 				return;
 
 			MyFontEnum font = fontForSeverity(level);

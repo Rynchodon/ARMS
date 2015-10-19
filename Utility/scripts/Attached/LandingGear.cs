@@ -1,5 +1,6 @@
 ﻿using System;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 
 namespace Rynchodon.Attached
 {
@@ -18,6 +19,13 @@ namespace Rynchodon.Attached
 			IMyCubeGrid attached = myGear.GetAttachedEntity() as IMyCubeGrid;
 			if (attached != null)
 				Attach(attached);
+
+			myGear.OnClosing += myGear_OnClosing;
+		}
+
+		private void myGear_OnClosing(IMyEntity obj)
+		{
+			myGear.StateChanged -= myGear_StateChanged;
 		}
 
 		private void myGear_StateChanged(bool obj)

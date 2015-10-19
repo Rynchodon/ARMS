@@ -71,9 +71,21 @@ namespace Rynchodon.Autopilot
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
-		private static readonly ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
-		private static readonly HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 		private static readonly TimeSpan MinTimeInstructions = new TimeSpan(0, 1, 0);
+		private static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
+		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
+
+		static ShipController_Autopilot()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			AutopilotThread = null;
+			GridBeingControlled = null;
+		}
 
 		/// <summary>
 		/// Determines if the given block is an autopilot block. Does not check ServerSettings.
@@ -117,12 +129,12 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private enum State : byte { Disabled, Enabled, Halted }
+		private enum State : byte { Disabled, Enabled, Halted, Closed }
 
 		private readonly ShipControllerBlock Block;
 
 		private readonly Logger myLogger;
-		private readonly Interpreter myInterpreter;
+		private Interpreter myInterpreter;
 
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 
@@ -143,8 +155,23 @@ namespace Rynchodon.Autopilot
 			this.myInterpreter = new Interpreter(Block);
 
 			this.Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
+			this.Block.CubeBlock.OnClosing += CubeBlock_OnClosing;
+
+			// for my German friends...
+			if (!Block.Terminal.DisplayNameText.Contains("[") && !Block.Terminal.DisplayNameText.Contains("]"))
+				Block.Terminal.SetCustomName(Block.Terminal.DisplayNameText + " []");
 
 			myLogger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
+		}
+
+		private void CubeBlock_OnClosing(VRage.ModAPI.IMyEntity obj)
+		{
+			m_state = State.Closed;
+			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
+			Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
+
+			ReleaseControlledGrid();
+			myInterpreter = null;
 		}
 
 		public void Update()
@@ -188,6 +215,8 @@ namespace Rynchodon.Autopilot
 							Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
 							Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
 						}
+						return;
+					case State.Closed:
 						return;
 				}
 

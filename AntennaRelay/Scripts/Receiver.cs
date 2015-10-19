@@ -17,20 +17,23 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="toSend">The LastSeen to send.</param>
 		public static void SendToAttached(IMyCubeBlock sender, ICollection<LastSeen> toSend)
 		{
-			foreach (RadioAntenna radioAnt in RadioAntenna.registry)
+			Registrar.ForEach((RadioAntenna radioAnt) => {
 				if (sender.canSendTo(radioAnt.CubeBlock, true))
 					foreach (LastSeen seen in toSend)
 						radioAnt.Receive(seen);
+			});
 
-			foreach (LaserAntenna laserAnt in LaserAntenna.registry)
+			Registrar.ForEach((LaserAntenna laserAnt) => {
 				if (sender.canSendTo(laserAnt.CubeBlock, true))
 					foreach (LastSeen seen in toSend)
 						laserAnt.Receive(seen);
+			});
 
-			foreach (ShipController controller in ShipController.registry.Values)
+			Registrar.ForEach((ShipController controller) => {
 				if (sender.canSendTo(controller.CubeBlock, true))
 					foreach (LastSeen seen in toSend)
 						controller.Receive(seen);
+			});
 		}
 
 		/// <summary>
@@ -40,15 +43,17 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="toSend">The Message to send.</param>
 		public static void SendToAttached(IMyCubeBlock sender, ICollection<Message> toSend)
 		{
-			foreach (RadioAntenna radioAnt in RadioAntenna.registry)
+			Registrar.ForEach((RadioAntenna radioAnt) => {
 				if (sender.canSendTo(radioAnt.CubeBlock, true))
 					foreach (Message msg in toSend)
 						radioAnt.Receive(msg);
+			});
 
-			foreach (LaserAntenna laserAnt in LaserAntenna.registry)
+			Registrar.ForEach((LaserAntenna laserAnt) => {
 				if (sender.canSendTo(laserAnt.CubeBlock, true))
 					foreach (Message msg in toSend)
 						laserAnt.Receive(msg);
+			});
 		}
 
 		private readonly Logger myLogger = new Logger(null, "Receiver");
@@ -67,18 +72,16 @@ namespace Rynchodon.AntennaRelay
 			myLastSeen = new Dictionary<long, LastSeen>();
 			myMessages = new MyUniqueList<Message>();
 
-			CubeBlock.OnClosing += in_Close;
+			CubeBlock.OnClosing += OnClosing;
 		}
 
-		private void in_Close(IMyEntity entity)
+		private void OnClosing(IMyEntity entity)
 		{
-			Close(entity); // derived should run first in case it needs CubeBlock
+			CubeBlock.CubeGrid.OnBlockOwnershipChanged -= CubeGrid_OnBlockOwnershipChanged;
 			CubeBlock = null;
 			myLastSeen = null;
 			myMessages = null;
 		}
-
-		protected virtual void Close(IMyEntity entity) { }
 
 		private void CubeGrid_OnBlockOwnershipChanged(IMyCubeGrid obj)
 		{
@@ -156,17 +159,20 @@ namespace Rynchodon.AntennaRelay
 		protected void RelayAttached()
 		{
 			ForEachLastSeen(seen => {
-				foreach (RadioAntenna radioAnt in RadioAntenna.registry)
+				Registrar.ForEach((RadioAntenna radioAnt) => {
 					if (CubeBlock.canSendTo(radioAnt.CubeBlock, true))
 						radioAnt.Receive(seen);
+				});
 
-				foreach (LaserAntenna laserAnt in LaserAntenna.registry)
+				Registrar.ForEach((LaserAntenna laserAnt) => {
 					if (CubeBlock.canSendTo(laserAnt.CubeBlock, true))
 						laserAnt.Receive(seen);
+				});
 
-				foreach (ShipController remote in ShipController.registry.Values)
+				Registrar.ForEach((ShipController remote) => {
 					if (CubeBlock.canSendTo(remote.CubeBlock, true))
 						remote.Receive(seen);
+				});
 
 				return false;
 			});
@@ -176,14 +182,14 @@ namespace Rynchodon.AntennaRelay
 				{
 					// get receiver for block
 					ShipController remote;
-					if (ShipController.registry.TryGetValue(msg.DestCubeBlock, out remote))
+					if (Registrar.TryGetValue(msg.DestCubeBlock.EntityId, out remote))
 					{
 						remote.Receive(msg);
 						msg.IsValid = false;
 						return false;
 					}
 					ProgrammableBlock progBlock;
-					if (ProgrammableBlock.registry.TryGetValue(msg.DestCubeBlock, out progBlock))
+					if (Registrar.TryGetValue(msg.DestCubeBlock.EntityId, out progBlock))
 					{
 						progBlock.Receive(msg);
 						msg.IsValid = false;
@@ -196,13 +202,15 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				// send to all radio antenna
-				foreach (RadioAntenna radioAnt in RadioAntenna.registry)
+				Registrar.ForEach((RadioAntenna radioAnt) => {
 					if (CubeBlock.canSendTo(radioAnt.CubeBlock, true))
 						radioAnt.Receive(msg);
+				});
 
-				foreach (LaserAntenna laserAnt in LaserAntenna.registry)
+				Registrar.ForEach((LaserAntenna laserAnt) => {
 					if (CubeBlock.canSendTo(laserAnt.CubeBlock, true))
 						laserAnt.Receive(msg);
+				});
 
 				return false;
 			});

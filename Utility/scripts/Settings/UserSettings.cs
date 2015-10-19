@@ -26,8 +26,8 @@ namespace Rynchodon.Settings
 		private const string userSettings_fileName = "UserSettings.txt";
 		private const string chatDesignator = "/autopilot set";
 
-		private static readonly Dictionary<long, UserSettings> User;
-		private static readonly Logger staticLogger = new Logger("static", "UserSettings");
+		private static Dictionary<long, UserSettings> User;
+		private static Logger staticLogger = new Logger("static", "UserSettings");
 
 		static UserSettings()
 		{
@@ -36,6 +36,15 @@ namespace Rynchodon.Settings
 				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, ReceiveMessageUserSetting);
 				User = new Dictionary<long, UserSettings>();
 			}
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, ReceiveMessageUserSetting);
+			User = null;
+			staticLogger = null;
 		}
 
 		/// <summary>
@@ -107,13 +116,13 @@ namespace Rynchodon.Settings
 			{
 				readAll();
 				MyAPIGateway.Utilities.MessageEntered += ChatHandler;
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+				MyAPIGateway.Entities.OnCloseAll += RemoveChatHandler;
 			}
 		}
 
-		private void Entities_OnCloseAll()
+		private void RemoveChatHandler()
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyAPIGateway.Entities.OnCloseAll -= RemoveChatHandler;
 			MyAPIGateway.Utilities.MessageEntered -= ChatHandler;
 		}
 

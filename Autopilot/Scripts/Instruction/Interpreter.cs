@@ -932,7 +932,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 			m_logger.debugLog("parsed " + m.Groups[1].Value + " to " + seconds, "GetSeconds()");
 
-			if (m.Groups.Count == 1)
+			if (m.Groups.Count == 1 || string.IsNullOrWhiteSpace(m.Groups[2].Value))
 				return true;
 
 			int modifier;

@@ -176,7 +176,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (weaponBlocks != null)
 					foreach (IMyCubeBlock block in weaponBlocks)
 					{
-						FixedWeapon weapon = FixedWeapon.GetFor(block);
+						FixedWeapon weapon;
+						Registrar.TryGetValue(block.EntityId, out weapon);
 						if (weapon.EngagerTakeControl())
 						{
 							m_logger.debugLog("Took control of " + weapon.CubeBlock.DisplayNameText, "Arm()");
@@ -195,7 +196,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (weaponBlocks != null)
 					foreach (IMyCubeBlock block in weaponBlocks)
 					{
-						Turret weapon = Turret.GetFor(block);
+						Turret weapon;
+						Registrar.TryGetValue(block.EntityId, out weapon);
 						if (weapon.CurrentState_FlagSet(WeaponTargeting.State.Targeting))
 						{
 							m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");

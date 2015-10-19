@@ -19,8 +19,6 @@ namespace Rynchodon
 		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
 		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
-		private static bool Closed;
-
 		static MainLock()
 		{
 			MainThread_AcquireExclusive();
@@ -30,8 +28,10 @@ namespace Rynchodon
 		static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Closed = true;
+			myLogger = null;
 			MainThread_ReleaseExclusive();
+			Lock_MainThread = null;
+			lock_RayCast = null;
 		}
 
 		/// <summary>
@@ -61,8 +61,7 @@ namespace Rynchodon
 				unsafeAction.Invoke();
 			else
 				using (Lock_MainThread.AcquireSharedUsing())
-					if (!Closed)
-						unsafeAction.Invoke();
+					unsafeAction.Invoke();
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)

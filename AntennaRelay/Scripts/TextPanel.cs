@@ -15,8 +15,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// TextPanel will fetch instructions from Antenna and write them either for players or for programmable blocks.
 	/// </summary>
-	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
-	public class TextPanel //: UpdateEnforcer
+	public class TextPanel
 	{
 		private const string command_forPlayer = "Display Detected";
 		private const string command_forProgram = "Transmit Detected to ";
@@ -119,21 +118,31 @@ namespace Rynchodon.AntennaRelay
 			if (myAntenna.IsOpen()) // already have one
 				return true;
 
-			foreach (Receiver antenna in RadioAntenna.registry)
+			myAntenna = null;
+			Registrar.ForEach((RadioAntenna antenna) => {
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 					myAntenna = antenna;
 					return true;
 				}
-			foreach (Receiver antenna in LaserAntenna.registry)
+				return false;
+			});
+
+			if (myAntenna != null)
+				return true;
+
+			Registrar.ForEach((LaserAntenna antenna) => {
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 					myAntenna = antenna;
 					return true;
 				}
-			return false;
+				return false;
+			});
+
+			return myAntenna != null;
 		}
 
 		private static readonly MyObjectBuilderType ProgOBtype = typeof(MyObjectBuilder_MyProgrammableBlock);
@@ -165,7 +174,7 @@ namespace Rynchodon.AntennaRelay
 
 			foreach (IMyTerminalBlock block in progBlocks)
 				if (block.DisplayNameText.looseContains(destName))
-					if (ProgrammableBlock.TryGet(block as IMyCubeBlock, out myProgBlock))
+					if (Registrar.TryGetValue(block.EntityId, out myProgBlock))
 					{
 						myLogger.debugLog("found programmable block: " + block.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 						return true;

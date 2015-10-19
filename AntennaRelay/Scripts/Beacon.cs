@@ -28,9 +28,11 @@ namespace Rynchodon.AntennaRelay
 				LastSeen self = new LastSeen(CubeBlock.CubeGrid, LastSeen.UpdateTime.Broadcasting);
 
 				float radiusSquared = myBeacon.Radius * myBeacon.Radius;
-				foreach (RadioAntenna ant in RadioAntenna.registry)
+				Registrar.ForEach((RadioAntenna ant) => {
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
 						ant.Receive(self);
+					return false;
+				});
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

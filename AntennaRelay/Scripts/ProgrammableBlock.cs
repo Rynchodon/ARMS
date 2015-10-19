@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
@@ -13,7 +11,6 @@ namespace Rynchodon.AntennaRelay
 	/// </summary>
 	public class ProgrammableBlock : Receiver
 	{
-		internal static Dictionary<IMyCubeBlock, ProgrammableBlock> registry = new Dictionary<IMyCubeBlock, ProgrammableBlock>();
 
 		private Ingame.IMyProgrammableBlock myProgBlock;
 		private Logger myLogger;
@@ -23,19 +20,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			myLogger = new Logger("Programmable block", () => CubeBlock.CubeGrid.DisplayName);
 			myProgBlock = CubeBlock as Ingame.IMyProgrammableBlock;
-			registry.Add(CubeBlock, this);
-		}
-
-		protected override void Close(IMyEntity entity)
-		{
-			try
-			{
-				if (CubeBlock != null && registry.ContainsKey(CubeBlock))
-					registry.Remove(CubeBlock);
-			}
-			catch (Exception e)
-			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			myProgBlock = null;
+			Registrar.Add(CubeBlock, this);
 		}
 
 		/// <summary>
@@ -84,7 +69,5 @@ namespace Rynchodon.AntennaRelay
 			asTerm.GetActionWithName("Run").Apply(CubeBlock);
 		}
 
-		public static bool TryGet(IMyCubeBlock block, out ProgrammableBlock result)
-		{ return registry.TryGetValue(block, out result); }
 	}
 }

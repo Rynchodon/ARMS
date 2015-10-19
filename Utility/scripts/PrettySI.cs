@@ -16,7 +16,7 @@ namespace Rynchodon
 		private const double k = 1000;
 		private const double m = 0.001f;
 
-		private static readonly Logger myLogger = new Logger(null, "PrettySI");
+		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>
 		/// For a double between 0 and 1000, round to a number of significant figures. Minimum of three significant figures.
@@ -69,7 +69,7 @@ namespace Rynchodon
 				}
 
 				// more than a thousand of highest multi
-				myLogger.debugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
+				//myLogger.debugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 
@@ -86,7 +86,7 @@ namespace Rynchodon
 				}
 
 				// less than a thousandth of lowest sub-multi
-				myLogger.debugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
+				//myLogger.debugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 		}

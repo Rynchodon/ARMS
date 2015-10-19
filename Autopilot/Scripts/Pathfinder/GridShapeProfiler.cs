@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	{
 
 		#region GridCellCache
-		
+
 		/// <summary>
 		/// Keeps a HashSet of all the occupied cells in a grid.
 		/// </summary>
@@ -26,6 +26,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			private static Dictionary<IMyCubeGrid, GridCellCache> CellCache = new Dictionary<IMyCubeGrid, GridCellCache>();
 			private static FastResourceLock lock_cellCache = new FastResourceLock();
+
+			static GridCellCache()
+			{
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			}
+
+			private static void Entities_OnCloseAll()
+			{
+				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+				CellCache = null;
+				lock_cellCache = null;
+			}
 
 			public static GridCellCache GetCellCache(IMyCubeGrid grid)
 			{
