@@ -172,11 +172,11 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
-			if (m_navSet.Settings_Current.NavigatorRotator == null)
-			{
-				m_logger.debugLog("Taking control of rotation immediately", "MinerVoxel()");
-				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
-			}
+			//if (m_navSet.Settings_Current.NavigatorRotator == null)
+			//{
+			//	m_logger.debugLog("Taking control of rotation immediately", "MinerVoxel()");
+			//	m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
+			//}
 
 			m_state = State.GetTarget;
 		}

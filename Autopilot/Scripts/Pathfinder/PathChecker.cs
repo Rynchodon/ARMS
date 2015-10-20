@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// Performs a fast test to see if the path is clear.
 		/// </summary>
 		/// <returns>True if path is clear. False if slow test needs to be run.</returns>
-		public bool TestFast(PseudoBlock NavigationBlock, Vector3D worldDestination, bool ignoreAsteroid, MyEntity ignoreEntity)
+		public bool TestFast(PseudoBlock NavigationBlock, Vector3D worldDestination, bool ignoreAsteroid, MyEntity ignoreEntity, bool landing)
 		{
 			m_logger.debugLog(NavigationBlock.Grid != m_grid, "NavigationBlock.CubeGrid != m_grid", "TestFast()", Logger.severity.FATAL);
 
@@ -55,7 +55,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			this.m_ignoreEntity = ignoreEntity;
 			this.m_ignoreAsteroid = ignoreAsteroid;
-			this.m_profiler.Init(m_grid, RelativePosition3F.FromWorld(m_grid, worldDestination), NavigationBlock.LocalPosition);
+			this.m_profiler.Init(m_grid, RelativePosition3F.FromWorld(m_grid, worldDestination), NavigationBlock.LocalPosition, landing);
 
 			Vector3D Displacement = worldDestination - NavigationBlock.WorldPosition;
 			//m_logger.debugLog("Displacement = " + Displacement, "TestPath()");
@@ -87,6 +87,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				return true;
 			}
 			m_logger.debugLog("entities intersecting path: " + offenders.Count, "TestPath()");
+
+			foreach (var ent in offenders)
+				m_logger.debugLog("entity: " + ent.getBestName(), "TestPath()");
 
 			m_offendingEntities = offenders.OrderBy(entity => m_grid.WorldAABB.Distance(entity.PositionComp.WorldAABB));
 

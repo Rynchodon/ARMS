@@ -117,6 +117,8 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			Vector3 targetVelocity = MaximumVelocity(destDisp);
+			if (landing)
+				targetVelocity *= 0.5f;
 
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
@@ -189,7 +191,7 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 
 			if (NavSet.Settings_Current.CollisionAvoidance)
-				myPathfinder.TestPath(destPoint);
+				myPathfinder.TestPath(destPoint, landing);
 		}
 
 		/// <summary>
@@ -349,8 +351,8 @@ namespace Rynchodon.Autopilot.Movement
 
 				myGyro.Update_torqueAccelRatio(rotateForceRatio, ratio);
 			}
-			else
-				myLogger.debugLog("prevAngleVel is old: " + (Globals.UpdateCount - updated_prevAngleVel), "CalcRotate()", Logger.severity.INFO);
+			//else
+			//	myLogger.debugLog("prevAngleVel is old: " + (Globals.UpdateCount - updated_prevAngleVel), "CalcRotate()", Logger.severity.INFO);
 
 			localMatrix.M41 = 0; localMatrix.M42 = 0; localMatrix.M43 = 0; localMatrix.M44 = 1;
 			Matrix inverted; Matrix.Invert(ref localMatrix, out inverted);
@@ -441,17 +443,6 @@ namespace Rynchodon.Autopilot.Movement
 			float accel = -myGyro.torqueAccelRatio * myGyro.TotalGyroForce();
 
 			//myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
-
-			// not allways a good idea, Miner will have to cope
-			//// reduce speed if near movement destination
-			//float speedCap;
-			//float distance = NavSet.Settings_Current.Distance;
-			//if (float.IsNaN(distance))
-			//	speedCap = float.MaxValue;
-			//else if (distance < 1f)
-			//	speedCap = 0.1f;
-			//else
-			//	speedCap = distance / 10f;
 
 			//myLogger.debugLog("speed cap: " + speedCap, "MaxAngleVelocity()");
 

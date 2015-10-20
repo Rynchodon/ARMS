@@ -27,6 +27,7 @@ namespace Rynchodon.Autopilot
 		private readonly ShipControllerBlock m_autopilot;
 		private readonly ShipController m_controller;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
+		private readonly Vector3D m_startPosition;
 
 		private readonly List<LastSeen> m_enemies = new List<LastSeen>();
 		private IEnemyResponse m_navResponse;
@@ -53,7 +54,7 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					m_logger.debugLog("Enemy is now: " + m_enemy.Entity.getBestName(), "set_Enemy()", Logger.severity.DEBUG);
-					m_navSet.OnTaskComplete_NavEngage(); 
+					m_navSet.OnTaskComplete_NavEngage();
 					m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
 					m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
 				}
@@ -82,6 +83,9 @@ namespace Rynchodon.Autopilot
 						break;
 					case Response.Ram:
 						m_navResponse = new Kamikaze(m_mover, m_navSet);
+						break;
+					case Response.Grind:
+						m_navResponse = new Grinder(m_mover, m_navSet);
 						break;
 					case Response.Self_Destruct:
 						AttachedGrid.RunOnAttached(m_autopilot.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
@@ -117,6 +121,7 @@ namespace Rynchodon.Autopilot
 			this.m_mover = mover;
 			this.m_navSet = navSet;
 			this.m_autopilot = mover.Block;
+			this.m_startPosition = m_autopilot.CubeBlock.GetPosition();
 
 			if (!Registrar.TryGetValue(m_autopilot.CubeBlock.EntityId, out this.m_controller))
 				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
@@ -170,7 +175,7 @@ namespace Rynchodon.Autopilot
 				if (Globals.UpdateCount >= m_nextSearch)
 				{
 					m_nextSearch = Globals.UpdateCount + SearchInterval;
-					if (!CanTarget(Enemy.Entity as IMyCubeGrid)
+					if (!CanTarget(Enemy)
 						|| Vector3D.DistanceSquared(m_autopilot.CubeBlock.GetPosition(), Enemy.predictPosition()) > CurrentResponse.Range * CurrentResponse.Range)
 					{
 						m_logger.debugLog("LastSeen no longer satisfies condition", "Update()", Logger.severity.DEBUG);
@@ -184,11 +189,10 @@ namespace Rynchodon.Autopilot
 					}
 				}
 
-			if (Enemy != null)
-			{
-				m_navResponse.UpdateTarget(Enemy);
-				return;
-			}
+			if (Enemy != null && !Enemy.IsValid)
+				Enemy = null;
+
+			m_navResponse.UpdateTarget(Enemy);
 		}
 
 		private void Search()
@@ -200,11 +204,11 @@ namespace Rynchodon.Autopilot
 
 			m_enemies.Clear();
 			m_controller.ForEachLastSeen(seen => {
-				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
-				if (asGrid == null || !m_autopilot.CubeBlock.canConsiderHostile(asGrid))
+				if (!seen.IsValid)
 					return false;
 
-				if (Vector3D.DistanceSquared(position, seen.predictPosition()) > CurrentResponse.Range * CurrentResponse.Range)
+				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
+				if (asGrid == null || !m_autopilot.CubeBlock.canConsiderHostile(asGrid))
 					return false;
 
 				m_enemies.Add(seen);
@@ -216,7 +220,7 @@ namespace Rynchodon.Autopilot
 			IOrderedEnumerable<LastSeen> enemiesByDistance = m_enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.predictPosition()));
 			foreach (LastSeen enemy in enemiesByDistance)
 			{
-				if (CanTarget(enemy.Entity as IMyCubeGrid))
+				if (CanTarget(enemy))
 				{
 					Enemy = enemy;
 					m_logger.debugLog("found target: " + enemy.Entity.getBestName(), "Search()");
@@ -237,9 +241,29 @@ namespace Rynchodon.Autopilot
 				CurrentResponse = m_allResponses[m_responseIndex];
 		}
 
-		private bool CanTarget(IMyCubeGrid grid)
+		private bool CanTarget(LastSeen enemy)
 		{
-			try { return m_navResponse.CanTarget(grid); }
+			IMyCubeGrid grid = enemy.Entity as IMyCubeGrid;
+			try
+			{
+				// if it is too far from start, cannot target
+				float range = CurrentResponse.Range;
+				if (range > 0 && Vector3D.DistanceSquared(m_startPosition, enemy.predictPosition()) > range * range)
+				{
+					m_logger.debugLog("out of range of start position: " + grid.DisplayName, "CanTarget()");
+					return false;
+				}
+
+				// if it is too fast, cannot target
+				float speedTarget = m_navSet.Settings_Current.SpeedTarget;
+				if (grid.GetLinearVelocity().LengthSquared() > speedTarget * speedTarget)
+				{
+					m_logger.debugLog("too fast to target: " + grid.DisplayName, "CanTarget()");
+					return false;
+				}
+				
+				return m_navResponse.CanTarget(grid);
+			}
 			catch (NullReferenceException nre)
 			{
 				if (!grid.Closed)

@@ -47,10 +47,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private PseudoBlock m_navBlock;
 		private MyEntity m_destEntity;
-		private bool m_ignoreAsteroid;
+		private bool m_ignoreAsteroid, m_landing;
 
 		private PathState m_pathState = PathState.Not_Run;
-		private PathState m_rotateState = PathState.Not_Run;
+		private PathState m_rotateState = PathState.No_Obstruction;
 
 		private ulong m_nextRun;
 		private short m_runId;
@@ -69,12 +69,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_mover = mover;
 		}
 
-		public void TestPath(Vector3D destination)
+		public void TestPath(Vector3D destination, bool landing)
 		{
 			if (m_navSet.Settings_Current.DestinationChanged)
 			{
 				m_logger.debugLog("new destination: " + destination, "TestPath()");
-				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
+				m_navSet.Settings_Task_NavEngage.DestinationChanged = false;
 				m_runId = RunIdPool++;
 				m_pathLow.Clear();
 				m_pathState = PathState.Not_Run;
@@ -93,6 +93,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
 			m_destEntity = m_navSet.Settings_Current.DestinationEntity as MyEntity;
 			m_ignoreAsteroid = m_navSet.Settings_Current.IgnoreAsteroid;
+			m_landing = landing;
 
 			Thread_High.EnqueueAction(() => TestPath(m_navBlock, destination, m_ignoreAsteroid, addIfReachable: false, addAlternates: true, runId: m_runId));
 
@@ -119,8 +120,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public void TestRotate(Vector3 displacement)
 		{
-			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
-			Thread_High.EnqueueAction(() => TestRotate(navBlock, displacement));
+			//PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
+			//Thread_High.EnqueueAction(() => TestRotate(navBlock, displacement));
 		}
 
 		/// <summary>
@@ -128,13 +129,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void TestPath(PseudoBlock navBlock, Vector3D destination, bool ignoreAsteroid, bool addIfReachable, bool addAlternates, short runId)
 		{
-			if (runId !=m_runId)
+			if (runId != m_runId)
 			{
 				m_logger.debugLog("destination changed, abort", "TestPath()");
 				return;
 			}
 
-			if (m_pathChecker.TestFast(navBlock, destination, ignoreAsteroid, m_destEntity))
+			if (m_pathChecker.TestFast(navBlock, destination, ignoreAsteroid, m_destEntity, m_landing))
 			{
 				m_logger.debugLog("path is clear (fast)", "TestPath()", Logger.severity.DEBUG);
 				if (runId == m_runId)
@@ -204,20 +205,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void TestRotate(PseudoBlock navBlock, Vector3 displacement)
 		{
-			BoundingBoxD WorldAABB = navBlock.Grid.WorldAABB;
-			BoundingSphereD WorldVolume = navBlock.Grid.WorldVolume;
-			List<MyEntity> entities  = new List<MyEntity>();
-			MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref WorldAABB, entities);
-			foreach (MyEntity entity in entities)
-				if (PathChecker.collect_Entity(m_grid, entity))
-				{
-					IMyVoxelMap voxel = entity as IMyVoxelMap;
-					if (voxel != null && !voxel.GetIntersectionWithSphere(ref WorldVolume))
-						continue;
+			//BoundingBoxD WorldAABB = navBlock.Grid.WorldAABB;
+			//BoundingSphereD WorldVolume = navBlock.Grid.WorldVolume;
+			//List<MyEntity> entities = new List<MyEntity>();
+			//MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref WorldAABB, entities);
+			//foreach (MyEntity entity in entities)
+			//	if (PathChecker.collect_Entity(m_grid, entity))
+			//	{
+			//		IMyVoxelMap voxel = entity as IMyVoxelMap;
+			//		if (voxel != null && !voxel.GetIntersectionWithSphere(ref WorldVolume))
+			//			continue;
 
-					m_logger.debugLog("Blocked by: " + entity.getBestName() + ", volume: " + WorldVolume, "TestRotate()");
-				}
-			m_rotateState = PathState.No_Obstruction;
+			//		m_logger.debugLog("Blocked by: " + entity.getBestName() + ", volume: " + WorldVolume, "TestRotate()");
+			//	}
+			//m_rotateState = PathState.No_Obstruction;
 		}
 
 		private void RunAlternate()
@@ -231,7 +232,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 		}
 
 		private void SetWaypoint(Vector3D waypoint)
-		{ new GOLIS(m_mover, m_navSet, waypoint, true); }
+		{
+			m_logger.debugLog("Setting waypoint: " + waypoint, "SetWaypoint()");
+			new GOLIS(m_mover, m_navSet, waypoint, true);
+			m_navSet.Settings_Task_NavEngage.DestinationChanged = false;
+		}
 
 	}
 }

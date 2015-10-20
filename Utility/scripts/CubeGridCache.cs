@@ -140,12 +140,18 @@ namespace Rynchodon
 				return;
 
 			myLogger.debugLog("block removed: " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
+			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
 				// by type
 				MyObjectBuilderType myOBtype = fatblock.BlockDefinition.TypeId;
-				ListSnapshots<IMyCubeBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
+				ListSnapshots<IMyCubeBlock> setBlocks_Type;
+				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
+				{
+					myLogger.debugLog("failed to get list of type: " + myOBtype, "CubeGrid_OnBlockRemoved()");
+					return;
+				}
 				if (setBlocks_Type.Count == 1)
 					CubeBlocks_Type.Remove(myOBtype);
 				else
@@ -156,6 +162,7 @@ namespace Rynchodon
 				if (asTerm == null)
 					return;
 
+				myLogger.debugLog("removing definition for " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 				string definition = asTerm.DefinitionDisplayNameText;
 				ListSnapshots<IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 				setBlocks_Def.mutable().Remove(asTerm);

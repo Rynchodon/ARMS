@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly PseudoBlock NavigationBlock;
 		private readonly Vector3 location;
 		private readonly bool Rotating;
-		private readonly bool Tertiary;
+		private readonly bool Waypoint;
 
 		/// <summary>
 		/// Creates a GOLIS
@@ -31,18 +31,18 @@ namespace Rynchodon.Autopilot.Navigator
 			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);
 			this.NavigationBlock = m_navSet.Settings_Current.NavigationBlock;
 			this.location = location;
-			this.Tertiary = waypoint;
+			this.Waypoint = waypoint;
 
 			var atLevel = waypoint ? m_navSet.Settings_Task_NavWay : m_navSet.Settings_Task_NavMove;
 			atLevel.NavigatorMover = this;
-			if (m_navSet.Settings_Current.NavigatorRotator == null)
-			{
-				atLevel.NavigatorRotator = this;
-				this.Rotating = true;
-				myLogger.debugLog("added as mover and rotator", "GOLIS()");
-			}
-			else
-				myLogger.debugLog("added as mover only", "GOLIS()");
+			//if (m_navSet.Settings_Current.NavigatorRotator == null)
+			//{
+			//	atLevel.NavigatorRotator = this;
+			//	this.Rotating = true;
+			//	myLogger.debugLog("added as mover and rotator", "GOLIS()");
+			//}
+			//else
+			//	myLogger.debugLog("added as mover only", "GOLIS()");
 		}
 
 		#region NavigatorMover Members
@@ -55,7 +55,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
 				myLogger.debugLog("Reached destination: " + location, "Move()", Logger.severity.INFO);
-				if (Tertiary)
+				if (Waypoint)
 					m_navSet.OnTaskComplete_NavWay();
 				else
 					m_navSet.OnTaskComplete_NavMove();

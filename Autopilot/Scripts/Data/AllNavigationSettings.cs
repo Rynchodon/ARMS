@@ -234,7 +234,7 @@ namespace Rynchodon.Autopilot.Data
 				set { m_ignoreAsteroid = value; }
 			}
 
-			/// <summary>Pathfinder uses this to track when OnTaskTertiaryComplete() is invoked.</summary>
+			/// <summary>Pathfinder uses this to track when OnTaskComplete_NavWay() is invoked.</summary>
 			public bool DestinationChanged
 			{
 				get { return m_destChanged ?? parent.DestinationChanged; }

@@ -26,18 +26,6 @@ namespace Rynchodon.Threading
 		[ThreadStatic]
 		private static ushort value_threadNumber;
 
-		static ThreadTracker()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			AllThreadNames = null;
-			lock_threadNameNumber = null;
-		}
-
 		/// <summary>
 		/// <para>Gets or sets the name of the currently running thread.</para>
 		/// <para>If a thread is named it must be unnamed before it terminates.</para>

@@ -681,7 +681,8 @@ namespace Rynchodon.Update
 		protected override void UnloadData()
 		{
 			base.UnloadData();
-			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+			if (MyAPIGateway.Entities != null)
+				MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
 
 			ManagerStatus = Status.Terminated;
 

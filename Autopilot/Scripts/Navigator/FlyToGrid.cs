@@ -154,13 +154,13 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
-			if (m_navSet.Settings_Current.NavigatorRotator == null)
-			{
-				m_logger.debugLog("added as mover and rotator", "FlyToGrid()");
-				m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
-			}
-			else
-				m_logger.debugLog("added as mover only", "FlyToGrid()");
+			//if (m_navSet.Settings_Current.NavigatorRotator == null)
+			//{
+			//	m_logger.debugLog("added as mover and rotator", "FlyToGrid()");
+			//	m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
+			//}
+			//else
+			//	m_logger.debugLog("added as mover only", "FlyToGrid()");
 		}
 
 		public override void Move()

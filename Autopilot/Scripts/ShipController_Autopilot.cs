@@ -170,7 +170,8 @@ namespace Rynchodon.Autopilot
 			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
 			Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
 
-			ReleaseControlledGrid();
+			if (GridBeingControlled != null)
+				ReleaseControlledGrid();
 			myInterpreter = null;
 		}
 
@@ -239,6 +240,17 @@ namespace Rynchodon.Autopilot
 					INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator; // fetched here because mover might remove it
 					if (navR != null)
 						navR.Rotate();
+					else
+					{
+						navR = navM as INavigatorRotator;
+						if (navR != null)
+						{
+							myLogger.debugLog("mover can rotate as well: "+navM, "UpdateThread()");
+							navR.Rotate();
+						}
+						else
+							myLogger.debugLog("mover cannot rotate: " + navM, "UpdateThread()");
+					}
 
 					myInterpreter.Mover.MoveAndRotate();
 					return;
