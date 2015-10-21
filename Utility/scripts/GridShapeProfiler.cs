@@ -153,12 +153,16 @@ namespace Rynchodon
 	public class GridShapeProfiler
 	{
 
+		/// <summary>Added to required distance when not landing</summary>
+		private const float NotLandingBuffer = 5f;
+
 		private Logger m_logger = new Logger(null, "GridShapeProfiler");
 		private IMyCubeGrid m_grid;
 		private GridCellCache m_cellCache;
 		private Vector3 m_centreRejection;
 		private Vector3 m_directNorm;
 		private readonly MyUniqueList<Vector3> m_rejectionCells = new MyUniqueList<Vector3>();
+		private bool m_landing;
 
 		public Capsule Path { get; private set; }
 
@@ -176,9 +180,10 @@ namespace Rynchodon
 			}
 
 			m_directNorm = Vector3.Normalize(destination.ToLocal() - navBlockLocalPosition);
+			m_landing = landing;
 			Vector3 centreDestination = destination.ToLocal() + Centre - navBlockLocalPosition;
 			rejectAll();
-			createCapsule(centreDestination, navBlockLocalPosition, landing);
+			createCapsule(centreDestination, navBlockLocalPosition);
 		}
 
 		/// <summary>
@@ -196,14 +201,22 @@ namespace Rynchodon
 			MatrixD toLocal = m_grid.WorldMatrixNormalizedInv;
 			Line pathLine = Path.get_Line();
 
+			float minDist = m_grid.GridSize + grid.GridSize;
+			if (!m_landing)
+				minDist += NotLandingBuffer;
+			float pathRadius = Path.Radius + minDist;
+			float minDistSquared = minDist * minDist;
+
 			MyEntity entity_in = null;
 			Vector3? pointOfObstruction_in = null;
 			gridCache.ForEach(cell => {
 				Vector3 world = grid.GridIntegerToWorld(cell);
-				if (pathLine.PointInCylinder(Path.Radius, world))
+				//m_logger.debugLog("checking position: " + world, "rejectionIntersects()");
+				if (pathLine.PointInCylinder(pathRadius, world))
 				{
+					//m_logger.debugLog("point in cylinder: " + world, "rejectionIntersects()");
 					Vector3 local = Vector3.Transform(world, toLocal);
-					if (rejectionIntersects(local, grid.GridSize))
+					if (rejectionIntersects(local, minDistSquared))
 					{
 						entity_in = grid.GetCubeBlock(cell).FatBlock as MyEntity ?? grid as MyEntity;
 						if (ignore != null && entity_in == ignore)
@@ -233,12 +246,15 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="localMetresPosition">The local position in metres.</param>
 		/// <returns>true if the rejection collides with one or more of the grid's rejections</returns>
-		private bool rejectionIntersects(Vector3 localMetresPosition, float GridSize)
+		private bool rejectionIntersects(Vector3 localMetresPosition, float minDistSquared)
 		{
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in m_rejectionCells)
-				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < 2 * GridSize + 2 * m_grid.GridSize)
+			{
+				m_logger.debugLog("distance between: " + Vector3.DistanceSquared(TestRejection, ProfileRejection), "rejectionIntersects()");
+				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < minDistSquared)
 					return true;
+			}
 			return false;
 		}
 
@@ -260,7 +276,7 @@ namespace Rynchodon
 		}
 
 		/// <param name="centreDestination">where the centre of the grid will end up (local)</param>
-		private void createCapsule(Vector3 centreDestination, Vector3 localPosition, bool landing)
+		private void createCapsule(Vector3 centreDestination, Vector3 localPosition)
 		{
 			float longestDistanceSquared = 0;
 			foreach (Vector3 rejection in m_rejectionCells)
@@ -272,21 +288,26 @@ namespace Rynchodon
 			Vector3D P0 = RelativePosition3F.FromLocal(m_grid, Centre).ToWorld();
 
 			Vector3D P1;
-			if (landing)
+			if (m_landing)
 			{
 				P1 = RelativePosition3F.FromLocal(m_grid, centreDestination).ToWorld();
 			}
 			else
 			{
-				// extend capsule past destination by distance between remote and front of ship
-				Ray navTowardsDest = new Ray(localPosition, m_directNorm);
-				float tMin, tMax;
-				m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
-				P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
+				//// extend capsule past destination by distance between remote and front of grid
+				//Ray navTowardsDest = new Ray(localPosition, m_directNorm);
+				//float tMin, tMax;
+				//m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
+				//P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
+
+				// extend capsule by length of grid
+				P1 = RelativePosition3F.FromLocal(m_grid, centreDestination + m_directNorm * m_grid.GetLongestDim()).ToWorld();
 			}
 
-			float CapsuleRadius = (float)(Math.Pow(longestDistanceSquared, 0.5) + 3 * m_grid.GridSize);
+			float CapsuleRadius = (float)Math.Sqrt(longestDistanceSquared) + 3f * m_grid.GridSize + (m_landing ? 0f : NotLandingBuffer);
 			Path = new Capsule(P0, P1, CapsuleRadius);
+
+			m_logger.debugLog("Path capsule created from " + P0 + " to " + P1 + ", radius: " + CapsuleRadius, "createCapsule()");
 		}
 
 	}

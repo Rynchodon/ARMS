@@ -1,10 +1,10 @@
-using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -23,10 +23,12 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private readonly Logger m_logger;
 		private readonly MultiBlock<MyObjectBuilder_ShipGrinder> m_navGrind;
+		private readonly float m_grinderOffset;
 
-		//private Vector3D m_targetCentre, m_targetPosition;
 		private Vector3D m_targetPosition;
 		private IMyEntity m_target;
+		private ulong m_next_grinderFullCheck;
+		private bool m_grinderFull;
 
 		public Grinder(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet)
@@ -43,6 +45,9 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("no working drills", "Grinder()", Logger.severity.INFO);
 				return;
 			}
+
+			m_grinderOffset = m_navGrind.Block.GetLengthInDirection(m_navGrind.Block.GetFaceDirection()[0]) * 0.5f;
+			m_logger.debugLog("m_grinderOffset: " + m_grinderOffset, "Grinder()");
 		}
 
 		~Grinder()
@@ -55,7 +60,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanRespond()
 		{
-			return m_mover.CanMoveForward(m_mover.Block.Pseudo) && m_navGrind.FunctionalBlocks != 0;
+			return m_mover.CanMoveForward(m_mover.Block.Pseudo) && m_navGrind.FunctionalBlocks != 0 && !GrinderFull();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)
@@ -65,54 +70,20 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void UpdateTarget(LastSeen enemy)
 		{
-			if (enemy == null )
+			if (enemy == null)
 			{
-				m_target = null;
-				EnableGrinders(false);
-				return;
+				if (m_target != null)
+				{
+					EnableGrinders(false);
+					m_target = null;
+				}
 			}
-			EnableGrinders(true);
-			m_navSet.Settings_Task_NavEngage.DestinationEntity = enemy.Entity;
-			m_target = enemy.Entity;
-			IMyCubeGrid grid = m_target as IMyCubeGrid;
-
-			Vector3I grindOnTarget = grid.WorldToGridInteger(m_navGrind.WorldPosition);
-			Vector3I gridMin = Vector3I.Round(grid.LocalAABB.Min / grid.GridSize);
-			Vector3I gridMax = Vector3I.Round(grid.LocalAABB.Max / grid.GridSize);
-			Vector3I clampedGrindOnTarget;
-			Vector3I.Clamp(ref grindOnTarget, ref gridMin, ref gridMax, out clampedGrindOnTarget);
-
-			Vector3I closestBlock;
-			if (!GridCellCache.GetCellCache(grid).GetClosestOccupiedCell(clampedGrindOnTarget, out closestBlock))
+			else if (enemy.Entity != m_target)
 			{
-				m_logger.alwaysLog("No closest block found", "UpdateTarget()", Logger.severity.FATAL);
-				return;
+				EnableGrinders(true);
+				m_navSet.Settings_Task_NavEngage.DestinationEntity = enemy.Entity;
+				m_target = enemy.Entity;
 			}
-
-			m_targetPosition = grid.GridIntegerToWorld(closestBlock);
-
-			Vector3 blockToGrinder = m_navGrind.WorldPosition - m_targetPosition;
-			blockToGrinder.Normalize();
-			m_targetPosition += blockToGrinder * 1.5f;
-
-			//m_targetCentre = enemy.Entity.Physics.CenterOfMassWorld;
-			//IMyCubeGrid targetGrid = enemy.Entity as IMyCubeGrid;
-			//Vector3I? hit = targetGrid.RayCastBlocks(m_navGrind.WorldPosition, m_targetCentre);
-			//Vector3 toGrinderFromTarget = m_navGrind.WorldPosition - m_targetCentre;
-			//toGrinderFromTarget.Normalize();
-			//m_logger.debugLog("ray cast from " + m_navGrind.WorldPosition.ToGpsTag("grinder position") + " to " + m_targetCentre.ToGpsTag("target position"), "UpdateTarget()");
-			//if (hit.HasValue)
-			//{
-			//	m_targetPosition = targetGrid.GridIntegerToWorld(hit.Value);
-			//	m_logger.debugLog("Ray cast hit " + targetGrid.GetCubeBlock(hit.Value).getBestName() + " at " + m_targetPosition.ToGpsTag("hit position"), "UpdateTarget()");
-			//}
-			//else
-			//{
-			//	m_targetPosition = m_targetCentre;
-			//	m_logger.debugLog("Ray cast did not hit any blocks, using CoM: " + m_targetPosition.ToGpsTag("centre of mass"), "UpdateTarget()");
-			//}
-			//m_targetPosition += toGrinderFromTarget * 1.5f;
-			//m_logger.debugLog("final target: " + m_targetPosition, "UpdateTarget()");
 		}
 
 		#endregion
@@ -125,8 +96,32 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_logger.debugLog("moving to " + m_targetPosition, "Move()");
-			m_mover.CalcMove(m_navGrind, m_targetPosition, m_target.GetLinearVelocity(), true);
+			IMyCubeGrid grid = m_target as IMyCubeGrid;
+
+			Vector3I grindOnTarget = grid.WorldToGridInteger(m_navGrind.WorldPosition);
+			Vector3I gridMin = Vector3I.Round(grid.LocalAABB.Min / grid.GridSize);
+			Vector3I gridMax = Vector3I.Round(grid.LocalAABB.Max / grid.GridSize);
+			Vector3I clampedGrindOnTarget;
+			Vector3I.Clamp(ref grindOnTarget, ref gridMin, ref gridMax, out clampedGrindOnTarget);
+
+			Vector3I closestBlock;
+			if (!GridCellCache.GetCellCache(grid).GetClosestOccupiedCell(clampedGrindOnTarget, out closestBlock))
+			{
+				m_logger.alwaysLog("No closest block found", "Move()", Logger.severity.FATAL);
+				m_logger.debugLog("grid: " + grid.DisplayName + ", grindOnTarget: " + grindOnTarget + ", gridMin: " + gridMin + ", gridMax: " + gridMax
+					+ ", clampedGrindOnTarget: " + clampedGrindOnTarget, "Move()");
+				return;
+			}
+
+			m_targetPosition = grid.GridIntegerToWorld(closestBlock);
+			Vector3 blockToGrinder = m_navGrind.WorldPosition - m_targetPosition;
+			blockToGrinder.Normalize();
+
+			Vector3D destination = m_targetPosition + blockToGrinder * (m_grinderOffset + grid.GridSize * 0.75f);
+			m_logger.debugLog("total offset: " + (m_grinderOffset + grid.GridSize), "Move()");
+
+			m_logger.debugLog("grind pos: " + m_navGrind.WorldPosition + ", moving to " + destination, "Move()");
+			m_mover.CalcMove(m_navGrind, destination, m_target.GetLinearVelocity(), true);
 		}
 
 		public void Rotate()
@@ -137,11 +132,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			//float distance = m_navSet.Settings_Current.Distance;
-			//if (distance < 3f)
-			//	m_mover.StopRotate();
-			//else
-				m_mover.CalcRotate(m_navGrind, RelativeDirection3F.FromWorld(m_navGrind.Grid, m_targetPosition - m_navGrind.WorldPosition));
+			m_mover.CalcRotate(m_navGrind, RelativeDirection3F.FromWorld(m_navGrind.Grid, m_targetPosition - m_navGrind.WorldPosition));
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -162,6 +153,30 @@ namespace Rynchodon.Autopilot.Navigator
 					if (!grinder.Closed)
 						grinder.RequestEnable(enable);
 			}, m_logger);
+		}
+
+		private bool GrinderFull()
+		{
+			if (Globals.UpdateCount < m_next_grinderFullCheck)
+				return m_grinderFull;
+			m_next_grinderFullCheck = Globals.UpdateCount + 100ul;
+
+			MyFixedPoint content = 0, capacity = 0;
+			int grinderCount = 0;
+			var allGrinders = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_ShipGrinder));
+			if (allGrinders == null)
+				return true;
+
+			foreach (Ingame.IMyShipGrinder grinder in allGrinders)
+			{
+				IMyInventory grinderInventory = (IMyInventory)Ingame.TerminalBlockExtentions.GetInventory(grinder, 0);
+				content += grinderInventory.CurrentVolume;
+				capacity += grinderInventory.MaxVolume;
+				grinderCount++;
+			}
+
+			m_grinderFull = (float)content / (float)capacity >= 0.9f;
+			return m_grinderFull;
 		}
 
 	}

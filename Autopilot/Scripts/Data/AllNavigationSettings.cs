@@ -12,13 +12,6 @@ namespace Rynchodon.Autopilot.Data
 	/// </summary>
 	public class AllNavigationSettings
 	{
-		//[Flags]
-		//public enum PathfinderPermissions : byte
-		//{
-		//	None = 0,
-		//	ChangeCourse = 1 << 0,
-		//	All = ChangeCourse
-		//}
 
 		public class SettingsLevel
 		{
@@ -36,13 +29,10 @@ namespace Rynchodon.Autopilot.Data
 			private DateTime? m_waitUntil;
 
 			private Vector3D? m_destinationOffset;
-			//private Vector3D? m_destination;
-
-			//private PathfinderPermissions? m_pathPerm;
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget;
 
-			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance;
+			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance, m_pathfindeCanChangeCourse;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -54,9 +44,6 @@ namespace Rynchodon.Autopilot.Data
 				m_waitUntil = DateTime.UtcNow.AddSeconds(1);
 
 				m_destinationOffset = Vector3D.Zero;
-				//m_destination = Vector3D.NegativeInfinity;
-
-				//m_pathPerm = PathfinderPermissions.All;
 
 				m_destRadius = 100f;
 				m_distance = float.NaN;
@@ -66,6 +53,7 @@ namespace Rynchodon.Autopilot.Data
 				m_ignoreAsteroid = false;
 				m_destChanged = true;
 				m_collisionAvoidance = true;
+				m_pathfindeCanChangeCourse = true;
 			}
 
 			/// <summary>
@@ -151,18 +139,6 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destinationOffset = value; }
 			}
 
-			//public Vector3D Destination
-			//{
-			//	get { return m_destination ?? parent.Destination; }
-			//	set { m_destination = value; }
-			//}
-
-			//public PathfinderPermissions PathPerm
-			//{
-			//	get { return m_pathPerm ?? parent.PathPerm; }
-			//	set { m_pathPerm = value; }
-			//}
-
 			/// <summary>
 			/// <para>May be null</para>
 			/// <para>Information about which block to target</para>
@@ -247,11 +223,12 @@ namespace Rynchodon.Autopilot.Data
 				set { m_collisionAvoidance = value; }
 			}
 
-			//public bool JumpToDest
-			//{
-			//	get { return m_jumpToDest ?? parent.JumpToDest; }
-			//	set { m_jumpToDest = value; }
-			//}
+			public bool PathfinderCanChangeCourse
+			{
+				get { return m_pathfindeCanChangeCourse ?? parent.PathfinderCanChangeCourse; }
+				set { m_pathfindeCanChangeCourse = value; }
+			}
+
 		}
 
 		private readonly IMyCubeBlock defaultNavBlock;

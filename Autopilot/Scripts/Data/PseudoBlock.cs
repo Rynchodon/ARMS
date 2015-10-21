@@ -31,13 +31,12 @@ namespace Rynchodon.Autopilot.Data
 	public class PseudoBlock
 	{
 		public readonly IMyCubeGrid Grid;
-		/// <summary>The block that PseudoBlock was created with. Otherwise, null.</summary>
-		public readonly IMyCubeBlock Block;
 
 		private readonly Logger m_logger;
 		private ulong m_lastCalc_worldMatrix;
 		private MatrixD value_worldMatrix;
 
+		public IMyCubeBlock Block { get; protected set; }
 		public Matrix LocalMatrix { get; protected set; }
 		public MyPhysicsComponentBase Physics { get { return Grid.Physics; } }
 		public Vector3D LocalPosition { get { return LocalMatrix.Translation; } }
@@ -160,18 +159,23 @@ namespace Rynchodon.Autopilot.Data
 			if (Grid.MarkedForClose)
 				return;
 
-			var Drills = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(T));
+			var blocksOfT = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(T));
 
 			FunctionalBlocks = 0;
 			LocalMatrix = Matrix.Zero;
-			foreach (IMyCubeBlock drill in Drills)
-				if (drill.IsFunctional)
+			foreach (IMyCubeBlock block in blocksOfT)
+			{
+				if (Block == null)
+					Block = block;
+
+				if (block.IsFunctional)
 				{
 					FunctionalBlocks++;
-					LocalMatrix += drill.LocalMatrix;
-					drill.OnClose -= block_OnClose;
-					drill.OnClose += block_OnClose;
+					LocalMatrix += block.LocalMatrix;
+					block.OnClose -= block_OnClose;
+					block.OnClose += block_OnClose;
 				}
+			}
 
 			if (FunctionalBlocks == 0)
 				return;

@@ -62,6 +62,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private string m_depostitOre;
 		private bool m_lastNearVoxel;
 		private ulong m_lastCheck_nearVoxel;
+		private ulong m_nextCheck_drillFull;
+		private float m_current_drillFull;
 
 		private float speedLinear = float.MaxValue, speedAngular = float.MaxValue;
 
@@ -384,9 +386,16 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		private float DrillFullness()
 		{
+			if (Globals.UpdateCount < m_nextCheck_drillFull)
+				return m_current_drillFull;
+			m_nextCheck_drillFull = Globals.UpdateCount + 100ul;
+
 			MyFixedPoint content = 0, capacity = 0;
 			int drillCount = 0;
 			var allDrills = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			if (allDrills == null)
+				return float.MaxValue;
+
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 			{
 				IMyInventory drillInventory = (IMyInventory)Ingame.TerminalBlockExtentions.GetInventory(drill, 0);
@@ -398,10 +407,15 @@ namespace Rynchodon.Autopilot.Navigator
 			if (MyAPIGateway.Session.CreativeMode)
 			{
 				//m_logger.debugLog("content = " + content + ", drillCount = " + drillCount, "DrillFullness()");
-				return (float)content * 0.01f / drillCount;
+				m_current_drillFull = (float)content * 0.01f / drillCount;
 			}
-			//m_logger.debugLog("content = " + content + ", capacity = " + capacity, "DrillFullness()");
-			return (float)content / (float)capacity;
+			else
+			{
+				//m_logger.debugLog("content = " + content + ", capacity = " + capacity, "DrillFullness()");
+				m_current_drillFull = (float)content / (float)capacity;
+			}
+
+			return m_current_drillFull;
 		}
 
 		private void EnableDrills(bool enable)

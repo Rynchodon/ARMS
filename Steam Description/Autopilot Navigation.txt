@@ -81,8 +81,6 @@ Example - [ E 2000, Flee ] - Flee from any enemy that comes within 2 km.
 Example - [ E 0, Fight ; E 2000, Flee ] - Fight any enemy that is detected. If weapons are disabled, flee from any enemy within 2 km.
 E <range>, Ram : Ram the enemy, will stop trying to ram if thrusters become disabled.
 Example - [ E 0, Fight, Ram ] - If weapons become disabled while fighting, ram the enemy.
-E <range>, Grind : Use grinders to de-construct the enemy, will stop trying to grind if grinders become disabled.
-Example - [ E 1000, Grind ] - Will attempt to grind any enemy within 1 km.
 E <range>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
 Example - [ E 100, Self-Destruct ] : Explode if an enemy comes within 100 m.
 Example - [ E 0, Fight, Ram, Self-Destruct ] - Fight the enemy. If weapons become disabled, ram the enemy. If thrusters become disabled, explode.

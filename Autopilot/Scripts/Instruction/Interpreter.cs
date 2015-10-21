@@ -177,14 +177,15 @@ namespace Rynchodon.Autopilot.Instruction
 				//		wordAction = null;
 				//		return false;
 				//	}
-				//case "line":
-				//	{
-				//		wordAction = () => {
-				//			myLogger.debugLog("set pathfinder cannot change course", "getAction_word()");
-				//			NavSet.Settings_Task_Secondary.PathPerm = AllNavigationSettings.PathfinderPermissions.None;
-				//		};
-				//		return true;
-				//	}
+				case "line":
+					{
+						wordAction = () => {
+							m_logger.debugLog("set line", "getAction_word()");
+							NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
+							NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
+						};
+						return true;
+					}
 				case "stop":
 					{
 						wordAction = () => { new Stopper(Mover, NavSet, false); };

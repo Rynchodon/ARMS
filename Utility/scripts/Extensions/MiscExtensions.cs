@@ -151,9 +151,16 @@ namespace Rynchodon
 			//m_logger.debugLog("fraction: " + fraction, "PointInCylinder()");
 
 			if (fraction < 0) // extends past From
+			{
+				//m_logger.debugLog("extends past from: " + fraction, "PointInCylinder()");
 				return false;
+			}
 			else if (fraction > 1) // extends past To
+			{
+				//m_logger.debugLog("extends past to: " + fraction, "PointInCylinder()");
 				return false;
+			}
+			//m_logger.debugLog("fraction: " + fraction, "PointInCylinder()");
 
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
 			//m_logger.debugLog("closestPoint: " + closestPoint.ToGpsTag("closest point"), "PointInCylinder()");

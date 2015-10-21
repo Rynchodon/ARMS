@@ -80,17 +80,6 @@ namespace Rynchodon.Autopilot.Movement
 			return myThrust.CanMoveAnyDirection();
 		}
 
-		///// <summary>
-		///// Calculates the force necessary to move the grid.
-		///// </summary>
-		///// <param name="NavigationBlock">The block to bring to the destination</param>
-		///// <param name="destPoint">The world position of the destination</param>
-		///// <param name="destVelocity">The speed of the destination</param>
-		//public void CalcMove(IMyCubeBlock NavigationBlock, Vector3 destPoint, Vector3 destVelocity)
-		//{
-		//	CalcMove(NavigationBlock.GetPosition(), destPoint, destVelocity);
-		//}
-
 		/// <summary>
 		/// Calculates the force necessary to move the grid.
 		/// </summary>
@@ -106,6 +95,16 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 destDisp = destPoint - block.WorldPosition;
 			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
+
+			if (NavSet.Settings_Current.CollisionAvoidance)
+			{
+				myPathfinder.TestPath(destPoint, landing);
+				if (!myPathfinder.CanMove)
+				{
+					myLogger.debugLog("Pathfinder not allowing movement", "CalcMove()");
+					return;
+				}
+			}
 
 			// switch to using local vectors
 
@@ -189,9 +188,6 @@ namespace Rynchodon.Autopilot.Movement
 				//+ ", diffVel: " + diffVel
 				+ ", accel: " + accel
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
-
-			if (NavSet.Settings_Current.CollisionAvoidance)
-				myPathfinder.TestPath(destPoint, landing);
 		}
 
 		/// <summary>
@@ -262,25 +258,6 @@ namespace Rynchodon.Autopilot.Movement
 			return result;
 		}
 
-		///// <summary>
-		///// Get the matrix that CalcRotate() will need for a given block and orientation.
-		///// </summary>
-		///// <param name="block">The block to calculate the matrix from.</param>
-		///// <param name="forward">The direction the block should face towards the target.</param>
-		///// <param name="up">A direction perpendicular to forward.</param>
-		///// <returns>The matrix to be used for CalcRotate()</returns>
-		//public Matrix GetMatrix(IMyCubeBlock block, Base6Directions.Direction forward = Base6Directions.Direction.Forward, Base6Directions.Direction up = Base6Directions.Direction.Up)
-		//{
-		//	Matrix result = Matrix.Zero;
-
-		//	result.Forward = block.LocalMatrix.GetDirectionVector(forward);
-		//	result.Up = block.LocalMatrix.GetDirectionVector(up);
-		//	result.Right = block.LocalMatrix.GetDirectionVector(Base6Directions.GetCross(forward, up));
-		//	//result.M44 = 1f;
-
-		//	return result;
-		//}
-
 		/// <summary>
 		/// Match orientation with the target block.
 		/// </summary>
@@ -312,16 +289,16 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>True iff localMatrix is facing Direction</returns>
 		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction)
 		{
-			Vector3 angleVelocity, displacement;
-			CalcRotate(block.LocalMatrix, Direction, out angleVelocity, out displacement);
+			Vector3 angleVelocity;
+			CalcRotate(block.LocalMatrix, Direction, out angleVelocity);
 			updated_prevAngleVel = Globals.UpdateCount;
 			prevAngleVel = angleVelocity;
 
 			//myLogger.debugLog("displacement.LengthSquared(): " + displacement.LengthSquared(), "CalcRotate()");
 			//return displacement.LengthSquared() < 0.01f;
 
-			if (NavSet.Settings_Current.CollisionAvoidance)
-				myPathfinder.TestRotate(displacement);
+			//if (NavSet.Settings_Current.CollisionAvoidance)
+			//	myPathfinder.TestRotate(displacement);
 		}
 
 		/// <summary>
@@ -331,7 +308,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
 		///// <param name="displacement">Angular distance between localMatrix and Direction</param>
-		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, out Vector3 angularVelocity, out Vector3 displacement)
+		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, out Vector3 angularVelocity)
 		{
 			CheckGrid();
 
@@ -378,9 +355,19 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 NFR_right = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaRight));
 			Vector3 NFR_up = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaUp));
 
-			displacement = -elevation * NFR_right + -azimuth * NFR_up;
+			Vector3 displacement = -elevation * NFR_right + -azimuth * NFR_up;
 
 			NavSet.Settings_Task_NavWay.DistanceAngle = displacement.Length();
+
+			if (NavSet.Settings_Current.CollisionAvoidance)
+			{
+				myPathfinder.TestRotate(displacement);
+				if (!myPathfinder.CanRotate)
+				{
+					myLogger.debugLog("Pathfinder not allowing rotation", "CalcRotate()");
+					return;
+				}
+			}
 
 			//myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "CalcRotate()");
 
@@ -490,7 +477,7 @@ namespace Rynchodon.Autopilot.Movement
 				StopRotate();
 			}
 
-			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio, "MoveAndRotate()");
+			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 			MyShipController controller = Block.Controller;
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
@@ -509,7 +496,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			float rollControl = MathHelper.Clamp(rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
 
-			myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
+			//myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotate(moveControl, rotateControl, rollControl), myLogger);
 		}

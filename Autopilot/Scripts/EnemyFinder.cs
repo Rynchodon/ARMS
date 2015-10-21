@@ -54,9 +54,7 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					m_logger.debugLog("Enemy is now: " + m_enemy.Entity.getBestName(), "set_Enemy()", Logger.severity.DEBUG);
-					m_navSet.OnTaskComplete_NavEngage();
-					m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
-					m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
+					SetEngage();
 				}
 			}
 		}
@@ -84,9 +82,9 @@ namespace Rynchodon.Autopilot
 					case Response.Ram:
 						m_navResponse = new Kamikaze(m_mover, m_navSet);
 						break;
-					case Response.Grind:
-						m_navResponse = new Grinder(m_mover, m_navSet);
-						break;
+					//case Response.Grind:
+					//	m_navResponse = new Grinder(m_mover, m_navSet);
+					//	break;
 					case Response.Self_Destruct:
 						AttachedGrid.RunOnAttached(m_autopilot.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
 							var warheads = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_Warhead));
@@ -102,15 +100,14 @@ namespace Rynchodon.Autopilot
 						NextResponse(); // you never know
 						return;
 					default:
-						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, "set_CurrentResponse()", Logger.severity.FATAL);
+						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, "set_CurrentResponse()", Logger.severity.WARNING);
 						NextResponse();
 						return;
 				}
 				if (Enemy != null)
 				{
 					m_logger.debugLog("adding responder: " + m_navResponse, "set_CurrentResponse()", Logger.severity.DEBUG);
-					m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
-					m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
+					SetEngage();
 				}
 			}
 		}
@@ -266,11 +263,23 @@ namespace Rynchodon.Autopilot
 			}
 			catch (NullReferenceException nre)
 			{
+				m_logger.debugLog("Exception: " + nre, "CanTarget()");
+
 				if (!grid.Closed)
 					throw nre;
 				m_logger.debugLog("Caught exception caused by grid closing, ignoring.", "CanTarget()");
 				return false;
 			}
+		}
+
+		/// This runs after m_navResponse is created and will override settings.
+		private void SetEngage()
+		{
+			m_navSet.OnTaskComplete_NavEngage();
+			m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
+			m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
+			m_navSet.Settings_Task_NavEngage.IgnoreAsteroid = false;
+			m_navSet.Settings_Task_NavEngage.PathfinderCanChangeCourse = true;
 		}
 
 	}
