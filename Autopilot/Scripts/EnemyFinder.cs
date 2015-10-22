@@ -15,9 +15,29 @@ namespace Rynchodon.Autopilot
 	public class EnemyFinder
 	{
 
-		public enum Response { None, Fight, Flee, Ram, Grind, Self_Destruct }
+		public enum Response : byte { None, Fight, Flee, Ram, Grind, Self_Destruct }
 
-		private struct ResponseRange { public Response Response; public float Range;}
+		private struct ResponseRange
+		{
+			public readonly Response Response;
+			private float RangeSquared;
+
+			public float Range
+			{ set { RangeSquared = value * value; } }
+
+			public ResponseRange(Response resp, float range)
+			{
+				this.Response = resp;
+				this.RangeSquared = range * range;
+			}
+
+			public bool InRange(float distanceSquared)
+			{
+				if (RangeSquared < 1f)
+					return true;
+				return distanceSquared <= RangeSquared;
+			}
+		}
 
 		private const ulong SearchInterval = 100ul;
 
@@ -144,7 +164,7 @@ namespace Rynchodon.Autopilot
 				if (!found)
 				{
 					m_logger.debugLog("adding new response: " + r + ", range: " + range, "AddResponses()");
-					m_allResponses.Add(new ResponseRange() { Range = range, Response = r });
+					m_allResponses.Add(new ResponseRange(r, range));
 				}
 			}
 			if (CurrentResponse.Response == Response.None)
@@ -173,7 +193,7 @@ namespace Rynchodon.Autopilot
 				{
 					m_nextSearch = Globals.UpdateCount + SearchInterval;
 					if (!CanTarget(Enemy)
-						|| Vector3D.DistanceSquared(m_autopilot.CubeBlock.GetPosition(), Enemy.predictPosition()) > CurrentResponse.Range * CurrentResponse.Range)
+						|| !CurrentResponse.InRange(Vector3.DistanceSquared(m_autopilot.CubeBlock.GetPosition(), Enemy.predictPosition())))
 					{
 						m_logger.debugLog("LastSeen no longer satisfies condition", "Update()", Logger.severity.DEBUG);
 						Search();
@@ -244,8 +264,7 @@ namespace Rynchodon.Autopilot
 			try
 			{
 				// if it is too far from start, cannot target
-				float range = CurrentResponse.Range;
-				if (range > 0 && Vector3D.DistanceSquared(m_startPosition, enemy.predictPosition()) > range * range)
+				if (!CurrentResponse.InRange(Vector3.DistanceSquared(m_startPosition, enemy.predictPosition())))
 				{
 					m_logger.debugLog("out of range of start position: " + grid.DisplayName, "CanTarget()");
 					return false;
@@ -258,7 +277,7 @@ namespace Rynchodon.Autopilot
 					m_logger.debugLog("too fast to target: " + grid.DisplayName, "CanTarget()");
 					return false;
 				}
-				
+
 				return m_navResponse.CanTarget(grid);
 			}
 			catch (NullReferenceException nre)

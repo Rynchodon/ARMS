@@ -100,6 +100,7 @@ namespace Rynchodon.Autopilot.Navigator
 					case State.Approaching:
 						break;
 					case State.Rotating:
+						m_logger.debugLog("current: " + m_currentTarget + ", changing to " + m_approach.To, "m_state()");
 						m_currentTarget = m_approach.To;
 						m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 						break;
@@ -166,19 +167,18 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			var detectors = cache.GetBlocksOfType(typeof(MyObjectBuilder_OreDetector));
-			if (detectors != null && detectors.Count > 0)
+			if (detectors != null)
 			{
 				if (!Registrar.TryGetValue(detectors[0].EntityId, out m_oreDetector))
-				//if (!OreDetector.TryGetDetector(detectors[0].EntityId, out m_oreDetector))
 					m_logger.debugLog("failed to get ore detector from block", "MinerVoxel()", Logger.severity.FATAL);
+			}
+			else
+			{
+				m_logger.debugLog("No ore detector, no ore for you", "MinerVoxel()", Logger.severity.INFO);
+				return;
 			}
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
-			//if (m_navSet.Settings_Current.NavigatorRotator == null)
-			//{
-			//	m_logger.debugLog("Taking control of rotation immediately", "MinerVoxel()");
-			//	m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
-			//}
 
 			m_state = State.GetTarget;
 		}
@@ -191,8 +191,8 @@ namespace Rynchodon.Autopilot.Navigator
 				m_state = State.Mining_Escape;
 			}
 
-			speedAngular = 0.99f * speedAngular + 0.1f * m_mover.Block.Physics.AngularVelocity.LengthSquared();
-			speedLinear = 0.99f * speedLinear + 0.1f * m_mover.Block.Physics.LinearVelocity.LengthSquared();
+			speedAngular = 0.95f * speedAngular + 0.1f * m_mover.Block.Physics.AngularVelocity.LengthSquared();
+			speedLinear = 0.95f * speedLinear + 0.1f * m_mover.Block.Physics.LinearVelocity.LengthSquared();
 
 			switch (m_state)
 			{
@@ -200,7 +200,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.StopMove();
 					return;
 				case State.Approaching:
-					if (m_navSet.Settings_Current.Distance < 10f)
+					if (m_navSet.Settings_Current.Distance < m_controlBlock.CubeGrid.GetLongestDim())
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
 						m_state = State.Rotating;
@@ -222,7 +222,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					return;
 				case State.MoveTo:
-					if (m_navSet.Settings_Current.Distance < 10f)
+					if (m_navSet.Settings_Current.Distance < m_controlBlock.CubeGrid.GetLongestDim())
 					{
 						m_logger.debugLog("Reached asteroid", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining;
@@ -332,7 +332,7 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 			}
 
-			if (m_navSet.Settings_Current.Distance < 10f)
+			if (m_navSet.Settings_Current.Distance < m_controlBlock.CubeGrid.GetLongestDim() * 2)
 			{
 				m_mover.StopRotate();
 				return;
@@ -456,7 +456,7 @@ namespace Rynchodon.Autopilot.Navigator
 				// was getting memory access violation, so not using MainLock.RayCastVoxel_Safe()
 				// I think this is safe without locking m_depositPos, m_approach, or m_state
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_depositPos, out surfacePoint);
+					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, centre, out surfacePoint);
 					m_approach = new Line(boxEdge, surfacePoint);
 
 					m_logger.debugLog("centre: " + centre.ToGpsTag("centre")
@@ -490,7 +490,12 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private bool IsStuck()
 		{
-			return speedAngular < 0.01f && speedLinear < 0.01f;
+			if (speedAngular < 0.01f && speedLinear < 0.01f)
+			{
+				m_logger.debugLog("Got stuck", "IsStuck()", Logger.severity.DEBUG);
+				return true;
+			}
+			return false;
 		}
 
 		private void MoveCurrent()

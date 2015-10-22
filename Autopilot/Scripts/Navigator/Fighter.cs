@@ -136,15 +136,19 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 				return;
 			}
-			Vector3? firingDirection = m_weapon_primary.CurrentTarget.FiringDirection;
-			if (!firingDirection.HasValue)
+			Vector3? InterceptionPoint = m_weapon_primary.CurrentTarget.InterceptionPoint;
+			if (!InterceptionPoint.HasValue)
 			{
 				//m_logger.debugLog("no target", "Rotate()");
 				m_mover.StopRotate();
 				return;
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
-			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, firingDirection.Value));
+
+			const float project = ShipController_Autopilot.UpdateFrequency / 60f;
+			Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.Entity.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity()) * project;
+
+			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, targetPoint - m_weapon_primary_pseudo.WorldPosition));
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)

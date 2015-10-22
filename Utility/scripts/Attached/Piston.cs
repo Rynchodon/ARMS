@@ -6,7 +6,7 @@ namespace Rynchodon.Attached
 {
 	public static class Piston
 	{
-		public class PistonBase : AttachableBlockPair
+		public class PistonBase : AttachableBlockUpdate
 		{
 			private readonly Logger myLogger;
 
@@ -16,7 +16,7 @@ namespace Rynchodon.Attached
 				myLogger = new Logger("PistonBase", block);
 			}
 
-			protected override AttachableBlockPair GetPartner()
+			protected override AttachableBlockBase GetPartner()
 			{
 				var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_ExtendedPistonBase;
 				if (builder == null)
@@ -25,7 +25,7 @@ namespace Rynchodon.Attached
 			}
 		}
 
-		public class PistonTop : AttachableBlockPair
+		public class PistonTop : AttachableBlockBase
 		{
 			private readonly Logger myLogger;
 
@@ -35,13 +35,13 @@ namespace Rynchodon.Attached
 				myLogger = new Logger("PistonTop", block);
 			}
 
-			protected override AttachableBlockPair GetPartner()
-			{
-				var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_PistonTop;
-				if (builder == null)
-					throw new NullReferenceException("builder");
-				return GetPartner(builder.PistonBlockId);
-			}
+			//protected override AttachableBlockPair GetPartner()
+			//{
+			//	var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_PistonTop;
+			//	if (builder == null)
+			//		throw new NullReferenceException("builder");
+			//	return GetPartner(builder.PistonBlockId);
+			//}
 		}
 	}
 }

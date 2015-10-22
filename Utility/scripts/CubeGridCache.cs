@@ -309,14 +309,14 @@ namespace Rynchodon
 		/// <param name="contains">substring of definition to search for</param>
 		/// <param name="condition">Condition that block must match</param>
 		/// <returns>The number of blocks containing the given definition that match the condition.</returns>
-		public int CountByDefLooseContains(string contains, Func<IMyFunctionalBlock, bool> condition, int stopCaringAt = int.MaxValue)
+		public int CountByDefLooseContains(string contains, Func<IMyTerminalBlock, bool> condition, int stopCaringAt = int.MaxValue)
 		{
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
 				int count = 0;
 				foreach (var definition in CubeBlocks_Definition)
 					if (definition.Key.looseContains(contains))
-						foreach (IMyFunctionalBlock block in definition.Value.myList)
+						foreach (IMyTerminalBlock block in definition.Value.myList)
 							if (condition(block))
 							{
 								count++;

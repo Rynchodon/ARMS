@@ -12,7 +12,8 @@ namespace Rynchodon.Autopilot.Chat
 	/// </summary>
 	public static class Help
 	{
-		private const string designator = "/autopilot help";
+		private const string pri_designator = "/arms help";
+		private const string alt_designator = "/autopilot help";
 
 		private struct Command
 		{
@@ -36,6 +37,18 @@ namespace Rynchodon.Autopilot.Chat
 		private static Logger myLogger = new Logger(null, "Help");
 
 		private static bool initialized = false;
+
+		public static void Init()
+		{
+			MyAPIGateway.Utilities.MessageEntered += printCommand;
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Utilities.MessageEntered -= printCommand;
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+		}
 
 		private static void initialize()
 		{
@@ -64,23 +77,25 @@ namespace Rynchodon.Autopilot.Chat
 			initialized = true;
 		}
 
-		public static void printCommand(string chatMessage, ref bool sendToOthers)
+		private static void printCommand(string chatMessage, ref bool sendToOthers)
 		{
 			try
 			{
 				chatMessage = chatMessage.ToLower();
 
-				if (!chatMessage.StartsWith(designator))
+				if (!chatMessage.StartsWith(pri_designator) && !chatMessage.StartsWith(alt_designator))
 					return;
 
-				string sub = chatMessage.Replace(designator, "").Trim();
+				string[] parts = chatMessage.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 				sendToOthers = false;
 
 				if (!initialized)
 					initialize();
 
-				if (string.IsNullOrWhiteSpace(sub) || !printSingleCommand(sub))
+				if (parts.Length < 3)
 					printListCommands();
+				else
+					printSingleCommand(parts[2]);
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "printCommand()", Logger.severity.ERROR); }

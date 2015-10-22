@@ -3,7 +3,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Attached
 {
-	public class Connector : AttachableBlockPair
+	public class Connector : AttachableBlockUpdate
 	{
 		private readonly Logger myLogger;
 
@@ -13,7 +13,7 @@ namespace Rynchodon.Attached
 			myLogger = new Logger("Connector", block);
 		}
 
-		protected override AttachableBlockPair GetPartner()
+		protected override AttachableBlockBase GetPartner()
 		{
 			Ingame.IMyShipConnector myConn = myBlock as Ingame.IMyShipConnector;
 			if (!myConn.IsConnected)

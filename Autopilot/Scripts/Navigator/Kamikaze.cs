@@ -19,9 +19,8 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(mover, navSet)
 		{
 			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
-			m_navSet.Settings_Task_NavEngage.CollisionAvoidance = false;
 
-			m_logger.debugLog("Initialized", "Coward()");
+			m_logger.debugLog("Initialized", "Kamikaze()");
 		}
 
 		#region IEnemyResponse Members
@@ -39,6 +38,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public void UpdateTarget(LastSeen enemy)
 		{
 			m_enemy = enemy;
+			m_navSet.Settings_Task_NavEngage.CollisionAvoidance = false;
 		}
 
 		#endregion

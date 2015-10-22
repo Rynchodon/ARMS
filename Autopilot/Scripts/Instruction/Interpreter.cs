@@ -171,9 +171,22 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => { NavSet.Settings_Task_NavMove.IgnoreAsteroid = true; };
 						return true;
 					}
+				case "disable":
+					{
+						wordAction = () => {
+							m_logger.debugLog("Disabling", "getAction_word()", Logger.severity.DEBUG);
+							Controller.DisableControl();
+						};
+						return true;
+					}
 				case "exit":
 					{
-						wordAction = () => Controller.DisableControl();
+						wordAction = () => new Stopper(Mover, NavSet, true);
+						return true;
+					}
+				case "form":
+					{
+						wordAction = () => NavSet.Settings_Task_NavMove.StayInFormation = true;
 						return true;
 					}
 				//case "jump":

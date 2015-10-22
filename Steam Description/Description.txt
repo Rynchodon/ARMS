@@ -1,4 +1,4 @@
-Autopilot provides Electronic Navigation, Communication, and Targeting Systems
+ARMS provides Electronic Navigation, Communication, and Targeting Systems
 
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
@@ -22,12 +22,11 @@ Harvest - Extract resources from asteroids
 I am looking for assistance with models, code, tutorials, and translations.
 If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
 
-[h1]Ingame Help[/h1]
-type "/Autopilot help" ingame for a list of help topics
-type "/Autopilot help <topic>" for information about a specific topic
-
 [h1]Autopilot Navigation[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
+[u]Ingame Help[/u]
+type "/autopilot help" ingame for a list of help topics
+type "/autopilot help <topic>" for information about a specific topic
 
 [h1]Antenna Relay and Radar[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/523897653315556053/] Antenna Relay and Radar[/url]
@@ -42,7 +41,7 @@ For usage, see the script itself.
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control [/url]
 
 [h1]Settings[/h1]
-The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for Autopilot.
+The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
@@ -56,10 +55,10 @@ fMaxWeaponRange - the maximum range any weapon can be set to
 sWeaponCommandsNPC - commands that N.P.C. weapons will use
 
 [h1]Misc[/h1]
-A solar array of panels or oxygen farms can be instructed to face the sun by adding [ Face Sun ] to the name of any solar panel or oxygen farm. See [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] Autopilot Demonstration World [/url].
+A solar array of panels or oxygen farms can be instructed to face the sun by adding [ Face Sun ] to the name of any solar panel or oxygen farm. See [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url].
 
 [h1]Known Issues[/h1]
-These are all the known issues with Autopilot. If an issue is not listed here, I do not know about it.
+These are all the known issues with ARMS. If an issue is not listed here, I do not know about it.
 
 Merging grids will cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
 
@@ -74,8 +73,8 @@ Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 
 [h1]Links[/h1]
-[url=https://www.surveymonkey.com/s/3KCX6DL] Vote on the future of Autopilot [/url]
-[url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] Autopilot Demonstration World [/url]
+[url=https://www.surveymonkey.com/s/3KCX6DL] Vote on the future of ARMS [/url]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url]
 
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
@@ -87,5 +86,5 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
 
 [b]Public Domain License[/b]
-To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to Autopilot. This work is published from: Canada.
+To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to ARMS. This work is published from: Canada.
 http://creativecommons.org/publicdomain/zero/1.0/

@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Chat;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
@@ -190,8 +191,7 @@ namespace Rynchodon.Update
 				RegisterForUpdates(100, pistonBase.Update, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
-				Piston.PistonTop pistonTop = new Piston.PistonTop(block);
-				RegisterForUpdates(100, pistonTop.Update, block);
+				new Piston.PistonTop(block);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
@@ -260,6 +260,8 @@ namespace Rynchodon.Update
 				//	}
 				//});
 			}
+
+			Help.Init();
 
 			#endregion
 		}

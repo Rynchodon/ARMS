@@ -20,8 +20,8 @@ namespace Rynchodon.Autopilot.Data
 		{
 			/// <summary>from definition</summary>
 			public readonly float force;
-			/// <summary>force * 10</summary>
-			public readonly float dampingForce;
+			///// <summary>force * 10</summary>
+			//public readonly float dampingForce;
 			/// <summary>direction the thruster will move the ship in</summary>
 			public readonly Base6Directions.Direction forceDirect;
 			public readonly IMyThrust thruster;
@@ -32,7 +32,7 @@ namespace Rynchodon.Autopilot.Data
 
 				this.thruster = thruster;
 				this.force = (DefinitionCache.GetCubeBlockDefinition(thruster) as MyThrustDefinition).ForceMagnitude;
-				this.dampingForce = force * 10;
+				//this.dampingForce = force * 10;
 				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
 			}
 
@@ -80,7 +80,6 @@ namespace Rynchodon.Autopilot.Data
 		/// <param name="thruster">The new thruster</param>
 		private void newThruster(IMySlimBlock thruster)
 		{
-			float dampingForce = 10 * (DefinitionCache.GetCubeBlockDefinition(thruster.FatBlock) as MyThrustDefinition).ForceMagnitude;
 			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust);
 			allMyThrusters.Add(thruster.FatBlock as IMyThrust, properties);
 			thrustersInDirection[properties.forceDirect].Add(properties);
@@ -140,19 +139,19 @@ namespace Rynchodon.Autopilot.Data
 			{ myLogger.alwaysLog("Exception: " + e, "grid_OnBlockRemoved()", Logger.severity.ERROR); }
 		}
 
-		/// <summary>
-		/// get the damping force in a direction
-		/// </summary>
-		/// <param name="direction">the direction of force / acceleration</param>
-		public float GetDampingInDirection(Base6Directions.Direction direction)
-		{
-			float dampingForce = 0;
-			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
-					dampingForce += thruster.dampingForce * thruster.thruster.ThrustMultiplier;
+		///// <summary>
+		///// get the damping force in a direction
+		///// </summary>
+		///// <param name="direction">the direction of force / acceleration</param>
+		//public float GetDampingInDirection(Base6Directions.Direction direction)
+		//{
+		//	float dampingForce = 0;
+		//	foreach (ThrusterProperties thruster in thrustersInDirection[direction])
+		//		if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
+		//			dampingForce += thruster.dampingForce * thruster.thruster.ThrustMultiplier;
 
-			return dampingForce;
-		}
+		//	return dampingForce;
+		//}
 
 		/// <summary>
 		/// get the force in a direction

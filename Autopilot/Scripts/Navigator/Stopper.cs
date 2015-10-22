@@ -14,17 +14,18 @@ namespace Rynchodon.Autopilot.Navigator
 		private const float StoppedThreshold = 0.001f;
 
 		private readonly Logger _logger;
+		private readonly bool m_exitAfter;
 
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
 		/// <param name="mover">The Mover to use</param>
 		/// <param name="navSet">The settings to use</param>
-		/// 
-		public Stopper(Mover mover, AllNavigationSettings navSet)
+		public Stopper(Mover mover, AllNavigationSettings navSet, bool exitAfter = false)
 			: base(mover, navSet)
 		{
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
+			m_exitAfter = exitAfter;
 
 			m_mover.StopMove();
 			m_mover.StopRotate();
@@ -50,6 +51,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 				_logger.debugLog("stopped", "Stopper()");
 				m_navSet.OnTaskComplete_NavRot();
+				if (m_exitAfter)
+				{
+					_logger.debugLog("setting disable", "Move()", Logger.severity.DEBUG);
+					m_controlBlock.DisableControl();
+				}
 			}
 			//else
 			//	_logger.debugLog("not stopped", "Stopper()");
@@ -61,7 +67,10 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="customInfo">The autopilot block's custom info</param>
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			customInfo.AppendLine("Stopping");
+			if (m_exitAfter)
+				customInfo.AppendLine("Exit after stopping");
+			else
+				customInfo.AppendLine("Stopping");
 		}
 
 		#endregion

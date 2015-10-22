@@ -26,7 +26,7 @@ namespace Rynchodon.Autopilot
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
-		public bool Disable { get; set; }
+		public bool Disable;
 
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
@@ -208,6 +208,7 @@ namespace Rynchodon.Autopilot
 
 				if (m_block.Disable)
 				{
+					m_logger.debugLog("disabling thruster control", "UpdateThread()", Logger.severity.INFO);
 					m_block.Disable = false;
 					m_block.ApplyAction("ControlThrusters");
 					m_state = State.Exit;
@@ -321,12 +322,7 @@ namespace Rynchodon.Autopilot
 				{
 					navR = navM as INavigatorRotator;
 					if (navR != null)
-					{
-						m_logger.debugLog("mover can rotate as well: " + navM, "UpdateThread()");
 						navR.Rotate();
-					}
-					else
-						m_logger.debugLog("mover cannot rotate: " + navM, "UpdateThread()");
 				}
 
 				m_interpreter.Mover.MoveAndRotate();

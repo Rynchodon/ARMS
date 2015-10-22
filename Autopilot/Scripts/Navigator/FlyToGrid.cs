@@ -12,12 +12,6 @@ using Ingame = Sandbox.ModAPI.Ingame;
 namespace Rynchodon.Autopilot.Navigator
 {
 
-	/*
-	 * TODO:
-	 * Stay in formation command
-	 * Match roll for orient / dock
-	 */
-
 	public class FlyToGrid : NavigatorMover, INavigatorRotator
 	{
 
@@ -333,18 +327,18 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				case LandingState.None:
 					{
-						//if (formation)
+						if (m_navSet.Settings_Current.StayInFormation)
+						{
+							m_logger.debugLog("Maintaining relative position to target", "Move_Land()");
+							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
+						}
+						else
 						{
 							m_logger.debugLog("Arrived at target", "Move_Land()", Logger.severity.INFO);
 							m_navSet.OnTaskComplete_NavMove();
 							m_mover.StopMove();
 							m_mover.StopRotate();
 						}
-						//else
-						//{
-						//	m_logger.debugLog("Maintaining relative position to target", "Move_Land()");
-						//	m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
-						//}
 						return;
 					}
 				case LandingState.Approach:
@@ -395,7 +389,7 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
-						if (m_navSet.Settings_Current.Distance < 3f)
+						if (m_navSet.Settings_Current.Distance < 10f)
 						{
 							m_logger.debugLog("Reached line: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 							m_landingState = LandingState.Landing;

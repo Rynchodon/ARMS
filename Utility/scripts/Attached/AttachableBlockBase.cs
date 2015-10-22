@@ -28,7 +28,29 @@ namespace Rynchodon.Attached
 			AttachmentKind = kind;
 			myBlock = block;
 
+			myLogger.debugLog("Created for: " + block.DisplayNameText, "AttachableBlockBase()");
+
 			block.OnClose += Detach;
+			Registrar.Add(this.myBlock, this);
+		}
+
+		protected AttachableBlockBase GetPartner(long entityId)
+		{
+			if (entityId == 0)
+			{
+				//myLogger.debugLog("No partner, id == 0", "GetPartner()", Logger.severity.TRACE);
+				return null;
+			}
+
+			AttachableBlockBase result;
+			if (!Registrar.TryGetValue(entityId, out result))
+			{
+				myLogger.debugLog("Failed to get partner, " + entityId + " not in registry.", "CheckPartner()", Logger.severity.DEBUG);
+				return null;
+			}
+
+			//myLogger.debugLog("Got partner: " + result.myBlock.DisplayNameText + ':' + entityId, "GetPartner()", Logger.severity.TRACE);
+			return result;
 		}
 
 		protected void Attach(IMyCubeBlock block)
