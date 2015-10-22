@@ -286,8 +286,8 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.Append("Flying to ");
 				customInfo.AppendLine(m_gridFinder.Grid.Entity.DisplayName);
 
-				customInfo.Append("Distance: ");
-				customInfo.AppendLine(m_navSet.PrettyDistance());
+				//customInfo.Append("Distance: ");
+				//customInfo.AppendLine(m_navSet.PrettyDistance());
 			}
 			else
 			{
@@ -296,8 +296,8 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.Append(" on ");
 				customInfo.AppendLine(m_gridFinder.Grid.Entity.DisplayName);
 
-				customInfo.Append("Distance: ");
-				customInfo.AppendLine(m_navSet.PrettyDistance());
+				//customInfo.Append("Distance: ");
+				//customInfo.AppendLine(m_navSet.PrettyDistance());
 			}
 
 			if (m_landingState != LandingState.None)

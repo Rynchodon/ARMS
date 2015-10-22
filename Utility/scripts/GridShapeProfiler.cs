@@ -54,10 +54,11 @@ namespace Rynchodon
 
 			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
 			MainLock.UsingShared(() => {
-				grid.GetBlocks(dummy, slim => {
-					grid_OnBlockAdded(slim);
-					return false;
-				});
+				using (lock_cellPositions.AcquireExclusiveUsing())
+					grid.GetBlocks(dummy, slim => {
+						Add(slim);
+						return false;
+					});
 
 				grid.OnBlockAdded += grid_OnBlockAdded;
 				grid.OnBlockRemoved += grid_OnBlockRemoved;
@@ -153,8 +154,8 @@ namespace Rynchodon
 	public class GridShapeProfiler
 	{
 
-		/// <summary>Added to required distance when not landing</summary>
-		private const float NotLandingBuffer = 5f;
+		///// <summary>Added to required distance when not landing</summary>
+		//private const float NotLandingBuffer = 5f;
 
 		private Logger m_logger = new Logger(null, "GridShapeProfiler");
 		private IMyCubeGrid m_grid;
@@ -162,6 +163,7 @@ namespace Rynchodon
 		private Vector3 m_centreRejection;
 		private Vector3 m_directNorm;
 		private readonly MyUniqueList<Vector3> m_rejectionCells = new MyUniqueList<Vector3>();
+		private readonly FastResourceLock m_lock_rejcectionCells = new FastResourceLock();
 		private bool m_landing;
 
 		public Capsule Path { get; private set; }
@@ -195,39 +197,40 @@ namespace Rynchodon
 		{
 			m_logger.debugLog(m_grid == null, "m_grid == null", "Init()", Logger.severity.FATAL);
 
-			m_logger.debugLog("testing grid: " + grid.getBestName(), "rejectionIntersects()");
+			//m_logger.debugLog("testing grid: " + grid.getBestName(), "rejectionIntersects()");
 
 			GridCellCache gridCache = GridCellCache.GetCellCache(grid);
 			MatrixD toLocal = m_grid.WorldMatrixNormalizedInv;
 			Line pathLine = Path.get_Line();
 
 			float minDist = m_grid.GridSize + grid.GridSize;
-			if (!m_landing)
-				minDist += NotLandingBuffer;
+			//if (!m_landing)
+			//	minDist += NotLandingBuffer;
 			float pathRadius = Path.Radius + minDist;
 			float minDistSquared = minDist * minDist;
 
 			MyEntity entity_in = null;
 			Vector3? pointOfObstruction_in = null;
-			gridCache.ForEach(cell => {
-				Vector3 world = grid.GridIntegerToWorld(cell);
-				//m_logger.debugLog("checking position: " + world, "rejectionIntersects()");
-				if (pathLine.PointInCylinder(pathRadius, world))
-				{
-					//m_logger.debugLog("point in cylinder: " + world, "rejectionIntersects()");
-					Vector3 local = Vector3.Transform(world, toLocal);
-					if (rejectionIntersects(local, minDistSquared))
+			using (m_lock_rejcectionCells.AcquireSharedUsing())
+				gridCache.ForEach(cell => {
+					Vector3 world = grid.GridIntegerToWorld(cell);
+					//m_logger.debugLog("checking position: " + world, "rejectionIntersects()");
+					if (pathLine.PointInCylinder(pathRadius, world))
 					{
-						entity_in = grid.GetCubeBlock(cell).FatBlock as MyEntity ?? grid as MyEntity;
-						if (ignore != null && entity_in == ignore)
-							return false;
+						//m_logger.debugLog("point in cylinder: " + world, "rejectionIntersects()");
+						Vector3 local = Vector3.Transform(world, toLocal);
+						if (rejectionIntersects(local, minDistSquared))
+						{
+							entity_in = grid.GetCubeBlock(cell).FatBlock as MyEntity ?? grid as MyEntity;
+							if (ignore != null && entity_in == ignore)
+								return false;
 
-						pointOfObstruction_in = Path.get_Line().ClosestPoint(world);
-						return true;
+							pointOfObstruction_in = Path.get_Line().ClosestPoint(world);
+							return true;
+						}
 					}
-				}
-				return false;
-			});
+					return false;
+				});
 
 			if (pointOfObstruction_in.HasValue)
 			{
@@ -251,7 +254,7 @@ namespace Rynchodon
 			Vector3 TestRejection = RejectMetres(localMetresPosition);
 			foreach (Vector3 ProfileRejection in m_rejectionCells)
 			{
-				m_logger.debugLog("distance between: " + Vector3.DistanceSquared(TestRejection, ProfileRejection), "rejectionIntersects()");
+				//m_logger.debugLog("distance between: " + Vector3.DistanceSquared(TestRejection, ProfileRejection), "rejectionIntersects()");
 				if (Vector3.DistanceSquared(TestRejection, ProfileRejection) < minDistSquared)
 					return true;
 			}
@@ -266,25 +269,29 @@ namespace Rynchodon
 		/// </summary>
 		private void rejectAll()
 		{
-			m_rejectionCells.Clear();
+			using (m_lock_rejcectionCells.AcquireExclusiveUsing())
+			{
+				m_rejectionCells.Clear();
 
-			m_centreRejection = RejectMetres(Centre);
-			m_cellCache.ForEach(cell => {
-				Vector3 rejection = RejectMetres(cell * m_grid.GridSize);
-				m_rejectionCells.Add(rejection);
-			});
+				m_centreRejection = RejectMetres(Centre);
+				m_cellCache.ForEach(cell => {
+					Vector3 rejection = RejectMetres(cell * m_grid.GridSize);
+					m_rejectionCells.Add(rejection);
+				});
+			}
 		}
 
 		/// <param name="centreDestination">where the centre of the grid will end up (local)</param>
 		private void createCapsule(Vector3 centreDestination, Vector3 localPosition)
 		{
 			float longestDistanceSquared = 0;
-			foreach (Vector3 rejection in m_rejectionCells)
-			{
-				float distanceSquared = (rejection - m_centreRejection).LengthSquared();
-				if (distanceSquared > longestDistanceSquared)
-					longestDistanceSquared = distanceSquared;
-			}
+			using (m_lock_rejcectionCells.AcquireSharedUsing())
+				foreach (Vector3 rejection in m_rejectionCells)
+				{
+					float distanceSquared = (rejection - m_centreRejection).LengthSquared();
+					if (distanceSquared > longestDistanceSquared)
+						longestDistanceSquared = distanceSquared;
+				}
 			Vector3D P0 = RelativePosition3F.FromLocal(m_grid, Centre).ToWorld();
 
 			Vector3D P1;
@@ -304,7 +311,7 @@ namespace Rynchodon
 				P1 = RelativePosition3F.FromLocal(m_grid, centreDestination + m_directNorm * m_grid.GetLongestDim()).ToWorld();
 			}
 
-			float CapsuleRadius = (float)Math.Sqrt(longestDistanceSquared) + 3f * m_grid.GridSize + (m_landing ? 0f : NotLandingBuffer);
+			float CapsuleRadius = (float)Math.Sqrt(longestDistanceSquared) + 3f * m_grid.GridSize;// +(m_landing ? 0f : NotLandingBuffer);
 			Path = new Capsule(P0, P1, CapsuleRadius);
 
 			m_logger.debugLog("Path capsule created from " + P0 + " to " + P1 + ", radius: " + CapsuleRadius, "createCapsule()");

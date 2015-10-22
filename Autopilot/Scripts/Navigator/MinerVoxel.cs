@@ -356,14 +356,14 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				case State.Approaching:
 					customInfo.AppendLine("Approaching asteroid");
-					customInfo.Append("Distance: ");
-					customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
-					customInfo.AppendLine("m");
+					//customInfo.Append("Distance: ");
+					//customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
+					//customInfo.AppendLine("m");
 					break;
 				case State.Rotating:
 					customInfo.AppendLine("Rotating to face ore deposit");
-					customInfo.Append("Angle: ");
-					customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)));
+					//customInfo.Append("Angle: ");
+					//customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)));
 					break;
 				case State.Mining:
 					customInfo.AppendLine("Mining ore deposit");
@@ -373,9 +373,9 @@ namespace Rynchodon.Autopilot.Navigator
 					customInfo.Append(" at ");
 					customInfo.AppendLine(m_depositPos.ToPretty());
 
-					customInfo.Append("Distance: ");
-					customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
-					customInfo.AppendLine("m");
+					//customInfo.Append("Distance: ");
+					//customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
+					//customInfo.AppendLine("m");
 					break;
 			}
 		}

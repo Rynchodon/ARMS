@@ -18,8 +18,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly PseudoBlock m_pseudoBlock;
 		private readonly IMyLaserAntenna m_laser;
 
-		//private bool v_matched;
-
 		/// <param name="mover">The mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="rotBlock">The block to rotate</param>
@@ -42,53 +40,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 		}
 
-		///// <summary>
-		///// Faces the closest face direction towards the target.
-		///// </summary>
-		///// <param name="mover">The mover to use</param>
-		///// <param name="navSet">The settings to use</param>
-		///// <param name="rotBlock">The block to rotate</param>
-		//public Facer(Mover mover, AllNavigationSettings navSet, IMyCubeBlock rotBlock)
-		//	: this(mover, navSet, rotBlock, true)
-		//{
-		//	Base6Directions.Direction forward = rotBlock.GetFaceDirection(TargetDirection());
-		//	Base6Directions.Direction up = Base6Directions.GetPerpendicular(forward);
-
-		//	this.m_localMatrix = m_mover.GetMatrix(rotBlock, forward, up);
-
-		//	m_logger.debugLog("chose closest direction as forward: " + forward, "Facer()");
-		//	m_logger.debugLog("created Facer, rotBlock: " + rotBlock.DisplayNameText + ", forward: " + forward + ", up: " + up, "Facer()");
-		//	m_logger.debugLog("matrix: right: " + m_localMatrix.Right + ", up: " + m_localMatrix.Up + ", back: " + m_localMatrix.Backward + ", trans: " + m_localMatrix.Translation, "Facer()");
-		//}
-
-		///// <summary>
-		///// Faces forward towards the target.
-		///// </summary>
-		///// <param name="mover">The mover to use</param>
-		///// <param name="navSet">The settings to use</param>
-		///// <param name="rotBlock">The block to rotate</param>
-		///// <param name="forward">Face of block to turn towards target</param>
-		///// <param name="up">Does nothing, might be used to roll the block in the future.</param>
-		//public Facer(Mover mover, AllNavigationSettings navSet, IMyCubeBlock rotBlock, Base6Directions.Direction forward, Base6Directions.Direction up = Base6Directions.Direction.Up)
-		//	: this(mover, navSet, rotBlock, true)
-		//{
-		//	if (forward == up || forward == Base6Directions.GetFlippedDirection(up))
-		//	{
-		//		m_logger.debugLog("incompatible directions, forward: " + forward + ", up: " + up, "Facer()");
-		//		up = Base6Directions.GetPerpendicular(forward);
-		//	}
-
-		//	this.m_localMatrix = m_mover.GetMatrix(rotBlock, forward, up);
-
-		//	m_logger.debugLog("created Facer, rotBlock: " + rotBlock.DisplayNameText + ", forward: " + forward + ", up: " + up, "Facer()");
-		//	m_logger.debugLog("matrix: right: " + m_localMatrix.Right + ", up: " + m_localMatrix.Up + ", back: " + m_localMatrix.Backward + ", trans: " + m_localMatrix.Translation, "Facer()");
-		//}
-
 		#region NavigatorRotator Members
-
-		///// <summary>True iff the rotation block is facing the sun or laser target.</summary>
-		//public override bool DirectionMatched
-		//{ get { return v_matched; } }
 
 		/// <summary>
 		/// Calculates the rotation to face the rotation block towards the target.
@@ -111,8 +63,8 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine(m_laser.TargetCoords.ToPretty());
 			else
 				customInfo.AppendLine("Sun");
-			customInfo.Append("Angle: ");
-			customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)));
+			//customInfo.Append("Angle: ");
+			//customInfo.AppendLine(PrettySI.makePretty(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)));
 		}
 
 		#endregion

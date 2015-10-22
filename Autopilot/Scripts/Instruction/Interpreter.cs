@@ -39,6 +39,8 @@ namespace Rynchodon.Autopilot.Instruction
 		private readonly ShipControllerBlock Controller;
 		public readonly Mover Mover;
 
+		public bool SyntaxError { get; private set; }
+
 		public Interpreter(ShipControllerBlock block)
 		{
 			this.m_logger = new Logger("Interpreter", block.Controller);
@@ -60,6 +62,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <param name="block">block with instructions</param>
 		public void enqueueAllActions()
 		{
+			SyntaxError = false;
 			string instructions = preParse().getInstructions();
 
 			if (instructions == null)
@@ -108,6 +111,7 @@ namespace Rynchodon.Autopilot.Instruction
 				{
 					m_logger.debugLog("Failed to parse instruction " + splitInstructions[i], "enqueueAllActions()", Logger.severity.WARNING);
 					Errors.AppendLine("Syntax:" + splitInstructions[i]);
+					SyntaxError = true;
 				}
 				else
 					m_logger.debugLog("Parsed instruction " + splitInstructions[i], "enqueueAllActions()");
@@ -169,7 +173,7 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "exit":
 					{
-						wordAction = () => Controller.SetControl(false);
+						wordAction = () => Controller.DisableControl();
 						return true;
 					}
 				//case "jump":

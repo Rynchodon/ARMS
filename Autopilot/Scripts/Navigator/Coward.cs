@@ -80,8 +80,8 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_enemy != null)
 			{
-				customInfo.Append("Running like a coward from ");
-				customInfo.AppendLine(m_enemy.Entity.getBestName());
+				customInfo.Append("Running like a coward from an enemy at ");
+				customInfo.AppendLine(m_enemy.predictPosition().ToPretty());
 			}
 		}
 

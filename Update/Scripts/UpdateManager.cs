@@ -220,6 +220,20 @@ namespace Rynchodon.Update
 		{
 			UserSettings.CreateLocal();
 
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
+						new Autopilot_CustomInfo(block);
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
+					new Autopilot_CustomInfo(block);
+			});
+
+			#endregion
+
 			#region Radar
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))

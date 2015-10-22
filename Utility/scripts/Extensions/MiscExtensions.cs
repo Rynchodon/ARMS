@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using Sandbox.ModAPI;
 using VRage.Components;
 using VRage.ModAPI;
@@ -345,6 +346,18 @@ namespace Rynchodon
 						logTo.alwaysLog("Exception: " + ex, "TryOnGameThread()", Logger.severity.ERROR);
 				}
 			});
+		}
+
+		public static bool EqualsIgnoreCapacity(this StringBuilder first, StringBuilder second)
+		{
+			if (first.Length != second.Length)
+				return false;
+
+			for (int i = 0; i < first.Length; i++)
+				if (first[i] != second[i])
+					return false;
+
+			return true;
 		}
 
 	}

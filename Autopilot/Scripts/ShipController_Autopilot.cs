@@ -10,6 +10,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Components;
+using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
@@ -41,21 +42,27 @@ namespace Rynchodon.Autopilot
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
 		}
 
-		public void SetControl(bool enable)
+		/// <summary>
+		/// Stops thrust & rotation, disables control
+		/// </summary>
+		public void DisableControl()
 		{
-			if (Controller.ControlThrusters != enable)
-				ApplyAction("ControlThrusters");
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				Controller.MoveAndRotateStopped();
+				if (Controller.ControlThrusters)
+					Terminal.GetActionWithName("ControlThrusters").Apply(Terminal);
+			}, m_logger);
 		}
 
 		public void SetDamping(bool enable)
 		{
-			IMyControllableEntity controllable = Controller as IMyControllableEntity;
-			if (controllable.EnabledDamping != enable)
+			IMyControllableEntity control = Controller as IMyControllableEntity;
+			if (control.EnabledDamping != enable)
 			{
-				m_logger.debugLog("setting switch damp, EnabledDamping: " + controllable.EnabledDamping + ", enable: " + enable, "SetDamping()");
+				m_logger.debugLog("setting switch damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					if (controllable.EnabledDamping != enable)
-						Controller.SwitchDamping();
+					if (control.EnabledDamping != enable)
+						control.SwitchDamping();
 				}, m_logger);
 			}
 		}
@@ -68,6 +75,7 @@ namespace Rynchodon.Autopilot
 	public class ShipController_Autopilot
 	{
 		public const uint UpdateFrequency = 3u;
+		public const ushort ModId_CustomInfo = 54311;
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
@@ -131,18 +139,22 @@ namespace Rynchodon.Autopilot
 
 		private enum State : byte { Disabled, Enabled, Halted, Closed }
 
-		private readonly ShipControllerBlock Block;
+		private readonly ShipControllerBlock m_block;
 
-		private readonly Logger myLogger;
-		private Interpreter myInterpreter;
+		private readonly Logger m_logger;
+		private Interpreter m_interpreter;
 
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 
-		private IMyCubeGrid ControlledGrid;
+		private IMyCubeGrid m_controlledGrid;
 		private State m_state = State.Disabled;
 		private DateTime m_nextAllowedInstructions = DateTime.MinValue;
 
-		private AllNavigationSettings myNavSet { get { return myInterpreter.NavSet; } }
+		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
+		private List<byte> m_customInfo_message = new List<byte>();
+		private ulong m_nextCustomInfo;
+
+		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
 
 		/// <summary>
 		/// Creates an Autopilot for the given ship controller.
@@ -150,29 +162,26 @@ namespace Rynchodon.Autopilot
 		/// <param name="block">The ship controller to use</param>
 		public ShipController_Autopilot(IMyCubeBlock block)
 		{
-			this.Block = new ShipControllerBlock(block);
-			this.myLogger = new Logger("ShipController_Autopilot", block);
-			this.myInterpreter = new Interpreter(Block);
+			this.m_block = new ShipControllerBlock(block);
+			this.m_logger = new Logger("ShipController_Autopilot", block);
+			this.m_interpreter = new Interpreter(m_block);
 
-			this.Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
-			this.Block.CubeBlock.OnClosing += CubeBlock_OnClosing;
+			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
 
 			// for my German friends...
-			if (!Block.Terminal.DisplayNameText.Contains("[") && !Block.Terminal.DisplayNameText.Contains("]"))
-				Block.Terminal.SetCustomName(Block.Terminal.DisplayNameText + " []");
+			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
+				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
 
-			myLogger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
+			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
 		}
 
 		private void CubeBlock_OnClosing(VRage.ModAPI.IMyEntity obj)
 		{
 			m_state = State.Closed;
-			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
-			Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
 
 			if (GridBeingControlled != null)
 				ReleaseControlledGrid();
-			myInterpreter = null;
+			m_interpreter = null;
 		}
 
 		public void Update()
@@ -188,16 +197,20 @@ namespace Rynchodon.Autopilot
 		{
 			try
 			{
-				this.Block.Terminal.RefreshCustomInfo(); // going to be removed anyway
+				if (Globals.UpdateCount > m_nextCustomInfo)
+				{
+					m_nextCustomInfo = Globals.UpdateCount + 100ul;
+					UpdateCustomInfo();
+				}
 
 				switch (m_state)
 				{
 					case State.Disabled:
 						if (CheckControl())
 						{
-							myLogger.debugLog("gained control", "Update()", Logger.severity.INFO);
-							myNavSet.OnStartOfCommands();
-							myInterpreter.instructionQueue.Clear();
+							m_logger.debugLog("gained control", "Update()", Logger.severity.INFO);
+							m_navSet.OnStartOfCommands();
+							m_interpreter.instructionQueue.Clear();
 							m_state = State.Enabled;
 							break;
 						}
@@ -205,110 +218,125 @@ namespace Rynchodon.Autopilot
 					case State.Enabled:
 						if (CheckControl())
 							break;
-						myLogger.debugLog("lost control", "Update()", Logger.severity.INFO);
+						m_logger.debugLog("lost control", "Update()", Logger.severity.INFO);
 						m_state = State.Disabled;
 						m_nextAllowedInstructions = DateTime.UtcNow;
+						UpdateCustomInfo();
 						return;
 					case State.Halted:
-						if (!Block.Controller.ControlThrusters)
+						if (!m_block.Controller.ControlThrusters)
 						{
 							m_state = State.Disabled;
-							Block.Terminal.AppendingCustomInfo += Terminal_AppendingCustomInfo;
-							Block.Terminal.AppendingCustomInfo -= HCF_AppendingCustomInfo;
+							UpdateCustomInfo();
 						}
 						return;
 					case State.Closed:
 						return;
 				}
 
-				if (MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid) != null)
+				if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) != null)
 					// wait for player to give back control, do not reset
 					return;
 
-				EnemyFinder ef = myNavSet.Settings_Current.EnemyFinder;
+				EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
 				if (ef != null)
 					ef.Update();
 
-				if (myNavSet.Settings_Current.WaitUntil > DateTime.UtcNow)
+				if (m_navSet.Settings_Current.WaitUntil > DateTime.UtcNow)
 					return;
 
-				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
-				if (navM != null)
-				{
-					navM.Move();
-
-					INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator; // fetched here because mover might remove it
-					if (navR != null)
-						navR.Rotate();
-					else
-					{
-						navR = navM as INavigatorRotator;
-						if (navR != null)
-						{
-							myLogger.debugLog("mover can rotate as well: "+navM, "UpdateThread()");
-							navR.Rotate();
-						}
-						else
-							myLogger.debugLog("mover cannot rotate: " + navM, "UpdateThread()");
-					}
-
-					myInterpreter.Mover.MoveAndRotate();
+				if (m_interpreter.SyntaxError)
+					m_interpreter.Mover.MoveAndRotateStop();
+				else if (MoveAndRotate())
 					return;
-				}
 
-				if (myInterpreter.hasInstructions())
+				if (m_interpreter.hasInstructions())
 				{
-					myLogger.debugLog("running instructions", "Update()");
+					m_logger.debugLog("running instructions", "Update()");
 
-					while (myInterpreter.instructionQueue.Count != 0 && myNavSet.Settings_Current.NavigatorMover == null)
-						myInterpreter.instructionQueue.Dequeue().Invoke();
+					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
+						m_interpreter.instructionQueue.Dequeue().Invoke();
 
-					if (myNavSet.Settings_Current.NavigatorMover == null)
+					if (m_navSet.Settings_Current.NavigatorMover == null)
 					{
-						myLogger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
+						m_logger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
 						ReleaseControlledGrid();
 					}
 					return;
 				}
 
-				{
-					INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator;
-					if (navR != null)
-					{
-						//run the rotator by itself until direction is matched
-
-						navR.Rotate();
-						
-						myInterpreter.Mover.MoveAndRotate();
-
-						if (!myNavSet.DirectionMatched())
-							return;
-						myInterpreter.Mover.StopRotate();
-					}
-				}
+				if (!m_interpreter.SyntaxError)
+					if (Rotate())
+						return;
 
 				if (m_nextAllowedInstructions > DateTime.UtcNow)
 				{
-					myLogger.debugLog("Delaying instructions", "UpdateThread()", Logger.severity.INFO);
-					myNavSet.Settings_Task_NavWay.WaitUntil = m_nextAllowedInstructions;
+					m_logger.debugLog("Delaying instructions", "UpdateThread()", Logger.severity.INFO);
+					m_navSet.Settings_Task_NavWay.WaitUntil = m_nextAllowedInstructions;
 					return;
 				}
 
-				myLogger.debugLog("enqueing instructions", "Update()", Logger.severity.DEBUG);
+				m_logger.debugLog("enqueing instructions", "Update()", Logger.severity.DEBUG);
 				m_nextAllowedInstructions = DateTime.UtcNow + MinTimeInstructions;
-				myInterpreter.enqueueAllActions();
+				m_interpreter.enqueueAllActions();
 
-				if (!myInterpreter.hasInstructions())
+				if (!m_interpreter.hasInstructions())
 					ReleaseControlledGrid();
-				myNavSet.OnStartOfCommands();
+				m_navSet.OnStartOfCommands();
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
+				m_logger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
 				HCF();
 			}
 			finally
 			{ lock_execution.ReleaseExclusive(); }
+		}
+
+		private bool MoveAndRotate()
+		{
+			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
+			if (navM != null)
+			{
+				navM.Move();
+
+				INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator; // fetched here because mover might remove it
+				if (navR != null)
+					navR.Rotate();
+				else
+				{
+					navR = navM as INavigatorRotator;
+					if (navR != null)
+					{
+						m_logger.debugLog("mover can rotate as well: " + navM, "UpdateThread()");
+						navR.Rotate();
+					}
+					else
+						m_logger.debugLog("mover cannot rotate: " + navM, "UpdateThread()");
+				}
+
+				m_interpreter.Mover.MoveAndRotate();
+				return true;
+			}
+			return false;
+		}
+
+		private bool Rotate()
+		{
+			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
+			if (navR != null)
+			{
+				//run the rotator by itself until direction is matched
+
+				navR.Rotate();
+
+				m_interpreter.Mover.MoveAndRotate();
+
+				if (!m_navSet.DirectionMatched())
+					return true;
+				m_interpreter.Mover.StopRotate();
+			}
+			return false;
 		}
 
 		#region Control
@@ -320,16 +348,16 @@ namespace Rynchodon.Autopilot
 		private bool CheckControl()
 		{
 			// cache current grid in case it changes
-			IMyCubeGrid myGrid = Block.CubeGrid;
+			IMyCubeGrid myGrid = m_block.CubeGrid;
 
-			if (ControlledGrid != null)
+			if (m_controlledGrid != null)
 			{
-				if (ControlledGrid != myGrid)
+				if (m_controlledGrid != myGrid)
 				{
 					// a (de)merge happened
 					ReleaseControlledGrid();
 				}
-				else if (CanControlBlockGrid(ControlledGrid))
+				else if (CanControlBlockGrid(m_controlledGrid))
 				{
 					// OK to continue controlling
 					return true;
@@ -350,11 +378,11 @@ namespace Rynchodon.Autopilot
 
 			if (!GridBeingControlled.Add(myGrid))
 			{
-				myLogger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
+				m_logger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
 				return false;
 			}
 
-			ControlledGrid = myGrid;
+			m_controlledGrid = myGrid;
 			return true;
 		}
 
@@ -370,13 +398,13 @@ namespace Rynchodon.Autopilot
 				return false;
 
 			// is block ready
-			if (!Block.Controller.IsWorking
-				|| !grid.BigOwners.Contains(Block.Controller.OwnerId)
-				|| !Block.Controller.ControlThrusters)
+			if (!m_block.Controller.IsWorking
+				|| !grid.BigOwners.Contains(m_block.Controller.OwnerId)
+				|| !m_block.Controller.ControlThrusters)
 				return false;
 
 			MyCubeGrid mcg = grid as MyCubeGrid;
-			if (mcg.HasMainCockpit() && !Block.Controller.IsMainCockpit)
+			if (mcg.HasMainCockpit() && !m_block.Controller.IsMainCockpit)
 				return false;
 
 			return true;
@@ -387,92 +415,122 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void ReleaseControlledGrid()
 		{
-			if (ControlledGrid == null)
+			if (m_controlledGrid == null)
 				return;
 
-			if (!GridBeingControlled.Remove(ControlledGrid))
+			if (!GridBeingControlled.Remove(m_controlledGrid))
 			{
-				myLogger.alwaysLog("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled", "ReleaseControlledGrid()", Logger.severity.FATAL);
-				throw new InvalidOperationException("Failed to remove " + ControlledGrid.DisplayName + " from GridBeingControlled");
+				m_logger.alwaysLog("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled", "ReleaseControlledGrid()", Logger.severity.FATAL);
+				throw new InvalidOperationException("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled");
 			}
 
 			//myLogger.debugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
-			ControlledGrid = null;
+			m_controlledGrid = null;
 		}
 
 		#endregion
 
-		/// <summary>
-		/// Appends Autopilot's status to customInfo
-		/// </summary>
-		/// <param name="arg1">The autopilot block</param>
-		/// <param name="customInfo">The autopilot block's custom info</param>
-		private void Terminal_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
+		#region Custom Info
+
+		private void UpdateCustomInfo()
 		{
-			try
+			if (m_state == State.Halted)
+				m_customInfo_build.AppendLine("Autopilot crashed, see log for details");
+			else
+				BuildCustomInfo();
+
+			if (!m_customInfo_build.EqualsIgnoreCapacity( m_customInfo_send))
 			{
-				if (myInterpreter.Errors.Length != 0)
-				{
-					customInfo.AppendLine("Errors:");
-					customInfo.Append(myInterpreter.Errors);
-					customInfo.AppendLine();
-				}
-
-				if (ControlledGrid == null)
-				{
-					customInfo.AppendLine("Disabled");
-					return;
-				}
-
-				bool moving = true;
-
-				double wait = (myNavSet.Settings_Current.WaitUntil - DateTime.UtcNow).TotalSeconds;
-				if (wait > 0)
-				{
-					moving = false;
-					customInfo.Append("Waiting for ");
-					customInfo.Append((int)wait);
-					customInfo.AppendLine("s");
-				}
-
-				IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(ControlledGrid);
-				if (controlling != null)
-				{
-					moving = false;
-					customInfo.Append("Player controlling: ");
-					customInfo.AppendLine(controlling.DisplayName);
-				}
-
-				if (!moving)
-					return;
-
-				INavigatorMover navM = myNavSet.Settings_Current.NavigatorMover;
-				if (navM != null)
-					navM.AppendCustomInfo(customInfo);
-
-				INavigatorRotator navR = myNavSet.Settings_Current.NavigatorRotator;
-				if (navR != null && navR != navM)
-					navR.AppendCustomInfo(customInfo);
+				StringBuilder temp = m_customInfo_send;
+				m_customInfo_send = m_customInfo_build;
+				m_customInfo_build = temp;
+				SendCustomInfo();
 			}
-			catch (Exception ex)
-			{
-				myLogger.alwaysLog("Exception: " + ex, "Terminal_AppendingCustomInfo()", Logger.severity.ERROR);
-				HCF();
-			}
+			else
+				m_logger.debugLog("no change in custom info", "UpdateCustomInfo()");
+
+			m_customInfo_build.Clear();
 		}
+
+		private void BuildCustomInfo()
+		{
+			if (m_interpreter.Errors.Length != 0)
+			{
+				m_customInfo_build.AppendLine("Errors:");
+				m_customInfo_build.Append(m_interpreter.Errors);
+				m_customInfo_build.AppendLine();
+			}
+
+			if (m_controlledGrid == null)
+			{
+				m_customInfo_build.AppendLine("Disabled");
+				return;
+			}
+
+			bool moving = true;
+
+			double wait = (m_navSet.Settings_Current.WaitUntil - DateTime.UtcNow).TotalSeconds;
+			if (wait > 0)
+			{
+				moving = false;
+				m_customInfo_build.Append("Waiting for ");
+				m_customInfo_build.Append((int)wait);
+				m_customInfo_build.AppendLine("s");
+			}
+
+			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid);
+			if (controlling != null)
+			{
+				moving = false;
+				m_customInfo_build.Append("Player controlling: ");
+				m_customInfo_build.AppendLine(controlling.DisplayName);
+			}
+
+			if (!moving)
+				return;
+
+			Pathfinder.Pathfinder path = m_interpreter.Mover.myPathfinder;
+			if (path != null)
+			{
+				if (!path.CanMove)
+					m_customInfo_build.AppendLine("Searching for path");
+				if (!path.CanRotate)
+					m_customInfo_build.AppendLine("Cannot rotate safely");
+			}
+
+			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
+			if (navM != null)
+				navM.AppendCustomInfo(m_customInfo_build);
+
+			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
+			if (navR != null && navR != navM)
+				navR.AppendCustomInfo(m_customInfo_build);
+		}
+
+		private void SendCustomInfo()
+		{
+			ByteConverter.AppendBytes(m_block.CubeBlock.EntityId, m_customInfo_message);
+			ByteConverter.AppendBytes(m_customInfo_send.ToString(), m_customInfo_message);
+
+			m_logger.debugLog("sending message, length: " + m_customInfo_message.Count, "SendCustomInfo()");
+			m_logger.debugLog("Message:\n" + m_customInfo_send, "SendCustomInfo()");
+			byte[] asByteArray = m_customInfo_message.ToArray();
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
+				Autopilot_CustomInfo.MessageHandler(asByteArray);
+			}, m_logger);
+
+			m_customInfo_message.Clear();
+		}
+
+		#endregion Custom Info
 
 		private void HCF()
 		{
 			m_state = State.Halted;
-			Block.SetDamping(true);
-			Block.Controller.MoveAndRotateStopped();
-
-			Block.Terminal.AppendingCustomInfo -= Terminal_AppendingCustomInfo;
-			Block.Terminal.AppendingCustomInfo += HCF_AppendingCustomInfo;
+			m_block.SetDamping(true);
+			m_block.Controller.MoveAndRotateStopped();
 		}
-
-		private void HCF_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder customInfo)
-		{ customInfo.AppendLine("Autopilot crashed, see log for details"); }
 
 	}
 }

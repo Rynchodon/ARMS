@@ -149,7 +149,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			customInfo.AppendLine("killing stuff");
+			customInfo.Append("Attacking an enemy at ");
+			customInfo.AppendLine(m_currentTarget.predictPosition().ToPretty());
 		}
 
 		private void Arm()

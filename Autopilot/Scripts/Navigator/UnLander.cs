@@ -151,7 +151,7 @@ namespace Rynchodon.Autopilot.Navigator
 			customInfo.Append(" to ");
 			customInfo.AppendLine(m_destination.ToPretty());
 
-			customInfo.AppendLine(m_navSet.PrettyDistance());
+			//customInfo.AppendLine(m_navSet.PrettyDistance());
 		}
 
 	}

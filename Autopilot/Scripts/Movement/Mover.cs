@@ -27,7 +27,6 @@ namespace Rynchodon.Autopilot.Movement
 		private IMyCubeGrid myGrid;
 		private ThrustProfiler myThrust;
 		private GyroProfiler myGyro;
-		private Pathfinder.Pathfinder myPathfinder;
 
 		private Vector3 moveForceRatio = Vector3.Zero;
 		private Vector3 value_rotateForceRatio = Vector3.Zero;
@@ -35,6 +34,10 @@ namespace Rynchodon.Autopilot.Movement
 
 		private ulong updated_prevAngleVel = 0;
 		private Vector3 prevAngleVel = Vector3.Zero;
+
+		private bool m_stopped;
+
+		public Pathfinder.Pathfinder myPathfinder { get; private set; }
 
 		/// <summary>
 		/// Creates a Mover for a given ShipControllerBlock and AllNavigationSettings
@@ -67,10 +70,14 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void MoveAndRotateStop()
 		{
+			if (m_stopped)
+				return;
+
 			moveForceRatio = Vector3.Zero;
 			rotateForceRatio = Vector3.Zero;
 			Block.SetDamping(true);
-			Block.Controller.MoveAndRotateStopped();
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
+			m_stopped = true;
 		}
 
 		public bool CanMoveForward(PseudoBlock block)
@@ -277,8 +284,9 @@ namespace Rynchodon.Autopilot.Movement
 			//	"Invalid orienation: " + forward + ", " + upward, "CalcRotate()", Logger.severity.FATAL);
 
 			RelativeDirection3F faceForward = RelativeDirection3F.FromWorld(block.Grid, destBlock.WorldMatrix.GetDirectionVector(forward.Value));
+			RelativeDirection3F faceUpward = upward.HasValue ? RelativeDirection3F.FromWorld(block.Grid, destBlock.WorldMatrix.GetDirectionVector(upward.Value)) : null;
 
-			CalcRotate(block, faceForward);
+			CalcRotate(block, faceForward, faceUpward);
 		}
 
 		/// <summary>
@@ -287,10 +295,10 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="block"></param>
 		/// <returns>True iff localMatrix is facing Direction</returns>
-		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction)
+		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null)
 		{
 			Vector3 angleVelocity;
-			CalcRotate(block.LocalMatrix, Direction, out angleVelocity);
+			CalcRotate(block.LocalMatrix, Direction, UpDirect, out angleVelocity);
 			updated_prevAngleVel = Globals.UpdateCount;
 			prevAngleVel = angleVelocity;
 
@@ -308,7 +316,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
 		///// <param name="displacement">Angular distance between localMatrix and Direction</param>
-		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, out Vector3 angularVelocity)
+		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, out Vector3 angularVelocity)
 		{
 			CheckGrid();
 
@@ -355,7 +363,21 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 NFR_right = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaRight));
 			Vector3 NFR_up = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaUp));
 
-			Vector3 displacement = -elevation * NFR_right + -azimuth * NFR_up;
+			Vector3 displacement = -elevation * NFR_right - azimuth * NFR_up;
+
+			if (UpDirect != null)
+			{
+				Vector3 upLocal = UpDirect.ToLocal();
+				Vector3 upRotBlock; Vector3.Transform(ref upLocal, ref inverted, out upRotBlock);
+				float roll; Vector3.Dot(ref upRotBlock, ref Vector3.Right, out roll);
+
+				Vector3 rotaBackward = localMatrix.Backward;
+				Vector3 NFR_backward = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaBackward));
+
+				myLogger.debugLog("roll: " + roll + ", displacement: " + displacement + ", NFR_backward: " + NFR_backward + ", change: " + (-roll * NFR_backward), "CalcRotate()");
+
+				displacement += roll * NFR_backward;
+			}
 
 			NavSet.Settings_Task_NavWay.DistanceAngle = displacement.Length();
 
@@ -466,15 +488,18 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			if (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanMove)
+			if (NavSet.Settings_Current.CollisionAvoidance)
 			{
-				myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
-				StopMove();
-			}
-			if (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanRotate)
-			{
-				myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
-				StopRotate();
+				if (!myPathfinder.CanMove)
+				{
+					myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
+					StopMove();
+				}
+				if (!myPathfinder.CanRotate)
+				{
+					myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
+					StopRotate();
+				}
 			}
 
 			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
@@ -483,7 +508,7 @@ namespace Rynchodon.Autopilot.Movement
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotateStopped(), myLogger);
+				MoveAndRotateStop();
 				return;
 			}
 
@@ -498,6 +523,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			//myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
+			m_stopped = false;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotate(moveControl, rotateControl, rollControl), myLogger);
 		}
 

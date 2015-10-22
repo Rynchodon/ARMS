@@ -16,7 +16,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger myLogger;
 		private readonly PseudoBlock NavigationBlock;
 		private readonly Vector3 location;
-		private readonly bool Rotating;
 		private readonly bool Waypoint;
 
 		/// <summary>
@@ -35,14 +34,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var atLevel = waypoint ? m_navSet.Settings_Task_NavWay : m_navSet.Settings_Task_NavMove;
 			atLevel.NavigatorMover = this;
-			//if (m_navSet.Settings_Current.NavigatorRotator == null)
-			//{
-			//	atLevel.NavigatorRotator = this;
-			//	this.Rotating = true;
-			//	myLogger.debugLog("added as mover and rotator", "GOLIS()");
-			//}
-			//else
-			//	myLogger.debugLog("added as mover only", "GOLIS()");
 		}
 
 		#region NavigatorMover Members
@@ -74,16 +65,12 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="customInfo">Custom info to append to</param>
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			if (Rotating)
-				customInfo.Append("Moving");
-			else
-				customInfo.Append("Sideling");
-			customInfo.Append(" to ");
-			customInfo.AppendLine(location.ToString());
+			customInfo.Append("Moving to ");
+			customInfo.AppendLine(location.ToPretty());
 
-			customInfo.Append("Distance: ");
-			customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
-			customInfo.AppendLine("m");
+			//customInfo.Append("Distance: ");
+			//customInfo.Append(PrettySI.makePretty(m_navSet.Settings_Current.Distance));
+			//customInfo.AppendLine("m");
 		}
 
 		#endregion
@@ -95,7 +82,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public void Rotate()
 		{
-			if (m_navSet.Settings_Current.Distance > 10)
+			if (m_navSet.Settings_Current.Distance > m_controlBlock.CubeGrid.GetLongestDim() * 2)
 			{
 				Vector3 direction = location - NavigationBlock.WorldPosition;
 				m_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
