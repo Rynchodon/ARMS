@@ -10,7 +10,6 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Components;
-using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
@@ -27,6 +26,7 @@ namespace Rynchodon.Autopilot
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
+		public bool Disable { get; set; }
 
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
@@ -43,14 +43,16 @@ namespace Rynchodon.Autopilot
 		}
 
 		/// <summary>
-		/// Stops thrust & rotation, disables control
+		/// Stops thrust and rotation, disables control
 		/// </summary>
 		public void DisableControl()
 		{
+			IMyControllableEntity control = Controller as IMyControllableEntity;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				Controller.MoveAndRotateStopped();
-				if (Controller.ControlThrusters)
-					Terminal.GetActionWithName("ControlThrusters").Apply(Terminal);
+				if (control.EnabledDamping)
+					control.SwitchDamping();
+				Disable = true;
 			}, m_logger);
 		}
 
@@ -137,7 +139,7 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private enum State : byte { Disabled, Enabled, Halted, Closed }
+		private enum State : byte { Disabled, Enabled, Halted, Closed, Exit }
 
 		private readonly ShipControllerBlock m_block;
 
@@ -149,6 +151,7 @@ namespace Rynchodon.Autopilot
 		private IMyCubeGrid m_controlledGrid;
 		private State m_state = State.Disabled;
 		private DateTime m_nextAllowedInstructions = DateTime.MinValue;
+		private DateTime m_endOfHalt;
 
 		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
 		private List<byte> m_customInfo_message = new List<byte>();
@@ -203,6 +206,13 @@ namespace Rynchodon.Autopilot
 					UpdateCustomInfo();
 				}
 
+				if (m_block.Disable)
+				{
+					m_block.Disable = false;
+					m_block.ApplyAction("ControlThrusters");
+					m_state = State.Exit;
+				}
+
 				switch (m_state)
 				{
 					case State.Disabled:
@@ -224,11 +234,15 @@ namespace Rynchodon.Autopilot
 						UpdateCustomInfo();
 						return;
 					case State.Halted:
-						if (!m_block.Controller.ControlThrusters)
+						if (!m_block.Controller.ControlThrusters || DateTime.UtcNow > m_endOfHalt)
 						{
 							m_state = State.Disabled;
 							UpdateCustomInfo();
 						}
+						return;
+					case State.Exit:
+						if (!m_block.Controller.ControlThrusters)
+							m_state = State.Disabled;
 						return;
 					case State.Closed:
 						return;
@@ -528,6 +542,7 @@ namespace Rynchodon.Autopilot
 		private void HCF()
 		{
 			m_state = State.Halted;
+			m_endOfHalt = DateTime.UtcNow.AddMinutes(5);
 			m_block.SetDamping(true);
 			m_block.Controller.MoveAndRotateStopped();
 		}

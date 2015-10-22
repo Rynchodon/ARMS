@@ -192,7 +192,7 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "stop":
 					{
-						wordAction = () => { new Stopper(Mover, NavSet, false); };
+						wordAction = () => { new Stopper(Mover, NavSet); };
 						return true;
 					}
 				case "unlock":
@@ -783,7 +783,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				new Stopper(Mover, NavSet, false);
+				new Stopper(Mover, NavSet);
 				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
 			};
 			return true;

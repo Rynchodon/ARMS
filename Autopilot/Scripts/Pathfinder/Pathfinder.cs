@@ -86,6 +86,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
 		private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
 
+		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
 		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
 
 		private PseudoBlock m_navBlock;
@@ -155,7 +156,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			else
 				testDistance = (float)Math.Sqrt(distanceSquared);
 
-			Thread_High.EnqueueAction(() => TestPath(destination, isAlternate: false, tryAlternates: true, runId: m_runId));
+			m_pathHigh.Enqueue(() => TestPath(destination, isAlternate: false, tryAlternates: true, runId: m_runId));
 
 			// given velocity and distance, calculate destination
 			Vector3 move_direction = m_grid.Physics.LinearVelocity;
@@ -163,14 +164,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (lengthSquared > 10f)
 			{
 				Vector3 moveDest = m_navBlock.WorldPosition + move_direction;
-				Thread_High.EnqueueAction(() => TestPath(moveDest, isAlternate: false, tryAlternates: false, runId: m_runId));
+				m_pathHigh.Enqueue(() => TestPath(moveDest, isAlternate: false, tryAlternates: false, runId: m_runId));
 			}
+
+			RunItem();
 		}
 
 		public void TestRotate(Vector3 displacement)
 		{
 			//PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
-			//Thread_High.EnqueueAction(() => TestRotate(navBlock, displacement));
+			//m_pathHigh.Enqueue(() => TestRotate(navBlock, displacement));
 		}
 
 		/// <summary>
@@ -181,8 +184,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (!lock_testPath.TryAcquireExclusive())
 			{
 				m_logger.debugLog("Already running, requeue", "TestPath()");
-				ThreadManager queue = isAlternate ? Thread_Low : Thread_High;
-				queue.EnqueueAction(() => TestPath(destination, isAlternate, tryAlternates, runId));
+				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
+				queue.Enqueue(() => TestPath(destination, isAlternate, tryAlternates, runId));
 				return;
 			}
 
@@ -250,11 +253,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 					}
 					FindAlternate_HalfwayObstruction(displacement, runId);
 				}
-				RunAlternate();
 			}
 			finally
 			{
 				lock_testPath.ReleaseExclusive();
+				RunItem();
 			}
 		}
 
@@ -315,11 +318,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//m_rotateState = PathState.No_Obstruction;
 		}
 
-		private void RunAlternate()
+		private void RunItem()
 		{
-			if (m_pathLow.Count != 0)
+			if (m_pathHigh.Count != 0)
 			{
-				m_logger.debugLog("Adding item to thread_low", "RunAlternate()");
+				m_logger.debugLog("Adding item to Thread_High", "RunItem()");
+				Action act = m_pathHigh.Dequeue();
+				Thread_High.EnqueueAction(act);
+			}
+			else if (m_pathLow.Count != 0)
+			{
+				m_logger.debugLog("Adding item to Thread_Low", "RunItem()");
 				Action act = m_pathLow.Dequeue();
 				Thread_Low.EnqueueAction(act);
 			}

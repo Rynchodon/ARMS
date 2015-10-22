@@ -69,7 +69,7 @@ namespace Rynchodon.Autopilot
 		{
 			return !Grid.isRecent() ? Grid.predictPosition()
 				: Block != null ? GetBlockPosition(blockOffset)
-				: Vector3D.Clamp(NavPos, Grid.Entity.WorldAABB.Min, Grid.Entity.WorldAABB.Max);
+				: GridCellCache.GetCellCache(Grid.Entity as IMyCubeGrid).GetClosestOccupiedCell(NavPos);
 		}
 
 		private Vector3D GetBlockPosition(Vector3D blockOffset)
@@ -125,15 +125,15 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void BlockSearch()
 		{
-			m_logger.debugLog(Grid == null, "Grid == null", "GridUpdate()", Logger.severity.FATAL);
-			m_logger.debugLog(m_targetBlockName == null, "m_targetBlockName == null", "GridUpdate()", Logger.severity.FATAL);
+			m_logger.debugLog(Grid == null, "Grid == null", "BlockSearch()", Logger.severity.FATAL);
+			m_logger.debugLog(m_targetBlockName == null, "m_targetBlockName == null", "BlockSearch()", Logger.severity.FATAL);
 
 			NextSearch_Block = Globals.UpdateCount + SearchInterval_Block;
 			Block = null;
 
 			int bestNameLength = int.MaxValue;
 			IMyCubeGrid asGrid = Grid.Entity as IMyCubeGrid;
-			m_logger.debugLog(asGrid == null, "asGrid == null", "GridUpdate()", Logger.severity.FATAL);
+			m_logger.debugLog(asGrid == null, "asGrid == null", "BlockSearch()", Logger.severity.FATAL);
 
 			AttachedGrid.RunOnAttachedBlock(asGrid, m_allowedAttachment, slim => {
 				IMyCubeBlock Fatblock = slim.FatBlock;
@@ -141,14 +141,16 @@ namespace Rynchodon.Autopilot
 					return false;
 
 				string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().ToLower()
-						: Fatblock.DisplayNameText.ToLower();
+						? Fatblock.getNameOnly().LowerRemoveWhitespace()
+						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
 
 				if (BlockCondition != null && !BlockCondition(Fatblock))
 					return false;
 
+				m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
 				if (blockName.Length < bestNameLength && blockName.Contains(m_targetBlockName))
 				{
+					m_logger.debugLog("block name matches: " + Fatblock.DisplayNameText, "BlockSearch()");
 					Block = Fatblock;
 					bestNameLength = blockName.Length;
 					if (m_targetBlockName.Length == bestNameLength)

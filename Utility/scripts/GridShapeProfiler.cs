@@ -43,6 +43,7 @@ namespace Rynchodon
 		}
 
 		private readonly Logger m_logger;
+		private readonly IMyCubeGrid m_grid;
 
 		private HashSet<Vector3I> CellPositions = new HashSet<Vector3I>();
 		//private List<IMyDoor> LargeDoors = new List<IMyDoor>();
@@ -51,6 +52,7 @@ namespace Rynchodon
 		private GridCellCache(IMyCubeGrid grid)
 		{
 			m_logger = new Logger("GridCellCache", () => grid.DisplayName);
+			m_grid = grid;
 
 			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
 			MainLock.UsingShared(() => {
@@ -83,7 +85,10 @@ namespace Rynchodon
 						return;
 		}
 
-		public bool GetClosestOccupiedCell(Vector3I startPoint, out Vector3I closestOccupied)
+		/// <summary>
+		/// Gets the closest occupied cell by manhatten distance.
+		/// </summary>
+		public Vector3D GetClosestOccupiedCell(Vector3I startPoint)
 		{
 			Vector3I closest = Vector3I.Zero;
 			int closestDistance = int.MaxValue;
@@ -96,8 +101,18 @@ namespace Rynchodon
 				}
 			});
 
-			closestOccupied = closest;
-			return closestDistance < int.MaxValue;
+			if (closestDistance == int.MaxValue)
+				throw new NullReferenceException("No closest cell found");
+			return m_grid.GridIntegerToWorld(closest);
+		}
+
+		/// <summary>
+		/// Gets the closest occupied cell by manhatten distance.
+		/// </summary>
+		public Vector3D GetClosestOccupiedCell(Vector3D worldPosition)
+		{
+			Vector3I startPoint = m_grid.WorldToGridInteger(worldPosition);
+			return GetClosestOccupiedCell(startPoint);
 		}
 
 		private void grid_OnClosing(IMyEntity obj)

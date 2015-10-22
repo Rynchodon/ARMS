@@ -1,3 +1,5 @@
+// skip file on build
+
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
@@ -98,22 +100,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 			IMyCubeGrid grid = m_target as IMyCubeGrid;
 
-			Vector3I grindOnTarget = grid.WorldToGridInteger(m_navGrind.WorldPosition);
-			Vector3I gridMin = Vector3I.Round(grid.LocalAABB.Min / grid.GridSize);
-			Vector3I gridMax = Vector3I.Round(grid.LocalAABB.Max / grid.GridSize);
-			Vector3I clampedGrindOnTarget;
-			Vector3I.Clamp(ref grindOnTarget, ref gridMin, ref gridMax, out clampedGrindOnTarget);
-
-			Vector3I closestBlock;
-			if (!GridCellCache.GetCellCache(grid).GetClosestOccupiedCell(clampedGrindOnTarget, out closestBlock))
-			{
-				m_logger.alwaysLog("No closest block found", "Move()", Logger.severity.FATAL);
-				m_logger.debugLog("grid: " + grid.DisplayName + ", grindOnTarget: " + grindOnTarget + ", gridMin: " + gridMin + ", gridMax: " + gridMax
-					+ ", clampedGrindOnTarget: " + clampedGrindOnTarget, "Move()");
-				return;
-			}
-
-			m_targetPosition = grid.GridIntegerToWorld(closestBlock);
+			m_targetPosition = GridCellCache.GetCellCache(grid).GetClosestOccupiedCell(m_navGrind.WorldPosition);
+				
 			Vector3 blockToGrinder = m_navGrind.WorldPosition - m_targetPosition;
 			blockToGrinder.Normalize();
 
