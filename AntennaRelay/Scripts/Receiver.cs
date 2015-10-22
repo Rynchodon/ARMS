@@ -1,62 +1,254 @@
-﻿#define LOG_ENABLED //remove on build
-
+﻿using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
+using VRage.Collections;
 using VRage.ModAPI;
-using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
 	public abstract class Receiver
 	{
+
 		/// <summary>
-		/// Track LastSeen objects by entityId
+		/// For sending newly created LastSeen to all attached antennae and ShipController.
 		/// </summary>
-		protected Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
-		public IMyCubeBlock CubeBlock { get; internal set; }
-		protected LinkedList<Message> myMessages = new LinkedList<Message>();
+		/// <param name="sender">The block doing the sending.</param>
+		/// <param name="toSend">The LastSeen to send.</param>
+		public static void SendToAttached(IMyCubeBlock sender, ICollection<LastSeen> toSend)
+		{
+			Registrar.ForEach((RadioAntenna radioAnt) => {
+				if (sender.canSendTo(radioAnt.CubeBlock, true))
+					foreach (LastSeen seen in toSend)
+						radioAnt.Receive(seen);
+			});
+
+			Registrar.ForEach((LaserAntenna laserAnt) => {
+				if (sender.canSendTo(laserAnt.CubeBlock, true))
+					foreach (LastSeen seen in toSend)
+						laserAnt.Receive(seen);
+			});
+
+			Registrar.ForEach((ShipController controller) => {
+				if (sender.canSendTo(controller.CubeBlock, true))
+					foreach (LastSeen seen in toSend)
+						controller.Receive(seen);
+			});
+		}
+
+		/// <summary>
+		/// For sending newly created Message to all attached antennae.
+		/// </summary>
+		/// <param name="sender">The block doing the sending.</param>
+		/// <param name="toSend">The Message to send.</param>
+		public static void SendToAttached(IMyCubeBlock sender, ICollection<Message> toSend)
+		{
+			Registrar.ForEach((RadioAntenna radioAnt) => {
+				if (sender.canSendTo(radioAnt.CubeBlock, true))
+					foreach (Message msg in toSend)
+						radioAnt.Receive(msg);
+			});
+
+			Registrar.ForEach((LaserAntenna laserAnt) => {
+				if (sender.canSendTo(laserAnt.CubeBlock, true))
+					foreach (Message msg in toSend)
+						laserAnt.Receive(msg);
+			});
+		}
+
+		private readonly Logger myLogger = new Logger(null, "Receiver");
+		/// <summary>Track LastSeen objects by entityId</summary>
+		private Dictionary<long, LastSeen> myLastSeen;
+		private MyUniqueList<Message> myMessages;
+
+		public IMyCubeBlock CubeBlock { get; private set; }
 
 		protected Receiver(IMyCubeBlock block)
 		{
 			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
+			
 			myLogger = new Logger("Receiver", () => CubeBlock.CubeGrid.DisplayName);
-			CubeBlock.OnClosing += Close;
+			myLastSeen = new Dictionary<long, LastSeen>();
+			myMessages = new MyUniqueList<Message>();
+
+			CubeBlock.OnClosing += OnClosing;
 		}
 
-		protected abstract void Close(IMyEntity entity);
+		private void OnClosing(IMyEntity entity)
+		{
+			CubeBlock.CubeGrid.OnBlockOwnershipChanged -= CubeGrid_OnBlockOwnershipChanged;
+			CubeBlock = null;
+			myLastSeen = null;
+			myMessages = null;
+		}
 
 		private void CubeGrid_OnBlockOwnershipChanged(IMyCubeGrid obj)
 		{
 			if (obj == CubeBlock)
-				myMessages = new LinkedList<Message>();
+				myMessages.Clear();
 		}
 
 		/// <summary>
-		/// does not check mes for isValid
+		/// Executes a function on each valid LastSeen and removes every invalid one encountered.
 		/// </summary>
-		/// <param name="mes">message to receive</param>
-		public virtual void receive(Message mes)
+		/// <param name="toInvoke">Function executed on LastSeen. Iff it returns true, short-curcuit.</param>
+		public void ForEachLastSeen(Func<LastSeen, bool> toInvoke)
 		{
-			if (myMessages.Contains(mes))
-				return;
-			myMessages.AddLast(mes);
-			myLogger.debugLog("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
+			List<long> removeList = new List<long>();
+			foreach (var pair in myLastSeen)
+			{
+				if (pair.Value.IsValid)
+				{
+					if (toInvoke(pair.Value))
+						break;
+				}
+				else
+					removeList.Add(pair.Key);
+			}
+
+			foreach (long entityId in removeList)
+				myLastSeen.Remove(entityId);
 		}
 
 		/// <summary>
-		/// number of messages currently held
+		/// Executes a function on each valid Message and removes every invalid one encountered.
 		/// </summary>
-		/// <returns>number of messages</returns>
-		public int messageCount()
-		{ return myMessages.Count; }
+		/// <param name="toInvoke">Function executed on Message. Iff it returns true, short-curcuit.</param>
+		public void ForEachMessage(Func<Message, bool> toInvoke)
+		{
+			List<Message> removeList = new List<Message>();
+			foreach (Message mes in myMessages)
+			{
+				if (mes.IsValid)
+				{
+					if (toInvoke(mes))
+						break;
+				}
+				else
+					removeList.Add(mes);
+			}
+
+			foreach (Message mes in removeList)
+				myMessages.Remove(mes);
+		}
+
+		/// <summary>
+		/// Copies all LastSeen and Messages to the other Receiver. Does not check if a connection is possible.
+		/// Removes all invalid LastSeen and Message
+		/// </summary>
+		/// <param name="other">Receiving receiver</param>
+		protected void Relay(Receiver other)
+		{
+			ForEachLastSeen(seen => {
+				other.Receive(seen);
+				return false;
+			});
+
+			ForEachMessage(msg => {
+				other.Receive(msg);
+				return false;
+			});
+		}
+
+		/// <summary>
+		/// Copies all LastSeen to all attached Receiver.
+		/// If attached to the destination of a message, sends the message to the destination. Otherwise, sends it to all attached antennae.
+		/// Removes invalid LastSeen and Message
+		/// </summary>
+		protected void RelayAttached()
+		{
+			ForEachLastSeen(seen => {
+				Registrar.ForEach((RadioAntenna radioAnt) => {
+					if (CubeBlock.canSendTo(radioAnt.CubeBlock, true))
+						radioAnt.Receive(seen);
+				});
+
+				Registrar.ForEach((LaserAntenna laserAnt) => {
+					if (CubeBlock.canSendTo(laserAnt.CubeBlock, true))
+						laserAnt.Receive(seen);
+				});
+
+				Registrar.ForEach((ShipController remote) => {
+					if (CubeBlock.canSendTo(remote.CubeBlock, true))
+						remote.Receive(seen);
+				});
+
+				return false;
+			});
+
+			ForEachMessage(msg => {
+				if (AttachedGrid.IsGridAttached(CubeBlock.CubeGrid, msg.DestCubeBlock.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
+				{
+					// get receiver for block
+					ShipController remote;
+					if (Registrar.TryGetValue(msg.DestCubeBlock.EntityId, out remote))
+					{
+						remote.Receive(msg);
+						msg.IsValid = false;
+						return false;
+					}
+					ProgrammableBlock progBlock;
+					if (Registrar.TryGetValue(msg.DestCubeBlock.EntityId, out progBlock))
+					{
+						progBlock.Receive(msg);
+						msg.IsValid = false;
+						return false;
+					}
+
+					myLogger.alwaysLog("Message has invalid destination: " + msg.ToString(), "RelayAttached()", Logger.severity.WARNING);
+					msg.IsValid = false;
+					return false;
+				}
+
+				// send to all radio antenna
+				Registrar.ForEach((RadioAntenna radioAnt) => {
+					if (CubeBlock.canSendTo(radioAnt.CubeBlock, true))
+						radioAnt.Receive(msg);
+				});
+
+				Registrar.ForEach((LaserAntenna laserAnt) => {
+					if (CubeBlock.canSendTo(laserAnt.CubeBlock, true))
+						laserAnt.Receive(msg);
+				});
+
+				return false;
+			});
+		}
+
+		/// <summary>number of messages currently held</summary>
+		public int messageCount { get { return myMessages.Count; } }
+
+		public LastSeen getLastSeen(long entityId)
+		{ return myLastSeen[entityId]; }
+
+		public bool tryGetLastSeen(long entityId, out LastSeen result)
+		{ return myLastSeen.TryGetValue(entityId, out result); }
+
+		protected Message RemoveOneMessage()
+		{
+			Message result = myMessages[0];
+			myMessages.Remove(result);
+			return result;
+		}
 
 		/// <summary>
 		/// does not check seen for isValid
 		/// </summary>
-		/// <param name="seen"></param>
+		/// <param name="mes">message to receive</param>
+		public void Receive(Message mes)
+		{
+			if (myMessages.Contains(mes))
+				return;
+			myMessages.Add(mes);
+			myLogger.debugLog("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
+		}
+
+		/// <summary>
+		/// does not check seen for isValid
+		/// </summary>
 		/// <param name="forced">for receiving LastSeen for self</param>
-		public void receive(LastSeen seen, bool forced = false)
+		public void Receive(LastSeen seen, bool forced = false)
 		{
 			if (seen.Entity == CubeBlock.CubeGrid && !forced)
 				return;
@@ -71,127 +263,6 @@ namespace Rynchodon.AntennaRelay
 				myLastSeen.Add(seen.Entity.EntityId, seen);
 		}
 
-		/// <summary>
-		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
-		/// removes invalids from the list
-		/// </summary>
-		public static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list)
-		{ sendToAttached(sender, list, null); }
-
-		/// <summary>
-		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
-		/// removes invalids from the list
-		/// </summary>
-		public static void sendToAttached(IMyCubeBlock sender, Dictionary<long, LastSeen> dictionary)
-		{ sendToAttached(sender, null, dictionary); }
-
-		/// <summary>
-		/// Sends LastSeen to attached all attached friendly antennae and to remote controls.
-		/// removes invalids from the list
-		/// </summary>
-		private static void sendToAttached(IMyCubeBlock sender, ICollection<LastSeen> list = null, Dictionary<long, LastSeen> dictionary = null)
-		{
-			ICollection<LastSeen> toSend;
-			if (list != null)
-				toSend = list;
-			else
-				toSend = dictionary.Values;
-
-			if (dictionary != null || !toSend.IsReadOnly)
-			{
-				LinkedList<LastSeen> removeList = new LinkedList<LastSeen>();
-				foreach (LastSeen seen in toSend)
-					if (!seen.isValid)
-						removeList.AddLast(seen);
-				foreach (LastSeen seen in removeList)
-					if (dictionary != null)
-						dictionary.Remove(seen.Entity.EntityId);
-					else
-						toSend.Remove(seen);
-			}
-
-			// to radio antenna
-			foreach (RadioAntenna radioAnt in RadioAntenna.registry)
-				if (sender.canSendTo(radioAnt.CubeBlock, true))
-					foreach (LastSeen seen in toSend)
-						radioAnt.receive(seen);
-
-			// to laser antenna
-			foreach (LaserAntenna laserAnt in LaserAntenna.registry)
-				if (sender.canSendTo(laserAnt.CubeBlock, true))
-					foreach (LastSeen seen in toSend)
-						laserAnt.receive(seen);
-
-			// to remote control
-			foreach (ShipController remote in ShipController.registry.Values)
-				if (sender.canSendTo(remote.CubeBlock, true))
-					foreach (LastSeen seen in toSend)
-						remote.receive(seen);
-		}
-
-		/// <summary>
-		/// If attached to final destination, send message to it. Otherwise sends Message to all attached friendly antennae.
-		/// removes invalids from the list
-		/// </summary>
-		/// <param name="additional">also sends to this collection, without testing</param>
-		public static void sendToAttached(IMyCubeBlock sender, ICollection<Message> toSend)
-		{
-			LinkedList<Message> removeList = new LinkedList<Message>();
-			foreach (Message mes in toSend)
-			{
-				if (mes.isValid)
-				{
-					if (AttachedGrids.isGridAttached(sender.CubeGrid, mes.DestCubeBlock.CubeGrid))
-					{
-						// get receiver for block
-						ShipController remote;
-						if (ShipController.registry.TryGetValue(mes.DestCubeBlock, out remote))
-						{
-							remote.receive(mes);
-							mes.isValid = false;
-							removeList.AddLast(mes);
-						}
-						else
-						{
-							ProgrammableBlock progBlock;
-							if (ProgrammableBlock.registry.TryGetValue(mes.DestCubeBlock, out progBlock))
-							{
-								progBlock.receive(mes);
-								mes.isValid = false;
-								removeList.AddLast(mes);
-							}
-						}
-					}
-				}
-				else // not valid
-					removeList.AddLast(mes);
-			}
-			foreach (Message mes in removeList)
-				toSend.Remove(mes);
-
-			// to radio antenna
-			foreach (RadioAntenna radioAnt in RadioAntenna.registry)
-				if (sender.canSendTo(radioAnt.CubeBlock, true))
-					foreach (Message mes in toSend)
-						radioAnt.receive(mes);
-
-			// to laser antenna
-			foreach (LaserAntenna laserAnt in LaserAntenna.registry)
-				if (sender.canSendTo(laserAnt.CubeBlock, true))
-					foreach (Message mes in toSend)
-						laserAnt.receive(mes);
-		}
-
-		public LastSeen getLastSeen(long entityId)
-		{ return myLastSeen[entityId]; }
-
-		public bool tryGetLastSeen(long entityId, out LastSeen result)
-		{ return myLastSeen.TryGetValue(entityId, out result); }
-
-		public IEnumerator<LastSeen> getLastSeenEnum()
-		{ return myLastSeen.Values.GetEnumerator(); }
-
-		private Logger myLogger = new Logger(null, "Receiver");
 	}
 
 	public static class ReceiverExtensions
@@ -200,4 +271,3 @@ namespace Rynchodon.AntennaRelay
 		{ return receiver != null && receiver.CubeBlock != null && !receiver.CubeBlock.Closed; }
 	}
 }
-

@@ -1,10 +1,6 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
@@ -15,7 +11,6 @@ namespace Rynchodon.AntennaRelay
 	/// </summary>
 	public class ProgrammableBlock : Receiver
 	{
-		internal static Dictionary<IMyCubeBlock, ProgrammableBlock> registry = new Dictionary<IMyCubeBlock, ProgrammableBlock>();
 
 		private Ingame.IMyProgrammableBlock myProgBlock;
 		private Logger myLogger;
@@ -25,26 +20,12 @@ namespace Rynchodon.AntennaRelay
 		{
 			myLogger = new Logger("Programmable block", () => CubeBlock.CubeGrid.DisplayName);
 			myProgBlock = CubeBlock as Ingame.IMyProgrammableBlock;
-			registry.Add(CubeBlock, this);
-		}
-
-		protected override void Close(IMyEntity entity)
-		{
-			try
-			{
-				if (CubeBlock != null && registry.ContainsKey(CubeBlock))
-					registry.Remove(CubeBlock);
-			}
-			catch (Exception e)
-			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			CubeBlock = null;
-			myProgBlock = null;
+			Registrar.Add(CubeBlock, this);
 		}
 
 		/// <summary>
 		/// Uses MessageParser to grab messages, then sends them out. Not registered for event because it fires too frequently.
 		/// </summary>
-		/// Not actually subscribed to an event
 		private void myProgBlock_CustomNameChanged()
 		{
 			try
@@ -55,7 +36,7 @@ namespace Rynchodon.AntennaRelay
 					myLogger.debugLog("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 					return;
 				}
-				Receiver.sendToAttached(CubeBlock, toSend);
+				Receiver.SendToAttached(CubeBlock, toSend);
 				myLogger.debugLog("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 			}
 			catch (Exception e)
@@ -76,20 +57,17 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			// handle received message
-			if (myMessages.Count == 0)
+			if (messageCount == 0)
 				return;
 
 			IMyTerminalBlock asTerm = CubeBlock as IMyTerminalBlock;
 			if (MessageParser.canWriteTo(asTerm))
 			{
-				Message toWrite = myMessages.First();
-				myMessages.RemoveFirst();
+				Message toWrite = RemoveOneMessage();
 				MessageParser.writeToName(asTerm, toWrite);
 			}
 			asTerm.GetActionWithName("Run").Apply(CubeBlock);
 		}
 
-		public static bool TryGet(IMyCubeBlock block, out ProgrammableBlock result)
-		{ return registry.TryGetValue(block, out result); }
 	}
 }

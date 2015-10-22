@@ -45,9 +45,20 @@ namespace Rynchodon.AntennaRelay
 
 		private const string descrEnd = "Autopilot Detected";
 
-		private static readonly Logger staticLogger = new Logger("static", "Player");
-		private static readonly Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
+		//private static Logger staticLogger = new Logger("static", "Player");
+		private static Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
 		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
+
+		static Player()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			playersCached = null;
+		}
 
 		public static void OnLeave(IMyPlayer player)
 		{

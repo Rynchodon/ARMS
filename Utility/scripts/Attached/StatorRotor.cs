@@ -3,8 +3,9 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 
-namespace Rynchodon.AttachedGrid
+namespace Rynchodon.Attached
 {
+	/// Not derived from AttachableBlockPair because testing for attached is fast but getting attached block is slow.
 	public static class StatorRotor
 	{
 		private static readonly Logger myLogger = new Logger("StatorRotor");
@@ -19,9 +20,9 @@ namespace Rynchodon.AttachedGrid
 		public static bool TryGetRotor(IMyMotorStator stator, out IMyCubeBlock rotor)
 		{
 			Stator value;
-			if (!Stator.registry.TryGetValue(stator, out value))
+			if (!Registrar.TryGetValue(stator.EntityId, out value))
 			{
-				myLogger.alwaysLog("failed to get stator from registry: " + stator.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get stator from registrar: " + stator.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
 				rotor = null;
 				return false;
 			}
@@ -44,9 +45,9 @@ namespace Rynchodon.AttachedGrid
 		public static bool TryGetStator(IMyCubeBlock rotor, out IMyMotorStator stator)
 		{
 			Rotor value;
-			if (!Rotor.registry.TryGetValue(rotor, out value))
+			if (!Registrar.TryGetValue(rotor.EntityId, out value))
 			{
-				myLogger.alwaysLog("failed to get rotor from registry: " + rotor.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get rotor from registrar: " + rotor.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
 				stator = null;
 				return false;
 			}
@@ -59,29 +60,19 @@ namespace Rynchodon.AttachedGrid
 			return true;
 		}
 
-		public class Stator
+		public class Stator : AttachableBlockBase
 		{
-			internal static Dictionary<IMyMotorStator, Stator> registry = new Dictionary<IMyMotorStator, Stator>();
-
 			internal readonly IMyMotorStator myStator;
 			internal Rotor partner;
 
 			private readonly Logger myLogger;
 
 			public Stator(IMyCubeBlock block)
+				: base(block, AttachedGrid.AttachmentKind.Motor)
 			{
 				this.myLogger = new Logger("Stator", block);
 				this.myStator = block as IMyMotorStator;
-				registry.Add(this.myStator, this);
-				this.myStator.OnClosing += myStator_OnClosing;
-			}
-
-			private void myStator_OnClosing(IMyEntity obj)
-			{
-				myLogger.debugLog("entered myStator_OnClosing()", "myStator_OnClosing()");
-				myStator.OnClosing -= myStator_OnClosing;
-				registry.Remove(myStator);
-				myLogger.debugLog("leaving myStator_OnClosing()", "myStator_OnClosing()");
+				Registrar.Add(this.myStator, this);
 			}
 
 			/// This will not work correctly if a rotor is replaced in less than 10 updates.
@@ -91,51 +82,38 @@ namespace Rynchodon.AttachedGrid
 				{
 					if (myStator.IsAttached)
 					{
-						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetSlimObjectBuilder_Safe() as MyObjectBuilder_MotorStator; // could this ever be null?
-						IMyEntity rotorE;
-						if (MyAPIGateway.Entities.TryGetEntityById(statorBuilder.RotorEntityId, out rotorE))
+						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetObjectBuilder_Safe() as MyObjectBuilder_MotorStator;
+						if (Registrar.TryGetValue(statorBuilder.RotorEntityId.Value, out partner))
 						{
-							if (Rotor.registry.TryGetValue((rotorE as IMyCubeBlock), out partner))
-							{
-								myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
-								partner.partner = this;
-							}
-							else
-								myLogger.alwaysLog("Failed to set partner, Rotor not in registry.", "Update10()", Logger.severity.WARNING);
+							myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
+							Attach(partner.myRotor);
+							partner.partner = this;
 						}
 						else
-							myLogger.alwaysLog("Failed to set partner, entity not found", "Update10()", Logger.severity.WARNING);
+							myLogger.alwaysLog("Failed to set partner, Rotor not in registrar.", "Update10()", Logger.severity.WARNING);
 					}
 				}
 				else // partner != null
 					if (!myStator.IsAttached)
 					{
+						myLogger.debugLog("Removing partner " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
+						Detach();
 						partner.partner = null;
 						partner = null;
 					}
 			}
 		}
 
-		public class Rotor
+		public class Rotor : AttachableBlockBase
 		{
-			internal static Dictionary<IMyCubeBlock, Rotor> registry = new Dictionary<IMyCubeBlock, Rotor>();
-
 			internal readonly IMyCubeBlock myRotor;
 			internal Stator partner;
 
 			public Rotor(IMyCubeBlock block)
+				: base(block, AttachedGrid.AttachmentKind.Motor)
 			{
 				this.myRotor = block;
-				registry.Add(this.myRotor, this);
-				this.myRotor.OnClosing += myRotor_OnClosing;
-			}
-
-			private void myRotor_OnClosing(IMyEntity obj)
-			{
-				myLogger.debugLog("entered myRotor_OnClosing()", "myRotor_OnClosing()");
-				myRotor.OnClosing -= myRotor_OnClosing;
-				registry.Remove(myRotor);
-				myLogger.debugLog("leaving myRotor_OnClosing()", "myRotor_OnClosing()");
+				Registrar.Add(this.myRotor, this);
 			}
 		}
 	}

@@ -1,368 +1,345 @@
-﻿#define LOG_ENABLED // remove on build
-
-using System;
-using System.Collections.Generic;
+﻿using System;
+using Rynchodon.Autopilot.Data;
+using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Threading;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
-using VRage.ModAPI;
 using VRageMath;
-using Rynchodon.Autopilot.NavigationSettings;
-using Rynchodon.Settings;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {
 	/// <summary>
 	/// Finds alternate paths if the current path is blocked.
 	/// </summary>
-	internal class Pathfinder
+	public class Pathfinder
 	{
-		private readonly IMyCubeGrid CubeGrid;
 
-		private NavSettings CNS;
-		private Vector3D Destination;// { get; private set; }
-		private Vector3D? Waypoint;// { get; private set; }
-		private Vector3D WayDest
+		private enum PathState : byte { Not_Run, No_Obstruction, Searching, No_Way_Forward }
+
+		private const float SqRtHalf = 0.70710678f;
+		private const float SqRtThird = 0.57735026f;
+
+		#region Base25Directions
+		/// <remarks>
+		/// <para>Why not use Base27Directions? Because it contains 64 directions...</para>
+		/// <para>Does not contain zero or forward.</para>
+		/// </remarks>
+		private static Vector3[] Base25Directions = new Vector3[]{
+			#region Forward
+			new Vector3(0f, SqRtHalf, -SqRtHalf),
+			new Vector3(SqRtThird, SqRtThird, -SqRtThird),
+			new Vector3(SqRtHalf, 0f, -SqRtHalf),
+			new Vector3(SqRtThird, -SqRtThird, -SqRtThird),
+			new Vector3(0f, -SqRtHalf, -SqRtHalf),
+			new Vector3(-SqRtThird, -SqRtThird, -SqRtThird),
+			new Vector3(-SqRtHalf, 0f, -SqRtHalf),
+			new Vector3(-SqRtThird, SqRtThird, -SqRtThird),
+			#endregion
+
+			new Vector3(0f, 1f, 0f),
+			new Vector3(SqRtHalf, SqRtHalf, 0f),
+			new Vector3(1f, 0f, 0f),
+			new Vector3(SqRtHalf, -SqRtHalf, 0f),
+			new Vector3(0f, -1f, 0f),
+			new Vector3(-SqRtHalf, -SqRtHalf, 0f),
+			new Vector3(-1f, 0f, 0f),
+			new Vector3(-SqRtHalf, SqRtHalf, 0f),
+
+			#region Backward
+			new Vector3(0f, SqRtHalf, SqRtHalf),
+			new Vector3(SqRtThird, SqRtThird, SqRtThird),
+			new Vector3(SqRtHalf, 0f, SqRtHalf),
+			new Vector3(SqRtThird, -SqRtThird, SqRtThird),
+			new Vector3(0f, -SqRtHalf, SqRtHalf),
+			new Vector3(-SqRtThird, -SqRtThird, SqRtThird),
+			new Vector3(-SqRtHalf, 0f, SqRtHalf),
+			new Vector3(-SqRtThird, SqRtThird, SqRtThird),
+			new Vector3(0f, 0f, 1f)
+			#endregion
+		};
+		#endregion
+
+		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
+		private static ThreadManager Thread_Low = new ThreadManager(1, true, "Path_Low");
+
+		private static short RunIdPool;
+
+		static Pathfinder()
 		{
-			get
-			{
-				if (Waypoint != null) 
-					return (Vector3D)Waypoint;
-				return Destination;
-			}
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private IMyCubeGrid DestGrid;
-		private IMyCubeBlock NavigationBlock;// { get; private set; }
-		private bool IgnoreAsteroids;// { get; private set; }
-		private NavSettings.SpecialFlying SpecialFyingInstructions;// { get; private set; }
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Thread_High = null;
+			Thread_Low = null;
+			Base25Directions = null;
+		}
 
-		private PathChecker myPathChecker;
-		private static ThreadManager PathFinderThread = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder));
+		private readonly Logger m_logger;
+		private readonly IMyCubeGrid m_grid;
+		private readonly PathChecker m_pathChecker;
+		private readonly AllNavigationSettings m_navSet;
+		private readonly Mover m_mover;
+		private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
+		private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
 
-		/// <summary>next time CheckPath() is allowed to run</summary>
-		private DateTime nextRun = DateTime.MinValue;
+		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
+		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
 
-		private Logger myLogger;
+		private PseudoBlock m_navBlock;
+		private MyEntity m_destEntity;
+		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
-		public Pathfinder(IMyCubeGrid grid)
+		private PathState m_pathState = PathState.Not_Run;
+		private PathState m_rotateState = PathState.No_Obstruction;
+
+		private ulong m_nextRun;
+		private short m_runId;
+		private float m_closestDistanceSquared;
+
+		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
+		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
+
+		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
 			grid.throwIfNull_argument("grid");
-			CubeGrid = grid;
-			myPathChecker = new PathChecker(grid);
-			myLogger = new Logger("Pathfinder", () => grid.DisplayName);
-			myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
+			m_grid = grid;
+			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
+			m_pathChecker = new PathChecker(grid);
+			m_navSet = navSet;
+			m_mover = mover;
 		}
 
-		private PathfinderOutput myOutput;
-		private FastResourceLock lock_myOutput = new FastResourceLock();
-
-		private void SetOutput(PathfinderOutput newOutput)
+		public void TestPath(Vector3 destination, bool landing)
 		{
-			if (myPathChecker != null && myPathChecker.Interrupt)
-				return;
-			using (lock_myOutput.AcquireExclusiveUsing())
-				myOutput = newOutput;
-		}
-
-		public PathfinderOutput GetOutput()
-		{
-			using (lock_myOutput.AcquireSharedUsing())
+			if (m_navSet.Settings_Current.DestinationChanged)
 			{
-				PathfinderOutput temp = myOutput;
-				if (temp.PathfinderResult != PathfinderOutput.Result.Incomplete)
-					myOutput = new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Incomplete);
-				return temp;
+				m_logger.debugLog("new destination: " + destination, "TestPath()");
+				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
+				m_runId = RunIdPool++;
+				m_pathLow.Clear();
+				m_pathState = PathState.Not_Run;
 			}
-		}
+			//else
+			//	m_logger.debugLog("destination unchanged", "TestPath()");
 
-		internal void Run(NavSettings CNS, IMyCubeBlock NavigationBlock, Rynchodon.Weapons.Engager myEngager)
-		{
-			if (!CNS.getWayDest(false).HasValue)
+			if (Globals.UpdateCount < m_nextRun)
+				return;
+			m_nextRun = Globals.UpdateCount + 10ul;
+
+			if (m_pathLow.Count != 0)
 			{
-				myLogger.debugLog("no destination", "Run()");
+				m_logger.debugLog("path low is running", "TestPath()");
 				return;
 			}
 
-			Vector3D destination = CNS.getWayDest(false).Value;
-			Vector3D? waypoint = CNS.myWaypoint;
-			bool ignoreAsteroids = CNS.ignoreAsteroids;
-			NavSettings.SpecialFlying SpecialFyingInstructions = CNS.SpecialFlyingInstructions;
-			if (waypoint == destination)
-				waypoint = null;
+			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
+			m_destEntity = m_navSet.Settings_Current.DestinationEntity as MyEntity;
+			m_ignoreAsteroid = m_navSet.Settings_Current.IgnoreAsteroid;
+			m_landing = landing;
+			m_canChangeCourse = m_navSet.Settings_Current.PathfinderCanChangeCourse;
 
-			// if something has changed, interrupt previous
-			if (this.Destination != destination || this.Waypoint != waypoint || this.NavigationBlock != NavigationBlock || this.IgnoreAsteroids != ignoreAsteroids || this.SpecialFyingInstructions != SpecialFyingInstructions || myOutput == null)
+			Vector3 displacement = destination - m_navBlock.WorldPosition;
+			float distanceSquared = displacement.LengthSquared();
+			float testDistance;
+			if (distanceSquared > 10000f)
 			{
-				if (myPathChecker != null)
-					myPathChecker.Interrupt = true;
-				this.CNS = CNS;
-				this.Destination = destination;
-				this.Waypoint = waypoint;
-				this.NavigationBlock = NavigationBlock;
-				this.IgnoreAsteroids = ignoreAsteroids;
-				this.SpecialFyingInstructions = SpecialFyingInstructions;
-
-				// decide whether to use collision avoidance or slowdown
-				this.DestGrid = null;
-				switch (CNS.getTypeOfWayDest())
-				{
-					case NavSettings.TypeOfWayDest.BLOCK:
-					case NavSettings.TypeOfWayDest.GRID:
-						// hostile grids should always be avoided (slowdown not available)
-						if (!CNS.target_locked)
-						{
-							// run slowdown. see Navigator.calcMoveAndRotate()
-							this.DestGrid = CNS.CurrentGridDest.Grid;
-						}
-						break;
-					case NavSettings.TypeOfWayDest.LAND:
-					default:
-						if (CNS.landingState != NavSettings.LANDING.OFF && CNS.CurrentGridDest != null)
-							this.DestGrid = CNS.CurrentGridDest.Grid;
-						break;
-				}
+				// only look ahead 10 s / 100 m
+				float speedSquared = m_navBlock.Grid.GetLinearVelocity().LengthSquared();
+				testDistance = speedSquared < 100f ? 100f : (float)Math.Sqrt(speedSquared) * 10f;
+				Vector3 direction = displacement / testDistance;
+				destination = m_navBlock.WorldPosition + testDistance * direction;
 			}
-
-			// not a race, this function is only called from one thread
-			if (DateTime.UtcNow < nextRun)
-				return;
-			nextRun = DateTime.MaxValue;
-
-			PathFinderThread.EnqueueAction(Wrapper_CheckPath);
-		}
-
-		private void Wrapper_CheckPath()
-		{
-			try
-			{ CheckPath(); }
-			catch (InterruptException)
-			{ myLogger.debugLog("Caught Interrupt", "Wrapper_CheckPath", Logger.severity.DEBUG); }
-			catch (Exception other)
-			{ myLogger.debugLog("Exception: " + other, "Wrapper_CheckPath", Logger.severity.ERROR); }
-			finally
-			{
-				if (SpecialFyingInstructions == NavSettings.SpecialFlying.None && myOutput != null && myOutput.PathfinderResult == PathfinderOutput.Result.No_Way_Forward)
-				{
-					myLogger.debugLog("no way forward, delaying next run by 10 seconds", "Wrapper_CheckPath()");
-					nextRun = DateTime.UtcNow + new TimeSpan(0, 0, 10);
-				}
-				else
-					nextRun = DateTime.UtcNow + new TimeSpan(0, 0, 1);
-				//myLogger.debugLog("next run is in: " + nextRun, "Wrapper_CheckPath");
-			}
-		}
-
-		private float DistanceToDest;
-
-		private void CheckPath()
-		{
-			Vector3? pointOfObstruction = null;
-			Vector3D WayDest = Destination;
-			Vector3D NavBlockPosition = NavigationBlock.GetPosition();
-			DistanceToDest = (float)(Destination - NavBlockPosition).Length();
-
-			IMyEntity ObstructingEntity = null;
-			if (SpecialFyingInstructions == NavSettings.SpecialFlying.None || Waypoint == null)
-			{
-				myLogger.debugLog("testing path to destination", "CheckPath()");
-				ObstructingEntity = myPathChecker.TestPath(Destination, NavigationBlock, IgnoreAsteroids, out pointOfObstruction, DestGrid);
-				if (ObstructingEntity == null)
-				{ 
-					if (Waypoint == null)
-					{
-						myLogger.debugLog("Path to destination is clear", "CheckPath()", Logger.severity.DEBUG);
-						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Path_Clear));
-					}
-					else
-					{
-						myLogger.debugLog("Re-routing to destination, path is now clear", "CheckPath()", Logger.severity.DEBUG);
-						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, Destination));
-					}
-					return;
-				}
-				CheckInterrupt();
-				myLogger.debugLog("Path to destination is obstructed by " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
-				IMyVoxelMap ObsAsVoxel = ObstructingEntity as IMyVoxelMap;
-				if (ObsAsVoxel != null)
-					myLogger.debugLog("Voxel AABB = " + ObsAsVoxel.WorldAABB + ", Volume = " + ObsAsVoxel.WorldVolume, "CheckPath()");
-			}
-
-			if (Waypoint != null)
-			{
-				WayDest = (Vector3)Waypoint;
-				myLogger.debugLog("testing path to waypoint", "CheckPath()");
-				ObstructingEntity = myPathChecker.TestPath((Vector3D)Waypoint, NavigationBlock, IgnoreAsteroids, out pointOfObstruction, DestGrid);
-				if (ObstructingEntity == null)
-				{
-					myLogger.debugLog("Path to waypoint is clear", "CheckPath()", Logger.severity.DEBUG);
-					SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Path_Clear));
-					return;
-				}
-			}
-
-			if (ObstructingEntity == null)
-			{
-				myLogger.debugLog("Neither Destination nor Waypoint were tested", "CheckPath()", Logger.severity.DEBUG);
-				return;
-			}
-
-			CheckInterrupt();
-			switch (SpecialFyingInstructions)
-			{
-				case NavSettings.SpecialFlying.Line_Any:
-				case NavSettings.SpecialFlying.Line_SidelForward:
-					{
-						if (CanMoveInDirection(NavBlockPosition, WayDest - NavBlockPosition, "forward"))
-							return;
-
-						myLogger.debugLog("NoAlternateRoute, Obstruction = " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.DEBUG);
-						SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
-						return;
-					}
-			}
-
-			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Searching_Alt, ObstructingEntity));
-			myLogger.debugLog("Path to Way/Dest is obstructed by " + ObstructingEntity.getBestName() + " at " + pointOfObstruction, "CheckPath()", Logger.severity.TRACE);
-
-			Vector3 lineToWayDest = WayDest - CubeGrid.GetCentre();
-			Vector3 newPath_v1, newPath_v2;
-			lineToWayDest.CalculatePerpendicularVector(out newPath_v1);
-			newPath_v2 = lineToWayDest.Cross(newPath_v1);
-			newPath_v1 = Vector3.Normalize(newPath_v1);
-			newPath_v2 = Vector3.Normalize(newPath_v2);
-			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
-
-			for (int newPathDistance = 8; newPathDistance < 10000; newPathDistance *= 2)
-			{
-				myLogger.debugLog("newPathDistance = " + newPathDistance, "CheckPath()", Logger.severity.TRACE);
-
-				// check far enough & sort alternate paths
-				SortedDictionary<float, Vector3> Alternate_Path = new SortedDictionary<float, Vector3>();
-				foreach (Vector3 PathVector in NewPathVectors)
-				{
-					pointOfObstruction.throwIfNull_variable("pointOfObstruction");
-					Vector3 Alternate = (Vector3)pointOfObstruction + newPathDistance * PathVector;
-					myLogger.debugLog("Alternate = " + Alternate, "CheckPath()");
-					CNS.throwIfNull_variable("CNS");
-					if (!CNS.waypointFarEnough(Alternate))
-					{
-						myLogger.debugLog("waypoint is too close, throwing out: " + Alternate, "CheckPath()");
-						continue;
-					}
-					float distanceFromDest = Vector3.Distance(Destination, Alternate);
-					Alternate_Path.throwIfNull_variable("Alternate_Path");
-					while (Alternate_Path.ContainsKey(distanceFromDest))
-						distanceFromDest = distanceFromDest.IncrementSignificand();
-					Alternate_Path.Add(distanceFromDest, Alternate);
-
-					myLogger.debugLog("Added alt path: " + Alternate + " with distance of " + distanceFromDest, "CheckPath()");
-				}
-
-				foreach (Vector3 AlternatePoint in Alternate_Path.Values)
-					if (TestAltPath(AlternatePoint))
-						return;
-			}
-
-			// before going to No Way Forward, check if we can move around
-			// try moving forward
-			Vector3D GridCentre = CubeGrid.GetCentre();
-			Vector3 Forward = NavigationBlock.WorldMatrix.Forward;
-			if (CanMoveInDirection(GridCentre, Forward, "forward"))
-				return;
-			// try moving backward
-			Vector3 Backward = NavigationBlock.WorldMatrix.Backward;
-			if (CanMoveInDirection(GridCentre, Backward, "backward"))
-				return;
-
-			SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.No_Way_Forward, ObstructingEntity));
-			myLogger.debugLog("No Way Forward: " + ObstructingEntity.getBestName(), "CheckPath()", Logger.severity.INFO);
-		}
-
-		private bool CanMoveInDirection(Vector3D NavBlockPos, Vector3D direction, string dirName, bool countDown = true)
-		{
-			direction = Vector3D.Normalize(direction);
-
-			int distance;
-			if (countDown)
-				distance = 128;
 			else
-				distance = 2;
+				testDistance = (float)Math.Sqrt(distanceSquared);
 
-			while (true)
+			m_pathHigh.Enqueue(() => TestPath(destination, isAlternate: false, tryAlternates: true, runId: m_runId));
+
+			// given velocity and distance, calculate destination
+			Vector3 move_direction = m_grid.Physics.LinearVelocity;
+			float lengthSquared = move_direction.LengthSquared();
+			if (lengthSquared > 10f)
 			{
-				Vector3 testPoint = NavBlockPos + distance * direction;
-				if (!CNS.waypointFarEnough(testPoint))
-				{
-					myLogger.debugLog(dirName + " too close: distance = " + distance + ", testPoint = " + testPoint, "CanMoveInDirection()", Logger.severity.TRACE);
-					return false;
-				}
-				myLogger.debugLog("testing " + dirName + ": distance = " + distance + ", testPoint = " + testPoint, "CanMoveInDirection()", Logger.severity.TRACE);
-				if (TestAltPath(testPoint, false))
-					return true;
-
-				if (countDown)
-				{
-					distance /= 2;
-					if (distance < 2)
-						break;
-				}
-				else
-				{
-					distance *= 2;
-					if (distance > 128)
-						break;
-				}
+				Vector3 moveDest = m_navBlock.WorldPosition + move_direction;
+				m_pathHigh.Enqueue(() => TestPath(moveDest, isAlternate: false, tryAlternates: false, runId: m_runId));
 			}
 
-			return false;
+			RunItem();
 		}
 
-		///<summary>Test if a path can be flown. From current position to AlternatePoint</summary>
-		/// <returns>true iff the path is flyable</returns>
-		private bool TestAltPath(Vector3 AlternatePoint, bool usefulTest = true)
+		public void TestRotate(Vector3 displacement)
 		{
-			myLogger.debugLog("testing alternate path: " + AlternatePoint, "TestAltPath()");
-			Vector3? alt_pointOfObstruction;
-			IMyEntity Alt_ObstructingEntity = myPathChecker.TestPath(AlternatePoint, NavigationBlock, IgnoreAsteroids, out alt_pointOfObstruction, DestGrid);
-			if (Alt_ObstructingEntity == null) // found a new path
-			{
-				CheckInterrupt();
-
-				if (usefulTest)
-				{
-					// Is this a useful path; can we get closer to the destination by flying it?
-					float pathwiseDistanceToDest = myPathChecker.distanceCanTravel(new Line(AlternatePoint, Destination, false));
-					CheckInterrupt();
-
-					if (pathwiseDistanceToDest >= DistanceToDest + CNS.destinationRadius)
-					{
-						myLogger.debugLog("path is unobstructed but not useful enough. distance to dest = " + DistanceToDest + ", pathwise = " + pathwiseDistanceToDest, "TestAltPath()", Logger.severity.TRACE);
-						CheckInterrupt();
-						return false;
-					}
-					myLogger.debugLog("path is useful. distance to dest = " + DistanceToDest + ", pathwise = " + pathwiseDistanceToDest, "TestAltPath()", Logger.severity.TRACE);
-				}
-
-				SetOutput(new PathfinderOutput(myPathChecker, PathfinderOutput.Result.Alternate_Path, null, AlternatePoint));
-				myLogger.debugLog("Found a new path: " + AlternatePoint, "CheckPath()", Logger.severity.DEBUG);
-				return true;
-			}
-			myLogger.debugLog("Alternate path is obstructed by " + Alt_ObstructingEntity.getBestName() + " at " + alt_pointOfObstruction, "TestAltPath()", Logger.severity.TRACE);
-			CheckInterrupt();
-			return false;
+			//PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
+			//m_pathHigh.Enqueue(() => TestRotate(navBlock, displacement));
 		}
-
-		#region Interrupt
 
 		/// <summary>
-		/// throws an InterruptException if Interrupt
+		/// Test a path between current position and destination.
 		/// </summary>
-		private void CheckInterrupt()
+		private void TestPath(Vector3D destination, bool isAlternate, bool tryAlternates, short runId)
 		{
-			if (myPathChecker.Interrupt)
-				throw new InterruptException();
+			if (!lock_testPath.TryAcquireExclusive())
+			{
+				m_logger.debugLog("Already running, requeue", "TestPath()");
+				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
+				queue.Enqueue(() => TestPath(destination, isAlternate, tryAlternates, runId));
+				return;
+			}
+
+			try
+			{
+				if (!isAlternate && !tryAlternates)
+					m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.INFO);
+
+				if (runId != m_runId)
+				{
+					m_logger.debugLog("destination changed, abort", "TestPath()");
+					return;
+				}
+
+				if (m_pathChecker.TestFast(m_navBlock, destination, m_ignoreAsteroid, m_destEntity, m_landing))
+				{
+					m_logger.debugLog("path is clear (fast)", "TestPath()", Logger.severity.DEBUG);
+					if (runId == m_runId)
+					{
+						if (isAlternate)
+							SetWaypoint(destination);
+						m_pathState = PathState.No_Obstruction;
+						m_pathLow.Clear();
+					}
+					else
+						m_logger.debugLog("destination changed, abort", "TestPath()");
+					return;
+				}
+				MyEntity obstructing;
+				IMyCubeGrid obsGrid;
+				Vector3? pointOfObstruction;
+				if (m_pathChecker.TestSlow(out obstructing, out obsGrid, out pointOfObstruction))
+				{
+					m_logger.debugLog("path is clear (slow)", "TestPath()", Logger.severity.DEBUG);
+					if (runId == m_runId)
+					{
+						if (isAlternate)
+							SetWaypoint(destination);
+						m_pathState = PathState.No_Obstruction;
+						m_pathLow.Clear();
+					}
+					else
+						m_logger.debugLog("destination changed, abort", "TestPath()");
+					return;
+				}
+
+				if (runId != m_runId)
+				{
+					m_logger.debugLog("destination changed, abort", "TestPath()");
+					return;
+				}
+
+				m_pathState = PathState.Searching;
+
+				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", target: " + m_destEntity.getBestName(), "TestPath()", Logger.severity.TRACE);
+
+				if (tryAlternates)
+				{
+					Vector3 displacement = pointOfObstruction.Value - m_navBlock.WorldPosition;
+
+					if (m_canChangeCourse)
+					{
+						FindAlternate_AroundObstruction(displacement, pointOfObstruction.Value, runId);
+						FindAlternate_JustMove(runId);
+					}
+					FindAlternate_HalfwayObstruction(displacement, runId);
+				}
+			}
+			finally
+			{
+				lock_testPath.ReleaseExclusive();
+				RunItem();
+			}
 		}
 
-		#endregion
+		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 pointOfObstruction, short runId)
+		{
+			Vector3 direction; Vector3.Normalize(ref displacement, out direction);
+			Vector3 newPath_v1, newPath_v2;
+			direction.CalculatePerpendicularVector(out newPath_v1);
+			newPath_v2 = direction.Cross(newPath_v1);
+			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
+
+			float destRadius = m_navSet.Settings_Current.DestinationRadius;
+			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
+			destRadius *= destRadius;
+
+			for (int newPathDistance = 8; newPathDistance < 10000; newPathDistance *= 2)
+				foreach (Vector3 PathVector in NewPathVectors)
+				{
+					Vector3 tryDest = pointOfObstruction + newPathDistance * PathVector;
+
+					if (Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest) > destRadius)
+						m_pathLow.Enqueue(() => TestPath(tryDest, isAlternate: true, tryAlternates: false, runId: runId));
+				}
+		}
+
+		private void FindAlternate_HalfwayObstruction(Vector3 displacement, short runId)
+		{
+			Vector3 halfway = displacement * 0.5f + m_navBlock.WorldPosition;
+			m_pathLow.Enqueue(() => TestPath(halfway, isAlternate: true, tryAlternates: false, runId: runId));
+		}
+
+		private void FindAlternate_JustMove(short runId)
+		{
+			Vector3D worldPosition = m_navBlock.WorldPosition;
+			float distance = m_navSet.Settings_Current.DestinationRadius * 2f;
+			for (int i = 0; i < Base25Directions.Length; i++)
+			{
+				Vector3 tryDest = worldPosition + Base25Directions[i] * (distance + i);
+				m_pathLow.Enqueue(() => TestPath(tryDest, isAlternate: true, tryAlternates: false, runId: runId));
+			}
+		}
+
+		private void TestRotate(PseudoBlock navBlock, Vector3 displacement)
+		{
+			//BoundingBoxD WorldAABB = navBlock.Grid.WorldAABB;
+			//BoundingSphereD WorldVolume = navBlock.Grid.WorldVolume;
+			//List<MyEntity> entities = new List<MyEntity>();
+			//MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref WorldAABB, entities);
+			//foreach (MyEntity entity in entities)
+			//	if (PathChecker.collect_Entity(m_grid, entity))
+			//	{
+			//		IMyVoxelMap voxel = entity as IMyVoxelMap;
+			//		if (voxel != null && !voxel.GetIntersectionWithSphere(ref WorldVolume))
+			//			continue;
+
+			//		m_logger.debugLog("Blocked by: " + entity.getBestName() + ", volume: " + WorldVolume, "TestRotate()");
+			//	}
+			//m_rotateState = PathState.No_Obstruction;
+		}
+
+		private void RunItem()
+		{
+			if (m_pathHigh.Count != 0)
+			{
+				m_logger.debugLog("Adding item to Thread_High", "RunItem()");
+				Action act = m_pathHigh.Dequeue();
+				Thread_High.EnqueueAction(act);
+			}
+			else if (m_pathLow.Count != 0)
+			{
+				m_logger.debugLog("Adding item to Thread_Low", "RunItem()");
+				Action act = m_pathLow.Dequeue();
+				Thread_Low.EnqueueAction(act);
+			}
+		}
+
+		private void SetWaypoint(Vector3D waypoint)
+		{
+			m_logger.debugLog("Setting waypoint: " + waypoint, "SetWaypoint()");
+			new GOLIS(m_mover, m_navSet, waypoint, true);
+			//m_navSet.Settings_Task_NavWay.DestinationChanged = false;
+		}
+
 	}
 }

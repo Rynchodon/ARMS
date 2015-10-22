@@ -1,17 +1,15 @@
 All commands are in the display name of a Autopilot block.
 [] All commands are contained within a single set of square brackets
-<> Do not use angle brackets in your Autopilot block's name
 :; Commands are separated by colons and/or semicolons
     Interpreter ignores all spaces
 Aa Interpreter is case insensitive
 Variables P and V affect all destinations that come after
 
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
-If you reset the Autopilot while landed, it will not separate before moving.
 
 In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
 
-The G, E, and M commands all require that the target be detected, see the video for Antenna Relay and Radar.
+The G and E commands require that the target be detected, see the video for Antenna Relay and Radar.
 
 All distances and coordinates are in metres, speed is in metres per second.
 If there are multiple Autopilot blocks with commands, one will be picked arbitrarily.
@@ -21,7 +19,7 @@ When the end of the commands is reached, Autopilot will start back at the first 
 [h1]Pathfinder[/h1]
 [u]Path Checking[/u]
 Autopilot needs clearance around it to work, the more space it has the faster it can calculate the path.
-Grids can be calculated very accurately, the required clearance is based on the size of the two grids.
+Grids can be calculated very accurately, the required clearance is based on the shape and size of the two grids.
 The required clearance for asteroids is highly dependant on ship design. Consider a cylinder that encompasses Autopilot's grid and the destination. If the asteroid intersects this cylinder, it is blocking the path.
 Other obstacles will require significantly more clearance (relative to their size).
 
@@ -31,28 +29,9 @@ There is no collision avoidance for rotation. Autopilot does not test if rotatin
 The pathfinding is very basic, designed with the assumption that the world is mostly empty. Autopilot cannot calculate a complex path to the target.
 
 [u]Performance[/u]
-Pathfinding runs mostly in a separate thread from the rest of the game; if the pathfinder is overworked, the game will continue to run at full speed but obstacles may not be detected.
+Pathfinding / path checking runs in a separate thread from the rest of the game; if the pathfinder is overworked, the game will continue to run at full speed but obstacles may not be detected.
 The closer an obstacle is to the desired path, the more work needs to be done to determine if the obstacle is obstructing the path.
 All Autopilots share <yParallelPathfinder> threads; each pathfinder uses one thread. If all the threads are in use, the pathfinder will have to wait.
-
-[h1]Autopilot States[/h1]
-<Off> (black) EXIT was reached, or the Autopilot block is not ready
-<Player> (grey) A player is controlling ship
-<ERROR:(index)> (purple) You made a mistake, you need to fix it. Displays the index of the commands that could not be executed. The first command is at 0.
-<No_Path> (purple) Could not find a path to the destination. Either the destination is unreachable or the path is too complex for Autopilot.
-
-<Waiting:(time)> (yellow) a wait command was reached, display time remaining
-<Landed:(time)> (yellow) grid is landed, display waiting time
-
-<No_Dest> (dark green) could not find a valid target or destination, this state is usually temporary
-<Pathfinding> (DarkGreen) searching for a path towards the destination
-<Moving> / <Hybrid> / <Sidel> (green) heading towards the next stop
-<Rotating> / <Roll> (green) rotating the ship
-<Stop_Move> / <Stop_Rotate> / <Stop_Roll> (green) stopping the ship
-<Harvest> / <H_Stuck> / <H_Back> <H_Tunnel> (cyan) harvesting an asteroid
-
-<Missile> (red) found a target, going to hit it
-<Engaging> (orange) found a target, flying towards it
 
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
@@ -60,20 +39,24 @@ Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 5
 C GPS:<name>:<x>:<y>:<z>: : GPS tags will be replaced with the appropriate coordinates.
 Example - [ C GPS:Origin:1:2:3: ] - becomes [ C 1,2,3 ]
 
-E <range> : Any time after E is set, engage an enemy grid. While no enemy is in range, continue following commands. Use 0 for infinite range. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
-Example - [ E 0 ] - move towards any detected enemy
+DISABLE : Disable control thrusters for the Autopilot, does not bring it to a stop.
+Example - [ C 0, 0, 0 : Disable ] - Upon reaching {0, 0, 0}, will turn off and drift away...
+Example - [ C 0, 0, 0 : STOP : Disable ] - Upon reaching {0, 0, 0}, will come to a stop and then turn off
+Example - [ L Connector ; B Connector ; G Red Ship ; Disable ] - Will switch Autopilot off after docking.
 
-EXIT : stop the Autopilot, do not loop. Useful for one-way autopilot
-Example - [ E 0 : C 0, 0, 0 : EXIT ] - will target any enemy that comes into range while flying to {0, 0, 0}. Upon reaching {0, 0, 0}, will stop searching for a target
+EXIT : Identical to stop, followed by disable
+Example - [ C 0, 0, 0 : EXIT ] - Upon reaching {0, 0, 0}, will come to a stop and then turn off
 
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
-Harvest : Extract resources from the nearest asteroid. It is recommended to put this command first so that Autopilot can tunnel out of an asteroid after the world is loaded.
-Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest the closest asteroid
+H <ore>, ... : Extract specified ores from an asteroid. The ore must be detected by an ore detector on autopilot's grid. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by ore name or chemical symbol.
+Example - [ H Gold, Silver ] - Harvest either gold or silver, whichever is found first.
+Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
+Harvest : Extract any ore from an asteroid. Ore must be detected by an ore detector on autopilot's grid.
+Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest any ore.
 
-M <range> : same as E but for a missile
-Example - [ M 0 ] - Attempt to crash into any enemy that can be detected.
+STOP : Stop the ship before executing any more commands. Clears all commands except P and V.
 
 W <seconds> : wait before travelling to the next destination
 Example - [ C 0, 0 , 0 : W 60 : C 500, 500, 500 : EXIT ] - Will wait for 60 seconds after reaching {0, 0, 0}
@@ -88,53 +71,77 @@ Example - [ Asteroid : C 0,0,0 : C 1000,0,0 ] - fly to 0,0,0 ignoring asteroids,
 B <name> : for navigating to a specific block on a grid, will only affect the next use of G, E, or M. For friendly grids uses the display name; for hostile grids the definition name. Target block must be working.
 Example - [ B Antenna : G Platform ] - fly to Antenna on Platform
 Example - [ B Reactor : E 0 ] - will only target an enemy with a working reactor
-B <name>, <direction> : <direction> indicates which direction to approach block from when landing
-Example - [ L Landing Gear : B Beacon, Rightward : G Platform : W 60 ] - Attach landing gear to the right side of beacon on Platform
+B <name>, <f> : <f> indicates which direction to face the landing block when landing
+Example - [ L Landing Gear : B Beacon, Right : G Platform : Disable ] - Attach landing gear to the left side of beacon on Platform
+B <name>, <f>, <u> : <f> will be used as forward direction and <u> will be used as upward direction
+
+E <range>, <response> : Start searching for an enemy. While no enemy is found, will continue following commands. Use 0 for infinite range. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
+E <range>, Fight : Use weapons to attack enemy ship, will stop attack if autopilot's weapons are disabled.
+Example - [ E 0, Fight ] - Fight any detected enemy.
+E <range>, Flee : Escape from enemy, will stop fleeing if thrusters become disabled.
+Example - [ E 2000, Flee ] - Flee from any enemy that comes within 2 km.
+Example - [ E 0, Fight ; E 2000, Flee ] - Fight any enemy that is detected. If weapons are disabled, flee from any enemy within 2 km.
+E <range>, Ram : Ram the enemy, will stop trying to ram if thrusters become disabled.
+Example - [ E 0, Fight, Ram ] - If weapons become disabled while fighting, ram the enemy.
+E <range>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
+Example - [ E 100, Self-Destruct ] : Explode if an enemy comes within 100 m.
+Example - [ E 0, Fight, Ram, Self-Destruct ] - Fight the enemy. If weapons become disabled, ram the enemy. If thrusters become disabled, explode.
 
 F <r>, <u>, <b> : fly a distance relative to self. coordinates are rightward, upward, backwards
 Example - [ F 0, 0, -1000 ] - fly 1000m forward
 F <distance> <direction>, ... : generic form is a comma separated list of distances and directions
 Example - [ F 1000 forward ] - fly 1000m forward
 Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m below Autopilot block
+Form : Stay in formation with friendly grid (G command). Commands that occur after G will never be executed.
+Example - [ N Autopilot, F, U ; B Cockpit, F, U ; Form ; G Convoy ] - Fly to Convoy, orient Autopilot to match Cockpit, and stay in formation
 
-L : landing block. the block on the same grid as the Autopilot block that will be used to land. To land there must be a landing block, a target block, and a target grid [ L <localBlock> : B <targetBlock> : G <targetGrid> ]. If there is a wait command before the next destination, the grid will wait while attached. If there is a LOCK command before the next destination, the grid will not separate. If there is an EXIT command before the next destination, the grid will stay attached. Autopilot can land connectors, landing gear, and merge blocks. If you land a merge block, you need to manually reset Autopilot.
-Example - [ L Connector : B Connector : G Platform : W60 : C 0,0,0 ] - attach local connector to connector on Platform, wait 60 seconds, detach, fly to {0,0,0}
+L <block name> : Landing block. Autopilot will attempt to land the block on the target. Unless landing block is a Landing Gear, you must specify a target block with B.
+Example - [ L Connector : B Connector : G Platform ] - attach local connector to connector on Platform
+Example - [ N Laser Antenna : L Connector : B Connector : G Platform ] - Autopilot will keep "Laser Antenna" pointed at its target until it gets close enough to the target to start docking. Then Autopilot will attach the local connector to connector on Platform.
+L <name>, <f> : <f> is the direction of the landing block that will be treated as the front of the block
+L <name>, <f>, <u> : <u> is the direction of the landing block that will be used as upward.
 
 LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
 
-LOCK : leave landing block in locked state ( do not disconnect )
-Example - [ L Connector : B Connector : G Pickup : LOCK : F 0, 0, 0 ] - connect with Pickup, fly to {0, 0, 0}
+N <block name> : Navigation block. If the block is a Solar Panel or an Oxygen Farm, face it towards the sun. If the block is a laser antenna, face it towards its target. N may be combined with B and G to orient the ship relative to the B block.
+Example [ N Solar Panel ] - Face Solar Panel towards the sun.
+Example - [ N Laser Antenna : C 0,0,0 ] - Face "Laser Antenna" towards its target coordinates and fly the ship to {0,0,0}
+Example - [ N Flight Seat : C 0,0,0 ] - Fly to {0,0,0} with "Flight Seat" facing the destination
+N <block name>, <f> : The direction <f> will be treated as the forward direction of the block.
+Example - [ N Laser Antenna, Back ] - Face the back of "Laser Antenna" towards its target
+Example - [ N Cockpit, Forward ; B Antenna, Backward ; G Platform ] - Fly to Platform and face Cockpit's forward in the same direction as Antenna's backward.
+N <block name>, <f>, <u> : The direction <u> will be treated as the upward direction of the block.
+Example - [ N Cockpit, F, D ; B Antenna, B, R ; G Platform ] - Fly to Platform and face Cockpit's forward in the same direction as Antenna's backward and face Cockpit's Downward in the same direction as Antenna's Rightward.
 
-O <r>, <u>, <b> : destination offset, only works if there is a block target, cleared after reaching destination. coordinates are right, up, back. NO_PATH if offset destination is inside the boundaries of any grid (including destination).
+O <r>, <u>, <b> : destination offset, only works if there is a block target, cleared after reaching destination. coordinates are right, up, back
 Example - [ O 0, 500, 0 : B Antenna : G Platform ] - fly to 500m above Antenna on Platform
 O <distance> <direction>, ... : generic form is a comma separated list of distances and directions
 Example - [ O 500 upward : B Antenna : G Platform ] - fly to 500m above Antenna on Platform
 Example - [ O 100 forward, 500 upward : B Antenna : G Platform ] - fly to 100m ahead of and 500m above Antenna
 
-P <range> : how close the grid needs to fly to the destination, default is 100m. Ignored for M.
-Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward
-
-R <f> : match direction, needs a target block. <f> is the target block's direction that the Autopilot block will face
-Example - [ R Forward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Autopilot block to antenna forward
-R <f>, <u> : match orientation (direction and roll). <f> as above. <u> which block direction will be Autopilot block's Up
-Example - [ R Forward, Upward : B Antenna : G Platform ] - fly to Antenna on Platform, then face Autopilot block to antenna forward, then roll so that Antenna's Upward will match Autopilot block's upward.
+P <range> : how close the grid needs to fly to the destination, default is 100m. For landing, used as the holding distance.
+Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward, to within 10m
 
 T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]
 Example - [ T Command Panel ] - fetch commands from "Command Panel"
 T <name>, <sub> : as above, the search for [ and ] will begin after the first occurrence of <sub>. It is recommend to make <sub> unique, so that it will not be confused with anything else.
 Example - [ T Command Panel, {Line 4} ] - where "Command Panel" contains ... {Line 4} [ C 0,0,0 ] ... fly to {0,0,0}
 
-V <cruise> : when travelling faster than <cruise> reduce thrust (zero or very little thrust)
-Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, cruising when above 10m/s. The default for <cruise> is set in the settings file.
-V <cruise>, <slow> : when speed is below <cruise>, accelerate; when speed is between <cruise> and <slow>, cruise; when speed is above <slow>, decelerate. The default for <cruise> is set in the settings file, the default for <slow> is infinity (practically).
-Example - [ V 10, 20 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, staying between 10m/s and 20m/s.
+U <name> : unlock the specified block and move away from the attached object
+Example - [ U Landing Gear ]
+U <name>, <f>, <u> : If directions were used to land the block, they should also be used to unland it.
+Unlock : unlock the most recently landed / docked block and move away from the attached object. The L command can also be used in combination with Unlock.
+Example - [ L Landing Gear ; B Landing Pad, D ; G Platform ; W 60 ; Unlock ] - Attach Landing Gear to top of Landing Pad, wait 60 seconds, detach and move away.
+Example - [ L Landing Gear ; Unlock ] - Detach Landing Gear from whatever it is connected to and move away.
+
+V <speed> : Autopilot will fly at the specified speed
+Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, at 10m/s
 
 [b]Directions[/b] : can be { Forward, Backward, Leftward, Rightward, Upward, Downward }. Autopilot only checks the first letter, so abbreviations will work. For example, "Forward" can be "Fore" or "F"
 [b]Distances[/b] : for F, O, and P can be modified by km(kilometres) or Mm(megametres). For example, "3.5M" or "3.5Mm" is 3.5 megametres or 3 500 kilometres.
 
 [h1]More Examples[/h1]
-[B Thrust : M 0] Attempt to crash into the nearest enemy grid's thrusters.
 [E 300 : C 0,0,0 : C 1000,0,0] Patrol between two points until an enemy grid comes into range (300m), then fly towards enemy grid.
-[P 10 : F 0,0,-100 : M 0] Fly forward 100 metres then convert to missile. If no enemy is found, keep moving forward 100m at a time. Can lock onto an enemy any time after first move.
 [P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the Autopilot block to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
+[ L Landing Gear ; G Dog Toy ; G Home ; Exit ] Attach the Landing Gear to Dog Toy and bring it to Home.

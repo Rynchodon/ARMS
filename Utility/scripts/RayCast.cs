@@ -5,6 +5,11 @@ using VRageMath;
 
 namespace Rynchodon
 {
+	/*
+	 * TODO:
+	 * write a method that uses MyGamePruningStructure.GetAllEntitiesInRay()
+	 * write a method for raycasting voxels
+	 */ 
 	public static class RayCast
 	{
 

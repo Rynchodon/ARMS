@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
@@ -71,14 +71,11 @@ namespace Rynchodon
 			public byte b7;
 		}
 
-		#endregion
+		#endregion Union
 
 		#region Append Bytes
 
-		public static void AppendBytes(byte b, byte[] bytes, ref int pos)
-		{
-			bytes[pos++] = b;
-		}
+		#region Array
 
 		private static void AppendBytes(byteUnion16 u, byte[] bytes, ref int pos)
 		{
@@ -104,6 +101,19 @@ namespace Rynchodon
 			bytes[pos++] = u.b5;
 			bytes[pos++] = u.b6;
 			bytes[pos++] = u.b7;
+		}
+
+		public static void AppendBytes(bool b, byte[] bytes, ref int pos)
+		{
+			if (b)
+				bytes[pos++] = 1;
+			else
+				bytes[pos++] = 0;
+		}
+
+		public static void AppendBytes(byte b, byte[] bytes, ref int pos)
+		{
+			bytes[pos++] = b;
 		}
 
 		public static void AppendBytes(short s, byte[] bytes, ref int pos)
@@ -146,14 +156,100 @@ namespace Rynchodon
 			AppendBytes(new byteUnion64() { d = d }, bytes, ref pos);
 		}
 
-		#endregion
+		#endregion Array
+
+		#region List
+
+		private static void AppendBytes(byteUnion16 u, List<byte> bytes)
+		{
+			bytes.Add(u.b0);
+			bytes.Add(u.b1);
+		}
+
+		private static void AppendBytes(byteUnion32 u, List<byte> bytes)
+		{
+			bytes.Add(u.b0);
+			bytes.Add(u.b1);
+			bytes.Add(u.b2);
+			bytes.Add(u.b3);
+		}
+
+		private static void AppendBytes(byteUnion64 u, List<byte> bytes)
+		{
+			bytes.Add(u.b0);
+			bytes.Add(u.b1);
+			bytes.Add(u.b2);
+			bytes.Add(u.b3);
+			bytes.Add(u.b4);
+			bytes.Add(u.b5);
+			bytes.Add(u.b6);
+			bytes.Add(u.b7);
+		}
+
+		public static void AppendBytes(bool b, List<byte> bytes)
+		{
+			if (b)
+				bytes.Add(1);
+			else
+				bytes.Add(0);
+		}
+
+		public static void AppendBytes(byte b, List<byte> bytes)
+		{
+			bytes.Add(b);
+		}
+
+		public static void AppendBytes(short s, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion16() { s = s }, bytes);
+		}
+
+		public static void AppendBytes(ushort us, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion16() { us = us }, bytes);
+		}
+
+		public static void AppendBytes(int i, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion32() { i = i }, bytes);
+		}
+
+		public static void AppendBytes(uint ui, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion32() { ui = ui }, bytes);
+		}
+
+		public static void AppendBytes(float f, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion32() { f = f }, bytes);
+		}
+
+		public static void AppendBytes(long l, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion64() { l = l }, bytes);
+		}
+
+		public static void AppendBytes(ulong ul, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion64() { ul = ul }, bytes);
+		}
+
+		public static void AppendBytes(double d, List<byte> bytes)
+		{
+			AppendBytes(new byteUnion64() { d = d }, bytes);
+		}
+
+		public static void AppendBytes(string s, List<byte> bytes)
+		{
+			foreach (char c in s)
+				AppendBytes(Convert.ToByte(c), bytes);
+		}
+
+		#endregion List
+
+		#endregion Append Bytes
 
 		#region From Byte Array
-
-		public static byte GetByte(byte[] bytes, ref int pos)
-		{
-			return bytes[pos++];
-		}
 
 		private static byteUnion16 GetByteUnion16(byte[] bytes, ref int pos)
 		{
@@ -188,6 +284,16 @@ namespace Rynchodon
 				b6 = bytes[pos++],
 				b7 = bytes[pos++]
 			};
+		}
+
+		public static bool GetBool(byte[] bytes, ref int pos)
+		{
+			return bytes[pos++] != 0;
+		}
+
+		public static byte GetByte(byte[] bytes, ref int pos)
+		{
+			return bytes[pos++];
 		}
 
 		public static short GetShort(byte[] bytes, ref int pos)
@@ -230,7 +336,12 @@ namespace Rynchodon
 			return GetByteUnion64(bytes, ref pos).d;
 		}
 
-		#endregion
+		public static char GetChar(byte[] bytes, ref int pos)
+		{
+			return Convert.ToChar(GetByte(bytes, ref pos));
+		}
+
+		#endregion From Byte Array
 
 	}
 }

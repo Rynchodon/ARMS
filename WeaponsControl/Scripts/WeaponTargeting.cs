@@ -1,10 +1,10 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
@@ -29,12 +29,37 @@ namespace Rynchodon.Weapons
 			Targeting = GetOptions | 1 << 1
 		}
 
-		private static readonly ThreadManager Thread = new ThreadManager();
-		private static readonly List<Vector3> obstructionOffsets_turret = new List<Vector3>();
-		private static readonly List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
+		private static ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
+		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
+		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
 		/// <remarks>Not locked because there is only one thread allowed.</remarks>
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
+
+		static WeaponTargeting()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
+			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
+
+			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
+			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Thread = null;
+			obstructionOffsets_turret = null;
+			obstructionOffsets_fixed = null;
+			KnownAmmo = null;
+		}
 
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly Ingame.IMyLargeTurretBase myTurret;
@@ -71,21 +96,6 @@ namespace Rynchodon.Weapons
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
-
-		static WeaponTargeting()
-		{
-			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
-
-			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
-		}
 
 		public WeaponTargeting(IMyCubeBlock weapon)
 		{
@@ -163,17 +173,17 @@ namespace Rynchodon.Weapons
 				if (value_CurrentState == value)
 					return;
 
-				// need to get builder because we have no idea what the player may have been up to
-				var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				using (lock_IsShooting.AcquireExclusiveUsing())
-					if (IsShooting != builder.IsShootingFromTerminal)
-					{
-						myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
-						IsShooting = builder.IsShootingFromTerminal;
-					}
+				//// need to get builder because we have no idea what the player may have been up to
+				//var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
+				//using (lock_IsShooting.AcquireExclusiveUsing())
+				//	if (IsShooting != builder.IsShootingFromTerminal)
+				//	{
+				//		myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
+				//		IsShooting = builder.IsShootingFromTerminal;
+				//	}
 
 				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
-				StopFiring("CurrentState changed to " + value);
+				StopFiring("CurrentState changed to " + value, true);
 
 				if (IsNormalTurret)
 				{
@@ -484,8 +494,8 @@ namespace Rynchodon.Weapons
 			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
 			float firingThreshold = 2.5f + relativeSpeed / 10f;
 
-			if (!IsNormalTurret && !Options.FlagSet(TargetingFlags.Turret))
-				firingThreshold += 5;
+			//if (!IsNormalTurret && !Options.FlagSet(TargetingFlags.Turret))
+			//	firingThreshold += 5;
 
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
 
@@ -509,33 +519,33 @@ namespace Rynchodon.Weapons
 				StopFiring("shot is off target");
 		}
 
-		private void FireWeapon()
+		private void FireWeapon(bool force = false)
 		{
 			using (lock_IsShooting.AcquireExclusiveUsing())
 			{
-				if (IsShooting)
+				if (IsShooting && ! force)
 					return;
 
 				myLogger.debugLog("Open fire", "FireWeapon()");
 
 				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock));
 
 				IsShooting = true;
 			}
 		}
 
-		protected void StopFiring(string reason)
+		protected void StopFiring(string reason, bool force = false)
 		{
 			using (lock_IsShooting.AcquireExclusiveUsing())
 			{
-				if (!IsShooting)
+				if (!IsShooting && ! force)
 					return;
 
 				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
 				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot").Apply(CubeBlock));
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
 
 				IsShooting = false;
 			}
@@ -552,8 +562,8 @@ namespace Rynchodon.Weapons
 			PotentialObstruction = new List<IMyEntity>();
 
 			BoundingSphereD nearbySphere = new BoundingSphereD(BarrelPositionWorld(), Options.TargetingRange);
-			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
+			List<MyEntity> nearbyEntities = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearbySphere, nearbyEntities);
 
 			//myLogger.debugLog("found " + nearbyEntities.Count + " entities", "CollectTargets()");
 

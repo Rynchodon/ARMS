@@ -9,6 +9,7 @@ namespace Rynchodon.Settings
 {
 	/// <summary>
 	/// <para>Per-user settings that will be saved locally and can be changed at any time.</para>
+	/// <para>The server will have a copy for each user.</para>
 	/// </summary>
 	public class UserSettings
 	{
@@ -23,14 +24,28 @@ namespace Rynchodon.Settings
 
 		private const ushort ModID = 54309; // no idea what this is supposed to be
 		private const string userSettings_fileName = "UserSettings.txt";
-		private const string chatDesignator = "/autopilot set";
+		private const string chatDesignator = "/arms set";
+		private const string alt_chatDesignator = "/autopilot set";
 
-		private static readonly Dictionary<long, UserSettings> User = new Dictionary<long, UserSettings>();
-		private static readonly Logger staticLogger = new Logger("static", "UserSettings");
+		private static Dictionary<long, UserSettings> User;
+		private static Logger staticLogger = new Logger("static", "UserSettings");
 
 		static UserSettings()
 		{
-			MyAPIGateway.Multiplayer.RegisterMessageHandler(UserSettings.ModID, ReceiveMessageUserSetting);
+			if (MyAPIGateway.Multiplayer.IsServer)
+			{
+				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, ReceiveMessageUserSetting);
+				User = new Dictionary<long, UserSettings>();
+			}
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, ReceiveMessageUserSetting);
+			User = null;
+			staticLogger = null;
 		}
 
 		/// <summary>
@@ -102,8 +117,14 @@ namespace Rynchodon.Settings
 			{
 				readAll();
 				MyAPIGateway.Utilities.MessageEntered += ChatHandler;
-				MyAPIGateway.Entities.OnCloseAll += () => { MyAPIGateway.Utilities.MessageEntered -= ChatHandler; };
+				MyAPIGateway.Entities.OnCloseAll += RemoveChatHandler;
 			}
+		}
+
+		private void RemoveChatHandler()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= RemoveChatHandler;
+			MyAPIGateway.Utilities.MessageEntered -= ChatHandler;
 		}
 
 		public byte GetSetting(ByteSettingName name)
@@ -250,72 +271,72 @@ namespace Rynchodon.Settings
 
 		private void SendSettingToServer(ByteSettingName name)
 		{
-			byte[] message = new byte[11];
+			byte[] message = new byte[10];
 			int pos = 0;
 			ByteConverter.AppendBytes(PlayerID, message, ref pos);
 			ByteConverter.AppendBytes((byte)name, message, ref pos);
 			ByteConverter.AppendBytes(GetSetting(name), message, ref pos);
 
 			if (!MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message, true))
-				myLogger.debugLog("message failed", "SendSettingToServer()", Logger.severity.ERROR);
+				myLogger.alwaysLog("message failed", "SendSettingToServer()", Logger.severity.ERROR);
 			else
-				myLogger.debugLog("sent setting to server", "SendSettingToServer()");
+				myLogger.debugLog("sent setting: " + name + " to server", "SendSettingToServer()");
 		}
 
 		private void ChatHandler(string message, ref bool sendToOthers)
 		{
 			message = message.ToLower();
-			if (!message.StartsWith(chatDesignator))
+			if (!message.StartsWith(chatDesignator) && !message.StartsWith(alt_chatDesignator))
 				return;
 
-			string[] nameValue = message.Replace(chatDesignator, "").Trim().Split(' ');
+			string[] nameValue = message.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			sendToOthers = false;
 
 			ByteSettingName? name = null;
-			string nameLower = nameValue[0].ToLower();
+			string nameLower = nameValue[2].ToLower();
 
 			// variations
 			if (nameLower.Contains("hud"))
 			{
 				if (nameLower.Contains("enemy") || nameLower.Contains("enemies"))
 				{
-					myLogger.debugLog("EnemiesOnHUD variation: " + nameValue[0], "ChatHandler()");
+					myLogger.debugLog("EnemiesOnHUD variation: " + nameLower, "ChatHandler()");
 					name = ByteSettingName.EnemiesOnHUD;
 				}
 				else if (nameLower.Contains("neutral"))
 				{
-					myLogger.debugLog("NeutralOnHUD variation: " + nameValue[0], "ChatHandler()");
+					myLogger.debugLog("NeutralOnHUD variation: " + nameLower, "ChatHandler()");
 					name = ByteSettingName.NeutralOnHUD;
 				}
 				else if (nameLower.Contains("faction"))
 				{
-					myLogger.debugLog("FactionOnHUD variation: " + nameValue[0], "ChatHandler()");
+					myLogger.debugLog("FactionOnHUD variation: " + nameLower, "ChatHandler()");
 					name = ByteSettingName.FactionOnHUD;
 				}
 				else if (nameLower.Contains("owner"))
 				{
-					myLogger.debugLog("OwnerOnHUD variation: " + nameValue[0], "ChatHandler()");
+					myLogger.debugLog("OwnerOnHUD variation: " + nameLower, "ChatHandler()");
 					name = ByteSettingName.OwnerOnHUD;
 				}
 			}
 
 			if (name == null)
 			{
-				myLogger.debugLog("failed to find enum for " + nameValue[0], "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("Autopilot", "Failed, not a setting: \"" + nameValue[0] + '"');
+				myLogger.debugLog("failed to find enum for " + nameLower, "ChatHandler()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + nameLower + '"');
 				return;
 			}
 
 			byte value;
-			if (!byte.TryParse(nameValue[1], out value))
+			if (!byte.TryParse(nameValue[3], out value))
 			{
-				myLogger.debugLog("failed to parse: " + nameValue[1], "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("Autopilot", "Failed to parse: \"" + nameValue[1] + '"');
+				myLogger.debugLog("failed to parse: " + nameValue[3], "ChatHandler()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + nameValue[3] + '"');
 				return;
 			}
 
 			SetSetting(name.Value, value);
-			MyAPIGateway.Utilities.ShowMessage("Autopilot", "Set " + name.Value + " to " + value);
+			MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name.Value + " to " + value);
 		}
 
 	}

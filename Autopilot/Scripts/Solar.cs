@@ -1,7 +1,7 @@
 ﻿using System;
 using Sandbox.ModAPI;
 
-namespace Rynchodon.Weapons // Not a weapon but this seems the best place to put this for now
+namespace Rynchodon.Autopilot
 {
 	/// <summary>
 	/// For any block that may be directed to point at the sun using motors.

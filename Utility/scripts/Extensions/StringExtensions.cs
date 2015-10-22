@@ -47,5 +47,27 @@ namespace Rynchodon
 
 			return new String(newarr, 0, j);
 		}
+
+		/// <summary>
+		/// Convert a string to lower case and remove whitespace.
+		/// </summary>
+		public static string LowerRemoveWhitespace(this string input)
+		{
+			int outIndex = 0;
+			char[] output = new char[input.Length];
+
+			for (int inIndex = 0; inIndex < input.Length; inIndex++)
+			{
+				char current = input[inIndex];
+
+				if (!char.IsWhiteSpace(current))
+				{
+					output[outIndex] = char.ToLower(current);
+					outIndex++;
+				}
+			}
+
+			return new String(output, 0, outIndex);
+		}
 	}
 }

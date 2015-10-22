@@ -29,14 +29,14 @@ Functions as an antenna and broadcasting can be disabled.
 Can detect other radar at long range.
 
 [h1]GPS Markers[/h1]
-Autopilot will add GPS entries for detected grids. If you delete these bad things will happen.
-GPS entries will not be added for a player, if the player can see a beacon or broadcasting antenna on the grid.
+ARMS will add GPS entries for detected grids. If you delete these bad things will happen.
+GPS entries will not be added for a player if the player can see a beacon or broadcasting antenna on the grid.
 By default, there will be 5 markers for the closest enemy, 5 for the closest neutral, 5 for the closest faction, and 5 for the closest owned grids.
 
 You can configure the number of grids that will be displayed through chat commands.
-/autopilot set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD ] #
+/arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD ] #
 
 To change the number of marked enemy grids to 10:
-/autopilot set EnemiesOnHUD 10
+/arms set EnemiesOnHUD 10
 To change the number of marked owned grids to 0:
-/autopilot set OwnerOnHUD 0
+/arms set OwnerOnHUD 0

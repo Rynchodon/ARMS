@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -32,13 +34,17 @@ namespace Rynchodon.AntennaRelay
 		public static List<Message> buildMessages(string Content, string DestGridName, string DestBlockName, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
 		{
 			List<Message> result = new List<Message>();
-			foreach (IMyCubeBlock DestBlock in ProgrammableBlock.registry.Keys)
+			HashSet<IMyEntity> matchingGrids = new HashSet<IMyEntity>();
+			MyAPIGateway.Entities.GetEntities_Safe(matchingGrids, ent => ent is IMyCubeGrid && ent.DisplayName.looseContains(DestGridName));
+			foreach (IMyCubeGrid grid in matchingGrids)
 			{
-				IMyCubeGrid DestGrid = DestBlock.CubeGrid;
-				if (DestGrid.DisplayName.looseContains(DestGridName) // grid matches
-					&& DestBlock.DisplayNameText.looseContains(DestBlockName)) // block matches
-					if (SourceCubeBlock.canControlBlock(DestBlock)) // can control
-						result.Add(new Message(Content, DestBlock, SourceCubeBlock, SourceBlockName));
+				var progs = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_MyProgrammableBlock));
+				foreach (IMyCubeBlock block in progs)
+				{
+					if (block.DisplayNameText.looseContains(DestBlockName)
+						&& SourceCubeBlock.canControlBlock(block))
+						result.Add(new Message(Content, block, SourceCubeBlock, SourceBlockName));
+				}
 			}
 			return result;
 		}
@@ -47,7 +53,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// can only be set to false, once invalid always invalid
 		/// </summary>
-		public bool isValid
+		public bool IsValid
 		{
 			get
 			{

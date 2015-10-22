@@ -16,8 +16,6 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class Turret : WeaponTargeting
 	{
-		private static Dictionary<IMyCubeBlock, Turret> registry = new Dictionary<IMyCubeBlock, Turret>();
-		private static readonly FastResourceLock lock_registry = new FastResourceLock();
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
@@ -36,25 +34,9 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Add(CubeBlock, this);
-			CubeBlock.OnClose += CubeBlock_OnClose;
-		}
-
-		private void CubeBlock_OnClose(IMyEntity obj)
-		{
-			myLogger.debugLog("entered CubeBlock_OnClose()", "CubeBlock_OnClose()");
-
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeBlock);
-
-			myLogger.debugLog("leaving CubeBlock_OnClose()", "CubeBlock_OnClose()");
-		}
-
-		internal static Turret GetFor(IMyCubeBlock weapon)
-		{
-			using (lock_registry.AcquireSharedUsing())
-				return registry[weapon];
+			Registrar.Add(CubeBlock, this);
+			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
+			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		private void Initialize()
@@ -92,7 +74,7 @@ namespace Rynchodon.Weapons
 		protected override void Update_Options(TargetingOptions Options)
 		{
 			//Options. CanTarget = TargetType.None;
-			MyObjectBuilder_TurretBase builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
+			MyObjectBuilder_TurretBase builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
 			if (builder.TargetMissiles)
 				Options.CanTarget |= TargetType.Missile;
 			if (builder.TargetMeteors)

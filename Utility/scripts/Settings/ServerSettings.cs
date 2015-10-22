@@ -7,23 +7,36 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon.Settings
 {
+	/// <summary>
+	/// Some of the settings will be made available to clients.
+	/// Clients should still not be able to affect balance in any way, only to update hud, GPS, etc.
+	/// </summary>
 	public static class ServerSettings
 	{
 		public enum SettingName : byte
 		{
 			bAllowAutopilot, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
-			yParallelPathfinder, //yAllowedDetectedOnHud,
+			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sWeaponCommandsNPC
 		}
 
-		private static readonly Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
+		private const ushort ModID = 54310; // no idea what this is supposed to be
+
+		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
 		public static T GetSetting<T>(SettingName name) where T : struct
 		{
 			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
 			return set.Value;
+		}
+
+		private static void SetSetting<T>(SettingName name, T value) where T : struct
+		{
+			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
+			set.Value = value;
+			myLogger.alwaysLog("Setting " + name + " = " + value, "SetSetting()", Logger.severity.INFO);
 		}
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
@@ -35,24 +48,103 @@ namespace Rynchodon.Settings
 
 		private const string modName = "Autopilot";
 		private const string settings_file_name = "AutopilotSettings.txt";
+		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		private static readonly string strVersion = "Version";
-		public static readonly int latestVersion = 41; // in sequence of updates on steam
+		public const int latestVersion = 41; // in sequence of updates on steam
 		public static readonly int fileVersion;
 
-		private static Logger myLogger = new Logger(null, "Settings");
+		private static Logger myLogger = new Logger("ServerSettings");
+
+		public static bool ServerSettingsLoaded { get; private set; }
 
 		static ServerSettings()
 		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			buildSettings();
 
-			fileVersion = readAll();
-			if (fileVersion != latestVersion)
-				Logger.debugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
-			myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
+			if (MyAPIGateway.Multiplayer.IsServer)
+			{
+				ServerSettingsLoaded = true;
+				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Server_ReceiveMessage);
 
-			writeAll(); // writing immediately decreases user errors & whining
+				fileVersion = readAll();
+				if (fileVersion != latestVersion)
+					Logger.debugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
+				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
+
+				writeAll(); // writing immediately decreases user errors & whining
+			}
+			else
+			{
+				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Client_ReceiveMessage);
+
+				byte[] message = new byte[8];
+				int pos = 0;
+				ByteConverter.AppendBytes(MyAPIGateway.Session.Player.SteamUserId, message, ref pos);
+
+				if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
+					myLogger.debugLog("Sent request to server", "ServerSettings()", Logger.severity.INFO);
+				else
+					myLogger.alwaysLog("Failed to send request to server", "ServerSettings()", Logger.severity.ERROR);
+			}
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			AllSettings = null;
+			myLogger = null;
+		}
+
+		private static void Server_ReceiveMessage(byte[] message)
+		{
+			try
+			{
+				int pos = 0;
+				ulong SteamUserId = ByteConverter.GetUlong(message, ref pos);
+
+				message = new byte[17];
+				pos = 0;
+
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowAutopilot), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowRadar), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowWeaponControl), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseColourState), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseRemoteControl), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fDefaultSpeed), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxSpeed), message, ref pos);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxWeaponRange), message, ref pos);
+
+				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, message, SteamUserId))
+					myLogger.debugLog("Sent settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.INFO);
+				else
+					myLogger.alwaysLog("Failed to send settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.ERROR);
+			}
+			catch (Exception ex)
+			{ myLogger.alwaysLog("Exception: " + ex, "Server_ReceiveMessage()", Logger.severity.ERROR); }
+		}
+
+		private static void Client_ReceiveMessage(byte[] message)
+		{
+			try
+			{
+				myLogger.debugLog("Received settings from server", "Client_ReceiveMessage()");
+
+				int pos = 0;
+		
+				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bAllowRadar, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bAllowWeaponControl, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bUseColourState, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bUseRemoteControl, ByteConverter.GetBool(message, ref pos));
+				SetSetting<float>(SettingName.fDefaultSpeed, ByteConverter.GetFloat(message, ref pos));
+				SetSetting<float>(SettingName.fMaxSpeed, ByteConverter.GetFloat(message, ref pos));
+				SetSetting<float>(SettingName.fMaxWeaponRange, ByteConverter.GetFloat(message, ref pos));
+
+				ServerSettingsLoaded = true;
+			}
+			catch (Exception ex)
+			{ myLogger.alwaysLog("Exception: " + ex, "Client_ReceiveMessage()", Logger.severity.ERROR); }
 		}
 
 		/// <summary>
@@ -67,7 +159,6 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
-			//AllSettings.Add(SettingName.yAllowedDetectedOnHud, new SettingSimple<byte>(255));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
@@ -110,7 +201,7 @@ namespace Rynchodon.Settings
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, "readAll()", Logger.severity.WARNING);
 				return -4; // exception while reading
 			}
 			finally
@@ -121,7 +212,7 @@ namespace Rynchodon.Settings
 		}
 
 		/// <summary>
-		/// write all settings to file
+		/// Write all settings to file. Only server should call this!
 		/// </summary>
 		private static void writeAll()
 		{

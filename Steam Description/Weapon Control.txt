@@ -2,7 +2,7 @@
 [list]Weapon Control manages the targeting, aiming, and firing of turrets, rotor-turrets, and fixed-weapons.[/list]
 
 [b][u]Engaging[/u][/b]
-In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected. The engager will attempt to bring all of its weapons (fixed and turret) into range.
+In order to engage a target, a ship must have weapons with commands. Targets will only be engaged if one or more weapons have commands to shoot the target. The target must also be detected. The engager will attempt to bring all of its weapons (fixed and turret), that can target a grid, into range.
 
 [b][u]Info: Command Instructions[/u][/b]
 [list][*]All commands are to be used/typed in the display name of the weapon block.
@@ -58,12 +58,12 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [b][u]Understanding Obstructions[/u][/b]
 [list][*]An obstruction can be an asteroid, a friendly character, or a friendly grid.
 [*]Blocks are considered to take up as much space as is required to place them.
-[*]Autopilot's Weapon Control asssume that any fixed weapon will not be able to hit the grid they are apart of.
+[*]Weapon Control assumes that any fixed weapon will not be able to hit the grid they are apart of.
 [list][*]In other words, it assumes that if it fires a fixed weapon, there isn't a part of the ship its attached to in the way of the projectile.[/list][/list]
-[list]For vanilla (default game) interior turrets, Autopilot's Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Autopilot's Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior command. See the "Commands List" for more information.[/list]
+[list]For vanilla (default game) interior turrets, Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior command. See the "Commands List" for more information.[/list]
 
 [b][u]Targeting On/Off Toggles and Commands[/u][/b]
-[list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targetting toggles found in the control panel for all turret weapons. All fixed weapons, however, must be told what to target and shoot through commands.[/list]
+[list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targeting toggles found in the control panel for all turret weapons. All fixed weapons, however, must be told what to target and shoot through commands.[/list]
 
 [b][u]Command List[/u][/b]
 
