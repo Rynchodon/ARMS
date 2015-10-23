@@ -233,7 +233,7 @@ namespace Rynchodon.Autopilot.Movement
 		private float MaximumSpeed(float dist, Base6Directions.Direction direct)
 		{
 			// Mover will attempt to stop with normal thrust
-			float accel = -myThrust.GetForceInDirection(direct) / Block.Physics.Mass;
+			float accel = -myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(direct)) / Block.Physics.Mass;
 			//myLogger.debugLog("dist: " + dist + ", accel: " + accel + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2 * accel * dist)), "MaximumSpeed()");
 			return (float)Math.Sqrt(-2 * accel * dist);
 		}

@@ -186,7 +186,7 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "form":
 					{
-						wordAction = () => NavSet.Settings_Task_NavMove.StayInFormation = true;
+						wordAction = () => NavSet.Settings_Task_NavMove.Stay_In_Formation = true;
 						return true;
 					}
 				//case "jump":

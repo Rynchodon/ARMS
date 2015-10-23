@@ -16,13 +16,10 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private class VoxelData
 		{
-			#region SE Constants
 
 			private const int QUERY_LOD = 1;
-			private const int CELL_SIZE_IN_VOXELS_BITS = 3;
-			private const int CELL_SIZE_IN_LOD_VOXELS = 1 << CELL_SIZE_IN_VOXELS_BITS;
-
-			#endregion
+			private const int QUERY_STEP = 2;
+			private const int QUERY_MAX = QUERY_STEP - 1;
 
 			private static readonly TimeSpan LifeSpan_Materials = new TimeSpan(0, 1, 0);
 			private static readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
@@ -64,7 +61,7 @@ namespace Rynchodon.Autopilot.Harvest
 				this.m_logger = new Logger(GetType().Name, () => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
 				this.m_voxel = voxel;
-				this.m_storage.Resize(new Vector3I(2, 2, 2));
+				this.m_storage.Resize(new Vector3I(QUERY_STEP, QUERY_STEP, QUERY_STEP));
 				this.m_maxRange = maxRange;
 
 				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner, "VoxelData()");
@@ -89,8 +86,11 @@ namespace Rynchodon.Autopilot.Harvest
 
 			public bool GetClosest(byte[] oreType, ref Vector3D worldPosition, out Vector3D closest, out byte foundOre)
 			{
-				foreach (byte b in oreType)
-					m_logger.debugLog("searching for: " + b, "GetClosest()");
+				if (oreType == null)
+					m_logger.debugLog("searching for any", "GetClosest()");
+				else
+					foreach (byte b in oreType)
+						m_logger.debugLog("searching for: " + b, "GetClosest()");
 
 				Vector3I search_voxelCellCoord;
 				MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldPosition, out search_voxelCellCoord);
@@ -144,7 +144,7 @@ namespace Rynchodon.Autopilot.Harvest
 				// if already queued/running, just skip the update
 				if (!lock_readVoxels.TryAcquireExclusive())
 				{
-					m_logger.debugLog("already queued or running", "StartRead()");
+					m_logger.debugLog("already queued or running", "StartRead()", Logger.severity.INFO);
 					return false;
 				}
 				try
@@ -171,9 +171,10 @@ namespace Rynchodon.Autopilot.Harvest
 					m_localMax = Vector3I.Clamp(m_localMax, vox.StorageMin, vox.StorageMax);
 					m_localMin >>= QUERY_LOD;
 					m_localMax >>= QUERY_LOD;
-					m_logger.debugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax, "StartRead()");
+					odPosVoxelStorage >>= QUERY_LOD;
+					m_logger.debugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax + ", odPosVoxelStorage: " + odPosVoxelStorage, "StartRead()");
 
-					m_logger.debugLog("Queueing read", "StartRead()");
+					m_logger.debugLog("Queueing read", "StartRead()", Logger.severity.DEBUG);
 
 					m_thread.EnqueueAction(PerformRead);
 				}
@@ -194,42 +195,68 @@ namespace Rynchodon.Autopilot.Harvest
 						return;
 
 					Vector3I size = m_localMax - m_localMin;
-					m_logger.debugLog("number of storage coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1), "PerformRead()");
+					m_logger.debugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1), "PerformRead()");
 					ulong processed = 0;
 
 					Vector3I vector = new Vector3I();
-					for (vector.X = m_localMin.X; vector.X < m_localMax.X; vector.X += 2)
-						for (vector.Y = m_localMin.Y; vector.Y < m_localMax.Y; vector.Y += 2)
-							for (vector.Z = m_localMin.Z; vector.Z < m_localMax.Z; vector.Z += 2)
-								if (vector.DistanceSquared(odPosVoxelStorage) < rangeSquared)
+					for (vector.X = m_localMin.X; vector.X < m_localMax.X; vector.X += QUERY_STEP)
+						for (vector.Y = m_localMin.Y; vector.Y < m_localMax.Y; vector.Y += QUERY_STEP)
+							for (vector.Z = m_localMin.Z; vector.Z < m_localMax.Z; vector.Z += QUERY_STEP)
+								if (vector.DistanceSquared(odPosVoxelStorage) > rangeSquared)
 								{
-									m_voxel.Storage.ReadRange(m_storage, MyStorageDataTypeFlags.ContentAndMaterial, QUERY_LOD, vector, vector + 1);
-
-									int iMax = m_storage.SizeLinear / m_storage.StepLinear;
-									for (int i = 0; i < iMax; i += m_storage.StepLinear)
-										if (m_storage.Content(i) > MyVoxelConstants.VOXEL_ISO_LEVEL)
-										{
-											byte mat = m_storage.Material(i);
-											if (RareMaterials[mat])
+									//m_logger.debugLog("too far: " + vector + ", distance squared: " + vector.DistanceSquared(odPosVoxelStorage), "PerformRead()");
+								}
+								else
+								{
+									m_voxel.Storage.ReadRange(m_storage, MyStorageDataTypeFlags.ContentAndMaterial, QUERY_LOD, vector, vector + QUERY_MAX);
+									
+									Vector3I index = Vector3I.Zero;
+									Vector3I size3D = m_storage.Size3D;
+									for (index.X = 0; index.X < size3D.X; index.X++)
+										for (index.Y = 0; index.Y < size3D.Y; index.Y++)
+											for (index.Z = 0; index.Z < size3D.Z; index.Z++)
 											{
-												//m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(i) + ", vector: " + vector + ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "PerformRead()");
-												m_materialLocations[vector + 1] = mat;
-												processed++;
-												goto Finished_Deposit;
+												int linear = m_storage.ComputeLinear(ref index);
+												if (m_storage.Content(linear) > MyVoxelConstants.VOXEL_ISO_LEVEL)
+												{
+													byte mat = m_storage.Material(linear);
+													if (RareMaterials[mat])
+													{
+														m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(linear) + ", vector: " + vector + ", position: " + vector + index
+															+ ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "PerformRead()");
+														m_materialLocations[vector + index] = mat;
+														processed++;
+														goto Finished_Deposit;
+													}
+												}
 											}
-										}
+
+									//int iMax = m_storage.SizeLinear / m_storage.StepLinear;
+									//for (int i = 0; i < iMax; i += m_storage.StepLinear)
+									//	if (m_storage.Content(i) > MyVoxelConstants.VOXEL_ISO_LEVEL)
+									//	{
+									//		byte mat = m_storage.Material(i);
+									//		if (RareMaterials[mat])
+									//		{
+
+									//			//m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(i) + ", vector: " + vector + ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "PerformRead()");
+									//			m_materialLocations[vector + 1] = mat;
+									//			processed++;
+									//			goto Finished_Deposit;
+									//		}
+									//	}
 
 									// nothing found
 									if (m_materialLocations.Remove(vector))
 										m_logger.debugLog("removed ore at: " + vector, "PerformRead()");
-									processed++;
+									//else
+									//	m_logger.debugLog("nothing at: " + vector, "PerformRead()");
 
-Finished_Deposit: ;
+Finished_Deposit:
+									processed++;
 								}
 
-					m_logger.debugLog("read " + processed + " storage coords"
-						+ ", number of mats: " + m_materialLocations.Count
-						, "PerformRead()");
+					m_logger.debugLog("read " + processed + " chunks" + ", number of mats: " + m_materialLocations.Count, "PerformRead()", Logger.severity.DEBUG);
 				}
 				finally
 				{

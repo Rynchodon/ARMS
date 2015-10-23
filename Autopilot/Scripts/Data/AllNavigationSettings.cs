@@ -1,6 +1,7 @@
 ﻿using System;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -48,7 +49,7 @@ namespace Rynchodon.Autopilot.Data
 				m_destRadius = 100f;
 				m_distance = float.NaN;
 				m_distanceAngle = float.NaN;
-				m_speedTarget = 100f;
+				m_speedTarget = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed);
 
 				m_ignoreAsteroid = false;
 				m_destChanged = true;
@@ -201,7 +202,7 @@ namespace Rynchodon.Autopilot.Data
 			public float SpeedTarget
 			{
 				get { return m_speedTarget ?? parent.SpeedTarget; }
-				set { m_speedTarget = value; }
+				set { m_speedTarget = Math.Min(value, ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed)); }
 			}
 
 			/// <summary>Pathfinder should not run voxel tests.</summary>
@@ -230,9 +231,9 @@ namespace Rynchodon.Autopilot.Data
 				set { m_pathfindeCanChangeCourse = value; }
 			}
 
-			public bool StayInFormation
+			public bool Stay_In_Formation
 			{
-				get { return m_formation ?? parent.StayInFormation; }
+				get { return m_formation ?? parent.Stay_In_Formation; }
 				set { m_formation = value; }
 			}
 

@@ -178,6 +178,13 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
+			float maxDestRadius = m_controlBlock.CubeGrid.GetLongestDim();
+			if (m_navSet.Settings_Current.DestinationRadius > maxDestRadius)
+			{
+				m_logger.debugLog("Reducing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + maxDestRadius, "MinerVoxel()", Logger.severity.DEBUG);
+				m_navSet.Settings_Task_NavRot.DestinationRadius = maxDestRadius;
+			}
+
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 
 			m_state = State.GetTarget;
@@ -315,6 +322,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			switch (m_state)
 			{
+				case State.Approaching:
 				case State.GetTarget:
 				case State.Mining_Escape:
 					m_mover.StopRotate();
@@ -332,7 +340,7 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 			}
 
-			if (m_navSet.Settings_Current.Distance < m_controlBlock.CubeGrid.GetLongestDim() * 2)
+			if (m_navSet.Settings_Current.Distance < 3f)
 			{
 				m_mover.StopRotate();
 				return;

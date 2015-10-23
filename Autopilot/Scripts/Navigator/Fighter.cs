@@ -145,8 +145,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
 
-			const float project = ShipController_Autopilot.UpdateFrequency / 60f;
-			Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.Entity.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity()) * project;
+			//const float project = ShipController_Autopilot.UpdateFrequency / 60f;
+			Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.Entity.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity());// *project;
 
 			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, targetPoint - m_weapon_primary_pseudo.WorldPosition));
 		}
@@ -381,12 +381,23 @@ namespace Rynchodon.Autopilot.Navigator
 		{ m_weaponDataDirty = true; }
 
 		/// <remarks>
-		/// Equation from https://www.jasondavies.com/maps/random-points/
+		/// Based on https://www.jasondavies.com/maps/random-points/
 		/// </remarks>
 		private Vector3D GetRandomOffset()
 		{
-			double angle1 = Random.NextDouble() * Math.PI * 2 - Math.PI;
-			double angle2 = Math.Acos(Random.NextDouble() * 2 - 1);
+			// get current angles
+			Vector3D relativePos = m_controlBlock.CubeBlock.GetPosition() - m_currentTarget.predictPosition();
+			relativePos.Normalize();
+			double angle1 = Math.Acos(relativePos.Z);
+			double angle2 = Math.Asin(relativePos.Y / Math.Sin(angle1));
+
+			m_logger.debugLog("angles: " + angle1 + ", " + angle2, "GetRandomOffset()");
+
+			// add a random amount
+			angle1 += Random.NextDouble() * MathHelper.Pi - MathHelper.PiOver2;
+			angle2 += Math.Acos(Random.NextDouble() * 2d - 1d);
+
+			m_logger.debugLog("set target angles: " + angle1 + ", " + angle2, "GetRandomOffset()");
 
 			return m_weaponRange_min * new Vector3D(
 				Math.Sin(angle1) * Math.Cos(angle2),

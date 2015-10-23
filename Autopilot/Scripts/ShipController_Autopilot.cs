@@ -139,7 +139,7 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private enum State : byte { Disabled, Enabled, Halted, Closed, Exit }
+		private enum State : byte { Disabled, Enabled, Halted, Closed }
 
 		private readonly ShipControllerBlock m_block;
 
@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 
 		private IMyCubeGrid m_controlledGrid;
-		private State m_state = State.Disabled;
+		private State value_state = State.Disabled;
 		private DateTime m_nextAllowedInstructions = DateTime.MinValue;
 		private DateTime m_endOfHalt;
 
@@ -158,6 +158,42 @@ namespace Rynchodon.Autopilot
 		private ulong m_nextCustomInfo;
 
 		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
+
+		private State m_state
+		{
+			get { return value_state; }
+			set
+			{
+				if (value_state == value)
+					return;
+				m_logger.debugLog("state change from " + value_state + " to " + value, "set_m_state()", Logger.severity.DEBUG);
+				value_state = value;
+
+				switch (value_state)
+				{
+					case State.Enabled:
+						return;
+
+					case State.Disabled:
+						m_navSet.OnStartOfCommands(); // here so that fighter gets thrown out and weapons disabled
+						m_interpreter.instructionQueue.Clear();
+						m_nextAllowedInstructions = DateTime.UtcNow;
+						return;
+
+					case State.Halted:
+						m_endOfHalt = DateTime.UtcNow.AddMinutes(5);
+						m_block.SetDamping(true);
+						m_block.Controller.MoveAndRotateStopped();
+						return;
+
+					case State.Closed:
+						if (GridBeingControlled != null)
+							ReleaseControlledGrid();
+						m_interpreter = null;
+						return;
+				}
+			}
+		}
 
 		/// <summary>
 		/// Creates an Autopilot for the given ship controller.
@@ -180,11 +216,8 @@ namespace Rynchodon.Autopilot
 
 		private void CubeBlock_OnClosing(VRage.ModAPI.IMyEntity obj)
 		{
+			m_block.CubeBlock.OnClosing -= CubeBlock_OnClosing;
 			m_state = State.Closed;
-
-			if (GridBeingControlled != null)
-				ReleaseControlledGrid();
-			m_interpreter = null;
 		}
 
 		public void Update()
@@ -211,38 +244,23 @@ namespace Rynchodon.Autopilot
 					m_logger.debugLog("disabling thruster control", "UpdateThread()", Logger.severity.INFO);
 					m_block.Disable = false;
 					m_block.ApplyAction("ControlThrusters");
-					m_state = State.Exit;
+					m_state = State.Disabled;
+					return;
 				}
 
 				switch (m_state)
 				{
 					case State.Disabled:
 						if (CheckControl())
-						{
-							m_logger.debugLog("gained control", "Update()", Logger.severity.INFO);
-							m_navSet.OnStartOfCommands();
-							m_interpreter.instructionQueue.Clear();
 							m_state = State.Enabled;
-							break;
-						}
 						return;
 					case State.Enabled:
 						if (CheckControl())
 							break;
-						m_logger.debugLog("lost control", "Update()", Logger.severity.INFO);
 						m_state = State.Disabled;
-						m_nextAllowedInstructions = DateTime.UtcNow;
-						UpdateCustomInfo();
 						return;
 					case State.Halted:
 						if (!m_block.Controller.ControlThrusters || DateTime.UtcNow > m_endOfHalt)
-						{
-							m_state = State.Disabled;
-							UpdateCustomInfo();
-						}
-						return;
-					case State.Exit:
-						if (!m_block.Controller.ControlThrusters)
 							m_state = State.Disabled;
 						return;
 					case State.Closed:
@@ -302,7 +320,7 @@ namespace Rynchodon.Autopilot
 			catch (Exception ex)
 			{
 				m_logger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
-				HCF();
+				m_state = State.Halted;
 			}
 			finally
 			{ lock_execution.ReleaseExclusive(); }
@@ -534,14 +552,6 @@ namespace Rynchodon.Autopilot
 		}
 
 		#endregion Custom Info
-
-		private void HCF()
-		{
-			m_state = State.Halted;
-			m_endOfHalt = DateTime.UtcNow.AddMinutes(5);
-			m_block.SetDamping(true);
-			m_block.Controller.MoveAndRotateStopped();
-		}
 
 	}
 }

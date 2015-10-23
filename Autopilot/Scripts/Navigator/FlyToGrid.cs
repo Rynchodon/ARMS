@@ -24,7 +24,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly BlockNameOrientation m_targetBlock;
 		private readonly PseudoBlock m_contBlock;
 		private readonly PseudoBlock m_navBlock;
-		//private readonly AttachableBlockBase m_landAttach;
 		/// <summary>m_targetBlock.Forward  or opposite of the landing face</summary>
 		private readonly Base6Directions.Direction m_landingDirection;
 		/// <summary>Half of length of landing block in the direction it will be landing.</summary>
@@ -104,7 +103,8 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navBlock = landingBlock ?? m_navSet.Settings_Current.NavigationBlock;
 
 			if (landingBlock != null)
-			{if (landingBlock.Block is IMyFunctionalBlock)
+			{
+				if (landingBlock.Block is IMyFunctionalBlock)
 					m_landingState = LandingState.Approach;
 				else
 				{
@@ -146,18 +146,18 @@ namespace Rynchodon.Autopilot.Navigator
 					m_landingState = LandingState.None;
 				}
 
+				float minDestRadius =  m_controlBlock.CubeGrid.GetLongestDim() * 5f;
+				if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
+				{
+					m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
+					m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
+				}
+
 				m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
 				m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
 			}
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
-			//if (m_navSet.Settings_Current.NavigatorRotator == null)
-			//{
-			//	m_logger.debugLog("added as mover and rotator", "FlyToGrid()");
-			//	m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
-			//}
-			//else
-			//	m_logger.debugLog("added as mover only", "FlyToGrid()");
 		}
 
 		public override void Move()
@@ -196,7 +196,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navBlockPos = m_navBlock.WorldPosition;
 				m_targetPosition = m_gridFinder.GetPosition(m_navBlockPos, m_navSet.Settings_Current.DestinationOffset);
 
-				//if (m_gridFinder.m_targetBlockName == null || m_gridFinder.Block != null)
 				if (m_gridFinder.Block != null)
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
@@ -207,6 +206,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
+				// set destination to be short of grid so pathfinder knows we will not hit it
 				Vector3 targetToNav = m_navBlockPos - m_targetPosition;
 				targetToNav.Normalize();
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
@@ -329,7 +329,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				case LandingState.None:
 					{
-						if (m_navSet.Settings_Current.StayInFormation)
+						if (m_navSet.Settings_Current.Stay_In_Formation)
 						{
 							m_logger.debugLog("Maintaining relative position to target", "Move_Land()");
 							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
@@ -427,6 +427,7 @@ namespace Rynchodon.Autopilot.Navigator
 						LockConnector();
 
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize;
+						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween), "Move_Land()");
 						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween, m_gridFinder.Grid.GetLinearVelocity(), true);
 						return;
 					}
@@ -434,11 +435,12 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
-							//m_logger.debugLog("waiting for direction to match", "Move_Land()");
+							m_logger.debugLog("waiting for direction to match", "Move_Land()");
 							m_mover.CalcMove(m_navBlock, m_navBlockPos, m_gridFinder.Grid.GetLinearVelocity(), true);
 							return;
 						}
 
+						m_logger.debugLog("moving to " + m_targetPosition, "Move_Land()");
 						m_mover.CalcMove(m_navBlock, m_targetPosition, m_gridFinder.Grid.GetLinearVelocity(), true);
 						return;
 					}
