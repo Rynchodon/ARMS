@@ -62,6 +62,8 @@ namespace Rynchodon.Autopilot.Navigator
 							break;
 						}
 					case LandingState.Catch:
+						m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
+						goto case LandingState.Landing;
 					case LandingState.Landing:
 						{
 							m_navSet.Settings_Task_NavRot.PathfinderCanChangeCourse = false;

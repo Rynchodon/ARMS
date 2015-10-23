@@ -92,6 +92,9 @@ namespace Rynchodon.Settings
 
 		private static void Entities_OnCloseAll()
 		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, Server_ReceiveMessage);
+			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, Client_ReceiveMessage);
 			AllSettings = null;
 			myLogger = null;
 		}
@@ -100,8 +103,21 @@ namespace Rynchodon.Settings
 		{
 			try
 			{
+				if (message == null)
+				{
+					myLogger.debugLog("Message is null", "Server_ReceiveMessage()");
+					return;
+				}
+				if( message.Length < 8)
+				{
+					myLogger.debugLog("Message is too short: " + message.Length, "Server_ReceiveMessage()");
+					return;
+				}
+
 				int pos = 0;
 				ulong SteamUserId = ByteConverter.GetUlong(message, ref pos);
+
+				myLogger.debugLog("Received request from: " + SteamUserId, "Server_ReceiveMessage()");
 
 				message = new byte[17];
 				pos = 0;
