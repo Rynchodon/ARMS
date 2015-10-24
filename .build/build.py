@@ -493,6 +493,14 @@ for oneError in errors:
 
 os.chdir(startDir)
 
+for path, dirs, files in os.walk('Archive'):
+	size = 0
+	for f in files:
+		fp = os.path.join(path, f)
+		size += os.path.getsize(fp)
+if (size < 10000000):
+	sys.exit()
+
 if not os.path.exists(Zip7):
 	print('\nNot running 7-Zip')
 	sys.exit()
