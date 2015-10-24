@@ -130,7 +130,7 @@ namespace Rynchodon.Weapons
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
-				StopFiring("No target.");
+				FireWeapon = false;
 				return;
 			}
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot

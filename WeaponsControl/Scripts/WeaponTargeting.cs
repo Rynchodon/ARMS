@@ -29,11 +29,13 @@ namespace Rynchodon.Weapons
 			Targeting = GetOptions | 1 << 1
 		}
 
+		/// <remarks>
+		/// <para>Increasing the number of threads would require locks to be added in many areas.</para>
+		/// <para>One thread has no trouble putting enough projectiles into play to slow the game to a crawl.</para>
+		/// </remarks>
 		private static ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
 		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
-
-		/// <remarks>Not locked because there is only one thread allowed.</remarks>
 		private static Dictionary<string, Ammo> KnownAmmo = new Dictionary<string, Ammo>();
 
 		static WeaponTargeting()
@@ -86,11 +88,14 @@ namespace Rynchodon.Weapons
 		private MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		//private readonly FastResourceLock lock_Blacklist = new FastResourceLock(); // probably do not need this
 
-		/// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
-		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
-		private bool IsShooting;
-		/// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
-		private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
+		///// <summary>Tests whether or not WeaponTargeting has set the turret to shoot.</summary>
+		///// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
+		//private bool IsShooting;
+		///// <remarks>need to lock IsShooting because StopFiring() can be called at any time</remarks>
+		//private readonly FastResourceLock lock_IsShooting = new FastResourceLock();
+
+		protected bool FireWeapon;
+		private bool IsFiringWeapon = true;
 
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
@@ -134,6 +139,14 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
+				if (FireWeapon != IsFiringWeapon)
+				{
+					IsFiringWeapon = FireWeapon;
+					if (FireWeapon)
+						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
+					else
+					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
+				}
 				Update();
 			}
 			catch (Exception ex)
@@ -158,7 +171,7 @@ namespace Rynchodon.Weapons
 				value_AllowedState = value;
 
 				CurrentState &= value;
-				StopFiring("AllowedState changed");
+				FireWeapon = false;
 
 				//if (IsNormalTurret && (value & State.Targeting) == 0)
 				//	GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
@@ -173,24 +186,15 @@ namespace Rynchodon.Weapons
 				if (value_CurrentState == value)
 					return;
 
-				//// need to get builder because we have no idea what the player may have been up to
-				//var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-				//using (lock_IsShooting.AcquireExclusiveUsing())
-				//	if (IsShooting != builder.IsShootingFromTerminal)
-				//	{
-				//		myLogger.debugLog("switching IsShooting: player was up to something fishy", "set_CurrentState()", Logger.severity.INFO);
-				//		IsShooting = builder.IsShootingFromTerminal;
-				//	}
-
 				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
-				StopFiring("CurrentState changed to " + value, true);
+				FireWeapon = false;
 
 				if (IsNormalTurret)
 				{
 					if ((value & State.Targeting) == State.Targeting) // now targeting
-						GameThreadActions.Enqueue(() =>	myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
+						GameThreadActions.Enqueue(() => myTurret.SetTarget(BarrelPositionWorld() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
 					else // not targeting
-						GameThreadActions.Enqueue(() =>	myTurret.ResetTargetingToDefault());
+						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
 				}
 
 				value_CurrentState = value;
@@ -254,7 +258,7 @@ namespace Rynchodon.Weapons
 				UpdateNumber++;
 			}
 			catch (Exception ex)
-			{				myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.WARNING);			}
+			{ myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.WARNING); }
 		}
 
 		/// <summary>
@@ -314,8 +318,7 @@ namespace Rynchodon.Weapons
 			if (CurrentState_NotFlag(State.GetOptions))
 				return;
 
-			//using (lock_Blacklist.AcquireExclusiveUsing())
-				Blacklist = new MyUniqueList<IMyEntity>();
+			Blacklist = new MyUniqueList<IMyEntity>();
 
 			TargetingOptions newOptions;
 			List<string> Errors;
@@ -331,22 +334,6 @@ namespace Rynchodon.Weapons
 				myLogger.debugLog("not updation Options, Error Count = " + Errors.Count, "Update100()");
 			WriteErrors(Errors);
 		}
-
-		// no longer appropriate as shooting toggle is delayed
-		///// <summary>Verifies that the weapon is in correct firing state.</summary>
-		//private void Update1000()
-		//{
-		//	if (CurrentState_NotFlag(State.Targeting))
-		//		return;
-
-		//	var builder = CubeBlock.GetSlimObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun;
-		//	using (lock_IsShooting.AcquireExclusiveUsing())
-		//		if (IsShooting != builder.IsShootingFromTerminal)
-		//		{
-		//			myLogger.debugLog("Shooting toggled incorrectly", "Update1000()", Logger.severity.WARNING);
-		//			IsShooting = builder.IsShootingFromTerminal;
-		//		}
-		//}
 
 		private Vector3D BarrelPositionWorld()
 		{
@@ -380,7 +367,7 @@ namespace Rynchodon.Weapons
 			if (loaded.Count == 0 || loaded[0].Amount < 1)
 			{
 				LoadedAmmo = null;
-				StopFiring("No ammo loaded.");
+				FireWeapon = false;
 				return;
 			}
 
@@ -464,7 +451,7 @@ namespace Rynchodon.Weapons
 		{
 			if (!CurrentTarget.InterceptionPoint.HasValue)
 			{
-				StopFiring("No interception point.");
+				FireWeapon = false;
 				return;
 			}
 
@@ -508,48 +495,48 @@ namespace Rynchodon.Weapons
 					{
 						myLogger.debugLog("blacklisting: " + CurrentTarget.Entity.getBestName(), "CheckFire()");
 						//using (lock_Blacklist.AcquireExclusiveUsing())
-							Blacklist.Add(CurrentTarget.Entity);
+						Blacklist.Add(CurrentTarget.Entity);
 					}
-					StopFiring("Obstructed");
+					FireWeapon = false;
 				}
 				else
-					FireWeapon();
+					FireWeapon = true;
 			}
 			else
-				StopFiring("shot is off target");
+				FireWeapon = false;
 		}
 
-		private void FireWeapon(bool force = false)
-		{
-			using (lock_IsShooting.AcquireExclusiveUsing())
-			{
-				if (IsShooting && ! force)
-					return;
+		//private void FireWeapon()
+		//{
+		//	using (lock_IsShooting.AcquireExclusiveUsing())
+		//	{
+		//		if (IsShooting)
+		//			return;
 
-				myLogger.debugLog("Open fire", "FireWeapon()");
+		//		myLogger.debugLog("Open fire", "FireWeapon()");
 
-				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock));
+		//		GameThreadActions.Enqueue(() =>
+		//			(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock));
 
-				IsShooting = true;
-			}
-		}
+		//		IsShooting = true;
+		//	}
+		//}
 
-		protected void StopFiring(string reason, bool force = false)
-		{
-			using (lock_IsShooting.AcquireExclusiveUsing())
-			{
-				if (!IsShooting && ! force)
-					return;
+		//protected void StopFiring(string reason, bool force = false)
+		//{
+		//	using (lock_IsShooting.AcquireExclusiveUsing())
+		//	{
+		//		if (!IsShooting && !force)
+		//			return;
 
-				myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
+		//		myLogger.debugLog("Hold fire: " + reason, "StopFiring()"); ;
 
-				GameThreadActions.Enqueue(() => 
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
+		//		GameThreadActions.Enqueue(() =>
+		//			(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
 
-				IsShooting = false;
-			}
-		}
+		//		IsShooting = false;
+		//	}
+		//}
 
 		/// <summary>
 		/// Fills Available_Targets and PotentialObstruction
@@ -572,8 +559,8 @@ namespace Rynchodon.Weapons
 				//myLogger.debugLog("Nearby entity: " + entity.getBestName(), "CollectTargets()");
 
 				//using (lock_Blacklist.AcquireSharedUsing())
-					if (Blacklist.Contains(entity))
-						continue;
+				if (Blacklist.Contains(entity))
+					continue;
 
 				if (entity is IMyFloatingObject)
 				{
@@ -780,7 +767,7 @@ namespace Rynchodon.Weapons
 					{
 						myLogger.debugLog("can't target: " + target.getBestName() + ", obstructed", "SetClosest()");
 						//using (lock_Blacklist.AcquireExclusiveUsing())
-							Blacklist.Add(target);
+						Blacklist.Add(target);
 						continue;
 					}
 				}
@@ -867,8 +854,8 @@ namespace Rynchodon.Weapons
 							continue;
 
 						//using (lock_Blacklist.AcquireSharedUsing())
-							if (Blacklist.Contains(block))
-								continue;
+						if (Blacklist.Contains(block))
+							continue;
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
 						if (distanceSq > Options.TargetingRangeSquared)
@@ -905,11 +892,11 @@ namespace Rynchodon.Weapons
 						}
 
 						//using (lock_Blacklist.AcquireSharedUsing())
-							if (Blacklist.Contains(block))
-							{
-								myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
-								continue;
-							}
+						if (Blacklist.Contains(block))
+						{
+							myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
+							continue;
+						}
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
 						if (distanceSq > Options.TargetingRangeSquared)
@@ -945,8 +932,8 @@ namespace Rynchodon.Weapons
 					if (TargetableBlock(slim.FatBlock, false))
 					{
 						//using (lock_Blacklist.AcquireSharedUsing())
-							if (Blacklist.Contains(slim.FatBlock))
-								continue;
+						if (Blacklist.Contains(slim.FatBlock))
+							continue;
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
 						if (distanceSq > Options.TargetingRangeSquared)
@@ -981,8 +968,16 @@ namespace Rynchodon.Weapons
 					if (entity.Closed)
 						continue;
 
+					bool isMissile = entity.ToString().StartsWith("MyMissile");
+
+					if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 1)
+					{
+						myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
+						continue;
+					}
+
 					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || entity.ToString().StartsWith("MyMissile") || entity.GetLinearVelocity().LengthSquared() > 100))
+					if (!(entity is IMyMeteor || isMissile || entity.GetLinearVelocity().LengthSquared() > 100))
 					{
 						//myLogger.debugLog("type = " + tType + ", entity = " + entity.getBestName() + " is too slow, speed = " + entity.GetLinearVelocity().Length(), "PickAProjectile()");
 						continue;
@@ -1224,14 +1219,14 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.debugLog("Blacklisting " + target.getBestName(), "SetFiringDirection()");
 				//using (lock_Blacklist.AcquireExclusiveUsing())
-					Blacklist.Add(target);
+				Blacklist.Add(target);
 				return;
 			}
 			if (Obstructed(CurrentTarget.InterceptionPoint.Value))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
 				//using (lock_Blacklist.AcquireExclusiveUsing())
-					Blacklist.Add(target);
+				Blacklist.Add(target);
 				CurrentTarget = new Target();
 				return;
 			}
@@ -1268,7 +1263,8 @@ namespace Rynchodon.Weapons
 				//// Shot is too slow to intercept target, it will never catch up.
 				//// Do our best by aiming in the direction of the targets velocity.
 				//return Vector3.Normalize(targetVel) * shotSpeed;
-				CurrentTarget = CurrentTarget.AddDirectionPoint(null, null);
+				CurrentTarget.FiringDirection = null;
+				CurrentTarget.InterceptionPoint = null;
 				return;
 			}
 			else
@@ -1289,7 +1285,8 @@ namespace Rynchodon.Weapons
 				Vector3 shotVel = shotVelOrth + shotVelTang;
 				Vector3 interceptionPoint = shotOrigin + shotVel * timeToCollision;
 
-				CurrentTarget = CurrentTarget.AddDirectionPoint(firingDirection, interceptionPoint);
+				CurrentTarget.FiringDirection = firingDirection;
+				CurrentTarget.InterceptionPoint = interceptionPoint;
 			}
 		}
 
@@ -1321,11 +1318,11 @@ namespace Rynchodon.Weapons
 				build.Append(DisplayName);
 
 				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				GameThreadActions.Enqueue(() => 
+				GameThreadActions.Enqueue(() =>
 					(CubeBlock as IMyTerminalBlock).SetCustomName(build));
 			}
 			else
-				GameThreadActions.Enqueue(() => 
+				GameThreadActions.Enqueue(() =>
 					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
 	}

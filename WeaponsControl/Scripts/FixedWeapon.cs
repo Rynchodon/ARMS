@@ -63,7 +63,7 @@ namespace Rynchodon.Weapons
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
-				StopFiring("No target.");
+				FireWeapon = false;
 				if (MyMotorTurret != null)
 					MyMotorTurret.Stop();
 				return;

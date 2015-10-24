@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
 using Sandbox.Definitions;
+using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -104,10 +105,31 @@ namespace Rynchodon.Weapons
 
 	public class Target
 	{
+		private static Dictionary<long, int> WeaponsFiringAt = new Dictionary<long, int>();
+
+		static Target()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			WeaponsFiringAt = null;
+		}
+
+		public static int WeaponsTargeting(long entityId)
+		{
+			int value;
+			if (WeaponsFiringAt.TryGetValue(entityId, out value))
+				return value;
+			return 0;
+		}
+
 		public readonly IMyEntity Entity;
 		public readonly TargetType TType;
-		public readonly Vector3? FiringDirection;
-		public readonly Vector3? InterceptionPoint;
+		public Vector3? FiringDirection;
+		public Vector3? InterceptionPoint;
 
 		/// <summary>
 		/// Creates a target of type None with Entity as null.
@@ -124,10 +146,37 @@ namespace Rynchodon.Weapons
 			this.TType = tType;
 			this.FiringDirection = firingDirection;
 			this.InterceptionPoint = interceptionPoint;
+
+			int weapons;
+			if (!WeaponsFiringAt.TryGetValue(Entity.EntityId, out weapons))
+				weapons = 0;
+			weapons++;
+			WeaponsFiringAt[Entity.EntityId] = weapons;
+			if (weapons < 1)
+				throw new Exception("weaponsOnTarget < 1");
 		}
 
-		public Target AddDirectionPoint(Vector3? firingDirection, Vector3? interceptionPoint)
-		{ return new Target(Entity, TType, firingDirection, interceptionPoint); }
+		~Target()
+		{
+			try
+			{
+				if (Entity != null)
+				{
+					int weapons = WeaponsFiringAt[Entity.EntityId];
+					if (weapons == 1)
+						WeaponsFiringAt.Remove(Entity.EntityId);
+					else
+						WeaponsFiringAt[Entity.EntityId] = weapons - 1;
+				}
+			}
+			catch (Exception ex)
+			{
+				(new Logger("TargetingTypeOptions")).alwaysLog("Exception: " + ex, "~Target()", Logger.severity.ERROR);
+			}
+		}
+
+		//public Target AddDirectionPoint(Vector3? firingDirection, Vector3? interceptionPoint)
+		//{ return new Target(Entity, TType, firingDirection, interceptionPoint); }
 	}
 
 	public class Ammo
