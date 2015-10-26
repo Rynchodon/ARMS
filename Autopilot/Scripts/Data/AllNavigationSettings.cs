@@ -202,7 +202,7 @@ namespace Rynchodon.Autopilot.Data
 			public float SpeedTarget
 			{
 				get { return m_speedTarget ?? parent.SpeedTarget; }
-				set { m_speedTarget = Math.Min(value, ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxSpeed)); }
+				set { m_speedTarget = Math.Min(value, parent.SpeedTarget); }
 			}
 
 			/// <summary>Pathfinder should not run voxel tests.</summary>

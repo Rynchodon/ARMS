@@ -205,7 +205,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.StopMove();
 					return;
 				case State.Approaching:
-					// measure distance from line, but move to a point?
+					// measure distance from line, but move to a point
 					Vector3 closestPoint = m_approach.ClosestPoint(m_navDrill.WorldPosition);
 					if (Vector3.DistanceSquared(closestPoint, m_navDrill.WorldPosition) < m_longestDimension)
 					{
@@ -371,7 +371,7 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 			}
 
-			if (m_navSet.Settings_Current.Distance < 3f)
+			if (m_state != State.Rotating && m_navSet.Settings_Current.Distance < 3f)
 			{
 				m_mover.StopRotate();
 				return;
@@ -379,7 +379,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 			//m_logger.debugLog("rotating to face " + m_currentTarget, "Rotate()");
-			m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+			if (m_state == State.Approaching)
+				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+			else
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -400,6 +403,8 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 				case State.Rotating:
 					customInfo.AppendLine("Rotating to face deposit");
+					customInfo.Append("Angle: ");
+					customInfo.AppendLine(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle).ToString());
 					break;
 				case State.MoveTo:
 					customInfo.Append("Moving to ");
@@ -489,7 +494,7 @@ namespace Rynchodon.Autopilot.Navigator
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					Vector3 surfacePoint;
 					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
-					m_approach = new Line(boxEdge, surfacePoint);
+					m_approach = new Line(surfacePoint + centreOut * m_controlBlock.CubeGrid.GetLongestDim() * 2, surfacePoint);
 
 					m_logger.debugLog("centre: " + m_voxelCentre.ToGpsTag("centre")
 						+ ", deposit: " + m_depositPos.ToGpsTag("deposit")

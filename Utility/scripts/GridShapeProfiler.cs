@@ -88,10 +88,10 @@ namespace Rynchodon
 		/// <summary>
 		/// Gets the closest occupied cell by manhatten distance.
 		/// </summary>
-		public Vector3D GetClosestOccupiedCell(Vector3I startPoint)
+		public Vector3I GetClosestOccupiedCell(Vector3I startPoint)
 		{
-			Vector3I closest = Vector3I.Zero;
 			int closestDistance = int.MaxValue;
+			Vector3I closest = startPoint;
 			ForEach(cell => {
 				int dist = Vector3I.DistanceManhattan(cell, startPoint);
 				if (dist < closestDistance)
@@ -101,18 +101,17 @@ namespace Rynchodon
 				}
 			});
 
-			if (closestDistance == int.MaxValue)
-				throw new NullReferenceException("No closest cell found");
-			return m_grid.GridIntegerToWorld(closest);
+			return closest;
 		}
 
 		/// <summary>
 		/// Gets the closest occupied cell by manhatten distance.
 		/// </summary>
-		public Vector3D GetClosestOccupiedCell(Vector3D worldPosition)
+		public Vector3D GetClosestOccupiedCell(Vector3D startWorld)
 		{
-			Vector3I startPoint = m_grid.WorldToGridInteger(worldPosition);
-			return GetClosestOccupiedCell(startPoint);
+			Vector3I startPoint = m_grid.WorldToGridInteger(startWorld);
+			Vector3I closestCell = GetClosestOccupiedCell(startPoint);
+			return m_grid.GridIntegerToWorld(closestCell);
 		}
 
 		private void grid_OnClosing(IMyEntity obj)

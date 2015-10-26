@@ -90,6 +90,7 @@ namespace Rynchodon.Autopilot
 				switch (m_curResponse.Response)
 				{
 					case Response.None:
+						m_logger.debugLog("No responses left", "set_Enemy()", Logger.severity.DEBUG);
 						m_navSet.OnTaskComplete_NavEngage();
 						m_mover.MoveAndRotateStop();
 						return;
@@ -102,9 +103,9 @@ namespace Rynchodon.Autopilot
 					case Response.Ram:
 						m_navResponse = new Kamikaze(m_mover, m_navSet);
 						break;
-					//case Response.Grind:
-					//	m_navResponse = new Grinder(m_mover, m_navSet);
-					//	break;
+					case Response.Grind:
+						m_navResponse = new Grinder(m_mover, m_navSet, m_startPosition);
+						break;
 					case Response.Self_Destruct:
 						AttachedGrid.RunOnAttached(m_autopilot.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
 							var warheads = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_Warhead));
@@ -271,8 +272,8 @@ namespace Rynchodon.Autopilot
 				}
 
 				// if it is too fast, cannot target
-				float speedTarget = m_navSet.Settings_Current.SpeedTarget;
-				if (grid.GetLinearVelocity().LengthSquared() > speedTarget * speedTarget)
+				float speedTarget = m_navSet.Settings_Task_NavEngage.SpeedTarget - 1f;
+				if (grid.GetLinearVelocity().LengthSquared() >= speedTarget * speedTarget)
 				{
 					m_logger.debugLog("too fast to target: " + grid.DisplayName, "CanTarget()");
 					return false;
@@ -294,6 +295,7 @@ namespace Rynchodon.Autopilot
 		/// This runs after m_navResponse is created and will override settings.
 		private void SetEngage()
 		{
+			m_logger.debugLog("entered", "SetEngage()", Logger.severity.DEBUG);
 			m_navSet.OnTaskComplete_NavEngage();
 			m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;

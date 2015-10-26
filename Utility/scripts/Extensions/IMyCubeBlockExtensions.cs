@@ -18,6 +18,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
 		/// </summary>
+		/// <remarks>
+		/// If sendFrom == sendTo, returns false
+		/// </remarks>
 		public static bool canSendTo(this IMyCubeBlock sendFrom, object sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
 			sendFrom.throwIfNull_argument("sendFrom");
@@ -29,6 +32,9 @@ namespace Rynchodon
 			IMyCubeBlock sendToAsBlock = sendTo as IMyCubeBlock;
 			if (sendToAsBlock != null)
 			{
+				if (sendFrom == sendToAsBlock)
+					return false;
+
 				if (sendToAsBlock.Closed || !sendToAsBlock.IsWorking)
 					return false;
 

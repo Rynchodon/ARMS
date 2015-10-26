@@ -139,9 +139,6 @@ namespace Rynchodon
 		{
 			radius *= radius;
 
-			//Logger m_logger = new Logger("Misc_PointInCylinder");
-			//m_logger.debugLog("line: " + line.From + " to " + line.To + ", radius: " + radius + ", point: " + point, "PointInCylinder()");
-
 			if (line.From == line.To)
 				return Vector3.DistanceSquared(line.From, point) < radius;
 
@@ -149,22 +146,13 @@ namespace Rynchodon
 			float line_distSq = line_disp.LengthSquared();
 
 			float fraction = Vector3.Dot(point - line.From, line_disp) / line_distSq; // projection as a fraction of line_disp
-			//m_logger.debugLog("fraction: " + fraction, "PointInCylinder()");
 
 			if (fraction < 0) // extends past From
-			{
-				//m_logger.debugLog("extends past from: " + fraction, "PointInCylinder()");
 				return false;
-			}
 			else if (fraction > 1) // extends past To
-			{
-				//m_logger.debugLog("extends past to: " + fraction, "PointInCylinder()");
 				return false;
-			}
-			//m_logger.debugLog("fraction: " + fraction, "PointInCylinder()");
 
 			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
-			//m_logger.debugLog("closestPoint: " + closestPoint.ToGpsTag("closest point"), "PointInCylinder()");
 			return Vector3.DistanceSquared(point, closestPoint) < radius;
 		}
 

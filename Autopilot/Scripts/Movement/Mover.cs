@@ -122,16 +122,32 @@ namespace Rynchodon.Autopilot.Movement
 			destVelocity = Vector3.Transform(destVelocity, directionToLocal);
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
-			Vector3 targetVelocity = MaximumVelocity(destDisp);
-			if (landing)
-				targetVelocity *= 0.5f;
-
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
+
+			Vector3 targetVelocity = MaximumVelocity(destDisp);
 
 			// project targetVelocity onto destination direction (take shortest path)
 			Vector3 destDir = destDisp / distance;
 			targetVelocity = Vector3.Dot(targetVelocity, destDir) * destDir;
+
+			// apply relative speed limit
+			float relSpeedLimit = myPathfinder.MaxRelativeSpeed;
+			if (landing)
+			{
+				float landingSpeed = distance * 0.5f;
+				if (relSpeedLimit > landingSpeed)
+					relSpeedLimit = landingSpeed;
+			}
+			if (relSpeedLimit < float.MaxValue)
+			{
+				float tarSpeedSq_1 = targetVelocity.LengthSquared();
+				if (tarSpeedSq_1 > relSpeedLimit * relSpeedLimit)
+				{
+					targetVelocity *= relSpeedLimit / (float)Math.Sqrt(tarSpeedSq_1);
+					myLogger.debugLog("imposing relative speed limit: " + relSpeedLimit + ", targetVelocity: " + targetVelocity, "CalcMove()");
+				}
+			}
 
 			targetVelocity += destVelocity;
 
@@ -142,8 +158,6 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
 			Vector3 accel = targetVelocity - velocity;
-			if (landing && targetVelocity.LengthSquared() < velocity.LengthSquared())
-				accel *= 10f;
 
 			moveForceRatio = ToForceRatio(accel);
 

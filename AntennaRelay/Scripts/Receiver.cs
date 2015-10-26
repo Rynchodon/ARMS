@@ -59,7 +59,9 @@ namespace Rynchodon.AntennaRelay
 		private readonly Logger myLogger = new Logger(null, "Receiver");
 		/// <summary>Track LastSeen objects by entityId</summary>
 		private Dictionary<long, LastSeen> myLastSeen;
+		private FastResourceLock lock_myLastSeen = new FastResourceLock("Receiver.myLastSeen");
 		private MyUniqueList<Message> myMessages;
+		private FastResourceLock lock_myMessages = new FastResourceLock("Receiver.myMessages");
 
 		public IMyCubeBlock CubeBlock { get; private set; }
 
@@ -67,7 +69,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;
-			
+
 			myLogger = new Logger("Receiver", () => CubeBlock.CubeGrid.DisplayName);
 			myLastSeen = new Dictionary<long, LastSeen>();
 			myMessages = new MyUniqueList<Message>();
@@ -86,7 +88,8 @@ namespace Rynchodon.AntennaRelay
 		private void CubeGrid_OnBlockOwnershipChanged(IMyCubeGrid obj)
 		{
 			if (obj == CubeBlock)
-				myMessages.Clear();
+				using (lock_myMessages.AcquireExclusiveUsing())
+					myMessages.Clear();
 		}
 
 		/// <summary>
@@ -96,19 +99,22 @@ namespace Rynchodon.AntennaRelay
 		public void ForEachLastSeen(Func<LastSeen, bool> toInvoke)
 		{
 			List<long> removeList = new List<long>();
-			foreach (var pair in myLastSeen)
-			{
-				if (pair.Value.IsValid)
+			using (lock_myLastSeen.AcquireSharedUsing())
+				foreach (var pair in myLastSeen)
 				{
-					if (toInvoke(pair.Value))
-						break;
+					if (pair.Value.IsValid)
+					{
+						if (toInvoke(pair.Value))
+							break;
+					}
+					else
+						removeList.Add(pair.Key);
 				}
-				else
-					removeList.Add(pair.Key);
-			}
 
-			foreach (long entityId in removeList)
-				myLastSeen.Remove(entityId);
+			if (removeList.Count != 0)
+				using (lock_myLastSeen.AcquireExclusiveUsing())
+					foreach (long entityId in removeList)
+						myLastSeen.Remove(entityId);
 		}
 
 		/// <summary>
@@ -118,19 +124,22 @@ namespace Rynchodon.AntennaRelay
 		public void ForEachMessage(Func<Message, bool> toInvoke)
 		{
 			List<Message> removeList = new List<Message>();
-			foreach (Message mes in myMessages)
-			{
-				if (mes.IsValid)
+			using (lock_myMessages.AcquireSharedUsing())
+				foreach (Message mes in myMessages)
 				{
-					if (toInvoke(mes))
-						break;
+					if (mes.IsValid)
+					{
+						if (toInvoke(mes))
+							break;
+					}
+					else
+						removeList.Add(mes);
 				}
-				else
-					removeList.Add(mes);
-			}
 
-			foreach (Message mes in removeList)
-				myMessages.Remove(mes);
+			if (removeList.Count != 0)
+				using (lock_myMessages.AcquireExclusiveUsing())
+					foreach (Message mes in removeList)
+						myMessages.Remove(mes);
 		}
 
 		/// <summary>
@@ -220,15 +229,25 @@ namespace Rynchodon.AntennaRelay
 		public int messageCount { get { return myMessages.Count; } }
 
 		public LastSeen getLastSeen(long entityId)
-		{ return myLastSeen[entityId]; }
+		{
+			using (lock_myLastSeen.AcquireSharedUsing())
+				return myLastSeen[entityId];
+		}
 
 		public bool tryGetLastSeen(long entityId, out LastSeen result)
-		{ return myLastSeen.TryGetValue(entityId, out result); }
+		{
+			using (lock_myLastSeen.AcquireSharedUsing())
+				return myLastSeen.TryGetValue(entityId, out result);
+		}
 
 		protected Message RemoveOneMessage()
 		{
-			Message result = myMessages[0];
-			myMessages.Remove(result);
+			Message result;
+			using (lock_myMessages.AcquireExclusiveUsing())
+			{
+				result = myMessages[0];
+				myMessages.Remove(result);
+			}
 			return result;
 		}
 
@@ -238,9 +257,12 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="mes">message to receive</param>
 		public void Receive(Message mes)
 		{
-			if (myMessages.Contains(mes))
-				return;
-			myMessages.Add(mes);
+			using (lock_myMessages.AcquireExclusiveUsing())
+			{
+				if (myMessages.Contains(mes))
+					return;
+				myMessages.Add(mes);
+			}
 			myLogger.debugLog("got a new message: " + mes.Content + ", count is now " + myMessages.Count, "receive()", Logger.severity.TRACE);
 		}
 
@@ -254,13 +276,14 @@ namespace Rynchodon.AntennaRelay
 				return;
 
 			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
-			{
-				if (seen.update(ref toUpdate))
-					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
-			}
-			else
-				myLastSeen.Add(seen.Entity.EntityId, seen);
+			using (lock_myLastSeen.AcquireExclusiveUsing())
+				if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
+				{
+					if (seen.update(ref toUpdate))
+						myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
+				}
+				else
+					myLastSeen.Add(seen.Entity.EntityId, seen);
 		}
 
 	}

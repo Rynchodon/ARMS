@@ -75,14 +75,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanTarget(IMyCubeGrid grid)
 		{
-			if (m_destroySet)
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			if (m_destroySet && cache.TotalByDefinition() > 0)
 				return true;
 
 			TargetType gridType = grid.GridSizeEnum == MyCubeSize.Small ? TargetType.SmallGrid
 				: grid.IsStatic ? TargetType.Station
 				: TargetType.LargeGrid;
 
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
 			List<string> targetBlocks;
 			if (m_cumulative_targeting.TryGetValue(gridType, out targetBlocks))
 			{
@@ -140,7 +140,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (!InterceptionPoint.HasValue)
 			{
 				//m_logger.debugLog("no target", "Rotate()");
-				m_mover.StopRotate();
+				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget.Entity.GetCentre() - m_controlBlock.CubeBlock.GetPosition()));
 				return;
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");

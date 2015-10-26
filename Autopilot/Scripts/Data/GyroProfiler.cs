@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot.Data
 			float force = 0f;
 			foreach (MyGyro g in Gyros)
 				if (g.IsWorking)
-					force += g.MaxGyroForce;
+					force += g.MaxGyroForce; // MaxGyroForce accounts for power ratio and modules
 
 			return force;
 		}
