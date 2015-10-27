@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	public class Pathfinder
 	{
 
-		private enum PathState : byte { Not_Run, No_Obstruction, Searching, No_Way_Forward }
+		private enum PathState : byte { Not_Running, No_Obstruction, Searching, Path_Blocked }
 
 		private const float SqRtHalf = 0.70710678f;
 		private const float SqRtThird = 0.57735026f;
@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private PseudoBlock m_navBlock;
 		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
-		private PathState m_pathState = PathState.Not_Run;
+		private PathState m_pathState = PathState.Not_Running;
 		private PathState m_rotateState = PathState.No_Obstruction;
 
 		private ulong m_nextRun;
@@ -102,8 +102,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
-		/// <summary>Maximum speed relative to the target.</summary>
-		public float MaxRelativeSpeed { get; private set; }
+		///// <summary>Maximum speed relative to the target.</summary>
+		//public float MaxRelativeSpeed { get; private set; }
+
+		public string MoveStatus { get { return m_pathState.ToString(); } }
 
 		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
@@ -123,7 +125,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
 				m_runId = RunIdPool++;
 				m_pathLow.Clear();
-				m_pathState = PathState.Not_Run;
+				m_pathState = PathState.Not_Running;
 			}
 			//else
 			//	m_logger.debugLog("destination unchanged", "TestPath()");
@@ -175,7 +177,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_pathHigh.Enqueue(() => TestPath(moveDest, null, m_runId, isAlternate: false, tryAlternates: false, slowDown: true));
 			}
 			else
-				MaxRelativeSpeed = float.MaxValue;
+				m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
 
 			RunItem();
 		}
@@ -193,7 +195,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (!lock_testPath.TryAcquireExclusive())
 			{
-				m_logger.debugLog("Already running, requeue", "TestPath()");
+				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
 				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
 				queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
 				return;
@@ -236,8 +239,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (slowDown)
 				{
 					Vector3 displacement = pointOfObstruction.Value - m_navBlock.WorldPosition;
-					MaxRelativeSpeed = Vector3.Distance(pointOfObstruction.Value, m_navBlock.WorldPosition) / LookAheadSpeed_Seconds;
-					m_logger.debugLog("Set MaxRelativeSpeed to " + MaxRelativeSpeed, "TestPath()", Logger.severity.TRACE);
+					m_navSet.Settings_Task_NavWay.SpeedMaxRelative = Vector3.Distance(pointOfObstruction.Value, m_navBlock.WorldPosition) / LookAheadSpeed_Seconds;
+					m_logger.debugLog("Set MaxRelativeSpeed to " + m_navSet.Settings_Task_NavWay.SpeedMaxRelative, "TestPath()", Logger.severity.TRACE);
 					return;
 				}
 
@@ -256,6 +259,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						FindAlternate_JustMove(runId);
 					}
 					FindAlternate_HalfwayObstruction(displacement, runId);
+					m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
 				}
 			}
 			finally
@@ -355,7 +359,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (slowDown)
 				{
 					m_logger.debugLog("Removing speed limit", "PathClear()");
-					MaxRelativeSpeed = float.MaxValue;
+					m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
 				}
 				m_pathState = PathState.No_Obstruction;
 				m_pathLow.Clear();

@@ -12,30 +12,20 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
-	public class EnemyFinder
+	public class EnemyFinder : GridFinder
 	{
 
-		public enum Response : byte { None, Fight, Flee, Ram, Grind, Self_Destruct }
+		public enum Response : byte { None, Fight, Flee, Ram, Self_Destruct }
 
 		private struct ResponseRange
 		{
 			public readonly Response Response;
-			private float RangeSquared;
-
-			public float Range
-			{ set { RangeSquared = value * value; } }
+			public float Range;
 
 			public ResponseRange(Response resp, float range)
 			{
 				this.Response = resp;
-				this.RangeSquared = range * range;
-			}
-
-			public bool InRange(float distanceSquared)
-			{
-				if (RangeSquared < 1f)
-					return true;
-				return distanceSquared <= RangeSquared;
+				this.Range = range;
 			}
 		}
 
@@ -44,28 +34,27 @@ namespace Rynchodon.Autopilot
 		private readonly Logger m_logger;
 		private readonly Mover m_mover;
 		private readonly AllNavigationSettings m_navSet;
-		private readonly ShipControllerBlock m_autopilot;
-		private readonly ShipController m_controller;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
 		private readonly Vector3D m_startPosition;
 
 		private readonly List<LastSeen> m_enemies = new List<LastSeen>();
 		private IEnemyResponse m_navResponse;
-		private LastSeen m_enemy;
 		private ResponseRange m_curResponse;
 		private ulong m_nextSearch;
 		private int m_responseIndex;
 
-		public LastSeen Enemy
+		private LastSeen value_grid;
+
+		public override LastSeen Grid
 		{
-			get { return m_enemy; }
-			set
+			get { return value_grid; }
+			protected set
 			{
-				if (value == m_enemy)
+				if (value != null && value_grid != null && value.Entity == value_grid.Entity)
 					return;
 
-				m_enemy = value;
-				if (m_enemy == null)
+				value_grid = value;
+				if (value_grid == null)
 				{
 					m_logger.debugLog("no longer have an Enemy", "set_Enemy()", Logger.severity.DEBUG);
 					m_navSet.OnTaskComplete_NavEngage();
@@ -73,7 +62,7 @@ namespace Rynchodon.Autopilot
 				}
 				else
 				{
-					m_logger.debugLog("Enemy is now: " + m_enemy.Entity.getBestName(), "set_Enemy()", Logger.severity.DEBUG);
+					m_logger.debugLog("Enemy is now: " + value_grid.Entity.getBestName(), "set_Enemy()", Logger.severity.DEBUG);
 					SetEngage();
 				}
 			}
@@ -103,29 +92,17 @@ namespace Rynchodon.Autopilot
 					case Response.Ram:
 						m_navResponse = new Kamikaze(m_mover, m_navSet);
 						break;
-					case Response.Grind:
-						m_navResponse = new Grinder(m_mover, m_navSet, m_startPosition);
-						break;
 					case Response.Self_Destruct:
-						AttachedGrid.RunOnAttached(m_autopilot.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
-							var warheads = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_Warhead));
-							if (warheads != null)
-								foreach (var war in warheads)
-									if (m_autopilot.CubeBlock.canControlBlock(war))
-									{
-										m_logger.debugLog("Starting countdown for " + war.getBestName(), "set_CurrentResponse()", Logger.severity.DEBUG);
-										war.ApplyAction("StartCountdown");
-									}
-							return false;
-						}, true);
-						NextResponse(); // you never know
-						return;
+						m_navResponse = new Self_Destruct(m_mover.Block.CubeBlock);
+						break;
 					default:
 						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, "set_CurrentResponse()", Logger.severity.WARNING);
 						NextResponse();
 						return;
 				}
-				if (Enemy != null)
+				MaximumRange = m_curResponse.Range;
+				GridCondition = m_navResponse.CanTarget;
+				if (Grid != null)
 				{
 					m_logger.debugLog("adding responder: " + m_navResponse, "set_CurrentResponse()", Logger.severity.DEBUG);
 					SetEngage();
@@ -134,15 +111,12 @@ namespace Rynchodon.Autopilot
 		}
 
 		public EnemyFinder(Mover mover, AllNavigationSettings navSet)
+			: base(navSet, mover.Block)
 		{
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
 			this.m_mover = mover;
 			this.m_navSet = navSet;
-			this.m_autopilot = mover.Block;
-			this.m_startPosition = m_autopilot.CubeBlock.GetPosition();
-
-			if (!Registrar.TryGetValue(m_autopilot.CubeBlock.EntityId, out this.m_controller))
-				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
+			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 
 			m_logger.debugLog("Initialized", "EnemyFinder()");
 		}
@@ -184,70 +158,8 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			if (Enemy == null)
-			{
-				if (Globals.UpdateCount >= m_nextSearch)
-					Search();
-			}
-			else
-				if (Globals.UpdateCount >= m_nextSearch)
-				{
-					m_nextSearch = Globals.UpdateCount + SearchInterval;
-					if (!CanTarget(Enemy)
-						|| !CurrentResponse.InRange(Vector3.DistanceSquared(m_autopilot.CubeBlock.GetPosition(), Enemy.predictPosition())))
-					{
-						m_logger.debugLog("LastSeen no longer satisfies condition", "Update()", Logger.severity.DEBUG);
-						Search();
-					}
-					else
-					{
-						// update last seen
-						if (m_controller.tryGetLastSeen(Enemy.Entity.EntityId, out m_enemy)) // bypass Enemy because the underlying entity is not changing
-							m_logger.debugLog("Enemy updated from Controller", "Update()");
-					}
-				}
-
-			if (Enemy != null && !Enemy.IsValid)
-				Enemy = null;
-
-			m_navResponse.UpdateTarget(Enemy);
-		}
-
-		private void Search()
-		{
-			m_logger.debugLog("searching", "Search()");
-
-			m_nextSearch = Globals.UpdateCount + SearchInterval;
-			Vector3D position = m_autopilot.CubeBlock.GetPosition();
-
-			m_enemies.Clear();
-			m_controller.ForEachLastSeen(seen => {
-				if (!seen.IsValid)
-					return false;
-
-				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
-				if (asGrid == null || !m_autopilot.CubeBlock.canConsiderHostile(asGrid))
-					return false;
-
-				m_enemies.Add(seen);
-				m_logger.debugLog("enemy: " + seen.Entity.getBestName(), "Search()");
-				return false;
-			});
-
-			m_logger.debugLog("number of enemies: " + m_enemies.Count, "Search()");
-			IOrderedEnumerable<LastSeen> enemiesByDistance = m_enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.predictPosition()));
-			foreach (LastSeen enemy in enemiesByDistance)
-			{
-				if (CanTarget(enemy))
-				{
-					Enemy = enemy;
-					m_logger.debugLog("found target: " + enemy.Entity.getBestName(), "Search()");
-					return;
-				}
-			}
-
-			Enemy = null;
-			m_logger.debugLog("nothing found", "Search()");
+			base.Update();
+			m_navResponse.UpdateTarget(Grid);
 		}
 
 		private void NextResponse()
@@ -257,39 +169,6 @@ namespace Rynchodon.Autopilot
 				CurrentResponse = new ResponseRange();
 			else
 				CurrentResponse = m_allResponses[m_responseIndex];
-		}
-
-		private bool CanTarget(LastSeen enemy)
-		{
-			IMyCubeGrid grid = enemy.Entity as IMyCubeGrid;
-			try
-			{
-				// if it is too far from start, cannot target
-				if (!CurrentResponse.InRange(Vector3.DistanceSquared(m_startPosition, enemy.predictPosition())))
-				{
-					m_logger.debugLog("out of range of start position: " + grid.DisplayName, "CanTarget()");
-					return false;
-				}
-
-				// if it is too fast, cannot target
-				float speedTarget = m_navSet.Settings_Task_NavEngage.SpeedTarget - 1f;
-				if (grid.GetLinearVelocity().LengthSquared() >= speedTarget * speedTarget)
-				{
-					m_logger.debugLog("too fast to target: " + grid.DisplayName, "CanTarget()");
-					return false;
-				}
-
-				return m_navResponse.CanTarget(grid);
-			}
-			catch (NullReferenceException nre)
-			{
-				m_logger.debugLog("Exception: " + nre, "CanTarget()");
-
-				if (!grid.Closed)
-					throw nre;
-				m_logger.debugLog("Caught exception caused by grid closing, ignoring.", "CanTarget()");
-				return false;
-			}
 		}
 
 		/// This runs after m_navResponse is created and will override settings.

@@ -107,7 +107,16 @@ namespace Rynchodon
 		/// <summary>
 		/// Gets the closest occupied cell by manhatten distance.
 		/// </summary>
-		public Vector3D GetClosestOccupiedCell(Vector3D startWorld)
+		public Vector3I GetClosestOccupiedCell(Vector3D startWorld)
+		{
+			Vector3I startPoint = m_grid.WorldToGridInteger(startWorld);
+			return GetClosestOccupiedCell(startPoint);
+		}
+
+		/// <summary>
+		/// Gets the position of the closest occupied cell by manhatten distance.
+		/// </summary>
+		public Vector3D GetClosestOccupiedCellPosition(Vector3D startWorld)
 		{
 			Vector3I startPoint = m_grid.WorldToGridInteger(startWorld);
 			Vector3I closestCell = GetClosestOccupiedCell(startPoint);

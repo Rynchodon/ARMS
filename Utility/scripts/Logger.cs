@@ -88,6 +88,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="gridName">the name of the grid this Logger belongs to, may be null</param>
 		/// <param name="className">the name of the class this Logger belongs to</param>
+		[Obsolete]
 		public Logger(string gridName, string className)
 		{
 			this.f_context = () => gridName;

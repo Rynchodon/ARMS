@@ -96,7 +96,7 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_landingState.ToString());
 			this.m_targetBlock = m_navSet.Settings_Current.DestinationBlock;
 			string blockName = m_targetBlock == null ? null : m_targetBlock.BlockName;
-			this.m_gridFinder = new GridFinder(m_mover.Block, targetGrid, blockName, allowedAttachment);
+			this.m_gridFinder = new GridFinder(m_navSet, m_mover.Block, targetGrid, blockName, allowedAttachment);
 			this.m_contBlock = m_navSet.Settings_Commands.NavigationBlock;
 
 			PseudoBlock landingBlock = m_navSet.Settings_Current.LandingBlock;

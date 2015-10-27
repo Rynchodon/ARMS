@@ -55,10 +55,15 @@ Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
 Harvest : Extract any ore from an asteroid. Ore must be detected by an ore detector on autopilot's grid.
 Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest any ore.
 
+R <distance> : Grind up enemy and unowned ships within <distance> of the autopilot. Grinding will stop if grinders are damaged or full. NOTE: Grinder ships are not smart enough to avoid bumping into and grinding each other.
+Example - [ R 1000 ] - Grind any enemy within 1 km.
+Example - [ L Connector ; B Connector ; G Base ; W 1 m ; Unlock ; R 5 km ]
+
 STOP : Stop the ship before executing any more commands. Clears all commands except P and V.
 
-W <seconds> : wait before travelling to the next destination
+W <seconds> : Wait before travelling to the next destination. Can use m for minutes, or h for hours.
 Example - [ C 0, 0 , 0 : W 60 : C 500, 500, 500 : EXIT ] - Will wait for 60 seconds after reaching {0, 0, 0}
+Example - [ W 24 h ] - Wait for a day
 
 [h1]Advanced Commands[/h1]
 A <block>, <action> : Run an action on one or more blocks. <action> is case-sensitive. Autopilot will find every block that contains <block>, find the ITerminalAction that matches <action>, and apply it. Block must have faction share with Autopilot block's owner.
@@ -74,15 +79,15 @@ B <name>, <f> : <f> indicates which direction to face the landing block when lan
 Example - [ L Landing Gear : B Beacon, Right : G Platform : Disable ] - Attach landing gear to the left side of beacon on Platform
 B <name>, <f>, <u> : <f> will be used as forward direction and <u> will be used as upward direction
 
-E <range>, <response> : Start searching for an enemy. While no enemy is found, will continue following commands. Use 0 for infinite range. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
-E <range>, Fight : Use weapons to attack enemy ship, will stop attack if autopilot's weapons are disabled.
+E <distance>, <response> : Start searching for an enemy. While no enemy is found, will continue following commands. Use 0 for infinite distance. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
+E <distance>, Fight : Use weapons to attack enemy ship, will stop attack if autopilot's weapons are disabled.
 Example - [ E 0, Fight ] - Fight any detected enemy.
-E <range>, Flee : Escape from enemy, will stop fleeing if thrusters become disabled.
+E <distance>, Flee : Escape from enemy, will stop fleeing if thrusters become disabled.
 Example - [ E 2000, Flee ] - Flee from any enemy that comes within 2 km.
 Example - [ E 0, Fight ; E 2000, Flee ] - Fight any enemy that is detected. If weapons are disabled, flee from any enemy within 2 km.
-E <range>, Ram : Ram the enemy, will stop trying to ram if thrusters become disabled.
+E <distance>, Ram : Ram the enemy, will stop trying to ram if thrusters become disabled.
 Example - [ E 0, Fight, Ram ] - If weapons become disabled while fighting, ram the enemy.
-E <range>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
+E <distance>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
 Example - [ E 100, Self-Destruct ] : Explode if an enemy comes within 100 m.
 Example - [ E 0, Fight, Ram, Self-Destruct ] - Fight the enemy. If weapons become disabled, ram the enemy. If thrusters become disabled, explode.
 
@@ -118,7 +123,7 @@ O <distance> <direction>, ... : generic form is a comma separated list of distan
 Example - [ O 500 upward : B Antenna : G Platform ] - fly to 500m above Antenna on Platform
 Example - [ O 100 forward, 500 upward : B Antenna : G Platform ] - fly to 100m ahead of and 500m above Antenna
 
-P <range> : how close the grid needs to fly to the destination, default is 100m. For landing, used as the holding distance.
+P <distance> : how close the grid needs to fly to the destination, default is 100m. For landing, used as the holding distance.
 Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward, to within 10m
 
 T <name> : fetch commands from the public text of a text panel named <name>, starting at the first [ and ending at the first following ]

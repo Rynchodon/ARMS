@@ -125,14 +125,14 @@ namespace Rynchodon.Autopilot.Movement
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
 
-			Vector3 targetVelocity = MaximumVelocity(destDisp);
+			Vector3 targetVelocity = MaximumVelocity(destDisp) * 0.5f;
 
 			// project targetVelocity onto destination direction (take shortest path)
 			Vector3 destDir = destDisp / distance;
 			targetVelocity = Vector3.Dot(targetVelocity, destDir) * destDir;
 
 			// apply relative speed limit
-			float relSpeedLimit = myPathfinder.MaxRelativeSpeed;
+			float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
 			if (landing)
 			{
 				float landingSpeed = distance * 0.5f;
@@ -415,7 +415,7 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(displacement);
+			Vector3 targetVelocity = MaxAngleVelocity(displacement) * 0.5f;
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
 			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * gyroForce);

@@ -22,8 +22,9 @@ namespace Rynchodon.AntennaRelay
 		public readonly IMyEntity Entity;
 		public readonly DateTime LastSeenAt;
 		public readonly Vector3D LastKnownPosition;
-		public readonly Vector3 LastKnownVelocity;
 		public readonly RadarInfo Info;
+
+		private readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
 		public readonly DateTime LastBroadcast;
@@ -64,12 +65,12 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		public LastSeen(IMyEntity entity, UpdateTime times)
-			:	this (entity)
+			: this(entity)
 		{
 			if ((times & UpdateTime.Broadcasting) != 0)
 				this.LastBroadcast = DateTime.UtcNow;
 			if ((times & UpdateTime.HasJammer) != 0)
-				this.LastJam = DateTime.UtcNow; 
+				this.LastJam = DateTime.UtcNow;
 			if ((times & UpdateTime.HasRadar) != 0)
 				this.LastRadar = DateTime.UtcNow;
 		}
@@ -109,15 +110,9 @@ namespace Rynchodon.AntennaRelay
 			return false;
 		}
 
-		/// <summary>
-		/// Deprecated, use GetPosition()
-		/// </summary>
 		public Vector3D predictPosition()
 		{ return LastKnownPosition + LastKnownVelocity * (float)(DateTime.UtcNow - LastSeenAt).TotalSeconds; }
 
-		/// <summary>
-		/// Deprecated, use GetPosition()
-		/// </summary>
 		public Vector3D predictPosition(out TimeSpan sinceLastSeen)
 		{
 			sinceLastSeen = DateTime.UtcNow - LastSeenAt;

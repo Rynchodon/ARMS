@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private Vector3D? m_destinationOffset;
 
-			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget;
+			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative;
 
 			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance, m_pathfindeCanChangeCourse, m_formation;
 
@@ -50,6 +50,7 @@ namespace Rynchodon.Autopilot.Data
 				m_distance = float.NaN;
 				m_distanceAngle = float.NaN;
 				m_speedTarget = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed);
+				m_speedMaxRelative = float.MaxValue;
 
 				m_ignoreAsteroid = false;
 				m_destChanged = true;
@@ -198,11 +199,38 @@ namespace Rynchodon.Autopilot.Data
 				set { m_distanceAngle = value; }
 			}
 
-			/// <summary>The desired speed of the ship.</summary>
+			/// <summary>
+			/// <para>The desired speed of the ship</para>
+			/// <para>Get returns the lowest value at this or higher level</para>
+			/// </summary>
 			public float SpeedTarget
 			{
-				get { return m_speedTarget ?? parent.SpeedTarget; }
-				set { m_speedTarget = Math.Min(value, parent.SpeedTarget); }
+				get
+				{
+					if (parent == null)
+						return m_speedTarget.Value;
+					if (m_speedTarget.HasValue)
+						return Math.Min(m_speedTarget.Value, parent.SpeedTarget);
+					return parent.SpeedTarget;
+				}
+				set { m_speedTarget = value; }
+			}
+
+			/// <summary>
+			/// <para>The maximum speed relative to the target.</para>
+			/// <para>Get returns the lowest value at this or higher level</para>
+			/// </summary>
+			public float SpeedMaxRelative
+			{
+				get
+				{
+					if (parent == null)
+						return m_speedMaxRelative.Value;
+					if (m_speedMaxRelative.HasValue)
+						return Math.Min(m_speedMaxRelative.Value, parent.SpeedMaxRelative);
+					return parent.SpeedMaxRelative;
+				}
+				set { m_speedMaxRelative = value; }
 			}
 
 			/// <summary>Pathfinder should not run voxel tests.</summary>

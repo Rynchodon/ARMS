@@ -287,6 +287,8 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_offset(out instructionAction, dataLowerCase);
 				case 'p':
 					return getAction_Proximity(out instructionAction, dataLowerCase);
+				case 'r':
+					return getAction_grind(out instructionAction, dataLowerCase);
 				case 'u':
 					return getAction_unlandBlock(out instructionAction, dataLowerCase);
 				case 'v':
@@ -752,6 +754,18 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 			//myLogger.debugLog("failed to parse " + instruction + " to float, radius = " + owner.CNS.destinationRadius, "getActionProximity()", Logger.severity.TRACE);
 			execute = null;
+			return false;
+		}
+
+		private bool getAction_grind(out Action instructionAction, string instruction)
+		{
+			float distance;
+			if (stringToDistance(out distance, instruction))
+			{
+				instructionAction = () => { new Grinder(Mover, NavSet, distance); };
+				return true;
+			}
+			instructionAction = null;
 			return false;
 		}
 

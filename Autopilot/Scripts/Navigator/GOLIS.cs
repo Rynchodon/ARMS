@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var atLevel = waypoint ? m_navSet.Settings_Task_NavWay : m_navSet.Settings_Task_NavMove;
 			atLevel.NavigatorMover = this;
+			atLevel.DestinationEntity = mover.Block.CubeGrid; // in case waypoint is blocked by moving target
 		}
 
 		#region NavigatorMover Members

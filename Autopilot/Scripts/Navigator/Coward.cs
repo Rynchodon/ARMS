@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Vector3 position = m_mover.Block.CubeBlock.GetPosition();
-			m_flyDirection = position - m_enemy.predictPosition();
+			m_flyDirection = position - m_enemy.GetPosition();
 			m_flyDirection.Normalize();
 
 			Vector3 destination = position + m_flyDirection * 1000000f;
@@ -81,7 +81,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_enemy != null)
 			{
 				customInfo.Append("Running like a coward from an enemy at ");
-				customInfo.AppendLine(m_enemy.predictPosition().ToPretty());
+				customInfo.AppendLine(m_enemy.GetPosition().ToPretty());
 			}
 		}
 

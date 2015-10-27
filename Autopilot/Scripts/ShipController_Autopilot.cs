@@ -521,7 +521,10 @@ namespace Rynchodon.Autopilot
 			if (path != null)
 			{
 				if (!path.CanMove)
-					m_customInfo_build.AppendLine("Searching for path");
+				{
+					m_customInfo_build.Append("Pathfinder: ");
+					m_customInfo_build.AppendLine(path.MoveStatus);
+				}
 				if (!path.CanRotate)
 					m_customInfo_build.AppendLine("Cannot rotate safely");
 			}

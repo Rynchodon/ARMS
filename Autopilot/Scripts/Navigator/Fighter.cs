@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_weaponDataDirty)
 				UpdateWeaponData();
 
-			m_logger.debugLog("weapon count: " + m_weapons_all.Count, "CanRespond()"); 
+			//m_logger.debugLog("weapon count: " + m_weapons_all.Count, "CanRespond()"); 
 
 			return m_weapons_all.Count != 0;
 		}
@@ -118,7 +118,7 @@ namespace Rynchodon.Autopilot.Navigator
 				SetRandomOffset();
 
 			//m_logger.debugLog("moving to " + (m_currentTarget.predictPosition() + m_currentOffset), "Move()");
-			m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.predictPosition() + m_currentOffset, m_currentTarget.GetLinearVelocity());
+			m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition() + m_currentOffset, m_currentTarget.GetLinearVelocity());
 		}
 
 		public void Rotate()
@@ -146,7 +146,7 @@ namespace Rynchodon.Autopilot.Navigator
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
 
 			//const float project = ShipController_Autopilot.UpdateFrequency / 60f;
-			Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.Entity.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity());// *project;
+			Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity());// *project;
 
 			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, targetPoint - m_weapon_primary_pseudo.WorldPosition));
 		}
@@ -154,7 +154,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
 			customInfo.Append("Attacking an enemy at ");
-			customInfo.AppendLine(m_currentTarget.predictPosition().ToPretty());
+			customInfo.AppendLine(m_currentTarget.GetPosition().ToPretty());
 		}
 
 		private void Arm()
@@ -386,7 +386,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3D GetRandomOffset()
 		{
 			// get current angles
-			Vector3D relativePos = m_controlBlock.CubeBlock.GetPosition() - m_currentTarget.predictPosition();
+			Vector3D relativePos = m_controlBlock.CubeBlock.GetPosition() - m_currentTarget.GetPosition();
 			relativePos.Normalize();
 			double angle1 = Math.Acos(relativePos.Z);
 			double angle2 = Math.Asin(relativePos.Y / Math.Sin(angle1));
