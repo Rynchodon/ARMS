@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		private ulong updated_prevAngleVel = 0;
 		private Vector3 prevAngleVel = Vector3.Zero;
+		private Vector3 prevAngleDisp = Vector3.Zero;
 
 		private bool m_stopped;
 
@@ -329,7 +330,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="localMatrix">The matrix to rotate to face the direction, use a block's local matrix or result of GetMatrix()</param>
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
-		///// <param name="displacement">Angular distance between localMatrix and Direction</param>
 		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, out Vector3 angularVelocity)
 		{
 			CheckGrid();
@@ -341,17 +341,18 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			const ulong UpdateFrequency = ShipController_Autopilot.UpdateFrequency + 1ul;
-			if (rotateForceRatio != Vector3.Zero && Globals.UpdateCount - updated_prevAngleVel <= UpdateFrequency) // did autopilot have control since last update
-			{
-				Vector3 ratio = (angularVelocity - prevAngleVel) / (rotateForceRatio * gyroForce);
+			const ulong UpdateFrequency = ShipController_Autopilot.UpdateFrequency;
+			if (rotateForceRatio != Vector3.Zero)
+				if (Globals.UpdateCount - updated_prevAngleVel == UpdateFrequency) // needs to be == because displacment is not divided by frequency
+				{
+					Vector3 ratio = (angularVelocity - prevAngleVel) / (rotateForceRatio * gyroForce);
 
-				//myLogger.debugLog("rotateForceRatio: " + rotateForceRatio + ", ratio: " + ratio + ", accel: " + (angularVelocity - prevAngleVel) + ", torque: " + (rotateForceRatio * gyroForce), "CalcRotate()");
+					//myLogger.debugLog("rotateForceRatio: " + rotateForceRatio + ", ratio: " + ratio + ", accel: " + (angularVelocity - prevAngleVel) + ", torque: " + (rotateForceRatio * gyroForce), "CalcRotate()");
 
-				myGyro.Update_torqueAccelRatio(rotateForceRatio, ratio);
-			}
-			//else
-			//	myLogger.debugLog("prevAngleVel is old: " + (Globals.UpdateCount - updated_prevAngleVel), "CalcRotate()", Logger.severity.INFO);
+					myGyro.Update_torqueAccelRatio(rotateForceRatio, ratio);
+				}
+				else
+					myLogger.debugLog("prevAngleVel is old: " + (Globals.UpdateCount - updated_prevAngleVel), "CalcRotate()", Logger.severity.DEBUG);
 
 			localMatrix.M41 = 0; localMatrix.M42 = 0; localMatrix.M43 = 0; localMatrix.M44 = 1;
 			Matrix inverted; Matrix.Invert(ref localMatrix, out inverted);
@@ -415,7 +416,21 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(displacement) * 0.5f;
+			Vector3 targetVelocity = MaxAngleVelocity(displacement);
+
+			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
+
+			Vector3 displacementChange = displacement - prevAngleDisp + angularVelocity / dispToVel;
+			myLogger.debugLog("prevAngleDisp: " + prevAngleDisp + ", displacement: " + displacement + ", angularVelocity / dispToVel: " + angularVelocity / dispToVel, "CalcRotate()");
+			if (displacementChange.LengthSquared() > 0.01f)
+				myLogger.debugLog("Large displacement change, assuming target changed: " + displacementChange, "CalcRotate()", Logger.severity.DEBUG);
+			else
+			{
+				myLogger.debugLog("Adding to target velocity: " + displacementChange * dispToVel, "CalcRotate()");
+				targetVelocity += displacementChange * dispToVel;
+			}
+			prevAngleDisp = displacement;
+
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
 			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * gyroForce);

@@ -55,7 +55,7 @@ Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
 Harvest : Extract any ore from an asteroid. Ore must be detected by an ore detector on autopilot's grid.
 Example - [ C 0,0,0 : Harvest ] - fly to {0,0,0} then harvest any ore.
 
-R <distance> : Grind up enemy and unowned ships within <distance> of the autopilot. Grinding will stop if grinders are damaged or full. NOTE: Grinder ships are not smart enough to avoid bumping into and grinding each other.
+R <distance> : Recycle (grind) enemy and unowned ships within <distance> of the autopilot. Recycling will stop if grinders are damaged or full. NOTE: Only one recycler will be able to target each grid.
 Example - [ R 1000 ] - Grind any enemy within 1 km.
 Example - [ L Connector ; B Connector ; G Base ; W 1 m ; Unlock ; R 5 km ]
 
