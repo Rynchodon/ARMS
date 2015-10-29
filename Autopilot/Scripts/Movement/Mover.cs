@@ -48,6 +48,7 @@ namespace Rynchodon.Autopilot.Movement
 		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
 		{
 			this.myLogger = new Logger("Mover", block.Controller);
+			this.myLogger.MinimumLevel = Logger.severity.DEBUG;
 			this.Block = block;
 			this.NavSet = NavSet;
 		}
@@ -401,6 +402,7 @@ namespace Rynchodon.Autopilot.Movement
 				myPathfinder.TestRotate(displacement);
 				if (!myPathfinder.CanRotate)
 				{
+					Logger.debugNotify("Cannot Rotate", 50);
 					myLogger.debugLog("Pathfinder not allowing rotation", "CalcRotate()");
 					return;
 				}

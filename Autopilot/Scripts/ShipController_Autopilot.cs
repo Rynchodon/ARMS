@@ -518,15 +518,17 @@ namespace Rynchodon.Autopilot
 				return;
 
 			Pathfinder.Pathfinder path = m_interpreter.Mover.myPathfinder;
-			if (path != null)
+			if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
 			{
-				if (!path.CanMove)
+				if (!path.CanMove || !path.CanRotate)
 				{
-					m_customInfo_build.Append("Pathfinder: ");
-					m_customInfo_build.AppendLine(path.MoveStatus);
+					m_customInfo_build.AppendLine("Pathfinder: ");
+					if (!path.CanMove)
+						m_customInfo_build.AppendLine(path.PathStatus);
+					if (!path.CanRotate)
+						m_customInfo_build.AppendLine("Cannot rotate safely");
+					m_customInfo_build.AppendLine();
 				}
-				if (!path.CanRotate)
-					m_customInfo_build.AppendLine("Cannot rotate safely");
 			}
 
 			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;

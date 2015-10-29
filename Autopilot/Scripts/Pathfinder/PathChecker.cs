@@ -262,7 +262,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			for (int i = 0; i < m_offenders.Count; i++)
 				if (!collect_Entity(m_grid, m_offenders[i])
 					|| (m_ignoreEntity != null && m_ignoreEntity == m_offenders[i]))
+				{
+					m_logger.debugLog("discarding: " + m_offenders[i].getBestName(), "EntitiesInLargeAABB()");
 					m_offRemove.Add(m_offenders[i]);
+				}
 			for (int i = 0; i < m_offRemove.Count; i++)
 				m_offenders.Remove(m_offRemove[i]);
 

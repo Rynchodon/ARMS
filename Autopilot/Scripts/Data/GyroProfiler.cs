@@ -17,6 +17,7 @@ namespace Rynchodon.Autopilot.Data
 
 		private bool dirty_torqueAccelRatio;
 
+		/// <summary>A measure of the affect torque has on velocity per autopilot update.</summary>
 		public float torqueAccelRatio { get; private set; }
 
 		public GyroProfiler(IMyCubeGrid grid)

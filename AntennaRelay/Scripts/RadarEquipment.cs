@@ -649,14 +649,15 @@ namespace Rynchodon.AntennaRelay
 				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition()) / myDefinition.SignalEnhance;
 				float radarSignature = (effectivePowerLevel - distance) * reflectivity - distance;
-				radarSignature += decoySignal * WorkingDecoys(otherGrid);
+				int decoys = WorkingDecoys(otherGrid);
+				radarSignature += decoySignal * decoys;
 
 				if (radarSignature > 0)
 				{
 					//myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
 
 					DetectedInfo detFo = new DetectedInfo(otherGrid, RelationsBlock.getRelationsTo(otherGrid));
-					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * WorkingDecoys(otherGrid)));
+					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
 					detectedObjects_list.Add(detFo);
 					if (detectedObjects_hash != null)
 						detectedObjects_hash.Add(otherGrid, detFo);
@@ -785,7 +786,10 @@ namespace Rynchodon.AntennaRelay
 			if (grid == null || RelationsBlock.canConsiderFriendly(grid))
 				return 0;
 
-			return CubeGridCache.GetFor(grid).CountByType(typeof(MyObjectBuilder_Decoy), block => block.IsWorking);
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			if (cache == null)
+				return 0;
+			return cache.CountByType(typeof(MyObjectBuilder_Decoy), block => block.IsWorking);
 		}
 
 		private int WorkingDecoys(RadarEquipment otherEquip)

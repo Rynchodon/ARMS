@@ -100,14 +100,14 @@ namespace Rynchodon.Autopilot.Harvest
 				closest = Vector3D.Zero;
 				foundOre = 255;
 
-				float closestDistance = float.MaxValue;
+				int closestDistance = int.MaxValue;
 				using (lock_readVoxels.AcquireSharedUsing())
 				{
 					m_logger.debugLog("material count: " + m_materialLocations.Count, "GetClosest()");
 					foreach (var matLoc in m_materialLocations)
 						if (oreType == null || oreType.Contains(matLoc.Value))
 						{
-							float dist = matLoc.Key.DistanceSquared(search_voxelCellCoord);
+							int dist = matLoc.Key.DistanceSquared(search_voxelCellCoord);
 							if (dist < closestDistance)
 							{
 								Vector3D deposit_localPosition = matLoc.Key << QUERY_LOD;

@@ -16,6 +16,8 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Grinder : NavigatorMover, INavigatorRotator
 	{
 
+		private const float MaxAngleRotate = 1f;
+
 		private static HashSet<long> GridsBeingGround = new HashSet<long>();
 
 		static Grinder()
@@ -42,12 +44,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3D m_targetPosition;
 		private ulong m_next_grinderFullCheck;
 		private bool m_grinderFull;
-
-		//private IMySlimBlock m_closestBlock;
-		//private ulong m_startGrindBlock;
-
-		//private Vector3I m_targetCell;
-		//private Vector3D m_targetCell_localContact;
 
 		private IMyCubeGrid value_enemy;
 		private Stage value_stage;
@@ -184,21 +180,32 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void Move_Grind()
 		{
-			EnableGrinders(true);
-			m_stage = Stage.Grind;
+			if (m_stage != Stage.Grind)
+			{
+				m_logger.debugLog("Now grinding", "Move_Grind()", Logger.severity.DEBUG);
+				m_navSet.OnTaskComplete_NavMove();
+				EnableGrinders(true);
+				m_stage = Stage.Grind;
+				m_navSet.Settings_Task_NavMove.DestinationEntity = m_enemy;
+			}
 
-			m_navSet.Settings_Task_NavRot.DestinationEntity = m_enemy;
-
-			// getting closest from centre can cause grinder to rotate violently but going from grinder position will cause the grinder to become embeded
-			// TODO: extrication protocol when switching between cells that are far apart
 			Vector3D grindPosition = m_navGrind.WorldPosition;
 			Vector3I cellPosition = m_enemyCells.GetClosestOccupiedCell(m_controlBlock.CubeGrid.GetCentre());
 			m_targetPosition = m_enemy.GridIntegerToWorld(m_enemy.GetCubeBlock(cellPosition).Position);
 
-			if (m_navSet.Settings_Current.DistanceAngle > 1f)
+			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
-				m_logger.debugLog("Waiting for angle to match", "Move_Grind()");
-				m_mover.CalcMove(m_navGrind, m_navGrind.WorldPosition, m_enemy.GetLinearVelocity(), false);
+				if (!m_mover.myPathfinder.CanRotate)
+				{
+					m_logger.debugLog("Extricating ship from target", "Move_Grind()");
+					m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
+					m_mover.CalcMove(m_navGrind, m_targetPosition + m_navGrind.WorldMatrix.Backward * 100f, m_enemy.GetLinearVelocity(), false);
+				}
+				else
+				{
+					m_logger.debugLog("Waiting for angle to match", "Move_Grind()");
+					m_mover.CalcMove(m_navGrind, m_navGrind.WorldPosition, m_enemy.GetLinearVelocity(), false);
+				}
 				return;
 			}
 
@@ -211,33 +218,35 @@ namespace Rynchodon.Autopilot.Navigator
 				targetToGrinder.Normalize();
 
 				m_logger.debugLog("far away, moving to " + (m_targetPosition + targetToGrinder * offset), "Move_Grind()");
-				m_navSet.Settings_Task_NavRot.SpeedMaxRelative = float.MaxValue;
+				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_mover.CalcMove(m_navGrind, m_targetPosition + targetToGrinder * offset, m_enemy.GetLinearVelocity(), true);
 			}
 			else
 			{
 				m_logger.debugLog("close, moving to " + m_targetPosition, "Move_Grind()");
-				m_navSet.Settings_Task_NavRot.SpeedMaxRelative = 0.5f;
+				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = 1f;
 				m_mover.CalcMove(m_navGrind, m_targetPosition, m_enemy.GetLinearVelocity(), true);
 			}
 		}
 
 		private void Move_Intercept(Vector3 position)
 		{
-			EnableGrinders(false);
-			m_stage = Stage.Intercept;
+			if (m_stage != Stage.Intercept)
+			{
+				m_logger.debugLog("Now intercepting", "Move_Intercept()", Logger.severity.DEBUG);
+				m_navSet.OnTaskComplete_NavMove();
+				EnableGrinders(false);
+				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
+				m_stage = Stage.Intercept;
+			}
 
 			m_logger.debugLog("Moving to " + position, "Move_Intercept()");
-
-			m_navSet.Settings_Task_NavRot.DestinationEntity = null;
-			m_navSet.Settings_Task_NavRot.SpeedMaxRelative = float.MaxValue;
-
 			m_mover.CalcMove(m_navGrind, position, m_enemy.GetLinearVelocity());
 		}
 
 		public void Rotate()
 		{
-			if (m_enemy == null || (m_navSet.DistanceLessThan(1f) && m_navSet.Settings_Current.DistanceAngle < 1f))
+			if (m_enemy == null || (m_navSet.DistanceLessThan(1f) && m_navSet.Settings_Current.DistanceAngle <= MaxAngleRotate))
 			{
 				m_mover.StopRotate();
 				return;

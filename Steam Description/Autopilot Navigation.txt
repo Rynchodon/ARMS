@@ -22,14 +22,13 @@ Grids can be calculated very accurately, the required clearance is based on the 
 The required clearance for asteroids is highly dependant on ship design. Consider a cylinder that encompasses Autopilot's grid and the destination. If the asteroid intersects this cylinder, it is blocking the path.
 Other obstacles will require significantly more clearance (relative to their size).
 
-There is no collision avoidance for rotation. Autopilot does not test if rotating the ship will cause a collision. Autopilot does not test if rotating the ship would allow it to pass through an area.
+Autopilot does not test if rotating the ship would allow it to pass through an area.
 
 [u]Pathfinding[/u]
 The pathfinding is very basic, designed with the assumption that the world is mostly empty. Autopilot cannot calculate a complex path to the target.
 
 [u]Performance[/u]
 Pathfinding runs in a separate thread from the rest of the game; if the pathfinder is overworked, the ship may have to stop and calculate a path for a long time.
-The closer an obstacle is to the desired path, the more work needs to be done to determine if the obstacle is obstructing the path.
 All Autopilots share <yParallelPathfinder> threads; each pathfinder uses one thread. If all the threads are in use, the pathfinder will have to wait.
 
 [h1]Commands[/h1]

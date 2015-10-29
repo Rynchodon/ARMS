@@ -118,9 +118,9 @@ namespace Rynchodon
 			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
 		}
 
-		public static float DistanceSquared(this Vector3I vec, Vector3I sec)
+		public static int DistanceSquared(this Vector3I vec, Vector3I sec)
 		{
-			float X = vec.X - sec.X, Y = vec.Y - sec.Y, Z = vec.Z - sec.Z;
+			int X = vec.X - sec.X, Y = vec.Y - sec.Y, Z = vec.Z - sec.Z;
 			return X * X + Y * Y + Z * Z;
 		}
 

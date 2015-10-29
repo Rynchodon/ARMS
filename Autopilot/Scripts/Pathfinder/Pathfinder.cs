@@ -82,6 +82,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly Logger m_logger;
 		private readonly IMyCubeGrid m_grid;
 		private readonly PathChecker m_pathChecker;
+		private readonly RotateChecker m_rotateChecker;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly Mover m_mover;
 		private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
@@ -94,18 +95,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
 		private PathState m_pathState = PathState.Not_Running;
-		private PathState m_rotateState = PathState.No_Obstruction;
+		private PathState m_rotateState = PathState.Not_Running;
 
-		private ulong m_nextRun;
+		private ulong m_nextRunPath;
+		private ulong m_nextRunRotate;
 		private short m_runId;
 		private float m_closestDistanceSquared;
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
-		///// <summary>Maximum speed relative to the target.</summary>
-		//public float MaxRelativeSpeed { get; private set; }
 
-		public string MoveStatus { get { return m_pathState.ToString(); } }
+		public string PathStatus { get { return m_pathState.ToString(); } }
 
 		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
@@ -113,6 +113,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_grid = grid;
 			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
 			m_pathChecker = new PathChecker(grid);
+			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;
 			m_mover = mover;
 		}
@@ -121,7 +122,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (m_navSet.Settings_Current.DestinationChanged)
 			{
-				m_logger.debugLog("new destination: " + destination, "TestPath()");
+				m_logger.debugLog("new destination: " + destination, "TestPath()", Logger.severity.INFO);
 				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
 				m_runId = RunIdPool++;
 				m_pathLow.Clear();
@@ -130,9 +131,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//else
 			//	m_logger.debugLog("destination unchanged", "TestPath()");
 
-			if (Globals.UpdateCount < m_nextRun)
+			if (Globals.UpdateCount < m_nextRunPath)
 				return;
-			m_nextRun = Globals.UpdateCount + 10ul;
+			m_nextRunPath = Globals.UpdateCount + 10ul;
 
 			if (m_pathLow.Count != 0)
 			{
@@ -184,8 +185,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public void TestRotate(Vector3 displacement)
 		{
-			//PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
-			//m_pathHigh.Enqueue(() => TestRotate(navBlock, displacement));
+			if (Globals.UpdateCount < m_nextRunRotate)
+				return;
+			m_nextRunRotate = Globals.UpdateCount + 10ul;
+
+			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
+			m_pathHigh.Enqueue(() => {
+				Vector3 axis; Vector3.Normalize(ref displacement, out axis);
+				if (m_rotateChecker.TestRotate(axis, m_ignoreAsteroid))
+					m_rotateState = PathState.No_Obstruction;
+				else
+					m_rotateState = PathState.Path_Blocked;
+
+				RunItem();
+			});
+
+			RunItem();
 		}
 
 		/// <summary>
@@ -193,6 +208,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void TestPath(Vector3D destination, MyEntity destEntity, short runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
 		{
+			m_logger.debugLog("entered", "TestPath()");
+
 			if (!lock_testPath.TryAcquireExclusive())
 			{
 				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
@@ -313,35 +330,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		private void TestRotate(PseudoBlock navBlock, Vector3 displacement)
-		{
-			//BoundingBoxD WorldAABB = navBlock.Grid.WorldAABB;
-			//BoundingSphereD WorldVolume = navBlock.Grid.WorldVolume;
-			//List<MyEntity> entities = new List<MyEntity>();
-			//MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref WorldAABB, entities);
-			//foreach (MyEntity entity in entities)
-			//	if (PathChecker.collect_Entity(m_grid, entity))
-			//	{
-			//		IMyVoxelMap voxel = entity as IMyVoxelMap;
-			//		if (voxel != null && !voxel.GetIntersectionWithSphere(ref WorldVolume))
-			//			continue;
-
-			//		m_logger.debugLog("Blocked by: " + entity.getBestName() + ", volume: " + WorldVolume, "TestRotate()");
-			//	}
-			//m_rotateState = PathState.No_Obstruction;
-		}
-
 		private void RunItem()
 		{
 			if (m_pathHigh.Count != 0)
 			{
-				m_logger.debugLog("Adding item to Thread_High", "RunItem()");
+				m_logger.debugLog("Adding item to Thread_High, count: " + (Thread_High.ParallelTasks + 1), "RunItem()");
 				Action act = m_pathHigh.Dequeue();
 				Thread_High.EnqueueAction(act);
 			}
 			else if (m_pathLow.Count != 0)
 			{
-				m_logger.debugLog("Adding item to Thread_Low", "RunItem()");
+				m_logger.debugLog("Adding item to Thread_Low, count: " + (Thread_Low.ParallelTasks + 1), "RunItem()");
 				Action act = m_pathLow.Dequeue();
 				Thread_Low.EnqueueAction(act);
 			}

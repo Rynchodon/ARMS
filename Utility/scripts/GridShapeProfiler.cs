@@ -86,14 +86,14 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Gets the closest occupied cell by manhatten distance.
+		/// Gets the closest occupied cell.
 		/// </summary>
 		public Vector3I GetClosestOccupiedCell(Vector3I startPoint)
 		{
 			int closestDistance = int.MaxValue;
 			Vector3I closest = startPoint;
 			ForEach(cell => {
-				int dist = Vector3I.DistanceManhattan(cell, startPoint);
+				int dist = cell.DistanceSquared(startPoint);
 				if (dist < closestDistance)
 				{
 					closest = cell;
@@ -105,7 +105,7 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Gets the closest occupied cell by manhatten distance.
+		/// Gets the closest occupied cell.
 		/// </summary>
 		public Vector3I GetClosestOccupiedCell(Vector3D startWorld)
 		{
@@ -114,7 +114,7 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Gets the position of the closest occupied cell by manhatten distance.
+		/// Gets the position of the closest occupied cell.
 		/// </summary>
 		public Vector3D GetClosestOccupiedCellPosition(Vector3D startWorld)
 		{

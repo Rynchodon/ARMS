@@ -40,6 +40,8 @@ namespace Rynchodon
 		/// </summary>
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
 
+		public severity MinimumLevel = severity.ALL;
+
 		/// <summary>
 		/// Creates a Logger that gets the context and states from supplied functions.
 		/// </summary>
@@ -198,6 +200,8 @@ namespace Rynchodon
 
 			if (level <= severity.WARNING)
 				debugNotify("Logger: " + level, 2000, level);
+			else if (level > MinimumLevel)
+				return;
 
 			if (toLog.Contains("\n") || toLog.Contains("\r"))
 			{
