@@ -212,7 +212,7 @@ namespace Rynchodon.Autopilot.Navigator
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
 				Vector3 destination = m_targetPosition + targetToNav * adjustment;
 
-				m_logger.debugLog("m_targetPosition: " + m_targetPosition +", moved by "+ ( m_navSet.Settings_Current.DestinationRadius * 0.5f) + " to " + destination, "Move()");
+				m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
 				m_mover.CalcMove(m_navBlock, destination, m_gridFinder.Grid.GetLinearVelocity());
 				m_navSet.Settings_Current.Distance += adjustment;
 			}

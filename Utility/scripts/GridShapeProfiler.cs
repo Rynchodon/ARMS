@@ -248,7 +248,7 @@ namespace Rynchodon
 							if (ignore != null && entity_in == ignore)
 								return false;
 
-							pointOfObstruction_in = Path.get_Line().ClosestPoint(world);
+							pointOfObstruction_in = pathLine.ClosestPoint(world);
 							return true;
 						}
 					}

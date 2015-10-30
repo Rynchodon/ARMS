@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -15,6 +16,9 @@ namespace Rynchodon.Autopilot.Data
 
 		private readonly List<MyGyro> Gyros = new List<MyGyro>();
 
+		private ulong m_nextCheck_attachedGrids;
+		private int m_attachedGrids;
+		/// <summary>torqueAccelRatio becomes dirty any time a block is added, removed does not matter.</summary>
 		private bool dirty_torqueAccelRatio;
 
 		/// <summary>A measure of the affect torque has on velocity per autopilot update.</summary>
@@ -47,6 +51,9 @@ namespace Rynchodon.Autopilot.Data
 
 		public void Update_torqueAccelRatio(Vector3 command, Vector3 ratio)
 		{
+			if (Globals.UpdateCount >= m_nextCheck_attachedGrids)
+				CheckAttachedGrids();
+
 			for (int i = 0; i < 3; i++)
 			{
 				// where ratio is from damping, ignore it
@@ -84,6 +91,21 @@ namespace Rynchodon.Autopilot.Data
 				return;
 
 			Gyros.Remove(g);
+		}
+
+		private void CheckAttachedGrids()
+		{
+			m_nextCheck_attachedGrids = Globals.UpdateCount + 100ul;
+
+			int count = 0;
+			AttachedGrid.RunOnAttached(myGrid, AttachedGrid.AttachmentKind.Physics, grid => {
+				count++;
+				return false;
+			});
+
+			if (count > m_attachedGrids)
+				dirty_torqueAccelRatio = true;
+			m_attachedGrids = count;
 		}
 
 	}

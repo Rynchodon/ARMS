@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot.Movement
 		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
 		{
 			this.myLogger = new Logger("Mover", block.Controller);
-			this.myLogger.MinimumLevel = Logger.severity.DEBUG;
+			//this.myLogger.MinimumLevel = Logger.severity.DEBUG;
 			this.Block = block;
 			this.NavSet = NavSet;
 		}
@@ -102,9 +102,6 @@ namespace Rynchodon.Autopilot.Movement
 
 			// using world vectors
 
-			Vector3 destDisp = destPoint - block.WorldPosition;
-			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
-
 			if (NavSet.Settings_Current.CollisionAvoidance)
 			{
 				myPathfinder.TestPath(destPoint, landing);
@@ -114,6 +111,9 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 				}
 			}
+
+			Vector3 destDisp = destPoint - block.WorldPosition;
+			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
 
 			// switch to using local vectors
 

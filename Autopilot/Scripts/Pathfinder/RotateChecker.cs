@@ -36,8 +36,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// calculate height
 			Matrix toMyLocal = m_grid.WorldMatrixNormalizedInv;
-			Vector3 myLocalCentre = Vector3.Transform(centreOfMass, toMyLocal);
+			Vector3 myLocalCoM = Vector3.Transform(centreOfMass, toMyLocal);
 			Vector3 myLocalAxis = Vector3.Transform(axis, toMyLocal.GetOrientation());
+			Vector3 myLocalCentre = m_grid.LocalAABB.Center; // CoM may not be on ship (it now considers mass from attached grids)
 			Ray upper = new Ray(myLocalCentre + myLocalAxis * longestDim * 2f, -myLocalAxis);
 			float? upperBound = m_grid.LocalAABB.Intersects(upper);
 			if (!upperBound.HasValue)
@@ -52,7 +53,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			float furthest = 0f;
 			m_cells.ForEach(cell => {
 				Vector3 rejection = Vector3.Reject(cell * m_grid.GridSize, myLocalAxis);
-				float cellDistSquared = Vector3.DistanceSquared(myLocalCentre, rejection);
+				float cellDistSquared = Vector3.DistanceSquared(myLocalCoM, rejection);
 				if (cellDistSquared > furthest)
 					furthest = cellDistSquared;
 			});
@@ -83,7 +84,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 						Matrix toLocal = grid.WorldMatrixNormalizedInv;
 						Vector3 localAxis = Vector3.Transform(axis, toLocal.GetOrientation());
 						Vector3 localCentre = Vector3.Transform(centreOfMass, toLocal);
-						//LazyLine axle = new Line(localCentre - axis * m_height, localCentre + axis * m_height);
 						axisSegment.From = localCentre - localAxis * height;
 						axisSegment.To = localCentre + localAxis * height;
 

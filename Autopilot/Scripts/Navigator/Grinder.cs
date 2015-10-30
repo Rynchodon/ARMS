@@ -43,6 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private GridCellCache m_enemyCells;
 		private Vector3D m_targetPosition;
 		private ulong m_next_grinderFullCheck;
+		private ulong m_next_grinderCheck;
 		private bool m_grinderFull;
 
 		private IMyCubeGrid value_enemy;
@@ -86,6 +87,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_enemyCells = GridCellCache.GetCellCache(value as IMyCubeGrid);
 			}
 
+			m_stage = Stage.None;
 			value_enemy = value;
 			return true;
 		}
@@ -188,10 +190,20 @@ namespace Rynchodon.Autopilot.Navigator
 				m_stage = Stage.Grind;
 				m_navSet.Settings_Task_NavMove.DestinationEntity = m_enemy;
 			}
+			if (Globals.UpdateCount >= m_next_grinderCheck)
+				EnableGrinders(true);
 
 			Vector3D grindPosition = m_navGrind.WorldPosition;
 			Vector3I cellPosition = m_enemyCells.GetClosestOccupiedCell(m_controlBlock.CubeGrid.GetCentre());
+			IMySlimBlock block = m_enemy.GetCubeBlock(cellPosition);
+			if (block == null)
+			{
+				m_logger.debugLog("No block found at cell position: " + cellPosition, "Move_Grind()", Logger.severity.INFO);
+				return;
+			}
+			m_logger.debugLog("block: " + block, "Move_Grind()");
 			m_targetPosition = m_enemy.GridIntegerToWorld(m_enemy.GetCubeBlock(cellPosition).Position);
+			m_logger.debugLog("cellPosition: " + cellPosition + ", block: " + m_enemy.GetCubeBlock(cellPosition) + ", world: " + m_targetPosition, "Move_Grind()");
 
 			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
@@ -217,13 +229,13 @@ namespace Rynchodon.Autopilot.Navigator
 				Vector3D targetToGrinder = grindPosition - m_targetPosition;
 				targetToGrinder.Normalize();
 
-				m_logger.debugLog("far away, moving to " + (m_targetPosition + targetToGrinder * offset), "Move_Grind()");
+				m_logger.debugLog("far away(" + distSq + "), moving to " + (m_targetPosition + targetToGrinder * offset), "Move_Grind()");
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_mover.CalcMove(m_navGrind, m_targetPosition + targetToGrinder * offset, m_enemy.GetLinearVelocity(), true);
 			}
 			else
 			{
-				m_logger.debugLog("close, moving to " + m_targetPosition, "Move_Grind()");
+				m_logger.debugLog("close(" + distSq + "), moving to " + m_targetPosition, "Move_Grind()");
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = 1f;
 				m_mover.CalcMove(m_navGrind, m_targetPosition, m_enemy.GetLinearVelocity(), true);
 			}
@@ -238,7 +250,9 @@ namespace Rynchodon.Autopilot.Navigator
 				EnableGrinders(false);
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_stage = Stage.Intercept;
-			}
+			} 
+			if (Globals.UpdateCount >= m_next_grinderCheck)
+				EnableGrinders(false);
 
 			m_logger.debugLog("Moving to " + position, "Move_Intercept()");
 			m_mover.CalcMove(m_navGrind, position, m_enemy.GetLinearVelocity());
@@ -289,6 +303,8 @@ namespace Rynchodon.Autopilot.Navigator
 					if (!grinder.Closed)
 						grinder.RequestEnable(enable);
 			}, m_logger);
+
+			m_next_grinderCheck = Globals.UpdateCount + 1000ul;
 		}
 
 		private bool GrinderFull()

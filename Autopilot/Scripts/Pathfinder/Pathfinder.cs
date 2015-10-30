@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
@@ -146,7 +147,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_landing = landing;
 			m_canChangeCourse = m_navSet.Settings_Current.PathfinderCanChangeCourse;
 			MyEntity destEntity = m_navSet.Settings_Current.DestinationEntity as MyEntity;
-
+			m_logger.debugLog("DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), "TestPath()");
 
 			const float minimumDistance = 100f;
 			const float minDistSquared = minimumDistance * minimumDistance;
@@ -162,11 +163,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				// only look ahead 10 s / 100 m
 				testDistance = speedSquared < distOverSeconds ? minimumDistance : (float)Math.Sqrt(speedSquared) * seconds;
-				Vector3 direction = displacement / (float)Math.Sqrt(distanceSquared);
-				destination = m_navBlock.WorldPosition + testDistance * direction;
+				if (testDistance * testDistance < distanceSquared)
+				{
+					Vector3 direction = displacement / (float)Math.Sqrt(distanceSquared);
+					destination = m_navBlock.WorldPosition + testDistance * direction;
+					m_logger.debugLog("changed destination: " + destination + ", distance: " + testDistance + ", direction: " + direction, "TestPath()");
+				}
 			}
 			else
-				testDistance = (float)Math.Sqrt(distanceSquared);
+				m_logger.debugLog("using existing destination: " + destination, "TestPath()");
 
 			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, m_runId, isAlternate: false, tryAlternates: true));
 
@@ -208,8 +213,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void TestPath(Vector3D destination, MyEntity destEntity, short runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
 		{
-			m_logger.debugLog("entered", "TestPath()");
-
 			if (!lock_testPath.TryAcquireExclusive())
 			{
 				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
@@ -218,6 +221,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
 				return;
 			}
+			m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
 
 			try
 			{
@@ -272,7 +277,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 					if (m_canChangeCourse)
 					{
-						FindAlternate_AroundObstruction(displacement, pointOfObstruction.Value, runId);
+						FindAlternate_AroundObstruction(displacement, pointOfObstruction.Value, obstructing.GetLinearVelocity(), runId);
 						FindAlternate_JustMove(runId);
 					}
 					FindAlternate_HalfwayObstruction(displacement, runId);
@@ -286,14 +291,30 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 pointOfObstruction, short runId)
+		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 pointOfObstruction, Vector3 obstructionSpeed, short runId)
 		{
 			float distance = displacement.Length();
 			Vector3 direction; direction = displacement / distance;
 			Vector3 newPath_v1, newPath_v2;
 			direction.CalculatePerpendicularVector(out newPath_v1);
 			newPath_v2 = direction.Cross(newPath_v1);
+			
 			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
+			ICollection<Vector3> AcceptableDirections;
+			if (obstructionSpeed == Vector3.Zero)
+				AcceptableDirections = NewPathVectors;
+			else
+			{
+				AcceptableDirections = new List<Vector3>();
+				Vector3 SpeedRejection = Vector3.Reject(obstructionSpeed, direction);
+				float zeroDistSquared = Vector3.DistanceSquared(Vector3.Zero, SpeedRejection);
+				foreach (Vector3 vector in NewPathVectors)
+				{
+					float distSquared = Vector3.DistanceSquared(vector, SpeedRejection);
+					if (distSquared <= zeroDistSquared)
+						AcceptableDirections.Add(vector);
+				}
+			}
 
 			float destRadius = m_navSet.Settings_Current.DestinationRadius;
 			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
@@ -303,7 +324,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				if (newPathDistance > distance * 10f)
 					break;
-				foreach (Vector3 PathVector in NewPathVectors)
+				foreach (Vector3 PathVector in AcceptableDirections)
 				{
 					Vector3 tryDest = pointOfObstruction + newPathDistance * PathVector;
 
