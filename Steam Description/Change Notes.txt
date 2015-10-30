@@ -1,10 +1,5 @@
 Will be moved to steam every release.
 
 major:
-grinder
 
 minor:
-harvester fixes & improvements
-pathfinder fixes & improvements
-weapon searches attached grids for text panel
-rotation speed adjusts for target velocity

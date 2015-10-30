@@ -4,8 +4,8 @@
 # for Space Engineers to load (and a bunch of other useful deploy tasks)
 #
 # It will create two mods,
-#   "%AppData%\SpaceEngineers\Mods\Autopilot" and
-#   "%AppData%\SpaceEngineers\Mods\Autopilot Dev".
+#   "%AppData%\SpaceEngineers\Mods\ARMS" and
+#   "%AppData%\SpaceEngineers\Mods\ARMS Dev".
 #
 # The Dev version has logging enabled
 
@@ -19,7 +19,7 @@ buildIniTemplate = scriptDir + "\\build-template.ini"
 build_model = scriptDir + "\\build-model.py"
 
 # paths files are moved to
-finalDir = os.getenv('APPDATA') + '\SpaceEngineers\Mods\Autopilot'
+finalDir = os.getenv('APPDATA') + '\SpaceEngineers\Mods\ARMS'
 finalDirDev = finalDir + ' Dev'
 
 # do not change or else log file and settings file will be moved
@@ -409,6 +409,9 @@ if os.path.exists(buildIni):
 else:
     print ('build.ini not found')
     investigateBadPath("build.ini", buildIni)
+		
+createDir(finalDir)
+createDir(finalDirDev)
 
 # erase old data
 for file in os.listdir(finalDir):
