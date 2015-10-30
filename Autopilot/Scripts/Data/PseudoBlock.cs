@@ -162,16 +162,20 @@ namespace Rynchodon.Autopilot.Data
 			var blocksOfT = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(T));
 
 			FunctionalBlocks = 0;
-			LocalMatrix = Matrix.Zero;
+			Matrix LocalMatrix = Matrix.Zero;
+			Vector3 Translation = Vector3.Zero;
 			foreach (IMyCubeBlock block in blocksOfT)
 			{
 				if (Block == null)
+				{
 					Block = block;
+					LocalMatrix = block.LocalMatrix;
+				}
 
 				if (block.IsFunctional)
 				{
 					FunctionalBlocks++;
-					LocalMatrix += block.LocalMatrix;
+					Translation += block.LocalMatrix.Translation;
 					block.OnClose -= block_OnClose;
 					block.OnClose += block_OnClose;
 				}
@@ -179,8 +183,9 @@ namespace Rynchodon.Autopilot.Data
 
 			if (FunctionalBlocks == 0)
 				return;
+			LocalMatrix.Translation = Translation / FunctionalBlocks;
+			this.LocalMatrix = LocalMatrix;
 
-			LocalMatrix = LocalMatrix / FunctionalBlocks;
 			return;
 		}
 
