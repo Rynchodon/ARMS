@@ -1,42 +1,24 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class LaserAntenna : ReceiverBlock
+	public class LaserAntenna : Receiver
 	{
-		private static List<LaserAntenna> value_registry = new List<LaserAntenna>();
-		public static ReadOnlyList<LaserAntenna> registry { get { return new ReadOnlyList<LaserAntenna>(value_registry); } }
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;
 		private Logger myLogger;
+
+		private MyObjectBuilder_LaserAntenna builder;
 
 		public LaserAntenna(IMyCubeBlock block)
 			: base(block)
 		{
 			myLaserAntenna = CubeBlock as Ingame.IMyLaserAntenna;
 			myLogger = new Logger("LaserAntenna", () => CubeBlock.CubeGrid.DisplayName);
-			value_registry.Add(this);
-		}
-
-		protected override void Close(IMyEntity entity)
-		{
-			try
-			{
-				if (CubeBlock != null)
-					value_registry.Remove(this);
-			}
-			catch (Exception e)
-			{ myLogger.alwaysLog("exception on removing from registry: " + e, "Close()", Logger.severity.WARNING); }
-			CubeBlock = null;
-			myLaserAntenna = null;
-			myMessages = null;
+			Registrar.Add(block, this);
 		}
 
 		public void UpdateAfterSimulation100()
@@ -46,24 +28,18 @@ namespace Rynchodon.AntennaRelay
 				if (!myLaserAntenna.IsWorking)
 					return;
 
+				builder = CubeBlock.getSlimObjectBuilder() as MyObjectBuilder_LaserAntenna;
 
-				// stage 5 is the final stage. It is possible for one to be in stage 5, while the other is not
-				MyObjectBuilder_LaserAntenna builder = CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna;
+				// state 5 is the final state. It is possible for one to be in state 5, while the other is not
 				if (builder.targetEntityId != null)
-					foreach (LaserAntenna lAnt in value_registry)
-						if (lAnt.CubeBlock.EntityId == builder.targetEntityId)
-							if (builder.State == 5 && (lAnt.CubeBlock.getSlim().GetObjectBuilder() as MyObjectBuilder_LaserAntenna).State == 5)
-							{
-								foreach (LastSeen seen in myLastSeen.Values)
-									lAnt.receive(seen);
-								foreach (Message mes in myMessages)
-									lAnt.receive(mes);
-								break;
-							}
+				{
+					LaserAntenna lAnt;
+					if (Registrar.TryGetValue(builder.targetEntityId.Value, out lAnt))
+						if (lAnt.builder != null && builder.State == 5 && lAnt.builder.State == 5)
+							Relay(lAnt);
+				}
 
-				// send to attached receivers
-				ReceiverBlock.sendToAttached(CubeBlock, myLastSeen);
-				ReceiverBlock.sendToAttached(CubeBlock, myMessages);
+				RelayAttached();
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "UpdateAfterSimulation100()", Logger.severity.ERROR); }

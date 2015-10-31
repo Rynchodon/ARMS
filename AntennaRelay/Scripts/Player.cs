@@ -1,30 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rynchodon.Settings;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class Player : Receiver
+	public class Player
 	{
+
+		private struct DistanceSeen : IComparable<DistanceSeen>
+		{
+			public readonly float Distance;
+			public readonly LastSeen Seen;
+
+			public DistanceSeen(float distance, LastSeen seen)
+			{
+				this.Distance = distance;
+				this.Seen = seen;
+			}
+
+			public int CompareTo(DistanceSeen other)
+			{
+				return Math.Sign(this.Distance - other.Distance);
+			}
+		}
 
 		private class ForRelations
 		{
-			//public readonly ExtensionsRelations.Relations relate;
-
 			/// <summary>LastSeen sorted by distance squared</summary>
-			public readonly SortedDictionary<float, LastSeen> distanceSeen = new SortedDictionary<float, LastSeen>();
+			public readonly List<DistanceSeen> distanceSeen = new List<DistanceSeen>();
 			/// <summary>GPS entries that are currently being used</summary>
 			public readonly List<IMyGps> activeGPS = new List<IMyGps>();
 			/// <summary>The maximum GPS entries that are allowed</summary>
 			public byte MaxOnHUD;
-
-			//public ForRelations(ExtensionsRelations.Relations relate)
-			//{ this.relate = relate; }
 
 			public void Prepare()
 			{
@@ -36,12 +45,23 @@ namespace Rynchodon.AntennaRelay
 
 		private const string descrEnd = "Autopilot Detected";
 
-		private static readonly Logger staticLogger = new Logger("static", "Player");
-		private static readonly Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
+		//private static Logger staticLogger = new Logger("static", "Player");
+		private static Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
+		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
+
+		static Player()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			playersCached = null;
+		}
 
 		public static void OnLeave(IMyPlayer player)
 		{
-			AllReceivers_NoBlock.Remove(playersCached[player]);
 			playersCached.Remove(player);
 		}
 
@@ -49,10 +69,9 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Logger myLogger;
 
-		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
+		private readonly Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
 
-		public override object ReceiverObject
-		{ get { return myPlayer; } }
+		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
 
 		public Player(IMyPlayer player)
 		{
@@ -60,7 +79,6 @@ namespace Rynchodon.AntennaRelay
 			myPlayer = player;
 
 			playersCached.Add(player, this);
-			AllReceivers_NoBlock.Add(this);
 
 			Data.Add(ExtensionsRelations.Relations.Enemy, new ForRelations());
 			Data.Add(ExtensionsRelations.Relations.Neutral, new ForRelations());
@@ -86,6 +104,24 @@ namespace Rynchodon.AntennaRelay
 		public void Update100()
 		{
 			UpdateGPS();
+		}
+
+		public void receive(LastSeen seen)
+		{
+			LastSeen toUpdate;
+			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
+			{
+				if (seen.update(ref toUpdate))
+				{
+					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
+					//myLogger.debugLog("updated last seen for " + toUpdate.Entity.getBestName(), "receive()");
+				}
+			}
+			else
+			{
+				myLastSeen.Add(seen.Entity.EntityId, seen);
+				//myLogger.debugLog("new last seen for " + seen.Entity.getBestName(), "receive()");
+			}
 		}
 
 		private void UpdateGPS()
@@ -142,8 +178,8 @@ namespace Rynchodon.AntennaRelay
 				if (relateData.MaxOnHUD == 0)
 					continue;
 
-				float distance = Vector3.DistanceSquared(myPosition, seen.LastKnownPosition);
-				relateData.distanceSeen.AddIfBetter(distance, seen, relateData.MaxOnHUD);
+				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
+				relateData.distanceSeen.Add(new DistanceSeen( distance, seen));
 
 				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
 			}
@@ -156,13 +192,15 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
 
-			myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()"); 
+			//myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()");
+
+			relateData.distanceSeen.Sort();
 
 			int index;
 			for (index = 0; index < relateData.distanceSeen.Count; index++)
 			{
 				//myLogger.debugLog("getting seen...", "UpdateGPS()");
-				LastSeen seen = relateData.distanceSeen.Values.ElementAt(index);
+				LastSeen seen = relateData.distanceSeen[index].Seen;
 
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
@@ -179,7 +217,7 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				string description = GetDescription(seen);
-				Vector3D coords = seen.LastKnownPosition;
+				Vector3D coords = seen.GetPosition();
 
 				// cheat the position a little to avoid clashes
 				double cheat = 0.001 / (double)(index+1);
@@ -221,8 +259,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<string> parts = new List<string>();
 
-			if (seen.EntityHasRadar)
+			if (seen.isRecent_Radar())
 				parts.Add("Has Radar");
+
+			if (seen.isRecent_Jam())
+				parts.Add("Has Jammer");
 
 			if (seen.Info != null)
 				parts.Add(seen.Info.Pretty_Volume());

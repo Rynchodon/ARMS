@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
@@ -17,6 +18,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Tests for sendFrom is working and grid attached or in range. Use without range to skip range test. If sendTo is not a block or a grid, will skip grid test. If sendTo is a block, it must be working.
 		/// </summary>
+		/// <remarks>
+		/// If sendFrom == sendTo, returns false
+		/// </remarks>
 		public static bool canSendTo(this IMyCubeBlock sendFrom, object sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
 			sendFrom.throwIfNull_argument("sendFrom");
@@ -28,13 +32,16 @@ namespace Rynchodon
 			IMyCubeBlock sendToAsBlock = sendTo as IMyCubeBlock;
 			if (sendToAsBlock != null)
 			{
+				if (sendFrom == sendToAsBlock)
+					return false;
+
 				if (sendToAsBlock.Closed || !sendToAsBlock.IsWorking)
 					return false;
 
 				if (friendsOnly && !sendFrom.canConsiderFriendly(sendToAsBlock))
 					return false;
 
-				if (AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsBlock.CubeGrid))
+				if (AttachedGrid.IsGridAttached(sendFrom.CubeGrid, sendToAsBlock.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
 					return true;
 
 				if (range > 0)
@@ -54,7 +61,7 @@ namespace Rynchodon
 					if (friendsOnly && !sendFrom.canConsiderFriendly(sendToAsGrid))
 						return false;
 
-					if (Rynchodon.AttachedGrids.isGridAttached(sendFrom.CubeGrid, sendToAsGrid))
+					if (AttachedGrid.IsGridAttached(sendFrom.CubeGrid, sendToAsGrid, AttachedGrid.AttachmentKind.Terminal))
 						return true;
 				}
 			}
@@ -109,17 +116,17 @@ namespace Rynchodon
 		public static string getNameOnly(this IMyCubeBlock rc)
 		{
 			string displayName = rc.DisplayNameText;
-			int start = displayName.IndexOf('>') + 1;
+			//int start = displayName.IndexOf('>') + 1;
 			int end = displayName.IndexOf('[');
-			if (start > 0 && end > start)
-			{
-				int length = end - start;
-				return displayName.Substring(start, length);
-			}
-			if (start > 0)
-			{
-				return displayName.Substring(start);
-			}
+			//if (start > 0 && end > start)
+			//{
+			//	int length = end - start;
+			//	return displayName.Substring(start, length);
+			//}
+			//if (start > 0)
+			//{
+			//	return displayName.Substring(start);
+			//}
 			if (end > 0)
 			{
 				return displayName.Substring(0, end);
@@ -165,7 +172,7 @@ namespace Rynchodon
 			}
 			else if (block is Ingame.IMyLaserAntenna)
 			{
-				result.Add(Base6Directions.Direction.Up);
+				//result.Add(Base6Directions.Direction.Up); // up is really bad for laser antenna, it can't pick an azimuth and spins constantly
 				result.Add(Base6Directions.Direction.Forward);
 				result.Add(Base6Directions.Direction.Right);
 				result.Add(Base6Directions.Direction.Backward);
@@ -192,23 +199,23 @@ namespace Rynchodon
 			if (faceDirections.Count == 0)
 				throw new InvalidOperationException("faceDirections.Count == 0");
 
-			//worldDirection = Vector3.Normalize(worldDirection); // maybe?
+			worldDirection.Normalize();
 			Base6Directions.Direction? bestDirection = null;
-			double bestDirectionAngle = double.MaxValue;
+			double bestDirectionAngle = double.MinValue;
 
 			foreach (Base6Directions.Direction direction in faceDirections)
 			{
 				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
-				double angle = Math.Acos(directionVector.Dot(worldDirection));
+				double cosAngle = directionVector.Dot(worldDirection);
 
-				if (double.IsNaN(angle) || double.IsInfinity(angle))
-					throw new InvalidOperationException("angle is invalid: " + angle);
+				myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds", "GetFaceDirection()", Logger.severity.ERROR);
+				myLogger.debugLog(double.IsNaN(cosAngle) || double.IsInfinity(cosAngle), "cosAngle invalid", "GetFaceDirection()", Logger.severity.ERROR);
 
-				if (angle < bestDirectionAngle)
+				if (cosAngle > bestDirectionAngle)
 				{
 					//myLogger.debugLog("angle: " + angle + ", bestDirectionAngle: " + bestDirectionAngle + ", direction: " + direction, "GetFaceDirection()");
 					bestDirection = direction;
-					bestDirectionAngle = angle;
+					bestDirectionAngle = cosAngle;
 				}
 			}
 
@@ -217,5 +224,30 @@ namespace Rynchodon
 
 			return bestDirection.Value;
 		}
+
+		public static float GetLengthInDirection(this IMyCubeBlock block, Base6Directions.Direction direction)
+		{
+			switch (direction)
+			{
+				case Base6Directions.Direction.Right:
+				case Base6Directions.Direction.Left:
+					return block.LocalAABB.Size.X;
+				case Base6Directions.Direction.Up:
+				case Base6Directions.Direction.Down:
+					return block.LocalAABB.Size.Y;
+				case Base6Directions.Direction.Backward:
+				case Base6Directions.Direction.Forward:
+					return block.LocalAABB.Size.Z;
+			}
+			VRage.Exceptions.ThrowIf<NotImplementedException>(true, "direction not implemented: " + direction);
+			throw new Exception();
+		}
+
+		public static void ApplyAction(this Ingame.IMyCubeBlock block, string actionName)
+		{
+			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
+			asTerm.GetActionWithName(actionName).Apply(asTerm);
+		}
+
 	}
 }

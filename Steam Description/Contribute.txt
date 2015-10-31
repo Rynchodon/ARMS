@@ -1,4 +1,0 @@
-Models - Full 3D models would be ideal but even drawings would be nice.
-Code - Programming experience is required; this could be a great opportunity to learn C#.
-Tutorials - Think you have a good handle on how to work the mod? Prove it!
-Translations - Speak another language? Good, because I don't.

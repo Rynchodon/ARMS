@@ -167,7 +167,7 @@ namespace Rynchodon
 		/// <para>I doubt this is faster than sequential checks but there should never be a case of false-negatives.</para>
 		/// </summary>
 		/// <param name="pointOfObstruction">a point on the capsule's line close to obstruction</param>
-		public static bool Intersects(this Capsule capsule, IMyVoxelMap asteroid, out Vector3? pointOfObstruction, float capsuleLength = -1)
+		public static bool Intersects(this Capsule capsule, IMyVoxelBase asteroid, out Vector3? pointOfObstruction, float capsuleLength = -1)
 		{
 			if (capsuleLength < 0)
 				capsuleLength = capsule.get_length();

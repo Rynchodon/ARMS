@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.AntennaRelay;
-using Rynchodon.AttachedGrid;
+using Rynchodon.Attached;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Chat;
+using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
+using Rynchodon.Threading;
 using Rynchodon.Weapons;
-using Rynchodon.Weapons.Guided;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -47,6 +49,26 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void RegisterScripts_Server()
 		{
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
+					{
+						var sca = new ShipController_Autopilot(block);
+						RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+					}
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
+				{
+					var sca = new ShipController_Autopilot(block);
+					RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+				}
+			});
+
+			#endregion
+
 			#region Antenna Communication
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
@@ -73,38 +95,14 @@ namespace Rynchodon.Update
 				Player p = new Player(player);
 				RegisterForUpdates(100, p.Update100, player, Player.OnLeave);
 			});
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
-			{
-				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
-				});
-				//RegisterForEveryBlock((IMyCubeBlock block) => {
-				//	if (RadarEquipment.IsRadarOrJammer(block))
-				//	{
-				//		RadarEquipment r = new RadarEquipment(block);
-				//		RegisterForUpdates(100, r.Update100, block);
-				//	}
-				//});
-			}
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (Navigator.IsControllableBlock(block))
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
 						new ShipController(block);
 					// Does not receive Updates
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (Navigator.IsControllableBlock(block))
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
 					new ShipController(block);
 				// Does not receive Updates
 			});
@@ -134,26 +132,20 @@ namespace Rynchodon.Update
 
 				#region Fixed
 
-				Action<IMyCubeBlock> fixed_ = block => {
+				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), block => {
 					FixedWeapon w = new FixedWeapon(block);
 					RegisterForUpdates(1, w.Update_Targeting, block);
-					if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
-					{
-						GuidedMissileLauncher gml = new GuidedMissileLauncher(w);
-						RegisterForUpdates(10, gml.Update1, block);
-					}
-				};
-
-				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), fixed_);
-				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), fixed_);
-				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), fixed_);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), block => {
+					FixedWeapon w = new FixedWeapon(block);
+					RegisterForUpdates(1, w.Update_Targeting, block);
+				});
 
 				#endregion
-
-				RegisterForUpdates(1, GuidedMissile.Update1);
-				RegisterForUpdates(10, GuidedMissile.Update10);
-				RegisterForUpdates(100, GuidedMissile.Update100);
-
 			}
 			else
 				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts_Server()", Logger.severity.INFO);
@@ -188,13 +180,35 @@ namespace Rynchodon.Update
 				RegisterForUpdates(1, stator.Update10, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
-				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+				new StatorRotor.Rotor(block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
-				StatorRotor.Rotor rotor = new StatorRotor.Rotor(block);
+				new StatorRotor.Rotor(block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_ExtendedPistonBase), (block) => {
+				Piston.PistonBase pistonBase = new Piston.PistonBase(block);
+				RegisterForUpdates(100, pistonBase.Update, block);
+			});
+			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
+				new Piston.PistonTop(block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
+				Connector conn = new Connector(block);
+				RegisterForUpdates(10, conn.Update, block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_LandingGear), (block) => {
+				new LandingGear(block);
 			});
 
 			#endregion
+
+			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
+				var od = new OreDetector(block);
+				RegisterForUpdates(1000, od.Update, block);
+			});
 
 			RegisterForPlayerLeaves(UserSettings.OnPlayerLeave);
 		}
@@ -205,6 +219,51 @@ namespace Rynchodon.Update
 		private void RegisterScripts_ClientAndServer()
 		{
 			UserSettings.CreateLocal();
+
+			#region Autopilot
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+					if (ShipController_Autopilot.IsAutopilotBlock(block))
+						new Autopilot_CustomInfo(block);
+				});
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+				if (ShipController_Autopilot.IsAutopilotBlock(block))
+					new Autopilot_CustomInfo(block);
+			});
+
+			#endregion
+
+			#region Radar
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
+			{
+				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
+					if (RadarEquipment.IsRadarOrJammer(block))
+					{
+						RadarEquipment r = new RadarEquipment(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
+					if (RadarEquipment.IsRadarOrJammer(block))
+					{
+						RadarEquipment r = new RadarEquipment(block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				});
+				//RegisterForEveryBlock((IMyCubeBlock block) => {
+				//	if (RadarEquipment.IsRadarOrJammer(block))
+				//	{
+				//		RadarEquipment r = new RadarEquipment(block);
+				//		RegisterForUpdates(100, r.Update100, block);
+				//	}
+				//});
+			}
+
+			Help.Init();
+
+			#endregion
 		}
 
 		private Dictionary<uint, List<Action>> UpdateRegistrar;
@@ -221,20 +280,20 @@ namespace Rynchodon.Update
 		private List<Action<IMyPlayer>> AnyPlayerLeaves;
 		private Dictionary<IMyPlayer, Action> PlayerLeaves;
 
-		private enum Status : byte { Not_Initialized, Initialized, Terminated }
+		private enum Status : byte { Not_Initialized, Initialized, Started, Terminated }
 		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedQueue<Action> AddRemoveActions;
 		private List<IMyPlayer> playersAPI;
 		private List<IMyPlayer> playersCached;
 
-		private Logger myLogger = new Logger(null, "UpdateManager");
-		//private static UpdateManager Instance;
+		private readonly Logger myLogger;
 
-		/// <summary>
-		/// For MySessionComponentBase
-		/// </summary>
-		public UpdateManager() { }
+		public UpdateManager()
+		{
+			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
+			ThreadTracker.SetGameThread();
+		}
 
 		public void Init()
 		{
@@ -274,32 +333,6 @@ namespace Rynchodon.Update
 					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
 
-				RegisterScripts_ClientAndServer();
-
-				if (AllBlockScriptConstructors.Count == 0
-					&& EveryBlockScriptConstructors.Count == 0
-					&& CharacterScriptConstructors.Count == 0
-					&& PlayerScriptConstructors.Count == 0
-					&& GridScriptConstructors.Count == 0)
-				{
-					myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
-					ManagerStatus = Status.Terminated;
-					return;
-				}
-
-				if (PlayerScriptConstructors.Count != 0)
-					RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
-
-				// create script for each entity
-				HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
-				MyAPIGateway.Entities.GetEntities(allEntities);
-
-				//myLogger.debugLog("Adding all entities", "Init()");
-				foreach (IMyEntity entity in allEntities)
-					AddEntity(entity);
-
-				MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
-
 				ManagerStatus = Status.Initialized;
 			}
 			catch (Exception ex)
@@ -309,7 +342,35 @@ namespace Rynchodon.Update
 			}
 		}
 
-		public ulong Update { get; private set; }
+		private void Start()
+		{
+			RegisterScripts_ClientAndServer();
+
+			if (AllBlockScriptConstructors.Count == 0
+				&& EveryBlockScriptConstructors.Count == 0
+				&& CharacterScriptConstructors.Count == 0
+				&& PlayerScriptConstructors.Count == 0
+				&& GridScriptConstructors.Count == 0)
+			{
+				myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
+				ManagerStatus = Status.Terminated;
+				return;
+			}
+
+			if (PlayerScriptConstructors.Count != 0)
+				RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
+
+			// create script for each entity
+			HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
+			MyAPIGateway.Entities.GetEntities(allEntities);
+
+			//myLogger.debugLog("Adding all entities", "Init()");
+			foreach (IMyEntity entity in allEntities)
+				AddEntity(entity);
+
+			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
+			ManagerStatus = Status.Started;
+		}
 
 		/// <summary>
 		/// Initializes if needed, issues updates.
@@ -325,6 +386,15 @@ namespace Rynchodon.Update
 						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
+
+					case Status.Initialized:
+						if (ServerSettings.ServerSettingsLoaded)
+						{
+							myLogger.debugLog("Server settings loaded", "UpdateAfterSimulation()");
+							Start();
+						}
+						return;
+
 					case Status.Terminated:
 						return;
 				}
@@ -336,7 +406,7 @@ namespace Rynchodon.Update
 				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
-					if (Update % pair.Key == 0)
+					if (Globals.UpdateCount % pair.Key == 0)
 					{
 						foreach (Action item in pair.Value)
 							try
@@ -365,7 +435,7 @@ namespace Rynchodon.Update
 			}
 			finally
 			{
-				Update++;
+				Globals.UpdateCount++;
 				MainLock.MainThread_AcquireExclusive();
 			}
 		}
@@ -383,7 +453,7 @@ namespace Rynchodon.Update
 			UpdateList(frequency).Add(toInvoke);
 
 			if (unregisterOnClosing != null)
-				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke); // we never unsubscribe from OnClosing event, hopefully that is not an issue
+				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke);
 		}
 
 		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyPlayer unregisterOnLeaving, Action<IMyPlayer> onLeaving = null)
@@ -410,6 +480,9 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void UnRegisterForUpdates(uint frequency, Action toInvoke)
 		{
+			if (UpdateRegistrar == null)
+				return;
+
 			myLogger.debugLog("entered UnRegisterForUpdates()", "UnRegisterForUpdates()");
 			List<Action> UpdateL = UpdateList(frequency);
 			UpdateL.Remove(toInvoke);
@@ -531,7 +604,8 @@ namespace Rynchodon.Update
 		private void Grid_OnBlockAdded(IMySlimBlock block)
 		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
 
-		private HashSet<long> CubeBlock_entityIds = new HashSet<long>();
+		/// <remarks>Can't use Entity Ids because multiple blocks may share an Id.</remarks>
+		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
 
 		/// <summary>
 		/// if necessary, builds script for a block
@@ -541,13 +615,15 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				long EntityId = fatblock.EntityId;
-				if (CubeBlock_entityIds.Contains(EntityId))
+				if (CubeBlocks.Contains(fatblock))
 					return;
-				CubeBlock_entityIds.Add(EntityId);
-				fatblock.OnClosing += (alsoFatblock) => { CubeBlock_entityIds.Remove(EntityId); };
+				CubeBlocks.Add(fatblock);
+				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock); };
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
+
+				//myLogger.debugLog("block definition: " + fatblock.DefinitionDisplayNameText + ", typeId: " + typeId, "AddBlock()"); // used to find which builder is associated with a block
+
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
 						try { constructor.Invoke(fatblock); }
@@ -589,7 +665,7 @@ namespace Rynchodon.Update
 
 			foreach (IMyPlayer player in playersAPI.Except(playersCached))
 				AddRemoveActions.Enqueue(() => {
-					myLogger.debugLog("player joined: " + player, "CheckPlayerJoinLeave()", Logger.severity.INFO);
+					myLogger.debugLog("player joined: " + player.DisplayName, "CheckPlayerJoinLeave()", Logger.severity.INFO);
 					playersCached.Add(player);
 
 					foreach (var constructor in PlayerScriptConstructors)
@@ -621,7 +697,24 @@ namespace Rynchodon.Update
 		protected override void UnloadData()
 		{
 			base.UnloadData();
-			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+			if (MyAPIGateway.Entities != null)
+				MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+
+			ManagerStatus = Status.Terminated;
+
+			UpdateRegistrar = null;
+			AllBlockScriptConstructors = null;
+			EveryBlockScriptConstructors = null;
+			CharacterScriptConstructors = null;
+			PlayerScriptConstructors = null;
+			GridScriptConstructors = null;
+
+			PlayerLeaves = null;
+			AnyPlayerLeaves = null;
+			playersAPI = null;
+			playersCached = null;
+
+			AddRemoveActions = null;
 		}
 
 		/// <summary>

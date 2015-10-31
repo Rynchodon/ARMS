@@ -22,20 +22,13 @@ namespace Rynchodon
 		{
 			IMyCubeBlock FatBlock = block.FatBlock;
 			if (FatBlock == null)
-			{
 				invokeOnEach.Invoke(block.Position);
-			}
 			else
-			{
-				//float gridSize = block.CubeGrid.GridSize;
-				//Vector3I min, max;
-				//FatBlock.LocalAABB.Min.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out min);
-				//FatBlock.LocalAABB.Max.ApplyOperation((metresComp) => { return (int)Math.Round(metresComp / gridSize); }, out max);
-				FatBlock. Min.ForEachVector(FatBlock.Max, invokeOnEach);
-			}
+				FatBlock.Min.ForEachVector(FatBlock.Max, invokeOnEach);
 		}
 
 		public static Vector3 LocalPosition(this IMySlimBlock block)
 		{ return block.Position * block.CubeGrid.GridSize; }
+
 	}
 }

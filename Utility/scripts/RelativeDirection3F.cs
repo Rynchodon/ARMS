@@ -62,12 +62,12 @@ namespace Rynchodon
 			{
 				if (direction_local.HasValue)
 				{
-					MatrixD Transform = CubeGrid.WorldMatrix.RotationOnly();
+					MatrixD Transform = CubeGrid.WorldMatrix.GetOrientation();
 					direction_world = Vector3.Transform(direction_local.Value, Transform);
 				}
 				else // value_block.HasValue
 				{
-					MatrixD Transform = CubeBlock.WorldMatrix.RotationOnly();
+					MatrixD Transform = CubeBlock.WorldMatrix.GetOrientation();
 					direction_world = Vector3.Transform(direction_block.Value, Transform);
 				}
 			}
@@ -81,12 +81,12 @@ namespace Rynchodon
 			{
 				if (direction_world.HasValue)
 				{
-					MatrixD Transform = CubeGrid.WorldMatrixNormalizedInv.RotationOnly();
+					MatrixD Transform = CubeGrid.WorldMatrixNormalizedInv.GetOrientation();
 					direction_local = Vector3.Transform(direction_world.Value, Transform);
 				}
 				else // value_block.HasValue
 				{
-					MatrixD Transform = CubeBlock.LocalMatrix.RotationOnly();
+					MatrixD Transform = CubeBlock.LocalMatrix.GetOrientation();
 					direction_local = Vector3.Transform(direction_block.Value, Transform);
 				}
 			}
@@ -103,12 +103,12 @@ namespace Rynchodon
 			Vector3 result = Vector3.PositiveInfinity;
 			if (block.CubeGrid == CubeGrid && direction_local.HasValue)
 			{
-				MatrixD Transform = Matrix.Invert(block.LocalMatrix).RotationOnly();
+				MatrixD Transform = Matrix.Invert(block.LocalMatrix).GetOrientation();
 				result = Vector3.Transform(direction_local.Value, Transform);
 			}
 			else
 			{
-				MatrixD Transform = block.WorldMatrixNormalizedInv.RotationOnly();
+				MatrixD Transform = block.WorldMatrixNormalizedInv.GetOrientation();
 				result = Vector3.Transform(ToWorld(), Transform);
 			}
 

@@ -21,6 +21,17 @@ namespace Rynchodon
 		private Vector3 mySunDirection;
 		private readonly FastResourceLock lock_mySunDirection = new FastResourceLock();
 
+		static SunProperties()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Instance = null;
+		}
+
 		public SunProperties()
 		{
 			MyObjectBuilder_EnvironmentDefinition environmentDefinition = MyDefinitionManager.Static.EnvironmentDefinition.GetObjectBuilder() as MyObjectBuilder_EnvironmentDefinition;
@@ -31,6 +42,8 @@ namespace Rynchodon
 			mySunDirection = DefSunDirection;
 
 			myLogger.debugLog("Definition SunDirection: " + mySunDirection + ", EnableSunRotation: " + EnableSunRotation + ", SunRotationIntervalMinutes: " + SunRotationIntervalMinutes, "SunProperties()", Logger.severity.INFO);
+			float azimuth, elevation; Vector3.GetAzimuthAndElevation(mySunDirection, out azimuth, out elevation);
+			myLogger.debugLog("azimuth: " + azimuth + ", elevation: " + elevation, "SunProperties()", Logger.severity.DEBUG);
 			Instance = this;
 		}
 

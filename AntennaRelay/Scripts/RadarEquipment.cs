@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -30,7 +31,7 @@ namespace Rynchodon.AntennaRelay
 			public bool Radar = false;
 
 			/// <summary>The maximum number of targets that can be detected (active + passive).</summary>
-			public int MaxTargets_Tracking = 10;
+			public int MaxTargets_Tracking = 1;
 
 			/// <summary>The maximum number of radar that can be jammed. No effect on passive detection.</summary>
 			public int MaxTargets_Jamming = 0;
@@ -61,10 +62,6 @@ namespace Rynchodon.AntennaRelay
 
 			/// <summary>Reduces the effective strength of electronic jamming by this amount.</summary>
 			public float JammingResistance = 0;
-
-			// not sure if this makes any senese
-			///// <summary>Not implemented. Resistance to mechanical jamming.</summary>
-			//public float JammingResistance_Mechanical = 0;
 
 			/// <summary>How much of the jamming effect is applied to friendly radar and radar beyond the MaximumTargets limit.</summary>
 			public float JamIncidental = 0.1f;
@@ -134,16 +131,83 @@ namespace Rynchodon.AntennaRelay
 			private float value_MinAzimuth = -MathHelper.Pi, value_MaxAzimuth = MathHelper.Pi, value_MinElevation = -MathHelper.Pi, value_MaxElevation = MathHelper.Pi;
 		}
 
+		private class DetectedInfo : IComparable<DetectedInfo>
+		{
+			public readonly IMyEntity Entity;
+			public readonly ExtensionsRelations.Relations Relate;
+			private readonly byte relateOrder;
+
+			public RadarInfo Info { get; private set; }
+
+			public float RadarSignature { get; private set; }
+			public float RadarSignal { get; set; }
+			public float JammerSignal { get; set; }
+
+			public float MaxSignal { get { return Math.Max(RadarSignature, Math.Max(RadarSignal, JammerSignal)); } }
+
+			public LastSeen.UpdateTime Times
+			{
+				get
+				{
+					LastSeen.UpdateTime times = LastSeen.UpdateTime.None;
+					if (RadarSignal > 0)
+						times |= LastSeen.UpdateTime.HasRadar;
+					if (JammerSignal > 0)
+						times |= LastSeen.UpdateTime.HasJammer;
+					return times;
+				}
+			}
+
+			public DetectedInfo(IMyEntity entity, ExtensionsRelations.Relations relate)
+			{
+				this.Entity = entity;
+				this.Relate = relate;
+				this.relateOrder = Relate.PriorityOrder();
+			}
+
+			public void SetRadar(float radarSignature, RadarInfo info)
+			{
+				this.Info = info;
+				this.RadarSignature = radarSignature;
+			}
+
+			/// <summary>
+			/// Sorted based on relations and signal strength.
+			/// </summary>
+			public int CompareTo(DetectedInfo other)
+			{
+				int byRelate = this.relateOrder - other.relateOrder;
+				if (byRelate != 0)
+					return byRelate;
+
+				return Math.Sign(other.MaxSignal - this.MaxSignal); // descending
+			}
+		}
+
 		#region Static
 
 		// these might be moved to definition
-		private const float decoyStrength = 0.1f;
-		//private const float jammerStep = 1f / 4f;
+		/// <summary>Signal strength of each decoy.</summary>
+		private const float decoySignal = 5000f;
+		/// <summary>Ammount each decoy adds to reported volume of ship.</summary>
+		private const float decoyVolume = 10000f;
 
-		private static readonly Logger staticLogger = new Logger("N/A", "RadarEquipment");
-		private static readonly ThreadManager myThread = new ThreadManager();
-		private static readonly Dictionary<string, Definition> AllDefinitions = new Dictionary<string, Definition>();
-		private static readonly List<RadarEquipment> AllRadarAndJam = new List<RadarEquipment>();
+		private static Logger staticLogger = new Logger("N/A", "RadarEquipment");
+		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
+		private static Dictionary<string, Definition> AllDefinitions = new Dictionary<string, Definition>();
+
+		static RadarEquipment()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			staticLogger = null;
+			myThread = null;
+			AllDefinitions = null;
+		}
 
 		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>
 		public static bool IsRadarOrJammer(IMyCubeBlock block)
@@ -169,117 +233,11 @@ namespace Rynchodon.AntennaRelay
 			if (def == null)
 				throw new NullReferenceException("no block definition found for " + block.getBestName());
 
-			if (string.IsNullOrWhiteSpace(def.DescriptionString))
-			{
-				staticLogger.debugLog("no description in data file for " + ID, "GetDefinition()", Logger.severity.INFO);
-				result.Radar = true;
-				AllDefinitions.Add(ID, result);
-				return result;
-			}
+			XML_Amendments<Definition> ammend = new XML_Amendments<Definition>(result);
+			ammend.AmendAll(def.DescriptionString, true);
+			result = ammend.Deserialize();
 
-			// parse description
-			string[] properties = def.DescriptionString.Split(new char[] { }, StringSplitOptions.RemoveEmptyEntries);
-			foreach (string prop in properties)
-			{
-				if (prop == "Radar")
-				{
-					result.Radar = true;
-					continue;
-				}
-
-				string[] propValue = prop.Split('=');
-				if (propValue.Length != 2)
-				{
-					staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", incorrect format for property: \"" + prop + '"', "GetDefinition()", Logger.severity.WARNING);
-					continue;
-				}
-
-				int maxTargets;
-				switch (propValue[0])
-				{
-					case "MaxTargets_Tracking":
-						if (int.TryParse(propValue[1], out maxTargets))
-							result.MaxTargets_Tracking = maxTargets;
-						else
-							staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ".MaxTargets_Tracking, not an int: \"" + propValue[1] + '"', "GetDefinition()", Logger.severity.WARNING);
-						continue;
-					case "MaxTargets_Jamming":
-						if (int.TryParse(propValue[1], out maxTargets))
-							result.MaxTargets_Jamming = maxTargets;
-						else
-							staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ".MaxTargets_Jamming, not an int: \"" + propValue[1] + '"', "GetDefinition()", Logger.severity.WARNING);
-						continue;
-				}
-
-				// remaining properties are floats, so test first
-				float value;
-				if (!float.TryParse(propValue[1], out value))
-				{
-					staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", not a float: \"" + propValue[1] + '"', "GetDefinition()", Logger.severity.WARNING);
-					continue;
-				}
-
-				switch (propValue[0])
-				{
-					case "PassiveDetect_Jamming":
-						result.PassiveDetect_Jamming = value;
-						continue;
-					case "PassiveDetect_Radar":
-						result.PassiveDetect_Radar = value;
-						continue;
-					case "MaxPowerLevel":
-						result.MaxPowerLevel = value;
-						continue;
-					case "PowerIncrease":
-						result.PowerIncrease = value;
-						continue;
-					case "PowerDecrease":
-						result.PowerDecrease = value;
-						continue;
-					case "Reflect_A":
-						result.Reflect_A = value;
-						continue;
-					case "Reflect_B":
-						result.Reflect_B = value;
-						continue;
-					case "SignalEnhance":
-						result.SignalEnhance = value;
-						continue;
-					case "Penetration":
-						result.Penetration = value;
-						continue;
-					case "JammingResistance":
-						result.JammingResistance = value;
-						continue;
-					case "JamIncidental":
-						result.JamIncidental = value;
-						continue;
-					case "MinAzimuth":
-						result.MinAzimuth = value;
-						continue;
-					case "MaxAzimuth":
-						result.MaxAzimuth = value;
-						continue;
-					case "MinElevation":
-						result.MinElevation = value;
-						continue;
-					case "MaxElevation":
-						result.MaxElevation = value;
-						continue;
-					default:
-						staticLogger.alwaysLog("for " + block.BlockDefinition.ToString() + ", failed to match to a property: \"" + propValue[0] + '"', "GetDefinition()", Logger.severity.WARNING);
-						continue;
-				}
-			}
-
-			if (!result.Radar && result.MaxTargets_Jamming == 0 && result.PassiveDetect_Jamming == 0 && result.PassiveDetect_Radar == 0)
-			{
-				staticLogger.debugLog("no detection or jamming set, assuming block is a radar", "GetDefinition()", Logger.severity.WARNING);
-				result.Radar = true;
-			}
-
-			staticLogger.debugLog("parsed description for " + ID, "GetDefinition()", Logger.severity.INFO);
-			staticLogger.debugLog("serialized definition:\n" + MyAPIGateway.Utilities.SerializeToXML(result), "GetDefinition()", Logger.severity.TRACE);
+			staticLogger.debugLog("new definition:\n" + MyAPIGateway.Utilities.SerializeToXML<Definition>(result), "GetDefinition()");
 			AllDefinitions.Add(ID, result);
 			return result;
 		}
@@ -288,17 +246,30 @@ namespace Rynchodon.AntennaRelay
 
 		private enum PowerUse : byte { None, Share, All }
 
+		/// <summary>The entity that has the radar.</summary>
 		private readonly IMyEntity Entity;
+		/// <summary>Block for comparing relations.</summary>
+		private readonly IMyCubeBlock RelationsBlock;
+
+		/// <summary>Entity as IMyCubeBlock</summary>
 		private readonly IMyCubeBlock CubeBlock;
+		/// <summary>Entity as IMyTerminalBlock</summary>
 		private readonly IMyTerminalBlock TermBlock;
-		private readonly IMyCubeBlock Owner;
 
 		private readonly Logger myLogger;
 		private readonly Definition myDefinition;
 		private readonly FastResourceLock myLock = new FastResourceLock();
 
 		/// <summary>size of radar signature/signal and object</summary>
-		private readonly SortedDictionary<float, LastSeen> detectedObjects = new SortedDictionary<float, LastSeen>();
+		//private readonly UniqueList<DetectedInfo> detectedObjects17 = new UniqueList<DetectedInfo>();
+		//private readonly List<LastSeen> detectedObjects_LastSeen = new List<LastSeen>();
+
+		/// <summary>All detected entities will be added here.</summary>
+		private readonly List<DetectedInfo> detectedObjects_list = new List<DetectedInfo>();
+		/// <summary>Iff equipment has more than one means of detecting objects, this dictionary Keeps track of entities already found.</summary>
+		private readonly Dictionary<IMyEntity, DetectedInfo> detectedObjects_hash;
+		private readonly List<LastSeen> myLastSeen = new List<LastSeen>();
+
 		private readonly SortedDictionary<float, RadarEquipment> jamming_enemy = new SortedDictionary<float, RadarEquipment>();
 		private readonly SortedDictionary<float, RadarEquipment> jamming_friendly = new SortedDictionary<float, RadarEquipment>();
 		private readonly Dictionary<RadarEquipment, float> beingJammedBy = new Dictionary<RadarEquipment, float>();
@@ -312,7 +283,7 @@ namespace Rynchodon.AntennaRelay
 
 		private int deliberateJamming = 0;
 
-		#region Properties and Trivial Functions
+		#region Properties
 
 		private bool IsWorking
 		{ get { return CubeBlock == null || CubeBlock.IsWorking; } }
@@ -338,21 +309,6 @@ namespace Rynchodon.AntennaRelay
 		private float PowerLevel_Radar
 		{ get { return PowerLevel_Current * PowerRatio_Radar; } }
 
-		private bool CanConsiderFriendly(RadarEquipment other)
-		{
-			IMyCubeBlock block1 = CubeBlock ?? Owner;
-			IMyCubeBlock block2 = other.CubeBlock ?? other.Owner;
-
-			return block1.canConsiderFriendly(block2);
-		}
-
-		private string GetInstructions()
-		{
-			if (CubeBlock == null)
-				return null;
-			return CubeBlock.getInstructions();
-		}
-
 		#endregion
 
 		public RadarEquipment(IMyCubeBlock block)
@@ -361,55 +317,36 @@ namespace Rynchodon.AntennaRelay
 
 			this.Entity = block;
 			this.CubeBlock = block;
+			this.RelationsBlock = block;
 			this.TermBlock = block as IMyTerminalBlock;
 
 			this.myDefinition = GetDefinition(block);
 
-			AllRadarAndJam.Add(this);
-			CubeBlock.OnClose += CubeBlock_OnClose;
+			Registrar.Add(block, this);
+			TermBlock.OnClose += CustomInfoBlock_OnClose;
 
 			TermBlock.AppendingCustomInfo += AppendingCustomInfo;
 
 			UpdateTargetPowerLevel();
 			PowerLevel_Current = PowerLevel_Target;
 
-			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, "RadarEquipment()", Logger.severity.INFO);
-		}
-
-		/// <summary>
-		/// Not implemented. Was meant for radar-guided missiles but it is probably a waste of processing power as turrets are magical.
-		/// </summary>
-		public RadarEquipment(IMyEntity entity, IMyCubeBlock owner)
-		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-
-			this.myLogger = new Logger("RadarEquipment", () => { return owner.CubeGrid.DisplayName; }, () => { return owner.DisplayNameText; }, () => { return entity.getBestName(); });
-
-			this.Entity = entity;
-			this.Owner = owner;
-
-			// TODO: needs definition
-
-			AllRadarAndJam.Add(this);
-
-			Entity.OnClose += Entity_OnClose;
-
-			// TODO: needs PowerLevel_Current
+			byte detectionTypes = 0;
+			if (myDefinition.Radar)
+				detectionTypes++;
+			if (myDefinition.MaxTargets_Jamming > 0)
+				detectionTypes++;
+			if (myDefinition.MaxTargets_Tracking > 0)
+				detectionTypes++;
+			if (detectionTypes > 1)
+				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
 
 			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, "RadarEquipment()", Logger.severity.INFO);
 		}
 
-		private void CubeBlock_OnClose(IMyEntity obj)
+		private void CustomInfoBlock_OnClose(IMyEntity obj)
 		{
-			AllRadarAndJam.Remove(this);
 			ClearJamming();
 			TermBlock.AppendingCustomInfo -= AppendingCustomInfo;
-		}
-
-		private void Entity_OnClose(IMyEntity obj)
-		{
-			AllRadarAndJam.Remove(this);
-			ClearJamming();
 		}
 
 		public void Update100()
@@ -418,8 +355,11 @@ namespace Rynchodon.AntennaRelay
 			{
 				// actions on main thread
 				CheckCustomInfo();
-				if (detectedObjects.Count > 0 && CubeBlock != null)
-					ReceiverBlock.sendToAttached(CubeBlock, detectedObjects.Values);
+				if (myLastSeen.Count > 0 && CubeBlock != null)
+				{
+					myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
+					Receiver.SendToAttached(CubeBlock, myLastSeen);
+				}
 
 				myThread.EnqueueAction(Update_OnThread);
 			}
@@ -429,17 +369,19 @@ namespace Rynchodon.AntennaRelay
 		{
 			try
 			{
+				myLastSeen.Clear();
+				detectedObjects_list.Clear();
+				detectedObjects_hash.Clear();
+
 				if (!IsWorking)
 				{
 					if (PowerLevel_Current > 0)
 						PowerLevel_Current += myDefinition.PowerDecrease;
-					detectedObjects.Clear();
 					ClearJamming();
 					return;
 				}
 
 				UpdatePowerLevel();
-				detectedObjects.Clear();
 
 				if (IsJammer)
 					JamRadar();
@@ -452,6 +394,18 @@ namespace Rynchodon.AntennaRelay
 
 				if (myDefinition.PassiveDetect_Radar > 0)
 					PassiveDetection(true);
+
+				if (detectedObjects_list.Count > 0 && CubeBlock != null && MyAPIGateway.Multiplayer.IsServer)
+				{
+					detectedObjects_list.Sort();
+					int transmit = Math.Min(detectedObjects_list.Count, myDefinition.MaxTargets_Tracking);
+					for (int i = 0; i < transmit; i++)
+					{
+						DetectedInfo detFo = detectedObjects_list[i];
+						myLastSeen.Add(new LastSeen(detFo.Entity, detFo.Times, detFo.Info));
+						//myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName(), "Update_OnThread()");
+					}
+				}
 			}
 			catch (Exception ex)
 			{ myLogger.alwaysLog("Exception: " + ex, "Update_OnThread()", Logger.severity.ERROR); }
@@ -463,12 +417,6 @@ namespace Rynchodon.AntennaRelay
 		{
 			// get target power level
 			{
-				if (CubeBlock == null)
-				{
-					myLogger.debugLog("not updating target, no block", "UpdateTargetPowerLevel()");
-					return;
-				}
-
 				Ingame.IMyBeacon asBeacon;
 				Ingame.IMyRadioAntenna asRadio;
 
@@ -513,6 +461,12 @@ namespace Rynchodon.AntennaRelay
 
 		private void UpdatePowerLevel()
 		{
+			if (this.CubeBlock == null)
+			{
+				myLogger.debugLog("not updating power levels, not a block", "UpdateTargetPowerLevel()");
+				return;
+			}
+
 			UpdateTargetPowerLevel();
 
 			if (PowerLevel_Current == PowerLevel_Target)
@@ -525,22 +479,30 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (PowerLevel_Target > myDefinition.MaxPowerLevel)
 				{
-					myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
 					PowerLevel_Target = myDefinition.MaxPowerLevel;
-
-					string instructions = GetInstructions();
-					if (instructions != null)
-						TermBlock.SetCustomName(CubeBlock.DisplayNameText.Replace(instructions, myDefinition.MaxPowerLevel.ToString()));
-
-					// turn down slider
-					Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
-					if (asBeacon != null)
-						asBeacon.SetValueFloat("Radius", PowerLevel_Target);
-					else
+					if (MyAPIGateway.Multiplayer.IsServer)
 					{
-						Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-						if (asRadio != null)
-							asRadio.SetValueFloat("Radius", PowerLevel_Target);
+						IMyTerminalBlock TermBlock = this.TermBlock;
+						IMyCubeBlock CubeBlock = this.CubeBlock;
+
+						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
+
+							string instructions = GetInstructions();
+							if (instructions != null)
+								TermBlock.SetCustomName(CubeBlock.DisplayNameText.Replace(instructions, myDefinition.MaxPowerLevel.ToString()));
+
+							// turn down slider
+							Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
+							if (asBeacon != null)
+								asBeacon.SetValueFloat("Radius", PowerLevel_Target);
+							else
+							{
+								Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
+								if (asRadio != null)
+									asRadio.SetValueFloat("Radius", PowerLevel_Target);
+							}
+						}, myLogger);
 					}
 				}
 			}
@@ -560,15 +522,6 @@ namespace Rynchodon.AntennaRelay
 
 			MathHelper.Clamp(PowerRatio_Jammer, 0f, 1f);
 
-			//float effectivePowerLevel
-			//	= PowerRatio_Jammer > 0
-			//	? PowerLevel_Current * PowerRatio_Jammer
-			//	// the jammer should search for targets even while inactive
-			//	// the search will happen at the level it would be stepped up to
-			//	: IsRadar
-			//		? PowerLevel_Current * jammerStep
-			//		: PowerLevel_Current;
-
 			float effectivePowerLevel = PowerLevel_Current;
 
 			if (effectivePowerLevel <= 0)
@@ -582,19 +535,18 @@ namespace Rynchodon.AntennaRelay
 			myLogger.debugLog("jamming power level: " + effectivePowerLevel + ", allowedTargets: " + allowedTargets, "JamRadar()");
 
 			// collect targets
-			foreach (RadarEquipment otherDevice in AllRadarAndJam)
-			{
+			Registrar.ForEach((RadarEquipment otherDevice) => {
 				if (!otherDevice.IsRadar || !otherDevice.IsWorking)
-					continue;
+					return;
 
 				if (SignalCannotReach(otherDevice.Entity, effectivePowerLevel * myDefinition.SignalEnhance))
-					continue;
+					return;
 
-				bool friendly = CanConsiderFriendly(otherDevice);
-				if (friendly && myDefinition.JamIncidental == 0f)
+				bool notHostile = !RelationsBlock.canConsiderHostile(otherDevice.RelationsBlock);
+				if (notHostile && myDefinition.JamIncidental == 0f)
 				{
 					myLogger.debugLog("cannot jam a friendly: " + otherDevice.Entity.getBestName(), "JamRadar()", Logger.severity.TRACE);
-					continue;
+					return;
 				}
 
 				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition()) / myDefinition.SignalEnhance;
@@ -602,7 +554,7 @@ namespace Rynchodon.AntennaRelay
 
 				if (signalStrength > 0)
 				{
-					if (friendly)
+					if (notHostile)
 					{
 						myLogger.debugLog("adding friendly: " + otherDevice.Entity.getBestName(), "JamRadar()", Logger.severity.TRACE);
 						jamming_friendly.Add(signalStrength, otherDevice);
@@ -613,7 +565,7 @@ namespace Rynchodon.AntennaRelay
 						jamming_enemy.Add(signalStrength, otherDevice);
 					}
 				}
-			}
+			});
 
 			// apply jamming
 			if (jamming_enemy.Count == 0)
@@ -645,15 +597,6 @@ namespace Rynchodon.AntennaRelay
 
 			PowerRatio_Jammer = (float)deliberateJamming / (float)myDefinition.MaxTargets_Jamming;
 			myLogger.debugLog("PowerRatio_Jammer: " + PowerRatio_Jammer, "JamRadar()", Logger.severity.TRACE);
-
-			//if (PowerRatio_Jammer == 0f || (deliberateJamming == myDefinition.MaxTargets_Jamming && PowerRatio_Jammer < 1f))
-			//{
-			//	if (IsRadar)
-			//		PowerRatio_Jammer += jammerStep;
-			//	else
-			//		PowerRatio_Jammer = 1f;
-			//	myLogger.debugLog("increased PowerRatio_Jammer to " + PowerRatio_Jammer, "JamRadar()", Logger.severity.DEBUG);
-			//}
 
 			foreach (var pair in jamming_friendly)
 			{
@@ -696,7 +639,7 @@ namespace Rynchodon.AntennaRelay
 			MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
 			foreach (IMyCubeGrid otherGrid in allGrids)
 			{
-				if (!otherGrid.Save)
+				if (otherGrid.MarkedForClose || !otherGrid.Save)
 					continue;
 
 				if (SignalCannotReach(otherGrid, effectivePowerLevel * myDefinition.SignalEnhance))
@@ -704,17 +647,20 @@ namespace Rynchodon.AntennaRelay
 
 				float volume = otherGrid.LocalAABB.Volume();
 				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-
-				int workingDecoys = CubeGridCache.GetFor(otherGrid).CountByType(typeof(MyObjectBuilder_Decoy), (block) => { return block.IsWorking; });
-				reflectivity += decoyStrength * workingDecoys;
-
 				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition()) / myDefinition.SignalEnhance;
 				float radarSignature = (effectivePowerLevel - distance) * reflectivity - distance;
+				int decoys = WorkingDecoys(otherGrid);
+				radarSignature += decoySignal * decoys;
 
 				if (radarSignature > 0)
 				{
-					myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
-					AddDetectedObject(radarSignature, new LastSeen(otherGrid, false, new RadarInfo(volume)));
+					//myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
+
+					DetectedInfo detFo = new DetectedInfo(otherGrid, RelationsBlock.getRelationsTo(otherGrid));
+					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
+					detectedObjects_list.Add(detFo);
+					if (detectedObjects_hash != null)
+						detectedObjects_hash.Add(otherGrid, detFo);
 				}
 			}
 		}
@@ -735,31 +681,42 @@ namespace Rynchodon.AntennaRelay
 				detectionThreshold = myDefinition.PassiveDetect_Jamming;
 			}
 
-			foreach (RadarEquipment otherDevice in AllRadarAndJam)
-			{
+			Registrar.ForEach((RadarEquipment otherDevice) => {
 				if (!otherDevice.IsWorking)
-					continue;
+					return;
 
 				float otherPowerLevel = radar ? otherDevice.PowerLevel_Radar : otherDevice.PowerLevel_Jammer;
 				if (otherPowerLevel <= 0)
-					continue;
+					return;
 
-				if (SignalCannotReach(otherDevice.Entity, detectionThreshold * myDefinition.SignalEnhance))
-					continue;
+				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel * myDefinition.SignalEnhance))
+					return;
 
 				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition()) / myDefinition.SignalEnhance;
 				float signalStrength = otherPowerLevel - distance - detectionThreshold;
 
-				int workingDecoys = otherDevice.CubeBlock == null ? 0
-					: CubeGridCache.GetFor(otherDevice.CubeBlock.CubeGrid).CountByType(typeof(MyObjectBuilder_Decoy), (block) => { return block.IsWorking; });
-				signalStrength += decoyStrength * workingDecoys;
+				signalStrength += decoySignal * WorkingDecoys(otherDevice);
 
 				if (signalStrength > 0)
 				{
 					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), "PassiveDetection()", Logger.severity.TRACE);
-					AddDetectedObject(signalStrength, new LastSeen(otherDevice.Entity, true));
+					LastSeen.UpdateTime flag = radar ? LastSeen.UpdateTime.HasRadar : LastSeen.UpdateTime.HasJammer;
+
+					DetectedInfo detFo;
+					IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;
+					if (detectedObjects_hash == null || !detectedObjects_hash.TryGetValue(otherEntity, out detFo))
+					{
+						detFo = new DetectedInfo(otherEntity, RelationsBlock.getRelationsTo(otherDevice.RelationsBlock));
+						detectedObjects_list.Add(detFo);
+						if (detectedObjects_hash != null)
+							detectedObjects_hash.Add(otherEntity, detFo);
+					}
+					if (radar)
+						detFo.RadarSignal = signalStrength;
+					else
+						detFo.JammerSignal = signalStrength;
 				}
-			}
+			});
 		}
 
 		#region Signal Cannot Reach
@@ -785,7 +742,7 @@ namespace Rynchodon.AntennaRelay
 			if (!myDefinition.EnforceAngle)
 				return false;
 
-			MatrixD Transform = Entity.WorldMatrixNormalizedInv.RotationOnly();
+			MatrixD Transform = Entity.WorldMatrixNormalizedInv.GetOrientation();
 			Vector3 directionToTarget = Vector3.Transform(target.GetPosition() - Entity.GetPosition(), Transform);
 			directionToTarget.Normalize();
 
@@ -816,9 +773,31 @@ namespace Rynchodon.AntennaRelay
 
 		#endregion
 
-		private void AddDetectedObject(float signalStrength, LastSeen obj)
+		private string GetInstructions()
 		{
-			detectedObjects.AddIfBetter(signalStrength, obj, (int)myDefinition.MaxTargets_Tracking);
+			if (CubeBlock == null || CubeBlock.Closed)
+				return null;
+			return CubeBlock.getInstructions();
+		}
+
+		private int WorkingDecoys(IMyEntity target)
+		{
+			IMyCubeGrid grid = target as IMyCubeGrid;
+			if (grid == null || RelationsBlock.canConsiderFriendly(grid))
+				return 0;
+
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			if (cache == null)
+				return 0;
+			return cache.CountByType(typeof(MyObjectBuilder_Decoy), block => block.IsWorking);
+		}
+
+		private int WorkingDecoys(RadarEquipment otherEquip)
+		{
+			if (otherEquip.CubeBlock == null)
+				return 0;
+
+			return WorkingDecoys(otherEquip.CubeBlock.CubeGrid);
 		}
 
 		private void ClearJamming()
@@ -875,10 +854,10 @@ namespace Rynchodon.AntennaRelay
 				previous_beingJammedBy_Count = beingJammedBy.Count;
 			}
 
-			if (detectedObjects.Count != previous_detectedObjects_Count)
+			if (myLastSeen.Count != previous_detectedObjects_Count)
 			{
 				needToRefresh = true;
-				previous_detectedObjects_Count = detectedObjects.Count;
+				previous_detectedObjects_Count = myLastSeen.Count;
 			}
 
 			if (needToRefresh)
@@ -893,21 +872,24 @@ namespace Rynchodon.AntennaRelay
 
 			if (IsJammer)
 				if (PowerLevel_Current > 0)
+				{
 					customInfo.AppendLine("Jammer power level: " + (int)PowerLevel_Current);
+					customInfo.AppendLine("Maximum jamming range: " + (int)(PowerLevel_Current * myDefinition.SignalEnhance));
+				}
 
 			if (deliberateJamming > 0)
 			{
-				customInfo.Append("Jamming " + deliberateJamming + " radar");
-				if (deliberateJamming != 1)
-					customInfo.Append('s');
-				customInfo.AppendLine();
+				customInfo.AppendLine("Jamming " + deliberateJamming + " of " + myDefinition.MaxTargets_Jamming + " radars");
 			}
 
 			// radar
 
 			if (IsRadar)
 				if (PowerLevel_Radar > 0)
+				{
 					customInfo.AppendLine("Radar power level: " + (int)PowerLevel_Radar);
+					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_Radar / 2 * myDefinition.SignalEnhance));
+				}
 
 			if (beingJammedBy.Count > 0)
 			{
@@ -919,12 +901,9 @@ namespace Rynchodon.AntennaRelay
 
 			// detected
 
-			if (detectedObjects.Count > 0)
+			if (myLastSeen.Count > 0)
 			{
-				customInfo.Append("Detecting " + detectedObjects.Count + " object");
-				if (detectedObjects.Count != 1)
-					customInfo.Append('s');
-				customInfo.AppendLine();
+				customInfo.AppendLine("Detecting " + myLastSeen.Count + " of " + myDefinition.MaxTargets_Tracking + " objects");
 			}
 		}
 

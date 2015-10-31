@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using Sandbox.ModAPI;
 using VRage.Components;
 using VRage.ModAPI;
@@ -13,12 +14,18 @@ namespace Rynchodon
 		public static string getBestName(this IMyEntity entity)
 		{
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
+			string name;
 			if (asBlock != null)
-				return asBlock.DisplayNameText;
+			{
+				name = asBlock.DisplayNameText;
+				if (string.IsNullOrEmpty(name))
+					name = asBlock.DefinitionDisplayNameText;
+				return name;
+			}
 
 			if (entity == null)
-				return null;
-			string name = entity.DisplayName;
+				return "N/A";
+			name = entity.DisplayName;
 			if (string.IsNullOrEmpty(name))
 			{
 				name = entity.Name;
@@ -50,7 +57,7 @@ namespace Rynchodon
 		}
 
 		public static Vector3D GetCentre(this IMyCubeGrid grid)
-		{ return RelativeVector3F.createFromLocal(grid.LocalAABB.Center, grid).getWorldAbsolute(); }
+		{ return Vector3D.Transform(grid.LocalAABB.Center, grid.WorldMatrix); }
 
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{
@@ -84,12 +91,12 @@ namespace Rynchodon
 			return true;
 		}
 
-		public static bool IsClient(this IMyMultiplayer multiplayer)
-		{
-			if (!multiplayer.MultiplayerActive)
-				return false;
-			return !multiplayer.IsServer;
-		}
+		//public static bool IsClient(this IMyMultiplayer multiplayer)
+		//{
+		//	if (!multiplayer.MultiplayerActive)
+		//		return false;
+		//	return !multiplayer.IsServer;
+		//}
 
 		public static void throwIfNull_argument(this object argument, string name)
 		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
@@ -109,6 +116,7 @@ namespace Rynchodon
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
 		/// <returns>The minimum distance squared between the line and the point</returns>
+		[Obsolete("Use LineSegment")]
 		public static float DistanceSquared(this Line line, Vector3 point)
 		{
 			if (line.From == line.To)
@@ -128,12 +136,35 @@ namespace Rynchodon
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
 
+		[Obsolete("Use LineSegment")]
+		public static bool PointInCylinder(this Line line, float radius, Vector3 point)
+		{
+			radius *= radius;
+
+			if (line.From == line.To)
+				return Vector3.DistanceSquared(line.From, point) < radius;
+
+			Vector3 line_disp = line.To - line.From;
+			float line_distSq = line_disp.LengthSquared();
+
+			float fraction = Vector3.Dot(point - line.From, line_disp) / line_distSq; // projection as a fraction of line_disp
+
+			if (fraction < 0) // extends past From
+				return false;
+			else if (fraction > 1) // extends past To
+				return false;
+
+			Vector3 closestPoint = line.From + fraction * line_disp; // closest point on the line
+			return Vector3.DistanceSquared(point, closestPoint) < radius;
+		}
+
 		/// <summary>
 		/// Closest point on a line to specified coordinates
 		/// </summary>
 		/// <remarks>
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
+		[Obsolete("Use LineSegment")]
 		public static Vector3 ClosestPoint(this Line line, Vector3 coordinates)
 		{
 			if (line.From == line.To)
@@ -156,12 +187,14 @@ namespace Rynchodon
 		/// Minimum distance between a line and a point.
 		/// </summary>
 		/// <returns>Minimum distance between a line and a point.</returns>
+		[Obsolete("Use LineSegment")]
 		public static float Distance(this Line line, Vector3 point)
 		{ return (float)Math.Pow(line.DistanceSquared(point), 0.5); }
 
 		/// <summary>
 		/// Tests that the distance between line and point is less than or equal to supplied distance
 		/// </summary>
+		[Obsolete("Use LineSegment")]
 		public static bool DistanceLessEqual(this Line line, Vector3 point, float distance)
 		{
 			distance *= distance;
@@ -212,15 +245,15 @@ namespace Rynchodon
 			return result;
 		}
 
-		/// <summary>
-		/// Finds the shorter of distance between AABB and distance between Volume
-		/// </summary>
-		public static double Distance_ShorterBounds(this IMyEntity first, IMyEntity second)
-		{
-			double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
-			double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
-			return Math.Min(distanceAABB, distanceVolume);
-		}
+		///// <summary>
+		///// Finds the shorter of distance between AABB and distance between Volume
+		///// </summary>
+		//public static double Distance_ShorterBounds(this IMyEntity first, IMyEntity second)
+		//{
+		//	double distanceAABB = Distance(first.WorldAABB, second.WorldAABB);
+		//	double distanceVolume = Distance(first.WorldVolume, second.WorldVolume);
+		//	return Math.Min(distanceAABB, distanceVolume);
+		//}
 
 		#endregion
 		#region Float Significand++/--
@@ -263,6 +296,15 @@ namespace Rynchodon
 		/// <summary>
 		/// Longest of width, length, height.
 		/// </summary>
+		public static double GetLongestDim(this BoundingBoxD box)
+		{
+			Vector3 Size = box.Size;
+			return MathHelper.Max(Size.X, Size.Y, Size.Z);
+		}
+
+		/// <summary>
+		/// Longest of width, length, height.
+		/// </summary>
 		public static float GetLongestDim(this IMyCubeGrid grid)
 		{ return grid.LocalAABB.GetLongestDim(); }
 
@@ -281,10 +323,35 @@ namespace Rynchodon
 		public static bool IsValid(this float number)
 		{ return !float.IsNaN(number) && !float.IsInfinity(number); }
 
-		public static MatrixD RotationOnly(this MatrixD source)
-		{ return new MatrixD(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
+		public static bool NullOrClosed(this IMyEntity entity)
+		{ return entity == null || entity.MarkedForClose || entity.Closed; }
 
-		public static Matrix RotationOnly(this Matrix source)
-		{ return new Matrix(source.M11, source.M12, source.M13, source.M21, source.M22, source.M23, source.M31, source.M32, source.M33); }
+		/// <summary>
+		/// Try to perform an Action on game thread, if it fails do not crash the game.
+		/// </summary>
+		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, Logger logTo = null)
+		{
+			util.InvokeOnGameThread(() => {
+				try { invoke.Invoke(); }
+				catch (Exception ex)
+				{
+					if (logTo != null)
+						logTo.alwaysLog("Exception: " + ex, "TryOnGameThread()", Logger.severity.ERROR);
+				}
+			});
+		}
+
+		public static bool EqualsIgnoreCapacity(this StringBuilder first, StringBuilder second)
+		{
+			if (first.Length != second.Length)
+				return false;
+
+			for (int i = 0; i < first.Length; i++)
+				if (first[i] != second[i])
+					return false;
+
+			return true;
+		}
+
 	}
 }

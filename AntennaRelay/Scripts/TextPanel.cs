@@ -1,8 +1,7 @@
-﻿#define LOG_ENABLED // remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -16,8 +15,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// TextPanel will fetch instructions from Antenna and write them either for players or for programmable blocks.
 	/// </summary>
-	//[MyEntityComponentDescriptor(typeof(MyObjectBuilder_TextPanel))]
-	public class TextPanel //: UpdateEnforcer
+	public class TextPanel
 	{
 		private const string command_forPlayer = "Display Detected";
 		private const string command_forProgram = "Transmit Detected to ";
@@ -40,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 		private Ingame.IMyTextPanel myTextPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
-		private ReceiverBlock myAntenna;
+		private Receiver myAntenna;
 		private ProgrammableBlock myProgBlock;
 		private IMyTerminalBlock myTermBlock;
 
@@ -120,21 +118,31 @@ namespace Rynchodon.AntennaRelay
 			if (myAntenna.IsOpen()) // already have one
 				return true;
 
-			foreach (ReceiverBlock antenna in RadioAntenna.registry)
+			myAntenna = null;
+			Registrar.ForEach((RadioAntenna antenna) => {
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 					myAntenna = antenna;
 					return true;
 				}
-			foreach (ReceiverBlock antenna in LaserAntenna.registry)
+				return false;
+			});
+
+			if (myAntenna != null)
+				return true;
+
+			Registrar.ForEach((LaserAntenna antenna) => {
 				if (antenna.CubeBlock.canSendTo(myCubeBlock, true))
 				{
 					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 					myAntenna = antenna;
 					return true;
 				}
-			return false;
+				return false;
+			});
+
+			return myAntenna != null;
 		}
 
 		private static readonly MyObjectBuilderType ProgOBtype = typeof(MyObjectBuilder_MyProgrammableBlock);
@@ -166,7 +174,7 @@ namespace Rynchodon.AntennaRelay
 
 			foreach (IMyTerminalBlock block in progBlocks)
 				if (block.DisplayNameText.looseContains(destName))
-					if (ProgrammableBlock.TryGet(block as IMyCubeBlock, out myProgBlock))
+					if (Registrar.TryGetValue(block.EntityId, out myProgBlock))
 					{
 						myLogger.debugLog("found programmable block: " + block.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
 						return true;
@@ -209,23 +217,23 @@ namespace Rynchodon.AntennaRelay
 			if (!findAntenna())
 				return;
 
-			IEnumerator<LastSeen> toDisplay = myAntenna.getLastSeenEnum();
-
 			if (forProgram)
 				myLogger.debugLog("building display list for program", "informPlayer()", Logger.severity.TRACE);
 			else
 				myLogger.debugLog("building display list for player", "informPlayer()", Logger.severity.TRACE);
 			Vector3D myPos = myCubeBlock.GetPosition();
 			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
-			while (toDisplay.MoveNext())
-			{
-				IMyCubeGrid grid = toDisplay.Current.Entity as IMyCubeGrid;
-				if (grid == null || AttachedGrids.isGridAttached(grid, myCubeBlock.CubeGrid))
-					continue;
+
+			myAntenna.ForEachLastSeen(seen => {
+				IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
+				if (grid == null || AttachedGrid.IsGridAttached(grid, myCubeBlock.CubeGrid, AttachedGrid.AttachmentKind.Physics))
+					return false;
 
 				ExtensionsRelations.Relations relations = myCubeBlock.getRelationsTo(grid, ExtensionsRelations.Relations.Enemy).highestPriority();
-				sortableSeen.Add(new sortableLastSeen(myPos, toDisplay.Current, relations));
-			}
+				sortableSeen.Add(new sortableLastSeen(myPos, seen, relations));
+				return false;
+			});
+
 			sortableSeen.Sort();
 
 			int count = 0;
@@ -280,14 +288,14 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (findProgBlock())
 			{
-				if (myProgBlock.messageCount() > 0)
+				if (myProgBlock.messageCount > 0)
 				{
 					myLogger.debugLog("cannot send message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
 					return;
 				}
 				myLogger.debugLog("sending message to " + myProgBlock.CubeBlock.DisplayNameText, "runProgram()");
 				Message toSend = new Message(messageToProgram, myProgBlock.CubeBlock, myCubeBlock);
-				myProgBlock.receive(toSend);
+				myProgBlock.Receive(toSend);
 				sentToProgram = true;
 			}
 			else
@@ -438,11 +446,18 @@ namespace Rynchodon.AntennaRelay
 					builder.Append(tab);
 				}
 				else
-					if (seen.EntityHasRadar)
+				{
+					if (seen.isRecent_Radar())
 					{
 						builder.Append("Has Radar");
 						builder.Append(tab);
 					}
+					if (seen.isRecent_Jam())
+					{
+						builder.Append("Has Jammer");
+						builder.Append(tab);
+					}
+				}
 				builder.Append(PrettySI.makePretty(distance));
 				builder.Append('m');
 				builder.Append(tab);
@@ -488,7 +503,7 @@ namespace Rynchodon.AntennaRelay
 				builder.Append(seen.Entity.EntityId); builder.Append(separator);
 				builder.Append(relations); builder.Append(separator);
 				builder.Append(bestName); builder.Append(separator);
-				builder.Append(seen.EntityHasRadar); builder.Append(separator);
+				builder.Append(seen.isRecent_Radar() || seen.isRecent_Jam()); builder.Append(separator);
 				builder.Append(distance); builder.Append(separator);
 				builder.Append(seconds); builder.Append(separator);
 				if (seen.Info != null)
