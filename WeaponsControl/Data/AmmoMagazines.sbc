@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+ <AmmoMagazines>
+
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ApMissileMag_Basic</SubtypeId>
+      </Id>
+      <DisplayName>Guided Missile</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="ApMissile_Basic" />
+    </AmmoMagazine>
+
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ApMissileMag_Aoe</SubtypeId>
+      </Id>
+      <DisplayName>Guided Missile - A.O.E.</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="ApMissile_Aoe" />
+    </AmmoMagazine>
+
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ApMissileMag_Cluster</SubtypeId>
+      </Id>
+      <DisplayName>Guided Missile - Cluster</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <Capacity>12</Capacity>
+      <AmmoDefinitionId Subtype="ApMissile_Cluster" />
+    </AmmoMagazine>
+    
+  </AmmoMagazines>
+</Definitions>
