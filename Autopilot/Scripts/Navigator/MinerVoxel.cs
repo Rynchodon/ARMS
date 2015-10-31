@@ -101,10 +101,10 @@ namespace Rynchodon.Autopilot.Navigator
 						m_currentTarget = m_depositPos;
 						break;
 					case State.MoveTo:
+						EnableDrills(true);
 						m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 						break;
 					case State.Mining:
-						EnableDrills(true);
 						Vector3 pos = m_navDrill.WorldPosition;
 						m_currentTarget = pos + (m_depositPos - pos) * 2f;
 						m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
