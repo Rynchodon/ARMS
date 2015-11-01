@@ -1,63 +1,26 @@
 <?xml version="1.0"?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
- <AmmoMagazines>
-
+  <AmmoMagazines>
+  
     <AmmoMagazine>
       <Id>
         <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ApMissileMag_Basic</SubtypeId>
+        <SubtypeId>Souper_Cruise_Missile</SubtypeId>
       </Id>
-      <DisplayName>Guided Missile</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <DisplayName>Cruise Missile</DisplayName>
+      <Icon>Textures\GUI\Icons\Souper_Cruise_Missile.dds</Icon>
       <Size>
-        <X>1.2</X>
-        <Y>0.2</Y>
-        <Z>0.2</Z>
+        <X>1</X>
+        <Y>3</Y>
+        <Z>1</Z>
       </Size>
-      <Mass>45</Mass>
-      <Volume>60</Volume>
-      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <Mass>450</Mass>
+      <Volume>600</Volume>
+      <Model>Models\Weapons\Souper_Cruise_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="ApMissile_Basic" />
+      <AmmoDefinitionId Subtype="Souper_Cruise_Missile" />
     </AmmoMagazine>
-
-    <AmmoMagazine>
-      <Id>
-        <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ApMissileMag_Aoe</SubtypeId>
-      </Id>
-      <DisplayName>Guided Missile - A.O.E.</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
-      <Size>
-        <X>1.2</X>
-        <Y>0.2</Y>
-        <Z>0.2</Z>
-      </Size>
-      <Mass>45</Mass>
-      <Volume>60</Volume>
-      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
-      <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="ApMissile_Aoe" />
-    </AmmoMagazine>
-
-    <AmmoMagazine>
-      <Id>
-        <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ApMissileMag_Cluster</SubtypeId>
-      </Id>
-      <DisplayName>Guided Missile - Cluster</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
-      <Size>
-        <X>1.2</X>
-        <Y>0.2</Y>
-        <Z>0.2</Z>
-      </Size>
-      <Mass>45</Mass>
-      <Volume>60</Volume>
-      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
-      <Capacity>12</Capacity>
-      <AmmoDefinitionId Subtype="ApMissile_Cluster" />
-    </AmmoMagazine>
-    
+	
   </AmmoMagazines>
 </Definitions>

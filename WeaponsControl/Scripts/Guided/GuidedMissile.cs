@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Threading;
 using Sandbox.Common;
 using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
@@ -38,15 +39,16 @@ namespace Rynchodon.Weapons.Guided
 
 			public override object ReceiverObject { get { return myMissile; } }
 
-			public Dictionary<long, LastSeen> MyLastSeen { get { return myLastSeen; } }
+			//public Dictionary<long, LastSeen> MyLastSeen { get { return myLastSeen; } }
 
-			public FastResourceLock lock_MyLastSeen { get { return lock_myLastSeen; } }
+			//public FastResourceLock lock_MyLastSeen { get { return lock_myLastSeen; } }
 
 			public MissileAntenna(IMyEntity missile)
+				: base(missile)
 			{
 				this.myMissile = missile;
-				AllReceivers_NoBlock.Add(this);
-				missile.OnClose += (ent) => AllReceivers_NoBlock.Remove(this);
+				//AllReceivers_NoBlock.Add(this);
+				//missile.OnClose += (ent) => AllReceivers_NoBlock.Remove(this);
 			}
 		}
 
@@ -238,40 +240,36 @@ namespace Rynchodon.Weapons.Guided
 				|| DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
 				return;
 
-			using (myAntenna.lock_MyLastSeen.AcquireSharedUsing())
-				if (myAntenna.MyLastSeen.Count == 0)
-					return;
+
+			if (myAntenna.lastSeenCount == 0)
+				return;
 
 			LastSeen previous;
-			using (myAntenna.lock_MyLastSeen.AcquireSharedUsing())
-				if (myAntenna.MyLastSeen.TryGetValue(targetLastSeen, out previous) && previous.isRecent())
-				{
-					myLogger.debugLog("using previous last seen: " + previous.Entity.getBestName(), "TargetLastSeen()");
-					myTarget = new Target(previous.Entity, TargetType.AllGrid);
-					SetFiringDirection();
-				}
+			if (myAntenna.tryGetLastSeen(targetLastSeen, out previous) && previous.isRecent())
+			{
+				myLogger.debugLog("using previous last seen: " + previous.Entity.getBestName(), "TargetLastSeen()");
+				myTarget = new Target(previous.Entity, TargetType.AllGrid);
+				SetFiringDirection();
+			}
 
 			Vector3D myPos = MyEntity.GetPosition();
 			LastSeen closest = null;
 			double closestDist = double.MaxValue;
 
-			using (myAntenna.lock_MyLastSeen.AcquireSharedUsing())
-			{
-				myLogger.debugLog("last seen count: " + myAntenna.MyLastSeen.Count, "TargetLastSeen()");
-				foreach (LastSeen seen in myAntenna.MyLastSeen.Values)
+			myLogger.debugLog("last seen count: " + myAntenna.lastSeenCount, "TargetLastSeen()");
+			myAntenna.ForEachLastSeen(seen => {
+				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
+				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity))
 				{
-					myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
-					if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity))
+					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
+					if (dist < closestDist)
 					{
-						double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
-						if (dist < closestDist)
-						{
-							closestDist = dist;
-							closest = seen;
-						}
+						closestDist = dist;
+						closest = seen;
 					}
 				}
-			}
+				return false;
+			});
 
 			if (closest == null)
 			{
@@ -484,7 +482,7 @@ namespace Rynchodon.Weapons.Guided
 
 			return false;
 		}
-		
+
 		/// <summary>
 		/// Fires the cluster missiles towards the target.
 		/// </summary>
@@ -515,9 +513,9 @@ namespace Rynchodon.Weapons.Guided
 			float angle = (float)MyEntity.WorldMatrix.Forward.AngleBetween(targetDirection);
 			axis.Normalize();
 			Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, angle);
-			Matrix BaseWorldMatrix = Matrix.Transform( MyEntity.WorldMatrix .RotationOnly(), rotation);
+			Matrix BaseWorldMatrix = Matrix.Transform(MyEntity.WorldMatrix.GetOrientation(), rotation);
 			BaseWorldMatrix.Translation = MyEntity.GetPosition();
-			MatrixD BaseRotationMatrix = BaseWorldMatrix.RotationOnly();
+			MatrixD BaseRotationMatrix = BaseWorldMatrix.GetOrientation();
 
 			//myLogger.debugLog("entity matrix: " + MyEntity.WorldMatrix, "FireCluster()");
 			//myLogger.debugLog("BaseWorldMatrix: " + BaseWorldMatrix, "FireCluster()");
@@ -554,7 +552,7 @@ namespace Rynchodon.Weapons.Guided
 				ClusterWorldMatrix[index].Translation = worldOrigin;
 
 				Velocity[index] = direction * speed;
-				
+
 				index++;
 			});
 

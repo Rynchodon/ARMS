@@ -84,7 +84,7 @@ def eraseDir(l_dir):
         shutil.rmtree(l_dir)
 
 
-def parse_sbc(path):
+def parse_sbc(path, module):
 	try:
 		tree = ET.parse(path)
 	except Exception as e:
@@ -136,18 +136,18 @@ def parse_sbc(path):
 	# write tree to finalDir
 	outDir = finalDir + '\Data\\'
 	createDir(outDir)
-	outFile = outDir + os.path.basename(path)
+	outFile = outDir + module + ' - ' + os.path.basename(path)
 	tree.write(outFile, 'utf-8', True)
 	
 	outDirDev = finalDirDev + '\Data\\'
 	createDir(outDirDev)
-	shutil.copy2(outFile, outDirDev + os.path.basename(path))
+	shutil.copy2(outFile, outDirDev + module + ' - '  + os.path.basename(path))
 
 
-def find_sbc(dataPath):
+def find_sbc(dataPath, module):
     for file in os.listdir(dataPath):
         if file.endswith('.sbc'):
-            parse_sbc(dataPath + '\\' + file)
+            parse_sbc(dataPath + '\\' + file, module)
 
 
 def parse_xml(path):
@@ -409,7 +409,7 @@ if os.path.exists(buildIni):
 else:
     print ('build.ini not found')
     investigateBadPath("build.ini", buildIni)
-		
+
 createDir(finalDir)
 createDir(finalDirDev)
 
@@ -441,7 +441,7 @@ if not os.path.exists(mwmBuilder):
 for module in modules[:]:
     dataPath = startDir + '\\' + module + '\Data'
     if os.path.exists(dataPath):
-        find_sbc(dataPath)
+        find_sbc(dataPath, module)
 
 # process xml files and models
 for module in modules[:]:

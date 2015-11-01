@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Blueprints>
+  
+    <Blueprint>
+      <Id>
+        <TypeId>BlueprintDefinition</TypeId>
+        <SubtypeId>Souper_Cruise_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Cruise Missile</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Souper_Cruise_Missile.dds</Icon>
+      <Prerequisites>
+        <Item Amount="550." TypeId="Ingot" SubtypeId="Iron" />
+        <Item Amount="70." TypeId="Ingot" SubtypeId="Nickel" />
+        <Item Amount="1.5" TypeId="Ingot" SubtypeId="Silicon" />
+        <Item Amount="0.25" TypeId="Ingot" SubtypeId="Uranium" />
+        <Item Amount="0.12" TypeId="Ingot" SubtypeId="Platinum" />
+        <Item Amount="30." TypeId="Ingot" SubtypeId="Magnesium" />
+      </Prerequisites>
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_Cruise_Missile" />
+      <BaseProductionTimeInSeconds>120</BaseProductionTimeInSeconds>
+    </Blueprint>
+   
+  </Blueprints>
+</Definitions>

@@ -5,7 +5,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class RadioAntenna : Receiver
+	public class RadioAntenna : ReceiverBlock
 	{
 
 		private Ingame.IMyRadioAntenna myRadioAntenna;

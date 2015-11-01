@@ -38,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 		private Ingame.IMyTextPanel myTextPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
-		private Receiver myAntenna;
+		private ReceiverBlock myAntenna;
 		private ProgrammableBlock myProgBlock;
 		private IMyTerminalBlock myTermBlock;
 
