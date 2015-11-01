@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage;
@@ -14,12 +12,41 @@ namespace Rynchodon
 	/// </summary>
 	public class CubeGridCache
 	{
-		private static Dictionary<IMyCubeGrid, CubeGridCache> registry = new Dictionary<IMyCubeGrid, CubeGridCache>();
-		private static FastResourceLock lock_registry = new FastResourceLock();
-
+		private static FastResourceLock lock_constructing = new FastResourceLock();
 		private static List<string> knownDefinitions = new List<string>();
 		private static FastResourceLock lock_knownDefinitions = new FastResourceLock();
 
+		static CubeGridCache()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			lock_constructing = null;
+			lock_knownDefinitions = null;
+			knownDefinitions = null;
+		}
+
+		/// <summary>
+		/// Get the shortest definition that looseContains(contains).
+		/// </summary>
+		public static string getKnownDefinition(string contains)
+		{
+			int bestLength = int.MaxValue;
+			string bestMatch = null;
+			using (lock_knownDefinitions.AcquireSharedUsing())
+				foreach (string match in knownDefinitions)
+					if (match.looseContains(contains) && match.Length < bestLength)
+					{
+						bestLength = match.Length;
+						bestMatch = match;
+					}
+			return bestMatch;
+		}
+
+		private readonly Logger myLogger;
 		private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> CubeBlocks_Type = new Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>>();
 		private Dictionary<string, ListSnapshots<IMyTerminalBlock>> CubeBlocks_Definition = new Dictionary<string, ListSnapshots<IMyTerminalBlock>>();
 		private FastResourceLock lock_CubeBlocks = new FastResourceLock();
@@ -40,7 +67,7 @@ namespace Rynchodon
 			CubeGrid.OnBlockRemoved += CubeGrid_OnBlockRemoved;
 			CubeGrid.OnMarkForClose += CubeGrid_OnMarkForClose;
 
-			registry.Add(CubeGrid, this); // protected by GetFor()
+			Registrar.Add(CubeGrid, this);
 			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
 		}
 
@@ -54,9 +81,6 @@ namespace Rynchodon
 
 			CubeBlocks_Type = null;
 			CubeBlocks_Definition = null;
-
-			using (lock_registry.AcquireExclusiveUsing())
-				registry.Remove(CubeGrid);
 
 			myLogger.debugLog("closed", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 		}
@@ -116,19 +140,29 @@ namespace Rynchodon
 				return;
 
 			myLogger.debugLog("block removed: " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
+			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
 				// by type
 				MyObjectBuilderType myOBtype = fatblock.BlockDefinition.TypeId;
-				ListSnapshots<IMyCubeBlock> setBlocks_Type = CubeBlocks_Type[myOBtype];
-				setBlocks_Type.mutable().Remove(fatblock);
+				ListSnapshots<IMyCubeBlock> setBlocks_Type;
+				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
+				{
+					myLogger.debugLog("failed to get list of type: " + myOBtype, "CubeGrid_OnBlockRemoved()");
+					return;
+				}
+				if (setBlocks_Type.Count == 1)
+					CubeBlocks_Type.Remove(myOBtype);
+				else
+					setBlocks_Type.mutable().Remove(fatblock);
 
 				// by definition
 				IMyTerminalBlock asTerm = obj.FatBlock as IMyTerminalBlock;
 				if (asTerm == null)
 					return;
 
+				myLogger.debugLog("removing definition for " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
 				string definition = asTerm.DefinitionDisplayNameText;
 				ListSnapshots<IMyTerminalBlock> setBlocks_Def = CubeBlocks_Definition[definition];
 				setBlocks_Def.mutable().Remove(asTerm);
@@ -241,6 +275,59 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Count the number of blocks that match a particular condition.
+		/// </summary>
+		/// <param name="objBuildType">Type to search for</param>
+		/// <param name="condition">Condition that block must match</param>
+		/// <returns>The number of blocks of the given type that match the condition.</returns>
+		// TODO: conditional for CountByDefinition
+		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition, int stopCaringAt = int.MaxValue)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				ListSnapshots<IMyCubeBlock> value;
+				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
+				{
+					int count = 0;
+					foreach (IMyCubeBlock block in value.myList)
+						if (condition(block))
+						{
+							count++;
+							if (count >= stopCaringAt)
+								return count;
+						}
+
+					return count;
+				}
+				return 0;
+			}
+		}
+
+		/// <summary>
+		/// Count the number of blocks that match a particular condition.
+		/// </summary>
+		/// <param name="contains">substring of definition to search for</param>
+		/// <param name="condition">Condition that block must match</param>
+		/// <returns>The number of blocks containing the given definition that match the condition.</returns>
+		public int CountByDefLooseContains(string contains, Func<IMyTerminalBlock, bool> condition, int stopCaringAt = int.MaxValue)
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+			{
+				int count = 0;
+				foreach (var definition in CubeBlocks_Definition)
+					if (definition.Key.looseContains(contains))
+						foreach (IMyTerminalBlock block in definition.Value.myList)
+							if (condition(block))
+							{
+								count++;
+								if (count >= stopCaringAt)
+									return count;
+							}
+				return count;
+			}
+		}
+
+		/// <summary>
 		/// Return the total number of blocks cached by type.
 		/// </summary>
 		/// <returns>The total number of blocks cached by type</returns>
@@ -283,14 +370,14 @@ namespace Rynchodon
 				return null;
 
 			CubeGridCache value;
-			using (lock_registry.AcquireSharedUsing())
-				if (registry.TryGetValue(grid, out value))
+				if(	Registrar.TryGetValue(grid.EntityId, out value))
 					return value;
 
-			using (lock_registry.AcquireExclusiveUsing())
+			using (lock_constructing.AcquireExclusiveUsing())
 			{
-				if (registry.TryGetValue(grid, out value))
+				if (Registrar.TryGetValue(grid.EntityId, out value))
 					return value;
+
 				try
 				{ return new CubeGridCache(grid); }
 				catch (Exception e)
@@ -301,24 +388,5 @@ namespace Rynchodon
 			}
 		}
 
-		/// <summary>
-		/// Get the shortest definition that looseContains(contains).
-		/// </summary>
-		public string getKnownDefinition(string contains)
-		{
-			int bestLength = int.MaxValue;
-			string bestMatch = null;
-			using (lock_knownDefinitions.AcquireSharedUsing())
-				foreach (string match in knownDefinitions)
-					if (match.looseContains(contains) && match.Length < bestLength)
-					{
-						bestLength = match.Length;
-						bestMatch = match;
-					}
-			return bestMatch;
-		}
-
-
-		private Logger myLogger;
 	}
 }

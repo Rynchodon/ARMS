@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>PhasedArray_Large</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\PhasedArray.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="4" y="4" z="4" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Cubes\PhasedArray_Large.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\PhasedArray_Large_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\PhasedArray_Large_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\PhasedArray_Large_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="1.36" StartY="1.36" EndX="2.64" EndY="2.64" />
+	</MountPoints>
+	<MirroringX>None</MirroringX>
+	<MirroringY>None</MirroringY>
+	<MirroringZ>None</MirroringZ>
+	<BlockPairName>PhasedArray</BlockPairName>
+</Definition>

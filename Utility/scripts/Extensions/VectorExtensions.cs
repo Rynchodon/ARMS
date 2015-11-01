@@ -72,11 +72,57 @@ namespace Rynchodon
 		/// <param name="invokeOnEach">function to call for each vector, if it returns true short-curcuit</param>
 		public static void ForEachVector(this Vector3I min, Vector3I max, Func<Vector3I, bool> invokeOnEach)
 		{
-			for (int X = min.X; X <= max.X; X++)
-				for (int Y = min.Y; Y <= max.Y; Y++)
-					for (int Z = min.Z; Z <= max.Z; Z++)
-						if (invokeOnEach.Invoke(new Vector3I(X, Y, Z)))
+			Vector3I vector = Vector3I.Zero;
+			for (vector.X = min.X; vector.X <= max.X; vector.X++)
+				for (vector.Y = min.Y; vector.Y <= max.Y; vector.Y++)
+					for (vector.Z = min.Z; vector.Z <= max.Z; vector.Z++)
+						if (invokeOnEach.Invoke(vector))
 							return;
 		}
+
+		/// <summary>
+		/// Returns the acute angle between two vectors.
+		/// </summary>
+		public static float AngleBetween(this Vector3 first, Vector3 second)
+		{
+			first.Normalize();
+			second.Normalize();
+			return (float)Math.Acos(first.Dot(second));
+		}
+
+		/// <summary>
+		/// Returns the acute angle between two vectors.
+		/// </summary>
+		public static double AngleBetween(this Vector3D first, Vector3D second)
+		{
+			return Math.Acos(first.Dot(second) / (first.Length() * second.Length()));
+		}
+
+		public static string ToGpsTag(this Vector3 vec, string name)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
+
+		public static string ToGpsTag(this Vector3D vec, string name)
+		{
+			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
+		}
+
+		public static string ToPretty(this Vector3 vec)
+		{
+			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+		}
+
+		public static string ToPretty(this Vector3D vec)
+		{
+			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+		}
+
+		public static int DistanceSquared(this Vector3I vec, Vector3I sec)
+		{
+			int X = vec.X - sec.X, Y = vec.Y - sec.Y, Z = vec.Z - sec.Z;
+			return X * X + Y * Y + Z * Z;
+		}
+
 	}
 }

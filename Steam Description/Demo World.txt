@@ -1,15 +1,14 @@
-Demonstration world for Autopilot
+Demonstration world for ARMS
 
-Requires [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] Autopilot [/url]
+Requires [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] ARMS [/url]
 
 All of the Autopilot blocks are initially turned off.
 Where the "Commands" group exists, the Autopilot will be reading commands from that text panel.
 
 Drones:
-Harvester (asteroid mining) with Docking
-Automatic Scout (using radar) with Docking
-Patrol (using coordinates)
-Engage
+Asteroid mining of Uranium
+Automatic Scout, using radar and laser antenna
+Fighting Drone
 Missile
 
 Other:

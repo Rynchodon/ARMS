@@ -9,7 +9,13 @@ namespace Rynchodon
 	/// <typeparam name="T">The type of elements in the list.</typeparam>
 	public class ListSnapshots<T>
 	{
-		private ReadOnlyList<T> myList;
+		/// <summary>
+		/// Direct access to the current ReadOnlyList.
+		/// </summary>
+		/// <remarks>
+		/// Direct access to the ReadOnlyList allows for read access, without ever triggering a copy all, for a class that normally has write permission
+		/// </remarks>
+		public ReadOnlyList<T> myList { get; private set; }
 
 		/// <summary>
 		/// Initializes with a list with the default capacity.

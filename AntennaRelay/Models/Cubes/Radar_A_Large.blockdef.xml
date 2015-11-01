@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Radar_A_Large</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Radar_A.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="3" y="3" z="2" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Radar_A_Large.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Radar_A_Large_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Radar_A_Large_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Radar_A_Large_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="0.32" StartY="0.17" EndX="2.76" EndY="1.83" />
+	</MountPoints>
+	<BlockPairName>Radar_A</BlockPairName>
+</Definition>

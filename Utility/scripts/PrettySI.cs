@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED // remove on build
-
-using System;
+﻿using System;
 
 namespace Rynchodon
 {
@@ -18,7 +16,7 @@ namespace Rynchodon
 		private const double k = 1000;
 		private const double m = 0.001f;
 
-		private static readonly Logger myLogger = new Logger(null, "PrettySI");
+		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>
 		/// For a double between 0 and 1000, round to a number of significant figures. Minimum of three significant figures.
@@ -31,11 +29,13 @@ namespace Rynchodon
 			if (sigFig < 3)
 				sigFig = 3;
 
-			if (toRound > 100)
+			double toRoundAbs = Math.Abs(toRound);
+
+			if (toRoundAbs > 100)
 				return toRound.ToString("F" + (sigFig - 3));
-			if (toRound > 10)
+			if (toRoundAbs > 10)
 				return toRound.ToString("F" + (sigFig - 2));
-			if (toRound > 1)
+			if (toRoundAbs > 1)
 				return toRound.ToString("F" + (sigFig - 1));
 			return toRound.ToString("F" + sigFig);
 		}
@@ -43,7 +43,7 @@ namespace Rynchodon
 		/// <summary>
 		/// Treats multiples as separated by k and sub multiples as separated by m.
 		/// </summary>
-		private static string makePretty(double toPretty, string[] multiple, string[] subMutli, byte sigFig)
+		private static string makePretty(double toPretty, string[] multiple, string[] subMutli, byte sigFig, bool space)
 		{
 			if (toPretty == 0)
 				return "0 ";
@@ -51,10 +51,12 @@ namespace Rynchodon
 			if (sigFig < 3)
 				sigFig = 3;
 
-			if (toPretty >= 1)
+			double toPrettyAbs = Math.Abs(toPretty);
+
+			if (toPrettyAbs >= 1)
 			{
-				if (toPretty < k)
-					return toSigFigs(toPretty, sigFig) + " "; // no multiple
+				if (toPrettyAbs < k)
+					return toSigFigs(toPretty, sigFig) + (space ? " " : ""); // no multiple
 
 				double nextMulti = k;
 				for (int i = 0; i < multiple.Length; i++)
@@ -62,15 +64,16 @@ namespace Rynchodon
 					double multi = nextMulti;
 					nextMulti *= k;
 
-					if (toPretty < nextMulti)
-						return toSigFigs(toPretty / multi) + " " + multiple[i];
+					if (toPrettyAbs < nextMulti)
+						return toSigFigs(toPretty / multi) + (space ? " " : "") + multiple[i];
 				}
 
 				// more than a thousand of highest multi
-				return toPretty.ToString("E" + (sigFig - 1)) + " ";
+				//myLogger.debugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
+				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 
-			// toPretty < 1
+			// toPrettyAbs < 1
 			{
 				double nextMulti = m;
 				for (int i = 0; i < subMutli.Length; i++)
@@ -78,12 +81,13 @@ namespace Rynchodon
 					double multi = nextMulti;
 					nextMulti *= m;
 
-					if (toPretty > multi)
-						return toSigFigs(toPretty / multi) + " " + subMutli[i];
+					if (toPrettyAbs > multi)
+						return toSigFigs(toPretty / multi) + (space ? " " : "") + subMutli[i];
 				}
 
 				// less than a thousandth of lowest sub-multi
-				return toPretty.ToString("E" + (sigFig - 1)) + " ";
+				//myLogger.debugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
+				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 		}
 
@@ -93,10 +97,10 @@ namespace Rynchodon
 		/// <param name="toPretty">number to make pretty</param>
 		/// <param name="sigFig">number of significant figures in result</param>
 		/// <returns>string representation of the number</returns>
-		public static string makePretty(double toPretty, byte sigFigs = 3)
+		public static string makePretty(double toPretty, byte sigFigs = 3, bool space = true)
 		{
-			string result = makePretty(toPretty, SI_1000_multiples, SI_1000_subMulti, sigFigs);
-			//myLogger.debugLog("converted " + toPretty + " to " + result, "makePretty()");
+			string result = makePretty(toPretty, SI_1000_multiples, SI_1000_subMulti, sigFigs, space);
+			//myLogger.debugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
 			return result;
 		}
 
@@ -106,24 +110,24 @@ namespace Rynchodon
 		/// <param name="toPretty">number to make pretty</param>
 		/// <param name="sigFig">number of significant figures in result</param>
 		/// <returns>string representation of the number</returns>
-		public static string makePrettyCubic(double toPretty, byte sigFig = 3)
+		public static string makePrettyCubic(double toPretty, byte sigFig = 3, bool space = true)
 		{
-			string result = makePretty(toPretty, SI_10_multiples, SI_10_subMulti, sigFig);
-			//myLogger.debugLog("converted " + toPretty + " to " + result, "makePrettyCubic()");
+			string result = makePretty(toPretty, SI_10_multiples, SI_10_subMulti, sigFig, space);
+			//myLogger.debugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
 			return result;
 		}
 
-		// TODO: 
-		/// <summary>
-		/// Not Yet Implemented. Convert a pretty string with a SI prefix to a double.
-		/// </summary>
-		/// <param name="pretty">string with SI prefix</param>
-		/// <returns>parsed double</returns>
-		public static double fromPretty(string pretty)
-		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-			return 0;
-		}
+		//// TODO: 
+		///// <summary>
+		///// Not Yet Implemented. Convert a pretty string with a SI prefix to a double.
+		///// </summary>
+		///// <param name="pretty">string with SI prefix</param>
+		///// <returns>parsed double</returns>
+		//public static double fromPretty(string pretty)
+		//{
+		//	VRage.Exceptions.ThrowIf<NotImplementedException>(true);
+		//	return 0;
+		//}
 
 	}
 }

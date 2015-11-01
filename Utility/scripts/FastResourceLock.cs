@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
 
@@ -27,7 +28,9 @@ namespace Rynchodon
 		{ Debug = true; }
 
 		public FastResourceLock(string LockName = "N/A")
-		{ this.myLogger = new Logger("FastResourceLock", null, () => LockName); }
+		{ 
+			this.myLogger = new Logger("FastResourceLock", null, () => LockName);
+		}
 
 		#region Public Properties
 

@@ -12,7 +12,8 @@ namespace Rynchodon.Autopilot.Chat
 	/// </summary>
 	public static class Help
 	{
-		private const string designator = "/autopilot";
+		private const string pri_designator = "/arms help";
+		private const string alt_designator = "/autopilot help";
 
 		private struct Command
 		{
@@ -37,12 +38,26 @@ namespace Rynchodon.Autopilot.Chat
 
 		private static bool initialized = false;
 
+		public static void Init()
+		{
+			MyAPIGateway.Utilities.MessageEntered += printCommand;
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Utilities.MessageEntered -= printCommand;
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+		}
+
 		private static void initialize()
 		{
 			myLogger.debugLog("initializing", "initialize()", Logger.severity.TRACE);
 			help_messages = new Dictionary<string, LinkedList<Command>>();
 			List<Command> allCommands = new List<Command>();
+
 			// fill commands by build
+			
 			foreach (Command current in allCommands)
 			{
 				LinkedList<Command> bucket;
@@ -62,28 +77,28 @@ namespace Rynchodon.Autopilot.Chat
 			initialized = true;
 		}
 
-		public static void printCommand(string chatMessage, ref bool sendToOthers)
+		private static void printCommand(string chatMessage, ref bool sendToOthers)
 		{
 			try
 			{
+				chatMessage = chatMessage.ToLower();
+
+				if (!chatMessage.StartsWith(pri_designator) && !chatMessage.StartsWith(alt_designator))
+					return;
+
+				string[] parts = chatMessage.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+				sendToOthers = false;
+
 				if (!initialized)
 					initialize();
-				chatMessage = chatMessage.Trim();
-				string[] chatSplit = chatMessage.Split(' ');
-				if (chatSplit.Length == 0)
-					return;
-				if (!chatSplit[0].Equals(designator, StringComparison.OrdinalIgnoreCase))
-					return;
-				sendToOthers = false;
-				if (chatSplit.Length == 1)
+
+				if (parts.Length < 3)
 					printListCommands();
 				else
-					if (!printSingleCommand(chatSplit[1]))
-						printListCommands();
+					printSingleCommand(parts[2]);
 			}
-			catch (Exception e) {
-				myLogger.alwaysLog("Exception: " + e, "printCommand()", Logger.severity.ERROR);
-			}
+			catch (Exception e)
+			{ myLogger.alwaysLog("Exception: " + e, "printCommand()", Logger.severity.ERROR); }
 		}
 
 		private static void printListCommands()
@@ -96,8 +111,6 @@ namespace Rynchodon.Autopilot.Chat
 				foreach (Command current in bucket)
 				{
 					myLogger.debugLog("sending message for command: " + current.command, "printListCommands()", Logger.severity.TRACE);
-					//MyAPIGateway.Utilities.ShowNotification(current.commandExt);
-					//MyAPIGateway.Utilities.ShowMissionScreen("Topics", string.Empty, string.Empty, 
 					print.AppendLine(current.commandExt);
 				}
 			}
@@ -116,17 +129,16 @@ namespace Rynchodon.Autopilot.Chat
 			LinkedList<Command> bucket;
 			if (!help_messages.TryGetValue(command, out bucket))
 			{
-				myLogger.alwaysLog("failed to get a bucket for: "+command, "printSingleCommand()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get a bucket for: " + command, "printSingleCommand()", Logger.severity.WARNING);
 				return false;
 			}
 			foreach (Command current in bucket)
 			{
 				myLogger.debugLog("sending message for command: " + current.command, "printSingleCommand()", Logger.severity.TRACE);
-				//MyAPIGateway.Utilities.ShowNotification(current.description);
 				print.AppendLine(current.description);
 				print.AppendLine();
 			}
-			myLogger.debugLog("showing missing screen for command: " + command, "printSingleCommand()", Logger.severity.TRACE);
+			myLogger.debugLog("showing mission screen for command: " + command, "printSingleCommand()", Logger.severity.TRACE);
 			MyAPIGateway.Utilities.ShowMissionScreen("Autopilot Help", command, string.Empty, print.ToString());
 			return true;
 		}

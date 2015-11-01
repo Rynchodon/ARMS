@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
+using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -44,7 +46,6 @@ namespace Rynchodon.Weapons
 		/// Parse intstructions for a turret or engaging Autopilot.
 		/// </summary>
 		/// <param name="instructions">string to parse</param>
-		/// <param name="Grid">where to search for text panels</param>
 		/// <param name="Options">results of parse</param>
 		/// <param name="Errors">indices of parsing errors</param>
 		public void Parse(out TargetingOptions Options, out List<string> Errors, string instructions = null)
@@ -57,7 +58,7 @@ namespace Rynchodon.Weapons
 					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
 					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
 					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
-					instructions = Settings.GetSettingString(Settings.SettingName.sWeaponCommandsNPC);
+					instructions = ServerSettings.GetSettingString(ServerSettings.SettingName.sWeaponCommandsNPC);
 					myLogger.debugLog("instructions = " + instructions, "Parse()");
 
 					if (instructions != null)
@@ -236,7 +237,6 @@ namespace Rynchodon.Weapons
 		/// Fetch instructions from a text panel.
 		/// </summary>
 		/// <param name="toParse">'t' + (name of text panel)</param>
-		/// <param name="Options">to add instructions to</param>
 		/// <returns>true iff a text panel was found</returns>
 		private bool GetFromPanel(string toParse)
 		{
@@ -246,11 +246,7 @@ namespace Rynchodon.Weapons
 				throw new NullReferenceException("Grid");
 
 			if (!toParse.StartsWith("t"))
-			{
-				//myLogger.debugLog("does not start with t: " + toParse, "GetFromPanel()");
 				return false;
-			}
-			//myLogger.debugLog("Trying to parse: " + toParse, "GetFromPanel()");
 
 			toParse = toParse.Substring(1);
 
@@ -262,33 +258,13 @@ namespace Rynchodon.Weapons
 			else
 				panelName = toParse;
 
-			var TextPanels = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(MyObjectBuilder_TextPanel));
-
-			if (TextPanels == null)
-			{
-				myLogger.debugLog("no text panels", "GetFromPanel()");
+			Ingame.IMyTextPanel panel;
+			if (!GetTextPanel(panelName, out panel))
 				return false;
-			}
-			myLogger.debugLog(TextPanels.Count+" text panels", "GetFromPanel()");
 
-			IMyCubeBlock bestMatch = null;
-			int bestMatchLength = int.MaxValue;
-			foreach (var panel in TextPanels)
-				if (panel.DisplayNameText.Length < bestMatchLength && Block.canControlBlock(panel as IMyCubeBlock) && panel.DisplayNameText.looseContains(panelName))
-				{
-					bestMatch = panel;
-					bestMatchLength = panel.DisplayNameText.Length;
-				}
+			myLogger.debugLog("Found panel: " + panel.DisplayNameText, "GetFromPanel()");
 
-			if (bestMatch == null)
-			{
-				myLogger.debugLog("could not find " + panelName + " on " + Grid.DisplayName, "GetFromPanel()", Logger.severity.DEBUG);
-				return false;
-			}
-
-			//myLogger.debugLog("Found panel: " + bestMatch.DisplayNameText, "GetFromPanel()");
-
-			string panelText = (bestMatch as Ingame.IMyTextPanel).GetPublicText();
+			string panelText = panel.GetPublicText();
 			string lowerText = panelText.ToLower();
 
 			string identifier;
@@ -300,7 +276,7 @@ namespace Rynchodon.Weapons
 				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
-					myLogger.debugLog("could not find " + identifier + " in text of " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 					return false;
 				}
 				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
@@ -314,14 +290,14 @@ namespace Rynchodon.Weapons
 
 			if (startOfCommands < 0)
 			{
-				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 				return false;
 			}
 
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
-				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + bestMatch.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 				return false;
 			}
 
@@ -330,5 +306,32 @@ namespace Rynchodon.Weapons
 
 			return true; // this instruction was successfully executed, even if sub instructions were not
 		}
+
+		private bool GetTextPanel(string name, out Ingame.IMyTextPanel panel)
+		{
+			IMyCubeBlock foundBlock = null;
+			int bestNameLength = int.MaxValue;
+
+			AttachedGrid.RunOnAttachedBlock(Grid, AttachedGrid.AttachmentKind.Permanent, block => {
+				IMyCubeBlock Fatblock = block.FatBlock;
+				if (Fatblock != null && Block.canControlBlock(Fatblock))
+				{
+					string blockName = Fatblock.DisplayNameText.LowerRemoveWhitespace();
+
+					if (blockName.Length < bestNameLength && blockName.Contains(name))
+					{
+						foundBlock = Fatblock;
+						bestNameLength = blockName.Length;
+						if (name.Length == bestNameLength)
+							return true;
+					}
+				}
+				return false;
+			}, true);
+
+			panel = foundBlock as Ingame.IMyTextPanel;
+			return panel != null;
+		}
+
 	}
 }
