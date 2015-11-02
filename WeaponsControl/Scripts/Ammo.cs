@@ -104,6 +104,17 @@ namespace Rynchodon.Weapons
 		public const string ClusterDescriptionString = "IsClusterPart=true";
 		private static Dictionary<MyDefinitionId, Ammo> KnownDefinitions_Ammo = new Dictionary<MyDefinitionId, Ammo>();
 
+		static Ammo()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			KnownDefinitions_Ammo = null;
+		}
+
 		public static Ammo GetLoadedAmmo(IMyCubeBlock weapon)
 		{
 			var invOwn = (weapon as IMyInventoryOwner);
@@ -163,6 +174,9 @@ namespace Rynchodon.Weapons
 
 			Description = AmmoDescription.CreateFrom(AmmoDefinition);
 
+			if (Description == null)
+				return;
+
 			#region Check Cluster
 
 			if (Description.ClusterSplitRange < 1 || Description.ClusterCooldown < 1) // if any value is bad
@@ -196,5 +210,28 @@ namespace Rynchodon.Weapons
 
 			#endregion
 		}
+
+		public float MissileSpeed(float distance)
+		{
+			myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed, "LoadedAmmoSpeed()");
+			if (distance < DistanceToMaxSpeed)
+			{
+				float finalSpeed = (float)Math.Sqrt(MissileDefinition.MissileInitialSpeed * MissileDefinition.MissileInitialSpeed + 2 * MissileDefinition.MissileAcceleration * distance);
+
+				//myLogger.debugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
+				return (MissileDefinition.MissileInitialSpeed + finalSpeed) / 2;
+			}
+			else
+			{
+				float distanceAfterMaxVel = distance - DistanceToMaxSpeed;
+				float timeAfterMaxVel = distanceAfterMaxVel / MissileDefinition.DesiredSpeed;
+
+				myLogger.debugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
+					+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+				//myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+				return distance / (TimeToMaxSpeed + timeAfterMaxVel);
+			}
+		}
+
 	}
 }

@@ -7,8 +7,8 @@
         <TypeId>SmallMissileLauncher</TypeId>
         <SubtypeId>Small_Souper_Cruise_Launcher</SubtypeId>
       </Id>
-      <DisplayName>DisplayName_Block_RocketLauncher</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\missile_launcher.dds</Icon>
+      <DisplayName>Cruise Missile Launcher</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\Souper_Cruise_Missile.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="4" />
@@ -51,9 +51,9 @@
         <TypeId>SmallMissileLauncher</TypeId>
         <SubtypeId>Large_Souper_Cruise_Launcher</SubtypeId>
       </Id>
-      <DisplayName>DisplayName_Block_RocketLauncher</DisplayName>
+      <DisplayName>Cruise Missile Launcher</DisplayName>
       <public>false</public>
-      <Icon>Textures\GUI\Icons\Cubes\missile_launcher.dds</Icon>
+      <Icon>Textures\GUI\Icons\Cubes\Souper_Cruise_Missile.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
@@ -92,15 +92,15 @@
       <DamagedSound>ParticleWeapExpl</DamagedSound>
     </Definition>
     
-    <--
+    <!--
     <Definition xsi:type="MyObjectBuilder_WeaponBlockDefinition">
       <Id>
         <TypeId>SmallMissileLauncherReload</TypeId>
         <SubtypeId>SmallRocketLauncherReload</SubtypeId>
       </Id>
-      <DisplayName>DisplayName_Block_SmallRocketLauncherReload</DisplayName>
+      <DisplayName>Cruise Missile Launcher</DisplayName>
       <BlockPairName>SmallRocketLauncherReload</BlockPairName>
-      <Icon>Textures\GUI\Icons\Cubes\RocketLauncherReload.dds</Icon>
+      <Icon>Textures\GUI\Icons\Cubes\Souper_Cruise_Missile.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="3" z="3" />

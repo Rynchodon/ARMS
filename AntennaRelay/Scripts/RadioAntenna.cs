@@ -45,11 +45,18 @@ namespace Rynchodon.AntennaRelay
 						Relay(ant);
 				});
 
-				// relay information to friendly players
 				ForEachLastSeen(seen => {
+					// relay information to friendly players
 					foreach (Player player in Player.AllPlayers)
 						if (CubeBlock.canSendTo(player.myPlayer, true, radiusSquared, true))
-								player.receive(seen);
+							player.receive(seen);
+
+					// relay information to missile antennae
+					Registrar.ForEach((MissileAntenna ant) => {
+						if (CubeBlock.canSendTo(ant.Entity, true, radiusSquared, true))
+							ant.Receive(seen);
+					});
+
 					return false;
 				});
 

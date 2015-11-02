@@ -31,6 +31,8 @@ finalRelDir_icons = 'Textures\GUI\Icons\Cubes\\'
 finalRelDir_model = 'Models\Cubes\\' # Large/Small will be added
 finalRelDir_texture = 'Textures\Models\Cubes\\'
 finalRelDir_texturePanel = 'Textures\Models\\'
+finalRelDir_weaponIcon = 'Textures\\GUI\\Icons\\ammo\\'
+finalRelDir_weaponModel = 'Models\\Weapons\\'
 
 # files that will need to be copied and the source (for errors)
 toCopy_icons = dict()
@@ -38,6 +40,8 @@ toCopy_modelLarge = dict()
 toCopy_modelSmall = dict()
 toCopy_texture = dict()
 toCopy_texturePanel = dict()
+toCopy_weaponIcon = dict()
+toCopy_weaponModel = dict()
 
 # tracks primary model sizes
 #     because L.O.D.s are referred to by primary model .xml file
@@ -128,10 +132,32 @@ def parse_sbc(path, module):
 				primary_model[file_path[:-4]] = primary[:-4]
 				Model.set('File', finalRelDir_model + blockSize + '\\' + os.path.basename(file))
 
+
+	# Ammo Magazines
+	for MagDef in root.findall('./AmmoMagazines/AmmoMagazine'):
+		
+		# Icon
+		for Icon in MagDef.findall('./Icon'):
+			toCopy_weaponIcon[(module + '\\' + Icon.text).lower()] = path
+			Icon.text = finalRelDir_weaponIcon + os.path.basename(Icon.text)
+		
+		# Model
+		for Model in MagDef.findall('./Model'):
+			toCopy_weaponModel[(module + '\\' + Model.text).lower()] = path
+			Model.text = finalRelDir_weaponModel + os.path.basename(Model.text)
+	
+	
+	# Ammos
+	for Model in root.findall('./Ammos/Ammo/MissileModelName'):
+		toCopy_weaponModel[(module + '\\' + Model.text).lower()] = path
+		Model.text = finalRelDir_weaponModel + os.path.basename(Model.text)
+		
+		
 	# LCD textures
 	for texture in root.findall('./LCDTextures/LCDTextureDefinition/TexturePath'):
 		toCopy_texturePanel[(module + '\\' + texture.text).lower()] = path
 		texture.text = finalRelDir_texturePanel + os.path.basename(texture.text)
+	
 	
 	# write tree to finalDir
 	outDir = finalDir + '\Data\\'
@@ -200,10 +226,10 @@ def copyHavokFile(path):
 		try:
 			pri_havok = primary_model[model] + '.hkt'
 			if not os.path.exists(pri_havok):
-				warning.append('WARN: no havok file for ' + path)
+				#warning.append('WARN: no havok file for ' + path)
 				return
 		except KeyError:
-			warning.append('WARN: no havok file for ' + path)
+			#warning.append('WARN: no havok file for ' + path)
 			return
 	else:
 		pri_havok = my_havok
@@ -377,18 +403,17 @@ def build_help():
 
 
 def copyToFinal(fileMap, finalRelDir):
-    finalModDir = finalDir +'\\' + finalRelDir
-    finalModDirDev = finalDirDev +'\\' + finalRelDir
-    createDir(finalModDir)
-    createDir(finalModDirDev)
+	finalModDir = finalDir +'\\' + finalRelDir
+	finalModDirDev = finalDirDev +'\\' + finalRelDir
+	createDir(finalModDir)
+	createDir(finalModDirDev)
 
-    for file in fileMap.keys():
-        #print ('copying file: ' + file + ', to ' + finalModDir)
-        try:
-            shutil.copy2(startDir + '\\' + file, finalModDir)
-            shutil.copy2(startDir + '\\' + file, finalModDirDev)
-        except (FileNotFoundError, OSError):
-            errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
+	for file in fileMap.keys():
+		try:
+			shutil.copy2(startDir + '\\' + file, finalModDir)
+			shutil.copy2(startDir + '\\' + file, finalModDirDev)
+		except (FileNotFoundError, OSError):
+		    errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
 
 
 def copyWithExtension(l_from, l_to, l_ext):
@@ -484,6 +509,8 @@ copyToFinal(toCopy_modelLarge, finalRelDir_model + '\Large')
 copyToFinal(toCopy_modelSmall, finalRelDir_model + '\Small')
 copyToFinal(toCopy_texture, finalRelDir_texture)
 copyToFinal(toCopy_texturePanel, finalRelDir_texturePanel)
+copyToFinal(toCopy_weaponIcon, finalRelDir_weaponIcon)
+copyToFinal(toCopy_weaponModel, finalRelDir_weaponModel)
 
 # print errors & warnings
 print ('\n\nbuild finished with '+ str(len(errors)) + ' errors and ' + str(len(warning)) + ' warnings:')

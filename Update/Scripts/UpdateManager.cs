@@ -9,6 +9,7 @@ using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Weapons;
+using Rynchodon.Weapons.Guided;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -132,18 +133,23 @@ namespace Rynchodon.Update
 
 				#region Fixed
 
-				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), block => {
+				Action<IMyCubeBlock> constructor = block => {
 					FixedWeapon w = new FixedWeapon(block);
 					RegisterForUpdates(1, w.Update_Targeting, block);
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), block => {
-					FixedWeapon w = new FixedWeapon(block);
-					RegisterForUpdates(1, w.Update_Targeting, block);
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), block => {
-					FixedWeapon w = new FixedWeapon(block);
-					RegisterForUpdates(1, w.Update_Targeting, block);
-				});
+					if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
+					{
+						GuidedMissileLauncher gml = new GuidedMissileLauncher(w);
+						RegisterForUpdates(1, gml.Update1, block);
+					}
+				};
+
+				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), constructor);
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), constructor);
+				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), constructor);
+
+				RegisterForUpdates(1, GuidedMissile.Update1);
+				RegisterForUpdates(10, GuidedMissile.Update10);
+				RegisterForUpdates(100, GuidedMissile.Update100);
 
 				#endregion
 			}

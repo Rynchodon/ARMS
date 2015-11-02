@@ -9,13 +9,15 @@
       </Id>
 	  <Description>
         GuidedMissile=true
-        Acceleration=100
+        RotationPerUpdate=0.017453292519943
+        Acceleration=0
         HasAntenna=true
+        DetonateRange=4
       </Description>
       <BasicProperties>
         <DesiredSpeed>150</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>100000</MaxTrajectory>
+        <MaxTrajectory>12000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
         <BackkickForce>700</BackkickForce>
       </BasicProperties>
@@ -23,8 +25,8 @@
         <MissileMass>300</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_Cruise_Missile.mwm</MissileModelName>
-        <MissileAcceleration>5</MissileAcceleration>
-        <MissileInitialSpeed>0.1</MissileInitialSpeed>
+        <MissileAcceleration>10</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>2000</MissileExplosionDamage>
       </MissileProperties>

@@ -13,26 +13,26 @@ namespace Rynchodon.Weapons
 	public abstract class TargetingBase
 	{
 
-		public TargetingOptions Options { get; protected set; }
-		/// <summary>The target that has been chosen.</summary>
-		public Target CurrentTarget { get; private set; }
+		public readonly IMyEntity MyEntity;
+		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
+		public readonly IMyCubeBlock CubeBlock;
+		public readonly IMyFunctionalBlock FuncBlock;
 
 		/// <summary>Iff true, the projectile will attempt to chase-down a target.</summary>
 		protected bool TryHard = false;
+		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
+		/// <summary>The target that is being processed.</summary>
+		protected Target myTarget;
 
-		protected readonly IMyEntity MyEntity;
-		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
-		protected readonly IMyCubeBlock CubeBlock;
-		protected readonly IMyFunctionalBlock FuncBlock;
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
-		private readonly List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
 
 		private readonly Logger myLogger;
 
-		/// <summary>The target that is being processed.</summary>
-		protected Target myTarget;
+		public TargetingOptions Options { get; protected set; }
+		/// <summary>The target that has been chosen.</summary>
+		public Target CurrentTarget { get; private set; }
 
 		public TargetingBase(IMyEntity entity, IMyCubeBlock controllingBlock)
 		{
@@ -67,7 +67,7 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Determines the speed of the projectile.
 		/// </summary>
-		protected abstract float ProjectileSpeed();
+		protected abstract float ProjectileSpeed(Vector3D targetPos);
 
 		/// <summary>
 		/// If the projectile has not been fired, aproximately where it will be created.
@@ -89,7 +89,7 @@ namespace Rynchodon.Weapons
 			Blacklist.Clear();
 		}
 
-		private void BlacklistTarget()
+		protected void BlacklistTarget()
 		{
 			myLogger.debugLog("Blacklisting " + myTarget.Entity, "BlacklistTarget()");
 			Blacklist.Add(myTarget.Entity);
@@ -137,8 +137,8 @@ namespace Rynchodon.Weapons
 			PotentialObstruction.Clear();
 
 			BoundingSphereD nearbySphere = new BoundingSphereD(ProjectilePosition(), Options.TargetingRange);
-			HashSet<IMyEntity> nearbyEntities = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntitiesInSphere_Safe_NoBlock(nearbySphere, nearbyEntities);
+			List<MyEntity> nearbyEntities = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearbySphere, nearbyEntities);
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
@@ -492,8 +492,16 @@ namespace Rynchodon.Weapons
 					if (entity.Closed)
 						continue;
 
+					bool isMissile = entity.ToString().StartsWith("MyMissile");
+
+					if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 1)
+					{
+						myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
+						continue;
+					}
+
 					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || entity.ToString().StartsWith("MyMissile") || entity.GetLinearVelocity().LengthSquared() > 100))
+					if (!(entity is IMyMeteor || isMissile || entity.GetLinearVelocity().LengthSquared() > 100))
 						continue;
 
 					IMyEntity projectile = entity;
@@ -526,9 +534,6 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
-		/// <summary>
-		/// <para>Approaching, going to intersect protection area.</para>
-		/// </summary>
 		private bool ProjectileIsThreat(IMyEntity projectile, TargetType tType)
 		{
 			if (projectile.Closed)
@@ -558,7 +563,7 @@ namespace Rynchodon.Weapons
 		#region Target Interception
 
 		/// <summary>
-		/// Calculates FiringDirection & InterceptionPoint
+		/// Calculates FiringDirection and InterceptionPoint
 		/// </summary>
 		/// TODO: if target is accelerating, look ahead (missiles and such)
 		protected void SetFiringDirection()
@@ -575,7 +580,7 @@ namespace Rynchodon.Weapons
 			else
 				TargetPosition = target.GetPosition();
 
-			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(), TargetPosition, target.GetLinearVelocity());
+			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, target.GetLinearVelocity());
 			if (myTarget.Entity != null && PhysicalProblem(myTarget.InterceptionPoint.Value))
 			{
 				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
@@ -612,18 +617,16 @@ namespace Rynchodon.Weapons
 
 			// Now all we have to find is the orthogonal velocity of the shot
 
-			float shotVelSpeed = shotVelTang.Length();
-			if (shotVelSpeed > shotSpeed)
+			float shotVelSpeedSquared = shotVelTang.LengthSquared();
+			if (shotVelSpeedSquared > shotSpeed * shotSpeed)
 			{
 				// Shot is too slow to intercept target.
 				if (TryHard)
 				{
-					//// Do our best by aiming in the direction of the targets velocity.
-					//Vector3 interceptDirection = Vector3.Normalize(targetVel);
-					//Vector3 interceptPoint = shotOrigin + interceptDirection;
-					//myTarget = myTarget.AddDirectionPoint(interceptDirection, interceptPoint);
-					// aim directly at the target
-					myTarget = myTarget.AddDirectionPoint(directionToTarget, targetOrigin);
+					Vector3 direction = directionToTarget  * 10f + shotVelTang;
+					direction.Normalize();
+					myTarget.FiringDirection = direction;
+					myTarget.InterceptionPoint = shotOrigin + direction * distanceToTarget;
 					return;
 				}
 				BlacklistTarget();
@@ -633,7 +636,7 @@ namespace Rynchodon.Weapons
 			{
 				// We know the shot speed, and the tangential velocity.
 				// Using pythagoras we can find the orthogonal velocity.
-				float shotSpeedOrth = (float)Math.Sqrt(shotSpeed * shotSpeed - shotVelSpeed * shotVelSpeed);
+				float shotSpeedOrth = (float)Math.Sqrt(shotSpeed * shotSpeed - shotVelSpeedSquared);
 				Vector3 shotVelOrth = directionToTarget * shotSpeedOrth;
 
 				// Finally, add the tangential and orthogonal velocities.
@@ -646,7 +649,8 @@ namespace Rynchodon.Weapons
 				Vector3 shotVel = shotVelOrth + shotVelTang;
 				Vector3 interceptPoint = shotOrigin + (shotVel + shooterVel) * timeToCollision;
 
-				myTarget = myTarget.AddDirectionPoint(interceptDirection, interceptPoint);
+				myTarget.FiringDirection = interceptDirection;
+				myTarget.InterceptionPoint = interceptPoint;
 			}
 		}
 

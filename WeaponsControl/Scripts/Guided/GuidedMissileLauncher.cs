@@ -1,28 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Sandbox.Common;
-using Sandbox.Common.Components;
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.Common.ObjectBuilders.Definitions;
-using Sandbox.Common.ObjectBuilders.Voxels;
-using Sandbox.Common.ObjectBuilders.VRageData;
-using Sandbox.Definitions;
-using Sandbox.Game;
-using Sandbox.Game.Entities;
-using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
-using VRage.Collections;
-using VRage.Components;
-using VRage.Game.ObjectBuilders;
-using VRage.Library.Utils;
 using VRage.ModAPI;
-using VRage.ObjectBuilders;
-using VRage.Utils;
-using VRage.Voxels;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 using Interfaces = Sandbox.ModAPI.Interfaces;
@@ -35,12 +16,21 @@ namespace Rynchodon.Weapons.Guided
 
 		#region Static
 
-		private static readonly Logger staticLogger = new Logger("GuidedMissileLauncher");
-		private static readonly List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
+		private static Logger staticLogger = new Logger("GuidedMissileLauncher");
+		private static List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
 
 		static GuidedMissileLauncher()
 		{
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			staticLogger = null;
+			AllLaunchers = null;
 		}
 
 		public static bool IsGuidedMissileLauncher(IMyCubeBlock block)
@@ -51,9 +41,12 @@ namespace Rynchodon.Weapons.Guided
 		private static void Entities_OnEntityAdd(IMyEntity obj)
 		{
 			if (obj is MyAmmoBase && obj.ToString().StartsWith("MyMissile"))
+			{
 				foreach (GuidedMissileLauncher launcher in AllLaunchers)
 					if (launcher.MissileBelongsTo(obj))
 						return;
+				staticLogger.debugLog("No one claimed: " + obj, "Entities_OnEntityAdd()");
+			}
 		}
 
 		#endregion
@@ -83,10 +76,15 @@ namespace Rynchodon.Weapons.Guided
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
-			MissileSpawnBox.Max.Z = MissileSpawnBox.Min.Z;
-			MissileSpawnBox.Min.Z -= 1;
+			// * 10 is temporary and shall be removed once we have the actual model
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10);
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10);
+
+			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
 			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
+
+			myFixed.AllowedState = WeaponTargeting.State.GetOptions;
 
 			AllLaunchers.Add(this);
 		}
@@ -101,18 +99,27 @@ namespace Rynchodon.Weapons.Guided
 		{
 			Vector3D local = Vector3D.Transform(missile.GetPosition(), CubeBlock.WorldMatrixNormalizedInv);
 			if (MissileSpawnBox.Contains(local) != ContainmentType.Contains)
+			{
+				myLogger.debugLog("Not in my box: " + missile + ", position: " + local, "MissileBelongsTo()");
 				return false;
+			}
 			if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.001)
+			{
+				myLogger.debugLog("Facing the wrong way: " + missile, "MissileBelongsTo()");
 				return false;
+			}
 
 			if (loadedAmmo == null)
 			{
-				myLogger.debugLog("Mine but no loaded ammo!", "MissileBelongsTo()", Logger.severity.WARNING);
+				myLogger.debugLog("Mine but no loaded ammo!", "MissileBelongsTo()", Logger.severity.INFO);
 				return true;
 			}
 
 			if (loadedAmmo.Description == null || !loadedAmmo.Description.GuidedMissile)
+			{
+				myLogger.debugLog("Mine but not a guided missile!", "MissileBelongsTo()", Logger.severity.INFO);
 				return true;
+			}
 
 			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
 			try
@@ -157,7 +164,6 @@ namespace Rynchodon.Weapons.Guided
 			return true;
 		}
 
-		// TODO: determine if ammo can actually change // I don't remember what this means
 		private void UpdateLoadedMissile()
 		{
 			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && nextCheckInventory > DateTime.UtcNow)
@@ -170,16 +176,8 @@ namespace Rynchodon.Weapons.Guided
 			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
 			if (newAmmo != null && newAmmo != loadedAmmo)
 			{
-				//if (newAmmo.Description == null)
-				//{
-				//	myLogger.debugLog("ammo does not have a description: " + newAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-				//	loadedAmmo = null;
-				//	return;
-				//}
 				loadedAmmo = newAmmo;
 				myLogger.debugLog("loaded ammo: " + loadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-				//if (prev_clusterMain != null)
-				//	prev_clusterMain.OnAmmoChanged();
 			}
 		}
 

@@ -1,56 +1,20 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
-using Sandbox.Common;
-using Sandbox.Common.Components;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Common.ObjectBuilders.Definitions;
-using Sandbox.Common.ObjectBuilders.Voxels;
-using Sandbox.Common.ObjectBuilders.VRageData;
-using Sandbox.Definitions;
-using Sandbox.Game;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
-using VRage.Components;
-using VRage.Game.ObjectBuilders;
-using VRage.Library.Utils;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
-using VRage.Utils;
-using VRage.Voxels;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
-using Interfaces = Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.Guided
 {
-	// TODO: ARH, GOLIS, SARH, and semi-active magic homing
+	// TODO: ARH, SA*
 	public class GuidedMissile : TargetingBase
 	{
-		private class MissileAntenna : Receiver
-		{
-			private object myMissile;
-
-			public override object ReceiverObject { get { return myMissile; } }
-
-			//public Dictionary<long, LastSeen> MyLastSeen { get { return myLastSeen; } }
-
-			//public FastResourceLock lock_MyLastSeen { get { return lock_myLastSeen; } }
-
-			public MissileAntenna(IMyEntity missile)
-				: base(missile)
-			{
-				this.myMissile = missile;
-				//AllReceivers_NoBlock.Add(this);
-				//missile.OnClose += (ent) => AllReceivers_NoBlock.Remove(this);
-			}
-		}
 
 		private class Cluster
 		{
@@ -77,7 +41,7 @@ namespace Rynchodon.Weapons.Guided
 		private static readonly CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 		private static readonly FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
 
-		private static long UpdateCount;
+		//private static long UpdateCount;
 
 		public static void Update1()
 		{
@@ -90,7 +54,7 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (missile.Stopped || UpdateCount < missile.startGuidanceAt)
+						if (missile.Stopped || Globals.UpdateCount < missile.startGuidanceAt)
 							return;
 						missile.UpdateCluster();
 						if (missile.SetTarget)
@@ -106,8 +70,6 @@ namespace Rynchodon.Weapons.Guided
 						missile.SetFiringDirection();
 						missile.Update();
 					});
-
-			UpdateCount++;
 		}
 
 		public static void Update10()
@@ -135,7 +97,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Ammo myAmmo;
 		private readonly Ammo.AmmoDescription myDescr;
 		private readonly MissileAntenna myAntenna;
-		private readonly long startGuidanceAt;
+		private readonly ulong startGuidanceAt;
 		/// <summary>A target set here will prevent targeting from running.</summary>
 		private readonly bool SetTarget;
 
@@ -143,9 +105,8 @@ namespace Rynchodon.Weapons.Guided
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
 		private long targetLastSeen;
+		private float addSpeedPerUpdate, totalAcceleration;
 		private bool exploded;
-
-		//private Dictionary<long, LastSeen> myLastSeen { get { return myAntenna.MyLastSeen; } }
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || exploded; } }
@@ -169,7 +130,9 @@ namespace Rynchodon.Weapons.Guided
 				RemoveRock();
 			};
 
-			startGuidanceAt = UpdateCount + 10;
+			totalAcceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
+			addSpeedPerUpdate = myDescr.Acceleration / 60f;
+			startGuidanceAt = Globals.UpdateCount + 100ul;
 		}
 
 		/// <summary>
@@ -182,24 +145,24 @@ namespace Rynchodon.Weapons.Guided
 			Options.TargetingRange = ammo.Description.TargetRange;
 
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
-			myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
+			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 
 			if (myAmmo.IsCluster)
 				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
 		}
 
-		/// <summary>
-		/// Creates a missile with a set target and homing capability.
-		/// </summary>
-		private GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, IMyEntity target, Ammo ammo)
-			: this(missile, firedBy, ammo)
-		{
-			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => target.getBestName());
-			SetTarget = true;
-			myTarget = new Target(target, TargetType.None);
+		///// <summary>
+		///// Creates a missile with a set target and homing capability.
+		///// </summary>
+		//private GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, IMyEntity target, Ammo ammo)
+		//	: this(missile, firedBy, ammo)
+		//{
+		//	myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => target.getBestName());
+		//	SetTarget = true;
+		//	myTarget = new Target(target, TargetType.None);
 
-			myLogger.debugLog("PreTargeted, AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
-		}
+		//	myLogger.debugLog("PreTargeted, AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
+		//}
 
 		protected override bool PhysicalProblem(Vector3D targetPos)
 		{
@@ -224,11 +187,11 @@ namespace Rynchodon.Weapons.Guided
 			return false;
 		}
 
-		protected override float ProjectileSpeed()
+		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
 			// TODO: actual calculation for speed
 
-			return myDescr.Acceleration;
+			return totalAcceleration / 60f;
 		}
 
 		/// <remarks>
@@ -250,6 +213,7 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("using previous last seen: " + previous.Entity.getBestName(), "TargetLastSeen()");
 				myTarget = new Target(previous.Entity, TargetType.AllGrid);
 				SetFiringDirection();
+				return;
 			}
 
 			Vector3D myPos = MyEntity.GetPosition();
@@ -304,8 +268,9 @@ namespace Rynchodon.Weapons.Guided
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
 			Vector3 newForward;
 
-			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition() + Braking(cached);
+			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition();
 			targetDirection.Normalize();
+			myLogger.debugLog("InterceptionPoint: " + cached.InterceptionPoint.Value + ", Position: " + ProjectilePosition() + ", target direction: " + targetDirection, "Update()");
 
 			float angle = forward.AngleBetween(targetDirection);
 
@@ -322,24 +287,27 @@ namespace Rynchodon.Weapons.Guided
 					newForward.Normalize();
 				}
 
-				MatrixD WorldMatrix = MyEntity.WorldMatrix;
-				WorldMatrix.Forward = newForward;
-
-				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-					if (!Stopped)
-						MyEntity.WorldMatrix = WorldMatrix;
-				});
+				if (newForward.IsValid())
+				{
+					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+					MatrixD WorldMatrix = MyEntity.WorldMatrix;
+					WorldMatrix.Forward = newForward;
+					
+						if (!Stopped)
+							MyEntity.WorldMatrix = WorldMatrix;
+					});
+				}
 			}
 
 			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward + ", newForward: " + newForward, "Update()");
 
 			{ // accelerate if facing target
-				if (angle < Angle_AccelerateWhen)
+				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f)
 				{
 					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 						if (!Stopped)
-							MyEntity.Physics.LinearVelocity += newForward * myDescr.Acceleration / 60f;
+							MyEntity.Physics.LinearVelocity += newForward * addSpeedPerUpdate;
 					});
 				}
 			}
@@ -402,15 +370,6 @@ namespace Rynchodon.Weapons.Guided
 			});
 		}
 
-		private Vector3 Braking(Target t)
-		{
-			Vector3 targetDirection = t.FiringDirection.Value;
-			Vector3 velocity = MyEntity.Physics.LinearVelocity;
-
-			float speedOrth = Vector3.Dot(velocity, targetDirection);
-			return targetDirection * speedOrth - velocity;
-		}
-
 		/// <summary>
 		/// Spawns a rock to explode the missile.
 		/// </summary>
@@ -436,14 +395,13 @@ namespace Rynchodon.Weapons.Guided
 				rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
 				rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
 				{
-					Position = MyEntity.GetPosition()// + MyEntity.Physics.LinearVelocity / 60f,
-					//Forward = new SerializableVector3(0, 0, 1),
-					//Up = new SerializableVector3(0, 1, 0)
+					Position = MyEntity.GetPosition(),
+					Forward = (Vector3)MyEntity.WorldMatrix.Forward,
+					Up = (Vector3)MyEntity.WorldMatrix.Up
 				};
 
-
-				myLogger.debugLog("creating rock", "Explode()");
 				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
+				myLogger.debugLog("created rock at " + MyEntity.GetPosition() + ", " + myRock.getBestName(), "Explode()");
 			});
 		}
 

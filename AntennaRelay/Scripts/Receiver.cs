@@ -8,8 +8,9 @@ namespace Rynchodon.AntennaRelay
 	public class Receiver
 	{
 
+		public readonly IMyEntity Entity;
+
 		private readonly Logger m_logger;
-		private readonly IMyEntity m_entity;
 
 		private Dictionary<long, LastSeen> m_lastSeen = new Dictionary<long, LastSeen>();
 		private FastResourceLock lock_m_lastSeen = new FastResourceLock("Receiver.myLastSeen");
@@ -19,7 +20,7 @@ namespace Rynchodon.AntennaRelay
 		public Receiver(IMyEntity entity)
 		{
 			m_logger = new Logger("Receiver", () => entity.getBestName());
-			m_entity = entity;
+			Entity = entity;
 		}
 
 		/// <summary>
@@ -110,7 +111,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="forced">for receiving LastSeen for self</param>
 		public void Receive(LastSeen seen, bool forced = false)
 		{
-			if (seen.Entity == m_entity && !forced)
+			if (seen.Entity == Entity && !forced)
 				return;
 
 			LastSeen toUpdate;
