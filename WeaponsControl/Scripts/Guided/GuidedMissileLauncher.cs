@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.AntennaRelay;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
@@ -57,8 +58,9 @@ namespace Rynchodon.Weapons.Guided
 		private IMyFunctionalBlock FuncBlock;
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
-
 		private readonly Interfaces.IMyInventory myInventory;
+
+		private ReceiverBlock myAntenna;
 		private DateTime nextCheckInventory;
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
@@ -115,7 +117,7 @@ namespace Rynchodon.Weapons.Guided
 				return true;
 			}
 
-			if (loadedAmmo.Description == null || !loadedAmmo.Description.GuidedMissile)
+			if (loadedAmmo.Description == null || loadedAmmo.Description.GuidanceSeconds < 1f)
 			{
 				myLogger.debugLog("Mine but not a guided missile!", "MissileBelongsTo()", Logger.severity.INFO);
 				return true;
@@ -142,8 +144,14 @@ namespace Rynchodon.Weapons.Guided
 					return true;
 				}
 
+				LastSeen initialTarget;
+				if (myFixed.Options.TargetEntityId.HasValue && findAntenna())
+					myAntenna.tryGetLastSeen(myFixed.Options.TargetEntityId.Value, out initialTarget);
+				else
+					initialTarget = null;
+
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
-				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo);
+				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo, initialTarget);
 				if (loadedAmmo.IsCluster)
 				{
 					myLogger.debugLog("missile is a cluster missile", "MissileBelongsTo()");
@@ -202,6 +210,42 @@ namespace Rynchodon.Weapons.Guided
 				onCooldown = false;
 				FuncBlock.RequestEnable(true);
 			}
+		}
+
+		/// <summary>
+		/// Search for an attached antenna, if we do not have one.
+		/// </summary>
+		/// <returns>true iff current antenna is valid or one was found</returns>
+		private bool findAntenna()
+		{
+			if (myAntenna.IsOpen()) // already have one
+				return true;
+
+			myAntenna = null;
+			Registrar.ForEach((RadioAntenna antenna) => {
+				if (antenna.CubeBlock.canSendTo(CubeBlock, true))
+				{
+					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
+					myAntenna = antenna;
+					return true;
+				}
+				return false;
+			});
+
+			if (myAntenna != null)
+				return true;
+
+			Registrar.ForEach((LaserAntenna antenna) => {
+				if (antenna.CubeBlock.canSendTo(CubeBlock, true))
+				{
+					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
+					myAntenna = antenna;
+					return true;
+				}
+				return false;
+			});
+
+			return myAntenna != null;
 		}
 
 	}

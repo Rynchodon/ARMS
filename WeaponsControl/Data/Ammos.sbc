@@ -8,10 +8,9 @@
         <SubtypeId>Souper_Cruise_Missile</SubtypeId>
       </Id>
 	  <Description>
-        GuidedMissile=true
+        GuidanceSeconds=60
         RotationPerUpdate=0.017453292519943
         Acceleration=0
-        HasAntenna=true
         DetonateRange=4
       </Description>
       <BasicProperties>

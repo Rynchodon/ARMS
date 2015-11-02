@@ -23,8 +23,7 @@ namespace Rynchodon.AntennaRelay
 		public readonly DateTime LastSeenAt;
 		public readonly Vector3D LastKnownPosition;
 		public readonly RadarInfo Info;
-
-		private readonly Vector3 LastKnownVelocity;
+		public readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
 		public readonly DateTime LastBroadcast;

@@ -6,6 +6,8 @@ Antennae, radars, and Autopilot blocks in attached grids share information.
 
 Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
+[u]Text Panel[/u] can display detected grids, simply add [ Display Detected ] to the text panel's name.
+
 [h1]Radar[/h1]
 Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. Radar must remain online for a period of time to function at full capacity.
 [u]Radar must have line-of-sight to detect an object.[/u]

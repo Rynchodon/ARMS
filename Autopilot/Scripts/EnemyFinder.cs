@@ -35,12 +35,9 @@ namespace Rynchodon.Autopilot
 		private readonly Mover m_mover;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
-		private readonly Vector3D m_startPosition;
 
-		private readonly List<LastSeen> m_enemies = new List<LastSeen>();
 		private IEnemyResponse m_navResponse;
 		private ResponseRange m_curResponse;
-		private ulong m_nextSearch;
 		private int m_responseIndex;
 
 		private LastSeen value_grid;
@@ -116,7 +113,6 @@ namespace Rynchodon.Autopilot
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
 			this.m_mover = mover;
 			this.m_navSet = navSet;
-			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 
 			m_logger.debugLog("Initialized", "EnemyFinder()");
 		}

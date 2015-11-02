@@ -75,22 +75,16 @@ namespace Rynchodon.Autopilot.Instruction
 			enqueueAllActions_continue(instructions);
 		}
 
-		private static readonly Regex GPS_tag = new Regex(@"GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
-		private static readonly string replaceWith = @"$1, $2, $3";
-
 		/// <summary>
-		/// <para>performs actions before splitting instructions by : & ;</para>
+		/// <para>performs actions before splitting instructions by : and ;</para>
 		/// <para>Currently, performs a substitution for pasted GPS tags</para>
 		/// </summary>
 		private string preParse()
 		{
 			string blockName = Controller.Terminal.DisplayNameText;
 
-			blockName = GPS_tag.Replace(blockName, replaceWith);
-			//myLogger.debugLog("replaced name: " + blockName, "preParse()");
-
-			if (MyAPIGateway.Multiplayer.IsServer)
-				Controller.Terminal.SetCustomName(blockName);
+			if (blockName.GpsToCSV(out blockName) != 0)
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Controller.Terminal.SetCustomName(blockName));
 
 			return blockName;
 		}
@@ -373,7 +367,9 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			m_logger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
-			enqueueAllActions_continue(GPS_tag.Replace(panelText.Substring(startOfCommands, endOfCommands - startOfCommands), replaceWith));
+			string commands = panelText.Substring(startOfCommands, endOfCommands - startOfCommands);
+			commands.GpsToCSV(out commands);
+			enqueueAllActions_continue(commands);
 
 			return true; // this instruction was successfully executed, even if sub instructions were not
 		}

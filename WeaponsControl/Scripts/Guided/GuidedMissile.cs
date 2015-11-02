@@ -54,15 +54,9 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (missile.Stopped || Globals.UpdateCount < missile.startGuidanceAt)
+						if (missile.Stopped || !missile.HasGuidance())
 							return;
 						missile.UpdateCluster();
-						if (missile.SetTarget)
-						{
-							missile.SetFiringDirection();
-							missile.Update();
-							return;
-						}
 						if (missile.CurrentTarget.TType == TargetType.None)
 							missile.TargetLastSeen();
 						if (missile.CurrentTarget.TType == TargetType.None)
@@ -77,7 +71,7 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (!missile.Stopped && !missile.SetTarget)
+						if (!missile.Stopped)
 							missile.UpdateTarget();
 					});
 		}
@@ -97,19 +91,19 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Ammo myAmmo;
 		private readonly Ammo.AmmoDescription myDescr;
 		private readonly MissileAntenna myAntenna;
-		private readonly ulong startGuidanceAt;
-		/// <summary>A target set here will prevent targeting from running.</summary>
-		private readonly bool SetTarget;
 
+		private LastSeen myTargetSeen;
 		private Cluster myCluster;
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
-		private long targetLastSeen;
-		private float addSpeedPerUpdate, totalAcceleration;
-		private bool exploded;
+		private DateTime myGuidanceEnds;
+		//private long targetLastSeen;
+		private float addSpeedPerUpdate, accelerationPerUpdate;
+		private bool startedGuidance;
+		private bool m_stopped;
 
 		private bool Stopped
-		{ get { return MyEntity.Closed || exploded; } }
+		{ get { return MyEntity.Closed || m_stopped; } }
 
 		/// <summary>
 		/// Helper for other constructors.
@@ -130,25 +124,24 @@ namespace Rynchodon.Weapons.Guided
 				RemoveRock();
 			};
 
-			totalAcceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
+			if (myAmmo.IsCluster)
+				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
+			accelerationPerUpdate = (myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration) / 60f;
 			addSpeedPerUpdate = myDescr.Acceleration / 60f;
-			startGuidanceAt = Globals.UpdateCount + 100ul;
 		}
 
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo)
+		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null)
 			: this(missile, firedBy, ammo)
 		{
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
+			myTargetSeen = initialTarget;
 
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
-
-			if (myAmmo.IsCluster)
-				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
 		}
 
 		///// <summary>
@@ -162,6 +155,12 @@ namespace Rynchodon.Weapons.Guided
 		//	myTarget = new Target(target, TargetType.None);
 
 		//	myLogger.debugLog("PreTargeted, AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
+		//}
+
+		//public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, IMyEntity target, LastSeen targetSeen, Ammo ammo)
+		//	: this(missile, firedBy, ammo)
+		//{
+		//	myLogger.debugLog("Created with existing target: " + target.getBestName(), "GuidedMissile()");
 		//}
 
 		protected override bool PhysicalProblem(Vector3D targetPos)
@@ -189,9 +188,7 @@ namespace Rynchodon.Weapons.Guided
 
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
-			// TODO: actual calculation for speed
-
-			return totalAcceleration / 60f;
+			return accelerationPerUpdate;
 		}
 
 		/// <remarks>
@@ -199,20 +196,42 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void TargetLastSeen()
 		{
-			if (!myDescr.HasAntenna
-				|| DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
+			if (!myDescr.HasAntenna)
+			{
+				if (myTargetSeen != null && myTarget.TType == TargetType.None)
+				{
+					myLogger.debugLog("No antenna, retargeting last", "TargetLastSeen()");
+					myTarget = new Target(myTargetSeen);
+					SetFiringDirection();
+				}
 				return;
+			}
 
+			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
+				return;
 
 			if (myAntenna.lastSeenCount == 0)
 				return;
 
-			LastSeen previous;
-			if (myAntenna.tryGetLastSeen(targetLastSeen, out previous) && previous.isRecent())
+			LastSeen fetched;
+			if (myTargetSeen != null && myAntenna.tryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
-				myLogger.debugLog("using previous last seen: " + previous.Entity.getBestName(), "TargetLastSeen()");
-				myTarget = new Target(previous.Entity, TargetType.AllGrid);
+				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName(), "TargetLastSeen()");
+				myTarget = new Target(fetched);
 				SetFiringDirection();
+				return;
+			}
+
+			if (Options.TargetEntityId.HasValue)
+			{
+				if (myAntenna.tryGetLastSeen(Options.TargetEntityId.Value, out fetched))
+				{
+					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName(), "TargetLastSeen()");
+					myTarget = new Target(fetched);
+					SetFiringDirection();
+				}
+				else
+					myLogger.debugLog("failed to get last seen from entity id", "TargetLastSeen()");
 				return;
 			}
 
@@ -239,14 +258,14 @@ namespace Rynchodon.Weapons.Guided
 			{
 				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
 				failed_lastSeenTarget = DateTime.UtcNow;
-				targetLastSeen = long.MinValue;
+				myTargetSeen = null;
 			}
 			else
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
-				myTarget = new Target(closest.Entity, TargetType.AllGrid);
+				myTarget = new Target(closest);
 				SetFiringDirection();
-				targetLastSeen = closest.Entity.EntityId;
+				myTargetSeen = closest;
 			}
 		}
 
@@ -263,10 +282,10 @@ namespace Rynchodon.Weapons.Guided
 			if (myCluster != null && myCluster.Slaves.Count < myCluster.Max)
 				return;
 
-			myLogger.debugLog("target position: " + cached.InterceptionPoint, "Update()");
+			myLogger.debugLog("target: " + cached.Entity.getBestName() + ", target position: " + cached.InterceptionPoint, "Update()");
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
-			Vector3 newForward;
+			//Vector3 newForward;
 
 			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition();
 			targetDirection.Normalize();
@@ -275,31 +294,28 @@ namespace Rynchodon.Weapons.Guided
 			float angle = forward.AngleBetween(targetDirection);
 
 			{ // rotate missile
-				if (angle <= myDescr.RotationPerUpdate)
-					newForward = targetDirection;
-				else
+				if (angle > 0.001f) // if the angle is too small, the matrix will be invalid
 				{
+					float rotate = Math.Min(angle, myDescr.RotationPerUpdate);
 					Vector3 axis = forward.Cross(targetDirection);
 					axis.Normalize();
-					Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, myDescr.RotationPerUpdate);
+					Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, rotate);
 
-					newForward = Vector3.Transform(forward, rotation);
-					newForward.Normalize();
-				}
-
-				if (newForward.IsValid())
-				{
 					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-					MatrixD WorldMatrix = MyEntity.WorldMatrix;
-					WorldMatrix.Forward = newForward;
-					
 						if (!Stopped)
-							MyEntity.WorldMatrix = WorldMatrix;
+						{
+							MatrixD WorldMatrix = MyEntity.WorldMatrix;
+							MatrixD newMatrix = WorldMatrix.GetOrientation();
+							newMatrix = MatrixD.Transform(newMatrix, rotation);
+							newMatrix.Translation = WorldMatrix.Translation;
+
+							MyEntity.WorldMatrix = newMatrix;
+						}
 					});
 				}
 			}
 
-			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward + ", newForward: " + newForward, "Update()");
+			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward, "Update()");
 
 			{ // accelerate if facing target
 				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f)
@@ -307,7 +323,7 @@ namespace Rynchodon.Weapons.Guided
 					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 						if (!Stopped)
-							MyEntity.Physics.LinearVelocity += newForward * addSpeedPerUpdate;
+							MyEntity.Physics.LinearVelocity += MyEntity.WorldMatrix.Forward * addSpeedPerUpdate;
 					});
 				}
 			}
@@ -315,7 +331,7 @@ namespace Rynchodon.Weapons.Guided
 			{ // check for proxmity det
 				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.Entity.GetPosition());
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
 					myLogger.debugLog("distSquared: " + distSquared, "Update()");
 					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{
@@ -328,11 +344,11 @@ namespace Rynchodon.Weapons.Guided
 			{ // check for cluster split
 				if (myCluster != null)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.Entity.GetPosition());
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
 					if (distSquared <= myDescr.ClusterSplitRange * myDescr.ClusterSplitRange)
 					{
 						myLogger.debugLog("firing cluster", "Update()");
-						FireCluster(cached.Entity.GetPosition());
+						FireCluster(cached.GetPosition());
 					}
 				}
 			}
@@ -346,8 +362,11 @@ namespace Rynchodon.Weapons.Guided
 			if (myCluster == null)
 				return;
 
-			if (!MainFarEnough())
+			if (!myCluster.MainFarEnough)
+			{
+				update_mainFarEnough();
 				return;
+			}
 
 			// slave cluster missiles
 			MatrixD[] partWorldMatrix = new MatrixD[myCluster.Slaves.Count];
@@ -379,10 +398,9 @@ namespace Rynchodon.Weapons.Guided
 		private void Explode()
 		{
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-				// do not check for exploded, might need to try again
 				if (MyEntity.Closed)
 					return;
-				exploded = true;
+				m_stopped = true;
 
 				MyEntity.Physics.LinearVelocity = Vector3.Zero;
 
@@ -540,14 +558,36 @@ namespace Rynchodon.Weapons.Guided
 			});
 		}
 
+		private bool HasGuidance()
+		{
+			if (startedGuidance)
+			{
+				if (DateTime.UtcNow > myGuidanceEnds)
+				{
+					myLogger.debugLog("terminating guidance", "HasGuidance()");
+					m_stopped = true;
+					return false;
+				}
+				return true;
+			}
+
+			double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
+			minDist *= 2;
+
+			startedGuidance = CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist;
+			if (startedGuidance)
+			{
+				myLogger.debugLog("past arming range, starting guidance", "MainFarEnough()");
+				myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+			}
+			return startedGuidance;
+		}
+
 		/// <summary>
 		/// Determines if the missile has moved far enough to allow the cluster to be formed.
 		/// </summary>
-		private bool MainFarEnough()
+		private void update_mainFarEnough()
 		{
-			if (myCluster.MainFarEnough)
-				return true;
-
 			double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
 			minDist *= 2;
 			minDist += myDescr.ClusterFormDistance;
@@ -555,8 +595,7 @@ namespace Rynchodon.Weapons.Guided
 
 			myCluster.MainFarEnough = CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist;
 			if (myCluster.MainFarEnough)
-				myLogger.debugLog("past arming range, ok to form", "MainFarEnough()");
-			return myCluster.MainFarEnough;
+				myLogger.debugLog("past forming range, ok to form", "MainFarEnough()");
 		}
 
 	}

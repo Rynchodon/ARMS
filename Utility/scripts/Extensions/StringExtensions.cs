@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 
 namespace Rynchodon
 {
 	public static class StringExtensions
 	{
+
+		private static readonly Regex GPS_tag = new Regex(@"GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
+		private static readonly string GPS_replaceWith = @"$1, $2, $3";
+
 		public static string getInstructions(this string displayName)
 		{
 			int start = displayName.IndexOf('[') + 1;
@@ -69,5 +74,16 @@ namespace Rynchodon
 
 			return new String(output, 0, outIndex);
 		}
+
+		public static int GpsToCSV(this string gpsString, out string csv)
+		{
+			int count = 0;
+			csv = GPS_tag.Replace(gpsString, match => {
+				count++;
+				return match.Result(GPS_replaceWith);
+			});
+			return count;
+		}
+
 	}
 }

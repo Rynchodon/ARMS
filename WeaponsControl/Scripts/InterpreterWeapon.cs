@@ -6,6 +6,7 @@ using Rynchodon.Attached;
 using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
@@ -143,6 +144,7 @@ namespace Rynchodon.Weapons
 					if (!(ParseTargetType(instruct)
 						|| ParseTargetFlag(instruct)
 						|| ParseRange(instruct)
+						|| ParseEntityId(instruct)
 						|| GetFromPanel(instruct)))
 					{
 						myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
@@ -230,6 +232,23 @@ namespace Rynchodon.Weapons
 				return true;
 			}
 			myLogger.debugLog("failed to parse:" + rangeString, "ParseRadius()", Logger.severity.WARNING);
+			return false;
+		}
+
+		/// <summary>
+		/// Tries to get an entity id from toParse
+		/// </summary>
+		private bool ParseEntityId(string toParse)
+		{
+			if (!toParse.StartsWith("id"))
+				return false;
+
+			long value;
+			if (long.TryParse(toParse.Substring(2), out value))
+			{
+				Options.TargetEntityId = value;
+				return true;
+			}
 			return false;
 		}
 

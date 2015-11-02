@@ -26,11 +26,6 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [b][u]Debugging[/u][/b]
 [list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is at 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
 
-[b][u]Known Issues[/u][/b]
-[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
-[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.
-[*]Engage command is not aware of rotor-turrets.[/list]
-
 [u]Example:[/u]
 You want to have a specific gun to fire at all ships or stations guns, that are within 600 meters. However, you type the following:
 
@@ -45,6 +40,11 @@ If the above command is used, the display name will change to the following:
  [/list]
 
 As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is at 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
+
+[b][u]Known Issues[/u][/b]
+[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
+[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.
+[*]Engage command is not aware of rotor-turrets.[/list]
 
 [b][u]Important Information[/u][/b]
 [list][*]N.P.C. weapons obtain their commands from a settings file rather than from their weapons's block name.
@@ -75,7 +75,8 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 
 [u]Uncommon Commands[/u]
 [list][*]Functional - [i]Block can be operational but not necessarily "ON"[/i]
-[*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i][/list]
+[*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i]
+[*]ID <entityId> - [i]Only allows the weapon to target the given entity. entityId can be found by displaying detected grids on a text panel.[/i][/list]
 
 [u]Priority Commands[/u]
 [list]Missile has the highest priority, followed by Meteor, then Character, then Moving. All of these have higher priority than targeting specific blocks.

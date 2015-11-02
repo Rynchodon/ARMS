@@ -7,7 +7,7 @@
         <TypeId>WeaponDefinition</TypeId>
         <SubtypeId>Souper_Cruise_Launcher</SubtypeId>
       </Id>
-      <MissileAmmoData RateOfFire="6" ShootSoundName="WepShipSmallMissileShot" />
+      <MissileAmmoData RateOfFire="1" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
        <AmmoMagazine Subtype="Souper_Cruise_Missile" />

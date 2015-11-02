@@ -27,7 +27,8 @@ namespace Rynchodon.Weapons
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
-
+		private List<MyEntity> nearbyEntities = new List<MyEntity>();
+	
 		private readonly Logger myLogger;
 
 		public TargetingOptions Options { get; protected set; }
@@ -135,14 +136,17 @@ namespace Rynchodon.Weapons
 			//myLogger.debugLog("entered", "CollectTargets()");
 			Available_Targets.Clear();
 			PotentialObstruction.Clear();
+			nearbyEntities.Clear();
 
 			BoundingSphereD nearbySphere = new BoundingSphereD(ProjectilePosition(), Options.TargetingRange);
-			List<MyEntity> nearbyEntities = new List<MyEntity>();
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearbySphere, nearbyEntities);
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
 				//myLogger.debugLog("entity: " + entity.getBestName(), "CollectTargets()");
+
+				if (Options.TargetEntityId.HasValue && entity.EntityId != Options.TargetEntityId.Value)
+					continue;
 
 				if (Blacklist.Contains(entity))
 					continue;
@@ -571,19 +575,12 @@ namespace Rynchodon.Weapons
 			if (myTarget.Entity == null)
 				return;
 
-			IMyEntity target = myTarget.Entity;
-			Vector3D TargetPosition;
+			Vector3D TargetPosition = myTarget.GetPosition();
 
-			if (target is IMyCharacter)
-				// GetPosition() is near feet
-				TargetPosition = target.WorldMatrix.Up * 1.25 + target.GetPosition();
-			else
-				TargetPosition = target.GetPosition();
-
-			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, target.GetLinearVelocity());
+			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, myTarget.GetLinearVelocity());
 			if (myTarget.Entity != null && PhysicalProblem(myTarget.InterceptionPoint.Value))
 			{
-				myLogger.debugLog("Shot path is obstructed, blacklisting " + target.getBestName(), "SetFiringDirection()");
+				myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
 				BlacklistTarget();
 				return;
 			}
@@ -623,7 +620,8 @@ namespace Rynchodon.Weapons
 				// Shot is too slow to intercept target.
 				if (TryHard)
 				{
-					Vector3 direction = directionToTarget  * 10f + shotVelTang;
+					// direction is a trade-off between facing the target and fighting tangential velocity
+					Vector3 direction = directionToTarget + displacementToTarget * 0.01f + shotVelTang;
 					direction.Normalize();
 					myTarget.FiringDirection = direction;
 					myTarget.InterceptionPoint = shotOrigin + direction * distanceToTarget;

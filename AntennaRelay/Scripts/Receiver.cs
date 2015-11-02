@@ -86,8 +86,16 @@ namespace Rynchodon.AntennaRelay
 
 		public bool tryGetLastSeen(long entityId, out LastSeen result)
 		{
+			bool retreived;
 			using (lock_m_lastSeen.AcquireSharedUsing())
-				return m_lastSeen.TryGetValue(entityId, out result);
+				retreived = m_lastSeen.TryGetValue(entityId, out result);
+			if (!retreived)
+				return false;
+			if (result.IsValid)
+				return true;
+			using (lock_m_lastSeen.AcquireExclusiveUsing())
+				m_lastSeen.Remove(entityId);
+			return false;
 		}
 
 		/// <summary>
