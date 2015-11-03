@@ -193,6 +193,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			clusterMain = null;
 			FuncBlock.RequestEnable(false);
+			FuncBlock.ApplyAction("Shoot_Off");
 			onCooldown = true;
 			cooldownUntil = DateTime.UtcNow + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
 		}
@@ -203,7 +204,13 @@ namespace Rynchodon.Weapons.Guided
 				return;
 
 			if (cooldownUntil > DateTime.UtcNow)
-				FuncBlock.RequestEnable(false);
+			{
+				if (FuncBlock.Enabled)
+				{
+					FuncBlock.RequestEnable(false);
+					FuncBlock.ApplyAction("Shoot_Off");
+				}
+			}
 			else
 			{
 				myLogger.debugLog("off cooldown", "CheckCooldown()");

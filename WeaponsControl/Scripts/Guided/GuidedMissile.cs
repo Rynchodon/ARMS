@@ -97,7 +97,6 @@ namespace Rynchodon.Weapons.Guided
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
 		private DateTime myGuidanceEnds;
-		//private long targetLastSeen;
 		private float addSpeedPerUpdate, accelerationPerUpdate;
 		private bool startedGuidance;
 		private bool m_stopped;
@@ -106,9 +105,9 @@ namespace Rynchodon.Weapons.Guided
 		{ get { return MyEntity.Closed || m_stopped; } }
 
 		/// <summary>
-		/// Helper for other constructors.
+		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		private GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, Ammo ammo)
+		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null, bool isSlave = false)
 			: base(missile, firedBy)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName());
@@ -124,18 +123,11 @@ namespace Rynchodon.Weapons.Guided
 				RemoveRock();
 			};
 
-			if (myAmmo.IsCluster)
+			if (myAmmo.IsCluster && !isSlave)
 				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
 			accelerationPerUpdate = (myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration) / 60f;
 			addSpeedPerUpdate = myDescr.Acceleration / 60f;
-		}
 
-		/// <summary>
-		/// Creates a missile with homing and target finding capabilities.
-		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null)
-			: this(missile, firedBy, ammo)
-		{
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
 			myTargetSeen = initialTarget;
@@ -143,25 +135,6 @@ namespace Rynchodon.Weapons.Guided
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
-
-		///// <summary>
-		///// Creates a missile with a set target and homing capability.
-		///// </summary>
-		//private GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, IMyEntity target, Ammo ammo)
-		//	: this(missile, firedBy, ammo)
-		//{
-		//	myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => target.getBestName());
-		//	SetTarget = true;
-		//	myTarget = new Target(target, TargetType.None);
-
-		//	myLogger.debugLog("PreTargeted, AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
-		//}
-
-		//public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, IMyEntity target, LastSeen targetSeen, Ammo ammo)
-		//	: this(missile, firedBy, ammo)
-		//{
-		//	myLogger.debugLog("Created with existing target: " + target.getBestName(), "GuidedMissile()");
-		//}
 
 		protected override bool PhysicalProblem(Vector3D targetPos)
 		{
@@ -196,11 +169,11 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void TargetLastSeen()
 		{
-			if (!myDescr.HasAntenna)
+			if (myAntenna == null || myAntenna.lastSeenCount == 0)
 			{
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
-					myLogger.debugLog("No antenna, retargeting last", "TargetLastSeen()");
+					myLogger.debugLog("Retargeting last", "TargetLastSeen()");
 					myTarget = new Target(myTargetSeen);
 					SetFiringDirection();
 				}
@@ -208,9 +181,6 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
-				return;
-
-			if (myAntenna.lastSeenCount == 0)
 				return;
 
 			LastSeen fetched;
@@ -301,7 +271,7 @@ namespace Rynchodon.Weapons.Guided
 					axis.Normalize();
 					Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, rotate);
 
-					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 						if (!Stopped)
 						{
 							MatrixD WorldMatrix = MyEntity.WorldMatrix;
@@ -311,7 +281,7 @@ namespace Rynchodon.Weapons.Guided
 
 							MyEntity.WorldMatrix = newMatrix;
 						}
-					});
+					}, myLogger);
 				}
 			}
 
@@ -321,10 +291,10 @@ namespace Rynchodon.Weapons.Guided
 				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f)
 				{
 					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
-					MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 						if (!Stopped)
 							MyEntity.Physics.LinearVelocity += MyEntity.WorldMatrix.Forward * addSpeedPerUpdate;
-					});
+					}, myLogger);
 				}
 			}
 
@@ -348,7 +318,7 @@ namespace Rynchodon.Weapons.Guided
 					if (distSquared <= myDescr.ClusterSplitRange * myDescr.ClusterSplitRange)
 					{
 						myLogger.debugLog("firing cluster", "Update()");
-						FireCluster(cached.GetPosition());
+						FireCluster(cached.FiringDirection.Value);
 					}
 				}
 			}
@@ -376,7 +346,7 @@ namespace Rynchodon.Weapons.Guided
 				partWorldMatrix[i].Translation = Vector3.Transform(myAmmo.ClusterOffsets[i], MyEntity.WorldMatrix);
 			}
 
-			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (myCluster == null)
 					return;
 				int index = 0;
@@ -386,7 +356,7 @@ namespace Rynchodon.Weapons.Guided
 					missile.WorldMatrix = partWorldMatrix[index++];
 					missile.Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
 				});
-			});
+			}, myLogger);
 		}
 
 		/// <summary>
@@ -397,7 +367,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Explode()
 		{
-			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (MyEntity.Closed)
 					return;
 				m_stopped = true;
@@ -420,7 +390,7 @@ namespace Rynchodon.Weapons.Guided
 
 				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
 				myLogger.debugLog("created rock at " + MyEntity.GetPosition() + ", " + myRock.getBestName(), "Explode()");
-			});
+			}, myLogger);
 		}
 
 		/// <summary>
@@ -465,7 +435,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <remarks>
 		/// Runs on separate thread.
 		/// </remarks>
-		private void FireCluster(Vector3D targetPosition)
+		private void FireCluster(Vector3D targetDirection)
 		{
 			if (myCluster == null)
 				return;
@@ -478,23 +448,9 @@ namespace Rynchodon.Weapons.Guided
 			MatrixD[] ClusterWorldMatrix = new MatrixD[temp.Slaves.Count];
 			Vector3[] Velocity = new Vector3[temp.Slaves.Count];
 
-			// TODO: calculate intercept point
-			//float speed = MyEntity.Physics.LinearVelocity.Length() / 8;
-			float speed = myAmmo.AmmoDefinition.DesiredSpeed;
-			Vector3 targetDirection = targetPosition - MyEntity.GetPosition();
-			targetDirection.Normalize();
-
-			// I can't imagine this this the best way to do this
-			Vector3 axis = MyEntity.WorldMatrix.Forward.Cross(targetDirection);
-			float angle = (float)MyEntity.WorldMatrix.Forward.AngleBetween(targetDirection);
-			axis.Normalize();
-			Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, angle);
-			Matrix BaseWorldMatrix = Matrix.Transform(MyEntity.WorldMatrix.GetOrientation(), rotation);
-			BaseWorldMatrix.Translation = MyEntity.GetPosition();
-			MatrixD BaseRotationMatrix = BaseWorldMatrix.GetOrientation();
-
-			//myLogger.debugLog("entity matrix: " + MyEntity.WorldMatrix, "FireCluster()");
-			//myLogger.debugLog("BaseWorldMatrix: " + BaseWorldMatrix, "FireCluster()");
+			MatrixD BaseWorldMatrix = MyEntity.WorldMatrix;
+			BaseWorldMatrix.Forward = Vector3.Normalize(MyEntity.GetLinearVelocity());
+			float speed = MyEntity.GetLinearVelocity().Length();
 
 			Random rand = new Random();
 
@@ -527,20 +483,14 @@ namespace Rynchodon.Weapons.Guided
 				ClusterWorldMatrix[index].Forward = direction;
 				ClusterWorldMatrix[index].Translation = worldOrigin;
 
-				Velocity[index] = direction * speed;
+				Velocity[index] = direction * speed * (0.5f + (float)rand.NextDouble());
 
 				index++;
 			});
 
-			Vector3 VelocityMain = targetDirection * speed;
-
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 				if (Stopped)
 					return;
-
-				// need to move this missile or it will run into cluster
-				MyEntity.WorldMatrix = BaseWorldMatrix;
-				MyEntity.Physics.LinearVelocity = VelocityMain;
 
 				index = 0;
 				temp.Slaves.ForEach(missile => {
@@ -551,7 +501,7 @@ namespace Rynchodon.Weapons.Guided
 						missile.Physics.LinearVelocity = Velocity[index];
 
 						//myLogger.debugLog("creating guidance for cluster missile " + index, "FireCluster()");
-						//new GuidedMissile(missile, CubeBlock, CurrentTarget.Entity, myAmmo);
+						//new GuidedMissile(missile, CubeBlock, Options, myAmmo, myTargetSeen, true);
 					}
 					index++;
 				});

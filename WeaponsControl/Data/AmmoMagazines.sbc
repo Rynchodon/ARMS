@@ -21,6 +21,26 @@
       <Capacity>1</Capacity>
       <AmmoDefinitionId Subtype="Souper_Cruise_Missile" />
     </AmmoMagazine>
+    
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ARMS_Cluster_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Cluster Missile</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>18</Capacity>
+      <AmmoDefinitionId Subtype="ARMS_Cluster_Missile" />
+    </AmmoMagazine>
 	
   </AmmoMagazines>
 </Definitions>
