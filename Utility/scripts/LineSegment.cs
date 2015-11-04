@@ -1,7 +1,7 @@
 using System;
 using VRageMath;
 
-namespace Rynchodon.DataStructures
+namespace Rynchodon
 {
 	public class LineSegment
 	{

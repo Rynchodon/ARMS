@@ -152,6 +152,8 @@ namespace Rynchodon.Update
 				RegisterForUpdates(100, GuidedMissile.Update100);
 
 				#endregion
+
+				RegisterForUpdates(1, EMP_Disruption.Update1);
 			}
 			else
 				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts_Server()", Logger.severity.INFO);

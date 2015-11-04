@@ -60,6 +60,9 @@ namespace Rynchodon.Weapons
 			/// <summary>Detonate when this close to target.</summary>
 			public float DetonateRange = 0f;
 
+			public float EMP_Strength = 0f;
+			public float EMP_Seconds = 0f;
+
 			#region Cluster
 			#region Mandatory
 

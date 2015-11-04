@@ -12,7 +12,11 @@ using VRageMath;
 
 namespace Rynchodon.Weapons.Guided
 {
-	// TODO: ARH, SA*
+	/*
+	 * TODO:
+	 * emp
+	 * ARH, SA*
+	 */
 	public class GuidedMissile : TargetingBase
 	{
 
@@ -30,18 +34,33 @@ namespace Rynchodon.Weapons.Guided
 				Max = num;
 				Slaves = new LockedQueue<IMyEntity>(num);
 			}
+
 		}
+
+		private enum Stage : byte { None, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.0174532925199433f; // 1°
 		private const float Angle_Detonate = 0.1745329251994329f; // 10°
 		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
-		private static readonly Logger staticLogger = new Logger("GuidedMissile");
-		private static readonly ThreadManager Thread = new ThreadManager();
-		private static readonly CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
-		private static readonly FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
+		private static Logger staticLogger = new Logger("GuidedMissile");
+		private static ThreadManager Thread = new ThreadManager();
+		private static CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
+		private static FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
 
-		//private static long UpdateCount;
+		static GuidedMissile()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			staticLogger = null;
+			Thread = null;
+			AllGuidedMissiles = null;
+			lock_AllGuidedMissiles = null;
+		}
 
 		public static void Update1()
 		{
@@ -54,7 +73,7 @@ namespace Rynchodon.Weapons.Guided
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
 					Thread.EnqueueAction(() => {
-						if (missile.Stopped || !missile.HasGuidance())
+						if (missile.Stopped)
 							return;
 						missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
@@ -98,11 +117,11 @@ namespace Rynchodon.Weapons.Guided
 		private DateTime failed_lastSeenTarget;
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, accelerationPerUpdate;
-		private bool startedGuidance;
-		private bool m_stopped;
+		private uint m_bulletsEaten;
+		private Stage m_stage;
 
 		private bool Stopped
-		{ get { return MyEntity.Closed || m_stopped; } }
+		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
 
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
@@ -118,10 +137,7 @@ namespace Rynchodon.Weapons.Guided
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
-			missile.OnClose += obj => {
-				AllGuidedMissiles.Remove(this);
-				RemoveRock();
-			};
+			missile.OnClose += missile_OnClose;
 
 			if (myAmmo.IsCluster && !isSlave)
 				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
@@ -134,6 +150,23 @@ namespace Rynchodon.Weapons.Guided
 
 			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
+		}
+
+		private void missile_OnClose(IMyEntity obj)
+		{
+			if (AllGuidedMissiles != null)
+			{
+				AllGuidedMissiles.Remove(this);
+				RemoveRock();
+
+				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength, "missile_OnClose()");
+				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
+				{
+					myLogger.debugLog("Creating EMP effect", "missile_OnClose()", Logger.severity.DEBUG);
+					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
+					EMP_Disruption.ApplyEMP(ref empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
+				}
+			}
 		}
 
 		protected override bool PhysicalProblem(Vector3D targetPos)
@@ -244,6 +277,10 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
+			CheckGuidance();
+			if (m_stage == Stage.None)
+				return;
+
 			Target cached = CurrentTarget;
 			if (!cached.FiringDirection.HasValue)
 				return;
@@ -263,32 +300,30 @@ namespace Rynchodon.Weapons.Guided
 
 			float angle = forward.AngleBetween(targetDirection);
 
+			if (m_stage == Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
-				if (angle > 0.001f) // if the angle is too small, the matrix will be invalid
-				{
-					float rotate = Math.Min(angle, myDescr.RotationPerUpdate);
-					Vector3 axis = forward.Cross(targetDirection);
-					axis.Normalize();
-					Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, rotate);
+				float rotate = Math.Min(angle, myDescr.RotationPerUpdate);
+				Vector3 axis = forward.Cross(targetDirection);
+				axis.Normalize();
+				Quaternion rotation = Quaternion.CreateFromAxisAngle(axis, rotate);
 
-					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-						if (!Stopped)
-						{
-							MatrixD WorldMatrix = MyEntity.WorldMatrix;
-							MatrixD newMatrix = WorldMatrix.GetOrientation();
-							newMatrix = MatrixD.Transform(newMatrix, rotation);
-							newMatrix.Translation = WorldMatrix.Translation;
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (!Stopped)
+					{
+						MatrixD WorldMatrix = MyEntity.WorldMatrix;
+						MatrixD newMatrix = WorldMatrix.GetOrientation();
+						newMatrix = MatrixD.Transform(newMatrix, rotation);
+						newMatrix.Translation = WorldMatrix.Translation;
 
-							MyEntity.WorldMatrix = newMatrix;
-						}
-					}, myLogger);
-				}
+						MyEntity.WorldMatrix = newMatrix;
+					}
+				}, myLogger);
 			}
 
 			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward, "Update()");
 
 			{ // accelerate if facing target
-				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f)
+				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)
 				{
 					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
@@ -322,6 +357,7 @@ namespace Rynchodon.Weapons.Guided
 					}
 				}
 			}
+
 		}
 
 		/// <remarks>
@@ -370,7 +406,7 @@ namespace Rynchodon.Weapons.Guided
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (MyEntity.Closed)
 					return;
-				m_stopped = true;
+				m_stage = Stage.Terminated;
 
 				MyEntity.Physics.LinearVelocity = Vector3.Zero;
 
@@ -440,6 +476,7 @@ namespace Rynchodon.Weapons.Guided
 			if (myCluster == null)
 				return;
 
+			m_stage = Stage.Ballistic;
 			Cluster temp = myCluster;
 			myCluster = null;
 
@@ -508,29 +545,32 @@ namespace Rynchodon.Weapons.Guided
 			});
 		}
 
-		private bool HasGuidance()
+		/// <summary>
+		/// Updates m_stage if guidance starts or stops.
+		/// </summary>
+		private void CheckGuidance()
 		{
-			if (startedGuidance)
+			switch (m_stage)
 			{
-				if (DateTime.UtcNow > myGuidanceEnds)
-				{
-					myLogger.debugLog("terminating guidance", "HasGuidance()");
-					m_stopped = true;
-					return false;
-				}
-				return true;
-			}
+				case Stage.None:
+					double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
+					minDist *= 2;
 
-			double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
-			minDist *= 2;
-
-			startedGuidance = CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist;
-			if (startedGuidance)
-			{
-				myLogger.debugLog("past arming range, starting guidance", "MainFarEnough()");
-				myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
+					{
+						myLogger.debugLog("past arming range, starting guidance", "MainFarEnough()");
+						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+						m_stage = Stage.Guided;
+					}
+					break;
+				case Stage.Guided:
+					if (DateTime.UtcNow > myGuidanceEnds)
+					{
+						myLogger.debugLog("terminating guidance", "HasGuidance()");
+						m_stage = Stage.Ballistic;
+					}
+					break;
 			}
-			return startedGuidance;
 		}
 
 		/// <summary>

@@ -25,9 +25,9 @@
     <AmmoMagazine>
       <Id>
         <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ARMS_Cluster_Missile</SubtypeId>
+        <SubtypeId>ARMS_TestMissile_C2MA</SubtypeId>
       </Id>
-      <DisplayName>Cluster Missile</DisplayName>
+      <DisplayName>ARMS Test Missile C2MA</DisplayName>
       <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
       <Size>
         <X>1.2</X>
@@ -39,7 +39,27 @@
       <Model>Models\Weapons\Projectile_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>18</Capacity>
-      <AmmoDefinitionId Subtype="ARMS_Cluster_Missile" />
+      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2MA" />
+    </AmmoMagazine>
+    
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ARMS_TestMissile_C2EA</SubtypeId>
+      </Id>
+      <DisplayName>ARMS Test Missile C2EA</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>18</Capacity>
+      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2EA" />
     </AmmoMagazine>
 	
   </AmmoMagazines>

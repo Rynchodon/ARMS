@@ -34,7 +34,7 @@
     <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
       <Id>
         <TypeId>AmmoDefinition</TypeId>
-        <SubtypeId>ARMS_Cluster_Missile</SubtypeId>
+        <SubtypeId>ARMS_TestMissile_C2MA</SubtypeId>
       </Id>
       <Description>
         GuidanceSeconds=30
@@ -58,6 +58,35 @@
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>50000</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>ARMS_TestMissile_C2EA</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=30
+        HasAntenna=true
+        EMP_Strength=15
+        EMP_Seconds=10
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>300</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>2000</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>700</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>45</MissileMass>
+        <MissileExplosionRadius>4</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
+        <MissileAcceleration>10</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>0</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
     

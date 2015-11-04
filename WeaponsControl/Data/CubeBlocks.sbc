@@ -51,9 +51,9 @@
     <Definition xsi:type="MyObjectBuilder_WeaponBlockDefinition">
       <Id>
         <TypeId>SmallMissileLauncher</TypeId>
-        <SubtypeId>ARMS_Large_Cluster_Launcher</SubtypeId>
+        <SubtypeId>ARMS_Large_Test_Launcher</SubtypeId>
       </Id>
-      <DisplayName>Cluster Launcher</DisplayName>
+      <DisplayName>ARMS Test Launcher</DisplayName>
       <public>false</public>
       <Icon>Textures\GUI\Icons\Cubes\missile_launcher.dds</Icon>
       <CubeSize>Large</CubeSize>
@@ -83,11 +83,11 @@
         <Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\RocketLauncherConstruction_2.mwm" />
         <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\RocketLauncherConstruction_3.mwm" />
       </BuildProgressModels>
-      <BlockPairName>ARMS_Cluster_Launcher</BlockPairName>
+      <BlockPairName>ARMS_Test_Launcher</BlockPairName>
       <Center x="0" y="0" z="1" />
       <BuildTimeSeconds>15</BuildTimeSeconds>
       <EdgeType>Light</EdgeType>
-      <WeaponDefinitionId Subtype="ARMS_Cluster_Launcher" />
+      <WeaponDefinitionId Subtype="ARMS_Test_Launcher" />
       <ResourceSinkGroup>Defense</ResourceSinkGroup>
       <InventoryMaxVolume>1.14</InventoryMaxVolume>
       <DamageEffectId>213</DamageEffectId>

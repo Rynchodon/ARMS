@@ -17,12 +17,13 @@
     <Weapon>
       <Id>
         <TypeId>WeaponDefinition</TypeId>
-        <SubtypeId>ARMS_Cluster_Launcher</SubtypeId>
+        <SubtypeId>ARMS_Test_Launcher</SubtypeId>
       </Id>
       <MissileAmmoData RateOfFire="600" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-       <AmmoMagazine Subtype="ARMS_Cluster_Missile" />
+       <AmmoMagazine Subtype="ARMS_TestMissile_C2MA" />
+       <AmmoMagazine Subtype="ARMS_TestMissile_C2EA" />
       </AmmoMagazines>
     </Weapon>
     
