@@ -10,6 +10,7 @@ using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
+using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -153,7 +154,22 @@ namespace Rynchodon.Update
 
 				#endregion
 
-				RegisterForUpdates(1, EMP_Disruption.Update1);
+				#region Disruption
+
+				RegisterForUpdates(10, EMP.Update);
+				RegisterForUpdates(10, AirVentDepressurize.Update);
+				RegisterForUpdates(10, DoorLock.Update);
+				RegisterForUpdates(10, GravityReverse.Update);
+
+				RegisterForBlock(typeof(MyObjectBuilder_LandingGear), block => {
+					if (Hacker.IsHacker(block))
+					{
+						Hacker h = new Hacker(block);
+						RegisterForUpdates(10, h.Update10, block);
+					}
+				});
+
+				#endregion
 			}
 			else
 				myLogger.debugLog("Weapon Control is disabled", "RegisterScripts_Server()", Logger.severity.INFO);

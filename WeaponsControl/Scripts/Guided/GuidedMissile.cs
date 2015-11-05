@@ -1,6 +1,7 @@
 using System;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
+using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -14,7 +15,6 @@ namespace Rynchodon.Weapons.Guided
 {
 	/*
 	 * TODO:
-	 * emp
 	 * ARH, SA*
 	 */
 	public class GuidedMissile : TargetingBase
@@ -160,11 +160,11 @@ namespace Rynchodon.Weapons.Guided
 				RemoveRock();
 
 				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength, "missile_OnClose()");
-				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
+				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0)
 				{
 					myLogger.debugLog("Creating EMP effect", "missile_OnClose()", Logger.severity.DEBUG);
 					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-					EMP_Disruption.ApplyEMP(ref empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
+					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
 				}
 			}
 		}

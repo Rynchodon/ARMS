@@ -69,6 +69,7 @@
       <Description>
         GuidanceSeconds=30
         HasAntenna=true
+        DetonateRange=4
         EMP_Strength=15
         EMP_Seconds=10
       </Description>
@@ -81,7 +82,7 @@
       </BasicProperties>
       <MissileProperties>
         <MissileMass>45</MissileMass>
-        <MissileExplosionRadius>4</MissileExplosionRadius>
+        <MissileExplosionRadius>5</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
         <MissileAcceleration>10</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>

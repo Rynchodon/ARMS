@@ -58,7 +58,7 @@
       <Volume>60</Volume>
       <Model>Models\Weapons\Projectile_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
-      <Capacity>18</Capacity>
+      <Capacity>1</Capacity>
       <AmmoDefinitionId Subtype="ARMS_TestMissile_C2EA" />
     </AmmoMagazine>
 	

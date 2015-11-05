@@ -94,7 +94,7 @@ namespace Rynchodon
 
 		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this Ingame.IMyCubeBlock block)
 		{
-			return (block as IMyCubeBlock).getSlim().GetObjectBuilder_Safe();
+			return (block as IMyCubeBlock).GetObjectBuilder_Safe();
 		}
 
 		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
