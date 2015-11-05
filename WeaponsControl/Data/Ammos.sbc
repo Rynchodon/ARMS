@@ -14,7 +14,7 @@
         DetonateRange=4
       </Description>
       <BasicProperties>
-        <DesiredSpeed>150</DesiredSpeed>
+        <DesiredSpeed>300</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>12000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
@@ -24,7 +24,7 @@
         <MissileMass>300</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_Cruise_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
+        <MissileAcceleration>20</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>2000</MissileExplosionDamage>

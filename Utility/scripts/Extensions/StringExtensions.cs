@@ -9,6 +9,7 @@ namespace Rynchodon
 		private static readonly Regex GPS_tag = new Regex(@"GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
 		private static readonly string GPS_replaceWith = @"$1, $2, $3";
 
+		[Obsolete("Use BlockInstruction")]
 		public static string getInstructions(this string displayName)
 		{
 			int start = displayName.IndexOf('[') + 1;

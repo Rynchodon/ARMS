@@ -106,6 +106,7 @@ namespace Rynchodon
 		public static MyObjectBuilder_CubeBlock getSlimObjectBuilder(this IMyCubeBlock block)
 		{ return block.getSlim().GetObjectBuilder(); }
 
+		[Obsolete("Use BlockInstruction")]
 		public static string getInstructions(this IMyCubeBlock block)
 		{ return block.DisplayNameText.getInstructions(); }
 

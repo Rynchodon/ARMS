@@ -20,6 +20,7 @@ namespace Rynchodon.Weapons
 
 		private IMyCubeBlock Block;
 		private IMyCubeGrid Grid;
+		private BlockInstructions m_instructions;
 
 		private TargetingOptions Options;
 		private List<string> Errors;
@@ -39,6 +40,7 @@ namespace Rynchodon.Weapons
 		{
 			this.Block = block;
 			this.Grid = block.CubeGrid;
+			this.m_instructions = new BlockInstructions(block as IMyTerminalBlock, 
 
 			myLogger = new Logger("InterpreterWeapon", () => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
 		}
