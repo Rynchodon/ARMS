@@ -17,12 +17,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((AirVentDepressurize av) => av.UpdateEffect());
 		}
 
-		public static int Depressurize(IMyCubeGrid grid, int strength, TimeSpan duration)
+		public static int Depressurize(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
 		{
 			AirVentDepressurize av;
 			if (!Registrar.TryGetValue(grid, out av))
 				av = new AirVentDepressurize(grid);
-			return av.AddEffect(duration, strength);
+			return av.AddEffect(duration, strength, effectOwner);
 		}
 
 		private readonly Logger m_logger;
@@ -34,7 +34,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyFunctionalBlock block, int strength)
+		protected override int StartEffect(IMyCubeBlock block, int strength)
 		{
 			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;
 			if (airVent.IsDepressurizing)
@@ -44,15 +44,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			return 1;
 		}
 
-		protected override void UpdateEffect(IMyFunctionalBlock block)
-		{
-			block.RequestEnable(true);
-			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;
-			if (!airVent.IsDepressurizing)
-				airVent.ApplyAction("Depressurize");
-		}
-
-		protected override int EndEffect(IMyFunctionalBlock block, int strength)
+		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			m_logger.debugLog("No longer depressurizing: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "EndEffect()");
 			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;

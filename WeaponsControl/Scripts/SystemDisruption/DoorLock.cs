@@ -17,12 +17,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((DoorLock dl) => dl.UpdateEffect());
 		}
 
-		public static int LockDoors(IMyCubeGrid grid, int strength, TimeSpan duration)
+		public static int LockDoors(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
 		{
 			DoorLock dl;
 			if (!Registrar.TryGetValue(grid, out dl))
 				dl = new DoorLock(grid);
-			return dl.AddEffect(duration, strength);
+			return dl.AddEffect(duration, strength, effectOwner);
 		}
 
 		private readonly Logger m_logger;
@@ -34,7 +34,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyFunctionalBlock block, int strength)
+		protected override int StartEffect(IMyCubeBlock block, int strength)
 		{
 			IMyDoor door = block as IMyDoor;
 			m_logger.debugLog("Locking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "StartEffect()");
@@ -43,19 +43,10 @@ namespace Rynchodon.Weapons.SystemDisruption
 			return 1;
 		}
 
-		protected override void UpdateEffect(IMyFunctionalBlock block)
-		{
-			IMyDoor door = block as IMyDoor;
-			if (door.OpenRatio < 0.01f)
-				door.RequestEnable(false);
-			else if (door.Open)
-				door.ApplyAction("Open_Off");
-		}
-
-		protected override int EndEffect(IMyFunctionalBlock block, int strength)
+		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			m_logger.debugLog("Unlocking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "EndEffect()");
-			block.RequestEnable(true);
+			(block as IMyFunctionalBlock).RequestEnable(true);
 			return 1;
 		}
 

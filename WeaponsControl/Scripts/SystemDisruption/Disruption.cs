@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.Collections;
 using VRage.ObjectBuilders;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -14,8 +15,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private CubeGridCache m_cache;
 		private MyObjectBuilderType[] m_affects;
 		private SortedDictionary<DateTime, int> m_effects = new SortedDictionary<DateTime, int>();
-		private MyUniqueList<IMyFunctionalBlock> m_affected = new MyUniqueList<IMyFunctionalBlock>();
-		private List<IMyFunctionalBlock> m_affectedRemovals = new List<IMyFunctionalBlock>();
+		private Dictionary<IMyCubeBlock, MyIDModule> m_affected = new Dictionary<IMyCubeBlock, MyIDModule>();
+		private List<IMyCubeBlock> m_affectedRemovals = new List<IMyCubeBlock>();
 		private DateTime m_nextExpire;
 		private int m_toRemove;
 
@@ -26,28 +27,33 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_affects = affects;
 		}
 
-		protected int AddEffect(TimeSpan duration, int strength)
+		protected int AddEffect(TimeSpan duration, int strength, long effectOwner)
 		{
 			int applied = 0;
 			foreach (MyObjectBuilderType type in m_affects)
 			{
 				var blockGroup = m_cache.GetBlocksOfType(type);
 				if (blockGroup != null)
-					foreach (IMyFunctionalBlock block in blockGroup)
+					foreach (IMyCubeBlock block in blockGroup)
 					{
-						if (!block.IsWorking || m_affected.Contains(block))
+						if (!block.IsWorking || m_affected.ContainsKey(block))
 						{
-							m_logger.debugLog("cannot disrupting: " + block, "AddEffect()");
+							m_logger.debugLog("cannot disrupt: " + block, "AddEffect()");
 							continue;
 						}
 						m_logger.debugLog("disrupting: " + block, "AddEffect()");
 						int change = StartEffect(block, strength);
 						if (change != 0)
 						{
-							(block as IMyCubeBlock).SetDamageEffect(true);
 							strength -= change;
 							applied += change;
-							m_affected.Add(block);
+							MyCubeBlock cubeBlock = block as MyCubeBlock;
+							MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
+							m_affected.Add(block, idMod);
+
+							block.SetDamageEffect(true);
+							cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
+
 							if (strength < 1)
 								goto FinishedBlocks;
 						}
@@ -69,9 +75,6 @@ FinishedBlocks:
 		{
 			if (m_effects.Count == 0)
 				return;
-
-			foreach (IMyFunctionalBlock block in m_affected)
-				UpdateEffect(block);
 
 			if (DateTime.UtcNow > m_nextExpire)
 			{
@@ -98,18 +101,22 @@ FinishedBlocks:
 		{
 			m_logger.debugLog(m_affectedRemovals.Count != 0, "m_affectedRemovals has not been cleared", "AddEffect()", Logger.severity.FATAL);
 
-			foreach (IMyFunctionalBlock block in m_affected)
+			foreach (var pair in m_affected)
 			{
+				IMyCubeBlock block = pair.Key;
 				int change = EndEffect(block, m_toRemove);
 				if (change != 0)
 				{
-					(block as IMyCubeBlock).SetDamageEffect(false);
 					m_toRemove -= change;
 					m_affectedRemovals.Add(block);
+
+					block.SetDamageEffect(false);
+					MyCubeBlock cubeBlock = block as MyCubeBlock;
+					cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);
 				}
 			}
 
-			foreach (IMyFunctionalBlock block in m_affectedRemovals)
+			foreach (IMyCubeBlock block in m_affectedRemovals)
 				m_affected.Remove(block);
 			m_affectedRemovals.Clear();
 		}
@@ -124,8 +131,7 @@ FinishedBlocks:
 			m_logger.debugLog("Next effect will expire in " + (m_nextExpire - DateTime.UtcNow), "SetNextExpire()");
 		}
 
-		protected abstract int StartEffect(IMyFunctionalBlock block, int strength);
-		protected abstract void UpdateEffect(IMyFunctionalBlock block);
-		protected abstract int EndEffect(IMyFunctionalBlock block, int strength);
+		protected abstract int StartEffect(IMyCubeBlock block, int strength);
+		protected abstract int EndEffect(IMyCubeBlock block, int strength);
 	}
 }

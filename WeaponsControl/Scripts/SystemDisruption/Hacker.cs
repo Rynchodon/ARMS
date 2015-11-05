@@ -1,5 +1,5 @@
 using System;
-
+using System.Collections.Generic;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -45,9 +45,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_nextHack = DateTime.UtcNow + s_hackFrequency;
 
 			int strengthLeft = s_hackStrength;
-			strengthLeft = AirVentDepressurize.Depressurize(attached, strengthLeft, s_hackLength);
-			strengthLeft = DoorLock.LockDoors(attached, strengthLeft, s_hackLength);
-			strengthLeft = GravityReverse.ReverseGravity(attached, strengthLeft, s_hackLength);
+			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
+			long effectOwner = bigOwners == null ? 0L : bigOwners[0];
+			strengthLeft = AirVentDepressurize.Depressurize(attached, strengthLeft, s_hackLength, effectOwner);
+			strengthLeft = DoorLock.LockDoors(attached, strengthLeft, s_hackLength, effectOwner);
+			strengthLeft = GravityReverse.ReverseGravity(attached, strengthLeft, s_hackLength, effectOwner);
 		}
 
 	}

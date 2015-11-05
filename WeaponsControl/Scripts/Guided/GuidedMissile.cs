@@ -39,8 +39,9 @@ namespace Rynchodon.Weapons.Guided
 
 		private enum Stage : byte { None, Guided, Ballistic, Terminated }
 
-		private const float Angle_AccelerateWhen = 0.0174532925199433f; // 1°
-		private const float Angle_Detonate = 0.1745329251994329f; // 10°
+		private const float Angle_AccelerateWhen = 0.02f;
+		private const float Angle_Detonate = 0.1f;
+		private const float Angle_Cluster = 0.05f;
 		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
@@ -164,7 +165,7 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("Creating EMP effect", "missile_OnClose()", Logger.severity.DEBUG);
 					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
+					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds), CubeBlock.OwnerId);
 				}
 			}
 		}
@@ -347,7 +348,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			{ // check for cluster split
-				if (myCluster != null)
+				if (myCluster != null && angle <= Angle_Cluster)
 				{
 					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
 					if (distSquared <= myDescr.ClusterSplitRange * myDescr.ClusterSplitRange)

@@ -21,7 +21,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((EMP e) => e.UpdateEffect());
 		}
 
-		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration)
+		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration, long effectOwner)
 		{
 			MainLock.UsingShared(() => {
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref location, s_entitiesEMP);
@@ -33,7 +33,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 						EMP e;
 						if (!Registrar.TryGetValue(grid, out e))
 							e = new EMP(grid);
-						e.AddEffect(duration, strength);
+						e.AddEffect(duration, strength, effectOwner);
 					}
 				}
 				s_entitiesEMP.Clear();
@@ -49,13 +49,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyFunctionalBlock block, int strength)
+		protected override int StartEffect(IMyCubeBlock block, int strength)
 		{
 			int maxPower = MaxPowerOutput(block);
 			if (strength >= maxPower)
 			{
 				m_logger.debugLog("EMP disabled: " + block.DisplayNameText + ", remaining strength: " + (strength - maxPower), "StartEffect()");
-				block.RequestEnable(false);
+				(block as IMyFunctionalBlock).RequestEnable(false);
 				return maxPower;
 			}
 			else
@@ -63,24 +63,19 @@ namespace Rynchodon.Weapons.SystemDisruption
 			return 0;
 		}
 
-		protected override void UpdateEffect(IMyFunctionalBlock block)
-		{
-			block.RequestEnable(false);
-		}
-
-		protected override int EndEffect(IMyFunctionalBlock block, int strength)
+		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			int maxPower = MaxPowerOutput(block);
 			if (strength >= maxPower)
 			{
 				m_logger.debugLog("EMP expired on " + block.DisplayNameText + ", remaining strength: " + (strength - maxPower), "EndEffect()");
-				block.RequestEnable(true);
+				(block as IMyFunctionalBlock).RequestEnable(true);
 				return maxPower;
 			}
 			return 0;
 		}
 
-		private int MaxPowerOutput(IMyFunctionalBlock block)
+		private int MaxPowerOutput(IMyCubeBlock block)
 		{
 			var definition = DefinitionCache.GetCubeBlockDefinition(block) as MyPowerProducerDefinition;
 			return (int)(definition.MaxPowerOutput * 1000f);

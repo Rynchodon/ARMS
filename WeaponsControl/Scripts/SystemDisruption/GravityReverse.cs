@@ -20,12 +20,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((GravityReverse gg) => gg.UpdateEffect());
 		}
 
-		public static int ReverseGravity(IMyCubeGrid grid, int strength, TimeSpan duration)
+		public static int ReverseGravity(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
 		{
 			GravityReverse gg;
 			if (!Registrar.TryGetValue(grid, out gg))
 				gg = new GravityReverse(grid);
-			return gg.AddEffect(duration, strength);
+			return gg.AddEffect(duration, strength, effectOwner);
 		}
 
 		private readonly Logger m_logger;
@@ -37,22 +37,17 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyFunctionalBlock block, int strength)
+		protected override int StartEffect(IMyCubeBlock block, int strength)
 		{
 			return ReverseGravity(block, strength);
 		}
 
-		protected override void UpdateEffect(IMyFunctionalBlock block)
-		{
-			block.RequestEnable(true);
-		}
-
-		protected override int EndEffect(IMyFunctionalBlock block, int strength)
+		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			return ReverseGravity(block, strength);
 		}
 
-		private int ReverseGravity(IMyFunctionalBlock block, int strength)
+		private int ReverseGravity(IMyCubeBlock block, int strength)
 		{
 			m_logger.debugLog("Reversing gravity of " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "ReverseGravity()");
 			Ingame.IMyGravityGenerator rect = block as Ingame.IMyGravityGenerator;
