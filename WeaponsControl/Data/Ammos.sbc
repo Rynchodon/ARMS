@@ -10,7 +10,6 @@
       <Description>
         GuidanceSeconds=60
         RotationPerUpdate=0.017453292519943
-        Acceleration=0
         DetonateRange=3
       </Description>
       <BasicProperties>
@@ -21,13 +20,13 @@
         <BackkickForce>700</BackkickForce>
       </BasicProperties>
       <MissileProperties>
-        <MissileMass>300</MissileMass>
+        <MissileMass>3000</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_R12VP_Missile.mwm</MissileModelName>
         <MissileAcceleration>10</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
-        <MissileExplosionDamage>2000</MissileExplosionDamage>
+        <MissileExplosionDamage>100000</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
 
@@ -39,7 +38,6 @@
       <Description>
         GuidanceSeconds=60
         RotationPerUpdate=0.017453292519943
-        Acceleration=0
         DetonateRange=3
         EMP_Strength=300000
         EMP_Seconds=30
@@ -53,7 +51,7 @@
         <BackkickForce>700</BackkickForce>
       </BasicProperties>
       <MissileProperties>
-        <MissileMass>300</MissileMass>
+        <MissileMass>3000</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_R8EA_Missile.mwm</MissileModelName>
         <MissileAcceleration>20</MissileAcceleration>
@@ -66,60 +64,31 @@
     <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
       <Id>
         <TypeId>AmmoDefinition</TypeId>
-        <SubtypeId>ARMS_TestMissile_C2MA</SubtypeId>
+        <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=30
-        HasAntenna=true
+        GuidanceSeconds=10
+        Acceleration=100
         ClusterSplitRange=300
         ClusterCooldown=5
-        ClusterSpread=3
+        ClusterOffset_Back=-5
+        ClusterOffset_Radial=1.2
       </Description>
       <BasicProperties>
-        <DesiredSpeed>300</DesiredSpeed>
+        <DesiredSpeed>800</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>2000</MaxTrajectory>
+        <MaxTrajectory>3000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
         <BackkickForce>700</BackkickForce>
       </BasicProperties>
       <MissileProperties>
-        <MissileMass>45</MissileMass>
+        <MissileMass>300</MissileMass>
         <MissileExplosionRadius>1</MissileExplosionRadius>
-        <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
+        <MissileModelName>Models\Weapons\Souper_B3MP_Missile.mwm</MissileModelName>
         <MissileAcceleration>10</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
-        <MissileExplosionDamage>50000</MissileExplosionDamage>
-      </MissileProperties>
-    </Ammo>
-
-    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
-      <Id>
-        <TypeId>AmmoDefinition</TypeId>
-        <SubtypeId>ARMS_TestMissile_C2EA</SubtypeId>
-      </Id>
-      <Description>
-        GuidanceSeconds=30
-        HasAntenna=true
-        DetonateRange=3
-        EMP_Strength=15000
-        EMP_Seconds=10
-      </Description>
-      <BasicProperties>
-        <DesiredSpeed>300</DesiredSpeed>
-        <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>2000</MaxTrajectory>
-        <IsExplosive>true</IsExplosive>
-        <BackkickForce>700</BackkickForce>
-      </BasicProperties>
-      <MissileProperties>
-        <MissileMass>45</MissileMass>
-        <MissileExplosionRadius>5</MissileExplosionRadius>
-        <MissileModelName>Models\Weapons\Projectile_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
-        <MissileInitialSpeed>10</MissileInitialSpeed>
-        <MissileSkipAcceleration>false</MissileSkipAcceleration>
-        <MissileExplosionDamage>0</MissileExplosionDamage>
+        <MissileExplosionDamage>10000</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
     

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
@@ -18,7 +19,7 @@ namespace Rynchodon.Weapons.Guided
 		#region Static
 
 		private static Logger staticLogger = new Logger("GuidedMissileLauncher");
-		private static List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
+		//private static List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
 
 		static GuidedMissileLauncher()
 		{
@@ -31,7 +32,7 @@ namespace Rynchodon.Weapons.Guided
 			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			staticLogger = null;
-			AllLaunchers = null;
+			//AllLaunchers = null;
 		}
 
 		public static bool IsGuidedMissileLauncher(IMyCubeBlock block)
@@ -43,9 +44,10 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (obj is MyAmmoBase && obj.ToString().StartsWith("MyMissile"))
 			{
-				foreach (GuidedMissileLauncher launcher in AllLaunchers)
+				Registrar.ForEach((GuidedMissileLauncher launcher) => {
 					if (launcher.MissileBelongsTo(obj))
 						return;
+				});
 				staticLogger.debugLog("No one claimed: " + obj, "Entities_OnEntityAdd()");
 			}
 		}
@@ -78,16 +80,17 @@ namespace Rynchodon.Weapons.Guided
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10f);
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10f);
+
+			// might need this again for shorter range missiles
+			//MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10f);
+			//MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10f);
 
 			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
 			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
 
 			myFixed.AllowedState = WeaponTargeting.State.GetOptions;
-
-			AllLaunchers.Add(this);
+			Registrar.Add(weapon.FuncBlock, this);
 		}
 
 		public void Update1()
@@ -155,10 +158,9 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("missile is a cluster missile", "MissileBelongsTo()");
 					clusterMain = gm;
-					missile.OnClose += m => {
-						myLogger.debugLog("clusterMain closed, on cooldown", "MissileBelongsTo()", Logger.severity.DEBUG);
-						StartCooldown();
-					};
+					missile.OnClose += ClusterMain_OnClose;
+					var builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun ;
+					restoreShootingToggle = builder.IsShootingFromTerminal;
 					FuncBlock.ApplyAction("Shoot_On");
 				}
 			}
@@ -169,6 +171,12 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			return true;
+		}
+
+		private void ClusterMain_OnClose(IMyEntity obj)
+		{
+			myLogger.debugLog("clusterMain closed, on cooldown", "ClusterMain_OnClose()", Logger.severity.DEBUG);
+			StartCooldown();
 		}
 
 		private void UpdateLoadedMissile()
@@ -190,6 +198,9 @@ namespace Rynchodon.Weapons.Guided
 
 		private void StartCooldown()
 		{
+			if (clusterMain != null)
+				clusterMain.MyEntity.OnClose -= ClusterMain_OnClose;
+
 			clusterMain = null;
 			FuncBlock.RequestEnable(false);
 			FuncBlock.ApplyAction("Shoot_Off");
@@ -215,6 +226,8 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("off cooldown", "CheckCooldown()");
 				onCooldown = false;
 				FuncBlock.RequestEnable(true);
+				if (restoreShootingToggle)
+					FuncBlock.ApplyAction("Shoot_On");
 			}
 		}
 

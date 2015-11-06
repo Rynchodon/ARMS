@@ -204,7 +204,7 @@ namespace Rynchodon.AntennaRelay
 			relateData.distanceSeen.Sort();
 
 			int index;
-			for (index = 0; index < relateData.distanceSeen.Count; index++)
+			for (index = 0; index < relateData.distanceSeen.Count && index < relateData.activeGPS.Count; index++)
 			{
 				//myLogger.debugLog("getting seen...", "UpdateGPS()");
 				myLogger.debugLog(index >= relateData.distanceSeen.Count, "index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", "UpdateGPS()", Logger.severity.FATAL);

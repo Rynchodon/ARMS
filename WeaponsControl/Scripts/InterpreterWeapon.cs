@@ -40,7 +40,7 @@ namespace Rynchodon.Weapons
 		{
 			this.Block = block;
 			this.Grid = block.CubeGrid;
-			this.m_instructions = new BlockInstructions(block as IMyTerminalBlock, 
+			//this.m_instructions = new BlockInstructions(block as IMyTerminalBlock, 
 
 			myLogger = new Logger("InterpreterWeapon", () => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
 		}

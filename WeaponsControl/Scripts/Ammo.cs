@@ -40,7 +40,7 @@ namespace Rynchodon.Weapons
 
 			public float RotationPerUpdate = 0.0349065850398866f; // 2°
 			/// <summary>In metres per second</summary>
-			public float Acceleration = 100f;
+			public float Acceleration = 0f;
 
 			#endregion Performance
 			#region Tracking
@@ -76,16 +76,14 @@ namespace Rynchodon.Weapons
 			#endregion Mandatory
 			#region Optional
 
-			/// <summary>How far apart each cluster missile will be from main missile when they reach target. Units = squigglies.</summary>
-			public float ClusterSpread = 5f;
 			/// <summary>How far apart each cluster missile will be from main missile when they split. Units = squigglies.</summary>
 			public float ClusterInitSpread = 1f;
 			/// <summary>Circle of missiles will be this far behind main missile.</summary>
 			public float ClusterOffset_Back = 0f;
 			/// <summary>Distance along the circumference of the circle of missiles between missiles</summary>
-			public float ClusterOffset_Radial = 1f;
-			/// <summary>Distance primary missile must move before cluster is formed.</summary>
-			public float ClusterFormDistance = 10f;
+			public float ClusterOffset_Radial = 2f;
+			/// <summary>Distance between launcher and missile for missile to move into formation.</summary>
+			public float ClusterFormDistance = 1f;
 
 			#endregion Optional
 			#endregion Cluster

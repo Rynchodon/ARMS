@@ -105,6 +105,12 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected void UpdateTarget()
 		{
+			if (Options.TargetingRange < 1f)
+			{
+				myLogger.debugLog("Not targeting, zero range", "UpdateTarget()");
+				return;
+			}
+
 			switch (myTarget.TType)
 			{
 				case TargetType.Missile:

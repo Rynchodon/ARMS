@@ -118,13 +118,15 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
+				if (IsFiringWeapon != (CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
+					myLogger.debugLog("Is shooting conflict, stored: " + IsFiringWeapon + ", gun value: " + (!IsFiringWeapon), "Update_Targeting()");
 				if (FireWeapon != IsFiringWeapon)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
 						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
 					else
-					(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
+						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
 				}
 				Update();
 			}

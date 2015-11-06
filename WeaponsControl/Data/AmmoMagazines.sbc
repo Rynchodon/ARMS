@@ -7,15 +7,15 @@
         <TypeId>AmmoMagazine</TypeId>
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
-      <DisplayName>Cruise Missile</DisplayName>
-      <Icon>Textures\Icon\Souper_Cruise_Missile.dds</Icon>
+      <DisplayName>Cruise Missile R12VP</DisplayName>
+      <Icon>Textures\Icon\Souper_R12VP_Missile.dds</Icon>
       <Size>
-        <X>1</X>
-        <Y>3</Y>
-        <Z>1</Z>
+        <X>6</X>
+        <Y>0.25</Y>
+        <Z>0.25</Z>
       </Size>
-      <Mass>450</Mass>
-      <Volume>600</Volume>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
       <Model>Models\Weapons\Souper_R12VP_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
@@ -27,60 +27,40 @@
         <TypeId>AmmoMagazine</TypeId>
         <SubtypeId>Souper_R8EA_Missile</SubtypeId>
       </Id>
-      <DisplayName>EMP Missile</DisplayName>
-      <Icon>Textures\Icon\Souper_Cruise_Missile.dds</Icon>
+      <DisplayName>EMP Missile R8EA</DisplayName>
+      <Icon>Textures\Icon\Souper_R8EA_Missile.dds</Icon>
       <Size>
-        <X>1</X>
-        <Y>3</Y>
-        <Z>1</Z>
+        <X>5</X>
+        <Y>0.27</Y>
+        <Z>0.27</Z>
       </Size>
-      <Mass>450</Mass>
-      <Volume>600</Volume>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
       <Model>Models\Weapons\Souper_R8EA_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
       <AmmoDefinitionId Subtype="Souper_R8EA_Missile" />
     </AmmoMagazine>
-    
+  
     <AmmoMagazine>
       <Id>
         <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ARMS_TestMissile_C2MA</SubtypeId>
+        <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
-      <DisplayName>ARMS Test Missile C2MA</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <DisplayName>Swarm Missile B3MP</DisplayName>
+      <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
       <Size>
-        <X>1.2</X>
-        <Y>0.2</Y>
-        <Z>0.2</Z>
+        <X>0.3</X>
+        <Y>0.1</Y>
+        <Z>0.1</Z>
       </Size>
-      <Mass>45</Mass>
-      <Volume>60</Volume>
-      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
+      <Model>Models\Weapons\Souper_B3MP_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>18</Capacity>
-      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2MA" />
+      <AmmoDefinitionId Subtype="Souper_B3MP_Missile" />
     </AmmoMagazine>
     
-    <AmmoMagazine>
-      <Id>
-        <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>ARMS_TestMissile_C2EA</SubtypeId>
-      </Id>
-      <DisplayName>ARMS Test Missile C2EA</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
-      <Size>
-        <X>1.2</X>
-        <Y>0.2</Y>
-        <Z>0.2</Z>
-      </Size>
-      <Mass>45</Mass>
-      <Volume>60</Volume>
-      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
-      <PhysicalMaterial>Ammo</PhysicalMaterial>
-      <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2EA" />
-    </AmmoMagazine>
-	
   </AmmoMagazines>
 </Definitions>

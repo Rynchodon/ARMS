@@ -4,6 +4,12 @@
 
     <Entry Class="Ammo" BlueprintSubtypeId="Souper_R12VP_Missile" />
     <Entry Class="Components" BlueprintSubtypeId="Souper_R12VP_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_R8EA_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_R8EA_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_B3MP_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_B3MP_Missile" />
    
   </BlueprintClassEntries>
 </Definitions>

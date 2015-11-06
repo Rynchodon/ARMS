@@ -294,6 +294,15 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Shortest of width, length, height.
+		/// </summary>
+		public static float GetShortestDim(this BoundingBox box)
+		{
+			Vector3 Size = box.Size;
+			return MathHelper.Min(Size.X, Size.Y, Size.Z);
+		}
+
+		/// <summary>
 		/// Longest of width, length, height.
 		/// </summary>
 		public static double GetLongestDim(this BoundingBoxD box)
@@ -303,10 +312,25 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Shortest of width, length, height.
+		/// </summary>
+		public static double GetShortestDim(this BoundingBoxD box)
+		{
+			Vector3D Size = box.Size;
+			return MathHelper.Min(Size.X, Size.Y, Size.Z);
+		}
+
+		/// <summary>
 		/// Longest of width, length, height.
 		/// </summary>
 		public static float GetLongestDim(this IMyCubeGrid grid)
 		{ return grid.LocalAABB.GetLongestDim(); }
+
+		/// <summary>
+		/// Shortest of width, length, height.
+		/// </summary>
+		public static float GetShortestDim(this IMyCubeGrid grid)
+		{ return grid.LocalAABB.GetShortestDim(); }
 
 		/// <summary>
 		/// <para>Tests the AABB and the Volume of first against the AABB and Volume of the second.</para>
