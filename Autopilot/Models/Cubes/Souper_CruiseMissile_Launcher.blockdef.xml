@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Souper_CruiseMissile_Launcher</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Scene.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="3" y="3" z="8" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
+	</MountPoints>
+	<MirroringX>None</MirroringX>
+	<MirroringY>None</MirroringY>
+	<MirroringZ>None</MirroringZ>
+	<BlockPairName>Scene</BlockPairName>
+</Definition>
