@@ -5,12 +5,24 @@
     <Weapon>
       <Id>
         <TypeId>WeaponDefinition</TypeId>
-        <SubtypeId>Souper_Cruise_Launcher</SubtypeId>
+        <SubtypeId>Souper_R12VP_Launcher</SubtypeId>
       </Id>
       <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-       <AmmoMagazine Subtype="Souper_R12VP_Missile" />
+        <AmmoMagazine Subtype="Souper_R12VP_Missile" />
+      </AmmoMagazines>
+    </Weapon>
+  
+    <Weapon>
+      <Id>
+        <TypeId>WeaponDefinition</TypeId>
+        <SubtypeId>Souper_R8EA_Launcher</SubtypeId>
+      </Id>
+      <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
+      <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
+      <AmmoMagazines>
+        <AmmoMagazine Subtype="Souper_R8EA_Missile" />
       </AmmoMagazines>
     </Weapon>
   
@@ -22,7 +34,7 @@
       <MissileAmmoData RateOfFire="600" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-       <AmmoMagazine Subtype="ARMS_TestMissile_C2MA" />
+        <AmmoMagazine Subtype="ARMS_TestMissile_C2MA" />
       </AmmoMagazines>
     </Weapon>
   
@@ -34,7 +46,7 @@
       <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-       <AmmoMagazine Subtype="ARMS_TestMissile_C2EA" />
+        <AmmoMagazine Subtype="ARMS_TestMissile_C2EA" />
       </AmmoMagazines>
     </Weapon>
     

@@ -11,10 +11,10 @@
         GuidanceSeconds=60
         RotationPerUpdate=0.017453292519943
         Acceleration=0
-        DetonateRange=4
+        DetonateRange=3
       </Description>
       <BasicProperties>
-        <DesiredSpeed>300</DesiredSpeed>
+        <DesiredSpeed>200</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>12000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
@@ -24,10 +24,42 @@
         <MissileMass>300</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_R12VP_Missile.mwm</MissileModelName>
-        <MissileAcceleration>20</MissileAcceleration>
+        <MissileAcceleration>10</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>2000</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>Souper_R8EA_Missile</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=60
+        RotationPerUpdate=0.017453292519943
+        Acceleration=0
+        DetonateRange=3
+        EMP_Strength=300000
+        EMP_Seconds=30
+        HasAntenna=true
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>400</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>8000</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>700</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>300</MissileMass>
+        <MissileExplosionRadius>15</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Souper_R8EA_Missile.mwm</MissileModelName>
+        <MissileAcceleration>20</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>100</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
 
@@ -69,8 +101,8 @@
       <Description>
         GuidanceSeconds=30
         HasAntenna=true
-        DetonateRange=4
-        EMP_Strength=15
+        DetonateRange=3
+        EMP_Strength=15000
         EMP_Seconds=10
       </Description>
       <BasicProperties>

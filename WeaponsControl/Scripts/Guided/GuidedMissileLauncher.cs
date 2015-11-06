@@ -78,8 +78,8 @@ namespace Rynchodon.Weapons.Guided
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward);
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward);
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10f);
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10f);
 
 			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 

@@ -21,6 +21,26 @@
       <Capacity>1</Capacity>
       <AmmoDefinitionId Subtype="Souper_R12VP_Missile" />
     </AmmoMagazine>
+  
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_R8EA_Missile</SubtypeId>
+      </Id>
+      <DisplayName>EMP Missile</DisplayName>
+      <Icon>Textures\Icon\Souper_Cruise_Missile.dds</Icon>
+      <Size>
+        <X>1</X>
+        <Y>3</Y>
+        <Z>1</Z>
+      </Size>
+      <Mass>450</Mass>
+      <Volume>600</Volume>
+      <Model>Models\Weapons\Souper_R8EA_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="Souper_R8EA_Missile" />
+    </AmmoMagazine>
     
     <AmmoMagazine>
       <Id>

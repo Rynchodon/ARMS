@@ -13,6 +13,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class EMP : Disruption
 	{
 
+		private static readonly Logger s_logger = new Logger("EMP");
 		private static readonly MyObjectBuilderType[] s_affects = new MyObjectBuilderType[] { typeof(MyObjectBuilder_BatteryBlock), typeof(MyObjectBuilder_Reactor) };
 		private static List<MyEntity> s_entitiesEMP = new List<MyEntity>();
 
@@ -23,7 +24,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration, long effectOwner)
 		{
-			MainLock.UsingShared(() => {
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref location, s_entitiesEMP);
 				foreach (IMyEntity entity in s_entitiesEMP)
 				{
@@ -37,7 +38,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 					}
 				}
 				s_entitiesEMP.Clear();
-			});
+			}, s_logger);
 		}
 
 		private readonly Logger m_logger;

@@ -79,8 +79,11 @@ namespace Rynchodon
 
 			myLogger.debugLog("closing", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 
-			CubeBlocks_Type = null;
-			CubeBlocks_Definition = null;
+			using (lock_CubeBlocks.AcquireExclusiveUsing())
+			{
+				CubeBlocks_Type = null;
+				CubeBlocks_Definition = null;
+			}
 
 			myLogger.debugLog("closed", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
 		}
@@ -178,6 +181,8 @@ namespace Rynchodon
 			//myLogger.debugLog("looking up type " + objBuildType, "GetBlocksOfType<T>()");
 			using (lock_CubeBlocks.AcquireSharedUsing())
 			{
+				if (CubeBlocks_Type == null)
+					return null;
 				ListSnapshots<IMyCubeBlock> value;
 				if (CubeBlocks_Type.TryGetValue(objBuildType, out value))
 					return value.immutable();
