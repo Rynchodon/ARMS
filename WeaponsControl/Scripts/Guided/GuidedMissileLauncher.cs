@@ -78,9 +78,8 @@ namespace Rynchodon.Weapons.Guided
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
 			MissileSpawnBox = CubeBlock.LocalAABB;
-			// * 10 is temporary and shall be removed once we have the actual model
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10);
-			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10);
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward);
+			MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward);
 
 			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
@@ -105,9 +104,9 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("Not in my box: " + missile + ", position: " + local, "MissileBelongsTo()");
 				return false;
 			}
-			if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.001)
+			if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
 			{
-				myLogger.debugLog("Facing the wrong way: " + missile, "MissileBelongsTo()");
+				myLogger.debugLog("Facing the wrong way: " + missile + ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
 				return false;
 			}
 

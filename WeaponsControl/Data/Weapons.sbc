@@ -10,7 +10,7 @@
       <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-       <AmmoMagazine Subtype="Souper_Cruise_Missile" />
+       <AmmoMagazine Subtype="Souper_R12VP_Missile" />
       </AmmoMagazines>
     </Weapon>
   

@@ -5,7 +5,7 @@
     <Blueprint>
       <Id>
         <TypeId>BlueprintDefinition</TypeId>
-        <SubtypeId>Souper_Cruise_Missile</SubtypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <DisplayName>Cruise Missile</DisplayName>
       <Icon>Textures\GUI\Icons\ammo\Souper_Cruise_Missile.dds</Icon>
@@ -17,7 +17,7 @@
         <Item Amount="0.12" TypeId="Ingot" SubtypeId="Platinum" />
         <Item Amount="30." TypeId="Ingot" SubtypeId="Magnesium" />
       </Prerequisites>
-      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_Cruise_Missile" />
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_R12VP_Missile" />
       <BaseProductionTimeInSeconds>120</BaseProductionTimeInSeconds>
     </Blueprint>
    

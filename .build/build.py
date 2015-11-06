@@ -9,7 +9,7 @@
 #
 # The Dev version has logging enabled
 
-import datetime, errno, os.path, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
+import datetime, errno, os.path, re, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
 
 # script directories
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -55,7 +55,9 @@ warning = []
 info = []
 
 # in case build.ini is missing variables
+seContent = os.devnull
 mwmBuilder = os.devnull
+SpaceEngineers = os.devnull
 Zip7 = os.devnull
 mwmProcess = []
 modules = []
@@ -177,45 +179,59 @@ def find_sbc(dataPath, module):
 
 
 def parse_xml(path):
-    tree = ET.parse(path)
-    root = tree.getroot()
+	tree = ET.parse(path)
+	root = tree.getroot()
 
-    if (not root.tag == 'Model' or not root.get('Name')):
-        return False
+	if (not root.tag == 'Model' or not root.get('Name')):
+		return False
 
-    print ('\tparsing xml: '+os.path.basename(path))
+	print ('\tparsing xml: ' + os.path.basename(path))
 
-    # find textures
-    for Parameter in root.iter('Parameter'):
-        name = Parameter.get('Name')
-        if (name):
-            if ('texture' in name.lower()):
-                if (Parameter.text):
-                    toCopy_texture[(module + '\\' + Parameter.text).lower()] = path
-                    Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
+	# find textures
+	for Parameter in root.iter('Parameter'):
+		name = Parameter.get('Name')
+		if (name):
+			if ('texture' in name.lower()):
+				if (Parameter.text):
+					texturePath = startDir + '\\' + module + '\\' + Parameter.text
+					if (os.path.exists(texturePath)):
+						toCopy_texture[(module + '\\' + Parameter.text).lower()] = path
+						Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
+					else:
+						texturePath = seContent + '\\' + Parameter.text
+						if (not os.path.exists(texturePath)):
+							if (Parameter.text.startswith("Textures")):
+								text = Parameter.text.replace("Textures", "Textures\\Models", 1)
+							else:
+								text = Parameter.text.replace("textures", "Textures\\Models", 1)
+							texturePath = seContent + '\\' + text
+							if (os.path.exists(texturePath)):
+								Parameter.text = text
+							else:
+								errors.append('ERROR: the file: ' + Parameter.text + '\nreferenced by:\n\t' + path + '\ncould not be found.')
 
-    outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
-    outFile = outDir + os.path.basename(path)
-    createDir(outDir)
-    tree.write(outFile, 'utf-8', True)
-    # copy stats so Mwm Builder knows if xml was updated
-    shutil.copystat(path, outFile)
+	outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
+	outFile = outDir + os.path.basename(path)
+	createDir(outDir)
+	tree.write(outFile, 'utf-8', True)
+	# copy stats so Mwm Builder knows if xml was updated
+	shutil.copystat(path, outFile)
 
-    # find L.O.D. models
-    for Model in root.findall('./LOD/Model'):
-        primary_mwm = path[:-3].replace(startDir + '\\', '') + 'mwm'
-        file = Model.text
-        if not Model.text.endswith('.mwm'):
-            file += '.mwm'
+	# find L.O.D. models
+	for Model in root.findall('./LOD/Model'):
+		primary_mwm = path[:-3].replace(startDir + '\\', '') + 'mwm'
+		file = Model.text
+		if not Model.text.endswith('.mwm'):
+			file += '.mwm'
 
-        try:
-            if model_size[(primary_mwm).lower()] == 'Large':
-                toCopy_modelLarge[(module + '\\' + file).lower()] = path
-            else:
-                toCopy_modelSmall[(module + '\\' + file).lower()] = path
-        except KeyError:
-            errors.append('ERROR: Cannot find main file for:\n\t' + file + '\nnot in data files:\n\t' + primary_mwm)
-    return True
+		try:
+			if model_size[(primary_mwm).lower()] == 'Large':
+				toCopy_modelLarge[(module + '\\' + file).lower()] = path
+			else:
+				toCopy_modelSmall[(module + '\\' + file).lower()] = path
+		except KeyError:
+			errors.append('ERROR: Cannot find main file for:\n\t' + file + '\nnot in data files:\n\t' + primary_mwm)
+	return True
 
 
 def copyHavokFile(path):
@@ -413,7 +429,9 @@ def copyToFinal(fileMap, finalRelDir):
 			shutil.copy2(startDir + '\\' + file, finalModDir)
 			shutil.copy2(startDir + '\\' + file, finalModDirDev)
 		except (FileNotFoundError, OSError):
-		    errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
+			sePath = seContent + '\\' + re.sub(r".*?\\", '', file, 1)
+			if (not os.path.exists(sePath)):
+				errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
 
 
 def copyWithExtension(l_from, l_to, l_ext):
@@ -430,7 +448,13 @@ if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
 
 if os.path.exists(buildIni):
-    exec(open(buildIni).read())
+	exec(open(buildIni).read())
+	if (os.path.exists(SpaceEngineers)):
+		mwmBuilder = SpaceEngineers + r"\Tools\MwmBuilder\MwmBuilder.exe"
+		seContent = SpaceEngineers + r"\Content"
+	else:	
+		print ('SpaceEngineers not found')
+		investigateBadPath("SpaceEngineers", SpaceEngineers)
 else:
     print ('build.ini not found')
     investigateBadPath("build.ini", buildIni)

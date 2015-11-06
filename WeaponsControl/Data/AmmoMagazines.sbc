@@ -5,10 +5,10 @@
     <AmmoMagazine>
       <Id>
         <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>Souper_Cruise_Missile</SubtypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <DisplayName>Cruise Missile</DisplayName>
-      <Icon>Textures\GUI\Icons\Souper_Cruise_Missile.dds</Icon>
+      <Icon>Textures\Icon\Souper_Cruise_Missile.dds</Icon>
       <Size>
         <X>1</X>
         <Y>3</Y>
@@ -16,10 +16,10 @@
       </Size>
       <Mass>450</Mass>
       <Volume>600</Volume>
-      <Model>Models\Weapons\Souper_Cruise_Missile.mwm</Model>
+      <Model>Models\Weapons\Souper_R12VP_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="Souper_Cruise_Missile" />
+      <AmmoDefinitionId Subtype="Souper_R12VP_Missile" />
     </AmmoMagazine>
     
     <AmmoMagazine>
