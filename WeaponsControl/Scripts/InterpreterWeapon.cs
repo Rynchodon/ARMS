@@ -4,9 +4,7 @@ using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Settings;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
@@ -16,22 +14,18 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class InterpreterWeapon
 	{
+
 		private Logger myLogger;
 
 		private IMyCubeBlock Block;
 		private IMyCubeGrid Grid;
 		private BlockInstructions m_instructions;
 
-		private TargetingOptions Options;
-		private List<string> Errors;
 		private int CurrentIndex;
+		private bool InstructFound;
 
-		public static bool allowedNPC { get; private set; }
-		private static TargetingOptions ForNPC_Options = null;
-		private static List<string> ForNPC_Errors = null;
-
-		static InterpreterWeapon()
-		{ allowedNPC = true; }
+		public TargetingOptions Options;
+		public List<string> Errors = new List<string>();
 
 		private InterpreterWeapon()
 		{ myLogger = new Logger("InterpreterWeapon", null, () => { return "For NPC"; }); }
@@ -40,79 +34,52 @@ namespace Rynchodon.Weapons
 		{
 			this.Block = block;
 			this.Grid = block.CubeGrid;
-			//this.m_instructions = new BlockInstructions(block as IMyTerminalBlock, 
+			this.m_instructions = new BlockInstructions(block as IMyTerminalBlock, OnInstruction);
 
 			myLogger = new Logger("InterpreterWeapon", () => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
 		}
 
 		/// <summary>
-		/// Parse intstructions for a turret or engaging Autopilot.
+		/// Updates instructions if necessary.
 		/// </summary>
-		/// <param name="instructions">string to parse</param>
-		/// <param name="Options">results of parse</param>
-		/// <param name="Errors">indices of parsing errors</param>
-		public void Parse(out TargetingOptions Options, out List<string> Errors, string instructions = null)
+		/// <returns>True iff instructions were updated.</returns>
+		public bool UpdateInstruction()
 		{
-			if (Block != null && Block.OwnedNPC())
+			if (Block.OwnedNPC())
 			{
-				myLogger.debugLog(Block.DisplayNameText + " is owned by a N.P.C.", "Parse()");
-				if (ForNPC_Options == null)
-				{
-					//myLogger.debugLog("ForNPC_Options = " + ForNPC_Options, "Parse()");
-					InterpreterWeapon ForNPC_IW = new InterpreterWeapon();
-					//myLogger.debugLog("ForNPC_IW = " + ForNPC_IW, "Parse()");
-					instructions = ServerSettings.GetSettingString(ServerSettings.SettingName.sWeaponCommandsNPC);
-					myLogger.debugLog("instructions = " + instructions, "Parse()");
-
-					if (instructions != null)
-						instructions = instructions.getInstructions();
-
-					if (string.IsNullOrWhiteSpace(instructions))
-					{
-						myLogger.debugLog("No settings for N.P.C. turrets", "Parse()", Logger.severity.INFO);
-						allowedNPC = false;
-						ForNPC_Options = new TargetingOptions();
-						ForNPC_Errors = new List<string>();
-					}
-					else
-					{
-						ForNPC_IW.Parse(out ForNPC_Options, out ForNPC_Errors, instructions);
-						myLogger.debugLog("Parsed NPC OK, Options: " + ForNPC_Options, "Parse()");
-					}
-				}
-				Options = ForNPC_Options.Clone();
-				Errors = ForNPC_Errors;
-				return;
+				if (m_instructions.FallBackInstruct == null)
+					m_instructions.FallBackInstruct = ServerSettings.GetSettingString(ServerSettings.SettingName.sWeaponCommandsNPC);
 			}
+			else
+				m_instructions.FallBackInstruct = null;
 
-			if (instructions == null)
-			{
-				if (Block == null)
-					throw new NullReferenceException("Block");
-				instructions = Block.DisplayNameText.getInstructions();
-			}
+			// TODO: need some kind of text panel monitor so we don't always have to parse
+			if (!m_instructions.Update())
+				m_instructions.RunOnInstructions();
+			return InstructFound;
+		}
 
+		private bool OnInstruction(string instructions)
+		{
+			CurrentIndex = -1;
+			InstructFound = false;
 			Options = new TargetingOptions();
-			Errors = new List<string>();
-
-			this.Options = Options;
-			this.Errors = Errors;
-			this.CurrentIndex = -1;
+			Errors.Clear();
 
 			Parse(instructions);
 
-			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "Parse()");
+			return InstructFound;
 		}
 
 		/// <summary>
-		/// Parse intructions for a turret or engaging Autopilot.
+		/// Parse intructions for a weapon.
 		/// </summary>
 		/// <param name="instructions">string to parse</param>
 		/// <param name="Options">results of parse</param>
 		/// <param name="Errors">indices of parsing errors</param>
 		private void Parse(string instructions)
 		{
-			if (instructions == null)
+			if (string.IsNullOrWhiteSpace(instructions))
 			{
 				myLogger.debugLog("no instructions", "Parse()");
 				return;
@@ -141,6 +108,7 @@ namespace Rynchodon.Weapons
 				{
 					string blockList = instruct.Substring(1, instruct.Length - 2);
 					ParseBlockList(blockList);
+					InstructFound = true;
 				}
 				else
 					if (!(ParseTargetType(instruct)
@@ -152,6 +120,8 @@ namespace Rynchodon.Weapons
 						myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
 						Errors.Add(CurrentIndex.ToString());
 					}
+					else
+						InstructFound = true;
 			}
 		}
 
@@ -267,7 +237,10 @@ namespace Rynchodon.Weapons
 				throw new NullReferenceException("Grid");
 
 			if (!toParse.StartsWith("t"))
+			{
+				myLogger.debugLog("not starts with t: " + toParse, "GetFromPanel()");
 				return false;
+			}
 
 			toParse = toParse.Substring(1);
 
@@ -281,7 +254,10 @@ namespace Rynchodon.Weapons
 
 			Ingame.IMyTextPanel panel;
 			if (!GetTextPanel(panelName, out panel))
+			{
+				myLogger.debugLog("Panel not found: " + panelName, "GetFromPanel()");
 				return false;
+			}
 
 			myLogger.debugLog("Found panel: " + panel.DisplayNameText, "GetFromPanel()");
 

@@ -118,15 +118,19 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (IsFiringWeapon != (CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
-					myLogger.debugLog("Is shooting conflict, stored: " + IsFiringWeapon + ", gun value: " + (!IsFiringWeapon), "Update_Targeting()");
 				if (FireWeapon != IsFiringWeapon)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
+					{
+						myLogger.debugLog("Opening fire", "Update_Targeting()");
 						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
+					}
 					else
+					{
+						myLogger.debugLog("Holding fire", "Update_Targeting()");
 						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
+					}
 				}
 				Update();
 			}
@@ -267,7 +271,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (CurrentState_NotFlag(State.Targeting) || LoadedAmmo == null || (CurrentTarget.Entity != null && CurrentTarget.Entity.Closed))
+			if (CurrentState_NotFlag(State.Targeting) || LoadedAmmo == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
 				return;
 
 			if (CurrentTarget.TType != TargetType.None)
@@ -286,7 +290,10 @@ namespace Rynchodon.Weapons
 
 			UpdateAmmo();
 			if (LoadedAmmo == null)
+			{
+				myLogger.debugLog("No ammo loaded", "Update10()");
 				return;
+			}
 
 			UpdateTarget();
 		}
@@ -302,35 +309,26 @@ namespace Rynchodon.Weapons
 
 			ClearBlacklist();
 
-			TargetingOptions newOptions;
-			List<string> Errors;
-			Interpreter.Parse(out newOptions, out Errors);
-			if (Errors.Count <= InterpreterErrorCount)
+			if (Interpreter.UpdateInstruction() && Interpreter.Errors.Count <= InterpreterErrorCount)
 			{
-				Options = newOptions;
-				InterpreterErrorCount = Errors.Count;
+				Options = Interpreter.Options;
+				InterpreterErrorCount = Interpreter.Errors.Count;
 				Update_Options(Options);
-				myLogger.debugLog("updating Options, Error Count = " + Errors.Count + ", Options: " + Options, "Update100()");
+				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
 			}
 			else
-				myLogger.debugLog("not updation Options, Error Count = " + Errors.Count, "Update100()");
-			WriteErrors(Errors);
+				myLogger.debugLog("not updation Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
+			WriteErrors(Interpreter.Errors);
 		}
-
-		//private Vector3D BarrelPositionWorld()
-		//{
-		//	return CubeBlock.GetPosition();
-		//}
 
 		private void UpdateCurrentState()
 		{
 			if (!CubeBlock.IsWorking
 			|| (IsNormalTurret && myTurret.IsUnderControl)
 			|| CubeBlock.OwnerId == 0
-			|| (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
 			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")))
 			{
-				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0) + ", npc disabled: " + (CubeBlock.OwnedNPC() && !InterpreterWeapon.allowedNPC)
+				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0)
 					+ ", missing brackets: " + (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")), "UpdateCurrentState()");
 
 				CanControl = false;
@@ -433,12 +431,6 @@ namespace Rynchodon.Weapons
 			if (CubeBlock == null)
 				throw new ArgumentNullException("weapon");
 
-			if (!CanRotateTo(targetPosition))
-			{
-				//myLogger.debugLog("cannot rotate to", "Obstructed()");
-				return true;
-			}
-
 			// build offset rays
 			List<Line> AllTestLines = new List<Line>();
 			if (Options.FlagSet(TargetingFlags.Interior))
@@ -464,7 +456,7 @@ namespace Rynchodon.Weapons
 			foreach (Line testLine in AllTestLines)
 				if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
 				{
-					//myLogger.debugLog("from "+testLine.From+" to "+testLine.To+ "obstructed by voxel", "Obstructed()");
+					myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by voxel", "Obstructed()");
 					return true;
 				}
 
@@ -488,7 +480,7 @@ namespace Rynchodon.Weapons
 					foreach (Line testLine in AllTestLines)
 						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
 						{
-							//myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
+							myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
 							return true;
 						}
 					continue;
