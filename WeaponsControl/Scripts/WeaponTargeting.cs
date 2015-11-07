@@ -396,7 +396,7 @@ namespace Rynchodon.Weapons
 			}
 
 			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
-			float firingThreshold = 2.5f + relativeSpeed / 10f;
+			float firingThreshold = 2.5f + relativeSpeed / 100f;
 
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
 

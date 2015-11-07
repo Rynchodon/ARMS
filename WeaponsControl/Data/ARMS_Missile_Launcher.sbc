@@ -7,6 +7,10 @@
         <TypeId>SmallMissileLauncher</TypeId>
         <SubtypeId>Souper_R12VP_Launcher</SubtypeId>
       </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
       <DisplayName>Cruise Missile Launcher</DisplayName>
       <public>false</public>
       <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
@@ -52,6 +56,10 @@
         <TypeId>SmallMissileLauncher</TypeId>
         <SubtypeId>Souper_R8EA_Launcher</SubtypeId>
       </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
       <DisplayName>EMP Missile Launcher</DisplayName>
       <public>false</public>
       <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
@@ -97,6 +105,10 @@
         <TypeId>SmallMissileLauncher</TypeId>
         <SubtypeId>Souper_B3MP_Launcher</SubtypeId>
       </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
       <DisplayName>Swarm Missile Launcher</DisplayName>
       <public>false</public>
       <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>

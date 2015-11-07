@@ -47,8 +47,8 @@ namespace Rynchodon.Weapons
 			if (definition == null)
 				throw new NullReferenceException("definition");
 
-			minElevation = (float)Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
-			maxElevation = (float)((float)definition.MaxElevationDegrees / 180 * Math.PI);
+			minElevation = (float)((float)definition.MinElevationDegrees / 180 * Math.PI); // Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
+			maxElevation = (float)Math.Max((float)definition.MaxElevationDegrees / 180 * Math.PI, -0.6);
 			minAzimuth = (float)((float)definition.MinAzimuthDegrees / 180 * Math.PI);
 			maxAzimuth = (float)((float)definition.MaxAzimuthDegrees / 180 * Math.PI);
 
@@ -108,7 +108,12 @@ namespace Rynchodon.Weapons
 
 			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
-			return elevation >= minElevation && elevation <= maxElevation && azimuth >= minAzimuth && azimuth <= maxAzimuth;
+			if (elevation < minElevation || elevation > maxElevation || azimuth < minAzimuth || azimuth > maxAzimuth)
+			{
+				myLogger.debugLog("cannot rotate to " + targetPoint + ", azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
+				return false;
+			}
+			return true;
 		}
 
 		/// <remarks>

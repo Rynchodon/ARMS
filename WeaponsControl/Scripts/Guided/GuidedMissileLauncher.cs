@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Weapons;
@@ -19,7 +18,6 @@ namespace Rynchodon.Weapons.Guided
 		#region Static
 
 		private static Logger staticLogger = new Logger("GuidedMissileLauncher");
-		//private static List<GuidedMissileLauncher> AllLaunchers = new List<GuidedMissileLauncher>();
 
 		static GuidedMissileLauncher()
 		{
@@ -32,12 +30,11 @@ namespace Rynchodon.Weapons.Guided
 			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			staticLogger = null;
-			//AllLaunchers = null;
 		}
 
 		public static bool IsGuidedMissileLauncher(IMyCubeBlock block)
 		{
-			return block is Ingame.IMyUserControllableGun; // all of them!
+			return block is Ingame.IMyUserControllableGun && WeaponDescription.GetFor(block).GuidedMissileLauncher;
 		}
 
 		private static void Entities_OnEntityAdd(IMyEntity obj)
@@ -101,6 +98,11 @@ namespace Rynchodon.Weapons.Guided
 
 		private bool MissileBelongsTo(IMyEntity missile)
 		{
+			if (!(CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
+			{
+				myLogger.debugLog("Not mine, not shooting", "MissileBelongsTo()");
+				return false;
+			}
 			Vector3D local = Vector3D.Transform(missile.GetPosition(), CubeBlock.WorldMatrixNormalizedInv);
 			if (MissileSpawnBox.Contains(local) != ContainmentType.Contains)
 			{
