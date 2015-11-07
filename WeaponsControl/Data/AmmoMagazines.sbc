@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AmmoMagazines>
+  
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Cruise Missile</DisplayName>
+      <Icon>Textures\Icon\Souper_Cruise_Missile.dds</Icon>
+      <Size>
+        <X>1</X>
+        <Y>3</Y>
+        <Z>1</Z>
+      </Size>
+      <Mass>450</Mass>
+      <Volume>600</Volume>
+      <Model>Models\Weapons\Souper_R12VP_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="Souper_R12VP_Missile" />
+    </AmmoMagazine>
+    
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ARMS_TestMissile_C2MA</SubtypeId>
+      </Id>
+      <DisplayName>ARMS Test Missile C2MA</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>18</Capacity>
+      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2MA" />
+    </AmmoMagazine>
+    
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>ARMS_TestMissile_C2EA</SubtypeId>
+      </Id>
+      <DisplayName>ARMS Test Missile C2EA</DisplayName>
+      <Icon>Textures\GUI\Icons\ammo\Small_Rocket.dds</Icon>
+      <Size>
+        <X>1.2</X>
+        <Y>0.2</Y>
+        <Z>0.2</Z>
+      </Size>
+      <Mass>45</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Projectile_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="ARMS_TestMissile_C2EA" />
+    </AmmoMagazine>
+	
+  </AmmoMagazines>
+</Definitions>

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Rynchodon.DataStructures;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;

@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Weapons>
+  
+    <Weapon>
+      <Id>
+        <TypeId>WeaponDefinition</TypeId>
+        <SubtypeId>Souper_Cruise_Launcher</SubtypeId>
+      </Id>
+      <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
+      <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
+      <AmmoMagazines>
+       <AmmoMagazine Subtype="Souper_R12VP_Missile" />
+      </AmmoMagazines>
+    </Weapon>
+  
+    <Weapon>
+      <Id>
+        <TypeId>WeaponDefinition</TypeId>
+        <SubtypeId>ARMS_TestLauncher_C2MA</SubtypeId>
+      </Id>
+      <MissileAmmoData RateOfFire="600" ShootSoundName="WepShipSmallMissileShot" />
+      <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
+      <AmmoMagazines>
+       <AmmoMagazine Subtype="ARMS_TestMissile_C2MA" />
+      </AmmoMagazines>
+    </Weapon>
+  
+    <Weapon>
+      <Id>
+        <TypeId>WeaponDefinition</TypeId>
+        <SubtypeId>ARMS_TestLauncher_C2EA</SubtypeId>
+      </Id>
+      <MissileAmmoData RateOfFire="3" ShootSoundName="WepShipSmallMissileShot" />
+      <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
+      <AmmoMagazines>
+       <AmmoMagazine Subtype="ARMS_TestMissile_C2EA" />
+      </AmmoMagazines>
+    </Weapon>
+    
+  </Weapons>
+</Definitions>

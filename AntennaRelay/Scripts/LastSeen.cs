@@ -23,8 +23,7 @@ namespace Rynchodon.AntennaRelay
 		public readonly DateTime LastSeenAt;
 		public readonly Vector3D LastKnownPosition;
 		public readonly RadarInfo Info;
-
-		private readonly Vector3 LastKnownVelocity;
+		public readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
 		public readonly DateTime LastBroadcast;
@@ -37,7 +36,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			this.Entity = entity;
 			this.LastSeenAt = DateTime.UtcNow;
-			this.LastKnownPosition = entity.WorldAABB.Center;
+			this.LastKnownPosition = entity.GetCentre();
 			if (entity.Physics == null)
 				this.LastKnownVelocity = Vector3D.Zero;
 			else
@@ -156,7 +155,7 @@ namespace Rynchodon.AntennaRelay
 		public Vector3D GetPosition()
 		{
 			TimeSpan sinceLastSeen = GetTimeSinceLastSeen();
-			return sinceLastSeen < Recent ? Entity.GetPosition()
+			return sinceLastSeen < Recent ? Entity.GetCentre()
 				: LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 

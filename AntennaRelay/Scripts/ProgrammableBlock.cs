@@ -9,7 +9,7 @@ namespace Rynchodon.AntennaRelay
 	/// Keeps track of transmissions for a programmable block. A programmable block cannot relay, so it should only receive messages for iteself.
 	/// When name changes, creates and sends a message.
 	/// </summary>
-	public class ProgrammableBlock : Receiver
+	public class ProgrammableBlock : ReceiverBlock
 	{
 
 		private Ingame.IMyProgrammableBlock myProgBlock;
@@ -36,7 +36,7 @@ namespace Rynchodon.AntennaRelay
 					myLogger.debugLog("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 					return;
 				}
-				Receiver.SendToAttached(CubeBlock, toSend);
+				ReceiverBlock.SendToAttached(CubeBlock, toSend);
 				myLogger.debugLog("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
 			}
 			catch (Exception e)

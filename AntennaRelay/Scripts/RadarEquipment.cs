@@ -358,7 +358,7 @@ namespace Rynchodon.AntennaRelay
 				if (myLastSeen.Count > 0 && CubeBlock != null)
 				{
 					myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
-					Receiver.SendToAttached(CubeBlock, myLastSeen);
+					ReceiverBlock.SendToAttached(CubeBlock, myLastSeen);
 				}
 
 				myThread.EnqueueAction(Update_OnThread);
