@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Radar_Jammer_Small</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\AP_Radar_Jammer.dds</Icon>
+	<CubeSize>Small</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="4" y="5" z="4" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Cubes\Radar_Jammer_Small.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Radar_Jammer_Small_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Radar_Jammer_Small_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Radar_Jammer_Small_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Bottom" StartX="0.73" StartY="0.73" EndX="3.27" EndY="3.27" />
+	</MountPoints>
+	<MirroringX>None</MirroringX>
+	<MirroringY>None</MirroringY>
+	<MirroringZ>None</MirroringZ>
+	<BlockPairName>AP_Radar_Jammer</BlockPairName>
+</Definition>
