@@ -134,23 +134,35 @@ namespace Rynchodon.Update
 
 				#region Fixed
 
-				Action<IMyCubeBlock> constructor = block => {
-					FixedWeapon w = new FixedWeapon(block);
-					RegisterForUpdates(1, w.Update_Targeting, block);
-					if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
-					{
-						GuidedMissileLauncher gml = new GuidedMissileLauncher(w);
-						RegisterForUpdates(1, gml.Update1, block);
-					}
-				};
+				Action<IMyCubeBlock> constructor;
+
+				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
+				{
+					constructor = block => {
+						FixedWeapon w = new FixedWeapon(block);
+						RegisterForUpdates(1, w.Update_Targeting, block);
+						if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
+						{
+							GuidedMissileLauncher gml = new GuidedMissileLauncher(w);
+							RegisterForUpdates(1, gml.Update1, block);
+						}
+					};
+
+					RegisterForUpdates(1, GuidedMissile.Update1);
+					RegisterForUpdates(10, GuidedMissile.Update10);
+					RegisterForUpdates(100, GuidedMissile.Update100);
+				}
+				else
+				{
+					constructor = block => {
+						FixedWeapon w = new FixedWeapon(block);
+						RegisterForUpdates(1, w.Update_Targeting, block);
+					};
+				}
 
 				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), constructor);
 				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), constructor);
 				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncherReload), constructor);
-
-				RegisterForUpdates(1, GuidedMissile.Update1);
-				RegisterForUpdates(10, GuidedMissile.Update10);
-				RegisterForUpdates(100, GuidedMissile.Update100);
 
 				#endregion
 

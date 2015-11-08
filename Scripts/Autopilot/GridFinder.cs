@@ -238,9 +238,19 @@ namespace Rynchodon.Autopilot
 				if (Fatblock == null || !m_controller.CubeBlock.canControlBlock(Fatblock))
 					return false;
 
-				string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().LowerRemoveWhitespace()
-						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
+				string blockName;
+				try
+				{
+					blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
+							? Fatblock.getNameOnly().LowerRemoveWhitespace()
+							: Fatblock.DisplayNameText.LowerRemoveWhitespace();
+				}
+				catch (NullReferenceException nre)
+				{
+					m_logger.alwaysLog("Exception: " + nre, "BlockSearch()", Logger.severity.ERROR);
+					m_logger.alwaysLog("Fatblock: " + Fatblock + ", DefinitionDisplayNameText: " + Fatblock.DefinitionDisplayNameText + ", DisplayNameText: " + Fatblock.DisplayNameText + ", Name only: " + Fatblock.getNameOnly(), "BlockSearch()", Logger.severity.ERROR);
+					throw nre;
+				}
 
 				if (BlockCondition != null && !BlockCondition(Fatblock))
 					return false;

@@ -46,7 +46,6 @@ To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
-bUseColourState - Autopilot will change colour of Autopilot block
 bAllowWeaponControl - Enables Weapon Control and E command
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
 fDefaultSpeed - the desired minimum speed, when not using V
@@ -62,9 +61,7 @@ These are all the known issues with ARMS. If an issue is not listed here, I do n
 
 Merging grids will cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
 
-Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
-
-If using colour states, the model for the Autopilot block may become displaced. You can disable bUseColourState in the settings file.
+Autopilot cannot fly near / through hanger doors; piston and rotor doors will work.
 
 The Phased array Radar model has a small texture issue on DX9.
 

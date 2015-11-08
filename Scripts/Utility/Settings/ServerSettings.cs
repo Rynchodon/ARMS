@@ -15,7 +15,7 @@ namespace Rynchodon.Settings
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
+			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bUseRemoteControl, bUseColourState,
 			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sWeaponCommandsNPC
@@ -56,7 +56,9 @@ namespace Rynchodon.Settings
 
 		private static Logger myLogger = new Logger("ServerSettings");
 
-		public static bool ServerSettingsLoaded { get; private set; }
+		private static bool SettingsLoaded;
+
+		public static bool ServerSettingsLoaded { get { return SettingsLoaded; } }
 
 		static ServerSettings()
 		{
@@ -65,7 +67,7 @@ namespace Rynchodon.Settings
 
 			if (MyAPIGateway.Multiplayer.IsServer)
 			{
-				ServerSettingsLoaded = true;
+				SettingsLoaded = true;
 				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Server_ReceiveMessage);
 
 				fileVersion = readAll();
@@ -78,15 +80,7 @@ namespace Rynchodon.Settings
 			else
 			{
 				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Client_ReceiveMessage);
-
-				byte[] message = new byte[8];
-				int pos = 0;
-				ByteConverter.AppendBytes(MyAPIGateway.Session.Player.SteamUserId, message, ref pos);
-
-				if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
-					myLogger.debugLog("Sent request to server", "ServerSettings()", Logger.severity.INFO);
-				else
-					myLogger.alwaysLog("Failed to send request to server", "ServerSettings()", Logger.severity.ERROR);
+				RequestSettingsFromServer();
 			}
 		}
 
@@ -119,19 +113,18 @@ namespace Rynchodon.Settings
 
 				myLogger.debugLog("Received request from: " + SteamUserId, "Server_ReceiveMessage()");
 
-				message = new byte[17];
-				pos = 0;
+				List<byte> send = new List<byte>();
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowAutopilot), send);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowGuidedMissile), send);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowRadar), send);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowWeaponControl), send);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseColourState), send);
+				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseRemoteControl), send);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fDefaultSpeed), send);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxSpeed), send);
+				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxWeaponRange), send);
 
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowAutopilot), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowRadar), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowWeaponControl), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseColourState), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseRemoteControl), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fDefaultSpeed), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxSpeed), message, ref pos);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxWeaponRange), message, ref pos);
-
-				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, message, SteamUserId))
+				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, send.ToArray(), SteamUserId))
 					myLogger.debugLog("Sent settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.INFO);
 				else
 					myLogger.alwaysLog("Failed to send settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.ERROR);
@@ -149,6 +142,7 @@ namespace Rynchodon.Settings
 				int pos = 0;
 		
 				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowRadar, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowWeaponControl, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bUseColourState, ByteConverter.GetBool(message, ref pos));
@@ -157,10 +151,29 @@ namespace Rynchodon.Settings
 				SetSetting<float>(SettingName.fMaxSpeed, ByteConverter.GetFloat(message, ref pos));
 				SetSetting<float>(SettingName.fMaxWeaponRange, ByteConverter.GetFloat(message, ref pos));
 
-				ServerSettingsLoaded = true;
+				SettingsLoaded = true;
 			}
 			catch (Exception ex)
 			{ myLogger.alwaysLog("Exception: " + ex, "Client_ReceiveMessage()", Logger.severity.ERROR); }
+		}
+
+		private static void RequestSettingsFromServer()
+		{
+			if (MyAPIGateway.Session.Player == null)
+			{
+				myLogger.alwaysLog("Could not get player, not requesting server settings.", "RequestSettingsFromServer()", Logger.severity.WARNING);
+				SettingsLoaded = true;
+				return;
+			}
+
+			byte[] message = new byte[8];
+			int pos = 0;
+			ByteConverter.AppendBytes(MyAPIGateway.Session.Player.SteamUserId, message, ref pos);
+
+			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
+				myLogger.debugLog("Sent request to server", "RequestSettingsFromServer()", Logger.severity.INFO);
+			else
+				myLogger.alwaysLog("Failed to send request to server", "RequestSettingsFromServer()", Logger.severity.ERROR);
 		}
 
 		/// <summary>
@@ -169,6 +182,7 @@ namespace Rynchodon.Settings
 		private static void buildSettings()
 		{
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowGuidedMissile, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseColourState, new SettingSimple<bool>(true));

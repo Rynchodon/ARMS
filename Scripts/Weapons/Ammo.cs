@@ -102,7 +102,6 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		public const string ClusterDescriptionString = "IsClusterPart=true";
 		private static Dictionary<MyDefinitionId, Ammo> KnownDefinitions_Ammo = new Dictionary<MyDefinitionId, Ammo>();
 
 		static Ammo()
@@ -153,7 +152,7 @@ namespace Rynchodon.Weapons
 
 		private readonly Logger myLogger;
 
-		public Ammo(MyAmmoMagazineDefinition ammoMagDef)
+		private Ammo(MyAmmoMagazineDefinition ammoMagDef)
 		{
 			MyAmmoDefinition ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoMagDef.AmmoDefinitionId);
 			this.myLogger = new Logger("Ammo", () => ammoMagDef.Id.ToString(), () => ammoDef.Id.ToString());

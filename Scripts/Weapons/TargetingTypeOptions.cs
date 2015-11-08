@@ -111,8 +111,6 @@ namespace Rynchodon.Weapons
 
 	public class Target
 	{
-		private static Dictionary<long, int> WeaponsFiringAt = new Dictionary<long, int>();
-
 		static Target()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
@@ -121,15 +119,6 @@ namespace Rynchodon.Weapons
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			WeaponsFiringAt = null;
-		}
-
-		public static int WeaponsTargeting(long entityId)
-		{
-			int value;
-			if (WeaponsFiringAt.TryGetValue(entityId, out value))
-				return value;
-			return 0;
 		}
 
 		public readonly IMyEntity Entity;
@@ -154,17 +143,6 @@ namespace Rynchodon.Weapons
 			this.TType = tType;
 			this.FiringDirection = firingDirection;
 			this.InterceptionPoint = interceptionPoint;
-
-			if ((TType & TargetType.Projectile) != 0)
-			{
-				int weapons;
-				if (!WeaponsFiringAt.TryGetValue(Entity.EntityId, out weapons))
-					weapons = 0;
-				weapons++;
-				WeaponsFiringAt[Entity.EntityId] = weapons;
-				if (weapons < 1)
-					throw new Exception("weaponsOnTarget < 1");
-			}
 		}
 
 		/// <summary>
@@ -177,26 +155,6 @@ namespace Rynchodon.Weapons
 			this.LastSeen = target;
 		}
 
-		~Target()
-		{
-			if ((TType & TargetType.Projectile) != 0)
-				try
-				{
-					if (Entity != null)
-					{
-						int weapons = WeaponsFiringAt[Entity.EntityId];
-						if (weapons == 1)
-							WeaponsFiringAt.Remove(Entity.EntityId);
-						else
-							WeaponsFiringAt[Entity.EntityId] = weapons - 1;
-					}
-				}
-				catch (Exception ex)
-				{
-					(new Logger("TargetingTypeOptions")).alwaysLog("Exception: " + ex, "~Target()", Logger.severity.ERROR);
-				}
-		}
-
 		public Vector3D GetPosition()
 		{
 			if (LastSeen != null)
@@ -206,7 +164,7 @@ namespace Rynchodon.Weapons
 				// GetPosition() is near feet
 				return Entity.WorldMatrix.Up * 1.25 + Entity.GetPosition();
 
-			return Entity.GetPosition();
+			return Entity.GetCentre();
 		}
 
 		public Vector3 GetLinearVelocity()

@@ -16,7 +16,8 @@ namespace Rynchodon.Weapons
 		private bool ControllingEngager;
 		private MotorTurret MyMotorTurret = null;
 
-		private Logger myLogger;
+		private readonly Logger myLogger;
+		private readonly bool AllowFighterControl;
 
 		public FixedWeapon(IMyCubeBlock block)
 			: base(block)
@@ -24,6 +25,8 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("FixedWeapon", block);
 			Registrar.Add(CubeBlock, this);
 			myLogger.debugLog("Initialized", "FixedWeapon()");
+
+			AllowFighterControl = WeaponDescription.GetFor(block).AllowFighterControl;
 
 			AllowedState = State.GetOptions;
 		}
@@ -34,7 +37,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public bool EngagerTakeControl()
 		{
-			if (CanControl && MyMotorTurret == null)
+			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
 				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
 				ControllingEngager = true;

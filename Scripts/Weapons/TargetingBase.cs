@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 using Sandbox.Common.ObjectBuilders;
@@ -13,6 +14,27 @@ namespace Rynchodon.Weapons
 	public abstract class TargetingBase
 	{
 
+		private static Dictionary<long, short> WeaponsTargetingProjectile = new Dictionary<long, short>();
+
+		static TargetingBase()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			WeaponsTargetingProjectile = null;
+		}
+
+		private static short GetWeaponsTargetingProjectile(IMyEntity entity)
+		{
+			short result;
+			if (!WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out result))
+				result = 0;
+			return result;
+		}
+
 		public readonly IMyEntity MyEntity;
 		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
 		public readonly IMyCubeBlock CubeBlock;
@@ -21,19 +43,50 @@ namespace Rynchodon.Weapons
 		/// <summary>Iff true, the projectile will attempt to chase-down a target.</summary>
 		protected bool TryHard = false;
 		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
-		/// <summary>The target that is being processed.</summary>
-		protected Target myTarget;
 
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
+
 	
 		private readonly Logger myLogger;
 
+		private Target value_CurrentTarget;
+		/// <summary>The target that is being processed.</summary>
+		protected Target myTarget;
 		public TargetingOptions Options { get; protected set; }
 		/// <summary>The target that has been chosen.</summary>
-		public Target CurrentTarget { get; private set; }
+		public Target CurrentTarget
+		{
+			get { return value_CurrentTarget; }
+			set
+			{
+				if (value_CurrentTarget != null && value != null && value_CurrentTarget.Entity.EntityId == value.Entity.EntityId)
+				{
+					value_CurrentTarget = value;
+					return;
+				}
+
+				if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
+				{
+					short count = WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId];
+					if (count == 1)
+						WeaponsTargetingProjectile.Remove(value_CurrentTarget.Entity.EntityId);
+					else
+						WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId] = --count;
+				}
+				if (value != null && (value.TType & TargetType.Projectile) != 0)
+				{
+					short count;
+					if (!WeaponsTargetingProjectile.TryGetValue(value.Entity.EntityId, out count))
+						count = 0;
+					WeaponsTargetingProjectile[value.Entity.EntityId] = ++count;
+				}
+
+				value_CurrentTarget = value;
+			}
+		}
 
 		public TargetingBase(IMyEntity entity, IMyCubeBlock controllingBlock)
 		{
@@ -497,21 +550,23 @@ namespace Rynchodon.Weapons
 			List<IMyEntity> targetsOfType;
 			if (Available_Targets.TryGetValue(tType, out targetsOfType))
 			{
-				foreach (IMyEntity entity in targetsOfType)
+				var sorted = targetsOfType.OrderBy(entity => GetWeaponsTargetingProjectile(entity));
+
+				foreach (IMyEntity entity in sorted)
 				{
 					if (entity.Closed)
 						continue;
 
-					bool isMissile = entity.ToString().StartsWith("MyMissile");
+					//bool isMissile = entity.ToString().StartsWith("MyMissile");
 
-					if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 1)
-					{
-						myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
-						continue;
-					}
+					//if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 10)
+					//{
+					//	myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
+					//	continue;
+					//}
 
 					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || isMissile || entity.GetLinearVelocity().LengthSquared() > 100))
+					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.ToString().StartsWith("MyMissile")))
 						continue;
 
 					IMyEntity projectile = entity;
@@ -590,7 +645,7 @@ namespace Rynchodon.Weapons
 				BlacklistTarget();
 				return;
 			}
-			myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection, "SetFiringDirection()");
+			myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			CurrentTarget = myTarget;
 		}
 
@@ -626,6 +681,7 @@ namespace Rynchodon.Weapons
 				// Shot is too slow to intercept target.
 				if (TryHard)
 				{
+					myLogger.debugLog("shot too slow, trying anyway", "FindInterceptVector()");
 					// direction is a trade-off between facing the target and fighting tangential velocity
 					Vector3 direction = directionToTarget + displacementToTarget * 0.01f + shotVelTang;
 					direction.Normalize();
@@ -633,6 +689,7 @@ namespace Rynchodon.Weapons
 					myTarget.InterceptionPoint = shotOrigin + direction * distanceToTarget;
 					return;
 				}
+				myLogger.debugLog("shot too slow, blacklisting", "FindInterceptVector()");
 				BlacklistTarget();
 				return;
 			}
