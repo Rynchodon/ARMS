@@ -2,9 +2,7 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<CubeBlocks>
 
-
-
-<Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>AP_Radar_Jammer_Large</SubtypeId>
@@ -46,16 +44,13 @@
       <Center x="0" y="0" z="1" />
       <BuildTimeSeconds>45</BuildTimeSeconds>
       <EdgeType>Light</EdgeType>
-      
       <ResourceSinkGroup>Utility</ResourceSinkGroup>
-<MaxRange>50000</MaxRange>
-      
+      <MaxRange>50000</MaxRange>
       <DamageEffectId>213</DamageEffectId>
       <DamagedSound>ParticleWeapExpl</DamagedSound>
     </Definition>
 
-
-<Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>AP_Radar_Jammer_Small</SubtypeId>
@@ -97,24 +92,11 @@
       <Center x="0" y="0" z="1" />
       <BuildTimeSeconds>20</BuildTimeSeconds>
       <EdgeType>Light</EdgeType>
-      
       <ResourceSinkGroup>Utility</ResourceSinkGroup>
-      
-<MaxRange>50000</MaxRange>
+      <MaxRange>50000</MaxRange>
       <DamageEffectId>213</DamageEffectId>
       <DamagedSound>ParticleWeapExpl</DamagedSound>
     </Definition>
 
-
-
-		
-
-
-
-
-
-
-
 	</CubeBlocks>
-
 </Definitions>
