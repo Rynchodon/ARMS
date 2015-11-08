@@ -8,7 +8,7 @@
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <DisplayName>Cruise Missile</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Souper_R12VP_Missile.dds</Icon>
+      <Icon>Textures\Icon\Souper_R12VP_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="550." TypeId="Ingot" SubtypeId="Iron" />
         <Item Amount="70." TypeId="Ingot" SubtypeId="Nickel" />
@@ -27,7 +27,7 @@
         <SubtypeId>Souper_R8EA_Missile</SubtypeId>
       </Id>
       <DisplayName>Cruise Missile</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Souper_R8EA_Missile.dds</Icon>
+      <Icon>Textures\Icon\Souper_R8EA_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="550." TypeId="Ingot" SubtypeId="Iron" />
         <Item Amount="70." TypeId="Ingot" SubtypeId="Nickel" />
@@ -46,7 +46,7 @@
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
       <DisplayName>Cruise Missile</DisplayName>
-      <Icon>Textures\GUI\Icons\ammo\Souper_B3MP_Missile.dds</Icon>
+      <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="550." TypeId="Ingot" SubtypeId="Iron" />
         <Item Amount="70." TypeId="Ingot" SubtypeId="Nickel" />

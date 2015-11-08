@@ -62,7 +62,7 @@ namespace Rynchodon.Weapons
 			get { return value_CurrentTarget; }
 			set
 			{
-				if (value_CurrentTarget != null && value != null && value_CurrentTarget.Entity.EntityId == value.Entity.EntityId)
+				if (value_CurrentTarget != null && value != null && value_CurrentTarget.Entity == value.Entity)
 				{
 					value_CurrentTarget = value;
 					return;
