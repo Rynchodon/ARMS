@@ -28,6 +28,12 @@ Cannot detect objects below it or directly above.
 Functions as an antenna and broadcasting can be disabled.
 Can detect other radar at long range.
 
+[u]Radar Jammer[/u]
+Jams an enemy radar, higher quality radar are harder to jam.
+If there is an enemy radar in range, will cause interference with all nearby radars.
+Cannot jam radar above or below it.
+Functions as an antenna and broadcasting can be disabled.
+
 [h1]GPS Markers[/h1]
 ARMS will add GPS entries for detected grids. If you delete these bad things will happen.
 GPS entries will not be added for a player if the player can see a beacon or broadcasting antenna on the grid.

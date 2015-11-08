@@ -7,6 +7,7 @@ using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -60,11 +61,11 @@ namespace Rynchodon.AntennaRelay
 			/// <summary>Not implemented. How well the signal can penetrate a solid object.</summary>
 			public float Penetration = 0;
 
-			/// <summary>Reduces the effective strength of electronic jamming by this amount.</summary>
-			public float JammingResistance = 0;
+			/// <summary>How much the jamming effect affects this radar. In the range [1-0].</summary>
+			public float JammingEffect = 1f;
 
 			/// <summary>How much of the jamming effect is applied to friendly radar and radar beyond the MaximumTargets limit.</summary>
-			public float JamIncidental = 0.1f;
+			public float JamIncidental = 0.2f;
 
 			/// <summary>
 			/// <para>Affects how much of the signal is reflected back.</para>
@@ -194,7 +195,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static Logger staticLogger = new Logger("N/A", "RadarEquipment");
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
-		private static Dictionary<string, Definition> AllDefinitions = new Dictionary<string, Definition>();
+		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
 
 		static RadarEquipment()
 		{
@@ -218,7 +219,7 @@ namespace Rynchodon.AntennaRelay
 		private static Definition GetDefinition(IMyCubeBlock block)
 		{
 			Definition result;
-			string ID = block.BlockDefinition.ToString();
+			SerializableDefinitionId ID = block.BlockDefinition;
 
 			if (AllDefinitions.TryGetValue(ID, out result))
 			{
@@ -232,6 +233,13 @@ namespace Rynchodon.AntennaRelay
 			MyCubeBlockDefinition def = DefinitionCache.GetCubeBlockDefinition(block);
 			if (def == null)
 				throw new NullReferenceException("no block definition found for " + block.getBestName());
+
+			if (string.IsNullOrWhiteSpace(def.DescriptionString))
+			{
+				staticLogger.debugLog("No description, using defaults for " + ID, "GetDefinition()", Logger.severity.WARNING);
+				AllDefinitions.Add(ID, result);
+				return result;
+			}
 
 			XML_Amendments<Definition> ammend = new XML_Amendments<Definition>(result);
 			ammend.AmendAll(def.DescriptionString, true);
@@ -280,6 +288,8 @@ namespace Rynchodon.AntennaRelay
 		private float PowerLevel_Current = 0f;
 
 		private float PowerRatio_Jammer = 0f;
+
+		private float PowerLevel_RadarEffective = 0f;
 
 		private int deliberateJamming = 0;
 
@@ -607,11 +617,11 @@ namespace Rynchodon.AntennaRelay
 
 		private void ActiveDetection()
 		{
-			float effectivePowerLevel = PowerLevel_Radar;
+			PowerLevel_RadarEffective = PowerLevel_Radar;
 
-			if (effectivePowerLevel <= 0)
+			if (PowerLevel_RadarEffective <= 0f)
 			{
-				myLogger.debugLog("no detection possible, effective power level: " + effectivePowerLevel, "ActiveDetection()", Logger.severity.DEBUG);
+				myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.DEBUG);
 				return;
 			}
 
@@ -621,16 +631,17 @@ namespace Rynchodon.AntennaRelay
 				foreach (float jamStrength in beingJammedBy.Values)
 					jamSum += jamStrength;
 
-				jamSum -= myDefinition.JammingResistance;
+				jamSum *= myDefinition.JammingEffect;
 
-				if (jamSum > 0)
-					effectivePowerLevel -= jamSum;
+				if (jamSum > 0f)
+					PowerLevel_RadarEffective -= jamSum;
 
-				myLogger.debugLog("being jammed by " + beingJammedBy.Count + " jammers, power available: " + PowerLevel_Radar + ", effective power level: " + effectivePowerLevel, "ActiveDetection()", Logger.severity.TRACE);
+				myLogger.debugLog("being jammed by " + beingJammedBy.Count + " jammers, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.TRACE);
 
-				if (effectivePowerLevel <= 0)
+				if (PowerLevel_RadarEffective <= 0f)
 				{
-					myLogger.debugLog("no detection possible, effective power level: " + effectivePowerLevel, "ActiveDetection()", Logger.severity.DEBUG);
+					myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.DEBUG);
+					PowerLevel_RadarEffective = 0f;
 					return;
 				}
 			}
@@ -642,13 +653,13 @@ namespace Rynchodon.AntennaRelay
 				if (otherGrid.MarkedForClose || !otherGrid.Save)
 					continue;
 
-				if (SignalCannotReach(otherGrid, effectivePowerLevel * myDefinition.SignalEnhance))
+				if (SignalCannotReach(otherGrid, PowerLevel_RadarEffective * myDefinition.SignalEnhance))
 					continue;
 
 				float volume = otherGrid.LocalAABB.Volume();
 				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition()) / myDefinition.SignalEnhance;
-				float radarSignature = (effectivePowerLevel - distance) * reflectivity - distance;
+				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
 				int decoys = WorkingDecoys(otherGrid);
 				radarSignature += decoySignal * decoys;
 
@@ -818,6 +829,7 @@ namespace Rynchodon.AntennaRelay
 		private float previous_PowerLevel_Current;
 		private int previous_deliberateJamming;
 		private float previous_PowerLevel_Radar;
+		private float previous_PowerLevel_RadarEffective;
 		private int previous_beingJammedBy_Count;
 		private int previous_detectedObjects_Count;
 
@@ -842,11 +854,18 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			if (IsRadar)
+			{
 				if (PowerLevel_Radar != previous_PowerLevel_Radar)
 				{
 					needToRefresh = true;
 					previous_PowerLevel_Radar = PowerLevel_Radar;
 				}
+				if (PowerLevel_RadarEffective != previous_PowerLevel_RadarEffective)
+				{
+					needToRefresh = true;
+					previous_PowerLevel_RadarEffective = PowerLevel_RadarEffective;
+				}
+			}
 
 			if (beingJammedBy.Count != previous_beingJammedBy_Count)
 			{
@@ -888,7 +907,7 @@ namespace Rynchodon.AntennaRelay
 				if (PowerLevel_Radar > 0)
 				{
 					customInfo.AppendLine("Radar power level: " + (int)PowerLevel_Radar);
-					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_Radar / 2 * myDefinition.SignalEnhance));
+					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_RadarEffective / 2 * myDefinition.SignalEnhance));
 				}
 
 			if (beingJammedBy.Count > 0)

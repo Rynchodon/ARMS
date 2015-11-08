@@ -12,6 +12,7 @@
         MaxTargets_Tracking=3
         MaxPowerLevel=40000
         SignalEnhance=1.125
+        JammingEffect=0.8
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
@@ -59,6 +60,7 @@
         MaxTargets_Tracking=3
         MaxPowerLevel=16000
         SignalEnhance=1.125
+        JammingEffect=0.8
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>

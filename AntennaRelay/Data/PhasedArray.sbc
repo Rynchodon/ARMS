@@ -12,6 +12,7 @@
         MaxTargets_Tracking=10
         MaxPowerLevel=20000
         SignalEnhance=2
+        JammingEffect=0.2
         PassiveDetect_Radar=25000
         MinElevation=-0.8
         MaxElevation=1.4
@@ -63,6 +64,7 @@
         MaxTargets_Tracking=10
         MaxPowerLevel=10000
         SignalEnhance=2
+        JammingEffect=0.2
         PassiveDetect_Radar=35000
         MinElevation=-0.8
         MaxElevation=1.4
