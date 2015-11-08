@@ -14,7 +14,7 @@
       </Description>
       <DisplayName>Radar Jammer</DisplayName>
       <public>false</public>
-      <Icon>Textures\Icon\AP_Radar_Jammer.dds</Icon>
+      <Icon>Textures\Icons\AP_Radar_Jammer.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="4" y="5" z="4" />
@@ -68,7 +68,7 @@
       </Description>
       <DisplayName>Radar Jammer</DisplayName>
       <public>false</public>
-      <Icon>Textures\Icon\AP_Radar_Jammer.dds</Icon>
+      <Icon>Textures\Icons\AP_Radar_Jammer.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="4" y="5" z="4" />
