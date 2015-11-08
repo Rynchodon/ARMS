@@ -15,7 +15,7 @@
 		<Parameter Name="DiffuseTexture">Textures\Cubes\autopilot_me.dds</Parameter>
 		<!--material has no NormalTexture-->
 		<Parameter Name="ColorMetalTexture">Textures\Cubes\autopilot_cm.dds</Parameter>
-		<Parameter Name="NormalGlossTexture">Textures\Cubes\autopilot_ng.dds</Parameter>
+		<!--material has no NormalGlossTexture-->
 		<Parameter Name="AddMapsTexture">Textures\Cubes\autopilot_add.dds</Parameter>
 		<!--material has no AlphamaskTexture-->
 	</Material>

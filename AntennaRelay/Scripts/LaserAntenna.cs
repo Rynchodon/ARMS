@@ -5,7 +5,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class LaserAntenna : Receiver
+	public class LaserAntenna : ReceiverBlock
 	{
 
 		private Ingame.IMyLaserAntenna myLaserAntenna;

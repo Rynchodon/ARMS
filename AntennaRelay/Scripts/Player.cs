@@ -103,7 +103,14 @@ namespace Rynchodon.AntennaRelay
 
 		public void Update100()
 		{
-			UpdateGPS();
+			try
+			{
+				UpdateGPS();
+			}
+			catch (Exception ex)
+			{
+				myLogger.debugLog("Exception: " + ex, "Update100()", Logger.severity.ERROR);
+			}
 		}
 
 		public void receive(LastSeen seen)
@@ -197,9 +204,10 @@ namespace Rynchodon.AntennaRelay
 			relateData.distanceSeen.Sort();
 
 			int index;
-			for (index = 0; index < relateData.distanceSeen.Count; index++)
+			for (index = 0; index < relateData.distanceSeen.Count && index < relateData.activeGPS.Count; index++)
 			{
 				//myLogger.debugLog("getting seen...", "UpdateGPS()");
+				myLogger.debugLog(index >= relateData.distanceSeen.Count, "index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", "UpdateGPS()", Logger.severity.FATAL);
 				LastSeen seen = relateData.distanceSeen[index].Seen;
 
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
@@ -225,6 +233,7 @@ namespace Rynchodon.AntennaRelay
 
 				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
 				//myLogger.debugLog("index >= relateData.activeGPS.Count: " + (index >= relateData.activeGPS.Count), "UpdateGPS()");
+				myLogger.debugLog(index >= relateData.activeGPS.Count, "index(" + index + ") >= relateData.activeGPS.Count(" + relateData.activeGPS.Count + ")", "UpdateGPS()", Logger.severity.FATAL);
 				if (relateData.activeGPS[index] == null)
 				{
 					relateData.activeGPS[index] = MyAPIGateway.Session.GPS.Create(name, description, coords, true, true);

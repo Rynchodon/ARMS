@@ -10,6 +10,9 @@ namespace Rynchodon
 
 		#endregion SE Constants
 
+		/// <summary>Duration of one update in seconds.</summary>
+		public const float UpdateDuration = 1f / (float)UpdatesPerSecond;
+
 		/// <summary>The number of updates since mod started.</summary>
 		public static ulong UpdateCount = 0;
 

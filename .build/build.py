@@ -9,7 +9,7 @@
 #
 # The Dev version has logging enabled
 
-import datetime, errno, os.path, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
+import datetime, errno, os.path, re, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
 
 # script directories
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -31,6 +31,8 @@ finalRelDir_icons = 'Textures\GUI\Icons\Cubes\\'
 finalRelDir_model = 'Models\Cubes\\' # Large/Small will be added
 finalRelDir_texture = 'Textures\Models\Cubes\\'
 finalRelDir_texturePanel = 'Textures\Models\\'
+finalRelDir_weaponIcon = 'Textures\\GUI\\Icons\\ammo\\'
+finalRelDir_weaponModel = 'Models\\Weapons\\'
 
 # files that will need to be copied and the source (for errors)
 toCopy_icons = dict()
@@ -38,6 +40,8 @@ toCopy_modelLarge = dict()
 toCopy_modelSmall = dict()
 toCopy_texture = dict()
 toCopy_texturePanel = dict()
+toCopy_weaponIcon = dict()
+toCopy_weaponModel = dict()
 
 # tracks primary model sizes
 #     because L.O.D.s are referred to by primary model .xml file
@@ -51,7 +55,9 @@ warning = []
 info = []
 
 # in case build.ini is missing variables
+seContent = os.devnull
 mwmBuilder = os.devnull
+SpaceEngineers = os.devnull
 Zip7 = os.devnull
 mwmProcess = []
 modules = []
@@ -84,7 +90,7 @@ def eraseDir(l_dir):
         shutil.rmtree(l_dir)
 
 
-def parse_sbc(path):
+def parse_sbc(path, module):
 	try:
 		tree = ET.parse(path)
 	except Exception as e:
@@ -128,68 +134,104 @@ def parse_sbc(path):
 				primary_model[file_path[:-4]] = primary[:-4]
 				Model.set('File', finalRelDir_model + blockSize + '\\' + os.path.basename(file))
 
+
+	# Ammo Magazines
+	for MagDef in root.findall('./AmmoMagazines/AmmoMagazine'):
+		
+		# Icon
+		for Icon in MagDef.findall('./Icon'):
+			toCopy_weaponIcon[(module + '\\' + Icon.text).lower()] = path
+			Icon.text = finalRelDir_weaponIcon + os.path.basename(Icon.text)
+		
+		# Model
+		for Model in MagDef.findall('./Model'):
+			toCopy_weaponModel[(module + '\\' + Model.text).lower()] = path
+			Model.text = finalRelDir_weaponModel + os.path.basename(Model.text)
+	
+	
+	# Ammos
+	for Model in root.findall('./Ammos/Ammo/MissileModelName'):
+		toCopy_weaponModel[(module + '\\' + Model.text).lower()] = path
+		Model.text = finalRelDir_weaponModel + os.path.basename(Model.text)
+		
+		
 	# LCD textures
 	for texture in root.findall('./LCDTextures/LCDTextureDefinition/TexturePath'):
 		toCopy_texturePanel[(module + '\\' + texture.text).lower()] = path
 		texture.text = finalRelDir_texturePanel + os.path.basename(texture.text)
 	
+	
 	# write tree to finalDir
 	outDir = finalDir + '\Data\\'
 	createDir(outDir)
-	outFile = outDir + os.path.basename(path)
+	outFile = outDir + module + ' - ' + os.path.basename(path)
 	tree.write(outFile, 'utf-8', True)
 	
 	outDirDev = finalDirDev + '\Data\\'
 	createDir(outDirDev)
-	shutil.copy2(outFile, outDirDev + os.path.basename(path))
+	shutil.copy2(outFile, outDirDev + module + ' - '  + os.path.basename(path))
 
 
-def find_sbc(dataPath):
+def find_sbc(dataPath, module):
     for file in os.listdir(dataPath):
         if file.endswith('.sbc'):
-            parse_sbc(dataPath + '\\' + file)
+            parse_sbc(dataPath + '\\' + file, module)
 
 
 def parse_xml(path):
-    tree = ET.parse(path)
-    root = tree.getroot()
+	tree = ET.parse(path)
+	root = tree.getroot()
 
-    if (not root.tag == 'Model' or not root.get('Name')):
-        return False
+	if (not root.tag == 'Model' or not root.get('Name')):
+		return False
 
-    print ('\tparsing xml: '+os.path.basename(path))
+	print ('\tparsing xml: ' + os.path.basename(path))
 
-    # find textures
-    for Parameter in root.iter('Parameter'):
-        name = Parameter.get('Name')
-        if (name):
-            if ('texture' in name.lower()):
-                if (Parameter.text):
-                    toCopy_texture[(module + '\\' + Parameter.text).lower()] = path
-                    Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
+	# find textures
+	for Parameter in root.iter('Parameter'):
+		name = Parameter.get('Name')
+		if (name):
+			if ('texture' in name.lower()):
+				if (Parameter.text):
+					texturePath = startDir + '\\' + module + '\\' + Parameter.text
+					if (os.path.exists(texturePath)):
+						toCopy_texture[(module + '\\' + Parameter.text).lower()] = path
+						Parameter.text = finalRelDir_texture + os.path.basename(Parameter.text)
+					else:
+						texturePath = seContent + '\\' + Parameter.text
+						if (not os.path.exists(texturePath)):
+							if (Parameter.text.startswith("Textures")):
+								text = Parameter.text.replace("Textures", "Textures\\Models", 1)
+							else:
+								text = Parameter.text.replace("textures", "Textures\\Models", 1)
+							texturePath = seContent + '\\' + text
+							if (os.path.exists(texturePath)):
+								Parameter.text = text
+							else:
+								errors.append('ERROR: the file: ' + Parameter.text + '\nreferenced by:\n\t' + path + '\ncould not be found.')
 
-    outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
-    outFile = outDir + os.path.basename(path)
-    createDir(outDir)
-    tree.write(outFile, 'utf-8', True)
-    # copy stats so Mwm Builder knows if xml was updated
-    shutil.copystat(path, outFile)
+	outDir = os.path.dirname(path) + '\MwmBuilder\Content\\'
+	outFile = outDir + os.path.basename(path)
+	createDir(outDir)
+	tree.write(outFile, 'utf-8', True)
+	# copy stats so Mwm Builder knows if xml was updated
+	shutil.copystat(path, outFile)
 
-    # find L.O.D. models
-    for Model in root.findall('./LOD/Model'):
-        primary_mwm = path[:-3].replace(startDir + '\\', '') + 'mwm'
-        file = Model.text
-        if not Model.text.endswith('.mwm'):
-            file += '.mwm'
+	# find L.O.D. models
+	for Model in root.findall('./LOD/Model'):
+		primary_mwm = path[:-3].replace(startDir + '\\', '') + 'mwm'
+		file = Model.text
+		if not Model.text.endswith('.mwm'):
+			file += '.mwm'
 
-        try:
-            if model_size[(primary_mwm).lower()] == 'Large':
-                toCopy_modelLarge[(module + '\\' + file).lower()] = path
-            else:
-                toCopy_modelSmall[(module + '\\' + file).lower()] = path
-        except KeyError:
-            errors.append('ERROR: Cannot find main file for:\n\t' + file + '\nnot in data files:\n\t' + primary_mwm)
-    return True
+		try:
+			if model_size[(primary_mwm).lower()] == 'Large':
+				toCopy_modelLarge[(module + '\\' + file).lower()] = path
+			else:
+				toCopy_modelSmall[(module + '\\' + file).lower()] = path
+		except KeyError:
+			errors.append('ERROR: Cannot find main file for:\n\t' + file + '\nnot in data files:\n\t' + primary_mwm)
+	return True
 
 
 def copyHavokFile(path):
@@ -200,10 +242,10 @@ def copyHavokFile(path):
 		try:
 			pri_havok = primary_model[model] + '.hkt'
 			if not os.path.exists(pri_havok):
-				warning.append('WARN: no havok file for ' + path)
+				#warning.append('WARN: no havok file for ' + path)
 				return
 		except KeyError:
-			warning.append('WARN: no havok file for ' + path)
+			#warning.append('WARN: no havok file for ' + path)
 			return
 	else:
 		pri_havok = my_havok
@@ -377,18 +419,19 @@ def build_help():
 
 
 def copyToFinal(fileMap, finalRelDir):
-    finalModDir = finalDir +'\\' + finalRelDir
-    finalModDirDev = finalDirDev +'\\' + finalRelDir
-    createDir(finalModDir)
-    createDir(finalModDirDev)
+	finalModDir = finalDir +'\\' + finalRelDir
+	finalModDirDev = finalDirDev +'\\' + finalRelDir
+	createDir(finalModDir)
+	createDir(finalModDirDev)
 
-    for file in fileMap.keys():
-        #print ('copying file: ' + file + ', to ' + finalModDir)
-        try:
-            shutil.copy2(startDir + '\\' + file, finalModDir)
-            shutil.copy2(startDir + '\\' + file, finalModDirDev)
-        except (FileNotFoundError, OSError):
-            errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
+	for file in fileMap.keys():
+		try:
+			shutil.copy2(startDir + '\\' + file, finalModDir)
+			shutil.copy2(startDir + '\\' + file, finalModDirDev)
+		except (FileNotFoundError, OSError):
+			sePath = seContent + '\\' + re.sub(r".*?\\", '', file, 1)
+			if (not os.path.exists(sePath)):
+				errors.append('ERROR: the file: ' + file + '\nreferenced by:\n\t' + fileMap[file] + '\ncould not be found.')
 
 
 def copyWithExtension(l_from, l_to, l_ext):
@@ -405,11 +448,17 @@ if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
 
 if os.path.exists(buildIni):
-    exec(open(buildIni).read())
+	exec(open(buildIni).read())
+	if (os.path.exists(SpaceEngineers)):
+		mwmBuilder = SpaceEngineers + r"\Tools\MwmBuilder\MwmBuilder.exe"
+		seContent = SpaceEngineers + r"\Content"
+	else:	
+		print ('SpaceEngineers not found')
+		investigateBadPath("SpaceEngineers", SpaceEngineers)
 else:
     print ('build.ini not found')
     investigateBadPath("build.ini", buildIni)
-		
+
 createDir(finalDir)
 createDir(finalDirDev)
 
@@ -441,7 +490,7 @@ if not os.path.exists(mwmBuilder):
 for module in modules[:]:
     dataPath = startDir + '\\' + module + '\Data'
     if os.path.exists(dataPath):
-        find_sbc(dataPath)
+        find_sbc(dataPath, module)
 
 # process xml files and models
 for module in modules[:]:
@@ -484,6 +533,8 @@ copyToFinal(toCopy_modelLarge, finalRelDir_model + '\Large')
 copyToFinal(toCopy_modelSmall, finalRelDir_model + '\Small')
 copyToFinal(toCopy_texture, finalRelDir_texture)
 copyToFinal(toCopy_texturePanel, finalRelDir_texturePanel)
+copyToFinal(toCopy_weaponIcon, finalRelDir_weaponIcon)
+copyToFinal(toCopy_weaponModel, finalRelDir_weaponModel)
 
 # print errors & warnings
 print ('\n\nbuild finished with '+ str(len(errors)) + ' errors and ' + str(len(warning)) + ' warnings:')

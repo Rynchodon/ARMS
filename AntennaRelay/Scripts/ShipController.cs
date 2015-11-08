@@ -6,7 +6,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Keeps track of transmissions for a remote control. A remote control cannot relay, so it should only receive messages for iteself.
 	/// </summary>
-	public class ShipController : Receiver
+	public class ShipController : ReceiverBlock
 	{
 		private Ingame.IMyShipController myController;
 		private Logger myLogger;

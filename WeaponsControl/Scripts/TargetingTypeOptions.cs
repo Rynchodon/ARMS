@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Settings;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
@@ -28,6 +29,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Destroy every terminal block on all grids</summary>
 		Destroy = 1 << 8,
 
+		Projectile = Missile + Meteor + Moving,
 		AllGrid = LargeGrid + SmallGrid + Station
 	}
 
@@ -57,6 +59,9 @@ namespace Rynchodon.Weapons
 		public bool FlagSet(TargetingFlags flag)
 		{ return (Flags & flag) != 0; }
 
+		/// <summary>If set, only target a top most entity with this id.</summary>
+		public long? TargetEntityId;
+
 		public TargetingOptions() { }
 
 		public TargetingOptions Clone()
@@ -66,7 +71,8 @@ namespace Rynchodon.Weapons
 				blocksToTarget = this.blocksToTarget,
 				CanTarget = this.CanTarget,
 				Flags = this.Flags,
-				TargetingRange = this.TargetingRange
+				TargetingRange = this.TargetingRange,
+				TargetEntityId = this.TargetEntityId
 			};
 		}
 
@@ -79,7 +85,7 @@ namespace Rynchodon.Weapons
 				blocks.Append(", ");
 			}
 
-			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", Blocks = (" + blocks + ")";
+			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", TargetEntityId = " + TargetEntityId + ", Blocks = (" + blocks + ")";
 		}
 
 		private static readonly float GlobalMaxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
@@ -131,6 +137,8 @@ namespace Rynchodon.Weapons
 		public Vector3? FiringDirection;
 		public Vector3? InterceptionPoint;
 
+		private readonly LastSeen LastSeen;
+
 		/// <summary>
 		/// Creates a target of type None with Entity as null.
 		/// </summary>
@@ -147,59 +155,66 @@ namespace Rynchodon.Weapons
 			this.FiringDirection = firingDirection;
 			this.InterceptionPoint = interceptionPoint;
 
-			int weapons;
-			if (!WeaponsFiringAt.TryGetValue(Entity.EntityId, out weapons))
-				weapons = 0;
-			weapons++;
-			WeaponsFiringAt[Entity.EntityId] = weapons;
-			if (weapons < 1)
-				throw new Exception("weaponsOnTarget < 1");
+			if ((TType & TargetType.Projectile) != 0)
+			{
+				int weapons;
+				if (!WeaponsFiringAt.TryGetValue(Entity.EntityId, out weapons))
+					weapons = 0;
+				weapons++;
+				WeaponsFiringAt[Entity.EntityId] = weapons;
+				if (weapons < 1)
+					throw new Exception("weaponsOnTarget < 1");
+			}
+		}
+
+		/// <summary>
+		/// Creates a target of type AllGrid with last seen values.
+		/// </summary>
+		public Target(LastSeen target)
+		{
+			this.Entity = target.Entity;
+			this.TType = TargetType.AllGrid;
+			this.LastSeen = target;
 		}
 
 		~Target()
 		{
-			try
-			{
-				if (Entity != null)
+			if ((TType & TargetType.Projectile) != 0)
+				try
 				{
-					int weapons = WeaponsFiringAt[Entity.EntityId];
-					if (weapons == 1)
-						WeaponsFiringAt.Remove(Entity.EntityId);
-					else
-						WeaponsFiringAt[Entity.EntityId] = weapons - 1;
+					if (Entity != null)
+					{
+						int weapons = WeaponsFiringAt[Entity.EntityId];
+						if (weapons == 1)
+							WeaponsFiringAt.Remove(Entity.EntityId);
+						else
+							WeaponsFiringAt[Entity.EntityId] = weapons - 1;
+					}
 				}
-			}
-			catch (Exception ex)
-			{
-				(new Logger("TargetingTypeOptions")).alwaysLog("Exception: " + ex, "~Target()", Logger.severity.ERROR);
-			}
+				catch (Exception ex)
+				{
+					(new Logger("TargetingTypeOptions")).alwaysLog("Exception: " + ex, "~Target()", Logger.severity.ERROR);
+				}
 		}
 
-		//public Target AddDirectionPoint(Vector3? firingDirection, Vector3? interceptionPoint)
-		//{ return new Target(Entity, TType, firingDirection, interceptionPoint); }
-	}
-
-	public class Ammo
-	{
-		public readonly MyAmmoDefinition Definition;
-		public readonly float TimeToMaxSpeed;
-		public readonly float DistanceToMaxSpeed;
-
-		public Ammo(MyAmmoDefinition Definiton)
+		public Vector3D GetPosition()
 		{
-			this.Definition = Definiton;
+			if (LastSeen != null)
+				return LastSeen.predictPosition();
 
-			MyMissileAmmoDefinition asMissile = Definition as MyMissileAmmoDefinition;
-			if (asMissile != null && !asMissile.MissileSkipAcceleration)
-			{
-				this.TimeToMaxSpeed = (asMissile.DesiredSpeed - asMissile.MissileInitialSpeed) / asMissile.MissileAcceleration;
-				this.DistanceToMaxSpeed = (asMissile.DesiredSpeed + asMissile.MissileInitialSpeed) / 2 * TimeToMaxSpeed;
-			}
-			else
-			{
-				this.TimeToMaxSpeed = 0;
-				this.DistanceToMaxSpeed = 0;
-			}
+			if (Entity is IMyCharacter)
+				// GetPosition() is near feet
+				return Entity.WorldMatrix.Up * 1.25 + Entity.GetPosition();
+
+			return Entity.GetPosition();
 		}
+
+		public Vector3 GetLinearVelocity()
+		{
+			if (LastSeen != null)
+				return LastSeen.LastKnownVelocity;
+			return Entity.GetLinearVelocity();
+		}
+
 	}
 }

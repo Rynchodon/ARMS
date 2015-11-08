@@ -38,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 		private Ingame.IMyTextPanel myTextPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
-		private Receiver myAntenna;
+		private ReceiverBlock myAntenna;
 		private ProgrammableBlock myProgBlock;
 		private IMyTerminalBlock myTermBlock;
 
@@ -236,7 +236,6 @@ namespace Rynchodon.AntennaRelay
 
 			sortableSeen.Sort();
 
-			int count = 0;
 			StringBuilder displayText = new StringBuilder();
 			if (forProgram)
 				foreach (sortableLastSeen sortable in sortableSeen)
@@ -247,10 +246,11 @@ namespace Rynchodon.AntennaRelay
 				displayText.Append(DateTime.Now.ToLongTimeString());
 				writeTime = DateTime.Now;
 				displayText.Append('\n');
+				int count = 0;
 				foreach (sortableLastSeen sortable in sortableSeen)
 				{
 					displayText.Append(sortable.TextForPlayer(count++));
-					if (count >= 50)
+					if (count >= 20)
 						break;
 				}
 			}
@@ -416,8 +416,8 @@ namespace Rynchodon.AntennaRelay
 			private readonly Vector3D predictedPos;
 
 			private const string tab = "    ";
-			private readonly string GPStag1 = '\n' + tab + tab + "GPS";
-			private readonly string GPStag2 = "Detected_";
+			private static readonly string GPStag1 = '\n' + tab + tab + "GPS";
+			private const string GPStag2 = "Detected_";
 
 			private sortableLastSeen() { }
 
@@ -485,7 +485,15 @@ namespace Rynchodon.AntennaRelay
 				builder.Append((int)predictedPos.Y);
 				builder.Append(separator);
 				builder.Append((int)predictedPos.Z);
-				builder.Append(separator + "\n");
+				builder.Append(separator);
+				builder.AppendLine();
+
+				// Entity id
+				builder.Append(tab);
+				builder.Append(tab);
+				builder.Append("ID: ");
+				builder.Append(seen.Entity.EntityId);
+				builder.AppendLine();
 
 				return builder;
 			}
