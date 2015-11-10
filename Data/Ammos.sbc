@@ -68,7 +68,7 @@
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=10
+        GuidanceSeconds=15
         Acceleration=100
         ClusterSplitRange=300
         ClusterCooldown=5

@@ -42,10 +42,8 @@ namespace Rynchodon.Weapons.Guided
 			if (obj is MyAmmoBase && obj.ToString().StartsWith("MyMissile"))
 			{
 				Registrar.ForEach((GuidedMissileLauncher launcher) => {
-					if (launcher.MissileBelongsTo(obj))
-						return;
+					return launcher.MissileBelongsTo(obj);
 				});
-				staticLogger.debugLog("No one claimed: " + obj, "Entities_OnEntityAdd()");
 			}
 		}
 

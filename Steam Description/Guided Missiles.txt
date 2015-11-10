@@ -1,0 +1,16 @@
+
+[u]Cruise Missile R12VP[/u]
+Designed to destroy armoured targets.
+12 km range.
+Slow speed and minimal acceleration make the missile highly susceptible to gatling fire.
+Pre-set guidance does not allow the missile to correct for acceleration of the target.
+
+[u]EMP Missile R8EA[/u]
+Deals minimal damage but disables batteries and reactors.
+8 km range.
+Radio receiver allows the missile to receive target updates from a friendly ship.
+
+[u]Swarm Missile B3MP[/u]
+A spread of 18 missiles.
+3 km range.
+Only has guidance for a short time after being fired.

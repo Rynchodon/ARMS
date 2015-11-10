@@ -56,19 +56,9 @@ namespace Rynchodon
 			return entity.Physics.LinearVelocity;
 		}
 
-		public static Vector3D GetCentre(this IMyCubeGrid grid)
-		{ return Vector3D.Transform(grid.LocalAABB.Center, grid.WorldMatrix); }
-
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{
-			IMyCubeGrid asGrid = entity as IMyCubeGrid;
-			if (asGrid != null)
-				return GetCentre(asGrid);
-
-			if (entity.WorldAABB != null)
-				return entity.WorldAABB.Center;
-
-			return entity.GetPosition();
+			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
 		}
 
 		public static double secondsSince(this DateTime previous)

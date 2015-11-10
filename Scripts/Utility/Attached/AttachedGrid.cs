@@ -97,7 +97,15 @@ namespace Rynchodon.Attached
 				return true;
 
 			using (lock_search.AcquireExclusiveUsing())
-				return GetFor(grid0).IsGridAttached(GetFor(grid1), allowedConnections, searchIdPool++);
+			{
+				AttachedGrid attached1 = GetFor(grid0);
+				if (attached1 == null)
+					return false;
+				AttachedGrid attached2 = GetFor(grid1);
+				if (attached2 == null)
+					return false;
+				return attached1.IsGridAttached(attached2, allowedConnections, searchIdPool++);
+			}
 		}
 
 		/// <summary>
@@ -112,7 +120,12 @@ namespace Rynchodon.Attached
 			if (runOnStartGrid && runFunc(startGrid))
 				return;
 			using (lock_search.AcquireExclusiveUsing())
-				GetFor(startGrid).RunOnAttached(allowedConnections, runFunc, searchIdPool++);
+			{
+				AttachedGrid attached = GetFor(startGrid);
+				if (attached == null)
+					return;
+				attached.RunOnAttached(allowedConnections, runFunc, searchIdPool++);
+			}
 		}
 
 		/// <summary>
@@ -151,15 +164,21 @@ namespace Rynchodon.Attached
 				attached1 = GetFor(grid1),
 				attached2 = GetFor(grid2);
 
-			attached1.AddRemoveConnection(kind, attached2, add);
-			attached2.AddRemoveConnection(kind, attached1, add);
+			if (attached1 != null)
+				attached1.AddRemoveConnection(kind, attached2, add);
+			if (attached2 != null)
+				attached2.AddRemoveConnection(kind, attached1, add);
 		}
 
 		private static AttachedGrid GetFor(IMyCubeGrid grid)
 		{
 			AttachedGrid attached;
 			if (!Registrar.TryGetValue(grid.EntityId, out attached))
+			{
+				if (grid.Closed)
+					return null;
 				attached = new AttachedGrid(grid);
+			}
 
 			return attached;
 		}

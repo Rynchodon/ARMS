@@ -20,6 +20,7 @@ namespace Rynchodon.Weapons
 		private IMyCubeBlock Block;
 		private IMyCubeGrid Grid;
 		private BlockInstructions m_instructions;
+		private List<PanelInstructions> m_monitor = new List<PanelInstructions>();
 
 		private int CurrentIndex;
 		private bool InstructFound;
@@ -53,9 +54,17 @@ namespace Rynchodon.Weapons
 			else
 				m_instructions.FallBackInstruct = null;
 
-			// TODO: need some kind of text panel monitor so we don't always have to parse
-			if (!m_instructions.Update())
-				m_instructions.RunOnInstructions();
+			if (m_instructions.Update())
+				myLogger.debugLog("display name changed", "UpdateInstruction()", Logger.severity.INFO);
+			else
+				foreach (PanelInstructions panel in m_monitor)
+					if (panel.PublicTextChanged())
+					{
+						myLogger.debugLog("Text panel changed: " + panel.Block.DisplayNameText, "UpdateInstruction()", Logger.severity.INFO);
+						m_instructions.RunOnInstructions();
+						break;
+					}
+				
 			return InstructFound;
 		}
 
@@ -65,6 +74,7 @@ namespace Rynchodon.Weapons
 			InstructFound = false;
 			Options = new TargetingOptions();
 			Errors.Clear();
+			m_monitor.Clear();
 
 			Parse(instructions);
 
@@ -252,17 +262,17 @@ namespace Rynchodon.Weapons
 			else
 				panelName = toParse;
 
-			Ingame.IMyTextPanel panel;
+			PanelInstructions panel;
 			if (!GetTextPanel(panelName, out panel))
 			{
 				myLogger.debugLog("Panel not found: " + panelName, "GetFromPanel()");
 				return false;
 			}
 
-			myLogger.debugLog("Found panel: " + panel.DisplayNameText, "GetFromPanel()");
+			myLogger.debugLog("Found panel: " + panel.Block.DisplayNameText, "GetFromPanel()");
 
-			string panelText = panel.GetPublicText();
-			string lowerText = panelText.ToLower();
+			string panelText = panel.PublicText;
+			string lowerText = panel.PublicText.ToLower();
 
 			string identifier;
 			int identifierIndex, startOfCommands;
@@ -273,7 +283,7 @@ namespace Rynchodon.Weapons
 				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
-					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.Block.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 					return false;
 				}
 				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
@@ -287,14 +297,14 @@ namespace Rynchodon.Weapons
 
 			if (startOfCommands < 0)
 			{
-				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.Block.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 				return false;
 			}
 
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
-				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.Block.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
 				return false;
 			}
 
@@ -304,7 +314,7 @@ namespace Rynchodon.Weapons
 			return true; // this instruction was successfully executed, even if sub instructions were not
 		}
 
-		private bool GetTextPanel(string name, out Ingame.IMyTextPanel panel)
+		private bool GetTextPanel(string name, out PanelInstructions panel)
 		{
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
@@ -326,8 +336,15 @@ namespace Rynchodon.Weapons
 				return false;
 			}, true);
 
-			panel = foundBlock as Ingame.IMyTextPanel;
-			return panel != null;
+			Ingame.IMyTextPanel textPanel = foundBlock as Ingame.IMyTextPanel;
+			if (textPanel != null)
+			{
+				panel = new PanelInstructions(textPanel);
+				m_monitor.Add(panel);
+				return true;
+			}
+			panel = null;
+			return false;
 		}
 
 	}

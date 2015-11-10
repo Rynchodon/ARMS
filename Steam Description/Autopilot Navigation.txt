@@ -9,7 +9,7 @@ To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back
 
 In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
 
-The G and E commands require that the target be detected, see the video for Antenna Relay and Radar.
+The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
 
 All distances and coordinates are in metres, speed is in metres per second.
 If there are multiple Autopilot blocks with commands, one will be picked arbitrarily.

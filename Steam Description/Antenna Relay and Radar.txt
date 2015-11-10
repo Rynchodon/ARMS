@@ -32,7 +32,7 @@ Can detect other radar at long range.
 
 [u]Radar Jammer[/u]
 Jams an enemy radar, higher quality radar are harder to jam.
-If there is an enemy radar in range, will cause interference with all nearby radars.
+If there is an enemy radar in range, will cause interference with all radars near the jammer.
 Cannot jam radar above or below it.
 Functions as an antenna and broadcasting can be disabled.
 

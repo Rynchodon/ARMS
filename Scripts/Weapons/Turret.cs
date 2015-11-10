@@ -47,8 +47,8 @@ namespace Rynchodon.Weapons
 			if (definition == null)
 				throw new NullReferenceException("definition");
 
-			minElevation = (float)((float)definition.MinElevationDegrees / 180 * Math.PI); // Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6); // -0.6 was determined empirically
-			maxElevation = (float)Math.Max((float)definition.MaxElevationDegrees / 180 * Math.PI, -0.6);
+			minElevation = (float)((float)definition.MinElevationDegrees / 180 * Math.PI); // Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6);
+			maxElevation = (float)Math.Min((float)definition.MaxElevationDegrees / 180 * Math.PI, 0.6); // 0.6 was determined empirically
 			minAzimuth = (float)((float)definition.MinAzimuthDegrees / 180 * Math.PI);
 			maxAzimuth = (float)((float)definition.MaxAzimuthDegrees / 180 * Math.PI);
 

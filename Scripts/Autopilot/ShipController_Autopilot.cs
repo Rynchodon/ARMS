@@ -384,6 +384,7 @@ namespace Rynchodon.Autopilot
 				{
 					// a (de)merge happened
 					ReleaseControlledGrid();
+					return false;
 				}
 				else if (CanControlBlockGrid(m_controlledGrid))
 				{
@@ -522,10 +523,10 @@ namespace Rynchodon.Autopilot
 			{
 				if (!path.CanMove || !path.CanRotate)
 				{
-					m_customInfo_build.AppendLine("Pathfinder: ");
+					m_customInfo_build.Append("Pathfinder: ");
 					if (!path.CanMove)
 						m_customInfo_build.AppendLine(path.PathStatus);
-					if (!path.CanRotate)
+					else if (!path.CanRotate)
 						m_customInfo_build.AppendLine("Cannot rotate safely");
 					m_customInfo_build.AppendLine();
 				}

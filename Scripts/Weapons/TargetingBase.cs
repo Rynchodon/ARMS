@@ -100,7 +100,7 @@ namespace Rynchodon.Weapons
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
 
-			myTarget = new Target();
+			myTarget = new NoTarget();
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
 
@@ -147,7 +147,7 @@ namespace Rynchodon.Weapons
 		{
 			myLogger.debugLog("Blacklisting " + myTarget.Entity, "BlacklistTarget()");
 			Blacklist.Add(myTarget.Entity);
-			myTarget = new Target();
+			myTarget = new NoTarget();
 			CurrentTarget = myTarget;
 		}
 
@@ -176,7 +176,7 @@ namespace Rynchodon.Weapons
 					goto case TargetType.None;
 				case TargetType.None:
 				default:
-					myTarget = new Target();
+					myTarget = new NoTarget();
 					break;
 			}
 
@@ -385,7 +385,7 @@ namespace Rynchodon.Weapons
 
 			if (closest != null)
 			{
-				myTarget = new Target(closest, tType);
+				myTarget = new TurretTarget(closest, tType);
 				return true;
 			}
 			return false;
@@ -588,7 +588,7 @@ namespace Rynchodon.Weapons
 					if (ProjectileIsThreat(projectile, tType) && !PhysicalProblem(projectile.GetPosition()))
 					{
 						myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
-						myTarget = new Target(projectile, tType);
+						myTarget = new TurretTarget(projectile, tType);
 						return true;
 					}
 					else
@@ -633,8 +633,9 @@ namespace Rynchodon.Weapons
 		/// TODO: if target is accelerating, look ahead (missiles and such)
 		protected void SetFiringDirection()
 		{
-			if (myTarget.Entity == null)
+			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose)
 				return;
+			myLogger.debugLog(MyEntity.MarkedForClose, "MyEntity.MarkedForClose", "SetFiringDirection()", Logger.severity.FATAL);
 
 			Vector3D TargetPosition = myTarget.GetPosition();
 

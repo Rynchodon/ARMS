@@ -239,6 +239,8 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
+					if (IsNearVoxel())
+						m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
 					break;
 				case State.Mining:
 					// do not check for inside asteroid as we may not have reached it yet and target is inside asteroid

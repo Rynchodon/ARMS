@@ -155,7 +155,7 @@ namespace Rynchodon.AntennaRelay
 		public Vector3D GetPosition()
 		{
 			TimeSpan sinceLastSeen = GetTimeSinceLastSeen();
-			return sinceLastSeen < Recent ? Entity.GetCentre()
+			return !Entity.MarkedForClose && sinceLastSeen < Recent ? Entity.GetCentre()
 				: LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 
@@ -164,7 +164,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public Vector3 GetLinearVelocity()
 		{
-			return isRecent() ? Entity.Physics.LinearVelocity
+			return !Entity.MarkedForClose && isRecent() ? Entity.Physics.LinearVelocity
 				: (Vector3)LastKnownVelocity;
 		}
 

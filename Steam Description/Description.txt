@@ -37,7 +37,8 @@ Messages can be sent from one programmable block to another. Block communication
 Block Communication can read detected grid information, apply filters, execute actions, and write to a TextPanel.
 For usage, see the script itself.
 
-[h1]Weapon Control[/h1]
+[h1]Weapon Systems[/h1]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/496880503080018832/] Guided Missiles [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control [/url]
 
 [h1]Settings[/h1]

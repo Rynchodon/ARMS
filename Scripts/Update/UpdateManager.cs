@@ -325,6 +325,8 @@ namespace Rynchodon.Update
 
 		private readonly Logger myLogger;
 
+		private bool player_wait_message = false;
+
 		public UpdateManager()
 		{
 			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
@@ -339,6 +341,17 @@ namespace Rynchodon.Update
 				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
 					|| MyAPIGateway.Players == null || MyAPIGateway.Session == null || MyAPIGateway.TerminalActionsHelper == null || MyAPIGateway.Utilities == null)
 					return;
+
+				if (!MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Session.Player == null)
+				{
+					if (!player_wait_message)
+					{
+						player_wait_message = true;
+						myLogger.alwaysLog("Waiting for player value", "Init()");
+					}
+					return;
+				}
+				myLogger.alwaysLog("Got player value", "Init()");
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();

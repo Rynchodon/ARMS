@@ -1,5 +1,10 @@
 Will be moved to steam every release.
 
 major:
+Guided Missiles
+Radar Jammer
 
 minor:
+Fixed crash for multiplayer client
+Weapons will ignore brackets without commands
+NPC weapons can have commands specified

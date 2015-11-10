@@ -104,7 +104,7 @@ namespace Rynchodon.Weapons.Guided
 						if (missile.Stopped)
 							return;
 						missile.UpdateTarget();
-						if (missile.CurrentTarget.TType == TargetType.None)
+						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
 							missile.TargetLastSeen();
 					});
 		}
@@ -221,7 +221,7 @@ namespace Rynchodon.Weapons.Guided
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
 					myLogger.debugLog("Retargeting last", "TargetLastSeen()");
-					myTarget = new Target(myTargetSeen);
+					myTarget = new LastSeenTarget(myTargetSeen);
 					SetFiringDirection();
 				}
 				return;
@@ -234,7 +234,7 @@ namespace Rynchodon.Weapons.Guided
 			if (myTargetSeen != null && myAntenna.tryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
 				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName(), "TargetLastSeen()");
-				myTarget = new Target(fetched);
+				myTarget = new LastSeenTarget(fetched);
 				SetFiringDirection();
 				return;
 			}
@@ -244,7 +244,7 @@ namespace Rynchodon.Weapons.Guided
 				if (myAntenna.tryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
 					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName(), "TargetLastSeen()");
-					myTarget = new Target(fetched);
+					myTarget = new LastSeenTarget(fetched);
 					SetFiringDirection();
 				}
 				else
@@ -280,7 +280,7 @@ namespace Rynchodon.Weapons.Guided
 			else
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
-				myTarget = new Target(closest);
+				myTarget = new LastSeenTarget(closest);
 				SetFiringDirection();
 				myTargetSeen = closest;
 			}
@@ -434,7 +434,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				if (MyEntity.Closed || myCluster == null)
+				if (Stopped || myCluster == null)
 					return;
 
 				if (!myCluster.FullyFormed)
