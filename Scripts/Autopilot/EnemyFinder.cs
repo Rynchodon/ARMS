@@ -48,7 +48,10 @@ namespace Rynchodon.Autopilot
 			protected set
 			{
 				if (value != null && value_grid != null && value.Entity == value_grid.Entity)
+				{
+					value_grid = value;
 					return;
+				}
 
 				value_grid = value;
 				if (value_grid == null)

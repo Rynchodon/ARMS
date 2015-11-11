@@ -95,6 +95,7 @@ Example - [ F 0, 0, -1000 ] - fly 1000m forward
 F <distance> <direction>, ... : generic form is a comma separated list of distances and directions
 Example - [ F 1000 forward ] - fly 1000m forward
 Example - [ F 1000 forward, 200 downward ] - fly to a point 1000m ahead and 200m below Autopilot block
+
 Form : Stay in formation with friendly grid (G command). Commands that occur after G will never be executed.
 Example - [ N Autopilot, F, U ; B Cockpit, F, U ; Form ; G Convoy ] - Fly to Convoy, orient Autopilot to match Cockpit, and stay in formation
 

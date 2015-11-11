@@ -88,6 +88,7 @@ namespace Rynchodon.Autopilot
 
 		public void Update()
 		{
+			m_logger.debugLog("entered Update()", "Update()");
 			if (Grid == null)
 			{
 				if (Globals.UpdateCount >= NextSearch_Grid)
@@ -212,9 +213,11 @@ namespace Rynchodon.Autopilot
 			if (!m_controller.tryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
 				m_logger.alwaysLog("Where does the good go?", "GridUpdate()", Logger.severity.WARNING);
-				updated = null;
+				Grid = null;
+				return;
 			}
 
+			m_logger.debugLog("updating grid last seen " + Grid.LastSeenAt + " => " + updated.LastSeenAt, "GridUpdate()");
 			Grid = updated;
 		}
 
@@ -296,7 +299,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (m_mustBeRecent && !seen.isRecent())
 				{
-					m_logger.debugLog("no longer recent: " + seen.Entity.getBestName(), "CanTarget()");
+					m_logger.debugLog("no longer recent: " + seen.Entity.getBestName() + ", age: " + (DateTime.UtcNow - seen.LastSeenAt), "CanTarget()");
 					return false;
 				}
 

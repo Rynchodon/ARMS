@@ -3,20 +3,20 @@ ARMS provides Electronic Navigation, Communication, and Targeting Systems
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
 [h1]Mod Features[/h1]
-Automatic docking & landing
-Patrol
-Fly to another ship/station
-Fly to world GPS location
-Fly a certain distance relative to ship
-Formations/Orientation matching
-Command looping
-Speed Control
-Obstacle detection & collision avoidance
-Engage Enemy ships/stations
-Radar
-Act as a missile and target a block on an enemy ship/station
-Smart Turret Control - Allows you to set priorities for your turrets.
-Harvest - Extract resources from asteroids
+[list][*]Autopilot:
+[list][*]Collision Avoidance
+[*]Automatic docking and landing
+[*]Extract resources from asteroids
+[*]Fight an enemy ship or flee
+[*]Recycle(Grind) ships/stations
+[*]Fly to another ship/station
+[*]Fly in formation with another ship
+[*]Fly to world coordinates[/list]
+[*]Multiple radar types and countermeasures
+[*]Ship to ship communication for programmable block
+[*]Weapon Systems:
+[list][*]Guided Missiles
+[*]Advanced Weapon Targeting[/list][/list]
 
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.

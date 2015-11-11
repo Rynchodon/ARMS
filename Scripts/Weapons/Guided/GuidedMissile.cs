@@ -15,6 +15,8 @@ namespace Rynchodon.Weapons.Guided
 {
 	/*
 	 * TODO:
+	 * Rail system for safer launching while rotating/accelerating.
+	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
 	 * ARH, SA*
 	 */
 	public class GuidedMissile : TargetingBase

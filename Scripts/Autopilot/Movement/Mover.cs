@@ -420,17 +420,17 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaxAngleVelocity(displacement);
 
+			// Adjust for moving target by measuring changes in displacement. Part of the change in displacement is attributable to ship rotation. 
 			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
 
-			Vector3 displacementChange = displacement - prevAngleDisp + angularVelocity / dispToVel;
-			myLogger.debugLog("prevAngleDisp: " + prevAngleDisp + ", displacement: " + displacement + ", angularVelocity / dispToVel: " + angularVelocity / dispToVel, "CalcRotate()");
-			if (displacementChange.LengthSquared() > 0.01f)
-				myLogger.debugLog("Large displacement change, assuming target changed: " + displacementChange, "CalcRotate()", Logger.severity.DEBUG);
-			else
+			Vector3 addVelocity = angularVelocity - (prevAngleDisp - displacement) * dispToVel;
+			if (addVelocity.LengthSquared() < 0.1f)
 			{
-				myLogger.debugLog("Adding to target velocity: " + displacementChange * dispToVel, "CalcRotate()");
-				targetVelocity += displacementChange * dispToVel;
+				myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
+				targetVelocity += addVelocity;
 			}
+			else
+				myLogger.debugLog("Not adjusting for moving, assuming target changed: " + addVelocity, "CalcRotate()");
 			prevAngleDisp = displacement;
 
 			Vector3 diffVel = targetVelocity - angularVelocity;
