@@ -7,7 +7,7 @@
         <TypeId>BlueprintDefinition</TypeId>
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
-      <DisplayName>Cruise Missile</DisplayName>
+      <DisplayName>Cruise Missile R12VP</DisplayName>
       <Icon>Textures\Icon\Souper_R12VP_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="547.5" TypeId="Ingot" SubtypeId="Iron" />
@@ -26,7 +26,7 @@
         <TypeId>BlueprintDefinition</TypeId>
         <SubtypeId>Souper_R8EA_Missile</SubtypeId>
       </Id>
-      <DisplayName>Cruise Missile</DisplayName>
+      <DisplayName>EMP Missile R8EA</DisplayName>
       <Icon>Textures\Icon\Souper_R8EA_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="232.5" TypeId="Ingot" SubtypeId="Iron" />
@@ -46,7 +46,7 @@
         <TypeId>BlueprintDefinition</TypeId>
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
-      <DisplayName>Cruise Missile</DisplayName>
+      <DisplayName>18x Swarm Missile B3MP</DisplayName>
       <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="504" TypeId="Ingot" SubtypeId="Iron" />
