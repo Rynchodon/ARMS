@@ -78,7 +78,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		private int MaxPowerOutput(IMyCubeBlock block)
 		{
-			var definition = DefinitionCache.GetCubeBlockDefinition(block) as MyPowerProducerDefinition;
+			var definition = block.GetCubeBlockDefinition() as MyPowerProducerDefinition;
 			return (int)(definition.MaxPowerOutput * 1000f);
 		}
 

@@ -230,7 +230,7 @@ namespace Rynchodon.AntennaRelay
 			staticLogger.debugLog("creating new definition for " + ID, "GetDefinition()");
 			result = new Definition();
 
-			MyCubeBlockDefinition def = DefinitionCache.GetCubeBlockDefinition(block);
+			MyCubeBlockDefinition def = block.GetCubeBlockDefinition();
 			if (def == null)
 				throw new NullReferenceException("no block definition found for " + block.getBestName());
 

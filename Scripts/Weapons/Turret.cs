@@ -42,7 +42,7 @@ namespace Rynchodon.Weapons
 		private void Initialize()
 		{
 			// definition limits
-			MyLargeTurretBaseDefinition definition = DefinitionCache.GetCubeBlockDefinition(CubeBlock) as MyLargeTurretBaseDefinition;
+			MyLargeTurretBaseDefinition definition = CubeBlock.GetCubeBlockDefinition() as MyLargeTurretBaseDefinition;
 
 			if (definition == null)
 				throw new NullReferenceException("definition");

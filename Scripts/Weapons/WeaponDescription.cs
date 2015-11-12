@@ -17,7 +17,7 @@ namespace Rynchodon.Weapons
 			WeaponDescription descr;
 			if (!KnownDescriptions.TryGetValue(block.BlockDefinition, out descr))
 			{
-				descr = CreateFrom(DefinitionCache.GetCubeBlockDefinition(block));
+				descr = CreateFrom(block.GetCubeBlockDefinition());
 				KnownDescriptions.Add(block.BlockDefinition, descr);
 			}
 			return descr;

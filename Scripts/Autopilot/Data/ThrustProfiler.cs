@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Data
 				thruster.throwIfNull_argument("thruster");
 
 				this.thruster = thruster;
-				this.force = (DefinitionCache.GetCubeBlockDefinition(thruster) as MyThrustDefinition).ForceMagnitude;
+				this.force = (thruster.GetCubeBlockDefinition() as MyThrustDefinition).ForceMagnitude;
 				//this.dampingForce = force * 10;
 				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
 			}

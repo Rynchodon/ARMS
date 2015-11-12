@@ -18,7 +18,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		{
 			if (!(block is IMyLandingGear))
 				return false;
-			string descr = DefinitionCache.GetCubeBlockDefinition(block).DescriptionString;
+			string descr = block.GetCubeBlockDefinition().DescriptionString;
 			return descr != null && descr.ToLower().Contains("hacker");
 		}
 

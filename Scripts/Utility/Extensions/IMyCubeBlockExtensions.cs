@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -248,6 +250,18 @@ namespace Rynchodon
 		{
 			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
 			asTerm.GetActionWithName(actionName).Apply(asTerm);
+		}
+
+		public static MyCubeBlockDefinition GetCubeBlockDefinition(this Ingame.IMyCubeBlock block)
+		{
+			MyCubeBlock cubeBlock = block as MyCubeBlock;
+			return cubeBlock.BlockDefinition;
+		}
+
+		public static MyCubeBlockDefinition GetCubeBlockDefinition(this IMyCubeBlock block)
+		{
+			MyCubeBlock cubeBlock = block as MyCubeBlock;
+			return cubeBlock.BlockDefinition;
 		}
 
 	}
