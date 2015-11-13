@@ -1,6 +1,8 @@
 [u]Do not attempt to fire a guided missile while your ship is rotating or accelerating.[/u]
-Normally, a guided missile will target the closest detected ship/station. If the ID command is specified in the launcher's name, the missile will only target the matching ship/station. See [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url].
-
+If the ID command is specified in the launcher's name, the missile will only target the matching ship/station.
+Otherwise, the target type should be specified in the launcher's name; AllGrid, LargeGrid, SmallGrid, or Station.
+See [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url].
+ 
 [h1]Missiles[/h1]
 [u]Cruise Missile R12VP[/u]
 Designed to destroy armoured targets.

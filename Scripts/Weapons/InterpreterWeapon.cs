@@ -272,6 +272,13 @@ namespace Rynchodon.Weapons
 			myLogger.debugLog("Found panel: " + panel.Block.DisplayNameText, "GetFromPanel()");
 
 			string panelText = panel.PublicText;
+
+			if (string.IsNullOrWhiteSpace(panelText))
+			{
+				myLogger.debugLog("Panel has no text: " + panel.Block.DisplayNameText, "GetFromPanel()");
+				return true;
+			}
+
 			string lowerText = panel.PublicText.ToLower();
 
 			string identifier;

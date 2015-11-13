@@ -53,6 +53,30 @@ namespace Rynchodon.Weapons
 		public bool CanTargetType(TargetType type)
 		{ return (CanTarget & type) != 0; }
 
+		public bool CanTargetType(IMyEntity entity)
+		{
+			IMyCubeGrid grid = entity as IMyCubeGrid;
+			if (grid != null)
+			{
+				if (grid.IsStatic)
+					return CanTargetType(TargetType.Station);
+				if (grid.GridSizeEnum == Sandbox.Common.ObjectBuilders.MyCubeSize.Large)
+					return CanTargetType(TargetType.LargeGrid);
+				if (grid.GridSizeEnum == Sandbox.Common.ObjectBuilders.MyCubeSize.Small)
+					return CanTargetType(TargetType.SmallGrid);
+
+				throw new Exception("Unknown grid size: " + grid.DisplayName);
+			}
+			if (entity is IMyCharacter)
+				return CanTargetType(TargetType.Character);
+			if (entity is IMyMeteor)
+				return CanTargetType(TargetType.Meteor);
+			if (entity.ToString().StartsWith("MyMissile"))
+				return CanTargetType(TargetType.Missile);
+
+			return false;
+		}
+
 		public List<string> blocksToTarget = new List<string>();
 
 		public TargetingFlags Flags = TargetingFlags.None;

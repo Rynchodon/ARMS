@@ -113,7 +113,7 @@ namespace Rynchodon.Weapons
 
 		public override Vector3D GetPosition()
 		{
-			if (!m_accel)
+			if (!m_accel && !Entity.Closed)
 			{
 				m_accel = m_lastSeen.Entity.Physics.GetLinearAcceleration().LengthSquared() > 0.01f;
 				if (!m_accel)

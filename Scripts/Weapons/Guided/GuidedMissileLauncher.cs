@@ -146,11 +146,32 @@ namespace Rynchodon.Weapons.Guided
 					return true;
 				}
 
-				LastSeen initialTarget;
-				if (myFixed.Options.TargetEntityId.HasValue && findAntenna())
-					myAntenna.tryGetLastSeen(myFixed.Options.TargetEntityId.Value, out initialTarget);
-				else
-					initialTarget = null;
+				LastSeen initialTarget = null;
+				if (findAntenna())
+				{
+					if (myFixed.Options.TargetEntityId.HasValue)
+						myAntenna.tryGetLastSeen(myFixed.Options.TargetEntityId.Value, out initialTarget);
+					else
+					{
+						myLogger.debugLog("Searching for target", "MissileBelongsTo()", Logger.severity.DEBUG);
+						float closestDistanceSquared = float.MaxValue;
+						myAntenna.ForEachLastSeen(seen => {
+							if (!seen.isRecent())
+								return false;
+							IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
+							if (grid != null && CubeBlock.canConsiderHostile(grid) && myFixed.Options.CanTargetType(grid))
+							{
+								float distSquared = Vector3.DistanceSquared(CubeBlock.GetPosition(), grid.GetCentre());
+								if (distSquared < closestDistanceSquared)
+								{
+									closestDistanceSquared = distSquared;
+									initialTarget = seen;
+								}
+							}
+							return false;
+						});
+					}
+				}
 
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo, initialTarget);

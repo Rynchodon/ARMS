@@ -26,8 +26,6 @@ namespace Rynchodon.Weapons.Guided
 		{
 			public readonly LockedQueue<IMyEntity> Slaves;
 			public readonly int Max;
-			///// <summary>Launcher sets to true after ammo switches.</summary>
-			//public bool Creating;
 			/// <summary>Set to true when main missile is far enough from launcher to start forming.</summary>
 			public bool MainFarEnough;
 
@@ -261,7 +259,7 @@ namespace Rynchodon.Weapons.Guided
 			myLogger.debugLog("last seen count: " + myAntenna.lastSeenCount, "TargetLastSeen()");
 			myAntenna.ForEachLastSeen(seen => {
 				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
-				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity))
+				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 				{
 					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
 					if (dist < closestDist)
