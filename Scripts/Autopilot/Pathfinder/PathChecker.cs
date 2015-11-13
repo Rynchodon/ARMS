@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -129,13 +131,28 @@ namespace Rynchodon.Autopilot.Pathfinder
 					}
 
 					Capsule testSection = new Capsule(intersection[0], intersection[1], m_path.Radius);
-					if (testSection.Intersects(voxel, out pointOfObstruction))
+					IMyVoxelMap asteroid = voxel as IMyVoxelMap;
+					if (asteroid != null)
 					{
-						blockingPath = entity;
-						blockingGrid = null;
-						return false;
+						if (testSection.Intersects(asteroid, out pointOfObstruction))
+						{
+							blockingPath = entity;
+							blockingGrid = null;
+							return false;
+						}
+					}
+					else
+					{
+						MyPlanet planet = voxel as MyPlanet;
+						if (planet != null && testSection.Intersects(planet, out pointOfObstruction))
+						{
+							blockingPath = entity;
+							blockingGrid = null;
+							return false;
+						}
 					}
 
+					m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestEntities()", Logger.severity.DEBUG);
 					continue;
 				}
 
@@ -275,7 +292,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <returns>true iff the entity should be kept</returns>
 		public static bool collect_Entity(IMyCubeGrid myGrid, MyEntity entity)
 		{
-			if (!(entity is IMyCubeGrid) && !(entity is IMyVoxelMap) && !(entity is IMyFloatingObject))
+			if (!(entity is IMyCubeGrid) && !(entity is IMyVoxelBase) && !(entity is IMyFloatingObject))
 				return false;
 
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;

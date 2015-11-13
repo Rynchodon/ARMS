@@ -1,5 +1,6 @@
 ﻿#define LOG_ENABLED // remove on build
 
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -164,10 +165,9 @@ namespace Rynchodon
 
 		/// <summary>
 		/// Performs a binary search for intersection using spheres.
-		/// <para>I doubt this is faster than sequential checks but there should never be a case of false-negatives.</para>
 		/// </summary>
 		/// <param name="pointOfObstruction">a point on the capsule's line close to obstruction</param>
-		public static bool Intersects(this Capsule capsule, IMyVoxelBase asteroid, out Vector3? pointOfObstruction, float capsuleLength = -1)
+		public static bool Intersects(this Capsule capsule, IMyVoxelMap asteroid, out Vector3? pointOfObstruction, float capsuleLength = -1)
 		{
 			if (capsuleLength < 0)
 				capsuleLength = capsule.get_length();
@@ -190,5 +190,32 @@ namespace Rynchodon
 			return Intersects(new Capsule(capsule.P0, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength)
 				|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength);
 		}
+
+		public static bool Intersects(this Capsule capsule, MyPlanet planet, out Vector3? pointOfObstruction, float capsuleLength = -1)
+		{
+			if (capsuleLength < 0)
+				capsuleLength = capsule.get_length();
+			float halfLength = capsuleLength / 2;
+			Vector3 middle = capsule.get_Middle();
+
+			Vector3D middleD = middle;
+			Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref middleD);
+			double minDistance = halfLength + capsule.Radius; minDistance *= minDistance;
+			if (Vector3D.DistanceSquared(middleD, closestPoint) > minDistance)
+			{
+				pointOfObstruction = null;
+				return false;
+			}
+
+			if (capsuleLength < 1f)
+			{
+				pointOfObstruction = middle;
+				return true;
+			}
+
+			return Intersects(new Capsule(capsule.P0, middle, capsule.Radius), planet, out pointOfObstruction, halfLength)
+				|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), planet, out pointOfObstruction, halfLength);
+		}
+
 	}
 }

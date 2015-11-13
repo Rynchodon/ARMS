@@ -69,11 +69,27 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (MyEntity entity in m_obstructions)
 				if (PathChecker.collect_Entity(m_grid, entity))
 				{
-					IMyVoxelMap voxel = entity as IMyVoxelMap;
-					if (voxel != null)
+					if (entity is IMyVoxelBase)
 					{
-						if (!ignoreAsteroids && voxel.GetIntersectionWithSphere(ref surroundingSphere))
-							return false;
+						IMyVoxelMap voxel = entity as IMyVoxelMap;
+						if (voxel != null)
+						{
+							if (!ignoreAsteroids && voxel.GetIntersectionWithSphere(ref surroundingSphere))
+								return false;
+							continue;
+						}
+						MyPlanet planet = entity as MyPlanet;
+						if (planet != null)
+						{
+							Vector3D centreD = surroundingSphere.Center;
+							Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref centreD);
+							double minDistance = surroundingSphere.Radius; minDistance *= minDistance;
+							if (Vector3D.DistanceSquared(centreD, closestPoint) <= minDistance)
+							{
+								m_logger.debugLog("Too close to " + planet.getBestName(), "TestRotate()");
+								return false;
+							}
+						}
 						continue;
 					}
 
