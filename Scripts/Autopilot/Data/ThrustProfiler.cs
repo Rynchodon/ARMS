@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -43,6 +44,7 @@ namespace Rynchodon.Autopilot.Data
 		private IMyCubeGrid myGrid;
 		private Dictionary<IMyThrust, ThrusterProperties> allMyThrusters;
 		private Dictionary<Base6Directions.Direction, List<ThrusterProperties>> thrustersInDirection;
+		private Vector3 m_gravity;
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -164,6 +166,9 @@ namespace Rynchodon.Autopilot.Data
 				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
 					force += thruster.force * thruster.thruster.ThrustMultiplier;
 
+			myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity reduces available force by " + (-Base6Directions.GetVector(direction).Dot(m_gravity) * myGrid.Physics.Mass), "GetForceInDirection()");
+			force += Base6Directions.GetVector(direction).Dot(m_gravity) * myGrid.Physics.Mass;
+
 			return force;
 		}
 
@@ -185,6 +190,19 @@ namespace Rynchodon.Autopilot.Data
 					return false;
 			}
 			return true;
+		}
+
+		public void UpdateGravity()
+		{
+			Vector3D position = myGrid.GetPosition();
+			Vector3 gravity = Vector3.Zero;
+			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is IMyGravityProvider);
+			foreach (IMyGravityProvider planet in allPlanets)
+				if (planet.IsPositionInRangeGrid(position))
+					gravity += planet.GetWorldGravityGrid(position);
+
+			m_gravity = Vector3.Transform(gravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
+			myLogger.debugLog("Gravity: " + gravity + ", local: " + m_gravity, "UpdateGravity()");
 		}
 
 	}

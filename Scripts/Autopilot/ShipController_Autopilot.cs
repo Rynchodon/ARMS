@@ -492,7 +492,24 @@ namespace Rynchodon.Autopilot
 
 			if (m_controlledGrid == null)
 			{
-				m_customInfo_build.AppendLine("Disabled");
+				if (!m_block.Controller.ControlThrusters)
+					m_customInfo_build.AppendLine("Disabled");
+				else if (m_block.CubeGrid.IsStatic)
+					m_customInfo_build.AppendLine("Grid is a station");
+				else if (m_block.CubeGrid.BigOwners.Count == 0)
+					m_customInfo_build.AppendLine("Grid is unowned");
+				else if (!m_block.Controller.IsWorking)
+					m_customInfo_build.AppendLine("Not working");
+				else if (!m_block.CubeGrid.BigOwners.Contains(m_block.Controller.OwnerId))
+					m_customInfo_build.AppendLine("Block cannot control grid");
+				else
+				{
+					MyCubeGrid mcg = m_block.CubeGrid as MyCubeGrid;
+					if (mcg.HasMainCockpit() && !m_block.Controller.IsMainCockpit)
+						m_customInfo_build.AppendLine("Not main cockpit");
+					else
+						m_customInfo_build.AppendLine("Another autpilot controlling ship");
+				}
 				return;
 			}
 

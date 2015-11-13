@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -111,6 +112,8 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 				}
 			}
+
+			myThrust.UpdateGravity();
 
 			Vector3 destDisp = destPoint - block.WorldPosition;
 			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
