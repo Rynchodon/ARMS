@@ -17,8 +17,10 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 
 		private const float MaxAngleRotate = 1f;
+		private static readonly TimeSpan SearchTimeout = new TimeSpan(0, 1, 0);
 
-		private static HashSet<long> GridsBeingGround = new HashSet<long>();
+		/// <summary>The grid claimed and the grid that claimed it.</summary>
+		private static Dictionary<long, IMyCubeGrid> GridsClaimed = new Dictionary<long, IMyCubeGrid>();
 
 		static Grinder()
 		{
@@ -28,7 +30,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			GridsBeingGround = null;
+			GridsClaimed = null;
 		}
 
 		private enum Stage : byte { None, Intercept, Grind }
@@ -42,9 +44,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private GridCellCache m_enemyCells;
 		private Vector3D m_targetPosition;
+		private DateTime m_timeoutAt = DateTime.UtcNow + SearchTimeout;
 		private ulong m_next_grinderFullCheck;
 		private ulong m_next_grinderCheck;
 		private bool m_grinderFull;
+		private bool m_enableGrinders;
 
 		private IMyCubeGrid value_enemy;
 		private Stage value_stage;
@@ -58,6 +62,9 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				m_logger.debugLog("Changing stage from " + value_stage + " to " + value, "set_m_stage()", Logger.severity.DEBUG);
 				value_stage = value;
+
+				if (value_stage == Stage.None)
+					EnableGrinders(false);
 			}
 		}
 
@@ -72,18 +79,21 @@ namespace Rynchodon.Autopilot.Navigator
 				return true;
 
 			if (value_enemy != null)
-				if (GridsBeingGround.Remove(value_enemy.EntityId))
-					m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsBeingGround", "Move()", Logger.severity.TRACE);
+				if (GridsClaimed.Remove(value_enemy.EntityId))
+					m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsClaimed", "Move()", Logger.severity.TRACE);
 				else
-					m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsBeingGround", "Move()", Logger.severity.WARNING);
+					m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsClaimed", "Move()", Logger.severity.WARNING);
 
 			if (value != null)
 			{
-				if (!GridsBeingGround.Add(value.EntityId))
+				if (GridsClaimed.ContainsKey(value.EntityId))
 				{
-					m_logger.debugLog("Already reserved: " + value.getBestName(), "set_m_enemy()", Logger.severity.INFO);
+					m_logger.debugLog("Already claimed: " + value.getBestName(), "set_m_enemy()", Logger.severity.INFO);
 					return false;
 				}
+				else
+					GridsClaimed.Add(value.EntityId, m_controlBlock.CubeGrid);
+				
 				m_enemyCells = GridCellCache.GetCellCache(value as IMyCubeGrid);
 			}
 
@@ -118,7 +128,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			this.m_finder = new GridFinder(m_navSet, mover.Block, maxRange);
-			this.m_finder.GridCondition = grid => m_enemy == grid || !GridsBeingGround.Contains(grid.EntityId);
+			this.m_finder.GridCondition = GridCondition;
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
@@ -126,11 +136,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		~Grinder()
 		{
-			try
-			{
-				set_enemy(null);
-				EnableGrinders(false);
-			}
+			try { set_enemy(null); }
 			catch { }
 		}
 
@@ -140,12 +146,18 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("No functional grinders remaining", "Move()", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
+				EnableGrinders(false);
 				return;
 			}
+			
+			if (Globals.UpdateCount >= m_next_grinderCheck)
+				EnableGrinders(m_enableGrinders);
+
 			if (GrinderFull())
 			{
 				m_logger.debugLog("Grinders are full", "Move()", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
+				EnableGrinders(false);
 				return;
 			}
 
@@ -153,9 +165,16 @@ namespace Rynchodon.Autopilot.Navigator
 			if (!set_enemy(m_finder.Grid != null ? m_finder.Grid.Entity as IMyCubeGrid : null) || m_enemy == null)
 			{
 				m_mover.StopMove();
+				if (DateTime.UtcNow >= m_timeoutAt)
+				{
+					m_logger.debugLog("Search timed out", "Move()");
+					m_navSet.OnTaskComplete_NavRot();
+					EnableGrinders(false);
+				}
 				return;
 			}
 
+			m_timeoutAt = DateTime.UtcNow + SearchTimeout;
 			Vector3 targetCentre = m_enemy.GetCentre();
 
 			Vector3 enemyVelocity = m_enemy.GetLinearVelocity();
@@ -190,8 +209,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_stage = Stage.Grind;
 				m_navSet.Settings_Task_NavMove.DestinationEntity = m_enemy;
 			}
-			if (Globals.UpdateCount >= m_next_grinderCheck)
-				EnableGrinders(true);
 
 			Vector3D grindPosition = m_navGrind.WorldPosition;
 			Vector3I cellPosition = m_enemyCells.GetClosestOccupiedCell(m_controlBlock.CubeGrid.GetCentre());
@@ -251,8 +268,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_stage = Stage.Intercept;
 			} 
-			if (Globals.UpdateCount >= m_next_grinderCheck)
-				EnableGrinders(false);
 
 			m_logger.debugLog("Moving to " + position, "Move_Intercept()");
 			m_mover.CalcMove(m_navGrind, position, m_enemy.GetLinearVelocity());
@@ -275,7 +290,33 @@ namespace Rynchodon.Autopilot.Navigator
 			customInfo.AppendLine("Grinder:");
 			if (m_enemy == null)
 			{
-				customInfo.AppendLine("Searching for a ship");
+				customInfo.Append("Searching for a ship, timeout in ");
+				customInfo.Append((m_timeoutAt - DateTime.UtcNow).Seconds);
+				customInfo.AppendLine(" seconds.");
+				switch (m_finder.m_reason)
+				{
+					case GridFinder.ReasonCannotTarget.Too_Far:
+						customInfo.AppendLine("Best target is too far away");
+						break;
+					case GridFinder.ReasonCannotTarget.Too_Fast:
+						customInfo.AppendLine("Best target is moving too quickly");
+						break;
+					case GridFinder.ReasonCannotTarget.Grid_Condition:
+						IMyCubeGrid claimedBy;
+						if (GridsClaimed.TryGetValue(m_finder.m_reasonGrid, out claimedBy))
+						{
+							if (m_controlBlock.CubeBlock.canConsiderFriendly(claimedBy))
+							{
+								customInfo.Append("Best target is claimed by ");
+								customInfo.AppendLine(claimedBy.DisplayName);
+							}
+							else
+								customInfo.AppendLine("Best target is claimed by another recyler.");
+						}
+						else
+							customInfo.AppendLine("Best target was claimed, should be available shortly.");
+						break;
+				}
 				return;
 			}
 
@@ -305,6 +346,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}, m_logger);
 
 			m_next_grinderCheck = Globals.UpdateCount + 1000ul;
+			m_enableGrinders = enable;
 		}
 
 		private bool GrinderFull()
@@ -329,6 +371,27 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_grinderFull = (float)content / (float)capacity >= 0.9f;
 			return m_grinderFull;
+		}
+
+		private bool GridCondition(IMyCubeGrid grid)
+		{
+			if (m_enemy == grid)
+				return true;
+
+			IMyCubeGrid claimedBy;
+			if (!GridsClaimed.TryGetValue(grid.EntityId, out claimedBy))
+				return true;
+
+			if (claimedBy != m_controlBlock.CubeGrid)
+				return false;
+
+			m_logger.debugLog("This grid has staked a claim but forgot about it", "GridCondition()", Logger.severity.INFO);
+			set_enemy(null);
+			if (GridsClaimed.Remove(grid.EntityId))
+				m_logger.debugLog("removed claim", "GridCondition()");
+			else
+				m_logger.alwaysLog("Failed to remove claim: " + grid.DisplayName, "GridCondition()", Logger.severity.WARNING);
+			return true;
 		}
 
 	}
