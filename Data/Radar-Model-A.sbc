@@ -9,7 +9,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=3
+        MaxTargets_Tracking=30
         MaxPowerLevel=40000
         SignalEnhance=1.125
         JammingEffect=0.8
