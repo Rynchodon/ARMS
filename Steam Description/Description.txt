@@ -3,20 +3,20 @@ ARMS provides Electronic Navigation, Communication, and Targeting Systems
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
 [h1]Mod Features[/h1]
-Automatic docking & landing
-Patrol
-Fly to another ship/station
-Fly to world GPS location
-Fly a certain distance relative to ship
-Formations/Orientation matching
-Command looping
-Speed Control
-Obstacle detection & collision avoidance
-Engage Enemy ships/stations
-Radar
-Act as a missile and target a block on an enemy ship/station
-Smart Turret Control - Allows you to set priorities for your turrets.
-Harvest - Extract resources from asteroids
+[list][*]Autopilot:
+[list][*]Collision Avoidance
+[*]Automatic docking and landing
+[*]Extract resources from asteroids
+[*]Fight an enemy ship or flee
+[*]Recycle(Grind) ships/stations
+[*]Fly to another ship/station
+[*]Fly in formation with another ship
+[*]Fly to world coordinates[/list]
+[*]Multiple radar types and countermeasures
+[*]Ship to ship communication for programmable block
+[*]Weapon Systems:
+[list][*]Guided Missiles
+[*]Advanced Weapon Targeting[/list][/list]
 
 [h1]Contribute[/h1]
 I am looking for assistance with models, code, tutorials, and translations.
@@ -37,7 +37,8 @@ Messages can be sent from one programmable block to another. Block communication
 Block Communication can read detected grid information, apply filters, execute actions, and write to a TextPanel.
 For usage, see the script itself.
 
-[h1]Weapon Control[/h1]
+[h1]Weapon Systems[/h1]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/496880503080018832/] Guided Missiles [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control [/url]
 
 [h1]Settings[/h1]
@@ -46,7 +47,6 @@ To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
-bUseColourState - Autopilot will change colour of Autopilot block
 bAllowWeaponControl - Enables Weapon Control and E command
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
 fDefaultSpeed - the desired minimum speed, when not using V
@@ -62,9 +62,7 @@ These are all the known issues with ARMS. If an issue is not listed here, I do n
 
 Merging grids will cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
 
-Autopilot cannot fly near / through (airtight) doors; piston and rotor doors will work.
-
-If using colour states, the model for the Autopilot block may become displaced. You can disable bUseColourState in the settings file.
+Autopilot cannot fly near / through hanger doors; piston and rotor doors will work.
 
 The Phased array Radar model has a small texture issue on DX9.
 

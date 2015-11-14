@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Model Name="AP_Radar_Jammer">
+	<Parameter Name="RescaleFactor">1.0</Parameter>
+	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
+	<Parameter Name="Centered">false</Parameter>
+	<Parameter Name="SpecularPower">0.0</Parameter>
+	<Parameter Name="SpecularShininess">0.0</Parameter>
+	<Material Name="Batt">
+		<Parameter Name="Technique">MESH</Parameter>
+		<Parameter Name="SpecularIntensity">32.73</Parameter>
+		<Parameter Name="SpecularPower">21.84</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">textures\Cubes\largebattery_me.dds</Parameter>
+		<Parameter Name="NormalTexture">textures\Cubes\largebattery_ns.dds</Parameter>
+		<Parameter Name="ColorMetalTexture">textures\Cubes\largebattery_cm.dds</Parameter>
+		<Parameter Name="NormalGlossTexture">textures\Cubes\largebattery_ng.dds</Parameter>
+		<Parameter Name="AddMapsTexture">textures\Cubes\largebattery_add.dds</Parameter>
+		<!--material has no AlphamaskTexture-->
+	</Material>
+	<Material Name="aut">
+		<Parameter Name="Technique">ALPHAMASK</Parameter>
+		<Parameter Name="SpecularIntensity">32.73</Parameter>
+		<Parameter Name="SpecularPower">12.6</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">0</Parameter>
+		<Parameter Name="DiffuseColorZ">0</Parameter>
+		<Parameter Name="DiffuseTexture">textures\Cubes\autopilot_me.dds</Parameter>
+		<Parameter Name="NormalTexture">textures\Cubes\autopilot_ns.dds</Parameter>
+		<Parameter Name="ColorMetalTexture">textures\Cubes\autopilot_cm.dds</Parameter>
+		<Parameter Name="NormalGlossTexture">textures\Cubes\largebattery_ng.dds</Parameter>
+		<Parameter Name="AddMapsTexture">textures\Cubes\autopilot_add.dds</Parameter>
+		<Parameter Name="AlphamaskTexture">textures\Cubes\dx11_alphamask.dds</Parameter>
+	</Material>
+</Model>

@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Ammos>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=60
+        RotationPerUpdate=0.017453292519943
+        DetonateRange=3
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>200</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>12000</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>700</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>3000</MissileMass>
+        <MissileExplosionRadius>15</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Souper_R12VP_Missile.mwm</MissileModelName>
+        <MissileAcceleration>10</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>10000</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>Souper_R8EA_Missile</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=60
+        Acceleration=100
+        RotationPerUpdate=0.017453292519943
+        DetonateRange=3
+        EMP_Strength=300000
+        EMP_Seconds=30
+        HasAntenna=true
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>200</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>8000</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>700</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>3000</MissileMass>
+        <MissileExplosionRadius>15</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Souper_R8EA_Missile.mwm</MissileModelName>
+        <MissileAcceleration>10</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>100</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>Souper_B3MP_Missile</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=15
+        Acceleration=100
+        ClusterSplitRange=300
+        ClusterCooldown=5
+        ClusterOffset_Back=-5
+        ClusterOffset_Radial=1.2
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>800</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>3000</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>700</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>300</MissileMass>
+        <MissileExplosionRadius>1</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Souper_B3MP_Missile.mwm</MissileModelName>
+        <MissileAcceleration>10</MissileAcceleration>
+        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>10000</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
+    
+  </Ammos>
+</Definitions>

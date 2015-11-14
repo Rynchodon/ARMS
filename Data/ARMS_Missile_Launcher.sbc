@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<CubeBlocks>
+
+    <Definition xsi:type="MyObjectBuilder_WeaponBlockDefinition">
+      <Id>
+        <TypeId>SmallMissileLauncher</TypeId>
+        <SubtypeId>Souper_R12VP_Launcher</SubtypeId>
+      </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
+      <DisplayName>Cruise Missile Launcher</DisplayName>
+      <public>false</public>
+      <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="8" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="75" />
+        <Component Subtype="Construction" Count="125" />
+        <Component Subtype="MetalGrid" Count="80" />
+        <Component Subtype="LargeTube" Count="250" />
+        <Component Subtype="Motor" Count="60" />
+        <Component Subtype="Computer" Count="400" />
+        <Component Subtype="SteelPlate" Count="1500" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
+			</MountPoints>
+      <BlockPairName>Souper_R12VP_Launcher</BlockPairName>
+			<MirroringX>None</MirroringX>
+			<MirroringY>None</MirroringY>
+			<MirroringZ>None</MirroringZ>
+      <Center x="0" y="0" z="1" />
+      <BuildTimeSeconds>120</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <WeaponDefinitionId Subtype="Souper_R12VP_Launcher" />
+      <ResourceSinkGroup>Defense</ResourceSinkGroup>
+      <InventoryMaxVolume>1.14</InventoryMaxVolume>
+      <DamageEffectId>213</DamageEffectId>
+      <DamagedSound>ParticleWeapExpl</DamagedSound>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_WeaponBlockDefinition">
+      <Id>
+        <TypeId>SmallMissileLauncher</TypeId>
+        <SubtypeId>Souper_R8EA_Launcher</SubtypeId>
+      </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
+      <DisplayName>EMP Missile Launcher</DisplayName>
+      <public>false</public>
+      <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="8" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="75" />
+        <Component Subtype="Construction" Count="125" />
+        <Component Subtype="MetalGrid" Count="80" />
+        <Component Subtype="LargeTube" Count="250" />
+        <Component Subtype="Motor" Count="60" />
+        <Component Subtype="Computer" Count="400" />
+        <Component Subtype="SteelPlate" Count="1500" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
+			</MountPoints>
+      <BlockPairName>Souper_R8EA_Launcher</BlockPairName>
+			<MirroringX>None</MirroringX>
+			<MirroringY>None</MirroringY>
+			<MirroringZ>None</MirroringZ>
+      <Center x="0" y="0" z="1" />
+      <BuildTimeSeconds>120</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <WeaponDefinitionId Subtype="Souper_R8EA_Launcher" />
+      <ResourceSinkGroup>Defense</ResourceSinkGroup>
+      <InventoryMaxVolume>1.14</InventoryMaxVolume>
+      <DamageEffectId>213</DamageEffectId>
+      <DamagedSound>ParticleWeapExpl</DamagedSound>
+    </Definition>
+
+    <Definition xsi:type="MyObjectBuilder_WeaponBlockDefinition">
+      <Id>
+        <TypeId>SmallMissileLauncher</TypeId>
+        <SubtypeId>Souper_B3MP_Launcher</SubtypeId>
+      </Id>
+      <Description>
+        AllowFighterControl=false
+        GuidedMissileLauncher=true
+      </Description>
+      <DisplayName>Swarm Missile Launcher</DisplayName>
+      <public>false</public>
+      <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="8" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="75" />
+        <Component Subtype="Construction" Count="125" />
+        <Component Subtype="MetalGrid" Count="80" />
+        <Component Subtype="LargeTube" Count="250" />
+        <Component Subtype="Motor" Count="60" />
+        <Component Subtype="Computer" Count="400" />
+        <Component Subtype="SteelPlate" Count="1500" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
+			</MountPoints>
+      <BlockPairName>Souper_B3MP_Launcher</BlockPairName>
+			<MirroringX>None</MirroringX>
+			<MirroringY>None</MirroringY>
+			<MirroringZ>None</MirroringZ>
+      <Center x="0" y="0" z="1" />
+      <BuildTimeSeconds>120</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <WeaponDefinitionId Subtype="Souper_B3MP_Launcher" />
+      <ResourceSinkGroup>Defense</ResourceSinkGroup>
+      <InventoryMaxVolume>1.14</InventoryMaxVolume>
+      <DamageEffectId>213</DamageEffectId>
+      <DamagedSound>ParticleWeapExpl</DamagedSound>
+    </Definition>
+
+	</CubeBlocks>
+</Definitions>

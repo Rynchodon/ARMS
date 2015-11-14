@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>NameMe_1</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Cluster_Missile_1.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="1" y="1" z="1" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Models\Weapons\NameMe_1.mwm</Model>
+	<BlockPairName>Cluster_Missile_1</BlockPairName>
+</Definition>

@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Blueprints>
+  
+    <Blueprint>
+      <Id>
+        <TypeId>BlueprintDefinition</TypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Cruise Missile R12VP</DisplayName>
+      <Icon>Textures\Icon\Souper_R12VP_Missile.dds</Icon>
+      <Prerequisites>
+        <Item Amount="547.5" TypeId="Ingot" SubtypeId="Iron" />
+        <Item Amount="70" TypeId="Ingot" SubtypeId="Nickel" />
+        <Item Amount="1" TypeId="Ingot" SubtypeId="Silicon" />
+        <Item Amount="0.25" TypeId="Ingot" SubtypeId="Uranium" />
+        <Item Amount="0.12" TypeId="Ingot" SubtypeId="Platinum" />
+        <Item Amount="12" TypeId="Ingot" SubtypeId="Magnesium" />
+      </Prerequisites>
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_R12VP_Missile" />
+      <BaseProductionTimeInSeconds>120</BaseProductionTimeInSeconds>
+    </Blueprint>
+  
+    <Blueprint>
+      <Id>
+        <TypeId>BlueprintDefinition</TypeId>
+        <SubtypeId>Souper_R8EA_Missile</SubtypeId>
+      </Id>
+      <DisplayName>EMP Missile R8EA</DisplayName>
+      <Icon>Textures\Icon\Souper_R8EA_Missile.dds</Icon>
+      <Prerequisites>
+        <Item Amount="232.5" TypeId="Ingot" SubtypeId="Iron" />
+        <Item Amount="17.5" TypeId="Ingot" SubtypeId="Nickel" />
+        <Item Amount="7.5" TypeId="Ingot" SubtypeId="Silicon" />
+        <Item Amount="0.5" TypeId="Ingot" SubtypeId="Uranium" />
+        <Item Amount="0.2" TypeId="Ingot" SubtypeId="Platinum" />
+        <Item Amount="3" TypeId="Ingot" SubtypeId="Magnesium" />
+        <Item Amount="10" TypeId="Ingot" SubtypeId="Gold" />
+      </Prerequisites>
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_R8EA_Missile" />
+      <BaseProductionTimeInSeconds>150</BaseProductionTimeInSeconds>
+    </Blueprint>
+  
+    <Blueprint>
+      <Id>
+        <TypeId>BlueprintDefinition</TypeId>
+        <SubtypeId>Souper_B3MP_Missile</SubtypeId>
+      </Id>
+      <DisplayName>18x Swarm Missile B3MP</DisplayName>
+      <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
+      <Prerequisites>
+        <Item Amount="504" TypeId="Ingot" SubtypeId="Iron" />
+        <Item Amount="63" TypeId="Ingot" SubtypeId="Nickel" />
+        <Item Amount="5.4" TypeId="Ingot" SubtypeId="Silicon" />
+        <Item Amount="0.9" TypeId="Ingot" SubtypeId="Uranium" />
+        <Item Amount="0.36" TypeId="Ingot" SubtypeId="Platinum" />
+        <Item Amount="10.8" TypeId="Ingot" SubtypeId="Magnesium" />
+      </Prerequisites>
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_B3MP_Missile" />
+      <BaseProductionTimeInSeconds>90</BaseProductionTimeInSeconds>
+    </Blueprint>
+   
+  </Blueprints>
+</Definitions>

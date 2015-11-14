@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- Cube Blocks -->
+
+  <CubeBlocks>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
+      </Id>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=10
+        MinAzimuth=-1.963495408493621
+        MaxAzimuth=0.3926990816987241
+        MinElevation=-0.3926990816987241
+        MaxElevation=1.963495408493621
+      </Description>
+      <DisplayName>Radar Dish</DisplayName>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\LargeBlockRadarRynAR.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="90" />
+        <Component Subtype="Construction" Count="55" />
+        <Component Subtype="SmallTube" Count="60" />
+        <Component Subtype="LargeTube" Count="40" />
+        <Component Subtype="Computer" Count="38" />
+        <Component Subtype="RadioCommunication" Count="70" />
+        <Component Subtype="Detector" Count="30" />
+        <Component Subtype="Construction" Count="10" />
+        <Component Subtype="SteelPlate" Count="25" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+        <MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\LargeBlockRadarRynAR_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\LargeBlockRadarRynAR_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\LargeBlockRadarRynAR_Constr3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <BuildTimeSeconds>150</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
+      </Id>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=1
+        MaxPowerLevel=20000
+        MinAzimuth=-1.963495408493621
+        MaxAzimuth=0.3926990816987241
+        MinElevation=-0.3926990816987241
+        MaxElevation=1.963495408493621
+      </Description>
+      <DisplayName>Radar Dish</DisplayName>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="3" y="3" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\SmallBlockRadarRynAR.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="18" />
+        <Component Subtype="Construction" Count="11" />
+        <Component Subtype="SmallTube" Count="12" />
+        <Component Subtype="LargeTube" Count="8" />
+        <Component Subtype="Computer" Count="8" />
+        <Component Subtype="RadioCommunication" Count="14" />
+        <Component Subtype="Detector" Count="6" />
+        <Component Subtype="Construction" Count="2" />
+        <Component Subtype="SteelPlate" Count="5" />
+      </Components>
+      <CriticalComponent Subtype="Detector" Index="0" />
+      <MountPoints>
+         <MountPoint Side="Bottom" StartX="0.00" StartY="0.01" EndX="2.97" EndY="2.98" />
+      </MountPoints>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\SmallBlockRadarRynAR_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\SmallBlockRadarRynAR_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\SmallBlockRadarRynAR_Constr3.mwm" />
+      </BuildProgressModels>
+      <BlockPairName>LargeBlockRadarRynAR</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <BuildTimeSeconds>30</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+  </CubeBlocks>
+
+  <!-- Category Classes -->
+
+  <CategoryClasses>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
+      <Name>LargeBlocks</Name>
+      <ItemIds>
+        <string>Beacon/LargeBlockRadarRynAR</string>
+      </ItemIds>
+    </Category>
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
+      <Name>SmallBlocks</Name>
+      <ItemIds>
+        <string>Beacon/SmallBlockRadarRynAR</string>
+      </ItemIds>
+    </Category>
+  </CategoryClasses>
+
+</Definitions>

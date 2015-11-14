@@ -1,0 +1,21 @@
+[u]Do not attempt to fire a guided missile while your ship is rotating or accelerating.[/u]
+If the ID command is specified in the launcher's name, the missile will only target the matching ship/station.
+Otherwise, the target type should be specified in the launcher's name; AllGrid, LargeGrid, SmallGrid, or Station.
+See [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url].
+ 
+[h1]Missiles[/h1]
+[u]Cruise Missile R12VP[/u]
+Designed to destroy armoured targets.
+12 km range.
+Slow speed and minimal acceleration make the missile highly susceptible to gatling fire.
+Pre-set guidance does not allow the missile to correct for acceleration of the target.
+
+[u]EMP Missile R8EA[/u]
+Deals minimal damage but disables batteries and reactors.
+8 km range.
+Radio receiver allows the missile to receive target updates.
+
+[u]Swarm Missile B3MP[/u]
+A spread of 18 missiles.
+3 km range.
+Only has guidance for a short time after being fired.

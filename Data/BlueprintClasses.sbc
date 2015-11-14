@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <BlueprintClassEntries>
+   
+    <!-- Radar -->
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/LargeBlockRadarRynAR" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/SmallBlockRadarRynAR" />
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/Radar_A_Large_Souper07" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/Radar_A_Small_Souper07" />
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="RadioAntenna/PhasedArrayRadar_Large_Souper07" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="RadioAntenna/PhasedArrayRadar_Small_Souper07" />
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="RadioAntenna/AP_Radar_Jammer_Large" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="RadioAntenna/AP_Radar_Jammer_Small" />
+
+    <!-- Missile -->
+    
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_R12VP_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_R12VP_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_R8EA_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_R8EA_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_B3MP_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_B3MP_Missile" />
+    
+    <!-- Launcher -->
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R12VP_Launcher" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R8EA_Launcher" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_B3MP_Launcher" />
+    
+  </BlueprintClassEntries>
+</Definitions>

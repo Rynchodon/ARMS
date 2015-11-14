@@ -6,6 +6,8 @@ Antennae, radars, and Autopilot blocks in attached grids share information.
 
 Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
+[u]Text Panel[/u] can display detected grids, simply add [ Display Detected ] to the text panel's name.
+
 [h1]Radar[/h1]
 Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. Radar must remain online for a period of time to function at full capacity.
 [u]Radar must have line-of-sight to detect an object.[/u]
@@ -16,17 +18,23 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 Radar equipment from other mods may be used. If they are not otherwise configured, they will be similar to Radar Dish but be capable of detecting objects in every direction.
 
 [u]Radar Dish[/u]
-Very long range, inexpensive, unidirectional, single-target radar.
+Very long range, inexpensive, unidirectional, up to 10 targets.
 
 [u]Radar Dome[/u]
-Long range, omnidirectional, multi-target radar.
+Long range, omnidirectional, up to 30 targets.
 Cannot detect objects below it.
 
 [u]Phased Array Radar[/u]
-Medium range, expensive, omnidirectional, many-target radar.
+Medium range, expensive, omnidirectional, up to 100 targets.
 Cannot detect objects below it or directly above.
 Functions as an antenna and broadcasting can be disabled.
 Can detect other radar at long range.
+
+[u]Radar Jammer[/u]
+Jams an enemy radar, higher quality radar are harder to jam.
+If there is an enemy radar in range, will cause interference with all radars near the jammer.
+Cannot jam radar above or below it.
+Functions as an antenna and broadcasting can be disabled.
 
 [h1]GPS Markers[/h1]
 ARMS will add GPS entries for detected grids. If you delete these bad things will happen.

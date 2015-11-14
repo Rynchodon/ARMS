@@ -25,6 +25,7 @@ if not os.path.exists(mwmBuilder):
 	if not os.path.exists(mwmBuilder):
 		if (os.path.exists(buildIni)): # from buildIni
 			exec(open(buildIni).read())
+			mwmBuilder = SpaceEngineers + r"\Tools\MwmBuilder\MwmBuilder.exe"
 			
 		if not os.path.exists(mwmBuilder):
 			inScriptDir = scriptDir + "\\MwmBuilder.exe" # from script dir

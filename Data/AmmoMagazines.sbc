@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AmmoMagazines>
+  
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_R12VP_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Cruise Missile R12VP</DisplayName>
+      <Icon>Textures\Icon\Souper_R12VP_Missile.dds</Icon>
+      <Size>
+        <X>6</X>
+        <Y>0.25</Y>
+        <Z>0.25</Z>
+      </Size>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
+      <Model>Models\Weapons\Souper_R12VP_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="Souper_R12VP_Missile" />
+    </AmmoMagazine>
+  
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_R8EA_Missile</SubtypeId>
+      </Id>
+      <DisplayName>EMP Missile R8EA</DisplayName>
+      <Icon>Textures\Icon\Souper_R8EA_Missile.dds</Icon>
+      <Size>
+        <X>5</X>
+        <Y>0.27</Y>
+        <Z>0.27</Z>
+      </Size>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
+      <Model>Models\Weapons\Souper_R8EA_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="Souper_R8EA_Missile" />
+    </AmmoMagazine>
+  
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_B3MP_Missile</SubtypeId>
+      </Id>
+      <DisplayName>18x Swarm Missile B3MP</DisplayName>
+      <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
+      <Size>
+        <X>0.3</X>
+        <Y>0.1</Y>
+        <Z>0.1</Z>
+      </Size>
+      <Mass>4500</Mass>
+      <Volume>6000</Volume>
+      <Model>Models\Weapons\Souper_B3MP_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>18</Capacity>
+      <AmmoDefinitionId Subtype="Souper_B3MP_Missile" />
+    </AmmoMagazine>
+    
+  </AmmoMagazines>
+</Definitions>
