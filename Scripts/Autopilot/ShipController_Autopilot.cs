@@ -422,13 +422,13 @@ namespace Rynchodon.Autopilot
 		private bool CanControlBlockGrid(IMyCubeGrid grid)
 		{
 			// is grid ready
-			if (grid.IsStatic
-				|| grid.BigOwners.Count == 0)
+			if (grid.IsStatic)
+				//|| grid.BigOwners.Count == 0)
 				return false;
 
 			// is block ready
 			if (!m_block.Controller.IsWorking
-				|| !grid.BigOwners.Contains(m_block.Controller.OwnerId)
+				//|| !grid.BigOwners.Contains(m_block.Controller.OwnerId)
 				|| !m_block.Controller.ControlThrusters)
 				return false;
 
@@ -496,12 +496,12 @@ namespace Rynchodon.Autopilot
 					m_customInfo_build.AppendLine("Disabled");
 				else if (m_block.CubeGrid.IsStatic)
 					m_customInfo_build.AppendLine("Grid is a station");
-				else if (m_block.CubeGrid.BigOwners.Count == 0)
-					m_customInfo_build.AppendLine("Grid is unowned");
+				//else if (m_block.CubeGrid.BigOwners.Count == 0)
+				//	m_customInfo_build.AppendLine("Grid is unowned");
 				else if (!m_block.Controller.IsWorking)
 					m_customInfo_build.AppendLine("Not working");
-				else if (!m_block.CubeGrid.BigOwners.Contains(m_block.Controller.OwnerId))
-					m_customInfo_build.AppendLine("Block cannot control grid");
+				//else if (!m_block.CubeGrid.BigOwners.Contains(m_block.Controller.OwnerId))
+				//	m_customInfo_build.AppendLine("Block cannot control grid");
 				else
 				{
 					MyCubeGrid mcg = m_block.CubeGrid as MyCubeGrid;

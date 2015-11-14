@@ -71,10 +71,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					if (entity is IMyVoxelBase)
 					{
+						if (ignoreAsteroids)
+							continue;
+
 						IMyVoxelMap voxel = entity as IMyVoxelMap;
 						if (voxel != null)
 						{
-							if (!ignoreAsteroids && voxel.GetIntersectionWithSphere(ref surroundingSphere))
+							if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
 								return false;
 							continue;
 						}

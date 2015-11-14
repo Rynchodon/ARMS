@@ -238,7 +238,7 @@ namespace Rynchodon.Autopilot.Movement
 			else if (localDisp.Z < 0)
 				result.Z = -MaximumSpeed(-localDisp.Z, Base6Directions.Direction.Forward);
 
-			//myLogger.debugLog("local: " + localDisp + ", result: " + result, "MaximumVelocity()");
+			myLogger.debugLog("local: " + localDisp + ", result: " + result, "MaximumVelocity()");
 
 			return result;
 		}
@@ -253,8 +253,8 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			// Mover will attempt to stop with normal thrust
 			float accel = -myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(direct)) / Block.Physics.Mass;
-			//myLogger.debugLog("dist: " + dist + ", accel: " + accel + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2 * accel * dist)), "MaximumSpeed()");
-			return (float)Math.Sqrt(-2 * accel * dist);
+			myLogger.debugLog("dist: " + dist + ", accel: " + accel + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2 * accel * dist)) + "m/s" + ", cap: " + dist * 0.5f + " m/s", "MaximumSpeed()");
+			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist * 0.5f); // capped for the sake of autopilot's reaction time
 		}
 
 		/// <summary>
@@ -279,8 +279,9 @@ namespace Rynchodon.Autopilot.Movement
 			else if (localAccel.Z < 0)
 				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Forward);
 
-			//myLogger.debugLog("local: " + localAccel + ", result: " + result, "ToForceRatio()");
+			myLogger.debugLog("local: " + localAccel + ", result: " + result + ", after gravity: " + (result + myThrust.m_gravityReactRatio), "ToForceRatio()");
 
+			result += myThrust.m_gravityReactRatio;
 			return result;
 		}
 
@@ -515,7 +516,7 @@ namespace Rynchodon.Autopilot.Movement
 		private float MaxAngleSpeed(float accel, float dist)
 		{
 			//myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
-			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist);
+			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist); // capped for the sake of autopilot's reaction time
 		}
 
 		/// <summary>

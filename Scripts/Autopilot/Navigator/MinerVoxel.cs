@@ -19,11 +19,11 @@ namespace Rynchodon.Autopilot.Navigator
 	 * TODO:
 	 * Escape if inside tunnel while autopilot gains control (regardless of commands)
 	 * Antenna relay & multiple ore detectors
-	 * Sort VoxelMaps by distance before searching for ores
+	 * Sort IMyVoxelBase by distance before searching for ores
 	 */
 
 	/// <summary>
-	/// Mines a VoxelMap
+	/// Mines an IMyVoxelBase
 	/// Will not insist on rotation control until it is ready to start mining.
 	/// </summary>
 	public class MinerVoxel : NavigatorMover, INavigatorRotator
@@ -39,9 +39,20 @@ namespace Rynchodon.Autopilot.Navigator
 			List<MyVoxelBase> voxels = new List<MyVoxelBase>();
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref surround, voxels);
 			if (voxels != null)
-				foreach (IMyVoxelMap vox in voxels)
-					if (vox.GetIntersectionWithSphere(ref surround))
-						return true;
+				foreach (IMyVoxelBase vox in voxels)
+				{
+					if (vox is IMyVoxelMap)
+					{
+						if (vox.GetIntersectionWithSphere(ref surround))
+							return true;
+					}
+					else
+					{
+						MyPlanet planet = vox as MyPlanet;
+						if (planet != null && planet.Intersects(surround))
+							return true;
+					}
+				}
 
 			return false;
 		}
@@ -440,9 +451,19 @@ namespace Rynchodon.Autopilot.Navigator
 
 			MyFixedPoint content = 0, capacity = 0;
 			int drillCount = 0;
-			var allDrills = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			if (allDrills == null)
+
+			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
+			if (cache == null)
+			{
+				m_logger.debugLog("Failed to get cache", "DrillFullness()", Logger.severity.INFO);
 				return float.MaxValue;
+			}
+			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			if (allDrills == null)
+			{
+				m_logger.debugLog("Failed to get block list", "DrillFullness()", Logger.severity.INFO);
+				return float.MaxValue;
+			}
 
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 			{
@@ -467,7 +488,19 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 				m_logger.debugLog("Disabling drills", "EnableDrills()", Logger.severity.DEBUG);
 
-			var allDrills = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
+			if (cache == null)
+			{
+				m_logger.debugLog("Failed to get cache", "EnableDrills()", Logger.severity.INFO);
+				return;
+			}
+			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
+			if (allDrills == null)
+			{
+				m_logger.debugLog("Failed to get block list", "EnableDrills()", Logger.severity.INFO);
+				return;
+			}
+
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyShipDrill drill in allDrills)
 					if (!drill.Closed)
@@ -478,7 +511,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private void GetDeposit()
 		{
 			Vector3D pos = m_navDrill.WorldPosition;
-			IMyVoxelMap foundMap;
+			IMyVoxelBase foundMap;
 			if (m_oreDetector.FindClosestOre(pos, OreTargets, out m_depositPos, out foundMap, out m_depostitOre))
 			{
 				// from the centre of the voxel, passing through the deposit, find the edge of the AABB
@@ -495,7 +528,14 @@ namespace Rynchodon.Autopilot.Navigator
 				// was getting memory access violation, so not using MainLock.RayCastVoxel_Safe()
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					Vector3 surfacePoint;
-					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
+					if (foundMap is IMyVoxelMap)
+						MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
+					else
+					{
+						MyPlanet planet = foundMap as MyPlanet;
+						surfacePoint = planet.GetClosestSurfacePointGlobal(ref m_depositPos);
+						m_logger.debugLog("Mining target is a planet, from nav drill position: " + m_navDrill.WorldPosition + ", surface is " + surfacePoint, "GetDeposit()");
+					}
 					m_approach = new Line(surfacePoint + centreOut * m_controlBlock.CubeGrid.GetLongestDim() * 2, surfacePoint);
 
 					m_logger.debugLog("centre: " + m_voxelCentre.ToGpsTag("centre")
@@ -512,7 +552,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_logger.debugLog("No ore target found", "Move()", Logger.severity.INFO);
+			m_logger.debugLog("No ore target found", "GetDeposit()", Logger.severity.INFO);
 			m_navSet.OnTaskComplete_NavRot();
 		}
 
