@@ -26,6 +26,9 @@
 
     <Entry Class="Ammo" BlueprintSubtypeId="Souper_B3MP_Missile" />
     <Entry Class="Components" BlueprintSubtypeId="Souper_B3MP_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Interceptor_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Interceptor_Missile" />
     
     <!-- Launcher -->
     
