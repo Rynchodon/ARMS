@@ -556,7 +556,10 @@ namespace Rynchodon.Autopilot.Instruction
 				}
 			}
 
-			execute = () => { new GOLIS(Mover, NavSet, result); };
+			execute = () => {
+				result = Vector3.Transform(result, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
+				new GOLIS(Mover, NavSet, result);
+			};
 			return true;
 		}
 
@@ -578,24 +581,13 @@ namespace Rynchodon.Autopilot.Instruction
 				if (!Double.TryParse(coordsString[i], out coordsDouble[i]))
 					return false;
 
-			Vector3 fromBlock = new Vector3(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-
-			result = Vector3.Transform(fromBlock, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
+			result = new Vector3(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
 			return true;
 		}
 
 		private bool flyTo_generic(out Vector3 result, string instruction)
 		{
-			m_logger.debugLog("entered flyTo_generic(result, " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
-
-			result = Vector3.Zero;
-			Vector3 fromGeneric;
-			if (getVector_fromGeneric(out fromGeneric, instruction))
-			{
-				result = Vector3.Transform(fromGeneric, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
-				return true;
-			}
-			return false;
+			return getVector_fromGeneric(out result, instruction);
 		}
 
 		/// <summary>

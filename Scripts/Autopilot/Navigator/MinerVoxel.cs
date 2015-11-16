@@ -72,6 +72,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private string m_depostitOre;
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
+		private bool m_miningPlanet;
 
 		private float speedLinear = float.MaxValue, speedAngular = float.MaxValue;
 
@@ -125,6 +126,12 @@ namespace Rynchodon.Autopilot.Navigator
 						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f;
 						break;
 					case State.Mining_Tunnel:
+						if (m_miningPlanet)
+						{
+							m_logger.debugLog("Cannot tunnel through a planet, care to guess why?", "set_m_state()");
+							m_state = State.Mining_Escape;
+							return;
+						}
 						EnableDrills(true);
 						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f;
 						break;
@@ -529,12 +536,16 @@ namespace Rynchodon.Autopilot.Navigator
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					Vector3 surfacePoint;
 					if (foundMap is IMyVoxelMap)
+					{
 						MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
+						m_miningPlanet = false;
+					}
 					else
 					{
 						MyPlanet planet = foundMap as MyPlanet;
 						surfacePoint = planet.GetClosestSurfacePointGlobal(ref m_depositPos);
 						m_logger.debugLog("Mining target is a planet, from nav drill position: " + m_navDrill.WorldPosition + ", surface is " + surfacePoint, "GetDeposit()");
+						m_miningPlanet = true;
 					}
 					m_approach = new Line(surfacePoint + centreOut * m_controlBlock.CubeGrid.GetLongestDim() * 2, surfacePoint);
 

@@ -14,34 +14,9 @@ namespace Rynchodon.Autopilot.Data
 	{
 		private Logger myLogger = null;
 
-		/// <summary>
-		/// it is less expensive to remember some information about thrusters
-		/// </summary>
-		private class ThrusterProperties
-		{
-			/// <summary>from definition</summary>
-			public readonly float force;
-			/// <summary>direction the thruster will move the ship in</summary>
-			public readonly Base6Directions.Direction forceDirect;
-			public readonly IMyThrust thruster;
-
-			public ThrusterProperties(IMyThrust thruster)
-			{
-				thruster.throwIfNull_argument("thruster");
-
-				this.thruster = thruster;
-				this.force = (thruster.GetCubeBlockDefinition() as MyThrustDefinition).ForceMagnitude;
-				this.forceDirect = Base6Directions.GetFlippedDirection(thruster.Orientation.Forward);
-			}
-
-			public override string ToString()
-			{ return "force = " + force + ", direction = " + forceDirect; }
-		}
-
 		private IMyCubeGrid myGrid;
-		private Dictionary<IMyThrust, ThrusterProperties> allMyThrusters;
-		private Dictionary<Base6Directions.Direction, List<ThrusterProperties>> thrustersInDirection;
-		private Vector3 m_localGravity;
+		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
+		private float m_airDensity;
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -51,11 +26,8 @@ namespace Rynchodon.Autopilot.Data
 			myLogger = new Logger("ThrustProfiler", () => grid.DisplayName);
 			myGrid = grid;
 
-			allMyThrusters = new Dictionary<IMyThrust, ThrusterProperties>();
-
-			thrustersInDirection = new Dictionary<Base6Directions.Direction, List<ThrusterProperties>>();
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-				thrustersInDirection.Add(direction, new List<ThrusterProperties>());
+				thrustersInDirection.Add(direction, new List<MyThrust>());
 
 			List<IMySlimBlock> thrusters = new List<IMySlimBlock>();
 			myGrid.GetBlocks(thrusters, block => block.FatBlock != null && block.FatBlock is IMyThrust);
@@ -66,6 +38,8 @@ namespace Rynchodon.Autopilot.Data
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
 		}
 
+		/// <summary>Gravitational acceleration transformed to local.</summary>
+		public Vector3 m_localGravity { get; private set; }
 		/// <summary>Thrust ratio to conteract gravity.</summary>
 		public Vector3 m_gravityReactRatio { get; private set; }
 
@@ -75,9 +49,7 @@ namespace Rynchodon.Autopilot.Data
 		/// <param name="thruster">The new thruster</param>
 		private void newThruster(IMySlimBlock thruster)
 		{
-			ThrusterProperties properties = new ThrusterProperties(thruster.FatBlock as IMyThrust);
-			allMyThrusters.Add(thruster.FatBlock as IMyThrust, properties);
-			thrustersInDirection[properties.forceDirect].Add(properties);
+			thrustersInDirection[Base6Directions.GetFlippedDirection(thruster.FatBlock.Orientation.Forward)].Add(thruster.FatBlock as MyThrust);
 			return;
 		}
 
@@ -113,22 +85,16 @@ namespace Rynchodon.Autopilot.Data
 		{
 			try
 			{
-				if (removed.FatBlock == null) 
+				if (removed.FatBlock == null)
 					return;
 
-				IMyThrust asThrust = removed.FatBlock as IMyThrust;
+				MyThrust asThrust = removed.FatBlock as MyThrust;
 				if (asThrust == null)
 					return;
 
-				ThrusterProperties properties;
-				if (allMyThrusters.TryGetValue(asThrust, out properties))
-				{
-					allMyThrusters.Remove(asThrust);
-					thrustersInDirection[properties.forceDirect].Remove(properties);
-					myLogger.debugLog("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + ", " + properties, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
-					return;
-				}
-				myLogger.debugLog("could not get properties for thruster", "grid_OnBlockRemoved()", Logger.severity.ERROR);
+				thrustersInDirection[Base6Directions.GetFlippedDirection(asThrust.Orientation.Forward)].Remove(asThrust);
+				myLogger.debugLog("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + "/" + asThrust.DisplayNameText, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
+				return;
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "grid_OnBlockRemoved()", Logger.severity.ERROR); }
@@ -141,9 +107,25 @@ namespace Rynchodon.Autopilot.Data
 		public float GetForceInDirection(Base6Directions.Direction direction, bool adjustForGravity = true)
 		{
 			float force = 0;
-			foreach (ThrusterProperties thruster in thrustersInDirection[direction])
-				if (!thruster.thruster.Closed && thruster.thruster.IsWorking)
-					force += thruster.force * thruster.thruster.ThrustMultiplier;
+			foreach (MyThrust thruster in thrustersInDirection[direction])
+				if (!thruster.Closed && thruster.IsWorking)
+				{
+					float thrusterForce = thruster.BlockDefinition.ForceMagnitude * (thruster as IMyThrust).ThrustMultiplier;
+					if (thruster.BlockDefinition.NeedsAtmosphereForInfluence)
+						if (m_airDensity <= thruster.BlockDefinition.MinPlanetaryInfluence)
+							thrusterForce *= thruster.BlockDefinition.EffectivenessAtMinInfluence;
+						else if (m_airDensity >= thruster.BlockDefinition.MaxPlanetaryInfluence)
+							thrusterForce *= thruster.BlockDefinition.EffectivenessAtMaxInfluence;
+						else
+						{
+							float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
+							float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
+							float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
+							myLogger.debugLog("For thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "GetForceInDirection()");
+							thrusterForce *= effectiveness;
+						}
+					force += thrusterForce;
+				}
 
 			if (adjustForGravity)
 			{
@@ -160,11 +142,11 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		public bool CanMoveAnyDirection()
 		{
-			foreach (List<ThrusterProperties> thrusterGroup in thrustersInDirection.Values)
+			foreach (List<MyThrust> thrusterGroup in thrustersInDirection.Values)
 			{
 				bool found = false;
-				foreach (ThrusterProperties prop in thrusterGroup)
-					if (!prop.thruster.Closed && prop.thruster.IsWorking)
+				foreach (MyThrust prop in thrusterGroup)
+					if (!prop.Closed && prop.IsWorking)
 					{
 						found = true;
 						break;
@@ -175,14 +157,18 @@ namespace Rynchodon.Autopilot.Data
 			return true;
 		}
 
-		public void UpdateGravity()
+		public void UpdateGravityAndAir()
 		{
 			Vector3D position = myGrid.GetPosition();
 			Vector3 gravity = Vector3.Zero;
-			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is IMyGravityProvider);
-			foreach (IMyGravityProvider planet in allPlanets)
+			m_airDensity = 0f;
+			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is MyPlanet);
+			foreach (MyPlanet planet in allPlanets)
 				if (planet.IsPositionInRangeGrid(position))
+				{
 					gravity += planet.GetWorldGravityGrid(position);
+					m_airDensity += planet.GetAirDensity(position);
+				}
 
 			m_localGravity = Vector3.Transform(gravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
 
@@ -202,6 +188,7 @@ namespace Rynchodon.Autopilot.Data
 			this.m_gravityReactRatio = gravityReactRatio;
 
 			myLogger.debugLog("Gravity: " + gravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio, "UpdateGravity()");
+			myLogger.debugLog("Air density: " + m_airDensity, "UpdateGravity()");
 		}
 
 	}
