@@ -17,6 +17,7 @@ namespace Rynchodon.Autopilot.Data
 		private IMyCubeGrid myGrid;
 		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
 		private float m_airDensity;
+		private ulong m_nextUpdate_gravityAndAir;
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -121,7 +122,7 @@ namespace Rynchodon.Autopilot.Data
 							float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
 							float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
 							float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
-							myLogger.debugLog("For thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "GetForceInDirection()");
+							//myLogger.debugLog("For thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "GetForceInDirection()");
 							thrusterForce *= effectiveness;
 						}
 					force += thrusterForce;
@@ -159,6 +160,9 @@ namespace Rynchodon.Autopilot.Data
 
 		public void UpdateGravityAndAir()
 		{
+			if (Globals.UpdateCount < m_nextUpdate_gravityAndAir)
+				return;
+
 			Vector3D position = myGrid.GetPosition();
 			Vector3 gravity = Vector3.Zero;
 			m_airDensity = 0f;
@@ -169,6 +173,15 @@ namespace Rynchodon.Autopilot.Data
 					gravity += planet.GetWorldGravityGrid(position);
 					m_airDensity += planet.GetAirDensity(position);
 				}
+
+			if (gravity.LengthSquared() < 0.01f)
+			{
+				myLogger.debugLog("Not in gravity well", "UpdateGravityAndAir()");
+				m_localGravity = Vector3.Zero;
+				m_gravityReactRatio = Vector3.Zero;
+				m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
+				return;
+			}
 
 			m_localGravity = Vector3.Transform(gravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
 
@@ -185,10 +198,10 @@ namespace Rynchodon.Autopilot.Data
 				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Forward, false);
 			else
 				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward, false);
-			this.m_gravityReactRatio = gravityReactRatio;
+			m_gravityReactRatio = gravityReactRatio;
 
-			myLogger.debugLog("Gravity: " + gravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio, "UpdateGravity()");
-			myLogger.debugLog("Air density: " + m_airDensity, "UpdateGravity()");
+			myLogger.debugLog("Gravity: " + gravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravity()");
+			m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 		}
 
 	}

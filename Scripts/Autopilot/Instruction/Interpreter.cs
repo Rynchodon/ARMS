@@ -330,6 +330,15 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			string panelText = panel.GetPublicText();
+
+			if (string.IsNullOrWhiteSpace(panelText))
+			{
+				Errors.Append("For ");
+				Errors.Append(panel.DisplayNameText);
+				Errors.AppendLine(", no text");
+				return true;
+			}
+
 			string lowerText = panelText.ToLower();
 
 			string identifier;
@@ -342,7 +351,11 @@ namespace Rynchodon.Autopilot.Instruction
 				if (identifierIndex < 0)
 				{
 					m_logger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-					return false;
+					Errors.Append("For ");
+					Errors.Append(panel.DisplayNameText);
+					Errors.Append(", could not find ");
+					Errors.AppendLine(identifier);
+					return true;
 				}
 				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
 			}
@@ -356,14 +369,30 @@ namespace Rynchodon.Autopilot.Instruction
 			if (startOfCommands < 0)
 			{
 				m_logger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-				return false;
+				Errors.Append("For ");
+				Errors.Append(panel.DisplayNameText);
+				if (identifier != null)
+				{
+					Errors.Append(".");
+					Errors.Append(identifier);
+				}
+				Errors.AppendLine(", [ not found.");
+				return true;
 			}
 
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
 				m_logger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
-				return false;
+				Errors.Append("For ");
+				Errors.Append(panel.DisplayNameText);
+				if (identifier != null)
+				{
+					Errors.Append(".");
+					Errors.Append(identifier);
+				}
+				Errors.AppendLine(", ] not found.");
+				return true;
 			}
 
 			m_logger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
@@ -371,7 +400,7 @@ namespace Rynchodon.Autopilot.Instruction
 			commands.GpsToCSV(out commands);
 			enqueueAllActions_continue(commands);
 
-			return true; // this instruction was successfully executed, even if sub instructions were not
+			return true;
 		}
 
 

@@ -33,7 +33,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>Apply a small amount of movement directly to prevent ship getting stuck.</summary>
 		private const bool Unsticker = true;
 
-		public static bool IsNearVoxel(IMyCubeGrid grid, double lengthMulti = 0.5d)
+		public static bool IsNearVoxel(IMyCubeGrid grid, double lengthMulti = 1d)
 		{
 			BoundingSphereD surround = new BoundingSphereD(grid.GetCentre(), grid.GetLongestDim() * lengthMulti);
 			List<MyVoxelBase> voxels = new List<MyVoxelBase>();
@@ -49,7 +49,7 @@ namespace Rynchodon.Autopilot.Navigator
 					else
 					{
 						MyPlanet planet = vox as MyPlanet;
-						if (planet != null && planet.Intersects(surround))
+						if (planet != null && planet.Intersects(ref surround))
 							return true;
 					}
 				}
@@ -73,8 +73,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
 		private bool m_miningPlanet;
-
-		private float speedLinear = float.MaxValue, speedAngular = float.MaxValue;
+		private float m_closestDistToTarget;
+		private ulong m_stuckAt;
 
 		private State m_state
 		{
@@ -84,7 +84,6 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("Changing state to " + value, "m_state()");
 				value_state = value;
-				speedAngular = speedLinear = 10f;
 				switch (value)
 				{
 					case State.GetTarget:
@@ -147,6 +146,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 				m_mover.StopRotate();
 				m_navSet.OnTaskComplete_NavWay();
+				RestartStuckTimer();
 			}
 		}
 
@@ -213,9 +213,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("No drills, must escape!", "Move()");
 				m_state = State.Mining_Escape;
 			}
-
-			speedAngular = 0.95f * speedAngular + 0.1f * m_mover.Block.Physics.AngularVelocity.LengthSquared();
-			speedLinear = 0.95f * speedLinear + 0.1f * m_mover.Block.Physics.LinearVelocity.LengthSquared();
 
 			switch (m_state)
 			{
@@ -287,7 +284,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Mining_Escape:
 					if (!IsNearVoxel())
 					{
-						m_logger.debugLog("left asteroid", "Move()");
+						m_logger.debugLog("left voxel", "Move()");
 						m_state = State.Move_Away;
 						return;
 					}
@@ -312,7 +309,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Mining_Tunnel:
 					if (!IsNearVoxel())
 					{
-						m_logger.debugLog("left asteroid", "Mine()");
+						m_logger.debugLog("left voxel", "Mine()");
 						m_state = State.Move_Away;
 						return;
 					}
@@ -567,21 +564,28 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.OnTaskComplete_NavRot();
 		}
 
-		private bool IsNearVoxel(double lengthMulti = 0.5d)
+		private bool IsNearVoxel(double lengthMulti = 1d)
 		{ return IsNearVoxel(m_navDrill.Grid, lengthMulti); }
 
 		private bool IsStuck()
 		{
-			if (speedAngular < 0.01f && speedLinear < 0.01f)
+			if (!m_closestDistToTarget.IsValid() || m_navSet.Settings_Current.Distance < m_closestDistToTarget)
 			{
-				m_logger.debugLog("Got stuck", "IsStuck()", Logger.severity.DEBUG);
-				return true;
+				RestartStuckTimer();
+				return false;
 			}
-			return false;
+			return (Globals.UpdateCount >= m_stuckAt);
+		}
+
+		private void RestartStuckTimer()
+		{
+			m_closestDistToTarget = m_navSet.Settings_Current.Distance;
+			m_stuckAt = Globals.UpdateCount + 1000ul;
+			//m_logger.debugLog("closest distance: " + m_closestDistToTarget + ", stuck at: " + m_stuckAt, "RestartStuckTimer()");
 		}
 
 		private void MoveCurrent()
-		{ m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero); }
+		{ m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo); }
 
 		private void OreDetectorFinished()
 		{

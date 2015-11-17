@@ -413,27 +413,28 @@ Finished_Deposit:
 			m_nearbyVoxel.Clear();
 			MainLock.UsingShared(() => MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel));
 
-			if (m_nearbyVoxel.Count == 0)
+			foreach (IMyVoxelBase nearbyMap in m_nearbyVoxel)
+				if (nearbyMap is IMyVoxelMap || nearbyMap is MyPlanet)
+				{
+					VoxelData data;
+					using (l_voxelDate.AcquireExclusiveUsing())
+						if (!m_voxelData.TryGetValue(nearbyMap, out data))
+						{
+							data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
+							m_voxelData.Add(nearbyMap, data);
+						}
+
+					using (l_waitingOn.AcquireExclusiveUsing())
+						if (data.StartRead(OnVoxelFinish))
+							m_waitingOn++;
+				}
+
+			if (m_waitingOn == 0)
 			{
 				using (l_waitingOn.AcquireExclusiveUsing())
 					m_waitingOn++;
 				OnVoxelFinish();
 				return;
-			}
-
-			foreach (IMyVoxelBase nearbyMap in m_nearbyVoxel)
-			{
-				VoxelData data;
-				using (l_voxelDate.AcquireExclusiveUsing())
-					if (!m_voxelData.TryGetValue(nearbyMap, out data))
-					{
-						data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
-						m_voxelData.Add(nearbyMap, data);
-					}
-
-				using (l_waitingOn.AcquireExclusiveUsing())
-					if (data.StartRead(OnVoxelFinish))
-						m_waitingOn++;
 			}
 		}
 

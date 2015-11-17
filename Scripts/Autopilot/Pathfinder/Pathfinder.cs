@@ -6,6 +6,7 @@ using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Threading;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -105,8 +106,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
-
 		public string PathStatus { get { return m_pathState.ToString(); } }
+		public IMyEntity RotateObstruction { get; private set; }
 
 		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
@@ -197,10 +198,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
 			m_pathHigh.Enqueue(() => {
 				Vector3 axis; Vector3.Normalize(ref displacement, out axis);
-				if (m_rotateChecker.TestRotate(axis, m_ignoreAsteroid))
+				IMyEntity obstruction;
+				if (m_rotateChecker.TestRotate(axis, m_ignoreAsteroid, out obstruction))
 					m_rotateState = PathState.No_Obstruction;
 				else
 					m_rotateState = PathState.Path_Blocked;
+				RotateObstruction = obstruction;
 
 				RunItem();
 			});
@@ -227,7 +230,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			try
 			{
 				if (!isAlternate && !tryAlternates)
-					m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.INFO);
+					m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.TRACE);
 
 				if (runId != m_runId)
 				{
@@ -268,7 +271,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				m_pathState = PathState.Searching;
 
-				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", destEntity: " + destEntity.getBestName(), "TestPath()", Logger.severity.TRACE);
+				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", destEntity: " + destEntity.getBestName(), "TestPath()", isAlternate? Logger.severity.TRACE : Logger.severity.DEBUG);
+				m_logger.debugLog(obstructing is IMyCubeBlock, "grid: " + obstructing.GetTopMostParent().DisplayName, "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 
 				if (tryAlternates)
 				{
@@ -373,7 +377,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				if (isAlternate)
 				{
-					m_logger.debugLog("Setting waypoint: " + destination, "SetWaypoint()");
+					m_logger.debugLog("Setting waypoint: " + destination, "PathClear()", Logger.severity.DEBUG);
 					new GOLIS(m_mover, m_navSet, destination, true);
 				}
 				if (slowDown)
@@ -385,7 +389,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_pathLow.Clear();
 			}
 			else
-				m_logger.debugLog("destination changed, abort", "TestPath()", Logger.severity.DEBUG);
+				m_logger.debugLog("destination changed, abort", "PathClear()", Logger.severity.DEBUG);
 			return;
 		}
 

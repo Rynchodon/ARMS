@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -28,7 +29,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="axis">Normalized axis of rotation in world space.</param>
 		/// <param name="ignoreAsteroids"></param>
 		/// <returns>True iff the path is clear.</returns>
-		public bool TestRotate(Vector3 axis, bool ignoreAsteroids)
+		public bool TestRotate(Vector3 axis, bool ignoreAsteroids, out IMyEntity obstruction)
 		{
 			Vector3 centreOfMass = m_grid.Physics.CenterOfMassWorld;
 			float longestDim = m_grid.GetLongestDim();
@@ -78,7 +79,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 						if (voxel != null)
 						{
 							if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
+							{
+								m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius, "TestRotate()");
+								obstruction = voxel;
 								return false;
+							}
 							continue;
 						}
 						MyPlanet planet = entity as MyPlanet;
@@ -89,7 +94,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 							double minDistance = surroundingSphere.Radius; minDistance *= minDistance;
 							if (Vector3D.DistanceSquared(centreD, closestPoint) <= minDistance)
 							{
-								m_logger.debugLog("Too close to " + planet.getBestName(), "TestRotate()");
+								m_logger.debugLog("Too close to " + planet.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", distance: " + Vector3D.DistanceSquared(centreD, closestPoint) + ", required: " + minDistance, "TestRotate()");
+								obstruction = planet;
 								return false;
 							}
 						}
@@ -116,14 +122,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 						});
 
 						if (found)
+						{
+							obstruction = grid;
 							return false;
+						}
 						continue;
 					}
 
 					m_logger.debugLog("No tests for object: " + entity.getBestName(), "TestRotate()", Logger.severity.INFO);
+					obstruction = entity;
 					return false;
 				}
 
+			obstruction = null;
 			return true;
 		}
 

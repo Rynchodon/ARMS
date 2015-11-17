@@ -8,7 +8,7 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// <para>Stops the ship</para>
 	/// </summary>
-	public class Stopper : NavigatorMover
+	public class Stopper : NavigatorMover, INavigatorRotator
 	{
 
 		private const float StoppedThreshold = 0.001f;
@@ -32,8 +32,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 		}
-
-		#region NavigatorMover Members
 
 		/// <summary>
 		/// Waits for the grid to stop.
@@ -61,6 +59,11 @@ namespace Rynchodon.Autopilot.Navigator
 			//	_logger.debugLog("not stopped", "Stopper()");
 		}
 
+		public void Rotate()
+		{
+			m_mover.InGravity_LevelOff();
+		}
+
 		/// <summary>
 		/// Appends "Exit after stopping" or "Stopping"
 		/// </summary>
@@ -72,8 +75,6 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 				customInfo.AppendLine("Stopping");
 		}
-
-		#endregion
 
 	}
 
