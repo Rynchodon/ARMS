@@ -87,17 +87,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 							continue;
 						}
 						MyPlanet planet = entity as MyPlanet;
-						if (planet != null)
+						if (planet != null && planet.Intersects(ref surroundingSphere))
 						{
-							Vector3D centreD = surroundingSphere.Center;
-							Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref centreD);
-							double minDistance = surroundingSphere.Radius; minDistance *= minDistance;
-							if (Vector3D.DistanceSquared(centreD, closestPoint) <= minDistance)
-							{
-								m_logger.debugLog("Too close to " + planet.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", distance: " + Vector3D.DistanceSquared(centreD, closestPoint) + ", required: " + minDistance, "TestRotate()");
-								obstruction = planet;
-								return false;
-							}
+							obstruction = planet;
+							return false;
 						}
 						continue;
 					}

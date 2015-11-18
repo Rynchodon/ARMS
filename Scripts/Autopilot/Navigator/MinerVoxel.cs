@@ -30,8 +30,6 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
-		/// <summary>Apply a small amount of movement directly to prevent ship getting stuck.</summary>
-		private const bool Unsticker = true;
 
 		public static bool IsNearVoxel(IMyCubeGrid grid, double lengthMulti = 1d)
 		{
@@ -96,6 +94,14 @@ namespace Rynchodon.Autopilot.Navigator
 							m_mover.StopRotate();
 							return;
 						}
+						else if (m_mover.ThrustersOverWorked())
+						{
+							m_logger.debugLog("Thrusters are overworked, time to go home", "set_m_state()");
+							m_navSet.OnTaskComplete_NavRot();
+							m_mover.StopMove();
+							m_mover.StopRotate();
+							return;
+						}
 						else
 						{
 							// request ore detector update
@@ -122,7 +128,6 @@ namespace Rynchodon.Autopilot.Navigator
 						break;
 					case State.Mining_Escape:
 						EnableDrills(false);
-						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f;
 						break;
 					case State.Mining_Tunnel:
 						if (m_miningPlanet)
@@ -132,7 +137,6 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 						EnableDrills(true);
-						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f;
 						break;
 					case State.Move_Away:
 						EnableDrills(false);
@@ -265,15 +269,18 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
+					if (m_mover.ThrustersOverWorked())
+					{
+						m_logger.debugLog("Drills overworked, aborting", "Move()", Logger.severity.DEBUG);
+						m_state = State.Mining_Escape;
+						return;
+					}
 					if (m_navSet.Settings_Current.Distance < 1f)
 					{
 						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
-
-					if (Unsticker && m_navDrill.Physics.LinearVelocity.LengthSquared() <= 0.01f)
-						m_navDrill.Physics.LinearVelocity += m_navDrill.WorldMatrix.Forward * 0.1;
 
 					if (IsStuck())
 					{
@@ -288,15 +295,6 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Move_Away;
 						return;
 					}
-					if (m_navSet.Settings_Current.Distance < 1f)
-					{
-						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
-						m_state = State.Mining_Escape;
-						return;
-					}
-
-					if (Unsticker && m_navDrill.Physics.LinearVelocity.LengthSquared() <= 0.01f)
-						m_navDrill.Physics.LinearVelocity += m_navDrill.WorldMatrix.Backward * 0.1;
 
 					if (IsStuck())
 					{
@@ -305,7 +303,12 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Tunnel;
 						return;
 					}
-					break;
+
+					if (m_miningPlanet)
+						m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition - Vector3.Normalize(m_mover.myThrust.m_worldGravity) * 100f, Vector3.Zero);
+					else
+						m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f, Vector3.Zero);
+					return;
 				case State.Mining_Tunnel:
 					if (!IsNearVoxel())
 					{
@@ -313,18 +316,15 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Move_Away;
 						return;
 					}
-					if (m_navSet.Settings_Current.Distance < 1f)
-					{
-						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
-						m_state = State.Mining_Tunnel;
-						return;
-					}
+
 					if (IsStuck())
 					{
 						m_state = State.Mining_Escape;
 						return;
 					}
-					break;
+
+					m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f, Vector3.Zero);
+					return;
 				case State.Move_Away:
 					if (!m_voxelCentre.IsValid())
 					{
@@ -332,7 +332,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.GetTarget;
 						return;
 					}
-					if (!IsNearVoxel(1d))
+					if (!IsNearVoxel(2d))
 					{
 						m_logger.debugLog("far enough away", "Move()");
 						m_state = State.GetTarget;
@@ -358,6 +358,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
+			if (m_miningPlanet)
+			{
+				if (m_state == State.Rotating)
+					m_state = State.MoveTo;
+				m_mover.InGravity_LevelOff();
+				return;
+			}
+
 			if (m_navDrill.FunctionalBlocks == 0)
 				return;
 

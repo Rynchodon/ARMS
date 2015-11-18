@@ -102,8 +102,8 @@ namespace Rynchodon.Threading
 							return;
 						currentItem = ActionQueue.Dequeue();
 					}
-					currentItem();
-					//myLogger.debugLog("finished item, queued items: " + ActionQueue.Count + ", ParallelTasks: " + ParallelTasks, "Run()");
+					if (currentItem != null)
+						currentItem();
 				}
 			}
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }

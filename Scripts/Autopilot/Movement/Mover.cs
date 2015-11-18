@@ -24,12 +24,12 @@ namespace Rynchodon.Autopilot.Movement
 
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
+		public ThrustProfiler myThrust;
 
 		private readonly Logger myLogger;
 		private readonly AllNavigationSettings NavSet;
 
 		private IMyCubeGrid myGrid;
-		private ThrustProfiler myThrust;
 		private GyroProfiler myGyro;
 
 		private Vector3 moveForceRatio = Vector3.Zero;
@@ -106,8 +106,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
 		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
-			m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
-
 			CheckGrid();
 
 			// using world vectors
@@ -215,6 +213,9 @@ namespace Rynchodon.Autopilot.Movement
 
 			Block.SetDamping(enableDampeners);
 
+			if (destDisp.LengthSquared() > 1f)
+				m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
+
 			myLogger.debugLog("destDisp: " + destDisp
 				//+ ", destDir: " + destDir
 				+ ", destVelocity: " + destVelocity
@@ -260,7 +261,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>The maximum speed that will allow the grid to stop at the destination.</returns>
 		private float MaximumSpeed(float dist, Base6Directions.Direction direct)
 		{
-			if (dist < 1f)
+			if (dist < 0.1f)
 				return 0f;
 
 			// Mover will attempt to stop with normal thrust
@@ -312,9 +313,8 @@ namespace Rynchodon.Autopilot.Movement
 			if (myThrust.m_localGravity == Vector3.Zero)
 				return false;
 
-			StopMove();
-			myLogger.debugLog("Rotating to fight gravity", "CalcRotate()", Logger.severity.TRACE);
-			Logger.notify("Rotating to fight gravity", 50);
+			myLogger.debugLog("Rotating to fight gravity", "InGravity_LevelOff()", Logger.severity.TRACE);
+			//Logger.notify("Rotating to fight gravity", 50);
 			Matrix localMatrix = Block.CubeBlock.LocalMatrix;
 			localMatrix.Forward = Block.CubeBlock.LocalMatrix.Up;
 			localMatrix.Up = Block.CubeBlock.LocalMatrix.Backward;
@@ -522,17 +522,17 @@ namespace Rynchodon.Autopilot.Movement
 					continue;
 				}
 
-				float velDim = angularVelocity.GetDim(i);
-				if (velDim < 0.01f && velDim > -0.01f)
-					continue;
+				//float velDim = angularVelocity.GetDim(i);
+				//if (velDim < 0.01f && velDim > -0.01f)
+				//	continue;
 
-				// where rotateForceRatio opposes angularVelocity, use dampeners
+				//// where rotateForceRatio opposes angularVelocity, use dampeners
 
-				float dim = rotateForceRatio.GetDim(i);
-				if (Math.Sign(dim) * Math.Sign(angularVelocity.GetDim(i)) < 0)
+				//float dim = rotateForceRatio.GetDim(i);
+				//if (Math.Sign(dim) * Math.Sign(angularVelocity.GetDim(i)) < 0)
 					//{
 					//	myLogger.debugLog("force ratio(" + dim + ") opposes velocity(" + angularVelocity.GetDim(i) + "), index: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
-					rotateForceRatio.SetDim(i, 0f);
+					//rotateForceRatio.SetDim(i, 0f);
 				//}
 				//else
 				//	myLogger.debugLog("force ratio is aligned with velocity: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
@@ -602,12 +602,13 @@ namespace Rynchodon.Autopilot.Movement
 				}
 			}
 
-			myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
+			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 			MyShipController controller = Block.Controller;
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
+				myLogger.debugLog("Stopping the ship", "MoveAndRotate()"); 
 				MoveAndRotateStop();
 				return;
 			}
@@ -623,8 +624,24 @@ namespace Rynchodon.Autopilot.Movement
 
 			//myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
+			Vector3 unstick;
+			if (controller.CubeGrid.GetLinearVelocity().LengthSquared() < 0.01f && moveControl.LengthSquared() > 0.01f)
+			{
+				Vector3 direction = Vector3.Transform(moveControl, controller.WorldMatrix);
+				direction.Normalize();
+				unstick = direction * 0.1f;
+				//myLogger.debugLog("Velocity: " + controller.CubeGrid.GetLinearVelocity() + ", Unstick: " + unstick, "MoveAndRotate()");
+			}
+			else
+				unstick = Vector3.Zero;
+
 			m_stopped = false;
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => controller.MoveAndRotate(moveControl, rotateControl, rollControl), myLogger);
+			myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
+				controller.MoveAndRotate(moveControl, rotateControl, rollControl);
+				controller.CubeGrid.Physics.LinearVelocity += unstick;
+			}, myLogger);
 		}
 
 		private void CheckGrid()
@@ -639,9 +656,9 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
-		private bool ThrustersOverWorked()
+		public bool ThrustersOverWorked()
 		{
-			return myThrust.m_gravityReactRatio.AbsMax() > 0.8f;
+			return myThrust.m_gravityReactRatio.AbsMax() >= 0.9f;
 		}
 
 	}

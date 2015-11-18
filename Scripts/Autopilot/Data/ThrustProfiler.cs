@@ -10,7 +10,7 @@ namespace Rynchodon.Autopilot.Data
 	/// <summary>
 	/// Tracks the direction and power of a grids thrusters.
 	/// </summary>
-	class ThrustProfiler
+	public class ThrustProfiler
 	{
 		private Logger myLogger = null;
 
@@ -39,6 +39,8 @@ namespace Rynchodon.Autopilot.Data
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
 		}
 
+		/// <summary>Gravitation acceleration</summary>
+		public Vector3 m_worldGravity { get; private set; }
 		/// <summary>Gravitational acceleration transformed to local.</summary>
 		public Vector3 m_localGravity { get; private set; }
 		/// <summary>Thrust ratio to conteract gravity.</summary>
@@ -164,17 +166,17 @@ namespace Rynchodon.Autopilot.Data
 				return;
 
 			Vector3D position = myGrid.GetPosition();
-			Vector3 gravity = Vector3.Zero;
+			m_worldGravity = Vector3.Zero;
 			m_airDensity = 0f;
 			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is MyPlanet);
 			foreach (MyPlanet planet in allPlanets)
 				if (planet.IsPositionInRangeGrid(position))
 				{
-					gravity += planet.GetWorldGravityGrid(position);
+					m_worldGravity += planet.GetWorldGravityGrid(position);
 					m_airDensity += planet.GetAirDensity(position);
 				}
 
-			if (gravity.LengthSquared() < 0.01f)
+			if (m_worldGravity.LengthSquared() < 0.01f)
 			{
 				myLogger.debugLog("Not in gravity well", "UpdateGravityAndAir()");
 				m_localGravity = Vector3.Zero;
@@ -183,7 +185,7 @@ namespace Rynchodon.Autopilot.Data
 				return;
 			}
 
-			m_localGravity = Vector3.Transform(gravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
+			m_localGravity = Vector3.Transform(m_worldGravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
 
 			Vector3 gravityReactRatio = Vector3.Zero;
 			if (m_localGravity.X > 0)
@@ -200,7 +202,7 @@ namespace Rynchodon.Autopilot.Data
 				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward, false);
 			m_gravityReactRatio = gravityReactRatio;
 
-			myLogger.debugLog("Gravity: " + gravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravity()");
+			myLogger.debugLog("Gravity: " + m_worldGravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravity()");
 			m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 		}
 
