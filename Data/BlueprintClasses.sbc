@@ -26,12 +26,16 @@
 
     <Entry Class="Ammo" BlueprintSubtypeId="Souper_B3MP_Missile" />
     <Entry Class="Components" BlueprintSubtypeId="Souper_B3MP_Missile" />
+
+    <Entry Class="Ammo" BlueprintSubtypeId="Interceptor_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Interceptor_Missile" />
     
     <!-- Launcher -->
     
     <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R12VP_Launcher" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R8EA_Launcher" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_B3MP_Launcher" />
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="LargeMissileTurret/Missile_Defense_Turret" />
     
   </BlueprintClassEntries>
 </Definitions>

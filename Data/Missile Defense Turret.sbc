@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<CubeBlocks>
+
+		<Definition xsi:type="MyObjectBuilder_LargeTurretBaseDefinition">
+			<Id>
+				<TypeId>LargeMissileTurret</TypeId>
+				<SubtypeId>Missile_Defense_Turret</SubtypeId>
+			</Id>
+			<DisplayName>Missile Defense Turret</DisplayName>
+			<Icon>Textures\Icons\Missile_Defense_Turret_Base.dds</Icon>
+			<CubeSize>Large</CubeSize>
+			<BlockTopology>TriangleMesh</BlockTopology>
+			<Size x="3" y="3" z="3" />
+			<ModelOffset x="0" y="0" z="0" />
+			<Model>Models\Missile Defense Turret\Missile_Defense_Turret.mwm</Model>
+			<UseModelIntersection>true</UseModelIntersection>
+			<Components>
+				<Component Subtype="SteelPlate" Count="5" />
+				<Component Subtype="Construction" Count="30" />
+				<Component Subtype="MetalGrid" Count="5" />
+                                <Component Subtype="Detector" Count="30" />
+				<Component Subtype="LargeTube" Count="6" />
+				<Component Subtype="Motor" Count="16" />
+                                <Component Subtype="RadioCommunication" Count="5" />
+				<Component Subtype="Computer" Count="12" />
+				<Component Subtype="Construction" Count="10" />
+				<Component Subtype="SteelPlate" Count="15" />
+			</Components>
+			<CriticalComponent Subtype="Computer" Index="0" />
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr3.mwm" />
+			</BuildProgressModels>
+			<BlockPairName>Missile_Defense_Turret_Base</BlockPairName>
+			<MirroringX>None</MirroringX>
+			<MirroringY>Z</MirroringY>
+			<MirroringZ>Y</MirroringZ>
+			<EdgeType>Light</EdgeType>
+			<BuildTimeSeconds>40</BuildTimeSeconds>
+			<OverlayTexture>Textures\GUI\Screens\turret_overlay.dds</OverlayTexture>
+			<WeaponDefinitionId Subtype="Missile_Defense_Turret" />
+			<InventoryMaxVolume>0.384</InventoryMaxVolume>
+			<DamageEffectId>213</DamageEffectId>
+			<DamagedSound>ParticleWeapExpl</DamagedSound>
+			<ResourceSinkGroup>Defense</ResourceSinkGroup>
+			<MinElevationDegrees>-180</MinElevationDegrees>
+			<MaxElevationDegrees>180</MaxElevationDegrees>
+			<MinAzimuthDegrees>-180</MinAzimuthDegrees>
+			<MaxAzimuthDegrees>180</MaxAzimuthDegrees>
+			<IdleRotation>true</IdleRotation>
+			<MaxRangeMeters>800</MaxRangeMeters>
+			<RotationSpeed>0.002</RotationSpeed>
+			<ElevationSpeed>0.002 </ElevationSpeed>
+		</Definition>
+
+	</CubeBlocks>
+</Definitions>

@@ -59,6 +59,26 @@
       <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_B3MP_Missile" />
       <BaseProductionTimeInSeconds>90</BaseProductionTimeInSeconds>
     </Blueprint>
+
+
+    <Blueprint>
+      <Id>
+        <TypeId>BlueprintDefinition</TypeId>
+        <SubtypeId>Interceptor_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Interceptor Missile</DisplayName>
+      <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
+      <Prerequisites>
+        <Item Amount="120" TypeId="Ingot" SubtypeId="Iron" />
+        <Item Amount="5" TypeId="Ingot" SubtypeId="Nickel" />
+        <Item Amount=".5" TypeId="Ingot" SubtypeId="Silicon" />
+        <Item Amount="0.175" TypeId="Ingot" SubtypeId="Uranium" />
+        <Item Amount="0.08" TypeId="Ingot" SubtypeId="Platinum" />
+        <Item Amount="3" TypeId="Ingot" SubtypeId="Magnesium" />
+      </Prerequisites>
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Interceptor_Missile" />
+      <BaseProductionTimeInSeconds>8</BaseProductionTimeInSeconds>
+    </Blueprint>
    
   </Blueprints>
 </Definitions>
