@@ -469,7 +469,7 @@ namespace Rynchodon.Autopilot.Movement
 						Vector3 away = position - myPathfinder.RotateObstruction.GetCentre();
 						away.Normalize();
 						myLogger.debugLog("Cannot rotate and not calculating move, creating GOLIS to move away from obstruction", "CalcRotate()", Logger.severity.INFO);
-						new GOLIS(this, NavSet, position + away * 100f, true);
+						new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
 					}
 					Logger.debugNotify("Cannot Rotate", 50);
 					myLogger.debugLog("Pathfinder not allowing rotation", "CalcRotate()");
