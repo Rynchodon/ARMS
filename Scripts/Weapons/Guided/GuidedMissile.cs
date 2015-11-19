@@ -183,7 +183,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		protected override bool PhysicalProblem(Vector3D targetPos)
+		protected override bool CanRotateTo(Vector3D targetPos)
 		{
 			// test angle
 			if (myDescr.RotationAttemptLimit < 3.14f)
@@ -195,14 +195,17 @@ namespace Rynchodon.Weapons.Guided
 				if (!angleBetween.IsValid() || angleBetween > myDescr.RotationAttemptLimit)
 				{
 					myLogger.debugLog("angle between too great. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
-					return true;
+					return false;
 				}
 				else
 					myLogger.debugLog("angle acceptable. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
 			}
 
-			// obstruction test?
+			return true;
+		}
 
+		protected override bool Obstructed(Vector3D targetPos)
+		{
 			return false;
 		}
 

@@ -113,10 +113,20 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("TargetingBase", block);
 		}
 
+		private bool PhysicalProblem(Vector3D targetPos)
+		{
+			return !CanRotateTo(targetPos) || Obstructed(targetPos);
+		}
+
 		/// <summary>
-		/// Determines if there is a physical reason the target cannot be hit such as an obstruction or a rotation limit.
+		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
 		/// </summary>
-		protected abstract bool PhysicalProblem(Vector3D targetPos);
+		/// <param name="targetPoint">The point of the target.</param>
+		/// <returns>true if the rotation is allowed</returns>
+		/// <remarks>Invoked on targeting thread.</remarks>
+		protected abstract bool CanRotateTo(Vector3D targetPos);
+
+		protected abstract bool Obstructed(Vector3D targetPos);
 
 		/// <summary>
 		/// Determines the speed of the projectile.
@@ -184,6 +194,8 @@ namespace Rynchodon.Weapons
 			PickATarget();
 			if (myTarget.Entity != null)
 				myLogger.debugLog("myTarget = " + myTarget.Entity.getBestName(), "UpdateTarget()");
+			else
+				myLogger.debugLog("No target", "UpdateTarget()");
 			CurrentTarget = myTarget;
 		}
 
@@ -370,7 +382,7 @@ namespace Rynchodon.Weapons
 
 					if (PhysicalProblem(targetPosition))
 					{
-						myLogger.debugLog("can't target: " + target.getBestName() + ", obstructed", "SetClosest()");
+						myLogger.debugLog("can't target: " + target.getBestName(), "SetClosest()");
 						Blacklist.Add(target);
 						continue;
 					}
@@ -400,14 +412,21 @@ namespace Rynchodon.Weapons
 			if (!(block is IMyTerminalBlock))
 				return false;
 
-			if (Disable && !block.IsWorking)
-				return block.IsFunctional && Options.FlagSet(TargetingFlags.Functional);
-
 			if (block.Mass < 100)
 				return false;
 
 			IMyDoor asDoor = block as IMyDoor;
-			return asDoor == null || asDoor.OpenRatio < 0.01;
+			if (asDoor != null && asDoor.OpenRatio > 0.01)
+				return false;
+
+			if (Disable && !block.IsWorking)
+				if (!block.IsFunctional || !Options.FlagSet(TargetingFlags.Functional))
+					return false;
+
+			if (!CanRotateTo(block.GetPosition()))
+				return false;
+
+			return true;
 		}
 
 		/// <summary>
@@ -445,6 +464,9 @@ namespace Rynchodon.Weapons
 					foreach (IMyTerminalBlock block in decoyBlockList)
 					{
 						if (!block.IsWorking)
+							continue;
+
+						if (!CanRotateTo(block.GetPosition()))
 							continue;
 
 						if (Blacklist.Contains(block))
@@ -496,14 +518,14 @@ namespace Rynchodon.Weapons
 						}
 						distanceSq *= multiplier * multiplier * multiplier;
 
-						myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
+						//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
 						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
 						{
 							target = block;
 							distanceValue = distanceSq;
 						}
-						else
-							myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
+						//else
+						//	myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
 					}
 				if (target != null) // found a block from blocksToTarget
 				{
@@ -646,7 +668,7 @@ namespace Rynchodon.Weapons
 				BlacklistTarget();
 				return;
 			}
-			myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
+			myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", intercept point: " + myTarget.InterceptionPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			CurrentTarget = myTarget;
 		}
 

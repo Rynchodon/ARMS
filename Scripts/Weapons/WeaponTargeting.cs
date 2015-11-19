@@ -33,6 +33,8 @@ namespace Rynchodon.Weapons
 		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
+		private static ITerminalProperty<bool> TPro_Shoot;
+
 		static WeaponTargeting()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
@@ -75,7 +77,7 @@ namespace Rynchodon.Weapons
 		private int InterpreterErrorCount = int.MaxValue;
 
 		protected bool FireWeapon;
-		private bool IsFiringWeapon = true;
+		private bool IsFiringWeapon;
 
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
@@ -97,6 +99,9 @@ namespace Rynchodon.Weapons
 			this.Options = new TargetingOptions();
 			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
+
+			if (TPro_Shoot == null)
+				TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
@@ -209,19 +214,6 @@ namespace Rynchodon.Weapons
 		/// <summary>Invoked on targeting thread, every 100 updates.</summary>
 		protected abstract void Update_Options(TargetingOptions current);
 
-		/// <summary>
-		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
-		/// </summary>
-		/// <param name="targetPoint">The point of the target.</param>
-		/// <returns>true if the rotation is allowed</returns>
-		/// <remarks>Invoked on targeting thread.</remarks>
-		protected abstract bool CanRotateTo(Vector3D targetPoint);
-
-		protected override bool PhysicalProblem(Vector3D targetPos)
-		{
-			return !CanRotateTo(targetPos) || Obstructed(targetPos);
-		}
-
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
@@ -307,6 +299,7 @@ namespace Rynchodon.Weapons
 			if (CurrentState_NotFlag(State.GetOptions))
 				return;
 
+			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
 			ClearBlacklist();
 
 			if (Interpreter.UpdateInstruction() && Interpreter.Errors.Count <= InterpreterErrorCount)
@@ -426,7 +419,7 @@ namespace Rynchodon.Weapons
 		/// <param name="targetPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		/// TODO: use RayCast class
-		private bool Obstructed(Vector3D targetPosition)
+		protected override bool Obstructed(Vector3D targetPosition)
 		{
 			if (CubeBlock == null)
 				throw new ArgumentNullException("weapon");
@@ -597,5 +590,6 @@ namespace Rynchodon.Weapons
 				GameThreadActions.Enqueue(() =>
 					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
+
 	}
 }

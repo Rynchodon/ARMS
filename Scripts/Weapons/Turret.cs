@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -35,8 +36,6 @@ namespace Rynchodon.Weapons
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
 			Registrar.Add(CubeBlock, this);
-			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
-			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		private void Initialize()
@@ -47,10 +46,10 @@ namespace Rynchodon.Weapons
 			if (definition == null)
 				throw new NullReferenceException("definition");
 
-			minElevation = (float)((float)definition.MinElevationDegrees / 180 * Math.PI); // Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6);
-			maxElevation = (float)Math.Min((float)definition.MaxElevationDegrees / 180 * Math.PI, 0.6); // 0.6 was determined empirically
-			minAzimuth = (float)((float)definition.MinAzimuthDegrees / 180 * Math.PI);
-			maxAzimuth = (float)((float)definition.MaxAzimuthDegrees / 180 * Math.PI);
+			minElevation = Math.Max(MathHelper.ToRadians(definition.MinElevationDegrees), -0.6f);
+			maxElevation = MathHelper.ToRadians(definition.MaxElevationDegrees);
+			minAzimuth = MathHelper.ToRadians(definition.MinAzimuthDegrees);
+			maxAzimuth = MathHelper.ToRadians(definition.MaxAzimuthDegrees);
 
 			Can360 = Math.Abs(definition.MaxAzimuthDegrees - definition.MinAzimuthDegrees) >= 360;
 
@@ -108,9 +107,27 @@ namespace Rynchodon.Weapons
 
 			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
-			if (elevation < minElevation || elevation > maxElevation || azimuth < minAzimuth || azimuth > maxAzimuth)
+			if (elevation < minElevation)
 			{
-				myLogger.debugLog("cannot rotate to " + targetPoint + ", azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
+				return false;
+			}
+			if (elevation > maxElevation)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
+				return false;
+			}
+
+			if (Can360)
+				return true;
+			if (azimuth < minAzimuth)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
+				return false;
+			}
+			if (azimuth > maxAzimuth)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
 				return false;
 			}
 			return true;
