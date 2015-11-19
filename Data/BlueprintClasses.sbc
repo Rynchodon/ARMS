@@ -2,6 +2,9 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
    <BlueprintClassEntries>
    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Large" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Small" />
+   
     <!-- Radar -->
     
     <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/LargeBlockRadarRynAR" />
@@ -27,15 +30,15 @@
     <Entry Class="Ammo" BlueprintSubtypeId="Souper_B3MP_Missile" />
     <Entry Class="Components" BlueprintSubtypeId="Souper_B3MP_Missile" />
 
-    <Entry Class="Ammo" BlueprintSubtypeId="Interceptor_Missile" />
-    <Entry Class="Components" BlueprintSubtypeId="Interceptor_Missile" />
+    <Entry Class="Ammo" BlueprintSubtypeId="Souper_C1VT_Interceptor_Missile" />
+    <Entry Class="Components" BlueprintSubtypeId="Souper_C1VT_Interceptor_Missile" />
     
     <!-- Launcher -->
     
     <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R12VP_Launcher" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R8EA_Launcher" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_B3MP_Launcher" />
-    <Entry Class="LargeBlocks" BlueprintSubtypeId="LargeMissileTurret/Missile_Defense_Turret" />
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="LargeMissileTurret/Souper_Missile_Defense_Turret" />
     
   </BlueprintClassEntries>
 </Definitions>

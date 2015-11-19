@@ -62,12 +62,12 @@
       <AmmoDefinitionId Subtype="Souper_B3MP_Missile" />
     </AmmoMagazine>
 
-<AmmoMagazine>
+    <AmmoMagazine>
       <Id>
         <TypeId>AmmoMagazine</TypeId>
-        <SubtypeId>Interceptor_Missile</SubtypeId>
+        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
       </Id>
-      <DisplayName>Interceptor Missile</DisplayName>
+      <DisplayName>Interceptor Missile C1VT</DisplayName>
       <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
       <Size>
         <X>.25</X>
@@ -79,7 +79,7 @@
       <Model>Models\Weapons\Interceptor_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="Interceptor_Missile" />
+      <AmmoDefinitionId Subtype="Souper_C1VT_Interceptor_Missile" />
     </AmmoMagazine>
     
   </AmmoMagazines>

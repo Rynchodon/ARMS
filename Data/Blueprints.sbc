@@ -60,13 +60,12 @@
       <BaseProductionTimeInSeconds>90</BaseProductionTimeInSeconds>
     </Blueprint>
 
-
     <Blueprint>
       <Id>
         <TypeId>BlueprintDefinition</TypeId>
-        <SubtypeId>Interceptor_Missile</SubtypeId>
+        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
       </Id>
-      <DisplayName>Interceptor Missile</DisplayName>
+      <DisplayName>Interceptor Missile C1VT</DisplayName>
       <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
       <Prerequisites>
         <Item Amount="120" TypeId="Ingot" SubtypeId="Iron" />
@@ -76,7 +75,7 @@
         <Item Amount="0.08" TypeId="Ingot" SubtypeId="Platinum" />
         <Item Amount="3" TypeId="Ingot" SubtypeId="Magnesium" />
       </Prerequisites>
-      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Interceptor_Missile" />
+      <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_C1VT_Interceptor_Missile" />
       <BaseProductionTimeInSeconds>8</BaseProductionTimeInSeconds>
     </Blueprint>
    

@@ -38,15 +38,15 @@
       </AmmoMagazines>
     </Weapon>
     
-<Weapon>
+    <Weapon>
       <Id>
         <TypeId>WeaponDefinition</TypeId>
-        <SubtypeId>Missile_Defense_Turret</SubtypeId>
+        <SubtypeId>Souper_Missile_Defense_Turret</SubtypeId>
       </Id>
       <MissileAmmoData RateOfFire="10" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
-        <AmmoMagazine Subtype="Interceptor_Missile" />
+        <AmmoMagazine Subtype="Souper_C1VT_Interceptor_Missile" />
       </AmmoMagazines>
     </Weapon>
 
