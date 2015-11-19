@@ -272,7 +272,7 @@ namespace Rynchodon.Autopilot.Movement
 				return 0f;
 			}
 			float accel = -force / Block.Physics.Mass;
-			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
+			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
 			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 2f); // capped for the sake of autopilot's reaction time
 		}
 
@@ -463,7 +463,7 @@ namespace Rynchodon.Autopilot.Movement
 				if (!myPathfinder.CanRotate)
 				{
 					// if cannot rotate and not calculating move, move away from obstruction
-					if (Globals.UpdateCount >= m_notCalcMove)
+					if (myPathfinder.RotateObstruction != null && Globals.UpdateCount >= m_notCalcMove)
 					{
 						Vector3 position  = Block.CubeBlock.GetPosition();
 						Vector3 away = position - myPathfinder.RotateObstruction.GetCentre();

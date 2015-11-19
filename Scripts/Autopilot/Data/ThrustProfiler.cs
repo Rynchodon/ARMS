@@ -137,7 +137,7 @@ namespace Rynchodon.Autopilot.Data
 				force += change;
 			}
 
-			return Math.Max(force, 0f);
+			return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
 		}
 
 		/// <summary>
@@ -173,7 +173,8 @@ namespace Rynchodon.Autopilot.Data
 				if (planet.IsPositionInRangeGrid(position))
 				{
 					m_worldGravity += planet.GetWorldGravityGrid(position);
-					m_airDensity += planet.GetAirDensity(position);
+					if (planet.HasAtmosphere)
+						m_airDensity += planet.GetAirDensity(position);
 				}
 
 			if (m_worldGravity.LengthSquared() < 0.01f)
@@ -202,7 +203,7 @@ namespace Rynchodon.Autopilot.Data
 				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward, false);
 			m_gravityReactRatio = gravityReactRatio;
 
-			myLogger.debugLog("Gravity: " + m_worldGravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravity()");
+			myLogger.debugLog("Gravity: " + m_worldGravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravityAndAir()");
 			m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 		}
 

@@ -16,10 +16,10 @@ namespace Rynchodon.Autopilot.Data
 
 		private readonly List<MyGyro> Gyros = new List<MyGyro>();
 
-		private ulong m_nextCheck_attachedGrids;
-		private int m_attachedGrids;
-		/// <summary>torqueAccelRatio becomes dirty any time a block is added, removed does not matter.</summary>
-		private bool dirty_torqueAccelRatio;
+		//private ulong m_nextCheck_attachedGrids;
+		//private int m_attachedGrids;
+		private float m_mass;
+		private bool dirty_torqueAccelRatio = true;
 
 		/// <summary>A measure of the affect torque has on velocity per autopilot update.</summary>
 		public float torqueAccelRatio { get; private set; }
@@ -35,8 +35,8 @@ namespace Rynchodon.Autopilot.Data
 				foreach (MyGyro g in blocks)
 					Gyros.Add(g);
 
-			grid.OnBlockAdded += grid_OnBlockAdded;
-			grid.OnBlockRemoved += grid_OnBlockRemoved;
+			//grid.OnBlockAdded += grid_OnBlockAdded;
+			//grid.OnBlockRemoved += grid_OnBlockRemoved;
 		}
 
 		public float TotalGyroForce()
@@ -51,8 +51,13 @@ namespace Rynchodon.Autopilot.Data
 
 		public void Update_torqueAccelRatio(Vector3 command, Vector3 ratio)
 		{
-			if (Globals.UpdateCount >= m_nextCheck_attachedGrids)
-				CheckAttachedGrids();
+			//if (Globals.UpdateCount >= m_nextCheck_attachedGrids)
+			//	CheckAttachedGrids();
+
+			float mass = myGrid.Physics.Mass;
+			if (!dirty_torqueAccelRatio)
+				dirty_torqueAccelRatio = (mass > m_mass);
+			m_mass = mass;
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -74,39 +79,39 @@ namespace Rynchodon.Autopilot.Data
 			}
 		}
 
-		private void grid_OnBlockAdded(IMySlimBlock obj)
-		{
-			dirty_torqueAccelRatio = true;
-			MyGyro g = obj.FatBlock as MyGyro;
-			if (g == null)
-				return;
+		//private void grid_OnBlockAdded(IMySlimBlock obj)
+		//{
+		//	dirty_torqueAccelRatio = true;
+		//	MyGyro g = obj.FatBlock as MyGyro;
+		//	if (g == null)
+		//		return;
 
-			Gyros.Add(g);
-		}
+		//	Gyros.Add(g);
+		//}
 
-		private void grid_OnBlockRemoved(IMySlimBlock obj)
-		{
-			MyGyro g = obj.FatBlock as MyGyro;
-			if (g == null)
-				return;
+		//private void grid_OnBlockRemoved(IMySlimBlock obj)
+		//{
+		//	MyGyro g = obj.FatBlock as MyGyro;
+		//	if (g == null)
+		//		return;
 
-			Gyros.Remove(g);
-		}
+		//	Gyros.Remove(g);
+		//}
 
-		private void CheckAttachedGrids()
-		{
-			m_nextCheck_attachedGrids = Globals.UpdateCount + 100ul;
+		//private void CheckAttachedGrids()
+		//{
+		//	m_nextCheck_attachedGrids = Globals.UpdateCount + 100ul;
 
-			int count = 0;
-			AttachedGrid.RunOnAttached(myGrid, AttachedGrid.AttachmentKind.Physics, grid => {
-				count++;
-				return false;
-			});
+		//	int count = 0;
+		//	AttachedGrid.RunOnAttached(myGrid, AttachedGrid.AttachmentKind.Physics, grid => {
+		//		count++;
+		//		return false;
+		//	});
 
-			if (count > m_attachedGrids)
-				dirty_torqueAccelRatio = true;
-			m_attachedGrids = count;
-		}
+		//	if (count > m_attachedGrids)
+		//		dirty_torqueAccelRatio = true;
+		//	m_attachedGrids = count;
+		//}
 
 	}
 }
