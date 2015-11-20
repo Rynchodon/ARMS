@@ -50,8 +50,8 @@ namespace Rynchodon.Weapons.Guided
 		#endregion
 
 		private readonly Logger myLogger;
-		private readonly FixedWeapon myFixed;
-		private IMyCubeBlock CubeBlock { get { return myFixed.CubeBlock; } }
+		private readonly WeaponTargeting m_weaponTarget;
+		private IMyCubeBlock CubeBlock { get { return m_weaponTarget.CubeBlock; } }
 		private IMyFunctionalBlock FuncBlock;
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
@@ -65,26 +65,33 @@ namespace Rynchodon.Weapons.Guided
 		private GuidedMissile clusterMain;
 
 		private bool onCooldown;
-		private bool restoreShootingToggle;
 		private DateTime cooldownUntil;
 
-		public GuidedMissileLauncher(FixedWeapon weapon)
+		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
-			myFixed = weapon;
+			m_weaponTarget = weapon;
 			FuncBlock = CubeBlock as IMyFunctionalBlock;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 
-			MissileSpawnBox = CubeBlock.LocalAABB;
+			var defn = CubeBlock.GetCubeBlockDefinition();
 
-			// might need this again for shorter range missiles
-			//MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Min + CubeBlock.LocalMatrix.Forward * 10f);
-			//MissileSpawnBox = MissileSpawnBox.Include(MissileSpawnBox.Max + CubeBlock.LocalMatrix.Forward * 10f);
+			Vector3[] points = new Vector3[3];
+			points[0] = CubeBlock.LocalAABB.Min;
+			points[1] = CubeBlock.LocalAABB.Max;
+			points[2] = CubeBlock.LocalAABB.Min + Vector3.Up * CubeBlock.GetCubeBlockDefinition().Size.Y * CubeBlock.CubeGrid.GridSize;
+
+			MissileSpawnBox = BoundingBox.CreateFromPoints(points);
+			if (m_weaponTarget.myTurret != null)
+			{
+				myLogger.debugLog("original box: " + MissileSpawnBox, "GuidedMissileLauncher()");
+				MissileSpawnBox.Inflate(CubeBlock.CubeGrid.GridSize * 2f);
+			}
 
 			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
 			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
 
-			myFixed.AllowedState = WeaponTargeting.State.GetOptions;
+			m_weaponTarget.AllowedState = WeaponTargeting.State.GetOptions;
 			Registrar.Add(weapon.FuncBlock, this);
 		}
 
@@ -96,7 +103,7 @@ namespace Rynchodon.Weapons.Guided
 
 		private bool MissileBelongsTo(IMyEntity missile)
 		{
-			if (!(CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
+			if (m_weaponTarget.myTurret == null && !(CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
 			{
 				myLogger.debugLog("Not mine, not shooting", "MissileBelongsTo()");
 				return false;
@@ -107,10 +114,26 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("Not in my box: " + missile + ", position: " + local, "MissileBelongsTo()");
 				return false;
 			}
-			if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
+			if (m_weaponTarget.myTurret == null)
 			{
-				myLogger.debugLog("Facing the wrong way: " + missile + ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
-				return false;
+				if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
+				{
+					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward 
+						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
+					return false;
+				}
+			}
+			else
+			{
+				Vector3 turretDirection;
+				Vector3.CreateFromAzimuthAndElevation(m_weaponTarget.myTurret.Azimuth, m_weaponTarget.myTurret.Elevation, out turretDirection);
+				turretDirection = Vector3.Transform(turretDirection, CubeBlock.WorldMatrix.GetOrientation());
+				if (Vector3D.RectangularDistance(turretDirection, missile.WorldMatrix.Forward) > 0.01)
+				{
+					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", turret direction: " + turretDirection
+						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
+					return false;
+				}
 			}
 
 			if (loadedAmmo == null)
@@ -125,7 +148,7 @@ namespace Rynchodon.Weapons.Guided
 				return true;
 			}
 
-			myLogger.debugLog("Opts: " + myFixed.Options, "MissileBelongsTo()");
+			myLogger.debugLog("Opts: " + m_weaponTarget.Options, "MissileBelongsTo()");
 			try
 			{
 				if (clusterMain != null)
@@ -149,8 +172,8 @@ namespace Rynchodon.Weapons.Guided
 				LastSeen initialTarget = null;
 				if (findAntenna())
 				{
-					if (myFixed.Options.TargetEntityId.HasValue)
-						myAntenna.tryGetLastSeen(myFixed.Options.TargetEntityId.Value, out initialTarget);
+					if (m_weaponTarget.Options.TargetEntityId.HasValue)
+						myAntenna.tryGetLastSeen(m_weaponTarget.Options.TargetEntityId.Value, out initialTarget);
 					else
 					{
 						myLogger.debugLog("Searching for target", "MissileBelongsTo()", Logger.severity.DEBUG);
@@ -159,7 +182,7 @@ namespace Rynchodon.Weapons.Guided
 							if (!seen.isRecent())
 								return false;
 							IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
-							if (grid != null && CubeBlock.canConsiderHostile(grid) && myFixed.Options.CanTargetType(grid))
+							if (grid != null && CubeBlock.canConsiderHostile(grid) && m_weaponTarget.Options.CanTargetType(grid))
 							{
 								float distSquared = Vector3.DistanceSquared(CubeBlock.GetPosition(), grid.GetCentre());
 								if (distSquared < closestDistanceSquared)
@@ -174,14 +197,12 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
-				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, myFixed.Options.Clone(), loadedAmmo, initialTarget);
+				GuidedMissile gm = new GuidedMissile(missile as MyAmmoBase, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget);
 				if (loadedAmmo.IsCluster)
 				{
 					myLogger.debugLog("missile is a cluster missile", "MissileBelongsTo()");
 					clusterMain = gm;
 					missile.OnClose += ClusterMain_OnClose;
-					var builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_UserControllableGun ;
-					restoreShootingToggle = builder.IsShootingFromTerminal;
 					FuncBlock.ApplyAction("Shoot_On");
 				}
 			}
@@ -247,8 +268,7 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("off cooldown", "CheckCooldown()");
 				onCooldown = false;
 				FuncBlock.RequestEnable(true);
-				if (restoreShootingToggle)
-					FuncBlock.ApplyAction("Shoot_On");
+				// do not restore shooting toggle, makes it difficult to turn the thing off
 			}
 		}
 

@@ -99,22 +99,22 @@ namespace Rynchodon.Weapons
 
 		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
-			//Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
-			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, targetPoint).ToBlockNormalized(CubeBlock));
+			Vector3 localTarget = Vector3.Transform(targetPoint, CubeBlock.WorldMatrixNormalizedInv);
+			localTarget.Normalize();
 
 			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
+			Vector3.GetAzimuthAndElevation(localTarget, out azimuth, out elevation);
 
 			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
 			if (elevation < minElevation)
 			{
-				myLogger.debugLog("Cannot rotate to " + targetPoint + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
 				return false;
 			}
 			if (elevation > maxElevation)
 			{
-				myLogger.debugLog("Cannot rotate to " + targetPoint + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
 				return false;
 			}
 
@@ -122,12 +122,12 @@ namespace Rynchodon.Weapons
 				return true;
 			if (azimuth < minAzimuth)
 			{
-				myLogger.debugLog("Cannot rotate to " + targetPoint + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
 				return false;
 			}
 			if (azimuth > maxAzimuth)
 			{
-				myLogger.debugLog("Cannot rotate to " + targetPoint + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
 				return false;
 			}
 			return true;

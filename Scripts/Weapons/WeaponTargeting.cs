@@ -64,7 +64,7 @@ namespace Rynchodon.Weapons
 		public bool CanControl { get; private set; }
 
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
-		private readonly bool IsNormalTurret;
+		public readonly bool IsNormalTurret;
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
 		private Logger myLogger;
@@ -123,7 +123,7 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (FireWeapon != IsFiringWeapon)
+				if (CurrentState_FlagSet(State.Targeting) && FireWeapon != IsFiringWeapon)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
@@ -295,42 +295,52 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update100()
 		{
-			UpdateCurrentState();
-			if (CurrentState_NotFlag(State.GetOptions))
-				return;
-
-			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
-			ClearBlacklist();
-
-			if (Interpreter.UpdateInstruction() && Interpreter.Errors.Count <= InterpreterErrorCount)
-			{
-				Options = Interpreter.Options;
-				InterpreterErrorCount = Interpreter.Errors.Count;
-				Update_Options(Options);
-				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
-			}
-			else
-				myLogger.debugLog("not updation Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
-			WriteErrors(Interpreter.Errors);
-		}
-
-		private void UpdateCurrentState()
-		{
 			if (!CubeBlock.IsWorking
 			|| (IsNormalTurret && myTurret.IsUnderControl)
-			|| CubeBlock.OwnerId == 0
-			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")))
+			|| CubeBlock.OwnerId == 0)
 			{
-				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0)
-					+ ", missing brackets: " + (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")), "UpdateCurrentState()");
+				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0), "Update100()");
 
 				CanControl = false;
 				CurrentState = State.Off;
 				return;
 			}
 
-			CanControl = true;
-			CurrentState = AllowedState;
+			if ((AllowedState & State.GetOptions) != State.GetOptions)
+			{
+				myLogger.debugLog("Not allowed to get options", "Update100()");
+				CanControl = false;
+				CurrentState = State.Off;
+				return;
+			}
+
+			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
+			ClearBlacklist();
+
+			Interpreter.UpdateInstruction();
+			if (Interpreter.HasInstructions)
+			{
+				if (Interpreter.Errors.Count <= InterpreterErrorCount)
+				{
+					Options = Interpreter.Options;
+					InterpreterErrorCount = Interpreter.Errors.Count;
+					Update_Options(Options);
+					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
+				}
+				else
+					myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
+
+				CanControl = true;
+				CurrentState = AllowedState;
+				WriteErrors(Interpreter.Errors);
+			}
+			else
+			{
+				myLogger.debugLog("No instructions found", "Update100()");
+				CanControl = false;
+				CurrentState = State.GetOptions;
+				return;
+			}
 		}
 
 		private void UpdateAmmo()

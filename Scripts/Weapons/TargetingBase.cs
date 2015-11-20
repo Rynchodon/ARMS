@@ -607,11 +607,16 @@ namespace Rynchodon.Weapons
 						}
 					}
 
-					if (ProjectileIsThreat(projectile, tType) && !PhysicalProblem(projectile.GetPosition()))
+					if (ProjectileIsThreat(projectile, tType))
 					{
-						myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
-						myTarget = new TurretTarget(projectile, tType);
-						return true;
+						if (!PhysicalProblem(projectile.GetPosition()))
+						{
+							myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
+							myTarget = new TurretTarget(projectile, tType);
+							return true;
+						}
+						else
+							myLogger.debugLog("Physical problem: " + projectile.getBestName(), "PickAProjectile()");
 					}
 					else
 						myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
@@ -655,20 +660,22 @@ namespace Rynchodon.Weapons
 		/// TODO: if target is accelerating, look ahead (missiles and such)
 		protected void SetFiringDirection()
 		{
-			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose)
+			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
-			myLogger.debugLog(MyEntity.MarkedForClose, "MyEntity.MarkedForClose", "SetFiringDirection()", Logger.severity.FATAL);
 
 			Vector3D TargetPosition = myTarget.GetPosition();
 
 			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, myTarget.GetLinearVelocity());
-			if (myTarget.Entity != null && PhysicalProblem(myTarget.InterceptionPoint.Value))
+			if (myTarget.Entity != null)
 			{
-				myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
-				BlacklistTarget();
-				return;
+				if (PhysicalProblem(myTarget.InterceptionPoint.Value))
+				{
+					myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
+					BlacklistTarget();
+					return;
+				}
+				myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", intercept point: " + myTarget.InterceptionPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			}
-			myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", intercept point: " + myTarget.InterceptionPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			CurrentTarget = myTarget;
 		}
 
