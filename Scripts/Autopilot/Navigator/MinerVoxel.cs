@@ -94,7 +94,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_mover.StopRotate();
 							return;
 						}
-						else if (m_mover.ThrustersOverWorked())
+						else if (m_mover.ThrustersOverWorked(0.8f))
 						{
 							m_logger.debugLog("Thrusters are overworked, time to go home", "set_m_state()");
 							m_navSet.OnTaskComplete_NavRot();
@@ -287,7 +287,8 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
-					break;
+					m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, y_only: m_miningPlanet); 
+					return;
 				case State.Mining_Escape:
 					if (!IsNearVoxel())
 					{
@@ -304,10 +305,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (m_miningPlanet)
-						m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition - Vector3.Normalize(m_mover.myThrust.m_worldGravity) * 100f, Vector3.Zero);
-					else
-						m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f, Vector3.Zero);
+					m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100f, Vector3.Zero, y_only: m_miningPlanet);
 					return;
 				case State.Mining_Tunnel:
 					if (!IsNearVoxel())
@@ -323,7 +321,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f, Vector3.Zero);
+					m_mover.CalcMove(m_navDrill, m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100f, Vector3.Zero, y_only: m_miningPlanet);
 					return;
 				case State.Move_Away:
 					if (!m_voxelCentre.IsValid())

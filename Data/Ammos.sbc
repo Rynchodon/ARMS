@@ -100,7 +100,6 @@
       </Id>
       <Description>
         GuidanceSeconds=60
-        RotationAttemptLimit=0.785398
         TargetRange=800
         DetonateRange=10
       </Description>

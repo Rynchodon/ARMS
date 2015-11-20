@@ -95,7 +95,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", () => entity.getBestName());
+			myLogger = new Logger("TargetingBase", () => entity.getBestName()) { MinimumLevel = Logger.severity.DEBUG };
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -178,7 +178,7 @@ namespace Rynchodon.Weapons
 			{
 				case TargetType.Missile:
 				case TargetType.Meteor:
-					if (ProjectileIsThreat(myTarget.Entity, myTarget.TType))
+					if ((TryHard && !myTarget.Entity.Closed) || ProjectileIsThreat(myTarget.Entity, myTarget.TType))
 					{
 						myLogger.debugLog("Keeping Target = " + myTarget.Entity.getBestName(), "UpdateTarget()");
 						return;
@@ -578,6 +578,16 @@ namespace Rynchodon.Weapons
 				{
 					if (entity.Closed)
 						continue;
+
+					if (tType == TargetType.Missile)
+					{
+						long owner = Guided.GuidedMissile.GetOwnerId(entity.EntityId);
+						if (!CubeBlock.canConsiderHostile(owner))
+						{
+							myLogger.debugLog("owner is not hostile", "PickAProjectile()");
+							continue;
+						}
+					}
 
 					//bool isMissile = entity.ToString().StartsWith("MyMissile");
 

@@ -104,7 +104,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
+		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false, bool y_only = false)
 		{
 			CheckGrid();
 
@@ -133,6 +133,12 @@ namespace Rynchodon.Autopilot.Movement
 			destDisp = Vector3.Transform(destDisp, directionToLocal);
 			destVelocity = Vector3.Transform(destVelocity, directionToLocal);
 			velocity = Vector3.Transform(velocity, directionToLocal);
+
+			if (y_only || myThrust.m_gravityReactRatio.Y > 1f)
+			{
+				destDisp.X = 0;
+				destDisp.Z = 0;
+			}
 
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
@@ -235,17 +241,17 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			Vector3 result = Vector3.Zero;
 
-			if (localDisp.X > 0)
+			if (localDisp.X > 0f)
 				result.X = MaximumSpeed(localDisp.X, Base6Directions.Direction.Left);
-			else if (localDisp.X < 0)
+			else if (localDisp.X < 0f)
 				result.X = -MaximumSpeed(-localDisp.X, Base6Directions.Direction.Right);
-			if (localDisp.Y > 0)
+			if (localDisp.Y > 0f)
 				result.Y = MaximumSpeed(localDisp.Y, Base6Directions.Direction.Down);
-			else if (localDisp.Y < 0)
+			else if (localDisp.Y < 0f)
 				result.Y = -MaximumSpeed(-localDisp.Y, Base6Directions.Direction.Up);
-			if (localDisp.Z > 0)
+			if (localDisp.Z > 0f)
 				result.Z = MaximumSpeed(localDisp.Z, Base6Directions.Direction.Forward);
-			else if (localDisp.Z < 0)
+			else if (localDisp.Z < 0f)
 				result.Z = -MaximumSpeed(-localDisp.Z, Base6Directions.Direction.Backward);
 
 			myLogger.debugLog("displacement: " + localDisp + ", maximum velocity: " + result, "MaximumVelocity()");
@@ -656,9 +662,9 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
-		public bool ThrustersOverWorked()
+		public bool ThrustersOverWorked(float ratio = 0.9f)
 		{
-			return myThrust.m_gravityReactRatio.AbsMax() >= 0.9f;
+			return myThrust.m_gravityReactRatio.AbsMax() >= ratio;
 		}
 
 	}

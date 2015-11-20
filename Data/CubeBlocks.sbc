@@ -698,9 +698,9 @@
 			<MinAzimuthDegrees>-180</MinAzimuthDegrees>
 			<MaxAzimuthDegrees>180</MaxAzimuthDegrees>
 			<IdleRotation>true</IdleRotation>
-			<MaxRangeMeters>800</MaxRangeMeters>
+			<MaxRangeMeters>1600</MaxRangeMeters>
 			<RotationSpeed>0.002</RotationSpeed>
-			<ElevationSpeed>0.002 </ElevationSpeed>
+			<ElevationSpeed>0.002</ElevationSpeed>
 		</Definition>
 
   </CubeBlocks>

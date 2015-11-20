@@ -93,7 +93,7 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon);
+			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.DEBUG };
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();

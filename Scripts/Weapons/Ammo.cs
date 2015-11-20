@@ -46,6 +46,7 @@ namespace Rynchodon.Weapons
 			#region Tracking
 
 			/// <summary>Targets shall be ignored where angle between missile's forward and direction to target is greater than.</summary>
+			/// <remarks>Not working correctly, may be removed.</remarks>
 			public float RotationAttemptLimit = 3.1415926535897932384626433f; // 180°
 			/// <summary>Range of turret magic.</summary>
 			public float TargetRange = 0f;
