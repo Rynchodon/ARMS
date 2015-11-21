@@ -56,6 +56,8 @@ namespace Rynchodon.Autopilot.Movement
 			//this.myLogger.MinimumLevel = Logger.severity.DEBUG;
 			this.Block = block;
 			this.NavSet = NavSet;
+
+			CheckGrid();
 		}
 
 		/// <summary>
@@ -104,7 +106,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false, bool y_only = false)
+		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
 			CheckGrid();
 
@@ -133,12 +135,6 @@ namespace Rynchodon.Autopilot.Movement
 			destDisp = Vector3.Transform(destDisp, directionToLocal);
 			destVelocity = Vector3.Transform(destVelocity, directionToLocal);
 			velocity = Vector3.Transform(velocity, directionToLocal);
-
-			if (y_only || myThrust.m_gravityReactRatio.Y > 1f)
-			{
-				destDisp.X = 0;
-				destDisp.Z = 0;
-			}
 
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
@@ -510,7 +506,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
-			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * gyroForce);
+			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * ShipController_Autopilot.UpdateFrequency * gyroForce);
 
 			myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", diffVel: " + diffVel, "CalcRotate()");
 			//myLogger.debugLog("diffVel: " + diffVel + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
@@ -555,7 +551,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 result = Vector3.Zero;
 
 			// S.E. provides damping for angular motion, we will ignore this
-			float accel = -myGyro.torqueAccelRatio * myGyro.TotalGyroForce();
+			float accel = -myGyro.torqueAccelRatio * ShipController_Autopilot.UpdateFrequency * myGyro.TotalGyroForce();
 
 			//myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
 
@@ -664,6 +660,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		public bool ThrustersOverWorked(float ratio = 0.9f)
 		{
+			myLogger.debugLog(myThrust == null, "myThrust == null", "ThrustersOverWorked()", Logger.severity.FATAL);
 			return myThrust.m_gravityReactRatio.AbsMax() >= ratio;
 		}
 

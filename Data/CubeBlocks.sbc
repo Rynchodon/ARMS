@@ -698,7 +698,7 @@
 			<MinAzimuthDegrees>-180</MinAzimuthDegrees>
 			<MaxAzimuthDegrees>180</MaxAzimuthDegrees>
 			<IdleRotation>true</IdleRotation>
-			<MaxRangeMeters>1600</MaxRangeMeters>
+			<MaxRangeMeters>1200</MaxRangeMeters>
 			<RotationSpeed>0.002</RotationSpeed>
 			<ElevationSpeed>0.002</ElevationSpeed>
 		</Definition>

@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Data
 		private float m_mass;
 		private bool dirty_torqueAccelRatio = true;
 
-		/// <summary>A measure of the affect torque has on velocity per autopilot update.</summary>
+		/// <summary>A measure of the affect torque has on velocity per update.</summary>
 		public float torqueAccelRatio { get; private set; }
 
 		public GyroProfiler(IMyCubeGrid grid)
@@ -56,7 +56,12 @@ namespace Rynchodon.Autopilot.Data
 
 			float mass = myGrid.Physics.Mass;
 			if (!dirty_torqueAccelRatio)
-				dirty_torqueAccelRatio = (mass > m_mass);
+			{
+				dirty_torqueAccelRatio = mass > m_mass;
+				myLogger.debugLog(dirty_torqueAccelRatio, "mass increased from " + m_mass + " to " + mass, "Update_torqueAccelRatio()");
+			}
+			else
+				myLogger.debugLog("torqueAccelRatio is dirty", "Update_torqueAccelRatio()");
 			m_mass = mass;
 
 			for (int i = 0; i < 3; i++)
@@ -72,6 +77,7 @@ namespace Rynchodon.Autopilot.Data
 					{
 						myLogger.debugLog("torqueAccelRatio changed from " + torqueAccelRatio + " to " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);
 						torqueAccelRatio = dim;
+						dirty_torqueAccelRatio = false;
 					}
 					else // caused by bumping into things
 						myLogger.debugLog("dim <= 0 : " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);
