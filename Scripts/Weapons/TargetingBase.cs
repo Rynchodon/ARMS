@@ -95,7 +95,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", () => entity.getBestName()) { MinimumLevel = Logger.severity.DEBUG };
+			myLogger = new Logger("TargetingBase", () => entity.getBestName());
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -192,10 +192,10 @@ namespace Rynchodon.Weapons
 
 			CollectTargets();
 			PickATarget();
-			if (myTarget.Entity != null)
-				myLogger.debugLog("myTarget = " + myTarget.Entity.getBestName(), "UpdateTarget()");
-			else
-				myLogger.debugLog("No target", "UpdateTarget()");
+			if (myTarget.Entity != null && CurrentTarget != myTarget)
+				myLogger.debugLog("New target: " + myTarget.Entity.getBestName(), "UpdateTarget()");
+			else if (CurrentTarget != null && CurrentTarget.Entity != null)
+				myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName(), "UpdateTarget()");
 			CurrentTarget = myTarget;
 		}
 

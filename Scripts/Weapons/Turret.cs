@@ -18,6 +18,8 @@ namespace Rynchodon.Weapons
 	public class Turret : WeaponTargeting
 	{
 
+		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
+
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
@@ -40,6 +42,19 @@ namespace Rynchodon.Weapons
 
 		private void Initialize()
 		{
+			if (TP_TargetMissiles == null)
+			{
+				myLogger.debugLog("Filling Terminal Properties", "Initialize()", Logger.severity.INFO);
+				IMyTerminalBlock term  = CubeBlock as IMyTerminalBlock;
+				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
+				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
+				TP_TargetCharacters = term.GetProperty("TargetCharacters").AsBool();
+				TP_TargetMoving = term.GetProperty("TargetMoving").AsBool();
+				TP_TargetLargeGrids = term.GetProperty("TargetLargeShips").AsBool();
+				TP_TargetSmallGrids = term.GetProperty("TargetSmallShips").AsBool();
+				TP_TargetStations = term.GetProperty("TargetStations").AsBool();
+			}
+
 			// definition limits
 			MyLargeTurretBaseDefinition definition = CubeBlock.GetCubeBlockDefinition() as MyLargeTurretBaseDefinition;
 
@@ -72,21 +87,27 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update_Options(TargetingOptions Options)
 		{
-			//Options. CanTarget = TargetType.None;
-			MyObjectBuilder_TurretBase builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
-			if (builder.TargetMissiles)
+			myLogger.debugLog(TP_TargetMissiles == null, "TP_TargetMissiles == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetMeteors == null, "TP_TargetMeteors == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetCharacters == null, "TP_TargetCharacters == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetMoving == null, "TP_TargetMoving == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetLargeGrids == null, "TP_TargetLargeGrids == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetSmallGrids == null, "TP_TargetSmallGrids == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetStations == null, "TP_TargetStations == null", "Update_Options()", Logger.severity.FATAL);
+
+			if (TP_TargetMissiles.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Missile;
-			if (builder.TargetMeteors)
+			if (TP_TargetMeteors.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Meteor;
-			if (builder.TargetCharacters)
+			if (TP_TargetCharacters.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Character;
-			if (builder.TargetMoving)
+			if (TP_TargetMoving.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Moving;
-			if (builder.TargetLargeGrids)
+			if (TP_TargetLargeGrids.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.LargeGrid;
-			if (builder.TargetSmallGrids)
+			if (TP_TargetSmallGrids.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.SmallGrid;
-			if (builder.TargetStations)
+			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")

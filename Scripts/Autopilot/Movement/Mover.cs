@@ -21,6 +21,8 @@ namespace Rynchodon.Autopilot.Movement
 		#endregion
 
 		private const ulong CalcMoveIdle = 100ul;
+		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
+		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
 
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
@@ -35,15 +37,18 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 moveForceRatio = Vector3.Zero;
 		private Vector3 value_rotateForceRatio = Vector3.Zero;
 		private Vector3 rotateForceRatio = Vector3.Zero;
-		private ulong m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
+
+		private Vector3 m_moveAccel = Vector3.Zero;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
 		private Vector3 prevAngleDisp = Vector3.Zero;
-		private ulong updated_prevAngleVel = 0;
+		private DateTime updated_prevAngleVel;
+		private ulong m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
 
 		private bool m_stopped;
 
 		public Pathfinder.Pathfinder myPathfinder { get; private set; }
+		public Vector3 WorldGravity { get { return myThrust.m_worldGravity; } }
 
 		/// <summary>
 		/// Creates a Mover for a given ShipControllerBlock and AllNavigationSettings
@@ -74,6 +79,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void StopRotate()
 		{
+			myLogger.debugLog("entered", "StopRotate()");
 			if ((myPathfinder.CanRotate || !NavSet.Settings_Current.CollisionAvoidance) && ThrustersOverWorked())
 				InGravity_LevelOff();
 			else
@@ -141,9 +147,9 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaximumVelocity(destDisp) * 0.5f;
 
-			//// project targetVelocity onto destination direction (take shortest path)
-			//Vector3 destDir = destDisp / distance;
-			//targetVelocity = Vector3.Dot(targetVelocity, destDir) * destDir;
+			// project targetVelocity onto destination direction (take shortest path)
+			Vector3 destDir = destDisp / distance;
+			targetVelocity = Vector3.Dot(targetVelocity, destDir) * destDir;
 
 			// apply relative speed limit
 			float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
@@ -171,9 +177,9 @@ namespace Rynchodon.Autopilot.Movement
 			if (tarSpeedSq > speedRequest * speedRequest)
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
-			Vector3 accel = targetVelocity - velocity;
+			m_moveAccel = targetVelocity - velocity;
 
-			moveForceRatio = ToForceRatio(accel);
+			moveForceRatio = ToForceRatio(m_moveAccel);
 
 			// dampeners
 			bool enableDampeners = false;
@@ -210,9 +216,6 @@ namespace Rynchodon.Autopilot.Movement
 					myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 			}
 
-			//if (enableDampeners)
-			//	Logger.debugNotify("Damping", 16);
-
 			Block.SetDamping(enableDampeners);
 
 			if (destDisp.LengthSquared() > 1f)
@@ -224,7 +227,7 @@ namespace Rynchodon.Autopilot.Movement
 				//+ ", relaVelocity: " + relaVelocity
 				+ ", targetVelocity: " + targetVelocity
 				//+ ", diffVel: " + diffVel
-				+ ", accel: " + accel
+				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 		}
 
@@ -382,7 +385,6 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 angleVelocity;
 			CalcRotate(localMatrix, Direction, UpDirect, out angleVelocity);
-			updated_prevAngleVel = Globals.UpdateCount;
 			prevAngleVel = angleVelocity;
 		}
 
@@ -401,20 +403,21 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			const ulong MaxUpdateFrequency = 60ul;
+			float secondsSinceLast = (float)(DateTime.UtcNow - updated_prevAngleVel).TotalSeconds;
+			updated_prevAngleVel = DateTime.UtcNow;
+
 			if (rotateForceRatio != Vector3.Zero)
 			{
-				ulong timeSinceLast = Globals.UpdateCount - updated_prevAngleVel;
-				if (timeSinceLast <= MaxUpdateFrequency)
+				if (secondsSinceLast <= MaxUpdateSeconds)
 				{
-					Vector3 ratio = (angularVelocity - prevAngleVel) / (rotateForceRatio * gyroForce * (float)timeSinceLast);
+					Vector3 ratio = (angularVelocity - prevAngleVel) / (rotateForceRatio * gyroForce * secondsSinceLast);
 
 					//myLogger.debugLog("rotateForceRatio: " + rotateForceRatio + ", ratio: " + ratio + ", accel: " + (angularVelocity - prevAngleVel) + ", torque: " + (rotateForceRatio * gyroForce), "CalcRotate()");
 
 					myGyro.Update_torqueAccelRatio(rotateForceRatio, ratio);
 				}
 				else
-					myLogger.debugLog("prevAngleVel is old: " + (Globals.UpdateCount - updated_prevAngleVel), "CalcRotate()", Logger.severity.DEBUG);
+					myLogger.debugLog("prevAngleVel is old: " + secondsSinceLast, "CalcRotate()", Logger.severity.DEBUG);
 			}
 
 			localMatrix.M41 = 0; localMatrix.M42 = 0; localMatrix.M43 = 0; localMatrix.M44 = 1;
@@ -489,27 +492,27 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(displacement);
+			Vector3 targetVelocity = MaxAngleVelocity(displacement, secondsSinceLast);
 
 			// Adjust for moving target by measuring changes in displacement. Part of the change in displacement is attributable to ship rotation. 
 			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
 
 			Vector3 addVelocity = angularVelocity - (prevAngleDisp - displacement) * dispToVel;
 			if (addVelocity.LengthSquared() < 0.01f)
-			{
-				myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
+			//{
+				//myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
 				targetVelocity += addVelocity;
-			}
-			else
-				myLogger.debugLog("Not adjusting for moving, assuming target changed: " + addVelocity, "CalcRotate()");
+			//}
+			//else
+			//	myLogger.debugLog("Not adjusting for moving, assuming target changed: " + addVelocity, "CalcRotate()");
 			prevAngleDisp = displacement;
 
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
-			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * ShipController_Autopilot.UpdateFrequency * gyroForce);
+			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce);
 
 			myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", diffVel: " + diffVel, "CalcRotate()");
-			//myLogger.debugLog("diffVel: " + diffVel + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
+			myLogger.debugLog("diffVel: " + diffVel + ", torque: " + (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)
@@ -519,25 +522,10 @@ namespace Rynchodon.Autopilot.Movement
 				float target = targetVelocity.GetDim(i);
 				if (target > -0.01f && target < 0.01f)
 				{
-					myLogger.debugLog("target near 0 for " + i + ", " + target, "CalcRotate()");
+					//myLogger.debugLog("target near 0 for " + i + ", " + target, "CalcRotate()");
 					rotateForceRatio.SetDim(i, 0f);
 					continue;
 				}
-
-				//float velDim = angularVelocity.GetDim(i);
-				//if (velDim < 0.01f && velDim > -0.01f)
-				//	continue;
-
-				//// where rotateForceRatio opposes angularVelocity, use dampeners
-
-				//float dim = rotateForceRatio.GetDim(i);
-				//if (Math.Sign(dim) * Math.Sign(angularVelocity.GetDim(i)) < 0)
-					//{
-					//	myLogger.debugLog("force ratio(" + dim + ") opposes velocity(" + angularVelocity.GetDim(i) + "), index: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
-					//rotateForceRatio.SetDim(i, 0f);
-				//}
-				//else
-				//	myLogger.debugLog("force ratio is aligned with velocity: " + i + ", " + Math.Sign(dim) + ", " + Math.Sign(angularVelocity.GetDim(i)), "CalcRotate()");
 			}
 		}
 
@@ -546,12 +534,12 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		/// <param name="disp">Displacement to the destination.</param>
 		/// <returns>The maximum angular velocity to stop at the destination.</returns>
-		private Vector3 MaxAngleVelocity(Vector3 disp)
+		private Vector3 MaxAngleVelocity(Vector3 disp, float secondsSinceLast)
 		{
 			Vector3 result = Vector3.Zero;
 
 			// S.E. provides damping for angular motion, we will ignore this
-			float accel = -myGyro.torqueAccelRatio * ShipController_Autopilot.UpdateFrequency * myGyro.TotalGyroForce();
+			float accel = -myGyro.torqueAccelRatio * secondsSinceLast * myGyro.TotalGyroForce();
 
 			//myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
 
@@ -629,16 +617,16 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 unstick;
 			if (controller.CubeGrid.GetLinearVelocity().LengthSquared() < 0.01f && moveControl.LengthSquared() > 0.01f)
 			{
-				Vector3 direction = Vector3.Transform(moveControl, controller.WorldMatrix);
+				Vector3 direction = Vector3.Transform(m_moveAccel, controller.WorldMatrix);
 				direction.Normalize();
 				unstick = direction * 0.1f;
-				//myLogger.debugLog("Velocity: " + controller.CubeGrid.GetLinearVelocity() + ", Unstick: " + unstick, "MoveAndRotate()");
+				myLogger.debugLog("Velocity: " + controller.CubeGrid.GetLinearVelocity() + ", Unstick: " + unstick, "MoveAndRotate()");
 			}
 			else
 				unstick = Vector3.Zero;
 
 			m_stopped = false;
-			myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
+			//myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
 				controller.MoveAndRotate(moveControl, rotateControl, rollControl);

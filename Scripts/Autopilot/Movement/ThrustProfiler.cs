@@ -5,7 +5,7 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Data
+namespace Rynchodon.Autopilot.Movement
 {
 	/// <summary>
 	/// Tracks the direction and power of a grids thrusters.
@@ -133,7 +133,7 @@ namespace Rynchodon.Autopilot.Data
 			if (adjustForGravity)
 			{
 				float change = Base6Directions.GetVector(direction).Dot(m_localGravity) * myGrid.Physics.Mass;
-				myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
+				//myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
 				force += change;
 			}
 

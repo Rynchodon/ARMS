@@ -358,9 +358,22 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_miningPlanet)
 			{
-				if (m_state == State.Rotating)
-					m_state = State.MoveTo;
-				m_mover.InGravity_LevelOff();
+				switch (m_state)
+				{
+					case State.Approaching:
+						m_mover.InGravity_LevelOff();
+						return;
+					case State.Rotating:
+						if (m_navSet.DirectionMatched())
+						{
+							m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
+							m_state = State.MoveTo;
+							m_mover.StopRotate();
+							return;
+						}
+						break;
+				}
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.WorldGravity));
 				return;
 			}
 

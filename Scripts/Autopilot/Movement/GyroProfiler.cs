@@ -6,7 +6,7 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Data
+namespace Rynchodon.Autopilot.Movement
 {
 	public class GyroProfiler
 	{
