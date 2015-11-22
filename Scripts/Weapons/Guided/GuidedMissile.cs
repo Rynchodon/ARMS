@@ -203,7 +203,7 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("Creating EMP effect", "MyEntity_OnClose()", Logger.severity.DEBUG);
 					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds), CubeBlock.OwnerId);
+					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
 				}
 			}
 		}

@@ -40,14 +40,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_logger.debugLog("Locking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "StartEffect()");
 			if (door.Open)
 				door.ApplyAction("Open_Off");
-			return 1;
+			return MinCost;
 		}
 
 		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			m_logger.debugLog("Unlocking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "EndEffect()");
-			(block as IMyFunctionalBlock).RequestEnable(true);
-			return 1;
+			return MinCost;
 		}
 
 	}

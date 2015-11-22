@@ -80,6 +80,15 @@ namespace Rynchodon
 			}
 		}
 
+		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null)
+		{
+			this.m_classname = calling_class;
+
+			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
+			this.f_state_primary = default_primary;
+			this.f_state_secondary = default_secondary;
+		}
+
 		/// <summary>
 		/// needed for MySessionComponentBase
 		/// </summary>

@@ -41,7 +41,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 				return 0;
 			m_logger.debugLog("Depressurizing: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "StartEffect()");
 			airVent.ApplyAction("Depressurize");
-			return 1;
+			return MinCost;
 		}
 
 		protected override int EndEffect(IMyCubeBlock block, int strength)
@@ -50,7 +50,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;
 			if (airVent.IsDepressurizing)
 				airVent.ApplyAction("Depressurize");
-			return 1;
+			return MinCost;
 		}
 
 	}

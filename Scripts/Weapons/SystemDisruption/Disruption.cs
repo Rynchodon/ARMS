@@ -11,6 +11,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public abstract class Disruption
 	{
 
+		private static HashSet<IMyCubeBlock> m_allAffected = new HashSet<IMyCubeBlock>();
+
 		private readonly Logger m_logger;
 
 		private CubeGridCache m_cache;
@@ -21,6 +23,9 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private DateTime m_nextExpire;
 		private int m_toRemove;
 
+		/// <summary>When strength is less than this value, stop trying to start an effect.</summary>
+		protected virtual int MinCost { get { return 1; } }
+		
 		protected Disruption(IMyCubeGrid grid, MyObjectBuilderType[] affects)
 		{
 			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
@@ -28,8 +33,21 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_affects = affects;
 		}
 
-		protected int AddEffect(TimeSpan duration, int strength, long effectOwner)
+		/// <summary>
+		/// Adds an effect to the grid.
+		/// </summary>
+		/// <param name="duration">The length of time the effect will last for.</param>
+		/// <param name="strength">The amount of effect available.</param>
+		/// <param name="effectOwner">The player that will be allowed to control the block. By default, no one can access.</param>
+		/// <returns>Strength remaining after effect is applied</returns>
+		protected int AddEffect(TimeSpan duration, int strength, long effectOwner = long.MinValue)
 		{
+			if (strength < MinCost)
+			{
+				m_logger.debugLog("strength: " + strength + ", below minimum: " + MinCost, "AddEffect()");
+				return strength;
+			}
+
 			int applied = 0;
 			foreach (MyObjectBuilderType type in m_affects)
 			{
@@ -39,7 +57,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 					{
 						IMyCubeBlock block = blockGroup[i];
 
-						if (!block.IsWorking || m_affected.ContainsKey(block))
+						if (!block.IsWorking || m_allAffected.Contains(block))
 						{
 							m_logger.debugLog("cannot disrupt: " + block, "AddEffect()");
 							continue;
@@ -53,11 +71,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 							MyCubeBlock cubeBlock = block as MyCubeBlock;
 							MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
 							m_affected.Add(block, idMod);
+							m_allAffected.Add(block);
 
 							block.SetDamageEffect(true);
 							cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
 
-							if (strength < 1)
+							if (strength < MinCost)
 								goto FinishedBlocks;
 						}
 					}
@@ -74,6 +93,9 @@ FinishedBlocks:
 			return strength;
 		}
 
+		/// <summary>
+		/// Checks for effects ending and removes them.
+		/// </summary>
 		protected void UpdateEffect()
 		{
 			if (m_effects.Count == 0)
@@ -100,6 +122,9 @@ FinishedBlocks:
 			}
 		}
 
+		/// <summary>
+		/// Removes an effect that has expired.
+		/// </summary>
 		private void RemoveEffect()
 		{
 			m_logger.debugLog(m_affectedRemovals.Count != 0, "m_affectedRemovals has not been cleared", "AddEffect()", Logger.severity.FATAL);
@@ -120,10 +145,16 @@ FinishedBlocks:
 			}
 
 			foreach (IMyCubeBlock block in m_affectedRemovals)
+			{
 				m_affected.Remove(block);
+				m_allAffected.Remove(block);
+			}
 			m_affectedRemovals.Clear();
 		}
 
+		/// <summary>
+		/// Finds when the next effect expiration will occur.
+		/// </summary>
 		private void SetNextExpire()
 		{
 			m_logger.debugLog(m_effects.Count == 0, "No effects remain", "SetNextExpire()", Logger.severity.FATAL);
@@ -134,7 +165,20 @@ FinishedBlocks:
 			m_logger.debugLog("Next effect will expire in " + (m_nextExpire - DateTime.UtcNow), "SetNextExpire()");
 		}
 
+		/// <summary>
+		/// Tries to start an disruption on a block. If the return value != strength, the ownership will be changed and visual effect will be added.
+		/// </summary>
+		/// <param name="block">The block to try the disruption on.</param>
+		/// <param name="strength">The maximum strength to apply to the block.</param>
+		/// <returns>If the block is affect, required strength. Otherwise, 0.</returns>
 		protected abstract int StartEffect(IMyCubeBlock block, int strength);
+
+		/// <summary>
+		/// Tries to end an disruption on a block. If the return value != strength, the ownership will be restored and visual effect will end.
+		/// </summary>
+		/// <param name="block">The block to try to end the disruption on.</param>
+		/// <param name="strength">The maximum strength to remove from the block.</param>
+		/// <returns>If the block is no longer affected, required strength. Otherwise, 0.</returns>
 		protected abstract int EndEffect(IMyCubeBlock block, int strength);
 	}
 }

@@ -22,7 +22,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((EMP e) => e.UpdateEffect());
 		}
 
-		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration, long effectOwner)
+		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration)
 		{
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref location, s_entitiesEMP);
@@ -34,7 +34,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 						EMP e;
 						if (!Registrar.TryGetValue(grid, out e))
 							e = new EMP(grid);
-						e.AddEffect(duration, strength, effectOwner);
+						e.AddEffect(duration, strength);
 					}
 				}
 				s_entitiesEMP.Clear();
@@ -42,6 +42,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 		}
 
 		private readonly Logger m_logger;
+
+		protected override int MinCost { get { return 1000; } }
 
 		private EMP(IMyCubeGrid grid)
 			: base(grid, s_affects)
