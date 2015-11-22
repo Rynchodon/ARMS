@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -38,18 +39,34 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public void Update10()
 		{
+			if (DateTime.UtcNow < m_nextHack || !m_hackBlock.IsWorking)
+				return;
 			IMyCubeGrid attached = m_hackBlock.GetAttachedEntity() as IMyCubeGrid;
-			if (attached == null || DateTime.UtcNow < m_nextHack)
+			if (attached == null)
 				return;
 
 			m_nextHack = DateTime.UtcNow + s_hackFrequency;
 
 			int strengthLeft = s_hackStrength;
 			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
-			long effectOwner = bigOwners == null ? 0L : bigOwners[0];
-			strengthLeft = AirVentDepressurize.Depressurize(attached, strengthLeft, s_hackLength, effectOwner);
-			strengthLeft = DoorLock.LockDoors(attached, strengthLeft, s_hackLength, effectOwner);
-			strengthLeft = GravityReverse.ReverseGravity(attached, strengthLeft, s_hackLength, effectOwner);
+			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
+
+			foreach (int i in Enumerable.Range(0, 3).OrderBy(x => Globals.Random.Next()))
+				switch (i)
+				{
+					case 0:
+						strengthLeft = AirVentDepressurize.Depressurize(attached, strengthLeft, s_hackLength, effectOwner);
+						break;
+					case 1:
+						strengthLeft = DoorLock.LockDoors(attached, strengthLeft, s_hackLength, effectOwner);
+						break;
+					case 2:
+						strengthLeft = GravityReverse.ReverseGravity(attached, strengthLeft, s_hackLength, effectOwner);
+						break;
+					default:
+						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.WARNING);
+						break;
+				}
 		}
 
 	}

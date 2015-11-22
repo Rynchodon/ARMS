@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using VRageMath;
@@ -88,14 +89,15 @@ namespace Rynchodon.AntennaRelay
 			// cleanup old GPS
 			myLogger.debugLog("cleaning up old gps", "Player()");
 			var list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
-			myLogger.debugLog("# of gps: " + list.Count, "Player()");
-			foreach (var gps in list)
+			if (list != null)
 			{
-				if (gps.Description.EndsWith(descrEnd))
-				{
-					myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
-					MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);
-				}
+				myLogger.debugLog("# of gps: " + list.Count, "Player()");
+				foreach (var gps in list)
+					if (gps.Description.EndsWith(descrEnd))
+					{
+						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
+						MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);
+					}
 			}
 
 			myLogger.debugLog("initialized", "Player()", Logger.severity.DEBUG);
@@ -264,22 +266,31 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
+		private StringBuilder m_descrParts = new StringBuilder();
+
 		private string GetDescription(LastSeen seen)
 		{
-			List<string> parts = new List<string>();
+			m_descrParts.Clear();
 
 			if (seen.isRecent_Radar())
-				parts.Add("Has Radar");
+				m_descrParts.Append("Has Radar, ");
 
 			if (seen.isRecent_Jam())
-				parts.Add("Has Jammer");
+				m_descrParts.Append("Has Jammer, ");
+
+			m_descrParts.Append("ID:");
+			m_descrParts.Append(seen.Entity.EntityId);
+			m_descrParts.Append(", ");
 
 			if (seen.Info != null)
-				parts.Add(seen.Info.Pretty_Volume());
+			{
+				m_descrParts.Append(seen.Info.Pretty_Volume());
+				m_descrParts.Append(", ");
+			}
 
-			parts.Add(descrEnd);
+			m_descrParts.Append(descrEnd);
 
-			return string.Join(", ", parts);
+			return m_descrParts.ToString();
 		}
 
 		private bool Update(IMyGps gps, string name, string description, Vector3D coords)

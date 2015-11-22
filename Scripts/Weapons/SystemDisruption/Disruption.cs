@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -34,8 +35,10 @@ namespace Rynchodon.Weapons.SystemDisruption
 			{
 				var blockGroup = m_cache.GetBlocksOfType(type);
 				if (blockGroup != null)
-					foreach (IMyCubeBlock block in blockGroup)
+					foreach (int i in Enumerable.Range(0, blockGroup.Count).OrderBy(x => Globals.Random.Next()))
 					{
+						IMyCubeBlock block = blockGroup[i];
+
 						if (!block.IsWorking || m_affected.ContainsKey(block))
 						{
 							m_logger.debugLog("cannot disrupt: " + block, "AddEffect()");

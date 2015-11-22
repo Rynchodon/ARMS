@@ -401,7 +401,7 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			const ulong MaxUpdateFrequency = ShipController_Autopilot.UpdateFrequency * 2u;
+			const ulong MaxUpdateFrequency = 60ul;
 			if (rotateForceRatio != Vector3.Zero)
 			{
 				ulong timeSinceLast = Globals.UpdateCount - updated_prevAngleVel;
