@@ -1085,8 +1085,16 @@ namespace Rynchodon.Autopilot.Instruction
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
 					string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().LowerRemoveWhitespace()
-						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
+						? Fatblock.getNameOnly()
+						: Fatblock.DisplayNameText;
+
+					if (blockName == null)
+					{
+						m_logger.debugLog("Null block name: " + Fatblock.DefinitionDisplayNameText + '/' + Fatblock.DisplayNameText, "GetLocalBlock()", Logger.severity.WARNING);
+						return false;
+					}
+
+					blockName = blockName.LowerRemoveWhitespace();
 
 					//myLogger.debugLog("checking: " + blockName, "GetLocalBlock()");
 

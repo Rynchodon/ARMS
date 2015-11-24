@@ -114,15 +114,15 @@ namespace Rynchodon.Settings
 				myLogger.debugLog("Received request from: " + SteamUserId, "Server_ReceiveMessage()");
 
 				List<byte> send = new List<byte>();
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowAutopilot), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowGuidedMissile), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowRadar), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowWeaponControl), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseColourState), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseRemoteControl), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fDefaultSpeed), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxSpeed), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxWeaponRange), send);
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowRadar));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowWeaponControl));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bUseColourState));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bUseRemoteControl));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fDefaultSpeed));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxSpeed));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxWeaponRange));
 
 				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, send.ToArray(), SteamUserId))
 					myLogger.debugLog("Sent settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.INFO);

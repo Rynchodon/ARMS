@@ -2,34 +2,37 @@
 
 using System;
 using System.Collections.Generic;
+using Rynchodon.Utility.GUI;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
+using VRage.Utils;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
-	/// <summary>
-	/// Class is designed to replace / merge with TurretBase
-	/// </summary>
 	public class Turret : WeaponTargeting
 	{
 
 		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
-		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
+		private readonly float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
-		private float speedElevation, speedAzimuth;
+		private readonly  float speedElevation, speedAzimuth;
 		/// <summary>the turret is capable of rotating past ±180° (azimuth)</summary>
-		private bool Can360;
+		private  readonly bool Can360;
+		private readonly TurretControlPanel m_controlPanel;
+
 		/// <summary>value set by Turret, updated when not controlling</summary>
 		private float setElevation, setAzimuth;
 
-		private bool Initialized = false;
+
+		//private bool Initialized = false;
 
 		private Logger myLogger;
 
@@ -38,13 +41,15 @@ namespace Rynchodon.Weapons
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
 			Registrar.Add(CubeBlock, this);
-		}
+			m_controlPanel = new TurretControlPanel(block);
+		//}
 
-		private void Initialize()
-		{
+		//private void Initialize()
+		//{
+
 			if (TP_TargetMissiles == null)
 			{
-				myLogger.debugLog("Filling Terminal Properties", "Initialize()", Logger.severity.INFO);
+				myLogger.debugLog("Filling Terminal Properties", "Turret()", Logger.severity.INFO);
 				IMyTerminalBlock term  = CubeBlock as IMyTerminalBlock;
 				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
 				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
@@ -76,7 +81,7 @@ namespace Rynchodon.Weapons
 			setAzimuth = myTurret.Azimuth;
 
 			AllowedState = State.Targeting;
-			Initialized = true;
+			//Initialized = true;
 
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
@@ -110,6 +115,14 @@ namespace Rynchodon.Weapons
 			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
+			if (m_controlPanel.Target_Functional)
+				Options.Flags |= TargetingFlags.Functional;
+			if (m_controlPanel.Interior)
+				Options.Flags |= TargetingFlags.Interior;
+			if (m_controlPanel.Destroy)
+				Options.CanTarget |= TargetType.Destroy;
+
+			// TODO: this should be default, not forced
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
 				Options.Flags |= TargetingFlags.Interior;
 
@@ -159,8 +172,8 @@ namespace Rynchodon.Weapons
 		/// </remarks>
 		protected override void Update()
 		{
-			if (!Initialized)
-				Initialize();
+			//if (!Initialized)
+			//	Initialize();
 
 			if (CurrentState_NotFlag(State.Targeting))
 			{

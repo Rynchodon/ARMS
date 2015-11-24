@@ -9,6 +9,7 @@ namespace Rynchodon
 	{
 
 		private static readonly Logger s_logger = new Logger("MyPlanetExtensions");
+		private static readonly FastResourceLock lock_getSurfPoint = new FastResourceLock();
 
 		[System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
 		public static bool Intersects(this MyPlanet planet, ref BoundingSphereD sphere)
@@ -17,29 +18,23 @@ namespace Rynchodon
 			Vector3D closestPoint = Vector3.Zero;
 
 			// obviously not ideal but there does not seem to be any alternative
-			try { closestPoint = planet.GetClosestSurfacePointGlobal(ref centre); }
-			catch (AccessViolationException)
+			try
 			{
-				s_logger.debugLog("Caught AccessViolationException", "Intersects()", Logger.severity.INFO);
+				using (lock_getSurfPoint.AcquireExclusiveUsing())
+					closestPoint = planet.GetClosestSurfacePointGlobal(ref centre);
+			}
+			catch (Exception ex)
+			{
+				s_logger.debugLog("Caught Exception: " + ex, "Intersects()", Logger.severity.WARNING);
 				return true;
 			}
-			
+
 			double minDistance = sphere.Radius * sphere.Radius;
-			s_logger.debugLog("checking intersection"
-					+ ", sphere centre: " + centre
-					+ ", sphere radius: " + sphere.Radius
-					+ ", surface point: " + closestPoint
-					+ ", distance to surface point: " + Vector3D.Distance(centre, closestPoint)
-					, "Intersects()");
 			if (Vector3D.DistanceSquared(centre, closestPoint) <= minDistance)
 				return true;
 
 			Vector3D planetCentre = planet.GetCentre();
-			s_logger.debugLog("altitude of sphere: " + Vector3D.Distance(planetCentre, centre) + ", altitude of surface point: " + Vector3D.Distance(planetCentre, closestPoint), "Intersects()");
-			bool pointTest = Vector3D.DistanceSquared(planetCentre, centre) < Vector3D.DistanceSquared(planetCentre, closestPoint);
-			bool overlapTest = planet.DoOverlapSphereTest((float)sphere.Radius, sphere.Center);
-			s_logger.debugLog("point test: " + pointTest + ", overlap test: " + overlapTest, "Intersects()");
-			return pointTest;
+			return Vector3D.DistanceSquared(planetCentre, centre) < Vector3D.DistanceSquared(planetCentre, closestPoint);
 		}
 
 	}

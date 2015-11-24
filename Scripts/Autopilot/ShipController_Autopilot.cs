@@ -560,8 +560,8 @@ namespace Rynchodon.Autopilot
 
 		private void SendCustomInfo()
 		{
-			ByteConverter.AppendBytes(m_block.CubeBlock.EntityId, m_customInfo_message);
-			ByteConverter.AppendBytes(m_customInfo_send.ToString(), m_customInfo_message);
+			ByteConverter.AppendBytes(m_customInfo_message, m_block.CubeBlock.EntityId);
+			ByteConverter.AppendBytes(m_customInfo_message, m_customInfo_send.ToString());
 
 			m_logger.debugLog("sending message, length: " + m_customInfo_message.Count, "SendCustomInfo()");
 			m_logger.debugLog("Message:\n" + m_customInfo_send, "SendCustomInfo()");
