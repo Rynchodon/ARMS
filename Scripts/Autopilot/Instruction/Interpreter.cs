@@ -826,10 +826,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return false;
 			}
 
-			instructionAction = () => {
-				new Stopper(Mover, NavSet);
-				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
-			};
+			instructionAction = () => NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
 			return true;
 		}
 

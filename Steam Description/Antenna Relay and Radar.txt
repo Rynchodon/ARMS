@@ -15,7 +15,7 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 [u]Status information is displayed in the control panel.[/u]
 
 [h1]Blocks[/h1]
-Radar equipment from other mods may be used. If they are not otherwise configured, they will be similar to Radar Dish but be capable of detecting objects in every direction.
+Radar equipment from other mods may be used. If they are not otherwise configured, they will have a maximum of 1 target and be completely omnidirectional.
 
 [u]Radar Dish[/u]
 Very long range, inexpensive, unidirectional, up to 10 targets.

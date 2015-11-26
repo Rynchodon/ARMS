@@ -129,7 +129,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => {
 						Ingame.IMyShipConnector connector = block as Ingame.IMyShipConnector;
-						return connector != null && !connector.IsConnected;
+						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block);
 					};
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
 				}
@@ -486,7 +486,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 			Ingame.IMyShipConnector asConn = m_navBlock.Block as Ingame.IMyShipConnector;
 			if (asConn != null)
+			{
+				m_logger.debugLog("locked: " + asConn.IsLocked + ", connected: " + asConn.IsConnected + ", other: " + asConn.OtherConnector, "IsLocked()");
 				return asConn.IsConnected;
+			}
 
 			return false;
 		}

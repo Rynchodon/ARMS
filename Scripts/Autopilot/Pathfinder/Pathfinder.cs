@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -63,8 +64,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		};
 		#endregion
 
-		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
-		private static ThreadManager Thread_Low = new ThreadManager(1, true, "Path_Low");
+		private static ThreadManager Thread_High = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), false, "Path_High");
+		private static ThreadManager Thread_Low = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), true, "Path_Low");
 
 		private static short RunIdPool;
 
@@ -172,7 +173,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 			}
 			else
-				m_logger.debugLog("using existing destination: " + destination, "TestPath()");
+				m_logger.debugLog("using actual destination: " + destination, "TestPath()");
 
 			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, m_runId, isAlternate: false, tryAlternates: true));
 
@@ -357,6 +358,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void RunItem()
 		{
+			m_logger.debugLog("entered, high count: " + m_pathHigh.Count + ", low count: " + m_pathLow.Count + ", high parallel: " + Thread_High.ParallelTasks + ", low parallel: " + Thread_Low.ParallelTasks, "RunItem()");
 			if (m_pathHigh.Count != 0)
 			{
 				m_logger.debugLog("Adding item to Thread_High, count: " + (Thread_High.ParallelTasks + 1), "RunItem()");

@@ -237,6 +237,7 @@ namespace Rynchodon.AntennaRelay
 			if (string.IsNullOrWhiteSpace(def.DescriptionString))
 			{
 				staticLogger.debugLog("No description, using defaults for " + ID, "GetDefinition()", Logger.severity.WARNING);
+				result.Radar = true;
 				AllDefinitions.Add(ID, result);
 				return result;
 			}
@@ -252,8 +253,6 @@ namespace Rynchodon.AntennaRelay
 
 		#endregion
 
-		private enum PowerUse : byte { None, Share, All }
-
 		/// <summary>The entity that has the radar.</summary>
 		private readonly IMyEntity Entity;
 		/// <summary>Block for comparing relations.</summary>
@@ -267,10 +266,6 @@ namespace Rynchodon.AntennaRelay
 		private readonly Logger myLogger;
 		private readonly Definition myDefinition;
 		private readonly FastResourceLock myLock = new FastResourceLock();
-
-		/// <summary>size of radar signature/signal and object</summary>
-		//private readonly UniqueList<DetectedInfo> detectedObjects17 = new UniqueList<DetectedInfo>();
-		//private readonly List<LastSeen> detectedObjects_LastSeen = new List<LastSeen>();
 
 		/// <summary>All detected entities will be added here.</summary>
 		private readonly List<DetectedInfo> detectedObjects_list = new List<DetectedInfo>();
@@ -418,7 +413,10 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, "Update_OnThread()", Logger.severity.ERROR); }
+			{
+				myLogger.alwaysLog("Exception: " + ex, "Update_OnThread()", Logger.severity.ERROR);
+				(CubeBlock as IMyFunctionalBlock).RequestEnable(false);
+			}
 			finally
 			{ myLock.ReleaseExclusive(); }
 		}

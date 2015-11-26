@@ -16,7 +16,6 @@ namespace Rynchodon.Threading
 		private readonly bool Background;
 		private readonly string ThreadName;
 
-		private byte value_parallelTasks;
 		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
 		private MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
@@ -24,23 +23,11 @@ namespace Rynchodon.Threading
 
 		public byte AllowedParallel { get; private set; }
 
-		public byte ParallelTasks
-		{
-			get
-			{
-				using (lock_parallelTasks.AcquireSharedUsing())
-					return value_parallelTasks;
-			}
-			private set
-			{
-				using (lock_parallelTasks.AcquireExclusiveUsing())
-					value_parallelTasks = value;
-			}
-		}
+		public byte ParallelTasks { get; private set; }
 
 		public ThreadManager(byte AllowedParallel = 1, bool background = false, string threadName = null)
 		{
-			this.myLogger = new Logger("ThreadManager", () => threadName ?? string.Empty, () => value_parallelTasks.ToString());
+			this.myLogger = new Logger("ThreadManager", () => threadName ?? string.Empty, () => ParallelTasks.ToString());
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
 			this.ThreadName = threadName;
@@ -60,14 +47,15 @@ namespace Rynchodon.Threading
 			using (lock_ActionQueue.AcquireExclusiveUsing())
 			{
 				ActionQueue.Enqueue(toQueue);
-				//myLogger.debugLog("queued items: " + ActionQueue.Count, "EnqueueAction()");
 				VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 			}
 
-			if (ParallelTasks >= AllowedParallel)
-				return;
-			ParallelTasks++;
-			//myLogger.debugLog("ParallelTasks: " + ParallelTasks, "EnqueueAction()");
+			using (lock_parallelTasks.AcquireExclusiveUsing())
+			{
+				if (ParallelTasks >= AllowedParallel)
+					return;
+				ParallelTasks++;
+			}
 
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 				if (Background)
@@ -109,7 +97,8 @@ namespace Rynchodon.Threading
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
 			finally
 			{
-				ParallelTasks--;
+				using (lock_parallelTasks.AcquireExclusiveUsing())
+					ParallelTasks--;
 				ThreadTracker.ThreadName = null;
 			}
 		}

@@ -106,7 +106,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			foreach (MyEntity entity in m_offendingEntities)
 			{
-				//CheckInterrupt();
+				m_logger.debugLog("checking entity: " + entity.getBestName(), "TestSlow()");
 
 				IMyVoxelBase voxel = entity as IMyVoxelBase;
 				if (voxel != null)
