@@ -128,7 +128,7 @@ namespace Rynchodon.Autopilot.Movement
 				}
 			}
 
-			myThrust.UpdateGravityAndAir();
+			myThrust.Update();
 
 			Vector3 destDisp = destPoint - block.WorldPosition;
 			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
@@ -177,7 +177,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (tarSpeedSq > speedRequest * speedRequest)
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
-			m_moveAccel = targetVelocity - velocity;
+			m_moveAccel = targetVelocity - velocity - myThrust.m_localGravity;
 
 			moveForceRatio = ToForceRatio(m_moveAccel);
 
@@ -269,8 +269,9 @@ namespace Rynchodon.Autopilot.Movement
 			if (dist < 0.1f)
 				return 0f;
 
-			// Mover will attempt to stop with normal thrust
-			float force = myThrust.GetForceInDirection(direct);
+			myLogger.debugLog("direct: " + direct + ", changed to: " + Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.GetDirectionVector(direct)), "MaximumSpeed()");
+			direct = Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.GetDirectionVector(direct));
+			float force = myThrust.GetForceInDirection(direct, true);
 			if (force < 1f)
 			{
 				myLogger.debugLog("No thrust available in direction: " + direct, "MaximumSpeed()", Logger.severity.DEBUG);
@@ -291,21 +292,20 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 result = Vector3.Zero;
 
 			if (localAccel.X > 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Right);
+				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Right));
 			else if (localAccel.X < 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Left);
+				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Left));
 			if (localAccel.Y > 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Up);
+				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Up));
 			else if (localAccel.Y < 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Down);
+				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Down));
 			if (localAccel.Z > 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Backward);
+				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Backward));
 			else if (localAccel.Z < 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.Direction.Forward);
+				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Forward));
 
-			myLogger.debugLog("accel: " + localAccel + ", force ratio: " + result + ", after gravity: " + (result + myThrust.m_gravityReactRatio), "ToForceRatio()");
+			myLogger.debugLog("accel: " + localAccel + ", force ratio: " + result, "ToForceRatio()");
 
-			result += myThrust.m_gravityReactRatio;
 			return result;
 		}
 
@@ -364,7 +364,7 @@ namespace Rynchodon.Autopilot.Movement
 		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, bool levelingOff = false)
 		{
 			CheckGrid();
-			myThrust.UpdateGravityAndAir();
+			myThrust.Update();
 
 			if (!levelingOff)
 			{
