@@ -20,12 +20,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((GravityReverse gg) => gg.UpdateEffect());
 		}
 
-		public static int ReverseGravity(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
+		public static int ReverseGravity(IMyCubeGrid grid, int strength, TimeSpan duration)
 		{
 			GravityReverse gg;
 			if (!Registrar.TryGetValue(grid, out gg))
 				gg = new GravityReverse(grid);
-			return gg.AddEffect(duration, strength, effectOwner);
+			return gg.AddEffect(duration, strength);
 		}
 
 		private readonly Logger m_logger;
@@ -54,13 +54,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 			if (rect != null)
 			{
 				rect.GetProperty("Gravity").AsFloat().SetValue(rect, -rect.Gravity * Gee);
-				return 1;
+				return MinCost;
 			}
 			Ingame.IMyGravityGeneratorSphere sphere = block as Ingame.IMyGravityGeneratorSphere;
 			if (sphere != null)
 			{
 				sphere.GetProperty("Gravity").AsFloat().SetValue(sphere, -sphere.Gravity * Gee);
-				return 1;
+				return MinCost;
 			}
 
 			m_logger.alwaysLog("Exotic gravity generator: " + block.DefinitionDisplayNameText + "/" + block.DisplayNameText, "ReverseGravity()", Logger.severity.WARNING);

@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			private readonly Logger m_logger;
 			private readonly Ingame.IMyOreDetector m_oreDetector;
-			private readonly IMyVoxelMap m_voxel;
+			private readonly IMyVoxelBase m_voxel;
 			private readonly float m_maxRange;
 
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(10000);
@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private DateTime m_throwOutVoxelData = DateTime.UtcNow + LifeSpan_VoxelData;
 			private readonly FastResourceLock lock_throwOut = new FastResourceLock();
 
-			public VoxelData(Ingame.IMyOreDetector oreDetector, IMyVoxelMap voxel, float maxRange)
+			public VoxelData(Ingame.IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
 			{
 				this.m_logger = new Logger(GetType().Name, () => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
@@ -113,9 +113,9 @@ namespace Rynchodon.Autopilot.Harvest
 								Vector3D deposit_localPosition = matLoc.Key << QUERY_LOD;
 								MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out closest);
 
-								m_logger.debugLog("entry position: " + matLoc.Key + ", local: " + deposit_localPosition + ", world: " + closest, "GetClosest()");
+								m_logger.debugLog("entry position: " + matLoc.Key + ", local: " + deposit_localPosition + ", world: " + closest + ", distance: " + (float)Math.Sqrt(dist), "GetClosest()");
 
-								MyVoxelMap map = m_voxel as MyVoxelMap;
+								MyVoxelBase map = m_voxel as MyVoxelBase;
 								m_logger.debugLog("stor min: " + map.StorageMin, "GetClosest()");
 
 								closestDistance = dist;
@@ -166,7 +166,7 @@ namespace Rynchodon.Autopilot.Harvest
 					MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldMin, out m_localMin);
 					MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldMax, out m_localMax);
 
-					MyVoxelMap vox = m_voxel as MyVoxelMap;
+					MyVoxelBase vox = m_voxel as MyVoxelBase;
 					m_localMin = Vector3I.Clamp(m_localMin, vox.StorageMin, vox.StorageMax);
 					m_localMax = Vector3I.Clamp(m_localMax, vox.StorageMin, vox.StorageMax);
 					m_localMin >>= QUERY_LOD;
@@ -348,6 +348,7 @@ Finished_Deposit:
 
 		public readonly IMyCubeBlock Block;
 
+		private readonly List<MyVoxelBase> m_nearbyVoxel = new List<MyVoxelBase>();
 		/// <summary>Dequeues and invokes all actions finished updating voxels.</summary>
 		public readonly LockedQueue<Action> OnUpdateComplete = new LockedQueue<Action>();
 
@@ -355,7 +356,7 @@ Finished_Deposit:
 		private readonly Ingame.IMyOreDetector m_oreDetector;
 		private readonly float m_maxRange;
 
-		private readonly Dictionary<IMyVoxelMap, VoxelData> m_voxelData = new Dictionary<IMyVoxelMap, VoxelData>();
+		private readonly Dictionary<IMyVoxelBase, VoxelData> m_voxelData = new Dictionary<IMyVoxelBase, VoxelData>();
 		private readonly FastResourceLock l_voxelDate = new FastResourceLock();
 
 		private byte m_waitingOn;
@@ -409,31 +410,31 @@ Finished_Deposit:
 			m_logger.debugLog("running update", "Update()");
 
 			BoundingSphereD detection = new BoundingSphereD(m_oreDetector.GetPosition(), m_maxRange);
-			List<MyVoxelBase> nearby = new List<MyVoxelBase>();
+			m_nearbyVoxel.Clear();
+			MainLock.UsingShared(() => MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel));
 
-			MainLock.UsingShared(() => MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, nearby));
+			foreach (IMyVoxelBase nearbyMap in m_nearbyVoxel)
+				if (nearbyMap is IMyVoxelMap || nearbyMap is MyPlanet)
+				{
+					VoxelData data;
+					using (l_voxelDate.AcquireExclusiveUsing())
+						if (!m_voxelData.TryGetValue(nearbyMap, out data))
+						{
+							data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
+							m_voxelData.Add(nearbyMap, data);
+						}
 
-			if (nearby.Count == 0)
+					using (l_waitingOn.AcquireExclusiveUsing())
+						if (data.StartRead(OnVoxelFinish))
+							m_waitingOn++;
+				}
+
+			if (m_waitingOn == 0)
 			{
 				using (l_waitingOn.AcquireExclusiveUsing())
 					m_waitingOn++;
 				OnVoxelFinish();
 				return;
-			}
-
-			foreach (MyVoxelMap nearbyMap in nearby)
-			{
-				VoxelData data;
-				using (l_voxelDate.AcquireExclusiveUsing())
-					if (!m_voxelData.TryGetValue(nearbyMap, out data))
-					{
-						data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
-						m_voxelData.Add(nearbyMap, data);
-					}
-
-				using (l_waitingOn.AcquireExclusiveUsing())
-					if (data.StartRead(OnVoxelFinish))
-						m_waitingOn++;
 			}
 		}
 
@@ -446,27 +447,24 @@ Finished_Deposit:
 		/// <param name="voxel">The voxel map that contains the ore that was found</param>
 		/// <param name="oreName">The name of the ore that was found</param>
 		/// <returns>True iff an ore was found</returns>
-		public bool FindClosestOre(Vector3D position, byte[] oreType, out Vector3D orePosition, out IMyVoxelMap voxel, out string oreName)
+		public bool FindClosestOre(Vector3D position, byte[] oreType, out Vector3D orePosition, out IMyVoxelBase voxel, out string oreName)
 		{
-			IOrderedEnumerable<IMyVoxelMap> sortedByDistance;
+			IOrderedEnumerable<IMyVoxelBase> sortedByDistance;
 			using (l_voxelDate.AcquireExclusiveUsing())
 				sortedByDistance = m_voxelData.Keys.OrderBy(map => Vector3.DistanceSquared(position, map.GetPosition()));
 
-			foreach (IMyVoxelMap map in sortedByDistance)
+			foreach (IMyVoxelBase map in sortedByDistance)
 			{
 				VoxelData data;
 				using (l_voxelDate.AcquireSharedUsing())
 					data = m_voxelData[map];
 
-				//Vector3I myVoxelCoord; MyVoxelCoordSystems.WorldPositionToVoxelCoord(map.PositionLeftBottomCorner, ref position, out myVoxelCoord);
 				m_logger.debugLog("PositionLeftBottomCorner: " + map.PositionLeftBottomCorner + ", pos: " + position, "FindClosestOre()");
-				//Vector3D closest;
 				byte foundOreType;
 				if (data.GetClosest(oreType, ref position, out orePosition, out foundOreType))
 				{
 					oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOreType).MinedOre;
-					//MyVoxelCoordSystems.VoxelCoordToWorldPosition(map.PositionLeftBottomCorner, ref closest, out orePosition);
-					m_logger.debugLog("PositionLeftBottomCorner: " + map.PositionLeftBottomCorner + ", worldPosition: " + orePosition, "FindClosestOre()");
+					m_logger.debugLog("PositionLeftBottomCorner: " + map.PositionLeftBottomCorner + ", worldPosition: " + orePosition + ", distance: " + Vector3D.Distance(position, orePosition), "FindClosestOre()");
 					voxel = map;
 					return true;
 				}

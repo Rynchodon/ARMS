@@ -67,7 +67,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			ICollection<MyEntity> offenders = EntitiesInLargeAABB(m_grid.WorldAABB, AtDest);
 			if (offenders.Count == 0)
 			{
-				m_logger.debugLog("AABB is empty", "TestPath()", Logger.severity.DEBUG);
+				m_logger.debugLog("AABB is empty", "TestPath()", Logger.severity.TRACE);
 				return true;
 			}
 			m_logger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
@@ -77,7 +77,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			foreach (MyEntity offending in offenders)
 				if (!m_path.IntersectsAABB(offending))
 				{
-					m_logger.debugLog("no AABB intersection: " + offending.getBestName(), "TestEntities()");
+					//m_logger.debugLog("no AABB intersection: " + offending.getBestName(), "TestPath()");
 					remove.Add(offending);
 				}
 			foreach (MyEntity entity in remove)
@@ -85,13 +85,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (offenders.Count == 0)
 			{
-				m_logger.debugLog("no entities intersect path", "TestFast()", Logger.severity.DEBUG);
+				m_logger.debugLog("no entities intersect path", "TestFast()", Logger.severity.TRACE);
 				return true;
 			}
 			m_logger.debugLog("entities intersecting path: " + offenders.Count, "TestPath()");
 
-			foreach (var ent in offenders)
-				m_logger.debugLog("entity: " + ent.getBestName(), "TestPath()");
+			//foreach (var ent in offenders)
+			//	m_logger.debugLog("entity: " + ent.getBestName(), "TestPath()");
 
 			m_offendingEntities = offenders.OrderBy(entity => m_grid.WorldAABB.Distance(entity.PositionComp.WorldAABB));
 
@@ -113,20 +113,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					if (m_ignoreAsteroid)
 					{
-						m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName(), "TestEntities()");
+						m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName(), "TestSlow()");
 						continue;
 					}
 
 					Vector3[] intersection = new Vector3[2];
 					if (!m_path.IntersectsAABB(voxel, out  intersection[0]))
 					{
-						m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), "TestEntities()", Logger.severity.DEBUG);
+						m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
 						continue;
 					}
 
 					if (!m_path.get_Reverse().IntersectsAABB(voxel, out intersection[1]))
 					{
-						m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), "TestEntities()", Logger.severity.WARNING);
+						m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), "TestSlow()", Logger.severity.WARNING);
 						continue;
 					}
 
@@ -152,7 +152,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						}
 					}
 
-					m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestEntities()", Logger.severity.DEBUG);
+					m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
 					continue;
 				}
 
@@ -167,14 +167,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 					continue;
 				}
 
-				m_logger.debugLog("not a grid, testing bounds", "TestEntities()");
+				m_logger.debugLog("not a grid, testing bounds", "TestSlow()");
 				if (!m_path.IntersectsAABB(entity))
 					continue;
 
 				if (!m_path.IntersectsVolume(entity))
 					continue;
 
-				m_logger.debugLog("no more tests for non-grids are implemented", "TestEntities()", Logger.severity.DEBUG);
+				m_logger.debugLog("no more tests for non-grids are implemented", "TestSlow()", Logger.severity.DEBUG);
 				pointOfObstruction = m_path.get_Line().ClosestPoint(entity.GetCentre());
 				blockingPath = entity;
 				blockingGrid = null;
@@ -271,7 +271,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			pathPoints[2] = end.Min;
 			pathPoints[3] = end.Max;
 			BoundingBoxD PathAABB = BoundingBoxD.CreateFromPoints(pathPoints);
-			m_logger.debugLog("Path AABB = " + PathAABB, "EntitiesInLargeAABB()");
+			//m_logger.debugLog("Path AABB = " + PathAABB, "EntitiesInLargeAABB()");
 
 			m_offenders.Clear();
 			MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref PathAABB, m_offenders);
@@ -280,7 +280,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (!collect_Entity(m_grid, m_offenders[i])
 					|| (m_ignoreEntity != null && m_ignoreEntity == m_offenders[i]))
 				{
-					m_logger.debugLog("discarding: " + m_offenders[i].getBestName(), "EntitiesInLargeAABB()");
+					//m_logger.debugLog("discarding: " + m_offenders[i].getBestName(), "EntitiesInLargeAABB()");
 					m_offRemove.Add(m_offenders[i]);
 				}
 			for (int i = 0; i < m_offRemove.Count; i++)

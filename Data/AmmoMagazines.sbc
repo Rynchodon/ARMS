@@ -61,6 +61,26 @@
       <Capacity>18</Capacity>
       <AmmoDefinitionId Subtype="Souper_B3MP_Missile" />
     </AmmoMagazine>
+
+    <AmmoMagazine>
+      <Id>
+        <TypeId>AmmoMagazine</TypeId>
+        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
+      </Id>
+      <DisplayName>Interceptor Missile C1VT</DisplayName>
+      <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
+      <Size>
+        <X>.25</X>
+        <Y>0.25</Y>
+        <Z>0.25</Z>
+      </Size>
+      <Mass>60</Mass>
+      <Volume>60</Volume>
+      <Model>Models\Weapons\Interceptor_Missile.mwm</Model>
+      <PhysicalMaterial>Ammo</PhysicalMaterial>
+      <Capacity>1</Capacity>
+      <AmmoDefinitionId Subtype="Souper_C1VT_Interceptor_Missile" />
+    </AmmoMagazine>
     
   </AmmoMagazines>
 </Definitions>

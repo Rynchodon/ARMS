@@ -38,5 +38,17 @@
       </AmmoMagazines>
     </Weapon>
     
+    <Weapon>
+      <Id>
+        <TypeId>WeaponDefinition</TypeId>
+        <SubtypeId>Souper_Missile_Defense_Turret</SubtypeId>
+      </Id>
+      <MissileAmmoData RateOfFire="10" ShootSoundName="WepShipSmallMissileShot" />
+      <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
+      <AmmoMagazines>
+        <AmmoMagazine Subtype="Souper_C1VT_Interceptor_Missile" />
+      </AmmoMagazines>
+    </Weapon>
+
   </Weapons>
 </Definitions>

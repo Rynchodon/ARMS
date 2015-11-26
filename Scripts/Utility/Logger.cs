@@ -67,17 +67,26 @@ namespace Rynchodon
 		{
 			this.m_classname = calling_class;
 
-			this.f_context = () => block.CubeGrid.DisplayName;
+			this.f_context = () => block.CubeGrid.DisplayName + " - " + block.CubeGrid.EntityId;
 			if (default_secondary == null)
 			{
 				this.f_state_primary = () => block.DefinitionDisplayNameText;
-				this.f_state_secondary = () => block.getNameOnly();
+				this.f_state_secondary = () => block.getNameOnly() + " - " + block.EntityId;
 			}
 			else
 			{
-				this.f_state_primary = () => block.getNameOnly();
+				this.f_state_primary = () => block.getNameOnly() + " - " + block.EntityId;
 				this.f_state_secondary = default_secondary;
 			}
+		}
+
+		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null)
+		{
+			this.m_classname = calling_class;
+
+			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
+			this.f_state_primary = default_primary;
+			this.f_state_secondary = default_secondary;
 		}
 
 		/// <summary>

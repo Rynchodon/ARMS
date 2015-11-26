@@ -228,7 +228,7 @@ namespace Rynchodon
 
 		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
 		{
-			switch (block.getRelationsTo(target))
+			switch (target.getRelationsTo(block))
 			{
 				case Relations.Faction:
 				case Relations.Owner:

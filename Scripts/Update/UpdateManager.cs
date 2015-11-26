@@ -117,24 +117,31 @@ namespace Rynchodon.Update
 			{
 				#region Turrets
 
-				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), (block) => {
-					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update_Targeting, block);
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), (block) => {
-					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update_Targeting, block);
-				});
-				RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), (block) => {
-					Turret t = new Turret(block);
-					RegisterForUpdates(1, t.Update_Targeting, block);
-				});
+				Action<IMyCubeBlock> constructor;
+				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
+					constructor = block => {
+						Turret t = new Turret(block);
+						RegisterForUpdates(1, t.Update_Targeting, block);
+						if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
+						{
+							GuidedMissileLauncher gml = new GuidedMissileLauncher(t);
+							RegisterForUpdates(1, gml.Update1, block);
+						}
+					};
+				else
+					constructor = block => {
+						Turret t = new Turret(block);
+						RegisterForUpdates(1, t.Update_Targeting, block);
+					};
+
+				RegisterForBlock(typeof(MyObjectBuilder_LargeGatlingTurret), constructor);
+				RegisterForBlock(typeof(MyObjectBuilder_LargeMissileTurret), constructor);
+				RegisterForBlock(typeof(MyObjectBuilder_InteriorTurret), constructor);
 
 				#endregion
 
 				#region Fixed
 
-				Action<IMyCubeBlock> constructor;
 
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 				{
@@ -153,12 +160,10 @@ namespace Rynchodon.Update
 					RegisterForUpdates(100, GuidedMissile.Update100);
 				}
 				else
-				{
 					constructor = block => {
 						FixedWeapon w = new FixedWeapon(block);
 						RegisterForUpdates(1, w.Update_Targeting, block);
 					};
-				}
 
 				RegisterForBlock(typeof(MyObjectBuilder_SmallGatlingGun), constructor);
 				RegisterForBlock(typeof(MyObjectBuilder_SmallMissileLauncher), constructor);
@@ -172,6 +177,8 @@ namespace Rynchodon.Update
 				RegisterForUpdates(10, AirVentDepressurize.Update);
 				RegisterForUpdates(10, DoorLock.Update);
 				RegisterForUpdates(10, GravityReverse.Update);
+				RegisterForUpdates(10, DisableTurret.Update);
+				RegisterForUpdates(10, TraitorTurret.Update);
 
 				RegisterForBlock(typeof(MyObjectBuilder_LandingGear), block => {
 					if (Hacker.IsHacker(block))

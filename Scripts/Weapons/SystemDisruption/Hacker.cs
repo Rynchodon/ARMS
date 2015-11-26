@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -26,6 +27,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private readonly IMyLandingGear m_hackBlock;
 
 		private DateTime m_nextHack;
+		private int m_strengthLeft;
 
 		public Hacker(IMyCubeBlock block)
 		{
@@ -38,18 +40,48 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public void Update10()
 		{
-			IMyCubeGrid attached = m_hackBlock.GetAttachedEntity() as IMyCubeGrid;
-			if (attached == null || DateTime.UtcNow < m_nextHack)
+			if (DateTime.UtcNow < m_nextHack )
 				return;
+			if (!m_hackBlock.IsWorking)
+			{
+				m_strengthLeft = 0;
+				return;
+			}
+			IMyCubeGrid attached = m_hackBlock.GetAttachedEntity() as IMyCubeGrid;
+			if (attached == null)
+			{
+				m_strengthLeft = 0;
+				return;
+			}
 
 			m_nextHack = DateTime.UtcNow + s_hackFrequency;
 
-			int strengthLeft = s_hackStrength;
+			m_strengthLeft += s_hackStrength;
 			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
-			long effectOwner = bigOwners == null ? 0L : bigOwners[0];
-			strengthLeft = AirVentDepressurize.Depressurize(attached, strengthLeft, s_hackLength, effectOwner);
-			strengthLeft = DoorLock.LockDoors(attached, strengthLeft, s_hackLength, effectOwner);
-			strengthLeft = GravityReverse.ReverseGravity(attached, strengthLeft, s_hackLength, effectOwner);
+			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
+
+			foreach (int i in Enumerable.Range(0, 5).OrderBy(x => Globals.Random.Next()))
+				switch (i)
+				{
+					case 0:
+						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength, effectOwner);
+						break;
+					case 1:
+						m_strengthLeft = DoorLock.LockDoors(attached, m_strengthLeft, s_hackLength, effectOwner);
+						break;
+					case 2:
+						m_strengthLeft = GravityReverse.ReverseGravity(attached, m_strengthLeft, s_hackLength);
+						break;
+					case 3:
+						m_strengthLeft = DisableTurret.DisableTurrets(attached, m_strengthLeft, s_hackLength);
+						break;
+					case 4:
+						m_strengthLeft = TraitorTurret.TurnTurrets(attached, m_strengthLeft, s_hackLength, effectOwner);
+						break;
+					default:
+						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.WARNING);
+						break;
+				}
 		}
 
 	}

@@ -198,10 +198,8 @@ namespace Rynchodon
 			float halfLength = capsuleLength / 2;
 			Vector3 middle = capsule.get_Middle();
 
-			Vector3D middleD = middle;
-			Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref middleD);
-			double minDistance = halfLength + capsule.Radius; minDistance *= minDistance;
-			if (Vector3D.DistanceSquared(middleD, closestPoint) > minDistance)
+			BoundingSphereD checkSphere = new BoundingSphereD(middle, halfLength + capsule.Radius);
+			if (!planet.Intersects(ref checkSphere))
 			{
 				pointOfObstruction = null;
 				return false;

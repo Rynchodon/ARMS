@@ -33,6 +33,8 @@ namespace Rynchodon.Weapons
 		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
 		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
+		private static ITerminalProperty<bool> TPro_Shoot;
+
 		static WeaponTargeting()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
@@ -62,7 +64,7 @@ namespace Rynchodon.Weapons
 		public bool CanControl { get; private set; }
 
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
-		private readonly bool IsNormalTurret;
+		public readonly bool IsNormalTurret;
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
 		private Logger myLogger;
@@ -75,7 +77,7 @@ namespace Rynchodon.Weapons
 		private int InterpreterErrorCount = int.MaxValue;
 
 		protected bool FireWeapon;
-		private bool IsFiringWeapon = true;
+		private bool IsFiringWeapon;
 
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
@@ -91,12 +93,15 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon);
+			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.DEBUG };
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();
 			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
+
+			if (TPro_Shoot == null)
+				TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
@@ -118,7 +123,7 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (FireWeapon != IsFiringWeapon)
+				if (CurrentState_FlagSet(State.Targeting) && FireWeapon != IsFiringWeapon)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
@@ -209,19 +214,6 @@ namespace Rynchodon.Weapons
 		/// <summary>Invoked on targeting thread, every 100 updates.</summary>
 		protected abstract void Update_Options(TargetingOptions current);
 
-		/// <summary>
-		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
-		/// </summary>
-		/// <param name="targetPoint">The point of the target.</param>
-		/// <returns>true if the rotation is allowed</returns>
-		/// <remarks>Invoked on targeting thread.</remarks>
-		protected abstract bool CanRotateTo(Vector3D targetPoint);
-
-		protected override bool PhysicalProblem(Vector3D targetPos)
-		{
-			return !CanRotateTo(targetPos) || Obstructed(targetPos);
-		}
-
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
@@ -303,41 +295,52 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update100()
 		{
-			UpdateCurrentState();
-			if (CurrentState_NotFlag(State.GetOptions))
-				return;
-
-			ClearBlacklist();
-
-			if (Interpreter.UpdateInstruction() && Interpreter.Errors.Count <= InterpreterErrorCount)
-			{
-				Options = Interpreter.Options;
-				InterpreterErrorCount = Interpreter.Errors.Count;
-				Update_Options(Options);
-				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
-			}
-			else
-				myLogger.debugLog("not updation Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
-			WriteErrors(Interpreter.Errors);
-		}
-
-		private void UpdateCurrentState()
-		{
 			if (!CubeBlock.IsWorking
 			|| (IsNormalTurret && myTurret.IsUnderControl)
-			|| CubeBlock.OwnerId == 0
-			|| (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")))
+			|| CubeBlock.OwnerId == 0)
 			{
-				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0)
-					+ ", missing brackets: " + (!CubeBlock.DisplayNameText.Contains("[") || !CubeBlock.DisplayNameText.Contains("]")), "UpdateCurrentState()");
+				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0), "Update100()");
 
 				CanControl = false;
 				CurrentState = State.Off;
 				return;
 			}
 
-			CanControl = true;
-			CurrentState = AllowedState;
+			if ((AllowedState & State.GetOptions) != State.GetOptions)
+			{
+				myLogger.debugLog("Not allowed to get options", "Update100()");
+				CanControl = false;
+				CurrentState = State.Off;
+				return;
+			}
+
+			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
+			ClearBlacklist();
+
+			Interpreter.UpdateInstruction();
+			if (Interpreter.HasInstructions)
+			{
+				if (Interpreter.Errors.Count <= InterpreterErrorCount)
+				{
+					Options = Interpreter.Options;
+					InterpreterErrorCount = Interpreter.Errors.Count;
+					Update_Options(Options);
+					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
+				}
+				else
+					myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
+
+				CanControl = true;
+				CurrentState = AllowedState;
+				WriteErrors(Interpreter.Errors);
+			}
+			else
+			{
+				myLogger.debugLog("No instructions found", "Update100()");
+				CanControl = false;
+				CurrentState = State.GetOptions;
+				return;
+			}
 		}
 
 		private void UpdateAmmo()
@@ -395,7 +398,7 @@ namespace Rynchodon.Weapons
 				previousFiringDirection = CurrentDirection;
 			}
 
-			float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
+			//float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
 			const float firingThreshold = 1.25f;
 
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
@@ -426,7 +429,7 @@ namespace Rynchodon.Weapons
 		/// <param name="targetPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		/// TODO: use RayCast class
-		private bool Obstructed(Vector3D targetPosition)
+		protected override bool Obstructed(Vector3D targetPosition)
 		{
 			if (CubeBlock == null)
 				throw new ArgumentNullException("weapon");
@@ -597,5 +600,6 @@ namespace Rynchodon.Weapons
 				GameThreadActions.Enqueue(() =>
 					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
 		}
+
 	}
 }

@@ -15,7 +15,9 @@ namespace Rynchodon.Autopilot
 	public class GridFinder
 	{
 
-		private const ulong SearchInterval_Grid = 100ul, SearchInterval_Block = 1000ul, SearchTimeout = 10000ul;
+		public enum ReasonCannotTarget : byte { None, Too_Far, Grid_Condition, Too_Fast }
+
+		private const ulong SearchInterval_Grid = 100ul, SearchInterval_Block = 1000ul;
 
 		public readonly string m_targetGridName, m_targetBlockName;
 		public readonly ShipController m_controller;
@@ -27,7 +29,7 @@ namespace Rynchodon.Autopilot
 		private readonly AllNavigationSettings m_navSet;
 		private readonly bool m_mustBeRecent;
 
-		private ulong NextSearch_Grid, NextSearch_Block, TimeoutAt = ulong.MaxValue;
+		private ulong NextSearch_Grid, NextSearch_Block;
 		private List<LastSeen> m_enemies;
 
 		public virtual LastSeen Grid { get; protected set; }
@@ -35,6 +37,8 @@ namespace Rynchodon.Autopilot
 		public Func<IMyCubeGrid, bool> GridCondition { get; set; }
 		/// <summary>Block requirements, other than can control.</summary>
 		public Func<IMyCubeBlock, bool> BlockCondition { get; set; }
+		public ReasonCannotTarget m_reason;
+		public long m_reasonGrid;
 
 		protected float MaximumRange { get; set; }
 
@@ -163,7 +167,7 @@ namespace Rynchodon.Autopilot
 
 			m_enemies.Clear();
 			m_controller.ForEachLastSeen(seen => {
-				if (!seen.IsValid)
+				if (!seen.IsValid || !seen.isRecent())
 					return false;
 
 				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
@@ -177,6 +181,7 @@ namespace Rynchodon.Autopilot
 
 			m_logger.debugLog("number of enemies: " + m_enemies.Count, "Search()");
 			IOrderedEnumerable<LastSeen> enemiesByDistance = m_enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
+			m_reason = ReasonCannotTarget.None;
 			foreach (LastSeen enemy in enemiesByDistance)
 			{
 				if (CanTarget(enemy))
@@ -198,6 +203,13 @@ namespace Rynchodon.Autopilot
 			if (!Grid.IsValid)
 			{
 				m_logger.debugLog("no longer valid: " + Grid.Entity.getBestName(), "GridUpdate()", Logger.severity.DEBUG);
+				Grid = null;
+				return;
+			}
+
+			if (m_mustBeRecent && !Grid.isRecent())
+			{
+				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (DateTime.UtcNow - Grid.LastSeenAt), "CanTarget()");
 				Grid = null;
 				return;
 			}
@@ -297,29 +309,43 @@ namespace Rynchodon.Autopilot
 		{
 			try
 			{
-				if (m_mustBeRecent && !seen.isRecent())
-				{
-					m_logger.debugLog("no longer recent: " + seen.Entity.getBestName() + ", age: " + (DateTime.UtcNow - seen.LastSeenAt), "CanTarget()");
-					return false;
-				}
-
 				// if it is too far from start, cannot target
 				if (MaximumRange > 1f && Vector3.DistanceSquared(m_startPosition, seen.GetPosition()) > MaximumRange * MaximumRange)
 				{
 					m_logger.debugLog("out of range of start position: " + seen.Entity.getBestName(), "CanTarget()");
+					if (m_reason < ReasonCannotTarget.Too_Far)
+					{
+						m_reason = ReasonCannotTarget.Too_Far;
+						m_reasonGrid = seen.Entity.EntityId;
+					}
 					return false;
 				}
-
 
 				// if it is too fast, cannot target
 				float speedTarget = m_navSet.Settings_Current.SpeedTarget - 1f;
 				if (seen.GetLinearVelocity().LengthSquared() >= speedTarget * speedTarget)
 				{
 					m_logger.debugLog("too fast to target: " + seen.Entity.getBestName(), "CanTarget()");
+					if (m_reason < ReasonCannotTarget.Too_Fast)
+					{
+						m_reason = ReasonCannotTarget.Too_Fast;
+						m_reasonGrid = seen.Entity.EntityId;
+					}
 					return false;
 				}
 
-				return GridCondition == null || GridCondition(seen.Entity as IMyCubeGrid);
+				if (GridCondition != null && !GridCondition(seen.Entity as IMyCubeGrid))
+				{
+					m_logger.debugLog("Failed grid condition: " + seen.Entity.getBestName(), "CanTarget()");
+					if (m_reason < ReasonCannotTarget.Grid_Condition)
+					{
+						m_reason = ReasonCannotTarget.Grid_Condition;
+						m_reasonGrid = seen.Entity.EntityId;
+					}
+					return false;
+				}
+
+				return true;
 			}
 			catch (NullReferenceException nre)
 			{

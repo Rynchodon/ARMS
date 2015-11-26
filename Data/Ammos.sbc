@@ -92,6 +92,34 @@
         <MissileExplosionDamage>10000</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
+
+    <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
+      <Id>
+        <TypeId>AmmoDefinition</TypeId>
+        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
+      </Id>
+      <Description>
+        GuidanceSeconds=60
+        TargetRange=800
+        DetonateRange=10
+      </Description>
+      <BasicProperties>
+        <DesiredSpeed>2000</DesiredSpeed>
+        <SpeedVariance>0</SpeedVariance>
+        <MaxTrajectory>1500</MaxTrajectory>
+        <IsExplosive>true</IsExplosive>
+        <BackkickForce>70</BackkickForce>
+      </BasicProperties>
+      <MissileProperties>
+        <MissileMass>30</MissileMass>
+        <MissileExplosionRadius>15</MissileExplosionRadius>
+        <MissileModelName>Models\Weapons\Interceptor_Missile.mwm</MissileModelName>
+        <MissileAcceleration>100</MissileAcceleration>
+        <MissileInitialSpeed>150</MissileInitialSpeed>
+        <MissileSkipAcceleration>false</MissileSkipAcceleration>
+        <MissileExplosionDamage>100</MissileExplosionDamage>
+      </MissileProperties>
+    </Ammo>
     
   </Ammos>
 </Definitions>

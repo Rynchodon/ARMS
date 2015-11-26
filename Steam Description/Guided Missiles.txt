@@ -19,3 +19,8 @@ Radio receiver allows the missile to receive target updates.
 A spread of 18 missiles.
 3 km range.
 Only has guidance for a short time after being fired.
+
+[u]Interceptor Missile C1VT[/u]
+A missile designed to intercept incoming long-range missiles.
+Deals minimal damage.
+Missile has 1500 m range, turret has 1200 m range.

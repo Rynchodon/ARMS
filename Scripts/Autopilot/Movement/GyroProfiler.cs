@@ -6,7 +6,7 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Data
+namespace Rynchodon.Autopilot.Movement
 {
 	public class GyroProfiler
 	{
@@ -18,10 +18,10 @@ namespace Rynchodon.Autopilot.Data
 
 		private ulong m_nextCheck_attachedGrids;
 		private int m_attachedGrids;
-		/// <summary>torqueAccelRatio becomes dirty any time a block is added, removed does not matter.</summary>
-		private bool dirty_torqueAccelRatio;
+		private float m_mass;
+		private bool dirty_torqueAccelRatio = true;
 
-		/// <summary>A measure of the affect torque has on velocity per autopilot update.</summary>
+		/// <summary>A measure of the affect torque has on velocity per update.</summary>
 		public float torqueAccelRatio { get; private set; }
 
 		public GyroProfiler(IMyCubeGrid grid)
@@ -54,6 +54,16 @@ namespace Rynchodon.Autopilot.Data
 			if (Globals.UpdateCount >= m_nextCheck_attachedGrids)
 				CheckAttachedGrids();
 
+			float mass = myGrid.Physics.Mass;
+			if (!dirty_torqueAccelRatio)
+			{
+				dirty_torqueAccelRatio = mass > m_mass;
+				myLogger.debugLog(dirty_torqueAccelRatio, "mass increased from " + m_mass + " to " + mass, "Update_torqueAccelRatio()");
+			}
+			else
+				myLogger.debugLog("torqueAccelRatio is dirty", "Update_torqueAccelRatio()");
+			m_mass = mass;
+
 			for (int i = 0; i < 3; i++)
 			{
 				// where ratio is from damping, ignore it
@@ -67,6 +77,7 @@ namespace Rynchodon.Autopilot.Data
 					{
 						myLogger.debugLog("torqueAccelRatio changed from " + torqueAccelRatio + " to " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);
 						torqueAccelRatio = dim;
+						dirty_torqueAccelRatio = false;
 					}
 					else // caused by bumping into things
 						myLogger.debugLog("dim <= 0 : " + dim, "Update_torqueAccelRatio()", Logger.severity.DEBUG);

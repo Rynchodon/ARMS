@@ -7,7 +7,7 @@ Variables P and V affect all destinations that come after
 
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
 
-In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, must not be currently controlled, and must have an owner (NPC is OK).
+In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, and must not be currently controlled.
 
 The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
 
@@ -145,7 +145,5 @@ Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0
 [b]Distances[/b] : for F, O, and P can be modified by km(kilometres) or Mm(megametres). For example, "3.5M" or "3.5Mm" is 3.5 megametres or 3 500 kilometres.
 
 [h1]More Examples[/h1]
-[E 300 : C 0,0,0 : C 1000,0,0] Patrol between two points until an enemy grid comes into range (300m), then fly towards enemy grid.
-[P 1000 : G MiningBase : W 600 : G MainBase : W 300] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
-[ R Forward, Upward : B PlatConn : L MyConn : G Platform ] set the orientation of the Autopilot block to Forward, Upward (relative to PlatConn) and dock. This is useful when a specific docking orientation is required due to lack of space.
+[P 1000 : G MiningBase : W 10 m : G MainBase : W 5 m] fly to within 1km of MiningBase, wait for 10 minutes, fly to within 1km of MainBase, wait 5 minutes.
 [ L Landing Gear ; G Dog Toy ; G Home ; Exit ] Attach the Landing Gear to Dog Toy and bring it to Home.

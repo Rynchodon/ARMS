@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Interceptor_Missile</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Interceptor_Missile.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="1" y="1" z="1" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Weapons\Interceptor_Missile.mwm</Model>
+	<BlockPairName>Interceptor_Missile</BlockPairName>
+</Definition>

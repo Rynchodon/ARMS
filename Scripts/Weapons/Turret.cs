@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -16,6 +17,8 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class Turret : WeaponTargeting
 	{
+
+		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
@@ -35,22 +38,33 @@ namespace Rynchodon.Weapons
 		{
 			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
 			Registrar.Add(CubeBlock, this);
-			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
-			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		private void Initialize()
 		{
+			if (TP_TargetMissiles == null)
+			{
+				myLogger.debugLog("Filling Terminal Properties", "Initialize()", Logger.severity.INFO);
+				IMyTerminalBlock term  = CubeBlock as IMyTerminalBlock;
+				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
+				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
+				TP_TargetCharacters = term.GetProperty("TargetCharacters").AsBool();
+				TP_TargetMoving = term.GetProperty("TargetMoving").AsBool();
+				TP_TargetLargeGrids = term.GetProperty("TargetLargeShips").AsBool();
+				TP_TargetSmallGrids = term.GetProperty("TargetSmallShips").AsBool();
+				TP_TargetStations = term.GetProperty("TargetStations").AsBool();
+			}
+
 			// definition limits
 			MyLargeTurretBaseDefinition definition = CubeBlock.GetCubeBlockDefinition() as MyLargeTurretBaseDefinition;
 
 			if (definition == null)
 				throw new NullReferenceException("definition");
 
-			minElevation = (float)((float)definition.MinElevationDegrees / 180 * Math.PI); // Math.Max((float)definition.MinElevationDegrees / 180 * Math.PI, -0.6);
-			maxElevation = (float)Math.Min((float)definition.MaxElevationDegrees / 180 * Math.PI, 0.6); // 0.6 was determined empirically
-			minAzimuth = (float)((float)definition.MinAzimuthDegrees / 180 * Math.PI);
-			maxAzimuth = (float)((float)definition.MaxAzimuthDegrees / 180 * Math.PI);
+			minElevation = Math.Max(MathHelper.ToRadians(definition.MinElevationDegrees), -0.6f);
+			maxElevation = MathHelper.ToRadians(definition.MaxElevationDegrees);
+			minAzimuth = MathHelper.ToRadians(definition.MinAzimuthDegrees);
+			maxAzimuth = MathHelper.ToRadians(definition.MaxAzimuthDegrees);
 
 			Can360 = Math.Abs(definition.MaxAzimuthDegrees - definition.MinAzimuthDegrees) >= 360;
 
@@ -73,21 +87,27 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update_Options(TargetingOptions Options)
 		{
-			//Options. CanTarget = TargetType.None;
-			MyObjectBuilder_TurretBase builder = CubeBlock.GetObjectBuilder_Safe() as MyObjectBuilder_TurretBase;
-			if (builder.TargetMissiles)
+			myLogger.debugLog(TP_TargetMissiles == null, "TP_TargetMissiles == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetMeteors == null, "TP_TargetMeteors == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetCharacters == null, "TP_TargetCharacters == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetMoving == null, "TP_TargetMoving == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetLargeGrids == null, "TP_TargetLargeGrids == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetSmallGrids == null, "TP_TargetSmallGrids == null", "Update_Options()", Logger.severity.FATAL);
+			myLogger.debugLog(TP_TargetStations == null, "TP_TargetStations == null", "Update_Options()", Logger.severity.FATAL);
+
+			if (TP_TargetMissiles.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Missile;
-			if (builder.TargetMeteors)
+			if (TP_TargetMeteors.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Meteor;
-			if (builder.TargetCharacters)
+			if (TP_TargetCharacters.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Character;
-			if (builder.TargetMoving)
+			if (TP_TargetMoving.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Moving;
-			if (builder.TargetLargeGrids)
+			if (TP_TargetLargeGrids.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.LargeGrid;
-			if (builder.TargetSmallGrids)
+			if (TP_TargetSmallGrids.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.SmallGrid;
-			if (builder.TargetStations)
+			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
@@ -100,17 +120,35 @@ namespace Rynchodon.Weapons
 
 		protected override bool CanRotateTo(Vector3D targetPoint)
 		{
-			//Vector3 RotateTo = Vector3.Normalize(RelativeVector3F.createFromWorld(targetPoint, weapon.CubeGrid).getBlock(weapon));
-			Vector3 RotateToDirection = Vector3.Normalize(RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, targetPoint).ToBlockNormalized(CubeBlock));
+			Vector3 localTarget = Vector3.Transform(targetPoint, CubeBlock.WorldMatrixNormalizedInv);
+			localTarget.Normalize();
 
 			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(RotateToDirection, out azimuth, out elevation);
+			Vector3.GetAzimuthAndElevation(localTarget, out azimuth, out elevation);
 
 			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
-			if (elevation < minElevation || elevation > maxElevation || azimuth < minAzimuth || azimuth > maxAzimuth)
+			if (elevation < minElevation)
 			{
-				myLogger.debugLog("cannot rotate to " + targetPoint + ", azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
+				return false;
+			}
+			if (elevation > maxElevation)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
+				return false;
+			}
+
+			if (Can360)
+				return true;
+			if (azimuth < minAzimuth)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
+				return false;
+			}
+			if (azimuth > maxAzimuth)
+			{
+				myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
 				return false;
 			}
 			return true;
