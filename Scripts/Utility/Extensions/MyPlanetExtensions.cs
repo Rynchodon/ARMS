@@ -9,9 +9,21 @@ namespace Rynchodon
 	public static class MyPlanetExtensions
 	{
 
-		private static readonly Logger s_logger = new Logger("MyPlanetExtensions");
+		private static Logger s_logger = new Logger("MyPlanetExtensions");
 
-		private static readonly FastResourceLock lock_getSurfPoint = new FastResourceLock("lock_getSurfPoint");
+		private static FastResourceLock lock_getSurfPoint = new FastResourceLock("lock_getSurfPoint");
+
+		static MyPlanetExtensions()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			s_logger = null;
+			lock_getSurfPoint = null;
+		}
 
 		public static bool Intersects(this MyPlanet planet, ref BoundingSphereD sphere)
 		{
@@ -24,7 +36,6 @@ namespace Rynchodon
 				return false;
 
 			Vector3D closestPoint = GetClosestSurfacePointGlobal_Safeish(planet, sphereCentre);
-			s_logger.debugLog("got surface point: " + closestPoint, "Intersects()");
 
 			double minDistance = sphere.Radius * sphere.Radius;
 			if (Vector3D.DistanceSquared(sphereCentre, closestPoint) <= minDistance)
