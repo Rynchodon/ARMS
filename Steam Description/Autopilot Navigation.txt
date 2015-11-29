@@ -12,9 +12,14 @@ In order for Autopilot to control a grid, it must have a gyroscope, have thruste
 The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
 
 All distances and coordinates are in metres, speed is in metres per second.
-If there are multiple Autopilot blocks with commands, one will be picked arbitrarily.
 The direction that the Autopilot block is facing is the direction the ship will fly in.
 When the end of the commands is reached, Autopilot will start back at the first command.
+
+[u]Engaging Enemies[/u]
+The E command is used to tell autopilot that it should react to the presence of enemy ships.
+Requires bAllowWeaponControl in settings file and that weapons have commands.
+When autopilot first encounters an E command, it starts searching for enemies. The search continues while the autopilot performs other actions (including waiting and flying in formation). The search will be stopped when [ E Off ] is encountered, the autopilot block is disabled, or the commands start from the beginning.
+Subsequent E commands may add additional responses or change the range of a response.
 
 [h1]Pathfinder[/h1]
 [u]Path Checking[/u]
@@ -78,7 +83,7 @@ B <name>, <f> : <f> indicates which direction to face the landing block when lan
 Example - [ L Landing Gear : B Beacon, Right : G Platform : Disable ] - Attach landing gear to the left side of beacon on Platform
 B <name>, <f>, <u> : <f> will be used as forward direction and <u> will be used as upward direction
 
-E <distance>, <response> : Start searching for an enemy. While no enemy is found, will continue following commands. Use 0 for infinite distance. Use OFF to disable. Requires Weapon Control be enabled and weapons have commands.
+E <distance>, <response> : Start searching for an enemy. Use 0 for infinite distance. Use OFF to disable.
 E <distance>, Fight : Use weapons to attack enemy ship, will stop attack if autopilot's weapons are disabled.
 Example - [ E 0, Fight ] - Fight any detected enemy.
 E <distance>, Flee : Escape from enemy, will stop fleeing if thrusters become disabled.

@@ -211,7 +211,7 @@ namespace Rynchodon
 				Vector3 directionVector = block.WorldMatrix.GetDirectionVector(direction);
 				double cosAngle = directionVector.Dot(worldDirection);
 
-				myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds", "GetFaceDirection()", Logger.severity.ERROR);
+				//myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds: " + cosAngle, "GetFaceDirection()", Logger.severity.ERROR); // sometimes values are slightly out of range
 				myLogger.debugLog(double.IsNaN(cosAngle) || double.IsInfinity(cosAngle), "cosAngle invalid", "GetFaceDirection()", Logger.severity.ERROR);
 
 				if (cosAngle > bestDirectionAngle)

@@ -507,10 +507,10 @@ namespace Rynchodon.Autopilot.Movement
 			// Adjust for moving target by measuring changes in displacement. Part of the change in displacement is attributable to ship rotation. 
 			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
 
-			Vector3 addVelocity = angularVelocity - (prevAngleDisp - displacement) * dispToVel;
+			Vector3 addVelocity = (displacement - prevAngleDisp) * 2f * dispToVel;
 			//if (addVelocity.LengthSquared() < 0.01f)
 			//{
-				//myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
+			myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
 				targetVelocity += addVelocity;
 			//}
 			//else
