@@ -59,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 		public IMyCubeBlock CubeBlock { get; private set; }
 
 		protected ReceiverBlock(IMyCubeBlock block)
-			: base(block.CubeGrid)
+			: base(() => block.CubeGrid)
 		{
 			this.CubeBlock = block;
 			CubeBlock.CubeGrid.OnBlockOwnershipChanged += CubeGrid_OnBlockOwnershipChanged;

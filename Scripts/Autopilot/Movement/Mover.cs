@@ -508,7 +508,7 @@ namespace Rynchodon.Autopilot.Movement
 			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
 
 			Vector3 addVelocity = angularVelocity - (prevAngleDisp - displacement) * dispToVel;
-			if (addVelocity.LengthSquared() < 0.01f)
+			//if (addVelocity.LengthSquared() < 0.01f)
 			//{
 				//myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
 				targetVelocity += addVelocity;

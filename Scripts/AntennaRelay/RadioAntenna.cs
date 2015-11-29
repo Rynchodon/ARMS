@@ -38,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 				Registrar.ForEach((RadioAntenna ant) => {
 					// send antenna self to radio antennae
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
-						ant.Receive(self);
+						ant.Receive(self, true);
 
 					// relay information to friendlies
 					if (CubeBlock.canSendTo(ant.CubeBlock, true, radiusSquared, true))

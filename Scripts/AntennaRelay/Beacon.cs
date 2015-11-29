@@ -30,7 +30,7 @@ namespace Rynchodon.AntennaRelay
 				float radiusSquared = myBeacon.Radius * myBeacon.Radius;
 				Registrar.ForEach((RadioAntenna ant) => {
 					if (CubeBlock.canSendTo(ant.CubeBlock, false, radiusSquared, true))
-						ant.Receive(self);
+						ant.Receive(self, true);
 					return false;
 				});
 			}

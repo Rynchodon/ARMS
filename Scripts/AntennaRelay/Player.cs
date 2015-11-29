@@ -93,7 +93,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				myLogger.debugLog("# of gps: " + list.Count, "Player()");
 				foreach (var gps in list)
-					if (gps.Description.EndsWith(descrEnd))
+					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
 						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
 						MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);

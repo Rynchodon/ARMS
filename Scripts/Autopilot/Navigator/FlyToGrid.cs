@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3D m_navBlockPos, m_targetPosition;
 		private LandingState value_landingState = LandingState.None;
 		private ulong next_attemptLock;
+		private bool m_beforeMerge;
 
 		private LandingState m_landingState
 		{
@@ -137,6 +138,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => block is IMyShipMergeBlock;
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
+					(landingBlock.Block as IMyShipMergeBlock).BeforeMerge += MergeBlock_BeforeMerge;
 				}
 				else if (m_targetBlock.Forward.HasValue)
 					m_landingDirection = m_targetBlock.Forward.Value;
@@ -146,15 +148,20 @@ namespace Rynchodon.Autopilot.Navigator
 					m_landingState = LandingState.None;
 				}
 
-				float minDestRadius =  m_controlBlock.CubeGrid.GetLongestDim() * 5f;
-				if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
+				if (m_landingState != LandingState.None)
 				{
-					m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
-					m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
-				}
+					float minDestRadius = m_controlBlock.CubeGrid.GetLongestDim() * 5f;
+					if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
+					{
+						m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
+						m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
+					}
 
-				m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
-				m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
+					new UnLander(mover, navSet, landingBlock);
+
+					m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
+					m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
+				}
 			}
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
@@ -480,6 +487,9 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_landingState == LandingState.None)
 				return false;
 
+			if (m_beforeMerge)
+				return true;
+
 			IMyLandingGear asGear = m_navBlock.Block as IMyLandingGear;
 			if (asGear != null)
 				return asGear.IsLocked;
@@ -492,6 +502,12 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			return false;
+		}
+
+		private void MergeBlock_BeforeMerge()
+		{
+			(m_navBlock.Block as IMyShipMergeBlock).BeforeMerge -= MergeBlock_BeforeMerge;
+			m_beforeMerge = true;
 		}
 
 	}

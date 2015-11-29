@@ -136,7 +136,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (Globals.UpdateCount < m_nextRunPath)
 				return;
-			m_nextRunPath = Globals.UpdateCount + 10ul;
+			m_nextRunPath = Globals.UpdateCount + 60ul;
 
 			if (m_pathLow.Count != 0)
 			{
