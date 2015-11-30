@@ -384,7 +384,6 @@ namespace Rynchodon.Autopilot
 				{
 					// a (de)merge happened
 					ReleaseControlledGrid();
-					return false;
 				}
 				else if (CanControlBlockGrid(m_controlledGrid))
 				{
@@ -399,17 +398,8 @@ namespace Rynchodon.Autopilot
 				}
 			}
 
-			if (!CanControlBlockGrid(myGrid))
-			{
-				// cannot take control
+			if (!CanControlBlockGrid(myGrid) || !GridBeingControlled.Add(myGrid))
 				return false;
-			}
-
-			if (!GridBeingControlled.Add(myGrid))
-			{
-				m_logger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
-				return false;
-			}
 
 			m_controlledGrid = myGrid;
 			return true;
@@ -423,12 +413,10 @@ namespace Rynchodon.Autopilot
 		{
 			// is grid ready
 			if (grid.IsStatic)
-				//|| grid.BigOwners.Count == 0)
 				return false;
 
 			// is block ready
 			if (!m_block.Controller.IsWorking
-				//|| !grid.BigOwners.Contains(m_block.Controller.OwnerId)
 				|| !m_block.Controller.ControlThrusters)
 				return false;
 

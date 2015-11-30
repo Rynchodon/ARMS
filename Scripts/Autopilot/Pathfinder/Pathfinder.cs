@@ -119,6 +119,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;
 			m_mover = mover;
+			m_logger.debugLog("Initialized, grid: " + grid.DisplayName, "Pathfinder()");
 		}
 
 		public void TestPath(Vector3 destination, bool landing)
@@ -225,13 +226,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 				queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
 				return;
 			}
-			m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
-					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
-
 			try
 			{
-				if (!isAlternate && !tryAlternates)
-					m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.TRACE);
+				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
+				if (m_grid != m_navBlock.Grid)
+				{
+					m_logger.debugLog("Grid has changed, from " + m_grid.DisplayName + " to " + m_navBlock.Grid.DisplayName + ", nav block: " + m_navBlock.Block.getBestName(), "TestPath()", Logger.severity.WARNING);
+					return;
+				}
+			
+				//if (!isAlternate && !tryAlternates)
+				//	m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.TRACE);
 
 				if (runId != m_runId)
 				{

@@ -30,9 +30,9 @@ namespace Rynchodon.Autopilot.Data
 	/// </summary>
 	public class PseudoBlock
 	{
-		public readonly IMyCubeGrid Grid;
 
 		private readonly Logger m_logger;
+		private readonly Func<IMyCubeGrid> m_grid;
 		private ulong m_lastCalc_worldMatrix;
 		private MatrixD value_worldMatrix;
 
@@ -41,6 +41,8 @@ namespace Rynchodon.Autopilot.Data
 		public MyPhysicsComponentBase Physics { get { return Grid.Physics; } }
 		public Vector3D LocalPosition { get { return LocalMatrix.Translation; } }
 		public Vector3D WorldPosition { get { return WorldMatrix.Translation; } }
+
+		public IMyCubeGrid Grid { get { return m_grid.Invoke(); } }
 
 		public MatrixD WorldMatrix
 		{
@@ -64,18 +66,18 @@ namespace Rynchodon.Autopilot.Data
 		{
 			this.m_logger = new Logger(GetType().Name, block);
 			this.LocalMatrix = block.LocalMatrix;
-			this.Grid = block.CubeGrid;
+			this.m_grid = () => block.CubeGrid;
 			this.Block = block;
 		}
 
 		/// <summary>
 		/// Creates a PseudoBlock from a grid and a local matrix.
 		/// </summary>
-		public PseudoBlock(IMyCubeGrid grid, Matrix local)
+		public PseudoBlock(Func<IMyCubeGrid> grid, Matrix local)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
+			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
 			this.LocalMatrix = local;
-			this.Grid = grid;
+			this.m_grid = grid;
 		}
 
 		/// <summary>
@@ -136,10 +138,10 @@ namespace Rynchodon.Autopilot.Data
 		/// Creates a MultiBlock from all blocks of type T found on the specified grid.
 		/// </summary>
 		/// <param name="grid">The grid to use blocks from.</param>
-		public MultiBlock(IMyCubeGrid grid)
+		public MultiBlock(Func<IMyCubeGrid> grid)
 			: base(grid, Matrix.Zero)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
+			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
 			calculateLocalMatrix();
 		}
 

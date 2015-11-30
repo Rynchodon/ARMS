@@ -203,7 +203,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navBlockPos = m_navBlock.WorldPosition;
 				m_targetPosition = m_gridFinder.GetPosition(m_navBlockPos, m_navSet.Settings_Current.DestinationOffset);
 
-				if (m_gridFinder.Block != null)
+				if (m_gridFinder.Block != null && m_landingState != LandingState.Landing)
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
 
@@ -431,10 +431,14 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
+						// the autopilot was sometimes freaking out and running away when it got really close
+						if (m_navSet.DistanceLessThan(1f))
+							m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
+
 						LockConnector();
 
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize;
-						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween), "Move_Land()");
+						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween, m_gridFinder.Grid.GetLinearVelocity(), true);
 						return;
 					}
@@ -480,7 +484,7 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		/// <summary>
-		/// Determines if the connector or landing gear is locked. False if m_navBlock is neither of those.
+		/// Determines if the connector, landing gear, or merge block is locked. False if m_navBlock is none of those.
 		/// </summary>
 		private bool IsLocked()
 		{

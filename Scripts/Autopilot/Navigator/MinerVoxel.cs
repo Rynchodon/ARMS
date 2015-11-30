@@ -179,7 +179,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (navBlock.Block is IMyShipDrill)
 				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(navBlock.Block);
 			else
-				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(m_mover.Block.CubeGrid);
+				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(() => m_mover.Block.CubeGrid);
 
 			if (m_navDrill.FunctionalBlocks == 0)
 			{

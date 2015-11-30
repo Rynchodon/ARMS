@@ -65,6 +65,9 @@ namespace Rynchodon.Autopilot.Navigator
 				else
 				{
 					m_logger.debugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, "UnLander()", Logger.severity.INFO);
+					IMyFunctionalBlock func = m_unlandBlock.Block as IMyFunctionalBlock;
+					if (func != null)
+						func.RequestEnable(false);
 					return;
 				}
 			}

@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 m_targetVelocity;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
-		private Vector3 prevAngleDisp = Vector3.Zero;
+		//private Vector3 prevAngleDisp = Vector3.Zero;
 		private DateTime updated_prevAngleVel;
 		private ulong m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
 
@@ -507,15 +507,15 @@ namespace Rynchodon.Autopilot.Movement
 			// Adjust for moving target by measuring changes in displacement. Part of the change in displacement is attributable to ship rotation. 
 			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
 
-			Vector3 addVelocity = (displacement - prevAngleDisp) * 2f * dispToVel;
+			//Vector3 addVelocity = (displacement - prevAngleDisp) * 2f * dispToVel;
 			//if (addVelocity.LengthSquared() < 0.01f)
 			//{
-			myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
-				targetVelocity += addVelocity;
+			//myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
+			//	targetVelocity += addVelocity;
 			//}
 			//else
 			//	myLogger.debugLog("Not adjusting for moving, assuming target changed: " + addVelocity, "CalcRotate()");
-			prevAngleDisp = displacement;
+			//prevAngleDisp = displacement;
 
 			Vector3 diffVel = targetVelocity - angularVelocity;
 
@@ -648,7 +648,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			if (myGrid != Block.CubeGrid)
 			{
-				myLogger.debugLog(myGrid != null, "Grid Changed!", "CheckGrid()", Logger.severity.INFO);
+				myLogger.debugLog(myGrid != null, "Grid Changed! from " + myGrid.getBestName() + " to " + Block.CubeGrid.getBestName(), "CheckGrid()", Logger.severity.INFO);
 				myGrid = Block.CubeGrid;
 				this.myThrust = new ThrustProfiler(myGrid);
 				this.myGyro = new GyroProfiler(myGrid);

@@ -112,7 +112,7 @@ namespace Rynchodon.Autopilot.Navigator
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
 			m_navGrind = navBlock.Block is Ingame.IMyShipGrinder
 				? new MultiBlock<MyObjectBuilder_ShipGrinder>(navBlock.Block)
-				: new MultiBlock<MyObjectBuilder_ShipGrinder>(m_mover.Block.CubeGrid);
+				: new MultiBlock<MyObjectBuilder_ShipGrinder>(() => m_mover.Block.CubeGrid);
 
 			if (m_navGrind.FunctionalBlocks == 0)
 			{
