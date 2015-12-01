@@ -15,7 +15,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\large\Autopilot-Block_Large.mwm</Model>
+      <Model>Models\Cubes\Autopilot-Block_Large.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="5" />
         <Component Subtype="Construction" Count="100" />
@@ -27,9 +27,9 @@
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
       <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.33" File="Models\large\Autopilot-Block_Large_Constr1.mwm" />
-        <Model BuildPercentUpperBound="0.67" File="Models\large\Autopilot-Block_Large_Constr2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\large\Autopilot-Block_Large_Constr3.mwm" />
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\Autopilot-Block_Large_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\Autopilot-Block_Large_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Autopilot-Block_Large_Constr3.mwm" />
       </BuildProgressModels>
       <MountPoints>
         <MountPoint Side="Bottom" StartX="0.20" StartY="0.03" EndX="0.80" EndY="0.81" />
@@ -57,7 +57,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Size x="1" y="1" z="2" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\small\Autopilot-Block_Small.mwm</Model>
+      <Model>Models\Cubes\Autopilot-Block_Small.mwm</Model>
       <Components>
         <Component Subtype="InteriorPlate" Count="10" />
         <Component Subtype="Construction" Count="5" />
@@ -75,9 +75,9 @@
         <MountPoint Side="Bottom" StartX="0.20" StartY="0.81" EndX="0.80" EndY="1.92" />
       </MountPoints>
       <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.33" File="Models\small\Autopilot-Block_Small_Constr1.mwm" />
-        <Model BuildPercentUpperBound="0.67" File="Models\small\Autopilot-Block_Small_Constr2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\small\Autopilot-Block_Small_Constr3.mwm" />
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\Autopilot-Block_Small_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\Autopilot-Block_Small_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Autopilot-Block_Small_Constr3.mwm" />
       </BuildProgressModels>
       <BlockPairName>Autopilot-Block</BlockPairName>
       <MirroringY>Z</MirroringY>
@@ -515,6 +515,7 @@
         <Component Subtype="Construction" Count="125" />
         <Component Subtype="MetalGrid" Count="80" />
         <Component Subtype="LargeTube" Count="250" />
+        <Component Subtype="SmallTube" Count="95" />
         <Component Subtype="Motor" Count="60" />
         <Component Subtype="Computer" Count="400" />
         <Component Subtype="SteelPlate" Count="1500" />
@@ -552,31 +553,37 @@
         GuidedMissileLauncher=true
       </Description>
       <DisplayName>EMP Missile Launcher</DisplayName>
-      <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
+      <Icon>Textures\Icons\R8EA_Launcher.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="3" y="3" z="8" />
+      <Size x="2" y="2" z="4" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+      <Model>Models\Cubes\Souper_R8EA_Launcher.mwm</Model>
       <Components>
         <Component Subtype="SteelPlate" Count="75" />
         <Component Subtype="Construction" Count="125" />
         <Component Subtype="MetalGrid" Count="80" />
-        <Component Subtype="LargeTube" Count="250" />
-        <Component Subtype="Motor" Count="60" />
-        <Component Subtype="Computer" Count="400" />
-        <Component Subtype="SteelPlate" Count="1500" />
+        <Component Subtype="LargeTube" Count="175" />
+        <Component Subtype="SmallTube" Count="65" />
+        <Component Subtype="Motor" Count="12" />
+        <component Subtype="RadioCommunication" Count="2" />
+        <Component Subtype="Computer" Count="175" />
+        <Component Subtype="SteelPlate" Count="755" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_R8EA_Launcher_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_R8EA_Launcher_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_R8EA_Launcher_Constr3.mwm" />
 			</BuildProgressModels>
 			<MountPoints>
-				<MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
+				<MountPoint Side="Back" StartX="0.44" StartY="0.44" EndX="1.56" EndY="1.56" />
+				<MountPoint Side="Left" StartX="1.39" StartY="0.39" EndX="2.61" EndY="1.61" />
+				<MountPoint Side="Right" StartX="1.40" StartY="0.40" EndX="2.60" EndY="1.60" />
+				<MountPoint Side="Bottom" StartX="0.70" StartY="1.70" EndX="1.30" EndY="2.30" />
+				<MountPoint Side="Top" StartX="0.28" StartY="1.28" EndX="1.72" EndY="2.72" />
 			</MountPoints>
-      <BlockPairName>Souper_R8EA_Launcher</BlockPairName>
+			<BlockPairName>EMP_Missile_Launcher</BlockPairName>
 			<MirroringX>None</MirroringX>
 			<MirroringY>None</MirroringY>
 			<MirroringZ>None</MirroringZ>
@@ -652,7 +659,7 @@
 			<BlockTopology>TriangleMesh</BlockTopology>
 			<Size x="3" y="3" z="3" />
 			<ModelOffset x="0" y="0" z="0" />
-			<Model>Models\Missile Defense Turret\Missile_Defense_Turret.mwm</Model>
+			<Model>Models\Cubes\Missile_Defense_Turret.mwm</Model>
 			<UseModelIntersection>true</UseModelIntersection>
 			<Components>
 				<Component Subtype="SteelPlate" Count="5" />
@@ -668,9 +675,9 @@
 			</Components>
 			<CriticalComponent Subtype="Computer" Index="0" />
 			<BuildProgressModels>
-				<Model BuildPercentUpperBound="0.33" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr1.mwm" />
-				<Model BuildPercentUpperBound="0.67" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr2.mwm" />
-				<Model BuildPercentUpperBound="1.00" File="Models\Missile Defense Turret\Missile_Defense_Turret_Constr3.mwm" />
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Missile_Defense_Turret_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Missile_Defense_Turret_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Missile_Defense_Turret_Constr3.mwm" />
 			</BuildProgressModels>
       <MountPoints>
         <MountPoint Side="Bottom" StartX="1" StartY="1" EndX="2" EndY="2" />

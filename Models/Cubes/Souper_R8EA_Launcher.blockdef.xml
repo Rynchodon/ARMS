@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Souper_R8EA_Launcher</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\R8EA_Launcher.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="2" y="2" z="4" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Cubes\Souper_R8EA_Launcher.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Cubes\Souper_R8EA_Launcher_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Cubes\Souper_R8EA_Launcher_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Cubes\Souper_R8EA_Launcher_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Back" StartX="0.44" StartY="0.44" EndX="1.56" EndY="1.56" />
+		<MountPoint Side="Left" StartX="1.39" StartY="0.39" EndX="2.61" EndY="1.61" />
+		<MountPoint Side="Right" StartX="1.40" StartY="0.40" EndX="2.60" EndY="1.60" />
+		<MountPoint Side="Bottom" StartX="0.70" StartY="1.70" EndX="1.30" EndY="2.30" />
+		<MountPoint Side="Top" StartX="0.28" StartY="1.28" EndX="1.72" EndY="2.72" />
+	</MountPoints>
+	<MirroringX>None</MirroringX>
+	<MirroringY>None</MirroringY>
+	<MirroringZ>None</MirroringZ>
+	<BlockPairName>R8EA_Launcher</BlockPairName>
+</Definition>

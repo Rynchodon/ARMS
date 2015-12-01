@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Model Name="Missile_Defense_Turret_Barrel">
+	<Parameter Name="RescaleFactor">1.0</Parameter>
+	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
+	<Parameter Name="Centered">false</Parameter>
+	<Parameter Name="SpecularPower">0.0</Parameter>
+	<Parameter Name="SpecularShininess">0.0</Parameter>
+	<Material Name="ap">
+		<Parameter Name="Technique">ALPHAMASK</Parameter>
+		<Parameter Name="SpecularIntensity">0.0</Parameter>
+		<Parameter Name="SpecularPower">0.0</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">C:\Users\Chris\Documents\GitHub\Autopilot\Textures\Cubes\autopilot_me.dds</Parameter>
+		<Parameter Name="NormalTexture">C:\Users\Chris\Documents\GitHub\Autopilot\Textures\Cubes\autopilot_ns.dds</Parameter>
+		<Parameter Name="ColorMetalTexture">C:\Users\Chris\Documents\GitHub\Autopilot\Textures\Cubes\autopilot_cm.dds</Parameter>
+		<Parameter Name="NormalGlossTexture">Textures\Models\Cubes\LargeBattery_ng.dds</Parameter>
+		<Parameter Name="AddMapsTexture">C:\Users\Chris\Documents\GitHub\Autopilot\Textures\Cubes\autopilot_add.dds</Parameter>
+		<Parameter Name="AlphamaskTexture">C:\Users\Chris\Documents\GitHub\Autopilot\Textures\Cubes\dx11_alphamask.dds</Parameter>
+	</Material>
+	<Material Name="MissileTurret">
+		<Parameter Name="Technique">MESH</Parameter>
+		<Parameter Name="SpecularIntensity">0.0</Parameter>
+		<Parameter Name="SpecularPower">0.0</Parameter>
+		<Parameter Name="DiffuseColorX">255</Parameter>
+		<Parameter Name="DiffuseColorY">255</Parameter>
+		<Parameter Name="DiffuseColorZ">255</Parameter>
+		<Parameter Name="DiffuseTexture">Textures\Models\Cubes\large_missile_turret_me.DDS</Parameter>
+		<Parameter Name="NormalTexture">Textures\Models\Cubes\large_missile_turret_ns.dds</Parameter>
+		<Parameter Name="ColorMetalTexture">Textures\Models\Cubes\large_missile_turret_cm.dds</Parameter>
+		<Parameter Name="NormalGlossTexture">Textures\Models\Cubes\large_missile_turret_ng.dds</Parameter>
+		<Parameter Name="AddMapsTexture">Textures\Models\Cubes\large_missile_turret_add.dds</Parameter>
+		<!--material has no AlphamaskTexture-->
+	</Material>
+</Model>

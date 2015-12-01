@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Missile_Defense_Turret</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Missile_Defense_Turret_Base.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="3" y="3" z="3" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Missile Defense Turret\Missile_Defense_Turret.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Missile Defense Turret\Missile_Defense_Turret_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Missile Defense Turret\Missile_Defense_Turret_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Missile Defense Turret\Missile_Defense_Turret_Constr3.mwm" />
+	</BuildProgressModels>
+	<BlockPairName>Missile_Defense_Turret_Base</BlockPairName>
+</Definition>
