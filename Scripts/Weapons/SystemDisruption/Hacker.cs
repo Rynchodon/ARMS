@@ -11,9 +11,9 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class Hacker
 	{
 
-		private const int s_hackStrength = 100;
-		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 17);
-		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 11);
+		private const int s_hackStrength = 50;
+		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
+		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
 
 		public static bool IsHacker(IMyCubeBlock block)
 		{
@@ -60,11 +60,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
 			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
 
-			foreach (int i in Enumerable.Range(0, 5).OrderBy(x => Globals.Random.Next()))
+			foreach (int i in Enumerable.Range(0, 8).OrderBy(x => Globals.Random.Next()))
 				switch (i)
 				{
 					case 0:
-						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength, effectOwner);
+						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength);
 						break;
 					case 1:
 						m_strengthLeft = DoorLock.LockDoors(attached, m_strengthLeft, s_hackLength, effectOwner);
@@ -77,6 +77,15 @@ namespace Rynchodon.Weapons.SystemDisruption
 						break;
 					case 4:
 						m_strengthLeft = TraitorTurret.TurnTurrets(attached, m_strengthLeft, s_hackLength, effectOwner);
+						break;
+					case 5:
+						m_strengthLeft = CryoChamberMurder.MurderPeeps(attached, m_strengthLeft, s_hackLength);
+						break;
+					case 6:
+						m_strengthLeft = JumpDriveDrain.DrainJumpers(attached, m_strengthLeft, s_hackLength);
+						break;
+					case 7:
+						m_strengthLeft = MedicalRoom.Hijack(attached, m_strengthLeft, s_hackLength, effectOwner);
 						break;
 					default:
 						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.WARNING);

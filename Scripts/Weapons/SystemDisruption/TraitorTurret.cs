@@ -2,6 +2,7 @@ using System;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ObjectBuilders;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {
@@ -44,6 +45,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 		protected override int EndEffect(IMyCubeBlock block, int strength)
 		{
 			m_logger.debugLog("Restoring: " + block.DisplayNameText + ", remaining strength: " + (strength - MinCost), "StartEffect()");
+			(block as IMyFunctionalBlock).RequestEnable(false);
+			block.ApplyAction("OnOff_On");
 			return MinCost;
 		}
 

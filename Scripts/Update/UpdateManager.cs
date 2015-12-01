@@ -179,6 +179,9 @@ namespace Rynchodon.Update
 				RegisterForUpdates(10, GravityReverse.Update);
 				RegisterForUpdates(10, DisableTurret.Update);
 				RegisterForUpdates(10, TraitorTurret.Update);
+				RegisterForUpdates(10, CryoChamberMurder.Update);
+				RegisterForUpdates(10, JumpDriveDrain.Update);
+				RegisterForUpdates(10, MedicalRoom.Update);
 
 				RegisterForBlock(typeof(MyObjectBuilder_LandingGear), block => {
 					if (Hacker.IsHacker(block))

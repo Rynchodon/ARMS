@@ -17,12 +17,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.ForEach((AirVentDepressurize av) => av.UpdateEffect());
 		}
 
-		public static int Depressurize(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
+		public static int Depressurize(IMyCubeGrid grid, int strength, TimeSpan duration)
 		{
 			AirVentDepressurize av;
 			if (!Registrar.TryGetValue(grid, out av))
 				av = new AirVentDepressurize(grid);
-			return av.AddEffect(duration, strength, effectOwner);
+			return av.AddEffect(duration, strength);
 		}
 
 		private readonly Logger m_logger;
