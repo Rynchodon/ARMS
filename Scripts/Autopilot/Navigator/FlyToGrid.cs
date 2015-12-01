@@ -236,7 +236,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius)
 			{
 				//m_logger.debugLog("facing controller towards target : " + m_targetPosition, "Rotate()");
-				m_mover.CalcRotate(m_contBlock, RelativeDirection3F.FromWorld(m_contBlock.Grid, m_targetPosition - m_contBlock.WorldPosition));
+				m_mover.CalcRotate();
 				return;
 			}
 

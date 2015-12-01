@@ -65,8 +65,11 @@ namespace Rynchodon.Autopilot.Instruction
 			SyntaxError = false;
 			string instructions = preParse().getInstructions();
 
-			if (instructions == null)
+			if (string.IsNullOrWhiteSpace(instructions))
+			{
+				Mover.Block.DisableControl();
 				return;
+			}
 
 			Errors.Clear();
 			instructionQueue.Clear();
@@ -120,6 +123,12 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool enqueueAction(string instruction)
 		{
 			VRage.Exceptions.ThrowIf<InstructionQueueOverflow>(instructionQueue.Count > 1000);
+
+			if (string.IsNullOrWhiteSpace(instruction))
+			{
+				m_logger.debugLog("Ignoring whitespace: \"" + instruction + "\"", "enqueueAction()");
+				return true;
+			}
 
 			if (instruction.Length < 2)
 			{

@@ -61,8 +61,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
-			if (!m_mover.InGravity_LevelOff())
-				m_mover.CalcRotateStop();
+			m_mover.CalcRotateStop();
 		}
 
 		/// <summary>

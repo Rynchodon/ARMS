@@ -326,7 +326,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// If the ship is in gravity, calculates the roll to level off.
 		/// </summary>
 		/// <returns>True iff the ship is in gravity.</returns>
-		public bool InGravity_LevelOff()
+		private bool InGravity_LevelOff()
 		{
 			if (myThrust.m_localGravity == Vector3.Zero)
 				return false;
@@ -348,7 +348,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotateStop()
 		{
-			CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+			if (!InGravity_LevelOff())
+				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
 		}
 
 		/// <summary>
@@ -356,6 +357,9 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate()
 		{
+			//if (InGravity_LevelOff())
+			//	return;
+
 			myLogger.debugLog("m_moveEnableDampeners: " + m_moveEnableDampeners + ", m_moveAccel: " + m_moveAccel, "CalcRotate()");
 			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
