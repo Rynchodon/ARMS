@@ -7,6 +7,8 @@ namespace Rynchodon
 	public class ByteConverter
 	{
 
+		private static readonly byte unknownChar = Convert.ToByte('?');
+
 		#region Union
 
 		[StructLayout(LayoutKind.Explicit)]
@@ -242,7 +244,13 @@ namespace Rynchodon
 		public static void AppendBytes(string s, List<byte> bytes)
 		{
 			foreach (char c in s)
-				AppendBytes(Convert.ToByte(c), bytes);
+			{
+				int i = (int)c;
+				if (i < 256)
+					AppendBytes((byte)i, bytes);
+				else
+					AppendBytes(unknownChar, bytes);
+			}
 		}
 
 		#endregion List
@@ -338,7 +346,7 @@ namespace Rynchodon
 
 		public static char GetChar(byte[] bytes, ref int pos)
 		{
-			return Convert.ToChar(GetByte(bytes, ref pos));
+			return (char)GetByte(bytes, ref pos);
 		}
 
 		#endregion From Byte Array
