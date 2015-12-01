@@ -35,6 +35,8 @@ namespace Rynchodon
 			if (distSq_sphereToPlanetCentre > everest)
 				return false;
 
+			return true;
+
 			Vector3D closestPoint = GetClosestSurfacePointGlobal_Safeish(planet, sphereCentre);
 
 			double minDistance = sphere.Radius * sphere.Radius;
