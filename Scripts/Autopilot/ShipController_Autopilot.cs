@@ -539,7 +539,11 @@ namespace Rynchodon.Autopilot
 
 			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
 			if (navM != null)
+			{
 				navM.AppendCustomInfo(m_customInfo_build);
+				m_customInfo_build.Append("Distance: ");
+				m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+			}
 
 			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
 			if (navR != null && navR != navM)

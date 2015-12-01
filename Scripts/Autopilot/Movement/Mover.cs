@@ -38,7 +38,8 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 moveForceRatio = Vector3.Zero;
 		private Vector3 value_rotateForceRatio = Vector3.Zero;
 		private Vector3 rotateForceRatio = Vector3.Zero;
-		private Vector3 m_targetVelocity;
+		private Vector3 m_targetVelocity, m_moveAccel;
+		private bool m_moveEnableDampeners;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
 		//private Vector3 prevAngleDisp = Vector3.Zero;
@@ -72,6 +73,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			moveForceRatio = Vector3.Zero;
 			Block.SetDamping(enableDampeners);
+			m_moveEnableDampeners = enableDampeners;
 		}
 
 		/// <summary>
@@ -94,6 +96,7 @@ namespace Rynchodon.Autopilot.Movement
 			moveForceRatio = Vector3.Zero;
 			rotateForceRatio = Vector3.Zero;
 			Block.SetDamping(true);
+			m_moveEnableDampeners = true;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
 			m_stopped = true;
 		}
@@ -177,12 +180,12 @@ namespace Rynchodon.Autopilot.Movement
 			if (tarSpeedSq > speedRequest * speedRequest)
 				m_targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 
-			Vector3 moveAccel = m_targetVelocity - velocity - myThrust.m_localGravity;
+			m_moveAccel = m_targetVelocity - velocity - myThrust.m_localGravity;
 
-			moveForceRatio = ToForceRatio(moveAccel);
+			moveForceRatio = ToForceRatio(m_moveAccel);
 
 			// dampeners
-			bool enableDampeners = false;
+			m_moveEnableDampeners = false;
 			for (int i = 0; i < 3; i++)
 			{
 				// if target velocity is close to 0, use dampeners
@@ -192,7 +195,7 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					myLogger.debugLog("close to 0, i: " + i + ", targetDim: " + targetDim, "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
-					enableDampeners = true;
+					m_moveEnableDampeners = true;
 					continue;
 				}
 
@@ -220,13 +223,13 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					myLogger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
-					enableDampeners = true;
+					m_moveEnableDampeners = true;
 				}
 				else
 					myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 			}
 
-			Block.SetDamping(enableDampeners);
+			Block.SetDamping(m_moveEnableDampeners);
 
 			if (destDisp.LengthSquared() > 1f)
 				m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
@@ -238,7 +241,7 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", targetVelocity: " + m_targetVelocity
 				+ ", velocity: " + velocity
 				//+ ", diffVel: " + diffVel
-				+ ", m_moveAccel: " + moveAccel
+				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 		}
 
@@ -338,6 +341,26 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcRotate(localMatrix, Direction, UpDirect, true);
 			return true;
+		}
+
+		/// <summary>
+		/// Rotate to face autopilot away from linear velocity.
+		/// </summary>
+		public void CalcRotateStop()
+		{
+			CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+		}
+
+		/// <summary>
+		/// Rotate to face the best direction for flight.
+		/// </summary>
+		public void CalcRotate()
+		{
+			myLogger.debugLog("m_moveEnableDampeners: " + m_moveEnableDampeners + ", m_moveAccel: " + m_moveAccel, "CalcRotate()");
+			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
+				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
+			else
+				CalcRotateStop();
 		}
 
 		/// <summary>

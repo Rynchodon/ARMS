@@ -64,10 +64,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		};
 		#endregion
 
-		private static ThreadManager Thread_High = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), false, "Path_High");
+		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
 		private static ThreadManager Thread_Low = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), true, "Path_Low");
-
-		private static short RunIdPool;
 
 		static Pathfinder()
 		{
@@ -88,13 +86,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly RotateChecker m_rotateChecker;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly Mover m_mover;
-		private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
-		private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
+		//private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
+		//private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
 
 		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
 		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
 
 		private PseudoBlock m_navBlock;
+		private Vector3 m_destination;
 		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
 		private PathState m_pathState = PathState.Not_Running;
@@ -102,7 +101,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private ulong m_nextRunPath;
 		private ulong m_nextRunRotate;
-		private short m_runId;
+		private byte m_runId;
 		private float m_closestDistanceSquared;
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
@@ -128,7 +127,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				m_logger.debugLog("new destination: " + destination, "TestPath()", Logger.severity.INFO);
 				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
-				m_runId = RunIdPool++;
+				m_runId++;
 				m_pathLow.Clear();
 				m_pathState = PathState.Not_Running;
 			}
@@ -137,7 +136,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (Globals.UpdateCount < m_nextRunPath)
 				return;
-			m_nextRunPath = Globals.UpdateCount + 60ul;
+			m_nextRunPath = Globals.UpdateCount + 10ul;
 
 			if (m_pathLow.Count != 0)
 			{
@@ -146,11 +145,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
+			m_destination = destination;
 			m_ignoreAsteroid = m_navSet.Settings_Current.IgnoreAsteroid;
 			m_landing = landing;
 			m_canChangeCourse = m_navSet.Settings_Current.PathfinderCanChangeCourse;
 			MyEntity destEntity = m_navSet.Settings_Current.DestinationEntity as MyEntity;
 			m_logger.debugLog("DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), "TestPath()");
+			byte runId = m_runId;
 
 			const float minimumDistance = 100f;
 			const float minDistSquared = minimumDistance * minimumDistance;
@@ -170,20 +171,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 				{
 					Vector3 direction = displacement / (float)Math.Sqrt(distanceSquared);
 					destination = m_navBlock.WorldPosition + testDistance * direction;
-					m_logger.debugLog("changed destination: " + destination + ", distance: " + testDistance + ", direction: " + direction, "TestPath()");
+					m_logger.debugLog("moved destination: " + destination + ", distance: " + testDistance + ", direction: " + direction, "TestPath()");
 				}
 			}
 			else
 				m_logger.debugLog("using actual destination: " + destination, "TestPath()");
 
-			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, m_runId, isAlternate: false, tryAlternates: true));
+			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate: false, tryAlternates: true));
 
 			// given velocity and distance, calculate destination
 			if (speedSquared > 1f)
 			{
 				Vector3 moveDest = m_navBlock.WorldPosition + move_direction * LookAheadSpeed_Seconds;
-				m_pathHigh.Enqueue(() => TestPath(moveDest, destEntity, m_runId, isAlternate: false, tryAlternates: false));
-				m_pathHigh.Enqueue(() => TestPath(moveDest, null, m_runId, isAlternate: false, tryAlternates: false, slowDown: true));
+				m_pathHigh.Enqueue(() => TestPath(moveDest, destEntity, runId, isAlternate: false, tryAlternates: false));
+				m_pathHigh.Enqueue(() => TestPath(moveDest, null, runId, isAlternate: false, tryAlternates: false, slowDown: true));
 			}
 			else
 				m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
@@ -216,32 +217,57 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>
 		/// Test a path between current position and destination.
 		/// </summary>
-		private void TestPath(Vector3D destination, MyEntity destEntity, short runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
+		private void TestPath(Vector3D destination, MyEntity destEntity, byte runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
 		{
-			if (!lock_testPath.TryAcquireExclusive())
+			if (runId != m_runId)
 			{
-				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
-					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
-				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
-				queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
+				m_logger.debugLog("destination changed, abort", "TestPath()", Logger.severity.DEBUG);
 				return;
 			}
+
+			//if (!lock_testPath.TryAcquireExclusive())
+			//{
+			//	m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+			//		+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
+			//	LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
+			//	queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
+			//	return;
+			//}
 			try
 			{
-				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
-						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
 				if (m_grid != m_navBlock.Grid)
 				{
 					m_logger.debugLog("Grid has changed, from " + m_grid.DisplayName + " to " + m_navBlock.Grid.DisplayName + ", nav block: " + m_navBlock.Block.getBestName(), "TestPath()", Logger.severity.WARNING);
 					return;
 				}
-			
-				//if (!isAlternate && !tryAlternates)
-				//	m_logger.debugLog("velocity based test follows", "TestPath()", Logger.severity.TRACE);
+				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
+				
+				MyEntity obstructing;
+				Vector3? pointOfObstruction;
 
-				if (runId != m_runId)
+				if ((isAlternate || tryAlternates) && !m_pathChecker.GravityTest(new LineSegmentD(m_navBlock.WorldPosition, destination), m_destination, out obstructing, out pointOfObstruction))
 				{
-					m_logger.debugLog("destination changed, abort", "TestPath()", Logger.severity.DEBUG);
+					m_pathState = PathState.Searching;
+					m_logger.debugLog("blocked by gravity at " + pointOfObstruction, "TestGravity()", Logger.severity.DEBUG);
+					if (tryAlternates)
+					{
+						Vector3D point = pointOfObstruction.Value;
+						Vector3 direction = m_navBlock.WorldPosition - obstructing.GetCentre(); direction.Normalize();
+						float distance = Vector3.Distance(m_navBlock.WorldPosition, pointOfObstruction.Value);
+						float minDist = m_navSet.Settings_Current.DestinationRadius;
+						if (minDist < 1000f)
+						{
+							minDist = 1500f;
+							m_navSet.Settings_Current.DestinationRadius = 1000f;
+						}
+						else
+							minDist *= 1.5f;
+
+						m_pathHigh.Clear();
+						FindAlternate_AroundObstruction(pointOfObstruction.Value, direction, distance, minDist * minDist, runId);
+						m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
+					}
 					return;
 				}
 
@@ -252,10 +278,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					return;
 				}
 
-				MyEntity obstructing;
-				IMyCubeGrid obsGrid;
-				Vector3? pointOfObstruction;
-				if (m_pathChecker.TestSlow(out obstructing, out obsGrid, out pointOfObstruction))
+				if (m_pathChecker.TestSlow(out obstructing, out pointOfObstruction))
 				{
 					m_logger.debugLog("path is clear (slow)", "TestPath()", Logger.severity.TRACE);
 					PathClear(ref destination, runId, isAlternate, slowDown);
@@ -278,38 +301,41 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				m_pathState = PathState.Searching;
 
-				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", destEntity: " + destEntity.getBestName(), "TestPath()", isAlternate? Logger.severity.TRACE : Logger.severity.DEBUG);
+				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", destEntity: " + destEntity.getBestName(), "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 				m_logger.debugLog(obstructing is IMyCubeBlock, "grid: " + obstructing.GetTopMostParent().DisplayName, "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 
 				if (tryAlternates)
-				{
-					m_pathHigh.Clear();
-					Vector3 displacement = pointOfObstruction.Value - m_navBlock.WorldPosition;
-
-					if (m_canChangeCourse)
-					{
-						FindAlternate_AroundObstruction(displacement, pointOfObstruction.Value, obstructing.GetLinearVelocity(), runId);
-						FindAlternate_JustMove(runId);
-					}
-					FindAlternate_HalfwayObstruction(displacement, runId);
-					m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
-				}
+					TryAlternates(runId, pointOfObstruction.Value, obstructing);
 			}
 			finally
 			{
-				lock_testPath.ReleaseExclusive();
+				//lock_testPath.ReleaseExclusive();
 				RunItem();
 			}
 		}
 
-		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 pointOfObstruction, Vector3 obstructionSpeed, short runId)
+		private void TryAlternates(byte runId, Vector3 pointOfObstruction, IMyEntity obstructing)
+		{
+			m_pathHigh.Clear();
+			Vector3 displacement = pointOfObstruction - m_navBlock.WorldPosition;
+
+			if (m_canChangeCourse)
+			{
+				FindAlternate_AroundObstruction(displacement, pointOfObstruction, obstructing.GetLinearVelocity(), runId);
+				FindAlternate_JustMove(runId);
+			}
+			FindAlternate_HalfwayObstruction(displacement, runId);
+			m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
+		}
+
+		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 pointOfObstruction, Vector3 obstructionSpeed, byte runId)
 		{
 			float distance = displacement.Length();
 			Vector3 direction; direction = displacement / distance;
 			Vector3 newPath_v1, newPath_v2;
 			direction.CalculatePerpendicularVector(out newPath_v1);
 			newPath_v2 = direction.Cross(newPath_v1);
-			
+
 			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
 			ICollection<Vector3> AcceptableDirections;
 			if (obstructionSpeed == Vector3.Zero)
@@ -331,27 +357,30 @@ namespace Rynchodon.Autopilot.Pathfinder
 			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
 			destRadius *= destRadius;
 
-			for (int newPathDistance = 8; newPathDistance < 10000; newPathDistance *= 2)
+			foreach (Vector3 PathVector in AcceptableDirections)
+				FindAlternate_AroundObstruction(pointOfObstruction, PathVector, distance, destRadius, runId);
+		}
+
+		private void FindAlternate_AroundObstruction(Vector3 pointOfObstruction, Vector3 direction, float distance, float minDistSq, byte runId)
+		{
+			m_logger.debugLog("point: " + pointOfObstruction + ", direction: " + direction + ", distance: " + distance + ", dest radius: " + minDistSq, "FindAlternate_AroundObstruction()");
+			for (int newPathDistance = 8; newPathDistance < 1000000; newPathDistance *= 2)
 			{
 				if (newPathDistance > distance * 10f)
 					break;
-				foreach (Vector3 PathVector in AcceptableDirections)
-				{
-					Vector3 tryDest = pointOfObstruction + newPathDistance * PathVector;
-
-					if (Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest) > destRadius)
-						m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
-				}
+				Vector3 tryDest = pointOfObstruction + newPathDistance * direction;
+				if (Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest) > minDistSq)
+					m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
 			}
 		}
 
-		private void FindAlternate_HalfwayObstruction(Vector3 displacement, short runId)
+		private void FindAlternate_HalfwayObstruction(Vector3 displacement, byte runId)
 		{
 			Vector3 halfway = displacement * 0.5f + m_navBlock.WorldPosition;
 			m_pathLow.Enqueue(() => TestPath(halfway, null, runId, isAlternate: true, tryAlternates: false));
 		}
 
-		private void FindAlternate_JustMove(short runId)
+		private void FindAlternate_JustMove(byte runId)
 		{
 			Vector3D worldPosition = m_navBlock.WorldPosition;
 			float distance = m_navSet.Settings_Current.DestinationRadius * 2f;
@@ -379,7 +408,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
-		private void PathClear(ref Vector3D destination, short runId, bool isAlternate, bool slowDown)
+		private void PathClear(ref Vector3D destination, byte runId, bool isAlternate, bool slowDown)
 		{
 			if (runId == m_runId)
 			{
