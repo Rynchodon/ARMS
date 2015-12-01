@@ -1090,11 +1090,14 @@ namespace Rynchodon.Autopilot.Instruction
 				IMyCubeBlock Fatblock = slim.FatBlock;
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
-					string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().LowerRemoveWhitespace()
-						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
-
-					//myLogger.debugLog("checking: " + blockName, "GetLocalBlock()");
+					string blockName;
+					try
+					{ blockName = Fatblock.getNameOnly().LowerRemoveWhitespace(); }
+					catch (NullReferenceException ex)
+					{
+						m_logger.alwaysLog("Failed to process block name of " + Fatblock.DisplayNameText + '/' + Fatblock.DefinitionDisplayNameText, "GetLocalBlock()", Logger.severity.ERROR);
+						throw ex;
+					}
 
 					if (blockName.Length < bestNameLength && blockName.Contains(searchFor))
 					{
