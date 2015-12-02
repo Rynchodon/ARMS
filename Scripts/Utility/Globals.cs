@@ -1,4 +1,5 @@
 using System;
+using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
@@ -18,6 +19,18 @@ namespace Rynchodon
 
 		/// <summary>The number of updates since mod started.</summary>
 		public static ulong UpdateCount = 0;
+
+		private static bool Reported_GUI_Error;
+
+		public static void GUI_NotLoaded()
+		{
+			if (Reported_GUI_Error)
+				return;
+			Reported_GUI_Error = true;
+
+			MyAPIGateway.Utilities.ShowMissionScreen("ARMS Error", string.Empty, string.Empty, 
+				 "ARMS did not load correctly, terminal controls will not function. After starting Space Engineers, ARMS must be in the first world loaded for terminal controls to work correctly.");
+		}
 
 	}
 }

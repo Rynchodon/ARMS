@@ -10,7 +10,7 @@ namespace Rynchodon.Utility.Network
 	{
 		public const ushort ModId = 6995;
 
-		public enum SubModule : byte { BlockSync }
+		public enum SubModule : byte { TerminalBlockSync }
 
 		public static Dictionary<SubModule, Action<byte[]>> Handlers = new Dictionary<SubModule, Action<byte[]>>();
 

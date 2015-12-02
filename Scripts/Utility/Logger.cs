@@ -35,9 +35,6 @@ namespace Rynchodon
 		private static bool worldClosed, loggingClosed;
 
 		private readonly string m_classname;
-		/// <summary>
-		/// take precedence over strings
-		/// </summary>
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
 
 		public severity MinimumLevel = severity.ALL;

@@ -93,7 +93,7 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.DEBUG };
+			this.myLogger = new Logger("WeaponTargeting", weapon);// { MinimumLevel = Logger.severity.DEBUG };
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();
@@ -399,7 +399,7 @@ namespace Rynchodon.Weapons
 			}
 
 			//float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
-			const float firingThreshold = 1.25f;
+			const float firingThreshold = 2.5f;
 
 			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
 
