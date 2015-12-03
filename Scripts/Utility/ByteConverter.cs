@@ -404,6 +404,10 @@ namespace Rynchodon
 					return GetLong(bytes, ref pos);
 				case TypeCode.UInt64:
 					return GetUlong(bytes, ref pos);
+				case TypeCode.Single:
+					return GetFloat(bytes, ref pos);
+				case TypeCode.Double:
+					return GetFloat(bytes, ref pos);
 				case TypeCode.Char:
 					return GetChar(bytes, ref pos);
 			}

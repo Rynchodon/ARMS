@@ -325,6 +325,7 @@ namespace Rynchodon.Weapons
 					Options = Interpreter.Options;
 					InterpreterErrorCount = Interpreter.Errors.Count;
 					Update_Options(Options);
+					ArmsGuiWeapons.UpdateTerm(FuncBlock, Options);
 					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
 				}
 				else

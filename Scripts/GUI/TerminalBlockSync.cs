@@ -88,10 +88,7 @@ namespace Rynchodon.GUI
 			Dictionary<byte, T> dataGroup = GetDataGroup<T>();
 			T value;
 			if (!dataGroup.TryGetValue(index, out value))
-			{
 				value = default(T);
-				dataGroup.Add(index, value);
-			}
 			return value;
 		}
 
