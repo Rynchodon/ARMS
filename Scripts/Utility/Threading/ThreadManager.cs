@@ -31,14 +31,15 @@ namespace Rynchodon.Threading
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
 			this.ThreadName = threadName;
+
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
 		private void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			myLogger.debugLog("stopping thread", "Entities_OnCloseAll()", Logger.severity.INFO);
-			ActionQueue = null;
+			using (lock_ActionQueue.AcquireExclusiveUsing())
+				ActionQueue.Clear();
 		}
 
 		public void EnqueueAction(Action toQueue)
@@ -57,6 +58,12 @@ namespace Rynchodon.Threading
 			}
 
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				if (MyAPIGateway.Parallel == null)
+				{
+					myLogger.debugLog("Parallel == null", "EnqueueAction()", Logger.severity.WARNING);
+					return;
+				}
+
 				if (Background)
 					MyAPIGateway.Parallel.StartBackground(Run);
 				else

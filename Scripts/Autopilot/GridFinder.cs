@@ -288,7 +288,7 @@ namespace Rynchodon.Autopilot
 				if (BlockCondition != null && !BlockCondition(Fatblock))
 					return false;
 
-				m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
+				//m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
 				if (blockName.Length < bestNameLength && blockName.Contains(m_targetBlockName))
 				{
 					m_logger.debugLog("block name matches: " + Fatblock.DisplayNameText, "BlockSearch()");

@@ -86,7 +86,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly RotateChecker m_rotateChecker;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly Mover m_mover;
-		//private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
+		private readonly FastResourceLock lock_testPath = new FastResourceLock("Path_lock_path");
 		//private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
 
 		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
@@ -225,14 +225,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 				return;
 			}
 
-			//if (!lock_testPath.TryAcquireExclusive())
-			//{
-			//	m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
-			//		+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
-			//	LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
-			//	queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
-			//	return;
-			//}
+			if (!lock_testPath.TryAcquireExclusive())
+			{
+				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + destEntity + ", runId :" + runId
+					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
+				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
+				queue.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate, tryAlternates));
+				return;
+			}
 			try
 			{
 				if (m_grid != m_navBlock.Grid)
@@ -309,7 +309,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			finally
 			{
-				//lock_testPath.ReleaseExclusive();
+				lock_testPath.ReleaseExclusive();
 				RunItem();
 			}
 		}

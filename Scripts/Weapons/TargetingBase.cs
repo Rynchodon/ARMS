@@ -673,9 +673,11 @@ namespace Rynchodon.Weapons
 			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
 
-			Vector3D TargetPosition = myTarget.GetPosition();
+			Vector3 myVelocity = MyEntity.GetLinearVelocity();
+			Vector3 targetVelocity = myTarget.GetLinearVelocity();
+			Vector3 TargetPosition = myTarget.GetPosition() + (targetVelocity - myVelocity) * 0.5f;
 
-			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, myTarget.GetLinearVelocity());
+			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
 			if (myTarget.Entity != null)
 			{
 				if (PhysicalProblem(myTarget.InterceptionPoint.Value))

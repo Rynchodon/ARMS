@@ -148,7 +148,7 @@ namespace Rynchodon.Autopilot.Navigator
 			//const float project = ShipController_Autopilot.UpdateFrequency / 60f;
 			//Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity());// *project;
 
-			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, InterceptionPoint.Value - m_weapon_primary_pseudo.WorldPosition));
+			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, InterceptionPoint.Value - m_weapon_primary_pseudo.WorldPosition), targetEntity: m_weapon_primary.CurrentTarget.Entity);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)

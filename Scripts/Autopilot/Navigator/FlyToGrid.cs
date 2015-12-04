@@ -207,8 +207,13 @@ namespace Rynchodon.Autopilot.Navigator
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
 
-				if (m_landingState > LandingState.Approach || m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
+				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
+				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlockPos, m_targetPosition) < destRadius)
 				{
+					m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
+					m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,
+						"Distance < DestinationRadius, Distance: " + m_navSet.Settings_Current.Distance + ", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius, "Move()");
+
 					Move_Land();
 					return;
 				}
@@ -233,7 +238,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius)
+			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius * 1.5f)
 			{
 				//m_logger.debugLog("facing controller towards target : " + m_targetPosition, "Rotate()");
 				m_mover.CalcRotate();
@@ -263,7 +268,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_targetBlock.Forward.HasValue)
 			{
 				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
-				if (m_navSet.DirectionMatched())
+				if (!m_navSet.Settings_Current.Stay_In_Formation && m_navSet.DirectionMatched())
 				{
 					m_logger.debugLog("Direction matched", "Rotate()", Logger.severity.INFO);
 					m_navSet.OnTaskComplete_NavRot();

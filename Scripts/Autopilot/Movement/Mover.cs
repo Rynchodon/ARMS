@@ -4,6 +4,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Navigator;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Movement
@@ -392,13 +393,13 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="block"></param>
 		/// <returns>True iff localMatrix is facing Direction</returns>
-		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null)
+		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null, IMyEntity targetEntity = null)
 		{
-			CalcRotate(block.LocalMatrix, Direction, UpDirect);
+			CalcRotate(block.LocalMatrix, Direction, UpDirect, targetEntity: targetEntity);
 		}
 
 		// necessary wrapper for main CalcRotate, should always be called.
-		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, bool levelingOff = false)
+		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, bool levelingOff = false, IMyEntity targetEntity = null)
 		{
 			CheckGrid();
 			myThrust.Update();
@@ -421,7 +422,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			Vector3 angleVelocity;
-			CalcRotate(localMatrix, Direction, UpDirect, out angleVelocity);
+			CalcRotate(localMatrix, Direction, UpDirect, out angleVelocity, targetEntity);
 			prevAngleVel = angleVelocity;
 		}
 
@@ -431,7 +432,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="localMatrix">The matrix to rotate to face the direction, use a block's local matrix or result of GetMatrix()</param>
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		/// <param name="angularVelocity">The local angular velocity of the controlling block.</param>
-		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, out Vector3 angularVelocity)
+		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, out Vector3 angularVelocity, IMyEntity targetEntity)
 		{
 			myLogger.debugLog(Direction == null, "Direction == null", "CalcRotate()", Logger.severity.ERROR);
 
@@ -531,25 +532,31 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaxAngleVelocity(displacement, secondsSinceLast);
 
-			// Adjust for moving target by measuring changes in displacement. Part of the change in displacement is attributable to ship rotation. 
-			const float dispToVel = (float)Globals.UpdatesPerSecond / (float)ShipController_Autopilot.UpdateFrequency;
+			if (targetEntity != null)
+			{
+				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity;
+				float distance = Vector3.Distance(targetEntity.GetCentre(), Block.CubeBlock.GetPosition());
+				//Vector3 tangentialVelocity = Vector3.Reject(relativeLinearVelocity, targetEntity.GetCentre() - Block.CubeBlock.GetPosition());
+				//Vector3 localTangVel = Vector3.Transform(tangentialVelocity, Block.CubeBlock.WorldMatrixNormalizedInv.GetOrientation());
 
-			//Vector3 addVelocity = (displacement - prevAngleDisp) * 2f * dispToVel;
-			//if (addVelocity.LengthSquared() < 0.01f)
-			//{
-			//myLogger.debugLog("Adjust for moving, adding to target velocity: " + addVelocity, "CalcRotate()");
-			//	targetVelocity += addVelocity;
-			//}
-			//else
-			//	myLogger.debugLog("Not adjusting for moving, assuming target changed: " + addVelocity, "CalcRotate()");
-			//prevAngleDisp = displacement;
+				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", tangentialVelocity: " + tangentialVelocity + ", localTangVel: " + localTangVel, "CalcRotate()");
 
-			Vector3 diffVel = targetVelocity - angularVelocity;
+				float RLV_pitch = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Up);
+				float RLV_yaw = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Left);
+				float angl_pitch = (float)Math.Atan2(RLV_pitch, distance);
+				float angl_yaw = (float)Math.Atan2(RLV_yaw, distance);
 
-			rotateForceRatio = diffVel / (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce);
+				myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch, "CalcRotate()");
 
-			myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", diffVel: " + diffVel, "CalcRotate()");
-			myLogger.debugLog("diffVel: " + diffVel + ", torque: " + (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
+				targetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
+			}
+
+			Vector3 accel = (targetVelocity - angularVelocity) / secondsSinceLast;
+
+			rotateForceRatio = accel / (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce);
+
+			myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + accel, "CalcRotate()");
+			myLogger.debugLog("accel: " + accel + ", torque: " + (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)
