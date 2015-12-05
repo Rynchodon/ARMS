@@ -1,16 +1,5 @@
 Will be moved to steam every release.
 
 major:
-rotates to stop
-gravity avoidance
-emp missile launcher
-better accuracy for Fight
 
 minor:
-fixed crash in player constructor
-receivers (antenna etc.) use current grid
-fixed guided missile volumes
-fixed relations
-better merge support
-fixed crash with non-ascii characters
-fixed form command

@@ -46,12 +46,12 @@ namespace Rynchodon.Settings
 			return set.Value;
 		}
 
-		private const string modName = "Autopilot";
+		private const string modName = "ARMS";
 		private const string settings_file_name = "AutopilotSettings.txt";
 		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		public const int latestVersion = 48; // in sequence of updates on steam
+		public const int latestVersion = 49; // in sequence of updates on steam
 		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger("ServerSettings");
