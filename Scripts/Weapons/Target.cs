@@ -7,25 +7,18 @@ namespace Rynchodon.Weapons
 {
 	public abstract class Target
 	{
-		private Vector3? value_firingDirection;
-		private Vector3? value_interceptionPoint;
 
 		public abstract IMyEntity Entity { get; }
 		public abstract TargetType TType { get; }
 		public abstract Vector3D GetPosition();
 		public abstract Vector3 GetLinearVelocity();
 
-		public Vector3? FiringDirection
-		{
-			get { return value_firingDirection; }
-			set { value_firingDirection = value; }
-		}
+		/// <summary>The direction the shot shall be fired in.</summary>
+		public Vector3? FiringDirection { get; set; }
 
-		public Vector3? InterceptionPoint
-		{
-			get { return value_interceptionPoint; }
-			set { value_interceptionPoint = value; }
-		}
+		/// <summary>The point where contact will be made.</summary>
+		public Vector3? ContactPoint { get; set; }
+
 	}
 
 	public class NoTarget : Target

@@ -835,7 +835,10 @@ namespace Rynchodon.Autopilot.Instruction
 				return false;
 			}
 
-			instructionAction = () => NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
+			instructionAction = () => {
+				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
+				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
+			};
 			return true;
 		}
 

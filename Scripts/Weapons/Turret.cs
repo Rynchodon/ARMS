@@ -176,7 +176,7 @@ namespace Rynchodon.Weapons
 				FireWeapon = false;
 				return;
 			}
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
 			// check firing direction
@@ -193,7 +193,8 @@ namespace Rynchodon.Weapons
 
 			if (myTurret.AIEnabled)
 			{
-				myTurret.SetTarget(GotTarget.InterceptionPoint.Value);
+				// need to find out if SE adjusts for our velocity
+				myTurret.SetTarget(GotTarget.ContactPoint.Value);
 				return;
 			}
 

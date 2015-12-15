@@ -288,7 +288,14 @@ namespace Rynchodon.Autopilot
 					m_logger.debugLog("running instructions", "Update()");
 
 					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
+					{
 						m_interpreter.instructionQueue.Dequeue().Invoke();
+						if (m_navSet.Settings_Current.WaitUntil > DateTime.UtcNow)
+						{
+							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil, "Update()");
+							return;
+						}
+					}
 
 					if (m_navSet.Settings_Current.NavigatorMover == null)
 					{

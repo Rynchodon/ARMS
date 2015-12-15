@@ -105,14 +105,7 @@ namespace Rynchodon.AntennaRelay
 
 		public void Update100()
 		{
-			try
-			{
-				UpdateGPS();
-			}
-			catch (Exception ex)
-			{
-				myLogger.debugLog("Exception: " + ex, "Update100()", Logger.severity.ERROR);
-			}
+			UpdateGPS();
 		}
 
 		public void receive(LastSeen seen)

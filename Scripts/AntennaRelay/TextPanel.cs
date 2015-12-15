@@ -498,6 +498,7 @@ namespace Rynchodon.AntennaRelay
 				return builder;
 			}
 
+			// TODO: add position & velocity
 			public StringBuilder TextForProgram()
 			{
 				bool friendly = relations.HasFlagFast(ExtensionsRelations.Relations.Faction) || relations.HasFlagFast(ExtensionsRelations.Relations.Owner);

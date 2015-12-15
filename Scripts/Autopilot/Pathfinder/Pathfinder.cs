@@ -316,7 +316,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void TryAlternates(byte runId, Vector3 pointOfObstruction, IMyEntity obstructing)
 		{
-			m_pathHigh.Clear();
+			try
+			{
+				m_pathHigh.Clear();
+			}
+			catch (IndexOutOfRangeException ioore)
+			{
+				m_logger.debugLog("Caught IndexOutOfRangeException", "TryAlternates()", Logger.severity.ERROR);
+				m_logger.debugLog("Count: " + m_pathHigh.Count, "TryAlternates()", Logger.severity.ERROR);
+				m_logger.debugLog("Exception: " + ioore, "TryAlternates()", Logger.severity.ERROR);
+
+				throw ioore;
+			}
+
 			Vector3 displacement = pointOfObstruction - m_navBlock.WorldPosition;
 
 			if (m_canChangeCourse)

@@ -187,17 +187,23 @@ namespace Rynchodon.Autopilot.Movement
 
 			// dampeners
 			m_moveEnableDampeners = false;
+			bool checkNearZero = m_targetVelocity.LengthSquared() < 1f || m_moveAccel.LengthSquared() > 1f;
+
 			for (int i = 0; i < 3; i++)
 			{
-				// if target velocity is close to 0, use dampeners
-
 				float targetDim = m_targetVelocity.GetDim(i);
-				if (targetDim < 0.1f && targetDim > -0.1f)
+
+				if (checkNearZero)
 				{
-					myLogger.debugLog("close to 0, i: " + i + ", targetDim: " + targetDim, "CalcMove()");
-					moveForceRatio.SetDim(i, 0);
-					m_moveEnableDampeners = true;
-					continue;
+					// if target velocity is close to 0, use dampeners
+
+					if (targetDim < 0.1f && targetDim > -0.1f)
+					{
+						myLogger.debugLog("close to 0, i: " + i + ", targetDim: " + targetDim, "CalcMove()");
+						moveForceRatio.SetDim(i, 0);
+						m_moveEnableDampeners = true;
+						continue;
+					}
 				}
 
 				float forceRatio = moveForceRatio.GetDim(i);
@@ -358,9 +364,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate()
 		{
-			//if (InGravity_LevelOff())
-			//	return;
-
 			myLogger.debugLog("m_moveEnableDampeners: " + m_moveEnableDampeners + ", m_moveAccel: " + m_moveAccel, "CalcRotate()");
 			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
