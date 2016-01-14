@@ -11,9 +11,9 @@ using Rynchodon.Threading;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
-using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 

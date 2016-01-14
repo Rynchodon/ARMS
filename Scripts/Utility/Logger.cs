@@ -4,6 +4,7 @@ using Rynchodon.Threading;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game.Components;
 
 namespace Rynchodon
 {
@@ -23,8 +24,8 @@ namespace Rynchodon
 	/// <para> </para>
 	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%Class][%Method][%PriState][%SecState]%Message</para>
 	/// </remarks>
-	[Sandbox.Common.MySessionComponentDescriptor(Sandbox.Common.MyUpdateOrder.NoUpdate)]
-	public class Logger : Sandbox.Common.MySessionComponentBase
+	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
+	public class Logger : MySessionComponentBase
 	{
 		private static System.IO.TextWriter logWriter = null;
 		private StringBuilder stringCache = new StringBuilder();

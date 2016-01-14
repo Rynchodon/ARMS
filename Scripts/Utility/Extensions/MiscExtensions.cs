@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sandbox.ModAPI;
-using VRage.Components;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRageMath;
 

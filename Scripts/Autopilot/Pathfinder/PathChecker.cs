@@ -343,7 +343,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//m_logger.debugLog("Path AABB = " + PathAABB, "EntitiesInLargeAABB()");
 
 			m_offenders.Clear();
-			MyGamePruningStructure.GetAllTopMostEntitiesInBox(ref PathAABB, m_offenders);
+			MyGamePruningStructure.GetTopMostEntitiesInBox(ref PathAABB, m_offenders);
 			m_offRemove.Clear();
 			for (int i = 0; i < m_offenders.Count; i++)
 				if (!collect_Entity(m_grid, m_offenders[i])

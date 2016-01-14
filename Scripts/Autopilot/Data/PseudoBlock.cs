@@ -1,8 +1,7 @@
 using System;
-
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.Components;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRageMath;
 

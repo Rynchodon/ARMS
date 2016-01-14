@@ -9,7 +9,7 @@ using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.Components;
+using VRage.Game.Components;
 
 namespace Rynchodon.Autopilot
 {
