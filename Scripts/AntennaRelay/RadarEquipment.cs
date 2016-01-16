@@ -54,7 +54,6 @@ namespace Rynchodon.AntennaRelay
 
 			/// <summary>
 			/// <para>Represents the quality of this piece of equipment. Affects the function of the device without affecting its detectability.</para>
-			/// <para>Multiplier for the distance a signal carries. For passive collection, value from receiving radar will be used.</para>
 			/// </summary>
 			public float SignalEnhance = 1;
 
@@ -530,7 +529,7 @@ namespace Rynchodon.AntennaRelay
 
 			MathHelper.Clamp(PowerRatio_Jammer, 0f, 1f);
 
-			float effectivePowerLevel = PowerLevel_Current;
+			float effectivePowerLevel = PowerLevel_Current * myDefinition.SignalEnhance;
 
 			if (effectivePowerLevel <= 0)
 			{
@@ -538,16 +537,16 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			int allowedTargets = MathHelper.Floor(myDefinition.MaxTargets_Jamming * PowerRatio_Jammer);
+			//int allowedTargets = MathHelper.Floor(myDefinition.MaxTargets_Jamming * PowerRatio_Jammer);
 
-			myLogger.debugLog("jamming power level: " + effectivePowerLevel + ", allowedTargets: " + allowedTargets, "JamRadar()");
+			//myLogger.debugLog("jamming power level: " + effectivePowerLevel + ", allowedTargets: " + allowedTargets, "JamRadar()");
 
 			// collect targets
 			Registrar.ForEach((RadarEquipment otherDevice) => {
 				if (!otherDevice.IsRadar || !otherDevice.IsWorking)
 					return;
 
-				if (SignalCannotReach(otherDevice.Entity, effectivePowerLevel * myDefinition.SignalEnhance))
+				if (SignalCannotReach(otherDevice.Entity, effectivePowerLevel))
 					return;
 
 				bool notHostile = !RelationsBlock.canConsiderHostile(otherDevice.RelationsBlock);
@@ -557,7 +556,7 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 
-				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition()) / myDefinition.SignalEnhance;
+				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition());
 				float signalStrength = effectivePowerLevel - distance;
 
 				if (signalStrength > 0)
@@ -615,7 +614,7 @@ namespace Rynchodon.AntennaRelay
 
 		private void ActiveDetection()
 		{
-			PowerLevel_RadarEffective = PowerLevel_Radar;
+			PowerLevel_RadarEffective = PowerLevel_Radar * myDefinition.SignalEnhance;
 
 			if (PowerLevel_RadarEffective <= 0f)
 			{
@@ -651,12 +650,12 @@ namespace Rynchodon.AntennaRelay
 				if (otherGrid.MarkedForClose || !otherGrid.Save)
 					continue;
 
-				if (SignalCannotReach(otherGrid, PowerLevel_RadarEffective * myDefinition.SignalEnhance))
+				if (SignalCannotReach(otherGrid, PowerLevel_RadarEffective))
 					continue;
 
 				float volume = otherGrid.LocalAABB.Volume();
 				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition()) / myDefinition.SignalEnhance;
+				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition());
 				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
 				int decoys = WorkingDecoys(otherGrid);
 				radarSignature += decoySignal * decoys;
@@ -697,11 +696,12 @@ namespace Rynchodon.AntennaRelay
 				float otherPowerLevel = radar ? otherDevice.PowerLevel_Radar : otherDevice.PowerLevel_Jammer;
 				if (otherPowerLevel <= 0)
 					return;
-
-				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel * myDefinition.SignalEnhance))
+				otherPowerLevel *= myDefinition.SignalEnhance;
+	
+				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel))
 					return;
 
-				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition()) / myDefinition.SignalEnhance;
+				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition());
 				float signalStrength = otherPowerLevel - distance - detectionThreshold;
 
 				signalStrength += decoySignal * WorkingDecoys(otherDevice);
@@ -905,7 +905,7 @@ namespace Rynchodon.AntennaRelay
 				if (PowerLevel_Radar > 0)
 				{
 					customInfo.AppendLine("Radar power level: " + (int)PowerLevel_Radar);
-					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_RadarEffective / 2 * myDefinition.SignalEnhance));
+					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_RadarEffective / 2));
 				}
 
 			if (beingJammedBy.Count > 0)

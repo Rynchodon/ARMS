@@ -18,17 +18,17 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 Radar equipment from other mods may be used. If they are not otherwise configured, they will have a maximum of 1 target and be completely omnidirectional.
 
 [u]Radar Dish[/u]
-Very long range, inexpensive, unidirectional, up to 10 targets.
+Long range, inexpensive, unidirectional, up to 10 targets.
 
 [u]Radar Dome[/u]
-Long range, omnidirectional, up to 30 targets.
+Medium range, omnidirectional, up to 30 targets.
 Cannot detect objects below it.
 
 [u]Phased Array Radar[/u]
-Medium range, expensive, omnidirectional, up to 100 targets.
+Shortest range, expensive, omnidirectional, up to 100 targets.
 Cannot detect objects below it or directly above.
 Functions as an antenna and broadcasting can be disabled.
-Can detect other radar at long range.
+Can detect other radar at very long range (up to 75 km).
 
 [u]Radar Jammer[/u]
 Jams an enemy radar, higher quality radar are harder to jam.

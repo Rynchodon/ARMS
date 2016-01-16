@@ -145,7 +145,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=1
+        MaxTargets_Tracking=10
         MaxPowerLevel=20000
         MinAzimuth=-1.963495408493621
         MaxAzimuth=0.3926990816987241
@@ -198,7 +198,7 @@
         MaxTargets_Tracking=30
         MaxPowerLevel=40000
         SignalEnhance=1.125
-        JammingEffect=0.8
+        JammingEffect=0.7
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
@@ -242,10 +242,10 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=3
+        MaxTargets_Tracking=30
         MaxPowerLevel=16000
         SignalEnhance=1.125
-        JammingEffect=0.8
+        JammingEffect=0.7
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
@@ -295,7 +295,7 @@
         MaxTargets_Tracking=100
         MaxPowerLevel=20000
         SignalEnhance=2
-        JammingEffect=0.2
+        JammingEffect=0.4
         PassiveDetect_Radar=25000
         MinElevation=-0.8
         MaxElevation=1.4
@@ -343,10 +343,10 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
-        MaxPowerLevel=10000
+        MaxTargets_Tracking=100
+        MaxPowerLevel=8000
         SignalEnhance=2
-        JammingEffect=0.2
+        JammingEffect=0.4
         PassiveDetect_Radar=35000
         MinElevation=-0.8
         MaxElevation=1.4
@@ -386,6 +386,213 @@
       <BuildTimeSeconds>30</BuildTimeSeconds>
       <ResourceSinkGroup>Utility</ResourceSinkGroup>
       <DamageEffectId>214</DamageEffectId>
+    </Definition>
+    
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>PhasedArrayRadarOffset_Large_Souper07</SubtypeId>
+      </Id>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=100
+        MaxPowerLevel=20000
+        SignalEnhance=2
+        JammingEffect=0.4
+        PassiveDetect_Radar=25000
+        MinElevation=-0.8
+        MaxElevation=1.4
+      </Description>
+      <DisplayName>Radar Phased Array (Offset)</DisplayName>
+      <Icon>Textures\Icons\PhasedArray.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="5" y="4" z="5" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\PhasedArray_Large.mwm</Model>
+      <Components>
+        <Component Count="50" Subtype="SteelPlate" />
+        <Component Count="10" Subtype="Construction" />
+        <Component Count="60" Subtype="SmallTube" />
+        <Component Count="25" Subtype="LargeTube" />
+        <Component Count="50" Subtype="Computer" />
+        <Component Count="80" Subtype="RadioCommunication" />
+        <Component Count="150" Subtype="Detector" />
+        <Component Count="175" Subtype="Construction" />
+        <Component Count="325" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\PhasedArray_Large_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\PhasedArray_Large_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\PhasedArray_Large_Constr3.mwm" />
+      </BuildProgressModels>
+      <MountPoints>
+        <MountPoint Side="Bottom" StartX="1.54" StartY="1.54" EndX="3.46" EndY="3.46" />
+      </MountPoints>
+      <BlockPairName>PhasedArrayRadarOffset_Souper07</BlockPairName>
+      <MirroringX>None</MirroringX>
+      <MirroringY>None</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <BuildTimeSeconds>120</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>PhasedArrayRadarOffset_Small_Souper07</SubtypeId>
+      </Id>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=100
+        MaxPowerLevel=8000
+        SignalEnhance=2
+        JammingEffect=0.4
+        PassiveDetect_Radar=35000
+        MinElevation=-0.8
+        MaxElevation=1.4
+      </Description>
+      <DisplayName>Radar Phased Array (Offset)</DisplayName>
+      <Icon>Textures\Icons\PhasedArray.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="5" y="4" z="5" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\PhasedArray_Small.mwm</Model>
+      <Components>
+        <Component Count="25" Subtype="SteelPlate" />
+        <Component Count="5" Subtype="Construction" />
+        <Component Count="30" Subtype="SmallTube" />
+        <Component Count="14" Subtype="LargeTube" />
+        <Component Count="25" Subtype="Computer" />
+        <Component Count="40" Subtype="RadioCommunication" />
+        <Component Count="75" Subtype="Detector" />
+        <Component Count="63" Subtype="Construction" />
+        <Component Count="125" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\PhasedArray_Small_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\PhasedArray_Small_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\PhasedArray_Small_Constr3.mwm" />
+      </BuildProgressModels>
+      <MountPoints>
+        <MountPoint Side="Bottom" StartX="1.54" StartY="1.54" EndX="3.46" EndY="3.46" />
+      </MountPoints>
+      <BlockPairName>PhasedArrayRadarOffset_Souper07</BlockPairName>
+      <MirroringX>None</MirroringX>
+      <MirroringY>None</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <EdgeType>Light</EdgeType>
+      <BuildTimeSeconds>30</BuildTimeSeconds>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <DamageEffectId>214</DamageEffectId>
+    </Definition>
+    
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>AWACSRadarLarge_JnSm</SubtypeId>
+      </Id>
+      <DisplayName>AWACS Radar Large</DisplayName>
+      <Icon>Textures\Icons\AWACS_ICO.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="5" y="1" z="5" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\AWACS_Radar_Large.mwm</Model>
+      <MountPoints>
+        <MountPoint Side="Bottom" StartX="2.20" StartY="2.20" EndX="2.80" EndY="2.80" />
+      </MountPoints>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=30
+        MaxPowerLevel=50000
+        SignalEnhance=1.2
+        JammingEffect=1
+        MinElevation=-1.4
+        MinAzimuth=-0.78540
+        MaxAzimuth=0.78540
+      </Description>
+      <Components>
+        <Component Count="50" Subtype="SteelPlate" />
+        <Component Count="10" Subtype="Construction" />
+        <Component Count="60" Subtype="SmallTube" />
+        <Component Count="25" Subtype="LargeTube" />
+        <Component Count="50" Subtype="Computer" />
+        <Component Count="80" Subtype="RadioCommunication" />
+        <Component Count="150" Subtype="Detector" />
+        <Component Count="175" Subtype="Construction" />
+        <Component Count="325" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\AWACS_Radar_Large_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\AWACS_Radar_Large_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\AWACS_Radar_Large_Constr3.mwm" />
+      </BuildProgressModels>
+      <MirroringX>None</MirroringX>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <BlockPairName>AWACSRadar_JnSm</BlockPairName>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <BuildTimeSeconds>50</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+      <DamagedSound>ParticleElectrical</DamagedSound>
+    </Definition>
+    <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
+      <Id>
+        <TypeId>Beacon</TypeId>
+        <SubtypeId>AWACSRadarSmall_JnSm</SubtypeId>
+      </Id>
+      <DisplayName>AWACS Radar Small</DisplayName>
+      <Icon>Textures\Icons\AWACS_ICO.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=30
+        MaxPowerLevel=20000
+        SignalEnhance=1.2
+        JammingEffect=1
+        MinElevation=-1.4
+        MinAzimuth=-0.78540
+        MaxAzimuth=0.78540
+      </Description>
+      <Components>
+        <Component Count="25" Subtype="SteelPlate" />
+        <Component Count="5" Subtype="Construction" />
+        <Component Count="30" Subtype="SmallTube" />
+        <Component Count="14" Subtype="LargeTube" />
+        <Component Count="25" Subtype="Computer" />
+        <Component Count="40" Subtype="RadioCommunication" />
+        <Component Count="75" Subtype="Detector" />
+        <Component Count="64" Subtype="Construction" />
+        <Component Count="125" Subtype="SteelPlate" />
+      </Components>
+      <CriticalComponent Index="0" Subtype="Detector" />
+      <Size x="5" y="1" z="5" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\AWACS_Radar_Small.mwm</Model>
+      <BuildProgressModels>
+        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\AWACS_Radar_Small_Constr1.mwm" />
+        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\AWACS_Radar_Small_Constr2.mwm" />
+        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\AWACS_Radar_Small_Constr3.mwm" />
+      </BuildProgressModels>
+      <MountPoints>
+        <MountPoint Side="Bottom" StartX="2.20" StartY="2.20" EndX="2.80" EndY="2.80" />
+      </MountPoints>
+      <BlockPairName>AWACSRadar_JnSm</BlockPairName>
+      <MirroringX>None</MirroringX>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <BuildTimeSeconds>15</BuildTimeSeconds>
+      <DamageEffectId>214</DamageEffectId>
+      <DamagedSound>ParticleElectrical</DamagedSound>
     </Definition>
     
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
