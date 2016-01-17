@@ -33,10 +33,11 @@ Passive radar detection up to 80 km / 60 km.
 Significant jamming resistance.
 
 [u]AWACS Radar[/u]
-30 km / 12 km range, unidirectional, up to 30 targets.
+30 km / 12 km range, omnidirectional, up to 30 targets.
 Cannot detect objects directly below it.
 Passive radar detection up to 50 km / 40 km.
 Susceptible to jamming.
+WARNING: If you place this one directly on a rotor, it will not function.
 
 [u]Radar Jammer[/u]
 Jams an enemy radar, higher quality radar are harder to jam.

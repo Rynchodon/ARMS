@@ -556,7 +556,7 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 
-				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition());
+				float distance = Vector3.Distance(Entity.GetCentre(), otherDevice.Entity.GetCentre());
 				float signalStrength = effectivePowerLevel - distance;
 
 				if (signalStrength > 0)
@@ -642,6 +642,8 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 			}
+			else
+				myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.TRACE);
 
 			HashSet<IMyEntity> allGrids = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
@@ -655,14 +657,17 @@ namespace Rynchodon.AntennaRelay
 
 				float volume = otherGrid.LocalAABB.Volume();
 				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-				float distance = Vector3.Distance(Entity.GetPosition(), otherGrid.GetPosition());
+				float distance = Vector3.Distance(Entity.GetCentre(), otherGrid.GetCentre());
 				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
 				int decoys = WorkingDecoys(otherGrid);
 				radarSignature += decoySignal * decoys;
 
+				//myLogger.debugLog("grid: " + otherGrid.DisplayName + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
+
 				if (radarSignature > 0)
 				{
-					//myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
+					myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
 
 					DetectedInfo detFo = new DetectedInfo(otherGrid, RelationsBlock.getRelationsTo(otherGrid));
 					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
@@ -701,7 +706,7 @@ namespace Rynchodon.AntennaRelay
 				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel))
 					return;
 
-				float distance = Vector3.Distance(Entity.GetPosition(), otherDevice.Entity.GetPosition());
+				float distance = Vector3.Distance(Entity.GetCentre(), otherDevice.Entity.GetCentre());
 				float signalStrength = otherPowerLevel - distance - detectionThreshold;
 
 				signalStrength += decoySignal * WorkingDecoys(otherDevice);
@@ -732,12 +737,13 @@ namespace Rynchodon.AntennaRelay
 
 		private bool SignalCannotReach(IMyEntity target, float compareDist)
 		{
-			return ReallyFar(target.GetPosition(), compareDist) || UnacceptableAngle(target) || Obstructed(target);
+			//myLogger.debugLog("really far: " + ReallyFar(target.GetCentre(), compareDist) + ", unacceptable angle: " + UnacceptableAngle(target) + ", obstructed: " + Obstructed(target), "SignalCannotReach()");
+			return ReallyFar(target.GetCentre(), compareDist) || UnacceptableAngle(target) || Obstructed(target);
 		}
 
 		private bool ReallyFar(Vector3D target, float compareTo)
 		{
-			Vector3D position = Entity.GetPosition();
+			Vector3D position = Entity.GetCentre();
 			return Math.Abs(position.X - target.X) > compareTo
 					|| Math.Abs(position.Y - target.Y) > compareTo
 					|| Math.Abs(position.Z - target.Z) > compareTo;
@@ -752,32 +758,44 @@ namespace Rynchodon.AntennaRelay
 				return false;
 
 			MatrixD Transform = Entity.WorldMatrixNormalizedInv.GetOrientation();
-			Vector3 directionToTarget = Vector3.Transform(target.GetPosition() - Entity.GetPosition(), Transform);
+			Vector3 directionToTarget = Vector3.Transform(target.GetCentre() - Entity.GetCentre(), Transform);
 			directionToTarget.Normalize();
+			myLogger.debugLog("my position: " + Entity.GetCentre() + ", target: " + target.DisplayName + ", target position: " + target.GetCentre()
+				+ ", displacement: " + (target.GetCentre() - Entity.GetCentre()) + ", direction: " + directionToTarget, "UnacceptableAngle()");
 
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(directionToTarget, out azimuth, out elevation);
 
+			myLogger.debugLog("azimuth: " + azimuth + ", min: " + myDefinition.MinAzimuth + ", max: " + myDefinition.MaxAzimuth
+				+ ", elevation: " + elevation + ", min: " + myDefinition.MinElevation + ", max: " + myDefinition.MaxElevation, "UnacceptableAngle()");
+			myLogger.debugLog("azimuth below: " + (azimuth < myDefinition.MinAzimuth) + ", azimuth above: " + (azimuth > myDefinition.MaxAzimuth)
+				+ ", elevation below: " + (elevation < myDefinition.MinElevation) + ", elevation above: " + (elevation > myDefinition.MaxElevation), "UnacceptableAngle()");
 			return azimuth < myDefinition.MinAzimuth || azimuth > myDefinition.MaxAzimuth || elevation < myDefinition.MinElevation || elevation > myDefinition.MaxElevation;
 		}
+
+		private List<Line> obstructed_lines = new List<Line>();
+		private HashSet<IMyEntity> obstructed_entities = new HashSet<IMyEntity>();
+		private List<IMyEntity> obstructed_ignore = new List<IMyEntity>();
 
 		/// <summary>
 		/// Determines if there is an obstruction between radar and target.
 		/// </summary>
 		private bool Obstructed(IMyEntity target)
 		{
-			List<Line> lines = new List<Line>();
-			lines.Add(new Line(Entity.GetPosition(), target.GetPosition(), false));
+			myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
 
-			HashSet<IMyEntity> entities = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntities_Safe(entities, (entity) => { return entity is IMyCharacter || entity is IMyCubeGrid; });
+			obstructed_lines.Clear();
+			obstructed_lines.Add(new Line(Entity.GetCentre(), target.GetCentre(), false));
 
-			List<IMyEntity> ignore = new List<IMyEntity>();
-			ignore.Add(Entity);
-			ignore.Add(target);
+			obstructed_entities.Clear();
+			MyAPIGateway.Entities.GetEntities_Safe(obstructed_entities, (entity) => { return entity is IMyCharacter || entity is IMyCubeGrid; });
+
+			obstructed_ignore.Clear();
+			obstructed_ignore.Add(Entity);
+			obstructed_ignore.Add(target);
 
 			object obstruction;
-			return RayCast.Obstructed(lines, entities, ignore, out obstruction);
+			return RayCast.Obstructed(obstructed_lines, obstructed_entities, obstructed_ignore, out obstruction);
 		}
 
 		#endregion

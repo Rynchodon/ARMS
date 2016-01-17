@@ -515,8 +515,6 @@
         JammingEffect=1.25
         PassiveDetect_Radar=10000
         MinElevation=-1.4
-        MinAzimuth=-0.78540
-        MaxAzimuth=0.78540
       </Description>
       <Components>
         <Component Count="215" Subtype="SteelPlate" />
@@ -562,8 +560,6 @@
         JammingEffect=1.25
         PassiveDetect_Radar=20000
         MinElevation=-1.4
-        MinAzimuth=-0.78540
-        MaxAzimuth=0.78540
       </Description>
       <Components>
         <Component Count="43" Subtype="SteelPlate" />
