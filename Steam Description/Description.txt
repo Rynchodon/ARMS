@@ -66,9 +66,12 @@ Autopilot cannot fly near / through hanger doors; piston and rotor doors will wo
 
 The Phased array Radar model has a small texture issue on DX9.
 
+The AWACS radar will not function if mounted directly on a rotor.
+
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07
 GitMaster Extraordinaire - [uRxP]DrChocolate
+Boeing Liaison - Jump'n Shootman
 Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 

@@ -1,13 +1,5 @@
 Will be moved to steam every release.
 
 major:
-AWACS Radar - Jump'n Shootman
 
 minor:
-fixes for targeting and fighting
-wait fix
-reduced missile mass & volume
-fix for SE 1.117
-offset phased radar
-block category for ARMS
-data file corrections
