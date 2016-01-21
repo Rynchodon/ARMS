@@ -23,6 +23,7 @@ namespace Rynchodon
 		/// <remarks>
 		/// If sendFrom == sendTo, returns false
 		/// </remarks>
+		[Obsolete()]
 		public static bool canSendTo(this IMyCubeBlock sendFrom, object sendTo, bool friendsOnly, float range = 0, bool rangeIsSquared = false)
 		{
 			sendFrom.throwIfNull_argument("sendFrom");

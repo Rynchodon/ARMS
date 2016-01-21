@@ -109,6 +109,11 @@ namespace Rynchodon.Update
 				// Does not receive Updates
 			});
 
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
+				NetworkBlock network = new NetworkBlock(block);
+				RegisterForUpdates(100, network.Update, block);
+			});
+
 			#endregion
 
 			#region Weapons

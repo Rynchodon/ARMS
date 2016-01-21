@@ -5,6 +5,7 @@ using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game.Components;
+using VRage.ModAPI;
 
 namespace Rynchodon
 {
@@ -88,6 +89,29 @@ namespace Rynchodon
 			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
+		}
+
+		public Logger(string calling_class, IMyEntity entity)
+		{
+			this.m_classname = calling_class;
+
+			IMyCubeBlock asBlock = entity as IMyCubeBlock;
+			if (asBlock != null)
+			{
+				this.f_context = () => asBlock.CubeGrid.DisplayName + " - " + asBlock.CubeGrid.EntityId;
+				this.f_state_primary = () => asBlock.DefinitionDisplayNameText;
+				this.f_state_secondary = () => asBlock.getNameOnly() + " - " + asBlock.EntityId;
+				return;
+			}
+
+			IMyCubeGrid asGrid = entity as IMyCubeGrid;
+			if (asGrid != null)
+			{
+				this.f_context = () => asGrid.DisplayName + " - " + asGrid.EntityId;
+				return;
+			}
+
+			this.f_context = entity.getBestName;
 		}
 
 		/// <summary>
