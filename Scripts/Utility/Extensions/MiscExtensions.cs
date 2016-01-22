@@ -56,8 +56,22 @@ namespace Rynchodon
 			return entity.Physics.LinearVelocity;
 		}
 
+		public static Vector3D GetCentre(this IMyCubeBlock block)
+		{
+			return block.GetPosition();
+		}
+
+		public static Vector3D GetCentre(this IMyCubeGrid grid)
+		{
+			return Vector3D.Transform(grid.LocalAABB.Center, grid.WorldMatrix);
+		}
+
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{
+			IMyCubeBlock block = entity as IMyCubeBlock;
+			if (block != null)
+				return block.GetPosition();
+
 			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
 		}
 
