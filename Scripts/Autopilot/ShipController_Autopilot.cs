@@ -9,7 +9,7 @@ using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.Components;
+using VRage.Game.Components;
 
 namespace Rynchodon.Autopilot
 {
@@ -288,7 +288,14 @@ namespace Rynchodon.Autopilot
 					m_logger.debugLog("running instructions", "Update()");
 
 					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
+					{
 						m_interpreter.instructionQueue.Dequeue().Invoke();
+						if (m_navSet.Settings_Current.WaitUntil > DateTime.UtcNow)
+						{
+							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil, "Update()");
+							return;
+						}
+					}
 
 					if (m_navSet.Settings_Current.NavigatorMover == null)
 					{
@@ -384,7 +391,6 @@ namespace Rynchodon.Autopilot
 				{
 					// a (de)merge happened
 					ReleaseControlledGrid();
-					return false;
 				}
 				else if (CanControlBlockGrid(m_controlledGrid))
 				{
@@ -399,17 +405,8 @@ namespace Rynchodon.Autopilot
 				}
 			}
 
-			if (!CanControlBlockGrid(myGrid))
-			{
-				// cannot take control
+			if (!CanControlBlockGrid(myGrid) || !GridBeingControlled.Add(myGrid))
 				return false;
-			}
-
-			if (!GridBeingControlled.Add(myGrid))
-			{
-				m_logger.debugLog("grid is already being controlled: " + myGrid.DisplayName, "CheckControlOfGrid()", Logger.severity.DEBUG);
-				return false;
-			}
 
 			m_controlledGrid = myGrid;
 			return true;
@@ -423,12 +420,10 @@ namespace Rynchodon.Autopilot
 		{
 			// is grid ready
 			if (grid.IsStatic)
-				//|| grid.BigOwners.Count == 0)
 				return false;
 
 			// is block ready
 			if (!m_block.Controller.IsWorking
-				//|| !grid.BigOwners.Contains(m_block.Controller.OwnerId)
 				|| !m_block.Controller.ControlThrusters)
 				return false;
 
@@ -551,7 +546,11 @@ namespace Rynchodon.Autopilot
 
 			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
 			if (navM != null)
+			{
 				navM.AppendCustomInfo(m_customInfo_build);
+				m_customInfo_build.Append("Distance: ");
+				m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+			}
 
 			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
 			if (navR != null && navR != navM)

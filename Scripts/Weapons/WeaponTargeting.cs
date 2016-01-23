@@ -371,56 +371,52 @@ namespace Rynchodon.Weapons
 
 		private void CheckFire()
 		{
-			if (!CurrentTarget.InterceptionPoint.HasValue)
+			Target target = CurrentTarget;
+
+			if (!target.FiringDirection.HasValue || !target.ContactPoint.HasValue)
 			{
 				FireWeapon = false;
 				return;
 			}
 
 			Vector3 weaponPosition = ProjectilePosition();
+			float distance = Vector3.Distance(weaponPosition, target.ContactPoint.Value);
 
-			float distance = LoadedAmmo.AmmoDefinition.MaxTrajectory; // test for obstructions between weapon and max range of weapon
-
-			Vector3 finalPosition;
-			Line shot;
-			float speed;
 			using (lock_CurrentDirection.AcquireSharedUsing())
 			{
-				finalPosition = weaponPosition + CurrentDirection * distance;
-				shot = new Line(weaponPosition, finalPosition, false);
-
-				//myLogger.debugLog("final position = " + finalPosition + ", weaponPosition = " + weaponPosition + ", direction = " + Vector3.Normalize(direction) + ", distanceToTarget = " + distanceToTarget, "CheckFire()");
-				//myLogger.debugLog("shot is from " + weaponPosition + " to " + finalPosition + ", target is at " + CurrentTarget.InterceptionPoint.Value + ", distance to target = " + distanceToTarget, "CheckFire()");
-				//myLogger.debugLog("100 m out: " + (weaponPosition + Vector3.Normalize(direction) * 100), "CheckFire()");
-				//myLogger.debugLog("distance between weapon and target is " + Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value) + ", distance between finalPosition and target is " + Vector3.Distance(finalPosition, CurrentTarget.InterceptionPoint.Value), "CheckFire()");
-				//myLogger.debugLog("distance between shot and target is " + shot.Distance(CurrentTarget.InterceptionPoint.Value), "CheckFire()");
-
-				speed = Vector3.RectangularDistance(ref CurrentDirection, ref previousFiringDirection);
+				float directionChange = Vector3.RectangularDistance(ref CurrentDirection, ref previousFiringDirection);
 				previousFiringDirection = CurrentDirection;
-			}
 
-			//float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
-			const float firingThreshold = 2.5f;
-
-			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
-
-			if (shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
-			{
-				if (Obstructed(finalPosition))
+				Vector3 p0 = weaponPosition + target.FiringDirection.Value * distance;
+				Vector3 p1 = weaponPosition + CurrentDirection * distance;
+				float threshold;
+				if (directionChange <= 0.01f)
+					threshold = 100f;
+				else if (directionChange >= 1f)
+					threshold = 1f;
+				else
+					threshold = 1f / directionChange;
+				myLogger.debugLog("firing direction: " + target.FiringDirection + ", current direct: " + CurrentDirection + ", P0: " + p0 + ", P1: " + p1 + ", diff sq: " + Vector3.DistanceSquared(p0, p1) + ", threshold: " + threshold, "CheckFire()");
+				if (Vector3.DistanceSquared(p0, p1) > threshold)
 				{
-					myLogger.debugLog("final position is obstructed", "CheckFire()");
-					if (speed < 0.01)
+					FireWeapon = false;
+					return;
+				}
+
+				if (Obstructed(target.ContactPoint.Value))
+				{
+					myLogger.debugLog("target is obstructed", "CheckFire()");
+					if (directionChange < 0.01f)
 					{
-						myLogger.debugLog("blacklisting: " + CurrentTarget.Entity.getBestName(), "CheckFire()");
+						myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
 						BlacklistTarget();
 					}
 					FireWeapon = false;
+					return;
 				}
-				else
-					FireWeapon = true;
+
+				FireWeapon = true;
 			}
-			else
-				FireWeapon = false;
 		}
 
 		/// <summary>

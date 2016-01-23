@@ -333,14 +333,11 @@ namespace Rynchodon.Weapons.Guided
 			if (!cached.FiringDirection.HasValue)
 				return;
 
-			myLogger.debugLog("target: " + cached.Entity.getBestName() + ", target position: " + cached.InterceptionPoint, "Update()");
+			myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint, "Update()");
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
-			//Vector3 newForward;
 
-			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition();
-			targetDirection.Normalize();
-			myLogger.debugLog("InterceptionPoint: " + cached.InterceptionPoint.Value + ", Position: " + ProjectilePosition() + ", target direction: " + targetDirection, "Update()");
+			Vector3 targetDirection = cached.FiringDirection.Value;
 
 			float angle = forward.AngleBetween(targetDirection);
 

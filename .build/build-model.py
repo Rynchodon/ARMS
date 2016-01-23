@@ -16,6 +16,7 @@ input = "MwmBuilder\\Content"
 output = input + "\\Output"
 
 mwmBuilder = os.devnull
+SpaceEngineers = os.devnull
 
 # find MwmBuilder
 if not os.path.exists(mwmBuilder):

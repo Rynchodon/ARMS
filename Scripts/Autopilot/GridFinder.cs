@@ -23,7 +23,6 @@ namespace Rynchodon.Autopilot
 		public readonly ShipController m_controller;
 		public readonly ShipControllerBlock m_controlBlock;
 		public readonly AttachedGrid.AttachmentKind m_allowedAttachment;
-		public readonly Vector3 m_startPosition;
 
 		private readonly Logger m_logger;
 		private readonly AllNavigationSettings m_navSet;
@@ -62,7 +61,6 @@ namespace Rynchodon.Autopilot
 				this.m_targetBlockName = targetBlock.LowerRemoveWhitespace();
 			this.m_controlBlock = controller;
 			this.m_allowedAttachment = allowedAttachment;
-			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 			this.MaximumRange = float.MaxValue;
 			this.m_navSet = navSet;
 		}
@@ -84,7 +82,6 @@ namespace Rynchodon.Autopilot
 			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_controller))
 				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
 
-			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
 			this.m_mustBeRecent = true;
@@ -150,7 +147,7 @@ namespace Rynchodon.Autopilot
 					bestNameLength = grid.DisplayName.Length;
 					if (bestNameLength == m_targetGridName.Length)
 					{
-						m_logger.debugLog("perfect match LastSeen: " + seen.Entity.getBestName(), "GridSearch()");
+						m_logger.debugLog("perfect match LastSeen: " + seen.Entity.getBestName(), "GridSearch_Friend()");
 						return true;
 					}
 				}
@@ -158,7 +155,7 @@ namespace Rynchodon.Autopilot
 			});
 
 			if (Grid != null)
-				m_logger.debugLog("Best match LastSeen: " + Grid.Entity.getBestName(), "GridSearch()");
+				m_logger.debugLog("Best match LastSeen: " + Grid.Entity.getBestName(), "GridSearch_Friend()");
 		}
 
 		protected void GridSearch_Enemy()
@@ -171,15 +168,36 @@ namespace Rynchodon.Autopilot
 					return false;
 
 				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
-				if (asGrid == null || !m_controlBlock.CubeBlock.canConsiderHostile(asGrid))
+				if (asGrid == null)
 					return false;
+				if (!m_controlBlock.CubeBlock.canConsiderHostile(asGrid))
+				{
+					//m_logger.debugLog("not hostile: " + asGrid.DisplayName, "GridSearch_Enemy()");
+					//m_logger.debugLog("grid relations: " + m_controlBlock.CubeBlock.getRelationsTo(asGrid), "GridSearch_Enemy()");
+					//List<IMyPlayer> players = MyAPIGateway.Players.GetPlayers_Safe();
+					//foreach (var owner in asGrid.BigOwners)
+					//{
+					//	m_logger.debugLog("big owner: " + owner + ", relations: " + m_controlBlock.CubeBlock.getRelationsTo(owner), "GridSearch_Enemy()");
+					//	foreach (var play in players)
+					//		if (play.PlayerID == owner)
+					//			m_logger.debugLog("big owner name: " + play.DisplayName, "GridSearch_Enemy()");
+					//}
+					//foreach (var owner in asGrid.SmallOwners)
+					//{
+					//	m_logger.debugLog("small owner: " + owner + ", relations: " + m_controlBlock.CubeBlock.getRelationsTo(owner), "GridSearch_Enemy()");
+					//	foreach (var play in players)
+					//		if (play.PlayerID == owner)
+					//			m_logger.debugLog("small owner name: " + play.DisplayName , "GridSearch_Enemy()");
+					//}
+					return false;
+				}
 
 				m_enemies.Add(seen);
-				m_logger.debugLog("enemy: " + seen.Entity.getBestName(), "Search()");
+				m_logger.debugLog("enemy: " + asGrid.DisplayName, "GridSearch_Enemy()");
 				return false;
 			});
 
-			m_logger.debugLog("number of enemies: " + m_enemies.Count, "Search()");
+			m_logger.debugLog("number of enemies: " + m_enemies.Count, "GridSearch_Enemy()");
 			IOrderedEnumerable<LastSeen> enemiesByDistance = m_enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
 			m_reason = ReasonCannotTarget.None;
 			foreach (LastSeen enemy in enemiesByDistance)
@@ -187,13 +205,13 @@ namespace Rynchodon.Autopilot
 				if (CanTarget(enemy))
 				{
 					Grid = enemy;
-					m_logger.debugLog("found target: " + enemy.Entity.getBestName(), "Search()");
+					m_logger.debugLog("found target: " + enemy.Entity.getBestName(), "GridSearch_Enemy()");
 					return;
 				}
 			}
 
 			Grid = null;
-			m_logger.debugLog("nothing found", "Search()");
+			m_logger.debugLog("nothing found", "GridSearch_Enemy()");
 		}
 
 		private void GridUpdate()
@@ -270,7 +288,7 @@ namespace Rynchodon.Autopilot
 				if (BlockCondition != null && !BlockCondition(Fatblock))
 					return false;
 
-				m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
+				//m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
 				if (blockName.Length < bestNameLength && blockName.Contains(m_targetBlockName))
 				{
 					m_logger.debugLog("block name matches: " + Fatblock.DisplayNameText, "BlockSearch()");
@@ -310,7 +328,7 @@ namespace Rynchodon.Autopilot
 			try
 			{
 				// if it is too far from start, cannot target
-				if (MaximumRange > 1f && Vector3.DistanceSquared(m_startPosition, seen.GetPosition()) > MaximumRange * MaximumRange)
+				if (MaximumRange > 1f && Vector3.DistanceSquared(m_controlBlock.CubeBlock.GetPosition(), seen.GetPosition()) > MaximumRange * MaximumRange)
 				{
 					m_logger.debugLog("out of range of start position: " + seen.Entity.getBestName(), "CanTarget()");
 					if (m_reason < ReasonCannotTarget.Too_Far)

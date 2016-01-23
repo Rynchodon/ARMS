@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
   <CategoryClasses>
+  
+    <!-- 'G' Menu -->
+  
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
       <Id>
         <TypeId>GuiBlockCategoryDefinition</TypeId>
@@ -10,17 +12,20 @@
       <DisplayName>DisplayName_Category_LargeBlocks</DisplayName>
       <Name>LargeBlocks</Name>
       <ItemIds>
-        <string>Cockpit/LargeBlockAutopilot</string>
+        <string>Cockpit/Autopilot-Block_Large</string>
         <string>Beacon/LargeBlockRadarRynAR</string>
         <string>Beacon/Radar_A_Large_Souper07</string>
-        <string>Beacon/PhasedArrayRadar_Large_Souper07</string>
-        <string>Beacon/AP_Radar_Jammer_Large</string>
+        <string>RadioAntenna/PhasedArrayRadar_Large_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadarOffset_Large_Souper07</string>
+        <string>Beacon/AWACSRadarLarge_JnSm</string>
+        <string>RadioAntenna/AP_Radar_Jammer_Large</string>
         <string>SmallMissileLauncher/Souper_R12VP_Launcher</string>
         <string>SmallMissileLauncher/Souper_R8EA_Launcher</string>
         <string>SmallMissileLauncher/Souper_B3MP_Launcher</string>
         <string>LargeMissileTurret/Souper_Missile_Defense_Turret</string>
       </ItemIds>
     </Category>
+    
     <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
       <Id>
         <TypeId>GuiBlockCategoryDefinition</TypeId>
@@ -29,13 +34,78 @@
       <DisplayName>DisplayName_Category_SmallBlocks</DisplayName>
       <Name>SmallBlocks</Name>
       <ItemIds>
-        <string>Cockpit/SmallBlockAutopilot</string>
+        <string>Cockpit/Autopilot-Block_Small</string>
         <string>Beacon/SmallBlockRadarRynAR</string>
         <string>Beacon/Radar_A_Small_Souper07</string>
-        <string>Beacon/PhasedArrayRadar_Small_Souper07</string>
-        <string>Beacon/AP_Radar_Jammer_Small</string>
+        <string>RadioAntenna/PhasedArrayRadar_Small_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadarOffset_Small_Souper07</string>
+        <string>Beacon/AWACSRadarSmall_JnSm</string>
+        <string>RadioAntenna/AP_Radar_Jammer_Small</string>
       </ItemIds>
     </Category>
+    
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId />
+      </Id>
+      <DisplayName>ARMS Blocks</DisplayName>
+      <Name>ARMS_Blocks</Name>
+      <ItemIds>
+        <string>Cockpit/Autopilot-Block_Large</string>
+        <string>Beacon/LargeBlockRadarRynAR</string>
+        <string>Beacon/Radar_A_Large_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadar_Large_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadarOffset_Large_Souper07</string>
+        <string>Beacon/AWACSRadarLarge_JnSm</string>
+        <string>RadioAntenna/AP_Radar_Jammer_Large</string>
+        <string>SmallMissileLauncher/Souper_R12VP_Launcher</string>
+        <string>SmallMissileLauncher/Souper_R8EA_Launcher</string>
+        <string>SmallMissileLauncher/Souper_B3MP_Launcher</string>
+        <string>LargeMissileTurret/Souper_Missile_Defense_Turret</string>
+        <string>Cockpit/Autopilot-Block_Small</string>
+        <string>Beacon/SmallBlockRadarRynAR</string>
+        <string>Beacon/Radar_A_Small_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadar_Small_Souper07</string>
+        <string>RadioAntenna/PhasedArrayRadarOffset_Small_Souper07</string>
+        <string>Beacon/AWACSRadarSmall_JnSm</string>
+        <string>RadioAntenna/AP_Radar_Jammer_Small</string>
+      </ItemIds>
+    </Category>
+    
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId/>
+      </Id>
+      <DisplayName>DisplayName_Category_ShipWeaponsTools</DisplayName>
+      <Name>WeaponsTools</Name>
+      <ItemIds>
+        <string>SmallMissileLauncher/Souper_R12VP_Launcher</string>
+        <string>SmallMissileLauncher/Souper_R8EA_Launcher</string>
+        <string>SmallMissileLauncher/Souper_B3MP_Launcher</string>
+        <string>LargeMissileTurret/Souper_Missile_Defense_Turret</string>
+      </ItemIds>
+    </Category>
+    
+    <!-- Cockpit Toolbar -->
+   
+    <Category xsi:type="MyObjectBuilder_GuiBlockCategoryDefinition">
+      <Id>
+        <TypeId>GuiBlockCategoryDefinition</TypeId>
+        <SubtypeId/>
+      </Id>
+      <DisplayName>DisplayName_Category_ShipWeaponsTools</DisplayName>
+      <Name>ShipWeaponsTools</Name>
+      <SearchBlocks>false</SearchBlocks>
+      <IsShipCategory>true</IsShipCategory>
+      <IsBlockCategory>false</IsBlockCategory>
+      <ItemIds>
+        <string>SmallMissileLauncher/Souper_R12VP_Launcher</string>
+        <string>SmallMissileLauncher/Souper_R8EA_Launcher</string>
+        <string>SmallMissileLauncher/Souper_B3MP_Launcher</string>
+      </ItemIds>
+    </Category>
+    
   </CategoryClasses>
-
 </Definitions>

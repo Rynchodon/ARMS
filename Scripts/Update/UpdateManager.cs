@@ -11,9 +11,9 @@ using Rynchodon.Threading;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
-using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -350,15 +350,7 @@ namespace Rynchodon.Update
 					return;
 
 				if (!MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Session.Player == null)
-				{
-					if (!player_wait_message)
-					{
-						player_wait_message = true;
-						myLogger.alwaysLog("Waiting for player value", "Init()");
-					}
 					return;
-				}
-				myLogger.alwaysLog("Got player value", "Init()");
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();

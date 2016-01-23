@@ -67,6 +67,8 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
 			customInfo.Append("Moving to ");
+			if (Waypoint)
+				customInfo.Append("waypoint: ");
 			customInfo.AppendLine(location.ToPretty());
 
 			//customInfo.Append("Distance: ");
@@ -85,8 +87,9 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_navSet.Settings_Current.Distance > m_controlBlock.CubeGrid.GetLongestDim() * 2)
 			{
-				Vector3 direction = location - NavigationBlock.WorldPosition;
-				m_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+				m_mover.CalcRotate();
+				//Vector3 direction = location - NavigationBlock.WorldPosition;
+				//m_mover.CalcRotate(NavigationBlock, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 			}
 			else
 				m_mover.StopRotate();

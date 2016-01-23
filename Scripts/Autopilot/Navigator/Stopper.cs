@@ -8,7 +8,8 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// <para>Stops the ship</para>
 	/// </summary>
-	public class Stopper : NavigatorMover, INavigatorRotator
+	/// Do not try to make this manage rotation, it may have been set for a reason.
+	public class Stopper : NavigatorMover
 	{
 
 		private const float StoppedThreshold = 0.001f;
@@ -57,11 +58,6 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			//else
 			//	_logger.debugLog("not stopped", "Stopper()");
-		}
-
-		public void Rotate()
-		{
-			m_mover.InGravity_LevelOff();
 		}
 
 		/// <summary>

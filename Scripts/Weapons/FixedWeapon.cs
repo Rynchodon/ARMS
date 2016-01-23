@@ -71,7 +71,7 @@ namespace Rynchodon.Weapons
 					MyMotorTurret.Stop();
 				return;
 			}
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
 			CheckFire(CubeBlock.WorldMatrix.Forward);

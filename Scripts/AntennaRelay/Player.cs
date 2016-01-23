@@ -93,7 +93,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				myLogger.debugLog("# of gps: " + list.Count, "Player()");
 				foreach (var gps in list)
-					if (gps.Description.EndsWith(descrEnd))
+					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
 						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
 						MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);
@@ -105,14 +105,7 @@ namespace Rynchodon.AntennaRelay
 
 		public void Update100()
 		{
-			try
-			{
-				UpdateGPS();
-			}
-			catch (Exception ex)
-			{
-				myLogger.debugLog("Exception: " + ex, "Update100()", Logger.severity.ERROR);
-			}
+			UpdateGPS();
 		}
 
 		public void receive(LastSeen seen)

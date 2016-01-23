@@ -1,6 +1,7 @@
-
 using System;
+using System.Collections.Generic;
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -8,33 +9,69 @@ namespace Rynchodon
 	public static class MyPlanetExtensions
 	{
 
-		private static readonly Logger s_logger = new Logger("MyPlanetExtensions");
-		private static readonly FastResourceLock lock_getSurfPoint = new FastResourceLock();
+		private static Logger s_logger = new Logger("MyPlanetExtensions");
 
-		[System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
+		private static FastResourceLock lock_getSurfPoint = new FastResourceLock("lock_getSurfPoint");
+
+		static MyPlanetExtensions()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			s_logger = null;
+			lock_getSurfPoint = null;
+		}
+
 		public static bool Intersects(this MyPlanet planet, ref BoundingSphereD sphere)
 		{
-			Vector3D centre = sphere.Center;
-			Vector3D closestPoint = Vector3.Zero;
+			Vector3D sphereCentre = sphere.Center;
+			Vector3D planetCentre = planet.GetCentre();
 
-			// obviously not ideal but there does not seem to be any alternative
-			try
-			{
-				using (lock_getSurfPoint.AcquireExclusiveUsing())
-					closestPoint = planet.GetClosestSurfacePointGlobal(ref centre);
-			}
-			catch (Exception ex)
-			{
-				s_logger.debugLog("Caught Exception: " + ex, "Intersects()", Logger.severity.WARNING);
-				return true;
-			}
+			double distSq_sphereToPlanetCentre = Vector3D.DistanceSquared(sphereCentre, planetCentre);
+			double everest = planet.MaximumRadius + sphere.Radius; everest *= everest;
+			if (distSq_sphereToPlanetCentre > everest)
+				return false;
+
+			return true;
+
+			Vector3D closestPoint = GetClosestSurfacePointGlobal_Safeish(planet, sphereCentre);
 
 			double minDistance = sphere.Radius * sphere.Radius;
-			if (Vector3D.DistanceSquared(centre, closestPoint) <= minDistance)
+			if (Vector3D.DistanceSquared(sphereCentre, closestPoint) <= minDistance)
 				return true;
 
-			Vector3D planetCentre = planet.GetCentre();
-			return Vector3D.DistanceSquared(planetCentre, centre) < Vector3D.DistanceSquared(planetCentre, closestPoint);
+			return distSq_sphereToPlanetCentre < Vector3D.DistanceSquared(planetCentre, closestPoint);
+		}
+
+		public static Vector3D GetClosestSurfacePointGlobal_Safeish(this MyPlanet planet, Vector3D worldPoint)
+		{
+			bool except = false;
+			Vector3D surface = Vector3D.Zero;
+			MainLock.UsingShared(() => except = GetClosestSurfacePointGlobal_Sub_Safeish(planet, worldPoint, out surface));
+
+			if (except)
+				return GetClosestSurfacePointGlobal_Safeish(planet, worldPoint);
+			return surface;
+		}
+
+		[System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
+		private static bool GetClosestSurfacePointGlobal_Sub_Safeish(this MyPlanet planet, Vector3D worldPoint, out Vector3D closestPoint)
+		{
+			using (lock_getSurfPoint.AcquireExclusiveUsing())
+				try
+				{
+					closestPoint = planet.GetClosestSurfacePointGlobal(ref worldPoint);
+					return false;
+				}
+				catch (AccessViolationException ex)
+				{
+					s_logger.debugLog("Caught Exception: " + ex, "GetClosestSurfacePointGlobal_Sub_Safeish()", Logger.severity.DEBUG);
+					closestPoint = Vector3D.Zero;
+					return true;
+				}
 		}
 
 	}

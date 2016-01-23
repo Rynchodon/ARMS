@@ -65,8 +65,11 @@ namespace Rynchodon.Autopilot.Instruction
 			SyntaxError = false;
 			string instructions = preParse().getInstructions();
 
-			if (instructions == null)
+			if (string.IsNullOrWhiteSpace(instructions))
+			{
+				Mover.Block.DisableControl();
 				return;
+			}
 
 			Errors.Clear();
 			instructionQueue.Clear();
@@ -120,6 +123,12 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool enqueueAction(string instruction)
 		{
 			VRage.Exceptions.ThrowIf<InstructionQueueOverflow>(instructionQueue.Count > 1000);
+
+			if (string.IsNullOrWhiteSpace(instruction))
+			{
+				m_logger.debugLog("Ignoring whitespace: \"" + instruction + "\"", "enqueueAction()");
+				return true;
+			}
 
 			if (instruction.Length < 2)
 			{
@@ -827,8 +836,8 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				new Stopper(Mover, NavSet);
 				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
+				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
 			};
 			return true;
 		}
@@ -1084,19 +1093,14 @@ namespace Rynchodon.Autopilot.Instruction
 				IMyCubeBlock Fatblock = slim.FatBlock;
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
-					string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly()
-						: Fatblock.DisplayNameText;
-
-					if (blockName == null)
+					string blockName;
+					try
+					{ blockName = Fatblock.getNameOnly().LowerRemoveWhitespace(); }
+					catch (NullReferenceException ex)
 					{
-						m_logger.debugLog("Null block name: " + Fatblock.DefinitionDisplayNameText + '/' + Fatblock.DisplayNameText, "GetLocalBlock()", Logger.severity.WARNING);
-						return false;
+						m_logger.alwaysLog("Failed to process block name of " + Fatblock.DisplayNameText + '/' + Fatblock.DefinitionDisplayNameText, "GetLocalBlock()", Logger.severity.ERROR);
+						throw ex;
 					}
-
-					blockName = blockName.LowerRemoveWhitespace();
-
-					//myLogger.debugLog("checking: " + blockName, "GetLocalBlock()");
 
 					if (blockName.Length < bestNameLength && blockName.Contains(searchFor))
 					{

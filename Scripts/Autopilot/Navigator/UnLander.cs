@@ -65,6 +65,9 @@ namespace Rynchodon.Autopilot.Navigator
 				else
 				{
 					m_logger.debugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, "UnLander()", Logger.severity.INFO);
+					IMyFunctionalBlock func = m_unlandBlock.Block as IMyFunctionalBlock;
+					if (func != null)
+						func.RequestEnable(false);
 					return;
 				}
 			}
@@ -82,8 +85,8 @@ namespace Rynchodon.Autopilot.Navigator
 			m_detatchedOffset = attachOffset + leaveDirection * 20f;
 			m_logger.debugLog("m_detatchedOffset: " + m_detatchedOffset, "UnLander()", Logger.severity.DEBUG);
 
-			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
-			m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
+			m_navSet.Settings_Task_NavWay.NavigatorMover = this;
+			m_navSet.Settings_Task_NavWay.NavigatorRotator = this;
 		}
 
 		public override void Move()
@@ -130,7 +133,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.DistanceLessThan(10f))
 			{
 				m_logger.debugLog("Reached destination: " + m_destination, "Move()", Logger.severity.INFO);
-				m_navSet.OnTaskComplete_NavMove();
+				m_navSet.OnTaskComplete_NavWay();
 				m_mover.StopMove();
 				m_mover.StopRotate(); 
 				return;

@@ -1,6 +1,7 @@
 ﻿using System;
 using Sandbox.Common;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.ModAPI;
 
 namespace Rynchodon
@@ -97,19 +98,11 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyPlayer player, long playerID)
 		{
-			if (player == null)
-				throw new ArgumentNullException("player");
-
 			return GetRelations(player.GetRelationTo(playerID));
 		}
 
 		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeGrid target, Relations breakOn = Relations.None)
 		{
-			if (player == null)
-				throw new ArgumentNullException("player");
-			if (target == null)
-				throw new ArgumentNullException("grid");
-
 			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
 				return Relations.Enemy;
 
@@ -133,16 +126,27 @@ namespace Rynchodon
 
 		private static Relations getRelationsTo(this IMyCubeBlock block, long playerID)
 		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
+			if (block.OwnerId == playerID)
+				return Relations.Owner;
 
-			return GetRelations( block.GetUserRelationToOwner(playerID));
+			IMyFaction fact1 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(block.OwnerId);
+			if (fact1 == null)
+				return Relations.Enemy;
+			IMyFaction fact2 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerID);
+			if (fact2 == null)
+				return Relations.Enemy;
+
+			if (fact1  == fact2)
+				return Relations.Faction;
+
+			if (MyAPIGateway.Session.Factions.GetRelationBetweenFactions(fact1.FactionId, fact2.FactionId) == MyRelationsBetweenFactions.Neutral)
+				return Relations.Neutral;
+
+			return Relations.Enemy;
 		}
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeBlock target)
 		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
-
 			if (block.OwnerId == 0 || target.OwnerId == 0)
 				return Relations.None;
 			return block.getRelationsTo(target.OwnerId);
@@ -150,9 +154,6 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
 		{
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(block == null, "block");
-			VRage.Exceptions.ThrowIf<ArgumentNullException>(target == null, "target");
-
 			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
 				return Relations.Enemy;
 
@@ -226,17 +227,22 @@ namespace Rynchodon
 		{ return toIsHostile(block.getRelationsTo(target, Relations.Enemy)); }
 
 
+		/// <summary>
+		/// Different from the others because share mode matters.
+		/// </summary>
 		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
 		{
-			switch (target.getRelationsTo(block))
+			switch (target.GetUserRelationToOwner(block.OwnerId))
 			{
-				case Relations.Faction:
-				case Relations.Owner:
-					return true;
-				case Relations.None:
-					return target.OwnerId == 0;
-				default:
+				case MyRelationsBetweenPlayerAndBlock.Enemies:
+				case MyRelationsBetweenPlayerAndBlock.Neutral:
 					return false;
+				case MyRelationsBetweenPlayerAndBlock.FactionShare:
+				case MyRelationsBetweenPlayerAndBlock.Owner:
+					return true;
+				case MyRelationsBetweenPlayerAndBlock.NoOwnership:
+				default:
+					return target.OwnerId == 0;
 			}
 		}
 	}

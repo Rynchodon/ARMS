@@ -179,7 +179,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (navBlock.Block is IMyShipDrill)
 				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(navBlock.Block);
 			else
-				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(m_mover.Block.CubeGrid);
+				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(() => m_mover.Block.CubeGrid);
 
 			if (m_navDrill.FunctionalBlocks == 0)
 			{
@@ -361,7 +361,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (m_state)
 				{
 					case State.Approaching:
-						m_mover.InGravity_LevelOff();
+						m_mover.CalcRotateStop();
 						return;
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())
@@ -415,7 +415,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 			//m_logger.debugLog("rotating to face " + m_currentTarget, "Rotate()");
 			if (m_state == State.Approaching)
-				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+				m_mover.CalcRotate();
 			else
 				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 		}

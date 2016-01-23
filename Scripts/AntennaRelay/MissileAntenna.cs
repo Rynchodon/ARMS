@@ -7,7 +7,7 @@ namespace Rynchodon.AntennaRelay
 	{
 
 		public MissileAntenna(IMyEntity missile)
-			: base(missile)
+			: base(() => missile)
 		{
 			Registrar.Add(missile, this);
 		}
