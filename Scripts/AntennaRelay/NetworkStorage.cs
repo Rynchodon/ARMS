@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Sandbox.ModAPI;
 using VRage.Collections;
 
 namespace Rynchodon.AntennaRelay
@@ -12,20 +13,36 @@ namespace Rynchodon.AntennaRelay
 		private static FastResourceLock lock_sendToSet = new FastResourceLock();
 		private static HashSet<NetworkStorage> s_sendToSet = new HashSet<NetworkStorage>();
 
+		static NetworkStorage()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			lock_sendToSet = null;
+			s_sendToSet = null;
+		}
+
 		/// <summary>
 		/// Send a LastSeen to one or more NetworkStorage.
 		/// </summary>
 		public static void Receive(ICollection<NetworkStorage> storage, LastSeen seen)
 		{
-			using (lock_sendToSet.AcquireExclusiveUsing())
+			lock_sendToSet.AcquireExclusive();
+			try
 			{
 				foreach (NetworkStorage sto in storage)
 					AddStorage(sto);
 
 				foreach (NetworkStorage sto in s_sendToSet)
 					sto.in_Receive(seen);
-
+			}
+			finally
+			{
 				s_sendToSet.Clear();
+				lock_sendToSet.ReleaseExclusive();
 			}
 		}
 
@@ -34,15 +51,19 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public static void Receive(ICollection<NetworkStorage> storage, Message msg)
 		{
-			using (lock_sendToSet.AcquireExclusiveUsing())
+			lock_sendToSet.AcquireExclusive();
+			try
 			{
 				foreach (NetworkStorage sto in storage)
 					AddStorage(sto);
 
 				foreach (NetworkStorage sto in s_sendToSet)
 					sto.in_Receive(msg);
-
+			}
+			finally
+			{
 				s_sendToSet.Clear();
+				lock_sendToSet.ReleaseExclusive();
 			}
 		}
 
@@ -56,7 +77,8 @@ namespace Rynchodon.AntennaRelay
 			if (s_sendToSet.Add(storage))
 				using (storage.lock_m_pushTo_count.AcquireSharedUsing())
 					foreach (NetworkNode connected in storage.m_pushTo_count.Keys)
-						AddStorage(connected.Storage);
+						if (connected.Storage != null)
+							AddStorage(connected.Storage);
 		}
 
 		private readonly Logger m_logger;
@@ -159,27 +181,35 @@ namespace Rynchodon.AntennaRelay
 
 		public void Receive(LastSeen seen)
 		{
-			using (lock_sendToSet.AcquireExclusiveUsing())
+			lock_sendToSet.AcquireExclusive();
+			try
 			{
 				AddStorage(this);
 
 				foreach (NetworkStorage sto in s_sendToSet)
 					sto.in_Receive(seen);
-
+			}
+			finally
+			{
 				s_sendToSet.Clear();
+				lock_sendToSet.ReleaseExclusive();
 			}
 		}
 
 		public void Receive(Message msg)
 		{
-			using (lock_sendToSet.AcquireExclusiveUsing())
+			lock_sendToSet.AcquireExclusive();
+			try
 			{
 				AddStorage(this);
 
 				foreach (NetworkStorage sto in s_sendToSet)
 					sto.in_Receive(msg);
-
+			}
+			finally
+			{
 				s_sendToSet.Clear();
+				lock_sendToSet.ReleaseExclusive();
 			}
 		}
 

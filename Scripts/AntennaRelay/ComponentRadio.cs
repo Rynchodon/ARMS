@@ -74,6 +74,18 @@ namespace Rynchodon.AntennaRelay
 			return NetworkNode.CommunicationType.TwoWay;
 		}
 
+		public bool CanBroadcastTo(ComponentRadio other)
+		{
+			if (!IsWorking || !other.IsWorking)
+				return false;
+
+			if (!CanBroadcastData || !other.CanReceive)
+				return false;
+
+			float distSquared = Vector3.DistanceSquared(Entity.GetPosition(), other.Entity.GetPosition());
+			return distSquared <= Radius * Radius;
+		}
+
 		private class CR_AntennaBlock : ComponentRadio
 		{
 

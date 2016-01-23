@@ -22,6 +22,18 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private static int s_searchIdPool;
+		private static HashSet<NetworkStorage> s_sendPositionTo = new HashSet<NetworkStorage>();
+
+		static NetworkNode()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			s_sendPositionTo = null;
+		}
 
 		private readonly Logger m_logger;
 		private readonly Func<string> m_loggingName;
@@ -73,7 +85,7 @@ namespace Rynchodon.AntennaRelay
 		public NetworkNode(IMyCubeBlock block)
 		{
 			this.m_loggingName = () => block.DisplayNameText;
-			this.m_logger = new Logger(GetType().Name, block) { MinimumLevel = Logger.severity.DEBUG };
+			this.m_logger = new Logger(GetType().Name, block);
 			this.m_ownerId = () => block.OwnerId;
 			this.m_entity = block;
 			this.m_comp_blockAttach = block;
@@ -95,7 +107,7 @@ namespace Rynchodon.AntennaRelay
 			IMyPlayer player = character.GetPlayer_Safe();
 
 			this.m_loggingName = () => player.DisplayName;
-			this.m_logger = new Logger(GetType().Name, this.m_loggingName) { MinimumLevel = Logger.severity.DEBUG };
+			this.m_logger = new Logger(GetType().Name, this.m_loggingName);
 			this.m_ownerId = () => player.PlayerID;
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
@@ -110,6 +122,8 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public void Update()
 		{
+			s_sendPositionTo.Clear();
+
 			if (m_comp_laser != null)
 				m_comp_laser.Update();
 
@@ -152,8 +166,8 @@ namespace Rynchodon.AntennaRelay
 							}
 						}
 					}
-					else
-						m_logger.debugLog("Affirmed connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
+					//else
+					//	m_logger.debugLog("Affirmed connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
 				}
 				else
 				{
@@ -162,8 +176,8 @@ namespace Rynchodon.AntennaRelay
 						m_logger.debugLog("No longer connected to " + node.LoggingName, "Update()", Logger.severity.DEBUG);
 						checkPrimary = true;
 					}
-					else
-						m_logger.debugLog("Affirmed lack of connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
+					//else
+					//	m_logger.debugLog("Affirmed lack of connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
 				}
 
 				if (Storage != null)
@@ -174,8 +188,8 @@ namespace Rynchodon.AntennaRelay
 							m_logger.debugLog("New one-way connection to " + node.LoggingName, "Update()", Logger.severity.DEBUG);
 							Storage.AddPushTo(node);
 						}
-						else
-							m_logger.debugLog("Affirmed one-way connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
+						//else
+						//	m_logger.debugLog("Affirmed one-way connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
 					}
 					else
 					{
@@ -184,8 +198,8 @@ namespace Rynchodon.AntennaRelay
 							m_logger.debugLog("Lost one-way connection to " + node.LoggingName, "Update()", Logger.severity.DEBUG);
 							Storage.RemovePushTo(node);
 						}
-						else
-							m_logger.debugLog("Affirmed lack of one-way connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
+						//else
+						//	m_logger.debugLog("Affirmed lack of one-way connection to " + node.LoggingName, "Update()", Logger.severity.TRACE);
 					}
 			});
 
@@ -202,6 +216,10 @@ namespace Rynchodon.AntennaRelay
 
 			// laser connections don't update immediately, so don't worry about a single warning (per block) if there is a laser involved
 			m_logger.debugLog(!IsConnectedTo(Storage.PrimaryNode), "Not connected to primary node", "Update()", Logger.severity.WARNING);
+
+			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", "Update()", Logger.severity.TRACE);
+			s_sendPositionTo.Add(Storage);
+			NetworkStorage.Receive(s_sendPositionTo, new LastSeen(m_entity.GetTopMostParent(), LastSeen.UpdateTime.Broadcasting));
 		}
 
 		/// <summary>
@@ -211,45 +229,50 @@ namespace Rynchodon.AntennaRelay
 		private CommunicationType TestConnection(NetworkNode other)
 		{
 			// test relations
-			if (this.m_comp_blockAttach != null)
+			if (this.m_comp_blockAttach != null ?
+				!this.m_comp_blockAttach.canConsiderFriendly(other.m_ownerId.Invoke()) :
+				!this.m_player.canConsiderFriendly(other.m_ownerId.Invoke()))
 			{
-				if (!this.m_comp_blockAttach.canConsiderFriendly(other.m_ownerId.Invoke()))
-					return CommunicationType.None;
-			}
-			else if (!this.m_player.canConsiderFriendly(other.m_ownerId.Invoke()))
+				if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastTo(other.m_comp_radio) && other.Storage != null)
+					if (s_sendPositionTo.Add(other.Storage))
+						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
+					else
+						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
 				return CommunicationType.None;
+			}
 
 			// test block connection
 			if (this.m_comp_blockAttach != null && other.m_comp_blockAttach != null &&
 				this.m_comp_blockAttach.IsWorking && other.m_comp_blockAttach.IsWorking &&
 				AttachedGrid.IsGridAttached(this.m_comp_blockAttach.CubeGrid, other.m_comp_blockAttach.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
-			{
-				m_logger.debugLog("blocks are attached: " + other.LoggingName, "TestConnection()");
+			//{
+				//m_logger.debugLog("blocks are attached: " + other.LoggingName, "TestConnection()");
 				return CommunicationType.TwoWay;
-			}
+			//}
 
 			// test laser
 			if (this.m_comp_laser != null && other.m_comp_laser != null && this.m_comp_laser.IsConnectedTo(other.m_comp_laser))
-			{
-				m_logger.debugLog("laser connection: " + other.LoggingName, "TestConnection()");
+			//{
+			//	m_logger.debugLog("laser connection: " + other.LoggingName, "TestConnection()");
 				return CommunicationType.TwoWay;
-			}
+			//}
 
 			// test radio
 			if (this.m_comp_radio != null && other.m_comp_radio != null)
-			{
-				CommunicationType radioComm = this.m_comp_radio.TestConnection(other.m_comp_radio);
-				switch (radioComm)
-				{
-					case CommunicationType.TwoWay:
-						m_logger.debugLog("Two way radio communication: " + other.LoggingName, "TestConnection()");
-						break;
-					case CommunicationType.OneWay:
-						m_logger.debugLog("One-way radio communication to " + other.LoggingName, "TestConnection()");
-						break;
-				}
-				return radioComm;
-			}
+			//{
+				//CommunicationType radioComm = this.m_comp_radio.TestConnection(other.m_comp_radio);
+				//switch (radioComm)
+				//{
+				//	case CommunicationType.TwoWay:
+				//		m_logger.debugLog("Two way radio communication: " + other.LoggingName, "TestConnection()");
+				//		break;
+				//	case CommunicationType.OneWay:
+				//		m_logger.debugLog("One-way radio communication to " + other.LoggingName, "TestConnection()");
+				//		break;
+				//}
+				//return radioComm;
+				return this.m_comp_radio.TestConnection(other.m_comp_radio); 
+			//}
 
 			return CommunicationType.None;
 		}
