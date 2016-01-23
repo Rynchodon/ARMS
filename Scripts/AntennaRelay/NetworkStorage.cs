@@ -75,7 +75,7 @@ namespace Rynchodon.AntennaRelay
 
 		public NetworkStorage(NetworkNode primary)
 		{
-			this.m_logger = new Logger(GetType().Name, primary.Entity);
+			this.m_logger = new Logger(GetType().Name, () => primary.LoggingName);
 			this.PrimaryNode = primary;
 
 			m_logger.debugLog("Created", "NetworkStorage()");
@@ -83,7 +83,7 @@ namespace Rynchodon.AntennaRelay
 
 		public NetworkStorage Clone(NetworkNode primary)
 		{
-			m_logger.debugLog("cloning, primary " + primary.Entity.getBestName(), "Clone()", Logger.severity.DEBUG);
+			m_logger.debugLog("cloning, primary " + primary.LoggingName, "Clone()", Logger.severity.DEBUG);
 
 			NetworkStorage clone = new NetworkStorage(primary);
 
@@ -103,7 +103,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(NetworkStorage recipient)
 		{
-			m_logger.debugLog("copying to, " + recipient.PrimaryNode.Entity.getBestName(), "CopyTo()", Logger.severity.DEBUG);
+			m_logger.debugLog("copying to, " + recipient.PrimaryNode.LoggingName, "CopyTo()", Logger.severity.DEBUG);
 
 			using (lock_m_lastSeen.AcquireSharedUsing())
 				foreach (LastSeen seen in m_lastSeen.Values)

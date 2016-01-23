@@ -8,6 +8,7 @@ namespace Rynchodon
 		#region SE Constants
 
 		public const int UpdatesPerSecond = 60;
+		public const float PlayerBroadcastRadius = 200f;
 
 		#endregion SE Constants
 

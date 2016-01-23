@@ -73,45 +73,19 @@ namespace Rynchodon.Update
 
 			#region Antenna Communication
 
-			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
-				Beacon newBeacon = new Beacon(block);
-				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
-				TextPanel newTextPanel = new TextPanel(block);
-				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
-				LaserAntenna newLA = new LaserAntenna(block);
-				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
-				ProgrammableBlock newPB = new ProgrammableBlock(block);
-				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-				RadioAntenna newRA = new RadioAntenna(block);
-				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-			});
-			RegisterForPlayer((player) => {
-				Player p = new Player(player);
-				RegisterForUpdates(100, p.Update100, player, Player.OnLeave);
-			});
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
-						new ShipController(block);
-					// Does not receive Updates
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
-					new ShipController(block);
-				// Does not receive Updates
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), block => {
+				NetworkNode node = new NetworkNode(block);
+				RegisterForUpdates(100, node.Update, block);
 			});
 
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-				NetworkBlock network = new NetworkBlock(block);
-				RegisterForUpdates(100, network.Update, block);
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), block => {
+				NetworkNode node = new NetworkNode(block);
+				RegisterForUpdates(100, node.Update, block);
+			});
+
+			RegisterForCharacter(character => {
+				NetworkNode node = new NetworkNode(character);
+				RegisterForUpdates(100, node.Update, (IMyEntity)character);
 			});
 
 			#endregion

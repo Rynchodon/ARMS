@@ -201,6 +201,9 @@ namespace Rynchodon
 		}
 
 
+		public static bool canConsiderFriendly(this IMyPlayer player, long playerID)
+		{ return toIsFriendly(player.getRelationsTo(playerID)); }
+		
 		public static bool canConsiderFriendly(this IMyCubeBlock block, long playerID)
 		{ return toIsFriendly(block.getRelationsTo(playerID)); }
 
