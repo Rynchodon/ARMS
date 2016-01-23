@@ -30,8 +30,6 @@ namespace Rynchodon.Update
 	/// <para>    Disadvantages of MyGameLogicComponent:</para>
 	/// <para>        NeedsUpdate can be changed by the game after you set it, so you have to work around that. i.e. For remotes it is set to NONE and UpdatingStopped() never gets called.</para>
 	/// <para>        Scripts can get created before MyAPIGateway fields are filled, which can be a serious problem for initializing.</para>
-	/// <para>    Advantages of MyGameLogicComponent</para>
-	/// <para>        An object builder is available, I assume this can be used to save data (have not tried it).</para>
 	/// <para> </para>
 	/// <para>    Advantages of UpdateManager:</para>
 	/// <para>        Scripts can be registered conditionally. MyGameLogicComponent now supports subtypes but UpdateManager can technically do any condition.</para>
@@ -73,15 +71,20 @@ namespace Rynchodon.Update
 
 			#region Antenna Communication
 
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), block => {
+			Action<IMyCubeBlock> nodeConstruct = block => {
 				NetworkNode node = new NetworkNode(block);
 				RegisterForUpdates(100, node.Update, block);
-			});
+			};
 
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), block => {
-				NetworkNode node = new NetworkNode(block);
-				RegisterForUpdates(100, node.Update, block);
-			});
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
+
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
+
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), nodeConstruct);
+
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
+
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), nodeConstruct);
 
 			RegisterForCharacter(character => {
 				NetworkNode node = new NetworkNode(character);

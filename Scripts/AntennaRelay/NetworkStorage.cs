@@ -55,8 +55,8 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (s_sendToSet.Add(storage))
 				using (storage.lock_m_pushTo_count.AcquireSharedUsing())
-					foreach (NetworkStorage connected in storage.m_pushTo_count.Keys)
-						AddStorage(connected);
+					foreach (NetworkNode connected in storage.m_pushTo_count.Keys)
+						AddStorage(connected.Storage);
 		}
 
 		private readonly Logger m_logger;
@@ -67,7 +67,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly HashSet<Message> m_messages = new HashSet<Message>();
 		private readonly FastResourceLock lock_m_pushTo_count = new FastResourceLock();
 		/// <summary>For one way radio communication.</summary>
-		private readonly Dictionary<NetworkStorage, int> m_pushTo_count = new Dictionary<NetworkStorage, int>();
+		private readonly Dictionary<NetworkNode, int> m_pushTo_count = new Dictionary<NetworkNode, int>();
 
 		public readonly NetworkNode PrimaryNode;
 
@@ -78,7 +78,7 @@ namespace Rynchodon.AntennaRelay
 			this.m_logger = new Logger(GetType().Name, () => primary.LoggingName);
 			this.PrimaryNode = primary;
 
-			m_logger.debugLog("Created", "NetworkStorage()");
+			m_logger.debugLog("Created", "NetworkStorage()", Logger.severity.DEBUG);
 		}
 
 		public NetworkStorage Clone(NetworkNode primary)
@@ -116,36 +116,44 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Add a network connection that data will be pushed through.
 		/// </summary>
-		/// <param name="storage">Storage that will receive data.</param>
-		public void AddPushTo(NetworkStorage storage)
+		/// <param name="node">Node that will receive data.</param>
+		public void AddPushTo(NetworkNode node)
 		{
 			int count;
 			using (lock_m_pushTo_count.AcquireExclusiveUsing())
 			{
-				if (!m_pushTo_count.TryGetValue(storage, out count))
+				if (!m_pushTo_count.TryGetValue(node, out count))
 					count = 0;
-				m_pushTo_count[storage] = count + 1;
+				m_pushTo_count[node] = count + 1;
 			}
+
+			m_logger.debugLog("added push to: " + node.LoggingName + ", count: " + (count + 1), "AddPushTo()", Logger.severity.DEBUG);
 
 			if (count != 0)
 				return;
 
-			CopyTo(storage);
+			foreach (NetworkNode n in m_pushTo_count.Keys)
+				if (node.Storage == n.Storage)
+					return;
+
+			CopyTo(node.Storage);
 		}
 
 		/// <summary>
 		/// Remove a network connection that data was pushed through.
 		/// </summary>
-		/// <param name="storage">Storage that was receiving data.</param>
-		public void RemovePushTo(NetworkStorage storage)
+		/// <param name="node">Node that was receiving data.</param>
+		public void RemovePushTo(NetworkNode node)
 		{
 			using (lock_m_pushTo_count.AcquireExclusiveUsing())
 			{
-				int count = m_pushTo_count[storage];
+				int count = m_pushTo_count[node];
 				if (count == 1)
-					m_pushTo_count.Remove(storage);
+					m_pushTo_count.Remove(node);
 				else
-					m_pushTo_count[storage] = count - 1;
+					m_pushTo_count[node] = count - 1;
+
+				m_logger.debugLog("removed push to: " + node.LoggingName + ", count: " + (count - 1), "AddPushTo()", Logger.severity.DEBUG);
 			}
 		}
 

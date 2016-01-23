@@ -1,5 +1,7 @@
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
+using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
@@ -29,45 +31,90 @@ namespace Rynchodon.AntennaRelay
 			return new CR_Character(character);
 		}
 
-		public static ComponentRadio CreateRadio(float radius = 0f)
+		public static ComponentRadio CreateRadio(IMyEntity entity, float radius = 0f)
 		{
-			return new CR_SimpleRadio(radius);
+			return new CR_SimpleAntenna(entity, radius);
 		}
 
+		/// <summary>The entity that has the radio.</summary>
+		public abstract IMyEntity Entity { get; }
 		/// <summary>Radio is functioning.</summary>
 		public abstract bool IsWorking { get; }
-		/// <summary>Radio is working and capable of receiving transmissions.</summary>
-		public abstract bool IsWorkReceive { get; }
-		/// <summary>Radio is working and broadcasting transmissions.</summary>
-		public abstract bool IsWorkBroad { get; }
-		/// <summary>Radio is working, broadcasting, and capable of receiving.</summary>
-		public abstract bool IsWorkBroadReceive { get; }
+		/// <summary>Radio is capable of receiving transmissions.</summary>
+		public abstract bool CanReceive { get; }
+		/// <summary>Radio is capable of broadcasting data and broadcasting is enabled.</summary>
+		public abstract bool CanBroadcastData { get; }
+		/// <summary>Radio is capable of broacasting its position.</summary>
+		public abstract bool CanBroadcastPosition { get; }
 		/// <summary>Broadcast radius (if broadcasting).</summary>
 		public abstract float Radius { get; }
+
+		/// <summary>
+		/// Tests for a connection from this radio to another radio.
+		/// </summary>
+		/// <param name="other">The radio that may be connected.</param>
+		public NetworkNode.CommunicationType TestConnection(ComponentRadio other)
+		{
+			if (!IsWorking || !other.IsWorking)
+				return NetworkNode.CommunicationType.None;
+
+			if (!CanBroadcastData || !other.CanReceive)
+				return NetworkNode.CommunicationType.None;
+
+			float distSquared = Vector3.DistanceSquared(Entity.GetPosition(), other.Entity.GetPosition());
+			if (distSquared > Radius * Radius)
+				return NetworkNode.CommunicationType.None;
+
+			if (!CanReceive || !other.CanBroadcastData)
+				return NetworkNode.CommunicationType.OneWay;
+
+			if (distSquared > other.Radius * other.Radius)
+				return NetworkNode.CommunicationType.OneWay;
+
+			return NetworkNode.CommunicationType.TwoWay;
+		}
 
 		private class CR_AntennaBlock : ComponentRadio
 		{
 
+			private static ITerminalProperty<bool> s_prop_broadcasting;
+
+			static CR_AntennaBlock()
+			{
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			}
+
+			static void Entities_OnCloseAll()
+			{
+				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+				s_prop_broadcasting = null;
+			}
+
 			private Ingame.IMyRadioAntenna m_antenna;
+
+			public override IMyEntity Entity
+			{
+				get { return m_antenna; }
+			}
 
 			public override bool IsWorking
 			{
 				get { return m_antenna.IsWorking; }
 			}
 
-			public override bool IsWorkReceive
+			public override bool CanReceive
 			{
-				get { return IsWorking; }
+				get { return true; }
 			}
 
-			public override bool IsWorkBroad
+			public override bool CanBroadcastData
 			{
-				get { return IsWorking && m_antenna.IsBroadcasting; }
+				get { return s_prop_broadcasting.GetValue(m_antenna); }
 			}
 
-			public override bool IsWorkBroadReceive
+			public override bool CanBroadcastPosition
 			{
-				get { return IsWorkBroad; }
+				get { return CanBroadcastData; }
 			}
 
 			public override float Radius
@@ -78,6 +125,9 @@ namespace Rynchodon.AntennaRelay
 			public CR_AntennaBlock(Ingame.IMyRadioAntenna antenna)
 			{
 				this.m_antenna = antenna;
+
+				if (s_prop_broadcasting == null)
+					s_prop_broadcasting = antenna.GetProperty("EnableBroadCast").AsBool();
 			}
 
 		}
@@ -87,24 +137,29 @@ namespace Rynchodon.AntennaRelay
 
 			private Ingame.IMyBeacon m_beacon;
 
+			public override IMyEntity Entity
+			{
+				get { return m_beacon; }
+			}
+
 			public override bool IsWorking
 			{
 				get { return m_beacon.IsWorking; }
 			}
 
-			public override bool IsWorkReceive
+			public override bool CanReceive
 			{
 				get { return false; }
 			}
 
-			public override bool IsWorkBroad
-			{
-				get { return IsWorking; }
-			}
-
-			public override bool IsWorkBroadReceive
+			public override bool CanBroadcastData
 			{
 				get { return false; }
+			}
+
+			public override bool CanBroadcastPosition
+			{
+				get { return true; }
 			}
 
 			public override float Radius
@@ -125,24 +180,29 @@ namespace Rynchodon.AntennaRelay
 			private IMyCharacter m_character;
 			private IMyIdentity m_identity;
 
+			public override IMyEntity Entity
+			{
+				get { return m_character as IMyEntity; }
+			}
+
 			public override bool IsWorking
 			{
 				get { return !m_identity.IsDead; }
 			}
 
-			public override bool IsWorkReceive
+			public override bool CanReceive
 			{
-				get { return IsWorking; }
+				get { return true; }
 			}
 
-			public override bool IsWorkBroad
+			public override bool CanBroadcastData
 			{
-				get { return IsWorking && (m_character as Sandbox.Game.Entities.IMyControllableEntity).EnabledBroadcasting; }
+				get { return (m_character as Sandbox.Game.Entities.IMyControllableEntity).EnabledBroadcasting; }
 			}
 
-			public override bool IsWorkBroadReceive
+			public override bool CanBroadcastPosition
 			{
-				get { return IsWorkBroad; }
+				get { return CanBroadcastData; }
 			}
 
 			public override float Radius
@@ -158,29 +218,35 @@ namespace Rynchodon.AntennaRelay
 
 		}
 
-		private class CR_SimpleRadio : ComponentRadio
+		private class CR_SimpleAntenna : ComponentRadio
 		{
 
+			private IMyEntity m_entity;
 			private float m_radius = 0;
+
+			public override IMyEntity Entity
+			{
+				get { return m_entity; }
+			}
 
 			public override bool IsWorking
 			{
 				get { return true; }
 			}
 
-			public override bool IsWorkReceive
+			public override bool CanReceive
 			{
 				get { return true; }
 			}
 
-			public override bool IsWorkBroad
+			public override bool CanBroadcastData
 			{
 				get { return m_radius >= 1f; }
 			}
 
-			public override bool IsWorkBroadReceive
+			public override bool CanBroadcastPosition
 			{
-				get { return IsWorkBroad; }
+				get { return CanBroadcastData; }
 			}
 
 			public override float Radius
@@ -188,8 +254,9 @@ namespace Rynchodon.AntennaRelay
 				get { return m_radius; }
 			}
 
-			public CR_SimpleRadio(float radius = 0f)
+			public CR_SimpleAntenna(IMyEntity entity, float radius = 0f)
 			{
+				this.m_entity = entity;
 				this.m_radius = radius;
 			}
 
