@@ -16,7 +16,7 @@ namespace Rynchodon.Weapons
 			TP_Target_Missiles, TP_Target_Meteors, TP_Target_Characters, TP_Target_Moving, TP_Target_Large_Ships, TP_Target_Small_Ships, TP_Target_Stations;
 		private static ITerminalProperty<float> TP_Aiming_Radius;
 
-		private static Logger s_logger = new Logger("ArmsGuiControl");
+		private static Logger s_logger = new Logger("ArmsGuiWeapons");
 		private static bool intialized;
 
 		//public static bool ARMS_Control(Ingame.IMyTerminalBlock term)
@@ -89,7 +89,7 @@ namespace Rynchodon.Weapons
 			TP_Target_Small_Ships = term.GetProperty("Target_Small_Ships").AsBool();
 			TP_Target_Stations = term.GetProperty("Target_Stations").AsBool();
 
-			TP_Aiming_Radius = term.GetProperty("Aiming_Radius)").AsFloat();
+			TP_Aiming_Radius = term.GetProperty("Aiming_Radius").AsFloat();
 
 			s_logger.debugLog(TP_ARMS_Control == null, "TP_ARMS_Control == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Interior_Turret == null, "TP_Interior_Turret == null", "Update_Options()", Logger.severity.FATAL);

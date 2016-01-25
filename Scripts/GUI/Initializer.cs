@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using Rynchodon.GUI.Control;
 using Rynchodon.Settings;
-using Sandbox.Common;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -17,10 +17,12 @@ namespace Rynchodon.GUI
 	public class Initializer : MySessionComponentBase
 	{
 
+		private enum Stage : byte { None, Running, World_Closed, Terminated }
+
 		private readonly Logger m_logger;
-		private MyGuiScreenTextPanel m_screenText;
 		private byte index; // if we go over max, need to add indecies for different types
-		private bool initialized;
+		private Stage m_stage;
+		private GuiStateSaver saver;
 
 		private float minRange = 0f;
 		private float maxRange = 1f;
@@ -32,23 +34,38 @@ namespace Rynchodon.GUI
 
 		public override void UpdateAfterSimulation()
 		{
-			if (initialized || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Utilities == null)
-				return;
-
-			if (IsLoaded())
-				m_logger.debugLog("already loaded", "UpdateAfterSimulation()");
-			else
+			if (m_stage == Stage.None && WorldReady())
 			{
-				m_logger.debugLog("loading", "UpdateAfterSimulation()");
-
-				maxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
-
-				LoadWeapons();
-
-				AddEntities();
+				if (IsLoaded())
+					m_stage = Stage.Terminated;
+				else
+				{
+					m_logger.debugLog("loading", "UpdateAfterSimulation()");
+					maxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
+					saver = new GuiStateSaver();
+					LoadWeapons();
+					OnWorldLoad();
+					MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+				}
 			}
+		}
 
-			initialized = true;
+		private bool WorldReady()
+		{
+			return MyAPIGateway.Entities != null && MyAPIGateway.Multiplayer != null && MyAPIGateway.Utilities != null;
+		}
+
+		private void OnWorldLoad()
+		{
+			AddEntities();
+			saver.Load();
+			m_stage = Stage.Running;
+		}
+
+		private void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnEntityAdd -= OnEntityAdd;
+			m_stage = Stage.World_Closed;
 		}
 
 		private void AddEntities()
@@ -73,7 +90,6 @@ namespace Rynchodon.GUI
 			foreach (IMySlimBlock blo in blocks)
 				OnBlockAdded(blo);
 			grid.OnBlockAdded += OnBlockAdded;
-
 		}
 
 		private void OnBlockAdded(IMySlimBlock block)
@@ -88,7 +104,7 @@ namespace Rynchodon.GUI
 		private bool IsLoaded()
 		{
 			List<ITerminalControl> controls = new List<ITerminalControl>();
-			MyTerminalControlFactory.GetControls(typeof(MyLargeTurretBase), controls);
+			MyTerminalControlFactory.GetControls(typeof(MyUserControllableGun), controls);
 
 			foreach (var cont in controls)
 				if (cont.Id == "ARMS_Control")
@@ -124,7 +140,7 @@ namespace Rynchodon.GUI
 			if (tooltip == null)
 				tooltip = name;
 
-			m_logger.debugLog("adding checkbox for " + typeof(T) + ", index: " + index + ", name: " + name + ", tooltip: " + tooltip, "AddOnOff()");
+			m_logger.debugLog("adding checkbox for " + typeof(T) + ", index: " + index + ", name: " + name + ", tooltip: " + tooltip, "AddCheckbox()");
 
 			TerminalControlCheckbox<T> checkbox = new TerminalControlCheckbox<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(tooltip));
 			checkbox.Getter = block => GetTbsValue<bool>(block, index);
@@ -153,7 +169,7 @@ namespace Rynchodon.GUI
 			if (tooltip == null)
 				tooltip = name;
 
-			m_logger.debugLog("adding slider for " + typeof(T) + ", index: " + index + ", name: " + name, "AddOnOff()");
+			m_logger.debugLog("adding slider for " + typeof(T) + ", index: " + index + ", name: " + name, "AddRangeSlider()");
 
 			TerminalControlSlider<T> slider = new TerminalControlSlider<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(tooltip));
 			slider.Normalizer = (block, value) => NormalizeRange(value);
@@ -167,22 +183,41 @@ namespace Rynchodon.GUI
 
 		private T GetTbsValue<T>(IMyEntity block, byte index)
 		{
+			saver.CheckTime();
+
 			TerminalBlockSync tbs;
 			if (Registrar_GUI.TryGetValue(block, out tbs))
 				return tbs.GetValue<T>(index);
-			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "AddOnOff<T>()", Logger.severity.ERROR);
+
+			if (m_stage == Stage.World_Closed && WorldReady())
+			{
+				OnWorldLoad();
+				return GetTbsValue<T>(block, index);
+			}
+
+			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "GetTbsValue<T>()", Logger.severity.ERROR);
 			return default(T);
 		}
 
 		private void SetTbsValue<T>(IMyEntity block, byte index, T value)
 		{
+			saver.CheckTime();
+
 			TerminalBlockSync tbs;
 			if (Registrar_GUI.TryGetValue(block, out tbs))
 			{
 				tbs.SetValue(index, value);
 				return;
 			}
-			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "AddOnOff<T>()", Logger.severity.ERROR);
+
+			if (m_stage == Stage.World_Closed && WorldReady())
+			{
+				OnWorldLoad();
+				SetTbsValue<T>(block, index, value);
+				return;
+			}
+
+			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "SetTbsValue<T>()", Logger.severity.ERROR);
 		}
 
 		private float NormalizeRange(float value)

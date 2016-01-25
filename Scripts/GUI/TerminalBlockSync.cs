@@ -51,11 +51,14 @@ namespace Rynchodon.GUI
 			{
 				TypeCode code = (TypeCode)(typeCode - ID_Array);
 				IDictionary dataGroup = sb.GetDataGroup(code);
-				for (int index = 0; index < dataGroup.Count; index++)
+				while (pos < bytes.Length)
 				{
-					dataGroup[index] = ByteConverter.GetOfType(bytes, code, ref pos);
-					sb.m_logger.debugLog("Set value, type: " + code + ", index: " + index + ", value: " + dataGroup[index], "Receive()");
+					byte key = ByteConverter.GetByte(bytes, ref pos);
+					object value = ByteConverter.GetOfType(bytes, code, ref pos);
+					dataGroup[key] = value;
+					sb.m_logger.debugLog("Set value, type: " + code + ", key: " + key + ", value: " + value, "Receive()");
 				}
+				GuiStateSaver.NeedToSave();
 			}
 			else // not an array
 			{
@@ -64,6 +67,7 @@ namespace Rynchodon.GUI
 				byte index = ByteConverter.GetByte(bytes, ref pos);
 				dataGroup[index] = ByteConverter.GetOfType(bytes, code, ref pos);
 				sb.m_logger.debugLog("Set value, type: " + code + ", index: " + index + ", value: " + dataGroup[index], "Receive()");
+				GuiStateSaver.NeedToSave();
 			}
 		}
 
@@ -75,6 +79,10 @@ namespace Rynchodon.GUI
 		public TerminalBlockSync(IMyCubeBlock block)
 		{
 			m_logger = new Logger(GetType().Name, block);
+
+			m_logger.debugLog(block == null, "block == null", "TerminalBlockSync()", Logger.severity.FATAL);
+			m_logger.debugLog(MyAPIGateway.Multiplayer == null, "MyAPIGateway.Multiplayer == null", "TerminalBlockSync()", Logger.severity.FATAL);
+
 			entityId = block.EntityId;
 			Registrar_GUI.Add(block, (TerminalBlockSync)this);
 
@@ -94,8 +102,12 @@ namespace Rynchodon.GUI
 
 		public void SetValue<T>(byte index, T value)
 		{
-			GetDataGroup<T>()[index] = value;
-			SendToAll<T>(index);
+			if (value.Equals(default(T)))
+				GetDataGroup<T>().Remove(index);
+			else
+				GetDataGroup<T>()[index] = value;
+			SendToAll<T>(index, value);
+			GuiStateSaver.NeedToSave();
 		}
 
 		private Dictionary<byte, T> GetDataGroup<T>()
@@ -173,8 +185,11 @@ namespace Rynchodon.GUI
 			ByteConverter.AppendBytes(byteList, entityId);
 
 			ByteConverter.AppendBytes(byteList, (byte)(ID_Array + Convert.GetTypeCode(data[0])));
-			foreach (object obj in data.Values)
-				ByteConverter.AppendBytes(byteList, obj);
+			foreach (byte key in data.Keys)
+			{
+				ByteConverter.AppendBytes(byteList, key);
+				ByteConverter.AppendBytes(byteList, data[key]);
+			}
 
 			m_logger.debugLog("Message: " + NetworkClient.SubModule.TerminalBlockSync + ", " + entityId + ", " + (ID_Array + Convert.GetTypeCode(data[0])), "RequestAllFromServer()");
 			//m_logger.debugLog("Bytes: " + string.Join(", ", byteList), "SendToClient()");
@@ -188,20 +203,18 @@ namespace Rynchodon.GUI
 				m_logger.alwaysLog("Failed to send message", "SendToClient()", Logger.severity.ERROR);
 		}
 
-		private void SendToAll<T>(byte index)
+		private void SendToAll<T>(byte index, T value)
 		{
 			m_logger.debugLog(byteList.Count != 0, "byteList was not cleared", "SendToAll<T>()", Logger.severity.FATAL);
-
-			object data = GetValue<T>(index);
 
 			ByteConverter.AppendBytes(byteList, (byte)NetworkClient.SubModule.TerminalBlockSync);
 			ByteConverter.AppendBytes(byteList, entityId);
 
-			ByteConverter.AppendBytes(byteList, (byte)Convert.GetTypeCode(data));
+			ByteConverter.AppendBytes(byteList, (byte)Convert.GetTypeCode(value));
 			ByteConverter.AppendBytes(byteList, index);
-			ByteConverter.AppendBytes(byteList, data);
+			ByteConverter.AppendBytes(byteList, value);
 
-			m_logger.debugLog("Message: " + NetworkClient.SubModule.TerminalBlockSync + ", " + entityId + ", " + Convert.GetTypeCode(data) + ", " + index + ", " + data, "SendToAll<T>()");
+			m_logger.debugLog("Message: " + NetworkClient.SubModule.TerminalBlockSync + ", " + entityId + ", " + Convert.GetTypeCode(value) + ", " + index + ", " + value, "SendToAll<T>()");
 			//m_logger.debugLog("Bytes: " + string.Join(", ", byteList), "SendToAll<T>()");
 
 			byte[] message = byteList.ToArray();
@@ -211,6 +224,51 @@ namespace Rynchodon.GUI
 				m_logger.debugLog("Message sent", "SendToAll<T>()");
 			else
 				m_logger.alwaysLog("Failed to send message", "SendToAll<T>()", Logger.severity.ERROR);
+		}
+
+		/// <summary>
+		/// Appends the entity id and all the data to the byte list.
+		/// </summary>
+		/// <param name="serial">Byte list to append data to.</param>
+		public void SerializeData(List<byte> serial)
+		{
+			ByteConverter.AppendBytes(serial, entityId);
+			ByteConverter.AppendBytes(serial, (byte)SyncData.Count);
+			foreach (var pair in SyncData)
+			{
+				IDictionary dataGroup = pair.Value;
+				ByteConverter.AppendBytes(serial, (byte)Type.GetTypeCode(pair.Key));
+				ByteConverter.AppendBytes(serial, dataGroup.Count);
+				foreach (byte key in dataGroup.Keys)
+				{
+					ByteConverter.AppendBytes(serial, key);
+					ByteConverter.AppendBytes(serial, dataGroup[key]);
+					m_logger.debugLog("key: " + key + ", value: " + dataGroup[key], "SerializeData()");
+				}
+			}
+		}
+
+		/// <summary>
+		/// Retrieves all the data from the byte list.
+		/// </summary>
+		/// <param name="serial">Byte list to retrieve data from.</param>
+		/// <param name="pos">Current position in the byte list.</param>
+		public void DeserializeData(byte[] serial, ref int pos)
+		{
+			byte groups = ByteConverter.GetByte(serial, ref pos);
+			for (int gi = 0; gi < groups; gi++)
+			{
+				TypeCode code = (TypeCode)ByteConverter.GetByte(serial, ref pos);
+				IDictionary dataGroup = GetDataGroup(code);
+				int items = ByteConverter.GetInt(serial, ref pos);
+				for (int ii = 0; ii < items; ii++)
+				{
+					byte key = ByteConverter.GetByte(serial, ref pos);
+					object value = ByteConverter.GetOfType(serial, code, ref pos);
+					m_logger.debugLog("key: " + key + ", value: " + value, "DeserializeData()");
+					dataGroup[key] = value;
+				}
+			}
 		}
 
 	}
