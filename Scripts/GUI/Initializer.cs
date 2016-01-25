@@ -20,9 +20,9 @@ namespace Rynchodon.GUI
 		private enum Stage : byte { None, Running, World_Closed, Terminated }
 
 		private readonly Logger m_logger;
-		private byte index; // if we go over max, need to add indecies for different types
 		private Stage m_stage;
 		private GuiStateSaver saver;
+		private HashSet<long> m_activeBlocks = new HashSet<long>();
 
 		private float minRange = 0f;
 		private float maxRange = 1f;
@@ -32,6 +32,9 @@ namespace Rynchodon.GUI
 			m_logger = new Logger(GetType().Name);
 		}
 
+		/// <summary>
+		/// Initializes when the world is loaded, unless GUI is already initialized.
+		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
 			if (m_stage == Stage.None && WorldReady())
@@ -40,7 +43,6 @@ namespace Rynchodon.GUI
 					m_stage = Stage.Terminated;
 				else
 				{
-					m_logger.debugLog("loading", "UpdateAfterSimulation()");
 					maxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
 					saver = new GuiStateSaver();
 					LoadWeapons();
@@ -50,11 +52,18 @@ namespace Rynchodon.GUI
 			}
 		}
 
+		/// <summary>
+		/// Verifies that MyAPIGateway fields have been filled.
+		/// </summary>
+		/// <returns>True if MyAPIGateway fields have been filled.</returns>
 		private bool WorldReady()
 		{
 			return MyAPIGateway.Entities != null && MyAPIGateway.Multiplayer != null && MyAPIGateway.Utilities != null;
 		}
 
+		/// <summary>
+		/// Adds entities and invokes GuiStateSaver.Load();
+		/// </summary>
 		private void OnWorldLoad()
 		{
 			AddEntities();
@@ -62,12 +71,18 @@ namespace Rynchodon.GUI
 			m_stage = Stage.Running;
 		}
 
+		/// <summary>
+		/// Stops entities from being added and prepares Initializer for OnWorldLoad() to be invoked.
+		/// </summary>
 		private void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnEntityAdd -= OnEntityAdd;
 			m_stage = Stage.World_Closed;
 		}
 
+		/// <summary>
+		/// Adds all the entities currently in the world and registers for entities being added.
+		/// </summary>
 		private void AddEntities()
 		{
 			m_logger.debugLog("adding entities", "AddEntities()", Logger.severity.INFO);
@@ -79,6 +94,10 @@ namespace Rynchodon.GUI
 			MyAPIGateway.Entities.OnEntityAdd += OnEntityAdd;
 		}
 
+		/// <summary>
+		/// Adds all the blocks from a grid, if obj is a grid.
+		/// </summary>
+		/// <param name="obj">The entity that was added to the world.</param>
 		private void OnEntityAdd(IMyEntity obj)
 		{
 			IMyCubeGrid grid = obj as IMyCubeGrid;
@@ -92,15 +111,27 @@ namespace Rynchodon.GUI
 			grid.OnBlockAdded += OnBlockAdded;
 		}
 
+		/// <summary>
+		/// Creates a TerminalBlockSync for a block, if one is required.
+		/// </summary>
+		/// <param name="block">The block that was added to the world.</param>
 		private void OnBlockAdded(IMySlimBlock block)
 		{
-			if (block.FatBlock is Ingame.IMyLargeTurretBase)
+			if (block.FatBlock == null || !m_activeBlocks.Add(block.FatBlock.EntityId))
+				return;
+			block.FatBlock.OnClose += fb => m_activeBlocks.Remove(fb.EntityId);
+
+			if (block.FatBlock is MyUserControllableGun)
 			{
-				m_logger.debugLog("turret: " + block.FatBlock.DisplayNameText + '/' + block.FatBlock.DefinitionDisplayNameText, "Entities_OnEntityAdd()");
+				m_logger.debugLog("Gun: " + block.FatBlock.DisplayNameText + '/' + block.FatBlock.DefinitionDisplayNameText + ":" + block.FatBlock.EntityId, "Entities_OnEntityAdd()");
 				new TerminalBlockSync(block.FatBlock);
 			}
 		}
 
+		/// <summary>
+		/// Checks if terminal properties from ARMS have been loaded.
+		/// </summary>
+		/// <returns>True iff terminal properties from ARMS have been loaded.</returns>
 		private bool IsLoaded()
 		{
 			List<ITerminalControl> controls = new List<ITerminalControl>();
@@ -113,30 +144,37 @@ namespace Rynchodon.GUI
 			return false;
 		}
 
+		/// <summary>
+		/// Adds controls for weapons.
+		/// </summary>
 		private void LoadWeapons()
 		{
-			m_logger.debugLog("loading weapon controls", "LoadWeapons()", Logger.severity.DEBUG);
+			AddCheckbox<MyUserControllableGun>(0, "ARMS Control", "Enables ARMS control for a turret. Enables rotor-turret for a fixed weapon.");
 
-			AddCheckbox<MyUserControllableGun>("ARMS Control", "For turret, uses ARMS targeting. Otherwise, makes weapon a rotor-turret.");
-
-			AddCheckbox<MyUserControllableGun>("Interior Turret", "Reduces obstruction tests");
-			AddCheckbox<MyUserControllableGun>("Target Functional", "Turret will shoot all functional blocks");
-			AddCheckbox<MyUserControllableGun>("Destroy Everything", "Turret will destroy every terminal block");
+			AddCheckbox<MyUserControllableGun>(1, "Interior Turret", "Reduces obstruction tests");
+			AddCheckbox<MyUserControllableGun>(2, "Target Functional", "Turret will shoot all functional blocks");
+			AddCheckbox<MyUserControllableGun>(3, "Destroy Everything", "Turret will destroy every terminal block");
 
 			// turrets already have these
-			AddRangeSlider<MyUserControllableGun>("Aiming Radius");
-			AddCheckbox<MyUserControllableGun>("Target Missiles");
-			AddCheckbox<MyUserControllableGun>("Target Meteors");
-			AddCheckbox<MyUserControllableGun>("Target Characters");
-			AddCheckbox<MyUserControllableGun>("Target Moving");
-			AddCheckbox<MyUserControllableGun>("Target Large Ships");
-			AddCheckbox<MyUserControllableGun>("Target Small Ships");
-			AddCheckbox<MyUserControllableGun>("Target Stations");
+			AddRangeSlider<MyUserControllableGun>(4, "Aiming Radius");
+			AddCheckbox<MyUserControllableGun>(5, "Target Missiles");
+			AddCheckbox<MyUserControllableGun>(6, "Target Meteors");
+			AddCheckbox<MyUserControllableGun>(7, "Target Characters");
+			AddCheckbox<MyUserControllableGun>(8, "Target Moving");
+			AddCheckbox<MyUserControllableGun>(9, "Target Large Ships");
+			AddCheckbox<MyUserControllableGun>(10, "Target Small Ships");
+			AddCheckbox<MyUserControllableGun>(11, "Target Stations");
 		}
 
-		private void AddCheckbox<T>(string name, string tooltip = null) where T : MyTerminalBlock
+		/// <summary>
+		/// Adds a checkbox control to a block type.
+		/// </summary>
+		/// <typeparam name="T">The type of block to add the checkbox to.</typeparam>
+		/// <param name="index">The index of the control.</param>
+		/// <param name="name">The name of the control, displayed to players.</param>
+		/// <param name="tooltip">The tooltip displayed to players.</param>
+		private void AddCheckbox<T>(byte index, string name, string tooltip = null) where T : MyTerminalBlock
 		{
-			byte index = this.index++;
 			if (tooltip == null)
 				tooltip = name;
 
@@ -149,10 +187,14 @@ namespace Rynchodon.GUI
 			MyTerminalControlFactory.AddControl<T>(checkbox);
 		}
 
-		private void AddOnOff<T>(string name) where T : MyTerminalBlock
+		/// <summary>
+		/// Adds an On/Off control to a block type.
+		/// </summary>
+		/// <typeparam name="T">The type of block to add the On/Off control to.</typeparam>
+		/// <param name="index">The index of the control.</param>
+		/// <param name="name">The name of the control, displayed to players.</param>
+		private void AddOnOff<T>(byte index, string name) where T : MyTerminalBlock
 		{
-			byte index = this.index++;
-
 			m_logger.debugLog("adding on off switch for " + typeof(T) + ", index: " + index + ", name: " + name, "AddOnOff()");
 
 			TerminalControlOnOffSwitch<T> onOff = new TerminalControlOnOffSwitch<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name));
@@ -163,9 +205,15 @@ namespace Rynchodon.GUI
 			MyTerminalControlFactory.AddControl<T>(onOff);
 		}
 
-		private void AddRangeSlider<T>(string name, string tooltip = null) where T : MyTerminalBlock
+		/// <summary>
+		/// Adds a slider control to a block type.
+		/// </summary>
+		/// <typeparam name="T">The type of blocks to add the slider to.</typeparam>
+		/// <param name="index">The index of the control.</param>
+		/// <param name="name">The name of the slider, displayed to players.</param>
+		/// <param name="tooltip">The tooltip of the slider, displayed to players.</param>
+		private void AddRangeSlider<T>(byte index, string name, string tooltip = null) where T : MyTerminalBlock
 		{
-			byte index = this.index++;
 			if (tooltip == null)
 				tooltip = name;
 
@@ -181,6 +229,13 @@ namespace Rynchodon.GUI
 			MyTerminalControlFactory.AddControl(slider);
 		}
 
+		/// <summary>
+		/// Gets a TerminalBlockSync value.
+		/// </summary>
+		/// <typeparam name="T">The type of the value.</typeparam>
+		/// <param name="block">The block to get the value from.</param>
+		/// <param name="index">The index of the value.</param>
+		/// <returns>A TerminalBlockSync value.</returns>
 		private T GetTbsValue<T>(IMyEntity block, byte index)
 		{
 			saver.CheckTime();
@@ -199,6 +254,13 @@ namespace Rynchodon.GUI
 			return default(T);
 		}
 
+		/// <summary>
+		/// Sets a TerminalBlockSync value.
+		/// </summary>
+		/// <typeparam name="T">The type of the value.</typeparam>
+		/// <param name="block">The block to set the value for.</param>
+		/// <param name="index">The index of the value.</param>
+		/// <param name="value">The value to set.</param>
 		private void SetTbsValue<T>(IMyEntity block, byte index, T value)
 		{
 			saver.CheckTime();
@@ -220,6 +282,11 @@ namespace Rynchodon.GUI
 			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "SetTbsValue<T>()", Logger.severity.ERROR);
 		}
 
+		/// <summary>
+		/// Scales a range value to a value between 0 and 1.
+		/// </summary>
+		/// <param name="value">The range value.</param>
+		/// <returns>A value between 0 and 1.</returns>
 		private float NormalizeRange(float value)
 		{
 			if (value == 0)
@@ -228,6 +295,11 @@ namespace Rynchodon.GUI
 				return MathHelper.Clamp((value - minRange) / (maxRange - minRange), 0, 1);
 		}
 
+		/// <summary>
+		/// Scales a value between 0 and 1 to a range value.
+		/// </summary>
+		/// <param name="value">A value between 0 and 1.</param>
+		/// <returns>A range value between minRange and maxRange.</returns>
 		private float DenormalizeRange(float value)
 		{
 			if (value == 0)

@@ -29,7 +29,7 @@ namespace Rynchodon
 	public class Logger : MySessionComponentBase
 	{
 
-		private const string s_logMaster = "LogMaster";
+		private const string s_logMaster = "log-master.txt";
 
 		private static System.IO.TextWriter logWriter = null;
 		private StringBuilder stringCache = new StringBuilder();
@@ -270,11 +270,11 @@ namespace Rynchodon
 				logWriter.Flush();
 				stringCache.Clear();
 			}
-			catch (Exception ex)
-			{
-				debugNotify("Exception while logging", 2000, severity.ERROR);
-				MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
-			}
+			//catch (Exception ex)
+			//{
+			//	debugNotify("Exception while logging", 2000, severity.ERROR);
+			//	MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
+			//}
 			finally { lock_log.ReleaseExclusive(); }
 		}
 

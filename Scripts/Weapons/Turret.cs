@@ -71,8 +71,6 @@ namespace Rynchodon.Weapons
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.Interior_Turret(CubeBlock as IMyTerminalBlock))
 				myTurret.ApplyAction("Interior_Turret");
 
-			AllowedState = State.Targeting;
-
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
@@ -80,7 +78,7 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Fill CanTarget from turret
 		/// </summary>
-		protected override void Update_Options(TargetingOptions Options)
+		protected override void Update100_Options_TargetingThread(TargetingOptions Options)
 		{if (TP_TargetMissiles.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Missile;
 			if (TP_TargetMeteors.GetValue(CubeBlock))
@@ -140,12 +138,9 @@ namespace Rynchodon.Weapons
 		/// <remarks>
 		/// Must execute regularly on game thread.
 		/// </remarks>
-		protected override void Update()
+		protected override void Update1_GameThread()
 		{
-			//if (!Initialized)
-			//	Initialize();
-
-			if (CurrentState_NotFlag(State.Targeting))
+			if (!RunTargeting)
 			{
 				setElevation = myTurret.Elevation;
 				setAzimuth = myTurret.Azimuth;

@@ -330,6 +330,8 @@ namespace Rynchodon.Update
 		private List<IMyPlayer> playersAPI;
 		private List<IMyPlayer> playersCached;
 
+		private HashSet<long> CubeBlocks = new HashSet<long>();
+
 		private readonly Logger myLogger;
 
 		private bool player_wait_message = false;
@@ -652,9 +654,6 @@ namespace Rynchodon.Update
 		private void Grid_OnBlockAdded(IMySlimBlock block)
 		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
 
-		/// <remarks>Can't use Entity Ids because multiple blocks may share an Id.</remarks>
-		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
-
 		/// <summary>
 		/// if necessary, builds script for a block
 		/// </summary>
@@ -663,10 +662,9 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				if (CubeBlocks.Contains(fatblock))
+				if (!CubeBlocks.Add(fatblock.EntityId))
 					return;
-				CubeBlocks.Add(fatblock);
-				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock); };
+				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock.EntityId); };
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 
@@ -763,6 +761,7 @@ namespace Rynchodon.Update
 			playersCached = null;
 
 			AddRemoveActions = null;
+			CubeBlocks = null;
 		}
 
 		/// <summary>

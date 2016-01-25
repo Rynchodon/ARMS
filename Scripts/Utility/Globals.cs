@@ -28,7 +28,7 @@ namespace Rynchodon
 				return;
 			Reported_GUI_Error = true;
 
-			MyAPIGateway.Utilities.ShowMissionScreen("ARMS Error", string.Empty, string.Empty, 
+			MyAPIGateway.Utilities.ShowMissionScreen("ARMS Error", string.Empty, "Mod: Autopilot, Radar, and Military Systems", 
 				 "ARMS did not load correctly, terminal controls will not function. After starting Space Engineers, ARMS must be in the first world loaded for terminal controls to work correctly.");
 		}
 

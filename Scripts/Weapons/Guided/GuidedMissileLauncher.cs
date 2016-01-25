@@ -91,8 +91,8 @@ namespace Rynchodon.Weapons.Guided
 
 			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
 
-			m_weaponTarget.AllowedState = WeaponTargeting.State.GetOptions;
 			Registrar.Add(weapon.FuncBlock, this);
+			m_weaponTarget.TargetForFixedWeapon = true;
 		}
 
 		public void Update1()

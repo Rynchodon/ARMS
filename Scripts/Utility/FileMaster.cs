@@ -71,7 +71,8 @@ namespace Rynchodon.Utility
 			{
 				string delete = m_fileAgeName.ElementAt(0).Value;
 				//m_logger.alwaysLog("At limit, deleting: " + delete, "GetWriter()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.DeleteFileInLocalStorage(delete, GetType());
+				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(delete, GetType()); }
+				catch (Exception) { }
 				if (MyAPIGateway.Utilities.FileExistsInLocalStorage(delete, GetType()))
 				{
 					//m_logger.alwaysLog("Failed to delete: " + delete, "GetWriter()", Logger.severity.WARNING);

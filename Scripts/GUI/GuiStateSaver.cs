@@ -6,11 +6,17 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon.GUI
 {
+	/// <summary>
+	/// Saves and loads the state of all GUI settings to/from disk.
+	/// </summary>
 	public class GuiStateSaver
 	{
 
 		private static GuiStateSaver Static;
 
+		/// <summary>
+		/// Flags the state as in need of saving, should be invoked every time state changes.
+		/// </summary>
 		public static void NeedToSave()
 		{
 			if (Static.m_needSave)
@@ -36,12 +42,18 @@ namespace Rynchodon.GUI
 			MyAPIGateway.Entities.OnCloseAll += Save;
 		}
 
+		/// <summary>
+		/// Saves the GUI state if it has changed and enough time has passed since the last save.
+		/// </summary>
 		public void CheckTime()
 		{
 			if (m_needSave && DateTime.UtcNow >= m_nextSave)
 				Save();
 		}
 
+		/// <summary>
+		/// Loads the GUI data from the disk. The data will be sent to DeserializeData method of each block.
+		/// </summary>
 		public void Load()
 		{
 			BinaryReader reader = m_master.GetBinaryReader(MyAPIGateway.Session.Name);
@@ -71,8 +83,14 @@ namespace Rynchodon.GUI
 			}
 		}
 
+		/// <summary>
+		/// Saves the GUI state to the disk, if m_needSave.
+		/// </summary>
 		private void Save()
 		{
+			if (!m_needSave)
+				return;
+
 			Logger.debugNotify("Saving GUI state");
 			m_logger.debugLog("Saving GUI state", "Save()");
 
@@ -87,6 +105,14 @@ namespace Rynchodon.GUI
 			});
 		}
 
+		/// <summary>
+		/// Skips an entity in the loading process, used when the entity does not exist.
+		/// </summary>
+		/// <remarks>
+		/// Must parallel DeserializeData method of TerminalBlockSync.
+		/// </remarks>
+		/// <param name="serial">Bytes that are being loaded.</param>
+		/// <param name="pos">Current position in the byte array.</param>
 		private void SkipGo(byte[] serial, ref int pos)
 		{
 			byte groups = ByteConverter.GetByte(serial, ref pos);

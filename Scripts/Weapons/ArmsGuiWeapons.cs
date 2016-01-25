@@ -19,20 +19,11 @@ namespace Rynchodon.Weapons
 		private static Logger s_logger = new Logger("ArmsGuiWeapons");
 		private static bool intialized;
 
-		//public static bool ARMS_Control(Ingame.IMyTerminalBlock term)
-		//{
-		//	if (!intialized)
-		//		Init(term);
-
-		//	if (TP_ARMS_Control == null)
-		//	{
-		//		Globals.GUI_NotLoaded();
-		//		return false;
-		//	}
-
-		//	return TP_ARMS_Control.GetValue(term);
-		//}
-
+		/// <summary>
+		/// Gets the value of the Interior Turret property.
+		/// </summary>
+		/// <param name="term">The terminal block to get the value from.</param>
+		/// <returns>The value of the Interior Turret property.</returns>
 		public static bool Interior_Turret(Ingame.IMyTerminalBlock term)
 		{
 			if (!intialized)
@@ -47,6 +38,48 @@ namespace Rynchodon.Weapons
 			return TP_Interior_Turret.GetValue(term);
 		}
 
+		/// <summary>
+		/// Disables the ARMS control for a block.
+		/// </summary>
+		/// <param name="term">Block to disable control for.</param>
+		public static void DisableArmsControl(Ingame.IMyTerminalBlock term)
+		{
+			if (!intialized)
+				Init(term);
+
+			if (TP_ARMS_Control == null)
+			{
+				Globals.GUI_NotLoaded();
+				return;
+			}
+
+			TP_ARMS_Control.SetValue(term, false);
+		}
+
+		/// <summary>
+		/// Updates options with the ARMS Control property only.
+		/// </summary>
+		/// <param name="term">The terminal block to get the ARMS control value from.</param>
+		/// <param name="options">Options to assign the value to.</param>
+		public static void UpdateArmsEnabled(Ingame.IMyTerminalBlock term, TargetingOptions options)
+		{
+			if (!intialized)
+				Init(term);
+
+			if (TP_ARMS_Control == null)
+			{
+				Globals.GUI_NotLoaded();
+				return;
+			}
+
+			SetTargetFlag(TP_ARMS_Control.GetValue(term), options, TargetingFlags.ArmsEnabled);
+		}
+
+		/// <summary>
+		/// Updates all the terminal properties of a block.
+		/// </summary>
+		/// <param name="term">The block to get the property values for.</param>
+		/// <param name="options">Options to assign the values to.</param>
 		public static void UpdateTerm(Ingame.IMyTerminalBlock term, TargetingOptions options)
 		{
 			if (!intialized)
@@ -58,7 +91,7 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			SetTargetFlag(TP_ARMS_Control.GetValue(term), options, TargetingFlags.Turret);
+			SetTargetFlag(TP_ARMS_Control.GetValue(term), options, TargetingFlags.ArmsEnabled);
 			SetTargetFlag(TP_Interior_Turret.GetValue(term), options, TargetingFlags.Interior);
 			SetTargetFlag(TP_Target_Functional.GetValue(term), options, TargetingFlags.Functional);
 			SetTypeFlag(TP_Destroy_Everything.GetValue(term), options, TargetType.Destroy);
@@ -71,9 +104,15 @@ namespace Rynchodon.Weapons
 			SetTypeFlag(TP_Target_Small_Ships.GetValue(term), options, TargetType.SmallGrid);
 			SetTypeFlag(TP_Target_Stations.GetValue(term), options, TargetType.Station);
 
-			options.TargetingRange = TP_Aiming_Radius.GetValue(term);
+			float range = TP_Aiming_Radius.GetValue(term);
+			if (range >=1f)
+				options.TargetingRange = range;
 		}
 
+		/// <summary>
+		/// Initialize the terminal property fields.
+		/// </summary>
+		/// <param name="term">Block to get the terminal properties from.</param>
 		private static void Init(Ingame.IMyTerminalBlock term)
 		{
 			TP_ARMS_Control = term.GetProperty("ARMS_Control").AsBool();
@@ -109,6 +148,9 @@ namespace Rynchodon.Weapons
 			intialized = true;
 		}
 
+		/// <summary>
+		/// Sets a targeting flag of options.
+		/// </summary>
 		private static void SetTargetFlag(bool setUnset, TargetingOptions options, TargetingFlags flag)
 		{
 			if (setUnset)
@@ -117,6 +159,9 @@ namespace Rynchodon.Weapons
 				options.Flags &= ~flag;
 		}
 
+		/// <summary>
+		/// Sets a targeting type flag of options.
+		/// </summary>
 		private static void SetTypeFlag(bool setUnset, TargetingOptions options, TargetType type)
 		{
 			if (setUnset)

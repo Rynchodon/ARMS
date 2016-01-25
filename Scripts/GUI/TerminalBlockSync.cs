@@ -21,6 +21,10 @@ namespace Rynchodon.GUI
 			MyAPIGateway.Multiplayer.RegisterMessageHandler(NetworkClient.ModId, Receive);
 		}
 
+		/// <summary>
+		/// Receives network data for a TerminalBlockSync.
+		/// </summary>
+		/// <param name="bytes">Network data being transmitted.</param>
 		private static void Receive(byte[] bytes)
 		{
 			//s_logger.debugLog("Received: " + string.Join(", ", bytes), "Receive()");
@@ -91,6 +95,12 @@ namespace Rynchodon.GUI
 			m_logger.debugLog("Initialized", "SyncBlock()");
 		}
 
+		/// <summary>
+		/// Gets a value from the syncronized data.
+		/// </summary>
+		/// <typeparam name="T">The type of the value.</typeparam>
+		/// <param name="index">The index of the value.</param>
+		/// <returns>The value from the syncronized data.</returns>
 		public T GetValue<T>(byte index)
 		{
 			Dictionary<byte, T> dataGroup = GetDataGroup<T>();
@@ -100,6 +110,12 @@ namespace Rynchodon.GUI
 			return value;
 		}
 
+		/// <summary>
+		/// Sets a value for the syncronized data. Generates network traffic.
+		/// </summary>
+		/// <typeparam name="T">The type of the value.</typeparam>
+		/// <param name="index">The index of the value.</param>
+		/// <param name="value">The value to be set.</param>
 		public void SetValue<T>(byte index, T value)
 		{
 			if (value.Equals(default(T)))
@@ -110,6 +126,11 @@ namespace Rynchodon.GUI
 			GuiStateSaver.NeedToSave();
 		}
 
+		/// <summary>
+		/// Gets the storage for all the data of a specific type.
+		/// </summary>
+		/// <typeparam name="T">The type of the data.</typeparam>
+		/// <returns>The storage for all the data of a specific type.</returns>
 		private Dictionary<byte, T> GetDataGroup<T>()
 		{
 			IDictionary gen;
@@ -125,6 +146,12 @@ namespace Rynchodon.GUI
 			return dataGroup;
 		}
 
+		/// <summary>
+		/// Gets the storage for all the data of a specific type.
+		/// </summary>
+		/// <param name="code">The TypeCode of the data, not all TypeCodes are valid.</param>
+		/// <returns>The storage for all the data of a specific type.</returns>
+		/// <exception cref="ArgumentException">Iff TypeCode is of an unacceptable value type.</exception>
 		private IDictionary GetDataGroup(TypeCode code)
 		{
 			switch (code)
@@ -156,6 +183,9 @@ namespace Rynchodon.GUI
 			throw new ArgumentException("Invalid TypeCode: " + code);
 		}
 
+		/// <summary>
+		/// Sends a message to the server requesting all the data (for this block).
+		/// </summary>
 		private void RequestAllFromServer()
 		{
 			m_logger.debugLog(byteList.Count != 0, "byteList was not cleared", "RequestAllFromServer()", Logger.severity.FATAL);
@@ -177,6 +207,11 @@ namespace Rynchodon.GUI
 				m_logger.alwaysLog("Failed to send message", "RequestAllFromServer()", Logger.severity.ERROR);
 		}
 
+		/// <summary>
+		/// Sends a message to a client for all the data of a type.
+		/// </summary>
+		/// <param name="client">The client to send the data to.</param>
+		/// <param name="data">The data to send.</param>
 		private void SendToClient(ulong client, IDictionary data)
 		{
 			m_logger.debugLog(byteList.Count != 0, "byteList was not cleared", "SendToClient()", Logger.severity.FATAL);
@@ -203,6 +238,12 @@ namespace Rynchodon.GUI
 				m_logger.alwaysLog("Failed to send message", "SendToClient()", Logger.severity.ERROR);
 		}
 
+		/// <summary>
+		/// Send a value to server and clients.
+		/// </summary>
+		/// <typeparam name="T">The type of the value to send.</typeparam>
+		/// <param name="index">The index of the value to send.</param>
+		/// <param name="value">The value to send.</param>
 		private void SendToAll<T>(byte index, T value)
 		{
 			m_logger.debugLog(byteList.Count != 0, "byteList was not cleared", "SendToAll<T>()", Logger.severity.FATAL);
