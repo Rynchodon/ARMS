@@ -664,7 +664,10 @@ namespace Rynchodon.Update
 			{
 				if (!CubeBlocks.Add(fatblock.EntityId))
 					return;
-				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock.EntityId); };
+				fatblock.OnClosing += (alsoFatblock) => {
+					if (CubeBlocks != null)
+						CubeBlocks.Remove(alsoFatblock.EntityId);
+				};
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 

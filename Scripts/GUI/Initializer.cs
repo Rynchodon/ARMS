@@ -22,7 +22,7 @@ namespace Rynchodon.GUI
 		private readonly Logger m_logger;
 		private Stage m_stage;
 		private GuiStateSaver saver;
-		private HashSet<long> m_activeBlocks = new HashSet<long>();
+		private HashSet<long> m_activeBlocks;
 
 		private float minRange = 0f;
 		private float maxRange = 1f;
@@ -86,7 +86,10 @@ namespace Rynchodon.GUI
 		private void AddEntities()
 		{
 			m_logger.debugLog("adding entities", "AddEntities()", Logger.severity.INFO);
-
+			if (m_activeBlocks == null)
+				m_activeBlocks = new HashSet<long>();
+			else
+				m_activeBlocks.Clear();
 			HashSet<IMyEntity> entities = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntities(entities);
 			foreach (IMyEntity ent in entities)
