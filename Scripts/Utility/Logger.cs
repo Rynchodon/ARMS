@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
@@ -27,6 +28,9 @@ namespace Rynchodon
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Logger : MySessionComponentBase
 	{
+
+		private const string s_logMaster = "LogMaster";
+
 		private static System.IO.TextWriter logWriter = null;
 		private StringBuilder stringCache = new StringBuilder();
 
@@ -112,20 +116,26 @@ namespace Rynchodon
 
 		private bool createLog()
 		{
-			try
-			{ deleteIfExists("Autopilot.log"); }
-			catch { }
-			try
-			{ deleteIfExists("log.txt"); }
-			catch { }
-			for (int i = 0; i < 10; i++)
-				if (logWriter == null)
-					try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
-					catch { }
-				else
+			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(s_logMaster, GetType()))
+			{
+				for (int i = 0; i < 10; i++)
 					try
 					{ deleteIfExists("log-" + i + ".txt"); }
 					catch { }
+				FileMaster master = new FileMaster(s_logMaster, "log-", 10);
+				logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
+			}
+			else
+			{
+				for (int i = 0; i < 10; i++)
+					if (logWriter == null)
+						try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
+						catch { }
+					else
+						try
+						{ deleteIfExists("log-" + i + ".txt"); }
+						catch { }
+			}
 
 			return logWriter != null;
 		}
