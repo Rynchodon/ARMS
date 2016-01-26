@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rynchodon.GUI.Control;
 using Rynchodon.Settings;
@@ -17,11 +18,11 @@ namespace Rynchodon.GUI
 	public class Initializer : MySessionComponentBase
 	{
 
-		private enum Stage : byte { None, Running, World_Closed, Terminated }
+		private enum Stage : byte { None, LoadedControls, LoadedEntities, World_Closed, Terminated }
 
 		private readonly Logger m_logger;
 		private Stage m_stage;
-		private GuiStateSaver saver;
+		private StateSaver saver;
 		private HashSet<long> m_activeBlocks;
 
 		private float minRange = 0f;
@@ -29,7 +30,19 @@ namespace Rynchodon.GUI
 
 		public Initializer()
 		{
-			m_logger = new Logger(GetType().Name);
+			if (IsLoaded())
+			{
+				m_stage = Stage.Terminated;
+				(new Logger(GetType().Name)).debugLog("Already loaded", "Initializer()");
+				return;
+			}
+
+			// Controls need to be loaded ASAP, which means there can be no logging at this point
+			LoadWeapons();
+
+			m_logger = new Logger(GetType().Namespace + '.' + GetType().Name);
+			m_stage = Stage.LoadedControls;
+			m_logger.debugLog("initialized", "Initializer()");
 		}
 
 		/// <summary>
@@ -37,18 +50,13 @@ namespace Rynchodon.GUI
 		/// </summary>
 		public override void UpdateAfterSimulation()
 		{
-			if (m_stage == Stage.None && WorldReady())
+			if (m_stage == Stage.LoadedControls && WorldReady())
 			{
-				if (IsLoaded())
-					m_stage = Stage.Terminated;
-				else
-				{
-					maxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
-					saver = new GuiStateSaver();
-					LoadWeapons();
-					OnWorldLoad();
-					MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-				}
+				saver = new StateSaver();
+
+				OnWorldLoad();
+				maxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);
+				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			}
 		}
 
@@ -68,7 +76,7 @@ namespace Rynchodon.GUI
 		{
 			AddEntities();
 			saver.Load();
-			m_stage = Stage.Running;
+			m_stage = Stage.LoadedEntities;
 		}
 
 		/// <summary>
@@ -159,14 +167,17 @@ namespace Rynchodon.GUI
 			AddCheckbox<MyUserControllableGun>(3, "Destroy Everything", "Turret will destroy every terminal block");
 
 			// turrets already have these
-			AddRangeSlider<MyUserControllableGun>(4, "Aiming Radius");
-			AddCheckbox<MyUserControllableGun>(5, "Target Missiles");
-			AddCheckbox<MyUserControllableGun>(6, "Target Meteors");
-			AddCheckbox<MyUserControllableGun>(7, "Target Characters");
-			AddCheckbox<MyUserControllableGun>(8, "Target Moving");
-			AddCheckbox<MyUserControllableGun>(9, "Target Large Ships");
-			AddCheckbox<MyUserControllableGun>(10, "Target Small Ships");
-			AddCheckbox<MyUserControllableGun>(11, "Target Stations");
+			Func<MyUserControllableGun, bool> visIfFixed = gun => !(gun is MyLargeTurretBase);
+			AddRangeSlider<MyUserControllableGun>(4, "Aiming Radius", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(5, "Target Missiles", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(6, "Target Meteors", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(7, "Target Characters", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(8, "Target Moving", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(9, "Target Large Ships", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(10, "Target Small Ships", visible: visIfFixed);
+			AddOnOff<MyUserControllableGun>(11, "Target Stations", visible: visIfFixed);
+
+			AddSeparator<MyUserControllableGun>();
 		}
 
 		/// <summary>
@@ -176,16 +187,18 @@ namespace Rynchodon.GUI
 		/// <param name="index">The index of the control.</param>
 		/// <param name="name">The name of the control, displayed to players.</param>
 		/// <param name="tooltip">The tooltip displayed to players.</param>
-		private void AddCheckbox<T>(byte index, string name, string tooltip = null) where T : MyTerminalBlock
+		private void AddCheckbox<T>(byte index, string name, string tooltip = null, Func<T, bool> visible = null) where T : MyTerminalBlock
 		{
 			if (tooltip == null)
 				tooltip = name;
 
-			m_logger.debugLog("adding checkbox for " + typeof(T) + ", index: " + index + ", name: " + name + ", tooltip: " + tooltip, "AddCheckbox()");
+			//m_logger.debugLog("adding checkbox for " + typeof(T) + ", index: " + index + ", name: " + name + ", tooltip: " + tooltip, "AddCheckbox()");
 
 			TerminalControlCheckbox<T> checkbox = new TerminalControlCheckbox<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(tooltip));
 			checkbox.Getter = block => GetTbsValue<bool>(block, index);
 			checkbox.Setter = (block, value) => SetTbsValue(block, index, value);
+			if (visible != null)
+				checkbox.Visible = visible;
 			checkbox.EnableAction();
 			MyTerminalControlFactory.AddControl<T>(checkbox);
 		}
@@ -196,13 +209,15 @@ namespace Rynchodon.GUI
 		/// <typeparam name="T">The type of block to add the On/Off control to.</typeparam>
 		/// <param name="index">The index of the control.</param>
 		/// <param name="name">The name of the control, displayed to players.</param>
-		private void AddOnOff<T>(byte index, string name) where T : MyTerminalBlock
+		private void AddOnOff<T>(byte index, string name, Func<T, bool> visible = null) where T : MyTerminalBlock
 		{
-			m_logger.debugLog("adding on off switch for " + typeof(T) + ", index: " + index + ", name: " + name, "AddOnOff()");
+			//m_logger.debugLog("adding on off switch for " + typeof(T) + ", index: " + index + ", name: " + name, "AddOnOff()");
 
 			TerminalControlOnOffSwitch<T> onOff = new TerminalControlOnOffSwitch<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name));
 			onOff.Getter = block => GetTbsValue<bool>(block, index);
 			onOff.Setter = (block, value) => SetTbsValue(block, index, value);
+			if (visible != null)
+				onOff.Visible = visible;
 			onOff.EnableToggleAction();
 			onOff.EnableOnOffActions();
 			MyTerminalControlFactory.AddControl<T>(onOff);
@@ -215,12 +230,12 @@ namespace Rynchodon.GUI
 		/// <param name="index">The index of the control.</param>
 		/// <param name="name">The name of the slider, displayed to players.</param>
 		/// <param name="tooltip">The tooltip of the slider, displayed to players.</param>
-		private void AddRangeSlider<T>(byte index, string name, string tooltip = null) where T : MyTerminalBlock
+		private void AddRangeSlider<T>(byte index, string name, string tooltip = null, Func<T, bool> visible = null) where T : MyTerminalBlock
 		{
 			if (tooltip == null)
 				tooltip = name;
 
-			m_logger.debugLog("adding slider for " + typeof(T) + ", index: " + index + ", name: " + name, "AddRangeSlider()");
+			//m_logger.debugLog("adding slider for " + typeof(T) + ", index: " + index + ", name: " + name, "AddRangeSlider()");
 
 			TerminalControlSlider<T> slider = new TerminalControlSlider<T>(name.Replace(' ', '_'), MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(tooltip));
 			slider.Normalizer = (block, value) => NormalizeRange(value);
@@ -229,7 +244,15 @@ namespace Rynchodon.GUI
 			slider.Getter = (block) => GetTbsValue<float>(block, index);
 			slider.Setter = (block, value) => SetTbsValue(block, index, value);
 			slider.Writer = (block, result) => result.Append((int)GetTbsValue<float>(block, index)).Append(" m");
+			if (visible != null)
+				slider.Visible = visible;
 			MyTerminalControlFactory.AddControl(slider);
+		}
+
+		private void AddSeparator<T>() where T : MyTerminalBlock
+		{
+			MyTerminalControlSeparator<T> separator = new MyTerminalControlSeparator<T>();
+			MyTerminalControlFactory.AddControl(separator);
 		}
 
 		/// <summary>
@@ -241,10 +264,11 @@ namespace Rynchodon.GUI
 		/// <returns>A TerminalBlockSync value.</returns>
 		private T GetTbsValue<T>(IMyEntity block, byte index)
 		{
-			saver.CheckTime();
+			if (saver != null)
+				saver.CheckTime();
 
 			TerminalBlockSync tbs;
-			if (Registrar_GUI.TryGetValue(block, out tbs))
+			if (Registrar.TryGetValue(block, out tbs))
 				return tbs.GetValue<T>(index);
 
 			if (m_stage == Stage.World_Closed && WorldReady())
@@ -253,6 +277,8 @@ namespace Rynchodon.GUI
 				return GetTbsValue<T>(block, index);
 			}
 
+			if (m_logger == null)
+				throw new NullReferenceException("m_logger");
 			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "GetTbsValue<T>()", Logger.severity.ERROR);
 			return default(T);
 		}
@@ -266,10 +292,11 @@ namespace Rynchodon.GUI
 		/// <param name="value">The value to set.</param>
 		private void SetTbsValue<T>(IMyEntity block, byte index, T value)
 		{
-			saver.CheckTime();
+			if (saver != null)
+				saver.CheckTime();
 
 			TerminalBlockSync tbs;
-			if (Registrar_GUI.TryGetValue(block, out tbs))
+			if (Registrar.TryGetValue(block, out tbs))
 			{
 				tbs.SetValue(index, value);
 				return;
@@ -282,6 +309,8 @@ namespace Rynchodon.GUI
 				return;
 			}
 
+			if (m_logger == null)
+				throw new NullReferenceException("m_logger");
 			m_logger.alwaysLog("TerminalBlockSync not in Registrar, id: " + block.EntityId, "SetTbsValue<T>()", Logger.severity.ERROR);
 		}
 

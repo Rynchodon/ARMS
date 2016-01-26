@@ -52,8 +52,6 @@ namespace Rynchodon.Weapons
 
 		public readonly Ingame.IMyLargeTurretBase myTurret;
 
-		//public bool CanControl { get; private set; }
-
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
 		public readonly bool IsNormalTurret;
 		/// <summary>Locked while an update on targeting thread is queued but not while it is running.</summary>
@@ -79,7 +77,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Iff true, ARMS should target the weapon.</summary>
 		public bool RunTargeting
 		{
-			get { return Options.FlagSet(TargetingFlags.ArmsEnabled) || TargetForFixedWeapon; }
+			get { return Options.FlagSet(TargetingFlags.ArmsEnabled) || EngagerControlling; }
 		}
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
@@ -88,8 +86,10 @@ namespace Rynchodon.Weapons
 			get { return CubeBlock.IsWorking && (!IsNormalTurret || !myTurret.IsUnderControl) && CubeBlock.OwnerId != 0; }
 		}
 
+		public bool GuidedLauncher { get; set; }
+
 		/// <summary>Has no effect on normal turrets, enables ARMS targetting for fixed weapons.</summary>
-		public bool TargetForFixedWeapon
+		public bool EngagerControlling
 		{
 			get { return value_engagerControlling; }
 			set
@@ -199,41 +199,6 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		//public State AllowedState
-		//{
-		//	get { return value_AllowedState; }
-		//	set
-		//	{
-		//		value_AllowedState = value;
-
-		//		CurrentState &= value;
-		//		FireWeapon = false;
-		//	}
-		//}
-
-		//protected State CurrentState
-		//{
-		//	get { return value_CurrentState; }
-		//	private set
-		//	{
-		//		if (value_CurrentState == value)
-		//			return;
-
-		//		myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
-		//		FireWeapon = false;
-
-		//		if (IsNormalTurret)
-		//		{
-		//			if ((value & State.Targeting) == State.Targeting) // now targeting
-		//				GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
-		//			else // not targeting
-		//				GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
-		//		}
-
-		//		value_CurrentState = value;
-		//	}
-		//}
-
 		protected List<IMyEntity> ObstructionIgnore
 		{
 			private get
@@ -248,14 +213,8 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		///// <summary>Invoked on game thread, every update.</summary>
-		//protected abstract void Update();
-
 		/// <summary>Invoked on game thread, every updated, if targeting is permitted.</summary>
 		protected abstract void Update1_GameThread();
-
-		///// <summary>Invoked on targeting thread, every 100 updates.</summary>
-		//protected abstract void Update_Options(TargetingOptions current);
 
 		/// <summary>Invoked on targeting thread, every 100 updates, if targeting is permitted.</summary>
 		protected abstract void Update100_Options_TargetingThread(TargetingOptions current);
@@ -351,7 +310,7 @@ namespace Rynchodon.Weapons
 			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
 			ClearBlacklist();
 
-			if (RunTargeting)
+			if (RunTargeting || GuidedLauncher)
 			{
 				Interpreter.UpdateInstruction();
 				if (Interpreter.Errors.Count <= InterpreterErrorCount)
@@ -360,8 +319,8 @@ namespace Rynchodon.Weapons
 					if (Options == null)
 						Options = new TargetingOptions();
 					InterpreterErrorCount = Interpreter.Errors.Count;
-					Update100_Options_TargetingThread(Options);
 					ArmsGuiWeapons.UpdateTerm(FuncBlock, Options);
+					Update100_Options_TargetingThread(Options);
 					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
 				}
 				else
@@ -376,50 +335,6 @@ namespace Rynchodon.Weapons
 				DefaultTargeting = true;
 				ArmsGuiWeapons.UpdateArmsEnabled(FuncBlock, Options);
 			}
-
-			//if (!CubeBlock.IsWorking
-			//|| (IsNormalTurret && myTurret.IsUnderControl)
-			//|| CubeBlock.OwnerId == 0)
-			//{
-			//	myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0), "Update100()");
-
-			//	CanControl = false;
-			//	CurrentState = State.Off;
-			//	return;
-			//}
-
-			//if ((AllowedState & State.GetOptions) != State.GetOptions)
-			//{
-			//	myLogger.debugLog("Not allowed to get options", "Update100()");
-			//	CanControl = false;
-			//	CurrentState = State.Off;
-			//	return;
-			//}
-
-			//if (Interpreter.HasInstructions)
-			//{
-			//	if (Interpreter.Errors.Count <= InterpreterErrorCount)
-			//	{
-			//		Options = Interpreter.Options;
-			//		InterpreterErrorCount = Interpreter.Errors.Count;
-			//		Update_Options(Options);
-			//		ArmsGuiWeapons.UpdateTerm(FuncBlock, Options);
-			//		myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
-			//	}
-			//	else
-			//		myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
-
-			//	CanControl = true;
-			//	CurrentState = AllowedState;
-			//	WriteErrors(Interpreter.Errors);
-			//}
-			//else
-			//{
-			//	myLogger.debugLog("No instructions found", "Update100()");
-			//	CanControl = false;
-			//	CurrentState = State.GetOptions;
-			//	return;
-			//}
 		}
 
 		private void UpdateAmmo()
@@ -612,12 +527,6 @@ namespace Rynchodon.Weapons
 							continue;
 						}
 
-						//if (asGrid.CubeExists(pos))
-						//{
-						//List<IMySlimBlock> ignore = ObstructionIgnore;
-						//if (ignore != null && ignore.Contains(asGrid.GetCubeBlock(pos)))
-						//	continue;
-
 						if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
 						{
 							//IMySlimBlock block = asGrid.GetCubeBlock(pos);
@@ -678,7 +587,7 @@ namespace Rynchodon.Weapons
 		}
 
 		private bool condition_changed;
-		private bool prev_working, prev_control, prev_noOwn, prev_vanilla, prev_ammo, prev_targeting, prev_noTarget;
+		private bool prev_working, prev_control, prev_noOwn, prev_vanilla, prev_ammo, prev_targeting, prev_noTarget, prev_enager;
 
 		/// <summary>
 		/// Look for changes that would affect custom info.
@@ -693,7 +602,7 @@ namespace Rynchodon.Weapons
 			ConditionChange(CubeBlock.IsWorking && DefaultTargeting, ref prev_vanilla);
 
 			ConditionChange(RunTargeting, ref prev_targeting);
-
+			ConditionChange(EngagerControlling, ref prev_enager);
 			ConditionChange(LoadedAmmo == null, ref prev_ammo);
 			ConditionChange(CurrentTarget == null || CurrentTarget.Entity == null, ref prev_noTarget);
 
@@ -724,6 +633,8 @@ namespace Rynchodon.Weapons
 			if (RunTargeting)
 			{
 				customInfo.AppendLine("ARMS controlling");
+				if (EngagerControlling)
+					customInfo.AppendLine("Engager controlling");
 				if (LoadedAmmo == null)
 					customInfo.AppendLine("No ammo");
 				if (CurrentTarget == null || CurrentTarget.Entity == null)

@@ -105,7 +105,7 @@ namespace Rynchodon.Weapons
 			SetTypeFlag(TP_Target_Stations.GetValue(term), options, TargetType.Station);
 
 			float range = TP_Aiming_Radius.GetValue(term);
-			if (range >=1f)
+			if (range >= 1f)
 				options.TargetingRange = range;
 		}
 

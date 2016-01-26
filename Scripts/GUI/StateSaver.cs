@@ -9,10 +9,10 @@ namespace Rynchodon.GUI
 	/// <summary>
 	/// Saves and loads the state of all GUI settings to/from disk.
 	/// </summary>
-	public class GuiStateSaver
+	public class StateSaver
 	{
 
-		private static GuiStateSaver Static;
+		private static StateSaver Static;
 
 		/// <summary>
 		/// Flags the state as in need of saving, should be invoked every time state changes.
@@ -33,9 +33,9 @@ namespace Rynchodon.GUI
 
 		private readonly List<byte> data = new List<byte>();
 
-		public GuiStateSaver()
+		public StateSaver()
 		{
-			m_logger = new Logger(GetType().Name);
+			m_logger = new Logger(GetType().Namespace + '.' + GetType().Name);
 			m_nextSave = DateTime.UtcNow + m_interval;
 			m_master = new FileMaster("GuiState-Master", "GuiState-");
 			Static = this;
@@ -70,7 +70,7 @@ namespace Rynchodon.GUI
 			{
 				long entityId = ByteConverter.GetLong(storedData, ref pos);
 				TerminalBlockSync block;
-				if (Registrar_GUI.TryGetValue(entityId, out block))
+				if (Registrar.TryGetValue(entityId, out block))
 				{
 					m_logger.debugLog("deserializing data for " + entityId, "Load()", Logger.severity.DEBUG);
 					block.DeserializeData(storedData, ref pos);
@@ -97,7 +97,7 @@ namespace Rynchodon.GUI
 			data.Clear();
 			m_needSave = false;
 			m_nextSave = DateTime.UtcNow + m_interval;
-			Registrar_GUI.ForEach<TerminalBlockSync>(block => { block.SerializeData(data); });
+			Registrar.ForEach<TerminalBlockSync>(block => { block.SerializeData(data); });
 			BinaryWriter writer = m_master.GetBinaryWriter(MyAPIGateway.Session.Name);
 			MyAPIGateway.Parallel.StartBackground(() => {
 				writer.Write(data.ToArray());

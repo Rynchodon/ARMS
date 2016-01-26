@@ -92,7 +92,7 @@ namespace Rynchodon.Weapons.Guided
 			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
 
 			Registrar.Add(weapon.FuncBlock, this);
-			m_weaponTarget.TargetForFixedWeapon = true;
+			m_weaponTarget.GuidedLauncher = true;
 		}
 
 		public void Update1()

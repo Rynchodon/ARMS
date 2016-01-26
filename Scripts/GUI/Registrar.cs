@@ -9,13 +9,13 @@ namespace Rynchodon.GUI
 	/// <summary>
 	/// Modified Registrar that does not shut down cleanly.
 	/// </summary>
-	public static class Registrar_GUI
+	public static class Registrar
 	{
 
 		private static class Register_Dirty<T>
 		{
 
-			private static readonly Logger s_logger = new Logger("Register_Dirty<T>", () => typeof(T).ToString());
+			private static readonly Logger s_logger = new Logger("Rynchodon.GUI.Register_Dirty<T>", () => typeof(T).ToString());
 
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();

@@ -37,7 +37,7 @@ namespace Rynchodon.Weapons
 			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
 				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
-				TargetForFixedWeapon = true;
+				EngagerControlling = true;
 				return true;
 			}
 
@@ -46,7 +46,7 @@ namespace Rynchodon.Weapons
 
 		public void EngagerReleaseControl()
 		{
-			TargetForFixedWeapon = false;
+			EngagerControlling = false;
 		}
 
 		/// <summary>
@@ -80,7 +80,7 @@ namespace Rynchodon.Weapons
 
 		protected override void Update100_Options_TargetingThread(TargetingOptions current)
 		{
-			if (TargetForFixedWeapon)
+			if (EngagerControlling)
 				return;
 
 			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");

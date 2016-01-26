@@ -12,7 +12,7 @@ namespace Rynchodon.GUI
 		private const byte ID_Array = 100; // + TypeCode
 		private const byte ID_RequestAll = 200;
 
-		private static readonly Logger s_logger = new Logger("TerminalBlockSync");
+		private static readonly Logger s_logger = new Logger("Rynchodon.GUI.TerminalBlockSync");
 		private static readonly List<byte> byteList = new List<byte>();
 
 		static TerminalBlockSync()
@@ -38,7 +38,7 @@ namespace Rynchodon.GUI
 			}
 			long entityId = ByteConverter.GetLong(bytes, ref pos);
 			TerminalBlockSync sb;
-			if (!Registrar_GUI.TryGetValue(entityId, out sb))
+			if (!Registrar.TryGetValue(entityId, out sb))
 			{
 				s_logger.alwaysLog("Failed to get SyncBlock from Registrar: " + entityId, "Parse()", Logger.severity.ERROR);
 				return;
@@ -62,7 +62,7 @@ namespace Rynchodon.GUI
 					dataGroup[key] = value;
 					sb.m_logger.debugLog("Set value, type: " + code + ", key: " + key + ", value: " + value, "Receive()");
 				}
-				GuiStateSaver.NeedToSave();
+				StateSaver.NeedToSave();
 			}
 			else // not an array
 			{
@@ -71,7 +71,7 @@ namespace Rynchodon.GUI
 				byte index = ByteConverter.GetByte(bytes, ref pos);
 				dataGroup[index] = ByteConverter.GetOfType(bytes, code, ref pos);
 				sb.m_logger.debugLog("Set value, type: " + code + ", index: " + index + ", value: " + dataGroup[index], "Receive()");
-				GuiStateSaver.NeedToSave();
+				StateSaver.NeedToSave();
 			}
 		}
 
@@ -82,13 +82,13 @@ namespace Rynchodon.GUI
 
 		public TerminalBlockSync(IMyCubeBlock block)
 		{
-			m_logger = new Logger(GetType().Name, block);
+			m_logger = new Logger(GetType().Namespace + '.' + GetType().Name, block);
 
 			m_logger.debugLog(block == null, "block == null", "TerminalBlockSync()", Logger.severity.FATAL);
 			m_logger.debugLog(MyAPIGateway.Multiplayer == null, "MyAPIGateway.Multiplayer == null", "TerminalBlockSync()", Logger.severity.FATAL);
 
 			entityId = block.EntityId;
-			Registrar_GUI.Add(block, (TerminalBlockSync)this);
+			Registrar.Add(block, (TerminalBlockSync)this);
 
 			if (!MyAPIGateway.Multiplayer.IsServer)
 				RequestAllFromServer();
@@ -123,7 +123,7 @@ namespace Rynchodon.GUI
 			else
 				GetDataGroup<T>()[index] = value;
 			SendToAll<T>(index, value);
-			GuiStateSaver.NeedToSave();
+			StateSaver.NeedToSave();
 		}
 
 		/// <summary>
