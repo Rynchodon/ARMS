@@ -816,36 +816,41 @@
         GuidedMissileLauncher=true
       </Description>
       <DisplayName>Swarm Missile Launcher</DisplayName>
-      <Icon>Textures\Icon\Souper_Missile_Launcher.dds</Icon>
+      <public>false</public>
+      <Icon>Textures\Icons\B3MP_Launcher.dds</Icon>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="3" y="3" z="8" />
+      <Size x="1" y="1" z="3" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Souper_CruiseMissile_Launcher.mwm</Model>
+      <Model>Models\Cubes\Souper_B3MP_Launcher.mwm</Model>
       <Components>
-        <Component Subtype="SteelPlate" Count="75" />
+        <Component Subtype="SteelPlate" Count="25" />
         <Component Subtype="Construction" Count="125" />
-        <Component Subtype="MetalGrid" Count="80" />
-        <Component Subtype="LargeTube" Count="250" />
-        <Component Subtype="Motor" Count="60" />
-        <Component Subtype="Computer" Count="400" />
-        <Component Subtype="SteelPlate" Count="1500" />
+        <Component Subtype="MetalGrid" Count="16" />
+        <Component Subtype="LargeTube" Count="25" />
+        <Component Subtype="Motor" Count="20" />
+        <Component Subtype="Computer" Count="40" />
+        <Component Subtype="SteelPlate" Count="300" />
       </Components>
       <CriticalComponent Subtype="Computer" Index="0" />
-      <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr1.mwm" />
-        <Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr2.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_CruiseMissile_Launcher_Constr3.mwm" />
-      </BuildProgressModels>
-      <MountPoints>
-        <MountPoint Side="Bottom" StartX="0.76" StartY="3.26" EndX="2.24" EndY="4.74" />
-      </MountPoints>
-      <BlockPairName>Souper_B3MP_Launcher</BlockPairName>
-      <MirroringX>None</MirroringX>
-      <MirroringY>None</MirroringY>
-      <MirroringZ>None</MirroringZ>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Souper_B3MP_Launcher_Constr1.mwm" />
+				<Model BuildPercentUpperBound="0.67" File="Models\Cubes\Souper_B3MP_Launcher_Constr2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Souper_B3MP_Launcher_Constr3.mwm" />
+			</BuildProgressModels>
+			<MountPoints>
+				<MountPoint Side="Back" StartX="0.20" StartY="0.20" EndX="0.80" EndY="0.80" />
+				<MountPoint Side="Left" StartX="0.20" StartY="0.20" EndX="2.80" EndY="0.80" />
+				<MountPoint Side="Right" StartX="0.20" StartY="0.20" EndX="2.80" EndY="0.80" />
+				<MountPoint Side="Bottom" StartX="0.20" StartY="0.20" EndX="0.80" EndY="2.80" />
+				<MountPoint Side="Top" StartX="0.20" StartY="0.20" EndX="0.80" EndY="2.80" />
+			</MountPoints>
+			<BlockPairName>B3MP_Launcher</BlockPairName>
+			<MirroringX>None</MirroringX>
+			<MirroringY>None</MirroringY>
+			<MirroringZ>None</MirroringZ>
       <Center x="0" y="0" z="1" />
-      <BuildTimeSeconds>120</BuildTimeSeconds>
+      <BuildTimeSeconds>60</BuildTimeSeconds>
       <EdgeType>Light</EdgeType>
       <WeaponDefinitionId Subtype="Souper_B3MP_Launcher" />
       <ResourceSinkGroup>Defense</ResourceSinkGroup>
