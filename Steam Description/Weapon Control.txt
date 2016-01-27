@@ -29,7 +29,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [b][u]Known Issues[/u][/b]
 [list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
 [*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.
-[*]Engage command is not aware of rotor-turrets.[/list]
+[*]Engage command is not aware of rotor-turrets.[/list][/list]
 
 [b][u]Important Information[/u][/b]
 [list][*]If a N.P.C. weapon's display name does not have commands, they will use the commands from the settings file.
