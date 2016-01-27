@@ -55,6 +55,7 @@ namespace Rynchodon.Weapons.Guided
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
 		private const float Angle_Cluster = 0.05f;
+		private const float PrecogSeconds = Globals.UpdateDuration * 3f;
 		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
@@ -94,7 +95,7 @@ namespace Rynchodon.Weapons.Guided
 						missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
-						missile.SetFiringDirection();
+						missile.SetFiringDirection(PrecogSeconds);
 						missile.Update();
 					});
 		}
@@ -251,7 +252,7 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("Retargeting last", "TargetLastSeen()");
 					myTarget = new LastSeenTarget(myTargetSeen);
-					SetFiringDirection();
+					SetFiringDirection(PrecogSeconds);
 				}
 				return;
 			}
@@ -264,7 +265,7 @@ namespace Rynchodon.Weapons.Guided
 			{
 				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(fetched);
-				SetFiringDirection();
+				SetFiringDirection(PrecogSeconds);
 				return;
 			}
 
@@ -274,7 +275,7 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(fetched);
-					SetFiringDirection();
+					SetFiringDirection(PrecogSeconds);
 				}
 				else
 					myLogger.debugLog("failed to get last seen from entity id", "TargetLastSeen()");
@@ -310,7 +311,7 @@ namespace Rynchodon.Weapons.Guided
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(closest);
-				SetFiringDirection();
+				SetFiringDirection(PrecogSeconds);
 				myTargetSeen = closest;
 			}
 		}
@@ -377,7 +378,7 @@ namespace Rynchodon.Weapons.Guided
 			{ // check for proxmity det
 				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity() * PrecogSeconds);
 					myLogger.debugLog("distSquared: " + distSquared, "Update()");
 					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{

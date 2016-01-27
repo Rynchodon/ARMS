@@ -1,34 +1,24 @@
 using System;
 using System.Collections.Generic;
-using Sandbox.ModAPI;
+using VRage;
 using VRage.ModAPI;
 
-namespace Rynchodon
+namespace Rynchodon.GUI
 {
+
+	/// <summary>
+	/// Modified Registrar that does not shut down cleanly.
+	/// </summary>
 	public static class Registrar
 	{
 
-		private static class Register<T>
+		private static class Register_Dirty<T>
 		{
 
-			private static readonly Logger s_logger = new Logger("Register<T>", () => typeof(T).ToString());
+			private static readonly Logger s_logger = new Logger("Rynchodon.GUI.Register_Dirty<T>", () => typeof(T).ToString());
 
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();
-
-			public static bool Closed { get { return m_dictionary == null; } }
-
-			static Register()
-			{
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			}
-
-			static void Entities_OnCloseAll()
-			{
-				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-				m_dictionary = null;
-				m_lock = null;
-			}
 
 			public static void Add(long entityId, T script)
 			{
@@ -69,20 +59,13 @@ namespace Rynchodon
 
 		public static void Add<T>(IMyEntity entity, T item)
 		{
-			Register<T>.Add(entity.EntityId, item);
+			Register_Dirty<T>.Add(entity.EntityId, item);
 			entity.OnClosing += OnClosing<T>;
 		}
 
 		public static bool TryGetValue<T>(long entityId, out T value)
 		{
-			try { return Register<T>.TryGetValue(entityId, out value); }
-			catch (NullReferenceException nre)
-			{
-				if (!Register<T>.Closed)
-					throw nre;
-				value = default(T);
-				return false;
-			}
+			return Register_Dirty<T>.TryGetValue(entityId, out value); 
 		}
 
 		public static bool TryGetValue<T>(IMyEntity entity, out T value)
@@ -92,24 +75,18 @@ namespace Rynchodon
 
 		public static void ForEach<T>(Action<T> function)
 		{
-			Register<T>.ForEach(function);
+			Register_Dirty<T>.ForEach(function);
 		}
 
 		public static void ForEach<T>(Func<T, bool> function)
 		{
-			Register<T>.ForEach(function);
+			Register_Dirty<T>.ForEach(function);
 		}
 
 		private static void OnClosing<T>(IMyEntity obj)
 		{
 			obj.OnClosing -= OnClosing<T>;
-			try
-			{ Register<T>.Remove(obj.EntityId); }
-			catch (NullReferenceException nre)
-			{
-				if (!Register<T>.Closed)
-					throw nre;
-			}
+			Register_Dirty<T>.Remove(obj.EntityId); 
 		}
 
 	}
