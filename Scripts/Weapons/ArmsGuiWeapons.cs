@@ -1,4 +1,5 @@
 
+using System;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -12,30 +13,31 @@ namespace Rynchodon.Weapons
 	public class ArmsGuiWeapons
 	{
 
-		private static ITerminalProperty<bool> TP_ARMS_Control, TP_Interior_Turret, TP_Target_Functional, TP_Destroy_Everything,
+		/// <summary>ARMS added property</summary>
+		public static ITerminalProperty<bool> TP_ARMS_Control, TP_Rotor_Turret, TP_Interior_Turret, TP_Target_Functional, TP_Destroy_Everything,
 			TP_Target_Missiles, TP_Target_Meteors, TP_Target_Characters, TP_Target_Moving, TP_Target_Large_Ships, TP_Target_Small_Ships, TP_Target_Stations;
-		private static ITerminalProperty<float> TP_Aiming_Radius;
+		/// <summary>ARMS added property</summary>
+		public static ITerminalProperty<float> TP_Aiming_Radius;
 
 		private static Logger s_logger = new Logger("ArmsGuiWeapons");
 		private static bool intialized;
 
 		/// <summary>
-		/// Gets the value of the Interior Turret property.
+		/// Gets the value of a terminal property.
 		/// </summary>
-		/// <param name="term">The terminal block to get the value from.</param>
-		/// <returns>The value of the Interior Turret property.</returns>
-		public static bool Interior_Turret(Ingame.IMyTerminalBlock term)
+		public static T GetPropertyValue<T>(Ingame.IMyCubeBlock block, ref ITerminalProperty<T> prop)
 		{
 			if (!intialized)
-				Init(term);
+				Init(block as Ingame.IMyTerminalBlock);
 
 			if (TP_ARMS_Control == null)
 			{
 				Globals.GUI_NotLoaded();
-				return false;
+				return default(T);
 			}
+			s_logger.debugLog(prop == null, "prop == null", "GetPropertyValue<T>()", Logger.severity.ERROR);
 
-			return TP_Interior_Turret.GetValue(term);
+			return prop.GetValue(block);
 		}
 
 		/// <summary>
@@ -73,6 +75,7 @@ namespace Rynchodon.Weapons
 			}
 
 			SetTargetFlag(TP_ARMS_Control.GetValue(term), options, TargetingFlags.ArmsEnabled);
+			SetTargetFlag(TP_Rotor_Turret.GetValue(term), options, TargetingFlags.Rotor_Turret);
 		}
 
 		/// <summary>
@@ -92,6 +95,7 @@ namespace Rynchodon.Weapons
 			}
 
 			SetTargetFlag(TP_ARMS_Control.GetValue(term), options, TargetingFlags.ArmsEnabled);
+			SetTargetFlag(TP_Rotor_Turret.GetValue(term), options, TargetingFlags.Rotor_Turret);
 			SetTargetFlag(TP_Interior_Turret.GetValue(term), options, TargetingFlags.Interior);
 			SetTargetFlag(TP_Target_Functional.GetValue(term), options, TargetingFlags.Functional);
 			SetTypeFlag(TP_Destroy_Everything.GetValue(term), options, TargetType.Destroy);
@@ -104,9 +108,7 @@ namespace Rynchodon.Weapons
 			SetTypeFlag(TP_Target_Small_Ships.GetValue(term), options, TargetType.SmallGrid);
 			SetTypeFlag(TP_Target_Stations.GetValue(term), options, TargetType.Station);
 
-			float range = TP_Aiming_Radius.GetValue(term);
-			if (range >= 1f)
-				options.TargetingRange = range;
+			options.TargetingRange = TP_Aiming_Radius.GetValue(term);
 		}
 
 		/// <summary>
@@ -116,6 +118,7 @@ namespace Rynchodon.Weapons
 		private static void Init(Ingame.IMyTerminalBlock term)
 		{
 			TP_ARMS_Control = term.GetProperty("ARMS_Control").AsBool();
+			TP_Rotor_Turret = term.GetProperty("Rotor-Turret").AsBool();
 			TP_Interior_Turret = term.GetProperty("Interior_Turret").AsBool();
 			TP_Target_Functional = term.GetProperty("Target_Functional").AsBool();
 			TP_Destroy_Everything = term.GetProperty("Destroy_Everything").AsBool();
@@ -131,10 +134,11 @@ namespace Rynchodon.Weapons
 			TP_Aiming_Radius = term.GetProperty("Aiming_Radius").AsFloat();
 
 			s_logger.debugLog(TP_ARMS_Control == null, "TP_ARMS_Control == null", "Update_Options()", Logger.severity.FATAL);
+			s_logger.debugLog(TP_Rotor_Turret == null, "TP_Rotor_Turret == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Interior_Turret == null, "TP_Interior_Turret == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Target_Functional == null, "TP_Target_Functional == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Destroy_Everything == null, "TP_Destroy_Everything == null", "Update_Options()", Logger.severity.FATAL);
-			
+
 			s_logger.debugLog(TP_Target_Missiles == null, "TP_Target_Missiles == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Target_Meteors == null, "TP_Target_Meteors == null", "Update_Options()", Logger.severity.FATAL);
 			s_logger.debugLog(TP_Target_Characters == null, "TP_Target_Characters == null", "Update_Options()", Logger.severity.FATAL);
@@ -169,6 +173,6 @@ namespace Rynchodon.Weapons
 			else
 				options.CanTarget &= ~type;
 		}
-			
+
 	}
 }

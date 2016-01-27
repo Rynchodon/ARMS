@@ -84,7 +84,7 @@ namespace Rynchodon.Weapons
 				return;
 
 			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
-			if (current.FlagSet(TargetingFlags.ArmsEnabled))
+			if (current.FlagSet(TargetingFlags.Rotor_Turret))
 			{
 				if (MyMotorTurret == null && CanControl)
 				{

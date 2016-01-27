@@ -107,6 +107,8 @@ namespace Rynchodon.GUI
 			T value;
 			if (!dataGroup.TryGetValue(index, out value))
 				value = default(T);
+			else if (value.Equals(default(T)))
+				dataGroup.Remove(index);
 			return value;
 		}
 

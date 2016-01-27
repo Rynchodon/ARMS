@@ -33,7 +33,6 @@ namespace Rynchodon.GUI
 			if (IsLoaded())
 			{
 				m_stage = Stage.Terminated;
-				(new Logger(GetType().Name)).debugLog("Already loaded", "Initializer()");
 				return;
 			}
 
@@ -160,14 +159,17 @@ namespace Rynchodon.GUI
 		/// </summary>
 		private void LoadWeapons()
 		{
-			AddCheckbox<MyUserControllableGun>(0, "ARMS Control", "Enables ARMS control for a turret. Enables rotor-turret for a fixed weapon.");
+			Func<MyUserControllableGun, bool> visIfTurret = gun => gun is MyLargeTurretBase;
+			Func<MyUserControllableGun, bool> visIfFixed = gun => !(gun is MyLargeTurretBase);
+
+			AddCheckbox<MyUserControllableGun>(0, "ARMS Control", "Enables ARMS control for a turret", visIfTurret);
+			AddCheckbox<MyUserControllableGun>(12, "Rotor-Turret", "Enables rotor-turret function for a fixed weapon.", visIfFixed);
 
 			AddCheckbox<MyUserControllableGun>(1, "Interior Turret", "Reduces obstruction tests");
 			AddCheckbox<MyUserControllableGun>(2, "Target Functional", "Turret will shoot all functional blocks");
 			AddCheckbox<MyUserControllableGun>(3, "Destroy Everything", "Turret will destroy every terminal block");
 
 			// turrets already have these
-			Func<MyUserControllableGun, bool> visIfFixed = gun => !(gun is MyLargeTurretBase);
 			AddRangeSlider<MyUserControllableGun>(4, "Aiming Radius", visible: visIfFixed);
 			AddOnOff<MyUserControllableGun>(5, "Target Missiles", visible: visIfFixed);
 			AddOnOff<MyUserControllableGun>(6, "Target Meteors", visible: visIfFixed);

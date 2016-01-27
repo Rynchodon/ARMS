@@ -15,14 +15,22 @@ namespace Rynchodon.Weapons
 	public class Turret : WeaponTargeting
 	{
 
+		private static bool s_npcHasOpts;
+
+		static Turret()
+		{
+			s_npcHasOpts = !string.IsNullOrWhiteSpace(Settings.ServerSettings.GetSettingString(Settings.ServerSettings.SettingName.sWeaponCommandsNPC));
+		}
+
+		/// <summary>vanilla property</summary>
 		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private readonly float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
-		private readonly  float speedElevation, speedAzimuth;
+		private readonly float speedElevation, speedAzimuth;
 		/// <summary>the turret is capable of rotating past ±180° (azimuth)</summary>
-		private  readonly bool Can360;
+		private readonly bool Can360;
 
 		/// <summary>value set by Turret, updated when not controlling</summary>
 		private float setElevation, setAzimuth;
@@ -38,7 +46,7 @@ namespace Rynchodon.Weapons
 			if (TP_TargetMissiles == null)
 			{
 				myLogger.debugLog("Filling Terminal Properties", "Turret()", Logger.severity.INFO);
-				IMyTerminalBlock term  = CubeBlock as IMyTerminalBlock;
+				IMyTerminalBlock term = CubeBlock as IMyTerminalBlock;
 				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
 				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
 				TP_TargetCharacters = term.GetProperty("TargetCharacters").AsBool();
@@ -68,7 +76,9 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.Interior_Turret(CubeBlock as IMyTerminalBlock))
+			if (CubeBlock.OwnedNPC() && s_npcHasOpts && ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_ARMS_Control))
+				myTurret.ApplyAction("ARMS_Control");
+			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_Interior_Turret))
 				myTurret.ApplyAction("Interior_Turret");
 
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
@@ -79,7 +89,8 @@ namespace Rynchodon.Weapons
 		/// Fill CanTarget from turret
 		/// </summary>
 		protected override void Update100_Options_TargetingThread(TargetingOptions Options)
-		{if (TP_TargetMissiles.GetValue(CubeBlock))
+		{
+			if (TP_TargetMissiles.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Missile;
 			if (TP_TargetMeteors.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Meteor;
@@ -94,7 +105,8 @@ namespace Rynchodon.Weapons
 			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
-			Options.TargetingRange = myTurret.Range;
+			if (myTurret.Range > Options.TargetingRange)
+				Options.TargetingRange = myTurret.Range;
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}

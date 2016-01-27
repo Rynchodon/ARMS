@@ -200,6 +200,20 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// For logging WARNING and higher severity.
+		/// </summary>
+		/// <param name="toLog">message to log</param>
+		/// <param name="methodName">calling method</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		public void alwaysLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		{
+			if (condition)
+				log(level, methodName, toLog, primaryState, secondaryState);
+		}
+
+		/// <summary>
 		/// Do not call from outside Logger class, use debugLog or alwaysLog.
 		/// </summary>
 		/// <param name="level">severity level</param>

@@ -77,7 +77,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Iff true, ARMS should target the weapon.</summary>
 		public bool RunTargeting
 		{
-			get { return Options.FlagSet(TargetingFlags.ArmsEnabled) || EngagerControlling; }
+			get { return IsNormalTurret ? Options.FlagSet(TargetingFlags.ArmsEnabled) : (Options.FlagSet(TargetingFlags.Rotor_Turret) || EngagerControlling); }
 		}
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
@@ -587,7 +587,7 @@ namespace Rynchodon.Weapons
 		}
 
 		private bool condition_changed;
-		private bool prev_working, prev_control, prev_noOwn, prev_vanilla, prev_ammo, prev_targeting, prev_noTarget, prev_enager;
+		private bool prev_working, prev_control, prev_noOwn, prev_vanilla, prev_ammo, prev_targeting, prev_noTarget;
 
 		/// <summary>
 		/// Look for changes that would affect custom info.
@@ -602,7 +602,6 @@ namespace Rynchodon.Weapons
 			ConditionChange(CubeBlock.IsWorking && DefaultTargeting, ref prev_vanilla);
 
 			ConditionChange(RunTargeting, ref prev_targeting);
-			ConditionChange(EngagerControlling, ref prev_enager);
 			ConditionChange(LoadedAmmo == null, ref prev_ammo);
 			ConditionChange(CurrentTarget == null || CurrentTarget.Entity == null, ref prev_noTarget);
 
@@ -632,7 +631,10 @@ namespace Rynchodon.Weapons
 
 			if (RunTargeting)
 			{
-				customInfo.AppendLine("ARMS controlling");
+				if (Options.FlagSet(TargetingFlags.ArmsEnabled))
+					customInfo.AppendLine("ARMS controlling");
+				if (Options.FlagSet(TargetingFlags.Rotor_Turret))
+					customInfo.AppendLine("Rotor-turret");
 				if (EngagerControlling)
 					customInfo.AppendLine("Engager controlling");
 				if (LoadedAmmo == null)
