@@ -40,7 +40,7 @@ namespace Rynchodon.GUI
 			TerminalBlockSync sb;
 			if (!Registrar.TryGetValue(entityId, out sb))
 			{
-				s_logger.alwaysLog("Failed to get SyncBlock from Registrar: " + entityId, "Parse()", Logger.severity.ERROR);
+				s_logger.alwaysLog("Failed to get SyncBlock from Registrar: " + entityId, "Receive()", Logger.severity.ERROR);
 				return;
 			}
 
@@ -55,6 +55,11 @@ namespace Rynchodon.GUI
 			{
 				TypeCode code = (TypeCode)(typeCode - ID_Array);
 				IDictionary dataGroup = sb.GetDataGroup(code);
+				if (dataGroup == null)
+				{
+					s_logger.alwaysLog("failed to get type for array, message: " + string.Join(":", bytes), "Receive()", Logger.severity.FATAL);
+					return;
+				}
 				while (pos < bytes.Length)
 				{
 					byte key = ByteConverter.GetByte(bytes, ref pos);
@@ -68,6 +73,11 @@ namespace Rynchodon.GUI
 			{
 				TypeCode code = (TypeCode)typeCode;
 				IDictionary dataGroup = sb.GetDataGroup(code);
+				if (dataGroup == null)
+				{
+					s_logger.alwaysLog("failed to get type for array, message: " + string.Join(":", bytes), "Receive()", Logger.severity.FATAL);
+					return;
+				}
 				byte index = ByteConverter.GetByte(bytes, ref pos);
 				dataGroup[index] = ByteConverter.GetOfType(bytes, code, ref pos);
 				sb.m_logger.debugLog("Set value, type: " + code + ", index: " + index + ", value: " + dataGroup[index], "Receive()");
@@ -182,7 +192,8 @@ namespace Rynchodon.GUI
 					return GetDataGroup<string>();
 			}
 
-			throw new ArgumentException("Invalid TypeCode: " + code);
+			m_logger.alwaysLog("Invalid TypeCode: " + code, "GetDataGroup()", Logger.severity.FATAL);
+			return null;
 		}
 
 		/// <summary>
@@ -303,6 +314,11 @@ namespace Rynchodon.GUI
 			{
 				TypeCode code = (TypeCode)ByteConverter.GetByte(serial, ref pos);
 				IDictionary dataGroup = GetDataGroup(code);
+				if (dataGroup == null)
+				{
+					m_logger.alwaysLog("Failed to get data group, code: " + code, "DeserializeData()", Logger.severity.FATAL);
+					continue;
+				}
 				int items = ByteConverter.GetInt(serial, ref pos);
 				for (int ii = 0; ii < items; ii++)
 				{
