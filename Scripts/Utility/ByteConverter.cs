@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Rynchodon
 {
-	public class ByteConverter
+	public static class ByteConverter
 	{
 
 		private static readonly byte unknownChar = Convert.ToByte('?');
@@ -162,13 +162,13 @@ namespace Rynchodon
 
 		#region List
 
-		private static void AppendBytes(byteUnion16 u, List<byte> bytes)
+		private static void AppendBytes(List<byte> bytes, byteUnion16 u)
 		{
 			bytes.Add(u.b0);
 			bytes.Add(u.b1);
 		}
 
-		private static void AppendBytes(byteUnion32 u, List<byte> bytes)
+		private static void AppendBytes(List<byte> bytes, byteUnion32 u)
 		{
 			bytes.Add(u.b0);
 			bytes.Add(u.b1);
@@ -176,7 +176,7 @@ namespace Rynchodon
 			bytes.Add(u.b3);
 		}
 
-		private static void AppendBytes(byteUnion64 u, List<byte> bytes)
+		private static void AppendBytes(List<byte> bytes, byteUnion64 u)
 		{
 			bytes.Add(u.b0);
 			bytes.Add(u.b1);
@@ -188,7 +188,7 @@ namespace Rynchodon
 			bytes.Add(u.b7);
 		}
 
-		public static void AppendBytes(bool b, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, bool b)
 		{
 			if (b)
 				bytes.Add(1);
@@ -196,60 +196,103 @@ namespace Rynchodon
 				bytes.Add(0);
 		}
 
-		public static void AppendBytes(byte b, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, byte b)
 		{
 			bytes.Add(b);
 		}
 
-		public static void AppendBytes(short s, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, short s)
 		{
-			AppendBytes(new byteUnion16() { s = s }, bytes);
+			AppendBytes(bytes, new byteUnion16() { s = s });
 		}
 
-		public static void AppendBytes(ushort us, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, ushort us)
 		{
-			AppendBytes(new byteUnion16() { us = us }, bytes);
+			AppendBytes(bytes, new byteUnion16() { us = us });
 		}
 
-		public static void AppendBytes(int i, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, int i)
 		{
-			AppendBytes(new byteUnion32() { i = i }, bytes);
+			AppendBytes(bytes, new byteUnion32() { i = i });
 		}
 
-		public static void AppendBytes(uint ui, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, uint ui)
 		{
-			AppendBytes(new byteUnion32() { ui = ui }, bytes);
+			AppendBytes(bytes, new byteUnion32() { ui = ui });
 		}
 
-		public static void AppendBytes(float f, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, float f)
 		{
-			AppendBytes(new byteUnion32() { f = f }, bytes);
+			AppendBytes(bytes, new byteUnion32() { f = f });
 		}
 
-		public static void AppendBytes(long l, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, long l)
 		{
-			AppendBytes(new byteUnion64() { l = l }, bytes);
+			AppendBytes(bytes, new byteUnion64() { l = l });
 		}
 
-		public static void AppendBytes(ulong ul, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, ulong ul)
 		{
-			AppendBytes(new byteUnion64() { ul = ul }, bytes);
+			AppendBytes(bytes, new byteUnion64() { ul = ul });
 		}
 
-		public static void AppendBytes(double d, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, double d)
 		{
-			AppendBytes(new byteUnion64() { d = d }, bytes);
+			AppendBytes(bytes, new byteUnion64() { d = d });
 		}
 
-		public static void AppendBytes(string s, List<byte> bytes)
+		public static void AppendBytes(List<byte> bytes, string s)
 		{
 			foreach (char c in s)
 			{
 				int i = (int)c;
 				if (i < 256)
-					AppendBytes((byte)i, bytes);
+					AppendBytes(bytes, (byte)i);
 				else
-					AppendBytes(unknownChar, bytes);
+					AppendBytes(bytes,unknownChar);
+			}
+		}
+
+		public static void AppendBytes(List<byte> bytes, object data)
+		{
+			TypeCode code = Convert.GetTypeCode(data);
+			switch (code)
+			{
+				case TypeCode.Boolean:
+					AppendBytes(bytes, (bool)data);
+					break;
+				case TypeCode.Byte:
+					AppendBytes(bytes, (byte)data);
+					break;
+				case TypeCode.Int16:
+					AppendBytes(bytes, (short)data);
+					break;
+				case TypeCode.UInt16:
+					AppendBytes(bytes, (ushort)data);
+					break;
+				case TypeCode.Int32:
+					AppendBytes(bytes, (int)data);
+					break;
+				case TypeCode.UInt32:
+					AppendBytes(bytes, (uint)data);
+					break;
+				case TypeCode.Int64:
+					AppendBytes(bytes, (long)data);
+					break;
+				case TypeCode.UInt64:
+					AppendBytes(bytes, (ulong)data);
+					break;
+				case TypeCode.Single:
+					AppendBytes(bytes, (float)data);
+					break;
+				case TypeCode.Double:
+					AppendBytes(bytes, (double)data);
+					break;
+				case TypeCode.String:
+					AppendBytes(bytes, (string)data);
+					break;
+				default:
+					throw new InvalidCastException("Argument is not a primitive: " + code + ", " + data);
 			}
 		}
 
@@ -347,6 +390,36 @@ namespace Rynchodon
 		public static char GetChar(byte[] bytes, ref int pos)
 		{
 			return (char)GetByte(bytes, ref pos);
+		}
+
+		public static object GetOfType(byte[] bytes, TypeCode code, ref int pos)
+		{
+			switch (code)
+			{
+				case TypeCode.Boolean:
+					return GetBool(bytes, ref pos);
+				case TypeCode.Byte:
+					return GetByte(bytes, ref pos);
+				case TypeCode.Int16:
+					return GetShort(bytes, ref pos);
+				case TypeCode.UInt16:
+					return GetUshort(bytes, ref pos);
+				case TypeCode.Int32:
+					return GetInt(bytes, ref pos);
+				case TypeCode.UInt32:
+					return GetUint(bytes, ref pos);
+				case TypeCode.Int64:
+					return GetLong(bytes, ref pos);
+				case TypeCode.UInt64:
+					return GetUlong(bytes, ref pos);
+				case TypeCode.Single:
+					return GetFloat(bytes, ref pos);
+				case TypeCode.Double:
+					return GetFloat(bytes, ref pos);
+				case TypeCode.Char:
+					return GetChar(bytes, ref pos);
+			}
+			throw new ArgumentException("Invalid TypeCode: " + code);
 		}
 
 		#endregion From Byte Array

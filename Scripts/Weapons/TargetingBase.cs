@@ -602,14 +602,6 @@ namespace Rynchodon.Weapons
 						}
 					}
 
-					//bool isMissile = entity.ToString().StartsWith("MyMissile");
-
-					//if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 10)
-					//{
-					//	myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
-					//	continue;
-					//}
-
 					// meteors and missiles are dangerous even if they are slow
 					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.ToString().StartsWith("MyMissile")))
 						continue;
@@ -681,7 +673,7 @@ namespace Rynchodon.Weapons
 		/// Calculates FiringDirection and InterceptionPoint
 		/// </summary>
 		/// TODO: if target is accelerating, look ahead (missiles and such)
-		protected void SetFiringDirection()
+		protected void SetFiringDirection(float precogSec = 0f)
 		{
 			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
@@ -689,6 +681,8 @@ namespace Rynchodon.Weapons
 			Vector3 myVelocity = MyEntity.GetLinearVelocity();
 			Vector3 targetVelocity = myTarget.GetLinearVelocity();
 			Vector3 TargetPosition = myTarget.GetPosition();
+			if (precogSec > 0f)
+				TargetPosition += targetVelocity * precogSec;
 
 			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
 			if (myTarget.Entity != null)

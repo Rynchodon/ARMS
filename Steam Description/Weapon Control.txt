@@ -24,22 +24,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [*]Vanilla means Space Engineers without any mods.[/list]
 
 [b][u]Debugging[/u][/b]
-[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is at 0. Each additional command is +1 from the one prior. Please see the below example for further explanation.
-
-[u]Example:[/u]
-You want to have a specific gun to fire at all ships or stations guns, that are within 600 meters. However, you type the following:
-
-[list] 
-[list]Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
- [/list]
-
-If the above command is used, the display name will change to the following:
-
-[list] 
-[list]<ERROR:1>Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
- [/list]
-
-As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is at 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
+[list]If a mistake/error is made to the command line, an <ERROR:#> will be added to the start of the display name. The word ERROR simply means you made a mistake somewhere. The # simply indicates which command has the error. Its important to note that the first command used in the display name is at 0. Each additional command is +1 from the one prior.
 
 [b][u]Known Issues[/u][/b]
 [list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
@@ -47,60 +32,41 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [*]Engage command is not aware of rotor-turrets.[/list]
 
 [b][u]Important Information[/u][/b]
-[list][*]If an N.P.C. weapon's display name contain square brackets without commands, they will use the commands from the settings file.
+[list][*]If a N.P.C. weapon's display name does not have commands, they will use the commands from the settings file.
 [list][*]This is any weapon who's ownership is set to N.P.C. and not a player.[/list]
-[*]By default, Weapon Control will target working blocks, if you would prefer to target functional blocks use the Functional command.
+[*]By default, Weapon Control will target working blocks, if you would prefer to target functional blocks use the Functional switch.
 [list][*]Working means the block is "ON"
-[*]Functional means the block is able to be turned on but isn't necessarily in the "ON" position.
-[*]For additional information on this, see the "Commands List" below.[/list][/list]
+[*]Functional means the block is able to be turned on but isn't necessarily in the "ON" position.[/list][/list]
 
 [b][u]Understanding Obstructions[/u][/b]
 [list][*]An obstruction can be an asteroid, a friendly character, or a friendly grid.
 [*]Blocks are considered to take up as much space as is required to place them.
 [*]Weapon Control assumes that any fixed weapon will not be able to hit the grid they are apart of.
 [list][*]In other words, it assumes that if it fires a fixed weapon, there isn't a part of the ship its attached to in the way of the projectile.[/list][/list]
-[list]For vanilla (default game) interior turrets, Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior command. See the "Commands List" for more information.[/list]
+[list][*]For vanilla (default game) interior turrets, Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior switch.[/list]
 
-[b][u]Targeting On/Off Toggles and Commands[/u][/b]
-[list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targeting toggles found in the control panel for all turret weapons. All fixed weapons, however, must be told what to target and shoot through commands.[/list]
+[b][u]Checkboxes[/u][/b]
+[list][*]ARMS Control - [i]Enables Weapon Control for a turret.[/i]
+[*]Rotor-Turret - [i]Tells a fixed weapon to function as a rotor-turret.[/i]
+[*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i]
+[*]Target Functional - [i]Targets all functional blocks, not just working ones.[/i]
+[*]Destroy Everything - [i]Destroys all terminal blocks in range.[/i][/list]
+
+[b][u]On/Off Switches[/u][/b]
+[list][*]Target Missile - [i]Target approaching missiles.[/i]
+[*]Target Meteor - [i]Target approaching meteors.[/i]
+[*]Target Character - [i]Target hostile characters.[/i]
+[*]Target Moving Objects - [i]Target approaching "floating objects" and approaching hostile grids (small & large).[/i]
+[*]Target Large Ship - [i]Target large grids[/i]
+[*]Target Small Ship - [i]Target small grids[/i]
+[*]Target Station - [i]Target stations[/i][/list]
 
 [b][u]Command List[/u][/b]
-
-[u]Common Commands[/u]
-[list][*]Radius <distance> - [i]Sets the radius/range for the weapon, a must have for rotor-turrets and fixed weapons.[/i]
-[*]Range <distance> - [i]Same as Radius.[/i]
-[*]Turret - [i]Used to indicate that a weapon is actually part of a rotor-turret.[/i]
-[*](<block1>, <block2>, <block3>, ...) - [i]Blocks to target are a comma-separated list inside round brackets.[/i]
-[*]T <panel name>, <identifier> - [i]Commands can be fetched from a text panel, similar to navigation. Weapon control will remember the commands retrieved from the text panel even if it is destroyed.[/i][/list]
-
-[u]Uncommon Commands[/u]
-[list][*]Functional - [i]Block can be operational but not necessarily "ON"[/i]
-[*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i]
+[list][*](<block1>, <block2>, <block3>, ...) - [i]Blocks to target are a comma-separated list inside round brackets.[/i]
+[*]T <panel name>, <identifier> - [i]Commands can be fetched from a text panel, similar to navigation. Weapon control will remember the commands retrieved from the text panel even if it is destroyed.[/i]
 [*]ID <entityId> - [i]Only allows the weapon to target the given entity. entityId can be found by displaying detected grids on a text panel.[/i][/list]
 
-[u]Priority Commands[/u]
-[list]Missile has the highest priority, followed by Meteor, then Character, then Moving. All of these have higher priority than targeting specific blocks.
-[list] [/list]
-[*]Missile - [i]Target approaching missiles, does not consider who fired the missile.[/i]
-[*]Meteor - [i]Target approaching meteors.[/i]
-[*]Character - [i]Target hostile characters.[/i]
-[*]Moving - [i]Target approaching "floating objects" and approaching hostile grids (small & large).[/i][/list]
-
-[u]Advanced Priority Commands[/u]
-[list]These commands use a complex priority system based on distance to the block and the block's position in the block list command.
-[list] [/list]
-[*]AllGrid - [i]Target all grids[/i]
-[*]LargeGrid - [i]Target large grids[/i]
-[*]SmallGrid - [i]Target small grids[/i]
-[*]Station - [i]Target stations[/i][/list]
-
-[u]Lowest Priority Command[/u]
-[list][*]Destroy - [i]Destroys all terminal blocks in hostile grids in range (small, large, & station).[/i][/list]
-
-[b][u]Examples:[/u][/b]
-[list][(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Functional ; Destroy]
-[list]Will disable functional warheads, turrets, rocket launchers, gatling guns, reactors, batteries, and solar panels on grids in range. Should only be used on a turret because range and grid types have not been specified. Once none of those can be found, destroy everything.[/list]
-[(Turret, Rocket, Gatling) ; AllGrid ; Range 600]
-[list]Disable all enemy weapons within 600 m.[/list]
-[ T Command Panel, {Subset 4} ]
-[list]Grabs the list of Commands found in the LCD panel named "Command Panel" and uses those for itself. However, it only grabs commands that occur after "{Subset 4}".[/list][/list]
+[u]Priorities[/u]
+[i]Missile has the highest priority, followed by Meteor, then Character, then Moving. All of these have higher priority than targeting specific blocks.
+Block priorities are based on the distance from the turret and the order they appear in the block list the player provided.
+Destroy has the lowest priority.[/i]

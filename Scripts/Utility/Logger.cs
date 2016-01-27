@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
@@ -27,6 +28,9 @@ namespace Rynchodon
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Logger : MySessionComponentBase
 	{
+
+		private const string s_logMaster = "log-master.txt";
+
 		private static System.IO.TextWriter logWriter = null;
 		private StringBuilder stringCache = new StringBuilder();
 
@@ -36,9 +40,6 @@ namespace Rynchodon
 		private static bool worldClosed, loggingClosed;
 
 		private readonly string m_classname;
-		/// <summary>
-		/// take precedence over strings
-		/// </summary>
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
 
 		public severity MinimumLevel = severity.ALL;
@@ -115,20 +116,26 @@ namespace Rynchodon
 
 		private bool createLog()
 		{
-			try
-			{ deleteIfExists("Autopilot.log"); }
-			catch { }
-			try
-			{ deleteIfExists("log.txt"); }
-			catch { }
-			for (int i = 0; i < 10; i++)
-				if (logWriter == null)
-					try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
-					catch { }
-				else
+			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(s_logMaster, GetType()))
+			{
+				for (int i = 0; i < 10; i++)
 					try
 					{ deleteIfExists("log-" + i + ".txt"); }
 					catch { }
+				FileMaster master = new FileMaster(s_logMaster, "log-", 10);
+				logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
+			}
+			else
+			{
+				for (int i = 0; i < 10; i++)
+					if (logWriter == null)
+						try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
+						catch { }
+					else
+						try
+						{ deleteIfExists("log-" + i + ".txt"); }
+						catch { }
+			}
 
 			return logWriter != null;
 		}
@@ -190,6 +197,20 @@ namespace Rynchodon
 		public void alwaysLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
 		{
 			log(level, methodName, toLog, primaryState, secondaryState);
+		}
+
+		/// <summary>
+		/// For logging WARNING and higher severity.
+		/// </summary>
+		/// <param name="toLog">message to log</param>
+		/// <param name="methodName">calling method</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		public void alwaysLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		{
+			if (condition)
+				log(level, methodName, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -263,11 +284,11 @@ namespace Rynchodon
 				logWriter.Flush();
 				stringCache.Clear();
 			}
-			catch (Exception ex)
-			{
-				debugNotify("Exception while logging", 2000, severity.ERROR);
-				MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
-			}
+			//catch (Exception ex)
+			//{
+			//	debugNotify("Exception while logging", 2000, severity.ERROR);
+			//	MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
+			//}
 			finally { lock_log.ReleaseExclusive(); }
 		}
 
