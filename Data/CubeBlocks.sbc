@@ -814,6 +814,7 @@
       <Description>
         AllowFighterControl=false
         GuidedMissileLauncher=true
+        MissileSpawnForward=5
       </Description>
       <DisplayName>Swarm Missile Launcher</DisplayName>
       <public>false</public>
