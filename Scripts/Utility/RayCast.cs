@@ -47,11 +47,14 @@ namespace Rynchodon
 				{
 					double distance;
 					foreach (Line testLine in lines)
-						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
+					{
+						LineD l = (LineD)testLine;
+						if (entity.WorldAABB.Intersects(ref l, out distance))
 						{
 							obstruction = asChar;
 							return true;
 						}
+					}
 					continue;
 				}
 

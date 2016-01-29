@@ -472,11 +472,14 @@ namespace Rynchodon.Weapons
 				{
 					double distance;
 					foreach (Line testLine in AllTestLines)
-						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
+					{
+						LineD l = (LineD)testLine;
+						if (entity.WorldAABB.Intersects(ref l, out distance))
 						{
 							myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
 							return true;
 						}
+					}
 					continue;
 				}
 
