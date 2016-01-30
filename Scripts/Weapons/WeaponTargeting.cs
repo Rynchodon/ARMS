@@ -77,7 +77,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Iff true, ARMS should target the weapon.</summary>
 		public bool RunTargeting
 		{
-			get { return IsNormalTurret ? Options.FlagSet(TargetingFlags.ArmsEnabled) : (Options.FlagSet(TargetingFlags.Rotor_Turret) || EngagerControlling); }
+			get { return IsNormalTurret ? !DefaultTargeting : (Options.FlagSet(TargetingFlags.Turret) || EngagerControlling); }
 		}
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
@@ -191,7 +191,8 @@ namespace Rynchodon.Weapons
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
-				ArmsGuiWeapons.DisableArmsControl(FuncBlock);
+				//ArmsGuiWeapons.DisableArmsControl(FuncBlock);
+				FuncBlock.RequestEnable(false);
 				Options.Flags = TargetingFlags.None;
 
 				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
@@ -310,16 +311,18 @@ namespace Rynchodon.Weapons
 			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
 			ClearBlacklist();
 
-			if (RunTargeting || GuidedLauncher)
+			//if (RunTargeting || GuidedLauncher)
+			if ((CubeBlock.DisplayNameText.Contains("[") && CubeBlock.DisplayNameText.Contains("]")) || CubeBlock.OwnedNPC())
 			{
 				Interpreter.UpdateInstruction();
 				if (Interpreter.Errors.Count <= InterpreterErrorCount)
 				{
-					Options = Interpreter.Options;
-					if (Options == null)
+					if (Interpreter.Options == null)
 						Options = new TargetingOptions();
+					else
+						Options = Interpreter.Options.Clone();
 					InterpreterErrorCount = Interpreter.Errors.Count;
-					ArmsGuiWeapons.UpdateTerm(FuncBlock, Options);
+					//ArmsGuiWeapons.UpdateTerm(FuncBlock, Options);
 					Update100_Options_TargetingThread(Options);
 					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
 				}
@@ -333,7 +336,7 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.debugLog("Not running targeting", "Update100()");
 				DefaultTargeting = true;
-				ArmsGuiWeapons.UpdateArmsEnabled(FuncBlock, Options);
+				//ArmsGuiWeapons.UpdateArmsEnabled(FuncBlock, Options);
 			}
 		}
 
@@ -634,9 +637,9 @@ namespace Rynchodon.Weapons
 
 			if (RunTargeting)
 			{
-				if (Options.FlagSet(TargetingFlags.ArmsEnabled))
-					customInfo.AppendLine("ARMS controlling");
-				if (Options.FlagSet(TargetingFlags.Rotor_Turret))
+				//if (Options.FlagSet(TargetingFlags.ArmsEnabled))
+				//	customInfo.AppendLine("ARMS controlling");
+				if (Options.FlagSet(TargetingFlags.Turret))
 					customInfo.AppendLine("Rotor-turret");
 				if (EngagerControlling)
 					customInfo.AppendLine("Engager controlling");

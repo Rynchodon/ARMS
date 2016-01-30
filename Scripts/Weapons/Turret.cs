@@ -76,10 +76,10 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			if (CubeBlock.OwnedNPC() && s_npcHasOpts && ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_ARMS_Control))
-				myTurret.ApplyAction("ARMS_Control");
-			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_Interior_Turret))
-				myTurret.ApplyAction("Interior_Turret");
+			//if (CubeBlock.OwnedNPC() && s_npcHasOpts && ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_ARMS_Control))
+			//	myTurret.ApplyAction("ARMS_Control");
+			//if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_Interior_Turret))
+			//	myTurret.ApplyAction("Interior_Turret");
 
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
@@ -107,6 +107,9 @@ namespace Rynchodon.Weapons
 
 			if (myTurret.Range > Options.TargetingRange)
 				Options.TargetingRange = myTurret.Range;
+
+			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
+				Options.Flags |= TargetingFlags.Interior;
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
