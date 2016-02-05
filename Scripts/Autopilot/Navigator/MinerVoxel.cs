@@ -361,7 +361,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (m_state)
 				{
 					case State.Approaching:
-						m_mover.CalcRotateStop();
+						m_mover.StopRotate();
 						return;
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())

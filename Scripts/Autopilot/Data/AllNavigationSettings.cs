@@ -33,7 +33,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative;
 
-			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance, m_pathfindeCanChangeCourse, m_formation;
+			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance, m_pathfindeCanChangeCourse, m_formation, m_nearingDestination;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -57,6 +57,7 @@ namespace Rynchodon.Autopilot.Data
 				m_collisionAvoidance = true;
 				m_pathfindeCanChangeCourse = true;
 				m_formation = false;
+				m_nearingDestination = false;
 			}
 
 			/// <summary>
@@ -247,22 +248,32 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destChanged = value; }
 			}
 
+			/// <summary>For Kamikaze</summary>
 			public bool CollisionAvoidance
 			{
 				get { return m_collisionAvoidance ?? parent.CollisionAvoidance; }
 				set { m_collisionAvoidance = value; }
 			}
 
+			/// <summary>For final landing stage and "Line" command</summary>
 			public bool PathfinderCanChangeCourse
 			{
 				get { return m_pathfindeCanChangeCourse ?? parent.PathfinderCanChangeCourse; }
 				set { m_pathfindeCanChangeCourse = value; }
 			}
 
+			/// <summary>See "Form" command</summary>
 			public bool Stay_In_Formation
 			{
 				get { return m_formation ?? parent.Stay_In_Formation; }
 				set { m_formation = value; }
+			}
+
+			/// <summary>Mover uses this to determine if the ship should rotate to stop.</summary>
+			public bool NearingDestination
+			{
+				get { return m_nearingDestination ?? parent.NearingDestination; }
+				set { m_nearingDestination = value; }
 			}
 
 		}
