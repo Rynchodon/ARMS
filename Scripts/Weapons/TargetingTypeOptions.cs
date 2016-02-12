@@ -42,7 +42,9 @@ namespace Rynchodon.Weapons
 		/// <summary>Reduce the number of rays to check for obstructions.</summary>
 		Interior = 1 << 1,
 		/// <summary>Causes a fixed weapon to be treated as a rotor-turret.</summary>
-		Turret = 1 << 2
+		Turret = 1 << 2,
+		///// <summary>Turns ARMS targeting on for the turret.</summary>
+		//ArmsEnabled = 1 << 3
 	}
 
 	public class TargetingOptions

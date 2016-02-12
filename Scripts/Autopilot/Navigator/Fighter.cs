@@ -203,7 +203,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						Turret weapon;
 						Registrar.TryGetValue(block.EntityId, out weapon);
-						if (weapon.CurrentState_FlagSet(WeaponTargeting.State.Targeting))
+						if (weapon.RunTargeting)
 						{
 							m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
 							m_weapons_all.Add(weapon);

@@ -65,28 +65,28 @@ namespace Rynchodon.Weapons
 			public float EMP_Seconds = 0f;
 
 			#region Cluster
-			#region Mandatory
+			//#region Mandatory
 
 			// trying clusters without swapping ammo, might go back to main/part model later
 
-			/// <summary>Split the cluster when this far from target.</summary>
-			public float ClusterSplitRange;
+			///// <summary>Split the cluster when this far from target.</summary>
+			//public float ClusterSplitRange;
 			/// <summary>Seconds from last cluster missile being fired until it can fire again.</summary>
 			public float ClusterCooldown;
 
-			#endregion Mandatory
-			#region Optional
+			//#endregion Mandatory
+			//#region Optional
 
-			/// <summary>How far apart each cluster missile will be from main missile when they split. Units = squigglies.</summary>
-			public float ClusterInitSpread = 1f;
-			/// <summary>Circle of missiles will be this far behind main missile.</summary>
-			public float ClusterOffset_Back = 0f;
-			/// <summary>Distance along the circumference of the circle of missiles between missiles</summary>
-			public float ClusterOffset_Radial = 2f;
+			///// <summary>How far apart each cluster missile will be from main missile when they split. Units = squigglies.</summary>
+			//public float ClusterInitSpread = 1f;
+			///// <summary>Circle of missiles will be this far behind main missile.</summary>
+			//public float ClusterOffset_Back = 0f;
+			///// <summary>Distance along the circumference of the circle of missiles between missiles</summary>
+			//public float ClusterOffset_Radial = 2f;
 			/// <summary>Distance between launcher and missile for missile to move into formation.</summary>
-			public float ClusterFormDistance = 1f;
+			//public float ClusterFormDistance = 1f;
 
-			#endregion Optional
+			//#endregion Optional
 			#endregion Cluster
 			#endregion Payload
 
@@ -148,7 +148,7 @@ namespace Rynchodon.Weapons
 
 		public readonly AmmoDescription Description;
 
-		public readonly Vector3[] ClusterOffsets;
+		//public readonly Vector3[] ClusterOffsets;
 		public readonly bool IsCluster;
 
 		private readonly Logger myLogger;
@@ -180,31 +180,34 @@ namespace Rynchodon.Weapons
 
 			#region Check Cluster
 
-			if (Description.ClusterSplitRange < 1 || Description.ClusterCooldown < 1) // if any value is bad
-			{
-				if (Description.ClusterSplitRange >= 1 || Description.ClusterCooldown >= 1) // if any value is good
-				{
-					Logger.debugNotify("Cluster description is incomplete", 10000, Logger.severity.ERROR);
-					//myLogger.alwaysLog("Cluster description is incomplete: " + Description.ClusterSplitRange + ", " + Description.ClusterSpread + ", " + Description.ClusterCooldown, "VerifyCluster()", Logger.severity.ERROR);
-				}
+			//if (Description.ClusterSplitRange < 1 || Description.ClusterCooldown < 1) // if any value is bad
+			//{
+			//	if (Description.ClusterSplitRange >= 1 || Description.ClusterCooldown >= 1) // if any value is good
+			//	{
+			//		Logger.debugNotify("Cluster description is incomplete", 10000, Logger.severity.ERROR);
+			//		//myLogger.alwaysLog("Cluster description is incomplete: " + Description.ClusterSplitRange + ", " + Description.ClusterSpread + ", " + Description.ClusterCooldown, "VerifyCluster()", Logger.severity.ERROR);
+			//	}
+			//	return;
+			//}
+
+			if (Description.ClusterCooldown < 1)
 				return;
-			}
 
 			// BuildOffsets
 			// ClusterOffset_Back can be +/-
-			Description.ClusterOffset_Radial = MathHelper.Max(Description.ClusterOffset_Radial, 0f);
-			Description.ClusterFormDistance = MathHelper.Max(Description.ClusterFormDistance, 1f);
-			ClusterOffsets = new Vector3[ammoMagDef.Capacity - 1];
-			float radius = ClusterOffsets.Length / MathHelper.TwoPi * Description.ClusterOffset_Radial;
-			float angle = MathHelper.TwoPi / ClusterOffsets.Length;
+			//Description.ClusterOffset_Radial = MathHelper.Max(Description.ClusterOffset_Radial, 0f);
+			//Description.ClusterFormDistance = MathHelper.Max(Description.ClusterFormDistance, 1f);
+			//ClusterOffsets = new Vector3[ammoMagDef.Capacity - 1];
+			//float radius = ClusterOffsets.Length / MathHelper.TwoPi * Description.ClusterOffset_Radial;
+			//float angle = MathHelper.TwoPi / ClusterOffsets.Length;
 
-			for (int i = 0; i < ClusterOffsets.Length; i++)
-			{
-				float partAngle = angle * i;
-				float right = (float)Math.Sin(partAngle) * radius;
-				float up = (float)Math.Cos(partAngle) * radius;
-				ClusterOffsets[i] = new Vector3(right, up, Description.ClusterOffset_Back);
-			}
+			//for (int i = 0; i < ClusterOffsets.Length; i++)
+			//{
+			//	float partAngle = angle * i;
+			//	float right = (float)Math.Sin(partAngle) * radius;
+			//	float up = (float)Math.Cos(partAngle) * radius;
+			//	ClusterOffsets[i] = new Vector3(right, up, Description.ClusterOffset_Back);
+			//}
 
 			myLogger.debugLog("Is a cluster missile", "VerifyCluster()");
 			IsCluster = true;

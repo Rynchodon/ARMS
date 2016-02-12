@@ -1,51 +1,52 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.ModAPI;
+using VRage.Utils;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
-	/// <summary>
-	/// Class is designed to replace / merge with TurretBase
-	/// </summary>
 	public class Turret : WeaponTargeting
 	{
 
+		private static bool s_npcHasOpts;
+
+		static Turret()
+		{
+			s_npcHasOpts = !string.IsNullOrWhiteSpace(Settings.ServerSettings.GetSettingString(Settings.ServerSettings.SettingName.sWeaponCommandsNPC));
+		}
+
+		/// <summary>vanilla property</summary>
 		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
 
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
-		private float minElevation, maxElevation, minAzimuth, maxAzimuth;
+		private readonly float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
-		private float speedElevation, speedAzimuth;
+		private readonly float speedElevation, speedAzimuth;
 		/// <summary>the turret is capable of rotating past ±180° (azimuth)</summary>
-		private bool Can360;
+		private readonly bool Can360;
+
 		/// <summary>value set by Turret, updated when not controlling</summary>
 		private float setElevation, setAzimuth;
-
-		private bool Initialized = false;
 
 		private Logger myLogger;
 
 		public Turret(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger("Turret", () => block.CubeGrid.DisplayName, () => block.DefinitionDisplayNameText, () => block.getNameOnly());
+			myLogger = new Logger("Turret", block);
 			Registrar.Add(CubeBlock, this);
-		}
 
-		private void Initialize()
-		{
 			if (TP_TargetMissiles == null)
 			{
-				myLogger.debugLog("Filling Terminal Properties", "Initialize()", Logger.severity.INFO);
-				IMyTerminalBlock term  = CubeBlock as IMyTerminalBlock;
+				myLogger.debugLog("Filling Terminal Properties", "Turret()", Logger.severity.INFO);
+				IMyTerminalBlock term = CubeBlock as IMyTerminalBlock;
 				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
 				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
 				TP_TargetCharacters = term.GetProperty("TargetCharacters").AsBool();
@@ -75,8 +76,10 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			AllowedState = State.Targeting;
-			Initialized = true;
+			//if (CubeBlock.OwnedNPC() && s_npcHasOpts && ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_ARMS_Control))
+			//	myTurret.ApplyAction("ARMS_Control");
+			//if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_Interior_Turret))
+			//	myTurret.ApplyAction("Interior_Turret");
 
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
@@ -85,16 +88,8 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Fill CanTarget from turret
 		/// </summary>
-		protected override void Update_Options(TargetingOptions Options)
+		protected override void Update100_Options_TargetingThread(TargetingOptions Options)
 		{
-			myLogger.debugLog(TP_TargetMissiles == null, "TP_TargetMissiles == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetMeteors == null, "TP_TargetMeteors == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetCharacters == null, "TP_TargetCharacters == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetMoving == null, "TP_TargetMoving == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetLargeGrids == null, "TP_TargetLargeGrids == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetSmallGrids == null, "TP_TargetSmallGrids == null", "Update_Options()", Logger.severity.FATAL);
-			myLogger.debugLog(TP_TargetStations == null, "TP_TargetStations == null", "Update_Options()", Logger.severity.FATAL);
-
 			if (TP_TargetMissiles.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Missile;
 			if (TP_TargetMeteors.GetValue(CubeBlock))
@@ -110,10 +105,11 @@ namespace Rynchodon.Weapons
 			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
+			if (myTurret.Range > Options.TargetingRange)
+				Options.TargetingRange = myTurret.Range;
+
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
 				Options.Flags |= TargetingFlags.Interior;
-
-			Options.TargetingRange = myTurret.Range;
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
@@ -157,12 +153,9 @@ namespace Rynchodon.Weapons
 		/// <remarks>
 		/// Must execute regularly on game thread.
 		/// </remarks>
-		protected override void Update()
+		protected override void Update1_GameThread()
 		{
-			if (!Initialized)
-				Initialize();
-
-			if (CurrentState_NotFlag(State.Targeting))
+			if (!RunTargeting)
 			{
 				setElevation = myTurret.Elevation;
 				setAzimuth = myTurret.Azimuth;

@@ -6,9 +6,9 @@ using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -361,7 +361,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (m_state)
 				{
 					case State.Approaching:
-						m_mover.CalcRotateStop();
+						m_mover.StopRotate();
 						return;
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())

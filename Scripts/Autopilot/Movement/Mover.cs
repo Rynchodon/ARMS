@@ -180,6 +180,8 @@ namespace Rynchodon.Autopilot.Movement
 			float speedRequest = NavSet.Settings_Current.SpeedTarget;
 			if (tarSpeedSq > speedRequest * speedRequest)
 				m_targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
+			else
+				NavSet.Settings_Task_NavWay.NearingDestination = true;
 
 			m_moveAccel = m_targetVelocity - velocity - myThrust.m_localGravity;
 
@@ -351,15 +353,6 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>
-		/// Rotate to face autopilot away from linear velocity.
-		/// </summary>
-		public void CalcRotateStop()
-		{
-			if (!InGravity_LevelOff())
-				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
-		}
-
-		/// <summary>
 		/// Rotate to face the best direction for flight.
 		/// </summary>
 		public void CalcRotate()
@@ -368,7 +361,9 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
 			else
-				CalcRotateStop();
+				if (!InGravity_LevelOff() && NavSet.Settings_Current.NearingDestination)
+					// rotate to stop
+					CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
 		}
 
 		/// <summary>

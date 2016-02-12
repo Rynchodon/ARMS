@@ -11,10 +11,12 @@ namespace Rynchodon
 		private static class Register<T>
 		{
 
+			private static readonly Logger s_logger = new Logger("Register<T>", () => typeof(T).ToString());
+
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();
 
-			public static bool Closed { get; private set; }
+			public static bool Closed { get { return m_dictionary == null; } }
 
 			static Register()
 			{
@@ -24,7 +26,6 @@ namespace Rynchodon
 			static void Entities_OnCloseAll()
 			{
 				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-				Closed = true;
 				m_dictionary = null;
 				m_lock = null;
 			}
@@ -33,10 +34,12 @@ namespace Rynchodon
 			{
 				using (m_lock.AcquireExclusiveUsing())
 					m_dictionary.Add(entityId, script);
+				s_logger.debugLog("Added " + script + ", for " + entityId, "Add()");
 			}
 
 			public static bool Remove(long entityId)
 			{
+				s_logger.debugLog("Removing script, for " + entityId, "Remove()");
 				using (m_lock.AcquireExclusiveUsing())
 					return m_dictionary.Remove(entityId);
 			}

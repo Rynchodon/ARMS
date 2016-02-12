@@ -31,7 +31,7 @@
         <TypeId>WeaponDefinition</TypeId>
         <SubtypeId>Souper_B3MP_Launcher</SubtypeId>
       </Id>
-      <MissileAmmoData RateOfFire="60" ShootSoundName="WepShipSmallMissileShot" />
+      <MissileAmmoData RateOfFire="900" ShootSoundName="WepShipSmallMissileShot" />
       <NoAmmoSoundName>WepShipGatlingNoAmmo</NoAmmoSoundName>
       <AmmoMagazines>
         <AmmoMagazine Subtype="Souper_B3MP_Missile" />

@@ -70,10 +70,7 @@
       <Description>
         GuidanceSeconds=15
         Acceleration=100
-        ClusterSplitRange=300
         ClusterCooldown=5
-        ClusterOffset_Back=-5
-        ClusterOffset_Radial=1.2
       </Description>
       <BasicProperties>
         <DesiredSpeed>800</DesiredSpeed>

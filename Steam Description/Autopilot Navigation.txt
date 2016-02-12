@@ -33,6 +33,11 @@ The pathfinding is very basic, designed with the assumption that the world is mo
 Pathfinding runs in a separate thread from the rest of the game; if the pathfinder is overworked, the ship may have to stop and calculate a path for a long time.
 All Autopilots share <yParallelPathfinder> threads; each pathfinder uses one thread. If all the threads are in use, the pathfinder will have to wait.
 
+[h1]Autopilot Orientation[/h1]
+If a navigation block has a target to face towards, that will always take precedence.
+Otherwise, the autopilot will face the autopilot block or the navigation block towards the destination while accelerating and cruising and will face it away from the destination while decelerating.
+When flying a ship in a gravity well, the autopilot block will attempt to remain upright; facing "up" away from the gravity source.
+
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth

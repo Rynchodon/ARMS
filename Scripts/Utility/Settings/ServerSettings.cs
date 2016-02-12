@@ -51,7 +51,8 @@ namespace Rynchodon.Settings
 		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		public const int latestVersion = 50; // in sequence of updates on steam
+		public const int latestVersion = 51; // in sequence of updates on steam
+
 		public static readonly int fileVersion;
 
 		private static Logger myLogger = new Logger("ServerSettings");
@@ -114,15 +115,15 @@ namespace Rynchodon.Settings
 				myLogger.debugLog("Received request from: " + SteamUserId, "Server_ReceiveMessage()");
 
 				List<byte> send = new List<byte>();
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowAutopilot), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowGuidedMissile), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowRadar), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bAllowWeaponControl), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseColourState), send);
-				ByteConverter.AppendBytes(GetSetting<bool>(SettingName.bUseRemoteControl), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fDefaultSpeed), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxSpeed), send);
-				ByteConverter.AppendBytes(GetSetting<float>(SettingName.fMaxWeaponRange), send);
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowRadar));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowWeaponControl));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bUseColourState));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bUseRemoteControl));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fDefaultSpeed));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxSpeed));
+				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxWeaponRange));
 
 				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, send.ToArray(), SteamUserId))
 					myLogger.debugLog("Sent settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.INFO);
@@ -194,7 +195,7 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
 			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sWeaponCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Range 800 ; AllGrid ; Destroy ]"));
+			AllSettings.Add(SettingName.sWeaponCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Destroy ]"));
 		}
 
 		/// <summary>
