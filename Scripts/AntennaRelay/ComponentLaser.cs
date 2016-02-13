@@ -4,6 +4,9 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
+	/// <summary>
+	/// Laser component of a NetworkNode
+	/// </summary>
 	public class ComponentLaser
 	{
 

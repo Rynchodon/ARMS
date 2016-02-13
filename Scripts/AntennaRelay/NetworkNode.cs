@@ -51,8 +51,10 @@ namespace Rynchodon.AntennaRelay
 		private int m_lastSearchId;
 		private NetworkStorage value_storage;
 
+		/// <summary>Name used to identify this node.</summary>
 		public string LoggingName { get { return m_loggingName.Invoke(); } }
 
+		/// <summary>Contains all the LastSeen and Message for this node.</summary>
 		public NetworkStorage Storage
 		{
 			get { return value_storage; }
@@ -118,7 +120,7 @@ namespace Rynchodon.AntennaRelay
 
 		/// <summary>
 		/// Updates direct connections between this node and other nodes.
-		/// Tests connection to primary storage node.
+		/// When debug is set, checks connection to primary storage node.
 		/// </summary>
 		public void Update()
 		{
@@ -214,8 +216,8 @@ namespace Rynchodon.AntennaRelay
 				Storage = Storage.Clone(this);
 			}
 
-			// laser connections don't update immediately, so don't worry about a single warning (per block) if there is a laser involved
-			m_logger.debugLog(!IsConnectedTo(Storage.PrimaryNode), "Not connected to primary node", "Update()", Logger.severity.WARNING);
+			// connections don't update immediately, so don't worry about a single message (per block)
+			m_logger.debugLog(!IsConnectedTo(Storage.PrimaryNode), "Not connected to primary node", "Update()", Logger.severity.INFO);
 
 			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", "Update()", Logger.severity.TRACE);
 			s_sendPositionTo.Add(Storage);
@@ -233,7 +235,13 @@ namespace Rynchodon.AntennaRelay
 				!this.m_comp_blockAttach.canConsiderFriendly(other.m_ownerId.Invoke()) :
 				!this.m_player.canConsiderFriendly(other.m_ownerId.Invoke()))
 			{
-				if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastTo(other.m_comp_radio) && other.Storage != null)
+				if (this.m_comp_radio != null && other.m_comp_radio != null && other.Storage != null)
+					if (!this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio))
+						m_logger.debugLog("cannot broadcast to: " + other.LoggingName, "TestConnection()");
+					else
+						m_logger.debugLog("can broadcast to: " + other.LoggingName, "TestConnection()");
+
+				if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
 					if (s_sendPositionTo.Add(other.Storage))
 						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
 					else

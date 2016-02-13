@@ -6,9 +6,17 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
+	/// <summary>
+	/// Radio component of a NetworkNode
+	/// </summary>
 	public abstract class ComponentRadio
 	{
 
+		/// <summary>
+		/// Tries to create a radio component for an entity. Creates the radio component if the entity is a radio antenna block, beacon block, or a character.
+		/// </summary>
+		/// <param name="obj">Entity to create the component for.</param>
+		/// <returns>A new radio component for the entity, if it can be created. Null, otherwise.</returns>
 		public static ComponentRadio TryCreateRadio(IMyEntity obj)
 		{
 			Ingame.IMyRadioAntenna radioAnt = obj as Ingame.IMyRadioAntenna;
@@ -26,11 +34,17 @@ namespace Rynchodon.AntennaRelay
 			return null;
 		}
 
+		/// <summary>
+		/// Creates a radio component for a character.
+		/// </summary>
 		public static ComponentRadio CreateRadio(IMyCharacter character)
 		{
 			return new CR_Character(character);
 		}
 
+		/// <summary>
+		/// Creates a radio component for an entity.
+		/// </summary>
 		public static ComponentRadio CreateRadio(IMyEntity entity, float radius = 0f)
 		{
 			return new CR_SimpleAntenna(entity, radius);
@@ -74,12 +88,17 @@ namespace Rynchodon.AntennaRelay
 			return NetworkNode.CommunicationType.TwoWay;
 		}
 
-		public bool CanBroadcastTo(ComponentRadio other)
+		/// <summary>
+		/// Tests if this radio is detected by another radio.
+		/// </summary>
+		/// <param name="other">The radio that may detect this one.</param>
+		/// <returns>True iff the other radio detects this one.</returns>
+		public bool CanBroadcastPositionTo(ComponentRadio other)
 		{
 			if (!IsWorking || !other.IsWorking)
 				return false;
 
-			if (!CanBroadcastData || !other.CanReceive)
+			if (!CanBroadcastPosition || !other.CanReceive)
 				return false;
 
 			float distSquared = Vector3.DistanceSquared(Entity.GetPosition(), other.Entity.GetPosition());

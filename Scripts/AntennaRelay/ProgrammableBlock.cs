@@ -1,72 +1,92 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Text;
+using Rynchodon.Instructions;
 using Sandbox.ModAPI;
+using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	/// <summary>
-	/// Keeps track of transmissions for a programmable block. A programmable block cannot relay, so it should only receive messages for iteself.
-	/// When name changes, creates and sends a message.
-	/// </summary>
-	public class ProgrammableBlock : ReceiverBlock
+	public class ProgrammableBlock : BlockInstructions
 	{
 
+		private const char fieldSeparator = ',', entitySeparator = ';';
+
 		private Ingame.IMyProgrammableBlock myProgBlock;
+		private NetworkNode m_node;
 		private Logger myLogger;
 
-		public ProgrammableBlock(IMyCubeBlock block)
+		private bool m_handleDetected;
+
+		public ProgrammableBlock(IMyCubeBlock block, NetworkNode node)
 			: base(block)
 		{
-			myLogger = new Logger("Programmable block", () => CubeBlock.CubeGrid.DisplayName);
-			myProgBlock = CubeBlock as Ingame.IMyProgrammableBlock;
-			Registrar.Add(CubeBlock, this);
+			myLogger = new Logger(GetType().Name, block);
+			myProgBlock = block as Ingame.IMyProgrammableBlock;
+			m_node = node;
+		}
+
+		public void Update100()
+		{
+			UpdateInstructions();
+
+			if (m_handleDetected)
+				HandleDetected();
+		}
+
+		protected override bool ParseAll(string instructions)
+		{
+			m_handleDetected = instructions.looseContains("Handle Detected");
+			return m_handleDetected;
 		}
 
 		/// <summary>
-		/// Uses MessageParser to grab messages, then sends them out. Not registered for event because it fires too frequently.
+		/// Creates the parameter for the block and runs the program.
 		/// </summary>
-		private void myProgBlock_CustomNameChanged()
+		private void HandleDetected()
 		{
-			try
-			{
-				List<Message> toSend = MessageParser.getFromName(myProgBlock as IMyTerminalBlock); // get messages from name
-				if (toSend == null || toSend.Count == 0)
-				{
-					myLogger.debugLog("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-					return;
-				}
-				ReceiverBlock.SendToAttached(CubeBlock, toSend);
-				myLogger.debugLog("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-			}
-			catch (Exception e)
-			{
-				myLogger.alwaysLog("Exception: " + e, "ProgBlock_CustomNameChanged()", Logger.severity.ERROR);
-			}
-		}
-
-		private string previousName;
-
-		public void UpdateAfterSimulation100()
-		{
-			// check name for message from ingame
-			if (myProgBlock.DisplayNameText != previousName)
-			{
-				myProgBlock_CustomNameChanged();
-				previousName = myProgBlock.DisplayNameText;
-			}
-
-			// handle received message
-			if (messageCount == 0)
+			if (myProgBlock.IsRunning)
 				return;
 
-			IMyTerminalBlock asTerm = CubeBlock as IMyTerminalBlock;
-			if (MessageParser.canWriteTo(asTerm))
-			{
-				Message toWrite = RemoveOneMessage();
-				MessageParser.writeToName(asTerm, toWrite);
-			}
-			asTerm.GetActionWithName("Run").Apply(CubeBlock);
+			StringBuilder parameter = new StringBuilder();
+			bool first = true;
+
+			m_node.Storage.ForEachLastSeen((LastSeen seen)=>{
+				ExtensionsRelations.Relations relations =( myProgBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
+				bool friendly = ExtensionsRelations.toIsFriendly(relations);
+				string bestName  = friendly ? seen.Entity.getBestName() : 
+					seen.Entity is IMyCharacter ? "Meatbag" : 
+					"Unknown";
+				TimeSpan sinceSeen;
+				Vector3D predictedPosition = seen.predictPosition(out sinceSeen);
+
+				if (first)
+					first = false;
+				else
+					parameter.Append(entitySeparator);
+
+				parameter.Append(seen.Entity.EntityId); parameter.Append(fieldSeparator);
+				parameter.Append(relations); parameter.Append(fieldSeparator);
+				parameter.Append(bestName); parameter.Append(fieldSeparator);
+				parameter.Append(seen.isRecent_Radar()); parameter.Append(fieldSeparator);
+				parameter.Append(seen.isRecent_Jam()); parameter.Append(fieldSeparator);
+				parameter.Append((int)sinceSeen.TotalSeconds); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.X); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Y); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Z); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.X); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Y); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Z); parameter.Append(fieldSeparator);
+
+				if (seen.Info != null)
+					parameter.Append(seen.Info.Volume);
+				parameter.Append(fieldSeparator);
+			});
+
+			if (myProgBlock.TryRun(parameter.ToString()))
+				myLogger.debugLog("running program", "HandleDetected()");
+			else
+				myLogger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
 		}
 
 	}

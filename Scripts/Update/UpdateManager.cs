@@ -77,18 +77,26 @@ namespace Rynchodon.Update
 			};
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
-
 			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
-
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), nodeConstruct);
-
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
-
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), nodeConstruct);
 
 			RegisterForCharacter(character => {
 				NetworkNode node = new NetworkNode(character);
 				RegisterForUpdates(100, node.Update, (IMyEntity)character);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
+				NetworkNode node = new NetworkNode(block);
+				TextPanel tp = new TextPanel(block, node);
+				RegisterForUpdates(100, node.Update, block);
+				RegisterForUpdates(100, tp.Update100, block);
+			});
+
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
+				NetworkNode node = new NetworkNode(block);
+				ProgrammableBlock pb = new ProgrammableBlock(block, node);
+				RegisterForUpdates(100, node.Update, block);
+				RegisterForUpdates(100, pb.Update100, block);
 			});
 
 			#endregion

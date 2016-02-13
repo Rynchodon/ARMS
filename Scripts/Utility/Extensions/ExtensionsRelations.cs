@@ -40,10 +40,11 @@ namespace Rynchodon
 
 		private static readonly Relations[] relationsPriority = new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral };
 
+		/// <summary>Checks if the Relations has a flag set or any of a group of flags.</summary>
 		public static bool HasFlagFast(this Relations rel, Relations flag)
-		{ return (rel & flag) == flag; }
+		{ return (rel & flag) != 0; }
 
-		private static bool toIsFriendly(Relations rel)
+		public static bool toIsFriendly(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return false;
@@ -51,7 +52,7 @@ namespace Rynchodon
 			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
 		}
 
-		private static bool toIsHostile(Relations rel)
+		public static bool toIsHostile(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return true;
