@@ -62,7 +62,6 @@ namespace Rynchodon.Weapons.Guided
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
 		private Ammo loadedAmmo;
-		//private GuidedMissile clusterMain;
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool onCooldown;
@@ -201,12 +200,12 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster), CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget);
+					new GuidedMissile(new Cluster(m_cluster), CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget);
+					new GuidedMissile(missile, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
 			}
 			catch (Exception ex)
 			{

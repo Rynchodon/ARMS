@@ -94,8 +94,8 @@ namespace Rynchodon.Weapons.Guided
 						if (!missile.Stopped)
 							missile.ClearBlacklist();
 					});
-					if (!missile.Stopped && missile.myAntenna != null)
-						missile.myAntenna.Update100();
+					if (!missile.Stopped)
+						missile.UpdateNetwork();
 				}
 		}
 
@@ -120,11 +120,11 @@ namespace Rynchodon.Weapons.Guided
 			s_missileOwners.Remove(obj.EntityId);
 		}
 
-
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
 		private readonly Ammo.AmmoDescription myDescr;
 		private readonly NetworkNode myAntenna;
+		private readonly NetworkClient m_launcherClient;
 
 		private LastSeen myTargetSeen;
 		private Cluster myCluster;
@@ -140,7 +140,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null)
+		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
 			: base(missile, firedBy)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
@@ -148,6 +148,7 @@ namespace Rynchodon.Weapons.Guided
 			myDescr = ammo.Description;
 			if (ammo.Description.HasAntenna)
 				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
+			m_launcherClient = launcherClient;
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
@@ -165,8 +166,8 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null)
-			: this (missiles.Master, firedBy, opt, ammo, initialTarget)
+		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
+			: this (missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
 		{
 			myCluster = missiles;
 		}
@@ -470,6 +471,31 @@ namespace Rynchodon.Weapons.Guided
 					}
 					break;
 			}
+		}
+
+		/// <summary>
+		/// Updates myAntenna and sends LastSeen of this missile to launcher. Runs on game thread.
+		/// </summary>
+		private void UpdateNetwork()
+		{
+			if (myAntenna != null)
+				myAntenna.Update100();
+
+			if (m_launcherClient == null)
+			{
+				myLogger.debugLog("No launcher client", "UpdateNetwork()");
+				return;
+			}
+
+			NetworkStorage store = m_launcherClient.GetStorage();
+			if (store == null)
+			{
+				myLogger.debugLog("Net client does not have a storage", "UpdateNetwork()");
+				return;
+			}
+
+			myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
+			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.Broadcasting));
 		}
 
 	}

@@ -1,4 +1,5 @@
 ﻿using System;
+using Rynchodon.Weapons.Guided;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -178,20 +179,27 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, object target, Relations breakOn = Relations.None)
 		{
-			IMyCubeBlock asBlock = target as IMyCubeBlock;
-			if (asBlock != null)
-				return block.getRelationsTo(asBlock);
-
-			IMyCubeGrid asGrid = target as IMyCubeGrid;
-			if (asGrid != null)
-				return block.getRelationsTo(asGrid, breakOn);
-
-			IMyCharacter asChar = target as IMyCharacter;
-			if (asChar != null)
+			IMyEntity entity = target as IMyEntity;
+			if (entity != null)
 			{
-				IMyPlayer player = asChar.GetPlayer_Safe();
-				if (player != null)
-					return block.getRelationsTo(player.IdentityId);
+				IMyCubeBlock asBlock = target as IMyCubeBlock;
+				if (asBlock != null)
+					return block.getRelationsTo(asBlock);
+
+				IMyCubeGrid asGrid = target as IMyCubeGrid;
+				if (asGrid != null)
+					return block.getRelationsTo(asGrid, breakOn);
+
+				IMyCharacter asChar = target as IMyCharacter;
+				if (asChar != null)
+				{
+					IMyPlayer player = asChar.GetPlayer_Safe();
+					if (player != null)
+						return block.getRelationsTo(player.IdentityId);
+				}
+
+				long missileOwner = GuidedMissile.GetOwnerId(entity.EntityId);
+				return block.getRelationsTo(missileOwner);
 			}
 
 			IMyPlayer asPlayer = target as IMyPlayer;
