@@ -241,6 +241,15 @@ namespace Rynchodon
 			AppendBytes(bytes, new byteUnion64() { d = d });
 		}
 
+		public static void AppendBytes(List<byte> bytes, char c)
+		{
+			int i = (int)c;
+			if (i < 256)
+				AppendBytes(bytes, (byte)i);
+			else
+				AppendBytes(bytes, unknownChar);
+		}
+
 		public static void AppendBytes(List<byte> bytes, string s)
 		{
 			foreach (char c in s)
@@ -420,6 +429,19 @@ namespace Rynchodon
 					return GetChar(bytes, ref pos);
 			}
 			throw new ArgumentException("Invalid TypeCode: " + code);
+		}
+
+		public static string GetString(byte[] bytes, ref int pos)
+		{
+			return GetString(bytes, bytes.Length - pos, ref pos);
+		}
+
+		public static string GetString(byte[] bytes, int length, ref int pos)
+		{
+			char[] result = new char[length];
+			for (int index = 0; index < length; index++)
+				result[index] = GetChar(bytes, ref pos);
+			return new string(result);
 		}
 
 		#endregion From Byte Array

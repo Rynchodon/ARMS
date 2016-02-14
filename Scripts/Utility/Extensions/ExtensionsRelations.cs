@@ -1,4 +1,5 @@
 ﻿using System;
+using Rynchodon.Weapons.Guided;
 using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -40,10 +41,11 @@ namespace Rynchodon
 
 		private static readonly Relations[] relationsPriority = new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral };
 
+		/// <summary>Checks if the Relations has a flag set or any of a group of flags.</summary>
 		public static bool HasFlagFast(this Relations rel, Relations flag)
-		{ return (rel & flag) == flag; }
+		{ return (rel & flag) != 0; }
 
-		private static bool toIsFriendly(Relations rel)
+		public static bool toIsFriendly(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return false;
@@ -51,7 +53,7 @@ namespace Rynchodon
 			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
 		}
 
-		private static bool toIsHostile(Relations rel)
+		public static bool toIsHostile(Relations rel)
 		{
 			if (rel.HasFlagFast(Relations.Enemy))
 				return true;
@@ -177,20 +179,27 @@ namespace Rynchodon
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, object target, Relations breakOn = Relations.None)
 		{
-			IMyCubeBlock asBlock = target as IMyCubeBlock;
-			if (asBlock != null)
-				return block.getRelationsTo(asBlock);
-
-			IMyCubeGrid asGrid = target as IMyCubeGrid;
-			if (asGrid != null)
-				return block.getRelationsTo(asGrid, breakOn);
-
-			IMyCharacter asChar = target as IMyCharacter;
-			if (asChar != null)
+			IMyEntity entity = target as IMyEntity;
+			if (entity != null)
 			{
-				IMyPlayer player = asChar.GetPlayer_Safe();
-				if (player != null)
-					return block.getRelationsTo(player.IdentityId);
+				IMyCubeBlock asBlock = target as IMyCubeBlock;
+				if (asBlock != null)
+					return block.getRelationsTo(asBlock);
+
+				IMyCubeGrid asGrid = target as IMyCubeGrid;
+				if (asGrid != null)
+					return block.getRelationsTo(asGrid, breakOn);
+
+				IMyCharacter asChar = target as IMyCharacter;
+				if (asChar != null)
+				{
+					IMyPlayer player = asChar.GetPlayer_Safe();
+					if (player != null)
+						return block.getRelationsTo(player.IdentityId);
+				}
+
+				long missileOwner = GuidedMissile.GetOwnerId(entity.EntityId);
+				return block.getRelationsTo(missileOwner);
 			}
 
 			IMyPlayer asPlayer = target as IMyPlayer;
@@ -201,6 +210,9 @@ namespace Rynchodon
 		}
 
 
+		public static bool canConsiderFriendly(this IMyPlayer player, long playerID)
+		{ return toIsFriendly(player.getRelationsTo(playerID)); }
+		
 		public static bool canConsiderFriendly(this IMyCubeBlock block, long playerID)
 		{ return toIsFriendly(block.getRelationsTo(playerID)); }
 

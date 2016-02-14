@@ -26,7 +26,7 @@ namespace Rynchodon.Weapons
 		public List<string> Errors = new List<string>();
 
 		public InterpreterWeapon(IMyCubeBlock block)
-			: base(block as IMyTerminalBlock)
+			: base(block)
 		{
 			this.Block = block;
 			this.Grid = block.CubeGrid;
@@ -49,7 +49,7 @@ namespace Rynchodon.Weapons
 			else
 				FallBackInstruct = null;
 
-			Update();
+			UpdateInstructions();
 		}
 
 		protected override bool ParseAll(string instructions)

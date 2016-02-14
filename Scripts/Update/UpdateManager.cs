@@ -30,8 +30,6 @@ namespace Rynchodon.Update
 	/// <para>    Disadvantages of MyGameLogicComponent:</para>
 	/// <para>        NeedsUpdate can be changed by the game after you set it, so you have to work around that. i.e. For remotes it is set to NONE and UpdatingStopped() never gets called.</para>
 	/// <para>        Scripts can get created before MyAPIGateway fields are filled, which can be a serious problem for initializing.</para>
-	/// <para>    Advantages of MyGameLogicComponent</para>
-	/// <para>        An object builder is available, I assume this can be used to save data (have not tried it).</para>
 	/// <para> </para>
 	/// <para>    Advantages of UpdateManager:</para>
 	/// <para>        Scripts can be registered conditionally. MyGameLogicComponent now supports subtypes but UpdateManager can technically do any condition.</para>
@@ -73,40 +71,33 @@ namespace Rynchodon.Update
 
 			#region Antenna Communication
 
-			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
-				Beacon newBeacon = new Beacon(block);
-				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
+			Action<IMyCubeBlock> nodeConstruct = block => {
+				NetworkNode node = new NetworkNode(block);
+				RegisterForUpdates(100, node.Update100, block);
+			};
+
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
+
+			RegisterForCharacter(character => {
+				NetworkNode node = new NetworkNode(character);
+				RegisterForUpdates(100, node.Update100, (IMyEntity)character);
 			});
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
-				TextPanel newTextPanel = new TextPanel(block);
-				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
+
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
+				TextPanel tp = new TextPanel(block);
+				RegisterForUpdates(100, tp.Update100, block);
 			});
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
-				LaserAntenna newLA = new LaserAntenna(block);
-				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
+
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
+				ProgrammableBlock pb = new ProgrammableBlock(block);
+				RegisterForUpdates(100, pb.Update100, block);
 			});
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
-				ProgrammableBlock newPB = new ProgrammableBlock(block);
-				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-				RadioAntenna newRA = new RadioAntenna(block);
-				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-			});
-			RegisterForPlayer((player) => {
+
+			RegisterForPlayer(player => {
 				Player p = new Player(player);
-				RegisterForUpdates(100, p.Update100, player, Player.OnLeave);
-			});
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
-						new ShipController(block);
-					// Does not receive Updates
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
-					new ShipController(block);
-				// Does not receive Updates
+				RegisterForUpdates(100, p.Update100, player);
 			});
 
 			#endregion
@@ -331,6 +322,7 @@ namespace Rynchodon.Update
 		private List<IMyPlayer> playersCached;
 
 		private HashSet<long> CubeBlocks = new HashSet<long>();
+		private HashSet<long> Characters = new HashSet<long>();
 
 		private readonly Logger myLogger;
 
@@ -384,6 +376,8 @@ namespace Rynchodon.Update
 				{
 					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
+
+				Logger.debugNotify("ARMS dev version loaded", 10000);
 
 				ManagerStatus = Status.Initialized;
 			}
@@ -641,6 +635,13 @@ namespace Rynchodon.Update
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
+				if (!Characters.Add(entity.EntityId))
+					return;
+				entity.OnClosing += alsoChar => {
+					if (Characters != null)
+						Characters.Remove(alsoChar.EntityId);
+				};
+
 				myLogger.debugLog("adding character: " + entity.getBestName(), "AddEntity()");
 				foreach (var constructor in CharacterScriptConstructors)
 					try { constructor.Invoke(asCharacter); }
@@ -666,7 +667,7 @@ namespace Rynchodon.Update
 			{
 				if (!CubeBlocks.Add(fatblock.EntityId))
 					return;
-				fatblock.OnClosing += (alsoFatblock) => {
+				fatblock.OnClosing += alsoFatblock => {
 					if (CubeBlocks != null)
 						CubeBlocks.Remove(alsoFatblock.EntityId);
 				};
@@ -767,6 +768,7 @@ namespace Rynchodon.Update
 
 			AddRemoveActions = null;
 			CubeBlocks = null;
+			Characters = null;
 		}
 
 		/// <summary>

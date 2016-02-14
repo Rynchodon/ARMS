@@ -1,72 +1,164 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using Rynchodon.Instructions;
+using Rynchodon.Utility.Network;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
+using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	/// <summary>
-	/// Keeps track of transmissions for a programmable block. A programmable block cannot relay, so it should only receive messages for iteself.
-	/// When name changes, creates and sends a message.
-	/// </summary>
-	public class ProgrammableBlock : ReceiverBlock
+	public class ProgrammableBlock : BlockInstructions
 	{
 
-		private Ingame.IMyProgrammableBlock myProgBlock;
-		private Logger myLogger;
+		public const char fieldSeparator = '«', entitySeparator = '»';
+		public const char messageSeparator = '«';
+		public const string numberFormat = "e2";
+
+		private static readonly Logger s_logger = new Logger("ProgrammableBlock");
+
+		static ProgrammableBlock()
+		{
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage, Handler_SendMessage);
+		}
+
+		private static void Handler_SendMessage(byte[] message, int pos)
+		{
+			long programId = ByteConverter.GetLong(message, ref pos);
+
+			ProgrammableBlock program;
+			if (!Registrar.TryGetValue(programId, out program))
+			{
+				s_logger.alwaysLog("Programmble block not found in registrar: " + programId, "Handler_SendMessage()", Logger.severity.ERROR);
+				return;
+			}
+
+			s_logger.debugLog("Found programmable block with id: " + programId, "Handler_SendMessage()");
+
+			string[] text = ByteConverter.GetString(message, ref pos).Split(messageSeparator);
+
+			if (text.Length != 3)
+			{
+				s_logger.alwaysLog("text has wrong length, expected 3, got " + text.Length, "Handler_SendMessage()", Logger.severity.ERROR);
+				return;
+			}
+
+			program.SendMessage(text[0], text[1], text[2]);
+		}
+
+		private Ingame.IMyProgrammableBlock m_progBlock;
+		private NetworkClient m_networkClient;
+		private Logger m_logger;
+
+		private bool m_handleDetected;
 
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger("Programmable block", () => CubeBlock.CubeGrid.DisplayName);
-			myProgBlock = CubeBlock as Ingame.IMyProgrammableBlock;
-			Registrar.Add(CubeBlock, this);
+			m_logger = new Logger(GetType().Name, block);
+			m_progBlock = block as Ingame.IMyProgrammableBlock;
+			m_networkClient = new NetworkClient(block, HandleMessage);
+
+			Registrar.Add(block, this);
+		}
+
+		public void Update100()
+		{
+			UpdateInstructions();
+
+			if (m_handleDetected)
+				HandleDetected();
+		}
+
+		protected override bool ParseAll(string instructions)
+		{
+			m_handleDetected = instructions.looseContains("Handle Detected");
+			return m_handleDetected;
 		}
 
 		/// <summary>
-		/// Uses MessageParser to grab messages, then sends them out. Not registered for event because it fires too frequently.
+		/// Creates the parameter for the block and runs the program.
 		/// </summary>
-		private void myProgBlock_CustomNameChanged()
+		private void HandleDetected()
 		{
-			try
-			{
-				List<Message> toSend = MessageParser.getFromName(myProgBlock as IMyTerminalBlock); // get messages from name
-				if (toSend == null || toSend.Count == 0)
-				{
-					myLogger.debugLog("could not get message from parser", "ProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-					return;
-				}
-				ReceiverBlock.SendToAttached(CubeBlock, toSend);
-				myLogger.debugLog("finished sending message", "myProgBlock_CustomNameChanged()", Logger.severity.TRACE);
-			}
-			catch (Exception e)
-			{
-				myLogger.alwaysLog("Exception: " + e, "ProgBlock_CustomNameChanged()", Logger.severity.ERROR);
-			}
-		}
-
-		private string previousName;
-
-		public void UpdateAfterSimulation100()
-		{
-			// check name for message from ingame
-			if (myProgBlock.DisplayNameText != previousName)
-			{
-				myProgBlock_CustomNameChanged();
-				previousName = myProgBlock.DisplayNameText;
-			}
-
-			// handle received message
-			if (messageCount == 0)
+			if (m_progBlock.IsRunning)
 				return;
 
-			IMyTerminalBlock asTerm = CubeBlock as IMyTerminalBlock;
-			if (MessageParser.canWriteTo(asTerm))
+			StringBuilder parameter = new StringBuilder();
+			bool first = true;
+
+			NetworkStorage store = m_networkClient.GetStorage();
+			if (store == null)
+				return;
+
+			store.ForEachLastSeen((LastSeen seen) => {
+				ExtensionsRelations.Relations relations = (m_progBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
+				bool friendly = ExtensionsRelations.toIsFriendly(relations);
+				string bestName = friendly ? seen.Entity.getBestName() : "Unknown";
+				TimeSpan sinceSeen;
+				Vector3D predictedPosition = seen.predictPosition(out sinceSeen);
+
+				if (first)
+					first = false;
+				else
+					parameter.Append(entitySeparator);
+
+				parameter.Append(seen.Entity.EntityId); parameter.Append(fieldSeparator);
+				parameter.Append((byte)relations); parameter.Append(fieldSeparator);
+				parameter.Append((byte)seen.Type); parameter.Append(fieldSeparator);
+				parameter.Append(bestName); parameter.Append(fieldSeparator);
+				parameter.Append(seen.isRecent_Radar()); parameter.Append(fieldSeparator);
+				parameter.Append(seen.isRecent_Jam()); parameter.Append(fieldSeparator);
+				parameter.Append((int)sinceSeen.TotalSeconds); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
+
+				if (seen.Info != null)
+					parameter.Append(seen.Info.Volume);
+				parameter.Append(fieldSeparator);
+			});
+
+			if (m_progBlock.TryRun(parameter.ToString()))
+				m_logger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
+			else
+				m_logger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
+		}
+
+		private void SendMessage(string recipientGrid, string recipientBlock, string message)
+		{
+			NetworkStorage store = m_networkClient.GetStorage();
+			if (store == null)
 			{
-				Message toWrite = RemoveOneMessage();
-				MessageParser.writeToName(asTerm, toWrite);
+				m_logger.debugLog("not connected to a network", "SendMessage()", Logger.severity.DEBUG);
+				return;
 			}
-			asTerm.GetActionWithName("Run").Apply(CubeBlock);
+
+			Registrar.ForEach((ProgrammableBlock program) => {
+				IMyCubeBlock block = program.m_block;
+				IMyCubeGrid grid = block.CubeGrid;
+				if (m_block.canConsiderFriendly(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				{
+					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+					program.m_networkClient.GetStorage(); // force update of storage
+					store.Receive(new Message(message, block, m_block));
+				}
+			});
+		}
+
+		private void HandleMessage(Message received)
+		{
+			string param = received.SourceGridName + messageSeparator + received.SourceBlockName + messageSeparator+received.Content;
+			if (m_progBlock.TryRun(param))
+				m_logger.debugLog("Sent message to program", "HandleMessage()", Logger.severity.DEBUG);
+			else
+				m_logger.debugLog("Failed to send message to program", "HandleMessage()", Logger.severity.WARNING);
 		}
 
 	}

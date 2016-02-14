@@ -56,13 +56,12 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
 		private readonly Interfaces.IMyInventory myInventory;
+		private readonly NetworkClient m_netClient;
 
-		private ReceiverBlock myAntenna;
 		private DateTime nextCheckInventory;
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
 		private Ammo loadedAmmo;
-		//private GuidedMissile clusterMain;
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool onCooldown;
@@ -73,6 +72,7 @@ namespace Rynchodon.Weapons.Guided
 			m_weaponTarget = weapon;
 			FuncBlock = CubeBlock as IMyFunctionalBlock;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
+			m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
 
 			var defn = CubeBlock.GetCubeBlockDefinition();
 
@@ -153,24 +153,6 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("Opts: " + m_weaponTarget.Options, "MissileBelongsTo()");
 			try
 			{
-				//if (clusterMain != null)
-				//{
-				//	if (loadedAmmo.IsCluster)
-				//	{
-				//		if (clusterMain.AddToCluster(missile))
-				//		{
-				//			myLogger.debugLog("reached max cluster, on cooldown", "MissileBelongsTo()", Logger.severity.DEBUG);
-				//			StartCooldown();
-				//		}
-				//	}
-				//	else
-				//	{
-				//		myLogger.alwaysLog("deleting extraneous missile: " + missile, "MissileBelongsTo()", Logger.severity.WARNING);
-				//		missile.Delete();
-				//	}
-				//	return true;
-				//}
-
 				if (loadedAmmo.IsCluster)
 				{
 					if (m_cluster.Count == 0)
@@ -189,17 +171,18 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 				LastSeen initialTarget = null;
-				if (findAntenna())
+				NetworkStorage store = m_netClient.GetStorage();
+				if (store != null)
 				{
 					if (m_weaponTarget.Options.TargetEntityId.HasValue)
-						myAntenna.tryGetLastSeen(m_weaponTarget.Options.TargetEntityId.Value, out initialTarget);
+						store.TryGetLastSeen(m_weaponTarget.Options.TargetEntityId.Value, out initialTarget);
 					else
 					{
 						myLogger.debugLog("Searching for target", "MissileBelongsTo()", Logger.severity.DEBUG);
 						float closestDistanceSquared = float.MaxValue;
-						myAntenna.ForEachLastSeen(seen => {
+						store.ForEachLastSeen(seen => {
 							if (!seen.isRecent())
-								return false;
+								return;
 							IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 							if (grid != null && CubeBlock.canConsiderHostile(grid) && m_weaponTarget.Options.CanTargetType(grid))
 							{
@@ -210,7 +193,6 @@ namespace Rynchodon.Weapons.Guided
 									initialTarget = seen;
 								}
 							}
-							return false;
 						});
 					}
 				}
@@ -218,19 +200,12 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster), CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget);
+					new GuidedMissile(new Cluster(m_cluster), CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget);
-				//if (loadedAmmo.IsCluster)
-				//{
-				//	myLogger.debugLog("missile is a cluster missile", "MissileBelongsTo()");
-				//	clusterMain = gm;
-				//	missile.OnClose += ClusterMain_OnClose;
-				//	FuncBlock.ApplyAction("Shoot_On");
-				//}
+					new GuidedMissile(missile, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
 			}
 			catch (Exception ex)
 			{
@@ -240,12 +215,6 @@ namespace Rynchodon.Weapons.Guided
 
 			return true;
 		}
-
-		//private void ClusterMain_OnClose(IMyEntity obj)
-		//{
-		//	myLogger.debugLog("clusterMain closed, on cooldown", "ClusterMain_OnClose()", Logger.severity.DEBUG);
-		//	StartCooldown();
-		//}
 
 		private void UpdateLoadedMissile()
 		{
@@ -266,10 +235,6 @@ namespace Rynchodon.Weapons.Guided
 
 		private void StartCooldown()
 		{
-			//if (clusterMain != null)
-			//	clusterMain.MyEntity.OnClose -= ClusterMain_OnClose;
-
-			//clusterMain = null;
 			FuncBlock.RequestEnable(false);
 			FuncBlock.ApplyAction("Shoot_Off");
 			onCooldown = true;
@@ -296,44 +261,6 @@ namespace Rynchodon.Weapons.Guided
 				FuncBlock.RequestEnable(true);
 				// do not restore shooting toggle, makes it difficult to turn the thing off
 			}
-		}
-
-		/// <summary>
-		/// Search for an attached antenna, if we do not have one.
-		/// </summary>
-		/// <returns>true iff current antenna is valid or one was found</returns>
-		private bool findAntenna()
-		{
-			if (myAntenna.IsOpen()) // already have one
-				return true;
-
-			myAntenna = null;
-			Registrar.ForEach((RadioAntenna antenna) => {
-				if (antenna.CubeBlock.canSendTo(CubeBlock, true))
-				{
-					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
-					myAntenna = antenna;
-					return true;
-				}
-				myLogger.debugLog(CubeBlock.gridBlockName() + " cannot fetch from " + antenna.CubeBlock.gridBlockName(), "searchForAntenna()", Logger.severity.TRACE);
-				return false;
-			});
-
-			if (myAntenna != null)
-				return true;
-
-			Registrar.ForEach((LaserAntenna antenna) => {
-				if (antenna.CubeBlock.canSendTo(CubeBlock, true))
-				{
-					myLogger.debugLog("found antenna: " + antenna.CubeBlock.DisplayNameText, "searchForAntenna()", Logger.severity.INFO);
-					myAntenna = antenna;
-					return true;
-				}
-				myLogger.debugLog(CubeBlock.gridBlockName() + " cannot fetch from " + antenna.CubeBlock.gridBlockName(), "searchForAntenna()", Logger.severity.TRACE);
-				return false;
-			});
-
-			return myAntenna != null;
 		}
 
 	}
