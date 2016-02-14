@@ -46,6 +46,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly IMyCubeBlock m_comp_blockAttach;
 		private readonly ComponentRadio m_comp_radio;
 		private readonly ComponentLaser m_comp_laser;
+		private readonly Func<long, bool> CanConsiderFriendly;
 
 		/// <summary>Two-way communication is established between this node and these nodes.</summary>
 		private readonly HashSet<NetworkNode> m_directConnect = new HashSet<NetworkNode>();
@@ -97,6 +98,7 @@ namespace Rynchodon.AntennaRelay
 			this.m_entity = block;
 			this.m_comp_blockAttach = block;
 			this.m_comp_radio = ComponentRadio.TryCreateRadio(block);
+			this.CanConsiderFriendly = m_comp_blockAttach.canConsiderFriendly;
 
 			Ingame.IMyLaserAntenna lAnt = block as Ingame.IMyLaserAntenna;
 			if (lAnt != null)
@@ -119,15 +121,31 @@ namespace Rynchodon.AntennaRelay
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
 			this.m_comp_radio = ComponentRadio.CreateRadio(character);
+			this.CanConsiderFriendly = m_player.canConsiderFriendly;
 
 			Registrar.Add(character as IMyEntity, this);
+		}
+
+		/// <summary>
+		/// Create a NetworkNode for a missile. Update100() will have to be invoked by GuidedMissile.
+		/// </summary>
+		public NetworkNode(IMyEntity missile, IMyCubeBlock weapon, ComponentRadio radio)
+		{
+			this.m_loggingName = missile.getBestName;
+			this.m_logger = new Logger(GetType().Name, missile);
+			this.m_ownerId = ()=> weapon.OwnerId;
+			this.m_entity = missile;
+			this.m_comp_radio = radio;
+			this.CanConsiderFriendly = weapon.canConsiderFriendly;
+
+			Registrar.Add(missile, this);
 		}
 
 		/// <summary>
 		/// Updates direct connections between this node and other nodes.
 		/// When debug is set, checks connection to primary storage node.
 		/// </summary>
-		public void Update()
+		public void Update100()
 		{
 			s_sendPositionTo.Clear();
 
@@ -235,10 +253,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="other">Node to test connection to this.</param>
 		private CommunicationType TestConnection(NetworkNode other)
 		{
-			// test relations
-			if (this.m_comp_blockAttach != null ?
-				!this.m_comp_blockAttach.canConsiderFriendly(other.m_ownerId.Invoke()) :
-				!this.m_player.canConsiderFriendly(other.m_ownerId.Invoke()))
+			if (!this.CanConsiderFriendly(other.m_ownerId()))
 			{
 				if (this.m_comp_radio != null && other.m_comp_radio != null && other.Storage != null)
 					if (!this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio))

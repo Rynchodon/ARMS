@@ -73,7 +73,7 @@ namespace Rynchodon.Update
 
 			Action<IMyCubeBlock> nodeConstruct = block => {
 				NetworkNode node = new NetworkNode(block);
-				RegisterForUpdates(100, node.Update, block);
+				RegisterForUpdates(100, node.Update100, block);
 			};
 
 			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
@@ -82,7 +82,7 @@ namespace Rynchodon.Update
 
 			RegisterForCharacter(character => {
 				NetworkNode node = new NetworkNode(character);
-				RegisterForUpdates(100, node.Update, (IMyEntity)character);
+				RegisterForUpdates(100, node.Update100, (IMyEntity)character);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
@@ -93,6 +93,11 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
 				ProgrammableBlock pb = new ProgrammableBlock(block);
 				RegisterForUpdates(100, pb.Update100, block);
+			});
+
+			RegisterForPlayer(player => {
+				Player p = new Player(player);
+				RegisterForUpdates(100, p.Update100, player);
 			});
 
 			#endregion

@@ -20,10 +20,10 @@ namespace Rynchodon.Autopilot
 		private const ulong SearchInterval_Grid = 100ul, SearchInterval_Block = 1000ul;
 
 		public readonly string m_targetGridName, m_targetBlockName;
-		public readonly ShipController m_controller;
-		public readonly ShipControllerBlock m_controlBlock;
-		public readonly AttachedGrid.AttachmentKind m_allowedAttachment;
 
+		private readonly NetworkNode m_node;
+		private readonly ShipControllerBlock m_controlBlock;
+		private readonly AttachedGrid.AttachmentKind m_allowedAttachment;
 		private readonly Logger m_logger;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly bool m_mustBeRecent;
@@ -54,8 +54,9 @@ namespace Rynchodon.Autopilot
 			m_logger.debugLog(controller.CubeBlock == null, "controller.CubeBlock == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(targetGrid == null, "targetGrid == null", "GridFinder()", Logger.severity.FATAL);
 
-			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_controller))
-				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
+			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_node))
+				throw new Exception("Could not get NetworkNode for " + controller.CubeBlock.DisplayNameText);
+
 			this.m_targetGridName = targetGrid.LowerRemoveWhitespace();
 			if (targetBlock != null)
 				this.m_targetBlockName = targetBlock.LowerRemoveWhitespace();
@@ -79,8 +80,8 @@ namespace Rynchodon.Autopilot
 			this.m_controlBlock = controller;
 			this.m_enemies = new List<LastSeen>();
 
-			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_controller))
-				throw new NullReferenceException("ShipControllerBlock is not a ShipController");
+			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_node))
+				throw new Exception("Could not get NetworkNode for " + controller.CubeBlock.DisplayNameText);
 
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
@@ -139,7 +140,7 @@ namespace Rynchodon.Autopilot
 		private void GridSearch_Friend()
 		{
 			int bestNameLength = int.MaxValue;
-			m_controller.ForEachLastSeen(seen => {
+			m_node.Storage.SearchLastSeen(seen => {
 				IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 				if (grid != null && grid.DisplayName.Length < bestNameLength && grid.DisplayName.LowerRemoveWhitespace().Contains(m_targetGridName) && CanTarget(seen))
 				{
@@ -163,7 +164,7 @@ namespace Rynchodon.Autopilot
 			Vector3D position = m_controlBlock.CubeBlock.GetPosition();
 
 			m_enemies.Clear();
-			m_controller.ForEachLastSeen(seen => {
+			m_node.Storage.SearchLastSeen(seen => {
 				if (!seen.IsValid || !seen.isRecent())
 					return false;
 
@@ -240,7 +241,7 @@ namespace Rynchodon.Autopilot
 			}
 
 			LastSeen updated;
-			if (!m_controller.tryGetLastSeen(Grid.Entity.EntityId, out updated))
+			if (!m_node.Storage.TryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
 				m_logger.alwaysLog("Where does the good go?", "GridUpdate()", Logger.severity.WARNING);
 				Grid = null;
@@ -268,7 +269,7 @@ namespace Rynchodon.Autopilot
 
 			AttachedGrid.RunOnAttachedBlock(asGrid, m_allowedAttachment, slim => {
 				IMyCubeBlock Fatblock = slim.FatBlock;
-				if (Fatblock == null || !m_controller.CubeBlock.canControlBlock(Fatblock))
+				if (Fatblock == null || !m_controlBlock.CubeBlock.canControlBlock(Fatblock))
 					return false;
 
 				string blockName;
@@ -308,7 +309,7 @@ namespace Rynchodon.Autopilot
 			m_logger.debugLog(m_targetBlockName == null, "m_targetBlockName == null", "BlockCheck()", Logger.severity.FATAL);
 			m_logger.debugLog(Block == null, "Block == null", "BlockCheck()", Logger.severity.FATAL);
 
-			if (!m_controller.CubeBlock.canControlBlock(Block))
+			if (!m_controlBlock.CubeBlock.canControlBlock(Block))
 			{
 				m_logger.debugLog("lost control of block: " + Block.DisplayNameText, "BlockCheck()", Logger.severity.DEBUG);
 				Block = null;

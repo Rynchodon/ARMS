@@ -4,7 +4,6 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
@@ -90,10 +89,14 @@ namespace Rynchodon.Weapons.Guided
 		{
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
+				{
 					Thread.EnqueueAction(() => {
 						if (!missile.Stopped)
 							missile.ClearBlacklist();
 					});
+					if (!missile.Stopped && missile.myAntenna != null)
+						missile.myAntenna.Update100();
+				}
 		}
 
 		public static long GetOwnerId(long missileId)
@@ -121,7 +124,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
 		private readonly Ammo.AmmoDescription myDescr;
-		private readonly MissileAntenna myAntenna;
+		private readonly NetworkNode myAntenna;
 
 		private LastSeen myTargetSeen;
 		private Cluster myCluster;
@@ -144,7 +147,7 @@ namespace Rynchodon.Weapons.Guided
 			myAmmo = ammo;
 			myDescr = ammo.Description;
 			if (ammo.Description.HasAntenna)
-				myAntenna = new MissileAntenna(missile);
+				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
@@ -205,7 +208,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void TargetLastSeen()
 		{
-			if (myAntenna == null || myAntenna.lastSeenCount == 0)
+			if (myAntenna == null || myAntenna.Storage.LastSeenCount == 0)
 			{
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
@@ -220,7 +223,7 @@ namespace Rynchodon.Weapons.Guided
 				return;
 
 			LastSeen fetched;
-			if (myTargetSeen != null && myAntenna.tryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
+			if (myTargetSeen != null && myAntenna.Storage.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
 				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(fetched);
@@ -230,7 +233,7 @@ namespace Rynchodon.Weapons.Guided
 
 			if (Options.TargetEntityId.HasValue)
 			{
-				if (myAntenna.tryGetLastSeen(Options.TargetEntityId.Value, out fetched))
+				if (myAntenna.Storage.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
 					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(fetched);
@@ -245,8 +248,8 @@ namespace Rynchodon.Weapons.Guided
 			LastSeen closest = null;
 			double closestDist = double.MaxValue;
 
-			myLogger.debugLog("last seen count: " + myAntenna.lastSeenCount, "TargetLastSeen()");
-			myAntenna.ForEachLastSeen(seen => {
+			myLogger.debugLog("last seen count: " + myAntenna.Storage.LastSeenCount, "TargetLastSeen()");
+			myAntenna.Storage.ForEachLastSeen(seen => {
 				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
 				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 				{
@@ -257,7 +260,6 @@ namespace Rynchodon.Weapons.Guided
 						closest = seen;
 					}
 				}
-				return false;
 			});
 
 			if (closest == null)
@@ -280,11 +282,6 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
-			//// do not guide clusters until they are formed
-			//// comes before CheckGuidance() so that timer starts after forming
-			//if (myCluster != null && !myCluster.MaxParts)
-			//	return;
-
 			CheckGuidance();
 			if (m_stage == Stage.None)
 				return;
@@ -346,20 +343,6 @@ namespace Rynchodon.Weapons.Guided
 					}
 				}
 			}
-
-			//{ // check for cluster split
-			//	if (myCluster != null)
-			//	{
-			//		float descrDistSquared = myDescr.ClusterSplitRange * myDescr.ClusterSplitRange;
-			//		float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
-			//		if (distSquared < descrDistSquared && angle < Angle_Cluster * descrDistSquared / distSquared)
-			//		{
-			//			myLogger.debugLog("Firing cluster", "Update()");
-			//			FireCluster(cached.FiringDirection.Value);
-			//		}
-			//	}
-			//}
-
 		}
 
 		/// <remarks>
@@ -369,15 +352,6 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (myCluster == null)
 				return;
-
-			//if (!myCluster.MainFarEnough)
-			//{
-			//	update_mainFarEnough();
-			//	return;
-			//}
-
-			//if (!myCluster.MaxParts)
-			//	return;
 
 			myLogger.debugLog("updating cluster", "UpdateCluster()");
 
@@ -436,7 +410,6 @@ namespace Rynchodon.Weapons.Guided
 				if (MyEntity.Closed)
 					return;
 				m_stage = Stage.Terminated;
-				//(MyEntity as MyAmmoBase).Explode();
 
 				MyEntity.Physics.LinearVelocity = Vector3.Zero;
 

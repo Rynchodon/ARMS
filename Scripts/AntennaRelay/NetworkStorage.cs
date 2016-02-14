@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
+using VRage.Collections;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -10,77 +12,42 @@ namespace Rynchodon.AntennaRelay
 	public class NetworkStorage
 	{
 
-		private static FastResourceLock lock_sendToSet = new FastResourceLock();
-		private static HashSet<NetworkStorage> s_sendToSet = new HashSet<NetworkStorage>();
-
-		static NetworkStorage()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			lock_sendToSet = null;
-			s_sendToSet = null;
-		}
+		private const ulong s_cleanInterval = Globals.UpdatesPerSecond * 60;
 
 		/// <summary>
 		/// Send a LastSeen to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
 		/// </summary>
 		public static void Receive(ICollection<NetworkStorage> storage, LastSeen seen)
 		{
-			lock_sendToSet.AcquireExclusive();
+			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
 			try
 			{
 				foreach (NetworkStorage sto in storage)
-					AddStorage(sto);
+					AddStorage(sendToSet, sto);
 
-				foreach (NetworkStorage sto in s_sendToSet)
+				foreach (NetworkStorage sto in sendToSet)
 					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
 			}
 			finally
 			{
-				s_sendToSet.Clear();
-				lock_sendToSet.ReleaseExclusive();
-			}
-		}
-
-		/// <summary>
-		/// Send a Message to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
-		/// </summary>
-		public static void Receive(ICollection<NetworkStorage> storage, Message msg)
-		{
-			lock_sendToSet.AcquireExclusive();
-			try
-			{
-				foreach (NetworkStorage sto in storage)
-					AddStorage(sto);
-
-				foreach (NetworkStorage sto in s_sendToSet)
-					using (sto.lock_messages.AcquireExclusiveUsing())
-						sto.in_Receive(msg);
-			}
-			finally
-			{
-				s_sendToSet.Clear();
-				lock_sendToSet.ReleaseExclusive();
+				sendToSet.Clear();
+				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
 		/// <summary>
 		/// <para>Adds a NetworkStorage to s_sendToSet and, if it is not already present, all NetworkStorage it will push to.</para>
-		/// <para>lock_sendToSet should be exclusively locked before invoking this method.</para>
+		///// <para>lock_sendToSet should be exclusively locked before invoking this method.</para>
 		/// </summary>
-		/// <param name="storage">NetworkStorage to add to s_sendToSet</param>
-		private static void AddStorage(NetworkStorage storage)
+		/// <param name="storage">NetworkStorage to add to sendToSet</param>
+		private static void AddStorage(HashSet<NetworkStorage> sendToSet, NetworkStorage storage)
 		{
-			if (s_sendToSet.Add(storage))
+			if (sendToSet.Add(storage))
 				using (storage.lock_pushTo_count.AcquireSharedUsing())
 					foreach (NetworkNode connected in storage.m_pushTo_count.Keys)
 						if (connected.Storage != null)
-							AddStorage(connected.Storage);
+							AddStorage(sendToSet, connected.Storage);
 		}
 
 		private readonly Logger m_logger;
@@ -97,8 +64,13 @@ namespace Rynchodon.AntennaRelay
 
 		public readonly NetworkNode PrimaryNode;
 
+		private ulong m_nextClean_lastSeen, m_nextClean_message;
+
 		/// <summary>Total number of transmissions stored.</summary>
 		public int Size { get { return m_lastSeen.Count + m_messages.Count; } }
+
+		/// <summary>Number of LastSeen stored</summary>
+		public int LastSeenCount { get { return m_lastSeen.Count; } }
 
 		public NetworkStorage(NetworkNode primary)
 		{
@@ -221,19 +193,26 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="seen">LastSeen data to receive.</param>
 		public void Receive(LastSeen seen)
 		{
-			lock_sendToSet.AcquireExclusive();
+			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
 			try
 			{
-				AddStorage(this);
+				AddStorage(sendToSet, this);
 
-				foreach (NetworkStorage sto in s_sendToSet)
+				foreach (NetworkStorage sto in sendToSet)
+				{
 					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
+					if (sto.m_nextClean_lastSeen <= Globals.UpdateCount)
+					{
+						m_logger.debugLog("Running cleanup on last seen", "Receive()", Logger.severity.INFO);
+						sto.ForEachLastSeen(s => { });
+					}
+				}
 			}
 			finally
 			{
-				s_sendToSet.Clear();
-				lock_sendToSet.ReleaseExclusive();
+				sendToSet.Clear();
+				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
@@ -244,19 +223,56 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="msg">Message to receive.</param>
 		public void Receive(Message msg)
 		{
-			lock_sendToSet.AcquireExclusive();
+			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
 			try
 			{
-				AddStorage(this);
+				AddStorage(sendToSet, this);
 
-				foreach (NetworkStorage sto in s_sendToSet)
+				foreach (NetworkStorage sto in sendToSet)
+				{
 					using (sto.lock_messages.AcquireExclusiveUsing())
 						sto.in_Receive(msg);
+					if (sto.m_nextClean_message <= Globals.UpdateCount)
+					{
+						m_logger.debugLog("Running cleanup on message", "Receive()", Logger.severity.INFO);
+						sto.ForEachMessage(s => { });
+					}
+				}
 			}
 			finally
 			{
-				s_sendToSet.Clear();
-				lock_sendToSet.ReleaseExclusive();
+				sendToSet.Clear();
+				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
+			}
+		}
+
+		/// <summary>
+		/// <para>For each LastSeen add to this storage or updates an existing LastSeen. LastSeen will be pushed to connected storages.</para>
+		/// </summary>
+		/// <param name="seen">Collection of LastSeen entitites.</param>
+		public void Receive(ICollection<LastSeen> seen)
+		{
+			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
+			try
+			{
+				AddStorage(sendToSet, this);
+
+				foreach (NetworkStorage sto in sendToSet)
+				{
+					using (sto.lock_lastSeen.AcquireExclusiveUsing())
+						foreach (LastSeen s in seen)
+							sto.in_Receive(s);
+					if (sto.m_nextClean_lastSeen <= Globals.UpdateCount)
+					{
+						m_logger.debugLog("Running cleanup on last seen", "Receive()", Logger.severity.INFO);
+						sto.ForEachLastSeen(s => { });
+					}
+				}
+			}
+			finally
+			{
+				sendToSet.Clear();
+				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
@@ -288,6 +304,8 @@ namespace Rynchodon.AntennaRelay
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
 			}
+
+			m_nextClean_lastSeen = Globals.UpdateCount + s_cleanInterval;
 		}
 
 		/// <summary>
@@ -318,6 +336,8 @@ namespace Rynchodon.AntennaRelay
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
 			}
+
+			m_nextClean_lastSeen = Globals.UpdateCount + s_cleanInterval;
 		}
 
 		/// <summary>
@@ -327,6 +347,7 @@ namespace Rynchodon.AntennaRelay
 		public void SearchLastSeen(Func<LastSeen, bool> method)
 		{
 			List<LastSeen> invalid = null;
+			bool found = false;
 
 			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (LastSeen seen in m_lastSeen.Values)
@@ -334,7 +355,10 @@ namespace Rynchodon.AntennaRelay
 					if (seen.IsValid)
 					{
 						if (method(seen))
+						{
+							found = true;
 							break;
+						}
 					}
 					else
 					{
@@ -351,6 +375,9 @@ namespace Rynchodon.AntennaRelay
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
 			}
+
+			if (!found)
+				m_nextClean_lastSeen = Globals.UpdateCount + s_cleanInterval;
 		}
 
 		/// <summary>
@@ -360,6 +387,7 @@ namespace Rynchodon.AntennaRelay
 		public void SearchLastSeen(Func<long, LastSeen, bool> method)
 		{
 			List<long> invalid = null;
+			bool found = false;
 
 			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (var pair in m_lastSeen)
@@ -367,7 +395,10 @@ namespace Rynchodon.AntennaRelay
 					if (pair.Value.IsValid)
 					{
 						if (method(pair.Key, pair.Value))
+						{
+							found = true;
 							break;
+						}
 					}
 					else
 					{
@@ -384,6 +415,9 @@ namespace Rynchodon.AntennaRelay
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
 			}
+
+			if (!found)
+				m_nextClean_lastSeen = Globals.UpdateCount + s_cleanInterval;
 		}
 
 		/// <summary>
@@ -423,11 +457,13 @@ namespace Rynchodon.AntennaRelay
 					foreach (Message msg in invalid)
 						m_messages.Remove(msg);
 			}
+
+			m_nextClean_message = Globals.UpdateCount;
 		}
 
 		/// <summary>
 		/// <para>Internal receive method. Adds the LastSeen to this storage or updates an existing one.</para>
-		/// <para>lock_m_lastSeen should be exclusively locked before inovoking this method.</para>
+		/// <para>lock_m_lastSeen should be exclusively locked before invoking this method.</para>
 		/// </summary>
 		private void in_Receive(LastSeen seen)
 		{

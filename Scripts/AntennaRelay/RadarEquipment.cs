@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -261,6 +264,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly IMyCubeBlock CubeBlock;
 		/// <summary>Entity as IMyTerminalBlock</summary>
 		private readonly IMyTerminalBlock TermBlock;
+		private NetworkNode m_node;
 
 		private readonly Logger myLogger;
 		private readonly Definition myDefinition;
@@ -362,7 +366,8 @@ namespace Rynchodon.AntennaRelay
 				if (myLastSeen.Count > 0 && CubeBlock != null)
 				{
 					myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
-					ReceiverBlock.SendToAttached(CubeBlock, myLastSeen);
+					if (m_node != null || Registrar.TryGetValue(CubeBlock, out m_node ))
+						m_node.Storage.Receive(myLastSeen);
 				}
 
 				myThread.EnqueueAction(Update_OnThread);
@@ -645,36 +650,46 @@ namespace Rynchodon.AntennaRelay
 			else
 				myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.TRACE);
 
-			HashSet<IMyEntity> allGrids = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntities_Safe(allGrids, (entity) => { return entity is IMyCubeGrid; });
-			foreach (IMyCubeGrid otherGrid in allGrids)
+			List<MyEntity> inRange = ResourcePool<List<MyEntity>>.Pool.Get();
+			try
 			{
-				if (otherGrid.MarkedForClose || !otherGrid.Save)
-					continue;
+				BoundingSphereD coverage = new BoundingSphereD(Entity.GetPosition(), PowerLevel_RadarEffective);
+				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref coverage, inRange);
 
-				if (SignalCannotReach(otherGrid, PowerLevel_RadarEffective))
-					continue;
-
-				float volume = otherGrid.LocalAABB.Volume();
-				float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-				float distance = Vector3.Distance(Entity.GetCentre(), otherGrid.GetCentre());
-				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
-				int decoys = WorkingDecoys(otherGrid);
-				radarSignature += decoySignal * decoys;
-
-				//myLogger.debugLog("grid: " + otherGrid.DisplayName + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
-
-				if (radarSignature > 0)
+				foreach (IMyEntity entity in inRange)
 				{
-					myLogger.debugLog("object detected: " + otherGrid.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
+					if (entity.MarkedForClose || !(entity.Save || entity is IMyCharacter))
+						continue;
 
-					DetectedInfo detFo = new DetectedInfo(otherGrid, RelationsBlock.getRelationsTo(otherGrid));
-					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
-					detectedObjects_list.Add(detFo);
-					if (detectedObjects_hash != null)
-						detectedObjects_hash.Add(otherGrid, detFo);
+					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
+						continue;
+
+					float volume = entity.LocalAABB.Volume();
+					float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
+					float distance = Vector3.Distance(Entity.GetCentre(), entity.GetCentre());
+					float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
+					int decoys = WorkingDecoys(entity);
+					radarSignature += decoySignal * decoys;
+
+					//myLogger.debugLog("grid: " + otherGrid.DisplayName + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+					//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
+
+					if (radarSignature > 0)
+					{
+						myLogger.debugLog("object detected: " + entity.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
+
+						DetectedInfo detFo = new DetectedInfo(entity, RelationsBlock.getRelationsTo(entity));
+						detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
+						detectedObjects_list.Add(detFo);
+						if (detectedObjects_hash != null)
+							detectedObjects_hash.Add(entity, detFo);
+					}
 				}
+			}
+			finally
+			{
+				inRange.Clear();
+				ResourcePool<List<MyEntity>>.Pool.Return(inRange);
 			}
 		}
 

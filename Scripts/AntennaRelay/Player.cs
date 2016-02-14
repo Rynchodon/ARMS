@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.AntennaRelay
@@ -70,13 +71,13 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Logger myLogger;
 
-		private readonly Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
-
 		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
+
+		private NetworkNode m_node;
 
 		public Player(IMyPlayer player)
 		{
-			myLogger = new Logger(player.DisplayName, "Player");
+			myLogger = new Logger(GetType().Name, () => player.DisplayName);
 			myPlayer = player;
 
 			playersCached.Add(player, this);
@@ -108,39 +109,30 @@ namespace Rynchodon.AntennaRelay
 			UpdateGPS();
 		}
 
-		public void receive(LastSeen seen)
-		{
-			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
-			{
-				if (seen.update(ref toUpdate))
-				{
-					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
-					//myLogger.debugLog("updated last seen for " + toUpdate.Entity.getBestName(), "receive()");
-				}
-			}
-			else
-			{
-				myLastSeen.Add(seen.Entity.EntityId, seen);
-				//myLogger.debugLog("new last seen for " + seen.Entity.getBestName(), "receive()");
-			}
-		}
-
 		private void UpdateGPS()
 		{
-			if (myLastSeen.Count == 0)
+			IMyEntity character = myPlayer.Controller.ControlledEntity as IMyEntity;
+			if (!(character is IMyCharacter))
 			{
-				myLogger.debugLog("myLastSeen is empty", "UpdateGPS()");
+				myLogger.debugLog("Not controlling a character", "UpdateGPS()");
+				return;
+			}
+			if (m_node == null)
+			{
+				if (!Registrar.TryGetValue(character.EntityId, out m_node))
+				{
+					myLogger.debugLog("Failed to get node", "UpdateGPS()", Logger.severity.WARNING);
+					return;
+				}
+			}
+
+			if (m_node.Storage == null || m_node.Storage.LastSeenCount == 0)
+			{
+				myLogger.debugLog("No LastSeen", "UpdateGPS()");
 				return;
 			}
 
-			Vector3D myPosition = myPlayer.GetPosition();
-
-			if (myPosition == Vector3D.Zero) // used to indicate that a player does not have a character
-			{
-				myLogger.debugLog("position at origin, not updating GPS", "UpdateGPS()", Logger.severity.DEBUG);
-				return;
-			}
+			Vector3D myPosition = character.GetPosition();
 
 			UserSettings useSet = UserSettings.GetForPlayer(myPlayer.PlayerID);
 			Data[ExtensionsRelations.Relations.Enemy].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.EnemiesOnHUD);
@@ -151,15 +143,14 @@ namespace Rynchodon.AntennaRelay
 			foreach (var value in Data.Values)
 				value.Prepare();
 
-			foreach (LastSeen seen in myLastSeen.Values)
-			{
+			m_node.Storage.ForEachLastSeen(seen => {
 				if (!seen.isRecent())
-					continue;
+					return;
 
 				if (seen.isRecent_Broadcast())
 				{
 					//myLogger.debugLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
-					continue;
+					return;
 				}
 
 				ExtensionsRelations.Relations relate;
@@ -178,13 +169,13 @@ namespace Rynchodon.AntennaRelay
 				ForRelations relateData = Data[relate];
 
 				if (relateData.MaxOnHUD == 0)
-					continue;
+					return;
 
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
-				relateData.distanceSeen.Add(new DistanceSeen( distance, seen));
+				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 
 				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
-			}
+			});
 
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
