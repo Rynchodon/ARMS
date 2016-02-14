@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Utility.Network;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities.Cube;
@@ -18,6 +19,7 @@ namespace Rynchodon.GUI
 	{
 
 		private readonly MyObjectBuilderType textPanelType = typeof(MyObjectBuilder_TextPanel);
+		private readonly MyObjectBuilderType programmableType = typeof(MyObjectBuilder_MyProgrammableBlock);
 		private readonly Logger m_logger;
 		private readonly List<byte> message = new List<byte>();
 
@@ -27,13 +29,21 @@ namespace Rynchodon.GUI
 				return;
 
 			// Actions & Controls need to be loaded ASAP, which means there can be no logging at this point
-			MyTerminalAction<MyTerminalBlock> textPanel_displayEntities = new MyTerminalAction<MyTerminalBlock>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			MyTerminalAction<MyFunctionalBlock> textPanel_displayEntities = new MyTerminalAction<MyFunctionalBlock>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
 			{
 				Enabled = block => ((IMyCubeBlock)block).BlockDefinition.TypeId == textPanelType,
 				ValidForGroups = false,
-				ActionWithParameters = DisplayEntities
+				ActionWithParameters = TextPanel_DisplayEntities
 			};
 			MyTerminalControlFactory.AddAction(textPanel_displayEntities);
+
+			MyTerminalAction<MyFunctionalBlock> programmable_sendMessage = new MyTerminalAction<MyFunctionalBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			{
+				Enabled = block => ((IMyCubeBlock)block).BlockDefinition.TypeId == programmableType,
+				ValidForGroups = false,
+				ActionWithParameters = ProgrammableBlock_SendMessage
+			};
+			MyTerminalControlFactory.AddAction(programmable_sendMessage);
 
 			m_logger = new Logger("GUI." + GetType().Name);
 		}
@@ -50,15 +60,16 @@ namespace Rynchodon.GUI
 			return false;
 		}
 
-		private void DisplayEntities(MyTerminalBlock block, ListReader<Ingame.TerminalActionParameter> args)
+		/// <param name="args">EntityIds as long</param>
+		private void TextPanel_DisplayEntities(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
 		{
-			ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.DisplayEntities);
+			ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.TP_DisplayEntities);
 			ByteConverter.AppendBytes(message, block.EntityId);
 			foreach (Ingame.TerminalActionParameter arg in args)
 			{
 				if (arg.TypeCode != TypeCode.Int64)
 				{
-					m_logger.debugLog("TerminalActionParameter is of wrong type: " + arg.TypeCode + ", expected " + TypeCode.Int64, "DisplayEntities()", Logger.severity.WARNING);
+					m_logger.debugLog("TerminalActionParameter is of wrong type, expected Int64, got " + arg.TypeCode, "DisplayEntities()", Logger.severity.WARNING);
 					return;
 				}
 				ByteConverter.AppendBytes(message, (long)arg.Value);
@@ -68,6 +79,38 @@ namespace Rynchodon.GUI
 				m_logger.debugLog("sent message", "DisplayEntities()", Logger.severity.DEBUG);
 			else
 				m_logger.alwaysLog("failed to send message", "DisplayEntities()", Logger.severity.WARNING);
+			message.Clear();
+		}
+
+		/// <param name="args">Recipient grid, recipient block, message</param>
+		private void ProgrammableBlock_SendMessage(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
+		{
+			if (args.Count != 3)
+			{
+				m_logger.debugLog("wrong number of arguments, expected 3, got " + args.Count, "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				return;
+			}
+
+			ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.PB_SendMessage);
+			ByteConverter.AppendBytes(message, block.EntityId);
+
+			for (int i = 0; i < 3; i++)
+			{
+				if (args[i].TypeCode != TypeCode.String)
+				{
+					m_logger.debugLog("TerminalActionParameter is of wrong type, expected String, got " + args[i].TypeCode, "DisplayEntities()", Logger.severity.WARNING);
+					return;
+				}
+				string asString = (string)args[i].Value;
+				ByteConverter.AppendBytes(message, (string)args[i].Value);
+				if (i != 2)
+					ByteConverter.AppendBytes(message, ProgrammableBlock.messageSeparator);
+			}
+
+			if (MyAPIGateway.Multiplayer.SendMessageToServer(MessageHandler.ModId, message.ToArray()))
+				m_logger.debugLog("sent message", "ProgrammableBlock_SendMessage()", Logger.severity.DEBUG);
+			else
+				m_logger.alwaysLog("failed to send message", "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
 			message.Clear();
 		}
 

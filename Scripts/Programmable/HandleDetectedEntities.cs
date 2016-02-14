@@ -5,7 +5,7 @@ using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
-namespace Programmable
+namespace Rynchodon.Programmable
 {
   public class HandleDetectedEntities : MyGridProgram
   {
@@ -13,7 +13,7 @@ namespace Programmable
     const string tab = "    ";
 
     /// <summary>These are defined by Rynchodon.AntennaRelay.ProgrammableBlock</summary>
-    const char fieldSeparator = ',', entitySeparator = ';';
+    const char fieldSeparator = '«', entitySeparator = '»';
 
     const byte Relation_None = 0, Relation_Enemy = 1, Relation_Neutral = 2, Relation_Faction = 3, Relation_Owner = 4;
     const byte EntityType_None = 0, EntityType_Grid = 1, EntityType_Character = 2, EntityType_Missile = 3, EntityType_Unknown = 4;

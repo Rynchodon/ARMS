@@ -10,9 +10,10 @@ namespace Rynchodon.Utility.Network
 
 		public static readonly ushort ModId = (ushort)"Autopilot, Radar, and Military Systems".GetHashCode();
 
-		public enum SubMod : byte { DisplayEntities }
+		public enum SubMod : byte { TP_DisplayEntities , PB_SendMessage}
+		public delegate void Handler(byte[] message, int position);
 
-		public static Dictionary<SubMod, Action<byte[]>> Handlers = new Dictionary<SubMod, Action<byte[]>>();
+		public static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();
 
 		private static Logger s_logger = new Logger("NetworkClient");
 
@@ -32,11 +33,12 @@ namespace Rynchodon.Utility.Network
 
 		private static void HandleMessage(byte[] received)
 		{
-			Action<byte[]> handler;
-			SubMod dest = (SubMod)received[0];
+			Handler handler;
+			int position = 0;
+			SubMod dest = (SubMod)ByteConverter.GetByte(received, ref position);
 			if (Handlers.TryGetValue(dest, out handler))
 			{
-				try { handler(received); }
+				try { handler(received, position); }
 				catch (Exception ex)
 				{
 					s_logger.alwaysLog("Handler threw exception: " + ex, "HandleMessage()", Logger.severity.ERROR);

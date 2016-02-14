@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
-using VRage.Collections;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -27,7 +26,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Send a LastSeen to one or more NetworkStorage. Faster than looping through the collection and inoking Receive() for each one.
+		/// Send a LastSeen to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
 		/// </summary>
 		public static void Receive(ICollection<NetworkStorage> storage, LastSeen seen)
 		{
@@ -38,7 +37,7 @@ namespace Rynchodon.AntennaRelay
 					AddStorage(sto);
 
 				foreach (NetworkStorage sto in s_sendToSet)
-					using (sto.lock_m_lastSeen.AcquireExclusiveUsing())
+					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
 			}
 			finally
@@ -49,7 +48,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Send a Message to one or more NetworkStorage. Faster than looping through the collection and inoking Receive() for each one.
+		/// Send a Message to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
 		/// </summary>
 		public static void Receive(ICollection<NetworkStorage> storage, Message msg)
 		{
@@ -60,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 					AddStorage(sto);
 
 				foreach (NetworkStorage sto in s_sendToSet)
-					using (sto.lock_m_messages.AcquireExclusiveUsing())
+					using (sto.lock_messages.AcquireExclusiveUsing())
 						sto.in_Receive(msg);
 			}
 			finally
@@ -78,7 +77,7 @@ namespace Rynchodon.AntennaRelay
 		private static void AddStorage(NetworkStorage storage)
 		{
 			if (s_sendToSet.Add(storage))
-				using (storage.lock_m_pushTo_count.AcquireSharedUsing())
+				using (storage.lock_pushTo_count.AcquireSharedUsing())
 					foreach (NetworkNode connected in storage.m_pushTo_count.Keys)
 						if (connected.Storage != null)
 							AddStorage(connected.Storage);
@@ -86,13 +85,15 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Logger m_logger;
 
-		private readonly FastResourceLock lock_m_lastSeen = new FastResourceLock();
+		private readonly FastResourceLock lock_lastSeen = new FastResourceLock();
 		private readonly Dictionary<long, LastSeen> m_lastSeen = new Dictionary<long, LastSeen>();
-		private readonly FastResourceLock lock_m_messages = new FastResourceLock();
+		private readonly FastResourceLock lock_messages = new FastResourceLock();
 		private readonly HashSet<Message> m_messages = new HashSet<Message>();
-		private readonly FastResourceLock lock_m_pushTo_count = new FastResourceLock();
+		private readonly FastResourceLock lock_pushTo_count = new FastResourceLock();
 		/// <summary>For one way radio communication.</summary>
 		private readonly Dictionary<NetworkNode, int> m_pushTo_count = new Dictionary<NetworkNode, int>();
+		private readonly FastResourceLock lock_messageHandlers = new FastResourceLock();
+		private readonly Dictionary<long, Action<Message>> m_messageHandlers = new Dictionary<long, Action<Message>>();
 
 		public readonly NetworkNode PrimaryNode;
 
@@ -133,9 +134,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			m_logger.debugLog("copying to, " + recipient.PrimaryNode.LoggingName, "CopyTo()", Logger.severity.DEBUG);
 
-			using (recipient.lock_m_lastSeen.AcquireExclusiveUsing())
+			using (recipient.lock_lastSeen.AcquireExclusiveUsing())
 				ForEachLastSeen(recipient.in_Receive);
-			using (recipient.lock_m_messages.AcquireExclusiveUsing())
+			using (recipient.lock_messages.AcquireExclusiveUsing())
 				ForEachMessage(recipient.in_Receive);
 		}
 
@@ -146,7 +147,7 @@ namespace Rynchodon.AntennaRelay
 		public void AddPushTo(NetworkNode node)
 		{
 			int count;
-			using (lock_m_pushTo_count.AcquireExclusiveUsing())
+			using (lock_pushTo_count.AcquireExclusiveUsing())
 			{
 				if (!m_pushTo_count.TryGetValue(node, out count))
 					count = 0;
@@ -171,7 +172,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="node">Node that was receiving data.</param>
 		public void RemovePushTo(NetworkNode node)
 		{
-			using (lock_m_pushTo_count.AcquireExclusiveUsing())
+			using (lock_pushTo_count.AcquireExclusiveUsing())
 			{
 				int count = m_pushTo_count[node];
 				if (count == 1)
@@ -181,6 +182,36 @@ namespace Rynchodon.AntennaRelay
 
 				m_logger.debugLog("removed push to: " + node.LoggingName + ", count: " + (count - 1), "AddPushTo()", Logger.severity.DEBUG);
 			}
+		}
+
+		/// <summary>
+		/// Register a handler for messages for a block. The handler may receive messages before this method returns.
+		/// </summary>
+		/// <param name="entityId">The EntityId of the block to register for</param>
+		/// <param name="handler">Action to invoke on messages</param>
+		/// <exception cref="ArgumentException">iff the block already has a handler registered.</exception>
+		public void AddMessageHandler(long entityId, Action<Message> handler)
+		{
+			using (lock_messageHandlers.AcquireExclusiveUsing())
+				m_messageHandlers.Add(entityId, handler);
+
+			ForEachMessage(message => {
+				if (message.DestCubeBlock.EntityId == entityId)
+				{
+					message.IsValid = false;
+					handler(message);
+				}
+			});
+		}
+
+		/// <summary>
+		/// Unregister a client as handling messages for a block. Does nothing if no handler is registerd for client's block
+		/// </summary>
+		/// <param name="entityId">The EntityId of the block to unregister for</param>
+		public void RemoveMessageHandler(long entityId)
+		{
+			using (lock_messageHandlers.AcquireExclusiveUsing())
+				m_messageHandlers.Remove(entityId);
 		}
 
 		/// <summary>
@@ -196,7 +227,7 @@ namespace Rynchodon.AntennaRelay
 				AddStorage(this);
 
 				foreach (NetworkStorage sto in s_sendToSet)
-					using (sto.lock_m_lastSeen.AcquireExclusiveUsing())
+					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
 			}
 			finally
@@ -219,7 +250,7 @@ namespace Rynchodon.AntennaRelay
 				AddStorage(this);
 
 				foreach (NetworkStorage sto in s_sendToSet)
-					using (sto.lock_m_messages.AcquireExclusiveUsing())
+					using (sto.lock_messages.AcquireExclusiveUsing())
 						sto.in_Receive(msg);
 			}
 			finally
@@ -237,7 +268,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<LastSeen> invalid = null;
 
-			using (lock_m_lastSeen.AcquireSharedUsing())
+			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (LastSeen seen in m_lastSeen.Values)
 				{
 					if (seen.IsValid)
@@ -253,7 +284,7 @@ namespace Rynchodon.AntennaRelay
 			if (invalid != null)
 			{
 				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", "ForEachLastSeen()", Logger.severity.DEBUG);
-				using (lock_m_lastSeen.AcquireExclusiveUsing())
+				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
 			}
@@ -267,7 +298,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<long> invalid = null;
 
-			using (lock_m_lastSeen.AcquireSharedUsing())
+			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (var pair in m_lastSeen)
 				{
 					if (pair.Value.IsValid)
@@ -283,7 +314,7 @@ namespace Rynchodon.AntennaRelay
 			if (invalid != null)
 			{
 				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", "ForEachLastSeen()", Logger.severity.DEBUG);
-				using (lock_m_lastSeen.AcquireExclusiveUsing())
+				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
 			}
@@ -297,7 +328,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<LastSeen> invalid = null;
 
-			using (lock_m_lastSeen.AcquireSharedUsing())
+			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (LastSeen seen in m_lastSeen.Values)
 				{
 					if (seen.IsValid)
@@ -316,7 +347,7 @@ namespace Rynchodon.AntennaRelay
 			if (invalid != null)
 			{
 				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", "SearchLastSeen()", Logger.severity.DEBUG);
-				using (lock_m_lastSeen.AcquireExclusiveUsing())
+				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
 			}
@@ -330,7 +361,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<long> invalid = null;
 
-			using (lock_m_lastSeen.AcquireSharedUsing())
+			using (lock_lastSeen.AcquireSharedUsing())
 				foreach (var pair in m_lastSeen)
 				{
 					if (pair.Value.IsValid)
@@ -349,7 +380,7 @@ namespace Rynchodon.AntennaRelay
 			if (invalid != null)
 			{
 				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", "SearchLastSeen()", Logger.severity.DEBUG);
-				using (lock_m_lastSeen.AcquireExclusiveUsing())
+				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
 			}
@@ -360,7 +391,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public bool TryGetLastSeen(long entityId, out LastSeen seen)
 		{
-			using (lock_m_lastSeen.AcquireSharedUsing())
+			using (lock_lastSeen.AcquireSharedUsing())
 				return m_lastSeen.TryGetValue(entityId, out seen);
 		}
 
@@ -372,7 +403,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			List<Message> invalid = null;
 
-			using (lock_m_messages.AcquireSharedUsing())
+			using (lock_messages.AcquireSharedUsing())
 				foreach (Message msg in m_messages)
 				{
 					if (msg.IsValid)
@@ -388,7 +419,7 @@ namespace Rynchodon.AntennaRelay
 			if (invalid != null)
 			{
 				m_logger.debugLog("Removing " + invalid.Count + " invalid Message", "ForEachMessage()", Logger.severity.DEBUG);
-				using (lock_m_messages.AcquireExclusiveUsing())
+				using (lock_messages.AcquireExclusiveUsing())
 					foreach (Message msg in invalid)
 						m_messages.Remove(msg);
 			}
@@ -416,6 +447,20 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private void in_Receive(Message msg)
 		{
+			Action<Message> handler;
+			bool gotHandler;
+			m_logger.debugLog("looking for a handler for " + msg.DestCubeBlock.EntityId, "in_Receive()");
+			using (lock_messageHandlers.AcquireSharedUsing())
+				gotHandler = m_messageHandlers.TryGetValue(msg.DestCubeBlock.EntityId, out handler);
+
+			if (gotHandler)
+			{
+				m_logger.debugLog("have a handler for msg", "in_Receive()");
+				msg.IsValid = false;
+				handler(msg);
+				return;
+			}
+
 			if (m_messages.Add(msg))
 				m_logger.debugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, "receive()", Logger.severity.DEBUG);
 			else

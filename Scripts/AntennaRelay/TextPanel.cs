@@ -34,18 +34,17 @@ namespace Rynchodon.AntennaRelay
 
 		static TextPanel()
 		{
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.DisplayEntities, Handler_DisplayEntities);
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.TP_DisplayEntities, Handler_DisplayEntities);
 		}
 
-		private static void Handler_DisplayEntities(byte[] message)
+		private static void Handler_DisplayEntities(byte[] message, int pos)
 		{
-			int pos = 1;
 			long panelId = ByteConverter.GetLong(message, ref pos);
 
 			TextPanel panel;
 			if (!Registrar.TryGetValue(panelId, out panel))
 			{
-				(new Logger("TextPanel")).alwaysLog("Text panel not found in registrar: " + panelId, "Handler_DisplayEntities()", Logger.severity.ERROR);
+				s_logger.alwaysLog("Text panel not found in registrar: " + panelId, "Handler_DisplayEntities()", Logger.severity.ERROR);
 				return;
 			}
 
@@ -106,7 +105,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
 
-			NetworkStorage store = m_networkClient.Storage;
+			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
 			{
 				m_textPanel.WritePublicText("No network connection");

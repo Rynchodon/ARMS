@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Instructions;
+using Rynchodon.Utility.Network;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -10,21 +14,55 @@ namespace Rynchodon.AntennaRelay
 	public class ProgrammableBlock : BlockInstructions
 	{
 
-		private const char fieldSeparator = ',', entitySeparator = ';';
-		private const string numberFormat = "e2";
+		public const char fieldSeparator = '«', entitySeparator = '»';
+		public const char messageSeparator = '«';
+		public const string numberFormat = "e2";
 
-		private Ingame.IMyProgrammableBlock myProgBlock;
+		private static readonly Logger s_logger = new Logger("ProgrammableBlock");
+
+		static ProgrammableBlock()
+		{
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage, Handler_SendMessage);
+		}
+
+		private static void Handler_SendMessage(byte[] message, int pos)
+		{
+			long programId = ByteConverter.GetLong(message, ref pos);
+
+			ProgrammableBlock program;
+			if (!Registrar.TryGetValue(programId, out program))
+			{
+				s_logger.alwaysLog("Programmble block not found in registrar: " + programId, "Handler_SendMessage()", Logger.severity.ERROR);
+				return;
+			}
+
+			s_logger.debugLog("Found programmable block with id: " + programId, "Handler_SendMessage()");
+
+			string[] text = ByteConverter.GetString(message, ref pos).Split(messageSeparator);
+
+			if (text.Length != 3)
+			{
+				s_logger.alwaysLog("text has wrong length, expected 3, got " + text.Length, "Handler_SendMessage()", Logger.severity.ERROR);
+				return;
+			}
+
+			program.SendMessage(text[0], text[1], text[2]);
+		}
+
+		private Ingame.IMyProgrammableBlock m_progBlock;
 		private NetworkClient m_networkClient;
-		private Logger myLogger;
+		private Logger m_logger;
 
 		private bool m_handleDetected;
 
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger(GetType().Name, block);
-			myProgBlock = block as Ingame.IMyProgrammableBlock;
-			m_networkClient = new NetworkClient(block);
+			m_logger = new Logger(GetType().Name, block);
+			m_progBlock = block as Ingame.IMyProgrammableBlock;
+			m_networkClient = new NetworkClient(block, HandleMessage);
+
+			Registrar.Add(block, this);
 		}
 
 		public void Update100()
@@ -46,20 +84,20 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private void HandleDetected()
 		{
-			if (myProgBlock.IsRunning)
+			if (m_progBlock.IsRunning)
 				return;
 
 			StringBuilder parameter = new StringBuilder();
 			bool first = true;
 
-			NetworkStorage store = m_networkClient.Storage;
+			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
 				return;
 
-			store.ForEachLastSeen((LastSeen seen)=>{
-				ExtensionsRelations.Relations relations =( myProgBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
+			store.ForEachLastSeen((LastSeen seen) => {
+				ExtensionsRelations.Relations relations = (m_progBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 				bool friendly = ExtensionsRelations.toIsFriendly(relations);
-				string bestName  = friendly ? seen.Entity.getBestName() : "Unknown";
+				string bestName = friendly ? seen.Entity.getBestName() : "Unknown";
 				TimeSpan sinceSeen;
 				Vector3D predictedPosition = seen.predictPosition(out sinceSeen);
 
@@ -87,10 +125,40 @@ namespace Rynchodon.AntennaRelay
 				parameter.Append(fieldSeparator);
 			});
 
-			if (myProgBlock.TryRun(parameter.ToString()))
-				myLogger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
+			if (m_progBlock.TryRun(parameter.ToString()))
+				m_logger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
 			else
-				myLogger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
+		}
+
+		private void SendMessage(string recipientGrid, string recipientBlock, string message)
+		{
+			NetworkStorage store = m_networkClient.GetStorage();
+			if (store == null)
+			{
+				m_logger.debugLog("not connected to a network", "SendMessage()", Logger.severity.DEBUG);
+				return;
+			}
+
+			Registrar.ForEach((ProgrammableBlock program) => {
+				IMyCubeBlock block = program.m_block;
+				IMyCubeGrid grid = block.CubeGrid;
+				if (m_block.canConsiderFriendly(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				{
+					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+					program.m_networkClient.GetStorage(); // force update of storage
+					store.Receive(new Message(message, block, m_block));
+				}
+			});
+		}
+
+		private void HandleMessage(Message received)
+		{
+			string param = received.SourceGridName + messageSeparator + received.SourceBlockName + messageSeparator+received.Content;
+			if (m_progBlock.TryRun(param))
+				m_logger.debugLog("Sent message to program", "HandleMessage()", Logger.severity.DEBUG);
+			else
+				m_logger.debugLog("Failed to send message to program", "HandleMessage()", Logger.severity.WARNING);
 		}
 
 	}
