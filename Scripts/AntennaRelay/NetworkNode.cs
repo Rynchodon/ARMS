@@ -8,6 +8,9 @@ using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
+	/// <summary>
+	/// Full participant in a network, connects to other nodes.
+	/// </summary>
 	public class NetworkNode
 	{
 
@@ -53,6 +56,8 @@ namespace Rynchodon.AntennaRelay
 
 		/// <summary>Name used to identify this node.</summary>
 		public string LoggingName { get { return m_loggingName.Invoke(); } }
+
+		public IMyCubeBlock Block { get { return m_entity as IMyCubeBlock; } }
 
 		/// <summary>Contains all the LastSeen and Message for this node.</summary>
 		public NetworkStorage Storage

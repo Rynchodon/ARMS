@@ -1,4 +1,5 @@
 ﻿using System;
+using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -16,8 +17,11 @@ namespace Rynchodon.AntennaRelay
 			HasJammer = 1 << 4
 		}
 
+		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
+
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
 		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
+		private EntityType m_type;
 
 		public readonly IMyEntity Entity;
 		public readonly DateTime LastSeenAt;
@@ -31,6 +35,25 @@ namespace Rynchodon.AntennaRelay
 		public readonly DateTime LastRadar;
 		/// <summary>The last time Entity was using a jammer</summary>
 		public readonly DateTime LastJam;
+
+		public EntityType Type
+		{
+			get
+			{
+				if (m_type == EntityType.None)
+				{
+					if (Entity is IMyCubeGrid)
+						m_type = EntityType.Grid;
+					else if (Entity is IMyCharacter)
+						m_type = EntityType.Character;
+					else if (Entity.ToString().StartsWith("MyMissile"))
+						m_type = EntityType.Missile;
+					else
+						m_type = EntityType.Unknown;
+				}
+				return m_type;
+			}
+		}
 
 		private LastSeen(IMyEntity entity)
 		{

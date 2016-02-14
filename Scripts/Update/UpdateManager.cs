@@ -86,16 +86,12 @@ namespace Rynchodon.Update
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
-				NetworkNode node = new NetworkNode(block);
-				TextPanel tp = new TextPanel(block, node);
-				RegisterForUpdates(100, node.Update, block);
+				TextPanel tp = new TextPanel(block);
 				RegisterForUpdates(100, tp.Update100, block);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
-				NetworkNode node = new NetworkNode(block);
-				ProgrammableBlock pb = new ProgrammableBlock(block, node);
-				RegisterForUpdates(100, node.Update, block);
+				ProgrammableBlock pb = new ProgrammableBlock(block);
 				RegisterForUpdates(100, pb.Update100, block);
 			});
 
@@ -321,6 +317,7 @@ namespace Rynchodon.Update
 		private List<IMyPlayer> playersCached;
 
 		private HashSet<long> CubeBlocks = new HashSet<long>();
+		private HashSet<long> Characters = new HashSet<long>();
 
 		private readonly Logger myLogger;
 
@@ -374,6 +371,8 @@ namespace Rynchodon.Update
 				{
 					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
+
+				Logger.debugNotify("ARMS dev version loaded", 10000);
 
 				ManagerStatus = Status.Initialized;
 			}
@@ -631,6 +630,13 @@ namespace Rynchodon.Update
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
+				if (!Characters.Add(entity.EntityId))
+					return;
+				entity.OnClosing += alsoChar => {
+					if (Characters != null)
+						Characters.Remove(alsoChar.EntityId);
+				};
+
 				myLogger.debugLog("adding character: " + entity.getBestName(), "AddEntity()");
 				foreach (var constructor in CharacterScriptConstructors)
 					try { constructor.Invoke(asCharacter); }
@@ -656,7 +662,7 @@ namespace Rynchodon.Update
 			{
 				if (!CubeBlocks.Add(fatblock.EntityId))
 					return;
-				fatblock.OnClosing += (alsoFatblock) => {
+				fatblock.OnClosing += alsoFatblock => {
 					if (CubeBlocks != null)
 						CubeBlocks.Remove(alsoFatblock.EntityId);
 				};
@@ -757,6 +763,7 @@ namespace Rynchodon.Update
 
 			AddRemoveActions = null;
 			CubeBlocks = null;
+			Characters = null;
 		}
 
 		/// <summary>

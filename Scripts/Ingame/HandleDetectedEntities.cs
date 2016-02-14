@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Sandbox.ModAPI.Ingame;
+using Sandbox.ModAPI.Interfaces;
 using VRageMath;
 
 namespace Programmable
@@ -14,6 +15,9 @@ namespace Programmable
     /// <summary>These are defined by Rynchodon.AntennaRelay.ProgrammableBlock</summary>
     const char fieldSeparator = ',', entitySeparator = ';';
 
+    const byte Relation_None = 0, Relation_Enemy = 1, Relation_Neutral = 2, Relation_Faction = 3, Relation_Owner = 4;
+    const byte EntityType_None = 0, EntityType_Grid = 1, EntityType_Character = 2, EntityType_Missile = 3, EntityType_Unknown = 4;
+
     /// <summary>
     /// Time between sounding alarm (hours, minutes, seconds)
     /// </summary>
@@ -24,19 +28,19 @@ namespace Programmable
     /// </summary>
     DateTime nextAlarmTime;
 
-    List<DetectedEntityData> enemies = new List<DetectedEntityData>();
+    List<TerminalActionParameter> displayEntities = new List<TerminalActionParameter>();
 
     public void Main(string arguments)
     {
-      enemies.Clear();
+      displayEntities.Clear();
 
       DetectedEntityData entityData;
       foreach (string serialized in arguments.Split(entitySeparator))
         if (DetectedEntityData.TryDeserialize(serialized, out entityData))
         {
-          if (entityData.relations == "Enemy")
+          if (entityData.relations == Relation_Enemy)
           {
-            enemies.Add(entityData);
+            displayEntities.Add(TerminalActionParameter.Get(entityData.entityId));
 
             // sound alarm if enemy is near
             if (DateTime.UtcNow >= nextAlarmTime &&
@@ -54,33 +58,20 @@ namespace Programmable
             }
           }
         }
-
-      StringBuilder text = new StringBuilder();
-      text.AppendLine("Enemies:");
-      for (int index = 0; index < enemies.Count && index < 20; index++)
-      {
-        text.Append(enemies[index].name);
-        text.Append(tab);
-        if (enemies[index].hasRadar)
-        {
-          text.Append("Has Radar");
-          text.Append(tab);
-        }
-        if (enemies[index].hasJammer)
-        {
-          text.Append("Has Jammer");
-          text.Append(tab);
-        }
-        text.Append(enemies[index].predictedPosition);
-        text.Append(tab);
-        text.AppendLine();
-      }
+        else
+          Echo("Deserialize failed: " + entityData.name);
 
       IMyTextPanel panel = GridTerminalSystem.GetBlockWithName("Output Text Panel") as IMyTextPanel;
       if (panel == null)
         Echo("Output Text Panel is not a text panel block");
       else
-        panel.WritePublicText(text.ToString());
+      {
+        ITerminalAction act = panel.GetActionWithName("DisplayEntities");
+        if (act == null)
+          Echo("ARMS actions are not loaded. ARMS must be present in the first world loaded after launching Space Engineers for actions to be loaded.");
+        else
+          panel.ApplyAction("DisplayEntities", displayEntities);
+      }
     }
 
     /// <summary>
@@ -103,7 +94,10 @@ namespace Programmable
 
         if (!long.TryParse(fields[index++], out deserialized.entityId))
           return false;
-        deserialized.relations = fields[index++];
+        if (!byte.TryParse(fields[index++], out deserialized.relations))
+          return false;
+        if (!byte.TryParse(fields[index++], out deserialized.type))
+          return false;
         deserialized.name = fields[index++];
         if (!bool.TryParse(fields[index++], out deserialized.hasRadar))
           return false;
@@ -139,7 +133,8 @@ namespace Programmable
       }
 
       public long entityId;
-      public string relations;
+      public byte relations;
+      public byte type;
       public string name;
       public bool hasRadar;
       public bool hasJammer;

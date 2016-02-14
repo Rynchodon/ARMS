@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Sandbox.ModAPI;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Instructions
 {
@@ -64,7 +65,7 @@ namespace Rynchodon.Instructions
 					m_logger.debugLog("Monitor value changed", "Update()");
 					m_displayNameDirty = false;
 					m_displayName = m_block.DisplayNameText;
-					GetInstrucions();
+					GetInstructions();
 					return;
 				}
 
@@ -79,7 +80,7 @@ namespace Rynchodon.Instructions
 			}
 			m_logger.debugLog("name changed to " + m_block.DisplayNameText, "Update()");
 			m_displayName = m_block.DisplayNameText;
-			GetInstrucions();
+			GetInstructions();
 		}
 
 		/// <summary>
@@ -105,21 +106,37 @@ namespace Rynchodon.Instructions
 		/// <summary>
 		/// Gets instructions and feeds them to the parser. Stops if parser is happy with an instruction set.
 		/// </summary>
-		private void GetInstrucions()
+		private void GetInstructions()
 		{
 			m_instructions = null;
 			m_monitors.Clear();
-			MatchCollection matches = InstructionSets.Matches(m_displayName);
-			for (int i = 0; i < matches.Count; i++)
+
+			m_logger.debugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
+			if (GetInstructions(m_displayName))
 			{
-				string instruct = matches[i].Value.Substring(1, matches[i].Value.Length - 2);
-				if (ParseAll(instruct))
+				m_logger.debugLog("Got instructions from name", "GetInstructions()", Logger.severity.DEBUG);
+				return;
+			}
+
+			Ingame.IMyTextPanel asPanel = m_block as Ingame.IMyTextPanel;
+			if (asPanel != null)
+			{
+				m_logger.debugLog("Trying to get instructions from public title: " + asPanel.GetPublicTitle(), "GetInstructions()");
+				AddMonitor(asPanel.GetPublicTitle);
+				if (GetInstructions(asPanel.GetPublicTitle()))
 				{
-					m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
-					m_instructions = instruct;
+					m_logger.debugLog("Got instructions from public title", "GetInstructions()", Logger.severity.DEBUG);
+					return;
+				}
+				m_logger.debugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
+				AddMonitor(asPanel.GetPrivateTitle);
+				if (GetInstructions(asPanel.GetPrivateTitle()))
+				{
+					m_logger.debugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
 					return;
 				}
 			}
+
 			if (FallBackInstruct != null)
 			{
 				if (FallBackInstruct.StartsWith("["))
@@ -132,6 +149,24 @@ namespace Rynchodon.Instructions
 				}
 			}
 			ParseAll(string.Empty);
+		}
+
+		private bool GetInstructions(string source)
+		{
+			MatchCollection matches = InstructionSets.Matches(source);
+
+			for (int i = 0; i < matches.Count; i++)
+			{
+				string instruct = matches[i].Value.Substring(1, matches[i].Value.Length - 2);
+				if (ParseAll(instruct))
+				{
+					m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
+					m_instructions = instruct;
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 	}

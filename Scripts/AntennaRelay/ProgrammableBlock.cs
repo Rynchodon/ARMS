@@ -11,19 +11,20 @@ namespace Rynchodon.AntennaRelay
 	{
 
 		private const char fieldSeparator = ',', entitySeparator = ';';
+		private const string numberFormat = "e2";
 
 		private Ingame.IMyProgrammableBlock myProgBlock;
-		private NetworkNode m_node;
+		private NetworkClient m_networkClient;
 		private Logger myLogger;
 
 		private bool m_handleDetected;
 
-		public ProgrammableBlock(IMyCubeBlock block, NetworkNode node)
+		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
 			myLogger = new Logger(GetType().Name, block);
 			myProgBlock = block as Ingame.IMyProgrammableBlock;
-			m_node = node;
+			m_networkClient = new NetworkClient(block);
 		}
 
 		public void Update100()
@@ -51,12 +52,14 @@ namespace Rynchodon.AntennaRelay
 			StringBuilder parameter = new StringBuilder();
 			bool first = true;
 
-			m_node.Storage.ForEachLastSeen((LastSeen seen)=>{
+			NetworkStorage store = m_networkClient.Storage;
+			if (store == null)
+				return;
+
+			store.ForEachLastSeen((LastSeen seen)=>{
 				ExtensionsRelations.Relations relations =( myProgBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 				bool friendly = ExtensionsRelations.toIsFriendly(relations);
-				string bestName  = friendly ? seen.Entity.getBestName() : 
-					seen.Entity is IMyCharacter ? "Meatbag" : 
-					"Unknown";
+				string bestName  = friendly ? seen.Entity.getBestName() : "Unknown";
 				TimeSpan sinceSeen;
 				Vector3D predictedPosition = seen.predictPosition(out sinceSeen);
 
@@ -66,17 +69,18 @@ namespace Rynchodon.AntennaRelay
 					parameter.Append(entitySeparator);
 
 				parameter.Append(seen.Entity.EntityId); parameter.Append(fieldSeparator);
-				parameter.Append(relations); parameter.Append(fieldSeparator);
+				parameter.Append((byte)relations); parameter.Append(fieldSeparator);
+				parameter.Append((byte)seen.Type); parameter.Append(fieldSeparator);
 				parameter.Append(bestName); parameter.Append(fieldSeparator);
 				parameter.Append(seen.isRecent_Radar()); parameter.Append(fieldSeparator);
 				parameter.Append(seen.isRecent_Jam()); parameter.Append(fieldSeparator);
 				parameter.Append((int)sinceSeen.TotalSeconds); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.X); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.Y); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.Z); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.X); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.Y); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.Z); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(predictedPosition.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(seen.LastKnownVelocity.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
 
 				if (seen.Info != null)
 					parameter.Append(seen.Info.Volume);
@@ -84,7 +88,7 @@ namespace Rynchodon.AntennaRelay
 			});
 
 			if (myProgBlock.TryRun(parameter.ToString()))
-				myLogger.debugLog("running program", "HandleDetected()");
+				myLogger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
 			else
 				myLogger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
 		}
