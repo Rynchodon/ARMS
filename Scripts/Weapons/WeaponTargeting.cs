@@ -311,10 +311,9 @@ namespace Rynchodon.Weapons
 			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
 			ClearBlacklist();
 
-			//if (RunTargeting || GuidedLauncher)
-			if ((CubeBlock.DisplayNameText.Contains("[") && CubeBlock.DisplayNameText.Contains("]")) || CubeBlock.OwnedNPC())
+			Interpreter.UpdateInstruction();
+			if (Interpreter.HasInstructions)
 			{
-				Interpreter.UpdateInstruction();
 				if (Interpreter.Errors.Count <= InterpreterErrorCount)
 				{
 					if (Interpreter.Options == null)
