@@ -6,7 +6,19 @@ Antennae, radars, and Autopilot blocks in attached grids share information.
 
 Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
-[u]Text Panel[/u] can display detected grids, simply add [ Display Detected ] to the text panel's name.
+[h1]Text Panel[/h1]
+Can be used to display detected entities. Commands can be added to the text panel's name, public title, or private title.
+Commands are contained within square brackets and are separated by ; or :
+
+Display Detected : Write detected entities to the public text of the panel
+GPS : Include GPS tags, requires Display Detected or entity ids from a programmable block
+Entity ID : Include entity ids, requires Display Detected or entity ids from a programmable block
+Example - [ Display Detected ; GPS ; Entity ID ] - Display everything
+
+[h1]Programmable block[/h1]
+Can handle detected entities or transmit messages to other Programmable blocks. The Programmable block scripts contain the documentation.
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=625196196]Handle Detected Entities In-Game Script[/url]
+[url=http://pastebin.com/JDRL94Mq]Block Communication In-Game Script[/url]
 
 [h1]Radar[/h1]
 Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. Radar must remain online for a period of time to function at full capacity.
@@ -14,7 +26,7 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 [u]Decoys have a large radar signature[/u]
 [u]Status information is displayed in the control panel.[/u]
 
-[h1]Blocks[/h1]
+[h1]Radar Blocks[/h1]
 Radar equipment from other mods may be used. If they are not otherwise configured, they will have a maximum of 1 target and be completely omnidirectional.
 
 [u]Radar Dish[/u]
