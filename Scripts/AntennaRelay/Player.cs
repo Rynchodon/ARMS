@@ -153,20 +153,27 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 
+				myLogger.debugLog("item: " + seen.Entity.getBestName(), "UpdateGPS()");
+
 				ExtensionsRelations.Relations relate;
 				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
 				if (asGrid != null)
-					relate = myPlayer.getRelationsTo(asGrid, ExtensionsRelations.Relations.Enemy);
+					relate = myPlayer.getRelationsTo(asGrid, ExtensionsRelations.Relations.Enemy).highestPriority();
 				else
 				{
 					IMyCharacter asChar = seen.Entity as IMyCharacter;
 					if (asChar != null)
-						relate = myPlayer.getRelationsTo(asChar.GetPlayer_Safe().PlayerID);
+						relate = myPlayer.getRelationsTo(asChar.GetPlayer_Safe().PlayerID).highestPriority();
 					else
 						relate = ExtensionsRelations.Relations.None;
 				}
 
-				ForRelations relateData = Data[relate];
+				ForRelations relateData;
+				if (!Data.TryGetValue(relate, out relateData))
+				{
+					myLogger.debugLog("failed to get relate data, relations: " + relate, "UpdateGPS()", Logger.severity.WARNING);
+					return;
+				}
 
 				if (relateData.MaxOnHUD == 0)
 					return;
@@ -174,7 +181,7 @@ namespace Rynchodon.AntennaRelay
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 
-				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
+				myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
 			});
 
 			foreach (var pair in Data)

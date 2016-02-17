@@ -60,7 +60,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			NetworkNode node = GetNode();
 			NetworkStorage store = node != null ? node.Storage : null;
-			m_logger.debugLog("current storage: " + m_storage + ", new storage: " + store, "get_Storage()");
+			m_logger.debugLog("current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store), "get_Storage()");
 			if (store != m_storage && m_messageHandler != null)
 			{
 				if (m_storage != null)
@@ -76,6 +76,15 @@ namespace Rynchodon.AntennaRelay
 			}
 			m_storage = store;
 			return m_storage;
+		}
+
+		private string StorageName(NetworkStorage store)
+		{
+			if (store == null)
+				return "null";
+			if (store.PrimaryNode == null)
+				return "NetworkStorage without PrimaryNode!";
+			return store.PrimaryNode.LoggingName;
 		}
 
 	}

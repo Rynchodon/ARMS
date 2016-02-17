@@ -9,17 +9,9 @@ namespace Rynchodon
 {
 	public static class ExtensionsRelations
 	{
-		/// <summary>
-		/// <para>For a grid, we normally consider the worst relationship.</para>
-		/// <para>Eg. A grid that contains any Neutral blocks and no Enemy blocks shall be considered Neutral.</para>
-		/// <para>A grid that is completely unowned shall be considered Enemy.</para>
-		/// </summary>
 		[Flags]
 		public enum Relations : byte
 		{
-			/// <summary>
-			/// Owner/Player is "nobody"
-			/// </summary>
 			None = 0,
 			/// <summary>
 			/// Owner/Player is a member of an at war faction
@@ -42,20 +34,20 @@ namespace Rynchodon
 		private static readonly Relations[] relationsPriority = new Relations[] { Relations.Enemy, Relations.Owner, Relations.Faction, Relations.Neutral };
 
 		/// <summary>Checks if the Relations has a flag set or any of a group of flags.</summary>
-		public static bool HasFlagFast(this Relations rel, Relations flag)
+		public static bool HasAnyFlag(this Relations rel, Relations flag)
 		{ return (rel & flag) != 0; }
 
 		public static bool toIsFriendly(Relations rel)
 		{
-			if (rel.HasFlagFast(Relations.Enemy))
+			if (rel.HasAnyFlag(Relations.Enemy))
 				return false;
 
-			return rel.HasFlagFast(Relations.Owner) || rel.HasFlagFast(Relations.Faction);
+			return rel.HasAnyFlag(Relations.Owner) || rel.HasAnyFlag(Relations.Faction);
 		}
 
 		public static bool toIsHostile(Relations rel)
 		{
-			if (rel.HasFlagFast(Relations.Enemy))
+			if (rel.HasAnyFlag(Relations.Enemy))
 				return true;
 
 			if (rel == Relations.None)
@@ -67,7 +59,7 @@ namespace Rynchodon
 		public static Relations highestPriority(this Relations rel)
 		{
 			foreach (Relations flag in relationsPriority)
-				if (rel.HasFlagFast(flag))
+				if (rel.HasAnyFlag(flag))
 					return flag;
 			return Relations.None;
 		}
@@ -75,66 +67,20 @@ namespace Rynchodon
 		public static byte PriorityOrder(this Relations rel)
 		{
 			for (byte i = 0; i < relationsPriority.Length; i++)
-				if (rel.HasFlagFast(relationsPriority[i]))
+				if (rel.HasAnyFlag(relationsPriority[i]))
 					return i;
 			return (byte)relationsPriority.Length;
 		}
 
-		private static Relations GetRelations(MyRelationsBetweenPlayerAndBlock relations)
+		public static Relations getRelationsTo(this long playerId1, long playerId2)
 		{
-			switch (relations)
-			{
-				case MyRelationsBetweenPlayerAndBlock.Enemies:
-					return Relations.Enemy;
-				case MyRelationsBetweenPlayerAndBlock.FactionShare:
-					return Relations.Faction;
-				case MyRelationsBetweenPlayerAndBlock.Neutral:
-					return Relations.Neutral;
-				case MyRelationsBetweenPlayerAndBlock.Owner:
-					return Relations.Owner;
-				case MyRelationsBetweenPlayerAndBlock.NoOwnership:
-				default:
-					return Relations.None;
-			}
-		}
-
-		public static Relations getRelationsTo(this IMyPlayer player, long playerID)
-		{
-			return GetRelations(player.GetRelationTo(playerID));
-		}
-
-		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeGrid target, Relations breakOn = Relations.None)
-		{
-			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
-				return Relations.Enemy;
-
-			Relations relationsToGrid = Relations.None;
-			foreach (long gridOwner in target.BigOwners)
-			{
-				relationsToGrid |= player.getRelationsTo(gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
-					return relationsToGrid;
-			}
-
-			foreach (long gridOwner in target.SmallOwners)
-			{
-				relationsToGrid |= player.getRelationsTo(gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
-					return relationsToGrid;
-			}
-
-			return relationsToGrid;
-		}
-
-		private static Relations getRelationsTo(this IMyCubeBlock block, long playerID)
-		{
-			if (block.OwnerId == playerID)
+			if (playerId1 == playerId2)
 				return Relations.Owner;
 
-			IMyFaction fact1 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(block.OwnerId);
+			IMyFaction fact1 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId1);
 			if (fact1 == null)
 				return Relations.Enemy;
-			IMyFaction fact2 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerID);
+			IMyFaction fact2 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId2);
 			if (fact2 == null)
 				return Relations.Enemy;
 
@@ -147,14 +93,7 @@ namespace Rynchodon
 			return Relations.Enemy;
 		}
 
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeBlock target)
-		{
-			if (block.OwnerId == 0 || target.OwnerId == 0)
-				return Relations.None;
-			return block.getRelationsTo(target.OwnerId);
-		}
-
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this long playerId, IMyCubeGrid target, Relations breakOn = Relations.None)
 		{
 			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
 				return Relations.Enemy;
@@ -162,19 +101,49 @@ namespace Rynchodon
 			Relations relationsToGrid = Relations.None;
 			foreach (long gridOwner in target.BigOwners)
 			{
-				relationsToGrid |= block.getRelationsTo(gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
+				relationsToGrid |= getRelationsTo(playerId, gridOwner);
+				if (breakOn != Relations.None && relationsToGrid.HasAnyFlag(breakOn))
 					return relationsToGrid;
 			}
 
 			foreach (long gridOwner in target.SmallOwners)
 			{
-				relationsToGrid |= block.getRelationsTo(gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasFlagFast(breakOn))
+				relationsToGrid |= getRelationsTo(playerId, gridOwner);
+				if (breakOn != Relations.None && relationsToGrid.HasAnyFlag(breakOn))
 					return relationsToGrid;
 			}
 
 			return relationsToGrid;
+		}
+
+		public static Relations getRelationsTo(this IMyPlayer player, long playerID)
+		{
+			return getRelationsTo(player.PlayerID, playerID);
+		}
+
+		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeBlock block)
+		{
+			return getRelationsTo(player.PlayerID, block.OwnerId);
+		}
+
+		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeGrid target, Relations breakOn = Relations.None)
+		{
+			return getRelationsTo(player.PlayerID, target, breakOn);
+		}
+
+		public static Relations getRelationsTo(this IMyCubeBlock block, long playerId)
+		{
+			return getRelationsTo(block.OwnerId, playerId);
+		}
+
+		public static Relations getRelationsTo(this IMyCubeBlock block1, IMyCubeBlock block2)
+		{
+			return getRelationsTo(block1.OwnerId, block2.OwnerId);
+		}
+
+		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
+		{
+			return getRelationsTo(block.OwnerId, target, breakOn);
 		}
 
 		public static Relations getRelationsTo(this IMyCubeBlock block, object target, Relations breakOn = Relations.None)
@@ -210,6 +179,16 @@ namespace Rynchodon
 		}
 
 
+		public static bool canConsiderFriendly(this long playerId, long target)
+		{
+			return toIsFriendly(getRelationsTo(playerId, target));
+		}
+
+		public static bool canConsiderHostile(this long playerId, long target)
+		{
+			return toIsHostile(getRelationsTo(playerId, target));
+		}
+
 		public static bool canConsiderFriendly(this IMyPlayer player, long playerID)
 		{ return toIsFriendly(player.getRelationsTo(playerID)); }
 		
@@ -220,10 +199,10 @@ namespace Rynchodon
 		{ return toIsFriendly(block.getRelationsTo(target)); }
 
 		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyCubeGrid target)
-		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
+		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy)); }
 
 		public static bool canConsiderFriendly(this IMyCubeBlock block, IMyEntity target)
-		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy | Relations.Neutral)); }
+		{ return toIsFriendly(block.getRelationsTo(target, Relations.Enemy)); }
 
 
 		public static bool canConsiderHostile(this IMyCubeBlock block, long playerID)
@@ -257,5 +236,6 @@ namespace Rynchodon
 					return target.OwnerId == 0;
 			}
 		}
+
 	}
 }

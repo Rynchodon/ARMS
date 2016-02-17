@@ -88,13 +88,16 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				foreach (string blockType in targetBlocks)
 				{
-					//m_logger.debugLog("checking " + grid.DisplayName + " for " + blockType + " blocks", "CanTarget()");
+					m_logger.debugLog("checking " + grid.DisplayName + " for " + blockType + " blocks", "CanTarget()");
 					if (cache.CountByDefLooseContains(blockType, func => func.IsWorking, 1) != 0)
+					{
+						m_logger.debugLog("at least one of " + blockType, "CanTarget()");
 						return true;
+					}
 				}
 			}
-			//else
-			//	m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
+			else
+				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
 
 			return false;
 		}
@@ -203,7 +206,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						Turret weapon;
 						Registrar.TryGetValue(block.EntityId, out weapon);
-						if (weapon.RunTargeting)
+						if (weapon.CurrentControl != WeaponTargeting.Control.Off)
 						{
 							m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
 							m_weapons_all.Add(weapon);

@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot
 
 		public readonly string m_targetGridName, m_targetBlockName;
 
-		private readonly NetworkNode m_node;
+		private readonly NetworkClient m_client;
 		private readonly ShipControllerBlock m_controlBlock;
 		private readonly AttachedGrid.AttachmentKind m_allowedAttachment;
 		private readonly Logger m_logger;
@@ -47,15 +47,12 @@ namespace Rynchodon.Autopilot
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
 			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent)
 		{
-			this.m_logger = new Logger(GetType().Name + " friendly", controller.CubeBlock);
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller.CubeBlock == null, "controller.CubeBlock == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(targetGrid == null, "targetGrid == null", "GridFinder()", Logger.severity.FATAL);
-
-			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_node))
-				throw new Exception("Could not get NetworkNode for " + controller.CubeBlock.DisplayNameText);
 
 			this.m_targetGridName = targetGrid.LowerRemoveWhitespace();
 			if (targetBlock != null)
@@ -64,6 +61,7 @@ namespace Rynchodon.Autopilot
 			this.m_allowedAttachment = allowedAttachment;
 			this.MaximumRange = float.MaxValue;
 			this.m_navSet = navSet;
+			this.m_client = new NetworkClient(controller.CubeBlock);
 		}
 
 		/// <summary>
@@ -71,7 +69,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, float maxRange = 0f)
 		{
-			this.m_logger = new Logger(GetType().Name + " enemy", controller.CubeBlock);
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
@@ -80,17 +78,14 @@ namespace Rynchodon.Autopilot
 			this.m_controlBlock = controller;
 			this.m_enemies = new List<LastSeen>();
 
-			if (!Registrar.TryGetValue(controller.CubeBlock.EntityId, out this.m_node))
-				throw new Exception("Could not get NetworkNode for " + controller.CubeBlock.DisplayNameText);
-
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
 			this.m_mustBeRecent = true;
+			this.m_client = new NetworkClient(controller.CubeBlock);
 		}
 
 		public void Update()
 		{
-			m_logger.debugLog("entered Update()", "Update()");
 			if (Grid == null)
 			{
 				if (Globals.UpdateCount >= NextSearch_Grid)
@@ -140,7 +135,14 @@ namespace Rynchodon.Autopilot
 		private void GridSearch_Friend()
 		{
 			int bestNameLength = int.MaxValue;
-			m_node.Storage.SearchLastSeen(seen => {
+			NetworkStorage store = m_client.GetStorage();
+			if (store == null)
+			{
+				m_logger.debugLog("no storage", "GridSearch_Friend()", Logger.severity.WARNING);
+				return;
+			}
+
+			store.SearchLastSeen(seen => {
 				IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 				if (grid != null && grid.DisplayName.Length < bestNameLength && grid.DisplayName.LowerRemoveWhitespace().Contains(m_targetGridName) && CanTarget(seen))
 				{
@@ -161,10 +163,16 @@ namespace Rynchodon.Autopilot
 
 		protected void GridSearch_Enemy()
 		{
-			Vector3D position = m_controlBlock.CubeBlock.GetPosition();
+			NetworkStorage store = m_client.GetStorage();
+			if (store == null)
+			{
+				m_logger.debugLog("no storage", "GridSearch_Enemy()", Logger.severity.WARNING);
+				return;
+			}
 
+			Vector3D position = m_controlBlock.CubeBlock.GetPosition();
 			m_enemies.Clear();
-			m_node.Storage.SearchLastSeen(seen => {
+			store.SearchLastSeen(seen => {
 				if (!seen.IsValid || !seen.isRecent())
 					return false;
 
@@ -172,26 +180,7 @@ namespace Rynchodon.Autopilot
 				if (asGrid == null)
 					return false;
 				if (!m_controlBlock.CubeBlock.canConsiderHostile(asGrid))
-				{
-					//m_logger.debugLog("not hostile: " + asGrid.DisplayName, "GridSearch_Enemy()");
-					//m_logger.debugLog("grid relations: " + m_controlBlock.CubeBlock.getRelationsTo(asGrid), "GridSearch_Enemy()");
-					//List<IMyPlayer> players = MyAPIGateway.Players.GetPlayers_Safe();
-					//foreach (var owner in asGrid.BigOwners)
-					//{
-					//	m_logger.debugLog("big owner: " + owner + ", relations: " + m_controlBlock.CubeBlock.getRelationsTo(owner), "GridSearch_Enemy()");
-					//	foreach (var play in players)
-					//		if (play.PlayerID == owner)
-					//			m_logger.debugLog("big owner name: " + play.DisplayName, "GridSearch_Enemy()");
-					//}
-					//foreach (var owner in asGrid.SmallOwners)
-					//{
-					//	m_logger.debugLog("small owner: " + owner + ", relations: " + m_controlBlock.CubeBlock.getRelationsTo(owner), "GridSearch_Enemy()");
-					//	foreach (var play in players)
-					//		if (play.PlayerID == owner)
-					//			m_logger.debugLog("small owner name: " + play.DisplayName , "GridSearch_Enemy()");
-					//}
 					return false;
-				}
 
 				m_enemies.Add(seen);
 				m_logger.debugLog("enemy: " + asGrid.DisplayName, "GridSearch_Enemy()");
@@ -241,9 +230,9 @@ namespace Rynchodon.Autopilot
 			}
 
 			LastSeen updated;
-			if (!m_node.Storage.TryGetLastSeen(Grid.Entity.EntityId, out updated))
+			if (!m_client.GetStorage().TryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
-				m_logger.alwaysLog("Where does the good go?", "GridUpdate()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Where does the good go? Searching for "+Grid.Entity.EntityId, "GridUpdate()", Logger.severity.WARNING);
 				Grid = null;
 				return;
 			}

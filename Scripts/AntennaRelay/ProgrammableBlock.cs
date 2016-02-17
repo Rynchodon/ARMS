@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -68,6 +65,9 @@ namespace Rynchodon.AntennaRelay
 		public void Update100()
 		{
 			UpdateInstructions();
+
+			if (!HasInstructions)
+				return;
 
 			if (m_handleDetected)
 				HandleDetected();

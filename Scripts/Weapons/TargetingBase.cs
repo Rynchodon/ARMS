@@ -111,7 +111,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", () => entity.getBestName());
+			myLogger = new Logger("TargetingBase", entity);
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;

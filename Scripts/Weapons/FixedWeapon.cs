@@ -29,15 +29,15 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <summary>
-		/// <para>If this FixedWeapon is already being controlled, returns if the given controller is controlling it.</para>
-		/// <para>Otherwise, attempts to take control of this FixedWeapon. Control requires that targeting options be set-up and turret not set.</para>
+		/// Attempts to take control of this fixed weapon, it must not be a rotor-turret.
 		/// </summary>
+		/// <returns>true iff the engager can control this weapon</returns>
 		public bool EngagerTakeControl()
 		{
 			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
 				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
-				EngagerControlling = true;
+				CurrentControl = Control.Engager;
 				return true;
 			}
 
@@ -46,7 +46,7 @@ namespace Rynchodon.Weapons
 
 		public void EngagerReleaseControl()
 		{
-			EngagerControlling = false;
+			CurrentControl = Control.Off;
 		}
 
 		/// <summary>
@@ -54,7 +54,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update1_GameThread()
 		{
-			if (!RunTargeting)
+			if (CurrentControl == Control.Off)
 				return;
 
 			// CurrentTarget may be changed by WeaponTargeting
@@ -69,8 +69,6 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
-			CheckFire(CubeBlock.WorldMatrix.Forward);
-
 			if (MyMotorTurret != null)
 			{
 				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value);
@@ -80,7 +78,7 @@ namespace Rynchodon.Weapons
 
 		protected override void Update100_Options_TargetingThread(TargetingOptions current)
 		{
-			if (EngagerControlling)
+			if (CurrentControl == Control.Engager)
 				return;
 
 			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
@@ -112,6 +110,11 @@ namespace Rynchodon.Weapons
 
 			//// if controlled by a turret (not implemented)
 			//return true;
+		}
+
+		protected override Vector3 Facing()
+		{
+			return CubeBlock.WorldMatrix.Forward;
 		}
 
 		/// <summary>

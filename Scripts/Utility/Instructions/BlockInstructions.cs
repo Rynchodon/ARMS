@@ -42,6 +42,8 @@ namespace Rynchodon.Instructions
 		/// <summary>Instructions that will be used iff there are none in the name.</summary>
 		protected string FallBackInstruct;
 
+		public bool HasInstructions { get; private set; }
+
 		protected BlockInstructions(IMyCubeBlock block)
 		{
 			m_logger = new Logger("BlockInstructions", block as IMyCubeBlock);
@@ -57,7 +59,8 @@ namespace Rynchodon.Instructions
 		/// <summary>
 		/// Update instructions if they have changed.
 		/// </summary>
-		protected void UpdateInstructions()
+		/// <return>true iff instructions were updated and block has instructions</return>
+		protected bool UpdateInstructions()
 		{
 			foreach (TextMonitor monitor in m_monitors)
 				if (monitor.Changed())
@@ -66,21 +69,22 @@ namespace Rynchodon.Instructions
 					m_displayNameDirty = false;
 					m_displayName = m_block.DisplayNameText;
 					GetInstructions();
-					return;
+					return HasInstructions;
 				}
 
 			if (!m_displayNameDirty)
-				return;
+				return false;
 			m_displayNameDirty = false;
 
 			if (m_displayName == m_block.DisplayNameText)
 			{
 				m_logger.debugLog("no name change", "Update()");
-				return;
+				return false;
 			}
 			m_logger.debugLog("name changed to " + m_block.DisplayNameText, "Update()");
 			m_displayName = m_block.DisplayNameText;
 			GetInstructions();
+			return HasInstructions;
 		}
 
 		/// <summary>
@@ -110,6 +114,7 @@ namespace Rynchodon.Instructions
 		{
 			m_instructions = null;
 			m_monitors.Clear();
+			HasInstructions = false;
 
 			m_logger.debugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
 			if (GetInstructions(m_displayName))
@@ -144,11 +149,11 @@ namespace Rynchodon.Instructions
 				if (ParseAll(FallBackInstruct))
 				{
 					m_logger.debugLog("Setting instructions to fallback: " + FallBackInstruct, "GetInstrucions()");
+					HasInstructions = true;
 					m_instructions = FallBackInstruct;
 					return;
 				}
 			}
-			ParseAll(string.Empty);
 		}
 
 		private bool GetInstructions(string source)
@@ -161,6 +166,7 @@ namespace Rynchodon.Instructions
 				if (ParseAll(instruct))
 				{
 					m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
+					HasInstructions = true;
 					m_instructions = instruct;
 					return true;
 				}

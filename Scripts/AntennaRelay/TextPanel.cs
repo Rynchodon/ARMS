@@ -97,6 +97,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			UpdateInstructions();
 
+			if (!HasInstructions)
+				return;
+
 			if ((m_options & Option.DisplayDetected) != 0)
 				Display();
 		}
@@ -205,7 +208,7 @@ namespace Rynchodon.AntennaRelay
 			public void TextForPlayer(StringBuilder builder, int count)
 			{
 				string time = (seconds / 60).ToString("00") + separator + (seconds % 60).ToString("00");
-				bool friendly = relations.HasFlagFast(ExtensionsRelations.Relations.Faction) || relations.HasFlagFast(ExtensionsRelations.Relations.Owner);
+				bool friendly = relations.HasAnyFlag(ExtensionsRelations.Relations.Faction) || relations.HasAnyFlag(ExtensionsRelations.Relations.Owner);
 				string bestName = friendly ? seen.Entity.getBestName() : null;
 
 				builder.Append(relations);

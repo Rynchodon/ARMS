@@ -150,15 +150,28 @@ namespace Rynchodon.Weapons
 			return true;
 		}
 
+		protected override Vector3 Facing()
+		{
+			Vector3 directionBlock;
+			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
+
+			myLogger.debugLog("azimuth: " + myTurret.Azimuth + " elevation: " + myTurret.Elevation + ", direction block: " + directionBlock + ", direction world: " + RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized(), "Facing()");
+
+			return RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
+		}
+
 		/// <remarks>
 		/// Must execute regularly on game thread.
 		/// </remarks>
 		protected override void Update1_GameThread()
 		{
-			if (!RunTargeting)
+			if (CurrentControl == Control.Off)
 			{
-				setElevation = myTurret.Elevation;
-				setAzimuth = myTurret.Azimuth;
+				if (!myTurret.AIEnabled)
+				{
+					setElevation = myTurret.Elevation;
+					setAzimuth = myTurret.Azimuth;
+				}
 				return;
 			}
 
@@ -172,17 +185,17 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
-			// check firing direction
-			Vector3 directionBlock;
-			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
+			//// check firing direction
+			//Vector3 directionBlock;
+			//Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
 
-			//Vector3 directionWorld = weapon.directionToWorld(directionBlock);
-			Vector3 directionWorld = RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
+			////Vector3 directionWorld = weapon.directionToWorld(directionBlock);
+			//Vector3 directionWorld = RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
 
-			//myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
-			myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
+			////myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
+			//myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
 
-			CheckFire(directionWorld);
+			//CheckFire(directionWorld);
 
 			if (myTurret.AIEnabled)
 			{
