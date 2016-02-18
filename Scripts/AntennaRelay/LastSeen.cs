@@ -111,7 +111,8 @@ namespace Rynchodon.AntennaRelay
 
 		private bool anyNewer(LastSeen other)
 		{
-			return this.LastBroadcast.CompareTo(other.LastBroadcast) > 0
+			return this.LastSeenAt.CompareTo(other.LastSeenAt) > 0
+				|| this.LastBroadcast.CompareTo(other.LastBroadcast) > 0
 				|| this.LastJam.CompareTo(other.LastJam) > 0
 				|| this.LastRadar.CompareTo(other.LastRadar) > 0;
 		}

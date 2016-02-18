@@ -47,7 +47,6 @@ namespace Rynchodon.AntennaRelay
 
 		private const string descrEnd = "Autopilot Detected";
 
-		//private static Logger staticLogger = new Logger("static", "Player");
 		private static Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
 		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
 
@@ -125,8 +124,6 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 
-			myLogger.debugLog("node ok", "UpdateGPS()");
-
 			if (m_node.Storage == null || m_node.Storage.LastSeenCount == 0)
 			{
 				myLogger.debugLog("No LastSeen", "UpdateGPS()");
@@ -144,7 +141,7 @@ namespace Rynchodon.AntennaRelay
 			foreach (var value in Data.Values)
 				value.Prepare();
 
-			m_node.Storage.ForEachLastSeen(seen => {
+			m_node.Storage.ForEachLastSeen((LastSeen seen) => {
 				if (!seen.isRecent())
 					return;
 
@@ -154,20 +151,10 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 
-				myLogger.debugLog("item: " + seen.Entity.getBestName(), "UpdateGPS()");
+				if (!(seen.Entity is IMyCharacter || seen.Entity is IMyCubeGrid))
+					return;
 
-				ExtensionsRelations.Relations relate;
-				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
-				if (asGrid != null)
-					relate = myPlayer.getRelationsTo(asGrid, ExtensionsRelations.Relations.Enemy).highestPriority();
-				else
-				{
-					IMyCharacter asChar = seen.Entity as IMyCharacter;
-					if (asChar != null)
-						relate = myPlayer.getRelationsTo(asChar.GetPlayer_Safe().PlayerID).highestPriority();
-					else
-						relate = ExtensionsRelations.Relations.None;
-				}
+				ExtensionsRelations.Relations relate = myPlayer.PlayerID.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy);
 
 				ForRelations relateData;
 				if (!Data.TryGetValue(relate, out relateData))
@@ -289,7 +276,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			bool updated = false;
 
-			if (gps.Name != name)
+			if (gps.Name != name && name != null)
 			{
 				gps.Name = name;
 				updated = true;

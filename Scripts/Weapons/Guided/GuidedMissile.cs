@@ -495,7 +495,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
-			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.Broadcasting));
+			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.None));
 		}
 
 	}

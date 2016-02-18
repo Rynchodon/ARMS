@@ -419,7 +419,10 @@ namespace Rynchodon.AntennaRelay
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_OnThread()", Logger.severity.ERROR);
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => (CubeBlock as IMyFunctionalBlock).RequestEnable(false), myLogger);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (CubeBlock != null)
+						(CubeBlock as IMyFunctionalBlock).RequestEnable(false);
+				}, myLogger);
 			}
 			finally
 			{ myLock.ReleaseExclusive(); }

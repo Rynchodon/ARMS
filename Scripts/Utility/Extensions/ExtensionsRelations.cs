@@ -1,4 +1,5 @@
 ﻿using System;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Weapons.Guided;
 using Sandbox.Common;
 using Sandbox.ModAPI;
@@ -114,6 +115,30 @@ namespace Rynchodon
 			}
 
 			return relationsToGrid;
+		}
+
+		public static Relations getRelationsTo(this long playerId, IMyEntity target, Relations breakOn = Relations.None)
+		{
+			IMyCubeBlock asBlock = target as IMyCubeBlock;
+			if (asBlock != null)
+				return getRelationsTo(playerId, asBlock.OwnerId);
+
+			IMyCubeGrid asGrid = target as IMyCubeGrid;
+			if (asGrid != null)
+				return getRelationsTo(playerId, asGrid, breakOn);
+
+			IMyCharacter asChar = target as IMyCharacter;
+			if (asChar != null)
+			{
+				IMyPlayer player = asChar.GetPlayer_Safe();
+				if (player != null)
+					return getRelationsTo(playerId, player.IdentityId);
+			}
+
+			long missileOwner = GuidedMissile.GetOwnerId(target.EntityId);
+			if (missileOwner != 0L)
+				return getRelationsTo(playerId, missileOwner);
+			return Relations.None;
 		}
 
 		public static Relations getRelationsTo(this IMyPlayer player, long playerID)
