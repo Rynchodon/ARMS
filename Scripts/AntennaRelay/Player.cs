@@ -88,7 +88,6 @@ namespace Rynchodon.AntennaRelay
 			Data.Add(ExtensionsRelations.Relations.Owner, new ForRelations());
 
 			// cleanup old GPS
-			myLogger.debugLog("cleaning up old gps", "Player()");
 			var list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
@@ -101,7 +100,7 @@ namespace Rynchodon.AntennaRelay
 					}
 			}
 
-			myLogger.debugLog("initialized", "Player()", Logger.severity.DEBUG);
+			myLogger.debugLog("initialized, player id: " + player.PlayerID + ", identity id: " + player.IdentityId, "Player()", Logger.severity.DEBUG);
 		}
 
 		public void Update100()
@@ -125,6 +124,8 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 			}
+
+			myLogger.debugLog("node ok", "UpdateGPS()");
 
 			if (m_node.Storage == null || m_node.Storage.LastSeenCount == 0)
 			{

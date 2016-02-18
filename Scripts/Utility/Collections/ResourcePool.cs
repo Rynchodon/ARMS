@@ -2,7 +2,7 @@
 using Sandbox.ModAPI;
 using VRage.Collections;
 
-namespace Rynchodon.Utility
+namespace Rynchodon
 {
 	/// <summary>
 	/// Static wrapper for MyConcurrentPool
@@ -24,5 +24,26 @@ namespace Rynchodon.Utility
 			Pool = null;
 		}
 
+		public static T Get()
+		{
+			return Pool.Get();
+		}
+
+		public static void Return(T item)
+		{
+			Pool.Return(item);
+		}
+
+		public static int Count
+		{
+			get { return Pool.Count; }
+		}
+
+		public static int InstancesCreated
+		{
+			get { return Pool.InstancesCreated; }
+		}
+
 	}
+
 }

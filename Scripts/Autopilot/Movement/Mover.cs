@@ -102,11 +102,15 @@ namespace Rynchodon.Autopilot.Movement
 			m_stopped = true;
 		}
 
-		public bool CanMoveForward(PseudoBlock block)
+		/// <summary>
+		/// Calculates whether or not the grid has sufficient thrust to accelerate forwards at 1 m/s/s.
+		/// </summary>
+		/// <returns>True iff there is sufficient thrust available.</returns>
+		public bool CanMoveForward()
 		{
 			CheckGrid();
 
-			return myThrust.CanMoveAnyDirection();
+			return myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward, true) > Block.Physics.Mass;
 		}
 
 		/// <summary>

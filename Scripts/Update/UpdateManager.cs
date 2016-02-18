@@ -81,8 +81,11 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
 
 			RegisterForCharacter(character => {
-				NetworkNode node = new NetworkNode(character);
-				RegisterForUpdates(100, node.Update100, (IMyEntity)character);
+				if (!character.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
+				{
+					NetworkNode node = new NetworkNode(character);
+					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
+				}
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
@@ -96,8 +99,11 @@ namespace Rynchodon.Update
 			});
 
 			RegisterForPlayer(player => {
-				Player p = new Player(player);
-				RegisterForUpdates(100, p.Update100, player);
+				if (!player.PlayerID.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
+				{
+					Player p = new Player(player);
+					RegisterForUpdates(100, p.Update100, player);
+				}
 			});
 
 			#endregion

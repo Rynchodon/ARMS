@@ -125,26 +125,6 @@ namespace Rynchodon.Autopilot.Movement
 			return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
 		}
 
-		/// <summary>
-		/// Determines if there are working thrusters in every direction.
-		/// </summary>
-		public bool CanMoveAnyDirection()
-		{
-			foreach (List<MyThrust> thrusterGroup in thrustersInDirection.Values)
-			{
-				bool found = false;
-				foreach (MyThrust prop in thrusterGroup)
-					if (!prop.Closed && prop.IsWorking)
-					{
-						found = true;
-						break;
-					}
-				if (!found)
-					return false;
-			}
-			return true;
-		}
-
 		public void Update()
 		{
 			if (Globals.UpdateCount < m_nextUpdate)
@@ -155,14 +135,19 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3D position = myGrid.GetPosition();
 			m_worldGravity = Vector3.Zero;
 			m_airDensity = 0f;
-			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is MyPlanet);
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
+
 			foreach (MyPlanet planet in allPlanets)
-				if (planet.IsPositionInRangeGrid(position))
+				if (planet.IsPositionInGravityWell(position))
 				{
 					m_worldGravity += planet.GetWorldGravityGrid(position);
 					if (planet.HasAtmosphere)
 						m_airDensity += planet.GetAirDensity(position);
 				}
+
+			allPlanets.Clear();
+			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
 
 			if (m_worldGravity.LengthSquared() < 0.01f)
 			{

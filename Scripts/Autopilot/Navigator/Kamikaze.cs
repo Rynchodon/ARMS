@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanRespond()
 		{
-			return m_mover.CanMoveForward(m_mover.Block.Pseudo);
+			return m_mover.CanMoveForward();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)

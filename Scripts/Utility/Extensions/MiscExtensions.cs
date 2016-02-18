@@ -81,26 +81,34 @@ namespace Rynchodon
 		public static bool moreThanSecondsAgo(this DateTime previous, double seconds)
 		{ return (DateTime.UtcNow - previous).TotalSeconds > seconds; }
 
-		public static bool Is_ID_NPC(this long playerID)
+		public static bool IsNpc(this long playerID)
 		{
 			if (playerID == 0)
 				return false;
 
-			List<IMyPlayer> players = new List<IMyPlayer>();
-			MyAPIGateway.Players.GetPlayers(players);
-			foreach (IMyPlayer play in players)
-				if (play.PlayerID == playerID)
-					return false;
-
-			return true;
+			bool npc = true;
+			MyAPIGateway.Players.GetPlayers(null, player => {
+				if (player.PlayerID == playerID)
+					npc = false;
+				return false;
+			});
+			return npc;
 		}
 
-		//public static bool IsClient(this IMyMultiplayer multiplayer)
-		//{
-		//	if (!multiplayer.MultiplayerActive)
-		//		return false;
-		//	return !multiplayer.IsServer;
-		//}
+		public static bool IsNpc(this IMyCharacter character)
+		{
+			string name = (character as IMyEntity).DisplayName;
+			if (string.IsNullOrEmpty(name))
+				return true;
+
+			bool npc = true;
+			MyAPIGateway.Players.GetPlayers(null, player => {
+				if (player.DisplayName == name)
+					npc = false;
+				return false;
+			});
+			return npc;
+		}
 
 		public static void throwIfNull_argument(this object argument, string name)
 		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }

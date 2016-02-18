@@ -91,7 +91,7 @@ namespace Rynchodon.AntennaRelay
 		public NetworkNode(IMyCubeBlock block)
 		{
 			this.m_loggingName = () => block.DisplayNameText;
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(GetType().Name, block) { MinimumLevel = Logger.severity.DEBUG };
 			this.m_ownerId = () => block.OwnerId;
 			this.m_entity = block;
 			this.m_comp_blockAttach = block;
@@ -113,7 +113,7 @@ namespace Rynchodon.AntennaRelay
 			IMyPlayer player = character.GetPlayer_Safe();
 
 			this.m_loggingName = () => player.DisplayName;
-			this.m_logger = new Logger(GetType().Name, this.m_loggingName);
+			this.m_logger = new Logger(GetType().Name, this.m_loggingName) { MinimumLevel = Logger.severity.DEBUG };
 			this.m_ownerId = () => player.PlayerID;
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
@@ -128,7 +128,7 @@ namespace Rynchodon.AntennaRelay
 		public NetworkNode(IMyEntity missile, IMyCubeBlock weapon, ComponentRadio radio)
 		{
 			this.m_loggingName = missile.getBestName;
-			this.m_logger = new Logger(GetType().Name, missile);
+			this.m_logger = new Logger(GetType().Name, missile) { MinimumLevel = Logger.severity.DEBUG };
 			this.m_ownerId = () => weapon.OwnerId;
 			this.m_entity = missile;
 			this.m_comp_radio = radio;
@@ -242,12 +242,6 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!this.m_ownerId().canConsiderFriendly(other.m_ownerId()))
 			{
-				if (this.m_comp_radio != null && other.m_comp_radio != null && other.Storage != null)
-					if (!this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio))
-						m_logger.debugLog("cannot broadcast to: " + other.LoggingName, "TestConnection()");
-					else
-						m_logger.debugLog("can broadcast to: " + other.LoggingName, "TestConnection()");
-
 				if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
 					if (s_sendPositionTo.Add(other.Storage))
 						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
