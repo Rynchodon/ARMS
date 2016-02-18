@@ -53,7 +53,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_exitAfter)
 				{
 					_logger.debugLog("setting disable", "Move()", Logger.severity.DEBUG);
-					m_controlBlock.DisableControl();
+					m_controlBlock.SetControl(false);
 				}
 			}
 			//else

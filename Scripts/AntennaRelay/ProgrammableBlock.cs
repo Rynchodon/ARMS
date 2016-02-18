@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
@@ -143,10 +144,21 @@ namespace Rynchodon.AntennaRelay
 			Registrar.ForEach((ProgrammableBlock program) => {
 				IMyCubeBlock block = program.m_block;
 				IMyCubeGrid grid = block.CubeGrid;
-				if (m_block.canConsiderFriendly(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
 				{
 					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
 					program.m_networkClient.GetStorage(); // force update of storage
+					store.Receive(new Message(message, block, m_block));
+				}
+			});
+
+			Registrar.ForEach((ShipController_Autopilot autopilot) => {
+				IMyCubeBlock block = autopilot.m_block.CubeBlock;
+				IMyCubeGrid grid = block.CubeGrid;
+				if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				{
+					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+					autopilot.m_block.NetClient.GetStorage(); // force update of storage
 					store.Receive(new Message(message, block, m_block));
 				}
 			});

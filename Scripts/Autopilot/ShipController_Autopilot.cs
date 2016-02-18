@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Navigator;
@@ -21,20 +22,21 @@ namespace Rynchodon.Autopilot
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyTerminalBlock Terminal;
 		public readonly PseudoBlock Pseudo;
+		public readonly NetworkClient NetClient;
 
 		private readonly Logger m_logger;
 
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
-		public bool Disable;
 
-		public ShipControllerBlock(IMyCubeBlock block)
+		public ShipControllerBlock(IMyCubeBlock block, NetworkClient netClient)
 		{
 			m_logger = new Logger(GetType().Name, block);
 			Controller = block as MyShipController;
 			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
 			Pseudo = new PseudoBlock(block);
+			NetClient = netClient;
 		}
 
 		public void ApplyAction(string action)
@@ -42,18 +44,19 @@ namespace Rynchodon.Autopilot
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
 		}
 
-		/// <summary>
-		/// Stops thrust and rotation, disables control
-		/// </summary>
-		public void DisableControl()
+		public void SetControl(bool enable)
 		{
-			IMyControllableEntity control = Controller as IMyControllableEntity;
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				Controller.MoveAndRotateStopped();
-				if (control.EnabledDamping)
-					control.SwitchDamping();
-				Disable = true;
-			}, m_logger);
+			if (Controller.ControlThrusters != enable)
+			{
+				m_logger.debugLog("setting control, ControlThrusters: " + Controller.ControlThrusters + ", enable: " + enable, "SetDamping()");
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (!enable)
+						Controller.MoveAndRotateStopped();
+					if (Controller.ControlThrusters != enable)
+						// SwitchThrusts() only works for jetpacks
+						CubeBlock.ApplyAction("ControlThrusters");
+				}, m_logger);
+			}
 		}
 
 		public void SetDamping(bool enable)
@@ -61,7 +64,7 @@ namespace Rynchodon.Autopilot
 			IMyControllableEntity control = Controller as IMyControllableEntity;
 			if (control.EnabledDamping != enable)
 			{
-				m_logger.debugLog("setting switch damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");
+				m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (control.EnabledDamping != enable)
 						control.SwitchDamping();
@@ -141,7 +144,7 @@ namespace Rynchodon.Autopilot
 
 		private enum State : byte { Disabled, Enabled, Halted, Closed }
 
-		private readonly ShipControllerBlock m_block;
+		public readonly ShipControllerBlock m_block;
 
 		private readonly Logger m_logger;
 		private Interpreter m_interpreter;
@@ -156,6 +159,7 @@ namespace Rynchodon.Autopilot
 		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
 		private List<byte> m_customInfo_message = new List<byte>();
 		private ulong m_nextCustomInfo;
+		private Message m_message;
 
 		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
 
@@ -201,7 +205,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="block">The ship controller to use</param>
 		public ShipController_Autopilot(IMyCubeBlock block)
 		{
-			this.m_block = new ShipControllerBlock(block);
+			this.m_block = new ShipControllerBlock(block, new NetworkClient(block, HandleMessage));
 			this.m_logger = new Logger("ShipController_Autopilot", block);
 			this.m_interpreter = new Interpreter(m_block);
 
@@ -212,6 +216,8 @@ namespace Rynchodon.Autopilot
 				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
 
 			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
+
+			Registrar.Add(block, this);
 		}
 
 		private void CubeBlock_OnClosing(VRage.ModAPI.IMyEntity obj)
@@ -239,15 +245,6 @@ namespace Rynchodon.Autopilot
 					UpdateCustomInfo();
 				}
 
-				if (m_block.Disable)
-				{
-					m_logger.debugLog("disabling thruster control", "UpdateThread()", Logger.severity.INFO);
-					m_block.Disable = false;
-					m_block.ApplyAction("ControlThrusters");
-					m_state = State.Disabled;
-					return;
-				}
-
 				switch (m_state)
 				{
 					case State.Disabled:
@@ -270,6 +267,13 @@ namespace Rynchodon.Autopilot
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) != null)
 					// wait for player to give back control, do not reset
 					return;
+
+				if (m_message != null)
+				{
+					m_interpreter.enqueueAllActions(m_message.Content);
+					m_message = null;
+					m_navSet.OnStartOfCommands();
+				}
 
 				EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
 				if (ef != null)
@@ -574,6 +578,12 @@ namespace Rynchodon.Autopilot
 		}
 
 		#endregion Custom Info
+
+		private void HandleMessage(Message msg)
+		{
+			m_message = msg;
+			m_block.SetControl(true);
+		}
 
 	}
 }

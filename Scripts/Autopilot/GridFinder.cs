@@ -21,7 +21,6 @@ namespace Rynchodon.Autopilot
 
 		public readonly string m_targetGridName, m_targetBlockName;
 
-		private readonly NetworkClient m_client;
 		private readonly ShipControllerBlock m_controlBlock;
 		private readonly AttachedGrid.AttachmentKind m_allowedAttachment;
 		private readonly Logger m_logger;
@@ -40,6 +39,8 @@ namespace Rynchodon.Autopilot
 		public long m_reasonGrid;
 
 		protected float MaximumRange { get; set; }
+
+		private NetworkClient m_client { get { return m_controlBlock.NetClient; } }
 
 		/// <summary>
 		/// Creates a GridFinder to find a friendly grid based on its name.
@@ -61,7 +62,6 @@ namespace Rynchodon.Autopilot
 			this.m_allowedAttachment = allowedAttachment;
 			this.MaximumRange = float.MaxValue;
 			this.m_navSet = navSet;
-			this.m_client = new NetworkClient(controller.CubeBlock);
 		}
 
 		/// <summary>
@@ -81,7 +81,6 @@ namespace Rynchodon.Autopilot
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
 			this.m_mustBeRecent = true;
-			this.m_client = new NetworkClient(controller.CubeBlock);
 		}
 
 		public void Update()

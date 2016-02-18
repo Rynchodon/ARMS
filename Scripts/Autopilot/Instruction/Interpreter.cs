@@ -64,18 +64,37 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			SyntaxError = false;
 			string instructions = preParse().getInstructions();
+			instructionQueue.Clear();
 
 			if (string.IsNullOrWhiteSpace(instructions))
 			{
-				Mover.Block.DisableControl();
+				Mover.Block.SetControl(false);
 				return;
 			}
-
+		
 			Errors.Clear();
-			instructionQueue.Clear();
 
 			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
+		}
+
+		/// <summary>
+		/// Convert supplied instructions to Action, then enqueue to instructionQueue
+		/// </summary>
+		public void enqueueAllActions(string instructions)
+		{
+			SyntaxError = false;
+			string preParsed;
+			instructions.GpsToCSV(out preParsed);
+			instructionQueue.Clear();
+
+			if (string.IsNullOrWhiteSpace(preParsed))
+				return;
+
+			Errors.Clear();
+
+			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParsed + ", instructions = " + instructions, "enqueueAllActions()");
+			enqueueAllActions_continue(preParsed);
 		}
 
 		/// <summary>
@@ -178,7 +197,7 @@ namespace Rynchodon.Autopilot.Instruction
 					{
 						wordAction = () => {
 							m_logger.debugLog("Disabling", "getAction_word()", Logger.severity.DEBUG);
-							Controller.DisableControl();
+							Controller.SetControl(false);
 						};
 						return true;
 					}

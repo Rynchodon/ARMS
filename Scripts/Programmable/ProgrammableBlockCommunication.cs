@@ -9,9 +9,11 @@ namespace Rynchodon.Programmable
 
     /*
      * Sends and receives messages for a Programmable block using ARMS' relay network.
-     * Messages are sent by applying an action on the Programmable block, see SendMessage below
-     * ARMS will run the programmable block when a message is received, for parsing the message
-     * see Message below
+     * Messages are sent by applying an action on the Programmable block, see SendMessage below.
+     * When a Programmable block receives a message, ARMS will run the Programmable block. 
+     * For parsing the message see class Message below.
+     * When an Autopilot block receives a message, its commands will immediately be replaced by
+     * content. Do not include square brackets in content.
      */
 
     /// <summary>This is defined by Rynchodon.AntennaRelay.ProgrammableBlock</summary>
@@ -41,11 +43,12 @@ namespace Rynchodon.Programmable
     }
 
     /// <summary>
-    /// Sends a message to one or more programmable blocks.
+    /// Sends a message to one or more blocks. All matching Programmable blocks and Autopilot blocks
+    /// will be sent a message.
     /// </summary>
     /// <param name="targetGrid">Every grid with targetGrid in the name will receive a message</param>
-    /// <param name="targetBlock">Every Programmable Block with targetBloc in the name will receive a 
-    /// message</param>
+    /// <param name="targetBlock">Every Programmable Block or Autopilot block with targetBlock in
+    /// the name will receive a message</param>
     /// <param name="content">The content of the message</param>
     void SendMessage(string targetGrid, string targetBlock, string content)
     {

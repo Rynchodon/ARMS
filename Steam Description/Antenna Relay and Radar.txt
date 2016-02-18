@@ -16,7 +16,7 @@ Entity ID : Include entity ids, requires Display Detected or entity ids from a p
 Example - [ Display Detected ; GPS ; Entity ID ] - Display everything
 
 [h1]Programmable block[/h1]
-Can handle detected entities or transmit messages to other Programmable blocks. The Programmable block scripts contain the documentation.
+Can handle detected entities or transmit messages to other Programmable blocks or to Autopilot blocks. The Programmable block scripts contain the documentation.
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=625196196]Handle Detected Entities In-Game Script[/url]
 [url=http://pastebin.com/JDRL94Mq]Block Communication In-Game Script[/url]
 
