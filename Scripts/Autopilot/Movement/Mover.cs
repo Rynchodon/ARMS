@@ -153,7 +153,7 @@ namespace Rynchodon.Autopilot.Movement
 			float distance = destDisp.Length();
 			NavSet.Settings_Task_NavWay.Distance = distance;
 
-			m_targetVelocity = MaximumVelocity(destDisp) * 0.5f;
+			m_targetVelocity = MaximumVelocity(destDisp);
 
 			// project targetVelocity onto destination direction (take shortest path)
 			Vector3 destDir = destDisp / distance;
@@ -303,7 +303,7 @@ namespace Rynchodon.Autopilot.Movement
 				myLogger.debugLog("No thrust available in direction: " + direct, "MaximumSpeed()", Logger.severity.DEBUG);
 				return 0f;
 			}
-			float accel = -force / Block.Physics.Mass;
+			float accel = -force / Block.Physics.Mass * 0.5f;
 			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
 			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 2f); // capped for the sake of autopilot's reaction time
 		}
@@ -365,9 +365,12 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
 			else
-				if (!InGravity_LevelOff() && NavSet.Settings_Current.NearingDestination)
-					// rotate to stop
-					CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+				if (!InGravity_LevelOff())
+					if (NavSet.Settings_Current.NearingDestination)
+						// rotate to stop
+						CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+					else
+						StopRotate();
 		}
 
 		/// <summary>
@@ -500,7 +503,15 @@ namespace Rynchodon.Autopilot.Movement
 				displacement += roll * NFR_backward;
 			}
 
-			NavSet.Settings_Task_NavWay.DistanceAngle = displacement.Length();
+			float distanceAngle = displacement.Length();
+			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
+
+			// don't rotate if displacement is small, reduces shake
+			if (distanceAngle < 0.025f)
+			{
+				StopRotate();
+				return;
+			}
 
 			if (NavSet.Settings_Current.CollisionAvoidance)
 			{
