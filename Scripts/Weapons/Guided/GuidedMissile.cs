@@ -4,6 +4,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
@@ -22,7 +23,7 @@ namespace Rynchodon.Weapons.Guided
 	public class GuidedMissile : TargetingBase
 	{
 
-		private enum Stage : byte { None, Guided, Ballistic, Terminated }
+		private enum Stage : byte { None, Boost, MidCourse, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
@@ -61,6 +62,7 @@ namespace Rynchodon.Weapons.Guided
 
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
+				{
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
@@ -70,6 +72,9 @@ namespace Rynchodon.Weapons.Guided
 						missile.SetFiringDirection(PrecogSeconds);
 						missile.Update();
 					});
+					if (missile.m_stage == Stage.Boost)
+						missile.ApplyGravity();
+				}
 		}
 
 		public static void Update10()
@@ -79,7 +84,8 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						missile.UpdateTarget();
+						if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
+							missile.UpdateTarget();
 						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
 							missile.TargetLastSeen();
 					});
@@ -92,7 +98,11 @@ namespace Rynchodon.Weapons.Guided
 				{
 					Thread.EnqueueAction(() => {
 						if (!missile.Stopped)
+						{
 							missile.ClearBlacklist();
+							if (missile.m_stage == Stage.Boost)
+								missile.UpdateGravity();
+						}
 					});
 					if (!missile.Stopped)
 						missile.UpdateNetwork();
@@ -133,6 +143,8 @@ namespace Rynchodon.Weapons.Guided
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, accelerationPerUpdate;
 		private Stage m_stage;
+		private Vector3 m_worldGravityNorm;
+		private Vector3 m_worldGravityPerUpdate;
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
@@ -295,11 +307,32 @@ namespace Rynchodon.Weapons.Guided
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
 
-			Vector3 targetDirection = cached.FiringDirection.Value;
+			Vector3 targetDirection ; //= cached.FiringDirection.Value;
+
+			switch (m_stage)
+			{
+				case Stage.Boost:
+					targetDirection = -m_worldGravityNorm;
+					break;
+				case Stage.MidCourse:
+					if (cached.FiringDirection.Value.AngleBetween(m_worldGravityNorm) < 0.5f)
+					{
+						myLogger.debugLog("minimal angle between gravity and firing direction, starting guidance", "Update()");
+						m_stage = Stage.Guided;
+						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+						goto case Stage.Guided;
+					}
+					targetDirection = Vector3.Normalize(cached.FiringDirection.Value - m_worldGravityNorm);
+					break;
+				case Stage.Guided:
+				default:
+					targetDirection = cached.FiringDirection.Value;
+					break;
+			}
 
 			float angle = forward.AngleBetween(targetDirection);
 
-			if (m_stage == Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
+			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
 				float rotate = Math.Min(angle, myDescr.RotationPerUpdate);
 				Vector3 axis = forward.Cross(targetDirection);
@@ -458,10 +491,28 @@ namespace Rynchodon.Weapons.Guided
 
 					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
 					{
-						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-						myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()");
-						m_stage = Stage.Guided;
+						if (myAmmo.Description.BoostDistance > 1f)
+						{
+							myLogger.debugLog("past arming range, starting boost phase", "CheckGuidance()");
+							m_stage = Stage.Boost;
+							UpdateGravity();
+						}
+						else
+						{
+							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()");
+							m_stage = Stage.Guided;
+						}
 					}
+					break;
+				case Stage.Boost:
+					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
+					{
+						myLogger.debugLog("completed boost phase, starting mid course phase", "CheckGuidance()");
+						m_stage = Stage.MidCourse;
+					}
+					break;
+				case Stage.MidCourse:
 					break;
 				case Stage.Guided:
 					if (DateTime.UtcNow >= myGuidanceEnds)
@@ -496,6 +547,36 @@ namespace Rynchodon.Weapons.Guided
 
 			myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
 			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.None));
+		}
+
+		/// <summary>
+		/// Updates stored gravity values. Runs on missile thread.
+		/// </summary>
+		private void UpdateGravity()
+		{
+			Vector3D position = MyEntity.GetPosition();
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
+
+			foreach (MyPlanet planet in allPlanets)
+				if (planet.IsPositionInGravityWell(position))
+				{
+					m_worldGravityNorm = planet.GetWorldGravityNormalized(ref position);
+					m_worldGravityPerUpdate = m_worldGravityNorm * planet.GetGravityMultiplier(position) * 9.81f * Globals.UpdateDuration;
+					break;
+				}
+
+			myLogger.debugLog("updated gravity, norm: " + m_worldGravityNorm, "UpdateGravity()");
+			allPlanets.Clear();
+			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+		}
+
+		/// <summary>
+		/// Applies gravitational acceleration to the missile. Runs on game thread.
+		/// </summary>
+		private void ApplyGravity()
+		{
+			MyEntity.Physics.LinearVelocity += m_worldGravityPerUpdate;
 		}
 
 	}

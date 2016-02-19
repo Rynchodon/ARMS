@@ -42,6 +42,9 @@ namespace Rynchodon.Weapons
 			/// <summary>In metres per second</summary>
 			public float Acceleration = 0f;
 
+			/// <summary>For ICBM, distance from launcher when boost phase ends</summary>
+			public float BoostDistance = 0f;
+
 			#endregion Performance
 			#region Tracking
 
@@ -65,28 +68,10 @@ namespace Rynchodon.Weapons
 			public float EMP_Seconds = 0f;
 
 			#region Cluster
-			//#region Mandatory
 
-			// trying clusters without swapping ammo, might go back to main/part model later
-
-			///// <summary>Split the cluster when this far from target.</summary>
-			//public float ClusterSplitRange;
 			/// <summary>Seconds from last cluster missile being fired until it can fire again.</summary>
 			public float ClusterCooldown;
 
-			//#endregion Mandatory
-			//#region Optional
-
-			///// <summary>How far apart each cluster missile will be from main missile when they split. Units = squigglies.</summary>
-			//public float ClusterInitSpread = 1f;
-			///// <summary>Circle of missiles will be this far behind main missile.</summary>
-			//public float ClusterOffset_Back = 0f;
-			///// <summary>Distance along the circumference of the circle of missiles between missiles</summary>
-			//public float ClusterOffset_Radial = 2f;
-			/// <summary>Distance between launcher and missile for missile to move into formation.</summary>
-			//public float ClusterFormDistance = 1f;
-
-			//#endregion Optional
 			#endregion Cluster
 			#endregion Payload
 
