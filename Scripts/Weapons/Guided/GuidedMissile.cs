@@ -23,6 +23,21 @@ namespace Rynchodon.Weapons.Guided
 	public class GuidedMissile : TargetingBase
 	{
 
+		private class GravityData
+		{
+			public readonly MyPlanet Planet;
+			public readonly Vector3 GravNormAtTarget;
+			public Vector3 Normal;
+			public Vector3 AccelPerUpdate;
+
+			public GravityData(MyPlanet planet, Vector3 gravityNormAtTarget)
+			{
+				this.Planet = planet;
+				this.GravNormAtTarget = gravityNormAtTarget;
+			}
+
+		}
+
 		private enum Stage : byte { None, Boost, MidCourse, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
@@ -69,10 +84,11 @@ namespace Rynchodon.Weapons.Guided
 						missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
-						missile.SetFiringDirection(PrecogSeconds);
+						if (missile.m_stage == Stage.Guided)
+							missile.SetFiringDirection(PrecogSeconds);
 						missile.Update();
 					});
-					if (missile.m_stage == Stage.Boost)
+					if (missile.m_gravData != null)
 						missile.ApplyGravity();
 				}
 		}
@@ -88,6 +104,7 @@ namespace Rynchodon.Weapons.Guided
 							missile.UpdateTarget();
 						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
 							missile.TargetLastSeen();
+						missile.CheckGuidance();
 					});
 		}
 
@@ -100,7 +117,7 @@ namespace Rynchodon.Weapons.Guided
 						if (!missile.Stopped)
 						{
 							missile.ClearBlacklist();
-							if (missile.m_stage == Stage.Boost)
+							if (missile.m_gravData != null)
 								missile.UpdateGravity();
 						}
 					});
@@ -141,10 +158,9 @@ namespace Rynchodon.Weapons.Guided
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
 		private DateTime myGuidanceEnds;
-		private float addSpeedPerUpdate, accelerationPerUpdate;
+		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
-		private Vector3 m_worldGravityNorm;
-		private Vector3 m_worldGravityPerUpdate;
+		private GravityData m_gravData;
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
@@ -167,8 +183,8 @@ namespace Rynchodon.Weapons.Guided
 			AddMissileOwner(MyEntity, CubeBlock.OwnerId);
 			MyEntity.OnClose += MyEntity_OnClose;
 
-			accelerationPerUpdate = (myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration) / 60f;
-			addSpeedPerUpdate = myDescr.Acceleration / 60f;
+			acceleration = (myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration) * Globals.UpdateDuration;
+			addSpeedPerUpdate = myDescr.Acceleration  * Globals.UpdateDuration;
 
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
@@ -213,7 +229,7 @@ namespace Rynchodon.Weapons.Guided
 
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
-			return accelerationPerUpdate;
+			return acceleration;
 		}
 
 		/// <remarks>
@@ -295,7 +311,6 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
-			CheckGuidance();
 			if (m_stage == Stage.None)
 				return;
 
@@ -307,22 +322,17 @@ namespace Rynchodon.Weapons.Guided
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
 
-			Vector3 targetDirection ; //= cached.FiringDirection.Value;
+			Vector3 targetDirection;
 
 			switch (m_stage)
 			{
 				case Stage.Boost:
-					targetDirection = -m_worldGravityNorm;
+					myLogger.debugLog(m_gravData == null, "m_gravData == null", "Update()", Logger.severity.FATAL);
+					targetDirection = -m_gravData.Normal;
 					break;
 				case Stage.MidCourse:
-					if (cached.FiringDirection.Value.AngleBetween(m_worldGravityNorm) < 0.5f)
-					{
-						myLogger.debugLog("minimal angle between gravity and firing direction, starting guidance", "Update()");
-						m_stage = Stage.Guided;
-						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-						goto case Stage.Guided;
-					}
-					targetDirection = Vector3.Normalize(cached.FiringDirection.Value - m_worldGravityNorm);
+					myLogger.debugLog(m_gravData == null, "m_gravData == null", "Update()", Logger.severity.FATAL);
+					targetDirection = Vector3.Normalize(cached.FiringDirection.Value - m_gravData.Normal);
 					break;
 				case Stage.Guided:
 				default:
@@ -493,14 +503,19 @@ namespace Rynchodon.Weapons.Guided
 					{
 						if (myAmmo.Description.BoostDistance > 1f)
 						{
-							myLogger.debugLog("past arming range, starting boost phase", "CheckGuidance()");
+							myLogger.debugLog("past arming range, starting boost stage", "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Boost;
 							UpdateGravity();
+							if (m_gravData == null)
+							{
+								myLogger.debugLog("no gravity, terminating", "CheckGuidance()", Logger.severity.WARNING);
+								m_stage = Stage.Terminated;
+							}
 						}
 						else
 						{
 							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()");
+							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
 					}
@@ -508,17 +523,30 @@ namespace Rynchodon.Weapons.Guided
 				case Stage.Boost:
 					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
 					{
-						myLogger.debugLog("completed boost phase, starting mid course phase", "CheckGuidance()");
+						myLogger.debugLog("completed boost stage, starting mid course stage", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.MidCourse;
 					}
 					break;
 				case Stage.MidCourse:
+					Target t = CurrentTarget;
+					if (t.Entity == null)
+						return;
+
+					Vector3 toTarget = t.Entity.GetPosition() - MyEntity.GetPosition();
+					float angle = m_gravData.GravNormAtTarget.AngleBetween(toTarget);
+					if (angle < 1f)
+					{
+						myLogger.debugLog("minimal angle(" + angle + ") between gravity(" + m_gravData.GravNormAtTarget + ") and target direction(" + toTarget + ")", "CheckGuidance()", Logger.severity.INFO);
+						m_stage = Stage.Guided;
+						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+					}
 					break;
 				case Stage.Guided:
 					if (DateTime.UtcNow >= myGuidanceEnds)
 					{
-						myLogger.debugLog("terminating guidance", "CheckGuidance()");
+						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
+						Logger.debugNotify(m_stage.ToString());
 					}
 					break;
 			}
@@ -555,20 +583,39 @@ namespace Rynchodon.Weapons.Guided
 		private void UpdateGravity()
 		{
 			Vector3D position = MyEntity.GetPosition();
-			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
-			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
+			if (m_gravData == null)
+			{
+				List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+				MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
 
-			foreach (MyPlanet planet in allPlanets)
-				if (planet.IsPositionInGravityWell(position))
-				{
-					m_worldGravityNorm = planet.GetWorldGravityNormalized(ref position);
-					m_worldGravityPerUpdate = m_worldGravityNorm * planet.GetGravityMultiplier(position) * 9.81f * Globals.UpdateDuration;
-					break;
-				}
+				foreach (MyPlanet planet in allPlanets)
+					if (planet.IsPositionInGravityWell(position))
+					{
+						Vector3D targetPosition = CurrentTarget.GetPosition();
+						if (!planet.IsPositionInGravityWell(targetPosition))
+						{
+							myLogger.debugLog("Target is not in gravity well, target position: " + targetPosition + ", planet: " + planet.getBestName(), "UpdateGravity()", Logger.severity.WARNING);
+							return;
+						}
+						Vector3 gravAtTarget = planet.GetWorldGravityNormalized(ref targetPosition);
+						m_gravData = new GravityData(planet, gravAtTarget);
+						break;
+					}
 
-			myLogger.debugLog("updated gravity, norm: " + m_worldGravityNorm, "UpdateGravity()");
-			allPlanets.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+				allPlanets.Clear();
+				ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+			}
+
+			if (m_gravData == null)
+			{
+				myLogger.debugLog("no planet found", "UpdateGravity()", Logger.severity.DEBUG);
+				return;
+			}
+			float grav = m_gravData.Planet.GetGravityMultiplier(position) * 9.81f;
+			m_gravData.Normal = m_gravData.Planet.GetWorldGravityNormalized(ref position);
+			m_gravData.AccelPerUpdate = m_gravData.Normal * grav * Globals.UpdateDuration;
+
+			myLogger.debugLog("updated gravity, norm: " + m_gravData.Normal, "UpdateGravity()");
 		}
 
 		/// <summary>
@@ -576,7 +623,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </summary>
 		private void ApplyGravity()
 		{
-			MyEntity.Physics.LinearVelocity += m_worldGravityPerUpdate;
+			MyEntity.Physics.LinearVelocity += m_gravData.AccelPerUpdate;
 		}
 
 	}

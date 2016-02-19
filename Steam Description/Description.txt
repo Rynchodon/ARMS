@@ -56,13 +56,13 @@ sWeaponCommandsNPC - commands that N.P.C. weapons will use
 [h1]Known Issues[/h1]
 These are all the known issues with ARMS. If an issue is not listed here, I do not know about it.
 
-Merging grids can cause Autopilot to reset or cease functioning. All Autopilot blocks should be manually reset after a merge.
-
 Autopilot cannot fly near / through hanger doors; piston and rotor doors will work.
 
 The Phased array Radar model has a small texture issue on DX9.
 
 The AWACS radar will not function if mounted directly on a rotor.
+
+Autopilot cannot fly near planets, Pathfinder: Path_Blocked will be displayed.
 
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07

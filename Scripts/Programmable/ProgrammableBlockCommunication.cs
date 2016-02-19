@@ -13,7 +13,7 @@ namespace Rynchodon.Programmable
      * When a Programmable block receives a message, ARMS will run the Programmable block. 
      * For parsing the message see class Message below.
      * When an Autopilot block receives a message, its commands will immediately be replaced by
-     * content. Do not include square brackets in content.
+     * content and the Autopilot block will be enabled. Do not include square brackets in content.
      */
 
     /// <summary>This is defined by Rynchodon.AntennaRelay.ProgrammableBlock</summary>

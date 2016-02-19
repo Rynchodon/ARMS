@@ -196,7 +196,6 @@ Finished_Deposit:
 
 		#region Static
 
-		private static readonly TimeSpan UpdateStationary = new TimeSpan(0, 10, 0);
 		private static ThreadManager m_thread = new ThreadManager(2, true, "OreDetector");
 		public delegate void OreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase voxel, string oreName);
 

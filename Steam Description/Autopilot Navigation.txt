@@ -55,7 +55,7 @@ Example - [ C 0, 0, 0 : EXIT ] - Upon reaching {0, 0, 0}, will come to a stop an
 G <name> : fly towards a specific friendly grid, by name of grid (Ship Name)
 Example - [ G Platform : EXIT ] - Fly to a friendly grid that has "Platform" in its name, then stop
 
-H <ore>, ... : Extract specified ores from an asteroid. The ore must be detected by an ore detector on autopilot's grid. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by ore name or chemical symbol.
+H <ore>, ... : Extract specified ores from an asteroid. All ores are treated the same; if you wish to prioritize, use multiple commands. Ores can be specified by ore name or chemical symbol. Ore detectors must have a two-way connection to the Autopilot block, see Antenna Relay and Radar.
 Example - [ H Gold, Silver ] - Harvest either gold or silver, whichever is found first.
 Example - [ H Gold ; H Silver ] - Harvest silver only if gold cannot be found.
 Harvest : Extract any ore from an asteroid. Ore must be detected by an ore detector on autopilot's grid.
