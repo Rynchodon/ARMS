@@ -23,6 +23,20 @@ namespace Rynchodon.Weapons.Guided
 	public class GuidedMissile : TargetingBase
 	{
 
+		private class RailData
+		{
+			public readonly Vector3D RailStart;
+			public readonly LineSegmentD Rail;
+			public readonly DateTime Created;
+
+			public RailData(Vector3D start)
+			{
+				RailStart = start;
+				Rail = new LineSegmentD();
+				Created = DateTime.UtcNow;
+			}
+		}
+
 		private class GravityData
 		{
 			public readonly MyPlanet Planet;
@@ -35,10 +49,9 @@ namespace Rynchodon.Weapons.Guided
 				this.Planet = planet;
 				this.GravNormAtTarget = gravityNormAtTarget;
 			}
-
 		}
 
-		private enum Stage : byte { None, Boost, MidCourse, Guided, Ballistic, Terminated }
+		private enum Stage : byte { Rail, Boost, MidCourse, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
@@ -81,13 +94,16 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						missile.UpdateCluster();
+						if (missile.myCluster != null)
+							missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
 						if (missile.m_stage == Stage.MidCourse || missile.m_stage == Stage.Guided)
 							missile.SetFiringDirection(PrecogSeconds);
 						missile.Update();
 					});
+					if (missile.m_rail != null)
+						missile.UpdateRail();
 					if (missile.m_stage == Stage.Boost)
 						missile.ApplyGravity();
 				}
@@ -160,6 +176,7 @@ namespace Rynchodon.Weapons.Guided
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
+		private RailData m_rail;
 		private GravityData m_gravData;
 
 		private bool Stopped
@@ -185,6 +202,7 @@ namespace Rynchodon.Weapons.Guided
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
 			addSpeedPerUpdate = myDescr.Acceleration  * Globals.UpdateDuration;
+			m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
 
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
@@ -311,7 +329,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
-			if (m_stage == Stage.None)
+			if (m_stage == Stage.Rail)
 				return;
 
 			Target cached = CurrentTarget;
@@ -394,10 +412,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void UpdateCluster()
 		{
-			if (myCluster == null)
-				return;
-
-			myLogger.debugLog("updating cluster", "UpdateCluster()");
+			//myLogger.debugLog("updating cluster", "UpdateCluster()");
 
 			MatrixD[] partWorldMatrix = new MatrixD[myCluster.Slaves.Count];
 			float moveBy = MyEntity.Physics.LinearVelocity.Length() * 2f * Globals.UpdateDuration;
@@ -495,7 +510,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			switch (m_stage)
 			{
-				case Stage.None:
+				case Stage.Rail:
 					double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
 					minDist *= 2;
 
@@ -518,6 +533,7 @@ namespace Rynchodon.Weapons.Guided
 							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
+						m_rail = null;
 					}
 					break;
 				case Stage.Boost:
@@ -576,6 +592,23 @@ namespace Rynchodon.Weapons.Guided
 
 			//myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
 			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.None));
+		}
+
+		private void UpdateRail()
+		{
+			MatrixD matrix = CubeBlock.WorldMatrix;
+			m_rail.Rail.From = Vector3D.Transform(m_rail.RailStart, matrix);
+			m_rail.Rail.To = m_rail.Rail.From + matrix.Forward * 100d;
+
+			Vector3D closest = m_rail.Rail.ClosestPoint(MyEntity.GetPosition());
+			//myLogger.debugLog("my position: " + MyEntity.GetPosition() + ", closest point: " + closest + ", distance: " + Vector3D.Distance(MyEntity.GetPosition(), closest), "UpdateRail()");
+			//myLogger.debugLog("my forward: " + MyEntity.WorldMatrix.Forward + ", block forward: " + matrix.Forward + ", angle: " + MyEntity.WorldMatrix.Forward.AngleBetween(matrix.Forward), "UpdateRail()");
+
+			matrix.Translation = closest;
+			MyEntity.WorldMatrix = matrix;
+
+			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(DateTime.UtcNow - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
+			MyEntity.Physics.LinearVelocity = CubeBlock.CubeGrid.Physics.LinearVelocity + matrix.Forward * myAmmo.MissileDefinition.MissileInitialSpeed;
 		}
 
 		private void StartGravity()
