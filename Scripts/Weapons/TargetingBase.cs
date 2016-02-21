@@ -111,7 +111,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", entity);
+			myLogger = new Logger("TargetingBase", entity) { MinimumLevel = Logger.severity.DEBUG };
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -130,7 +130,7 @@ namespace Rynchodon.Weapons
 		public TargetingBase(IMyCubeBlock block)
 			: this(block, block)
 		{
-			myLogger = new Logger("TargetingBase", block);
+			myLogger = new Logger("TargetingBase", block) { MinimumLevel = Logger.severity.DEBUG };
 		}
 
 		private bool PhysicalProblem(Vector3D targetPos)
@@ -721,6 +721,9 @@ namespace Rynchodon.Weapons
 			// (or there is no chance to hit)
 			// THIS IS THE MAIN INSIGHT!
 			Vector3 shotVelTang = relativeVelTang;
+
+			if (TryHard)
+				shotVelTang *= 2f;
 
 			// Now all we have to find is the orthogonal velocity of the shot
 

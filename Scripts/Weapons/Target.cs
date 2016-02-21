@@ -92,6 +92,8 @@ namespace Rynchodon.Weapons
 		public LastSeenTarget(LastSeen seen)
 		{
 			m_lastSeen = seen;
+			m_lastPostion = m_lastSeen.LastKnownPosition;
+			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
 		}
 
 		public override IMyEntity Entity
