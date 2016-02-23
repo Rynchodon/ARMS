@@ -84,7 +84,7 @@ namespace Rynchodon.Autopilot
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
-		private static readonly TimeSpan MinTimeInstructions = new TimeSpan(0, 1, 0);
+		private static readonly TimeSpan MinTimeInstructions = new TimeSpan(0, 0, 10);
 		private static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 

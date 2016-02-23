@@ -236,7 +236,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			m_logger.debugLog("updating grid last seen " + Grid.LastSeenAt + " => " + updated.LastSeenAt, "GridUpdate()");
+			//m_logger.debugLog("updating grid last seen " + Grid.LastSeenAt + " => " + updated.LastSeenAt, "GridUpdate()");
 			Grid = updated;
 		}
 

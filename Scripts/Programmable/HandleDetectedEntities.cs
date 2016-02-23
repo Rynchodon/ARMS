@@ -1,9 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
 using VRageMath;
+using VRage.Game;
+
+/*
+ * accessible from in game script:
+ * Sandbox.Common.ObjectBuilders
+ * Sandbox.Common.ObjectBuilders.Definitions
+ * Sandbox.Definitions
+ * Sandbox.Game.Gui
+ * VRage.ObjectBuilders
+ */
 
 namespace Rynchodon.Programmable
 {

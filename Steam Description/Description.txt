@@ -31,7 +31,7 @@ type "/autopilot help <topic>" for information about a specific topic
 [h1]Antenna Relay and Radar[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/523897653315556053/] Antenna Relay and Radar[/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=625196196]Handle Detected Entities In-Game Script[/url]
-[url=http://pastebin.com/JDRL94Mq]Block Communication In-Game Script[/url]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=629700748]Block Communication In-Game Script[/url]
 
 [h1]Weapon Systems[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/496880503080018832/] Guided Missiles [/url]

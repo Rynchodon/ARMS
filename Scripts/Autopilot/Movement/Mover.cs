@@ -163,7 +163,7 @@ namespace Rynchodon.Autopilot.Movement
 			float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
 			if (landing)
 			{
-				float landingSpeed = distance * 0.5f;
+				float landingSpeed = distance * 0.25f;
 				if (relSpeedLimit > landingSpeed)
 					relSpeedLimit = landingSpeed;
 			}

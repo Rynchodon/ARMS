@@ -78,6 +78,9 @@ namespace Rynchodon
 			if (playerId1 == playerId2)
 				return Relations.Owner;
 
+			if (playerId1 == 0L || playerId2 == 0L)
+				return Relations.None;
+
 			IMyFaction fact1 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(playerId1);
 			if (fact1 == null)
 				return Relations.Enemy;

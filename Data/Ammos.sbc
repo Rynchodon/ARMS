@@ -96,7 +96,7 @@
         <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=60
+        GuidanceSeconds=15
         TargetRange=800
         DetonateRange=10
       </Description>

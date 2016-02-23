@@ -673,7 +673,7 @@ namespace Rynchodon.Weapons
 		/// Calculates FiringDirection and InterceptionPoint
 		/// </summary>
 		/// TODO: if target is accelerating, look ahead (missiles and such)
-		protected void SetFiringDirection(float precogSec = 0f)
+		protected void SetFiringDirection()
 		{
 			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
@@ -681,8 +681,6 @@ namespace Rynchodon.Weapons
 			Vector3 myVelocity = MyEntity.GetLinearVelocity();
 			Vector3 targetVelocity = myTarget.GetLinearVelocity();
 			Vector3 TargetPosition = myTarget.GetPosition();
-			if (precogSec > 0f)
-				TargetPosition += targetVelocity * precogSec;
 
 			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
 			if (myTarget.Entity != null)
@@ -723,7 +721,7 @@ namespace Rynchodon.Weapons
 			Vector3 shotVelTang = relativeVelTang;
 
 			if (TryHard)
-				shotVelTang *= 2f;
+				shotVelTang *= 3f;
 
 			// Now all we have to find is the orthogonal velocity of the shot
 

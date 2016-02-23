@@ -52,15 +52,8 @@ namespace Rynchodon.Autopilot.Navigator
 					case LandingState.Approach:
 					case LandingState.Holding:
 					case LandingState.LineUp:
-						{
-							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
-							if (asFunc != null)
-							{
-								m_logger.debugLog("Disabling m_navBlock: " + m_navBlock.Block.DisplayNameText, "set_m_landingState()", Logger.severity.DEBUG);
-								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(false), m_logger);
-							}
-							break;
-						}
+						// unlander is responsible for disabling block
+						break;
 					case LandingState.Catch:
 						m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
 						goto case LandingState.Landing;
@@ -210,9 +203,9 @@ namespace Rynchodon.Autopilot.Navigator
 				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
 				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlockPos, m_targetPosition) < destRadius)
 				{
-					m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
-					m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,
-						"Distance < DestinationRadius, Distance: " + m_navSet.Settings_Current.Distance + ", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius, "Move()");
+					//m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
+					//m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,
+					//	"Distance < DestinationRadius, Distance: " + m_navSet.Settings_Current.Distance + ", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius, "Move()");
 
 					Move_Land();
 					return;
@@ -224,7 +217,7 @@ namespace Rynchodon.Autopilot.Navigator
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
 				Vector3 destination = m_targetPosition + targetToNav * adjustment;
 
-				m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
+				//m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
 				m_mover.CalcMove(m_navBlock, destination, m_gridFinder.Grid.GetLinearVelocity());
 				m_navSet.Settings_Current.Distance += adjustment;
 			}
@@ -506,7 +499,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Ingame.IMyShipConnector asConn = m_navBlock.Block as Ingame.IMyShipConnector;
 			if (asConn != null)
 			{
-				m_logger.debugLog("locked: " + asConn.IsLocked + ", connected: " + asConn.IsConnected + ", other: " + asConn.OtherConnector, "IsLocked()");
+				//m_logger.debugLog("locked: " + asConn.IsLocked + ", connected: " + asConn.IsConnected + ", other: " + asConn.OtherConnector, "IsLocked()");
 				return asConn.IsConnected;
 			}
 

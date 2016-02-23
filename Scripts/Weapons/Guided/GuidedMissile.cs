@@ -16,7 +16,6 @@ namespace Rynchodon.Weapons.Guided
 {
 	/*
 	 * TODO:
-	 * Rail system for safer launching while rotating/accelerating.
 	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
 	 * ARH, SA*
 	 */
@@ -56,7 +55,6 @@ namespace Rynchodon.Weapons.Guided
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
 		private const float Angle_Cluster = 0.05f;
-		private const float PrecogSeconds = Globals.UpdateDuration * 3f;
 		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
@@ -99,7 +97,7 @@ namespace Rynchodon.Weapons.Guided
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
 						if (missile.m_stage == Stage.MidCourse || missile.m_stage == Stage.Guided)
-							missile.SetFiringDirection(PrecogSeconds);
+							missile.SetFiringDirection();
 						missile.Update();
 					});
 					if (missile.m_rail != null)
@@ -201,8 +199,9 @@ namespace Rynchodon.Weapons.Guided
 			MyEntity.OnClose += MyEntity_OnClose;
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
-			addSpeedPerUpdate = myDescr.Acceleration  * Globals.UpdateDuration;
-			m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
+			addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
+			if (!(firedBy is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
+				m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
 
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
@@ -213,9 +212,10 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
-			: this (missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
+			: this(missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
 		{
 			myCluster = missiles;
+			m_rail = null;
 		}
 
 		private void MyEntity_OnClose(IMyEntity obj)
@@ -255,13 +255,15 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void TargetLastSeen()
 		{
-			if (myAntenna == null || myAntenna.Storage.LastSeenCount == 0)
+			NetworkStorage store = myAntenna == null ? null : myAntenna.Storage;
+
+			if (store == null || store.LastSeenCount == 0)
 			{
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
-					myLogger.debugLog("Retargeting last: "+ myTargetSeen.Entity.getBestName()+" at "+myTargetSeen.GetPosition(), "TargetLastSeen()");
+					myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(myTargetSeen);
-					SetFiringDirection(PrecogSeconds);
+					SetFiringDirection();
 				}
 				return;
 			}
@@ -270,21 +272,21 @@ namespace Rynchodon.Weapons.Guided
 				return;
 
 			LastSeen fetched;
-			if (myTargetSeen != null && myAntenna.Storage.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
+			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
 				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(fetched);
-				SetFiringDirection(PrecogSeconds);
+				SetFiringDirection();
 				return;
 			}
 
 			if (Options.TargetEntityId.HasValue)
 			{
-				if (myAntenna.Storage.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
+				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
 					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(fetched);
-					SetFiringDirection(PrecogSeconds);
+					SetFiringDirection();
 				}
 				else
 					myLogger.debugLog("failed to get last seen from entity id", "TargetLastSeen()");
@@ -295,8 +297,8 @@ namespace Rynchodon.Weapons.Guided
 			LastSeen closest = null;
 			double closestDist = double.MaxValue;
 
-			myLogger.debugLog("last seen count: " + myAntenna.Storage.LastSeenCount, "TargetLastSeen()");
-			myAntenna.Storage.ForEachLastSeen(seen => {
+			myLogger.debugLog("last seen count: " + store.LastSeenCount, "TargetLastSeen()");
+			store.ForEachLastSeen(seen => {
 				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
 				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 				{
@@ -319,7 +321,7 @@ namespace Rynchodon.Weapons.Guided
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName() + " at " + closest.GetPosition(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(closest);
-				SetFiringDirection(PrecogSeconds);
+				SetFiringDirection();
 				myTargetSeen = closest;
 			}
 		}
@@ -396,7 +398,7 @@ namespace Rynchodon.Weapons.Guided
 			{ // check for proxmity det
 				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity() * PrecogSeconds);
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity());
 					//myLogger.debugLog("distSquared: " + distSquared, "Update()");
 					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{
@@ -423,23 +425,23 @@ namespace Rynchodon.Weapons.Guided
 			for (int i = 0; i < partWorldMatrix.Length; i++)
 			{
 				partWorldMatrix[i] = MyEntity.WorldMatrix;
-					Vector3D slavePos = myCluster.Slaves[i].GetPosition();
-					myLogger.debugLog("cluster offset: " + myCluster.SlaveOffsets[i] + ", scaled: " + myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, "UpdateCluster()");
-					myLogger.debugLog("world matrix: " + MyEntity.WorldMatrix, "UpdateCluster()");
-					Vector3D destination = Vector3.Transform(myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, MyEntity.WorldMatrix);
-					double distSquared = Vector3D.DistanceSquared(slavePos, destination);
-					myLogger.debugLog("slave pos: " + slavePos + ", destination: " + destination + ", dist squared: " + distSquared + ", move by squared: " + moveBySq, "UpdateCluster()");
-					if (distSquared > moveBySq)
-					{
-						myLogger.debugLog("Slave: " + i + ", far from position, distance: " + Math.Sqrt(distSquared) + ", moving: " + moveBy, "UpdateCluster()");
-						Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSquared);
-						partWorldMatrix[i].Translation = slavePos + direction * moveBy;
-					}
-					else
-					{
-						myLogger.debugLog("Slave: " + i + ", at destination", "UpdateCluster()");
-						partWorldMatrix[i].Translation = destination;
-					}
+				Vector3D slavePos = myCluster.Slaves[i].GetPosition();
+				myLogger.debugLog("cluster offset: " + myCluster.SlaveOffsets[i] + ", scaled: " + myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, "UpdateCluster()");
+				myLogger.debugLog("world matrix: " + MyEntity.WorldMatrix, "UpdateCluster()");
+				Vector3D destination = Vector3.Transform(myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, MyEntity.WorldMatrix);
+				double distSquared = Vector3D.DistanceSquared(slavePos, destination);
+				myLogger.debugLog("slave pos: " + slavePos + ", destination: " + destination + ", dist squared: " + distSquared + ", move by squared: " + moveBySq, "UpdateCluster()");
+				if (distSquared > moveBySq)
+				{
+					myLogger.debugLog("Slave: " + i + ", far from position, distance: " + Math.Sqrt(distSquared) + ", moving: " + moveBy, "UpdateCluster()");
+					Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSquared);
+					partWorldMatrix[i].Translation = slavePos + direction * moveBy;
+				}
+				else
+				{
+					myLogger.debugLog("Slave: " + i + ", at destination", "UpdateCluster()");
+					partWorldMatrix[i].Translation = destination;
+				}
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
@@ -549,12 +551,12 @@ namespace Rynchodon.Weapons.Guided
 						return;
 
 					double toTarget = Vector3D.Distance(MyEntity.GetPosition(), t.GetPosition());
-					double toLaunch = Vector3D.Distance( MyEntity.GetPosition(),CubeBlock.GetPosition());
+					double toLaunch = Vector3D.Distance(MyEntity.GetPosition(), CubeBlock.GetPosition());
 
 					if (toTarget < toLaunch)
 					{
 						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", "CheckGuidance()", Logger.severity.INFO);
-						m_stage = Stage.Guided; 
+						m_stage = Stage.Guided;
 						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
 						m_gravData = null;
 					}

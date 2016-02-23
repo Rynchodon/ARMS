@@ -66,8 +66,10 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_logger.debugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, "UnLander()", Logger.severity.INFO);
 					IMyFunctionalBlock func = m_unlandBlock.Block as IMyFunctionalBlock;
-					if (func != null)
-						func.RequestEnable(false);
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+						if (func != null)
+							func.RequestEnable(false);
+					});
 					return;
 				}
 			}
@@ -116,7 +118,6 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("Unlocking connector", "Move()", Logger.severity.DEBUG);
 							MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 								asConn.ApplyAction("Unlock");
-								asConn.RequestEnable(false);
 							}, m_logger);
 						}
 					}
@@ -133,6 +134,9 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.DistanceLessThan(10f))
 			{
 				m_logger.debugLog("Reached destination: " + m_destination, "Move()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					(m_unlandBlock.Block as IMyFunctionalBlock).RequestEnable(false);
+				});
 				m_navSet.OnTaskComplete_NavWay();
 				m_mover.StopMove();
 				m_mover.StopRotate(); 
