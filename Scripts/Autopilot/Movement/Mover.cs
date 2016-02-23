@@ -21,10 +21,10 @@ namespace Rynchodon.Autopilot.Movement
 
 		#endregion
 
-		private const ulong CalcMoveIdle = 100ul;
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
 		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
 		private const float MinForceRatio = 0.1f;
+		private const ulong StuckAfter = 300;
 
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
@@ -43,14 +43,25 @@ namespace Rynchodon.Autopilot.Movement
 		private bool m_moveEnableDampeners;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
-		//private Vector3 prevAngleDisp = Vector3.Zero;
 		private DateTime updated_prevAngleVel;
-		private ulong m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
+
+		private float prev_distance, prev_angle;
+		private ulong m_stuckAt;
 
 		private bool m_stopped, m_overworked;
 
 		public Pathfinder.Pathfinder myPathfinder { get; private set; }
 		public Vector3 WorldGravity { get { return myThrust.m_worldGravity; } }
+
+		/// <summary>Value is false iff this Mover is making progress.</summary>
+		public bool IsStuck
+		{
+			get
+			{
+				myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", prev: " + prev_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", prev: " + prev_angle + ", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
+				return Globals.UpdateCount >= m_stuckAt;
+			}
+		}
 
 		/// <summary>
 		/// Creates a Mover for a given ShipControllerBlock and AllNavigationSettings
@@ -151,6 +162,12 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			float distance = destDisp.Length();
+			prev_distance = NavSet.Settings_Current.Distance;
+			if (distance < prev_distance || float.IsNaN(NavSet.Settings_Current.Distance))
+			{
+				prev_distance = distance;
+				m_stuckAt = Globals.UpdateCount + StuckAfter;
+			}
 			NavSet.Settings_Task_NavWay.Distance = distance;
 
 			m_targetVelocity = MaximumVelocity(destDisp);
@@ -243,9 +260,6 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			Block.SetDamping(m_moveEnableDampeners);
-
-			if (destDisp.LengthSquared() > 1f)
-				m_notCalcMove = Globals.UpdateCount + CalcMoveIdle;
 
 			myLogger.debugLog("destDisp: " + destDisp
 				//+ ", destDir: " + destDir
@@ -504,6 +518,11 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			float distanceAngle = displacement.Length();
+			if (distanceAngle < prev_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
+			{
+				prev_angle = distanceAngle;
+				m_stuckAt = Globals.UpdateCount + StuckAfter;
+			}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
 			// don't rotate if displacement is small, reduces shake
@@ -518,16 +537,6 @@ namespace Rynchodon.Autopilot.Movement
 				myPathfinder.TestRotate(displacement);
 				if (!myPathfinder.CanRotate)
 				{
-					// if cannot rotate and not calculating move, move away from obstruction
-					if (myPathfinder.RotateObstruction != null && Globals.UpdateCount >= m_notCalcMove)
-					{
-						Vector3 position  = Block.CubeBlock.GetPosition();
-						Vector3 away = position - myPathfinder.RotateObstruction.GetCentre();
-						away.Normalize();
-						myLogger.debugLog("Cannot rotate and not calculating move, creating GOLIS to move away from obstruction", "CalcRotate()", Logger.severity.INFO);
-						new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
-					}
-					Logger.debugNotify("Cannot Rotate", 50);
 					myLogger.debugLog("Pathfinder not allowing rotation", "CalcRotate()");
 					return;
 				}
@@ -655,9 +664,26 @@ namespace Rynchodon.Autopilot.Movement
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
-				myLogger.debugLog("Stopping the ship", "MoveAndRotate()"); 
+				myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
 				MoveAndRotateStop();
 				return;
+			}
+
+			// only iff stuck for extra time (Nav may want to handle stuck)
+			if (NavSet.Settings_Current.PathfinderCanChangeCourse && Globals.UpdateCount >= m_stuckAt + StuckAfter)
+			{
+				IMyEntity obstruction = myPathfinder.RotateObstruction ?? myPathfinder.MoveObstruction;
+				// if cannot rotate and not calculating move, move away from obstruction
+				if (obstruction != null)
+				{
+					Vector3 position = Block.CubeBlock.GetPosition();
+					Vector3 away = position - obstruction.GetCentre();
+					away.Normalize();
+					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "CalcRotate()", Logger.severity.INFO);
+					new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
+				}
+				else
+					myLogger.debugLog("Stuck, but no obstruction", "MoveAndRotate()", Logger.severity.WARNING);
 			}
 
 			// clamp values and invert operations MoveAndRotate will perform

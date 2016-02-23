@@ -108,6 +108,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
 		public string PathStatus { get { return m_pathState.ToString(); } }
 		public IMyEntity RotateObstruction { get; private set; }
+		public IMyEntity MoveObstruction { get; private set; }
 
 		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
@@ -305,7 +306,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_logger.debugLog(obstructing is IMyCubeBlock, "grid: " + obstructing.GetTopMostParent().DisplayName, "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 
 				if (tryAlternates)
+				{
+					MoveObstruction = obstructing;
 					TryAlternates(runId, pointOfObstruction.Value, obstructing);
+				}
 			}
 			finally
 			{
@@ -434,6 +438,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					m_logger.debugLog("Removing speed limit", "PathClear()");
 					m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
 				}
+				MoveObstruction = null;
 				m_pathState = PathState.No_Obstruction;
 				m_pathLow.Clear();
 			}

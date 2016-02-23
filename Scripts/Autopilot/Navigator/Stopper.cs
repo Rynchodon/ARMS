@@ -12,8 +12,6 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Stopper : NavigatorMover
 	{
 
-		private const float StoppedThreshold = 0.001f;
-
 		private readonly Logger _logger;
 		private readonly bool m_exitAfter;
 
@@ -39,7 +37,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() < StoppedThreshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() < StoppedThreshold)
+			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() == 0f && m_mover.Block.Physics.AngularVelocity.LengthSquared() == 0f)
 			{
 				INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
 				if (rotator != null && !m_navSet.DirectionMatched())

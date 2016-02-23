@@ -280,9 +280,6 @@ namespace Rynchodon.Autopilot.Data
 
 		private readonly IMyCubeBlock defaultNavBlock;
 
-		///// <summary>Settings that are reset when Autopilot gains control. Settings should be written here but not read.</summary>
-		//public SettingsLevel Settings_GainControl { get; private set; }
-
 		/// <summary>Settings that are reset at the start of commands. Settings should be written here but not read.</summary>
 		public SettingsLevel Settings_Commands { get; private set; }
 
@@ -298,9 +295,6 @@ namespace Rynchodon.Autopilot.Data
 		/// <summary>Settings that are reset when a waypoint navigator is finished. Settings should be written here but not read.</summary>
 		public SettingsLevel Settings_Task_NavWay { get; private set; }
 
-		///// <summary>Settings that are reset every time autopilot is updated. Settings should be written here but not read.</summary>
-		//public SettingLevel MySettings_Update { get; private set; }
-
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
 		public SettingsLevel Settings_Current { get { return Settings_Task_NavWay; } }
 
@@ -311,12 +305,6 @@ namespace Rynchodon.Autopilot.Data
 			this.defaultNavBlock = defaultNavBlock;
 			OnStartOfCommands();
 		}
-
-		//public void OnGainControl()
-		//{
-		//	Settings_GainControl = new SettingsLevel();
-		//	OnStartOfCommands();
-		//}
 
 		public void OnStartOfCommands()
 		{
@@ -345,14 +333,13 @@ namespace Rynchodon.Autopilot.Data
 		public void OnTaskComplete_NavWay()
 		{
 			Settings_Task_NavWay = new SettingsLevel(Settings_Task_NavEngage);
-			//OnUpdate();
 		}
 
-		//public void OnUpdate()
-		//{
-		//	MySettings_Update = new SettingLevel(MySettings_Subtask);
-		//}
-
+		/// <summary>
+		/// Gets a pretty formatted distance.
+		/// </summary>
+		/// <see cref="Rynchodon.PrettySI"/>
+		/// <returns>A pretty formatted distance.</returns>
 		public string PrettyDistance()
 		{
 			float distance = Settings_Current.Distance;
@@ -363,7 +350,13 @@ namespace Rynchodon.Autopilot.Data
 			return PrettySI.makePretty(distance) + 'm';
 		}
 
-		public bool DirectionMatched()
+		/// <summary>
+		/// Checks that the current angle to destination is less than value.
+		/// Always returns false if the grid has not rotated towards the current destination.
+		/// </summary>
+		/// <param name="value">Value to compare to the angle</param>
+		/// <returns>True iff angle is less than value and grid has rotated towards the destination.</returns>
+		public bool DirectionMatched(float value = 0.1f)
 		{
 			float angle = Settings_Current.DistanceAngle;
 			if (float.IsNaN(angle))
@@ -371,6 +364,12 @@ namespace Rynchodon.Autopilot.Data
 			return angle < 0.1f;
 		}
 
+		/// <summary>
+		/// Checks that the distance to the current destination is less than a given value.
+		/// Allways returns false if the grid has not moved towards the current destination.
+		/// </summary>
+		/// <param name="value">Value to compare to the distance</param>
+		/// <returns>True iff distance is less than value and grid has moved towards destination.</returns>
 		public bool DistanceLessThan(float value)
 		{
 			float distance = Settings_Current.Distance;
@@ -379,6 +378,11 @@ namespace Rynchodon.Autopilot.Data
 			return distance < value;
 		}
 
+		/// <summary>
+		/// Checks that the distance to the current destination is less than destination radius.
+		/// Allways returns false if the grid has not moved towards the current destination.
+		/// </summary>
+		/// <returns>True iff distance is less than destination radius and grid has moved towards destination.</returns>
 		public bool DistanceLessThanDestRadius()
 		{
 			return DistanceLessThan(Settings_Current.DestinationRadius);

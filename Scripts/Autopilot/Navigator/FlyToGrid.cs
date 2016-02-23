@@ -49,17 +49,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 				switch (value)
 				{
-					case LandingState.Approach:
-					case LandingState.Holding:
-					case LandingState.LineUp:
-						// unlander is responsible for disabling block
-						break;
 					case LandingState.Catch:
 						m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
 						goto case LandingState.Landing;
 					case LandingState.Landing:
 						{
-							m_navSet.Settings_Task_NavRot.PathfinderCanChangeCourse = false;
 							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
 							if (asFunc != null && !asFunc.Enabled)
 							{
@@ -429,10 +423,6 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
-						// the autopilot was sometimes freaking out and running away when it got really close
-						if (m_navSet.DistanceLessThan(1f))
-							m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
-
 						LockConnector();
 
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize;
@@ -474,7 +464,7 @@ namespace Rynchodon.Autopilot.Navigator
 			next_attemptLock = Globals.UpdateCount + 20ul;
 
 			Ingame.IMyShipConnector connector = m_navBlock.Block as Ingame.IMyShipConnector;
-			if (connector != null && !connector.IsConnected)
+			if (connector != null && !connector.IsConnected && connector.IsLocked)
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (!connector.IsConnected)
 						connector.ApplyAction("Lock");

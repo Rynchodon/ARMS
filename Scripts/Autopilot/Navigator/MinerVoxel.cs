@@ -64,7 +64,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private float m_current_drillFull;
 		private bool m_miningPlanet;
 		private float m_closestDistToTarget;
-		private ulong m_stuckAt;
 
 		private State m_state
 		{
@@ -141,7 +140,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 				m_mover.StopRotate();
 				m_navSet.OnTaskComplete_NavWay();
-				RestartStuckTimer();
 			}
 		}
 
@@ -211,7 +209,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Rotating;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -219,7 +217,7 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 				case State.Rotating:
 					m_mover.StopMove();
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -232,7 +230,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -261,7 +259,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -276,7 +274,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
 						Logger.debugNotify("Stuck", 16);
@@ -294,7 +292,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -315,7 +313,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.GetTarget;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
 						Logger.debugNotify("Stuck", 16);
@@ -558,23 +556,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private bool IsNearVoxel(double lengthMulti = 1d)
 		{ return IsNearVoxel(m_navDrill.Grid, lengthMulti); }
-
-		private bool IsStuck()
-		{
-			if (!m_closestDistToTarget.IsValid() || m_navSet.Settings_Current.Distance < m_closestDistToTarget)
-			{
-				RestartStuckTimer();
-				return false;
-			}
-			return (Globals.UpdateCount >= m_stuckAt);
-		}
-
-		private void RestartStuckTimer()
-		{
-			m_closestDistToTarget = m_navSet.Settings_Current.Distance;
-			m_stuckAt = Globals.UpdateCount + 1000ul;
-			//m_logger.debugLog("closest distance: " + m_closestDistToTarget + ", stuck at: " + m_stuckAt, "RestartStuckTimer()");
-		}
 
 		private void MoveCurrent()
 		{ m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo); }
