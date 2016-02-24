@@ -163,6 +163,10 @@ namespace Rynchodon.Autopilot
 
 		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
 
+		public StringBuilder CustomInfo { get { return m_customInfo_send; } }
+
+		public bool Enabled { get { return value_state == State.Enabled; } }
+
 		private State m_state
 		{
 			get { return value_state; }

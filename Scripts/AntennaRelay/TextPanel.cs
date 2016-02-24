@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Rynchodon.Attached;
+using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
@@ -13,11 +15,10 @@ namespace Rynchodon.AntennaRelay
 	public class TextPanel : BlockInstructions
 	{
 
-		private const string radarIconId = "Radar";
-
-		private const string timeString = "Current as of: ";
-
 		private const char separator = ':';
+		private const string radarIconId = "Radar";
+		private const string timeString = "Current as of: ";
+		private const string tab = "    ";
 
 		private static readonly char[] OptionsSeparators = { ',', ';', ':' };
 
@@ -29,7 +30,8 @@ namespace Rynchodon.AntennaRelay
 			None = 0,
 			DisplayDetected = 1,
 			GPS = 2,
-			EntityId = 4
+			EntityId = 4,
+			AutopilotStatus = 8
 		}
 
 		static TextPanel()
@@ -102,6 +104,8 @@ namespace Rynchodon.AntennaRelay
 
 			if ((m_options & Option.DisplayDetected) != 0)
 				Display();
+			else if ((m_options & Option.AutopilotStatus) != 0)
+				DisplyAutopilotStatus();
 		}
 
 		private void Display(List<long> entityIds = null)
@@ -139,7 +143,7 @@ namespace Rynchodon.AntennaRelay
 
 			string displayString = displayText.ToString();
 
-			myLogger.debugLog("Writing to panel: " + m_textPanel.DisplayNameText, "Display()", Logger.severity.TRACE);
+			//myLogger.debugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "Display()", Logger.severity.TRACE);
 			m_textPanel.WritePublicText(displayText.ToString());
 		}
 
@@ -165,7 +169,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			Vector3D myPos = m_block.GetPosition();
 			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
-			
+
 			foreach (long id in entityIds)
 			{
 				LastSeen seen;
@@ -180,6 +184,63 @@ namespace Rynchodon.AntennaRelay
 			return sortableSeen;
 		}
 
+		private void DisplyAutopilotStatus()
+		{
+			myLogger.debugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
+
+			NetworkStorage store = m_networkClient.GetStorage();
+			if (store == null)
+			{
+				m_textPanel.WritePublicText("No network connection");
+				return;
+			}
+
+			List<SortableAutopilot> autopilots = ResourcePool<List<SortableAutopilot>>.Get();
+			Vector3D mypos = m_block.GetPosition();
+
+			Registrar.ForEach<ShipController_Autopilot>(ap => {
+				NetworkStorage apStore = ap.m_block.NetClient.GetStorage();
+				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
+				{
+					myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");
+					autopilots.Add(new SortableAutopilot(ap, mypos));
+				}
+				else
+					myLogger.debugLog("not adding: " + ap.m_block.CubeBlock.DisplayNameText + ", " + (apStore != null) + ", " + (apStore == store) + ", " + (m_block.canConsiderFriendly(ap.m_block.CubeBlock)), "DisplyAutopilotStatus()");
+			});
+
+			autopilots.Sort();
+
+			StringBuilder displayText = new StringBuilder();
+			displayText.Append(timeString);
+			displayText.Append(DateTime.Now.ToLongTimeString());
+			displayText.AppendLine();
+			int count = 0;
+			foreach (SortableAutopilot ap in autopilots)
+			{
+				displayText.Append(tab);
+				displayText.Append(ap.Autopilot.m_block.CubeGrid.DisplayName);
+				displayText.Append(tab);
+				displayText.Append(PrettySI.makePretty(ap.Distance));
+				displayText.AppendLine("m");
+
+				displayText.Append(ap.Autopilot.CustomInfo);
+				displayText.AppendLine();
+
+				count++;
+				if (count >= 5)
+					break;
+			}
+
+			autopilots.Clear();
+			ResourcePool<List<SortableAutopilot>>.Return(autopilots);
+
+			string displayString = displayText.ToString();
+
+			//myLogger.debugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "DisplyAutopilotStatus()", Logger.severity.TRACE);
+			m_textPanel.WritePublicText(displayText.ToString());
+		}
+
 		private class sortableLastSeen : IComparable<sortableLastSeen>
 		{
 			private readonly ExtensionsRelations.Relations relations;
@@ -189,7 +250,6 @@ namespace Rynchodon.AntennaRelay
 			private readonly Vector3D predictedPos;
 			private readonly Option options;
 
-			private const string tab = "    ";
 			private static readonly string GPStag1 = tab + tab + "GPS";
 
 			private sortableLastSeen() { }
@@ -291,5 +351,43 @@ namespace Rynchodon.AntennaRelay
 				return this.distance.CompareTo(other.distance);
 			}
 		}
+
+		private class SortableAutopilot : IComparable<SortableAutopilot>
+		{
+
+			private float? distance;
+
+			public readonly ShipController_Autopilot Autopilot;
+			public readonly float DistanceSquared;
+
+			public float Distance
+			{
+				get
+				{
+					if (!distance.HasValue)
+						distance = (float)Math.Sqrt(DistanceSquared);
+					return distance.Value;
+				}
+			}
+
+			public SortableAutopilot(ShipController_Autopilot autopilot, Vector3D mypos)
+			{
+				this.Autopilot = autopilot;
+				this.DistanceSquared = (float)Vector3D.DistanceSquared(autopilot.m_block.CubeBlock.GetPosition(), mypos);
+			}
+
+			public int CompareTo(SortableAutopilot other)
+			{
+				if (this.Autopilot.Enabled == other.Autopilot.Enabled)
+					return this.DistanceSquared.CompareTo(other.DistanceSquared);
+
+				if (this.Autopilot.Enabled)
+					return -1;
+				else
+					return 1;
+			}
+
+		}
+
 	}
 }
