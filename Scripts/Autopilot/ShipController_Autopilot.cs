@@ -552,8 +552,11 @@ namespace Rynchodon.Autopilot
 			if (navM != null)
 			{
 				navM.AppendCustomInfo(m_customInfo_build);
-				m_customInfo_build.Append("Distance: ");
-				m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+				if (!float.IsNaN(m_navSet.Settings_Current.Distance))
+				{
+					m_customInfo_build.Append("Distance: ");
+					m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+				}
 			}
 
 			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
