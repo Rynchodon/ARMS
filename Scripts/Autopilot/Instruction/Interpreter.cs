@@ -182,8 +182,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
-			//if (instruction.Contains(","))
-			//	return getAction_wordPlus(instruction, out wordAction);
+			if (instruction.Contains(","))
+				return getAction_wordPlus(instruction, out wordAction);
 
 			string lowerCase = instruction.ToLower();
 			switch (lowerCase)
@@ -243,23 +243,25 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 		}
 
-		///// <summary>
-		///// Try to match instruction against keywords. Accepts comma separated params.
-		///// </summary>
-		///// <param name="instruction">unparsed instruction</param>
-		///// <returns>true iff successful</returns>
-		//private bool getAction_wordPlus(string instruction, out Action wordAction)
-		//{
-		//	string[] split = instruction.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+		/// <summary>
+		/// Try to match instruction against keywords. Accepts comma separated params.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_wordPlus(string instruction, out Action wordAction)
+		{
+			string[] split = instruction.LowerRemoveWhitespace().Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-		//	if (split.Length > 1)
-		//		switch (split[0].ToLower())
-		//		{
-		//		}
+			if (split.Length > 1)
+				switch (split[0].ToLower())
+				{
+					case "orbit":
+							return getAction_orbit(out wordAction, split);
+				}
 
-		//	wordAction = null;
-		//	return false;
-		//}
+			wordAction = null;
+			return false;
+		}
 
 		/// <summary>
 		/// <para>Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.</para>
@@ -782,6 +784,19 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (getVector_fromGeneric(out result, instruction))
 				return true;
+			return false;
+		}
+
+		private bool getAction_orbit(out Action instructionAction, string[] dataLowerCase)
+		{
+			m_logger.debugLog("entered getAction_orbit()", "getAction_orbit()");
+			if (dataLowerCase.Length == 2)
+			{
+				instructionAction = () => { new Orbiter(Mover, NavSet, dataLowerCase[1]); };
+				return true;
+			}
+
+			instructionAction = null;
 			return false;
 		}
 

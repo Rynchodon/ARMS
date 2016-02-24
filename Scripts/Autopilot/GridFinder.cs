@@ -46,7 +46,7 @@ namespace Rynchodon.Autopilot
 		/// Creates a GridFinder to find a friendly grid based on its name.
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
-			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent)
+			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, bool mustBeRecent = false)
 		{
 			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
@@ -62,6 +62,7 @@ namespace Rynchodon.Autopilot
 			this.m_allowedAttachment = allowedAttachment;
 			this.MaximumRange = float.MaxValue;
 			this.m_navSet = navSet;
+			this.m_mustBeRecent = mustBeRecent;
 		}
 
 		/// <summary>

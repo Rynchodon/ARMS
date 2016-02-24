@@ -262,7 +262,18 @@ namespace Rynchodon.AntennaRelay
 
 			// test radio
 			if (this.m_comp_radio != null && other.m_comp_radio != null)
-				return this.m_comp_radio.TestConnection(other.m_comp_radio);
+			{
+				CommunicationType radioResult;
+				radioResult = this.m_comp_radio.TestConnection(other.m_comp_radio);
+				if (radioResult != CommunicationType.None)
+					return radioResult;
+			}
+
+			if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
+				if (s_sendPositionTo.Add(other.Storage))
+					m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
+				else
+					m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName, "TestConnection()");
 
 			return CommunicationType.None;
 		}

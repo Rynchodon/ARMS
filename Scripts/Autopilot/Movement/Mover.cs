@@ -21,6 +21,9 @@ namespace Rynchodon.Autopilot.Movement
 
 		#endregion
 
+		/// <summary>Fraction of force used to calculate maximum speed.</summary>
+		public const float AvailableForceRatio = 0.5f;
+
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
 		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
 		private const float MinForceRatio = 0.1f;
@@ -180,7 +183,7 @@ namespace Rynchodon.Autopilot.Movement
 			float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
 			if (landing)
 			{
-				float landingSpeed = distance * 0.25f;
+				float landingSpeed = Math.Max(distance * 0.2f, 0.2f);
 				if (relSpeedLimit > landingSpeed)
 					relSpeedLimit = landingSpeed;
 			}
@@ -311,13 +314,13 @@ namespace Rynchodon.Autopilot.Movement
 				return 0f;
 
 			direct = Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.GetDirectionVector(direct));
-			float force = myThrust.GetForceInDirection(direct, true);
+			float force = myThrust.GetForceInDirection(direct, true) * AvailableForceRatio;
 			if (force < 1f)
 			{
 				myLogger.debugLog("No thrust available in direction: " + direct, "MaximumSpeed()", Logger.severity.DEBUG);
 				return 0f;
 			}
-			float accel = -force / Block.Physics.Mass * 0.5f;
+			float accel = -force / Block.Physics.Mass;
 			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
 			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 2f); // capped for the sake of autopilot's reaction time
 		}
@@ -682,8 +685,6 @@ namespace Rynchodon.Autopilot.Movement
 					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "CalcRotate()", Logger.severity.INFO);
 					new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
 				}
-				else
-					myLogger.debugLog("Stuck, but no obstruction", "MoveAndRotate()", Logger.severity.WARNING);
 			}
 
 			// clamp values and invert operations MoveAndRotate will perform

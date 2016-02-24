@@ -130,6 +130,11 @@ O <distance> <direction>, ... : generic form is a comma separated list of distan
 Example - [ O 500 upward : B Antenna : G Platform ] - fly to 500m above Antenna on Platform
 Example - [ O 100 forward, 500 upward : B Antenna : G Platform ] - fly to 100m ahead of and 500m above Antenna
 
+Orbit, <target> : Flies in circles around an entity, <target> can be "Asteroid", "Planet", or the name of a grid. The orbit starts from the current position of the Autopilot. For a planet, the Autopilot will attempt to achieve a true orbit.
+Example - [ Orbit, Asteroid ] - Orbit the nearest asteroid.
+Example - [ Orbit, Planet ] - Orbit the nearest planet.
+Example - [ O 500 upward ; B Antenna ; G Platform ; Orbit, Platform ] - fly to 500m above Antenna on Platform, then orbit Platform.
+
 P <distance> : how close the grid needs to fly to the destination, default is 100m. For landing, used as the holding distance.
 Example - [ P 10 : F 0, 0, -100 ] - Fly 100m forward, to within 10m
 

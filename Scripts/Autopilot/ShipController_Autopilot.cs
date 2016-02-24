@@ -474,8 +474,8 @@ namespace Rynchodon.Autopilot
 				m_customInfo_build = temp;
 				SendCustomInfo();
 			}
-			else
-				m_logger.debugLog("no change in custom info", "UpdateCustomInfo()");
+			//else
+			//	m_logger.debugLog("no change in custom info", "UpdateCustomInfo()");
 
 			m_customInfo_build.Clear();
 		}
