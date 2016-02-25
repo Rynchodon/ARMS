@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
+using VRage.Game;
+using VRage.Game.Entity;
 
 namespace Rynchodon.Weapons
 {
@@ -101,15 +101,19 @@ namespace Rynchodon.Weapons
 
 		public static Ammo GetLoadedAmmo(IMyCubeBlock weapon)
 		{
-			var invOwn = (weapon as IMyInventoryOwner);
-			if (invOwn == null)
-				throw new InvalidOperationException("not an IMyInventoryOwner: " + weapon.getBestName());
-			var inv = invOwn.GetInventory(0).GetItems();
-			if (inv.Count == 0)
+			MyEntity entity = (MyEntity)weapon;
+			if (!entity.HasInventory)
+				throw new InvalidOperationException("Has no inventory: " + weapon.getBestName());
+
+			MyInventoryBase inv = entity.GetInventoryBase(0);
+			if (inv.GetItemsCount() == 0)
 				return null;
 
+			MyDefinitionId magazineId;
+			try { magazineId = inv.GetItems()[0].Content.GetId(); }
+			catch (IndexOutOfRangeException)
+			{ return null; }
 			Ammo value;
-			MyDefinitionId magazineId = inv[0].Content.GetId();
 			if (KnownDefinitions_Ammo.TryGetValue(magazineId, out value))
 				return value;
 

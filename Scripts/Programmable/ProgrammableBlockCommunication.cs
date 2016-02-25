@@ -1,19 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System; // (partial) from mscorlib.dll
+using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
+using System.Text; // from mscorlib.dll
 
-using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using VRageMath;
-using VRage.Game;
+using Sandbox.ModAPI.Ingame; // from Sandbox.Common.dll
+using Sandbox.ModAPI.Interfaces; // (partial) from Sandbox.Common.dll
+using VRage.Game; // from VRage.Game.dll
+using VRageMath; // from VRage.Math.dll
 
 /*
- * accessible from in game script:
- * Sandbox.Common.ObjectBuilders
- * Sandbox.Common.ObjectBuilders.Definitions
- * Sandbox.Definitions
- * Sandbox.Game.Gui
- * VRage.ObjectBuilders
+ * allowed namespaces for in game script:
+ * 
+ * System.Collections; // from mscorlib.dll
+ * System.Globalization // from mscorlib.dll
+ * System.Linq // from System.Core.dll
+ * System.Text // from mscorlib.dll
+ * System.Text.RegularExpressions // from System.dll
+ * 
+ * Medieval.ObjectBuilders // from MedievalEngineers.ObjectBuilders.dll
+ * Medieval.ObjectBuilders.Definitions // from MedievalEngineers.ObjectBuilders.dll
+ * Sandbox.Common.ObjectBuilders // from MedievalEngineers.ObjectBuilders.dll and SpaceEngineers.ObjectBuilders.dll
+ * Sandbox.Common.ObjectBuilders.Definitions // from SpaceEngineers.ObjectBuilders.dll
+ * Sandbox.Game.Gui // from Sandbox.Game.dll
+ * VRage.ObjectBuilders // from VRage.Game.dll
  */
 
 namespace Rynchodon.Programmable

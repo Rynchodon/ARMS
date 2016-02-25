@@ -1,13 +1,9 @@
-﻿#define LOG_ENABLED //remove on build
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Rynchodon.Attached;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
+using VRage.Game;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 

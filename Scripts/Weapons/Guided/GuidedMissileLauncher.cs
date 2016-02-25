@@ -4,10 +4,10 @@ using Rynchodon.AntennaRelay;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
-using Interfaces = Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.Guided
 {
@@ -55,7 +55,7 @@ namespace Rynchodon.Weapons.Guided
 		private IMyFunctionalBlock FuncBlock;
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
-		private readonly Interfaces.IMyInventory myInventory;
+		private readonly MyInventoryBase myInventory;
 		private readonly NetworkClient m_netClient;
 
 		private DateTime nextCheckInventory;
@@ -91,7 +91,7 @@ namespace Rynchodon.Weapons.Guided
 
 			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
-			myInventory = (CubeBlock as Interfaces.IMyInventoryOwner).GetInventory(0);
+			myInventory = ((MyEntity)CubeBlock).GetInventoryBase(0);
 
 			Registrar.Add(weapon.FuncBlock, this);
 			m_weaponTarget.GuidedLauncher = true;
@@ -120,7 +120,7 @@ namespace Rynchodon.Weapons.Guided
 			{
 				if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
 				{
-					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward 
+					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward
 						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
 					return false;
 				}
@@ -210,7 +210,7 @@ namespace Rynchodon.Weapons.Guided
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("failed to create GuidedMissile", "MissileBelongsTo()", Logger.severity.ERROR);
-				myLogger.alwaysLog("Exception: " + ex, "MissileBelongsTo()",  Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, "MissileBelongsTo()", Logger.severity.ERROR);
 			}
 
 			return true;

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Rynchodon.AntennaRelay;
 using Rynchodon.Settings;
-using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.ModAPI;
-using VRageMath;
 
 namespace Rynchodon.Weapons
 {
@@ -62,9 +60,9 @@ namespace Rynchodon.Weapons
 			{
 				if (grid.IsStatic)
 					return CanTargetType(TargetType.Station);
-				if (grid.GridSizeEnum == Sandbox.Common.ObjectBuilders.MyCubeSize.Large)
+				if (grid.GridSizeEnum == MyCubeSize.Large)
 					return CanTargetType(TargetType.LargeGrid);
-				if (grid.GridSizeEnum == Sandbox.Common.ObjectBuilders.MyCubeSize.Small)
+				if (grid.GridSizeEnum == MyCubeSize.Small)
 					return CanTargetType(TargetType.SmallGrid);
 
 				throw new Exception("Unknown grid size: " + grid.DisplayName);

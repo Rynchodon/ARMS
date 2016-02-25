@@ -8,6 +8,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -466,7 +467,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 			{
-				IMyInventory drillInventory = (IMyInventory)Ingame.TerminalBlockExtentions.GetInventory(drill, 0);
+				MyInventoryBase drillInventory = ((MyEntity)drill).GetInventoryBase(0);
+
 				content += drillInventory.CurrentVolume;
 				capacity += drillInventory.MaxVolume;
 				drillCount++;

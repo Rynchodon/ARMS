@@ -5,6 +5,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;

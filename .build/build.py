@@ -212,7 +212,7 @@ for file in os.listdir(finalDirDev):
 # get modules
 os.chdir(startDir + '/Scripts/')
 for file in os.listdir(startDir + '/Scripts/'):
-	if file[0] == '.':
+	if file[0] == '.' or file == "Programmable":
 		continue
 	if os.path.isdir(file):
 		modules.append(file)

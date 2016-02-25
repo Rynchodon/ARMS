@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Threading;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -111,7 +112,7 @@ namespace Rynchodon.Weapons
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
-			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !(weapon is IMyInventoryOwner) || !(weapon is Ingame.IMyUserControllableGun))
+			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !((MyEntity)weapon).HasInventory || !(weapon is Ingame.IMyUserControllableGun))
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
