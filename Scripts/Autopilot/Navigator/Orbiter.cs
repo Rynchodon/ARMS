@@ -52,15 +52,18 @@ namespace Rynchodon.Autopilot.Navigator
 				case "asteroid":
 					SetOrbitClosestVoxel(true);
 					CalcFakeOrbitSpeedForce();
+					m_logger.debugLog("Orbiting asteroid: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
 					break;
 				case "planet":
 					SetOrbitClosestVoxel(false);
 					m_orbitSpeed = (float)Math.Sqrt((OrbitEntity as MyPlanet).GetGravityMultiplier(m_navBlock.WorldPosition) * 9.81f * m_altitude);
 					if (m_orbitSpeed < 1f)
 						CalcFakeOrbitSpeedForce();
+					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
 					break;
 				default:
 					m_gridFinder = new GridFinder(navSet, mover.Block, entity, mustBeRecent: true);
+					m_logger.debugLog("Searching for a grid: " + entity, "Orbiter()", Logger.severity.INFO);
 					break;
 			}
 
@@ -80,6 +83,7 @@ namespace Rynchodon.Autopilot.Navigator
 			OrbitEntity = entity;
 			m_altitude = altitude;
 			CalcFakeOrbitSpeedForce();
+			m_logger.debugLog("Orbiting: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
 		}
 
 		private void SetOrbitClosestVoxel(bool asteroid)
@@ -188,7 +192,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (OrbitEntity == null)
 				m_mover.StopRotate();
-			else if (m_navSet.DistanceLessThan(10f))
+			else if (OrbitEntity is MyPlanet || m_navSet.DistanceLessThan(10f))
 				m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_faceDirection));
 			else
 				m_mover.CalcRotate();

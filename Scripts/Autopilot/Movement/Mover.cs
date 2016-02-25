@@ -235,14 +235,14 @@ namespace Rynchodon.Autopilot.Movement
 				float forceRatio = moveForceRatio.GetDim(i);
 				if (forceRatio < 1f && forceRatio > -1f)
 				{
-					// minimum force ratio is needed because SE is being strange about gravity
-					if (forceRatio < MinForceRatio && forceRatio > -MinForceRatio && myThrust.m_worldGravity.LengthSquared() > 0.1f)
-					{
-						if (targetDim > 0.1f)
-							moveForceRatio.SetDim(i, MinForceRatio);
-						else
-							moveForceRatio.SetDim(i, -MinForceRatio);
-					}
+					//// minimum force ratio is needed because SE is being strange about gravity
+					//if (forceRatio < MinForceRatio && forceRatio > -MinForceRatio && myThrust.m_worldGravity.LengthSquared() > 0.1f)
+					//{
+					//	if (targetDim > 0.1f)
+					//		moveForceRatio.SetDim(i, MinForceRatio);
+					//	else
+					//		moveForceRatio.SetDim(i, -MinForceRatio);
+					//}
 					continue;
 				}
 
