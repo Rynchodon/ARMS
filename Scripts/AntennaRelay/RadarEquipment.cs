@@ -404,7 +404,7 @@ namespace Rynchodon.AntennaRelay
 				if (myDefinition.PassiveDetect_Radar > 0)
 					PassiveDetection(true);
 
-				if (detectedObjects_list.Count > 0 && CubeBlock != null && MyAPIGateway.Multiplayer.IsServer)
+				if (detectedObjects_list.Count > 0 && CubeBlock != null)
 				{
 					detectedObjects_list.Sort();
 					int transmit = Math.Min(detectedObjects_list.Count, myDefinition.MaxTargets_Tracking);

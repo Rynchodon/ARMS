@@ -20,11 +20,14 @@ namespace Rynchodon.AntennaRelay
 
 		static ProgrammableBlock()
 		{
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage, Handler_SendMessage);
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage_Client, Handler_SendMessage);
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage_Server, Handler_SendMessage);
 		}
 
 		private static void Handler_SendMessage(byte[] message, int pos)
 		{
+			bool clientSent = (MessageHandler.SubMod)message[pos - 1] == MessageHandler.SubMod.PB_SendMessage_Client;
+
 			long programId = ByteConverter.GetLong(message, ref pos);
 
 			ProgrammableBlock program;
@@ -44,7 +47,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			program.SendMessage(text[0], text[1], text[2]);
+			program.SendMessage(text[0], text[1], text[2], clientSent);
 		}
 
 		private Ingame.IMyProgrammableBlock m_progBlock;
@@ -126,51 +129,76 @@ namespace Rynchodon.AntennaRelay
 				parameter.Append(fieldSeparator);
 			});
 
-			if (m_progBlock.TryRun(parameter.ToString()))
-				m_logger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
-			else
+			if (!m_progBlock.TryRun(parameter.ToString()))
+			//	m_logger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
+			//else
 				m_logger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
 		}
 
-		private void SendMessage(string recipientGrid, string recipientBlock, string message)
+		private void SendMessage(string recipientGrid, string recipientBlock, string message, bool clientSent)
 		{
+			bool sentToSelf = !clientSent || !MyAPIGateway.Multiplayer.IsServer;
+			m_logger.debugLog("client sent: " + clientSent + ", is server: " + MyAPIGateway.Multiplayer.IsServer + ", sentToSelf: " + sentToSelf, "SendMessage()");
+
 			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
 			{
 				m_logger.debugLog("not connected to a network", "SendMessage()", Logger.severity.DEBUG);
+				if (sentToSelf && MyAPIGateway.Session.Player != null)
+					(m_block as IMyTerminalBlock).AppendCustomInfo("Failed to send message:\nNot connected to a network");
 				return;
 			}
 
-			Registrar.ForEach((ProgrammableBlock program) => {
-				IMyCubeBlock block = program.m_block;
-				IMyCubeGrid grid = block.CubeGrid;
-				if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
-				{
-					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
-					program.m_networkClient.GetStorage(); // force update of storage
-					store.Receive(new Message(message, block, m_block));
-				}
-			});
+			byte count = 0;
+
+			if (sentToSelf)
+				Registrar.ForEach((ProgrammableBlock program) => {
+					IMyCubeBlock block = program.m_block;
+					IMyCubeGrid grid = block.CubeGrid;
+					if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+					{
+						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+						program.m_networkClient.GetStorage(); // force update of storage
+						store.Receive(new Message(message, block, m_block));
+						count++;
+					}
+				});
 
 			Registrar.ForEach((ShipController_Autopilot autopilot) => {
 				IMyCubeBlock block = autopilot.m_block.CubeBlock;
 				IMyCubeGrid grid = block.CubeGrid;
 				if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
 				{
-					m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
-					autopilot.m_block.NetClient.GetStorage(); // force update of storage
-					store.Receive(new Message(message, block, m_block));
+					if (MyAPIGateway.Multiplayer.IsServer)
+					{
+						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+						autopilot.m_block.NetClient.GetStorage(); // force update of storage
+						store.Receive(new Message(message, block, m_block));
+					}
+					count++;
 				}
 			});
+
+			if (sentToSelf && MyAPIGateway.Session.Player != null)
+				(m_block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));
 		}
 
 		private void HandleMessage(Message received)
 		{
-			string param = received.SourceGridName + messageSeparator + received.SourceBlockName + messageSeparator+received.Content;
+			string param = received.SourceGridName + messageSeparator + received.SourceBlockName + messageSeparator + received.Content;
+
 			if (m_progBlock.TryRun(param))
+			{
 				m_logger.debugLog("Sent message to program", "HandleMessage()", Logger.severity.DEBUG);
+				if (MyAPIGateway.Session.Player != null)
+					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message");
+			}
 			else
+			{
 				m_logger.debugLog("Failed to send message to program", "HandleMessage()", Logger.severity.WARNING);
+				if (MyAPIGateway.Session.Player != null)
+					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message but failed to run program.");
+			}
 		}
 
 	}

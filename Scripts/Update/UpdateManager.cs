@@ -70,45 +70,6 @@ namespace Rynchodon.Update
 
 			#endregion
 
-			#region Antenna Communication
-
-			Action<IMyCubeBlock> nodeConstruct = block => {
-				NetworkNode node = new NetworkNode(block);
-				RegisterForUpdates(100, node.Update100, block);
-			};
-
-			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
-
-			RegisterForCharacter(character => {
-				if (!character.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
-				{
-					NetworkNode node = new NetworkNode(character);
-					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
-				}
-			});
-
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
-				TextPanel tp = new TextPanel(block);
-				RegisterForUpdates(100, tp.Update100, block);
-			});
-
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
-				ProgrammableBlock pb = new ProgrammableBlock(block);
-				RegisterForUpdates(100, pb.Update100, block);
-			});
-
-			RegisterForPlayer(player => {
-				if (!player.PlayerID.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
-				{
-					Player p = new Player(player);
-					RegisterForUpdates(100, p.Update100, player);
-				}
-			});
-
-			#endregion
-
 			#region Weapons
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
@@ -209,6 +170,17 @@ namespace Rynchodon.Update
 
 			#endregion
 
+			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
+				var od = new OreDetector(block);
+				RegisterForUpdates(1000, od.Update, block);
+			});
+		}
+
+		/// <summary>
+		/// Scripts that use UpdateManager and run on clients as well as on server shall be added here.
+		/// </summary>
+		private void RegisterScripts_ClientAndServer()
+		{
 			#region Attached
 
 			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
@@ -245,20 +217,44 @@ namespace Rynchodon.Update
 
 			#endregion
 
-			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
-				var od = new OreDetector(block);
-				RegisterForUpdates(1000, od.Update, block);
+			#region Antenna Communication
+
+			Action<IMyCubeBlock> nodeConstruct = block => {
+				NetworkNode node = new NetworkNode(block);
+				RegisterForUpdates(100, node.Update100, block);
+			};
+
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
+
+			RegisterForCharacter(character => {
+				if (!character.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
+				{
+					NetworkNode node = new NetworkNode(character);
+					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
+				}
 			});
 
-			RegisterForPlayerLeaves(UserSettings.OnPlayerLeave);
-		}
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
+				ProgrammableBlock pb = new ProgrammableBlock(block);
+				if (MyAPIGateway.Multiplayer.IsServer)
+					RegisterForUpdates(100, pb.Update100, block);
+			});
 
-		/// <summary>
-		/// Scripts that use UpdateManager and run on clients as well as on server shall be added here.
-		/// </summary>
-		private void RegisterScripts_ClientAndServer()
-		{
-			UserSettings.CreateLocal();
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
+				TextPanel tp = new TextPanel(block);
+				if (MyAPIGateway.Multiplayer.IsServer)
+					RegisterForUpdates(100, tp.Update100, block);
+			});
+
+			if (MyAPIGateway.Session.Player != null)
+			{
+				Player p = new Player();
+				RegisterForUpdates(100, p.Update100);
+			}
+
+			#endregion
 
 			#region Autopilot
 

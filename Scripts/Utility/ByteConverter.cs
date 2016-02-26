@@ -7,8 +7,6 @@ namespace Rynchodon
 	public static class ByteConverter
 	{
 
-		private static readonly byte unknownChar = Convert.ToByte('?');
-
 		#region Union
 
 		[StructLayout(LayoutKind.Explicit)]
@@ -18,6 +16,8 @@ namespace Rynchodon
 			public short s;
 			[FieldOffset(0)]
 			public ushort us;
+			[FieldOffset(0)]
+			public char c;
 
 			[FieldOffset(0)]
 			public byte b0;
@@ -211,6 +211,11 @@ namespace Rynchodon
 			AppendBytes(bytes, new byteUnion16() { us = us });
 		}
 
+		public static void AppendBytes(List<byte> bytes, char c)
+		{
+			AppendBytes(bytes, new byteUnion16() { c = c });
+		}
+
 		public static void AppendBytes(List<byte> bytes, int i)
 		{
 			AppendBytes(bytes, new byteUnion32() { i = i });
@@ -241,25 +246,10 @@ namespace Rynchodon
 			AppendBytes(bytes, new byteUnion64() { d = d });
 		}
 
-		public static void AppendBytes(List<byte> bytes, char c)
-		{
-			int i = (int)c;
-			if (i < 256)
-				AppendBytes(bytes, (byte)i);
-			else
-				AppendBytes(bytes, unknownChar);
-		}
-
 		public static void AppendBytes(List<byte> bytes, string s)
 		{
 			foreach (char c in s)
-			{
-				int i = (int)c;
-				if (i < 256)
-					AppendBytes(bytes, (byte)i);
-				else
-					AppendBytes(bytes,unknownChar);
-			}
+				AppendBytes(bytes, c);
 		}
 
 		public static void AppendBytes(List<byte> bytes, object data)
@@ -366,6 +356,11 @@ namespace Rynchodon
 			return GetByteUnion16(bytes, ref pos).us;
 		}
 
+		public static char GetChar(byte[] bytes, ref int pos)
+		{
+			return GetByteUnion16(bytes, ref pos).c;
+		}
+
 		public static int GetInt(byte[] bytes, ref int pos)
 		{
 			return GetByteUnion32(bytes, ref pos).i;
@@ -394,11 +389,6 @@ namespace Rynchodon
 		public static double GetDouble(byte[] bytes, ref int pos)
 		{
 			return GetByteUnion64(bytes, ref pos).d;
-		}
-
-		public static char GetChar(byte[] bytes, ref int pos)
-		{
-			return (char)GetByte(bytes, ref pos);
 		}
 
 		public static object GetOfType(byte[] bytes, TypeCode code, ref int pos)
@@ -433,7 +423,7 @@ namespace Rynchodon
 
 		public static string GetString(byte[] bytes, ref int pos)
 		{
-			return GetString(bytes, bytes.Length - pos, ref pos);
+			return GetString(bytes, (bytes.Length - pos) / 2, ref pos);
 		}
 
 		public static string GetString(byte[] bytes, int length, ref int pos)

@@ -47,26 +47,7 @@ namespace Rynchodon.AntennaRelay
 
 		private const string descrEnd = "Autopilot Detected";
 
-		private static Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
-		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
-
-		static Player()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			playersCached = null;
-		}
-
-		public static void OnLeave(IMyPlayer player)
-		{
-			playersCached.Remove(player);
-		}
-
-		public readonly IMyPlayer myPlayer;
+		private IMyPlayer myPlayer { get { return MyAPIGateway.Session.Player; } }
 
 		private readonly Logger myLogger;
 
@@ -74,12 +55,9 @@ namespace Rynchodon.AntennaRelay
 
 		private NetworkNode m_node;
 
-		public Player(IMyPlayer player)
+		public Player()
 		{
-			myLogger = new Logger(GetType().Name, () => player.DisplayName);
-			myPlayer = player;
-
-			playersCached.Add(player, this);
+			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName);
 
 			Data.Add(ExtensionsRelations.Relations.Enemy, new ForRelations());
 			Data.Add(ExtensionsRelations.Relations.Neutral, new ForRelations());
@@ -87,19 +65,19 @@ namespace Rynchodon.AntennaRelay
 			Data.Add(ExtensionsRelations.Relations.Owner, new ForRelations());
 
 			// cleanup old GPS
-			var list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
+			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
 				myLogger.debugLog("# of gps: " + list.Count, "Player()");
-				foreach (var gps in list)
+				foreach (IMyGps gps in list)
 					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
 						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
-						MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);
+						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 					}
 			}
 
-			myLogger.debugLog("initialized, player id: " + player.PlayerID + ", identity id: " + player.IdentityId, "Player()", Logger.severity.DEBUG);
+			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, "Player()", Logger.severity.DEBUG);
 		}
 
 		public void Update100()
@@ -132,11 +110,10 @@ namespace Rynchodon.AntennaRelay
 
 			Vector3D myPosition = character.GetPosition();
 
-			UserSettings useSet = UserSettings.GetForPlayer(myPlayer.PlayerID);
-			Data[ExtensionsRelations.Relations.Enemy].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.EnemiesOnHUD);
-			Data[ExtensionsRelations.Relations.Neutral].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.NeutralOnHUD);
-			Data[ExtensionsRelations.Relations.Faction].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.FactionOnHUD);
-			Data[ExtensionsRelations.Relations.Owner].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.OwnerOnHUD);
+			Data[ExtensionsRelations.Relations.Enemy].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.EnemiesOnHUD);
+			Data[ExtensionsRelations.Relations.Neutral].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.NeutralOnHUD);
+			Data[ExtensionsRelations.Relations.Faction].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.FactionOnHUD);
+			Data[ExtensionsRelations.Relations.Owner].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.OwnerOnHUD);
 
 			foreach (var value in Data.Values)
 				value.Prepare();
@@ -219,12 +196,13 @@ namespace Rynchodon.AntennaRelay
 				{
 					relateData.activeGPS[index] = MyAPIGateway.Session.GPS.Create(name, description, coords, true, true);
 					myLogger.debugLog("adding new GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.AddGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 				}
 				else if (Update(relateData.activeGPS[index], name, description, coords))
 				{
 					myLogger.debugLog("updating GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.ModifyGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index].UpdateHash(); // necessary if there are to be further modifications
 				}
 				//else
@@ -237,7 +215,7 @@ namespace Rynchodon.AntennaRelay
 				if (relateData.activeGPS[index] != null)
 				{
 					myLogger.debugLog("removing GPS " + index + ", name: " + relateData.activeGPS[index].Name + ", coords: " + relateData.activeGPS[index].Coords, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index] = null;
 				}
 

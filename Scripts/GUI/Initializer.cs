@@ -75,7 +75,7 @@ namespace Rynchodon.GUI
 				ByteConverter.AppendBytes(message, (long)arg.Value);
 			}
 
-			if (MyAPIGateway.Multiplayer.SendMessageToServer(MessageHandler.ModId, message.ToArray()))
+			if (MyAPIGateway.Multiplayer.SendMessageToSelf(message.ToArray()))
 				m_logger.debugLog("sent message", "DisplayEntities()", Logger.severity.DEBUG);
 			else
 				m_logger.alwaysLog("failed to send message", "DisplayEntities()", Logger.severity.WARNING);
@@ -87,30 +87,52 @@ namespace Rynchodon.GUI
 		{
 			if (args.Count != 3)
 			{
-				m_logger.debugLog("wrong number of arguments, expected 3, got " + args.Count, "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				m_logger.debugLog("Wrong number of arguments, expected 3, got " + args.Count, "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				if (MyAPIGateway.Session.Player != null)
+					block.AppendCustomInfo("Failed to send message:\nWrong number of arguments, expected 3, got " + args.Count + '\n');
 				return;
 			}
 
-			ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.PB_SendMessage);
+			if (MyAPIGateway.Multiplayer.IsServer)
+				ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.PB_SendMessage_Server);
+			else
+				ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.PB_SendMessage_Client);
 			ByteConverter.AppendBytes(message, block.EntityId);
 
 			for (int i = 0; i < 3; i++)
 			{
 				if (args[i].TypeCode != TypeCode.String)
 				{
-					m_logger.debugLog("TerminalActionParameter is of wrong type, expected String, got " + args[i].TypeCode, "DisplayEntities()", Logger.severity.WARNING);
+					m_logger.debugLog("TerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode, "DisplayEntities()", Logger.severity.WARNING);
+					if (MyAPIGateway.Session.Player != null)
+						block.AppendCustomInfo("Failed to send message:\nTerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode + '\n');
 					return;
 				}
-				string asString = (string)args[i].Value;
 				ByteConverter.AppendBytes(message, (string)args[i].Value);
 				if (i != 2)
 					ByteConverter.AppendBytes(message, ProgrammableBlock.messageSeparator);
 			}
 
-			if (MyAPIGateway.Multiplayer.SendMessageToServer(MessageHandler.ModId, message.ToArray()))
-				m_logger.debugLog("sent message", "ProgrammableBlock_SendMessage()", Logger.severity.DEBUG);
+			byte[] toArray = message.ToArray();
+
+			bool success;
+
+			if (MyAPIGateway.Multiplayer.IsServer)
+				success = MyAPIGateway.Multiplayer.SendMessageToSelf(toArray);
 			else
-				m_logger.alwaysLog("failed to send message", "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+			{
+				success = MyAPIGateway.Multiplayer.SendMessageToSelf(toArray);
+				success = success || MyAPIGateway.Multiplayer.SendMessageToServer(toArray);
+			}
+
+			if (success)
+				m_logger.debugLog("Sent message", "ProgrammableBlock_SendMessage()", Logger.severity.DEBUG);
+			else
+			{
+				m_logger.alwaysLog("Message too long", "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				if (MyAPIGateway.Session.Player != null)
+					block.AppendCustomInfo("Failed to send message:\nMessage too long (" + message.Count + " > 4096 bytes)\n");
+			}
 			message.Clear();
 		}
 

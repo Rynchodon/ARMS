@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
@@ -63,10 +62,9 @@ namespace Rynchodon.AntennaRelay
 		private Logger myLogger = new Logger(null, "TextPanel");
 
 		private IMyTerminalBlock myTermBlock;
-
 		private NetworkClient m_networkClient;
-
 		private Option m_options;
+		private List<sortableLastSeen> m_sortableList;
 
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
@@ -110,6 +108,9 @@ namespace Rynchodon.AntennaRelay
 
 		private void Display(List<long> entityIds = null)
 		{
+			if (entityIds != null)
+				UpdateInstructions();
+
 			myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
 
 			NetworkStorage store = m_networkClient.GetStorage();
@@ -119,27 +120,35 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			List<sortableLastSeen> sortableSeen = entityIds == null ? AllLastSeen(store) : SelectLastSeen(store, entityIds);
+			m_sortableList = ResourcePool<List<sortableLastSeen>>.Get();
 
-			if (sortableSeen.Count == 0)
+			if (entityIds == null)
+				AllLastSeen(store);
+			else
+				SelectLastSeen(store, entityIds);
+
+			if (m_sortableList.Count == 0)
 			{
 				m_textPanel.WritePublicText("No entities detected");
 				return;
 			}
 
-			sortableSeen.Sort();
+			m_sortableList.Sort();
 
 			StringBuilder displayText = new StringBuilder();
 			displayText.Append(timeString);
 			displayText.Append(DateTime.Now.ToLongTimeString());
 			displayText.AppendLine();
 			int count = 0;
-			foreach (sortableLastSeen sortable in sortableSeen)
+			foreach (sortableLastSeen sortable in m_sortableList)
 			{
 				sortable.TextForPlayer(displayText, count++);
 				if (count >= 20)
 					break;
 			}
+
+			m_sortableList.Clear();
+			ResourcePool<List<sortableLastSeen>>.Return(m_sortableList);
 
 			string displayString = displayText.ToString();
 
@@ -147,10 +156,9 @@ namespace Rynchodon.AntennaRelay
 			m_textPanel.WritePublicText(displayText.ToString());
 		}
 
-		private List<sortableLastSeen> AllLastSeen(NetworkStorage store)
+		private void AllLastSeen(NetworkStorage store)
 		{
 			Vector3D myPos = m_block.GetPosition();
-			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
 
 			store.ForEachLastSeen((LastSeen seen) => {
 				IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
@@ -158,17 +166,14 @@ namespace Rynchodon.AntennaRelay
 					return;
 
 				ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
-				sortableSeen.Add(new sortableLastSeen(myPos, seen, relations, m_options));
+				m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
 				myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display()");
 			});
-
-			return sortableSeen;
 		}
 
-		private List<sortableLastSeen> SelectLastSeen(NetworkStorage store, List<long> entityIds)
+		private void SelectLastSeen(NetworkStorage store, List<long> entityIds)
 		{
 			Vector3D myPos = m_block.GetPosition();
-			List<sortableLastSeen> sortableSeen = new List<sortableLastSeen>();
 
 			foreach (long id in entityIds)
 			{
@@ -176,12 +181,10 @@ namespace Rynchodon.AntennaRelay
 				if (store.TryGetLastSeen(id, out seen))
 				{
 					ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
-					sortableSeen.Add(new sortableLastSeen(myPos, seen, relations, m_options));
+					m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
 					myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display_FromProgram()");
 				}
 			}
-
-			return sortableSeen;
 		}
 
 		private void DisplyAutopilotStatus()
