@@ -8,8 +8,7 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// <para>Stops the ship</para>
 	/// </summary>
-	/// Do not try to make this manage rotation, it may have been set for a reason.
-	public class Stopper : NavigatorMover
+	public class Stopper : NavigatorMover, INavigatorRotator
 	{
 
 		private readonly Logger _logger;
@@ -46,6 +45,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
+				m_mover.StopRotate();
 				_logger.debugLog("stopped", "Stopper()");
 				m_navSet.OnTaskComplete_NavRot();
 				if (m_exitAfter)
@@ -68,6 +68,11 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine("Exit after stopping");
 			else
 				customInfo.AppendLine("Stopping");
+		}
+
+		public void Rotate()
+		{
+			m_mover.CalcRotate();
 		}
 
 	}

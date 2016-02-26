@@ -378,8 +378,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate()
 		{
-			myLogger.debugLog("m_moveEnableDampeners: " + m_moveEnableDampeners + ", m_moveAccel: " + m_moveAccel, "CalcRotate()");
-			if (m_moveEnableDampeners || m_moveAccel.LengthSquared() > 100f)
+			if (m_moveAccel.LengthSquared() > 100f)
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, m_moveAccel));
 			else
 				if (!InGravity_LevelOff())
@@ -557,6 +556,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaxAngleVelocity(displacement, secondsSinceLast);
 
+			// adjustment to face a moving entity
 			if (targetEntity != null)
 			{
 				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity;
@@ -576,7 +576,7 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
 			}
 
-			Vector3 accel = (targetVelocity - angularVelocity) / secondsSinceLast;
+			Vector3 accel = targetVelocity - angularVelocity;
 
 			rotateForceRatio = accel / (myGyro.torqueAccelRatio * secondsSinceLast * gyroForce);
 
@@ -637,7 +637,7 @@ namespace Rynchodon.Autopilot.Movement
 		private float MaxAngleSpeed(float accel, float dist)
 		{
 			//myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
-			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist); // capped for the sake of autopilot's reaction time
+			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist * 2f); // capped for the sake of autopilot's reaction time
 		}
 
 		/// <summary>

@@ -211,7 +211,7 @@ namespace Rynchodon
         int inventoryCount = blocks[bi].GetInventoryCount();
         for (int ii = 0; ii < inventoryCount; ii++)
         {
-          VRage.ModAPI.IMyInventory inventory = blocks[bi].GetInventory(ii);
+          VRage.ModAPI.Ingame.IMyInventory inventory = blocks[bi].GetInventory(ii);
 
           uraniumMass += inventory.CurrentMass;
         }
@@ -284,7 +284,7 @@ namespace Rynchodon
         int inventoryCount = blocks[bi].GetInventoryCount();
         for (int ii = 0; ii < inventoryCount; ii++)
         {
-          VRage.ModAPI.IMyInventory inventory = blocks[bi].GetInventory(ii);
+          VRage.ModAPI.Ingame.IMyInventory inventory = blocks[bi].GetInventory(ii);
 
           VRage.MyFixedPoint cv = inventory.CurrentVolume;
           VRage.MyFixedPoint mv = inventory.MaxVolume;
