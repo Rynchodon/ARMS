@@ -12,6 +12,7 @@ using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.ModAPI;
@@ -138,7 +139,6 @@ namespace Rynchodon.Update
 				#endregion
 
 				#region Fixed
-
 
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 				{
@@ -404,7 +404,7 @@ namespace Rynchodon.Update
 				&& PlayerScriptConstructors.Count == 0
 				&& GridScriptConstructors.Count == 0)
 			{
-				myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
+				myLogger.alwaysLog("No scripts registered, terminating manager", "Start()", Logger.severity.INFO);
 				ManagerStatus = Status.Terminated;
 				return;
 			}
@@ -422,6 +422,37 @@ namespace Rynchodon.Update
 
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 			ManagerStatus = Status.Started;
+
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowAutopilot))
+			{
+				myLogger.alwaysLog("Disabling autopilot blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Large")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Small")).Enabled = false;
+			}
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
+			{
+				myLogger.alwaysLog("Disabling guided missile blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R12VP_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R8EA_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_B3MP_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LargeMissileTurret), "Souper_Missile_Defense_Turret")).Enabled = false;
+			}
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
+			{
+				myLogger.alwaysLog("Disabling radar blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "LargeBlockRadarRynAR")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "SmallBlockRadarRynAR")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "Radar_A_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "Radar_A_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadar_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadar_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadarOffset_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadarOffset_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "AWACSRadarLarge_JnSm")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "AWACSRadarSmall_JnSm")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Large")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Small")).Enabled = false;
+			}
 		}
 
 		/// <summary>
