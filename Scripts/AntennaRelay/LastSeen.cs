@@ -83,6 +83,11 @@ namespace Rynchodon.AntennaRelay
 			this.LastRadar = first.LastRadar.CompareTo(second.LastBroadcast) > 0 ? first.LastRadar : second.LastRadar;
 			this.LastJam = first.LastJam.CompareTo(second.LastBroadcast) > 0 ? first.LastJam : second.LastJam;
 
+			if (first.m_type == EntityType.None)
+				this.m_type = second.m_type;
+			else
+				this.m_type = first.m_type;
+
 			value_isValid = true;
 		}
 

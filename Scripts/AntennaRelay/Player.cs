@@ -28,7 +28,7 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		private class ForRelations
+		private class GpsData
 		{
 			/// <summary>LastSeen sorted by distance squared</summary>
 			public readonly List<DistanceSeen> distanceSeen = new List<DistanceSeen>();
@@ -46,12 +46,11 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private const string descrEnd = "Autopilot Detected";
-
 		private IMyPlayer myPlayer { get { return MyAPIGateway.Session.Player; } }
 
 		private readonly Logger myLogger;
 
-		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
+		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 
 		private NetworkNode m_node;
 
@@ -59,10 +58,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName);
 
-			Data.Add(ExtensionsRelations.Relations.Enemy, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Neutral, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Faction, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Owner, new ForRelations());
+			Data.Add(UserSettings.ByteSettingName.EnemiesOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.NeutralOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.FactionOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.OwnerOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.MissileOnHUD, new GpsData());
 
 			// cleanup old GPS
 			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
@@ -110,13 +110,11 @@ namespace Rynchodon.AntennaRelay
 
 			Vector3D myPosition = character.GetPosition();
 
-			Data[ExtensionsRelations.Relations.Enemy].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.EnemiesOnHUD);
-			Data[ExtensionsRelations.Relations.Neutral].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.NeutralOnHUD);
-			Data[ExtensionsRelations.Relations.Faction].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.FactionOnHUD);
-			Data[ExtensionsRelations.Relations.Owner].MaxOnHUD = UserSettings.GetSetting(UserSettings.ByteSettingName.OwnerOnHUD);
-
-			foreach (var value in Data.Values)
-				value.Prepare();
+			foreach (var pair in Data)
+			{
+				pair.Value.MaxOnHUD = UserSettings.GetSetting(pair.Key);
+				pair.Value.Prepare();
+			}
 
 			m_node.Storage.ForEachLastSeen((LastSeen seen) => {
 				if (!seen.isRecent())
@@ -128,15 +126,14 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 
-				if (!(seen.Entity is IMyCharacter || seen.Entity is IMyCubeGrid))
+				UserSettings.ByteSettingName setting;
+				if (!CanDisplay(seen, out setting))
 					return;
 
-				ExtensionsRelations.Relations relate = myPlayer.PlayerID.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy);
-
-				ForRelations relateData;
-				if (!Data.TryGetValue(relate, out relateData))
+				GpsData relateData;
+				if (!Data.TryGetValue(setting, out relateData))
 				{
-					myLogger.debugLog("failed to get relate data, relations: " + relate, "UpdateGPS()", Logger.severity.WARNING);
+					myLogger.debugLog("failed to get setting data, setting: " + setting, "UpdateGPS()", Logger.severity.WARNING);
 					return;
 				}
 
@@ -146,14 +143,14 @@ namespace Rynchodon.AntennaRelay
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 
-				myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
+				myLogger.debugLog("added to distanceSeen[" + setting + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
 			});
 
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
 		}
 
-		private void UpdateGPS(ExtensionsRelations.Relations relate, ForRelations relateData)
+		private void UpdateGPS(UserSettings.ByteSettingName setting, GpsData relateData)
 		{
 			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
 
@@ -171,14 +168,17 @@ namespace Rynchodon.AntennaRelay
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
 				string name;
-				switch (relate)
+				switch (setting)
 				{
-					case ExtensionsRelations.Relations.Faction:
-					case ExtensionsRelations.Relations.Owner:
+					case UserSettings.ByteSettingName.FactionOnHUD:
+					case UserSettings.ByteSettingName.OwnerOnHUD:
 						name = seen.Entity.DisplayName;
 						break;
+					case UserSettings.ByteSettingName.MissileOnHUD:
+						name = "Missile " + index;
+						break;
 					default:
-						name = relate.ToString() + ' ' + index;
+						name = setting.ToString() + ' ' + index;
 						break;
 				}
 
@@ -186,7 +186,7 @@ namespace Rynchodon.AntennaRelay
 				Vector3D coords = seen.GetPosition();
 
 				// cheat the position a little to avoid clashes
-				double cheat = 0.001 / (double)(index+1);
+				double cheat = 0.001 / (double)(index + 1);
 				coords.ApplyOperation((d) => { return d + cheat; }, out coords);
 
 				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
@@ -202,8 +202,8 @@ namespace Rynchodon.AntennaRelay
 				{
 					myLogger.debugLog("updating GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
 					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
-					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index].UpdateHash(); // necessary if there are to be further modifications
+					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 				}
 				//else
 				//	myLogger.debugLog("no need to update GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
@@ -276,6 +276,39 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			return updated;
+		}
+
+		private bool CanDisplay(LastSeen seen, out UserSettings.ByteSettingName settingName)
+		{
+			switch (seen.Type)
+			{
+				case LastSeen.EntityType.Character:
+				case LastSeen.EntityType.Grid:
+					switch (myPlayer.PlayerID.getRelationsTo(seen.Entity))
+					{
+						case ExtensionsRelations.Relations.Enemy:
+							settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Neutral:
+							settingName = UserSettings.ByteSettingName.NeutralOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Faction:
+							settingName = UserSettings.ByteSettingName.FactionOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Owner:
+							settingName = UserSettings.ByteSettingName.OwnerOnHUD;
+							return true;
+						default:
+							settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+							return false;
+					}
+				case LastSeen.EntityType.Missile:
+					settingName = UserSettings.ByteSettingName.MissileOnHUD;
+					return true;
+				default:
+					settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+					return false;
+			}
 		}
 
 	}

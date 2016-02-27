@@ -140,12 +140,23 @@ namespace Rynchodon.Weapons.Guided
 				}
 		}
 
+		[Obsolete("Use TryGetOwnerId")]
 		public static long GetOwnerId(long missileId)
 		{
 			long owner;
 			if (s_missileOwners.TryGetValue(missileId, out owner))
 				return owner;
 			return 0L;
+		}
+
+		public static bool TryGetOwnerId(long missileId, out long OwnerId)
+		{
+			return s_missileOwners.TryGetValue(missileId, out OwnerId);
+		}
+
+		public static bool IsGuidedMissile(long missileId)
+		{
+			return s_missileOwners.ContainsKey(missileId);
 		}
 
 		private static void AddMissileOwner(IMyEntity missile, long owner)

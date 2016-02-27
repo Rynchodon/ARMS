@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Threading;
-using Rynchodon.Utility;
+using Rynchodon.Weapons.Guided;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
@@ -661,26 +661,45 @@ namespace Rynchodon.AntennaRelay
 
 				foreach (IMyEntity entity in inRange)
 				{
-					if (entity.MarkedForClose || !(entity.Save || entity is IMyCharacter))
+					if (entity.MarkedForClose)
+						continue;
+
+					bool isMissile;
+					if (entity is IMyCubeGrid)
+					{
+						if (!entity.Save)
+							continue;
+						isMissile = false;
+					}
+					else if (entity is IMyCharacter)
+						isMissile = false;
+					else if (GuidedMissile.IsGuidedMissile(entity.EntityId))
+						isMissile = true;
+					else
 						continue;
 
 					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
 
 					float volume = entity.LocalAABB.Volume();
-					float reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
+					float reflectivity;
+					if (isMissile)
+					{
+						float useVolume = volume * volume;
+						reflectivity = (useVolume + myDefinition.Reflect_A) / (useVolume + myDefinition.Reflect_B);
+					}
+					else
+						reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 					float distance = Vector3.Distance(Entity.GetCentre(), entity.GetCentre());
 					float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
 					int decoys = WorkingDecoys(entity);
 					radarSignature += decoySignal * decoys;
 
-					//myLogger.debugLog("grid: " + otherGrid.DisplayName + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+					//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
 					//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
 
 					if (radarSignature > 0)
 					{
-						myLogger.debugLog("object detected: " + entity.getBestName(), "ActiveDetection()", Logger.severity.TRACE);
-
 						DetectedInfo detFo = new DetectedInfo(entity, RelationsBlock.getRelationsTo(entity));
 						detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
 						detectedObjects_list.Add(detFo);
@@ -755,7 +774,8 @@ namespace Rynchodon.AntennaRelay
 
 		private bool SignalCannotReach(IMyEntity target, float compareDist)
 		{
-			//myLogger.debugLog("really far: " + ReallyFar(target.GetCentre(), compareDist) + ", unacceptable angle: " + UnacceptableAngle(target) + ", obstructed: " + Obstructed(target), "SignalCannotReach()");
+			//myLogger.debugLog("target: " + target.getBestName() + ", really far: " + ReallyFar(target.GetCentre(), compareDist) + ", compareDist: " + compareDist + ", unacceptable angle: " + UnacceptableAngle(target) + 
+			//	", obstructed: " + Obstructed(target), "SignalCannotReach()");
 			return ReallyFar(target.GetCentre(), compareDist) || UnacceptableAngle(target) || Obstructed(target);
 		}
 
@@ -778,16 +798,16 @@ namespace Rynchodon.AntennaRelay
 			MatrixD Transform = Entity.WorldMatrixNormalizedInv.GetOrientation();
 			Vector3 directionToTarget = Vector3.Transform(target.GetCentre() - Entity.GetCentre(), Transform);
 			directionToTarget.Normalize();
-			myLogger.debugLog("my position: " + Entity.GetCentre() + ", target: " + target.DisplayName + ", target position: " + target.GetCentre()
-				+ ", displacement: " + (target.GetCentre() - Entity.GetCentre()) + ", direction: " + directionToTarget, "UnacceptableAngle()");
+			//myLogger.debugLog("my position: " + Entity.GetCentre() + ", target: " + target.DisplayName + ", target position: " + target.GetCentre()
+			//	+ ", displacement: " + (target.GetCentre() - Entity.GetCentre()) + ", direction: " + directionToTarget, "UnacceptableAngle()");
 
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(directionToTarget, out azimuth, out elevation);
 
-			myLogger.debugLog("azimuth: " + azimuth + ", min: " + myDefinition.MinAzimuth + ", max: " + myDefinition.MaxAzimuth
-				+ ", elevation: " + elevation + ", min: " + myDefinition.MinElevation + ", max: " + myDefinition.MaxElevation, "UnacceptableAngle()");
-			myLogger.debugLog("azimuth below: " + (azimuth < myDefinition.MinAzimuth) + ", azimuth above: " + (azimuth > myDefinition.MaxAzimuth)
-				+ ", elevation below: " + (elevation < myDefinition.MinElevation) + ", elevation above: " + (elevation > myDefinition.MaxElevation), "UnacceptableAngle()");
+			//myLogger.debugLog("azimuth: " + azimuth + ", min: " + myDefinition.MinAzimuth + ", max: " + myDefinition.MaxAzimuth
+			//	+ ", elevation: " + elevation + ", min: " + myDefinition.MinElevation + ", max: " + myDefinition.MaxElevation, "UnacceptableAngle()");
+			//myLogger.debugLog("azimuth below: " + (azimuth < myDefinition.MinAzimuth) + ", azimuth above: " + (azimuth > myDefinition.MaxAzimuth)
+			//	+ ", elevation below: " + (elevation < myDefinition.MinElevation) + ", elevation above: " + (elevation > myDefinition.MaxElevation), "UnacceptableAngle()");
 			return azimuth < myDefinition.MinAzimuth || azimuth > myDefinition.MaxAzimuth || elevation < myDefinition.MinElevation || elevation > myDefinition.MaxElevation;
 		}
 
@@ -800,7 +820,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private bool Obstructed(IMyEntity target)
 		{
-			myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
+			//myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
 
 			obstructed_lines.Clear();
 			obstructed_lines.Add(new Line(Entity.GetCentre(), target.GetCentre(), false));

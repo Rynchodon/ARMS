@@ -17,6 +17,7 @@ namespace Rynchodon.Settings
 			NeutralOnHUD,
 			FactionOnHUD,
 			OwnerOnHUD,
+			MissileOnHUD,
 		}
 
 		private const string userSettings_fileName = "UserSettings.txt";
@@ -80,6 +81,7 @@ namespace Rynchodon.Settings
 			ByteSettings.Add(ByteSettingName.NeutralOnHUD, new SettingSimple<byte>(5));
 			ByteSettings.Add(ByteSettingName.FactionOnHUD, new SettingSimple<byte>(5));
 			ByteSettings.Add(ByteSettingName.OwnerOnHUD, new SettingSimple<byte>(5));
+			ByteSettings.Add(ByteSettingName.MissileOnHUD, new SettingSimple<byte>(5));
 		}
 
 		/// <summary>
@@ -219,6 +221,11 @@ namespace Rynchodon.Settings
 				{
 					myLogger.debugLog("OwnerOnHUD variation: " + nameLower, "ChatHandler()");
 					name = ByteSettingName.OwnerOnHUD;
+				}
+				else if (nameLower.Contains("missile"))
+				{
+					myLogger.debugLog("MissileOnHUD variation: " + nameLower, "ChatHandler()");
+					name = ByteSettingName.MissileOnHUD;
 				}
 			}
 
