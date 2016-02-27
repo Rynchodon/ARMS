@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanRespond()
 		{
-			return m_mover.CanMoveForward(m_mover.Block.Pseudo);
+			return m_mover.CanMoveForward();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)
@@ -71,7 +71,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_mover.CalcRotate(m_mover.Block.Pseudo, RelativeDirection3F.FromWorld(m_mover.Block.CubeGrid, m_flyDirection));
+			m_mover.CalcRotate();
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)

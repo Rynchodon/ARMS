@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sandbox.ModAPI;
-using VRage.Components;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -56,8 +56,22 @@ namespace Rynchodon
 			return entity.Physics.LinearVelocity;
 		}
 
+		public static Vector3D GetCentre(this IMyCubeBlock block)
+		{
+			return block.GetPosition();
+		}
+
+		public static Vector3D GetCentre(this IMyCubeGrid grid)
+		{
+			return Vector3D.Transform(grid.LocalAABB.Center, grid.WorldMatrix);
+		}
+
 		public static Vector3D GetCentre(this IMyEntity entity)
 		{
+			IMyCubeBlock block = entity as IMyCubeBlock;
+			if (block != null)
+				return block.GetPosition();
+
 			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
 		}
 
@@ -67,26 +81,34 @@ namespace Rynchodon
 		public static bool moreThanSecondsAgo(this DateTime previous, double seconds)
 		{ return (DateTime.UtcNow - previous).TotalSeconds > seconds; }
 
-		public static bool Is_ID_NPC(this long playerID)
+		public static bool IsNpc(this long playerID)
 		{
 			if (playerID == 0)
 				return false;
 
-			List<IMyPlayer> players = new List<IMyPlayer>();
-			MyAPIGateway.Players.GetPlayers(players);
-			foreach (IMyPlayer play in players)
-				if (play.PlayerID == playerID)
-					return false;
-
-			return true;
+			bool npc = true;
+			MyAPIGateway.Players.GetPlayers(null, player => {
+				if (player.PlayerID == playerID)
+					npc = false;
+				return false;
+			});
+			return npc;
 		}
 
-		//public static bool IsClient(this IMyMultiplayer multiplayer)
-		//{
-		//	if (!multiplayer.MultiplayerActive)
-		//		return false;
-		//	return !multiplayer.IsServer;
-		//}
+		public static bool IsNpc(this IMyCharacter character)
+		{
+			string name = (character as IMyEntity).DisplayName;
+			if (string.IsNullOrEmpty(name))
+				return true;
+
+			bool npc = true;
+			MyAPIGateway.Players.GetPlayers(null, player => {
+				if (player.DisplayName == name)
+					npc = false;
+				return false;
+			});
+			return npc;
+		}
 
 		public static void throwIfNull_argument(this object argument, string name)
 		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }

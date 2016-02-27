@@ -26,7 +26,7 @@ namespace Rynchodon.Weapons
 		public List<string> Errors = new List<string>();
 
 		public InterpreterWeapon(IMyCubeBlock block)
-			: base(block as IMyTerminalBlock)
+			: base(block)
 		{
 			this.Block = block;
 			this.Grid = block.CubeGrid;
@@ -34,12 +34,10 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("InterpreterWeapon", () => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
 		}
 
-		public bool HasInstructions { get; private set; }
-
 		/// <summary>
 		/// Updates instructions if necessary.
 		/// </summary>
-		public void UpdateInstruction()
+		public bool UpdateInstruction()
 		{
 			if (Block.OwnedNPC())
 			{
@@ -49,7 +47,7 @@ namespace Rynchodon.Weapons
 			else
 				FallBackInstruct = null;
 
-			Update();
+			return base.UpdateInstructions();
 		}
 
 		protected override bool ParseAll(string instructions)
@@ -62,8 +60,7 @@ namespace Rynchodon.Weapons
 			Parse(instructions);
 
 			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count, "OnInstruction()");
-			HasInstructions = InstructFound || Errors.Count == 0;
-			return HasInstructions;
+			return InstructFound || Errors.Count == 0;
 		}
 
 		/// <summary>

@@ -9,6 +9,7 @@ using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRage.Game;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -35,10 +36,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Dictionary<TargetType, List<string>> m_cumulative_targeting = new Dictionary<TargetType, List<string>>();
 		private WeaponTargeting m_weapon_primary;
 		private PseudoBlock m_weapon_primary_pseudo;
-		private DateTime m_nextGetRandom = DateTime.MinValue;
 		private LastSeen m_currentTarget;
-		private Vector3 m_currentOffset;
-		private int m_responseIndex;
+		private Orbiter m_orbiter;
 		private float m_weaponRange_min;
 		private bool m_weaponArmed = false;
 		private bool m_destroySet = false;
@@ -70,7 +69,20 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void UpdateTarget(LastSeen enemy)
 		{
-			m_currentTarget = enemy;
+			if (enemy == null)
+			{
+				m_logger.debugLog(m_currentTarget != null, "lost target: " + m_currentTarget.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
+				m_currentTarget = null;
+				m_orbiter = null;
+				return;
+			}
+
+			if (m_currentTarget == null || m_currentTarget.Entity != enemy.Entity)
+			{
+				m_logger.debugLog("new target: " + enemy.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
+				m_currentTarget = enemy;
+				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 10f);
+			}
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)
@@ -88,13 +100,16 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				foreach (string blockType in targetBlocks)
 				{
-					//m_logger.debugLog("checking " + grid.DisplayName + " for " + blockType + " blocks", "CanTarget()");
+					m_logger.debugLog("checking " + grid.DisplayName + " for " + blockType + " blocks", "CanTarget()");
 					if (cache.CountByDefLooseContains(blockType, func => func.IsWorking, 1) != 0)
+					{
+						m_logger.debugLog("at least one of " + blockType, "CanTarget()");
 						return true;
+					}
 				}
 			}
-			//else
-			//	m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
+			else
+				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
 
 			return false;
 		}
@@ -114,11 +129,19 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (DateTime.UtcNow > m_nextGetRandom)
-				SetRandomOffset();
+			if (m_orbiter == null)
+			{
+				m_mover.StopMove();
+				return;
+			}
 
-			//m_logger.debugLog("moving to " + (m_currentTarget.predictPosition() + m_currentOffset), "Move()");
-			m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition() + m_currentOffset, m_currentTarget.GetLinearVelocity());
+			m_orbiter.Move();
+
+			//if (DateTime.UtcNow > m_nextGetRandom)
+			//	SetRandomOffset();
+
+			////m_logger.debugLog("moving to " + (m_currentTarget.predictPosition() + m_currentOffset), "Move()");
+			//m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition() + m_currentOffset, m_currentTarget.GetLinearVelocity());
 		}
 
 		public void Rotate()
@@ -136,8 +159,8 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 				return;
 			}
-			Vector3? InterceptionPoint = m_weapon_primary.CurrentTarget.InterceptionPoint;
-			if (!InterceptionPoint.HasValue)
+			Vector3? FiringDirection = m_weapon_primary.CurrentTarget.FiringDirection;
+			if (!FiringDirection.HasValue)
 			{
 				//m_logger.debugLog("no target", "Rotate()");
 				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget.Entity.GetCentre() - m_controlBlock.CubeBlock.GetPosition()));
@@ -145,16 +168,18 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
 
-			//const float project = ShipController_Autopilot.UpdateFrequency / 60f;
-			//Vector3 targetPoint = InterceptionPoint.Value + (m_currentTarget.GetLinearVelocity() - m_controlBlock.CubeGrid.GetLinearVelocity());// *project;
-
-			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, InterceptionPoint.Value - m_weapon_primary_pseudo.WorldPosition));
+			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, FiringDirection.Value), targetEntity: m_weapon_primary.CurrentTarget.Entity);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			customInfo.Append("Attacking an enemy at ");
-			customInfo.AppendLine(m_currentTarget.GetPosition().ToPretty());
+			if (m_currentTarget != null)
+			{
+				customInfo.Append("Attacking an enemy at ");
+				customInfo.AppendLine(m_currentTarget.GetPosition().ToPretty());
+			}
+			if (m_orbiter != null)
+				m_orbiter.AppendCustomInfo(customInfo);
 		}
 
 		private void Arm()
@@ -171,7 +196,6 @@ namespace Rynchodon.Autopilot.Navigator
 			m_logger.debugLog(m_weapons_all.Count != 0, "All weapons has not been cleared", "Arm()", Logger.severity.FATAL);
 
 			m_weaponRange_min = float.MaxValue;
-			//m_weaponRange_max = float.MinValue;
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 
@@ -203,7 +227,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						Turret weapon;
 						Registrar.TryGetValue(block.EntityId, out weapon);
-						if (weapon.CurrentState_FlagSet(WeaponTargeting.State.Targeting))
+						if (weapon.CurrentControl != WeaponTargeting.Control.Off)
 						{
 							m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText, "Arm()");
 							m_weapons_all.Add(weapon);
@@ -295,7 +319,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private void UpdateWeaponData()
 		{
 			m_weaponRange_min = float.MaxValue;
-			//m_weaponRange_max = float.MinValue;
 			m_cumulative_targeting.Clear();
 			m_destroySet = false;
 
@@ -319,8 +342,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (TargetingRange < m_weaponRange_min)
 					m_weaponRange_min = TargetingRange;
-				//if (TargetingRange > m_weaponRange_max)
-				//	m_weaponRange_max = TargetingRange;
 
 				if (m_destroySet)
 					continue;
@@ -379,39 +400,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void Weapon_OnClosing(IMyEntity obj)
 		{ m_weaponDataDirty = true; }
-
-		/// <remarks>
-		/// Based on https://www.jasondavies.com/maps/random-points/
-		/// </remarks>
-		private Vector3D GetRandomOffset()
-		{
-			// get current angles
-			Vector3D relativePos = m_controlBlock.CubeBlock.GetPosition() - m_currentTarget.GetPosition();
-			relativePos.Normalize();
-			double angle1 = Math.Acos(relativePos.Z);
-			double angle2 = Math.Asin(relativePos.Y / Math.Sin(angle1));
-
-			m_logger.debugLog("angles: " + angle1 + ", " + angle2, "GetRandomOffset()");
-
-			// add a random amount
-			angle1 += Random.NextDouble() * MathHelper.Pi - MathHelper.PiOver2;
-			angle2 += Math.Acos(Random.NextDouble() * 2d - 1d);
-
-			m_logger.debugLog("set target angles: " + angle1 + ", " + angle2, "GetRandomOffset()");
-
-			return m_weaponRange_min * new Vector3D(
-				Math.Sin(angle1) * Math.Cos(angle2),
-				Math.Sin(angle1) * Math.Sin(angle2),
-				Math.Cos(angle1));
-		}
-
-		private void SetRandomOffset()
-		{
-			m_currentOffset = GetRandomOffset();
-			double oneToTen = Random.NextDouble() * 9 + 1;
-			m_nextGetRandom = DateTime.UtcNow.AddSeconds(oneToTen);
-			m_logger.debugLog("offset: " + m_currentOffset, "SetRandomOffset()");
-		}
 
 	}
 }

@@ -19,6 +19,9 @@
     <Entry Class="LargeBlocks" BlueprintSubtypeId="RadioAntenna/AP_Radar_Jammer_Large" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="RadioAntenna/AP_Radar_Jammer_Small" />
 
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="Beacon/AWACSRadarLarge_JnSm" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="Beacon/AWACSRadarSmall_JnSm" />
+    
     <!-- Missile -->
     
     <Entry Class="Ammo" BlueprintSubtypeId="Souper_R12VP_Missile" />

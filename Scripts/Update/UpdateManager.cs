@@ -11,9 +11,10 @@ using Rynchodon.Threading;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
-using Sandbox.Common;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -30,8 +31,6 @@ namespace Rynchodon.Update
 	/// <para>    Disadvantages of MyGameLogicComponent:</para>
 	/// <para>        NeedsUpdate can be changed by the game after you set it, so you have to work around that. i.e. For remotes it is set to NONE and UpdatingStopped() never gets called.</para>
 	/// <para>        Scripts can get created before MyAPIGateway fields are filled, which can be a serious problem for initializing.</para>
-	/// <para>    Advantages of MyGameLogicComponent</para>
-	/// <para>        An object builder is available, I assume this can be used to save data (have not tried it).</para>
 	/// <para> </para>
 	/// <para>    Advantages of UpdateManager:</para>
 	/// <para>        Scripts can be registered conditionally. MyGameLogicComponent now supports subtypes but UpdateManager can technically do any condition.</para>
@@ -71,46 +70,6 @@ namespace Rynchodon.Update
 
 			#endregion
 
-			#region Antenna Communication
-
-			RegisterForBlock(typeof(MyObjectBuilder_Beacon), (IMyCubeBlock block) => {
-				Beacon newBeacon = new Beacon(block);
-				RegisterForUpdates(100, newBeacon.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), (IMyCubeBlock block) => {
-				TextPanel newTextPanel = new TextPanel(block);
-				RegisterForUpdates(100, newTextPanel.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), (IMyCubeBlock block) => {
-				LaserAntenna newLA = new LaserAntenna(block);
-				RegisterForUpdates(100, newLA.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), (IMyCubeBlock block) => {
-				ProgrammableBlock newPB = new ProgrammableBlock(block);
-				RegisterForUpdates(100, newPB.UpdateAfterSimulation100, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (IMyCubeBlock block) => {
-				RadioAntenna newRA = new RadioAntenna(block);
-				RegisterForUpdates(100, newRA.UpdateAfterSimulation100, block);
-			});
-			RegisterForPlayer((player) => {
-				Player p = new Player(player);
-				RegisterForUpdates(100, p.Update100, player, Player.OnLeave);
-			});
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
-						new ShipController(block);
-					// Does not receive Updates
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
-					new ShipController(block);
-				// Does not receive Updates
-			});
-
-			#endregion
-
 			#region Weapons
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
@@ -141,7 +100,6 @@ namespace Rynchodon.Update
 				#endregion
 
 				#region Fixed
-
 
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 				{
@@ -212,6 +170,17 @@ namespace Rynchodon.Update
 
 			#endregion
 
+			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
+				var od = new OreDetector(block);
+				RegisterForUpdates(1000, od.Update, block);
+			});
+		}
+
+		/// <summary>
+		/// Scripts that use UpdateManager and run on clients as well as on server shall be added here.
+		/// </summary>
+		private void RegisterScripts_ClientAndServer()
+		{
 			#region Attached
 
 			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
@@ -248,20 +217,44 @@ namespace Rynchodon.Update
 
 			#endregion
 
-			RegisterForBlock(typeof(MyObjectBuilder_OreDetector), block => {
-				var od = new OreDetector(block);
-				RegisterForUpdates(1000, od.Update, block);
+			#region Antenna Communication
+
+			Action<IMyCubeBlock> nodeConstruct = block => {
+				NetworkNode node = new NetworkNode(block);
+				RegisterForUpdates(100, node.Update100, block);
+			};
+
+			RegisterForBlock(typeof(MyObjectBuilder_Beacon), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_LaserAntenna), nodeConstruct);
+			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
+
+			RegisterForCharacter(character => {
+				if (!character.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
+				{
+					NetworkNode node = new NetworkNode(character);
+					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
+				}
 			});
 
-			RegisterForPlayerLeaves(UserSettings.OnPlayerLeave);
-		}
+			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
+				ProgrammableBlock pb = new ProgrammableBlock(block);
+				if (MyAPIGateway.Multiplayer.IsServer)
+					RegisterForUpdates(100, pb.Update100, block);
+			});
 
-		/// <summary>
-		/// Scripts that use UpdateManager and run on clients as well as on server shall be added here.
-		/// </summary>
-		private void RegisterScripts_ClientAndServer()
-		{
-			UserSettings.CreateLocal();
+			RegisterForBlock(typeof(MyObjectBuilder_TextPanel), block => {
+				TextPanel tp = new TextPanel(block);
+				if (MyAPIGateway.Multiplayer.IsServer)
+					RegisterForUpdates(100, tp.Update100, block);
+			});
+
+			if (MyAPIGateway.Session.Player != null)
+			{
+				Player p = new Player();
+				RegisterForUpdates(100, p.Update100);
+			}
+
+			#endregion
 
 			#region Autopilot
 
@@ -330,6 +323,9 @@ namespace Rynchodon.Update
 		private List<IMyPlayer> playersAPI;
 		private List<IMyPlayer> playersCached;
 
+		private HashSet<long> CubeBlocks = new HashSet<long>();
+		private HashSet<long> Characters = new HashSet<long>();
+
 		private readonly Logger myLogger;
 
 		private bool player_wait_message = false;
@@ -350,15 +346,9 @@ namespace Rynchodon.Update
 					return;
 
 				if (!MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Session.Player == null)
-				{
-					if (!player_wait_message)
-					{
-						player_wait_message = true;
-						myLogger.alwaysLog("Waiting for player value", "Init()");
-					}
 					return;
-				}
-				myLogger.alwaysLog("Got player value", "Init()");
+
+				myLogger.alwaysLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, "Init()", Logger.severity.INFO);
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
@@ -389,6 +379,8 @@ namespace Rynchodon.Update
 					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
 
+				Logger.debugNotify("ARMS dev version loaded", 10000);
+
 				ManagerStatus = Status.Initialized;
 			}
 			catch (Exception ex)
@@ -408,7 +400,7 @@ namespace Rynchodon.Update
 				&& PlayerScriptConstructors.Count == 0
 				&& GridScriptConstructors.Count == 0)
 			{
-				myLogger.alwaysLog("No scripts registered, terminating manager", "Init()", Logger.severity.INFO);
+				myLogger.alwaysLog("No scripts registered, terminating manager", "Start()", Logger.severity.INFO);
 				ManagerStatus = Status.Terminated;
 				return;
 			}
@@ -426,6 +418,37 @@ namespace Rynchodon.Update
 
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
 			ManagerStatus = Status.Started;
+
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowAutopilot))
+			{
+				myLogger.alwaysLog("Disabling autopilot blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Large")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Small")).Enabled = false;
+			}
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
+			{
+				myLogger.alwaysLog("Disabling guided missile blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R12VP_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R8EA_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_B3MP_Launcher")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LargeMissileTurret), "Souper_Missile_Defense_Turret")).Enabled = false;
+			}
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
+			{
+				myLogger.alwaysLog("Disabling radar blocks", "Start()", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "LargeBlockRadarRynAR")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "SmallBlockRadarRynAR")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "Radar_A_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "Radar_A_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadar_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadar_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadarOffset_Large_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "PhasedArrayRadarOffset_Small_Souper07")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "AWACSRadarLarge_JnSm")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "AWACSRadarSmall_JnSm")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Large")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Small")).Enabled = false;
+			}
 		}
 
 		/// <summary>
@@ -645,6 +668,13 @@ namespace Rynchodon.Update
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
+				if (!Characters.Add(entity.EntityId))
+					return;
+				entity.OnClosing += alsoChar => {
+					if (Characters != null)
+						Characters.Remove(alsoChar.EntityId);
+				};
+
 				myLogger.debugLog("adding character: " + entity.getBestName(), "AddEntity()");
 				foreach (var constructor in CharacterScriptConstructors)
 					try { constructor.Invoke(asCharacter); }
@@ -660,9 +690,6 @@ namespace Rynchodon.Update
 		private void Grid_OnBlockAdded(IMySlimBlock block)
 		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
 
-		/// <remarks>Can't use Entity Ids because multiple blocks may share an Id.</remarks>
-		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
-
 		/// <summary>
 		/// if necessary, builds script for a block
 		/// </summary>
@@ -671,10 +698,12 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				if (CubeBlocks.Contains(fatblock))
+				if (!CubeBlocks.Add(fatblock.EntityId))
 					return;
-				CubeBlocks.Add(fatblock);
-				fatblock.OnClosing += (alsoFatblock) => { CubeBlocks.Remove(fatblock); };
+				fatblock.OnClosing += alsoFatblock => {
+					if (CubeBlocks != null)
+						CubeBlocks.Remove(alsoFatblock.EntityId);
+				};
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 
@@ -771,6 +800,8 @@ namespace Rynchodon.Update
 			playersCached = null;
 
 			AddRemoveActions = null;
+			CubeBlocks = null;
+			Characters = null;
 		}
 
 		/// <summary>

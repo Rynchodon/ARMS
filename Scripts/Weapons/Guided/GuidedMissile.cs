@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Weapons.SystemDisruption;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
+using VRage.Game;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -16,41 +16,41 @@ namespace Rynchodon.Weapons.Guided
 {
 	/*
 	 * TODO:
-	 * Rail system for safer launching while rotating/accelerating.
 	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
 	 * ARH, SA*
 	 */
 	public class GuidedMissile : TargetingBase
 	{
 
-		private class Cluster
+		private class RailData
 		{
-			public readonly LockedQueue<IMyEntity> Slaves;
-			public readonly int Max;
-			/// <summary>Set to true when main missile is far enough from launcher to start forming.</summary>
-			public bool MainFarEnough;
+			public readonly Vector3D RailStart;
+			public readonly LineSegmentD Rail;
+			public readonly DateTime Created;
 
-			private bool value_fullyFormed;
-
-			public Cluster(int num)
+			public RailData(Vector3D start)
 			{
-				Max = num;
-				Slaves = new LockedQueue<IMyEntity>(num);
+				RailStart = start;
+				Rail = new LineSegmentD();
+				Created = DateTime.UtcNow;
 			}
-
-			public bool FullyFormed
-			{
-				get { return value_fullyFormed; }
-				set
-				{
-					if (Slaves.Count == Max)
-						value_fullyFormed = value;
-				}
-			}
-
 		}
 
-		private enum Stage : byte { None, Guided, Ballistic, Terminated }
+		private class GravityData
+		{
+			public readonly MyPlanet Planet;
+			public readonly Vector3 GravNormAtTarget;
+			public Vector3 Normal;
+			public Vector3 AccelPerUpdate;
+
+			public GravityData(MyPlanet planet, Vector3 gravityNormAtTarget)
+			{
+				this.Planet = planet;
+				this.GravNormAtTarget = gravityNormAtTarget;
+			}
+		}
+
+		private enum Stage : byte { Rail, Boost, MidCourse, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
@@ -88,15 +88,23 @@ namespace Rynchodon.Weapons.Guided
 
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
+				{
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						missile.UpdateCluster();
+						if (missile.myCluster != null)
+							missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
-						missile.SetFiringDirection();
+						if (missile.m_stage == Stage.MidCourse || missile.m_stage == Stage.Guided)
+							missile.SetFiringDirection();
 						missile.Update();
 					});
+					if (missile.m_rail != null)
+						missile.UpdateRail();
+					if (missile.m_stage == Stage.Boost)
+						missile.ApplyGravity();
+				}
 		}
 
 		public static void Update10()
@@ -106,9 +114,11 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						missile.UpdateTarget();
+						if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
+							missile.UpdateTarget();
 						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
 							missile.TargetLastSeen();
+						missile.CheckGuidance();
 					});
 		}
 
@@ -116,18 +126,37 @@ namespace Rynchodon.Weapons.Guided
 		{
 			using (lock_AllGuidedMissiles.AcquireSharedUsing())
 				foreach (GuidedMissile missile in AllGuidedMissiles)
+				{
 					Thread.EnqueueAction(() => {
 						if (!missile.Stopped)
+						{
 							missile.ClearBlacklist();
+							if (missile.m_gravData != null)
+								missile.UpdateGravity();
+						}
 					});
+					if (!missile.Stopped)
+						missile.UpdateNetwork();
+				}
 		}
 
+		[Obsolete("Use TryGetOwnerId")]
 		public static long GetOwnerId(long missileId)
 		{
 			long owner;
 			if (s_missileOwners.TryGetValue(missileId, out owner))
 				return owner;
 			return 0L;
+		}
+
+		public static bool TryGetOwnerId(long missileId, out long OwnerId)
+		{
+			return s_missileOwners.TryGetValue(missileId, out OwnerId);
+		}
+
+		public static bool IsGuidedMissile(long missileId)
+		{
+			return s_missileOwners.ContainsKey(missileId);
 		}
 
 		private static void AddMissileOwner(IMyEntity missile, long owner)
@@ -143,20 +172,21 @@ namespace Rynchodon.Weapons.Guided
 			s_missileOwners.Remove(obj.EntityId);
 		}
 
-
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
 		private readonly Ammo.AmmoDescription myDescr;
-		private readonly MissileAntenna myAntenna;
+		private readonly NetworkNode myAntenna;
+		private readonly NetworkClient m_launcherClient;
 
 		private LastSeen myTargetSeen;
 		private Cluster myCluster;
 		private IMyEntity myRock;
 		private DateTime failed_lastSeenTarget;
 		private DateTime myGuidanceEnds;
-		private float addSpeedPerUpdate, accelerationPerUpdate;
-		private uint m_bulletsEaten;
+		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
+		private RailData m_rail;
+		private GravityData m_gravData;
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
@@ -164,31 +194,39 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget = null, bool isSlave = false)
+		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
 			: base(missile, firedBy)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
 			myAmmo = ammo;
 			myDescr = ammo.Description;
 			if (ammo.Description.HasAntenna)
-				myAntenna = new MissileAntenna(missile);
+				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
+			m_launcherClient = launcherClient;
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
 			AddMissileOwner(MyEntity, CubeBlock.OwnerId);
 			MyEntity.OnClose += MyEntity_OnClose;
 
-			if (myAmmo.IsCluster && !isSlave)
-				myCluster = new Cluster(myAmmo.MagazineDefinition.Capacity - 1);
-			accelerationPerUpdate = (myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration) / 60f;
-			addSpeedPerUpdate = myDescr.Acceleration / 60f;
+			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
+			addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
+			if (!(firedBy is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
+				m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
 
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
 			myTargetSeen = initialTarget;
 
-			myLogger.debugLog("Options: " + Options, "GuidedMissile()");
+			myLogger.debugLog("Options: " + Options + ", initial target: " + (initialTarget == null ? "null" : initialTarget.Entity.getBestName()), "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
+		}
+
+		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
+			: this(missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
+		{
+			myCluster = missiles;
+			m_rail = null;
 		}
 
 		private void MyEntity_OnClose(IMyEntity obj)
@@ -210,23 +248,6 @@ namespace Rynchodon.Weapons.Guided
 
 		protected override bool CanRotateTo(Vector3D targetPos)
 		{
-			// this really is not working
-			//// test angle
-			//if (myDescr.RotationAttemptLimit < 3.14f)
-			//{
-			//	Vector3 direction = targetPos - ProjectilePosition();
-			//	myLogger.debugLog("targetPos: " + targetPos + ", ProjectilePosition: " + ProjectilePosition() + ", direction: " + direction, "PhysicalProblem()");
-			//	Vector3 forward = MyEntity.WorldMatrix.Forward;
-			//	float angleBetween = direction.AngleBetween(forward);
-			//	if (!angleBetween.IsValid() || angleBetween > myDescr.RotationAttemptLimit)
-			//	{
-			//		myLogger.debugLog("angle between too great. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
-			//		return false;
-			//	}
-			//	else
-			//		myLogger.debugLog("angle acceptable. direction: " + direction + ", velDirect: " + forward + ", angle between: " + angleBetween, "PhysicalProblem()");
-			//}
-
 			return true;
 		}
 
@@ -237,7 +258,7 @@ namespace Rynchodon.Weapons.Guided
 
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
-			return accelerationPerUpdate;
+			return acceleration;
 		}
 
 		/// <remarks>
@@ -245,11 +266,13 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void TargetLastSeen()
 		{
-			if (myAntenna == null || myAntenna.lastSeenCount == 0)
+			NetworkStorage store = myAntenna == null ? null : myAntenna.Storage;
+
+			if (store == null || store.LastSeenCount == 0)
 			{
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
-					myLogger.debugLog("Retargeting last", "TargetLastSeen()");
+					myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(myTargetSeen);
 					SetFiringDirection();
 				}
@@ -260,9 +283,9 @@ namespace Rynchodon.Weapons.Guided
 				return;
 
 			LastSeen fetched;
-			if (myTargetSeen != null && myAntenna.tryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
+			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
-				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName(), "TargetLastSeen()");
+				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(fetched);
 				SetFiringDirection();
 				return;
@@ -270,9 +293,9 @@ namespace Rynchodon.Weapons.Guided
 
 			if (Options.TargetEntityId.HasValue)
 			{
-				if (myAntenna.tryGetLastSeen(Options.TargetEntityId.Value, out fetched))
+				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
-					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName(), "TargetLastSeen()");
+					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(fetched);
 					SetFiringDirection();
 				}
@@ -285,8 +308,8 @@ namespace Rynchodon.Weapons.Guided
 			LastSeen closest = null;
 			double closestDist = double.MaxValue;
 
-			myLogger.debugLog("last seen count: " + myAntenna.lastSeenCount, "TargetLastSeen()");
-			myAntenna.ForEachLastSeen(seen => {
+			myLogger.debugLog("last seen count: " + store.LastSeenCount, "TargetLastSeen()");
+			store.ForEachLastSeen(seen => {
 				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
 				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 				{
@@ -297,7 +320,6 @@ namespace Rynchodon.Weapons.Guided
 						closest = seen;
 					}
 				}
-				return false;
 			});
 
 			if (closest == null)
@@ -308,7 +330,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 			else
 			{
-				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName(), "TargetLastSeen()");
+				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName() + " at " + closest.GetPosition(), "TargetLastSeen()");
 				myTarget = new LastSeenTarget(closest);
 				SetFiringDirection();
 				myTargetSeen = closest;
@@ -320,31 +342,38 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
-			// do not guide clusters until they are formed
-			// comes before CheckGuidance() so that timer starts after forming
-			if (myCluster != null && !myCluster.FullyFormed)
-				return;
-
-			CheckGuidance();
-			if (m_stage == Stage.None)
+			if (m_stage == Stage.Rail)
 				return;
 
 			Target cached = CurrentTarget;
 			if (!cached.FiringDirection.HasValue)
 				return;
 
-			myLogger.debugLog("target: " + cached.Entity.getBestName() + ", target position: " + cached.InterceptionPoint, "Update()");
+			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint, "Update()");
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
-			//Vector3 newForward;
 
-			Vector3 targetDirection = cached.InterceptionPoint.Value - ProjectilePosition();
-			targetDirection.Normalize();
-			myLogger.debugLog("InterceptionPoint: " + cached.InterceptionPoint.Value + ", Position: " + ProjectilePosition() + ", target direction: " + targetDirection, "Update()");
+			Vector3 targetDirection;
+
+			switch (m_stage)
+			{
+				case Stage.Boost:
+					myLogger.debugLog(m_gravData == null, "m_gravData == null", "Update()", Logger.severity.FATAL);
+					targetDirection = -m_gravData.Normal;
+					break;
+				case Stage.MidCourse:
+					Vector3 toTarget = cached.GetPosition() - MyEntity.GetPosition();
+					targetDirection = Vector3.Normalize(Vector3.Reject(toTarget, m_gravData.Normal));
+					break;
+				case Stage.Guided:
+				default:
+					targetDirection = cached.FiringDirection.Value;
+					break;
+			}
 
 			float angle = forward.AngleBetween(targetDirection);
 
-			if (m_stage == Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
+			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
 				float rotate = Math.Min(angle, myDescr.RotationPerUpdate);
 				Vector3 axis = forward.Cross(targetDirection);
@@ -364,12 +393,12 @@ namespace Rynchodon.Weapons.Guided
 				}, myLogger);
 			}
 
-			myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward, "Update()");
+			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward, "Update()");
 
 			{ // accelerate if facing target
 				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)
 				{
-					myLogger.debugLog("accelerate. angle: " + angle, "Update()");
+					//myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 						if (!Stopped)
 							MyEntity.Physics.LinearVelocity += MyEntity.WorldMatrix.Forward * addSpeedPerUpdate;
@@ -380,8 +409,8 @@ namespace Rynchodon.Weapons.Guided
 			{ // check for proxmity det
 				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
-					myLogger.debugLog("distSquared: " + distSquared, "Update()");
+					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity());
+					//myLogger.debugLog("distSquared: " + distSquared, "Update()");
 					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{
 						Explode();
@@ -389,20 +418,6 @@ namespace Rynchodon.Weapons.Guided
 					}
 				}
 			}
-
-			{ // check for cluster split
-				if (myCluster != null)
-				{
-					float descrDistSquared = myDescr.ClusterSplitRange * myDescr.ClusterSplitRange;
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition());
-					if (distSquared < descrDistSquared && angle < Angle_Cluster * descrDistSquared / distSquared)
-					{
-						myLogger.debugLog("Firing cluster", "Update()");
-						FireCluster(cached.FiringDirection.Value);
-					}
-				}
-			}
-
 		}
 
 		/// <remarks>
@@ -410,75 +425,48 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void UpdateCluster()
 		{
-			if (myCluster == null)
-				return;
+			//myLogger.debugLog("updating cluster", "UpdateCluster()");
 
-			if (!myCluster.MainFarEnough)
-			{
-				update_mainFarEnough();
-				return;
-			}
-
-			// slave cluster missiles
-			bool formed = true;
 			MatrixD[] partWorldMatrix = new MatrixD[myCluster.Slaves.Count];
-			float moveBy = myCluster.FullyFormed ? 0f : MyEntity.Physics.LinearVelocity.Length() * 2f * Globals.UpdateDuration;
+			float moveBy = MyEntity.Physics.LinearVelocity.Length() * 2f * Globals.UpdateDuration;
 			float moveBySq = moveBy * moveBy;
+			if (myTarget.Entity != null)
+				myCluster.AdjustMulti(myTarget.Entity.LocalAABB.GetShortestDim() * 0.5f);
+
 			for (int i = 0; i < partWorldMatrix.Length; i++)
 			{
 				partWorldMatrix[i] = MyEntity.WorldMatrix;
-				if (myCluster.FullyFormed)
+				Vector3D slavePos = myCluster.Slaves[i].GetPosition();
+				myLogger.debugLog("cluster offset: " + myCluster.SlaveOffsets[i] + ", scaled: " + myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, "UpdateCluster()");
+				myLogger.debugLog("world matrix: " + MyEntity.WorldMatrix, "UpdateCluster()");
+				Vector3D destination = Vector3.Transform(myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, MyEntity.WorldMatrix);
+				double distSquared = Vector3D.DistanceSquared(slavePos, destination);
+				myLogger.debugLog("slave pos: " + slavePos + ", destination: " + destination + ", dist squared: " + distSquared + ", move by squared: " + moveBySq, "UpdateCluster()");
+				if (distSquared > moveBySq)
 				{
-					//myLogger.debugLog("Cluster is fully formed", "UpdateCluster()");
-					partWorldMatrix[i].Translation = Vector3.Transform(myAmmo.ClusterOffsets[i], MyEntity.WorldMatrix);
-				}
-				else if (MyEntity.WorldAABB.DistanceSquared(CubeBlock.WorldAABB) > myDescr.ClusterFormDistance) // away from launcher
-				{
-					Vector3D slavePos = myCluster.Slaves[i].GetPosition();
-					Vector3D destination = Vector3.Transform(myAmmo.ClusterOffsets[i], MyEntity.WorldMatrix);
-					double distSqua = Vector3D.DistanceSquared(slavePos, destination);
-					if (distSqua > moveBySq)
-					{
-						myLogger.debugLog("Slave " + i + " far from master, distance to slave: " + (float)Math.Sqrt(distSqua) + ", moving: " + moveBy, "UpdateCluster()");
-						formed = false;
-						Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSqua);
-						partWorldMatrix[i].Translation = slavePos + direction * moveBy;
-					}
-					else
-					{
-						//myLogger.debugLog("Slave " + i + " close to master", "UpdateCluster()");
-						partWorldMatrix[i].Translation = destination;
-					}
+					myLogger.debugLog("Slave: " + i + ", far from position, distance: " + Math.Sqrt(distSquared) + ", moving: " + moveBy, "UpdateCluster()");
+					Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSquared);
+					partWorldMatrix[i].Translation = slavePos + direction * moveBy;
 				}
 				else
 				{
-					myLogger.debugLog("Slave " + i + " close to launcher", "UpdateCluster()");
-					formed = false;
+					myLogger.debugLog("Slave: " + i + ", at destination", "UpdateCluster()");
+					partWorldMatrix[i].Translation = destination;
 				}
-			}
-			if (!myCluster.FullyFormed && formed)
-			{
-				myLogger.debugLog("Cluster is now fully formed, starting guidance shortly", "UpdateCluster()", Logger.severity.INFO);
-				myCluster.FullyFormed = formed;
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (Stopped || myCluster == null)
 					return;
 
-				if (!myCluster.FullyFormed)
-				{
-					// suppress acceleration of master
-					MyEntity.Physics.LinearVelocity += MyEntity.WorldMatrix.Backward * myAmmo.MissileDefinition.MissileAcceleration * Globals.UpdateDuration;
-				}
-
 				int index = 0;
-				myCluster.Slaves.ForEach(missile => {
+				foreach (IMyEntity missile in myCluster.Slaves)
+				{
 					if (missile.Closed || index >= partWorldMatrix.Length)
 						return;
 					missile.WorldMatrix = partWorldMatrix[index++];
 					missile.Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
-				});
+				}
 			}, myLogger);
 		}
 
@@ -529,133 +517,65 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Adds a missile to this missile's cluster.
-		/// </summary>
-		/// <returns>true iff at/past maximum cluster size</returns>
-		public bool AddToCluster(IMyEntity missile)
-		{
-			if (myCluster.Slaves.Count == myCluster.Max)
-			{
-				myLogger.alwaysLog("extra cluster part fired", "AddToCluster()", Logger.severity.WARNING);
-				missile.Delete();
-				return true;
-			}
-
-			myCluster.Slaves.Enqueue(missile);
-			AddMissileOwner(missile, CubeBlock.OwnerId);
-			myLogger.debugLog("added to cluster, count is " + myCluster.Slaves.Count, "AddToCluster()");
-			if (myCluster.Slaves.Count == myCluster.Max)
-			{
-				myLogger.debugLog("reached maximum cluster size", "AddToCluster()");
-				return true;
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Fires the cluster missiles towards the target.
-		/// </summary>
-		/// <remarks>
-		/// Runs on separate thread.
-		/// </remarks>
-		private void FireCluster(Vector3D targetDirection)
-		{
-			if (myCluster == null)
-				return;
-
-			m_stage = Stage.Ballistic;
-			Cluster temp = myCluster;
-			myCluster = null;
-
-			myLogger.debugLog("firing cluster, count: " + temp.Slaves.Count, "FireCluster()");
-
-			MatrixD[] ClusterWorldMatrix = new MatrixD[temp.Slaves.Count];
-			Vector3[] Velocity = new Vector3[temp.Slaves.Count];
-
-			MatrixD BaseWorldMatrix = MyEntity.WorldMatrix;
-			BaseWorldMatrix.Forward = Vector3.Normalize(MyEntity.GetLinearVelocity());
-			float speed = MyEntity.GetLinearVelocity().Length();
-
-			Random rand = new Random();
-
-			int index = 0;
-			float spreadMax = myTarget.Entity.LocalAABB.GetShortestDim() * 0.5f / myAmmo.ClusterOffsets[0].Y;
-			temp.Slaves.ForEach(missile => {
-				float spread = spreadMax * (float)rand.NextDouble();
-				myLogger.debugLog("spreadMax: " + spreadMax + ", spread: " + spread + ", local: " + myAmmo.ClusterOffsets[index], "FireCluster()");
-
-				Vector3 localOrigin = myAmmo.ClusterOffsets[index];
-				localOrigin.X *= myAmmo.Description.ClusterInitSpread;
-				localOrigin.Y *= myAmmo.Description.ClusterInitSpread;
-				localOrigin.Z = myAmmo.Description.ClusterOffset_Back;
-
-				Vector3 localDest = myAmmo.ClusterOffsets[index];
-				localDest.X *= spread;
-				localDest.Y *= spread;
-				localDest.Z = -myAmmo.Description.ClusterSplitRange;
-
-				//myLogger.debugLog("offset: " + myAmmo.ClusterOffsets[index] + ", localDest: " + localDest, "FireCluster()");
-
-				Vector3 worldOrigin = Vector3.Transform(localOrigin, BaseWorldMatrix);
-				Vector3 worldDest = Vector3.Transform(localDest, BaseWorldMatrix);
-
-				Vector3 direction = worldDest - worldOrigin;
-				direction.Normalize();
-
-				//myLogger.debugLog("worldDest: " + worldDest.ToGpsTag("dest " + index) + ", worldOrigin: " + worldOrigin.ToGpsTag("origin " + index) + ", direction: " + direction, "FireCluster()");
-
-				ClusterWorldMatrix[index] = BaseWorldMatrix;
-				ClusterWorldMatrix[index].Forward = direction;
-				ClusterWorldMatrix[index].Translation = worldOrigin;
-
-				Velocity[index] = direction * speed * (0.5f + (float)rand.NextDouble());
-
-				index++;
-			});
-
-			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-				if (Stopped)
-					return;
-
-				index = 0;
-				temp.Slaves.ForEach(missile => {
-					if (!missile.Closed)
-					{
-						//myLogger.debugLog("cluster " + index + ", World: " + ClusterWorldMatrix[index] + ", Velocity: " + Velocity[index], "FireCluster()");
-						missile.WorldMatrix = ClusterWorldMatrix[index];
-						missile.Physics.LinearVelocity = Velocity[index];
-
-						//myLogger.debugLog("creating guidance for cluster missile " + index, "FireCluster()");
-						//new GuidedMissile(missile, CubeBlock, Options, myAmmo, myTargetSeen, true);
-					}
-					index++;
-				});
-			});
-		}
-
-		/// <summary>
 		/// Updates m_stage if guidance starts or stops.
 		/// </summary>
 		private void CheckGuidance()
 		{
 			switch (m_stage)
 			{
-				case Stage.None:
+				case Stage.Rail:
 					double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
 					minDist *= 2;
 
 					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
 					{
-						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-						myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()");
+						if (myAmmo.Description.BoostDistance > 1f)
+						{
+							myLogger.debugLog("past arming range, starting boost stage", "CheckGuidance()", Logger.severity.INFO);
+							StartGravity();
+							m_stage = Stage.Boost;
+							if (m_gravData == null)
+							{
+								myLogger.debugLog("no gravity, terminating", "CheckGuidance()", Logger.severity.WARNING);
+								m_stage = Stage.Terminated;
+							}
+						}
+						else
+						{
+							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()", Logger.severity.INFO);
+							m_stage = Stage.Guided;
+						}
+						m_rail = null;
+					}
+					break;
+				case Stage.Boost:
+					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
+					{
+						myLogger.debugLog("completed boost stage, starting mid course stage", "CheckGuidance()", Logger.severity.INFO);
+						m_stage = Stage.MidCourse;
+					}
+					break;
+				case Stage.MidCourse:
+					Target t = CurrentTarget;
+					if (t.Entity == null)
+						return;
+
+					double toTarget = Vector3D.Distance(MyEntity.GetPosition(), t.GetPosition());
+					double toLaunch = Vector3D.Distance(MyEntity.GetPosition(), CubeBlock.GetPosition());
+
+					if (toTarget < toLaunch)
+					{
+						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Guided;
+						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+						m_gravData = null;
 					}
 					break;
 				case Stage.Guided:
 					if (DateTime.UtcNow >= myGuidanceEnds)
 					{
-						myLogger.debugLog("terminating guidance", "CheckGuidance()");
+						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
 					}
 					break;
@@ -663,18 +583,96 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Determines if the missile has moved far enough to allow the cluster to be formed.
+		/// Updates myAntenna and sends LastSeen of this missile to launcher. Runs on game thread.
 		/// </summary>
-		private void update_mainFarEnough()
+		private void UpdateNetwork()
 		{
-			double minDist = (MyEntity.WorldAABB.Max - MyEntity.WorldAABB.Min).AbsMax();
-			minDist *= 2;
-			minDist += myDescr.ClusterFormDistance;
-			//myLogger.debugLog("minimum distance: " + minDist + ", distance: " + CubeBlock.WorldAABB.Distance(MyEntity.GetPosition()), "MainFarEnough()");
+			if (myAntenna != null)
+				myAntenna.Update100();
 
-			myCluster.MainFarEnough = CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist;
-			if (myCluster.MainFarEnough)
-				myLogger.debugLog("past forming range, ok to form", "MainFarEnough()");
+			if (m_launcherClient == null)
+			{
+				myLogger.debugLog("No launcher client", "UpdateNetwork()", Logger.severity.WARNING);
+				return;
+			}
+
+			NetworkStorage store = m_launcherClient.GetStorage();
+			if (store == null)
+			{
+				myLogger.debugLog("Net client does not have a storage", "UpdateNetwork()", Logger.severity.WARNING);
+				return;
+			}
+
+			//myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
+			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.None));
+		}
+
+		private void UpdateRail()
+		{
+			MatrixD matrix = CubeBlock.WorldMatrix;
+			m_rail.Rail.From = Vector3D.Transform(m_rail.RailStart, matrix);
+			m_rail.Rail.To = m_rail.Rail.From + matrix.Forward * 100d;
+
+			Vector3D closest = m_rail.Rail.ClosestPoint(MyEntity.GetPosition());
+			//myLogger.debugLog("my position: " + MyEntity.GetPosition() + ", closest point: " + closest + ", distance: " + Vector3D.Distance(MyEntity.GetPosition(), closest), "UpdateRail()");
+			//myLogger.debugLog("my forward: " + MyEntity.WorldMatrix.Forward + ", block forward: " + matrix.Forward + ", angle: " + MyEntity.WorldMatrix.Forward.AngleBetween(matrix.Forward), "UpdateRail()");
+
+			matrix.Translation = closest;
+			MyEntity.WorldMatrix = matrix;
+
+			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(DateTime.UtcNow - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
+			MyEntity.Physics.LinearVelocity = CubeBlock.CubeGrid.Physics.LinearVelocity + matrix.Forward * myAmmo.MissileDefinition.MissileInitialSpeed;
+		}
+
+		private void StartGravity()
+		{
+			Vector3D position = MyEntity.GetPosition();
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
+
+			foreach (MyPlanet planet in allPlanets)
+				if (planet.IsPositionInGravityWell(position))
+				{
+					Vector3D targetPosition = CurrentTarget.GetPosition();
+					if (!planet.IsPositionInGravityWell(targetPosition))
+					{
+						myLogger.debugLog("Target is not in gravity well, target position: " + targetPosition + ", planet: " + planet.getBestName(), "UpdateGravity()", Logger.severity.WARNING);
+						return;
+					}
+					Vector3 gravAtTarget = planet.GetWorldGravityNormalized(ref targetPosition);
+					m_gravData = new GravityData(planet, gravAtTarget);
+					break;
+				}
+
+			allPlanets.Clear();
+			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+
+			if (m_gravData != null)
+				UpdateGravity();
+		}
+
+		/// <summary>
+		/// Updates stored gravity values. Runs on missile thread.
+		/// </summary>
+		private void UpdateGravity()
+		{
+			Vector3D position = MyEntity.GetPosition();
+			m_gravData.Normal = m_gravData.Planet.GetWorldGravityNormalized(ref position);
+			if (m_stage == Stage.Boost)
+			{
+				float grav = m_gravData.Planet.GetGravityMultiplier(position) * 9.81f;
+				m_gravData.AccelPerUpdate = m_gravData.Normal * grav * Globals.UpdateDuration;
+			}
+
+			myLogger.debugLog("updated gravity, norm: " + m_gravData.Normal, "UpdateGravity()");
+		}
+
+		/// <summary>
+		/// Applies gravitational acceleration to the missile. Runs on game thread.
+		/// </summary>
+		private void ApplyGravity()
+		{
+			MyEntity.Physics.LinearVelocity += m_gravData.AccelPerUpdate;
 		}
 
 	}

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Movement
@@ -15,9 +15,11 @@ namespace Rynchodon.Autopilot.Movement
 		private Logger myLogger = null;
 
 		private IMyCubeGrid myGrid;
-		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
 		private float m_airDensity;
-		private ulong m_nextUpdate_gravityAndAir;
+		private ulong m_nextUpdate;
+
+		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
+		private Dictionary<Base6Directions.Direction, float> m_totalThrustForce = new Dictionary<Base6Directions.Direction, float>();
 
 		public ThrustProfiler(IMyCubeGrid grid)
 		{
@@ -107,7 +109,77 @@ namespace Rynchodon.Autopilot.Movement
 		/// get the force in a direction
 		/// </summary>
 		/// <param name="direction">the direction of force / acceleration</param>
-		public float GetForceInDirection(Base6Directions.Direction direction, bool adjustForGravity = true)
+		public float GetForceInDirection(Base6Directions.Direction direction, bool adjustForGravity = false)
+		{
+			float force;
+			if (!m_totalThrustForce.TryGetValue(direction, out force))
+				force = CalcForceInDirection(direction);
+
+			if (adjustForGravity)
+			{
+				float change = Base6Directions.GetVector(direction).Dot(m_localGravity) * myGrid.Physics.Mass;
+				myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
+				force += change;
+			}
+
+			return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
+		}
+
+		public void Update()
+		{
+			if (Globals.UpdateCount < m_nextUpdate)
+				return;
+
+			m_totalThrustForce.Clear();
+
+			Vector3D position = myGrid.GetPosition();
+			m_worldGravity = Vector3.Zero;
+			m_airDensity = 0f;
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
+
+			foreach (MyPlanet planet in allPlanets)
+				if (planet.IsPositionInGravityWell(position))
+				{
+					m_worldGravity += planet.GetWorldGravityGrid(position);
+					if (planet.HasAtmosphere)
+						m_airDensity += planet.GetAirDensity(position);
+				}
+
+			allPlanets.Clear();
+			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+
+			if (m_worldGravity.LengthSquared() < 0.01f)
+			{
+				myLogger.debugLog("Not in gravity well", "Update()");
+				m_localGravity = Vector3.Zero;
+				m_gravityReactRatio = Vector3.Zero;
+				m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
+				return;
+			}
+
+			m_localGravity = Vector3.Transform(m_worldGravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
+
+			Vector3 gravityReactRatio = Vector3.Zero;
+			if (m_localGravity.X > 0)
+				gravityReactRatio.X = -m_localGravity.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Left);
+			else
+				gravityReactRatio.X = -m_localGravity.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Right);
+			if (m_localGravity.Y > 0)
+				gravityReactRatio.Y = -m_localGravity.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Down);
+			else
+				gravityReactRatio.Y = -m_localGravity.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Up);
+			if (m_localGravity.Z > 0)
+				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Forward);
+			else
+				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward);
+			m_gravityReactRatio = gravityReactRatio;
+
+			myLogger.debugLog("Gravity: " + m_worldGravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "Update()");
+			m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
+		}
+
+		private float CalcForceInDirection(Base6Directions.Direction direction)
 		{
 			float force = 0;
 			foreach (MyThrust thruster in thrustersInDirection[direction])
@@ -124,87 +196,14 @@ namespace Rynchodon.Autopilot.Movement
 							float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
 							float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
 							float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
-							//myLogger.debugLog("For thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "GetForceInDirection()");
+							//myLogger.debugLog("direction: " + direction + ", for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "CalcForceInDirection()");
 							thrusterForce *= effectiveness;
 						}
 					force += thrusterForce;
 				}
 
-			if (adjustForGravity)
-			{
-				float change = Base6Directions.GetVector(direction).Dot(m_localGravity) * myGrid.Physics.Mass;
-				//myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
-				force += change;
-			}
-
-			return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
-		}
-
-		/// <summary>
-		/// Determines if there are working thrusters in every direction.
-		/// </summary>
-		public bool CanMoveAnyDirection()
-		{
-			foreach (List<MyThrust> thrusterGroup in thrustersInDirection.Values)
-			{
-				bool found = false;
-				foreach (MyThrust prop in thrusterGroup)
-					if (!prop.Closed && prop.IsWorking)
-					{
-						found = true;
-						break;
-					}
-				if (!found)
-					return false;
-			}
-			return true;
-		}
-
-		public void UpdateGravityAndAir()
-		{
-			if (Globals.UpdateCount < m_nextUpdate_gravityAndAir)
-				return;
-
-			Vector3D position = myGrid.GetPosition();
-			m_worldGravity = Vector3.Zero;
-			m_airDensity = 0f;
-			List<IMyVoxelBase> allPlanets = MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxel => voxel is MyPlanet);
-			foreach (MyPlanet planet in allPlanets)
-				if (planet.IsPositionInRangeGrid(position))
-				{
-					m_worldGravity += planet.GetWorldGravityGrid(position);
-					if (planet.HasAtmosphere)
-						m_airDensity += planet.GetAirDensity(position);
-				}
-
-			if (m_worldGravity.LengthSquared() < 0.01f)
-			{
-				myLogger.debugLog("Not in gravity well", "UpdateGravityAndAir()");
-				m_localGravity = Vector3.Zero;
-				m_gravityReactRatio = Vector3.Zero;
-				m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
-				return;
-			}
-
-			m_localGravity = Vector3.Transform(m_worldGravity, myGrid.WorldMatrixNormalizedInv.GetOrientation());
-
-			Vector3 gravityReactRatio = Vector3.Zero;
-			if (m_localGravity.X > 0)
-				gravityReactRatio.X = -m_localGravity.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Left, false);
-			else
-				gravityReactRatio.X = -m_localGravity.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Right, false);
-			if (m_localGravity.Y > 0)
-				gravityReactRatio.Y = -m_localGravity.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Down, false);
-			else
-				gravityReactRatio.Y = -m_localGravity.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Up, false);
-			if (m_localGravity.Z > 0)
-				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Forward, false);
-			else
-				gravityReactRatio.Z = -m_localGravity.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward, false);
-			m_gravityReactRatio = gravityReactRatio;
-
-			myLogger.debugLog("Gravity: " + m_worldGravity + ", local: " + m_localGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "UpdateGravityAndAir()");
-			m_nextUpdate_gravityAndAir = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
+			m_totalThrustForce[direction] = force;
+			return force;
 		}
 
 	}

@@ -1,4 +1,3 @@
-[u]Do not attempt to fire a guided missile while your ship is rotating or accelerating.[/u]
 If the ID command is specified in the launcher's name, the missile will only target the matching ship/station.
 Otherwise, the target type should be specified in the launcher's name; AllGrid, LargeGrid, SmallGrid, or Station.
 See [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url].

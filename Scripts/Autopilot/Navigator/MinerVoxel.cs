@@ -6,21 +6,15 @@ using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game.Entity;
+using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Navigator
 {
-
-	/*
-	 * TODO:
-	 * Escape if inside tunnel while autopilot gains control (regardless of commands)
-	 * Antenna relay & multiple ore detectors
-	 * Sort IMyVoxelBase by distance before searching for ores
-	 */
 
 	/// <summary>
 	/// Mines an IMyVoxelBase
@@ -58,7 +52,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private enum State : byte { GetTarget, Approaching, Rotating, MoveTo, Mining, Mining_Escape, Mining_Tunnel, Move_Away }
 
 		private readonly Logger m_logger;
-		private readonly OreDetector m_oreDetector;
 		private readonly byte[] OreTargets;
 		private readonly float m_longestDimension;
 
@@ -67,12 +60,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private Line m_approach;
 		private Vector3D m_depositPos, m_voxelCentre = Vector3D.NegativeInfinity;
 		private Vector3 m_currentTarget;
-		private string m_depostitOre;
+		private string m_depositOre;
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
 		private bool m_miningPlanet;
 		private float m_closestDistToTarget;
-		private ulong m_stuckAt;
 
 		private State m_state
 		{
@@ -107,8 +99,7 @@ namespace Rynchodon.Autopilot.Navigator
 							// request ore detector update
 							m_logger.debugLog("Requesting ore update", "m_state()");
 							m_navSet.OnTaskComplete_NavMove();
-							m_oreDetector.OnUpdateComplete.Enqueue(OreDetectorFinished);
-							m_oreDetector.UpdateOreLocations();
+							OreDetector.SearchForMaterial(m_mover.Block, OreTargets, OnOreSearchComplete);
 						}
 						break;
 					case State.Approaching:
@@ -149,8 +140,8 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition, "m_state()");
 				m_mover.StopMove();
 				m_mover.StopRotate();
+				m_mover.IsStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
-				RestartStuckTimer();
 			}
 		}
 
@@ -179,23 +170,11 @@ namespace Rynchodon.Autopilot.Navigator
 			if (navBlock.Block is IMyShipDrill)
 				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(navBlock.Block);
 			else
-				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(m_mover.Block.CubeGrid);
+				m_navDrill = new MultiBlock<MyObjectBuilder_Drill>(() => m_mover.Block.CubeGrid);
 
 			if (m_navDrill.FunctionalBlocks == 0)
 			{
 				m_logger.debugLog("no working drills", "MinerVoxel()", Logger.severity.INFO);
-				return;
-			}
-
-			var detectors = cache.GetBlocksOfType(typeof(MyObjectBuilder_OreDetector));
-			if (detectors != null)
-			{
-				if (!Registrar.TryGetValue(detectors[0].EntityId, out m_oreDetector))
-					m_logger.debugLog("failed to get ore detector from block", "MinerVoxel()", Logger.severity.FATAL);
-			}
-			else
-			{
-				m_logger.debugLog("No ore detector, no ore for you", "MinerVoxel()", Logger.severity.INFO);
 				return;
 			}
 
@@ -232,7 +211,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Rotating;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -240,7 +219,7 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 				case State.Rotating:
 					m_mover.StopMove();
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -253,7 +232,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -282,12 +261,12 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
 					}
-					m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero); 
+					m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero);
 					return;
 				case State.Mining_Escape:
 					if (!IsNearVoxel())
@@ -297,7 +276,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
 						Logger.debugNotify("Stuck", 16);
@@ -315,7 +294,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_state = State.Mining_Escape;
 						return;
@@ -336,7 +315,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.GetTarget;
 						return;
 					}
-					if (IsStuck())
+					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
 						Logger.debugNotify("Stuck", 16);
@@ -361,7 +340,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (m_state)
 				{
 					case State.Approaching:
-						m_mover.InGravity_LevelOff();
+						m_mover.StopRotate();
 						return;
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())
@@ -415,7 +394,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 			//m_logger.debugLog("rotating to face " + m_currentTarget, "Rotate()");
 			if (m_state == State.Approaching)
-				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+				m_mover.CalcRotate();
 			else
 				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
 		}
@@ -429,7 +408,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			customInfo.Append("Mining ");
-			customInfo.AppendLine(m_depostitOre);
+			customInfo.AppendLine(m_depositOre);
 
 			switch (m_state)
 			{
@@ -489,7 +468,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 			foreach (Ingame.IMyShipDrill drill in allDrills)
 			{
-				IMyInventory drillInventory = (IMyInventory)Ingame.TerminalBlockExtentions.GetInventory(drill, 0);
+				MyInventoryBase drillInventory = ((MyEntity)drill).GetInventoryBase(0);
+
 				content += drillInventory.CurrentVolume;
 				capacity += drillInventory.MaxVolume;
 				drillCount++;
@@ -530,88 +510,58 @@ namespace Rynchodon.Autopilot.Navigator
 			}, m_logger);
 		}
 
-		private void GetDeposit()
+		private void OnOreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase foundMap, string oreName)
 		{
-			Vector3D pos = m_navDrill.WorldPosition;
-			IMyVoxelBase foundMap;
-			if (m_oreDetector.FindClosestOre(pos, OreTargets, out m_depositPos, out foundMap, out m_depostitOre))
+			if (!success)
 			{
-				// from the centre of the voxel, passing through the deposit, find the edge of the AABB
-				m_voxelCentre = foundMap.GetCentre();
-				Vector3D centreOut = m_depositPos - m_voxelCentre;
-				centreOut.Normalize();
-				Vector3D bodEdgeFinderStart = m_voxelCentre + centreOut * foundMap.WorldAABB.GetLongestDim();
-				RayD boxEdgeFinder = new RayD(bodEdgeFinderStart, -centreOut);
-				double? boxEdgeDist = foundMap.WorldAABB.Intersects(boxEdgeFinder);
-				if (boxEdgeDist == null)
-					throw new Exception("Math fail");
-				Vector3D boxEdge = bodEdgeFinderStart - centreOut * boxEdgeDist.Value;
-
-				// was getting memory access violation, so not using MainLock.RayCastVoxel_Safe()
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					Vector3 surfacePoint;
-					if (foundMap is IMyVoxelMap)
-					{
-						MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
-						m_miningPlanet = false;
-					}
-					else
-					{
-						MyPlanet planet = foundMap as MyPlanet;
-						surfacePoint = planet.GetClosestSurfacePointGlobal(ref m_depositPos);
-						m_logger.debugLog("Mining target is a planet, from nav drill position: " + m_navDrill.WorldPosition + ", surface is " + surfacePoint, "GetDeposit()");
-						m_miningPlanet = true;
-					}
-					m_approach = new Line(surfacePoint + centreOut * m_controlBlock.CubeGrid.GetLongestDim() * 2, surfacePoint);
-
-					m_logger.debugLog("centre: " + m_voxelCentre.ToGpsTag("centre")
-						+ ", deposit: " + m_depositPos.ToGpsTag("deposit")
-						+ ", boxEdge: " + boxEdge.ToGpsTag("boxEdge")
-						+ ", m_approach: " + m_approach.From.ToGpsTag("m_approach From")
-						+ ", " + m_approach.To.ToGpsTag("m_approach To")
-						+ ", surfacePoint: " + surfacePoint
-						, "GetDeposit()");
-
-					m_state = State.Approaching;
-				}, m_logger);
-
+				m_logger.debugLog("No ore target found", "GetDeposit()", Logger.severity.INFO);
+				m_navSet.OnTaskComplete_NavRot();
 				return;
 			}
 
-			m_logger.debugLog("No ore target found", "GetDeposit()", Logger.severity.INFO);
-			m_navSet.OnTaskComplete_NavRot();
+			m_voxelCentre = foundMap.GetCentre();
+			m_depositPos = orePosition;
+			m_depositOre = oreName;
+			Vector3D centreOut = Vector3D.Normalize(m_depositPos - m_voxelCentre);
+			Vector3D boxEdgeFinderStart = m_voxelCentre + centreOut * foundMap.WorldAABB.GetLongestDim();
+			RayD boxEdgeFinder = new RayD(boxEdgeFinderStart, -centreOut);
+			double? boxEdgeDist = foundMap.WorldAABB.Intersects(boxEdgeFinder);
+			if (boxEdgeFinder == null)
+				throw new Exception("Math fail");
+			Vector3D boxEdge = boxEdgeFinderStart - centreOut * boxEdgeDist.Value;
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				Vector3 surfacePoint;
+				if (foundMap is IMyVoxelMap)
+				{
+					MyAPIGateway.Entities.IsInsideVoxel(boxEdge, m_voxelCentre, out surfacePoint);
+					m_miningPlanet = false;
+				}
+				else
+				{
+					MyPlanet planet = foundMap as MyPlanet;
+					surfacePoint = planet.GetClosestSurfacePointGlobal(ref m_depositPos);
+					m_logger.debugLog("Mining target is a planet, from nav drill position: " + m_navDrill.WorldPosition + ", surface is " + surfacePoint, "GetDeposit()");
+					m_miningPlanet = true;
+				}
+				m_approach = new Line(surfacePoint + centreOut * m_controlBlock.CubeGrid.GetLongestDim() * 2, surfacePoint);
+
+				m_logger.debugLog("centre: " + m_voxelCentre.ToGpsTag("centre")
+					+ ", deposit: " + m_depositPos.ToGpsTag("deposit")
+					+ ", boxEdge: " + boxEdge.ToGpsTag("boxEdge")
+					+ ", m_approach: " + m_approach.From.ToGpsTag("m_approach From")
+					+ ", " + m_approach.To.ToGpsTag("m_approach To")
+					+ ", surfacePoint: " + surfacePoint
+					, "GetDeposit()");
+
+				m_state = State.Approaching;
+			}, m_logger);
 		}
 
 		private bool IsNearVoxel(double lengthMulti = 1d)
 		{ return IsNearVoxel(m_navDrill.Grid, lengthMulti); }
 
-		private bool IsStuck()
-		{
-			if (!m_closestDistToTarget.IsValid() || m_navSet.Settings_Current.Distance < m_closestDistToTarget)
-			{
-				RestartStuckTimer();
-				return false;
-			}
-			return (Globals.UpdateCount >= m_stuckAt);
-		}
-
-		private void RestartStuckTimer()
-		{
-			m_closestDistToTarget = m_navSet.Settings_Current.Distance;
-			m_stuckAt = Globals.UpdateCount + 1000ul;
-			//m_logger.debugLog("closest distance: " + m_closestDistToTarget + ", stuck at: " + m_stuckAt, "RestartStuckTimer()");
-		}
-
 		private void MoveCurrent()
 		{ m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo); }
-
-		private void OreDetectorFinished()
-		{
-			try
-			{ GetDeposit(); }
-			catch (Exception ex)
-			{ m_logger.alwaysLog("Exception: " + ex, "OreDetectorFinished()", Logger.severity.ERROR); }
-		}
 
 	}
 }

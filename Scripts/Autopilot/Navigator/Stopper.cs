@@ -11,8 +11,6 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Stopper : NavigatorMover, INavigatorRotator
 	{
 
-		private const float StoppedThreshold = 0.001f;
-
 		private readonly Logger _logger;
 		private readonly bool m_exitAfter;
 
@@ -38,7 +36,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() < StoppedThreshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() < StoppedThreshold)
+			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() == 0f && m_mover.Block.Physics.AngularVelocity.LengthSquared() == 0f)
 			{
 				INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
 				if (rotator != null && !m_navSet.DirectionMatched())
@@ -47,21 +45,17 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
+				m_mover.StopRotate();
 				_logger.debugLog("stopped", "Stopper()");
 				m_navSet.OnTaskComplete_NavRot();
 				if (m_exitAfter)
 				{
 					_logger.debugLog("setting disable", "Move()", Logger.severity.DEBUG);
-					m_controlBlock.DisableControl();
+					m_controlBlock.SetControl(false);
 				}
 			}
 			//else
 			//	_logger.debugLog("not stopped", "Stopper()");
-		}
-
-		public void Rotate()
-		{
-			m_mover.InGravity_LevelOff();
 		}
 
 		/// <summary>
@@ -74,6 +68,11 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine("Exit after stopping");
 			else
 				customInfo.AppendLine("Stopping");
+		}
+
+		public void Rotate()
+		{
+			m_mover.CalcRotate();
 		}
 
 	}

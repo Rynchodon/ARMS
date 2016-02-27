@@ -13,7 +13,6 @@ namespace Rynchodon.Weapons
 	public class FixedWeapon : WeaponTargeting
 	{
 
-		private bool ControllingEngager;
 		private MotorTurret MyMotorTurret = null;
 
 		private readonly Logger myLogger;
@@ -27,21 +26,18 @@ namespace Rynchodon.Weapons
 			myLogger.debugLog("Initialized", "FixedWeapon()");
 
 			AllowFighterControl = WeaponDescription.GetFor(block).AllowFighterControl;
-
-			AllowedState = State.GetOptions;
 		}
 
 		/// <summary>
-		/// <para>If this FixedWeapon is already being controlled, returns if the given controller is controlling it.</para>
-		/// <para>Otherwise, attempts to take control of this FixedWeapon. Control requires that targeting options be set-up and turret not set.</para>
+		/// Attempts to take control of this fixed weapon, it must not be a rotor-turret.
 		/// </summary>
+		/// <returns>true iff the engager can control this weapon</returns>
 		public bool EngagerTakeControl()
 		{
 			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
 				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
-				ControllingEngager = true;
-				AllowedState = State.Targeting;
+				CurrentControl = Control.Engager;
 				return true;
 			}
 
@@ -50,16 +46,15 @@ namespace Rynchodon.Weapons
 
 		public void EngagerReleaseControl()
 		{
-			ControllingEngager = false;
-			AllowedState = State.Off;
+			CurrentControl = Control.Off;
 		}
 
 		/// <summary>
 		/// Fires the weapon as it bears.
 		/// </summary>
-		protected override void Update()
+		protected override void Update1_GameThread()
 		{
-			if (CurrentState_NotFlag(State.Targeting))
+			if (CurrentControl == Control.Off)
 				return;
 
 			// CurrentTarget may be changed by WeaponTargeting
@@ -71,10 +66,8 @@ namespace Rynchodon.Weapons
 					MyMotorTurret.Stop();
 				return;
 			}
-			if (!GotTarget.FiringDirection.HasValue || !GotTarget.InterceptionPoint.HasValue) // happens alot
+			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
-
-			CheckFire(CubeBlock.WorldMatrix.Forward);
 
 			if (MyMotorTurret != null)
 			{
@@ -83,9 +76,9 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		protected override void Update_Options(TargetingOptions current)
+		protected override void Update100_Options_TargetingThread(TargetingOptions current)
 		{
-			if (ControllingEngager)
+			if (CurrentControl == Control.Engager)
 				return;
 
 			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
@@ -95,7 +88,6 @@ namespace Rynchodon.Weapons
 				{
 					myLogger.debugLog("Turret is now enabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
-					AllowedState = State.Targeting;
 				}
 			}
 			else
@@ -104,19 +96,25 @@ namespace Rynchodon.Weapons
 				{
 					myLogger.debugLog("Turret is now disabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
-					AllowedState = State.GetOptions;
 				}
 			}
 		}
 
 		protected override bool CanRotateTo(VRageMath.Vector3D targetPoint)
 		{
-			// if controlled by an engager, can always rotate
-			if (ControllingEngager)
-				return true;
-
-			// if controlled by a turret (not implemented)
 			return true;
+			
+			//// if controlled by an engager, can always rotate
+			//if (ControllingEngager)
+			//	return true;
+
+			//// if controlled by a turret (not implemented)
+			//return true;
+		}
+
+		protected override Vector3 Facing()
+		{
+			return CubeBlock.WorldMatrix.Forward;
 		}
 
 		/// <summary>

@@ -16,7 +16,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger m_logger;
 
 		private LastSeen m_enemy;
-		private Vector3 m_flyDirection;
 
 		public Coward(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet)
@@ -30,7 +29,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanRespond()
 		{
-			return m_mover.CanMoveForward(m_mover.Block.Pseudo);
+			return m_mover.CanMoveForward();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)
@@ -56,10 +55,10 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Vector3 position = m_mover.Block.CubeBlock.GetPosition();
-			m_flyDirection = position - m_enemy.GetPosition();
-			m_flyDirection.Normalize();
+			Vector3 flyDirection = position - m_enemy.GetPosition();
+			flyDirection.Normalize();
 
-			Vector3 destination = position + m_flyDirection * 1000000f;
+			Vector3 destination = position + flyDirection * 1000000f;
 			m_mover.CalcMove(m_mover.Block.Pseudo, destination, Vector3.Zero);
 		}
 
@@ -73,7 +72,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_mover.CalcRotate(m_mover.Block.Pseudo, RelativeDirection3F.FromWorld(m_mover.Block.CubeGrid, m_flyDirection));
+			m_mover.CalcRotate();
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
@@ -97,11 +98,9 @@ namespace Rynchodon
 			return (block as IMyCubeBlock).GetObjectBuilder_Safe();
 		}
 
-		public static List<IMyVoxelBase> GetInstances_Safe(this IMyVoxelMaps mapsObject, Func<IMyVoxelBase, bool> collect = null)
+		public static void GetInstances_Safe(this IMyVoxelMaps mapsObject, List<IMyVoxelBase> list, Func<IMyVoxelBase, bool> collect = null)
 		{
-			List<IMyVoxelBase> outInstances = new List<IMyVoxelBase>();
-			UsingShared(() => mapsObject.GetInstances(outInstances, collect));
-			return outInstances;
+			UsingShared(() => mapsObject.GetInstances(list, collect));
 		}
 
 		/// <summary>
