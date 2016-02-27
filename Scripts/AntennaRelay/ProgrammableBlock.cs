@@ -47,7 +47,10 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			program.SendMessage(text[0], text[1], text[2], clientSent);
+			bool sendToServer;
+			program.SendMessage(text[0], text[1], text[2], clientSent, out sendToServer);
+			if (sendToServer)
+				MyAPIGateway.Multiplayer.SendMessageToServer(message);
 		}
 
 		private Ingame.IMyProgrammableBlock m_progBlock;
@@ -135,9 +138,10 @@ namespace Rynchodon.AntennaRelay
 				m_logger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
 		}
 
-		private void SendMessage(string recipientGrid, string recipientBlock, string message, bool clientSent)
+		private void SendMessage(string recipientGrid, string recipientBlock, string message, bool clientSent, out bool sendToServer)
 		{
 			bool sentToSelf = !clientSent || !MyAPIGateway.Multiplayer.IsServer;
+			sendToServer = false;
 			m_logger.debugLog("client sent: " + clientSent + ", is server: " + MyAPIGateway.Multiplayer.IsServer + ", sentToSelf: " + sentToSelf, "SendMessage()");
 
 			NetworkStorage store = m_networkClient.GetStorage();
@@ -164,6 +168,8 @@ namespace Rynchodon.AntennaRelay
 					}
 				});
 
+			bool sts = false;
+
 			Registrar.ForEach((ShipController_Autopilot autopilot) => {
 				IMyCubeBlock block = autopilot.m_block.CubeBlock;
 				IMyCubeGrid grid = block.CubeGrid;
@@ -175,9 +181,13 @@ namespace Rynchodon.AntennaRelay
 						autopilot.m_block.NetClient.GetStorage(); // force update of storage
 						store.Receive(new Message(message, block, m_block));
 					}
+					else
+						sts = true;
 					count++;
 				}
 			});
+
+			sendToServer = sts;
 
 			if (sentToSelf && MyAPIGateway.Session.Player != null)
 				(m_block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));

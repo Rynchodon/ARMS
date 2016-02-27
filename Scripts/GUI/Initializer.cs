@@ -113,19 +113,7 @@ namespace Rynchodon.GUI
 					ByteConverter.AppendBytes(message, ProgrammableBlock.messageSeparator);
 			}
 
-			byte[] toArray = message.ToArray();
-
-			bool success;
-
-			if (MyAPIGateway.Multiplayer.IsServer)
-				success = MyAPIGateway.Multiplayer.SendMessageToSelf(toArray);
-			else
-			{
-				success = MyAPIGateway.Multiplayer.SendMessageToSelf(toArray);
-				success = success || MyAPIGateway.Multiplayer.SendMessageToServer(toArray);
-			}
-
-			if (success)
+			if (MyAPIGateway.Multiplayer.SendMessageToSelf(message.ToArray()))
 				m_logger.debugLog("Sent message", "ProgrammableBlock_SendMessage()", Logger.severity.DEBUG);
 			else
 			{
