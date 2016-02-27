@@ -61,6 +61,7 @@ namespace Rynchodon.Autopilot.Harvest
 				this.m_storage.Resize(new Vector3I(QUERY_STEP, QUERY_STEP, QUERY_STEP));
 				this.m_maxRange = maxRange;
 				(this.m_voxel as MyVoxelBase).RangeChanged += m_voxel_RangeChanged;
+				this.NeedsUpdate = true;
 
 				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner, "VoxelData()");
 			}
@@ -315,12 +316,13 @@ Finished_Deposit:
 				});
 
 				IOrderedEnumerable<OreDetector> sorted = oreDetectors.OrderBy(detector => Vector3D.DistanceSquared(position, detector.Block.GetPosition()));
-				oreDetectors.Clear();
-				ResourcePool<List<OreDetector>>.Return(oreDetectors);
 
 				foreach (OreDetector detector in sorted)
 					if (detector.GetOreLocations(position, oreType, onComplete))
 						return;
+
+				oreDetectors.Clear();
+				ResourcePool<List<OreDetector>>.Return(oreDetectors);
 
 				onComplete(false, Vector3D.Zero, null, null);
 			});
@@ -387,6 +389,8 @@ Finished_Deposit:
 		/// <returns>true iff an ore is found</returns>
 		private bool GetOreLocations(Vector3D position, byte[] oreType, OreSearchComplete onComplete)
 		{
+			m_logger.debugLog("entered GetOreLocations()", "GetOreLocations()");
+
 			BoundingSphereD detection = new BoundingSphereD(m_oreDetector.GetPosition(), m_maxRange);
 			m_nearbyVoxel.Clear();
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel);

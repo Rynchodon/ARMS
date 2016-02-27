@@ -140,6 +140,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition, "m_state()");
 				m_mover.StopMove();
 				m_mover.StopRotate();
+				m_mover.IsStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
 			}
 		}

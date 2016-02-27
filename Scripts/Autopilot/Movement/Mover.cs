@@ -61,8 +61,15 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			get
 			{
-				myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", prev: " + prev_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", prev: " + prev_angle + ", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
+				//myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", prev: " + prev_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", prev: " + prev_angle + ", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
 				return Globals.UpdateCount >= m_stuckAt;
+			}
+			set
+			{
+				if (value)
+					m_stuckAt = 0ul;
+				else
+					m_stuckAt = Globals.UpdateCount + StuckAfter;
 			}
 		}
 
