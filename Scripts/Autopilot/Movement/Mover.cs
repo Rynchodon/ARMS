@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			float distance = destDisp.Length();
-			if (distance < best_distance || float.IsNaN(NavSet.Settings_Current.Distance))
+			if (distance + 2f < best_distance || float.IsNaN(NavSet.Settings_Current.Distance))
 			{
 				best_distance = distance;
 				m_stuckAt = Globals.UpdateCount + StuckAfter;
@@ -705,23 +705,11 @@ namespace Rynchodon.Autopilot.Movement
 
 			//myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
-			Vector3 unstick;
-			if (controller.CubeGrid.GetLinearVelocity().LengthSquared() < 0.01f && moveControl.LengthSquared() > 0.01f)
-			{
-				Vector3 direction = Vector3.Transform(m_targetVelocity, controller.WorldMatrix);
-				direction.Normalize();
-				unstick = direction * 0.1f;
-				myLogger.debugLog("Velocity: " + controller.CubeGrid.GetLinearVelocity() + ", Unstick: " + unstick, "MoveAndRotate()");
-			}
-			else
-				unstick = Vector3.Zero;
-
 			m_stopped = false;
 			//myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
+				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl, "MoveAndRotate()");
 				controller.MoveAndRotate(moveControl, rotateControl, rollControl);
-				controller.CubeGrid.Physics.LinearVelocity += unstick;
 			}, myLogger);
 		}
 
