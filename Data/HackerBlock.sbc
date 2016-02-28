@@ -13,12 +13,12 @@
         Hacker
       </Description>
       <DisplayName>Hacker Block</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\landing_gear.dds</Icon>
+      <Icon>Textures\Icons\Hacker.dds</Icon>
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
-      <Size x="1" y="2" z="3" />
+      <Size x="1" y="1" z="1" />
       <ModelOffset x="0" y="0" z="0" />
-      <Model>Models\Cubes\Small\LandingGear.mwm</Model>
+      <Model>Models\Cubes\ARMS_SmallHackerBlock.mwm</Model>
       <LockSound>ShipLandGearOn</LockSound>
       <UnlockSound>ShipLandGearOff</UnlockSound>
       <FailedAttachSound>ShipLandGearNothing01</FailedAttachSound>
@@ -29,14 +29,7 @@
         <Component Subtype="SteelPlate" Count="1" />
       </Components>
       <CriticalComponent Subtype="Motor" Index="0" />
-      <MountPoints>
-        <MountPoint Side="Top" StartX="0" StartY="1" EndX="1" EndY="2" />
-      </MountPoints>
-      <BuildProgressModels>
-        <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Small\LandingGearConstruction_1.mwm" />
-        <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\LandingGearConstruction_2.mwm" />
-      </BuildProgressModels>
-      <BlockPairName>ARMS_HackerBlock</BlockPairName>
+      <BlockPairName>Hacker</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <BuildTimeSeconds>15</BuildTimeSeconds>
@@ -44,6 +37,38 @@
       <DamageEffectId>212</DamageEffectId>
       <DamagedSound>ParticleHeavyMech</DamagedSound>
     </Definition>
-  
+  <Definition xsi:type="MyObjectBuilder_LandingGearDefinition">
+      <Id>
+        <TypeId>LandingGear</TypeId>
+        <SubtypeId>ARMS_LargeHackerBlock</SubtypeId>
+      </Id>
+      <Description>
+        Hacker
+      </Description>
+      <DisplayName>Hacker Block</DisplayName>
+      <Icon>Textures\Icons\Hacker.dds</Icon>
+      <CubeSize>Large</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="1" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\ARMS_LargeHackerBlock.mwm</Model>
+      <LockSound>ShipLandGearOn</LockSound>
+      <UnlockSound>ShipLandGearOff</UnlockSound>
+      <FailedAttachSound>ShipLandGearNothing01</FailedAttachSound>
+      <Components>
+        <Component Subtype="Construction" Count="1" />
+        <Component Subtype="LargeTube" Count="1" />
+        <Component Subtype="Motor" Count="1" />
+        <Component Subtype="SteelPlate" Count="1" />
+      </Components>
+      <CriticalComponent Subtype="Motor" Index="0" />
+      <BlockPairName>Hacker</BlockPairName>
+      <MirroringY>Z</MirroringY>
+      <MirroringZ>Y</MirroringZ>
+      <BuildTimeSeconds>15</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <DamageEffectId>212</DamageEffectId>
+      <DamagedSound>ParticleHeavyMech</DamagedSound>
+    </Definition>
   </CubeBlocks>
 </Definitions>

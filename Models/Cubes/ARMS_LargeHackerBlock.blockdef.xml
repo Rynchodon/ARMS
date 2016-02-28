@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>ARMS_LargeHackerBlock</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\Hacker.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="1" y="1" z="1" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Cubes\ARMS_LargeHackerBlock.mwm</Model>
+	<BlockPairName>Hacker</BlockPairName>
+</Definition>
