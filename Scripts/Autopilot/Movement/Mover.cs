@@ -220,24 +220,10 @@ namespace Rynchodon.Autopilot.Movement
 
 			// dampeners
 			m_moveEnableDampeners = false;
-			bool checkNearZero = m_targetVelocity.LengthSquared() < 1f || m_moveAccel.LengthSquared() > 1f;
 
 			for (int i = 0; i < 3; i++)
 			{
 				float targetDim = m_targetVelocity.GetDim(i);
-
-				if (checkNearZero)
-				{
-					// if target velocity is close to 0, use dampeners
-
-					if (targetDim < 0.1f && targetDim > -0.1f)
-					{
-						myLogger.debugLog("close to 0, i: " + i + ", targetDim: " + targetDim, "CalcMove()");
-						moveForceRatio.SetDim(i, 0);
-						m_moveEnableDampeners = true;
-						continue;
-					}
-				}
 
 				float forceRatio = moveForceRatio.GetDim(i);
 				if (forceRatio < 1f && forceRatio > -1f)
@@ -272,12 +258,9 @@ namespace Rynchodon.Autopilot.Movement
 			Block.SetDamping(m_moveEnableDampeners);
 
 			myLogger.debugLog("destDisp: " + destDisp
-				//+ ", destDir: " + destDir
 				+ ", destVelocity: " + destVelocity
-				//+ ", relaVelocity: " + relaVelocity
 				+ ", targetVelocity: " + m_targetVelocity
 				+ ", velocity: " + velocity
-				//+ ", diffVel: " + diffVel
 				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + moveForceRatio, "CalcMove()");
 		}

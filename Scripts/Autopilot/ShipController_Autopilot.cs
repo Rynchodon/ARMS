@@ -566,6 +566,27 @@ namespace Rynchodon.Autopilot
 			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
 			if (navR != null && navR != navM)
 				navR.AppendCustomInfo(m_customInfo_build);
+
+			EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
+			if (ef != null)
+			{
+				m_customInfo_build.Append("Enemy finder: ");
+				switch (ef.m_reason)
+				{
+					case GridFinder.ReasonCannotTarget.None:
+						m_customInfo_build.AppendLine("No enemy detected");
+						break;
+					case GridFinder.ReasonCannotTarget.Too_Far:
+						m_customInfo_build.AppendLine("Enemy too far");
+						break;
+					case GridFinder.ReasonCannotTarget.Too_Fast:
+						m_customInfo_build.AppendLine("Enemy too fast");
+						break;
+					case GridFinder.ReasonCannotTarget.Grid_Condition:
+						m_customInfo_build.AppendLine("Enemy cannot be targeted");
+						break;
+				}
+			}
 		}
 
 		private void SendCustomInfo()
