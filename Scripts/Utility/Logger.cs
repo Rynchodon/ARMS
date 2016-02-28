@@ -2,9 +2,9 @@
 using System.Text;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
-using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.ModAPI;
 

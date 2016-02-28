@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
 		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
 		private const float MinForceRatio = 0.1f;
-		private const ulong StuckAfter = 300;
+		private const ulong StuckAfter = 1000;
 
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 prevAngleVel = Vector3.Zero;
 		private DateTime updated_prevAngleVel;
 
-		private float prev_distance, prev_angle;
+		private float best_distance, best_angle;
 		private ulong m_stuckAt;
 
 		private bool m_stopped, m_overworked;
@@ -61,7 +61,8 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			get
 			{
-				//myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", prev: " + prev_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", prev: " + prev_angle + ", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
+				//myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", best: " + best_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", best: " + best_angle +
+				//	", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
 				return Globals.UpdateCount >= m_stuckAt;
 			}
 			set
@@ -172,10 +173,9 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			float distance = destDisp.Length();
-			prev_distance = NavSet.Settings_Current.Distance;
-			if (distance < prev_distance || float.IsNaN(NavSet.Settings_Current.Distance))
+			if (distance < best_distance || float.IsNaN(NavSet.Settings_Current.Distance))
 			{
-				prev_distance = distance;
+				best_distance = distance;
 				m_stuckAt = Globals.UpdateCount + StuckAfter;
 			}
 			NavSet.Settings_Task_NavWay.Distance = distance;
@@ -527,9 +527,9 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			float distanceAngle = displacement.Length();
-			if (distanceAngle < prev_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
+			if (distanceAngle < best_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
 			{
-				prev_angle = distanceAngle;
+				best_angle = distanceAngle;
 				m_stuckAt = Globals.UpdateCount + StuckAfter;
 			}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;

@@ -395,7 +395,9 @@ Finished_Deposit:
 			m_nearbyVoxel.Clear();
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel);
 
-			foreach (IMyVoxelBase nearbyMap in m_nearbyVoxel)
+			IOrderedEnumerable<MyVoxelBase> sorted = m_nearbyVoxel.OrderBy(voxel => Vector3D.DistanceSquared(voxel.GetCentre(), position));
+
+			foreach (IMyVoxelBase nearbyMap in sorted)
 			{
 				if (nearbyMap is IMyVoxelMap || nearbyMap is MyPlanet)
 				{

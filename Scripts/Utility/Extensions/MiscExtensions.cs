@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.ModAPI;
@@ -71,6 +72,12 @@ namespace Rynchodon
 			IMyCubeBlock block = entity as IMyCubeBlock;
 			if (block != null)
 				return block.GetPosition();
+			MyPlanet planet = entity as MyPlanet;
+			if (planet != null)
+				return planet.WorldMatrix.Translation;
+			IMyVoxelBase asteroid = entity as IMyVoxelBase;
+			if (asteroid != null)
+				return asteroid.WorldAABB.Center;
 
 			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
 		}

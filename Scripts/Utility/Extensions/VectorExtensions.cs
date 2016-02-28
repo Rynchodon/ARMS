@@ -8,58 +8,67 @@ namespace Rynchodon
 		#region ApplyOperation
 
 		/// <summary>
-		/// aply an operation to each of x, y, z
+		/// apply an operation to each of x, y, z
 		/// </summary>
 		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3D result)
 		{
-			double x = operation(vector.X);
-			double y = operation(vector.Y);
-			double z = operation(vector.Z);
-			result = new Vector3D(x, y, z);
+			result = new Vector3D(operation(vector.X), operation(vector.Y), operation(vector.Z));
 		}
 
 		/// <summary>
-		/// aply an operation to each of x, y, z
+		/// apply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, float> operation, out Vector3 result)
+		{
+			result = new Vector3D(operation(vector.X), operation(vector.Y), operation(vector.Z));
+		}
+
+		/// <summary>
+		/// apply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3D vector, Func<double, double> operation, out Vector3 result)
+		{
+			result = new Vector3D(operation(vector.X), operation(vector.Y), operation(vector.Z));
+		}
+
+		/// <summary>
+		/// apply an operation to each of x, y, z
 		/// </summary>
 		public static void ApplyOperation(this Vector3D vector, Func<double, int> operation, out Vector3I result)
 		{
-			int x = (int)operation(vector.X);
-			int y = (int)operation(vector.Y);
-			int z = (int)operation(vector.Z);
-			result = new Vector3I(x, y, z);
+			result = new Vector3I(operation(vector.X), operation(vector.Y), operation(vector.Z));
 		}
 
 		/// <summary>
-		/// aply an operation to each of x, y, z
+		/// apply an operation to each of x, y, z
 		/// </summary>
-		public static void ApplyOperation(this Vector3 vector, Func<double, double> operation, out Vector3 result)
+		public static void ApplyOperation(this Vector3 vector, Func<float, float> operation, out Vector3 result)
 		{
-			double x = operation(vector.X);
-			double y = operation(vector.Y);
-			double z = operation(vector.Z);
-			result = new Vector3(x, y, z);
+			result = new Vector3(operation(vector.X), operation(vector.Y), operation(vector.Z));
 		}
 
 		/// <summary>
-		/// aply an operation to each of x, y, z
+		/// apply an operation to each of x, y, z
 		/// </summary>
-		public static void ApplyOperation(this Vector3 vector, Func<double, int> operation, out Vector3I result)
+		public static void ApplyOperation(this Vector3 vector, Func<float, double> operation, out Vector3 result)
 		{
-			int x = (int)operation(vector.X);
-			int y = (int)operation(vector.Y);
-			int z = (int)operation(vector.Z);
-			result = new Vector3I(x, y, z);
+			result = new Vector3(operation(vector.X), operation(vector.Y), operation(vector.Z));
 		}
 
 		/// <summary>
-		/// aply an operation to each of x, y, z
+		/// apply an operation to each of x, y, z
+		/// </summary>
+		public static void ApplyOperation(this Vector3 vector, Func<float, int> operation, out Vector3I result)
+		{
+			result = new Vector3I(operation(vector.X), operation(vector.Y), operation(vector.Z));
+		}
+
+		/// <summary>
+		/// apply an operation to each of x, y, z
 		/// </summary>
 		public static void ApplyOperation(this Vector3I vector, Func<int, int> operation, out Vector3I result)
 		{
-			int x = operation(vector.X);
-			int y = operation(vector.Y);
-			int z = operation(vector.Z);
-			result = new Vector3I(x, y, z);
+			result = new Vector3I(operation(vector.X), operation(vector.Y), operation(vector.Z));
 		}
 
 		#endregion
