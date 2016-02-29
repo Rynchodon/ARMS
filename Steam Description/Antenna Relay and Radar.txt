@@ -64,7 +64,7 @@ GPS entries will not be added for a player if the player can see a beacon or bro
 By default, there will be 5 markers for the closest enemy, 5 for the closest neutral, 5 for the closest faction, and 5 for the closest owned grids.
 
 You can configure the number of grids that will be displayed through chat commands.
-/arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD ] #
+/arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD /MissileOnHUD ] #
 
 To change the number of marked enemy grids to 10:
 /arms set EnemiesOnHUD 10
