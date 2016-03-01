@@ -177,9 +177,15 @@ namespace Rynchodon.AntennaRelay
 					case UserSettings.ByteSettingName.MissileOnHUD:
 						name = "Missile " + index;
 						break;
-					default:
-						name = setting.ToString() + ' ' + index;
+					case UserSettings.ByteSettingName.NeutralOnHUD:
+						name = "Netural " + index;
 						break;
+					case UserSettings.ByteSettingName.EnemiesOnHUD:
+						name = "Enemy " + index;
+						break;
+					default:
+						myLogger.alwaysLog("case not implemented: " + setting, "UpdateGPS()", Logger.severity.ERROR);
+						continue;
 				}
 
 				string description = GetDescription(seen);

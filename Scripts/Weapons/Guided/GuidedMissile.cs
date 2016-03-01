@@ -92,7 +92,7 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						if (missile.myCluster != null)
+						if (missile.myCluster != null && missile.m_stage != Stage.Rail)
 							missile.UpdateCluster();
 						if (missile.CurrentTarget.TType == TargetType.None)
 							return;
@@ -226,7 +226,6 @@ namespace Rynchodon.Weapons.Guided
 			: this(missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
 		{
 			myCluster = missiles;
-			m_rail = null;
 		}
 
 		private void MyEntity_OnClose(IMyEntity obj)
@@ -425,48 +424,45 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void UpdateCluster()
 		{
-			//myLogger.debugLog("updating cluster", "UpdateCluster()");
-
-			MatrixD[] partWorldMatrix = new MatrixD[myCluster.Slaves.Count];
-			float moveBy = MyEntity.Physics.LinearVelocity.Length() * 2f * Globals.UpdateDuration;
+			Vector3D[] slavePosition = new Vector3D[myCluster.Slaves.Count];
+			float moveBy = Globals.UpdateDuration;
 			float moveBySq = moveBy * moveBy;
 			if (myTarget.Entity != null)
-				myCluster.AdjustMulti(myTarget.Entity.LocalAABB.GetShortestDim() * 0.5f);
+				myCluster.AdjustMulti(myTarget.Entity.LocalAABB.GetLongestDim() * 0.5f);
 
-			for (int i = 0; i < partWorldMatrix.Length; i++)
+			for (int i = 0; i < slavePosition.Length; i++)
 			{
-				partWorldMatrix[i] = MyEntity.WorldMatrix;
-				Vector3D slavePos = myCluster.Slaves[i].GetPosition();
-				myLogger.debugLog("cluster offset: " + myCluster.SlaveOffsets[i] + ", scaled: " + myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, "UpdateCluster()");
-				myLogger.debugLog("world matrix: " + MyEntity.WorldMatrix, "UpdateCluster()");
-				Vector3D destination = Vector3.Transform(myCluster.SlaveOffsets[i] * myCluster.OffsetMulti, MyEntity.WorldMatrix);
+				Vector3D slavePos = myCluster.Slaves[i].GetPosition() - MyEntity.GetPosition();
+				Vector3D destination = myCluster.SlaveOffsets[i] * myCluster.OffsetMulti;
 				double distSquared = Vector3D.DistanceSquared(slavePos, destination);
-				myLogger.debugLog("slave pos: " + slavePos + ", destination: " + destination + ", dist squared: " + distSquared + ", move by squared: " + moveBySq, "UpdateCluster()");
+
 				if (distSquared > moveBySq)
 				{
-					myLogger.debugLog("Slave: " + i + ", far from position, distance: " + Math.Sqrt(distSquared) + ", moving: " + moveBy, "UpdateCluster()");
 					Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSquared);
-					partWorldMatrix[i].Translation = slavePos + direction * moveBy;
+					slavePosition[i] = slavePos + direction * moveBy;
 				}
 				else
 				{
-					myLogger.debugLog("Slave: " + i + ", at destination", "UpdateCluster()");
-					partWorldMatrix[i].Translation = destination;
+					slavePosition[i] = destination;
 				}
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				if (Stopped || myCluster == null)
+				if (Stopped)
 					return;
 
-				int index = 0;
-				foreach (IMyEntity missile in myCluster.Slaves)
+				myLogger.debugLog(myCluster == null, "myCluster == null", "UpdateCluster()", Logger.severity.FATAL);
+
+				for (int i = 0; i < myCluster.Slaves.Count; i++)
 				{
-					if (missile.Closed || index >= partWorldMatrix.Length)
-						return;
-					missile.WorldMatrix = partWorldMatrix[index++];
-					missile.Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
+					if (myCluster.Slaves[i].Closed || i >= slavePosition.Length)
+						continue;
+					MatrixD worldMatrix = MyEntity.WorldMatrix;
+					worldMatrix.Translation += slavePosition[i];
+					myCluster.Slaves[i].WorldMatrix = worldMatrix;
+					myCluster.Slaves[i].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
 				}
+
 			}, myLogger);
 		}
 

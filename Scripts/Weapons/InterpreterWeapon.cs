@@ -59,7 +59,7 @@ namespace Rynchodon.Weapons
 
 			Parse(instructions);
 
-			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count, "OnInstruction()");
+			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count, "ParseAll()");
 			return InstructFound || Errors.Count == 0;
 		}
 
@@ -188,13 +188,13 @@ namespace Rynchodon.Weapons
 			string rangeString;
 
 			int index = toParse.IndexOf(word_radius);
-			myLogger.debugLog("in " + toParse + " index of " + word_radius + " is " + index, "ParseRadius()");
+			//myLogger.debugLog("in " + toParse + " index of " + word_radius + " is " + index, "ParseRadius()");
 			if (index == 0)
 				rangeString = toParse.Remove(index, word_radius.Length);
 			else
 			{
 				index = toParse.IndexOf(word_range);
-				myLogger.debugLog("in " + toParse + " index of " + word_range + " is " + index, "ParseRadius()");
+				//myLogger.debugLog("in " + toParse + " index of " + word_range + " is " + index, "ParseRadius()");
 				if (index == 0)
 					rangeString = toParse.Remove(index, word_range.Length);
 				else
@@ -243,7 +243,7 @@ namespace Rynchodon.Weapons
 
 			if (!toParse.StartsWith("t"))
 			{
-				myLogger.debugLog("not starts with t: " + toParse, "GetFromPanel()");
+				//myLogger.debugLog("not starts with t: " + toParse, "GetFromPanel()");
 				return false;
 			}
 

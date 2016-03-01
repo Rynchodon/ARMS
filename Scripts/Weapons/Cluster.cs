@@ -9,13 +9,12 @@ namespace Rynchodon.Weapons
 	public class Cluster
 	{
 
-		private const float OffsetMove = 0.1f;
-
 		private readonly Logger m_logger;
 
 		public readonly IMyEntity Master;
 		public readonly List<IMyEntity> Slaves;
 		public readonly List<Vector3> SlaveOffsets;
+		private readonly float MinOffMult;
 		public float OffsetMulti;
 
 		public Cluster(List<IMyEntity> missiles)
@@ -58,23 +57,14 @@ namespace Rynchodon.Weapons
 			for (int i = 0; i < SlaveOffsets.Count; i++)
 				SlaveOffsets[i] = SlaveOffsets[i] / Furthest;
 
-			OffsetMulti = 1f;
+			MinOffMult = Furthest * 2f;
+			OffsetMulti = Furthest;
 			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, "Cluster()", Logger.severity.DEBUG);
 		}
 
 		public void AdjustMulti(float target)
 		{
-			if (Math.Abs(OffsetMulti - target) < OffsetMove)
-			{
-				OffsetMulti = target;
-			}
-			else
-			{
-				if (OffsetMulti > target)
-					OffsetMulti -= OffsetMove;
-				else
-					OffsetMulti += OffsetMove;
-			}
+			OffsetMulti = MathHelper.Max(MinOffMult, target);
 		}
 
 	}

@@ -9,6 +9,7 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
@@ -77,7 +78,6 @@ namespace Rynchodon.Weapons
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
-	
 		private readonly Logger myLogger;
 
 		private Target value_CurrentTarget;
@@ -419,7 +419,8 @@ namespace Rynchodon.Weapons
 
 		/// <remarks>
 		/// <para>Targeting non-terminal blocks would cause confusion.</para>
-		/// <para>Open doors should not be targeted.</para>
+		/// <para>Tiny blocks, such as sensors, shall be skipped.</para>
+		/// <para>Open doors shall not be targeted.</para>
 		/// </remarks>
 		private bool TargetableBlock(IMyCubeBlock block, bool Disable)
 		{
@@ -436,6 +437,9 @@ namespace Rynchodon.Weapons
 			if (Disable && !block.IsWorking)
 				if (!block.IsFunctional || !Options.FlagSet(TargetingFlags.Functional))
 					return false;
+
+			if (Blacklist.Contains(block))
+				return false;
 
 			if (!CanRotateTo(block.GetPosition()))
 				return false;
@@ -475,24 +479,18 @@ namespace Rynchodon.Weapons
 			{
 				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
 				if (decoyBlockList != null)
-					foreach (IMyTerminalBlock block in decoyBlockList)
+					foreach (IMyCubeBlock block in decoyBlockList)
 					{
-						if (!block.IsWorking)
-							continue;
-
-						if (!CanRotateTo(block.GetPosition()))
-							continue;
-
-						if (Blacklist.Contains(block))
+						if (!TargetableBlock(block, true))
 							continue;
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
 						if (distanceSq > Options.TargetingRangeSquared)
 							continue;
 
-						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block as IMyCubeBlock))
+						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
 						{
-							target = block as IMyCubeBlock;
+							target = block;
 							distanceValue = distanceSq;
 						}
 					}
@@ -515,12 +513,6 @@ namespace Rynchodon.Weapons
 						if (!TargetableBlock(block, true))
 						{
 							myLogger.debugLog("not targetable: " + block.DisplayNameText, "GetTargetBlock()");
-							continue;
-						}
-
-						if (Blacklist.Contains(block))
-						{
-							myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
 							continue;
 						}
 
@@ -549,30 +541,34 @@ namespace Rynchodon.Weapons
 			}
 
 			// get any terminal block
-			if (tType == TargetType.Moving || tType == TargetType.Destroy)
+			bool destroy = tType == TargetType.Moving || tType == TargetType.Destroy;
+			if (destroy || Options.blocksToTarget.Count == 0)
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
 
-				foreach (IMySlimBlock slim in allSlims)
-					if (TargetableBlock(slim.FatBlock, false))
-					{
-						if (Blacklist.Contains(slim.FatBlock))
-							continue;
+				double closest = double.MaxValue;
 
+				foreach (IMySlimBlock slim in allSlims)
+					if (TargetableBlock(slim.FatBlock, !destroy))
+					{
 						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
 						if (distanceSq > Options.TargetingRangeSquared)
 							continue;
 						distanceSq *= 1e12;
 
-						if (CubeBlock.canConsiderHostile(slim.FatBlock))
+						if (distanceSq < closest && CubeBlock.canConsiderHostile(slim.FatBlock))
 						{
 							target = slim.FatBlock;
 							distanceValue = distanceSq;
-							myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
-							return true;
 						}
 					}
+
+				if (target != null)
+				{
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					return true;
+				}
 			}
 
 			return false;
