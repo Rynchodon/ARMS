@@ -45,7 +45,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly IMyVoxelBase m_voxel;
 			private readonly float m_maxRange;
 
-			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(10000);
+			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(1000);
 			private readonly MyStorageData m_storage = new MyStorageData();
 
 			private DateTime m_throwOutVoxelData = DateTime.UtcNow + LifeSpan_VoxelData;
