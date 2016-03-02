@@ -8,7 +8,7 @@
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=60
+        GuidanceSeconds=90
         RotationPerUpdate=0.017453292519943
         DetonateRange=3
       </Description>
@@ -94,7 +94,7 @@
     <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
       <Id>
         <TypeId>AmmoDefinition</TypeId>
-        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
+        <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
       <Description>
         GuidanceSeconds=15

@@ -260,6 +260,23 @@ namespace Rynchodon.Weapons.Guided
 			return acceleration;
 		}
 
+		private bool CanTarget(LastSeen seen, out IMyCubeBlock block)
+		{
+			block = null;
+
+			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
+			if (grid == null)
+				return true;
+
+			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
+				return true;
+
+			double distValue;
+			if (!GetTargetBlock(grid, Options.CanTarget, out block, out distValue, false))
+				return false;
+			return true;
+		}
+
 		/// <remarks>
 		/// Runs on separate thread.
 		/// </remarks>
@@ -272,7 +289,9 @@ namespace Rynchodon.Weapons.Guided
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
 					myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(myTargetSeen);
+					IMyCubeBlock block;
+					if (CanTarget(myTargetSeen, out block))
+						myTarget = new LastSeenTarget(myTargetSeen, block);
 					SetFiringDirection();
 				}
 				return;
@@ -285,7 +304,9 @@ namespace Rynchodon.Weapons.Guided
 			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
 				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-				myTarget = new LastSeenTarget(fetched);
+				IMyCubeBlock block;
+				if (CanTarget(fetched, out block))
+					myTarget = new LastSeenTarget(fetched, block);
 				SetFiringDirection();
 				return;
 			}
@@ -295,7 +316,9 @@ namespace Rynchodon.Weapons.Guided
 				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
 					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(fetched);
+					IMyCubeBlock block;
+					if (CanTarget(fetched, out block))
+						myTarget = new LastSeenTarget(fetched, block);
 					SetFiringDirection();
 				}
 				else
@@ -305,6 +328,7 @@ namespace Rynchodon.Weapons.Guided
 
 			Vector3D myPos = MyEntity.GetPosition();
 			LastSeen closest = null;
+			IMyCubeBlock closestBlock = null;
 			double closestDist = double.MaxValue;
 
 			myLogger.debugLog("last seen count: " + store.LastSeenCount, "TargetLastSeen()");
@@ -312,11 +336,16 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
 				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 				{
+					IMyCubeBlock block;
+					if (!CanTarget(seen, out block))
+						return;
+
 					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
 					if (dist < closestDist)
 					{
 						closestDist = dist;
 						closest = seen;
+						closestBlock = block;
 					}
 				}
 			});
@@ -330,7 +359,7 @@ namespace Rynchodon.Weapons.Guided
 			else
 			{
 				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName() + " at " + closest.GetPosition(), "TargetLastSeen()");
-				myTarget = new LastSeenTarget(closest);
+				myTarget = new LastSeenTarget(closest, closestBlock);
 				SetFiringDirection();
 				myTargetSeen = closest;
 			}
@@ -539,7 +568,7 @@ namespace Rynchodon.Weapons.Guided
 						else
 						{
 							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-							myLogger.debugLog("past arming range, starting guidance. Guidance until" + myGuidanceEnds, "CheckGuidance()", Logger.severity.INFO);
+							myLogger.debugLog("past arming range, starting guidance. Guidance until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
 						m_rail = null;

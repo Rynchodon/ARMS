@@ -186,6 +186,16 @@ namespace Rynchodon.Weapons.Guided
 							IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 							if (grid != null && CubeBlock.canConsiderHostile(grid) && m_weaponTarget.Options.CanTargetType(grid))
 							{
+								IMyCubeBlock block;
+								double distValue;
+
+								if ((m_weaponTarget.Options.blocksToTarget.Count != 0 || (m_weaponTarget.Options.CanTarget & TargetType.Destroy) != 0) &&
+									!m_weaponTarget.GetTargetBlock(grid, m_weaponTarget.Options.CanTarget, out block, out distValue, false))
+								{
+									myLogger.debugLog("rejected grid, no target blocks: " + grid.DisplayName, "MissileBelongsTo()");
+									return;
+								}
+
 								float distSquared = Vector3.DistanceSquared(CubeBlock.GetPosition(), grid.GetCentre());
 								if (distSquared < closestDistanceSquared)
 								{

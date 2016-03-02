@@ -25,28 +25,17 @@ namespace Rynchodon.Weapons.SystemDisruption
 			return dl.AddEffect(duration, strength, effectOwner);
 		}
 
-		private readonly Logger m_logger;
-
 		private DoorLock(IMyCubeGrid grid)
 			: base(grid, s_affects)
 		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyCubeBlock block, int strength)
+		protected override void StartEffect(IMyCubeBlock block)
 		{
 			IMyDoor door = block as IMyDoor;
-			m_logger.debugLog("Locking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "StartEffect()");
 			if (door.Open)
 				door.ApplyAction("Open_Off");
-			return MinCost;
-		}
-
-		protected override int EndEffect(IMyCubeBlock block, int strength)
-		{
-			m_logger.debugLog("Unlocking: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "EndEffect()");
-			return MinCost;
 		}
 
 	}

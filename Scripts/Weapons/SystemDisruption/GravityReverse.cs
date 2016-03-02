@@ -37,34 +37,30 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyCubeBlock block, int strength)
+		protected override void StartEffect(IMyCubeBlock block)
 		{
-			return ReverseGravity(block, strength);
+			ReverseGravity(block);
 		}
 
-		protected override int EndEffect(IMyCubeBlock block, int strength)
+		protected override void EndEffect(IMyCubeBlock block)
 		{
-			return ReverseGravity(block, strength);
+			ReverseGravity(block);
 		}
 
-		private int ReverseGravity(IMyCubeBlock block, int strength)
+		private void ReverseGravity(IMyCubeBlock block)
 		{
-			m_logger.debugLog("Reversing gravity of " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "ReverseGravity()");
 			Ingame.IMyGravityGenerator rect = block as Ingame.IMyGravityGenerator;
 			if (rect != null)
 			{
 				rect.GetProperty("Gravity").AsFloat().SetValue(rect, -rect.Gravity * Gee);
-				return MinCost;
 			}
 			Ingame.IMyGravityGeneratorSphere sphere = block as Ingame.IMyGravityGeneratorSphere;
 			if (sphere != null)
 			{
 				sphere.GetProperty("Gravity").AsFloat().SetValue(sphere, -sphere.Gravity * Gee);
-				return MinCost;
 			}
 
 			m_logger.alwaysLog("Exotic gravity generator: " + block.DefinitionDisplayNameText + "/" + block.DisplayNameText, "ReverseGravity()", Logger.severity.WARNING);
-			return 0;
 		}
 
 	}

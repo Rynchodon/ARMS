@@ -64,7 +64,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 				switch (i)
 				{
 					case 0:
-						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength, effectOwner);
+						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength);
 						break;
 					case 1:
 						m_strengthLeft = DoorLock.LockDoors(attached, m_strengthLeft, s_hackLength, effectOwner);

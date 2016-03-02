@@ -112,7 +112,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", entity) { MinimumLevel = Logger.severity.DEBUG };
+			myLogger = new Logger("TargetingBase", entity);// { MinimumLevel = Logger.severity.DEBUG };
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -456,10 +456,10 @@ namespace Rynchodon.Weapons
 		/// <param name="distanceValue">The value assigned based on distance and position in blocksToTarget.</param>
 		/// <remarks>
 		/// <para>Decoy blocks will be given a distanceValue of the distance squared to weapon.</para>
-		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * (2 + index)^2.</para>
+		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * index^3.</para>
 		/// <para>Other blocks will be given a distanceValue of the distance squared * (1e12).</para>
 		/// </remarks>
-		private bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue)
+		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
 		{
 			myLogger.debugLog("getting block from " + grid.DisplayName + ", target type = " + tType, "GetTargetBlock()");
 
@@ -485,7 +485,7 @@ namespace Rynchodon.Weapons
 							continue;
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 
 						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
@@ -517,7 +517,7 @@ namespace Rynchodon.Weapons
 						}
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 						{
 							myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
 							continue;
@@ -541,7 +541,7 @@ namespace Rynchodon.Weapons
 			}
 
 			// get any terminal block
-			bool destroy = tType == TargetType.Moving || tType == TargetType.Destroy;
+			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
 			if (destroy || Options.blocksToTarget.Count == 0)
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
@@ -553,7 +553,7 @@ namespace Rynchodon.Weapons
 					if (TargetableBlock(slim.FatBlock, !destroy))
 					{
 						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 						distanceSq *= 1e12;
 
@@ -688,7 +688,7 @@ namespace Rynchodon.Weapons
 					BlacklistTarget();
 					return;
 				}
-				myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", ContactPoint: " + myTarget.ContactPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
+				//myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", ContactPoint: " + myTarget.ContactPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			}
 			CurrentTarget = myTarget;
 		}
@@ -728,7 +728,7 @@ namespace Rynchodon.Weapons
 				// Shot is too slow to intercept target.
 				if (TryHard)
 				{
-					myLogger.debugLog("shot too slow, trying anyway", "FindInterceptVector()");
+					//myLogger.debugLog("shot too slow, trying anyway", "FindInterceptVector()");
 					// direction is a trade-off between facing the target and fighting tangential velocity
 					Vector3 direction = directionToTarget + displacementToTarget * 0.01f + shotVelTang;
 					direction.Normalize();
