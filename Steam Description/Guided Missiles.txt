@@ -1,25 +1,104 @@
-If the ID command is specified in the launcher's name, the missile will only target the matching ship/station.
-Otherwise, the target type should be specified in the launcher's name; AllGrid, LargeGrid, SmallGrid, or Station.
-See [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url].
+[h1]Features[/h1]
+In addition to the features that ARMS adds to all weapon blocks via [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/]Weapon Control[/url], for example:
+[list]
+[*]Acquire enemy positions from connected Radar
+[*]Target particular blocks
+[*]Fire automatically
+[/list]
+
+ARMS provides intelligent missiles that can:
+[list]
+[*]Change course in flight with guidance provided by Radar or the missile itself
+[*]Adjust launch trajectory to avoid colliding with the ship that fired it
+[*]Explode when in close proximity to a target, instead of just on impact
+[*]Generate EMP effects
+[/list]
+
+[h1]Usage[/h1]
+ARMS provides multiple missile-firing blocks. Without any configuration, the turret block will fire on its own with Vanilla SE turret logic. However, the intelligent missle functionality above requires use of ARMS [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control[/url]. See that page for full configuration details.
+
+[u]Getting Started[/u]
+As an example for getting started, you can:
+[list]
+[*]Create one or more enemy grids to target. You can make them moving targets using [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/]Autopilot[/url].
+[*]Attach one of the ARMS missile launcher blocks to a friendly grid
+[*]Load the correct ammo into it (see below). ARMS will not guide missiles unless the launcher is loaded with the correct ammo for its block type.
+[*]Ensure the grid has working [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/523897653315556053/]Radar[/url] and the enemy targets appear on it.
+[*]Make sure everything is powered and owned by you or your faction
+[*]Enter a Weapon Control targeting command into brackets in the name of the block. For example, you might have a block named "Missile Defense Turret [destroy]" that would target all terminal blocks in hostile grids in range.
+[*]Fire away!
+[/list]
+
+[h1]Guidance[/h1]
+Missiles can have Pre-Set, Radio, or Self guidance.
+
+Grids connected directly or via Radio networks will provide target intercept positions to each missile on launch for enemy grids they can see via Broadcasting or RADAR. Guidance then lasts for a set period of time per missile.
+
+[u]Pre-Set Guidance[/u]
+Missiles with Pre-Set guidance will turn themselves towards the initially provided intercept location. A missile with longer Pre-Set initial guidance time (and constant turn radius) will have greater ability to turn towards a target at a difficult angle and improved accuracy.
+
+[u]Radio Guidance[/u]
+Missiles with Radio guidance will constantly receive updated target intercept locations via Radio and adjust their course accordingly. If the connection to a Radio network is lost (missile moves out of communication range or the supporting network is disabled), guidance updates will be disabled. If the supporting RADAR network loses the target, a new target will be selected.
+
+[u]Self Guidance[/u]
+Missiles with Self guidance will head towards their initial target and then guide themselves towards the closest target that enters their detection radius and matches their original target conditions. 
+
+[h1]Damage Types[/h1]
+Missiles can do both Conventional damage and EMP damage.
+
+[u]EMP[/u]
+An EMP missile will do a set amount of EMP damage to all grids within its explosion radius. A grid affected by X EMP damage will have X worth of power production across reactors and batteries disabled for the duration of the affect. 
+
+For example, a grid with one large reactor producing 300 MW of power hit with 300 MW of EMP damage (or more) would have its reactor disabled. If it was hit with less than 300 MW of EMP, it would be unaffected. 
+
+If the grid had an assortment of reactors and batteries available, they are gone through in the order which they were added to the grid and disabled until we have too little EMP damage remaining to disable any more. In the future, we will enhance this to start by looking at the biggest power producers.
+
+Multiple EMP hits on a grid will stack, with a separate timer for each impact.
+
+[h1]Blocks and Missile Types[/h1]
+ARMS provides a selection of missiles to use, but any mod can add additional missiles and launchers using the functionality above by simply including the appropriate metadata in the block definition.
+
+ARMS available missiles are named following the designation scheme listed [url=http://www.brahmos.com/content.php?id=10&sid=9]here[/url], with one position each for:
+[list]
+[*]Type - Either R for cRuise or B for Ballistic
+[*]Range - in KM
+[*]Warhead - conVentional, Emp, or Multiple
+[*]Guidance - Pre-set, radio Antenna, or self Targeted
+[/list]
  
-[h1]Missiles[/h1]
-[u]Cruise Missile R12VP[/u]
-Designed to destroy armoured targets.
-12 km range.
-Slow speed and minimal acceleration make the missile highly susceptible to gatling fire.
-Pre-set guidance does not allow the missile to correct for acceleration of the target.
+[u]Cruise Missile Launcher - Cruise Missile R12VP[/u]
+[list]
+[*]Anti-Armor - Large damage in a concentrated radius around the target
+[*]Very Long Range - will travel 12 KM
+[*]Slow - A max speed of 200 m/s makes these easier to shoot down
+[*]Pre-set Guidance for 60 seconds
+[*]Detonates within 3 meters of its target
+[/list]
 
-[u]EMP Missile R8EA[/u]
-Deals minimal damage but disables batteries and reactors.
-8 km range.
-Radio receiver allows the missile to receive target updates.
+[u]EMP Missile Launcher - EMP Missile R8EA[/u]
+[list]
+[*]EMP - 300 MW of EMP damage for 30 seconds and a small amount of conventional damage
+[*]Long Range - will travel 8 KM
+[*]Slow - A max speed of 200 m/s makes these easier to shoot down
+[*]Radio guidance for 60 seconds
+[*]Detonates within 3 meters of its target
+[/list]
 
-[u]Swarm Missile B3MP[/u]
-A spread of 18 missiles.
-3 km range.
-Only has guidance for a short time after being fired.
+[u]Swarm Missile Launcher - Swarm Missile B3MP[/u]
+[list]
+[*]Multiple Missiles - this launcher shoots a spread of 18 missiles at once
+[*]Good vs Soft Targets - Good damage over a large area, thanks to the multiple missiles
+[*]Medium Range - will travel 3 KM
+[*]Moderately Fast - A max speed of 800 m/s makes these difficult to shoot down
+[*]Pre-set Guidance for 15 seconds
+[*]Detonates within 1 meters of its target
+[/list]
 
-[u]Interceptor Missile C1VT[/u]
-A missile designed to intercept incoming long-range missiles.
-Deals minimal damage.
-Missile has 1500 m range, turret has 1200 m range.
+[u]Missile Defense Turret - Interceptor Missile R1VT[/u]
+[list]
+[*]Good for Interception - Each missile has a large explosion radius but lower damage
+[*]Short Range - will only travel for 1500 meters
+[*]Very Fast - A max speed of 2 km/s allows these to quickly reach incoming threats
+[*]Self-Guided for 15 seconds with 800 meters of detection range
+[*]Detonates within 10 meters of its target
+[/list]
