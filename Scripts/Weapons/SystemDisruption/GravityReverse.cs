@@ -1,4 +1,3 @@
-using System;
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -13,28 +12,9 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		private const float Gee = 9.81f;
 
-		private static readonly MyObjectBuilderType[] s_affects = new MyObjectBuilderType[] { typeof(MyObjectBuilder_GravityGenerator), typeof(MyObjectBuilder_GravityGeneratorSphere) };
-
-		public static void Update()
+		protected override MyObjectBuilderType[] BlocksAffected
 		{
-			Registrar.ForEach((GravityReverse gg) => gg.UpdateEffect());
-		}
-
-		public static int ReverseGravity(IMyCubeGrid grid, int strength, TimeSpan duration)
-		{
-			GravityReverse gg;
-			if (!Registrar.TryGetValue(grid, out gg))
-				gg = new GravityReverse(grid);
-			return gg.AddEffect(duration, strength);
-		}
-
-		private readonly Logger m_logger;
-
-		private GravityReverse(IMyCubeGrid grid)
-			: base(grid, s_affects)
-		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
-			Registrar.Add(grid, this);
+			get { return new MyObjectBuilderType[] { typeof(MyObjectBuilder_GravityGenerator), typeof(MyObjectBuilder_GravityGeneratorSphere) }; }
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)
@@ -53,11 +33,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 			if (rect != null)
 			{
 				rect.GetProperty("Gravity").AsFloat().SetValue(rect, -rect.Gravity * Gee);
+				return;
 			}
 			Ingame.IMyGravityGeneratorSphere sphere = block as Ingame.IMyGravityGeneratorSphere;
 			if (sphere != null)
 			{
 				sphere.GetProperty("Gravity").AsFloat().SetValue(sphere, -sphere.Gravity * Gee);
+				return;
 			}
 
 			m_logger.alwaysLog("Exotic gravity generator: " + block.DefinitionDisplayNameText + "/" + block.DisplayNameText, "ReverseGravity()", Logger.severity.WARNING);

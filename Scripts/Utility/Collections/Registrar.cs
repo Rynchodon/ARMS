@@ -73,6 +73,12 @@ namespace Rynchodon
 			entity.OnClosing += OnClosing<T>;
 		}
 
+		public static void Remove<T>(IMyEntity entity)
+		{
+			entity.OnClosing -= OnClosing<T>;
+			Register<T>.Remove(entity.EntityId);
+		}
+
 		public static bool TryGetValue<T>(long entityId, out T value)
 		{
 			try { return Register<T>.TryGetValue(entityId, out value); }

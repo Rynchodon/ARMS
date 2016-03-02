@@ -1,4 +1,3 @@
-using System;
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -9,26 +8,14 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class DoorLock : Disruption
 	{
 
-		private static readonly MyObjectBuilderType[] s_affects = new MyObjectBuilderType[]
-		{ typeof(MyObjectBuilder_Door), typeof(MyObjectBuilder_AirtightHangarDoor), typeof(MyObjectBuilder_AirtightSlideDoor) };
-
-		public static void Update()
+		protected override MyObjectBuilderType[] BlocksAffected
 		{
-			Registrar.ForEach((DoorLock dl) => dl.UpdateEffect());
+			get { return new MyObjectBuilderType[] { typeof(MyObjectBuilder_Door), typeof(MyObjectBuilder_AirtightHangarDoor), typeof(MyObjectBuilder_AirtightSlideDoor) }; }
 		}
 
-		public static int LockDoors(IMyCubeGrid grid, int strength, TimeSpan duration, long effectOwner)
+		protected override bool EffectOwnerCanAccess
 		{
-			DoorLock dl;
-			if (!Registrar.TryGetValue(grid, out dl))
-				dl = new DoorLock(grid);
-			return dl.AddEffect(duration, strength, effectOwner);
-		}
-
-		private DoorLock(IMyCubeGrid grid)
-			: base(grid, s_affects)
-		{
-			Registrar.Add(grid, this);
+			get { return true; }
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)

@@ -61,36 +61,40 @@ namespace Rynchodon.Weapons.SystemDisruption
 			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
 
 			foreach (int i in Enumerable.Range(0, 8).OrderBy(x => Globals.Random.Next()))
+			{
+				Disruption disrupt;
 				switch (i)
 				{
 					case 0:
-						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength);
+						disrupt = new AirVentDepressurize();
 						break;
 					case 1:
-						m_strengthLeft = DoorLock.LockDoors(attached, m_strengthLeft, s_hackLength, effectOwner);
+						disrupt = new DoorLock();
 						break;
 					case 2:
-						m_strengthLeft = GravityReverse.ReverseGravity(attached, m_strengthLeft, s_hackLength);
+						disrupt = new GravityReverse();
 						break;
 					case 3:
-						m_strengthLeft = DisableTurret.DisableTurrets(attached, m_strengthLeft, s_hackLength);
+						disrupt = new DisableTurret();
 						break;
 					case 4:
-						m_strengthLeft = TraitorTurret.TurnTurrets(attached, m_strengthLeft, s_hackLength, effectOwner);
+						disrupt = new TraitorTurret();
 						break;
 					case 5:
-						m_strengthLeft = CryoChamberMurder.MurderPeeps(attached, m_strengthLeft, s_hackLength);
+						disrupt = new CryoChamberMurder();
 						break;
 					case 6:
-						m_strengthLeft = JumpDriveDrain.DrainJumpers(attached, m_strengthLeft, s_hackLength);
+						disrupt = new JumpDriveDrain();
 						break;
 					case 7:
-						m_strengthLeft = MedicalRoom.Hijack(attached, m_strengthLeft, s_hackLength, effectOwner);
+						disrupt = new MedicalRoom();
 						break;
 					default:
-						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.WARNING);
-						break;
+						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.FATAL);
+						continue;
 				}
+				disrupt.Start(attached, s_hackLength, ref m_strengthLeft, effectOwner);
+			}
 		}
 
 	}
