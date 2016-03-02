@@ -288,11 +288,13 @@ namespace Rynchodon.Weapons.Guided
 			{
 				if (myTargetSeen != null && myTarget.TType == TargetType.None)
 				{
-					myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
 					IMyCubeBlock block;
 					if (CanTarget(myTargetSeen, out block))
+					{
+						myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
 						myTarget = new LastSeenTarget(myTargetSeen, block);
-					SetFiringDirection();
+						SetFiringDirection();
+					}
 				}
 				return;
 			}
@@ -303,22 +305,24 @@ namespace Rynchodon.Weapons.Guided
 			LastSeen fetched;
 			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
 			{
-				myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 				IMyCubeBlock block;
 				if (CanTarget(fetched, out block))
+				{
+					myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 					myTarget = new LastSeenTarget(fetched, block);
-				SetFiringDirection();
-				return;
+					SetFiringDirection();
+					return;
+				}
 			}
 
 			if (Options.TargetEntityId.HasValue)
 			{
 				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
 				{
-					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
 					IMyCubeBlock block;
-					if (CanTarget(fetched, out block))
-						myTarget = new LastSeenTarget(fetched, block);
+					CanTarget(fetched, out block); // user chose an ID, so always target it
+					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
+					myTarget = new LastSeenTarget(fetched, block);
 					SetFiringDirection();
 				}
 				else
