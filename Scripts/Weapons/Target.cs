@@ -1,5 +1,6 @@
 using System;
 using Rynchodon.AntennaRelay;
+using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -7,25 +8,18 @@ namespace Rynchodon.Weapons
 {
 	public abstract class Target
 	{
-		private Vector3? value_firingDirection;
-		private Vector3? value_interceptionPoint;
 
 		public abstract IMyEntity Entity { get; }
 		public abstract TargetType TType { get; }
 		public abstract Vector3D GetPosition();
 		public abstract Vector3 GetLinearVelocity();
 
-		public Vector3? FiringDirection
-		{
-			get { return value_firingDirection; }
-			set { value_firingDirection = value; }
-		}
+		/// <summary>The direction the shot shall be fired in.</summary>
+		public Vector3? FiringDirection { get; set; }
 
-		public Vector3? InterceptionPoint
-		{
-			get { return value_interceptionPoint; }
-			set { value_interceptionPoint = value; }
-		}
+		/// <summary>The point where contact will be made.</summary>
+		public Vector3? ContactPoint { get; set; }
+
 	}
 
 	public class NoTarget : Target
@@ -92,13 +86,17 @@ namespace Rynchodon.Weapons
 	public class LastSeenTarget : Target
 	{
 		private LastSeen m_lastSeen;
+		private IMyCubeBlock m_block;
 		private Vector3D m_lastPostion;
 		private DateTime m_lastPositionUpdate;
 		private bool m_accel;
 
-		public LastSeenTarget(LastSeen seen)
+		public LastSeenTarget(LastSeen seen, IMyCubeBlock block = null)
 		{
 			m_lastSeen = seen;
+			m_block = block;
+			m_lastPostion = m_lastSeen.LastKnownPosition;
+			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
 		}
 
 		public override IMyEntity Entity
@@ -113,12 +111,12 @@ namespace Rynchodon.Weapons
 
 		public override Vector3D GetPosition()
 		{
-			if (!m_accel && !Entity.Closed)
+			if (!m_accel && !Entity.Closed && (m_block == null || !m_block.Closed))
 			{
-				m_accel = m_lastSeen.Entity.Physics.GetLinearAcceleration().LengthSquared() > 0.01f;
+				m_accel = Vector3.DistanceSquared(m_lastSeen.Entity.Physics.LinearVelocity, m_lastSeen.LastKnownVelocity) > 1f;
 				if (!m_accel)
 				{
-					m_lastPostion = m_lastSeen.Entity.GetCentre();
+					m_lastPostion = m_block != null ? m_block.GetPosition() : m_lastSeen.Entity.GetCentre();
 					m_lastPositionUpdate = DateTime.UtcNow;
 					return m_lastPostion;
 				}

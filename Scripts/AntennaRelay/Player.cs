@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
 using Sandbox.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.AntennaRelay
@@ -27,7 +28,7 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		private class ForRelations
+		private class GpsData
 		{
 			/// <summary>LastSeen sorted by distance squared</summary>
 			public readonly List<DistanceSeen> distanceSeen = new List<DistanceSeen>();
@@ -45,159 +46,111 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private const string descrEnd = "Autopilot Detected";
-
-		//private static Logger staticLogger = new Logger("static", "Player");
-		private static Dictionary<IMyPlayer, Player> playersCached = new Dictionary<IMyPlayer, Player>();
-		public static ICollection<Player> AllPlayers { get { return playersCached.Values; } }
-
-		static Player()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			playersCached = null;
-		}
-
-		public static void OnLeave(IMyPlayer player)
-		{
-			playersCached.Remove(player);
-		}
-
-		public readonly IMyPlayer myPlayer;
+		private IMyPlayer myPlayer { get { return MyAPIGateway.Session.Player; } }
 
 		private readonly Logger myLogger;
 
-		private readonly Dictionary<long, LastSeen> myLastSeen = new Dictionary<long, LastSeen>();
+		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 
-		private readonly Dictionary<ExtensionsRelations.Relations, ForRelations> Data = new Dictionary<ExtensionsRelations.Relations, ForRelations>();
+		private NetworkNode m_node;
 
-		public Player(IMyPlayer player)
+		public Player()
 		{
-			myLogger = new Logger(player.DisplayName, "Player");
-			myPlayer = player;
+			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName);
 
-			playersCached.Add(player, this);
-
-			Data.Add(ExtensionsRelations.Relations.Enemy, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Neutral, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Faction, new ForRelations());
-			Data.Add(ExtensionsRelations.Relations.Owner, new ForRelations());
+			Data.Add(UserSettings.ByteSettingName.EnemiesOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.NeutralOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.FactionOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.OwnerOnHUD, new GpsData());
+			Data.Add(UserSettings.ByteSettingName.MissileOnHUD, new GpsData());
 
 			// cleanup old GPS
-			myLogger.debugLog("cleaning up old gps", "Player()");
-			var list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
+			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
 				myLogger.debugLog("# of gps: " + list.Count, "Player()");
-				foreach (var gps in list)
-					if (gps.Description.EndsWith(descrEnd))
+				foreach (IMyGps gps in list)
+					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
 						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
-						MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, gps);
+						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 					}
 			}
 
-			myLogger.debugLog("initialized", "Player()", Logger.severity.DEBUG);
+			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, "Player()", Logger.severity.DEBUG);
 		}
 
 		public void Update100()
 		{
-			try
-			{
-				UpdateGPS();
-			}
-			catch (Exception ex)
-			{
-				myLogger.debugLog("Exception: " + ex, "Update100()", Logger.severity.ERROR);
-			}
-		}
-
-		public void receive(LastSeen seen)
-		{
-			LastSeen toUpdate;
-			if (myLastSeen.TryGetValue(seen.Entity.EntityId, out toUpdate))
-			{
-				if (seen.update(ref toUpdate))
-				{
-					myLastSeen[toUpdate.Entity.EntityId] = toUpdate;
-					//myLogger.debugLog("updated last seen for " + toUpdate.Entity.getBestName(), "receive()");
-				}
-			}
-			else
-			{
-				myLastSeen.Add(seen.Entity.EntityId, seen);
-				//myLogger.debugLog("new last seen for " + seen.Entity.getBestName(), "receive()");
-			}
+			UpdateGPS();
 		}
 
 		private void UpdateGPS()
 		{
-			if (myLastSeen.Count == 0)
+			IMyEntity character = myPlayer.Controller.ControlledEntity as IMyEntity;
+			if (!(character is IMyCharacter))
 			{
-				myLogger.debugLog("myLastSeen is empty", "UpdateGPS()");
+				myLogger.debugLog("Not controlling a character", "UpdateGPS()");
+				return;
+			}
+			if (m_node == null)
+			{
+				if (!Registrar.TryGetValue(character.EntityId, out m_node))
+				{
+					myLogger.debugLog("Failed to get node", "UpdateGPS()", Logger.severity.WARNING);
+					return;
+				}
+			}
+
+			if (m_node.Storage == null || m_node.Storage.LastSeenCount == 0)
+			{
+				myLogger.debugLog("No LastSeen", "UpdateGPS()");
 				return;
 			}
 
-			Vector3D myPosition = myPlayer.GetPosition();
+			Vector3D myPosition = character.GetPosition();
 
-			if (myPosition == Vector3D.Zero) // used to indicate that a player does not have a character
+			foreach (var pair in Data)
 			{
-				myLogger.debugLog("position at origin, not updating GPS", "UpdateGPS()", Logger.severity.DEBUG);
-				return;
+				pair.Value.MaxOnHUD = UserSettings.GetSetting(pair.Key);
+				pair.Value.Prepare();
 			}
 
-			UserSettings useSet = UserSettings.GetForPlayer(myPlayer.PlayerID);
-			Data[ExtensionsRelations.Relations.Enemy].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.EnemiesOnHUD);
-			Data[ExtensionsRelations.Relations.Neutral].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.NeutralOnHUD);
-			Data[ExtensionsRelations.Relations.Faction].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.FactionOnHUD);
-			Data[ExtensionsRelations.Relations.Owner].MaxOnHUD = useSet.GetSetting(UserSettings.ByteSettingName.OwnerOnHUD);
-
-			foreach (var value in Data.Values)
-				value.Prepare();
-
-			foreach (LastSeen seen in myLastSeen.Values)
-			{
+			m_node.Storage.ForEachLastSeen((LastSeen seen) => {
 				if (!seen.isRecent())
-					continue;
+					return;
 
 				if (seen.isRecent_Broadcast())
 				{
 					//myLogger.debugLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
-					continue;
+					return;
 				}
 
-				ExtensionsRelations.Relations relate;
-				IMyCubeGrid asGrid = seen.Entity as IMyCubeGrid;
-				if (asGrid != null)
-					relate = myPlayer.getRelationsTo(asGrid, ExtensionsRelations.Relations.Enemy);
-				else
+				UserSettings.ByteSettingName setting;
+				if (!CanDisplay(seen, out setting))
+					return;
+
+				GpsData relateData;
+				if (!Data.TryGetValue(setting, out relateData))
 				{
-					IMyCharacter asChar = seen.Entity as IMyCharacter;
-					if (asChar != null)
-						relate = myPlayer.getRelationsTo(asChar.GetPlayer_Safe().PlayerID);
-					else
-						relate = ExtensionsRelations.Relations.None;
+					myLogger.debugLog("failed to get setting data, setting: " + setting, "UpdateGPS()", Logger.severity.WARNING);
+					return;
 				}
-
-				ForRelations relateData = Data[relate];
 
 				if (relateData.MaxOnHUD == 0)
-					continue;
+					return;
 
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
-				relateData.distanceSeen.Add(new DistanceSeen( distance, seen));
+				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 
-				//myLogger.debugLog("added to distanceSeen[" + relate + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
-			}
+				myLogger.debugLog("added to distanceSeen[" + setting + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
+			});
 
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
 		}
 
-		private void UpdateGPS(ExtensionsRelations.Relations relate, ForRelations relateData)
+		private void UpdateGPS(UserSettings.ByteSettingName setting, GpsData relateData)
 		{
 			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
 
@@ -215,22 +168,31 @@ namespace Rynchodon.AntennaRelay
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
 				string name;
-				switch (relate)
+				switch (setting)
 				{
-					case ExtensionsRelations.Relations.Faction:
-					case ExtensionsRelations.Relations.Owner:
+					case UserSettings.ByteSettingName.FactionOnHUD:
+					case UserSettings.ByteSettingName.OwnerOnHUD:
 						name = seen.Entity.DisplayName;
 						break;
-					default:
-						name = relate.ToString() + ' ' + index;
+					case UserSettings.ByteSettingName.MissileOnHUD:
+						name = "Missile " + index;
 						break;
+					case UserSettings.ByteSettingName.NeutralOnHUD:
+						name = "Netural " + index;
+						break;
+					case UserSettings.ByteSettingName.EnemiesOnHUD:
+						name = "Enemy " + index;
+						break;
+					default:
+						myLogger.alwaysLog("case not implemented: " + setting, "UpdateGPS()", Logger.severity.ERROR);
+						continue;
 				}
 
 				string description = GetDescription(seen);
 				Vector3D coords = seen.GetPosition();
 
 				// cheat the position a little to avoid clashes
-				double cheat = 0.001 / (double)(index+1);
+				double cheat = 0.001 / (double)(index + 1);
 				coords.ApplyOperation((d) => { return d + cheat; }, out coords);
 
 				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
@@ -240,13 +202,14 @@ namespace Rynchodon.AntennaRelay
 				{
 					relateData.activeGPS[index] = MyAPIGateway.Session.GPS.Create(name, description, coords, true, true);
 					myLogger.debugLog("adding new GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.AddGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 				}
 				else if (Update(relateData.activeGPS[index], name, description, coords))
 				{
 					myLogger.debugLog("updating GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.ModifyGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index].UpdateHash(); // necessary if there are to be further modifications
+					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 				}
 				//else
 				//	myLogger.debugLog("no need to update GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
@@ -258,7 +221,7 @@ namespace Rynchodon.AntennaRelay
 				if (relateData.activeGPS[index] != null)
 				{
 					myLogger.debugLog("removing GPS " + index + ", name: " + relateData.activeGPS[index].Name + ", coords: " + relateData.activeGPS[index].Coords, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.RemoveGps(myPlayer.IdentityId, relateData.activeGPS[index]);
+					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index] = null;
 				}
 
@@ -297,7 +260,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			bool updated = false;
 
-			if (gps.Name != name)
+			if (gps.Name != name && name != null)
 			{
 				gps.Name = name;
 				updated = true;
@@ -319,6 +282,39 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			return updated;
+		}
+
+		private bool CanDisplay(LastSeen seen, out UserSettings.ByteSettingName settingName)
+		{
+			switch (seen.Type)
+			{
+				case LastSeen.EntityType.Character:
+				case LastSeen.EntityType.Grid:
+					switch (myPlayer.PlayerID.getRelationsTo(seen.Entity))
+					{
+						case ExtensionsRelations.Relations.Enemy:
+							settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Neutral:
+							settingName = UserSettings.ByteSettingName.NeutralOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Faction:
+							settingName = UserSettings.ByteSettingName.FactionOnHUD;
+							return true;
+						case ExtensionsRelations.Relations.Owner:
+							settingName = UserSettings.ByteSettingName.OwnerOnHUD;
+							return true;
+						default:
+							settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+							return false;
+					}
+				case LastSeen.EntityType.Missile:
+					settingName = UserSettings.ByteSettingName.MissileOnHUD;
+					return true;
+				default:
+					settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
+					return false;
+			}
 		}
 
 	}

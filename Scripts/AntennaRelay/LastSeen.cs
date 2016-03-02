@@ -1,4 +1,5 @@
 ﻿using System;
+using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -16,8 +17,11 @@ namespace Rynchodon.AntennaRelay
 			HasJammer = 1 << 4
 		}
 
+		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
+
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
 		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
+		private EntityType m_type;
 
 		public readonly IMyEntity Entity;
 		public readonly DateTime LastSeenAt;
@@ -31,6 +35,25 @@ namespace Rynchodon.AntennaRelay
 		public readonly DateTime LastRadar;
 		/// <summary>The last time Entity was using a jammer</summary>
 		public readonly DateTime LastJam;
+
+		public EntityType Type
+		{
+			get
+			{
+				if (m_type == EntityType.None)
+				{
+					if (Entity is IMyCubeGrid)
+						m_type = EntityType.Grid;
+					else if (Entity is IMyCharacter)
+						m_type = EntityType.Character;
+					else if (Entity.ToString().StartsWith("MyMissile"))
+						m_type = EntityType.Missile;
+					else
+						m_type = EntityType.Unknown;
+				}
+				return m_type;
+			}
+		}
 
 		private LastSeen(IMyEntity entity)
 		{
@@ -60,6 +83,11 @@ namespace Rynchodon.AntennaRelay
 			this.LastRadar = first.LastRadar.CompareTo(second.LastBroadcast) > 0 ? first.LastRadar : second.LastRadar;
 			this.LastJam = first.LastJam.CompareTo(second.LastBroadcast) > 0 ? first.LastJam : second.LastJam;
 
+			if (first.m_type == EntityType.None)
+				this.m_type = second.m_type;
+			else
+				this.m_type = first.m_type;
+
 			value_isValid = true;
 		}
 
@@ -88,7 +116,8 @@ namespace Rynchodon.AntennaRelay
 
 		private bool anyNewer(LastSeen other)
 		{
-			return this.LastBroadcast.CompareTo(other.LastBroadcast) > 0
+			return this.LastSeenAt.CompareTo(other.LastSeenAt) > 0
+				|| this.LastBroadcast.CompareTo(other.LastBroadcast) > 0
 				|| this.LastJam.CompareTo(other.LastJam) > 0
 				|| this.LastRadar.CompareTo(other.LastRadar) > 0;
 		}

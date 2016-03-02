@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.ObjectBuilders;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -13,7 +13,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		private static HashSet<IMyCubeBlock> m_allAffected = new HashSet<IMyCubeBlock>();
 
-		private readonly Logger m_logger;
+		protected readonly Logger m_logger;
 
 		private CubeGridCache m_cache;
 		private MyObjectBuilderType[] m_affects;
@@ -25,7 +25,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		/// <summary>When strength is less than this value, stop trying to start an effect.</summary>
 		protected virtual int MinCost { get { return 1; } }
-		
+
 		protected Disruption(IMyCubeGrid grid, MyObjectBuilderType[] affects)
 		{
 			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
@@ -53,33 +53,37 @@ namespace Rynchodon.Weapons.SystemDisruption
 			{
 				var blockGroup = m_cache.GetBlocksOfType(type);
 				if (blockGroup != null)
-					foreach (int i in Enumerable.Range(0, blockGroup.Count).OrderBy(x => Globals.Random.Next()))
+				{
+					foreach (IMyCubeBlock block in blockGroup.OrderBy(OrderBy))
 					{
-						IMyCubeBlock block = blockGroup[i];
-
 						if (!block.IsWorking || m_allAffected.Contains(block))
 						{
 							m_logger.debugLog("cannot disrupt: " + block, "AddEffect()");
 							continue;
 						}
-						m_logger.debugLog("disrupting: " + block, "AddEffect()");
-						int change = StartEffect(block, strength);
-						if (change != 0)
+						int cost = BlockCost(block);
+						if (cost > strength)
 						{
-							strength -= change;
-							applied += change;
-							MyCubeBlock cubeBlock = block as MyCubeBlock;
-							MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
-							m_affected.Add(block, idMod);
-							m_allAffected.Add(block);
-
-							block.SetDamageEffect(true);
-							cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
-
-							if (strength < MinCost)
-								goto FinishedBlocks;
+							m_logger.debugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength, "AddEffect()");
+							continue;
 						}
+
+						StartEffect(block);
+						m_logger.debugLog("disrupting: " + block + ", cost: " + cost + ", remaining strength: " + strength, "AddEffect()");
+						strength -= cost;
+						applied += cost;
+						MyCubeBlock cubeBlock = block as MyCubeBlock;
+						MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
+						m_affected.Add(block, idMod);
+						m_allAffected.Add(block);
+
+						block.SetDamageEffect(true);
+						cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
+
+						if (strength < MinCost)
+							goto FinishedBlocks;
 					}
+				}
 				else
 					m_logger.debugLog("no blocks of type: " + type, "AddEffect()");
 			}
@@ -132,16 +136,20 @@ FinishedBlocks:
 			foreach (var pair in m_affected)
 			{
 				IMyCubeBlock block = pair.Key;
-				int change = EndEffect(block, m_toRemove);
-				if (change != 0)
+				int cost = BlockCost(block);
+				if (cost > m_toRemove)
 				{
-					m_toRemove -= change;
-					m_affectedRemovals.Add(block);
-
-					block.SetDamageEffect(false);
-					MyCubeBlock cubeBlock = block as MyCubeBlock;
-					cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);
+					m_logger.debugLog("cannot remove disruption from: " + block + ", cost: " + cost + " is greater than m_toRemove: " + m_toRemove, "AddEffect()");
+					continue;
 				}
+
+				EndEffect(block);
+				m_toRemove -= cost;
+				m_affectedRemovals.Add(block);
+
+				block.SetDamageEffect(false);
+				MyCubeBlock cubeBlock = block as MyCubeBlock;
+				cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);
 			}
 
 			foreach (IMyCubeBlock block in m_affectedRemovals)
@@ -166,19 +174,36 @@ FinishedBlocks:
 		}
 
 		/// <summary>
-		/// Tries to start an disruption on a block. If the return value != strength, the ownership will be changed and visual effect will be added.
+		/// Blocks will be affected in ascending order of the values returned by this function.
 		/// </summary>
-		/// <param name="block">The block to try the disruption on.</param>
-		/// <param name="strength">The maximum strength to apply to the block.</param>
-		/// <returns>If the block is affect, required strength. Otherwise, 0.</returns>
-		protected abstract int StartEffect(IMyCubeBlock block, int strength);
+		/// <param name="block">Block to order.</param>
+		/// <returns>An integer that affects the order blocks are affected in.</returns>
+		protected virtual int OrderBy(IMyCubeBlock block)
+		{
+			return Globals.Random.Next();
+		}
 
 		/// <summary>
-		/// Tries to end an disruption on a block. If the return value != strength, the ownership will be restored and visual effect will end.
+		/// The cost of starting an effect on this block.
+		/// </summary>
+		/// <param name="block">The block the disruption may be started on,.</param>
+		/// <returns>The cost of starting an effect on this block.</returns>
+		protected virtual int BlockCost(IMyCubeBlock block)
+		{
+			return MinCost;
+		}
+
+		/// <summary>
+		/// Starts the effect on a block, the ownership will be changed and visual effect will be added by Disruption class.
+		/// </summary>
+		/// <param name="block">The block to try the disruption on.</param>
+		protected virtual void StartEffect(IMyCubeBlock block) { }
+
+		/// <summary>
+		/// Ends a disruption on a block, the ownership will be changed and visual effect will be added by Disruption class.
 		/// </summary>
 		/// <param name="block">The block to try to end the disruption on.</param>
-		/// <param name="strength">The maximum strength to remove from the block.</param>
-		/// <returns>If the block is no longer affected, required strength. Otherwise, 0.</returns>
-		protected abstract int EndEffect(IMyCubeBlock block, int strength);
+		protected virtual void EndEffect(IMyCubeBlock block) { }
+
 	}
 }

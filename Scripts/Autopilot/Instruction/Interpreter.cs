@@ -64,15 +64,37 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			SyntaxError = false;
 			string instructions = preParse().getInstructions();
-
-			if (instructions == null)
-				return;
-
-			Errors.Clear();
 			instructionQueue.Clear();
+
+			if (string.IsNullOrWhiteSpace(instructions))
+			{
+				Mover.Block.SetControl(false);
+				return;
+			}
+		
+			Errors.Clear();
 
 			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions, "enqueueAllActions()");
 			enqueueAllActions_continue(instructions);
+		}
+
+		/// <summary>
+		/// Convert supplied instructions to Action, then enqueue to instructionQueue
+		/// </summary>
+		public void enqueueAllActions(string instructions)
+		{
+			SyntaxError = false;
+			string preParsed;
+			instructions.GpsToCSV(out preParsed);
+			instructionQueue.Clear();
+
+			if (string.IsNullOrWhiteSpace(preParsed))
+				return;
+
+			Errors.Clear();
+
+			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParsed + ", instructions = " + instructions, "enqueueAllActions()");
+			enqueueAllActions_continue(preParsed);
 		}
 
 		/// <summary>
@@ -121,6 +143,12 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			VRage.Exceptions.ThrowIf<InstructionQueueOverflow>(instructionQueue.Count > 1000);
 
+			if (string.IsNullOrWhiteSpace(instruction))
+			{
+				m_logger.debugLog("Ignoring whitespace: \"" + instruction + "\"", "enqueueAction()");
+				return true;
+			}
+
 			if (instruction.Length < 2)
 			{
 				m_logger.debugLog("instruction too short: " + instruction.Length, "getAction()", Logger.severity.TRACE);
@@ -154,8 +182,8 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool getAction_word(string instruction, out Action wordAction)
 		{
-			//if (instruction.Contains(","))
-			//	return getAction_wordPlus(instruction, out wordAction);
+			if (instruction.Contains(","))
+				return getAction_wordPlus(instruction, out wordAction);
 
 			string lowerCase = instruction.ToLower();
 			switch (lowerCase)
@@ -169,7 +197,7 @@ namespace Rynchodon.Autopilot.Instruction
 					{
 						wordAction = () => {
 							m_logger.debugLog("Disabling", "getAction_word()", Logger.severity.DEBUG);
-							Controller.DisableControl();
+							Controller.SetControl(false);
 						};
 						return true;
 					}
@@ -215,23 +243,25 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 		}
 
-		///// <summary>
-		///// Try to match instruction against keywords. Accepts comma separated params.
-		///// </summary>
-		///// <param name="instruction">unparsed instruction</param>
-		///// <returns>true iff successful</returns>
-		//private bool getAction_wordPlus(string instruction, out Action wordAction)
-		//{
-		//	string[] split = instruction.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+		/// <summary>
+		/// Try to match instruction against keywords. Accepts comma separated params.
+		/// </summary>
+		/// <param name="instruction">unparsed instruction</param>
+		/// <returns>true iff successful</returns>
+		private bool getAction_wordPlus(string instruction, out Action wordAction)
+		{
+			string[] split = instruction.LowerRemoveWhitespace().Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-		//	if (split.Length > 1)
-		//		switch (split[0].ToLower())
-		//		{
-		//		}
+			if (split.Length > 1)
+				switch (split[0].ToLower())
+				{
+					case "orbit":
+							return getAction_orbit(out wordAction, split);
+				}
 
-		//	wordAction = null;
-		//	return false;
-		//}
+			wordAction = null;
+			return false;
+		}
 
 		/// <summary>
 		/// <para>Try to replace an instruction with multiple instructions. Will enqueue actions, not return them.</para>
@@ -757,6 +787,19 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
+		private bool getAction_orbit(out Action instructionAction, string[] dataLowerCase)
+		{
+			m_logger.debugLog("entered getAction_orbit()", "getAction_orbit()");
+			if (dataLowerCase.Length == 2)
+			{
+				instructionAction = () => { new Orbiter(Mover, NavSet, dataLowerCase[1]); };
+				return true;
+			}
+
+			instructionAction = null;
+			return false;
+		}
+
 		private bool getAction_Proximity(out Action execute, string instruction)
 		{
 			float distance;
@@ -827,8 +870,8 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				new Stopper(Mover, NavSet);
 				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
+				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
 			};
 			return true;
 		}
@@ -1084,11 +1127,14 @@ namespace Rynchodon.Autopilot.Instruction
 				IMyCubeBlock Fatblock = slim.FatBlock;
 				if (Fatblock != null && Controller.CubeBlock.canControlBlock(Fatblock))
 				{
-					string blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
-						? Fatblock.getNameOnly().LowerRemoveWhitespace()
-						: Fatblock.DisplayNameText.LowerRemoveWhitespace();
-
-					//myLogger.debugLog("checking: " + blockName, "GetLocalBlock()");
+					string blockName;
+					try
+					{ blockName = Fatblock.getNameOnly().LowerRemoveWhitespace(); }
+					catch (NullReferenceException ex)
+					{
+						m_logger.alwaysLog("Failed to process block name of " + Fatblock.DisplayNameText + '/' + Fatblock.DefinitionDisplayNameText, "GetLocalBlock()", Logger.severity.ERROR);
+						throw ex;
+					}
 
 					if (blockName.Length < bestNameLength && blockName.Contains(searchFor))
 					{

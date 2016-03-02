@@ -12,7 +12,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [list][*]Example: [(Turret, Rocket, Gatling) ; AllGrid ; Range 600][/list]
 [*]<> - Do not use angle brackets in your weapon's name
 [*]:; - Commands are separated by colons and/or semicolons
-[*]  Any spaces used in the command line are ignored.
+[*]  Any spaces used in the command line are ignored.
 [*]Commands are [u]NOT[/u] case-sensitive.[/list]
 
 [b][u]Basic Information[/u][/b]
@@ -29,15 +29,15 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [u]Example:[/u]
 You want to have a specific gun to fire at all ships or stations guns, that are within 600 meters. However, you type the following:
 
-[list] 
+[list] 
 [list]Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
- [/list]
+ [/list]
 
 If the above command is used, the display name will change to the following:
 
-[list] 
+[list] 
 [list]<ERROR:1>Rocket Launcher[(Turret, Rocket, Gatling) ; All-Grid ; Range 600][/list]
- [/list]
+ [/list]
 
 As mentioned above, the <ERROR:#> added to the display name indicates an error and which command the problem exists for. It's important to note that the command "(Turret, Rocket, Gatling)" is at 0. In this case, the ERROR is at command 1. From the example, this would be the command "All-Grid." This is because there is no command named "All-Grid." Instead what was most likely candidate is the command "AllGrid", for which there would be no error.[/list]
 
@@ -80,7 +80,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 
 [u]Priority Commands[/u]
 [list]Missile has the highest priority, followed by Meteor, then Character, then Moving. All of these have higher priority than targeting specific blocks.
-[list] [/list]
+[list] [/list]
 [*]Missile - [i]Target approaching missiles, does not consider who fired the missile.[/i]
 [*]Meteor - [i]Target approaching meteors.[/i]
 [*]Character - [i]Target hostile characters.[/i]
@@ -88,7 +88,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 
 [u]Advanced Priority Commands[/u]
 [list]These commands use a complex priority system based on distance to the block and the block's position in the block list command.
-[list] [/list]
+[list] [/list]
 [*]AllGrid - [i]Target all grids[/i]
 [*]LargeGrid - [i]Target large grids[/i]
 [*]SmallGrid - [i]Target small grids[/i]

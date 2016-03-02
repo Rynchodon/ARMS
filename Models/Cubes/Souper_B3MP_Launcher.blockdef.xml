@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Definition>
+	<Id>
+		<SubtypeId>Souper_B3MP_Launcher</SubtypeId>
+	</Id>
+	<Icon>Textures\Icons\B3MP_Launcher.dds</Icon>
+	<CubeSize>Large</CubeSize>
+	<BlockTopology>TriangleMesh</BlockTopology>
+	<Size x="1" y="1" z="3" />
+	<ModelOffset x="0" y="0" z="0" />
+	<Model>Cubes\Souper_B3MP_Launcher.mwm</Model>
+	<BuildProgressModels>
+		<Model BuildPercentUpperBound="0.33" File="Cubes\Souper_B3MP_Launcher_Constr1.mwm" />
+		<Model BuildPercentUpperBound="0.67" File="Cubes\Souper_B3MP_Launcher_Constr2.mwm" />
+		<Model BuildPercentUpperBound="1.00" File="Cubes\Souper_B3MP_Launcher_Constr3.mwm" />
+	</BuildProgressModels>
+	<MountPoints>
+		<MountPoint Side="Back" StartX="0.20" StartY="0.20" EndX="0.80" EndY="0.80" />
+		<MountPoint Side="Left" StartX="0.20" StartY="0.20" EndX="2.80" EndY="0.80" />
+		<MountPoint Side="Right" StartX="0.20" StartY="0.20" EndX="2.80" EndY="0.80" />
+		<MountPoint Side="Bottom" StartX="0.20" StartY="0.20" EndX="0.80" EndY="2.80" />
+		<MountPoint Side="Top" StartX="0.20" StartY="0.20" EndX="0.80" EndY="2.80" />
+	</MountPoints>
+	<MirroringX>None</MirroringX>
+	<MirroringY>None</MirroringY>
+	<MirroringZ>None</MirroringZ>
+	<BlockPairName>B3MP_Launcher</BlockPairName>
+</Definition>

@@ -34,23 +34,14 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyCubeBlock block, int strength)
+		protected override void StartEffect(IMyCubeBlock block)
 		{
-			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;
-			if (airVent.IsDepressurizing)
-				return 0;
-			m_logger.debugLog("Depressurizing: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "StartEffect()");
-			airVent.ApplyAction("Depressurize");
-			return MinCost;
+			(block as Ingame.IMyAirVent).ApplyAction("Depressurize");
 		}
 
-		protected override int EndEffect(IMyCubeBlock block, int strength)
+		protected override void EndEffect(IMyCubeBlock block)
 		{
-			m_logger.debugLog("No longer depressurizing: " + block.DisplayNameText + ", remaining strength: " + (strength - 1), "EndEffect()");
-			Ingame.IMyAirVent airVent = block as Ingame.IMyAirVent;
-			if (airVent.IsDepressurizing)
-				airVent.ApplyAction("Depressurize");
-			return MinCost;
+			(block as Ingame.IMyAirVent).ApplyAction("Depressurize");
 		}
 
 	}

@@ -6,7 +6,20 @@ Antennae, radars, and Autopilot blocks in attached grids share information.
 
 Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
-[u]Text Panel[/u] can display detected grids, simply add [ Display Detected ] to the text panel's name.
+[h1]Text Panel[/h1]
+Can be used to display detected entities. Commands can be added to the text panel's name, public title, or private title.
+Commands are contained within square brackets and are separated by ; or :
+
+Display Detected : Write detected entities to the public text of the panel
+GPS : Include GPS tags, requires Display Detected or entity ids from a programmable block
+Entity ID : Include entity ids, requires Display Detected or entity ids from a programmable block
+Example - [ Display Detected ; GPS ; Entity ID ] - Display everything
+Autopilot Status : Write the status of autopilots to the text panel. Must have two-way communication with the autopilot and sharing access.
+
+[h1]Programmable block[/h1]
+Can handle detected entities or transmit messages to other Programmable blocks or to Autopilot blocks. The Programmable block scripts contain the documentation.
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=625196196]Handle Detected Entities In-Game Script[/url]
+[url=http://steamcommunity.com/sharedfiles/filedetails/?id=629700748]Block Communication In-Game Script[/url]
 
 [h1]Radar[/h1]
 Radar can detect any grid; the grid does not have to be broadcasting or even have power. The distance a grid can be detected by radar is based on the size of the grid and the broadcast range (power) of the radar. Radar must remain online for a period of time to function at full capacity.
@@ -14,21 +27,30 @@ Radar can detect any grid; the grid does not have to be broadcasting or even hav
 [u]Decoys have a large radar signature[/u]
 [u]Status information is displayed in the control panel.[/u]
 
-[h1]Blocks[/h1]
-Radar equipment from other mods may be used. If they are not otherwise configured, they will be similar to Radar Dish but be capable of detecting objects in every direction.
+[h1]Radar Blocks[/h1]
+Radar equipment from other mods may be used. If they are not otherwise configured, they will have a maximum of 1 target and be completely omnidirectional.
 
 [u]Radar Dish[/u]
-Very long range, inexpensive, unidirectional, up to 10 targets.
+25 km / 10 km range, inexpensive, unidirectional, up to 10 targets.
 
 [u]Radar Dome[/u]
-Long range, omnidirectional, up to 30 targets.
+22.5 km / 9 km range, omnidirectional, up to 30 targets.
 Cannot detect objects below it.
+Some jamming resistance.
 
 [u]Phased Array Radar[/u]
-Medium range, expensive, omnidirectional, up to 100 targets.
+20 km / 8 km range, expensive, omnidirectional, up to 100 targets.
 Cannot detect objects below it or directly above.
 Functions as an antenna and broadcasting can be disabled.
-Can detect other radar at long range.
+Passive radar detection up to 80 km / 60 km.
+Significant jamming resistance.
+
+[u]AWACS Radar[/u]
+30 km / 12 km range, omnidirectional, up to 30 targets.
+Cannot detect objects directly below it.
+Passive radar detection up to 50 km / 40 km.
+Susceptible to jamming.
+WARNING: If you place this one directly on a rotor, it will not function.
 
 [u]Radar Jammer[/u]
 Jams an enemy radar, higher quality radar are harder to jam.
@@ -42,7 +64,7 @@ GPS entries will not be added for a player if the player can see a beacon or bro
 By default, there will be 5 markers for the closest enemy, 5 for the closest neutral, 5 for the closest faction, and 5 for the closest owned grids.
 
 You can configure the number of grids that will be displayed through chat commands.
-/arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD ] #
+/arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD /MissileOnHUD ] #
 
 To change the number of marked enemy grids to 10:
 /arms set EnemiesOnHUD 10

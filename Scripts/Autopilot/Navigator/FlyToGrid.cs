@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3D m_navBlockPos, m_targetPosition;
 		private LandingState value_landingState = LandingState.None;
 		private ulong next_attemptLock;
+		private bool m_beforeMerge;
 
 		private LandingState m_landingState
 		{
@@ -48,24 +49,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 				switch (value)
 				{
-					case LandingState.Approach:
-					case LandingState.Holding:
-					case LandingState.LineUp:
-						{
-							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
-							if (asFunc != null)
-							{
-								m_logger.debugLog("Disabling m_navBlock: " + m_navBlock.Block.DisplayNameText, "set_m_landingState()", Logger.severity.DEBUG);
-								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(false), m_logger);
-							}
-							break;
-						}
 					case LandingState.Catch:
 						m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
 						goto case LandingState.Landing;
 					case LandingState.Landing:
 						{
-							m_navSet.Settings_Task_NavRot.PathfinderCanChangeCourse = false;
 							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
 							if (asFunc != null && !asFunc.Enabled)
 							{
@@ -129,7 +117,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => {
 						Ingame.IMyShipConnector connector = block as Ingame.IMyShipConnector;
-						return connector != null && !connector.IsConnected;
+						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block);
 					};
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
 				}
@@ -137,6 +125,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => block is IMyShipMergeBlock;
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
+					(landingBlock.Block as IMyShipMergeBlock).BeforeMerge += MergeBlock_BeforeMerge;
 				}
 				else if (m_targetBlock.Forward.HasValue)
 					m_landingDirection = m_targetBlock.Forward.Value;
@@ -146,15 +135,20 @@ namespace Rynchodon.Autopilot.Navigator
 					m_landingState = LandingState.None;
 				}
 
-				float minDestRadius =  m_controlBlock.CubeGrid.GetLongestDim() * 5f;
-				if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
+				if (m_landingState != LandingState.None)
 				{
-					m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
-					m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
-				}
+					float minDestRadius = m_controlBlock.CubeGrid.GetLongestDim() * 5f;
+					if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
+					{
+						m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
+						m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
+					}
 
-				m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
-				m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
+					new UnLander(mover, navSet, landingBlock);
+
+					m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
+					m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
+				}
 			}
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
@@ -196,12 +190,17 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navBlockPos = m_navBlock.WorldPosition;
 				m_targetPosition = m_gridFinder.GetPosition(m_navBlockPos, m_navSet.Settings_Current.DestinationOffset);
 
-				if (m_gridFinder.Block != null)
+				if (m_gridFinder.Block != null && m_landingState != LandingState.Landing)
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
 
-				if (m_landingState > LandingState.Approach || m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius)
+				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
+				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlockPos, m_targetPosition) < destRadius)
 				{
+					//m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
+					//m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,
+					//	"Distance < DestinationRadius, Distance: " + m_navSet.Settings_Current.Distance + ", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius, "Move()");
+
 					Move_Land();
 					return;
 				}
@@ -212,7 +211,7 @@ namespace Rynchodon.Autopilot.Navigator
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
 				Vector3 destination = m_targetPosition + targetToNav * adjustment;
 
-				m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
+				//m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
 				m_mover.CalcMove(m_navBlock, destination, m_gridFinder.Grid.GetLinearVelocity());
 				m_navSet.Settings_Current.Distance += adjustment;
 			}
@@ -226,10 +225,10 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius)
+			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius * 1.5f)
 			{
 				//m_logger.debugLog("facing controller towards target : " + m_targetPosition, "Rotate()");
-				m_mover.CalcRotate(m_contBlock, RelativeDirection3F.FromWorld(m_contBlock.Grid, m_targetPosition - m_contBlock.WorldPosition));
+				m_mover.CalcRotate();
 				return;
 			}
 
@@ -256,7 +255,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_targetBlock.Forward.HasValue)
 			{
 				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
-				if (m_navSet.DirectionMatched())
+				if (!m_navSet.Settings_Current.Stay_In_Formation && m_navSet.DirectionMatched())
 				{
 					m_logger.debugLog("Direction matched", "Rotate()", Logger.severity.INFO);
 					m_navSet.OnTaskComplete_NavRot();
@@ -427,7 +426,7 @@ namespace Rynchodon.Autopilot.Navigator
 						LockConnector();
 
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize;
-						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween), "Move_Land()");
+						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween, m_gridFinder.Grid.GetLinearVelocity(), true);
 						return;
 					}
@@ -465,7 +464,7 @@ namespace Rynchodon.Autopilot.Navigator
 			next_attemptLock = Globals.UpdateCount + 20ul;
 
 			Ingame.IMyShipConnector connector = m_navBlock.Block as Ingame.IMyShipConnector;
-			if (connector != null && !connector.IsConnected)
+			if (connector != null && !connector.IsConnected && connector.IsLocked)
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (!connector.IsConnected)
 						connector.ApplyAction("Lock");
@@ -473,12 +472,15 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		/// <summary>
-		/// Determines if the connector or landing gear is locked. False if m_navBlock is neither of those.
+		/// Determines if the connector, landing gear, or merge block is locked. False if m_navBlock is none of those.
 		/// </summary>
 		private bool IsLocked()
 		{
 			if (m_landingState == LandingState.None)
 				return false;
+
+			if (m_beforeMerge)
+				return true;
 
 			IMyLandingGear asGear = m_navBlock.Block as IMyLandingGear;
 			if (asGear != null)
@@ -486,9 +488,18 @@ namespace Rynchodon.Autopilot.Navigator
 
 			Ingame.IMyShipConnector asConn = m_navBlock.Block as Ingame.IMyShipConnector;
 			if (asConn != null)
+			{
+				//m_logger.debugLog("locked: " + asConn.IsLocked + ", connected: " + asConn.IsConnected + ", other: " + asConn.OtherConnector, "IsLocked()");
 				return asConn.IsConnected;
+			}
 
 			return false;
+		}
+
+		private void MergeBlock_BeforeMerge()
+		{
+			(m_navBlock.Block as IMyShipMergeBlock).BeforeMerge -= MergeBlock_BeforeMerge;
+			m_beforeMerge = true;
 		}
 
 	}

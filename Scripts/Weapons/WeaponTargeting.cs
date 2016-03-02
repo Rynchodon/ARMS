@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Threading;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -15,15 +16,8 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public abstract class WeaponTargeting : TargetingBase
 	{
-		[Flags]
-		public enum State : byte
-		{
-			Off = 0,
-			/// <summary>Fetch options from name and Update_Options()</summary>
-			GetOptions = 1 << 0,
-			/// <summary>Indicates targeting is enabled, targeting may not be possible</summary>
-			Targeting = GetOptions | 1 << 1
-		}
+
+		public enum Control : byte { Off, On, Engager }
 
 		/// <remarks>
 		/// <para>Increasing the number of threads would require locks to be added in many areas.</para>
@@ -61,15 +55,12 @@ namespace Rynchodon.Weapons
 
 		public readonly Ingame.IMyLargeTurretBase myTurret;
 
-		public bool CanControl { get; private set; }
-
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
 		public readonly bool IsNormalTurret;
+		/// <summary>Locked while an update on targeting thread is queued but not while it is running.</summary>
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
 		private Logger myLogger;
-		private State value_AllowedState = State.Off;
-		private State value_CurrentState = State.Off;
 		private Ammo LoadedAmmo;
 		private long UpdateNumber = 0;
 
@@ -78,18 +69,50 @@ namespace Rynchodon.Weapons
 
 		protected bool FireWeapon;
 		private bool IsFiringWeapon;
+		private Control value_currentControl;
 
 		private List<IMyEntity> value_ObstructIgnore;
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 
+		public Control CurrentControl
+		{
+			get { return value_currentControl; }
+			set
+			{
+				if (value_currentControl == value)
+					return;
+
+				myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
+
+				if (IsNormalTurret)
+				{
+					if (value == Control.Off)
+						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
+					else
+						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + CubeBlock.WorldMatrix.Forward * 10));
+				}
+
+				value_currentControl = value;
+				FireWeapon = false;
+			}
+		}
+
+		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
+		public bool CanControl
+		{
+			get { return CubeBlock.IsWorking && (!IsNormalTurret || !myTurret.IsUnderControl) && CubeBlock.OwnerId != 0; }
+		}
+
+		public bool GuidedLauncher { get; set; }
+
 		public WeaponTargeting(IMyCubeBlock weapon)
 			: base(weapon)
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
-			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !(weapon is IMyInventoryOwner) || !(weapon is Ingame.IMyUserControllableGun))
+			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !((MyEntity)weapon).HasInventory || !(weapon is Ingame.IMyUserControllableGun))
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
@@ -99,9 +122,12 @@ namespace Rynchodon.Weapons
 			this.Options = new TargetingOptions();
 			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
+			this.FuncBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
 
 			if (TPro_Shoot == null)
 				TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
+
+			myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
@@ -109,8 +135,8 @@ namespace Rynchodon.Weapons
 			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
 
 			CubeBlock.OnClose -= weapon_OnClose;
-			value_AllowedState = State.Off;
-			value_CurrentState = State.Off;
+			if (Options == null)
+				Options.Flags = TargetingFlags.None;
 
 			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
@@ -123,7 +149,7 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (CurrentState_FlagSet(State.Targeting) && FireWeapon != IsFiringWeapon)
+				if (CurrentControl != Control.Off && FireWeapon != IsFiringWeapon)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
@@ -137,54 +163,19 @@ namespace Rynchodon.Weapons
 						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
 					}
 				}
-				Update();
+
+				Update1_GameThread();
+
+				if (lock_Queued.TryAcquireExclusive())
+					Thread.EnqueueAction(Update_Thread);
 			}
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
-				AllowedState = State.Off;
+				FuncBlock.RequestEnable(false);
 
 				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
 				func.SetCustomName("<Broken>" + func.DisplayNameText);
-				func.RequestEnable(false);
-			}
-
-			if (AllowedState != State.Off && lock_Queued.TryAcquireExclusive())
-				Thread.EnqueueAction(Update_Thread);
-		}
-
-		public State AllowedState
-		{
-			get { return value_AllowedState; }
-			set
-			{
-				value_AllowedState = value;
-
-				CurrentState &= value;
-				FireWeapon = false;
-			}
-		}
-
-		protected State CurrentState
-		{
-			get { return value_CurrentState; }
-			private set
-			{
-				if (value_CurrentState == value)
-					return;
-
-				myLogger.debugLog("CurrentState changed to " + value, "set_CurrentState()", Logger.severity.DEBUG);
-				FireWeapon = false;
-
-				if (IsNormalTurret)
-				{
-					if ((value & State.Targeting) == State.Targeting) // now targeting
-						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + CubeBlock.WorldMatrix.Forward * 10));	// disable default targeting
-					else // not targeting
-						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
-				}
-
-				value_CurrentState = value;
 			}
 		}
 
@@ -202,17 +193,14 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		public bool CurrentState_FlagSet(State flag)
-		{ return (CurrentState & flag) == flag; }
+		/// <summary>Invoked on game thread, every updated, if targeting is permitted.</summary>
+		protected abstract void Update1_GameThread();
 
-		public bool CurrentState_NotFlag(State flag)
-		{ return (CurrentState & flag) != flag; }
+		/// <summary>Invoked on targeting thread, every 100 updates, if targeting is permitted.</summary>
+		protected abstract void Update100_Options_TargetingThread(TargetingOptions current);
 
-		/// <summary>Invoked on game thread, every update.</summary>
-		protected abstract void Update();
-
-		/// <summary>Invoked on targeting thread, every 100 updates.</summary>
-		protected abstract void Update_Options(TargetingOptions current);
+		/// <summary>World direction that the weapon is facing.</summary>
+		protected abstract Vector3 Facing();
 
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
@@ -243,11 +231,7 @@ namespace Rynchodon.Weapons
 				if (UpdateNumber % 10 == 0)
 				{
 					if (UpdateNumber % 100 == 0)
-					{
-						//if (UpdateNumber % 1000 == 0)
-						//	Update1000();
 						Update100();
-					}
 					Update10();
 				}
 				Update1();
@@ -263,7 +247,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (CurrentState_NotFlag(State.Targeting) || LoadedAmmo == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
+			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
 				return;
 
 			if (CurrentTarget.TType != TargetType.None)
@@ -273,74 +257,69 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <summary>
-		/// Updates can control weapon. Checks for ammo and chooses a target (if necessary).
+		/// Checks for ammo and chooses a target (if necessary).
 		/// </summary>
 		private void Update10()
 		{
-			if (CurrentState_NotFlag(State.Targeting))
+			if (CurrentControl == Control.Off)
 				return;
 
 			UpdateAmmo();
 			if (LoadedAmmo == null)
 			{
-				myLogger.debugLog("No ammo loaded", "Update10()");
+				//myLogger.debugLog("No ammo loaded", "Update10()");
 				return;
 			}
 
 			UpdateTarget();
 		}
 
-		/// <summary>
-		/// Gets targeting options from name.
-		/// </summary>
 		private void Update100()
 		{
-			if (!CubeBlock.IsWorking
-			|| (IsNormalTurret && myTurret.IsUnderControl)
-			|| CubeBlock.OwnerId == 0)
-			{
-				myLogger.debugLog("not working: " + !CubeBlock.IsWorking + ", controlled: " + (IsNormalTurret && myTurret.IsUnderControl) + ", unowned: " + (CubeBlock.OwnerId == 0), "Update100()");
+			CheckCustomInfo();
 
-				CanControl = false;
-				CurrentState = State.Off;
-				return;
-			}
-
-			if ((AllowedState & State.GetOptions) != State.GetOptions)
+			if (!CanControl)
 			{
-				myLogger.debugLog("Not allowed to get options", "Update100()");
-				CanControl = false;
-				CurrentState = State.Off;
+				myLogger.debugLog("cannot control", "Update100()");
+				CurrentControl = Control.Off;
+				Options.Flags = TargetingFlags.None;
 				return;
 			}
 
 			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
+			myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
 			ClearBlacklist();
 
-			Interpreter.UpdateInstruction();
-			if (Interpreter.HasInstructions)
+			if (Interpreter.UpdateInstruction())
+				UpdateOptions();
+			if (CurrentControl == Control.Engager)
+				return;
+			if (Interpreter.HasInstructions && (IsNormalTurret || Options.FlagSet(TargetingFlags.Turret)))
 			{
-				if (Interpreter.Errors.Count <= InterpreterErrorCount)
-				{
-					Options = Interpreter.Options;
-					InterpreterErrorCount = Interpreter.Errors.Count;
-					Update_Options(Options);
-					myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "Update100()");
-				}
-				else
-					myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "Update100()");
-
-				CanControl = true;
-				CurrentState = AllowedState;
-				WriteErrors(Interpreter.Errors);
-			}
-			else
-			{
-				myLogger.debugLog("No instructions found", "Update100()");
-				CanControl = false;
-				CurrentState = State.GetOptions;
+				CurrentControl = Control.On;
 				return;
 			}
+
+			myLogger.debugLog("Not running targeting", "Update100()");
+			CurrentControl = Control.Off;
+		}
+
+		private void UpdateOptions()
+		{
+			if (Interpreter.Errors.Count <= InterpreterErrorCount)
+			{
+				if (Interpreter.Options == null)
+					Options = new TargetingOptions();
+				else
+					Options = Interpreter.Options.Clone();
+				InterpreterErrorCount = Interpreter.Errors.Count;
+				Update100_Options_TargetingThread(Options);
+				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
+			}
+			else
+				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
+
+			WriteErrors(Interpreter.Errors);
 		}
 
 		private void UpdateAmmo()
@@ -353,74 +332,59 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		private Vector3 CurrentDirection;
-		private readonly FastResourceLock lock_CurrentDirection = new FastResourceLock();
 		private Vector3 previousFiringDirection;
-
-		/// <summary>
-		/// <para>If the direction will put shots on target, fire the weapon.</para>
-		/// <para>If the direction will miss the target, stop firing.</para>
-		/// </summary>
-		/// <param name="direction">The direction the weapon is pointing in. Must be normalized.</param>
-		protected void CheckFire(Vector3 direction)
-		{
-			using (lock_CurrentDirection.AcquireExclusiveUsing())
-				CurrentDirection = direction;
-		}
 
 		private void CheckFire()
 		{
-			if (!CurrentTarget.InterceptionPoint.HasValue)
+			Target target = CurrentTarget;
+
+			if (!target.FiringDirection.HasValue || !target.ContactPoint.HasValue)
 			{
 				FireWeapon = false;
 				return;
 			}
 
 			Vector3 weaponPosition = ProjectilePosition();
+			float distance = Vector3.Distance(weaponPosition, target.ContactPoint.Value);
 
-			float distance = LoadedAmmo.AmmoDefinition.MaxTrajectory; // test for obstructions between weapon and max range of weapon
-
-			Vector3 finalPosition;
-			Line shot;
-			float speed;
-			using (lock_CurrentDirection.AcquireSharedUsing())
-			{
-				finalPosition = weaponPosition + CurrentDirection * distance;
-				shot = new Line(weaponPosition, finalPosition, false);
-
-				//myLogger.debugLog("final position = " + finalPosition + ", weaponPosition = " + weaponPosition + ", direction = " + Vector3.Normalize(direction) + ", distanceToTarget = " + distanceToTarget, "CheckFire()");
-				//myLogger.debugLog("shot is from " + weaponPosition + " to " + finalPosition + ", target is at " + CurrentTarget.InterceptionPoint.Value + ", distance to target = " + distanceToTarget, "CheckFire()");
-				//myLogger.debugLog("100 m out: " + (weaponPosition + Vector3.Normalize(direction) * 100), "CheckFire()");
-				//myLogger.debugLog("distance between weapon and target is " + Vector3.Distance(weaponPosition, CurrentTarget.InterceptionPoint.Value) + ", distance between finalPosition and target is " + Vector3.Distance(finalPosition, CurrentTarget.InterceptionPoint.Value), "CheckFire()");
-				//myLogger.debugLog("distance between shot and target is " + shot.Distance(CurrentTarget.InterceptionPoint.Value), "CheckFire()");
-
-				speed = Vector3.RectangularDistance(ref CurrentDirection, ref previousFiringDirection);
+			//using (lock_CurrentDirection.AcquireSharedUsing())
+			//{
+			Vector3 CurrentDirection = Facing();
+				float directionChange = Vector3.RectangularDistance(ref CurrentDirection, ref previousFiringDirection);
 				previousFiringDirection = CurrentDirection;
-			}
 
-			//float relativeSpeed = Vector3.Distance(CurrentTarget.Entity.GetLinearVelocity(), CubeBlock.CubeGrid.GetLinearVelocity());
-			const float firingThreshold = 1.25f;
-
-			myLogger.debugLog("change in direction = " + speed + ", threshold is " + firingThreshold + ", proximity = " + shot.Distance(CurrentTarget.InterceptionPoint.Value) + " shot from " + shot.From + " to " + shot.To, "CheckFire()");
-
-			if (shot.DistanceLessEqual(CurrentTarget.InterceptionPoint.Value, firingThreshold))
-			{
-				if (Obstructed(finalPosition))
+				Vector3 p0 = weaponPosition + target.FiringDirection.Value * distance;
+				Vector3 p1 = weaponPosition + CurrentDirection * distance;
+				float threshold;
+				if (directionChange <= 0.01f)
+					threshold = 100f;
+				else if (directionChange >= 1f)
+					threshold = 1f;
+				else
+					threshold = 1f / directionChange;
+				//myLogger.debugLog("origin: " + weaponPosition + ", direction to target: " + Vector3.Normalize(p0 - weaponPosition) + ", diff to FiringDirection: " + Vector3.DistanceSquared(Vector3.Normalize(p0 - weaponPosition), target.FiringDirection.Value), "CheckFire()");
+				myLogger.debugLog("firing direction: " + target.FiringDirection + ", current direct: " + CurrentDirection + ", P0: " + p0 + ", P1: " + p1 + ", diff sq: " + Vector3.DistanceSquared(p0, p1) + ", threshold: " + threshold, "CheckFire()");
+				if (Vector3.DistanceSquared(p0, p1) > threshold)
 				{
-					myLogger.debugLog("final position is obstructed", "CheckFire()");
-					if (speed < 0.01)
+					FireWeapon = false;
+					return;
+				}
+
+				if (Obstructed(target.ContactPoint.Value))
+				{
+					myLogger.debugLog("target is obstructed", "CheckFire()");
+					if (directionChange < 0.01f)
 					{
-						myLogger.debugLog("blacklisting: " + CurrentTarget.Entity.getBestName(), "CheckFire()");
+						myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
 						BlacklistTarget();
 					}
 					FireWeapon = false;
+					return;
 				}
-				else
-					FireWeapon = true;
+
+				FireWeapon = true;
 			}
-			else
-				FireWeapon = false;
-		}
+		//}
 
 		/// <summary>
 		/// <para>Test line segment between weapon and target for obstructing entities.</para>
@@ -481,11 +445,14 @@ namespace Rynchodon.Weapons
 				{
 					double distance;
 					foreach (Line testLine in AllTestLines)
-						if (entity.WorldAABB.Intersects(new LineD(testLine.From, testLine.To), out distance))
+					{
+						LineD l = (LineD)testLine;
+						if (entity.WorldAABB.Intersects(ref l, out distance))
 						{
 							myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
 							return true;
 						}
+					}
 					continue;
 				}
 
@@ -535,12 +502,6 @@ namespace Rynchodon.Weapons
 							myLogger.debugLog("ignoring " + slim.getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
 							continue;
 						}
-
-						//if (asGrid.CubeExists(pos))
-						//{
-						//List<IMySlimBlock> ignore = ObstructionIgnore;
-						//if (ignore != null && ignore.Contains(asGrid.GetCubeBlock(pos)))
-						//	continue;
 
 						if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
 						{
@@ -599,6 +560,88 @@ namespace Rynchodon.Weapons
 			else
 				GameThreadActions.Enqueue(() =>
 					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
+		}
+
+		private bool condition_changed;
+		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo;
+		private Target prev_target;
+		private Control prev_control;
+
+		/// <summary>
+		/// Look for changes that would affect custom info.
+		/// </summary>
+		private void CheckCustomInfo()
+		{
+			condition_changed = false;
+
+			ConditionChange(CubeBlock.IsWorking, ref prev_working);
+			ConditionChange(IsNormalTurret && myTurret.IsUnderControl, ref prev_playerControl);
+			ConditionChange(CubeBlock.OwnerId == 0, ref prev_noOwn);
+
+			ConditionChange(CurrentControl, ref prev_control);
+			ConditionChange(LoadedAmmo == null, ref prev_ammo);
+			ConditionChange(CurrentTarget, ref prev_target);
+
+			if (condition_changed)
+				MyAPIGateway.Utilities.InvokeOnGameThread(FuncBlock.RefreshCustomInfo);
+		}
+
+		private void ConditionChange<T>(T condition, ref T previous) 
+		{
+			if (!condition.Equals(previous))
+			{
+				condition_changed = true;
+				previous = condition;
+			}
+		}
+
+		private void FuncBlock_AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
+		{
+			if (!CubeBlock.IsWorking)
+			{
+				customInfo.AppendLine("Off");
+				return;
+			}
+			if (IsNormalTurret && myTurret.IsUnderControl)
+			{
+				customInfo.AppendLine("Being controlled by player");
+				return;
+			}
+			if (CubeBlock.OwnerId == 0)
+				customInfo.AppendLine("No owner");
+
+			switch (CurrentControl)
+			{
+				case Control.Off:
+					if (IsNormalTurret)
+						customInfo.AppendLine("Vanilla targeting enabled");
+					return;
+				case Control.On:
+					if (IsNormalTurret)
+						customInfo.AppendLine("ARMS controlling");
+					else
+						customInfo.AppendLine("ARMS rotor-turret");
+					break;
+				case Control.Engager:
+					customInfo.AppendLine("Engager controlling");
+					break;
+			}
+
+			if (LoadedAmmo == null)
+				customInfo.AppendLine("No ammo");
+			if (CurrentTarget == null || CurrentTarget.Entity == null)
+				customInfo.AppendLine("No target");
+			else
+			{
+				IMyCubeBlock targetBlock = CurrentTarget.Entity as IMyCubeBlock;
+				if (targetBlock != null)
+				{
+					customInfo.Append("Has target: ");
+					customInfo.AppendLine(targetBlock.DefinitionDisplayNameText);
+				}
+				else
+					customInfo.AppendLine("Has target");
+			}
 		}
 
 	}

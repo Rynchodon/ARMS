@@ -4,6 +4,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -52,36 +53,24 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyCubeBlock block, int strength)
+		protected override int OrderBy(IMyCubeBlock block)
 		{
-			int maxPower = MaxPowerOutput(block);
-			if (strength >= maxPower)
-			{
-				m_logger.debugLog("EMP disabled: " + block.DisplayNameText + ", remaining strength: " + (strength - maxPower), "StartEffect()");
-				(block as IMyFunctionalBlock).RequestEnable(false);
-				return maxPower;
-			}
-			else
-				m_logger.debugLog("EMP not strong enough to disable: " + block.DisplayNameText + ", strength: " + strength + ", required: " + maxPower, "StartEffect()");
-			return 0;
+			return -BlockCost(block);
 		}
 
-		protected override int EndEffect(IMyCubeBlock block, int strength)
+		protected override int BlockCost(IMyCubeBlock block)
 		{
-			int maxPower = MaxPowerOutput(block);
-			if (strength >= maxPower)
-			{
-				m_logger.debugLog("EMP expired on " + block.DisplayNameText + ", remaining strength: " + (strength - maxPower), "EndEffect()");
-				(block as IMyFunctionalBlock).RequestEnable(true);
-				return maxPower;
-			}
-			return 0;
+			return (int)((block.GetCubeBlockDefinition() as MyPowerProducerDefinition).MaxPowerOutput * 1000f);
 		}
 
-		private int MaxPowerOutput(IMyCubeBlock block)
+		protected override void StartEffect(IMyCubeBlock block)
 		{
-			var definition = block.GetCubeBlockDefinition() as MyPowerProducerDefinition;
-			return (int)(definition.MaxPowerOutput * 1000f);
+			(block as IMyFunctionalBlock).RequestEnable(false);
+		}
+
+		protected override void EndEffect(IMyCubeBlock block)
+		{
+			(block as IMyFunctionalBlock).RequestEnable(true);
 		}
 
 	}

@@ -58,6 +58,7 @@ namespace Rynchodon.Weapons
 
 		public bool AllowFighterControl = true;
 		public bool GuidedMissileLauncher = false;
+		public float MissileSpawnForward = 0f;
 
 	}
 }

@@ -14,8 +14,8 @@
         <Y>0.25</Y>
         <Z>0.25</Z>
       </Size>
-      <Mass>4500</Mass>
-      <Volume>6000</Volume>
+      <Mass>450</Mass>
+      <Volume>600</Volume>
       <Model>Models\Weapons\Souper_R12VP_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
@@ -34,8 +34,8 @@
         <Y>0.27</Y>
         <Z>0.27</Z>
       </Size>
-      <Mass>4500</Mass>
-      <Volume>6000</Volume>
+      <Mass>350</Mass>
+      <Volume>550</Volume>
       <Model>Models\Weapons\Souper_R8EA_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
@@ -54,8 +54,8 @@
         <Y>0.1</Y>
         <Z>0.1</Z>
       </Size>
-      <Mass>4500</Mass>
-      <Volume>6000</Volume>
+      <Mass>250</Mass>
+      <Volume>350</Volume>
       <Model>Models\Weapons\Souper_B3MP_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>18</Capacity>
@@ -66,20 +66,21 @@
       <Id>
         <TypeId>AmmoMagazine</TypeId>
         <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
+        <!-- The designation should be R1VT but changing it would delete existing magazines -->
       </Id>
-      <DisplayName>Interceptor Missile C1VT</DisplayName>
+      <DisplayName>Interceptor Missile R1VT</DisplayName>
       <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
       <Size>
-        <X>.25</X>
-        <Y>0.25</Y>
-        <Z>0.25</Z>
+        <X>0.5</X>
+        <Y>0.1</Y>
+        <Z>0.1</Z>
       </Size>
-      <Mass>60</Mass>
-      <Volume>60</Volume>
+      <Mass>6</Mass>
+      <Volume>8</Volume>
       <Model>Models\Weapons\Interceptor_Missile.mwm</Model>
       <PhysicalMaterial>Ammo</PhysicalMaterial>
       <Capacity>1</Capacity>
-      <AmmoDefinitionId Subtype="Souper_C1VT_Interceptor_Missile" />
+      <AmmoDefinitionId Subtype="Souper_R1VT_Interceptor_Missile" />
     </AmmoMagazine>
     
   </AmmoMagazines>

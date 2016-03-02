@@ -1,20 +1,25 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
-
+using System.Linq;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRage.Game;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRageMath;
+using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
 	public abstract class TargetingBase
 	{
 
+		public const short zero = 0, one = 1, guidedValue = 100, negOne = -one, negGuidVal = -guidedValue;
+
 		private static Dictionary<long, short> WeaponsTargetingProjectile = new Dictionary<long, short>();
+		private static Logger s_logger = new Logger("TargetingBase");
 
 		static TargetingBase()
 		{
@@ -25,14 +30,38 @@ namespace Rynchodon.Weapons
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			WeaponsTargetingProjectile = null;
+			s_logger = null;
 		}
 
-		private static short GetWeaponsTargetingProjectile(IMyEntity entity)
+		public static short GetWeaponsTargetingProjectile(IMyEntity entity)
 		{
 			short result;
 			if (!WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out result))
 				result = 0;
 			return result;
+		}
+
+		private static void AddWeaponsTargetingProjectile(IMyEntity entity, short number)
+		{
+			s_logger.debugLog("entity: " + entity.getBestName() + ", number: " + number, "AddWeaponsTargetingProjectile()");
+
+			short count;
+			if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count))
+			{
+				s_logger.debugLog("count: " + count, "AddWeaponsTargetingProjectile()");
+				count += number;
+				if (count == zero)
+				{
+					WeaponsTargetingProjectile.Remove(entity.EntityId);
+					return;
+				}
+				s_logger.debugLog(count < zero, "count is negative: " + count + ", for " + entity.getBestName(), "AddWeaponsTargetingProjectile()", Logger.severity.FATAL);
+			}
+			else
+				count = number;
+
+			s_logger.debugLog(count > short.MaxValue / 2, "many weapons targeting: " + entity.getBestName() + ", count: " + count, "AddWeaponsTargetingProjectile()", Logger.severity.WARNING);
+			WeaponsTargetingProjectile[entity.EntityId] = count;
 		}
 
 		public readonly IMyEntity MyEntity;
@@ -49,7 +78,6 @@ namespace Rynchodon.Weapons
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
-	
 		private readonly Logger myLogger;
 
 		private Target value_CurrentTarget;
@@ -69,20 +97,9 @@ namespace Rynchodon.Weapons
 				}
 
 				if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
-				{
-					short count = WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId];
-					if (count == 1)
-						WeaponsTargetingProjectile.Remove(value_CurrentTarget.Entity.EntityId);
-					else
-						WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId] = --count;
-				}
+					AddWeaponsTargetingProjectile(value_CurrentTarget.Entity, this is Guided.GuidedMissile ? negGuidVal : negOne);
 				if (value != null && (value.TType & TargetType.Projectile) != 0)
-				{
-					short count;
-					if (!WeaponsTargetingProjectile.TryGetValue(value.Entity.EntityId, out count))
-						count = 0;
-					WeaponsTargetingProjectile[value.Entity.EntityId] = ++count;
-				}
+					AddWeaponsTargetingProjectile(value.Entity, this is Guided.GuidedMissile ? guidedValue : one);
 
 				value_CurrentTarget = value;
 			}
@@ -95,7 +112,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", () => entity.getBestName());
+			myLogger = new Logger("TargetingBase", entity);// { MinimumLevel = Logger.severity.DEBUG };
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -103,6 +120,10 @@ namespace Rynchodon.Weapons
 			myTarget = new NoTarget();
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
+			entity.OnClose += obj => {
+				if (WeaponsTargetingProjectile != null)
+					CurrentTarget = null;
+			};
 
 			myLogger.debugLog("entity: " + MyEntity.getBestName() + ", block: " + CubeBlock.getBestName(), "TargetingBase()");
 		}
@@ -110,7 +131,7 @@ namespace Rynchodon.Weapons
 		public TargetingBase(IMyCubeBlock block)
 			: this(block, block)
 		{
-			myLogger = new Logger("TargetingBase", block);
+			myLogger = new Logger("TargetingBase", block) { MinimumLevel = Logger.severity.DEBUG };
 		}
 
 		private bool PhysicalProblem(Vector3D targetPos)
@@ -174,21 +195,14 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			switch (myTarget.TType)
-			{
-				case TargetType.Missile:
-				case TargetType.Meteor:
-					if ((TryHard && !myTarget.Entity.Closed) || ProjectileIsThreat(myTarget.Entity, myTarget.TType))
-					{
-						myLogger.debugLog("Keeping Target = " + myTarget.Entity.getBestName(), "UpdateTarget()");
-						return;
-					}
-					goto case TargetType.None;
-				case TargetType.None:
-				default:
-					myTarget = new NoTarget();
-					break;
-			}
+			if ((myTarget.TType & TargetType.Projectile) != 0 && !myTarget.Entity.Closed)
+				if (TryHard || ProjectileIsThreat(myTarget.Entity, myTarget.TType))
+				{
+					myLogger.debugLog("Keeping Target = " + myTarget.Entity.getBestName(), "UpdateTarget()");
+					return;
+				}
+
+			myTarget = new NoTarget();
 
 			CollectTargets();
 			PickATarget();
@@ -405,7 +419,8 @@ namespace Rynchodon.Weapons
 
 		/// <remarks>
 		/// <para>Targeting non-terminal blocks would cause confusion.</para>
-		/// <para>Open doors should not be targeted.</para>
+		/// <para>Tiny blocks, such as sensors, shall be skipped.</para>
+		/// <para>Open doors shall not be targeted.</para>
 		/// </remarks>
 		private bool TargetableBlock(IMyCubeBlock block, bool Disable)
 		{
@@ -423,6 +438,9 @@ namespace Rynchodon.Weapons
 				if (!block.IsFunctional || !Options.FlagSet(TargetingFlags.Functional))
 					return false;
 
+			if (Blacklist.Contains(block))
+				return false;
+
 			if (!CanRotateTo(block.GetPosition()))
 				return false;
 
@@ -438,10 +456,10 @@ namespace Rynchodon.Weapons
 		/// <param name="distanceValue">The value assigned based on distance and position in blocksToTarget.</param>
 		/// <remarks>
 		/// <para>Decoy blocks will be given a distanceValue of the distance squared to weapon.</para>
-		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * (2 + index)^2.</para>
+		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * index^3.</para>
 		/// <para>Other blocks will be given a distanceValue of the distance squared * (1e12).</para>
 		/// </remarks>
-		private bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue)
+		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
 		{
 			myLogger.debugLog("getting block from " + grid.DisplayName + ", target type = " + tType, "GetTargetBlock()");
 
@@ -461,24 +479,18 @@ namespace Rynchodon.Weapons
 			{
 				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
 				if (decoyBlockList != null)
-					foreach (IMyTerminalBlock block in decoyBlockList)
+					foreach (IMyCubeBlock block in decoyBlockList)
 					{
-						if (!block.IsWorking)
-							continue;
-
-						if (!CanRotateTo(block.GetPosition()))
-							continue;
-
-						if (Blacklist.Contains(block))
+						if (!TargetableBlock(block, true))
 							continue;
 
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 
-						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block as IMyCubeBlock))
+						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
 						{
-							target = block as IMyCubeBlock;
+							target = block;
 							distanceValue = distanceSq;
 						}
 					}
@@ -504,14 +516,8 @@ namespace Rynchodon.Weapons
 							continue;
 						}
 
-						if (Blacklist.Contains(block))
-						{
-							myLogger.debugLog("blacklisted: " + block.DisplayNameText, "GetTargetBlock()");
-							continue;
-						}
-
 						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 						{
 							myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
 							continue;
@@ -535,30 +541,34 @@ namespace Rynchodon.Weapons
 			}
 
 			// get any terminal block
-			if (tType == TargetType.Moving || tType == TargetType.Destroy)
+			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
+			if (destroy || Options.blocksToTarget.Count == 0)
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
 
-				foreach (IMySlimBlock slim in allSlims)
-					if (TargetableBlock(slim.FatBlock, false))
-					{
-						if (Blacklist.Contains(slim.FatBlock))
-							continue;
+				double closest = double.MaxValue;
 
+				foreach (IMySlimBlock slim in allSlims)
+					if (TargetableBlock(slim.FatBlock, !destroy))
+					{
 						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
-						if (distanceSq > Options.TargetingRangeSquared)
+						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 						distanceSq *= 1e12;
 
-						if (CubeBlock.canConsiderHostile(slim.FatBlock))
+						if (distanceSq < closest && CubeBlock.canConsiderHostile(slim.FatBlock))
 						{
 							target = slim.FatBlock;
 							distanceValue = distanceSq;
-							myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
-							return true;
 						}
 					}
+
+				if (target != null)
+				{
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					return true;
+				}
 			}
 
 			return false;
@@ -589,14 +599,6 @@ namespace Rynchodon.Weapons
 						}
 					}
 
-					//bool isMissile = entity.ToString().StartsWith("MyMissile");
-
-					//if ((isMissile || entity is IMyMeteor) && Target.WeaponsTargeting(entity.EntityId) > 10)
-					//{
-					//	myLogger.debugLog("Not targeting " + entity.getBestName() + ", already targeted by " + Target.WeaponsTargeting(entity.EntityId) + " weapons", "PickAProjectile()");
-					//	continue;
-					//}
-
 					// meteors and missiles are dangerous even if they are slow
 					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.ToString().StartsWith("MyMissile")))
 						continue;
@@ -621,7 +623,7 @@ namespace Rynchodon.Weapons
 					{
 						if (!PhysicalProblem(projectile.GetPosition()))
 						{
-							myLogger.debugLog("Is a threat: " + projectile.getBestName(), "PickAProjectile()");
+							myLogger.debugLog("Is a threat: " + projectile.getBestName() + ", weapons targeting: " + GetWeaponsTargetingProjectile(projectile), "PickAProjectile()");
 							myTarget = new TurretTarget(projectile, tType);
 							return true;
 						}
@@ -673,18 +675,20 @@ namespace Rynchodon.Weapons
 			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
 
-			Vector3D TargetPosition = myTarget.GetPosition();
+			Vector3 myVelocity = MyEntity.GetLinearVelocity();
+			Vector3 targetVelocity = myTarget.GetLinearVelocity();
+			Vector3 TargetPosition = myTarget.GetPosition();
 
-			FindInterceptVector(ProjectilePosition(), MyEntity.GetLinearVelocity(), ProjectileSpeed(TargetPosition), TargetPosition, myTarget.GetLinearVelocity());
+			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
 			if (myTarget.Entity != null)
 			{
-				if (PhysicalProblem(myTarget.InterceptionPoint.Value))
+				if (PhysicalProblem(myTarget.ContactPoint.Value))
 				{
 					myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
 					BlacklistTarget();
 					return;
 				}
-				myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", intercept point: " + myTarget.InterceptionPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
+				//myLogger.debugLog("got an intercept vector: " + myTarget.FiringDirection + ", ContactPoint: " + myTarget.ContactPoint + ", target position: " + TargetPosition + ", by entity: " + myTarget.Entity.GetCentre(), "SetFiringDirection()");
 			}
 			CurrentTarget = myTarget;
 		}
@@ -702,16 +706,19 @@ namespace Rynchodon.Weapons
 			// The part towards the cannon is found by projecting the target's
 			// velocity on directionToTarget using a dot product.
 			float targetSpeedOrth = Vector3.Dot(relativeVel, directionToTarget);
-			Vector3 targetVelOrth = targetSpeedOrth * directionToTarget;
+			Vector3 relativeVelOrth = targetSpeedOrth * directionToTarget;
 
 			// The tangential part is then found by subtracting the
 			// result from the target velocity.
-			Vector3 targetVelTang = relativeVel - targetVelOrth;
+			Vector3 relativeVelTang = relativeVel - relativeVelOrth;
 
 			// The tangential component of the velocities should be the same
 			// (or there is no chance to hit)
 			// THIS IS THE MAIN INSIGHT!
-			Vector3 shotVelTang = targetVelTang;
+			Vector3 shotVelTang = relativeVelTang;
+
+			if (TryHard)
+				shotVelTang *= 3f;
 
 			// Now all we have to find is the orthogonal velocity of the shot
 
@@ -721,12 +728,12 @@ namespace Rynchodon.Weapons
 				// Shot is too slow to intercept target.
 				if (TryHard)
 				{
-					myLogger.debugLog("shot too slow, trying anyway", "FindInterceptVector()");
+					//myLogger.debugLog("shot too slow, trying anyway", "FindInterceptVector()");
 					// direction is a trade-off between facing the target and fighting tangential velocity
 					Vector3 direction = directionToTarget + displacementToTarget * 0.01f + shotVelTang;
 					direction.Normalize();
 					myTarget.FiringDirection = direction;
-					myTarget.InterceptionPoint = shotOrigin + direction * distanceToTarget;
+					myTarget.ContactPoint = shotOrigin + direction * distanceToTarget;
 					return;
 				}
 				myLogger.debugLog("shot too slow, blacklisting", "FindInterceptVector()");
@@ -741,17 +748,17 @@ namespace Rynchodon.Weapons
 				Vector3 shotVelOrth = directionToTarget * shotSpeedOrth;
 
 				// Finally, add the tangential and orthogonal velocities.
-				Vector3 interceptDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
+				Vector3 firingDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
 
 				// Find the time of collision (distance / relative velocity)
 				float timeToCollision = distanceToTarget / (shotSpeedOrth - targetSpeedOrth);
 
 				// Calculate where the shot will be at the time of collision
 				Vector3 shotVel = shotVelOrth + shotVelTang;
-				Vector3 interceptPoint = shotOrigin + (shotVel + shooterVel) * timeToCollision;
+				Vector3 contactPoint = shotOrigin + (shotVel + shooterVel) * timeToCollision;
 
-				myTarget.FiringDirection = interceptDirection;
-				myTarget.InterceptionPoint = interceptPoint;
+				myTarget.FiringDirection = firingDirection;
+				myTarget.ContactPoint = contactPoint;
 			}
 		}
 

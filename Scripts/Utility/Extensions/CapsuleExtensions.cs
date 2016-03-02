@@ -1,5 +1,6 @@
 ﻿#define LOG_ENABLED // remove on build
 
+using System;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
@@ -34,8 +35,17 @@ namespace Rynchodon
 		/// <remarks>
 		/// Does not calculate AABB
 		/// </remarks>
+		[Obsolete("Use get_LineSegment()")]
 		public static Line get_Line(this Capsule cap)
 		{ return new Line(cap.P0, cap.P1, false); }
+
+		/// <summary>
+		/// Gets the line segment from P0 to P1.
+		/// </summary>
+		/// <param name="cap">Capsule to get line segment for</param>
+		/// <returns>A LineSegment from P0 to P1.</returns>
+		public static LineSegment get_LineSegment(this Capsule cap)
+		{ return new LineSegment(cap.P0, cap.P1); }
 
 		/// <summary>
 		/// Gets a Capsule where P0 and P1 are reversed.

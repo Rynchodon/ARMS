@@ -8,7 +8,7 @@
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=60
+        GuidanceSeconds=90
         RotationPerUpdate=0.017453292519943
         DetonateRange=3
       </Description>
@@ -70,10 +70,8 @@
       <Description>
         GuidanceSeconds=15
         Acceleration=100
-        ClusterSplitRange=300
+        RotationPerUpdate=0.01
         ClusterCooldown=5
-        ClusterOffset_Back=-5
-        ClusterOffset_Radial=1.2
       </Description>
       <BasicProperties>
         <DesiredSpeed>800</DesiredSpeed>
@@ -86,8 +84,8 @@
         <MissileMass>300</MissileMass>
         <MissileExplosionRadius>1</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_B3MP_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
-        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileAcceleration>5</MissileAcceleration>
+        <MissileInitialSpeed>5</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>10000</MissileExplosionDamage>
       </MissileProperties>
@@ -96,10 +94,10 @@
     <Ammo xsi:type="MyObjectBuilder_MissileAmmoDefinition">
       <Id>
         <TypeId>AmmoDefinition</TypeId>
-        <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
+        <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=60
+        GuidanceSeconds=15
         TargetRange=800
         DetonateRange=10
       </Description>

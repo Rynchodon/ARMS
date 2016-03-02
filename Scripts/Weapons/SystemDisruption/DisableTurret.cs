@@ -35,18 +35,14 @@ namespace Rynchodon.Weapons.SystemDisruption
 			Registrar.Add(grid, this);
 		}
 
-		protected override int StartEffect(IMyCubeBlock block, int strength)
+		protected override void StartEffect(IMyCubeBlock block)
 		{
-			m_logger.debugLog("Disabling: " + block.DisplayNameText + ", remaining strength: " + (strength - MinCost), "StartEffect()");
 			(block as IMyFunctionalBlock).RequestEnable(false);
-			return MinCost;
 		}
 
-		protected override int EndEffect(IMyCubeBlock block, int strength)
+		protected override void EndEffect(IMyCubeBlock block)
 		{
-			m_logger.debugLog("Enabling: " + block.DisplayNameText + ", remaining strength: " + (strength - MinCost), "StartEffect()");
 			(block as IMyFunctionalBlock).RequestEnable(true);
-			return MinCost;
 		}
 
 	}
