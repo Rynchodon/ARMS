@@ -61,7 +61,7 @@ ARMS provides a selection of missiles to use, but any mod can add additional mis
 ARMS available missiles are named following the designation scheme listed [url=http://www.brahmos.com/content.php?id=10&sid=9]here[/url], with one position each for:
 [list]
 [*]Type - Either R for cRuise or B for Ballistic
-[*]Range - in KM
+[*]Range - in km
 [*]Warhead - conVentional, Emp, or Multiple
 [*]Guidance - Pre-set, radio Antenna, or self Targeted
 [/list]
@@ -69,7 +69,7 @@ ARMS available missiles are named following the designation scheme listed [url=h
 [u]Cruise Missile Launcher - Cruise Missile R12VP[/u]
 [list]
 [*]Anti-Armor - Large damage in a concentrated radius around the target
-[*]Very Long Range - will travel 12 KM
+[*]Very Long Range - will travel 12 km
 [*]Slow - A max speed of 200 m/s makes these easier to shoot down
 [*]Pre-set Guidance for 60 seconds
 [*]Detonates within 3 meters of its target
@@ -78,7 +78,7 @@ ARMS available missiles are named following the designation scheme listed [url=h
 [u]EMP Missile Launcher - EMP Missile R8EA[/u]
 [list]
 [*]EMP - 300 MW of EMP damage for 30 seconds and a small amount of conventional damage
-[*]Long Range - will travel 8 KM
+[*]Long Range - will travel 8 km
 [*]Slow - A max speed of 200 m/s makes these easier to shoot down
 [*]Radio guidance for 60 seconds
 [*]Detonates within 3 meters of its target
@@ -88,10 +88,10 @@ ARMS available missiles are named following the designation scheme listed [url=h
 [list]
 [*]Multiple Missiles - this launcher shoots a spread of 18 missiles at once
 [*]Good vs Soft Targets - Good damage over a large area, thanks to the multiple missiles
-[*]Medium Range - will travel 3 KM
+[*]Medium Range - will travel 3 km
 [*]Moderately Fast - A max speed of 800 m/s makes these difficult to shoot down
 [*]Pre-set Guidance for 15 seconds
-[*]Detonates within 1 meters of its target
+[*]Detonates only with a direct hit
 [/list]
 
 [u]Missile Defense Turret - Interceptor Missile R1VT[/u]
