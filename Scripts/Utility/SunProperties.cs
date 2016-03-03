@@ -1,7 +1,7 @@
 ﻿using System;
-using Sandbox.Common.ObjectBuilders.Definitions;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRageMath;
 
 namespace Rynchodon
@@ -49,7 +49,7 @@ namespace Rynchodon
 
 		public void Update10()
 		{
-			MyAPIGateway.Parallel.Start(SetSunDirection);
+			SetSunDirection();
 		}
 
 		public static Vector3 SunDirection

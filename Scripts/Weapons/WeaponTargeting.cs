@@ -247,7 +247,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
+			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
 				return;
 
 			if (CurrentTarget.TType != TargetType.None)

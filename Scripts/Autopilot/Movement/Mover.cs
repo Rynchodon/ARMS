@@ -104,11 +104,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void StopRotate()
 		{
-			myLogger.debugLog("entered", "StopRotate()");
-			if ((myPathfinder.CanRotate || !NavSet.Settings_Current.CollisionAvoidance) && ThrustersOverWorked())
-				InGravity_LevelOff();
-			else
-				rotateForceRatio = Vector3.Zero;
+			rotateForceRatio = Vector3.Zero;
 		}
 
 		public void MoveAndRotateStop()
@@ -520,7 +516,7 @@ namespace Rynchodon.Autopilot.Movement
 			// don't rotate if displacement is small, reduces shake
 			if (distanceAngle < 0.025f)
 			{
-				StopRotate();
+				rotateForceRatio = Vector3.Zero;
 				return;
 			}
 

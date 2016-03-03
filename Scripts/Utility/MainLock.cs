@@ -4,6 +4,7 @@ using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -125,6 +126,13 @@ namespace Rynchodon
 			UsingShared(() => MyAPIGateway.Players.GetAllIdentites(match, (id) => { return id.DisplayName == DisplayName; }));
 			if (match.Count == 1)
 				return match[0];
+			if (match.Count > 1)
+			{
+				foreach (IMyIdentity id in match)
+					if (!id.IsDead)
+						return id;
+				return match[0];
+			}
 			return null;
 		}
 
