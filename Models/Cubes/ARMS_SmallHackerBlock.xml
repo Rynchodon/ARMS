@@ -5,7 +5,7 @@
 	<Parameter Name="Centered">false</Parameter>
 	<Parameter Name="SpecularPower">0.0</Parameter>
 	<Parameter Name="SpecularShininess">0.0</Parameter>
-	<Material Name="Emissive">
+	<Material Name="Jump">
 		<Parameter Name="Technique">MESH</Parameter>
 		<Parameter Name="SpecularIntensity">0.0</Parameter>
 		<Parameter Name="SpecularPower">0.0</Parameter>
@@ -19,7 +19,7 @@
 		<Parameter Name="AddMapsTexture">Textures\Models\Cubes\jump_drive_add.dds</Parameter>
 		<!--material has no AlphamaskTexture-->
 	</Material>
-	<Material Name="Jump">
+	<Material Name="Emissive">
 		<Parameter Name="Technique">MESH</Parameter>
 		<Parameter Name="SpecularIntensity">0.0</Parameter>
 		<Parameter Name="SpecularPower">0.0</Parameter>
