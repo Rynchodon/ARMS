@@ -119,7 +119,10 @@ namespace Rynchodon.Weapons.SystemDisruption
 						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.FATAL);
 						continue;
 				}
-				disrupt.Start(attached, s_hackLength, ref m_strengthLeft, effectOwner);
+				AttachedGrid.RunOnAttached(attached, AttachedGrid.AttachmentKind.Terminal, grid => {
+					disrupt.Start(grid, s_hackLength, ref m_strengthLeft, effectOwner);
+					return false;
+				}, true);
 			}
 		}
 

@@ -1,0 +1,16 @@
+When locked to a ship, the Hacker Block will hack blocks on the ship. A hacked block is a temporary condition where the ownership is changed and the function is affected in some way.
+
+A Hacker Block is locked to a ship in a similar manner to a Landing Gear but it has almost no break force; you must use a Landing Gear to hold the ships together for the hacker block to work.
+
+The Hacker Block can hack up to 50 points worth of blocks every 11 seconds. Each hack lasts 17 seconds. Unless otherwise specified, the ownership of the block will be changed to NPC while it is hacked. Hacks are applied in a random order.
+
+Blocks that can be hacked:
+
+Air Vents - set to depressurize (costs 1)
+Cryo Chamber - kill player (costs 1)
+Doors - closed & ownership changed to hacker (costs 1)
+Gravity - reversed (costs 1)
+Jump Drive - if at full power, drain power (costs 1)
+Medical Room - ownership changed to hacker (costs 1)
+Turrets - disabled (costs 15)
+Turrets - ownership changed to hacker (costs 40)
