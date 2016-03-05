@@ -51,13 +51,11 @@ namespace Rynchodon.Weapons
 			/// <summary>Range of turret magic.</summary>
 			public float TargetRange;
 			/// <summary>If true, missile can receive LastSeen information from radio antennas.</summary>
-			public bool HasAntenna = false;
-
-			#region Radar
-
+			public bool HasAntenna;
+			/// <summary>Description of radar equipment</summary>
 			public string Radar = string.Empty;
-
-			#endregion
+			/// <summary>If true, is a semi-active laser homing missile, superseeds other targeting.</summary>
+			public bool SemiActiveLaser;
 
 			#endregion Tracking
 			#region Payload

@@ -32,6 +32,7 @@ namespace Rynchodon.Weapons
 			this.Grid = block.CubeGrid;
 
 			myLogger = new Logger("InterpreterWeapon", () => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
+			myLogger.MinimumLevel = Logger.severity.DEBUG;
 		}
 
 		/// <summary>

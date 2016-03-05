@@ -129,4 +129,42 @@ namespace Rynchodon.Weapons
 			return m_lastSeen.LastKnownVelocity;
 		}
 	}
+
+	public class SemiActiveTarget : Target
+	{
+
+		private readonly IMyEntity entity;
+		private Vector3D position;
+		private Vector3 linearVelocity;
+
+		public SemiActiveTarget(IMyEntity entity)
+		{
+			this.entity = entity;
+		}
+
+		public void Update(IMyEntity missile)
+		{
+			LineSegment line = new LineSegment(entity.GetPosition(), entity.GetPosition() + entity.WorldMatrix.Forward * 1e6f);
+			position = line.ClosestPoint(missile.GetPosition()) + missile.Physics.LinearVelocity;
+			linearVelocity = entity.WorldMatrix.Forward * missile.Physics.LinearVelocity.Length();
+		}
+
+		public override IMyEntity Entity 
+		{ get { return entity; } }
+
+		public override TargetType TType
+		{ get { return TargetType.AllGrid; } }
+
+		public override Vector3D GetPosition()
+		{
+			return position;
+		}
+
+		public override Vector3 GetLinearVelocity()
+		{
+			return linearVelocity;
+		}
+
+	}
+
 }

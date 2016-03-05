@@ -42,11 +42,6 @@
         DetonateRange=3;
         EMP_Strength=300000;
         EMP_Seconds=30;
-        
-        Radar=
-          Radar=true,
-          MaxTargets_Tracking=10,
-          MaxPowerLevel=10000;
       </Description>
       <BasicProperties>
         <DesiredSpeed>200</DesiredSpeed>

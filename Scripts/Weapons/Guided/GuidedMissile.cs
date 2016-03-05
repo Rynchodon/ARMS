@@ -50,7 +50,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		private enum Stage : byte { Rail, Boost, MidCourse, Guided, Ballistic, Terminated }
+		private enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
@@ -91,11 +91,11 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						if (missile.myCluster != null && missile.m_stage != Stage.Rail)
+						if (missile.myCluster != null)
 							missile.UpdateCluster();
-						if (missile.CurrentTarget.TType == TargetType.None)
+						if (missile.myTarget.TType == TargetType.None)
 							return;
-						if (missile.m_stage == Stage.MidCourse || missile.m_stage == Stage.Guided)
+						if (missile.m_stage >= Stage.MidCourse && missile.m_stage <= Stage.Guided)
 							missile.SetFiringDirection();
 						missile.Update();
 					});
@@ -113,6 +113,8 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
+						if (missile.m_stage == Stage.SemiActive)
+							missile.TargetSemiActive();
 						if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
 							missile.UpdateTarget();
 						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
@@ -176,7 +178,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
 		private readonly NetworkNode myAntenna;
-		private readonly NetworkClient m_launcherClient;
+		private readonly GuidedMissileLauncher m_launcher;
 
 		private LastSeen myTargetSeen;
 		private Cluster myCluster;
@@ -195,17 +197,20 @@ namespace Rynchodon.Weapons.Guided
 		private Ammo.AmmoDescription myDescr
 		{ get { return myAmmo.Description; } }
 
+		private NetworkClient m_launcherClient
+		{ get { return m_launcher.m_netClient; } }
+
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
-			: base(missile, firedBy)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, LastSeen initialTarget)
+			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
-			myAmmo = ammo;
-			if (ammo.Description.HasAntenna)
-				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
-			m_launcherClient = launcherClient;
+			m_launcher = launcher;
+			myAmmo = launcher.loadedAmmo;
+			if (myAmmo.Description.HasAntenna)
+				myAntenna = new NetworkNode(missile, launcher.CubeBlock, ComponentRadio.CreateRadio(missile, 0f));
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
@@ -214,21 +219,21 @@ namespace Rynchodon.Weapons.Guided
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
 			addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
-			if (!(firedBy is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
+			if (!(launcher.CubeBlock is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
 				m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
 
-			Options = opt;
-			Options.TargetingRange = ammo.Description.TargetRange;
+			Options = m_launcher.m_weaponTarget.Options.Clone();
+			Options.TargetingRange = myAmmo.Description.TargetRange;
 			myTargetSeen = initialTarget;
 
 			if (myAmmo.RadarDefinition != null)
 			{
 				myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
-				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, firedBy);
+				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
 				if (myAntenna == null)
 				{
 					myLogger.debugLog("Creating node for radar", "GuidedMissile()");
-					myAntenna = new NetworkNode(missile, firedBy, null);
+					myAntenna = new NetworkNode(missile, launcher.CubeBlock, null);
 				}
 			}
 
@@ -236,8 +241,8 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
-			: this(missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, LastSeen initialTarget)
+			: this(missiles.Master, launcher, initialTarget)
 		{
 			myCluster = missiles;
 		}
@@ -383,21 +388,29 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
+		private void TargetSemiActive()
+		{
+			SemiActiveTarget sat = myTarget as SemiActiveTarget;
+			if (sat == null)
+			{
+				myLogger.debugLog("creating semi-active target", "TargetSemiActive()", Logger.severity.DEBUG);
+				sat = new SemiActiveTarget(m_launcher.CubeBlock);
+				myTarget = sat;
+			}
+
+			sat.Update(MyEntity);
+		}
+
 		/// <remarks>
 		/// Runs on separate thread.
 		/// </remarks>
 		private void Update()
 		{
-			if (m_stage == Stage.Rail)
-				return;
-
 			Target cached = CurrentTarget;
 			if (!cached.FiringDirection.HasValue)
 				return;
 
 			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint, "Update()");
-
-			Vector3 forward = MyEntity.WorldMatrix.Forward;
 
 			Vector3 targetDirection;
 
@@ -411,12 +424,15 @@ namespace Rynchodon.Weapons.Guided
 					Vector3 toTarget = cached.GetPosition() - MyEntity.GetPosition();
 					targetDirection = Vector3.Normalize(Vector3.Reject(toTarget, m_gravData.Normal));
 					break;
+				case Stage.SemiActive:
 				case Stage.Guided:
-				default:
 					targetDirection = cached.FiringDirection.Value;
 					break;
+				default:
+					return;
 			}
 
+			Vector3 forward = MyEntity.WorldMatrix.Forward;
 			float angle = forward.AngleBetween(targetDirection);
 
 			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
@@ -572,6 +588,15 @@ namespace Rynchodon.Weapons.Guided
 
 					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
 					{
+						m_rail = null;
+						if (myDescr.SemiActiveLaser)
+						{
+							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+							myLogger.debugLog("past arming range, semi-active until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
+							m_stage = Stage.SemiActive;
+							return;
+						}
+
 						if (myAmmo.Description.BoostDistance > 1f)
 						{
 							myLogger.debugLog("past arming range, starting boost stage", "CheckGuidance()", Logger.severity.INFO);
@@ -589,16 +614,15 @@ namespace Rynchodon.Weapons.Guided
 							myLogger.debugLog("past arming range, starting guidance. Guidance until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
-						m_rail = null;
 					}
-					break;
+					return;
 				case Stage.Boost:
 					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
 					{
 						myLogger.debugLog("completed boost stage, starting mid course stage", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.MidCourse;
 					}
-					break;
+					return;
 				case Stage.MidCourse:
 					Target t = CurrentTarget;
 					if (t.Entity == null)
@@ -614,14 +638,15 @@ namespace Rynchodon.Weapons.Guided
 						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
 						m_gravData = null;
 					}
-					break;
+					return;
+				case Stage.SemiActive:
 				case Stage.Guided:
 					if (DateTime.UtcNow >= myGuidanceEnds)
 					{
 						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
 					}
-					break;
+					return;
 			}
 		}
 
