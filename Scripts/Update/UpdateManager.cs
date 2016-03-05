@@ -205,7 +205,8 @@ namespace Rynchodon.Update
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_LandingGear), (block) => {
-				new LandingGear(block);
+				if (!Hacker.IsHacker(block))
+					new LandingGear(block);
 			});
 
 			#endregion

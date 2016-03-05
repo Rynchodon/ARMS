@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {
@@ -14,6 +16,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private const int s_hackStrength = 50;
 		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
 		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
+		private static float allowedBreakForce = 1f;
 
 		public static bool IsHacker(IMyCubeBlock block)
 		{
@@ -53,6 +56,29 @@ namespace Rynchodon.Weapons.SystemDisruption
 				m_strengthLeft = 0;
 				return;
 			}
+			if (m_hackBlock.BreakForce > allowedBreakForce)
+			{
+				m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce, "Update10()");
+				ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
+				if (prop == null)
+				{
+					m_logger.debugLog("break force is disabled in SE", "Update10()", Logger.severity.INFO);
+					allowedBreakForce = float.PositiveInfinity;
+				}
+				else
+					prop.SetValue(m_hackBlock, allowedBreakForce);
+			}
+			if (allowedBreakForce == float.PositiveInfinity)
+				// landing gear is unbreakable, disconnect / fail if not otherwise attached
+				if (!AttachedGrid.IsGridAttached(m_hackBlock.CubeGrid as IMyCubeGrid, attached, AttachedGrid.AttachmentKind.Physics))
+				{
+					m_logger.debugLog("no other connection to attached, hacker must disconnect", "Update10()", Logger.severity.DEBUG);
+					ITerminalProperty<bool> autolock = m_hackBlock.GetProperty("Autolock") as ITerminalProperty<bool>;
+					if (autolock.GetValue(m_hackBlock))
+						autolock.SetValue(m_hackBlock, false);
+					m_hackBlock.GetActionWithName("Unlock").Apply(m_hackBlock);
+					return;
+				}
 
 			m_nextHack = DateTime.UtcNow + s_hackFrequency;
 
