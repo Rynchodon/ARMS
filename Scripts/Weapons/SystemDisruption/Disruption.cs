@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rynchodon.Update;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -11,47 +12,59 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public abstract class Disruption
 	{
 
+		private const uint UpdateFrequency = 10u;
+
 		private static HashSet<IMyCubeBlock> m_allAffected = new HashSet<IMyCubeBlock>();
 
-		protected readonly Logger m_logger;
+		static Disruption()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
 
-		private CubeGridCache m_cache;
-		private MyObjectBuilderType[] m_affects;
-		private SortedDictionary<DateTime, int> m_effects = new SortedDictionary<DateTime, int>();
+		static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			m_allAffected = null;
+		}
+
+		protected Logger m_logger { get; private set; }
+
+		private DateTime m_expire;
 		private Dictionary<IMyCubeBlock, MyIDModule> m_affected = new Dictionary<IMyCubeBlock, MyIDModule>();
-		private List<IMyCubeBlock> m_affectedRemovals = new List<IMyCubeBlock>();
-		private DateTime m_nextExpire;
-		private int m_toRemove;
 
 		/// <summary>When strength is less than this value, stop trying to start an effect.</summary>
 		protected virtual int MinCost { get { return 1; } }
 
-		protected Disruption(IMyCubeGrid grid, MyObjectBuilderType[] affects)
-		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
-			m_cache = CubeGridCache.GetFor(grid);
-			m_affects = affects;
-		}
+		/// <summary>Iff true, the owner of the disruption effect can access the blocks while disrupted.</summary>
+		protected virtual bool EffectOwnerCanAccess { get { return false; } }
+
+		/// <summary>Block types that are affected by the disruption</summary>
+		protected abstract MyObjectBuilderType[] BlocksAffected { get; }
 
 		/// <summary>
-		/// Adds an effect to the grid.
+		/// Adds a disruption effect to a grid.
 		/// </summary>
-		/// <param name="duration">The length of time the effect will last for.</param>
-		/// <param name="strength">The amount of effect available.</param>
-		/// <param name="effectOwner">The player that will be allowed to control the block. By default, no one can access.</param>
-		/// <returns>Strength remaining after effect is applied</returns>
-		protected int AddEffect(TimeSpan duration, int strength, long effectOwner = long.MinValue)
+		/// <param name="grid">Grid that will be disrupted</param>
+		/// <param name="duration">Duration of disruption</param>
+		/// <param name="strength">Strength of disruption (in hackyness)</param>
+		/// <param name="effectOwner">The owner of the disruption.</param>
+		public void Start(IMyCubeGrid grid, TimeSpan duration, ref int strength, long effectOwner)
 		{
+			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
+
 			if (strength < MinCost)
 			{
 				m_logger.debugLog("strength: " + strength + ", below minimum: " + MinCost, "AddEffect()");
-				return strength;
+				return;
 			}
 
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
 			int applied = 0;
-			foreach (MyObjectBuilderType type in m_affects)
+			if (!EffectOwnerCanAccess)
+				effectOwner = long.MinValue;
+			foreach (MyObjectBuilderType type in BlocksAffected)
 			{
-				var blockGroup = m_cache.GetBlocksOfType(type);
+				var blockGroup = cache.GetBlocksOfType(type);
 				if (blockGroup != null)
 				{
 					foreach (IMyCubeBlock block in blockGroup.OrderBy(OrderBy))
@@ -91,10 +104,10 @@ FinishedBlocks:
 			if (applied != 0)
 			{
 				m_logger.debugLog("Added new effect, strength: " + applied, "AddEffect()");
-				m_effects.Add(DateTime.UtcNow.Add(duration), applied);
-				SetNextExpire();
+				m_expire = DateTime.UtcNow.Add(duration);
 			}
-			return strength;
+
+			UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
 		}
 
 		/// <summary>
@@ -102,27 +115,11 @@ FinishedBlocks:
 		/// </summary>
 		protected void UpdateEffect()
 		{
-			if (m_effects.Count == 0)
-				return;
-
-			if (DateTime.UtcNow > m_nextExpire)
+			if (DateTime.UtcNow > m_expire)
 			{
-				if (m_effects.Count == 1)
-				{
-					m_logger.debugLog("Removing the last effect", "UpdateEffect()");
-					m_toRemove = int.MaxValue;
-					RemoveEffect();
-					m_effects.Remove(m_nextExpire);
-					m_toRemove = 0;
-				}
-				else
-				{
-					m_logger.debugLog("An effect has expired, strength: " + m_effects[m_nextExpire], "UpdateEffect()");
-					m_toRemove += m_effects[m_nextExpire];
-					RemoveEffect();
-					m_effects.Remove(m_nextExpire);
-					SetNextExpire();
-				}
+				m_logger.debugLog("Removing the effect", "UpdateEffect()", Logger.severity.DEBUG);
+				UpdateManager.Unregister(UpdateFrequency, UpdateEffect);
+				RemoveEffect();
 			}
 		}
 
@@ -131,46 +128,17 @@ FinishedBlocks:
 		/// </summary>
 		private void RemoveEffect()
 		{
-			m_logger.debugLog(m_affectedRemovals.Count != 0, "m_affectedRemovals has not been cleared", "AddEffect()", Logger.severity.FATAL);
-
 			foreach (var pair in m_affected)
 			{
 				IMyCubeBlock block = pair.Key;
-				int cost = BlockCost(block);
-				if (cost > m_toRemove)
-				{
-					m_logger.debugLog("cannot remove disruption from: " + block + ", cost: " + cost + " is greater than m_toRemove: " + m_toRemove, "AddEffect()");
-					continue;
-				}
-
 				EndEffect(block);
-				m_toRemove -= cost;
-				m_affectedRemovals.Add(block);
-
 				block.SetDamageEffect(false);
 				MyCubeBlock cubeBlock = block as MyCubeBlock;
 				cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);
-			}
-
-			foreach (IMyCubeBlock block in m_affectedRemovals)
-			{
-				m_affected.Remove(block);
 				m_allAffected.Remove(block);
 			}
-			m_affectedRemovals.Clear();
-		}
 
-		/// <summary>
-		/// Finds when the next effect expiration will occur.
-		/// </summary>
-		private void SetNextExpire()
-		{
-			m_logger.debugLog(m_effects.Count == 0, "No effects remain", "SetNextExpire()", Logger.severity.FATAL);
-
-			var enumer = m_effects.GetEnumerator();
-			enumer.MoveNext();
-			m_nextExpire = enumer.Current.Key;
-			m_logger.debugLog("Next effect will expire in " + (m_nextExpire - DateTime.UtcNow), "SetNextExpire()");
+			m_affected = null;
 		}
 
 		/// <summary>
@@ -181,6 +149,17 @@ FinishedBlocks:
 		protected virtual int OrderBy(IMyCubeBlock block)
 		{
 			return Globals.Random.Next();
+		}
+
+		/// <summary>
+		/// Additional condition that is checked before performing a disruption on a block.
+		/// Disruption class already checks that the block is working, is not disrupted, and has a low enough cost.
+		/// </summary>
+		/// <param name="block">Block that may be disrupted</param>
+		/// <returns>True iff the disruption can be started on the block.</returns>
+		protected virtual bool CanDisrupt(IMyCubeBlock block)
+		{
+			return true;
 		}
 
 		/// <summary>

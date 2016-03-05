@@ -131,13 +131,6 @@ namespace Rynchodon.Update
 
 				#region Disruption
 
-				RegisterForUpdates(10, EMP.Update);
-				RegisterForUpdates(10, AirVentDepressurize.Update);
-				RegisterForUpdates(10, DoorLock.Update);
-				RegisterForUpdates(10, GravityReverse.Update);
-				RegisterForUpdates(10, DisableTurret.Update);
-				RegisterForUpdates(10, TraitorTurret.Update);
-
 				RegisterForBlock(typeof(MyObjectBuilder_LandingGear), block => {
 					if (Hacker.IsHacker(block))
 					{
@@ -212,7 +205,8 @@ namespace Rynchodon.Update
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_LandingGear), (block) => {
-				new LandingGear(block);
+				if (!Hacker.IsHacker(block))
+					new LandingGear(block);
 			});
 
 			#endregion
@@ -302,6 +296,22 @@ namespace Rynchodon.Update
 			#endregion
 		}
 
+		private static UpdateManager Instance;
+
+		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
+		{
+			Instance.AddRemoveActions.Enqueue(() => {
+				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
+			});
+		}
+
+		public static void Unregister(uint frequency, Action toInvoke)
+		{
+			Instance.AddRemoveActions.Enqueue(() => {
+				Instance.UnRegisterForUpdates(frequency, toInvoke);
+			});
+		}
+
 		private Dictionary<uint, List<Action>> UpdateRegistrar;
 
 		private Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
@@ -334,6 +344,7 @@ namespace Rynchodon.Update
 		{
 			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
 			ThreadTracker.SetGameThread();
+			Instance = this;
 		}
 
 		public void Init()
@@ -802,6 +813,8 @@ namespace Rynchodon.Update
 			AddRemoveActions = null;
 			CubeBlocks = null;
 			Characters = null;
+
+			Instance = null;
 		}
 
 		/// <summary>

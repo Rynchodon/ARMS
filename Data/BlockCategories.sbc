@@ -23,6 +23,7 @@
         <string>SmallMissileLauncher/Souper_R8EA_Launcher</string>
         <string>SmallMissileLauncher/Souper_B3MP_Launcher</string>
         <string>LargeMissileTurret/Souper_Missile_Defense_Turret</string>
+        <string>LandingGear/ARMS_LargeHackerBlock</string>
       </ItemIds>
     </Category>
     
@@ -41,6 +42,7 @@
         <string>RadioAntenna/PhasedArrayRadarOffset_Small_Souper07</string>
         <string>Beacon/AWACSRadarSmall_JnSm</string>
         <string>RadioAntenna/AP_Radar_Jammer_Small</string>
+        <string>LandingGear/ARMS_SmallHackerBlock</string>
       </ItemIds>
     </Category>
     
@@ -70,6 +72,8 @@
         <string>RadioAntenna/PhasedArrayRadarOffset_Small_Souper07</string>
         <string>Beacon/AWACSRadarSmall_JnSm</string>
         <string>RadioAntenna/AP_Radar_Jammer_Small</string>
+        <string>LandingGear/ARMS_LargeHackerBlock</string>
+        <string>LandingGear/ARMS_SmallHackerBlock</string>
       </ItemIds>
     </Category>
     

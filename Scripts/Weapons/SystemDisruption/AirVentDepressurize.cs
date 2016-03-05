@@ -1,4 +1,3 @@
-using System;
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -10,28 +9,14 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class AirVentDepressurize : Disruption
 	{
 
-		private static readonly MyObjectBuilderType[] s_affects = new MyObjectBuilderType[] { typeof(MyObjectBuilder_AirVent) };
-
-		public static void Update()
+		protected override MyObjectBuilderType[] BlocksAffected
 		{
-			Registrar.ForEach((AirVentDepressurize av) => av.UpdateEffect());
+			get { return new MyObjectBuilderType[] { typeof(MyObjectBuilder_AirVent) }; }
 		}
 
-		public static int Depressurize(IMyCubeGrid grid, int strength, TimeSpan duration)
+		protected override bool CanDisrupt(IMyCubeBlock block)
 		{
-			AirVentDepressurize av;
-			if (!Registrar.TryGetValue(grid, out av))
-				av = new AirVentDepressurize(grid);
-			return av.AddEffect(duration, strength);
-		}
-
-		private readonly Logger m_logger;
-
-		private AirVentDepressurize(IMyCubeGrid grid)
-			: base(grid, s_affects)
-		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
-			Registrar.Add(grid, this);
+			return !(block as Ingame.IMyAirVent).IsDepressurizing;
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)

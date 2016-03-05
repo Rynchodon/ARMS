@@ -14,14 +14,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class EMP : Disruption
 	{
 
-		private static readonly Logger s_logger = new Logger("EMP");
-		private static readonly MyObjectBuilderType[] s_affects = new MyObjectBuilderType[] { typeof(MyObjectBuilder_BatteryBlock), typeof(MyObjectBuilder_Reactor) };
 		private static List<MyEntity> s_entitiesEMP = new List<MyEntity>();
-
-		public static void Update()
-		{
-			Registrar.ForEach((EMP e) => e.UpdateEffect());
-		}
 
 		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration)
 		{
@@ -32,25 +25,19 @@ namespace Rynchodon.Weapons.SystemDisruption
 					IMyCubeGrid grid = entity as IMyCubeGrid;
 					if (grid != null)
 					{
-						EMP e;
-						if (!Registrar.TryGetValue(grid, out e))
-							e = new EMP(grid);
-						e.AddEffect(duration, strength);
+						EMP e = new EMP();
+						e.Start(grid, duration, ref strength, long.MinValue);
 					}
 				}
 				s_entitiesEMP.Clear();
-			}, s_logger);
+			});
 		}
-
-		private readonly Logger m_logger;
 
 		protected override int MinCost { get { return 1000; } }
 
-		private EMP(IMyCubeGrid grid)
-			: base(grid, s_affects)
+		protected override MyObjectBuilderType[] BlocksAffected
 		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
-			Registrar.Add(grid, this);
+			get { return  new MyObjectBuilderType[] { typeof(MyObjectBuilder_BatteryBlock), typeof(MyObjectBuilder_Reactor) }; }
 		}
 
 		protected override int OrderBy(IMyCubeBlock block)

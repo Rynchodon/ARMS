@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rynchodon.Attached;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {
@@ -11,9 +13,10 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class Hacker
 	{
 
-		private const int s_hackStrength = 100;
-		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 17);
-		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 11);
+		private const int s_hackStrength = 50;
+		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
+		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
+		private static float allowedBreakForce = 1f;
 
 		public static bool IsHacker(IMyCubeBlock block)
 		{
@@ -53,6 +56,29 @@ namespace Rynchodon.Weapons.SystemDisruption
 				m_strengthLeft = 0;
 				return;
 			}
+			if (m_hackBlock.BreakForce > allowedBreakForce)
+			{
+				m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce, "Update10()");
+				ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
+				if (prop == null)
+				{
+					m_logger.debugLog("break force is disabled in SE", "Update10()", Logger.severity.INFO);
+					allowedBreakForce = float.PositiveInfinity;
+				}
+				else
+					prop.SetValue(m_hackBlock, allowedBreakForce);
+			}
+			if (allowedBreakForce == float.PositiveInfinity)
+				// landing gear is unbreakable, disconnect / fail if not otherwise attached
+				if (!AttachedGrid.IsGridAttached(m_hackBlock.CubeGrid as IMyCubeGrid, attached, AttachedGrid.AttachmentKind.Physics))
+				{
+					m_logger.debugLog("no other connection to attached, hacker must disconnect", "Update10()", Logger.severity.DEBUG);
+					ITerminalProperty<bool> autolock = m_hackBlock.GetProperty("Autolock") as ITerminalProperty<bool>;
+					if (autolock.GetValue(m_hackBlock))
+						autolock.SetValue(m_hackBlock, false);
+					m_hackBlock.GetActionWithName("Unlock").Apply(m_hackBlock);
+					return;
+				}
 
 			m_nextHack = DateTime.UtcNow + s_hackFrequency;
 
@@ -60,28 +86,41 @@ namespace Rynchodon.Weapons.SystemDisruption
 			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
 			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
 
-			foreach (int i in Enumerable.Range(0, 5).OrderBy(x => Globals.Random.Next()))
+			foreach (int i in Enumerable.Range(0, 8).OrderBy(x => Globals.Random.Next()))
+			{
+				Disruption disrupt;
 				switch (i)
 				{
 					case 0:
-						m_strengthLeft = AirVentDepressurize.Depressurize(attached, m_strengthLeft, s_hackLength);
+						disrupt = new AirVentDepressurize();
 						break;
 					case 1:
-						m_strengthLeft = DoorLock.LockDoors(attached, m_strengthLeft, s_hackLength, effectOwner);
+						disrupt = new DoorLock();
 						break;
 					case 2:
-						m_strengthLeft = GravityReverse.ReverseGravity(attached, m_strengthLeft, s_hackLength);
+						disrupt = new GravityReverse();
 						break;
 					case 3:
-						m_strengthLeft = DisableTurret.DisableTurrets(attached, m_strengthLeft, s_hackLength);
+						disrupt = new DisableTurret();
 						break;
 					case 4:
-						m_strengthLeft = TraitorTurret.TurnTurrets(attached, m_strengthLeft, s_hackLength, effectOwner);
+						disrupt = new TraitorTurret();
+						break;
+					case 5:
+						disrupt = new CryoChamberMurder();
+						break;
+					case 6:
+						disrupt = new JumpDriveDrain();
+						break;
+					case 7:
+						disrupt = new MedicalRoom();
 						break;
 					default:
-						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.WARNING);
-						break;
+						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.FATAL);
+						continue;
 				}
+				disrupt.Start(attached, s_hackLength, ref m_strengthLeft, effectOwner);
+			}
 		}
 
 	}
