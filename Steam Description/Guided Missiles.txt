@@ -51,7 +51,7 @@ An EMP missile will do a set amount of EMP damage to all grids within its explos
 
 For example, a grid with one large reactor producing 300 MW of power hit with 300 MW of EMP damage (or more) would have its reactor disabled. If it was hit with less than 300 MW of EMP, it would be unaffected. 
 
-If the grid had an assortment of reactors and batteries available, they are gone through in the order which they were added to the grid and disabled until we have too little EMP damage remaining to disable any more. In the future, we will enhance this to start by looking at the biggest power producers.
+EMP effects are applied to reactors and batteries in descending order of maximum power output. 
 
 Multiple EMP hits on a grid will stack, with a separate timer for each impact.
 

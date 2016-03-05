@@ -70,7 +70,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [list][*]Radius <distance> - [i]Sets the radius/range for the weapon, a must have for rotor-turrets and fixed weapons.[/i]
 [*]Range <distance> - [i]Same as Radius.[/i]
 [*]Turret - [i]Used to indicate that a weapon is actually part of a rotor-turret.[/i]
-[*](<block1>, <block2>, <block3>, ...) - [i]Blocks to target are a comma-separated list inside round brackets.[/i]
+[*](<block1>, <block2>, <block3>, ...) - [i]Blocks to target are a comma-separated list inside round brackets. Block names are in the same language as the game server. If no block list is provided, the weapon will target any block.[/i]
 [*]T <panel name>, <identifier> - [i]Commands can be fetched from a text panel, similar to navigation. Weapon control will remember the commands retrieved from the text panel even if it is destroyed.[/i][/list]
 
 [u]Uncommon Commands[/u]

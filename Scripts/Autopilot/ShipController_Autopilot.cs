@@ -568,7 +568,7 @@ namespace Rynchodon.Autopilot
 				navR.AppendCustomInfo(m_customInfo_build);
 
 			EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
-			if (ef != null)
+			if (ef != null && ef.Grid == null)
 			{
 				m_customInfo_build.Append("Enemy finder: ");
 				switch (ef.m_reason)

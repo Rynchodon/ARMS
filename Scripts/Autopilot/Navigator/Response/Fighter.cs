@@ -71,7 +71,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (enemy == null)
 			{
-				m_logger.debugLog(m_currentTarget != null, "lost target: " + m_currentTarget.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
+				m_logger.debugLog(m_currentTarget != null, "lost target", "UpdateTarget()", Logger.severity.DEBUG);
 				m_currentTarget = null;
 				m_orbiter = null;
 				return;

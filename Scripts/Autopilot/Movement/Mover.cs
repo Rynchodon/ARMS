@@ -513,13 +513,6 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
-			// don't rotate if displacement is small, reduces shake
-			if (distanceAngle < 0.025f)
-			{
-				rotateForceRatio = Vector3.Zero;
-				return;
-			}
-
 			if (NavSet.Settings_Current.CollisionAvoidance)
 			{
 				myPathfinder.TestRotate(displacement);

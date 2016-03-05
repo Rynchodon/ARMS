@@ -103,7 +103,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 					case State.Mining_Escape:
 						EnableDrills(false);
-						GetExteriorPoint(m_navDrill.WorldPosition, m_navDrill.WorldMatrix.Forward, m_navDrill.Grid.GetLongestDim() * 2f, point => m_currentTarget = point);
+						GetExteriorPoint(m_navDrill.WorldPosition, m_navDrill.WorldMatrix.Forward, m_longestDimension * 2f, point => m_currentTarget = point);
 						break;
 					case State.Mining_Tunnel:
 						if (isMiningPlanet)
@@ -113,7 +113,7 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 						EnableDrills(true);
-						GetExteriorPoint(m_navDrill.WorldPosition, m_navDrill.WorldMatrix.Backward, m_navDrill.Grid.GetLongestDim() * 2f, point => m_currentTarget = point);
+						GetExteriorPoint(m_navDrill.WorldPosition, m_navDrill.WorldMatrix.Backward, m_longestDimension * 2f, point => m_currentTarget = point);
 						break;
 					case State.Move_Away:
 						{
@@ -169,11 +169,6 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_longestDimension = m_controlBlock.CubeGrid.GetLongestDim();
-			if (m_navSet.Settings_Current.DestinationRadius > m_longestDimension)
-			{
-				m_logger.debugLog("Reducing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + m_longestDimension, "MinerVoxel()", Logger.severity.DEBUG);
-				m_navSet.Settings_Task_NavRot.DestinationRadius = m_longestDimension;
-			}
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_state = State.GetTarget;
@@ -195,7 +190,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Approaching:
 					// measure distance from line, but move to a point
 					Vector3 closestPoint = m_approach.ClosestPoint(m_navDrill.WorldPosition);
-					if (Vector3.DistanceSquared(closestPoint, m_navDrill.WorldPosition) < m_longestDimension)
+					if (Vector3.DistanceSquared(closestPoint, m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
 						m_state = State.Rotating;
@@ -529,24 +524,12 @@ namespace Rynchodon.Autopilot.Navigator
 			m_depositPos = orePosition;
 			m_depositOre = oreName;
 
-			if (foundMap is IMyVoxelMap)
-			{
-				Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
-				float bufferDist = m_controlBlock.CubeGrid.GetLongestDim() * 2f;
-				Vector3 surfacePoint = GetExteriorPoint_Asteroid(m_depositPos, toCentre, bufferDist);
-				m_approach = new Line(surfacePoint - toCentre * bufferDist, surfacePoint);
-
+			Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
+			float bufferDist = Math.Max(m_longestDimension, m_navSet.Settings_Current.DestinationRadius) * 10f;
+			GetExteriorPoint(m_depositPos, toCentre, bufferDist, exterior => {
+				m_approach = new Line(exterior - toCentre * bufferDist, exterior);
 				m_state = State.Approaching;
-			}
-			else
-			{
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					MyPlanet planet = foundMap as MyPlanet;
-					Vector3 surfacePoint = planet.GetClosestSurfacePointGlobal(ref m_depositPos);
-
-					m_state = State.Approaching;
-				}, m_logger);
-			}
+			});
 		}
 
 		private void GetExteriorPoint(Vector3 startPoint, Vector3 direction, float buffer, Action<Vector3> callback)
@@ -572,24 +555,15 @@ namespace Rynchodon.Autopilot.Navigator
 				throw new InvalidOperationException("m_targetVoxel is not IMyVoxelMap");
 			}
 
-			Vector3 boxEdgeFinderStart = startPoint - direction * (float)m_targetVoxel.WorldAABB.GetLongestDim();
-			Ray boxEdgeFinder = new Ray(boxEdgeFinderStart, direction);
-			double? boxEdgeDist = m_targetVoxel.WorldAABB.Intersects(boxEdgeFinder);
-			if (!boxEdgeDist.HasValue)
-			{
-				m_logger.debugLog("boxEdgeFinderStart: " + boxEdgeFinderStart + ", direction: " + direction + ", WorldAABB: " + m_targetVoxel.WorldAABB.Min + " to " + m_targetVoxel.WorldAABB.Max, "GetExteriorPoint_Asteroid()", Logger.severity.ERROR);
-				throw new Exception("Math fail");
-			}
-			Vector3 boxEdge = boxEdgeFinderStart + direction * (float)boxEdgeDist.Value;
-
-			Capsule surfaceFinder = new Capsule(boxEdge, startPoint, buffer);
+			Vector3 v = direction * m_targetVoxel.LocalAABB.GetLongestDim();
+			Capsule surfaceFinder = new Capsule(startPoint - v, startPoint + v, buffer);
 			Vector3? obstruction;
 			if (surfaceFinder.Intersects(voxel, out obstruction))
 				return obstruction.Value;
 			else
 			{
-				m_logger.debugLog("Failed to intersect asteroid, using point on WorldAABB", "GetSurfacePoint()", Logger.severity.DEBUG);
-				return boxEdge;
+				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0", "GetSurfacePoint()", Logger.severity.WARNING);
+				return surfaceFinder.P0;
 			}
 		}
 
@@ -618,7 +592,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private bool IsNearVoxel(double lengthMulti = 1f)
 		{
-			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_navDrill.Grid.GetLongestDim() * lengthMulti);
+			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
 			if (m_targetVoxel is IMyVoxelMap)
 				return m_targetVoxel.GetIntersectionWithSphere(ref surround);
 			else
