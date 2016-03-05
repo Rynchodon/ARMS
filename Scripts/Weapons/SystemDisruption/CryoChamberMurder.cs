@@ -14,6 +14,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 			get { return new MyObjectBuilderType[] { typeof(MyObjectBuilder_CryoChamber) }; }
 		}
 
+		protected override bool CanDisrupt(IMyCubeBlock block)
+		{
+			return (block as MyCockpit).Pilot as IMyCharacter != null;
+		}
+
 		protected override void StartEffect(IMyCubeBlock block)
 		{
 			IMyCharacter pilot = (block as MyCockpit).Pilot as IMyCharacter;

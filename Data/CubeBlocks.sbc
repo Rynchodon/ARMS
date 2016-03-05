@@ -939,12 +939,16 @@
       <UnlockSound>ShipLandGearOff</UnlockSound>
       <FailedAttachSound>ShipLandGearNothing01</FailedAttachSound>
       <Components>
-        <Component Subtype="Construction" Count="1" />
-        <Component Subtype="LargeTube" Count="1" />
+        <Component Subtype="SteelPlate" Count="1" />
+        <Component Subtype="Construction" Count="2" />
+        <Component Subtype="LargeTube" Count="2" />
         <Component Subtype="Motor" Count="1" />
+        <Component Subtype="Display" Count="1" />
+        <Component Subtype="Computer" Count="2" />
+        <Component Subtype="RadioCommunication" Count="1" />
         <Component Subtype="SteelPlate" Count="1" />
       </Components>
-      <CriticalComponent Subtype="Motor" Index="0" />
+      <CriticalComponent Subtype="Computer" Index="0" />
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.33" File="Models\Cubes\ARMS_SmallHackerBlock_Constr1.mwm" />
         <Model BuildPercentUpperBound="0.67" File="Models\Cubes\ARMS_SmallHackerBlock_Constr2.mwm" />
@@ -981,12 +985,16 @@
       <UnlockSound>ShipLandGearOff</UnlockSound>
       <FailedAttachSound>ShipLandGearNothing01</FailedAttachSound>
       <Components>
-        <Component Subtype="Construction" Count="1" />
-        <Component Subtype="LargeTube" Count="1" />
+        <Component Subtype="SteelPlate" Count="11" />
+        <Component Subtype="Construction" Count="4" />
+        <Component Subtype="LargeTube" Count="2" />
         <Component Subtype="Motor" Count="1" />
-        <Component Subtype="SteelPlate" Count="1" />
+        <Component Subtype="Display" Count="1" />
+        <Component Subtype="Computer" Count="2" />
+        <Component Subtype="RadioCommunication" Count="1" />
+        <Component Subtype="SteelPlate" Count="10" />
       </Components>
-      <CriticalComponent Subtype="Motor" Index="0" />
+      <CriticalComponent Subtype="Computer" Index="0" />
       <BuildProgressModels>
         <Model BuildPercentUpperBound="0.33" File="Models\Cubes\ARMS_LargeHackerBlock_Constr1.mwm" />
         <Model BuildPercentUpperBound="0.67" File="Models\Cubes\ARMS_LargeHackerBlock_Constr2.mwm" />

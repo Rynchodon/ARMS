@@ -35,6 +35,7 @@ type "/autopilot help <topic>" for information about a specific topic
 
 [h1]Weapon Systems[/h1]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/496880503080018832/] Guided Missiles [/url]
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/412448792358163846/] Hacker Block [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control [/url]
 
 [h1]Misc[/h1]
