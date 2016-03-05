@@ -2,6 +2,8 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
    <BlueprintClassEntries>
    
+    <!-- Autopilot -->
+   
     <Entry Class="LargeBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Large" />
     <Entry Class="SmallBlocks" BlueprintSubtypeId="Cockpit/Autopilot-Block_Small" />
    
@@ -39,9 +41,14 @@
     <!-- Launcher -->
     
     <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R12VP_Launcher" />
-    <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R8EA_Launcher" />
-    <Entry Class="SmallBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_B3MP_Launcher" />
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_R8EA_Launcher" />
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="SmallMissileLauncher/Souper_B3MP_Launcher" />
     <Entry Class="LargeBlocks" BlueprintSubtypeId="LargeMissileTurret/Souper_Missile_Defense_Turret" />
+    
+    <!-- Hacker -->
+    
+    <Entry Class="LargeBlocks" BlueprintSubtypeId="LandingGear/ARMS_LargeHackerBlock" />
+    <Entry Class="SmallBlocks" BlueprintSubtypeId="LandingGear/ARMS_SmallHackerBlock" />
     
   </BlueprintClassEntries>
 </Definitions>
