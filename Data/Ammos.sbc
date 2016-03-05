@@ -8,9 +8,9 @@
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=90
-        RotationPerUpdate=0.017453292519943
-        DetonateRange=3
+        GuidanceSeconds=90;
+        RotationPerUpdate=0.017453292519943;
+        DetonateRange=3;
       </Description>
       <BasicProperties>
         <DesiredSpeed>200</DesiredSpeed>
@@ -36,13 +36,17 @@
         <SubtypeId>Souper_R8EA_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=60
-        Acceleration=100
-        RotationPerUpdate=0.017453292519943
-        DetonateRange=3
-        EMP_Strength=300000
-        EMP_Seconds=30
-        HasAntenna=true
+        GuidanceSeconds=60;
+        Acceleration=100;
+        RotationPerUpdate=0.017453292519943;
+        DetonateRange=3;
+        EMP_Strength=300000;
+        EMP_Seconds=30;
+        
+        Radar=
+          Radar=true,
+          MaxTargets_Tracking=10,
+          MaxPowerLevel=10000;
       </Description>
       <BasicProperties>
         <DesiredSpeed>200</DesiredSpeed>
@@ -68,10 +72,10 @@
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=15
-        Acceleration=100
-        RotationPerUpdate=0.01
-        ClusterCooldown=5
+        GuidanceSeconds=15;
+        Acceleration=100;
+        RotationPerUpdate=0.01;
+        ClusterCooldown=5;
       </Description>
       <BasicProperties>
         <DesiredSpeed>800</DesiredSpeed>
@@ -97,9 +101,9 @@
         <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
       <Description>
-        GuidanceSeconds=15
-        TargetRange=800
-        DetonateRange=10
+        GuidanceSeconds=15;
+        TargetRange=800;
+        DetonateRange=10;
       </Description>
       <BasicProperties>
         <DesiredSpeed>2000</DesiredSpeed>

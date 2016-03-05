@@ -17,7 +17,7 @@ namespace Rynchodon.Weapons.Guided
 	/*
 	 * TODO:
 	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
-	 * ARH, SA*
+	 * SA*
 	 */
 	public class GuidedMissile : TargetingBase
 	{
@@ -55,7 +55,6 @@ namespace Rynchodon.Weapons.Guided
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
 		private const float Angle_Cluster = 0.05f;
-		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
 		private static ThreadManager Thread = new ThreadManager();
@@ -133,6 +132,8 @@ namespace Rynchodon.Weapons.Guided
 							missile.ClearBlacklist();
 							if (missile.m_gravData != null)
 								missile.UpdateGravity();
+							if (missile.m_radar != null && missile.CurrentTarget.TType == TargetType.None)
+								missile.m_radar.Update100();
 						}
 					});
 					if (!missile.Stopped)
@@ -174,22 +175,25 @@ namespace Rynchodon.Weapons.Guided
 
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
-		private readonly Ammo.AmmoDescription myDescr;
 		private readonly NetworkNode myAntenna;
 		private readonly NetworkClient m_launcherClient;
 
 		private LastSeen myTargetSeen;
 		private Cluster myCluster;
 		private IMyEntity myRock;
-		private DateTime failed_lastSeenTarget;
+		private ulong m_nextCheckLastSeen;
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
 		private RailData m_rail;
 		private GravityData m_gravData;
+		private RadarEquipment m_radar;
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
+
+		private Ammo.AmmoDescription myDescr
+		{ get { return myAmmo.Description; } }
 
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
@@ -199,7 +203,6 @@ namespace Rynchodon.Weapons.Guided
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
 			myAmmo = ammo;
-			myDescr = ammo.Description;
 			if (ammo.Description.HasAntenna)
 				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
 			m_launcherClient = launcherClient;
@@ -217,6 +220,17 @@ namespace Rynchodon.Weapons.Guided
 			Options = opt;
 			Options.TargetingRange = ammo.Description.TargetRange;
 			myTargetSeen = initialTarget;
+
+			if (myAmmo.RadarDefinition != null)
+			{
+				myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
+				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, firedBy);
+				if (myAntenna == null)
+				{
+					myLogger.debugLog("Creating node for radar", "GuidedMissile()");
+					myAntenna = new NetworkNode(missile, firedBy, null);
+				}
+			}
 
 			myLogger.debugLog("Options: " + Options + ", initial target: " + (initialTarget == null ? "null" : initialTarget.Entity.getBestName()), "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
@@ -299,7 +313,7 @@ namespace Rynchodon.Weapons.Guided
 				return;
 			}
 
-			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
+			if (Globals.UpdateCount < m_nextCheckLastSeen)
 				return;
 
 			LastSeen fetched;
@@ -357,7 +371,7 @@ namespace Rynchodon.Weapons.Guided
 			if (closest == null)
 			{
 				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
-				failed_lastSeenTarget = DateTime.UtcNow;
+				m_nextCheckLastSeen = Globals.UpdateCount + 100ul;
 				myTargetSeen = null;
 			}
 			else
