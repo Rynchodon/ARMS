@@ -213,6 +213,7 @@ namespace Rynchodon.Weapons.Guided
 			if (myAmmo.Description.HasAntenna)
 				myAntenna = new NetworkNode(missile, launcher.CubeBlock, ComponentRadio.CreateRadio(missile, 0f));
 			TryHard = true;
+			SEAD = myAmmo.Description.SEAD;
 
 			AllGuidedMissiles.Add(this);
 			AddMissileOwner(MyEntity, CubeBlock.OwnerId);
@@ -227,8 +228,13 @@ namespace Rynchodon.Weapons.Guided
 			Options.TargetingRange = myAmmo.Description.TargetRange;
 			if (initialTarget != null)
 			{
-				myTarget = new LastSeenTarget(initialTarget);
-				CurrentTarget = myTarget;
+				IMyCubeBlock initialBlock;
+				if (ChooseBlock(initialTarget, out initialBlock))
+				{
+					myLogger.debugLog("initial target: " + initialTarget.Entity.getBestName() + ", block: " + initialBlock.getBestName(), "GuidedMissile()", Logger.severity.DEBUG);
+					myTarget = new LastSeenTarget(initialTarget, initialBlock);
+					CurrentTarget = myTarget;
+				}
 			}
 
 			if (myAmmo.RadarDefinition != null)

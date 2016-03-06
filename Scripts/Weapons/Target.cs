@@ -47,11 +47,8 @@ namespace Rynchodon.Weapons
 
 		public override Vector3 GetLinearVelocity()
 		{
-			{
-				VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-				throw new Exception();
-			}
-
+			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
+			throw new Exception();
 		}
 	}
 
@@ -101,6 +98,20 @@ namespace Rynchodon.Weapons
 			m_block = block;
 			m_lastPostion = m_lastSeen.LastKnownPosition;
 			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
+		}
+
+		public void Update(LastSeen seen, IMyCubeBlock block = null)
+		{
+			m_lastSeen = seen;
+			if (block != null)
+				m_block = block;
+			m_lastPostion = m_lastSeen.LastKnownPosition;
+			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
+		}
+
+		public IMyCubeBlock Block
+		{
+			get { return m_block; }
 		}
 
 		public override IMyEntity Entity

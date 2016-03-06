@@ -17,6 +17,8 @@ namespace Rynchodon.Weapons
 	public abstract class TargetingBase
 	{
 
+		#region Static
+
 		public const short zero = 0, one = 1, guidedValue = 100, negOne = -one, negGuidVal = -guidedValue;
 
 		private static Dictionary<long, short> WeaponsTargetingProjectile = new Dictionary<long, short>();
@@ -65,6 +67,9 @@ namespace Rynchodon.Weapons
 			WeaponsTargetingProjectile[entity.EntityId] = count;
 		}
 
+		#endregion Static
+
+		private readonly Logger myLogger;
 		public readonly IMyEntity MyEntity;
 		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
 		public readonly IMyCubeBlock CubeBlock;
@@ -72,20 +77,20 @@ namespace Rynchodon.Weapons
 
 		/// <summary>Iff true, the projectile will attempt to chase-down a target.</summary>
 		protected bool TryHard = false;
-		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
+		protected bool SEAD = false;
+		private ulong m_nextLastSeenSearch;
+		private Target value_CurrentTarget;
+		/// <summary>The target that is being processed.</summary>
+		protected Target myTarget;
 
+		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
 		/// <summary>Targets that cannot be hit.</summary>
 		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
-		private readonly Logger myLogger;
-
-		private ulong m_nextLastSeenSearch;
-		private Target value_CurrentTarget;
-		/// <summary>The target that is being processed.</summary>
-		protected Target myTarget;
 		public TargetingOptions Options { get; protected set; }
+
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
 		{
@@ -242,9 +247,18 @@ namespace Rynchodon.Weapons
 
 			if (CurrentTarget.Entity != null && storage.TryGetLastSeen(CurrentTarget.Entity.EntityId, out processing) && processing.isRecent())
 			{
+				LastSeenTarget lst = myTarget as LastSeenTarget;
+				if (lst != null && lst.Block != null && !lst.Block.Closed)
+				{
+					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition() + " and keeping block: " + lst.Block.DisplayNameText, "GetLastSeenTarget()", Logger.severity.DEBUG);
+					lst.Update(processing);
+					CurrentTarget = myTarget;
+					return;
+				}
+
 				if (ChooseBlock(processing, out targetBlock))
 				{
-					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition(), "GetLastSeenTarget()", Logger.severity.DEBUG);
+					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition() + " and using new block: " + targetBlock.DisplayNameText, "GetLastSeenTarget()", Logger.severity.DEBUG);
 					myTarget = new LastSeenTarget(processing, targetBlock);
 					CurrentTarget = myTarget;
 					return;
@@ -265,27 +279,54 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			Vector3D myPos = ProjectilePosition();
 			processing = null;
 			targetBlock = null;
-			double closestDist = range * range;
 
-			storage.ForEachLastSeen(seen => {
-				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
-				{
-					IMyCubeBlock block;
-					if (!ChooseBlock(seen, out block))
-						return;
+			if (SEAD)
+			{
+				float highestPowerLevel = 0f;
 
-					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
-					if (dist < closestDist)
+				storage.ForEachLastSeen((LastSeen seen) => {
+					if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
 					{
-						closestDist = dist;
-						processing = seen;
-						targetBlock = block;
+						IMyCubeBlock block;
+						float powerLevel;
+						if (RadarEquipment.GetRadarEquipment(seen, out block, out powerLevel) && powerLevel > highestPowerLevel)
+						{
+							highestPowerLevel = powerLevel;
+							processing = seen;
+							targetBlock = block;
+						}
 					}
-				}
-			});
+				});
+			}
+			else
+			{
+				// choose closest grid
+				Vector3D myPos = ProjectilePosition();
+				double closestDist = range * range;
+
+				storage.ForEachLastSeen(seen => {
+					if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
+					{
+						IMyCubeBlock block;
+						if (!ChooseBlock(seen, out block))
+							return;
+
+						// always prefer a grid with a block
+						if (targetBlock != null && block == null)
+							return;
+
+						double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
+						if (dist < closestDist)
+						{
+							closestDist = dist;
+							processing = seen;
+							targetBlock = block;
+						}
+					}
+				});
+			}
 
 			if (processing == null)
 			{
@@ -295,7 +336,7 @@ namespace Rynchodon.Weapons
 			}
 			else
 			{
-				myLogger.debugLog("got a target from last seen: " + processing.Entity.getBestName() + " at " + processing.LastKnownPosition, "GetLastSeenTarget()", Logger.severity.DEBUG);
+				myLogger.debugLog("got a target from last seen: " + processing.Entity.getBestName() + " at " + processing.LastKnownPosition + ", block: " + targetBlock.getBestName(), "GetLastSeenTarget()", Logger.severity.DEBUG);
 				myTarget = new LastSeenTarget(processing, targetBlock);
 				CurrentTarget = myTarget;
 			}
@@ -304,10 +345,16 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Attempts to choose a targetable block from a LastSeen.
 		/// </summary>
-		/// <returns>True iff the LastSeen can be target, either because it has no blocks or because a block was found.</returns>
-		private bool ChooseBlock(LastSeen seen, out IMyCubeBlock block)
+		/// <returns>True iff the LastSeen can be targeted, either because it has no blocks or because a block was found.</returns>
+		protected bool ChooseBlock(LastSeen seen, out IMyCubeBlock block)
 		{
 			block = null;
+
+			if (SEAD)
+			{
+				float powerLevel;
+				return RadarEquipment.GetRadarEquipment(seen, out block, out powerLevel);
+			}
 
 			if (seen.Info == null)
 				return true;

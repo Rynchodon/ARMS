@@ -56,6 +56,8 @@ namespace Rynchodon.Weapons
 			public string Radar = string.Empty;
 			/// <summary>If true, is a semi-active laser homing missile, superseeds other targeting.</summary>
 			public bool SemiActiveLaser;
+			/// <summary>Seeks out radar equipment on the target.</summary>
+			public bool SEAD;
 
 			#endregion Tracking
 			#region Payload

@@ -367,8 +367,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_moveAccel.LengthSquared() > 100f)
 			{
 				myLogger.debugLog("rotate to accel", "CalcRotate()");
-				Vector3 accelDirection = Vector3.Transform(m_moveAccel, Block.CubeBlock.WorldMatrixNormalizedInv);
-				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, accelDirection));
+				CalcRotate(Block.Pseudo, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
 			}
 			else
 				if (!InGravity_LevelOff())
