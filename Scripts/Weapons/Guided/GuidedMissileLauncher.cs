@@ -50,18 +50,18 @@ namespace Rynchodon.Weapons.Guided
 		#endregion
 
 		private readonly Logger myLogger;
-		private readonly WeaponTargeting m_weaponTarget;
-		private IMyCubeBlock CubeBlock { get { return m_weaponTarget.CubeBlock; } }
-		private IMyFunctionalBlock FuncBlock;
+		public readonly WeaponTargeting m_weaponTarget;
+		public IMyCubeBlock CubeBlock { get { return m_weaponTarget.CubeBlock; } }
+		public IMyFunctionalBlock FuncBlock { get { return CubeBlock as IMyFunctionalBlock; } }
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
 		private readonly MyInventoryBase myInventory;
-		private readonly NetworkClient m_netClient;
+		public readonly NetworkClient m_netClient;
 
 		private DateTime nextCheckInventory;
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
-		private Ammo loadedAmmo;
+		public Ammo loadedAmmo { get; private set; }
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool onCooldown;
@@ -70,9 +70,11 @@ namespace Rynchodon.Weapons.Guided
 		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
 			m_weaponTarget = weapon;
-			FuncBlock = CubeBlock as IMyFunctionalBlock;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
-			m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
+			if (m_weaponTarget.m_netClient != null)
+				m_netClient = m_weaponTarget.m_netClient;
+			else
+				m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
 
 			var defn = CubeBlock.GetCubeBlockDefinition();
 
@@ -210,12 +212,12 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster), CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
+					new GuidedMissile(new Cluster(m_cluster), this, initialTarget);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, CubeBlock, m_weaponTarget.Options.Clone(), loadedAmmo, initialTarget, m_netClient);
+					new GuidedMissile(missile, this, initialTarget);
 			}
 			catch (Exception ex)
 			{

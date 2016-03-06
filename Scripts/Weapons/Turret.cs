@@ -105,8 +105,7 @@ namespace Rynchodon.Weapons
 			if (TP_TargetStations.GetValue(CubeBlock))
 				Options.CanTarget |= TargetType.Station;
 
-			if (myTurret.Range > Options.TargetingRange)
-				Options.TargetingRange = myTurret.Range;
+			Options.TargetingRange = myTurret.Range;
 
 			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
 				Options.Flags |= TargetingFlags.Interior;

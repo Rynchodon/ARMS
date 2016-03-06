@@ -248,7 +248,7 @@ namespace Rynchodon.AntennaRelay
 			ammend.AmendAll(def.DescriptionString, true);
 			result = ammend.Deserialize();
 
-			staticLogger.debugLog("new definition:\n" + MyAPIGateway.Utilities.SerializeToXML<Definition>(result), "GetDefinition()");
+			//staticLogger.debugLog("new definition:\n" + MyAPIGateway.Utilities.SerializeToXML<Definition>(result), "GetDefinition()");
 			AllDefinitions.Add(ID, result);
 			return result;
 		}
@@ -261,9 +261,11 @@ namespace Rynchodon.AntennaRelay
 		private readonly IMyCubeBlock RelationsBlock;
 
 		/// <summary>Entity as IMyCubeBlock</summary>
-		private readonly IMyCubeBlock CubeBlock;
+		private IMyCubeBlock CubeBlock
+		{ get { return Entity as IMyCubeBlock; } }
 		/// <summary>Entity as IMyTerminalBlock</summary>
-		private readonly IMyTerminalBlock TermBlock;
+		private IMyTerminalBlock TermBlock 
+		{ get { return CubeBlock as IMyTerminalBlock; } }
 		private NetworkNode m_node;
 
 		private readonly Logger myLogger;
@@ -324,10 +326,7 @@ namespace Rynchodon.AntennaRelay
 			this.myLogger = new Logger("RadarEquipment", block);
 
 			this.Entity = block;
-			this.CubeBlock = block;
 			this.RelationsBlock = block;
-			this.TermBlock = block as IMyTerminalBlock;
-
 			this.myDefinition = GetDefinition(block);
 
 			Registrar.Add(block, this);
@@ -341,9 +340,33 @@ namespace Rynchodon.AntennaRelay
 			byte detectionTypes = 0;
 			if (myDefinition.Radar)
 				detectionTypes++;
-			if (myDefinition.MaxTargets_Jamming > 0)
+			if (myDefinition.PassiveDetect_Jamming > 0)
 				detectionTypes++;
-			if (myDefinition.MaxTargets_Tracking > 0)
+			if (myDefinition.PassiveDetect_Radar > 0)
+				detectionTypes++;
+			if (detectionTypes > 1)
+				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
+
+			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, "RadarEquipment()", Logger.severity.INFO);
+		}
+
+		public RadarEquipment(IMyEntity radarEntity, Definition radarDef, IMyCubeBlock relationsBlock)
+		{
+			this.myLogger = new Logger(GetType().Name, () => RelationsBlock.CubeGrid.DisplayName, () => RelationsBlock.DisplayNameText, () => radarEntity.ToString());
+
+			this.Entity = radarEntity;
+			this.RelationsBlock = relationsBlock;
+			this.myDefinition = radarDef;
+
+			Registrar.Add(radarEntity, this);
+			PowerLevel_Current = this.myDefinition.MaxPowerLevel;
+
+			byte detectionTypes = 0;
+			if (myDefinition.Radar)
+				detectionTypes++;
+			if (myDefinition.PassiveDetect_Jamming > 0)
+				detectionTypes++;
+			if (myDefinition.PassiveDetect_Radar > 0)
 				detectionTypes++;
 			if (detectionTypes > 1)
 				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
@@ -363,11 +386,15 @@ namespace Rynchodon.AntennaRelay
 			{
 				// actions on main thread
 				CheckCustomInfo();
-				if (myLastSeen.Count > 0 && CubeBlock != null)
+				if (myLastSeen.Count > 0)
 				{
-					myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
-					if (m_node != null || Registrar.TryGetValue(CubeBlock, out m_node ))
+					if (m_node != null || Registrar.TryGetValue(Entity, out m_node))
+					{
+						myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
 						m_node.Storage.Receive(myLastSeen);
+					}
+					else
+						myLogger.debugLog("failed to get node", "Update100()", Logger.severity.WARNING);
 				}
 
 				myThread.EnqueueAction(Update_OnThread);
@@ -380,7 +407,8 @@ namespace Rynchodon.AntennaRelay
 			{
 				myLastSeen.Clear();
 				detectedObjects_list.Clear();
-				detectedObjects_hash.Clear();
+				if (detectedObjects_hash != null)
+					detectedObjects_hash.Clear();
 
 				if (!IsWorking)
 				{
@@ -404,7 +432,7 @@ namespace Rynchodon.AntennaRelay
 				if (myDefinition.PassiveDetect_Radar > 0)
 					PassiveDetection(true);
 
-				if (detectedObjects_list.Count > 0 && CubeBlock != null)
+				if (detectedObjects_list.Count > 0)
 				{
 					detectedObjects_list.Sort();
 					int transmit = Math.Min(detectedObjects_list.Count, myDefinition.MaxTargets_Tracking);
@@ -695,8 +723,8 @@ namespace Rynchodon.AntennaRelay
 					int decoys = WorkingDecoys(entity);
 					radarSignature += decoySignal * decoys;
 
-					//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-					//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
+					myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+						+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
 
 					if (radarSignature > 0)
 					{
@@ -751,7 +779,6 @@ namespace Rynchodon.AntennaRelay
 				if (signalStrength > 0)
 				{
 					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), "PassiveDetection()", Logger.severity.TRACE);
-					LastSeen.UpdateTime flag = radar ? LastSeen.UpdateTime.HasRadar : LastSeen.UpdateTime.HasJammer;
 
 					DetectedInfo detFo;
 					IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;

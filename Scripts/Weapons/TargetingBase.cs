@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -80,6 +81,7 @@ namespace Rynchodon.Weapons
 
 		private readonly Logger myLogger;
 
+		private ulong m_nextLastSeenSearch;
 		private Target value_CurrentTarget;
 		/// <summary>The target that is being processed.</summary>
 		protected Target myTarget;
@@ -117,7 +119,7 @@ namespace Rynchodon.Weapons
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
 
-			myTarget = new NoTarget();
+			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
 			entity.OnClose += obj => {
@@ -131,7 +133,7 @@ namespace Rynchodon.Weapons
 		public TargetingBase(IMyCubeBlock block)
 			: this(block, block)
 		{
-			myLogger = new Logger("TargetingBase", block) { MinimumLevel = Logger.severity.DEBUG };
+			myLogger = new Logger("TargetingBase", block);// { MinimumLevel = Logger.severity.DEBUG };
 		}
 
 		private bool PhysicalProblem(Vector3D targetPos)
@@ -178,7 +180,7 @@ namespace Rynchodon.Weapons
 		{
 			myLogger.debugLog("Blacklisting " + myTarget.Entity, "BlacklistTarget()");
 			Blacklist.Add(myTarget.Entity);
-			myTarget = new NoTarget();
+			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 		}
 
@@ -202,7 +204,7 @@ namespace Rynchodon.Weapons
 					return;
 				}
 
-			myTarget = new NoTarget();
+			myTarget = NoTarget.Instance;
 
 			CollectTargets();
 			PickATarget();
@@ -211,6 +213,116 @@ namespace Rynchodon.Weapons
 			else if (CurrentTarget != null && CurrentTarget.Entity != null)
 				myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName(), "UpdateTarget()");
 			CurrentTarget = myTarget;
+		}
+
+		/// <summary>
+		/// Targets a LastSeen chosen from the given storage, will overrride current target.
+		/// </summary>
+		/// <param name="storage">NetworkStorage to get LastSeen from.</param>
+		protected void GetLastSeenTarget(NetworkStorage storage, double range)
+		{
+			if (Globals.UpdateCount < m_nextLastSeenSearch)
+				return;
+			m_nextLastSeenSearch = Globals.UpdateCount + 100ul;
+
+			if (storage == null)
+			{
+				myLogger.debugLog("no storage", "GetLastSeenTarget()", Logger.severity.INFO);
+				return;
+			}
+
+			if (storage.LastSeenCount == 0)
+			{
+				myLogger.debugLog("no last seen in storage", "GetLastSeenTarget()", Logger.severity.DEBUG);
+				return;
+			}
+
+			LastSeen processing;
+			IMyCubeBlock targetBlock;
+
+			if (CurrentTarget.Entity != null && storage.TryGetLastSeen(CurrentTarget.Entity.EntityId, out processing) && processing.isRecent())
+			{
+				if (ChooseBlock(processing, out targetBlock))
+				{
+					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition(), "GetLastSeenTarget()", Logger.severity.DEBUG);
+					myTarget = new LastSeenTarget(processing, targetBlock);
+					CurrentTarget = myTarget;
+					return;
+				}
+			}
+
+			if (Options.TargetEntityId.HasValue)
+			{
+				if (storage.TryGetLastSeen(Options.TargetEntityId.Value, out processing))
+				{
+					myLogger.debugLog("using last seen from entityId: " + processing.Entity.getBestName() + " at " + processing.GetPosition(), "GetLastSeenTarget()", Logger.severity.DEBUG);
+					ChooseBlock(processing, out targetBlock);
+					myTarget = new LastSeenTarget(processing, targetBlock);
+					CurrentTarget = myTarget;
+				}
+				else
+					myLogger.debugLog("failed to get last seen from entity id", "GetLastSeenTarget()");
+				return;
+			}
+
+			Vector3D myPos = ProjectilePosition();
+			processing = null;
+			targetBlock = null;
+			double closestDist = range * range;
+
+			storage.ForEachLastSeen(seen => {
+				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
+				{
+					IMyCubeBlock block;
+					if (!ChooseBlock(seen, out block))
+						return;
+
+					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
+					if (dist < closestDist)
+					{
+						closestDist = dist;
+						processing = seen;
+						targetBlock = block;
+					}
+				}
+			});
+
+			if (processing == null)
+			{
+				myLogger.debugLog("failed to get a target from last seen", "GetLastSeenTarget()");
+				myTarget = NoTarget.Instance;
+				CurrentTarget = myTarget;
+			}
+			else
+			{
+				myLogger.debugLog("got a target from last seen: " + processing.Entity.getBestName() + " at " + processing.LastKnownPosition, "GetLastSeenTarget()", Logger.severity.DEBUG);
+				myTarget = new LastSeenTarget(processing, targetBlock);
+				CurrentTarget = myTarget;
+			}
+		}
+
+		/// <summary>
+		/// Attempts to choose a targetable block from a LastSeen.
+		/// </summary>
+		/// <returns>True iff the LastSeen can be target, either because it has no blocks or because a block was found.</returns>
+		private bool ChooseBlock(LastSeen seen, out IMyCubeBlock block)
+		{
+			block = null;
+
+			if (seen.Info == null)
+				return true;
+
+			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
+			if (grid == null)
+				return true;
+
+			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
+				return true;
+
+			double distValue;
+			if (!GetTargetBlock(grid, Options.CanTarget, out block, out distValue, false))
+				return false;
+			return true;
 		}
 
 		/// <summary>
@@ -311,10 +423,7 @@ namespace Rynchodon.Weapons
 			if (!Options.CanTargetType(tType))
 				return;
 
-			if (target.ToString().StartsWith("MyMissile"))
-			{
-				myLogger.debugLog("missile: " + target.getBestName() + ", type = " + tType + ", allowed targets = " + Options.CanTarget, "AddTarget()");
-			}
+			//myLogger.debugLog(target.ToString().StartsWith("MyMissile"), "missile: " + target.getBestName() + ", type = " + tType + ", allowed targets = " + Options.CanTarget, "AddTarget()");
 
 			List<IMyEntity> list;
 			if (!Available_Targets.TryGetValue(tType, out list))

@@ -11,7 +11,7 @@ namespace Rynchodon
 	/// <typeparam name="T">The type of object to ammend.</typeparam>
 	public class XML_Amendments<T>
 	{
-		private readonly Logger myLogger = new Logger("XML_Amendments");
+		private readonly Logger myLogger;
 		private string _serial;
 
 		/// <summary>Will contain the keys that could not be matched and their values.</summary>
@@ -24,6 +24,7 @@ namespace Rynchodon
 
 		public XML_Amendments(T obj)
 		{
+			myLogger = new Logger(GetType().Name, typeof(T).ToString);
 			this._serial = MyAPIGateway.Utilities.SerializeToXML<T>(obj);
 		}
 
@@ -39,8 +40,6 @@ namespace Rynchodon
 		/// <param name="value">The value which will be amended.</param>
 		public void AmendEntry(string key, string value)
 		{
-			myLogger.debugLog(key + "=" + value, "AmendEntry()");
-
 			string pattern = "(?<open><" + key + ">)(?<num>.*)(?<close></" + key + ">)";
 			string replacement =  "${open}" + value + "${close}";
 			int matchCount = 0;
@@ -51,8 +50,19 @@ namespace Rynchodon
 
 			if (matchCount == 0)
 			{
-				myLogger.alwaysLog("failed to match key: " + key + '/' + value, "AmendEntry()", Logger.severity.WARNING);
-				Failed.Add(key, value);
+				pattern = "<" + key + " />";
+				replacement = "<" + key + ">" + value + "</" + key + ">";
+				matchCount = 0;
+				_serial = Regex.Replace(_serial, pattern, (match) => {
+					matchCount++;
+					return match.Result(replacement);
+				}, RegexOptions.IgnoreCase);
+
+				if (matchCount == 0)
+				{
+					myLogger.alwaysLog("failed to match key: " + key + '/' + value, "AmendEntry()", Logger.severity.WARNING);
+					Failed.Add(key, value);
+				}
 			}
 		}
 
@@ -64,7 +74,7 @@ namespace Rynchodon
 		public void AmendEntry(string entry, bool removeWhitespace = false)
 		{
 			string ent = removeWhitespace ? entry.RemoveWhitespace() : entry;
-			string[] keyValue = ent.Split(keyValueSeparator, StringSplitOptions.RemoveEmptyEntries);
+			string[] keyValue = ent.Split(keyValueSeparator, 2, StringSplitOptions.RemoveEmptyEntries);
 			if (keyValue.Length != 2)
 				throw new InvalidOperationException("could not split into key/value: " + ent);
 			AmendEntry(keyValue[0], keyValue[1]);

@@ -96,9 +96,10 @@ ARMS available missiles are named following the designation scheme listed [url=h
 
 [u]Missile Defense Turret - Interceptor Missile R1VT[/u]
 [list]
-[*]Good for Interception - Each missile has a large explosion radius but lower damage
-[*]Short Range - will only travel for 1500 meters
-[*]Very Fast - A max speed of 2 km/s allows these to quickly reach incoming threats
+[*]Good for Interception - Each missile has a large explosion radius but very low damage
+[*]Short Range - will only travel for 2000 meters
+[*]Defense Turret will fire at targets up to 2000 meters away, if they are detected by radar
+[*]Moderately Fast - A max speed of 650 m/s allows these to quickly reach incoming threats
 [*]Self-Guided for 15 seconds with 800 meters of detection range
 [*]Detonates within 10 meters of its target
 [/list]

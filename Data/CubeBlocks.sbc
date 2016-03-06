@@ -867,6 +867,7 @@
       </Id>
       <Description>
         GuidedMissileLauncher=true
+        LastSeenTargeting=true
       </Description>
       <DisplayName>Missile Defense Turret</DisplayName>
       <Icon>Textures\Icons\Missile_Defense_Turret_Base.dds</Icon>
@@ -913,7 +914,7 @@
       <MinAzimuthDegrees>-180</MinAzimuthDegrees>
       <MaxAzimuthDegrees>180</MaxAzimuthDegrees>
       <IdleRotation>true</IdleRotation>
-      <MaxRangeMeters>1200</MaxRangeMeters>
+      <MaxRangeMeters>800</MaxRangeMeters>
       <RotationSpeed>0.002</RotationSpeed>
       <ElevationSpeed>0.002</ElevationSpeed>
     </Definition>

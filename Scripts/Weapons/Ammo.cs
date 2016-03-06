@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.AntennaRelay;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -20,6 +21,7 @@ namespace Rynchodon.Weapons
 				try
 				{
 					XML_Amendments<AmmoDescription> ammender = new XML_Amendments<AmmoDescription>(desc);
+					ammender.primarySeparator = new char[] { ';' };
 					ammender.AmendAll(ammo.DescriptionString, true);
 					return ammender.Deserialize();
 				}
@@ -32,38 +34,37 @@ namespace Rynchodon.Weapons
 				}
 			}
 
-			public float GuidanceSeconds = 0f;
+			public float GuidanceSeconds;
 
 			#region Performance
 
 			public float RotationPerUpdate = 0.0349065850398866f; // 2°
 			/// <summary>In metres per second</summary>
-			public float Acceleration = 0f;
+			public float Acceleration;
 
 			/// <summary>For ICBM, distance from launcher when boost phase ends</summary>
-			public float BoostDistance = 0f;
+			public float BoostDistance;
 
 			#endregion Performance
 			#region Tracking
 
-			/// <summary>Targets shall be ignored where angle between missile's forward and direction to target is greater than.</summary>
-			/// <remarks>Not working correctly, may be removed.</remarks>
-			public float RotationAttemptLimit = 3.1415926535897932384626433f; // 180°
 			/// <summary>Range of turret magic.</summary>
-			public float TargetRange = 0f;
-			/// <summary>Not implemented.</summary>
-			public float RadarPower = 0f;
+			public float TargetRange;
 			/// <summary>If true, missile can receive LastSeen information from radio antennas.</summary>
-			public bool HasAntenna = false;
+			public bool HasAntenna;
+			/// <summary>Description of radar equipment</summary>
+			public string Radar = string.Empty;
+			/// <summary>If true, is a semi-active laser homing missile, superseeds other targeting.</summary>
+			public bool SemiActiveLaser;
 
 			#endregion Tracking
 			#region Payload
 
 			/// <summary>Detonate when this close to target.</summary>
-			public float DetonateRange = 0f;
+			public float DetonateRange;
 
-			public int EMP_Strength = 0;
-			public float EMP_Seconds = 0f;
+			public int EMP_Strength;
+			public float EMP_Seconds;
 
 			#region Cluster
 
@@ -134,6 +135,7 @@ namespace Rynchodon.Weapons
 		public readonly float DistanceToMaxSpeed;
 
 		public readonly AmmoDescription Description;
+		public readonly RadarEquipment.Definition RadarDefinition;
 
 		public readonly bool IsCluster;
 
@@ -164,15 +166,30 @@ namespace Rynchodon.Weapons
 			if (Description == null)
 				return;
 
-			#region Check Cluster
-
-			if (Description.ClusterCooldown < 1)
-				return;
-
-			myLogger.debugLog("Is a cluster missile", "VerifyCluster()");
-			IsCluster = true;
-
-			#endregion
+			if (Description.ClusterCooldown > 0f)
+			{
+				myLogger.debugLog("Is a cluster missile", "Ammo()");
+				IsCluster = true;
+			}
+			if (!string.IsNullOrWhiteSpace(Description.Radar))
+			{
+				try
+				{
+					RadarDefinition = new RadarEquipment.Definition();
+					XML_Amendments<RadarEquipment.Definition> ammender = new XML_Amendments<RadarEquipment.Definition>(RadarDefinition);
+					ammender.primarySeparator = new char[] { ',' };
+					ammender.AmendAll(Description.Radar, true);
+					RadarDefinition = ammender.Deserialize();
+					myLogger.debugLog("Loaded description for radar", "Ammo()", Logger.severity.DEBUG);
+				}
+				catch (Exception ex)
+				{
+					Logger.debugNotify("Failed to load radar description for an ammo", 10000, Logger.severity.ERROR);
+					myLogger.alwaysLog("Failed to load radar description for an ammo", "Ammo()", Logger.severity.ERROR);
+					myLogger.alwaysLog("Exception: " + ex, "Ammo()", Logger.severity.ERROR);
+					RadarDefinition = null;
+				}
+			}
 		}
 
 		public float MissileSpeed(float distance)

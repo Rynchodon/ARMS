@@ -17,7 +17,7 @@ namespace Rynchodon.Weapons.Guided
 	/*
 	 * TODO:
 	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
-	 * ARH, SA*
+	 * SA*
 	 */
 	public class GuidedMissile : TargetingBase
 	{
@@ -50,12 +50,11 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		private enum Stage : byte { Rail, Boost, MidCourse, Guided, Ballistic, Terminated }
+		private enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated }
 
 		private const float Angle_AccelerateWhen = 0.02f;
 		private const float Angle_Detonate = 0.1f;
 		private const float Angle_Cluster = 0.05f;
-		private static readonly TimeSpan checkLastSeen = new TimeSpan(0, 0, 10);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
 		private static ThreadManager Thread = new ThreadManager();
@@ -92,11 +91,11 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						if (missile.myCluster != null && missile.m_stage != Stage.Rail)
+						if (missile.myCluster != null)
 							missile.UpdateCluster();
-						if (missile.CurrentTarget.TType == TargetType.None)
+						if (missile.myTarget.TType == TargetType.None)
 							return;
-						if (missile.m_stage == Stage.MidCourse || missile.m_stage == Stage.Guided)
+						if (missile.m_stage >= Stage.MidCourse && missile.m_stage <= Stage.Guided)
 							missile.SetFiringDirection();
 						missile.Update();
 					});
@@ -114,10 +113,15 @@ namespace Rynchodon.Weapons.Guided
 					Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
-						if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
-							missile.UpdateTarget();
-						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
-							missile.TargetLastSeen();
+						if (missile.m_stage == Stage.SemiActive)
+							missile.TargetSemiActive();
+						else
+						{
+							if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
+								missile.UpdateTarget();
+							if ((missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget) && missile.myAntenna != null)
+								missile.GetLastSeenTarget(missile.myAntenna.Storage, missile.myAmmo.MissileDefinition.MaxTrajectory);
+						}
 						missile.CheckGuidance();
 					});
 		}
@@ -133,6 +137,8 @@ namespace Rynchodon.Weapons.Guided
 							missile.ClearBlacklist();
 							if (missile.m_gravData != null)
 								missile.UpdateGravity();
+							if (missile.m_radar != null && missile.CurrentTarget.TType == TargetType.None)
+								missile.m_radar.Update100();
 						}
 					});
 					if (!missile.Stopped)
@@ -174,35 +180,38 @@ namespace Rynchodon.Weapons.Guided
 
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
-		private readonly Ammo.AmmoDescription myDescr;
 		private readonly NetworkNode myAntenna;
-		private readonly NetworkClient m_launcherClient;
+		private readonly GuidedMissileLauncher m_launcher;
 
-		private LastSeen myTargetSeen;
 		private Cluster myCluster;
 		private IMyEntity myRock;
-		private DateTime failed_lastSeenTarget;
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
 		private RailData m_rail;
 		private GravityData m_gravData;
+		private RadarEquipment m_radar;
 
 		private bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
 
+		private Ammo.AmmoDescription myDescr
+		{ get { return myAmmo.Description; } }
+
+		private NetworkClient m_launcherClient
+		{ get { return m_launcher.m_netClient; } }
+
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
-			: base(missile, firedBy)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, LastSeen initialTarget)
+			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
-			myAmmo = ammo;
-			myDescr = ammo.Description;
-			if (ammo.Description.HasAntenna)
-				myAntenna = new NetworkNode(missile, firedBy, ComponentRadio.CreateRadio(missile, 0f));
-			m_launcherClient = launcherClient;
+			m_launcher = launcher;
+			myAmmo = launcher.loadedAmmo;
+			if (myAmmo.Description.HasAntenna)
+				myAntenna = new NetworkNode(missile, launcher.CubeBlock, ComponentRadio.CreateRadio(missile, 0f));
 			TryHard = true;
 
 			AllGuidedMissiles.Add(this);
@@ -211,19 +220,34 @@ namespace Rynchodon.Weapons.Guided
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
 			addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
-			if (!(firedBy is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
+			if (!(launcher.CubeBlock is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
 				m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
 
-			Options = opt;
-			Options.TargetingRange = ammo.Description.TargetRange;
-			myTargetSeen = initialTarget;
+			Options = m_launcher.m_weaponTarget.Options.Clone();
+			Options.TargetingRange = myAmmo.Description.TargetRange;
+			if (initialTarget != null)
+			{
+				myTarget = new LastSeenTarget(initialTarget);
+				CurrentTarget = myTarget;
+			}
+
+			if (myAmmo.RadarDefinition != null)
+			{
+				myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
+				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
+				if (myAntenna == null)
+				{
+					myLogger.debugLog("Creating node for radar", "GuidedMissile()");
+					myAntenna = new NetworkNode(missile, launcher.CubeBlock, null);
+				}
+			}
 
 			myLogger.debugLog("Options: " + Options + ", initial target: " + (initialTarget == null ? "null" : initialTarget.Entity.getBestName()), "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, IMyCubeBlock firedBy, TargetingOptions opt, Ammo ammo, LastSeen initialTarget, NetworkClient launcherClient)
-			: this(missiles.Master, firedBy, opt, ammo, initialTarget, launcherClient)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, LastSeen initialTarget)
+			: this(missiles.Master, launcher, initialTarget)
 		{
 			myCluster = missiles;
 		}
@@ -260,113 +284,17 @@ namespace Rynchodon.Weapons.Guided
 			return acceleration;
 		}
 
-		private bool CanTarget(LastSeen seen, out IMyCubeBlock block)
+		private void TargetSemiActive()
 		{
-			block = null;
-
-			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
-			if (grid == null)
-				return true;
-
-			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
-				return true;
-
-			double distValue;
-			if (!GetTargetBlock(grid, Options.CanTarget, out block, out distValue, false))
-				return false;
-			return true;
-		}
-
-		/// <remarks>
-		/// Runs on separate thread.
-		/// </remarks>
-		private void TargetLastSeen()
-		{
-			NetworkStorage store = myAntenna == null ? null : myAntenna.Storage;
-
-			if (store == null || store.LastSeenCount == 0)
+			SemiActiveTarget sat = myTarget as SemiActiveTarget;
+			if (sat == null)
 			{
-				if (myTargetSeen != null && myTarget.TType == TargetType.None)
-				{
-					IMyCubeBlock block;
-					if (CanTarget(myTargetSeen, out block))
-					{
-						myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
-						myTarget = new LastSeenTarget(myTargetSeen, block);
-						SetFiringDirection();
-					}
-				}
-				return;
+				myLogger.debugLog("creating semi-active target", "TargetSemiActive()", Logger.severity.DEBUG);
+				sat = new SemiActiveTarget(m_launcher.CubeBlock);
+				myTarget = sat;
 			}
 
-			if (DateTime.UtcNow - failed_lastSeenTarget < checkLastSeen)
-				return;
-
-			LastSeen fetched;
-			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
-			{
-				IMyCubeBlock block;
-				if (CanTarget(fetched, out block))
-				{
-					myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(fetched, block);
-					SetFiringDirection();
-					return;
-				}
-			}
-
-			if (Options.TargetEntityId.HasValue)
-			{
-				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
-				{
-					IMyCubeBlock block;
-					CanTarget(fetched, out block); // user chose an ID, so always target it
-					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(fetched, block);
-					SetFiringDirection();
-				}
-				else
-					myLogger.debugLog("failed to get last seen from entity id", "TargetLastSeen()");
-				return;
-			}
-
-			Vector3D myPos = MyEntity.GetPosition();
-			LastSeen closest = null;
-			IMyCubeBlock closestBlock = null;
-			double closestDist = double.MaxValue;
-
-			myLogger.debugLog("last seen count: " + store.LastSeenCount, "TargetLastSeen()");
-			store.ForEachLastSeen(seen => {
-				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
-				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
-				{
-					IMyCubeBlock block;
-					if (!CanTarget(seen, out block))
-						return;
-
-					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
-					if (dist < closestDist)
-					{
-						closestDist = dist;
-						closest = seen;
-						closestBlock = block;
-					}
-				}
-			});
-
-			if (closest == null)
-			{
-				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
-				failed_lastSeenTarget = DateTime.UtcNow;
-				myTargetSeen = null;
-			}
-			else
-			{
-				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName() + " at " + closest.GetPosition(), "TargetLastSeen()");
-				myTarget = new LastSeenTarget(closest, closestBlock);
-				SetFiringDirection();
-				myTargetSeen = closest;
-			}
+			sat.Update(MyEntity);
 		}
 
 		/// <remarks>
@@ -374,16 +302,11 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Update()
 		{
-			if (m_stage == Stage.Rail)
-				return;
-
 			Target cached = CurrentTarget;
 			if (!cached.FiringDirection.HasValue)
 				return;
 
 			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint, "Update()");
-
-			Vector3 forward = MyEntity.WorldMatrix.Forward;
 
 			Vector3 targetDirection;
 
@@ -397,12 +320,15 @@ namespace Rynchodon.Weapons.Guided
 					Vector3 toTarget = cached.GetPosition() - MyEntity.GetPosition();
 					targetDirection = Vector3.Normalize(Vector3.Reject(toTarget, m_gravData.Normal));
 					break;
+				case Stage.SemiActive:
 				case Stage.Guided:
-				default:
 					targetDirection = cached.FiringDirection.Value;
 					break;
+				default:
+					return;
 			}
 
+			Vector3 forward = MyEntity.WorldMatrix.Forward;
 			float angle = forward.AngleBetween(targetDirection);
 
 			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
@@ -558,6 +484,15 @@ namespace Rynchodon.Weapons.Guided
 
 					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
 					{
+						m_rail = null;
+						if (myDescr.SemiActiveLaser)
+						{
+							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+							myLogger.debugLog("past arming range, semi-active until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
+							m_stage = Stage.SemiActive;
+							return;
+						}
+
 						if (myAmmo.Description.BoostDistance > 1f)
 						{
 							myLogger.debugLog("past arming range, starting boost stage", "CheckGuidance()", Logger.severity.INFO);
@@ -575,16 +510,15 @@ namespace Rynchodon.Weapons.Guided
 							myLogger.debugLog("past arming range, starting guidance. Guidance until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
-						m_rail = null;
 					}
-					break;
+					return;
 				case Stage.Boost:
 					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
 					{
 						myLogger.debugLog("completed boost stage, starting mid course stage", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.MidCourse;
 					}
-					break;
+					return;
 				case Stage.MidCourse:
 					Target t = CurrentTarget;
 					if (t.Entity == null)
@@ -600,14 +534,15 @@ namespace Rynchodon.Weapons.Guided
 						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
 						m_gravData = null;
 					}
-					break;
+					return;
+				case Stage.SemiActive:
 				case Stage.Guided:
 					if (DateTime.UtcNow >= myGuidanceEnds)
 					{
 						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
 					}
-					break;
+					return;
 			}
 		}
 
