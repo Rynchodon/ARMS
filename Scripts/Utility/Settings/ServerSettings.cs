@@ -15,7 +15,7 @@ namespace Rynchodon.Settings
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bUseRemoteControl,
+			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sWeaponCommandsNPC
@@ -119,6 +119,7 @@ namespace Rynchodon.Settings
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowRadar));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowWeaponControl));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bImmortalMiner));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bUseRemoteControl));
 				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fDefaultSpeed));
 				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxSpeed));
@@ -145,6 +146,7 @@ namespace Rynchodon.Settings
 				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowRadar, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowWeaponControl, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bImmortalMiner, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bUseRemoteControl, ByteConverter.GetBool(message, ref pos));
 				SetSetting<float>(SettingName.fDefaultSpeed, ByteConverter.GetFloat(message, ref pos));
 				SetSetting<float>(SettingName.fMaxSpeed, ByteConverter.GetFloat(message, ref pos));
@@ -183,8 +185,9 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowGuidedMissile, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
-			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bImmortalMiner, new SettingSimple<bool>(false));
+			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
 

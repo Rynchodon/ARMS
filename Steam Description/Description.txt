@@ -45,11 +45,13 @@ A solar array of panels or oxygen farms can be instructed to face the sun by add
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
 bAllowAutopilot - this mod can control the movement of grids
+bAllowGuidedMissile - allows guided missiles, requires bAllowWeaponControl
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
-bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
 bAllowWeaponControl - Enables Weapon Control and E command
+bImmortalMiner - prevents a mining Autopilot's ship from being damaged by an asteroid
+bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
-fDefaultSpeed - the desired minimum speed, when not using V
+fDefaultSpeed - the desired speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
 sWeaponCommandsNPC - commands that N.P.C. weapons will use

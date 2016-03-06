@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -41,7 +42,22 @@ namespace Rynchodon.Autopilot.Navigator
 		private float m_current_drillFull;
 		private float m_closestDistToTarget;
 
-		private IMyVoxelBase m_targetVoxel;
+		private IMyVoxelBase value_targetVoxel;
+		private IMyVoxelBase m_targetVoxel
+		{
+			get { return value_targetVoxel; }
+			set
+			{
+				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
+				{
+					if (value_targetVoxel != null)
+						DamageHandler.UnregisterMiner(m_controlBlock.CubeGrid);
+					if (value != null)
+						DamageHandler.RegisterMiner(m_controlBlock.CubeGrid, value);
+				}
+				value_targetVoxel = value;
+			}
+		}
 
 		private bool isMiningPlanet
 		{
@@ -121,6 +137,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
 							Vector3 pos = m_navDrill.WorldPosition;
 							m_currentTarget = pos + Vector3.Normalize(pos - m_targetVoxel.GetCentre()) * 100f;
+							m_navSet.Settings_Task_NavMove.IgnoreAsteroid = false; 
 							break;
 						}
 					default:
@@ -174,6 +191,11 @@ namespace Rynchodon.Autopilot.Navigator
 			m_state = State.GetTarget;
 		}
 
+		~MinerVoxel()
+		{
+			m_targetVoxel = null;
+		}
+
 		public override void Move()
 		{
 			if (m_state != State.Mining_Escape && m_navDrill.FunctionalBlocks == 0)
@@ -189,8 +211,9 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				case State.Approaching:
 					// measure distance from line, but move to a point
-					Vector3 closestPoint = m_approach.ClosestPoint(m_navDrill.WorldPosition);
-					if (Vector3.DistanceSquared(closestPoint, m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
+					m_currentTarget = m_approach.ClosestPoint(m_navDrill.WorldPosition);
+					m_logger.debugLog("target: " + m_currentTarget + ", distance: " + Vector3.Distance(m_currentTarget, m_navDrill.WorldPosition), "Move()");
+					if (Vector3.DistanceSquared(m_currentTarget, m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
 						m_state = State.Rotating;
@@ -222,7 +245,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
-					if (IsNearVoxel())
+					if (IsNearVoxel(4d))
 						m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
 					break;
 				case State.Mining:
@@ -254,7 +277,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 					break;
 				case State.Mining_Escape:
-					if (!IsNearVoxel())
+					if (!IsNearVoxel(2d))
 					{
 						m_logger.debugLog("left voxel", "Move()");
 						m_state = State.Move_Away;
@@ -277,7 +300,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 					break;
 				case State.Mining_Tunnel:
-					if (!IsNearVoxel())
+					if (!IsNearVoxel(2d))
 					{
 						m_logger.debugLog("left voxel", "Mine()");
 						m_state = State.Move_Away;
@@ -304,7 +327,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.GetTarget;
 						return;
 					}
-					if (!IsNearVoxel(2d))
+					if (!IsNearVoxel(4d))
 					{
 						m_logger.debugLog("far enough away", "Move()");
 						m_state = State.GetTarget;
@@ -525,9 +548,9 @@ namespace Rynchodon.Autopilot.Navigator
 			m_depositOre = oreName;
 
 			Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
-			float bufferDist = Math.Max(m_longestDimension, m_navSet.Settings_Current.DestinationRadius) * 10f;
+			float bufferDist = Math.Max(m_longestDimension, m_navSet.Settings_Current.DestinationRadius);
 			GetExteriorPoint(m_depositPos, toCentre, bufferDist, exterior => {
-				m_approach = new Line(exterior - toCentre * bufferDist, exterior);
+				m_approach = new Line(exterior - toCentre * bufferDist * 10f, exterior);
 				m_state = State.Approaching;
 			});
 		}
@@ -590,7 +613,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}, m_logger);
 		}
 
-		private bool IsNearVoxel(double lengthMulti = 1f)
+		private bool IsNearVoxel(double lengthMulti = 1d)
 		{
 			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
 			if (m_targetVoxel is IMyVoxelMap)

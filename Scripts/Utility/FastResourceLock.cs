@@ -12,13 +12,13 @@ namespace Rynchodon
 	public class FastResourceLock
 	{
 		private const int recentActivityCount = 20;
+		private const ulong timeout = 3600ul;
 		private static bool Debug = false;
 
 		private Logger myLogger;
 		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
 		private MyQueue<Func<string>> recentActivity = new MyQueue<Func<string>>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
-		private TimeSpan timeout = new TimeSpan(0, 1, 0);
 
 		static FastResourceLock()
 		{ Set_Debug_Conditional(); }
@@ -146,8 +146,8 @@ namespace Rynchodon
 		{
 			AddRecent("entered AcquireExclusive_Debug().");
 
-			DateTime timeoutAt = DateTime.UtcNow + timeout;
-			while (DateTime.UtcNow < timeoutAt)
+			ulong timeoutAt = Globals.UpdateCount + timeout;
+			while (Globals.UpdateCount < timeoutAt)
 				if (FastLock.TryAcquireExclusive())
 				{
 					AddRecent("acquired exclusive lock.");
@@ -168,8 +168,8 @@ namespace Rynchodon
 			//myLogger.alwaysLog("entered AcquireShared_Debug(). " + State(), "AcquireShared_Debug()");
 			AddRecent("entered AcquireShared_Debug().");
 
-			DateTime timeoutAt = DateTime.UtcNow + timeout;
-			while (DateTime.UtcNow < timeoutAt)
+			ulong timeoutAt = Globals.UpdateCount + timeout;
+			while (Globals.UpdateCount < timeoutAt)
 				if (FastLock.TryAcquireShared())
 				{
 					AddRecent("acquired shared lock.");
