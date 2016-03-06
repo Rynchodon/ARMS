@@ -71,7 +71,10 @@ namespace Rynchodon.Weapons.Guided
 		{
 			m_weaponTarget = weapon;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
-			m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
+			if (m_weaponTarget.m_netClient != null)
+				m_netClient = m_weaponTarget.m_netClient;
+			else
+				m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
 
 			var defn = CubeBlock.GetCubeBlockDefinition();
 

@@ -115,10 +115,13 @@ namespace Rynchodon.Weapons.Guided
 							return;
 						if (missile.m_stage == Stage.SemiActive)
 							missile.TargetSemiActive();
-						if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
-							missile.UpdateTarget();
-						if (missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget)
-							missile.TargetLastSeen();
+						else
+						{
+							if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
+								missile.UpdateTarget();
+							if ((missile.CurrentTarget.TType == TargetType.None || missile.CurrentTarget is LastSeenTarget) && missile.myAntenna != null)
+								missile.GetLastSeenTarget(missile.myAntenna.Storage, missile.myAmmo.MissileDefinition.MaxTrajectory);
+						}
 						missile.CheckGuidance();
 					});
 		}
@@ -180,10 +183,8 @@ namespace Rynchodon.Weapons.Guided
 		private readonly NetworkNode myAntenna;
 		private readonly GuidedMissileLauncher m_launcher;
 
-		private LastSeen myTargetSeen;
 		private Cluster myCluster;
 		private IMyEntity myRock;
-		private ulong m_nextCheckLastSeen;
 		private DateTime myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
@@ -224,7 +225,11 @@ namespace Rynchodon.Weapons.Guided
 
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
-			myTargetSeen = initialTarget;
+			if (initialTarget != null)
+			{
+				myTarget = new LastSeenTarget(initialTarget);
+				CurrentTarget = myTarget;
+			}
 
 			if (myAmmo.RadarDefinition != null)
 			{
@@ -277,115 +282,6 @@ namespace Rynchodon.Weapons.Guided
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
 			return acceleration;
-		}
-
-		private bool CanTarget(LastSeen seen, out IMyCubeBlock block)
-		{
-			block = null;
-
-			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
-			if (grid == null)
-				return true;
-
-			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
-				return true;
-
-			double distValue;
-			if (!GetTargetBlock(grid, Options.CanTarget, out block, out distValue, false))
-				return false;
-			return true;
-		}
-
-		/// <remarks>
-		/// Runs on separate thread.
-		/// </remarks>
-		private void TargetLastSeen()
-		{
-			NetworkStorage store = myAntenna == null ? null : myAntenna.Storage;
-
-			if (store == null || store.LastSeenCount == 0)
-			{
-				if (myTargetSeen != null && myTarget.TType == TargetType.None)
-				{
-					IMyCubeBlock block;
-					if (CanTarget(myTargetSeen, out block))
-					{
-						myLogger.debugLog("Retargeting last: " + myTargetSeen.Entity.getBestName() + " at " + myTargetSeen.GetPosition(), "TargetLastSeen()");
-						myTarget = new LastSeenTarget(myTargetSeen, block);
-						SetFiringDirection();
-					}
-				}
-				return;
-			}
-
-			if (Globals.UpdateCount < m_nextCheckLastSeen)
-				return;
-
-			LastSeen fetched;
-			if (myTargetSeen != null && store.TryGetLastSeen(myTargetSeen.Entity.EntityId, out fetched) && fetched.isRecent())
-			{
-				IMyCubeBlock block;
-				if (CanTarget(fetched, out block))
-				{
-					myLogger.debugLog("using previous last seen: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(fetched, block);
-					SetFiringDirection();
-					return;
-				}
-			}
-
-			if (Options.TargetEntityId.HasValue)
-			{
-				if (store.TryGetLastSeen(Options.TargetEntityId.Value, out fetched))
-				{
-					IMyCubeBlock block;
-					CanTarget(fetched, out block); // user chose an ID, so always target it
-					myLogger.debugLog("using last seen from entity id: " + fetched.Entity.getBestName() + " at " + fetched.GetPosition(), "TargetLastSeen()");
-					myTarget = new LastSeenTarget(fetched, block);
-					SetFiringDirection();
-				}
-				else
-					myLogger.debugLog("failed to get last seen from entity id", "TargetLastSeen()");
-				return;
-			}
-
-			Vector3D myPos = MyEntity.GetPosition();
-			LastSeen closest = null;
-			IMyCubeBlock closestBlock = null;
-			double closestDist = double.MaxValue;
-
-			myLogger.debugLog("last seen count: " + store.LastSeenCount, "TargetLastSeen()");
-			store.ForEachLastSeen(seen => {
-				myLogger.debugLog("checking: " + seen.Entity.getBestName(), "TargetLastSeen()");
-				if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
-				{
-					IMyCubeBlock block;
-					if (!CanTarget(seen, out block))
-						return;
-
-					double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
-					if (dist < closestDist)
-					{
-						closestDist = dist;
-						closest = seen;
-						closestBlock = block;
-					}
-				}
-			});
-
-			if (closest == null)
-			{
-				myLogger.debugLog("failed to get a target from last seen", "TargetLastSeen()");
-				m_nextCheckLastSeen = Globals.UpdateCount + 100ul;
-				myTargetSeen = null;
-			}
-			else
-			{
-				myLogger.debugLog("got a target from last seen: " + closest.Entity.getBestName() + " at " + closest.GetPosition(), "TargetLastSeen()");
-				myTarget = new LastSeenTarget(closest, closestBlock);
-				SetFiringDirection();
-				myTargetSeen = closest;
-			}
 		}
 
 		private void TargetSemiActive()

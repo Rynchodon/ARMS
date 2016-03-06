@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -75,6 +76,7 @@ namespace Rynchodon.Weapons
 		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
+		public readonly NetworkClient m_netClient;
 
 		public Control CurrentControl
 		{
@@ -126,6 +128,9 @@ namespace Rynchodon.Weapons
 
 			if (TPro_Shoot == null)
 				TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
+
+			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
+				m_netClient = new NetworkClient(weapon);
 
 			myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
@@ -272,6 +277,9 @@ namespace Rynchodon.Weapons
 			}
 
 			UpdateTarget();
+
+			if ((CurrentTarget.TType == TargetType.None || CurrentTarget is LastSeenTarget) && m_netClient != null)
+				GetLastSeenTarget(m_netClient.GetStorage(), LoadedAmmo.MissileDefinition.MaxTrajectory);
 		}
 
 		private void Update100()
@@ -292,6 +300,14 @@ namespace Rynchodon.Weapons
 
 			if (Interpreter.UpdateInstruction())
 				UpdateOptions();
+			else
+			{
+				if (Interpreter.Options == null)
+					Options = new TargetingOptions();
+				else
+					Options = Interpreter.Options.Clone();
+				Update100_Options_TargetingThread(Options);
+			}
 			if (CurrentControl == Control.Engager)
 				return;
 			if (Interpreter.HasInstructions && (IsNormalTurret || Options.FlagSet(TargetingFlags.Turret)))
@@ -629,7 +645,7 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo == null)
 				customInfo.AppendLine("No ammo");
-			if (CurrentTarget == null || CurrentTarget.Entity == null)
+			if (CurrentTarget.Entity == null)
 				customInfo.AppendLine("No target");
 			else
 			{

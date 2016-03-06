@@ -39,6 +39,7 @@
         GuidanceSeconds=60;
         Acceleration=100;
         RotationPerUpdate=0.017453292519943;
+        HasAntenna=true;
         DetonateRange=3;
         EMP_Strength=300000;
         EMP_Seconds=30;
@@ -101,9 +102,9 @@
         DetonateRange=10;
       </Description>
       <BasicProperties>
-        <DesiredSpeed>2000</DesiredSpeed>
+        <DesiredSpeed>650</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>1500</MaxTrajectory>
+        <MaxTrajectory>2000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
         <BackkickForce>70</BackkickForce>
       </BasicProperties>
@@ -114,7 +115,7 @@
         <MissileAcceleration>100</MissileAcceleration>
         <MissileInitialSpeed>150</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
-        <MissileExplosionDamage>100</MissileExplosionDamage>
+        <MissileExplosionDamage>10</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
     

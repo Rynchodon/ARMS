@@ -25,6 +25,10 @@ namespace Rynchodon.Weapons
 	public class NoTarget : Target
 	{
 
+		public static NoTarget Instance = new NoTarget();
+
+		private NoTarget() { }
+
 		public override IMyEntity Entity
 		{
 			get { return null; }

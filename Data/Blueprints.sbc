@@ -73,7 +73,8 @@
         <Item Amount=".5" TypeId="Ingot" SubtypeId="Silicon" />
         <Item Amount="0.175" TypeId="Ingot" SubtypeId="Uranium" />
         <Item Amount="0.08" TypeId="Ingot" SubtypeId="Platinum" />
-        <Item Amount="3" TypeId="Ingot" SubtypeId="Magnesium" />
+        <Item Amount="1.2" TypeId="Ingot" SubtypeId="Magnesium" />
+        <Item Amount="0.1" TypeId="Ingot" SubtypeId="Gold" />
       </Prerequisites>
       <Result Amount="1" TypeId="AmmoMagazine" SubtypeId="Souper_C1VT_Interceptor_Missile" />
       <BaseProductionTimeInSeconds>8</BaseProductionTimeInSeconds>

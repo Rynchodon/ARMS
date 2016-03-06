@@ -56,8 +56,13 @@ namespace Rynchodon.Weapons
 			}
 		}
 
+		/// <summary>Allows engager/fighter to control the block.</summary>
 		public bool AllowFighterControl = true;
+		/// <summary>Allows guided missile control of fired missiles.</summary>
 		public bool GuidedMissileLauncher = false;
+		/// <summary>Allows targeting with last seen information.</summary>
+		public bool LastSeenTargeting = false;
+		/// <summary>Distance to move the missile spawn box forward.</summary>
 		public float MissileSpawnForward = 0f;
 
 	}
