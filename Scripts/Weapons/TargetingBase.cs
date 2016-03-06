@@ -309,6 +309,9 @@ namespace Rynchodon.Weapons
 		{
 			block = null;
 
+			if (seen.Info == null)
+				return true;
+
 			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
 			if (grid == null)
 				return true;

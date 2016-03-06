@@ -779,7 +779,6 @@ namespace Rynchodon.AntennaRelay
 				if (signalStrength > 0)
 				{
 					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), "PassiveDetection()", Logger.severity.TRACE);
-					LastSeen.UpdateTime flag = radar ? LastSeen.UpdateTime.HasRadar : LastSeen.UpdateTime.HasJammer;
 
 					DetectedInfo detFo;
 					IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;
