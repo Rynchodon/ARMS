@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
+using Rynchodon.Update;
 using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -53,10 +54,11 @@ namespace Rynchodon.AntennaRelay
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 
 		private NetworkNode m_node;
+		private byte m_updateInterval;
 
 		public Player()
 		{
-			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName);
+			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName) { MinimumLevel = Logger.severity.DEBUG };
 
 			Data.Add(UserSettings.ByteSettingName.EnemiesOnHUD, new GpsData());
 			Data.Add(UserSettings.ByteSettingName.NeutralOnHUD, new GpsData());
@@ -77,16 +79,24 @@ namespace Rynchodon.AntennaRelay
 					}
 			}
 
-			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, "Player()", Logger.severity.DEBUG);
-		}
+			m_updateInterval = UserSettings.GetSetting(UserSettings.ByteSettingName.UpdateIntervalHUD);
+			UpdateManager.Register(m_updateInterval, UpdateGPS);
 
-		public void Update100()
-		{
-			UpdateGPS();
+			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, "Player()", Logger.severity.DEBUG);
 		}
 
 		private void UpdateGPS()
 		{
+			byte newInterval = UserSettings.GetSetting(UserSettings.ByteSettingName.UpdateIntervalHUD);
+			if (newInterval != m_updateInterval)
+			{
+				myLogger.debugLog("Update interval changed from " + m_updateInterval + " to " + newInterval, "UpdateGPS()", Logger.severity.DEBUG);
+
+				UpdateManager.Unregister(m_updateInterval, UpdateGPS);
+				UpdateManager.Register(newInterval, UpdateGPS);
+				m_updateInterval = newInterval;
+			}
+
 			IMyEntity character = myPlayer.Controller.ControlledEntity as IMyEntity;
 			if (!(character is IMyCharacter))
 			{
@@ -142,8 +152,6 @@ namespace Rynchodon.AntennaRelay
 
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
-
-				myLogger.debugLog("added to distanceSeen[" + setting + "]: " + distance + ", " + seen.Entity.getBestName(), "UpdateGPS()", Logger.severity.DEBUG);
 			});
 
 			foreach (var pair in Data)

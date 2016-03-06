@@ -66,6 +66,10 @@ By default, there will be 5 markers for the closest enemy, 5 for the closest neu
 You can configure the number of grids that will be displayed through chat commands.
 /arms set [ EnemiesOnHUD / NeutralOnHUD / FactionOnHUD /OwnerOnHUD /MissileOnHUD ] #
 
+You can change the frequency of HUD Updates with the chat command:
+/arms set UpdateIntervalHUD <frequency>
+where <frequency> is a number between 1 and 255. 60 is once per second, 30 is twice per second.
+
 To change the number of marked enemy grids to 10:
 /arms set EnemiesOnHUD 10
 To change the number of marked owned grids to 0:

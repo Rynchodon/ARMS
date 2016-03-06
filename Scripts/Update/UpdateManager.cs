@@ -243,10 +243,7 @@ namespace Rynchodon.Update
 			});
 
 			if (MyAPIGateway.Session.Player != null)
-			{
-				Player p = new Player();
-				RegisterForUpdates(100, p.Update100);
-			}
+				new Player();
 
 			#endregion
 
