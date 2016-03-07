@@ -44,6 +44,7 @@ A solar array of panels or oxygen farms can be instructed to face the sun by add
 [h1]Settings[/h1]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
+type "/arms settings" in game to see the current settings. Not all server settings will be displayed.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowGuidedMissile - allows guided missiles, requires bAllowWeaponControl
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon

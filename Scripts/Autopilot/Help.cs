@@ -5,12 +5,12 @@ using System.Collections.Generic;
 using System.Text;
 using Sandbox.ModAPI;
 
-namespace Rynchodon.Autopilot.Chat
+namespace Rynchodon.Autopilot
 {
 	/// <summary>
 	/// commands here are help commands / topics
 	/// </summary>
-	public static class Help
+	public class Help
 	{
 		private const string pri_designator = "/arms help";
 		private const string alt_designator = "/autopilot help";
@@ -26,31 +26,19 @@ namespace Rynchodon.Autopilot.Chat
 				fromReadme = fromReadme.Replace("[b]", string.Empty);
 				fromReadme = fromReadme.Replace("[/b]", string.Empty);
 
-				this.command = fromReadme.Split(' ')[0].Trim().ToUpper(); // should already be upper
+				this.command = fromReadme.Split(' ')[0].Trim().ToUpper();
 				this.commandExt = fromReadme.Split(':')[0].Trim();
 				this.description = fromReadme.Trim();
 			}
 		}
 
-		private static Dictionary<string, LinkedList<Command>> help_messages;
+		private Dictionary<string, LinkedList<Command>> help_messages;
 
-		private static Logger myLogger = new Logger(null, "Help");
+		private Logger myLogger = new Logger(null, "Help");
 
-		private static bool initialized = false;
+		private bool initialized = false;
 
-		public static void Init()
-		{
-			MyAPIGateway.Utilities.MessageEntered += printCommand;
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Utilities.MessageEntered -= printCommand;
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-		}
-
-		private static void initialize()
+		private void initialize()
 		{
 			myLogger.debugLog("initializing", "initialize()", Logger.severity.TRACE);
 			help_messages = new Dictionary<string, LinkedList<Command>>();
@@ -77,31 +65,23 @@ namespace Rynchodon.Autopilot.Chat
 			initialized = true;
 		}
 
-		private static void printCommand(string chatMessage, ref bool sendToOthers)
+		public void printCommand(string message)
 		{
 			try
 			{
-				chatMessage = chatMessage.ToLower();
-
-				if (!chatMessage.StartsWith(pri_designator) && !chatMessage.StartsWith(alt_designator))
-					return;
-
-				string[] parts = chatMessage.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-				sendToOthers = false;
-
 				if (!initialized)
 					initialize();
 
-				if (parts.Length < 3)
+				if (string.IsNullOrWhiteSpace(message))
 					printListCommands();
 				else
-					printSingleCommand(parts[2]);
+					printSingleCommand(message);
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "printCommand()", Logger.severity.ERROR); }
 		}
 
-		private static void printListCommands()
+		private void printListCommands()
 		{
 			myLogger.debugLog("entered printListCommands()", "printListCommands()", Logger.severity.TRACE);
 			StringBuilder print = new StringBuilder();
@@ -118,7 +98,7 @@ namespace Rynchodon.Autopilot.Chat
 			MyAPIGateway.Utilities.ShowMissionScreen("Autopilot Help", "Help Topics", string.Empty, print.ToString());
 		}
 
-		private static bool printSingleCommand(string command)
+		private bool printSingleCommand(string command)
 		{
 			myLogger.debugLog("entered printSingleCommand()", "printSingleCommand()", Logger.severity.TRACE);
 			StringBuilder print = new StringBuilder();

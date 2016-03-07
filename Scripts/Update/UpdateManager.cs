@@ -4,10 +4,10 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
-using Rynchodon.Autopilot.Chat;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
@@ -291,7 +291,7 @@ namespace Rynchodon.Update
 				//});
 			}
 
-			Help.Init();
+			new ChatHandler();
 
 			#endregion
 		}

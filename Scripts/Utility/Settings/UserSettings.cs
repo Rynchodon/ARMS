@@ -13,6 +13,7 @@ namespace Rynchodon.Settings
 	{
 		public enum ByteSettingName : byte
 		{
+			None,
 			EnemiesOnHUD,
 			NeutralOnHUD,
 			FactionOnHUD,
@@ -47,10 +48,9 @@ namespace Rynchodon.Settings
 			Instance.writeAll();
 		}
 
-		public static void SetSetting(byte[] message, ref int pos)
+		public static void SetSetting(string nameValue)
 		{
-			ByteSettingName name = (ByteSettingName)ByteConverter.GetByte(message, ref pos);
-			SetSetting(name, message[pos]);
+			Instance.SetSetting_FromString(nameValue);
 		}
 
 		private readonly Dictionary<ByteSettingName, SettingSimple<byte>> ByteSettings = new Dictionary<ByteSettingName, SettingSimple<byte>>();
@@ -62,14 +62,12 @@ namespace Rynchodon.Settings
 
 			buildSettings();
 			readAll();
-			MyAPIGateway.Utilities.MessageEntered += ChatHandler;
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
 		private void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			MyAPIGateway.Utilities.MessageEntered -= ChatHandler;
 			Instance = null;
 		}
 
@@ -189,70 +187,63 @@ namespace Rynchodon.Settings
 				myLogger.alwaysLog("Setting does not exist: " + split[0], "parse()", Logger.severity.WARNING);
 		}
 
-		private void ChatHandler(string message, ref bool sendToOthers)
+		private void SetSetting_FromString(string nameValue)
 		{
-			message = message.ToLower();
-			if (!message.StartsWith(chatDesignator) && !message.StartsWith(alt_chatDesignator))
-				return;
-
-			string[] nameValue = message.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-			sendToOthers = false;
-
-			ByteSettingName? name = null;
-			string nameLower = nameValue[2].ToLower();
+			string[] split = nameValue.Split(new char[] { ' ' });
+			ByteSettingName name = ByteSettingName.None;
 
 			// variations
-			if (nameLower.Contains("hud"))
+			if (split[0].Contains("hud"))
 			{
-				if (nameLower.Contains("enemy") || nameLower.Contains("enemies"))
+				if (split[0].Contains("enemy") || split[0].Contains("enemies"))
 				{
-					myLogger.debugLog("EnemiesOnHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("EnemiesOnHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.EnemiesOnHUD;
 				}
-				else if (nameLower.Contains("neutral"))
+				else if (split[0].Contains("neutral"))
 				{
-					myLogger.debugLog("NeutralOnHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("NeutralOnHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.NeutralOnHUD;
 				}
-				else if (nameLower.Contains("faction"))
+				else if (split[0].Contains("faction"))
 				{
-					myLogger.debugLog("FactionOnHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("FactionOnHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.FactionOnHUD;
 				}
-				else if (nameLower.Contains("owner"))
+				else if (split[0].Contains("owner"))
 				{
-					myLogger.debugLog("OwnerOnHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("OwnerOnHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.OwnerOnHUD;
 				}
-				else if (nameLower.Contains("missile"))
+				else if (split[0].Contains("missile"))
 				{
-					myLogger.debugLog("MissileOnHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("MissileOnHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.MissileOnHUD;
 				}
-				else if (nameLower.Contains("interval") || nameLower.Contains("update"))
+				else if (split[0].Contains("interval") || split[0].Contains("update"))
 				{
-					myLogger.debugLog("UpdateIntervalHUD variation: " + nameLower, "ChatHandler()");
+					myLogger.debugLog("UpdateIntervalHUD variation: " + split[0], "ChatHandler()");
 					name = ByteSettingName.UpdateIntervalHUD;
 				}
 			}
 
-			if (name == null)
+			if (name == ByteSettingName.None)
 			{
-				myLogger.debugLog("failed to find enum for " + nameLower, "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + nameLower + '"');
+				myLogger.debugLog("failed to find enum for " + split[0], "ChatHandler()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + split[0] + '"');
 				return;
 			}
 
 			byte value;
-			if (!byte.TryParse(nameValue[3], out value))
+			if (!byte.TryParse(split[1], out value))
 			{
 				myLogger.debugLog("failed to parse: " + nameValue[3], "ChatHandler()", Logger.severity.INFO);
 				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + nameValue[3] + '"');
 				return;
 			}
 
-			SetSetting(name.Value, value);
-			MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name.Value + " to " + value);
+			SetSetting(name, value);
+			MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + value);
 		}
 
 	}

@@ -119,7 +119,7 @@ L <name>, <f>, <u> : <u> is the direction of the landing block that will be used
 LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
 
 N <block name> : Navigation block. If the block is a Solar Panel or an Oxygen Farm, face it towards the sun. If the block is a laser antenna, face it towards its target. N may be combined with B and G to orient the ship relative to the B block.
-Example [ N Solar Panel ] - Face Solar Panel towards the sun.
+Example - [ N Solar Panel ] - Face Solar Panel towards the sun.
 Example - [ N Laser Antenna : C 0,0,0 ] - Face "Laser Antenna" towards its target coordinates and fly the ship to {0,0,0}
 Example - [ N Flight Seat : C 0,0,0 ] - Fly to {0,0,0} with "Flight Seat" facing the destination
 N <block name>, <f> : The direction <f> will be treated as the forward direction of the block.
