@@ -122,42 +122,83 @@ namespace Rynchodon
 		public static IMyIdentity GetIdentity_Safe(this IMyCharacter character)
 		{
 			string DisplayName = (character as IMyEntity).DisplayName;
-			List<IMyIdentity> match = new List<IMyIdentity>();
-			UsingShared(() => MyAPIGateway.Players.GetAllIdentites(match, (id) => { return id.DisplayName == DisplayName; }));
-			if (match.Count == 1)
-				return match[0];
-			if (match.Count > 1)
-			{
-				foreach (IMyIdentity id in match)
-					if (!id.IsDead)
-						return id;
-				return match[0];
-			}
-			return null;
+			IMyIdentity living = null;
+			IMyIdentity dead = null;
+			UsingShared(() => {
+				MyAPIGateway.Players.GetAllIdentites(null, id => {
+					if (living == null && id.DisplayName == DisplayName)
+					{
+						if (id.IsDead)
+							dead = id;
+						else
+							living = id;
+					}
+					return false;
+				});
+			});
+			return living ?? dead;
+		}
+
+		public static IMyIdentity GetIdentity_Safe(this IMyPlayer player)
+		{
+			IMyIdentity living = null;
+			IMyIdentity dead = null;
+			UsingShared(() => {
+				MyAPIGateway.Players.GetAllIdentites(null, id => {
+					if (living == null && id.IdentityId == player.IdentityId)
+					{
+						if (id.IsDead)
+							dead = id;
+						else
+							living = id;
+					}
+					return false;
+				});
+			});
+			return living ?? dead;
 		}
 
 		public static IMyPlayer GetPlayer_Safe(this IMyIdentity identity)
 		{
-			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == identity.PlayerId; });
-			if (match.Count == 1)
-				return match[0];
-			return null;
+			IMyPlayer match = null;
+			UsingShared(() => {
+				MyAPIGateway.Players.GetPlayers(null, player => {
+					if (match == null && player.IdentityId == identity.IdentityId)
+						match = player;
+					return false;
+				});
+			});
+			return match;
 		}
 
 		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
 		{
 			string DisplayName = (character as IMyEntity).DisplayName;
-			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.DisplayName == DisplayName; });
-			if (match.Count == 1)
-				return match[0];
-			return null;
+			IMyPlayer match = null;
+			UsingShared(() => {
+				MyAPIGateway.Players.GetPlayers(null, player => {
+					if (match == null && player.DisplayName == DisplayName)
+						match = player;
+					return false;
+				});
+			});
+			return match;
 		}
 
-		public static List<IMyPlayer> GetPlayers_Safe(this IMyPlayerCollection PlayColl, Func<IMyPlayer, bool> collect = null)
+		public static void GetPlayers_Safe(this IMyPlayerCollection PlayColl, List<IMyPlayer> players, Func<IMyPlayer, bool> collect = null)
 		{
-			List<IMyPlayer> players = new List<IMyPlayer>();
 			UsingShared(() => PlayColl.GetPlayers(players, collect));
-			return players;
+		}
+
+		public static IMyPlayer GetFirstPlayer_Safe(this IMyPlayerCollection playColl, Func<IMyPlayer, bool> match)
+		{
+			IMyPlayer result = null;
+			UsingShared(() => playColl.GetPlayers(null, player => {
+				if (result == null && match(player))
+					result = player;
+				return false;
+			}));
+			return result;
 		}
 
 		private static void LogLockStats(string source)

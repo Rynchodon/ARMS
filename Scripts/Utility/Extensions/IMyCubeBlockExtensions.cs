@@ -49,11 +49,10 @@ namespace Rynchodon
 		/// </summary>
 		public static bool OwnedNPC(this IMyCubeBlock block)
 		{
-			long Owner = block.OwnerId;
-			if (Owner == 0)
+			if (block.OwnerId == 0)
 				return false;
-			List<IMyPlayer> match = MyAPIGateway.Players.GetPlayers_Safe((player) => { return player.PlayerID == Owner; });
-			return match.Count == 0;
+
+			return MyAPIGateway.Players.GetFirstPlayer_Safe(player => player.PlayerID == block.OwnerId) == null;
 		}
 
 		/// <summary>

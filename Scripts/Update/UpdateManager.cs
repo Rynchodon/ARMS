@@ -768,7 +768,7 @@ namespace Rynchodon.Update
 						try { constructor.Invoke(player); }
 						catch (Exception ex)
 						{
-							myLogger.alwaysLog("Exceptiong in player constructor: " + ex, "CheckPlayerJoinLeave()", Logger.severity.ERROR);
+							myLogger.alwaysLog("Exception in player constructor: " + ex, "CheckPlayerJoinLeave()", Logger.severity.ERROR);
 							Logger.debugNotify("Exception in player constructor", 10000, Logger.severity.ERROR);
 						}
 				});

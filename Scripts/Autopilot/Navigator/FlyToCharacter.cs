@@ -1,0 +1,117 @@
+using System; // (partial) from mscorlib.dll
+using System.Text; // from mscorlib.dll
+using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot.Data;
+using Rynchodon.Autopilot.Movement;
+using Sandbox.ModAPI; // from Sandbox.Common.dll
+
+namespace Rynchodon.Autopilot.Navigator
+{
+	public class FlyToCharacter : NavigatorMover, INavigatorRotator
+	{
+
+		private enum Stage : byte { Searching, Flying, Idle }
+
+		private static readonly TimeSpan timeout = new TimeSpan(0, 1, 0);
+
+		private readonly Logger m_logger;
+		private readonly string m_charName;
+
+		private ulong m_nextLastSeen;
+		private LastSeen m_character;
+		private DateTime m_timeoutAt;
+
+		public FlyToCharacter(Mover mover, AllNavigationSettings navSet, string charName)
+			: base(mover, navSet)
+		{
+			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => charName);
+			this.m_charName = charName.LowerRemoveWhitespace();
+			this.m_timeoutAt = DateTime.UtcNow + timeout;
+
+			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
+		}
+
+		public override void Move()
+		{
+			if (Globals.UpdateCount >= m_nextLastSeen)
+			{
+				m_nextLastSeen = Globals.UpdateCount + 100ul;
+				UpdateLastSeen();
+			}
+
+			if (m_character == null)
+			{
+				m_mover.StopMove();
+				if (DateTime.UtcNow > m_timeoutAt)
+				{
+					m_logger.debugLog("terminating search", "Move()");
+					m_navSet.OnTaskComplete_NavMove();
+				}
+				return;
+			}
+
+			if (m_navSet.DistanceLessThanDestRadius())
+			{
+				m_logger.debugLog("Reached player", "Move()", Logger.severity.INFO);
+				m_navSet.OnTaskComplete_NavMove();
+			}
+			else
+				m_mover.CalcMove(m_navSet.Settings_Current.NavigationBlock, m_character.Entity.GetPosition(), m_character.Entity.Physics.LinearVelocity, true);
+		}
+
+		public void Rotate()
+		{
+			if (m_character != null)
+				m_mover.CalcRotate();
+			else
+				m_mover.StopRotate();
+		}
+
+		public override void AppendCustomInfo(StringBuilder customInfo)
+		{
+			if (m_character != null)
+				customInfo.Append("Flying to player: ");
+			else
+				customInfo.Append("Searching for player: ");
+			customInfo.AppendLine(m_charName);
+		}
+
+		private void UpdateLastSeen()
+		{
+			NetworkStorage store = m_controlBlock.NetClient.GetStorage();
+			if (store == null)
+			{
+				m_logger.debugLog("failed to get storage", "UpdateLastSeen()", Logger.severity.INFO);
+				m_character = null;
+				return;
+			}
+
+			if (m_character != null)
+				if (store.TryGetLastSeen(m_character.Entity.EntityId, out m_character))
+				{
+					m_logger.debugLog("got updated last seen", "UpdateLastSeen()");
+					return;
+				}
+				else
+				{
+					m_logger.debugLog("failed to update last seen", "UpdateLastSeen()", Logger.severity.WARNING);
+					m_character = null;
+					m_timeoutAt = DateTime.UtcNow + timeout;
+				}
+
+			store.SearchLastSeen((LastSeen seen) => {
+				m_logger.debugLog("seen: " + seen.Entity.getBestName(), "UpdateLastSeen()");
+				if (seen.Entity is IMyCharacter && seen.Entity.DisplayName.LowerRemoveWhitespace().Contains(m_charName))
+				{
+					m_logger.debugLog("found a last seen for character", "UpdateLastSeen()");
+					m_character = seen;
+					return true;
+				}
+				return false;
+			});
+
+			m_logger.debugLog(m_character == null, "failed to find a character from last seen", "UpdateLastSeen()");
+		}
+
+	}
+}

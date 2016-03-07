@@ -256,7 +256,10 @@ namespace Rynchodon.Autopilot.Instruction
 				switch (split[0].ToLower())
 				{
 					case "orbit":
-							return getAction_orbit(out wordAction, split);
+						return getAction_orbit(out wordAction, split);
+					case "char":
+					case "character":
+						return getAction_FlyToCharacter(out wordAction, split);
 				}
 
 			wordAction = null;
@@ -787,12 +790,23 @@ namespace Rynchodon.Autopilot.Instruction
 			return false;
 		}
 
-		private bool getAction_orbit(out Action instructionAction, string[] dataLowerCase)
+		private bool getAction_orbit(out Action instructionAction, string[] instruction)
 		{
-			m_logger.debugLog("entered getAction_orbit()", "getAction_orbit()");
-			if (dataLowerCase.Length == 2)
+			if (instruction.Length == 2)
 			{
-				instructionAction = () => { new Orbiter(Mover, NavSet, dataLowerCase[1]); };
+				instructionAction = () => { new Orbiter(Mover, NavSet, instruction[1]); };
+				return true;
+			}
+
+			instructionAction = null;
+			return false;
+		}
+
+		private bool getAction_FlyToCharacter(out Action instructionAction, string[] instruction)
+		{
+			if (instruction.Length == 2)
+			{
+				instructionAction = () => { new FlyToCharacter(Mover, NavSet, instruction[1]); };
 				return true;
 			}
 

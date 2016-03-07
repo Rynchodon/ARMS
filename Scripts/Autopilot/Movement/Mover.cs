@@ -40,10 +40,8 @@ namespace Rynchodon.Autopilot.Movement
 		private GyroProfiler myGyro;
 
 		private Vector3 moveForceRatio = Vector3.Zero;
-		private Vector3 value_rotateForceRatio = Vector3.Zero;
 		private Vector3 rotateForceRatio = Vector3.Zero;
 		private Vector3 m_moveAccel;
-		private bool m_moveEnableDampeners;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
 		private DateTime updated_prevAngleVel;
@@ -95,8 +93,8 @@ namespace Rynchodon.Autopilot.Movement
 		public void StopMove(bool enableDampeners = true)
 		{
 			moveForceRatio = Vector3.Zero;
+			m_moveAccel = Vector3.Zero;
 			Block.SetDamping(enableDampeners);
-			m_moveEnableDampeners = enableDampeners;
 		}
 
 		/// <summary>
@@ -112,10 +110,8 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_stopped)
 				return;
 
-			moveForceRatio = Vector3.Zero;
-			rotateForceRatio = Vector3.Zero;
-			Block.SetDamping(true);
-			m_moveEnableDampeners = true;
+			StopMove();
+			StopRotate();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
 			m_stopped = true;
 		}
@@ -215,7 +211,7 @@ namespace Rynchodon.Autopilot.Movement
 			moveForceRatio = ToForceRatio(m_moveAccel);
 
 			// dampeners
-			m_moveEnableDampeners = false;
+			bool enableDampeners = false;
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -245,13 +241,13 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					myLogger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
-					m_moveEnableDampeners = true;
+					enableDampeners = true;
 				}
 				else
 					myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 			}
 
-			Block.SetDamping(m_moveEnableDampeners);
+			Block.SetDamping(enableDampeners);
 
 			myLogger.debugLog("destDisp: " + destDisp
 				+ ", destVelocity: " + destVelocity
@@ -366,22 +362,23 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			if (m_moveAccel.LengthSquared() > 100f)
 			{
-				myLogger.debugLog("rotate to accel", "CalcRotate()");
+				myLogger.debugLog("rotate to accel, m_moveAccel: " + m_moveAccel, "CalcRotate()");
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
+				return;
 			}
-			else
-				if (!InGravity_LevelOff())
-					if (NavSet.Settings_Current.NearingDestination)
-					{
-						myLogger.debugLog("rotate to stop", "CalcRotate()");
-						// rotate to stop
-						CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
-					}
-					else
-					{
-						myLogger.debugLog("stopping rotation", "CalcRotate()");
-						StopRotate();
-					}
+
+			if (InGravity_LevelOff())
+				return;
+
+			if (NavSet.Settings_Current.NearingDestination)
+			{
+				myLogger.debugLog("rotate to stop", "CalcRotate()");
+				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+				return;
+			}
+
+			myLogger.debugLog("stopping rotation", "CalcRotate()");
+			StopRotate();
 		}
 
 		/// <summary>
@@ -631,12 +628,12 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				if (!myPathfinder.CanMove)
 				{
-					myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
+					//myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
 					StopMove();
 				}
 				if (!myPathfinder.CanRotate)
 				{
-					myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
+					//myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
 					StopRotate();
 				}
 			}
@@ -647,7 +644,7 @@ namespace Rynchodon.Autopilot.Movement
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
-				myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
+				//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
 				MoveAndRotateStop();
 				return;
 			}
@@ -702,7 +699,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			myLogger.debugLog(myThrust == null, "myThrust == null", "ThrustersOverWorked()", Logger.severity.FATAL);
 			if (m_overworked)
-				ratio += 0.05f;
+				ratio -= 0.05f;
 			m_overworked = myThrust.m_gravityReactRatio.AbsMax() >= ratio;
 			return m_overworked;
 		}
