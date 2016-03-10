@@ -179,13 +179,28 @@ def build_help():
 
 
 def copyWithExtension(l_from, l_to, l_ext):
+	# delete orphan files
+	for path, dirs, files, in os.walk(l_to):
+		for file in files:
+			source = path.replace(l_to, l_from) + '/' + file
+			if not os.path.isfile(source):
+				print ("\tdeleting orphan file: " + file)
+				os.remove(path + '/' + file)
+	
 	l_ext = l_ext.lower()
 	for path, dirs, files, in os.walk(l_from):
 		for file in files:
 			if file.lower().endswith(l_ext):
-				target = l_to + path.replace(l_from, '')
-				createDir(target)
-				shutil.copy2(path + '/' + file, target)
+				target = path.replace(l_from, l_to)
+				sourceFile = path + '/' + file
+				if os.path.isdir(target):
+					targetFile = target + '/' + file
+					if (os.path.exists(targetFile) and os.path.getmtime(targetFile) == os.path.getmtime(sourceFile)):
+						continue
+				else:
+					createDir(target)
+				print ("Copying file: " + file)
+				shutil.copy2(sourceFile, target)
 				
 
 print ('\n\n')
@@ -200,14 +215,12 @@ createDir(finalDir)
 createDir(finalDirDev)
 
 # erase old data
-for file in os.listdir(finalDir):
-	path = finalDir + '\\' + file
-	if (os.path.isdir(path)):
-		eraseDir(path)
-for file in os.listdir(finalDirDev):
-	path = finalDirDev + '\\' + file
-	if (os.path.isdir(path)):
-		eraseDir(path)
+path = finalDir + '\\Data'
+if (os.path.isdir(path)):
+	eraseDir(path)
+path = finalDirDev + '\\Data'
+if (os.path.isdir(path)):
+	eraseDir(path)
 
 # get modules
 os.chdir(startDir + '/Scripts/')
@@ -238,8 +251,8 @@ build_help()
 
 os.chdir(startDir)
 
+size = 0
 for path, dirs, files in os.walk('Archive'):
-	size = 0
 	for f in files:
 		fp = os.path.join(path, f)
 		size += os.path.getsize(fp)
