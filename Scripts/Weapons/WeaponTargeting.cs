@@ -93,7 +93,7 @@ namespace Rynchodon.Weapons
 					if (value == Control.Off)
 						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
 					else
-						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + CubeBlock.WorldMatrix.Forward * 10));
+						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10));
 				}
 
 				value_currentControl = value;
@@ -165,7 +165,12 @@ namespace Rynchodon.Weapons
 					else
 					{
 						myLogger.debugLog("Holding fire", "Update_Targeting()");
-						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock);
+						IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
+						func.GetActionWithName("Shoot_Off").Apply(CubeBlock);
+
+						// Shoot_Off is not working for gatling/interior turrets, this seems to do the trick
+						if (myTurret != null)
+							myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10);
 					}
 				}
 

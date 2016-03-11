@@ -28,7 +28,11 @@ namespace Rynchodon.Weapons
 		Destroy = 1 << 8,
 
 		Projectile = Missile + Meteor + Moving,
-		AllGrid = LargeGrid + SmallGrid + Station
+		AllGrid = LargeGrid + SmallGrid + Station,
+
+		LargeShip = LargeGrid,
+		SmallShip = SmallGrid,
+		AllShip = AllGrid,
 	}
 
 	[Flags]

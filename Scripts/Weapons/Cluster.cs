@@ -10,14 +10,14 @@ namespace Rynchodon.Weapons
 	{
 
 		private readonly Logger m_logger;
+		private readonly float MinOffMult;
 
 		public readonly IMyEntity Master;
 		public readonly List<IMyEntity> Slaves;
 		public readonly List<Vector3> SlaveOffsets;
-		private readonly float MinOffMult;
 		public float OffsetMulti;
 
-		public Cluster(List<IMyEntity> missiles)
+		public Cluster(List<IMyEntity> missiles, IMyEntity launcher)
 		{
 			m_logger = new Logger(GetType().Name);
 
@@ -36,6 +36,11 @@ namespace Rynchodon.Weapons
 					masterDistSq = distSq;
 				}
 			}
+
+			// master must initially have same orientation as launcher or rail will cause a rotation
+			MatrixD masterMatrix = launcher.WorldMatrix;
+			masterMatrix.Translation = Master.WorldMatrix.Translation;
+			MainLock.UsingShared(() => Master.WorldMatrix = masterMatrix);
 
 			Vector3 masterPos = Master.GetPosition();
 			MatrixD masterInv = Master.WorldMatrixNormalizedInv;
@@ -58,7 +63,7 @@ namespace Rynchodon.Weapons
 				SlaveOffsets[i] = SlaveOffsets[i] / Furthest;
 
 			MinOffMult = Furthest * 2f;
-			OffsetMulti = Furthest;
+			OffsetMulti = Furthest * 1e6f; // looks pretty
 			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, "Cluster()", Logger.severity.DEBUG);
 		}
 

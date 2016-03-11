@@ -14,11 +14,6 @@ using VRageMath;
 
 namespace Rynchodon.Weapons.Guided
 {
-	/*
-	 * TODO:
-	 * Lockon notification for ready-to-launch and to warn of incoming (only some tracking types)
-	 * SA*
-	 */
 	public class GuidedMissile : TargetingBase
 	{
 
@@ -389,27 +384,30 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void UpdateCluster()
 		{
-			Vector3D[] slavePosition = new Vector3D[myCluster.Slaves.Count];
-			float moveBy = Globals.UpdateDuration;
-			float moveBySq = moveBy * moveBy;
+			const float moveSpeed = 3f;
+			const float moveUpdateSq = moveSpeed * moveSpeed * Globals.UpdateDuration * Globals.UpdateDuration;
+
+			Vector3[] slaveVelocity = new Vector3[myCluster.Slaves.Count];
 			if (myTarget.Entity != null)
 				myCluster.AdjustMulti(myTarget.Entity.LocalAABB.GetLongestDim() * 0.5f);
 
-			for (int i = 0; i < slavePosition.Length; i++)
+			MatrixD masterMatrix = MyEntity.WorldMatrix;
+
+			for (int i = 0; i < slaveVelocity.Length; i++)
 			{
-				Vector3D slavePos = myCluster.Slaves[i].GetPosition() - MyEntity.GetPosition();
-				Vector3D destination = myCluster.SlaveOffsets[i] * myCluster.OffsetMulti;
+				Vector3D slavePos = myCluster.Slaves[i].GetPosition();
+				Vector3D offset = myCluster.SlaveOffsets[i] * myCluster.OffsetMulti;
+				Vector3D destination;
+				Vector3D.Transform(ref offset, ref masterMatrix, out destination);
 				double distSquared = Vector3D.DistanceSquared(slavePos, destination);
 
-				if (distSquared > moveBySq)
+				if (distSquared >= moveUpdateSq)
 				{
-					Vector3D direction = (destination - slavePos) / (float)Math.Sqrt(distSquared);
-					slavePosition[i] = slavePos + direction * moveBy;
+					slaveVelocity[i] = (destination - slavePos) / (float)Math.Sqrt(distSquared) * moveSpeed;
+					myLogger.debugLog("slave: " + i + ", pos: " + slavePos + ", destination: " + destination + ", dist: " + ((float)Math.Sqrt(distSquared)) + ", velocity: " + slaveVelocity[i], "UpdateCluster()");
 				}
 				else
-				{
-					slavePosition[i] = destination;
-				}
+					slaveVelocity[i] = Vector3.Zero;
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
@@ -417,15 +415,15 @@ namespace Rynchodon.Weapons.Guided
 					return;
 
 				myLogger.debugLog(myCluster == null, "myCluster == null", "UpdateCluster()", Logger.severity.FATAL);
+				MatrixD worldMatrix = MyEntity.WorldMatrix;
 
 				for (int i = 0; i < myCluster.Slaves.Count; i++)
 				{
-					if (myCluster.Slaves[i].Closed || i >= slavePosition.Length)
+					if (myCluster.Slaves[i].Closed)
 						continue;
-					MatrixD worldMatrix = MyEntity.WorldMatrix;
-					worldMatrix.Translation += slavePosition[i];
+					worldMatrix.Translation = myCluster.Slaves[i].GetPosition();
 					myCluster.Slaves[i].WorldMatrix = worldMatrix;
-					myCluster.Slaves[i].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity;
+					myCluster.Slaves[i].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity + slaveVelocity[i];
 				}
 
 			}, myLogger);

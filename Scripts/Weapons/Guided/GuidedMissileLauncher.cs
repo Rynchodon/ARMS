@@ -212,7 +212,7 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster), this, initialTarget);
+					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, initialTarget);
 					StartCooldown();
 					m_cluster.Clear();
 				}
