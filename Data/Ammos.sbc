@@ -85,7 +85,7 @@
         <MissileExplosionRadius>1</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_B3MP_Missile.mwm</MissileModelName>
         <MissileAcceleration>5</MissileAcceleration>
-        <MissileInitialSpeed>10</MissileInitialSpeed>
+        <MissileInitialSpeed>15</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>10000</MissileExplosionDamage>
       </MissileProperties>

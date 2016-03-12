@@ -172,52 +172,15 @@ namespace Rynchodon.Weapons.Guided
 					}
 				}
 
-				LastSeen initialTarget = null;
-				NetworkStorage store = m_netClient.GetStorage();
-				if (store != null)
-				{
-					if (m_weaponTarget.Options.TargetEntityId.HasValue)
-						store.TryGetLastSeen(m_weaponTarget.Options.TargetEntityId.Value, out initialTarget);
-					else
-					{
-						myLogger.debugLog("Searching for target", "MissileBelongsTo()", Logger.severity.DEBUG);
-						float closestDistanceSquared = float.MaxValue;
-						store.ForEachLastSeen(seen => {
-							if (!seen.isRecent())
-								return;
-							IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
-							if (grid != null && CubeBlock.canConsiderHostile(grid) && m_weaponTarget.Options.CanTargetType(grid))
-							{
-								IMyCubeBlock block;
-								double distValue;
-
-								if ((m_weaponTarget.Options.blocksToTarget.Count != 0 || (m_weaponTarget.Options.CanTarget & TargetType.Destroy) != 0) &&
-									!m_weaponTarget.GetTargetBlock(grid, m_weaponTarget.Options.CanTarget, out block, out distValue, false))
-								{
-									myLogger.debugLog("rejected grid, no target blocks: " + grid.DisplayName, "MissileBelongsTo()");
-									return;
-								}
-
-								float distSquared = Vector3.DistanceSquared(CubeBlock.GetPosition(), grid.GetCentre());
-								if (distSquared < closestDistanceSquared)
-								{
-									closestDistanceSquared = distSquared;
-									initialTarget = seen;
-								}
-							}
-						});
-					}
-				}
-
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, initialTarget);
+					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, this, initialTarget);
+					new GuidedMissile(missile, this);
 			}
 			catch (Exception ex)
 			{

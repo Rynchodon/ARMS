@@ -198,7 +198,6 @@ namespace Rynchodon.AntennaRelay
 		private static Logger staticLogger = new Logger("N/A", "RadarEquipment");
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
-		private static Dictionary<long, List<RadarEquipment>> RadarsByGridId = new Dictionary<long, List<RadarEquipment>>();
 
 		static RadarEquipment()
 		{
@@ -211,7 +210,6 @@ namespace Rynchodon.AntennaRelay
 			staticLogger = null;
 			myThread = null;
 			AllDefinitions = null;
-			RadarsByGridId = null;
 		}
 
 		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>
@@ -231,30 +229,33 @@ namespace Rynchodon.AntennaRelay
 		{
 			strongestEquipment = null;
 			powerLevel = 0f;
-
-			List<RadarEquipment> radarsOnGrid;
-			if (!RadarsByGridId.TryGetValue(gridLastSeen.Entity.EntityId, out radarsOnGrid))
-				return false;
+			IMyCubeBlock strongest_in = null;
+			float powerLevel_in = 0f;
 
 			bool recentRadar = gridLastSeen.isRecent_Radar();
 			bool recentJammer = gridLastSeen.isRecent_Jam();
 
-			foreach (RadarEquipment re in radarsOnGrid)
-			{
-				if (!re.IsWorking)
-					continue;
-
-				float reStr = 0f;
-				if (recentRadar && re.myDefinition.Radar) // PowerLevel_Radar can be > 0 even if it is not a radar
-					reStr = re.PowerLevel_Radar;
-				if (recentJammer && re.PowerLevel_Jammer > reStr)
-					reStr = re.PowerLevel_Jammer;
-				if (reStr > powerLevel)
+			Registrar.ForEach((RadarEquipment re) => {
+				if (re.CubeBlock.CubeGrid == gridLastSeen.Entity)
 				{
-					powerLevel = reStr;
-					strongestEquipment = re.CubeBlock;
+					if (!re.IsWorking)
+						return;
+
+					float reStr = 0f;
+					if (recentRadar && re.myDefinition.Radar) // PowerLevel_Radar can be > 0 even if it is not a radar
+						reStr = re.PowerLevel_Radar;
+					if (recentJammer && re.PowerLevel_Jammer > reStr)
+						reStr = re.PowerLevel_Jammer;
+					if (reStr > powerLevel_in)
+					{
+						powerLevel_in = reStr;
+						strongest_in = re.CubeBlock;
+					}
 				}
-			}
+			});
+
+			strongestEquipment = strongest_in;
+			powerLevel = powerLevel_in;
 
 			return strongestEquipment != null;
 		}
@@ -372,14 +373,6 @@ namespace Rynchodon.AntennaRelay
 
 			Registrar.Add(block, this);
 
-			List<RadarEquipment> myGridList;
-			if (!RadarsByGridId.TryGetValue(block.CubeGrid.EntityId, out myGridList))
-			{
-				myGridList = new List<RadarEquipment>();
-				RadarsByGridId.Add(block.CubeGrid.EntityId, myGridList);
-			}
-			myGridList.Add(this);
-
 			TermBlock.OnClose += CustomInfoBlock_OnClose;
 
 			TermBlock.AppendingCustomInfo += AppendingCustomInfo;
@@ -428,8 +421,6 @@ namespace Rynchodon.AntennaRelay
 		{
 			ClearJamming();
 			TermBlock.AppendingCustomInfo -= AppendingCustomInfo;
-			if (RadarsByGridId != null)
-				RadarsByGridId[CubeBlock.CubeGrid.EntityId].Remove(this);
 		}
 
 		public void Update100()

@@ -345,7 +345,7 @@ namespace Rynchodon.Weapons
 		/// Attempts to choose a targetable block from a LastSeen.
 		/// </summary>
 		/// <returns>True iff the LastSeen can be targeted, either because it has no blocks or because a block was found.</returns>
-		protected bool ChooseBlock(LastSeen seen, out IMyCubeBlock block)
+		private bool ChooseBlock(LastSeen seen, out IMyCubeBlock block)
 		{
 			block = null;
 

@@ -199,7 +199,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, LastSeen initialTarget)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher)
 			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
@@ -221,15 +221,16 @@ namespace Rynchodon.Weapons.Guided
 
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
-			if (initialTarget != null)
+
+			NetworkStorage storage = launcher.m_netClient.GetStorage();
+			if (storage == null)
 			{
-				IMyCubeBlock initialBlock;
-				if (ChooseBlock(initialTarget, out initialBlock))
-				{
-					myLogger.debugLog("initial target: " + initialTarget.Entity.getBestName() + ", block: " + initialBlock.getBestName(), "GuidedMissile()", Logger.severity.DEBUG);
-					myTarget = new LastSeenTarget(initialTarget, initialBlock);
-					CurrentTarget = myTarget;
-				}
+				myLogger.debugLog("failed to get storage for launcher", "GuidedMissile()", Logger.severity.WARNING);
+			}
+			else
+			{
+				myLogger.debugLog("getting initial target from launcher", "GuidedMissile()", Logger.severity.DEBUG);
+				GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
 			}
 
 			if (myAmmo.RadarDefinition != null)
@@ -243,12 +244,12 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
-			myLogger.debugLog("Options: " + Options + ", initial target: " + (initialTarget == null ? "null" : initialTarget.Entity.getBestName()), "GuidedMissile()");
+			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, LastSeen initialTarget)
-			: this(missiles.Master, launcher, initialTarget)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher)
+			: this(missiles.Master, launcher)
 		{
 			myCluster = missiles;
 		}
@@ -386,6 +387,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			const float moveSpeed = 3f;
 			const float moveUpdateSq = moveSpeed * moveSpeed * Globals.UpdateDuration * Globals.UpdateDuration;
+			const float maxVelChangeSq = 10000f * 10000f * Globals.UpdateDuration * Globals.UpdateDuration;
 
 			Vector3[] slaveVelocity = new Vector3[myCluster.Slaves.Count];
 			if (myTarget.Entity != null)
@@ -414,6 +416,18 @@ namespace Rynchodon.Weapons.Guided
 				if (Stopped)
 					return;
 
+				// when master hits a target, before it explodes, there are a few frames with strange velocity
+				Vector3 masterVelocity = myCluster.Master.Physics.LinearVelocity;
+				float distSq;
+				Vector3.DistanceSquared(ref masterVelocity, ref myCluster.masterVelocity, out distSq);
+				if (distSq > maxVelChangeSq)
+				{
+					myLogger.debugLog("massive change in master velocity, terminating", "UpdateCluster()", Logger.severity.INFO);
+					m_stage = Stage.Terminated;
+					return;
+				}
+				myCluster.masterVelocity = masterVelocity;
+
 				myLogger.debugLog(myCluster == null, "myCluster == null", "UpdateCluster()", Logger.severity.FATAL);
 				MatrixD worldMatrix = MyEntity.WorldMatrix;
 
@@ -424,6 +438,7 @@ namespace Rynchodon.Weapons.Guided
 					worldMatrix.Translation = myCluster.Slaves[i].GetPosition();
 					myCluster.Slaves[i].WorldMatrix = worldMatrix;
 					myCluster.Slaves[i].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity + slaveVelocity[i];
+					myLogger.debugLog("slave: " + i + ", linear velocity: " + myCluster.Slaves[i].Physics.LinearVelocity, "UpdateCluster()");
 				}
 
 			}, myLogger);

@@ -56,6 +56,11 @@ namespace Rynchodon.AntennaRelay
 			return value_node;
 		}
 
+		/// <summary>
+		/// Gets the NetworkStorage this client is connected to or null, if it is not connected to a storage.
+		/// Always test against null, player may forget to put an antenna on the ship.
+		/// </summary>
+		/// <returns>The NetworkStorage this client is connected to or null.</returns>
 		public NetworkStorage GetStorage()
 		{
 			NetworkNode node = GetNode();

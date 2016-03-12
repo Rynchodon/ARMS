@@ -16,6 +16,7 @@ namespace Rynchodon.Weapons
 		public readonly List<IMyEntity> Slaves;
 		public readonly List<Vector3> SlaveOffsets;
 		public float OffsetMulti;
+		public Vector3 masterVelocity;
 
 		public Cluster(List<IMyEntity> missiles, IMyEntity launcher)
 		{
@@ -36,6 +37,8 @@ namespace Rynchodon.Weapons
 					masterDistSq = distSq;
 				}
 			}
+
+			masterVelocity = Master.Physics.LinearVelocity;
 
 			// master must initially have same orientation as launcher or rail will cause a rotation
 			MatrixD masterMatrix = launcher.WorldMatrix;
