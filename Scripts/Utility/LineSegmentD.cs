@@ -37,6 +37,11 @@ namespace Rynchodon
 			m_line = new LineD() { From = from, To = to };
 		}
 
+		public LineSegmentD(ref Vector3D from, ref Vector3D to)
+		{
+			m_line = new LineD() { From = from, To = to };
+		}
+
 		public LineSegmentD Clone()
 		{
 			return new LineSegmentD()
@@ -124,6 +129,11 @@ namespace Rynchodon
 
 		public void Move(Vector3D shift)
 		{
+			Move(ref shift);
+		}
+
+		public void Move(ref Vector3D shift)
+		{
 			m_line.From += shift;
 			m_line.To += shift;
 			m_calculatedBox = false;
@@ -137,6 +147,18 @@ namespace Rynchodon
 		/// </remarks>
 		/// <returns>The minimum distance squared between the line and the point</returns>
 		public double DistanceSquared(Vector3D point)
+		{
+			return DistanceSquared(ref point);
+		}
+
+		/// <summary>
+		/// Minimum distance squared between a line and a point.
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		/// <returns>The minimum distance squared between the line and the point</returns>
+		public double DistanceSquared(ref Vector3D point)
 		{
 			if (From == To)
 				return Vector3D.DistanceSquared(From, point);
@@ -161,6 +183,17 @@ namespace Rynchodon
 		/// <param name="point">The point to test.</param>
 		/// <returns>True iff the point lies within the cylinder</returns>
 		public bool PointInCylinder(double radius, Vector3D point)
+		{
+			return PointInCylinder(radius, ref point);
+		}
+
+		/// <summary>
+		/// Determines whether a point lies within a cylinder described by this line and a radius.
+		/// </summary>
+		/// <param name="radius">The radius of the cylinder.</param>
+		/// <param name="point">The point to test.</param>
+		/// <returns>True iff the point lies within the cylinder</returns>
+		public bool PointInCylinder(double radius, ref Vector3D point)
 		{
 			radius *= radius;
 
@@ -188,8 +221,24 @@ namespace Rynchodon
 		/// </remarks>
 		public Vector3D ClosestPoint(Vector3D coordinates)
 		{
+			Vector3D point;
+			ClosestPoint(ref coordinates, out point);
+			return point;
+		}
+
+		/// <summary>
+		/// Closest point on a line to specified coordinates
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		public void ClosestPoint(ref Vector3D coordinates, out Vector3D point)
+		{
 			if (From == To)
-				return From;
+			{
+				point = From;
+				return;
+			}
 
 			Vector3D line_disp = To - From;
 
@@ -199,11 +248,17 @@ namespace Rynchodon
 			//+ ", LengthSquared: " + LengthSquared() + ", fraction: " + fraction, "ClosestPoint()");
 
 			if (fraction < 0) // extends past From
-				return From;
+			{
+				point = From;
+				return;
+			}
 			else if (fraction > 1) // extends past To
-				return To;
+			{
+				point = To;
+				return;
+			}
 
-			return From + fraction * line_disp; // closest point on the line
+			point = From + fraction * line_disp; // closest point on the line
 		}
 
 		/// <summary>
@@ -211,12 +266,31 @@ namespace Rynchodon
 		/// </summary>
 		/// <returns>Minimum distance between a line and a point.</returns>
 		public double Distance(Vector3D point)
-		{ return (double)Math.Sqrt(DistanceSquared(point)); }
+		{
+			return Distance(ref point);
+		}
+
+		/// <summary>
+		/// Minimum distance between a line and a point.
+		/// </summary>
+		/// <returns>Minimum distance between a line and a point.</returns>
+		public double Distance(ref Vector3D point)
+		{
+			return (double)Math.Sqrt(DistanceSquared(point));
+		}
 
 		/// <summary>
 		/// Tests that the distance between line and point is less than or equal to supplied distance
 		/// </summary>
 		public bool DistanceLessEqual(Vector3D point, double distance)
+		{
+			return DistanceLessEqual(ref point, distance);
+		}
+
+		/// <summary>
+		/// Tests that the distance between line and point is less than or equal to supplied distance
+		/// </summary>
+		public bool DistanceLessEqual(ref Vector3D point, double distance)
 		{
 			distance *= distance;
 			return DistanceSquared(point) <= distance;

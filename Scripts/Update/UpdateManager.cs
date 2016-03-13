@@ -377,17 +377,17 @@ namespace Rynchodon.Update
 
 				if (!MyAPIGateway.Multiplayer.MultiplayerActive)
 				{
-					myLogger.debugLog("Single player, running server scripts", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("Single player, running server scripts", "Init()", Logger.severity.INFO);
 					RegisterScripts_Server();
 				}
 				else if (MyAPIGateway.Multiplayer.IsServer)
 				{
-					myLogger.debugLog("This is the server, running server scripts", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("This is the server, running server scripts", "Init()", Logger.severity.INFO);
 					RegisterScripts_Server();
 				}
 				else
 				{
-					myLogger.debugLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
+					myLogger.alwaysLog("Client, running client scripts only", "Init()", Logger.severity.INFO);
 				}
 
 				Logger.debugNotify("ARMS dev version loaded", 10000);

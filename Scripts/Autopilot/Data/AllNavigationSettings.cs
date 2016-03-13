@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
@@ -299,6 +300,8 @@ namespace Rynchodon.Autopilot.Data
 		public SettingsLevel Settings_Current { get { return Settings_Task_NavWay; } }
 
 		public PseudoBlock LastLandingBlock { get; set; }
+
+		public Shopper Shopper { get; set; }
 
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{

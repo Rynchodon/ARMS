@@ -27,6 +27,11 @@ namespace Rynchodon
 			m_line = new Line() { From = from, To = to };
 		}
 
+		public LineSegment(ref Vector3 from, ref Vector3 to)
+		{
+			m_line = new Line() { From = from, To = to };
+		}
+
 		public LineSegment Clone()
 		{
 			return new LineSegment()
@@ -93,7 +98,10 @@ namespace Rynchodon
 			}
 		}
 
-		public float LengthSquared() { return Vector3.DistanceSquared(From, To); }
+		public float LengthSquared()
+		{
+			return Vector3.DistanceSquared(From, To);
+		}
 
 		private void CalcLength()
 		{
@@ -113,6 +121,11 @@ namespace Rynchodon
 
 		public void Move(Vector3 shift)
 		{
+			Move(ref shift);
+		}
+
+		public void Move(ref Vector3 shift)
+		{
 			m_line.From += shift;
 			m_line.To += shift;
 			m_calculatedBox = false;
@@ -126,6 +139,18 @@ namespace Rynchodon
 		/// </remarks>
 		/// <returns>The minimum distance squared between the line and the point</returns>
 		public float DistanceSquared(Vector3 point)
+		{
+			return DistanceSquared(ref point);
+		}
+
+		/// <summary>
+		/// Minimum distance squared between a line and a point.
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		/// <returns>The minimum distance squared between the line and the point</returns>
+		public float DistanceSquared(ref Vector3 point)
 		{
 			if (From == To)
 				return Vector3.DistanceSquared(From, point);
@@ -150,6 +175,17 @@ namespace Rynchodon
 		/// <param name="point">The point to test.</param>
 		/// <returns>True iff the point lies within the cylinder</returns>
 		public bool PointInCylinder(float radius, Vector3 point)
+		{
+			return PointInCylinder(radius, ref point);
+		}
+
+		/// <summary>
+		/// Determines whether a point lies within a cylinder described by this line and a radius.
+		/// </summary>
+		/// <param name="radius">The radius of the cylinder.</param>
+		/// <param name="point">The point to test.</param>
+		/// <returns>True iff the point lies within the cylinder</returns>
+		public bool PointInCylinder(float radius, ref Vector3 point)
 		{
 			radius *= radius;
 
@@ -177,19 +213,41 @@ namespace Rynchodon
 		/// </remarks>
 		public Vector3 ClosestPoint(Vector3 coordinates)
 		{
+			Vector3 point;
+			ClosestPoint(ref coordinates, out point);
+			return point;
+		}
+
+		/// <summary>
+		/// Closest point on a line to specified coordinates
+		/// </summary>
+		/// <remarks>
+		/// based on http://stackoverflow.com/a/1501725
+		/// </remarks>
+		public void ClosestPoint(ref Vector3 coordinates, out Vector3 point)
+		{
 			if (From == To)
-				return From;
+			{
+				point = From;
+				return;
+			}
 
 			Vector3 line_disp = To - From;
 
 			float fraction = Vector3.Dot(coordinates - From, line_disp) / LengthSquared(); // projection as a fraction of line_disp
 
 			if (fraction < 0) // extends past From
-				return From;
+			{
+				point = From;
+				return;
+			}
 			else if (fraction > 1) // extends past To
-				return To;
+			{
+				point = To;
+				return;
+			}
 
-			return From + fraction * line_disp; // closest point on the line
+			point = From + fraction * line_disp; // closest point on the line
 		}
 
 		/// <summary>
@@ -197,12 +255,31 @@ namespace Rynchodon
 		/// </summary>
 		/// <returns>Minimum distance between a line and a point.</returns>
 		public float Distance(Vector3 point)
-		{ return (float)Math.Sqrt(DistanceSquared(point)); }
+		{
+			return Distance(ref point);
+		}
+
+		/// <summary>
+		/// Minimum distance between a line and a point.
+		/// </summary>
+		/// <returns>Minimum distance between a line and a point.</returns>
+		public float Distance(ref Vector3 point)
+		{
+			return (float)Math.Sqrt(DistanceSquared(point));
+		}
 
 		/// <summary>
 		/// Tests that the distance between line and point is less than or equal to supplied distance
 		/// </summary>
 		public bool DistanceLessEqual(Vector3 point, float distance)
+		{
+			return DistanceLessEqual(ref point, distance);
+		}
+
+		/// <summary>
+		/// Tests that the distance between line and point is less than or equal to supplied distance
+		/// </summary>
+		public bool DistanceLessEqual(ref Vector3 point, float distance)
 		{
 			distance *= distance;
 			return DistanceSquared(point) <= distance;

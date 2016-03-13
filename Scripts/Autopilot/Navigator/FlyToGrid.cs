@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot.Navigator
 					if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
 					{
 						m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
-						m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
+						m_navSet.Settings_Task_NavMove.DestinationRadius = minDestRadius;
 					}
 
 					new UnLander(mover, navSet, landingBlock);
@@ -254,11 +254,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_targetBlock.Forward.HasValue)
 			{
-				m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
+				m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
 				if (!m_navSet.Settings_Current.Stay_In_Formation && m_navSet.DirectionMatched())
 				{
 					m_logger.debugLog("Direction matched", "Rotate()", Logger.severity.INFO);
-					m_navSet.OnTaskComplete_NavRot();
+					m_navSet.OnTaskComplete_NavRot(); // even though this is not FlyToGrid's level, it must clear
 					m_mover.StopMove(true);
 					m_mover.StopRotate();
 					return;
@@ -318,9 +318,14 @@ namespace Rynchodon.Autopilot.Navigator
 			if (IsLocked())
 			{
 				m_logger.debugLog("Attached!", "Move_Land()", Logger.severity.INFO);
-				m_navSet.OnTaskComplete_NavRot();
+				m_navSet.OnTaskComplete_NavRot(); // even though this is not FlyToGrid's level, it must clear
 				m_mover.StopMove(false);
 				m_mover.StopRotate();
+				if (m_navSet.Shopper != null)
+				{
+					m_logger.debugLog("starting shopper", "Move_Land()");
+					m_navSet.Shopper.Start();
+				}
 				return;
 			}
 
@@ -344,8 +349,8 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				case LandingState.Approach:
 					{
-						m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
-						m_navSet.Settings_Task_NavRot.NavigationBlock = m_navBlock;
+						m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
+						m_navSet.Settings_Task_NavMove.NavigationBlock = m_navBlock;
 						if (m_landGearWithoutTargetBlock)
 						{
 							m_landingState = LandingState.Catch;

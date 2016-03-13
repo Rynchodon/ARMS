@@ -157,6 +157,11 @@ Example - [ L Landing Gear ; Unlock ] - Detach Landing Gear from whatever it is 
 V <speed> : Autopilot will fly at the specified speed
 Example - [ V 10 : C 0, 0, 0 : C 500, 500, 500 ] - fly back and forth between {0, 0, 0} and {500, 500, 500}, at 10m/s
 
+Weld, <name> : Weld blocks on a friendly ship
+Example - [ Weld, Station ] - Weld blocks on "Station"
+Weld, <name>, Fetch : "Fetch" tells the autopilot to keep track of components that need to be added to the welded ship and the next time the autopilot lands it will attempt to retrieve those components.
+Example - [ Weld, Station, Fetch ; B Connector ; L Connector ; G Factory ] - Weld blocks on "Station", then land on "Factory" and retrieve needed components.
+
 [b]Directions[/b] : can be { Forward, Backward, Leftward, Rightward, Upward, Downward }. Autopilot only checks the first letter, so abbreviations will work. For example, "Forward" can be "Fore" or "F"
 [b]Distances[/b] : for F, O, and P can be modified by km(kilometres) or Mm(megametres). For example, "3.5M" or "3.5Mm" is 3.5 megametres or 3 500 kilometres.
 

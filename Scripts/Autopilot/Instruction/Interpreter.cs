@@ -253,13 +253,15 @@ namespace Rynchodon.Autopilot.Instruction
 			string[] split = instruction.LowerRemoveWhitespace().Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
 			if (split.Length > 1)
-				switch (split[0].ToLower())
+				switch (split[0])
 				{
-					case "orbit":
-						return getAction_orbit(out wordAction, split);
 					case "char":
 					case "character":
 						return getAction_FlyToCharacter(out wordAction, split);
+					case "orbit":
+						return getAction_orbit(out wordAction, split);
+					case "weld":
+						return getAction_weld(out wordAction, split);
 				}
 
 			wordAction = null;
@@ -888,6 +890,23 @@ namespace Rynchodon.Autopilot.Instruction
 				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
 			};
 			return true;
+		}
+
+		private bool getAction_weld(out Action instructionAction, string[] instruction)
+		{
+			if (instruction.Length == 2)
+			{
+				instructionAction = () => { new WeldGrid(Mover, NavSet, instruction[1], false); };
+				return true;
+			}
+			if (instruction.Length == 3 && instruction[2].ToLower() == "fetch")
+			{
+				instructionAction = () => { new WeldGrid(Mover, NavSet, instruction[1], true); };
+				return true;
+			}
+
+			instructionAction = null;
+			return false;
 		}
 
 
