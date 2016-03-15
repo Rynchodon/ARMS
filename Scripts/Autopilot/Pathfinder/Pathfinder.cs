@@ -23,6 +23,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private const float SqRtHalf = 0.70710678f;
 		private const float SqRtThird = 0.57735026f;
 		private const float LookAheadSpeed_Seconds = 3f;
+		private const int AlternatesToCheck = 25;
 
 		#region Base25Directions
 		/// <remarks>
@@ -102,7 +103,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private ulong m_nextRunPath;
 		private ulong m_nextRunRotate;
 		private byte m_runId;
-		private float m_closestDistanceSquared;
+
+		/// <summary>Number of alternates tried, count starts after the first alternate is found that is better than base.</summary>
+		public int m_altPath_AlternatesFound;
+		/// <summary>How close a path can get the ship to its true destination.</summary>
+		public float m_altPath_ClosenessToDest;
+		/// <summary>The best waypoint found so far.</summary>
+		public Vector3 m_altPath_Waypoint;
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
@@ -122,7 +129,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_logger.debugLog("Initialized, grid: " + grid.DisplayName, "Pathfinder()");
 		}
 
-		public void TestPath(Vector3 destination, bool landing)
+		public void TestPath(Vector3D destination, bool landing)
 		{
 			if (m_navSet.Settings_Current.DestinationChanged)
 			{
@@ -130,6 +137,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
 				m_runId++;
 				m_pathLow.Clear();
+				ClearAltPath();
 				m_pathState = PathState.Not_Running;
 			}
 			//else
@@ -183,7 +191,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			// given velocity and distance, calculate destination
 			if (speedSquared > 1f)
 			{
-				Vector3 moveDest = m_navBlock.WorldPosition + move_direction * LookAheadSpeed_Seconds;
+				Vector3D moveDest = m_navBlock.WorldPosition + move_direction * LookAheadSpeed_Seconds;
 				m_pathHigh.Enqueue(() => TestPath(moveDest, destEntity, runId, isAlternate: false, tryAlternates: false));
 				m_pathHigh.Enqueue(() => TestPath(moveDest, null, runId, isAlternate: false, tryAlternates: false, slowDown: true));
 			}
@@ -292,6 +300,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 					return;
 				}
 
+				if (isAlternate && m_altPath_AlternatesFound != 0)
+					IncrementAlternatesFound();
+
 				if (slowDown)
 				{
 					Vector3 displacement = pointOfObstruction.Value - m_navBlock.WorldPosition;
@@ -307,6 +318,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				if (tryAlternates)
 				{
+					ClearAltPath();
 					MoveObstruction = obstructing;
 					TryAlternates(runId, pointOfObstruction.Value, obstructing);
 				}
@@ -337,10 +349,20 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (m_canChangeCourse)
 			{
-				FindAlternate_AroundObstruction(displacement, pointOfObstruction, obstructing.GetLinearVelocity(), runId);
+				// using a halfway point works much better when the obstuction is near the destination
+				FindAlternate_AroundObstruction(displacement, (m_navBlock.WorldPosition + pointOfObstruction) * 0.5f, obstructing.GetLinearVelocity(), runId);
+				//FindAlternate_AroundObstruction(displacement, pointOfObstruction, obstructing.GetLinearVelocity(), runId);
 				FindAlternate_JustMove(runId);
 			}
 			FindAlternate_HalfwayObstruction(displacement, runId);
+			m_pathLow.Enqueue(() => {
+				if (m_altPath_AlternatesFound != 0)
+				{
+					m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", reachable distance: " + m_altPath_ClosenessToDest, "TryAlternates()", Logger.severity.DEBUG);
+					new GOLIS(m_mover, m_navSet, m_altPath_Waypoint, true);
+				}
+				RunItem();
+			});
 			m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
 		}
 
@@ -394,6 +416,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			Vector3 halfway = displacement * 0.5f + m_navBlock.WorldPosition;
 			m_pathLow.Enqueue(() => TestPath(halfway, null, runId, isAlternate: true, tryAlternates: false));
+			halfway -= displacement * 0.25f;
+			m_pathLow.Enqueue(() => TestPath(halfway, null, runId, isAlternate: true, tryAlternates: false));
 		}
 
 		private void FindAlternate_JustMove(byte runId)
@@ -430,13 +454,24 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				if (isAlternate)
 				{
-					m_logger.debugLog("Setting waypoint: " + destination, "PathClear()", Logger.severity.DEBUG);
-					new GOLIS(m_mover, m_navSet, destination, true);
+					LineSegment line = new LineSegment() { From = destination, To = m_destination };
+					float closeness = m_pathChecker.distanceCanTravel(line);
+					m_logger.debugLog("for point: " + line.From + ", waypoint distance: " + Vector3D.Distance(m_grid.GetCentre(), destination) + ", reachable distance: " + closeness + ", required: " + m_altPath_ClosenessToDest, "PathClear()", Logger.severity.TRACE);
+
+					if (!AddAlternatePath(closeness, ref destination))
+						m_logger.debugLog("throwing out: " + line.From + ", reachable distance: " + closeness + ", required: " + m_altPath_ClosenessToDest, "PathClear()", Logger.severity.TRACE);
+
+					if (m_altPath_AlternatesFound != AlternatesToCheck && m_pathLow.Count != 0 && m_altPath_ClosenessToDest != 0f)
+					{
+						m_logger.debugLog("keep searching, m_altPath_AlternatesFound: " + m_altPath_AlternatesFound, "PathClear()");
+						return;
+					}
 				}
 				if (slowDown)
 				{
-					m_logger.debugLog("Removing speed limit", "PathClear()");
+					//m_logger.debugLog("Removing speed limit", "PathClear()");
 					m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
+					return;
 				}
 				MoveObstruction = null;
 				m_pathState = PathState.No_Obstruction;
@@ -445,6 +480,42 @@ namespace Rynchodon.Autopilot.Pathfinder
 			else
 				m_logger.debugLog("destination changed, abort", "PathClear()", Logger.severity.DEBUG);
 			return;
+		}
+
+		public void ClearAltPath()
+		{
+			this.m_altPath_AlternatesFound = 0;
+			this.m_altPath_ClosenessToDest = float.MaxValue;
+		}
+
+		public bool AddAlternatePath(float closeness, ref Vector3D waypoint)
+		{
+			if (closeness < this.m_altPath_ClosenessToDest)
+			{
+				this.m_altPath_ClosenessToDest = closeness;
+				this.m_altPath_Waypoint = waypoint;
+				IncrementAlternatesFound();
+				return true;
+			}
+			else if (this.m_altPath_AlternatesFound != 0)
+				IncrementAlternatesFound();
+			return false;
+		}
+
+		public void IncrementAlternatesFound()
+		{
+			this.m_altPath_AlternatesFound++;
+			if (this.m_altPath_AlternatesFound == AlternatesToCheck || m_altPath_ClosenessToDest == 0f)
+			{
+				m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", reachable distance: " + m_altPath_ClosenessToDest, "IncrementAlternatesFound()", Logger.severity.DEBUG);
+				new GOLIS(m_mover, m_navSet, m_altPath_Waypoint, true);
+			}
+		}
+
+		public void SetAlternateBase(float closeness)
+		{
+			this.m_altPath_AlternatesFound = 0;
+			this.m_altPath_ClosenessToDest = float.MaxValue;
 		}
 
 	}
