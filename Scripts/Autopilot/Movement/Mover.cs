@@ -304,7 +304,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			float accel = -force / Block.Physics.Mass;
 			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
-			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 2f); // capped for the sake of autopilot's reaction time
+			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.5f); // capped for the sake of autopilot's reaction time
 		}
 
 		/// <summary>
@@ -511,14 +511,6 @@ namespace Rynchodon.Autopilot.Movement
 				displacement += roll * NFR_backward;
 			}
 
-			float distanceAngle = displacement.Length();
-			if (distanceAngle < best_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
-			{
-				best_angle = distanceAngle;
-				m_stuckAt = Globals.UpdateCount + StuckAfter;
-			}
-			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
-
 			if (NavSet.Settings_Current.CollisionAvoidance)
 			{
 				myPathfinder.TestRotate(displacement);
@@ -528,6 +520,14 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 				}
 			}
+
+			float distanceAngle = displacement.Length();
+			if (distanceAngle < best_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
+			{
+				best_angle = distanceAngle;
+				m_stuckAt = Globals.UpdateCount + StuckAfter;
+			}
+			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
 			myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "CalcRotate()");
 
@@ -641,13 +641,7 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 			MyShipController controller = Block.Controller;
 
-			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
-			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
-			{
-				//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
-				MoveAndRotateStop();
-				return;
-			}
+			myLogger.debugLog("stuck in: " + (m_stuckAt + StuckAfter - Globals.UpdateCount), "MoveAndRotate()");
 
 			// only iff stuck for extra time (Nav may want to handle stuck)
 			if (NavSet.Settings_Current.PathfinderCanChangeCourse && Globals.UpdateCount >= m_stuckAt + StuckAfter)
@@ -659,9 +653,18 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3 position = Block.CubeBlock.GetPosition();
 					Vector3 away = position - obstruction.GetCentre();
 					away.Normalize();
-					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "CalcRotate()", Logger.severity.INFO);
+					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
 					new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
+					NavSet.Settings_Task_NavWay.DestinationEntity = obstruction;
 				}
+			}
+
+			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
+			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
+			{
+				//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
+				MoveAndRotateStop();
+				return;
 			}
 
 			// clamp values and invert operations MoveAndRotate will perform

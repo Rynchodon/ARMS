@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text; // from mscorlib.dll
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
@@ -17,27 +18,45 @@ namespace Rynchodon.Autopilot.Navigator
 			public int Index;
 		}
 
-		private enum Stage : byte { Approach, Repair, Retreat }
+		private enum Stage : byte { Lineup, Approach, Repair, Retreat }
 
 		private readonly Logger m_logger;
+		private readonly float m_offset;
 		private readonly PseudoBlock m_welder;
 		private readonly IMySlimBlock m_slimBlock;
+		private readonly List<Vector3I> m_emptyNeighbours = new List<Vector3I>();
 
 		private float m_damage, m_buildLevelRatio;
-		private ulong m_timeout;
+		private ulong m_timeout_start, m_timeout_repair;
 		private Vector3D m_slimPos;
 		private Stage m_stage;
-		private readonly LineSegmentD m_approach = new LineSegmentD();
+		private readonly LineSegmentD m_lineUp = new LineSegmentD();
 
 		public WeldBlock(Mover mover, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
 			: base(mover, navSet)
 		{
-			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, block.getBestName);
+			this.m_logger = new Logger(GetType().Name, () => mover.Block.CubeGrid.DisplayName, block.getBestName, m_stage.ToString);
+			this.m_offset = welder.Block.LocalAABB.GetLongestDim() * 0.5f + 1f; // this works for default welders, may not work if mod has an exotic design
 			this.m_welder = welder;
 			this.m_slimBlock = block;
+			this.m_timeout_start = Globals.UpdateCount + 3600ul;
 
 			m_navSet.Settings_Task_NavEngage.NavigatorMover = this;
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = this;
+
+			m_slimBlock.ForEachCell(cell => {
+				foreach (Vector3 direction in Base6Directions.Directions)
+				{
+					Vector3I neighbour = cell + new Vector3I(direction);
+					if (m_slimBlock.CubeGrid.GetCubeBlock(neighbour) == null)
+					{
+						m_logger.debugLog("empty neighbour: " + neighbour + ", cell: " + cell + ", offset: " + new Vector3I(direction) + ", world: " + m_slimBlock.CubeGrid.GridIntegerToWorld(neighbour), "WeldBlock()");
+						m_emptyNeighbours.Add(neighbour);
+					}
+				}
+				return false;
+			});
+			m_lineUp.To = m_slimBlock.CubeGrid.GridIntegerToWorld(m_slimBlock.Position);
 		}
 
 		public override void Move()
@@ -54,29 +73,73 @@ namespace Rynchodon.Autopilot.Navigator
 
 			switch (m_stage)
 			{
-				case Stage.Approach:
-					if (m_navSet.DistanceLessThanDestRadius())
+				case Stage.Lineup:
 					{
-						m_logger.debugLog("close to target, enabling welders", "Move()", Logger.severity.DEBUG);
-						EnableWelders(true);
-						m_stage = Stage.Repair;
+						if (Globals.UpdateCount > m_timeout_start)
+						{
+							m_logger.debugLog("failed to start", "Move()");
+							EnableWelders(false);
+							m_stage = Stage.Retreat;
+							return;
+						}
+
+						if (m_navSet.DistanceLessThan(1f))
+						{
+							m_logger.debugLog("linedup, commencing approach", "Move()", Logger.severity.DEBUG);
+							m_navSet.Settings_Current.Distance = float.NaN;
+							m_stage = Stage.Approach;
+							return;
+						}
+
+						double closest = float.MaxValue;
+						foreach (Vector3I emptyCell in m_emptyNeighbours)
+						{
+							Vector3D emptyPos = m_slimBlock.CubeGrid.GridIntegerToWorld(emptyCell);
+							double dist = Vector3D.DistanceSquared(m_welder.WorldPosition, emptyPos);
+							if (dist < closest)
+							{
+								closest = dist;
+								m_lineUp.From = emptyPos;
+							}
+						}
+
+						m_logger.debugLog("target: " + m_lineUp.To.ToGpsTag("Target") + ", cell: " + m_lineUp.From.ToGpsTag("Cell"), "Move()");
+
+						Vector3 direction = m_lineUp.From - m_lineUp.To;
+						direction.Normalize();
+						m_lineUp.From = m_lineUp.To + direction * 100f;
+
+						m_logger.debugLog("to: " + m_lineUp.To.ToGpsTag("To") + ", from: " + m_lineUp.From.ToGpsTag("From") + ", closest point: " + m_lineUp.ClosestPoint(m_welder.WorldPosition).ToGpsTag("Closest"), "Move()");
+
+						m_mover.CalcMove(m_welder, m_lineUp.ClosestPoint(m_welder.WorldPosition), m_slimBlock.CubeGrid.Physics.LinearVelocity, false);
+						return;
 					}
-					UpdateTimeout();
-					goto case Stage.Repair;
+				case Stage.Approach:
+					{
+						if (m_navSet.DistanceLessThan(2f))
+						{
+							m_logger.debugLog("close to target, enabling welders", "Move()", Logger.severity.DEBUG);
+							EnableWelders(true);
+							m_stage = Stage.Repair;
+						}
+						UpdateTimeoutRepair();
+						goto case Stage.Repair;
+					}
 				case Stage.Repair:
 					{
-						if (Globals.UpdateCount > m_timeout)
+						if (Globals.UpdateCount > m_timeout_repair)
 						{
 							m_logger.debugLog("failed to repair block", "Move()");
 							EnableWelders(false);
 							m_stage = Stage.Retreat;
+							return;
 						}
 
 						float dmg = m_slimBlock.CurrentDamage;
 						float blr = m_slimBlock.BuildLevelRatio;
 
 						if (dmg < m_damage || blr > m_buildLevelRatio)
-							UpdateTimeout();
+							UpdateTimeoutRepair();
 
 						m_damage = dmg;
 						m_buildLevelRatio = blr;
@@ -86,19 +149,22 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("target block repaired: " + m_slimBlock.getBestName(), "Move()", Logger.severity.DEBUG);
 							EnableWelders(false);
 							m_stage = Stage.Retreat;
+							return;
 						}
 						else
 						{
+							float offset2 = (m_timeout_repair - Globals.UpdateCount) * 0.01f;
+
 							Vector3D direction = m_controlBlock.CubeBlock.GetPosition() - m_slimPos;
 							direction.Normalize();
-							m_mover.CalcMove(m_welder, m_slimPos + direction * 2.5f, m_slimBlock.CubeGrid.Physics.LinearVelocity, true);
+							m_mover.CalcMove(m_welder, m_slimPos + direction * m_offset, m_slimBlock.CubeGrid.Physics.LinearVelocity, true);
 						}
 						return;
 					}
 				case Stage.Retreat:
 					{
-						float destRadius = m_navSet.Settings_Current.DestinationRadius;
-						if (Vector3D.DistanceSquared(m_welder.WorldPosition, m_slimPos) > destRadius * destRadius)
+						float minDist = m_offset + 5f; minDist *= minDist;
+						if (Vector3D.DistanceSquared(m_welder.WorldPosition, m_slimPos) > minDist)
 						{
 							m_logger.debugLog("moved away from: " + m_slimBlock.getBestName(), "Move()", Logger.severity.DEBUG);
 							m_navSet.OnTaskComplete_NavEngage();
@@ -140,9 +206,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>
 		/// Update the repairing timeout
 		/// </summary>
-		private void UpdateTimeout()
+		private void UpdateTimeoutRepair()
 		{
-			this.m_timeout = Globals.UpdateCount + 1000ul;
+			this.m_timeout_repair = Globals.UpdateCount + 1000ul;
 		}
 
 		/// <summary>

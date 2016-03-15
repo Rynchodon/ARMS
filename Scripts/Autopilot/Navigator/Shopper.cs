@@ -143,6 +143,7 @@ namespace Rynchodon.Autopilot.Navigator
 			const float maxTransfer = 1f;
 
 			float allowedVolume = maxTransfer; // volume is in m³ not l
+
 			var component = m_shoppingList.FirstPair();
 			m_logger.debugLog("shopping for " + component.Key, "Move()");
 			SerializableDefinitionId defId = new SerializableDefinitionId(typeof(MyObjectBuilder_Component), component.Key);
@@ -198,6 +199,16 @@ namespace Rynchodon.Autopilot.Navigator
 							allowedVolume -= transferred * oneVol;
 							amountToMove -= transferred;
 							m_logger.debugLog("transfered: " + transferred + ", remaining volume: " + allowedVolume + " remaining amount: " + amountToMove, "Move()");
+							component = m_shoppingList.FirstPair();
+							if (amountToMove < 1)
+							{
+								if (component.Value < 1)
+								{
+									m_logger.debugLog("final transfer for " + component.Key, "Shop()");
+									m_shoppingList.Remove(component.Key);
+								}
+								return;
+							}
 						}
 					}
 					else
