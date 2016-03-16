@@ -76,7 +76,6 @@ Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 
 [h1]Links[/h1]
-[url=https://www.surveymonkey.com/r/XWG5XCR] Vote on the future of ARMS [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=632399714] Programmatic Control Example [/url]
 
