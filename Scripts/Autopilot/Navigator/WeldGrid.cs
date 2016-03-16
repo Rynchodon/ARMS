@@ -152,11 +152,21 @@ namespace Rynchodon.Autopilot.Navigator
 
 			IMySlimBlock repairable = null;
 			double closest = float.MaxValue;
+			List<IMySlimBlock> removeList = null;
 			foreach (IMySlimBlock slim in m_damagedBlocks)
 			{
 				if (slim.Closed())
 				{
 					m_logger.debugLog("slim closed: " + slim.getBestName(), "FindClosestRepairable()");
+					continue;
+				}
+
+				if (slim.CurrentDamage == 0f && slim.BuildLevelRatio == 1f)
+				{
+					m_logger.debugLog("already repaired: " + slim.getBestName(), "FindClosestRepairable()", Logger.severity.DEBUG);
+					if (removeList == null)
+						removeList = new List<IMySlimBlock>();
+					removeList.Add(slim);
 					continue;
 				}
 
@@ -185,6 +195,9 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				}
 			}
+			if (removeList != null)
+				foreach (IMySlimBlock remove in removeList)
+					m_damagedBlocks.Remove(remove);
 
 			m_logger.debugLog(repairable != null, () => "closest repairable block: " + repairable.getBestName(), "FindClosestRepairable()", Logger.severity.DEBUG);
 

@@ -1,4 +1,5 @@
 using System;
+using VRageMath;
 
 namespace Rynchodon
 {
@@ -20,17 +21,38 @@ namespace Rynchodon
 		/// <summary>The number of updates since mod started.</summary>
 		public static ulong UpdateCount = 0;
 
-		//private static bool Reported_GUI_Error;
+		public static readonly Vector3I[] CellNeighbours = 
+		{
+			new	Vector3I(-1, -1, -1),
+			new Vector3I(-1, -1, 0),
+			new Vector3I(-1, -1, 1),
+			new Vector3I(-1, 0, -1),
+			new Vector3I(-1, 0, 0),
+			new Vector3I(-1, 0, 1),
+			new Vector3I(-1, 1, -1),
+			new Vector3I(-1, 1, 0),
+			new Vector3I(-1, 1, 1),
 
-		//public static void GUI_NotLoaded()
-		//{
-		//	if (Reported_GUI_Error)
-		//		return;
-		//	Reported_GUI_Error = true;
-
-		//	MyAPIGateway.Utilities.ShowMissionScreen("ARMS Error", string.Empty, "Mod: Autopilot, Radar, and Military Systems", 
-		//		 "ARMS did not load correctly, terminal controls will not function. After starting Space Engineers, ARMS must be in the first world loaded for terminal controls to work correctly.");
-		//}
+			new	Vector3I(0, -1, -1),
+			new Vector3I(0, -1, 0),
+			new Vector3I(0, -1, 1),
+			new Vector3I(0, 0, -1),
+			// new Vector3I(0, 0, 0), // not a neighbour
+			new Vector3I(0, 0, 1),
+			new Vector3I(0, 1, -1),
+			new Vector3I(0, 1, 0),
+			new Vector3I(0, 1, 1),
+			
+			new	Vector3I(1, -1, -1),
+			new Vector3I(1, -1, 0),
+			new Vector3I(1, -1, 1),
+			new Vector3I(1, 0, -1),
+			new Vector3I(1, 0, 0),
+			new Vector3I(1, 0, 1),
+			new Vector3I(1, 1, -1),
+			new Vector3I(1, 1, 0),
+			new Vector3I(1, 1, 1),
+		};
 
 	}
 }
