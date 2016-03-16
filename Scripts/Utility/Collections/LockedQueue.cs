@@ -44,10 +44,17 @@ namespace Rynchodon
 				Queue.Clear();
 		}
 
-		public T Dequeue()
+		public bool TryDequeue(out T value)
 		{
 			using (lock_Queue.AcquireExclusiveUsing())
-				return Queue.Dequeue();
+				if (Queue.Count != 0)
+				{
+					value = Queue.Dequeue();
+					return true;
+				}
+
+			value = default(T);
+			return false;
 		}
 
 		public void Enqueue(T item)
@@ -56,10 +63,17 @@ namespace Rynchodon
 				Queue.Enqueue(item);
 		}
 
-		public T Peek()
+		public bool TryPeek(out T value)
 		{
 			using (lock_Queue.AcquireSharedUsing())
-				return Queue.Peek();
+				if (Queue.Count != 0)
+				{
+					value = Queue.Peek();
+					return true;
+				}
+
+			value = default(T);
+			return false;
 		}
 
 		public void TrimExcess()

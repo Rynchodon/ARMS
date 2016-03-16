@@ -108,51 +108,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				m_logger.debugLog("checking entity: " + entity.getBestName(), "TestSlow()");
 
-				IMyVoxelBase voxel = entity as IMyVoxelBase;
+				MyVoxelBase voxel = entity as MyVoxelBase;
 				if (voxel != null)
-				{
-					if (m_ignoreAsteroid)
-					{
-						m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName(), "TestSlow()");
+					if (TestVoxel(voxel, m_path, out pointOfObstruction))
 						continue;
-					}
-
-					Vector3[] intersection = new Vector3[2];
-					if (!m_path.IntersectsAABB(voxel, out  intersection[0]))
-					{
-						m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
-						continue;
-					}
-
-					if (!m_path.get_Reverse().IntersectsAABB(voxel, out intersection[1]))
-					{
-						m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), "TestSlow()", Logger.severity.WARNING);
-						continue;
-					}
-
-					Capsule testSection = new Capsule(intersection[0], intersection[1], m_path.Radius);
-					IMyVoxelMap asteroid = voxel as IMyVoxelMap;
-					if (asteroid != null)
-					{
-						if (testSection.Intersects(asteroid, out pointOfObstruction))
-						{
-							blockingPath = entity;
-							return false;
-						}
-					}
 					else
 					{
-						MyPlanet planet = voxel as MyPlanet;
-						if (planet != null && testSection.Intersects(planet, out pointOfObstruction))
-						{
-							blockingPath = entity;
-							return false;
-						}
+						blockingPath = entity;
+						return false;
 					}
-
-					m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
-					continue;
-				}
 
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid != null)
@@ -176,6 +140,53 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			blockingPath = null;
+			pointOfObstruction = null;
+			return true;
+		}
+
+		/// <summary>
+		/// Tests for path intersection with voxel.
+		/// </summary>
+		/// <returns>True iff path is clear; voxel does not intersect path.</returns>
+		private bool TestVoxel(MyVoxelBase voxel, Capsule path, out Vector3? pointOfObstruction)
+		{
+			if (m_ignoreAsteroid)
+			{
+				m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName(), "TestSlow()");
+				pointOfObstruction = null;
+				return true;
+			}
+
+			Vector3[] intersection = new Vector3[2];
+			if (!path.IntersectsAABB(voxel, out  intersection[0]))
+			{
+				m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
+				pointOfObstruction = null;
+				return true;
+			}
+
+			if (!path.get_Reverse().IntersectsAABB(voxel, out intersection[1]))
+			{
+				m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), "TestSlow()", Logger.severity.WARNING);
+				pointOfObstruction = null;
+				return true;
+			}
+
+			Capsule testSection = new Capsule(intersection[0], intersection[1], path.Radius);
+			IMyVoxelMap asteroid = voxel as IMyVoxelMap;
+			if (asteroid != null)
+			{
+				if (testSection.Intersects(asteroid, out pointOfObstruction))
+					return false;
+			}
+			else
+			{
+				MyPlanet planet = voxel as MyPlanet;
+				if (planet != null && testSection.Intersects(planet, out pointOfObstruction))
+					return false;
+			}
+
+			m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
 			pointOfObstruction = null;
 			return true;
 		}
@@ -258,79 +269,72 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return true;
 		}
 
-		#region Do not delete
+		/// <summary>
+		/// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
+		/// </summary>
+		/// <param name="canTravel">Line along which navigation block would travel</param>
+		/// <remarks>
+		/// Capsule only test because the ship will not be oriented correctly
+		/// </remarks>
+		/// <returns>distance from the destination that can be reached</returns>
+		public float distanceCanTravel(LineSegment canTravel)
+		{
+			BoundingBoxD atFrom = m_grid.WorldAABB.Translate(canTravel.From - m_grid.GetPosition());
+			BoundingBoxD atTo = m_grid.WorldAABB.Translate(canTravel.To - m_grid.GetPosition());
 
-		///// <summary>
-		///// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
-		///// </summary>
-		///// <param name="canTravel">Line along which navigation block would travel</param>
-		///// <remarks>
-		///// Capsule only test because the ship will not be oriented correctly
-		///// </remarks>
-		///// <returns>distance from the destination that can be reached</returns>
-		//public float distanceCanTravel(Line canTravel)
-		//{
-		//	Vector3D navBlockPos = navigationBlock.GetPosition();
+			ICollection<MyEntity> offenders = EntitiesInLargeAABB(atFrom, atTo);
+			if (offenders.Count == 0)
+			{
+				m_logger.debugLog("AABB is empty", "distanceCanTravel()");
+				return 0;
+			}
+			m_logger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
+			IOrderedEnumerable<MyEntity> ordered = offenders.OrderBy(entity => Vector3D.Distance(canTravel.From, entity.GetCentre()));
 
-		//	Vector3D DisplacementStart = canTravel.From - navBlockPos;
-		//	Vector3D DisplacementEnd = canTravel.To - navBlockPos;
+			Capsule path = new Capsule(canTravel.From, canTravel.To, m_path.Radius);
+			Vector3? pointOfObstruction = null;
+			foreach (MyEntity entity in ordered)
+				if (path.IntersectsAABB(entity))
+				{
+					MyVoxelBase voxel = entity as MyVoxelBase;
+					if (voxel != null)
+						if (!TestVoxel(voxel, path, out pointOfObstruction))
+						{
+							m_logger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
+							return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
+						}
 
-		//	BoundingBoxD atStart = myCubeGrid.WorldAABB.Translate(DisplacementStart);
-		//	BoundingBoxD atDest = myCubeGrid.WorldAABB.Translate(DisplacementEnd);
+					IMyCubeGrid grid = entity as IMyCubeGrid;
+					if (grid != null)
+					{
+						float minDistSq = (m_grid.GridSize + grid.GridSize) * (m_grid.GridSize + grid.GridSize);
+						GridCellCache cache = GridCellCache.GetCellCache(grid);
+						cache.ForEach(cell => {
+							Vector3 cellPos = grid.GridIntegerToWorld(cell);
+							if (canTravel.PointInCylinder(minDistSq, ref cellPos))
+							{
+								pointOfObstruction = cellPos;
+								return true;
+							}
+							return false;
+						});
+						if (pointOfObstruction.HasValue)
+							return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
+					}
 
-		//	ICollection<MyEntity> offenders = EntitiesInLargeAABB(atStart, atDest);
-		//	if (offenders.Count == 0)
-		//	{
-		//		myLogger.debugLog("AABB is empty", "distanceCanTravel()");
-		//		return 0;
-		//	}
-		//	myLogger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
-		//	offenders = SortByDistance(offenders);
+					m_logger.debugLog("not a grid, testing bounds", "distanceCanTravel()");
+					if (!m_path.IntersectsVolume(entity))
+						continue;
 
-		//	Capsule _path = new Capsule(canTravel.From, canTravel.To, myPath.Radius);
-		//	Vector3? pointOfObstruction;
-		//	MyEntity obstruction = TestEntities(offenders, _path, null, out pointOfObstruction, DestGrid);
-		//	if (obstruction == null)
-		//	{
-		//		myLogger.debugLog("no obstruction", "distanceCanTravel()");
-		//		return 0;
-		//	}
+					m_logger.debugLog("no more tests for non-grids are implemented", "distanceCanTravel()", Logger.severity.DEBUG);
+					pointOfObstruction = m_path.get_Line().ClosestPoint(entity.GetCentre());
+					return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
+				}
 
-		//	myLogger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
-		//	return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
-		//}
-
-		//public const double NearbyRange = 2000;
-
-		///// <summary>
-		///// How far away is the closest entity to myCubeGrid?
-		///// </summary>
-		///// <returns>Distance to closest Entity, may be negative</returns>
-		//public double ClosestEntity()
-		//{
-		//	BoundingBoxD NearbyBox = myCubeGrid.WorldAABB;
-		//	NearbyBox.Inflate(NearbyRange);
-
-		//	HashSet<MyEntity> offenders = new HashSet<MyEntity>();
-		//	MyAPIGateway.Entities.GetEntitiesInAABB_Safe_NoBlock(NearbyBox, offenders, collect_Entities);
-		//	if (offenders.Count == 0)
-		//	{
-		//		myLogger.debugLog("AABB is empty", "ClosestEntity()");
-		//		return NearbyRange;
-		//	}
-		//	myLogger.debugLog("collected entities to test: " + offenders.Count, "ClosestEntity()");
-
-		//	double distClosest = NearbyRange;
-		//	foreach (MyEntity entity in offenders)
-		//	{
-		//		double distance = myCubeGrid.Distance_ShorterBounds(entity);
-		//		if (distance < distClosest)
-		//			distClosest = distance;
-		//	}
-		//	return distClosest;
-		//}
-
-		#endregion
+			// no obstruction
+			m_logger.debugLog("no obstruction", "distanceCanTravel()");
+			return 0f;
+		}
 
 		private List<MyEntity> EntitiesInLargeAABB(BoundingBoxD start, BoundingBoxD end)
 		{
