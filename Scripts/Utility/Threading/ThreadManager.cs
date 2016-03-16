@@ -18,8 +18,7 @@ namespace Rynchodon.Threading
 
 		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
-		private MyQueue<Action> ActionQueue = new MyQueue<Action>(128);
-		private readonly FastResourceLock lock_ActionQueue = new FastResourceLock();
+		private LockedQueue<Action> ActionQueue = new LockedQueue<Action>(128);
 
 		public readonly byte AllowedParallel;
 
@@ -38,17 +37,13 @@ namespace Rynchodon.Threading
 		private void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			using (lock_ActionQueue.AcquireExclusiveUsing())
-				ActionQueue.Clear();
+			ActionQueue.Clear();
 		}
 
 		public void EnqueueAction(Action toQueue)
 		{
-			using (lock_ActionQueue.AcquireExclusiveUsing())
-			{
-				ActionQueue.Enqueue(toQueue);
-				VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
-			}
+			ActionQueue.Enqueue(toQueue);
+			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
 			using (lock_parallelTasks.AcquireExclusiveUsing())
 			{
@@ -73,9 +68,7 @@ namespace Rynchodon.Threading
 
 		public void EnqueueIfIdle(Action toQueue)
 		{
-			bool idle;
-			using (lock_ActionQueue.AcquireSharedUsing())
-				idle = ActionQueue.Count == 0;
+			bool idle = ActionQueue.Count == 0;
 
 			if (idle)
 				EnqueueAction(toQueue);
@@ -90,14 +83,9 @@ namespace Rynchodon.Threading
 				Action currentItem;
 				while (true)
 				{
-					using (lock_ActionQueue.AcquireExclusiveUsing())
-					{
-						if (ActionQueue.Count == 0)
-							return;
-						currentItem = ActionQueue.Dequeue();
-					}
-					if (currentItem != null)
-						currentItem();
+					if (!ActionQueue.TryDequeue(out currentItem))
+						return;
+					currentItem();
 				}
 			}
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }

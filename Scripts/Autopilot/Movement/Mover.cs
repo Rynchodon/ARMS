@@ -370,7 +370,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (InGravity_LevelOff())
 				return;
 
-			if (NavSet.Settings_Current.NearingDestination)
+			if (NavSet.Settings_Current.NearingDestination && NavSet.Settings_Current.Distance > 100f)
 			{
 				myLogger.debugLog("rotate to stop", "CalcRotate()");
 				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
@@ -655,7 +655,6 @@ namespace Rynchodon.Autopilot.Movement
 					away.Normalize();
 					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
 					new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
-					NavSet.Settings_Task_NavWay.DestinationEntity = obstruction;
 				}
 			}
 
