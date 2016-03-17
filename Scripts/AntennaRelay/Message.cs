@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon.AntennaRelay

@@ -1,6 +1,7 @@
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 
 namespace Rynchodon.Weapons.SystemDisruption

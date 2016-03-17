@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Settings;
 using Rynchodon.Update;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

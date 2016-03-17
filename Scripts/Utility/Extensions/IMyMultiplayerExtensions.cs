@@ -1,5 +1,5 @@
 using Rynchodon.Utility.Network;
-using Sandbox.ModAPI; // from Sandbox.Common.dll
+using VRage.Game.ModAPI;
 
 namespace Rynchodon
 {

@@ -1,6 +1,7 @@
 using System.Text;
 
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot
 {

@@ -5,9 +5,10 @@ using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
+using Ingame = VRage.Game.ModAPI.Ingame;
 
 namespace Rynchodon
 {

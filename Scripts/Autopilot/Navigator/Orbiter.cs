@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

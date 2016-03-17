@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Instructions

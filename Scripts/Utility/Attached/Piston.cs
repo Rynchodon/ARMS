@@ -1,6 +1,6 @@
 ﻿using System;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Attached
 {

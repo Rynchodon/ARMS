@@ -4,7 +4,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
+using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Navigator
 {

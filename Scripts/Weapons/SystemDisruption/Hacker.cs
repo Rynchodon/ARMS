@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Attached;
-using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using SpaceEngineers.Game.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {

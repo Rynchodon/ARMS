@@ -1,14 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rynchodon.AntennaRelay;
-using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
-using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
-using VRageMath;
 
 namespace Rynchodon.Autopilot
 {

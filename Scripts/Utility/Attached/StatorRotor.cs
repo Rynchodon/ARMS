@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using Sandbox.Common.ObjectBuilders;
+﻿using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Attached
 {

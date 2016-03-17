@@ -8,6 +8,7 @@ using Sandbox.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon
 {

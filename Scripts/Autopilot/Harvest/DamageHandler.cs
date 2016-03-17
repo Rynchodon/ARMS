@@ -1,6 +1,7 @@
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
 using Sandbox.ModAPI; // from Sandbox.Common.dll
-using VRage.ModAPI; // from VRage.Game.dll
+using VRage.Game.ModAPI; // from VRage.Game.dll
+using VRage.ModAPI;
 
 namespace Rynchodon.Autopilot.Harvest
 {
@@ -29,7 +30,7 @@ namespace Rynchodon.Autopilot.Harvest
 			Instance = this;
 		}
 
-		private void BeforeDamageApplied(object target, ref Sandbox.ModAPI.MyDamageInformation info)
+		private void BeforeDamageApplied(object target, ref MyDamageInformation info)
 		{
 			IMySlimBlock slim = target as IMySlimBlock;
 			if (slim == null)

@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Navigator;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

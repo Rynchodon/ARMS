@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
-using VRage.ModAPI;
-using VRage.Utils;
+using VRage.Game.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
+using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {

@@ -5,7 +5,8 @@ using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders; // from MedievalEngineers.ObjectBuilders.dll and SpaceEngineers.ObjectBuilders.dll
 using Sandbox.ModAPI; // from Sandbox.Common.dll
 using VRage.Game.Entity;
-using VRageMath; // from VRage.Math.dll
+using VRage.Game.ModAPI; // from VRage.Math.dll
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
 {

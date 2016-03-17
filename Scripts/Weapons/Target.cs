@@ -1,6 +1,6 @@
 using System;
 using Rynchodon.AntennaRelay;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

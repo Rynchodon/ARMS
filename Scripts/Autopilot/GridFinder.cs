@@ -4,7 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot

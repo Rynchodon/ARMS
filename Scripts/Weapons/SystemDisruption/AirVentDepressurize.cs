@@ -1,8 +1,8 @@
 
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
-using Ingame = Sandbox.ModAPI.Ingame;
+using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {

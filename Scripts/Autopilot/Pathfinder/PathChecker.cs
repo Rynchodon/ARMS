@@ -3,8 +3,8 @@ using System.Linq;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

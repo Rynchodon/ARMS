@@ -9,6 +9,7 @@ using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using Ingame = Sandbox.ModAPI.Ingame;
 

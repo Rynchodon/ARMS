@@ -1,11 +1,11 @@
 using System; // (partial) from mscorlib.dll
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
 using System.Text; // from mscorlib.dll
-
 using Sandbox.ModAPI.Ingame; // from Sandbox.Common.dll
 using Sandbox.ModAPI.Interfaces; // (partial) from Sandbox.Common.dll
+using SpaceEngineers.Game.ModAPI.Ingame; // from VRage.Math.dll
 using VRage.Game; // from VRage.Game.dll
-using VRageMath; // from VRage.Math.dll
+using VRageMath;
 
 /*
  * allowed namespaces for in game script:

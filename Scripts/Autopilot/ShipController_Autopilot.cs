@@ -11,6 +11,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot
 {
@@ -61,7 +62,7 @@ namespace Rynchodon.Autopilot
 
 		public void SetDamping(bool enable)
 		{
-			IMyControllableEntity control = Controller as IMyControllableEntity;
+			Sandbox.Game.Entities.IMyControllableEntity control = Controller as Sandbox.Game.Entities.IMyControllableEntity;
 			if (control.EnabledDamping != enable)
 			{
 				m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");

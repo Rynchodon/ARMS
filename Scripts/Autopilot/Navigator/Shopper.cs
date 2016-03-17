@@ -4,12 +4,12 @@ using Rynchodon.Autopilot.Data;
 using Sandbox.Definitions; // from Sandbox.Game.dll
 using Sandbox.Game.Entities; // from Sandbox.Game.dll
 using Sandbox.ModAPI;
-
 using VRage; // from VRage.dll and VRage.Library.dll
 using VRage.Game; // from VRage.Game.dll
 using VRage.Game.Entity; // from VRage.Game.dll
+using VRage.Game.ModAPI; // from VRage.Game.dll
 using VRage.ModAPI; // from VRage.Game.dll
-using VRage.ObjectBuilders; // from VRage.Game.dll
+using VRage.ObjectBuilders;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -125,7 +125,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (entity is IMyShipWelder)
 					return false;
 
-				if (entity.HasInventory && (entity.GetInventoryBase() as VRage.ModAPI.Ingame.IMyInventory).IsConnectedTo(m_destInventory[0]))
+				if (entity.HasInventory && (entity.GetInventoryBase() as IMyInventory).IsConnectedTo(m_destInventory[0]))
 				{
 					int count = entity.InventoryCount;
 					for (int i = 0; i < count; i++)

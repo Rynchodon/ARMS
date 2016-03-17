@@ -1,7 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Rynchodon.Attached;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Instructions;
 using Rynchodon.Settings;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons

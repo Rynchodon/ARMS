@@ -8,6 +8,7 @@ using Sandbox.Game.Entities; // from Sandbox.Game.dll
 using Sandbox.ModAPI; // from Sandbox.Common.dll
 using VRage.Game; // from VRage.Math.dll
 using VRage.Game.Entity; // from VRage.Game.dll
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator

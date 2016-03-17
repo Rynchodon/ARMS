@@ -4,8 +4,10 @@ using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
+using SE_Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -71,7 +73,7 @@ namespace Rynchodon
 		public static List<Base6Directions.Direction> GetFaceDirection(this IMyCubeBlock block)
 		{
 			List<Base6Directions.Direction> result = new List<Base6Directions.Direction>();
-			if (block is Ingame.IMySolarPanel || block is Ingame.IMyOxygenFarm)
+			if (block is SE_Ingame.IMySolarPanel || block is SE_Ingame.IMyOxygenFarm)
 			{
 				result.Add(Base6Directions.Direction.Forward);
 				result.Add(Base6Directions.Direction.Backward);
@@ -84,9 +86,9 @@ namespace Rynchodon
 				result.Add(Base6Directions.Direction.Backward);
 				result.Add(Base6Directions.Direction.Left);
 			}
-			else if (block is Ingame.IMyLandingGear)
+			else if (block is SE_Ingame.IMyLandingGear)
 				result.Add(Base6Directions.Direction.Down);
-			else if (block is Ingame.IMyShipMergeBlock)
+			else if (block is SE_Ingame.IMyShipMergeBlock)
 				result.Add(Base6Directions.Direction.Right);
 			else
 				result.Add(Base6Directions.Direction.Forward);
@@ -149,13 +151,13 @@ namespace Rynchodon
 			throw new Exception();
 		}
 
-		public static void ApplyAction(this Ingame.IMyCubeBlock block, string actionName)
+		public static void ApplyAction(this VRage.Game.ModAPI.Ingame.IMyCubeBlock block, string actionName)
 		{
 			IMyTerminalBlock asTerm = block as IMyTerminalBlock;
 			asTerm.GetActionWithName(actionName).Apply(asTerm);
 		}
 
-		public static MyCubeBlockDefinition GetCubeBlockDefinition(this Ingame.IMyCubeBlock block)
+		public static MyCubeBlockDefinition GetCubeBlockDefinition(this VRage.Game.ModAPI.Ingame.IMyCubeBlock block)
 		{
 			MyCubeBlock cubeBlock = block as MyCubeBlock;
 			return cubeBlock.BlockDefinition;

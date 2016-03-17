@@ -4,6 +4,7 @@ using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 

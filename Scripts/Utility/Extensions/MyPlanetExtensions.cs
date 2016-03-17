@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRageMath;

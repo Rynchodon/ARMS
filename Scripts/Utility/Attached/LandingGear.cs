@@ -1,5 +1,6 @@
 ﻿using System;
-using Sandbox.ModAPI;
+using SpaceEngineers.Game.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon.Attached

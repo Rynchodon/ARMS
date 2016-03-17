@@ -1,7 +1,7 @@
 using System.Text;
 using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
 {

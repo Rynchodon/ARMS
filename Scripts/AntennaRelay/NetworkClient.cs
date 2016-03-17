@@ -1,6 +1,7 @@
 using System;
 using Rynchodon.Attached;
 using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.AntennaRelay
 {

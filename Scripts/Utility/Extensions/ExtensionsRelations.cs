@@ -1,9 +1,8 @@
 ﻿using System;
-using Rynchodon.AntennaRelay;
 using Rynchodon.Weapons.Guided;
-using Sandbox.Common;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon

@@ -11,8 +11,10 @@ using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Collections;
+using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
+using SE_Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Instruction
 {
@@ -738,7 +740,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionAction = () => {
 				PseudoBlock asPB = new PseudoBlock(navigationBlock, forward, upward);
 
-				if (navigationBlock is IMyLaserAntenna || navigationBlock is Ingame.IMySolarPanel || navigationBlock is Ingame.IMyOxygenFarm)
+				if (navigationBlock is IMyLaserAntenna || navigationBlock is SE_Ingame.IMySolarPanel || navigationBlock is SE_Ingame.IMyOxygenFarm)
 					new Facer(Mover, NavSet, asPB);
 				m_logger.debugLog("setting NavigationBlock to " + navigationBlock.DisplayNameText, "GetLocalBlock()");
 				NavSet.Settings_Task_NavRot.NavigationBlock = asPB;

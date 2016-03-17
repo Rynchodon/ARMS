@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Rynchodon.Attached;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Movement

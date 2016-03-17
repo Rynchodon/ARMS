@@ -1,8 +1,6 @@
-using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using Sandbox.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator

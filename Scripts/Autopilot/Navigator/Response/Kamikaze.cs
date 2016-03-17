@@ -2,7 +2,7 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator

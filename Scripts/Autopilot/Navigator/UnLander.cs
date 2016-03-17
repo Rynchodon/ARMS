@@ -1,10 +1,10 @@
-using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using SpaceEngineers.Game.ModAPI;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;

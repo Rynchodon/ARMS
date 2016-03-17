@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Settings;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon.Weapons

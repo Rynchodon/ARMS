@@ -5,6 +5,7 @@ using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;

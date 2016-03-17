@@ -1,5 +1,5 @@
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay

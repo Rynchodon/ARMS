@@ -5,6 +5,7 @@ using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Weapons
 {

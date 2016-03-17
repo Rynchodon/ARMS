@@ -3,7 +3,7 @@ using System.Text; // from mscorlib.dll
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using Sandbox.ModAPI; // from Sandbox.Common.dll
+using VRage.Game.ModAPI; // from Sandbox.Common.dll
 
 namespace Rynchodon.Autopilot.Navigator
 {
