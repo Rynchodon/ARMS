@@ -21,13 +21,13 @@ namespace Rynchodon.Weapons.Guided
 		{
 			public readonly Vector3D RailStart;
 			public readonly LineSegmentD Rail;
-			public readonly DateTime Created;
+			public readonly TimeSpan Created;
 
 			public RailData(Vector3D start)
 			{
 				RailStart = start;
 				Rail = new LineSegmentD();
-				Created = DateTime.UtcNow;
+				Created = MyAPIGateway.Session.ElapsedPlayTime;
 			}
 		}
 
@@ -180,7 +180,7 @@ namespace Rynchodon.Weapons.Guided
 
 		private Cluster myCluster;
 		private IMyEntity myRock;
-		private DateTime myGuidanceEnds;
+		private TimeSpan myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
 		private RailData m_rail;
@@ -506,8 +506,8 @@ namespace Rynchodon.Weapons.Guided
 						m_rail = null;
 						if (myDescr.SemiActiveLaser)
 						{
-							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-							myLogger.debugLog("past arming range, semi-active until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
+							myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
+							myLogger.debugLog("past arming range, semi-active.", "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.SemiActive;
 							return;
 						}
@@ -525,8 +525,8 @@ namespace Rynchodon.Weapons.Guided
 						}
 						else
 						{
-							myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
-							myLogger.debugLog("past arming range, starting guidance. Guidance until " + myGuidanceEnds.ToLongTimeString(), "CheckGuidance()", Logger.severity.INFO);
+							myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
+							myLogger.debugLog("past arming range, starting guidance.", "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
 					}
@@ -550,13 +550,13 @@ namespace Rynchodon.Weapons.Guided
 					{
 						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Guided;
-						myGuidanceEnds = DateTime.UtcNow.AddSeconds(myDescr.GuidanceSeconds);
+						myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 						m_gravData = null;
 					}
 					return;
 				case Stage.SemiActive:
 				case Stage.Guided:
-					if (DateTime.UtcNow >= myGuidanceEnds)
+					if (MyAPIGateway.Session.ElapsedPlayTime >= myGuidanceEnds)
 					{
 						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
@@ -603,7 +603,7 @@ namespace Rynchodon.Weapons.Guided
 			matrix.Translation = closest;
 			MyEntity.WorldMatrix = matrix;
 
-			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(DateTime.UtcNow - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
+			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(MyAPIGateway.Session.ElapsedPlayTime - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
 			MyEntity.Physics.LinearVelocity = CubeBlock.CubeGrid.Physics.LinearVelocity + matrix.Forward * myAmmo.MissileDefinition.MissileInitialSpeed;
 		}
 

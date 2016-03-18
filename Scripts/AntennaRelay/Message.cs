@@ -13,7 +13,7 @@ namespace Rynchodon.AntennaRelay
 
 		public readonly string Content, SourceGridName, SourceBlockName;
 		public readonly IMyCubeBlock DestCubeBlock, SourceCubeBlock;
-		public readonly DateTime created;
+		public readonly TimeSpan created;
 		private readonly long destOwnerID;
 
 		public Message(string Content, IMyCubeBlock DestCubeblock, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
@@ -29,7 +29,7 @@ namespace Rynchodon.AntennaRelay
 				this.SourceBlockName = SourceBlockName;
 			this.destOwnerID = DestCubeblock.OwnerId;
 
-			created = DateTime.UtcNow;
+			created = MyAPIGateway.Session.ElapsedPlayTime;
 		}
 
 		public static List<Message> buildMessages(string Content, string DestGridName, string DestBlockName, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
@@ -61,7 +61,7 @@ namespace Rynchodon.AntennaRelay
 				if (value_isValid && (DestCubeBlock == null
 					|| DestCubeBlock.Closed
 					|| destOwnerID != DestCubeBlock.OwnerId // dest owner changed
-					|| (DateTime.UtcNow - created).CompareTo(MaximumLifetime) > 0)) // expired
+					|| (MyAPIGateway.Session.ElapsedPlayTime - created).CompareTo(MaximumLifetime) > 0)) // expired
 					value_isValid = false;
 				return value_isValid;
 			}

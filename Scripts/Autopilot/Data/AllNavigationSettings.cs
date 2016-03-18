@@ -1,6 +1,7 @@
 ﻿using System;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -28,7 +29,7 @@ namespace Rynchodon.Autopilot.Data
 			private BlockNameOrientation m_destBlock;
 			private IMyEntity m_destEntity;
 
-			private DateTime? m_waitUntil;
+			private TimeSpan? m_waitUntil;
 
 			private Vector3D? m_destinationOffset;
 
@@ -43,7 +44,7 @@ namespace Rynchodon.Autopilot.Data
 			{
 				m_navigationBlock = new PseudoBlock(NavBlock);
 
-				m_waitUntil = DateTime.UtcNow.AddSeconds(1);
+				m_waitUntil = MyAPIGateway.Session.ElapsedPlayTime.Add(new TimeSpan(0, 0, 1));
 
 				m_destinationOffset = Vector3D.Zero;
 
@@ -131,7 +132,7 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>ShipController will not run the navigator until after this time.</summary>
-			public DateTime WaitUntil
+			public TimeSpan WaitUntil
 			{
 				get { return m_waitUntil ?? parent.WaitUntil; }
 				set { m_waitUntil = value; }

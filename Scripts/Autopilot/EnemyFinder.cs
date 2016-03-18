@@ -9,10 +9,6 @@ using VRageMath;
 namespace Rynchodon.Autopilot
 {
 
-	// the further the navigator is from the original position, the shorter the range?
-	// problem is recall, how does ship return without picking up another enemy unless enemy is very close?
-	// finder needs to be in charge of recall then...
-	// can check for a destination entity and create a waypoint?
 	public class EnemyFinder : GridFinder
 	{
 
@@ -116,12 +112,13 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public EnemyFinder(Mover mover, AllNavigationSettings navSet)
+		public EnemyFinder(Mover mover, AllNavigationSettings navSet, long entityId)
 			: base(navSet, mover.Block)
 		{
-			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
+			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, () => CurrentResponse.Response.ToString()) { MinimumLevel = Logger.severity.TRACE };
 			this.m_mover = mover;
 			this.m_navSet = navSet;
+			this.m_targetEntityId = entityId;
 
 			m_logger.debugLog("Initialized", "EnemyFinder()");
 		}

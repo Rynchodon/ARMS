@@ -14,7 +14,7 @@ namespace Rynchodon.Weapons.Guided
 {
 	public class GuidedMissileLauncher
 	{
-		private static readonly TimeSpan checkInventoryInterval = new TimeSpan(0, 0, 1);
+		private const ulong checkInventoryInterval = Globals.UpdatesPerSecond;
 
 		#region Static
 
@@ -59,14 +59,14 @@ namespace Rynchodon.Weapons.Guided
 		private readonly MyInventoryBase myInventory;
 		public readonly NetworkClient m_netClient;
 
-		private DateTime nextCheckInventory;
+		private ulong nextCheckInventory;
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
 		public Ammo loadedAmmo { get; private set; }
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool onCooldown;
-		private DateTime cooldownUntil;
+		private TimeSpan cooldownUntil;
 
 		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
@@ -194,10 +194,10 @@ namespace Rynchodon.Weapons.Guided
 
 		private void UpdateLoadedMissile()
 		{
-			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && nextCheckInventory > DateTime.UtcNow)
+			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && Globals.UpdateCount >= nextCheckInventory)
 				return;
 
-			nextCheckInventory = DateTime.UtcNow + checkInventoryInterval;
+			nextCheckInventory = Globals.UpdateCount + checkInventoryInterval;
 			prev_mass = myInventory.CurrentMass;
 			prev_volume = myInventory.CurrentVolume;
 
@@ -214,7 +214,7 @@ namespace Rynchodon.Weapons.Guided
 			FuncBlock.RequestEnable(false);
 			FuncBlock.ApplyAction("Shoot_Off");
 			onCooldown = true;
-			cooldownUntil = DateTime.UtcNow + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
+			cooldownUntil = MyAPIGateway.Session.ElapsedPlayTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
 		}
 
 		private void CheckCooldown()
@@ -222,7 +222,7 @@ namespace Rynchodon.Weapons.Guided
 			if (!onCooldown)
 				return;
 
-			if (cooldownUntil > DateTime.UtcNow)
+			if (cooldownUntil > MyAPIGateway.Session.ElapsedPlayTime)
 			{
 				if (FuncBlock.Enabled)
 				{

@@ -1,5 +1,6 @@
 using System;
 using Rynchodon.AntennaRelay;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -89,7 +90,7 @@ namespace Rynchodon.Weapons
 		private LastSeen m_lastSeen;
 		private IMyCubeBlock m_block;
 		private Vector3D m_lastPostion;
-		private DateTime m_lastPositionUpdate;
+		private TimeSpan m_lastPositionUpdate;
 		private bool m_accel;
 
 		public LastSeenTarget(LastSeen seen, IMyCubeBlock block = null)
@@ -132,11 +133,11 @@ namespace Rynchodon.Weapons
 				if (!m_accel)
 				{
 					m_lastPostion = m_block != null ? m_block.GetPosition() : m_lastSeen.Entity.GetCentre();
-					m_lastPositionUpdate = DateTime.UtcNow;
+					m_lastPositionUpdate = MyAPIGateway.Session.ElapsedPlayTime;
 					return m_lastPostion;
 				}
 			}
-			return m_lastPostion + m_lastSeen.GetLinearVelocity() * (float)(DateTime.UtcNow - m_lastPositionUpdate).TotalSeconds;
+			return m_lastPostion + m_lastSeen.GetLinearVelocity() * (float)(MyAPIGateway.Session.ElapsedPlayTime - m_lastPositionUpdate).TotalSeconds;
 		}
 
 		public override Vector3 GetLinearVelocity()

@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly float m_landingHalfSize;
 		private readonly bool m_landGearWithoutTargetBlock;
 
-		private DateTime m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
+		private TimeSpan m_searchTimeoutAt = MyAPIGateway.Session.ElapsedPlayTime + SearchTimeout;
 		private Vector3D m_navBlockPos, m_targetPosition;
 		private LandingState value_landingState = LandingState.None;
 		private ulong next_attemptLock;
@@ -169,7 +169,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 
 				// only timeout if (Grid == null), ship could simply be waiting its turn
-				if (DateTime.UtcNow > m_searchTimeoutAt)
+				if (MyAPIGateway.Session.ElapsedPlayTime > m_searchTimeoutAt)
 				{
 					m_logger.debugLog("Search timed out", "Move()", Logger.severity.INFO);
 					m_navSet.OnTaskComplete_NavMove();
@@ -193,7 +193,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (m_gridFinder.Block != null && m_landingState != LandingState.Landing)
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
-				m_searchTimeoutAt = DateTime.UtcNow + SearchTimeout;
+				m_searchTimeoutAt = MyAPIGateway.Session.ElapsedPlayTime + SearchTimeout;
 
 				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
 				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlockPos, m_targetPosition) < destRadius)

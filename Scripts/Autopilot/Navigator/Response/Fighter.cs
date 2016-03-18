@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Fighter(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet)
 		{
-			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
+			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName) { MinimumLevel = Logger.severity.TRACE };
 			Arm();
 		}
 
@@ -134,9 +134,6 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_orbiter.Move();
-
-			//if (DateTime.UtcNow > m_nextGetRandom)
-			//	SetRandomOffset();
 
 			////m_logger.debugLog("moving to " + (m_currentTarget.predictPosition() + m_currentOffset), "Move()");
 			//m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition() + m_currentOffset, m_currentTarget.GetLinearVelocity());

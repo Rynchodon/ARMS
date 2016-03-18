@@ -30,7 +30,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		protected Logger m_logger { get; private set; }
 
-		private DateTime m_expire;
+		private TimeSpan m_expire;
 		private Dictionary<IMyCubeBlock, MyIDModule> m_affected = new Dictionary<IMyCubeBlock, MyIDModule>();
 
 		/// <summary>When strength is less than this value, stop trying to start an effect.</summary>
@@ -105,7 +105,7 @@ FinishedBlocks:
 			if (applied != 0)
 			{
 				m_logger.debugLog("Added new effect, strength: " + applied, "AddEffect()");
-				m_expire = DateTime.UtcNow.Add(duration);
+				m_expire = MyAPIGateway.Session.ElapsedPlayTime.Add(duration);
 			}
 
 			UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
@@ -116,7 +116,7 @@ FinishedBlocks:
 		/// </summary>
 		protected void UpdateEffect()
 		{
-			if (DateTime.UtcNow > m_expire)
+			if (MyAPIGateway.Session.ElapsedPlayTime > m_expire)
 			{
 				m_logger.debugLog("Removing the effect", "UpdateEffect()", Logger.severity.DEBUG);
 				UpdateManager.Unregister(UpdateFrequency, UpdateEffect);

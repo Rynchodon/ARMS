@@ -82,12 +82,6 @@ namespace Rynchodon
 			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
 		}
 
-		public static double secondsSince(this DateTime previous)
-		{ return (DateTime.UtcNow - previous).TotalSeconds; }
-
-		public static bool moreThanSecondsAgo(this DateTime previous, double seconds)
-		{ return (DateTime.UtcNow - previous).TotalSeconds > seconds; }
-
 		public static bool IsNpc(this long playerID)
 		{
 			if (playerID == 0)

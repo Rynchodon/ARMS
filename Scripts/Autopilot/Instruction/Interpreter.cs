@@ -557,7 +557,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return false;
 			}
 
-			string[] split = dataLowerCase.Split(',');
+			string[] split = dataLowerCase.RemoveWhitespace().Split(',');
 
 			if (split[0] == "off")
 			{
@@ -565,19 +565,55 @@ namespace Rynchodon.Autopilot.Instruction
 				return true;
 			}
 
-			float distance;
-			if (!stringToDistance(out distance, split[0]))
-			{
-				m_logger.debugLog("failed to get distance from: " + split[0], "getAction_engage()");
-				instructionAction = null;
-				return false;
-			}
-
+			float distance = 0f;
+			long entityId = 0L;
 			List<EnemyFinder.Response> responses = new List<EnemyFinder.Response>();
-			for (int i = 1; i < split.Length; i++)
+			foreach (string s in split)
 			{
-				string resStr = split[i].Trim().Replace('-', '_');
-				m_logger.debugLog("Response: " + resStr, "getAction_engage()");
+				switch (s)
+				{
+					case "off":
+						{
+							instructionAction = () => NavSet.Settings_Commands.EnemyFinder = null;
+							return true;
+						}
+				}
+
+				if (s == "off")
+				{
+					instructionAction = () => NavSet.Settings_Commands.EnemyFinder = null;
+					return true;
+				}
+				float dist;
+				if (stringToDistance(out dist, s))
+				{
+					distance =dist;
+					continue;
+				}
+
+				if (s.StartsWith("id"))
+				{
+					if (s.Length < 3)
+					{
+						Errors.Append("Could not get id: ");
+						Errors.AppendLine(s);
+						instructionAction = null;
+						return false;
+					}
+
+					string idStr = s.Substring(2, s.Length - 2);
+					if (!long.TryParse(idStr, out entityId))
+					{
+						Errors.Append("No an id: ");
+						Errors.AppendLine(idStr);
+						instructionAction = null;
+						return false;
+					}
+
+					continue;
+				}
+
+				string resStr = s.Replace('-', '_');
 
 				EnemyFinder.Response r;
 				if (!Enum.TryParse<EnemyFinder.Response>(resStr, true, out r))
@@ -591,6 +627,13 @@ namespace Rynchodon.Autopilot.Instruction
 					responses.Add(r);
 			}
 
+			if (distance < 1f)
+			{
+				m_logger.debugLog("failed to get distance", "getAction_engage()");
+				instructionAction = null;
+				return false;
+			}
+
 			if (responses.Count == 0)
 			{
 				Errors.Append("No responses: ");
@@ -601,7 +644,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			instructionAction = () => {
 				if (NavSet.Settings_Commands.EnemyFinder == null)
-					NavSet.Settings_Commands.EnemyFinder = new EnemyFinder(Mover, NavSet);
+					NavSet.Settings_Commands.EnemyFinder = new EnemyFinder(Mover, NavSet, entityId);
 				NavSet.Settings_Commands.EnemyFinder.AddResponses(distance, responses);
 			};
 			return true;
@@ -888,7 +931,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				NavSet.Settings_Task_NavWay.WaitUntil = DateTime.UtcNow.AddSeconds(seconds);
+				NavSet.Settings_Task_NavWay.WaitUntil = MyAPIGateway.Session.ElapsedPlayTime.Add(new TimeSpan(0, 0, seconds));
 				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
 			};
 			return true;

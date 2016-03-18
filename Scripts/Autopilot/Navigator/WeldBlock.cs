@@ -10,6 +10,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
 {
+
+	// TODO: timeout for a direction and drop it from the list
+
 	public class WeldBlock : NavigatorMover, INavigatorRotator
 	{
 

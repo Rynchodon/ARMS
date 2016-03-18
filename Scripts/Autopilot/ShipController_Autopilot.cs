@@ -154,8 +154,8 @@ namespace Rynchodon.Autopilot
 
 		private IMyCubeGrid m_controlledGrid;
 		private State value_state = State.Disabled;
-		private DateTime m_nextAllowedInstructions = DateTime.MinValue;
-		private DateTime m_endOfHalt;
+		private TimeSpan m_nextAllowedInstructions = TimeSpan.MinValue;
+		private TimeSpan m_endOfHalt;
 
 		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
 		private List<byte> m_customInfo_message = new List<byte>();
@@ -186,11 +186,11 @@ namespace Rynchodon.Autopilot
 					case State.Disabled:
 						m_navSet.OnStartOfCommands(); // here so that fighter gets thrown out and weapons disabled
 						m_interpreter.instructionQueue.Clear();
-						m_nextAllowedInstructions = DateTime.UtcNow;
+						m_nextAllowedInstructions = MyAPIGateway.Session.ElapsedPlayTime;
 						return;
 
 					case State.Halted:
-						m_endOfHalt = DateTime.UtcNow.AddMinutes(5);
+						m_endOfHalt = MyAPIGateway.Session.ElapsedPlayTime.Add(new TimeSpan(0, 5, 0));
 						m_block.SetDamping(true);
 						m_block.Controller.MoveAndRotateStopped();
 						return;
@@ -262,7 +262,7 @@ namespace Rynchodon.Autopilot
 						m_state = State.Disabled;
 						return;
 					case State.Halted:
-						if (!m_block.Controller.ControlThrusters || DateTime.UtcNow > m_endOfHalt)
+						if (!m_block.Controller.ControlThrusters || MyAPIGateway.Session.ElapsedPlayTime > m_endOfHalt)
 							m_state = State.Disabled;
 						return;
 					case State.Closed:
@@ -284,7 +284,7 @@ namespace Rynchodon.Autopilot
 				if (ef != null)
 					ef.Update();
 
-				if (m_navSet.Settings_Current.WaitUntil > DateTime.UtcNow)
+				if (m_navSet.Settings_Current.WaitUntil > MyAPIGateway.Session.ElapsedPlayTime)
 					return;
 
 				if (m_interpreter.SyntaxError)
@@ -299,7 +299,7 @@ namespace Rynchodon.Autopilot
 					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
 					{
 						m_interpreter.instructionQueue.Dequeue().Invoke();
-						if (m_navSet.Settings_Current.WaitUntil > DateTime.UtcNow)
+						if (m_navSet.Settings_Current.WaitUntil > MyAPIGateway.Session.ElapsedPlayTime)
 						{
 							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil, "Update()");
 							return;
@@ -318,7 +318,7 @@ namespace Rynchodon.Autopilot
 					if (Rotate())
 						return;
 
-				if (m_nextAllowedInstructions > DateTime.UtcNow)
+				if (m_nextAllowedInstructions > MyAPIGateway.Session.ElapsedPlayTime)
 				{
 					m_logger.debugLog("Delaying instructions", "UpdateThread()", Logger.severity.INFO);
 					m_navSet.Settings_Task_NavWay.WaitUntil = m_nextAllowedInstructions;
@@ -326,7 +326,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				m_logger.debugLog("enqueing instructions", "Update()", Logger.severity.DEBUG);
-				m_nextAllowedInstructions = DateTime.UtcNow + MinTimeInstructions;
+				m_nextAllowedInstructions = MyAPIGateway.Session.ElapsedPlayTime + MinTimeInstructions;
 				m_interpreter.enqueueAllActions();
 
 				if (!m_interpreter.hasInstructions())
@@ -519,7 +519,7 @@ namespace Rynchodon.Autopilot
 
 			bool moving = true;
 
-			double wait = (m_navSet.Settings_Current.WaitUntil - DateTime.UtcNow).TotalSeconds;
+			double wait = (m_navSet.Settings_Current.WaitUntil - MyAPIGateway.Session.ElapsedPlayTime).TotalSeconds;
 			if (wait > 0)
 			{
 				moving = false;

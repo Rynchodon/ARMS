@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -28,17 +29,18 @@ namespace Rynchodon.Autopilot
 		private readonly bool m_mustBeRecent;
 
 		private ulong NextSearch_Grid, NextSearch_Block;
-		private List<LastSeen> m_enemies;
+		//private List<LastSeen> m_enemies;
 
 		public virtual LastSeen Grid { get; protected set; }
 		public IMyCubeBlock Block { get; private set; }
-		public Func<IMyCubeGrid, bool> GridCondition { get; set; }
+		public Func<IMyCubeGrid, bool> GridCondition;
 		/// <summary>Block requirements, other than can control.</summary>
-		public Func<IMyCubeBlock, bool> BlockCondition { get; set; }
+		public Func<IMyCubeBlock, bool> BlockCondition;
 		public ReasonCannotTarget m_reason;
 		public long m_reasonGrid;
 
-		protected float MaximumRange { get; set; }
+		protected float MaximumRange;
+		protected long m_targetEntityId;
 
 		private NetworkClient m_client { get { return m_controlBlock.NetClient; } }
 
@@ -48,7 +50,7 @@ namespace Rynchodon.Autopilot
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
 			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, bool mustBeRecent = false)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock) { MinimumLevel = Logger.severity.TRACE };
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
@@ -70,14 +72,14 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, float maxRange = 0f)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock) { MinimumLevel = Logger.severity.TRACE };
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller.CubeBlock == null, "controller.CubeBlock == null", "GridFinder()", Logger.severity.FATAL);
 
 			this.m_controlBlock = controller;
-			this.m_enemies = new List<LastSeen>();
+			//this.m_enemies = new List<LastSeen>();
 
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
@@ -170,8 +172,19 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
+			if (m_targetEntityId != 0L)
+			{
+				LastSeen target;
+				if (store.TryGetLastSeen(m_targetEntityId, out target) && CanTarget(target))
+				{
+					Grid = target;
+					m_logger.debugLog("found target: " + target.Entity.getBestName(), "GridSearch_Enemy()");
+					return;
+				}
+			}
+
+			List<LastSeen> enemies = ResourcePool<List<LastSeen>>.Get();
 			Vector3D position = m_controlBlock.CubeBlock.GetPosition();
-			m_enemies.Clear();
 			store.SearchLastSeen(seen => {
 				if (!seen.IsValid || !seen.isRecent())
 					return false;
@@ -182,13 +195,13 @@ namespace Rynchodon.Autopilot
 				if (!m_controlBlock.CubeBlock.canConsiderHostile(asGrid))
 					return false;
 
-				m_enemies.Add(seen);
+				enemies.Add(seen);
 				m_logger.debugLog("enemy: " + asGrid.DisplayName, "GridSearch_Enemy()");
 				return false;
 			});
 
-			m_logger.debugLog("number of enemies: " + m_enemies.Count, "GridSearch_Enemy()");
-			IOrderedEnumerable<LastSeen> enemiesByDistance = m_enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
+			m_logger.debugLog("number of enemies: " + enemies.Count, "GridSearch_Enemy()");
+			IOrderedEnumerable<LastSeen> enemiesByDistance = enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
 			m_reason = ReasonCannotTarget.None;
 			foreach (LastSeen enemy in enemiesByDistance)
 			{
@@ -196,12 +209,16 @@ namespace Rynchodon.Autopilot
 				{
 					Grid = enemy;
 					m_logger.debugLog("found target: " + enemy.Entity.getBestName(), "GridSearch_Enemy()");
+					enemies.Clear();
+					ResourcePool<List<LastSeen>>.Return(enemies);
 					return;
 				}
 			}
 
 			Grid = null;
-			m_logger.debugLog("nothing found", "GridSearch_Enemy()");
+			m_logger.debugLog("nothing found", "GridSearch_Enemy()"); 
+			enemies.Clear();
+			ResourcePool<List<LastSeen>>.Return(enemies);
 		}
 
 		private void GridUpdate()
@@ -217,7 +234,7 @@ namespace Rynchodon.Autopilot
 
 			if (m_mustBeRecent && !Grid.isRecent())
 			{
-				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (DateTime.UtcNow - Grid.LastSeenAt), "CanTarget()");
+				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (MyAPIGateway.Session.ElapsedPlayTime - Grid.LastSeenAt), "CanTarget()");
 				Grid = null;
 				return;
 			}

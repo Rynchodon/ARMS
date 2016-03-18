@@ -109,12 +109,12 @@ namespace Rynchodon
 				if (recentActivity.Count == recentActivityCount)
 					recentActivity.Dequeue();
 
-				recentActivity.Enqueue(() => DateTime.UtcNow.Second + "." + DateTime.UtcNow.Millisecond + " : " + message + '\n' + State());
+				recentActivity.Enqueue(() => DateTime.Now.Second + "." + DateTime.Now.Millisecond + " : " + message + '\n' + State());
 
 				//StringBuilder activity = new StringBuilder();
-				//activity.Append(DateTime.UtcNow.Second);
+				//activity.Append(DateTime.Now.Second);
 				//activity.Append('.');
-				//activity.Append(DateTime.UtcNow.Millisecond);
+				//activity.Append(DateTime.Now.Millisecond);
 				//activity.Append(" : ");
 				//activity.Append(message);
 				//activity.AppendLine();

@@ -52,7 +52,7 @@ namespace Rynchodon.Programmable
     TimeSpan alarmInterval = new TimeSpan(0, 0, 10);
 
     /// <summary>The next time the alarm will be allowed to sound.</summary>
-    DateTime nextAlarmTime;
+    TimeSpan nextAlarmTime;
 
     /// <summary>List of enemy entity IDs</summary>
     List<TerminalActionParameter> enemies = new List<TerminalActionParameter>();
@@ -73,12 +73,12 @@ namespace Rynchodon.Programmable
             enemies.Add(TerminalActionParameter.Get(entityData.entityId));
 
             // sound alarm if enemy is near
-            if (DateTime.UtcNow >= nextAlarmTime &&
+            if (ElapsedTime >= nextAlarmTime &&
               (entityData.volume > 100 || entityData.volume == 0f) &&
               entityData.secondsSinceDetected < 60 &&
               Vector3D.DistanceSquared(Me.GetPosition(), entityData.predictedPosition) < 10000 * 10000)
             {
-              nextAlarmTime = DateTime.UtcNow + alarmInterval;
+              nextAlarmTime = ElapsedTime + alarmInterval;
 
               IMySoundBlock alarm = GridTerminalSystem.GetBlockWithName("Proximity Alarm")
                 as IMySoundBlock;

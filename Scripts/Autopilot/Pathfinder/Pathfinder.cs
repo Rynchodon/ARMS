@@ -124,7 +124,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			grid.throwIfNull_argument("grid");
 			m_grid = grid;
-			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
+			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString()) { MinimumLevel = Logger.severity.TRACE };
 			m_pathChecker = new PathChecker(grid);
 			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;
@@ -568,6 +568,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void SetWaypoint()
 		{
+			m_pathLow.Clear();
 			new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, MoveObstruction, m_altPath_Waypoint - MoveObstruction.GetPosition());
 			m_navSet.Settings_Current.DestinationRadius = Math.Max(Vector3.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2f, 1f);
 			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "IncrementAlternatesFound()", Logger.severity.DEBUG);

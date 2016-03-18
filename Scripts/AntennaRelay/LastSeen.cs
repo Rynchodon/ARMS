@@ -1,4 +1,5 @@
 ﻿using System;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -24,17 +25,17 @@ namespace Rynchodon.AntennaRelay
 		private EntityType m_type;
 
 		public readonly IMyEntity Entity;
-		public readonly DateTime LastSeenAt;
+		public readonly TimeSpan LastSeenAt;
 		public readonly Vector3D LastKnownPosition;
 		public readonly RadarInfo Info;
 		public readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
-		public readonly DateTime LastBroadcast;
+		public readonly TimeSpan LastBroadcast;
 		/// <summary>The last time Entity was using a radar</summary>
-		public readonly DateTime LastRadar;
+		public readonly TimeSpan LastRadar;
 		/// <summary>The last time Entity was using a jammer</summary>
-		public readonly DateTime LastJam;
+		public readonly TimeSpan LastJam;
 
 		public EntityType Type
 		{
@@ -58,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 		private LastSeen(IMyEntity entity)
 		{
 			this.Entity = entity;
-			this.LastSeenAt = DateTime.UtcNow;
+			this.LastSeenAt = MyAPIGateway.Session.ElapsedPlayTime;
 			this.LastKnownPosition = entity.GetCentre();
 			if (entity.Physics == null)
 				this.LastKnownVelocity = Vector3D.Zero;
@@ -95,11 +96,11 @@ namespace Rynchodon.AntennaRelay
 			: this(entity)
 		{
 			if ((times & UpdateTime.Broadcasting) != 0)
-				this.LastBroadcast = DateTime.UtcNow;
+				this.LastBroadcast = MyAPIGateway.Session.ElapsedPlayTime;
 			if ((times & UpdateTime.HasJammer) != 0)
-				this.LastJam = DateTime.UtcNow;
+				this.LastJam = MyAPIGateway.Session.ElapsedPlayTime;
 			if ((times & UpdateTime.HasRadar) != 0)
-				this.LastRadar = DateTime.UtcNow;
+				this.LastRadar = MyAPIGateway.Session.ElapsedPlayTime;
 		}
 
 		/// <summary>
@@ -139,11 +140,11 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		public Vector3D predictPosition()
-		{ return LastKnownPosition + LastKnownVelocity * (float)(DateTime.UtcNow - LastSeenAt).TotalSeconds; }
+		{ return LastKnownPosition + LastKnownVelocity * (float)(MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt).TotalSeconds; }
 
 		public Vector3D predictPosition(out TimeSpan sinceLastSeen)
 		{
-			sinceLastSeen = DateTime.UtcNow - LastSeenAt;
+			sinceLastSeen = MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt;
 			return LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 
@@ -152,7 +153,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			get
 			{
-				if (value_isValid && (Entity == null || Entity.Closed || (DateTime.UtcNow - LastSeenAt).CompareTo(MaximumLifetime) > 0))
+				if (value_isValid && (Entity == null || Entity.Closed || (MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt).CompareTo(MaximumLifetime) > 0))
 					value_isValid = false;
 				return value_isValid;
 			}
@@ -165,17 +166,17 @@ namespace Rynchodon.AntennaRelay
 		{ return GetTimeSinceLastSeen() < Recent; }
 
 		public bool isRecent_Broadcast()
-		{ return (DateTime.UtcNow - LastBroadcast) < Recent; }
+		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastBroadcast) < Recent; }
 
 		public bool isRecent_Jam()
-		{ return (DateTime.UtcNow - LastJam) < Recent; }
+		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastJam) < Recent; }
 
 		public bool isRecent_Radar()
-		{ return (DateTime.UtcNow - LastRadar) < Recent; }
+		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastRadar) < Recent; }
 
 		/// <summary>A time span object representing the difference between the current time and the last time this LastSeen was updated</summary>
 		public TimeSpan GetTimeSinceLastSeen()
-		{ return DateTime.UtcNow - LastSeenAt; }
+		{ return MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt; }
 
 		/// <summary>
 		/// If Entity has been seen recently, gets its position. Otherwise, predicts its position.
@@ -201,7 +202,7 @@ namespace Rynchodon.AntennaRelay
 
 	public class RadarInfo
 	{
-		public readonly DateTime DetectedAt;
+		public readonly TimeSpan DetectedAt;
 		public readonly float Volume;
 
 		public string Pretty_Volume()
@@ -209,7 +210,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RadarInfo(float volume)
 		{
-			this.DetectedAt = DateTime.UtcNow;
+			this.DetectedAt = MyAPIGateway.Session.ElapsedPlayTime;
 			this.Volume = volume;
 		}
 

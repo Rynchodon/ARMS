@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 m_moveAccel;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
-		private DateTime updated_prevAngleVel;
+		private TimeSpan updated_prevAngleVel;
 
 		private float best_distance, best_angle;
 		private ulong m_stuckAt = ulong.MaxValue;
@@ -79,8 +79,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="NavSet">Navigation settings to use.</param>
 		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
 		{
-			this.myLogger = new Logger("Mover", block.Controller);
-			//this.myLogger.MinimumLevel = Logger.severity.DEBUG;
+			this.myLogger = new Logger("Mover", block.Controller) { MinimumLevel = Logger.severity.TRACE };
 			this.Block = block;
 			this.NavSet = NavSet;
 
@@ -457,8 +456,8 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			float secondsSinceLast = (float)(DateTime.UtcNow - updated_prevAngleVel).TotalSeconds;
-			updated_prevAngleVel = DateTime.UtcNow;
+			float secondsSinceLast = (float)(MyAPIGateway.Session.ElapsedPlayTime - updated_prevAngleVel).TotalSeconds;
+			updated_prevAngleVel = MyAPIGateway.Session.ElapsedPlayTime;
 
 			if (rotateForceRatio != Vector3.Zero)
 			{
@@ -544,28 +543,32 @@ namespace Rynchodon.Autopilot.Movement
 
 			Vector3 targetVelocity = MaxAngleVelocity(displacement, secondsSinceLast);
 
+			float timeToReachVelocity;
 			// adjustment to face a moving entity
 			if (targetEntity != null)
 			{
-				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity;
+				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity - Block.Physics.LinearAcceleration * 0.1f;
 				float distance = Vector3.Distance(targetEntity.GetCentre(), Block.CubeBlock.GetPosition());
 
 				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", tangentialVelocity: " + tangentialVelocity + ", localTangVel: " + localTangVel, "CalcRotate()");
 
-				float RLV_pitch = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Up);
-				float RLV_yaw = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Left);
+				float RLV_pitch = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Down);
+				float RLV_yaw = Vector3.Dot(relativeLinearVelocity, Block.CubeBlock.WorldMatrix.Right);
 				float angl_pitch = (float)Math.Atan2(RLV_pitch, distance);
 				float angl_yaw = (float)Math.Atan2(RLV_yaw, distance);
 
-				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch, "CalcRotate()");
+				myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch, "CalcRotate()");
 
 				targetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
+				timeToReachVelocity = 0.01f; // makes a big difference for orbiting and shooting an enemy
 			}
+			else
+				timeToReachVelocity = 0.1f;
 
-			rotateForceRatio = (targetVelocity - angularVelocity) / (myGyro.torqueAccelRatio * gyroForce * 0.1f); // 0.1f is time to reach target velocity
+			rotateForceRatio = (targetVelocity - angularVelocity) / (myGyro.torqueAccelRatio * gyroForce * timeToReachVelocity);
 
-			//myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (targetVelocity - angularVelocity), "CalcRotate()");
-			//myLogger.debugLog("accel: " + (targetVelocity - angularVelocity) + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
+			myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (targetVelocity - angularVelocity), "CalcRotate()");
+			myLogger.debugLog("accel: " + (targetVelocity - angularVelocity) + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)

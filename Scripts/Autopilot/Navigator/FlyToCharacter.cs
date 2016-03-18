@@ -3,7 +3,8 @@ using System.Text; // from mscorlib.dll
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using VRage.Game.ModAPI; // from Sandbox.Common.dll
+using Sandbox.ModAPI; // from Sandbox.Common.dll
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -19,14 +20,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private ulong m_nextLastSeen;
 		private LastSeen m_character;
-		private DateTime m_timeoutAt;
+		private TimeSpan m_timeoutAt;
 
 		public FlyToCharacter(Mover mover, AllNavigationSettings navSet, string charName)
 			: base(mover, navSet)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => charName);
 			this.m_charName = charName.LowerRemoveWhitespace();
-			this.m_timeoutAt = DateTime.UtcNow + timeout;
+			this.m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + timeout;
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
 		}
@@ -42,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_character == null)
 			{
 				m_mover.StopMove();
-				if (DateTime.UtcNow > m_timeoutAt)
+				if (MyAPIGateway.Session.ElapsedPlayTime > m_timeoutAt)
 				{
 					m_logger.debugLog("terminating search", "Move()");
 					m_navSet.OnTaskComplete_NavMove();
@@ -96,7 +97,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_logger.debugLog("failed to update last seen", "UpdateLastSeen()", Logger.severity.WARNING);
 					m_character = null;
-					m_timeoutAt = DateTime.UtcNow + timeout;
+					m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + timeout;
 				}
 
 			store.SearchLastSeen((LastSeen seen) => {

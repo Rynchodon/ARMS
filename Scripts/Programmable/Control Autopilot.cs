@@ -46,11 +46,11 @@ namespace Rynchodon
     Task currentTask;
 
     /// <summary>The next time uranium levels will be checked</summary>
-    DateTime nextUpdate_uranium;
+    TimeSpan nextUpdate_uranium;
     /// <summary>The next time gas levels will be checked.</summary>
-    DateTime nextUpdate_gas;
+    TimeSpan nextUpdate_gas;
     /// <summary>The next time cargo volume will be checked.</summary>
-    DateTime nextUpdate_cargo;
+    TimeSpan nextUpdate_cargo;
 
     /// <summary>Amount of uranium currently stored in the reactors.</summary>
     VRage.MyFixedPoint uraniumMass;
@@ -199,9 +199,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateReactorUranium()
     {
-      if (DateTime.UtcNow < nextUpdate_uranium)
+      if (ElapsedTime < nextUpdate_uranium)
         return;
-      nextUpdate_uranium = DateTime.UtcNow + updateInterval;
+      nextUpdate_uranium = ElapsedTime + updateInterval;
 
       uraniumMass = 0;
 
@@ -225,9 +225,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateGasStored()
     {
-      if (DateTime.UtcNow < nextUpdate_gas)
+      if (ElapsedTime < nextUpdate_gas)
         return;
-      nextUpdate_gas = DateTime.UtcNow + updateInterval;
+      nextUpdate_gas = ElapsedTime + updateInterval;
 
       float hydrogenStored = 0f, maxHydrogen = 0f, oxygenStored = 0f, maxOxygen = 0f;
 
@@ -271,9 +271,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateCargoRatio()
     {
-      if (DateTime.UtcNow < nextUpdate_cargo)
+      if (ElapsedTime < nextUpdate_cargo)
         return;
-      nextUpdate_cargo = DateTime.UtcNow + updateInterval;
+      nextUpdate_cargo = ElapsedTime + updateInterval;
 
       prev_cargoRatio = cargoRatio;
       VRage.MyFixedPoint cargoVolume = 0, cargoMaxVolume = 0;

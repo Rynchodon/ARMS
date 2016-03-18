@@ -119,7 +119,7 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.DEBUG };
+			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.TRACE };
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();
@@ -372,7 +372,8 @@ namespace Rynchodon.Weapons
 			//using (lock_CurrentDirection.AcquireSharedUsing())
 			//{
 			Vector3 CurrentDirection = Facing();
-				float directionChange = Vector3.RectangularDistance(ref CurrentDirection, ref previousFiringDirection);
+			float directionChange;
+			Vector3.DistanceSquared(ref CurrentDirection, ref previousFiringDirection, out directionChange);
 				previousFiringDirection = CurrentDirection;
 
 				Vector3 p0 = weaponPosition + target.FiringDirection.Value * distance;

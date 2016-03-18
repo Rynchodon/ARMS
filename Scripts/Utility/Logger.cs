@@ -44,7 +44,7 @@ namespace Rynchodon
 		private readonly string m_classname;
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
 
-		public severity MinimumLevel = severity.ALL;
+		public severity MinimumLevel = severity.INFO;
 
 		/// <summary>
 		/// Creates a Logger that gets the context and states from supplied functions.

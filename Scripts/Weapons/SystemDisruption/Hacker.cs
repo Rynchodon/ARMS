@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Attached;
+using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
@@ -30,7 +31,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private readonly Logger m_logger;
 		private readonly IMyLandingGear m_hackBlock;
 
-		private DateTime m_nextHack;
+		private TimeSpan m_nextHack;
 		private int m_strengthLeft;
 
 		public Hacker(IMyCubeBlock block)
@@ -44,7 +45,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public void Update10()
 		{
-			if (DateTime.UtcNow < m_nextHack )
+			if (MyAPIGateway.Session.ElapsedPlayTime < m_nextHack)
 				return;
 			if (!m_hackBlock.IsWorking)
 			{
@@ -81,7 +82,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 					return;
 				}
 
-			m_nextHack = DateTime.UtcNow + s_hackFrequency;
+			m_nextHack = MyAPIGateway.Session.ElapsedPlayTime + s_hackFrequency;
 
 			m_strengthLeft += s_hackStrength;
 			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
