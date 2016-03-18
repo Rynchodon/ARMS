@@ -93,7 +93,7 @@ namespace Rynchodon.Attached
 					}
 				}
 				else // partner != null
-					if (!myStator.IsAttached)
+					if (!myStator.IsAttached && !myStator.IsLocked)
 					{
 						myLogger.debugLog("Removing partner " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
 						Detach();

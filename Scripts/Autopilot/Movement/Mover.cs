@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Movement
 		private DateTime updated_prevAngleVel;
 
 		private float best_distance, best_angle;
-		private ulong m_stuckAt;
+		private ulong m_stuckAt = ulong.MaxValue;
 
 		private bool m_stopped, m_overworked;
 
@@ -202,7 +202,10 @@ namespace Rynchodon.Autopilot.Movement
 			float tarSpeedSq = targetVelocity.LengthSquared();
 			float speedRequest = NavSet.Settings_Current.SpeedTarget;
 			if (tarSpeedSq > speedRequest * speedRequest)
+			{
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
+				myLogger.debugLog("imposing speed limit: " + speedRequest + ", targetVelocity: " + targetVelocity, "CalcMove()");
+			}
 			else
 				NavSet.Settings_Task_NavWay.NearingDestination = true;
 
@@ -650,11 +653,12 @@ namespace Rynchodon.Autopilot.Movement
 				// if cannot rotate and not calculating move, move away from obstruction
 				if (obstruction != null)
 				{
-					Vector3 position = Block.CubeBlock.GetPosition();
-					Vector3 away = position - obstruction.GetCentre();
-					away.Normalize();
-					myLogger.debugLog("Stuck, creating GOLIS to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
-					new GOLIS(this, NavSet, position + away * (10f + NavSet.Settings_Current.DestinationRadius), true);
+					Vector3 displacement = Block.CubeBlock.GetPosition() - obstruction.GetCentre();
+					Vector3 away;
+					Vector3.Normalize(ref displacement, out away);
+					myLogger.debugLog("Stuck, creating Waypoint to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
+					new Waypoint(this, NavSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + NavSet.Settings_Current.DestinationRadius));
+					m_stuckAt = Globals.UpdateCount + StuckAfter;
 				}
 			}
 

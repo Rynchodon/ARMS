@@ -14,7 +14,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger myLogger;
 		private readonly PseudoBlock NavigationBlock;
 		private readonly Vector3 location;
-		private readonly bool Waypoint;
+		private readonly AllNavigationSettings.SettingsLevelName m_level;
 
 		/// <summary>
 		/// Creates a GOLIS
@@ -22,17 +22,17 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="mover">The mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="location">The location to fly to</param>
-		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location, bool waypoint = false)
+		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location, AllNavigationSettings.SettingsLevelName level = AllNavigationSettings.SettingsLevelName.NavMove)
 			: base(mover, navSet)
 		{
 			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);
 			this.NavigationBlock = m_navSet.Settings_Current.NavigationBlock;
 			this.location = location;
-			this.Waypoint = waypoint;
+			this.m_level = level;
 
-			var atLevel = waypoint ? m_navSet.Settings_Task_NavWay : m_navSet.Settings_Task_NavMove;
+			var atLevel = m_navSet.GetSettingsLevel(level);
 			atLevel.NavigatorMover = this;
-			atLevel.DestinationEntity = mover.Block.CubeGrid; // in case waypoint is blocked by moving target
+			atLevel.DestinationEntity = mover.Block.CubeBlock; // in case waypoint is blocked by moving target
 		}
 
 		#region NavigatorMover Members
@@ -45,10 +45,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
 				myLogger.debugLog("Reached destination: " + location, "Move()", Logger.severity.INFO);
-				if (Waypoint)
-					m_navSet.OnTaskComplete_NavWay();
-				else
-					m_navSet.OnTaskComplete_NavMove();
+				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();
 				m_mover.StopRotate();
 			}
@@ -65,7 +62,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
 			customInfo.Append("Moving to ");
-			if (Waypoint)
+			if (m_level == AllNavigationSettings.SettingsLevelName.NavWay)
 				customInfo.Append("waypoint: ");
 			customInfo.AppendLine(location.ToPretty());
 

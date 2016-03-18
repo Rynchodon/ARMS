@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
@@ -29,7 +28,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private static readonly TargetType[] CumulativeTypes = new TargetType[] { TargetType.SmallGrid, TargetType.LargeGrid, TargetType.Station };
 
 		private readonly Logger m_logger;
-		private readonly Random Random = new Random();
 
 		private readonly CachingList<FixedWeapon> m_weapons_fixed = new CachingList<FixedWeapon>();
 		private readonly CachingList<WeaponTargeting> m_weapons_all = new CachingList<WeaponTargeting>();
@@ -81,7 +79,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("new target: " + enemy.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
 				m_currentTarget = enemy;
-				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 10f);
+				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 50f);
 			}
 		}
 

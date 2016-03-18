@@ -241,7 +241,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			float distSq = Vector3.DistanceSquared(m_targetPosition, grindPosition);
 			float offset = m_grinderOffset + m_enemy.GridSize;
-			float offsetEpsilon = offset + 1f;
+			float offsetEpsilon = offset + 5f;
 			if (distSq > offsetEpsilon * offsetEpsilon)
 			{
 				Vector3D targetToGrinder = grindPosition - m_targetPosition;

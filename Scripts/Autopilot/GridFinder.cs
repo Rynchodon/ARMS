@@ -320,7 +320,7 @@ namespace Rynchodon.Autopilot
 				// if it is too far from start, cannot target
 				if (MaximumRange > 1f && Vector3.DistanceSquared(m_controlBlock.CubeBlock.GetPosition(), seen.GetPosition()) > MaximumRange * MaximumRange)
 				{
-					m_logger.debugLog("out of range of start position: " + seen.Entity.getBestName(), "CanTarget()");
+					m_logger.debugLog("out of range: " + seen.Entity.getBestName(), "CanTarget()");
 					if (m_reason < ReasonCannotTarget.Too_Far)
 					{
 						m_reason = ReasonCannotTarget.Too_Far;
@@ -330,10 +330,10 @@ namespace Rynchodon.Autopilot
 				}
 
 				// if it is too fast, cannot target
-				float speedTarget = m_navSet.Settings_Current.SpeedTarget - 1f;
+				float speedTarget = m_navSet.Settings_Task_NavEngage.SpeedTarget - 1f;
 				if (seen.GetLinearVelocity().LengthSquared() >= speedTarget * speedTarget)
 				{
-					m_logger.debugLog("too fast to target: " + seen.Entity.getBestName(), "CanTarget()");
+					m_logger.debugLog("too fast to target: " + seen.Entity.getBestName() + ", speed: " + seen.GetLinearVelocity().Length() + ", my speed: " + m_navSet.Settings_Task_NavEngage.SpeedTarget, "CanTarget()");
 					if (m_reason < ReasonCannotTarget.Too_Fast)
 					{
 						m_reason = ReasonCannotTarget.Too_Fast;

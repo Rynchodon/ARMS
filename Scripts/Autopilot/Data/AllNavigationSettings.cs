@@ -13,6 +13,8 @@ namespace Rynchodon.Autopilot.Data
 	public class AllNavigationSettings
 	{
 
+		public enum SettingsLevelName : byte { Commands, NavRot, NavMove, NavEngage, NavWay, Current = NavWay };
+
 		public class SettingsLevel
 		{
 			private SettingsLevel parent;
@@ -202,6 +204,7 @@ namespace Rynchodon.Autopilot.Data
 			/// <summary>
 			/// <para>The desired speed of the ship</para>
 			/// <para>Get returns the lowest value at this or higher level</para>
+			/// <para>The lowest level of SpeedTarget belongs to pathfinder, it may be necessary to read at a higher level.</para>
 			/// </summary>
 			public float SpeedTarget
 			{
@@ -219,6 +222,7 @@ namespace Rynchodon.Autopilot.Data
 			/// <summary>
 			/// <para>The maximum speed relative to the target.</para>
 			/// <para>Get returns the lowest value at this or higher level</para>
+			/// <para>The lowest level of SpeedMaxRelative belongs to pathfinder, it may be necessary to read at a higher level.</para>
 			/// </summary>
 			public float SpeedMaxRelative
 			{
@@ -297,6 +301,25 @@ namespace Rynchodon.Autopilot.Data
 		/// <summary>Reflects the current state of autopilot. Settings should be read here but not written.</summary>
 		public SettingsLevel Settings_Current { get { return Settings_Task_NavWay; } }
 
+		public SettingsLevel GetSettingsLevel(SettingsLevelName level)
+		{
+			switch (level)
+			{
+				case SettingsLevelName.Commands:
+					return Settings_Commands;
+				case SettingsLevelName.NavRot:
+					return Settings_Task_NavRot;
+				case SettingsLevelName.NavMove:
+					return Settings_Task_NavMove;
+				case SettingsLevelName.NavEngage:
+					return Settings_Task_NavEngage;
+				case SettingsLevelName.NavWay:
+					return Settings_Task_NavWay;
+				default:
+					throw new Exception("Unhandled enum: " + level);
+			}
+		}
+
 		public PseudoBlock LastLandingBlock { get; set; }
 
 		public Shopper Shopper { get; set; }
@@ -334,6 +357,30 @@ namespace Rynchodon.Autopilot.Data
 		public void OnTaskComplete_NavWay()
 		{
 			Settings_Task_NavWay = new SettingsLevel(Settings_Task_NavEngage);
+		}
+
+		public void OnTaskComplete(SettingsLevelName level)
+		{
+			switch (level)
+			{
+				case SettingsLevelName.Commands:
+					OnStartOfCommands();
+					return;
+				case SettingsLevelName.NavRot:
+					OnTaskComplete_NavRot();
+					return;
+				case SettingsLevelName.NavMove:
+					OnTaskComplete_NavMove();
+					return;
+				case SettingsLevelName.NavEngage:
+					OnTaskComplete_NavEngage();
+					return;
+				case SettingsLevelName.NavWay:
+					OnTaskComplete_NavWay();
+					return;
+				default:
+					throw new Exception("Unhandled enum: " + level);
+			}
 		}
 
 		/// <summary>

@@ -39,6 +39,7 @@ namespace Rynchodon.Autopilot.Navigator
 				Vector3D toTarget = value_orbitEntity.GetCentre() - m_navBlock.WorldPosition;
 				m_orbitAxis = Vector3D.CalculatePerpendicularVector(toTarget);
 				m_orbitAxis.Normalize();
+				m_navSet.Settings_Task_NavMove.DestinationEntity = value;
 			}
 		}
 
