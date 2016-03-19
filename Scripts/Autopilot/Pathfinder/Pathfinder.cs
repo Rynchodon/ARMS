@@ -336,12 +336,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				if (tryAlternates)
 				{
-					if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
-					{
-						m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", "TestPath()", Logger.severity.DEBUG);
-						m_navSet.OnTaskComplete_NavWay();
-						return;
-					}
+					// autopilot was getting stuck
+					//if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
+					//{
+					//	m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", "TestPath()", Logger.severity.DEBUG);
+					//	m_navSet.OnTaskComplete_NavWay();
+					//	return;
+					//}
 
 					ClearAltPath();
 					MoveObstruction = obstructing;

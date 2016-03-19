@@ -11,8 +11,6 @@ using VRageMath;
 namespace Rynchodon.Autopilot.Navigator
 {
 
-	// TODO: timeout for a direction and drop it from the list
-
 	public class WeldBlock : NavigatorMover, INavigatorRotator
 	{
 
@@ -23,7 +21,7 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		private const float OffsetAdd = 5f;
-		private const ulong TimeoutRepair = 1000ul;
+		private const ulong TimeoutStart = 1200ul;
 
 		private enum Stage : byte { Lineup, Approach, Weld, Retreat }
 
@@ -32,11 +30,13 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly IMySlimBlock m_slimTarget;
 		private readonly List<IMySlimBlock> m_neighbours = new List<IMySlimBlock>();
 		private readonly List<Vector3I> m_emptyNeighbours = new List<Vector3I>();
+		private readonly float m_offset, m_slimTarget_initDmg;
 
 		private bool m_weldersEnabled;
-		private float m_offset, m_damage, m_buildLevelRatio;
+		private float m_damage;
 		private ulong m_timeout_start, m_lastWeld;
 		private Vector3D m_slimPos;
+		private Vector3I? m_closestEmptyNeighbour;
 		private Stage value_stage;
 		private readonly LineSegmentD m_lineUp = new LineSegmentD();
 
@@ -69,11 +69,12 @@ namespace Rynchodon.Autopilot.Navigator
 		public WeldBlock(Mover mover, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
 			: base(mover, navSet)
 		{
-			this.m_logger = new Logger(GetType().Name, () => mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());
+			this.m_logger = new Logger(GetType().Name, () => mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString()) { MinimumLevel = Logger.severity.TRACE };
 			this.m_offset = welder.Block.LocalAABB.GetLongestDim() * 0.5f; // this works for default welders, may not work if mod has an exotic design
 			this.m_welder = welder;
 			this.m_slimTarget = block;
-			this.m_timeout_start = Globals.UpdateCount + 3600ul;
+			this.m_timeout_start = Globals.UpdateCount + TimeoutStart;
+			this.m_slimTarget_initDmg = block.CurrentDamage + 1f - block.BuildLevelRatio;
 
 			m_navSet.Settings_Task_NavEngage.NavigatorMover = this;
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = this;
@@ -111,10 +112,38 @@ namespace Rynchodon.Autopilot.Navigator
 				if (Vector3D.DistanceSquared(m_welder.WorldPosition, m_slimPos) > minDist)
 				{
 					m_logger.debugLog("moved away from: " + m_slimTarget.getBestName(), "Move()", Logger.severity.DEBUG);
-					m_navSet.OnTaskComplete_NavEngage();
-					m_mover.StopMove();
-					m_mover.StopRotate();
-					return;
+					float targetDamage = m_slimTarget.CurrentDamage + 1f - m_slimTarget.BuildLevelRatio;
+					if (targetDamage < m_slimTarget_initDmg)
+					{
+						// some welding was done, probably ran out of components
+						m_navSet.OnTaskComplete_NavEngage();
+						m_mover.StopMove();
+						m_mover.StopRotate();
+						return;
+					}
+					else
+					{
+						// no welding was done, probably could not reach target
+						if (m_emptyNeighbours.Count > 1)
+						{
+							// if we were very close when we started, no neighbour would have been chosen
+							if (m_closestEmptyNeighbour.HasValue)
+							{
+								m_emptyNeighbours.Remove(m_closestEmptyNeighbour.Value);
+								m_closestEmptyNeighbour = null;
+							}
+							m_stage = Stage.Lineup;
+							return;
+						}
+						else
+						{
+							m_logger.debugLog("tried every empty neighbour, giving up", "Move()", Logger.severity.INFO);
+							m_navSet.OnTaskComplete_NavEngage();
+							m_mover.StopMove();
+							m_mover.StopRotate();
+							return;
+						}
+					}
 				}
 				Vector3D direction = m_welder.WorldPosition - m_slimPos;
 				direction.Normalize();
@@ -130,36 +159,43 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				EnableWelders(false);
 
-				if (Globals.UpdateCount > m_timeout_start)
+				if (m_closestEmptyNeighbour.HasValue && Globals.UpdateCount > m_timeout_start)
 				{
-					m_logger.debugLog("failed to start", "Move()");
-					EnableWelders(false);
-					m_stage = Stage.Retreat;
-					return;
+					m_logger.debugLog("failed to start, dropping neighbour: " + m_closestEmptyNeighbour, "Move()", Logger.severity.DEBUG);
+
+					if (m_emptyNeighbours.Count > 1)
+					{
+						m_emptyNeighbours.Remove(m_closestEmptyNeighbour.Value);
+						m_closestEmptyNeighbour = null;
+					}
+					else
+					{
+						m_logger.debugLog("tried every empty neighbour, giving up", "Move()", Logger.severity.INFO);
+
+						EnableWelders(false);
+						m_stage = Stage.Retreat;
+						return;
+					}
 				}
 
+				if (!m_closestEmptyNeighbour.HasValue)
+				{
+					GetClosestEmptyNeighbour();
+					m_timeout_start = Globals.UpdateCount + TimeoutStart;
+				}
+
+				m_logger.debugLog(!m_closestEmptyNeighbour.HasValue, "no closest empty neighbour", "Move()", Logger.severity.FATAL);
+
 				Vector3 closestPoint = m_lineUp.ClosestPoint(m_welder.WorldPosition);
-				if (Vector3.DistanceSquared(m_welder.WorldPosition, closestPoint) > 1f)
+				if (Vector3.DistanceSquared(m_welder.WorldPosition, closestPoint) > 1f || m_navSet.Settings_Current.DistanceAngle > 0.1f)
 				{
 					m_stage = Stage.Lineup;
 
-					double closest = float.MaxValue;
-					foreach (Vector3I emptyCell in m_emptyNeighbours)
-					{
-						Vector3D emptyPos = m_slimTarget.CubeGrid.GridIntegerToWorld(emptyCell);
-						double dist = Vector3D.DistanceSquared(m_welder.WorldPosition, emptyPos);
-						if (dist < closest)
-						{
-							closest = dist;
-							m_lineUp.From = emptyPos;
-						}
-					}
-
+					m_lineUp.From = m_slimTarget.CubeGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value);
 					//m_logger.debugLog("target: " + m_lineUp.To.ToGpsTag("Target") + ", cell: " + m_lineUp.From.ToGpsTag("Cell"), "Move()");
 
-					Vector3 lineDirection = m_lineUp.From - m_lineUp.To;
-					lineDirection.Normalize();
-					m_lineUp.From = m_lineUp.To + lineDirection * 100f;
+					Vector3D lineDirection = m_lineUp.From - m_lineUp.To;
+					m_lineUp.From = m_lineUp.To + lineDirection * 100d;
 
 					//m_logger.debugLog("to: " + m_lineUp.To.ToGpsTag("To") + ", from: " + m_lineUp.From.ToGpsTag("From") + ", closest point: " + m_lineUp.ClosestPoint(m_welder.WorldPosition).ToGpsTag("Closest"), "Move()");
 
@@ -178,7 +214,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_logger.debugLog(m_stage != Stage.Approach && m_stage != Stage.Weld, "moving to target in wrong stage", "Move()", Logger.severity.FATAL);
 
-			if ((Globals.UpdateCount - m_lastWeld) > 1200ul) // this really only happens when running out of components, so a long timeout is ok
+			if ((Globals.UpdateCount - m_lastWeld) > 1200ul)
 			{
 				m_logger.debugLog("failed to repair block", "Move()");
 				EnableWelders(false);
@@ -224,20 +260,17 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		private void CheckForWeld()
 		{
-			float buildLevel = m_slimTarget.BuildLevelRatio;
 			float damage = m_slimTarget.CurrentDamage;
+			damage += 1f - m_slimTarget.BuildLevelRatio;
 			foreach (IMySlimBlock slim in m_neighbours)
 			{
-				buildLevel += slim.BuildLevelRatio;
 				damage += slim.CurrentDamage;
+				damage += 1f - slim.BuildLevelRatio;
 			}
 
-			m_logger.debugLog("build level: " + buildLevel + ", previous: " + m_buildLevelRatio + ", damage: " + damage + ", previous: " + m_damage, "CheckForWeld()");
-
-			if (buildLevel > m_buildLevelRatio || damage < m_damage)
+			if (damage < m_damage)
 				m_lastWeld = Globals.UpdateCount;
 
-			m_buildLevelRatio = buildLevel;
 			m_damage = damage;
 		}
 
@@ -273,6 +306,23 @@ namespace Rynchodon.Autopilot.Navigator
 					if (!welder.Closed)
 						welder.RequestEnable(enable);
 			}, m_logger);
+		}
+
+		private void GetClosestEmptyNeighbour()
+		{
+			double closest = float.MaxValue;
+			foreach (Vector3I emptyCell in m_emptyNeighbours)
+			{
+				Vector3D emptyPos = m_slimTarget.CubeGrid.GridIntegerToWorld(emptyCell);
+				double dist = Vector3D.DistanceSquared(m_welder.WorldPosition, emptyPos);
+				if (dist < closest)
+				{
+					closest = dist;
+					m_closestEmptyNeighbour = emptyCell;
+				}
+			}
+
+			m_logger.debugLog("closest cell: " + m_closestEmptyNeighbour + ", closest position: " + m_slimTarget.CubeGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value), "GetClosestEmptyNeighbour()", Logger.severity.DEBUG);
 		}
 
 	}
