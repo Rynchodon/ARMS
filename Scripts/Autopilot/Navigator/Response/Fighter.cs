@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Fighter(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet)
 		{
-			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName) { MinimumLevel = Logger.severity.TRACE };
+			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
 			Arm();
 		}
 

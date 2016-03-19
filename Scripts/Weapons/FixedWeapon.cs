@@ -129,18 +129,15 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.debugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorEl.CubeGrid);
+
+				// elevation rotor will be on same grid as weapon, already ignored
 			}
 			if (statorAz != null)
 			{
 				myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorAz);
 
-				IMyCubeBlock statorAzRotor;
-				if (StatorRotor.TryGetRotor(statorAz, out statorAzRotor))
-				{
-					myLogger.debugLog("added statorAzRotor: " + statorAzRotor.getBestName(), "MyMotorTurret_OnStatorChange()");
-					ignore.Add(statorAzRotor);
-				}
+				// azimuth rotor will be on same grid as elevation stator, ignored above
 			}
 			ObstructionIgnore = ignore;
 		}

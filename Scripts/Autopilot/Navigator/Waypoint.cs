@@ -31,12 +31,12 @@ namespace Rynchodon.Autopilot.Navigator
 		public Waypoint(Mover mover, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
 			: base(mover, navSet)
 		{
-			targetEntity = targetEntity.GetTopMostParent();
-
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_level = level;
 			this.m_targetEntity = targetEntity;
 			this.m_targetOffset = worldOffset;
+
+			m_logger.debugLog(targetEntity != targetEntity.GetTopMostParent(), "targetEntity is not top-most", "Waypoint()", Logger.severity.FATAL);
 
 			IMyCubeGrid asGrid = targetEntity as IMyCubeGrid;
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
@@ -49,6 +49,8 @@ namespace Rynchodon.Autopilot.Navigator
 			var setLevel = navSet.GetSettingsLevel(level);
 			setLevel.NavigatorMover = this;
 			setLevel.DestinationEntity = mover.Block.CubeBlock; // to force avoidance 
+
+			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + TargetPosition, "Waypoint()", Logger.severity.DEBUG);
 		}
 
 		public override void Move()

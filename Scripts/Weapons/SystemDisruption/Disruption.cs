@@ -133,7 +133,12 @@ FinishedBlocks:
 			{
 				IMyCubeBlock block = pair.Key;
 				EndEffect(block);
-				block.SetDamageEffect(false);
+				
+				// sound files are not linked properly
+				try { block.SetDamageEffect(false); }
+				catch (NullReferenceException nre)
+				{ m_logger.alwaysLog("Exception on disabling damage effect:\n" + nre, "RemoveEffect()", Logger.severity.ERROR); }
+
 				MyCubeBlock cubeBlock = block as MyCubeBlock;
 				cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);
 				m_allAffected.Remove(block);

@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
 			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, bool mustBeRecent = false)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock) { MinimumLevel = Logger.severity.TRACE };
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);
@@ -72,7 +72,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, float maxRange = 0f)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock) { MinimumLevel = Logger.severity.TRACE };
+			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
 			m_logger.debugLog(navSet == null, "navSet == null", "GridFinder()", Logger.severity.FATAL);
 			m_logger.debugLog(controller == null, "controller == null", "GridFinder()", Logger.severity.FATAL);

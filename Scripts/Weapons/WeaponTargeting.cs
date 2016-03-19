@@ -74,7 +74,6 @@ namespace Rynchodon.Weapons
 		private Control value_currentControl;
 
 		private List<IMyEntity> value_ObstructIgnore;
-		private readonly FastResourceLock lock_ObstructIgnore = new FastResourceLock();
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 		public readonly NetworkClient m_netClient;
@@ -119,13 +118,14 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.TRACE };
+			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.INFO };
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();
 			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
 			this.FuncBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
+			this.ObstructionIgnore = new List<IMyEntity>();
 
 			if (TPro_Shoot == null)
 				TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
@@ -190,17 +190,23 @@ namespace Rynchodon.Weapons
 			}
 		}
 
+		// rarely changes, so not really optimized
 		protected List<IMyEntity> ObstructionIgnore
 		{
-			private get
-			{
-				using (lock_ObstructIgnore.AcquireSharedUsing())
-					return value_ObstructIgnore;
-			}
+			get { return value_ObstructIgnore; }
 			set
 			{
-				using (lock_ObstructIgnore.AcquireExclusiveUsing())
-					value_ObstructIgnore = value;
+				if (IsNormalTurret)
+				{
+					if (!value.Contains(CubeBlock))
+						value.Add(CubeBlock);
+				}
+				else
+				{
+					if (!value.Contains(CubeBlock.CubeGrid))
+						value.Add(CubeBlock.CubeGrid);
+				}
+				value_ObstructIgnore = value;
 			}
 		}
 
@@ -415,7 +421,6 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		/// <param name="targetPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
-		/// TODO: use RayCast class
 		protected override bool Obstructed(Vector3D targetPosition)
 		{
 			if (CubeBlock == null)
@@ -441,112 +446,7 @@ namespace Rynchodon.Weapons
 				}
 			}
 
-			// Voxel Test
-			Vector3 boundary;
-			foreach (Line testLine in AllTestLines)
-				if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
-				{
-					myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by voxel", "Obstructed()");
-					return true;
-				}
-
-			// Test each entity
-			List<IMyEntity> ignore = ObstructionIgnore;
-			foreach (IMyEntity entity in PotentialObstruction)
-			{
-				if (entity.Closed)
-					continue;
-
-				if (ignore != null && ignore.Contains(entity))
-				{
-					myLogger.debugLog("ignoring " + entity.getBestName(), "Obstructed()");
-					continue;
-				}
-
-				IMyCharacter asChar = entity as IMyCharacter;
-				if (asChar != null)
-				{
-					double distance;
-					foreach (Line testLine in AllTestLines)
-					{
-						LineD l = (LineD)testLine;
-						if (entity.WorldAABB.Intersects(ref l, out distance))
-						{
-							myLogger.debugLog("from " + testLine.From + " to " + testLine.To + "obstructed by character: " + entity.getBestName(), "Obstructed()");
-							return true;
-						}
-					}
-					continue;
-				}
-
-				IMyCubeGrid asGrid = entity as IMyCubeGrid;
-				if (asGrid != null)
-				{
-					if (!IsNormalTurret && asGrid == CubeBlock.CubeGrid)
-						continue;
-
-					//if (ignore != null && asGrid == ignore)
-					//	continue;
-
-					ICollection<Vector3I> allHitCells;
-
-					if (AllTestLines.Count == 1)
-					{
-						List<Vector3I> hitCells = new List<Vector3I>();
-						asGrid.RayCastCells(AllTestLines[0].From, AllTestLines[0].To, hitCells);
-
-						//myLogger.debugLog("from " + AllTestLines[0].From + " to " + AllTestLines[0].To + " hits " + hitCells.Count + " cells of " + asGrid.getBestName(), "Obstructed()");
-
-						allHitCells = hitCells;
-					}
-					else
-					{
-						allHitCells = new HashSet<Vector3I>();
-						foreach (Line testLine in AllTestLines)
-						{
-							List<Vector3I> hitCells = new List<Vector3I>();
-							asGrid.RayCastCells(testLine.From, testLine.To, hitCells);
-
-							//myLogger.debugLog("from " + testLine.From + " to " + testLine.To + " hits " + hitCells.Count + " cells of " + asGrid.getBestName(), "Obstructed()");
-
-							foreach (Vector3I cell in hitCells)
-								allHitCells.Add(cell);
-						}
-					}
-
-					foreach (Vector3I pos in allHitCells)
-					{
-						IMySlimBlock slim = asGrid.GetCubeBlock(pos);
-						if (slim == null)
-							continue;
-
-						if (ignore != null && slim.FatBlock != null && ignore.Contains(slim.FatBlock))
-						{
-							myLogger.debugLog("ignoring " + slim.getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
-							continue;
-						}
-
-						if (IsNormalTurret && asGrid == CubeBlock.CubeGrid)
-						{
-							//IMySlimBlock block = asGrid.GetCubeBlock(pos);
-							if (slim.FatBlock == null || slim.FatBlock != CubeBlock)
-							{
-								myLogger.debugLog("normal turret obstructed by block: " + slim.getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
-								return true;
-							}
-						}
-						else // not normal turret and not my grid
-						{
-							myLogger.debugLog("fixed weapon obstructed by block: " + asGrid.GetCubeBlock(pos).getBestName() + " of grid " + asGrid.getBestName(), "Obstructed()");
-							return true;
-						}
-						//}
-					}
-				}
-			}
-
-			// no obstruction found
-			return false;
+			return RayCast.Obstructed(AllTestLines, PotentialObstruction, ObstructionIgnore, true);
 		}
 
 		/// <summary>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game.Entity;
@@ -47,8 +48,16 @@ namespace Rynchodon
 		private readonly IMyCubeGrid m_grid;
 
 		private HashSet<Vector3I> CellPositions = new HashSet<Vector3I>();
-		//private List<IMyDoor> LargeDoors = new List<IMyDoor>();
+		private List<MyCubeBlock> LargeDoors = new List<MyCubeBlock>();
 		private FastResourceLock lock_cellPositions = new FastResourceLock();
+
+		/// <summary>
+		/// Not totally accurate as it does not check door extension.
+		/// </summary>
+		public int CellCount
+		{
+			get { return CellPositions.Count + LargeDoors.Count; }
+		}
 
 		private GridCellCache(IMyCubeGrid grid)
 		{
@@ -71,19 +80,38 @@ namespace Rynchodon
 			m_logger.debugLog("Initialized", "GridCellCache()");
 		}
 
-		public void ForEach(Action<Vector3I> function)
+		public void ForEach(Action<Vector3I> action)
 		{
 			using (lock_cellPositions.AcquireSharedUsing())
+			{
 				foreach (Vector3I cell in CellPositions)
-					function(cell);
+					action(cell);
+
+				foreach (MyCubeBlock door in LargeDoors)
+				{
+					Dictionary<string, MyEntitySubpart> subparts = door.Subparts;
+					foreach (var part in subparts)
+						action(m_grid.WorldToGridInteger(part.Value.PositionComp.GetPosition()));
+				}
+			}
 		}
 
 		public void ForEach(Func<Vector3I, bool> function)
 		{
 			using (lock_cellPositions.AcquireSharedUsing())
+			{
 				foreach (Vector3I cell in CellPositions)
 					if (function(cell))
 						return;
+
+				foreach (MyCubeBlock door in LargeDoors)
+				{
+					Dictionary<string, MyEntitySubpart> subparts = door.Subparts;
+					foreach (var part in subparts)
+						if (function(m_grid.WorldToGridInteger(part.Value.PositionComp.GetPosition())))
+							return;
+				}
+			}
 		}
 
 		/// <summary>
@@ -133,7 +161,10 @@ namespace Rynchodon
 			if (lock_cellCache == null)
 				return;
 			using (lock_cellPositions.AcquireExclusiveUsing())
+			{
 				CellPositions = null;
+				LargeDoors = null;
+			}
 			lock_cellPositions = null;
 			using (lock_cellCache.AcquireExclusiveUsing())
 				CellCache.Remove(grid);
@@ -147,6 +178,7 @@ namespace Rynchodon
 
 		private void grid_OnBlockRemoved(IMySlimBlock slim)
 		{
+			// some cells may not be occupied
 			using (lock_cellPositions.AcquireExclusiveUsing())
 				slim.ForEachCell(cell => {
 					CellPositions.Remove(cell);
@@ -156,13 +188,32 @@ namespace Rynchodon
 
 		private void Add(IMySlimBlock slim)
 		{
-			//IMyDoor asDoor = slim.FatBlock as IMyDoor;
-			//if (asDoor != null)
-			//{
-			//	return;
-			//}
+			bool checkLocal;
+			if (slim.FatBlock != null)
+			{
+				if (slim.FatBlock is IMyDoor && ((MyCubeBlock)slim.FatBlock).Subparts.Count != 0)
+				{
+					LargeDoors.Add((MyCubeBlock)slim.FatBlock);
+					return;
+				}
+
+				checkLocal = slim.FatBlock is IMyMotorStator || slim.FatBlock is IMyPistonBase;
+			}
+			else
+				checkLocal = false;
 
 			slim.ForEachCell(cell => {
+				if (checkLocal)
+				{
+					// for piston base and stator, cell may not actually be inside local AABB
+					// if this is done for doors, they would always be treated as open
+					// other blocks have not been tested
+					Vector3 positionBlock = Vector3.Transform(slim.CubeGrid.GridIntegerToWorld(cell), slim.FatBlock.WorldMatrixNormalizedInv);
+
+					if (slim.FatBlock.LocalAABB.Contains(positionBlock) == ContainmentType.Disjoint)
+						return false;
+				}
+
 				CellPositions.Add(cell);
 				return false;
 			});

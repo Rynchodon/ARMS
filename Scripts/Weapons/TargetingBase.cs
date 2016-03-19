@@ -119,7 +119,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", entity) { MinimumLevel = Logger.severity.TRACE };
+			myLogger = new Logger("TargetingBase", entity) { MinimumLevel = Logger.severity.INFO };
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -138,7 +138,7 @@ namespace Rynchodon.Weapons
 		public TargetingBase(IMyCubeBlock block)
 			: this(block, block)
 		{
-			myLogger = new Logger("TargetingBase", block) { MinimumLevel = Logger.severity.TRACE };
+			myLogger = new Logger("TargetingBase", block) { MinimumLevel = Logger.severity.INFO };
 		}
 
 		private bool PhysicalProblem(Vector3D targetPos)

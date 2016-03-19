@@ -112,7 +112,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>A value used to compare waypoints to determine the best one.</summary>
 		public float m_altPath_PathValue;
 		/// <summary>The best waypoint found so far.</summary>
-		public Vector3 m_altPath_Waypoint;
+		public Vector3D m_altPath_Waypoint;
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
@@ -124,7 +124,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			grid.throwIfNull_argument("grid");
 			m_grid = grid;
-			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString()) { MinimumLevel = Logger.severity.TRACE };
+			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
 			m_pathChecker = new PathChecker(grid);
 			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;
@@ -336,13 +336,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				if (tryAlternates)
 				{
-					// autopilot was getting stuck
-					//if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
-					//{
-					//	m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", "TestPath()", Logger.severity.DEBUG);
-					//	m_navSet.OnTaskComplete_NavWay();
-					//	return;
-					//}
+					if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
+					{
+						m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", "TestPath()", Logger.severity.DEBUG);
+						m_navSet.OnTaskComplete_NavWay();
+						return;
+					}
 
 					ClearAltPath();
 					MoveObstruction = obstructing;
@@ -570,9 +569,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void SetWaypoint()
 		{
 			m_pathLow.Clear();
-			new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, MoveObstruction, m_altPath_Waypoint - MoveObstruction.GetPosition());
-			m_navSet.Settings_Current.DestinationRadius = Math.Max(Vector3.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2f, 1f);
-			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "IncrementAlternatesFound()", Logger.severity.DEBUG);
+			IMyEntity top = MoveObstruction.GetTopMostParent();
+			new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, top, m_altPath_Waypoint - top.GetPosition());
+			m_navSet.Settings_Current.DestinationRadius = (float)Math.Max(Vector3D.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2d, 1d);
+			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "IncrementAlternatesFound()", Logger.severity.DEBUG);
 		}
 
 	}

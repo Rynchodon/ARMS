@@ -114,7 +114,7 @@ namespace Rynchodon.AntennaRelay
 			IMyPlayer player = character.GetPlayer_Safe();
 
 			this.m_loggingName = () => player.DisplayName;
-			this.m_logger = new Logger(GetType().Name, this.m_loggingName);// { MinimumLevel = Logger.severity.DEBUG };
+			this.m_logger = new Logger(GetType().Name, this.m_loggingName) { MinimumLevel = Logger.severity.INFO };
 			this.m_ownerId = () => player.PlayerID;
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
@@ -129,7 +129,7 @@ namespace Rynchodon.AntennaRelay
 		public NetworkNode(IMyEntity missile, IMyCubeBlock weapon, ComponentRadio radio)
 		{
 			this.m_loggingName = missile.getBestName;
-			this.m_logger = new Logger(GetType().Name, missile) { MinimumLevel = Logger.severity.DEBUG };
+			this.m_logger = new Logger(GetType().Name, missile) { MinimumLevel = Logger.severity.INFO };
 			this.m_ownerId = () => weapon.OwnerId;
 			this.m_entity = missile;
 			this.m_comp_radio = radio;

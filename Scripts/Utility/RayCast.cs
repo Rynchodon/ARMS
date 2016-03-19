@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -14,13 +16,13 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
-		private static Logger myLogger = new Logger(null, "RayCast");
+		private static Logger myLogger = new Logger("RayCast");
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
 		/// </summary>
-		public static bool Obstructed(List<Line> lines, ICollection<IMyEntity> potentialObstructions, ICollection<IMyEntity> ignoreList, out object obstruction, bool checkVoxel = true)
+		public static bool Obstructed(List<Line> lines, ICollection<IMyEntity> potentialObstructions, ICollection<IMyEntity> ignoreList, bool checkVoxel = true)
 		{
 			// Voxel Test
 			if (checkVoxel)
@@ -28,10 +30,7 @@ namespace Rynchodon
 				Vector3 boundary;
 				foreach (Line testLine in lines)
 					if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
-					{
-						obstruction = boundary;
 						return true;
-					}
 			}
 
 			// Test each entity
@@ -51,10 +50,7 @@ namespace Rynchodon
 					{
 						LineD l = (LineD)testLine;
 						if (entity.WorldAABB.Intersects(ref l, out distance))
-						{
-							obstruction = asChar;
 							return true;
-						}
 					}
 					continue;
 				}
@@ -94,16 +90,53 @@ namespace Rynchodon
 							continue;
 
 						if (slim.FatBlock != null)
-							obstruction = slim.FatBlock;
-						else
-							obstruction = asGrid;
+						{
+							Dictionary<string, MyEntitySubpart> subparts = ((MyCubeBlock)slim.FatBlock).Subparts;
+							if (subparts != null && subparts.Count != 0)
+							{
+								bool subpartHit = false;
+								foreach (var part in subparts)
+								{
+									Vector3 positionPart = Vector3.Transform(asGrid.GridIntegerToWorld(pos), part.Value.PositionComp.WorldMatrixNormalizedInv);
+
+									if (slim.FatBlock.LocalAABB.Contains(positionPart) == ContainmentType.Disjoint)
+									{
+										myLogger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+									}
+									else
+									{
+										myLogger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+										subpartHit = true;
+										break;
+									}
+								}
+								if (!subpartHit)
+									continue;
+							}
+
+							// for piston base and stator, cell may not actually be inside local AABB
+							// if this is done for doors, they would always be treated as open
+							// other blocks have not been tested
+							if ((slim.FatBlock is IMyMotorStator || slim.FatBlock is IMyPistonBase))
+							{
+								Vector3 positionBlock = Vector3.Transform(asGrid.GridIntegerToWorld(pos), slim.FatBlock.WorldMatrixNormalizedInv);
+
+								if (slim.FatBlock.LocalAABB.Contains(positionBlock) == ContainmentType.Disjoint)
+								{
+									myLogger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+									continue;
+								}
+								else
+									myLogger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+							}
+
+						}
 						return true;
 					}
 				}
 			}
 
 			// no obstruction found
-			obstruction = null;
 			return false;
 		}
 

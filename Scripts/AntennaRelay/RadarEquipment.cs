@@ -753,7 +753,13 @@ namespace Rynchodon.AntennaRelay
 					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
 
-					float volume = entity.LocalAABB.Volume();
+					float volume;
+					IMyCubeGrid grid  = entity as IMyCubeGrid;
+					if (grid != null)
+						volume = GridCellCache.GetCellCache(grid).CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
+					else
+						volume = entity.LocalAABB.Volume();
+						
 					float reflectivity;
 					if (isMissile)
 					{
@@ -903,8 +909,7 @@ namespace Rynchodon.AntennaRelay
 			obstructed_ignore.Add(Entity);
 			obstructed_ignore.Add(target);
 
-			object obstruction;
-			return RayCast.Obstructed(obstructed_lines, obstructed_entities, obstructed_ignore, out obstruction);
+			return RayCast.Obstructed(obstructed_lines, obstructed_entities, obstructed_ignore);
 		}
 
 		#endregion

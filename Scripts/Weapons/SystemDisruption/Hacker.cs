@@ -85,8 +85,6 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_nextHack = MyAPIGateway.Session.ElapsedPlayTime + s_hackFrequency;
 
 			m_strengthLeft += s_hackStrength;
-			List<long> bigOwners = (m_hackBlock.CubeGrid as IMyCubeGrid).BigOwners;
-			long effectOwner = bigOwners == null || bigOwners.Count == 0 ? 0L : bigOwners[0];
 
 			foreach (int i in Enumerable.Range(0, 8).OrderBy(x => Globals.Random.Next()))
 			{
@@ -122,7 +120,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 						continue;
 				}
 				AttachedGrid.RunOnAttached(attached, AttachedGrid.AttachmentKind.Terminal, grid => {
-					disrupt.Start(grid, s_hackLength, ref m_strengthLeft, effectOwner);
+					disrupt.Start(grid, s_hackLength, ref m_strengthLeft, m_hackBlock.OwnerId);
 					return false;
 				}, true);
 			}

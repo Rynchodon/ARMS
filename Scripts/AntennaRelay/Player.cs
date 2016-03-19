@@ -59,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 
 		public Player()
 		{
-			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName) { MinimumLevel = Logger.severity.DEBUG };
+			myLogger = new Logger(GetType().Name, () => myPlayer.DisplayName) { MinimumLevel = Logger.severity.INFO };
 
 			Data.Add(UserSettings.ByteSettingName.EnemiesOnHUD, new GpsData());
 			Data.Add(UserSettings.ByteSettingName.NeutralOnHUD, new GpsData());

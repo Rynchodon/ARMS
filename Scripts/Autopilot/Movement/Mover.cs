@@ -79,7 +79,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="NavSet">Navigation settings to use.</param>
 		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
 		{
-			this.myLogger = new Logger("Mover", block.Controller) { MinimumLevel = Logger.severity.TRACE };
+			this.myLogger = new Logger("Mover", block.Controller);
 			this.Block = block;
 			this.NavSet = NavSet;
 
@@ -133,7 +133,20 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
+		[Obsolete("Navigators should be upgraded to double precision")]
 		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
+		{
+			CalcMove(block, (Vector3D)destPoint, destVelocity, landing);
+		}
+
+		/// <summary>
+		/// Calculates the force necessary to move the grid.
+		/// </summary>
+		/// <param name="block">To get world position from.</param>
+		/// <param name="destPoint">The world position of the destination</param>
+		/// <param name="destVelocity">The speed of the destination</param>
+		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
+		public void CalcMove(PseudoBlock block, Vector3D destPoint, Vector3 destVelocity, bool landing = false)
 		{
 			CheckGrid();
 
@@ -151,13 +164,13 @@ namespace Rynchodon.Autopilot.Movement
 
 			myThrust.Update();
 
-			Vector3 destDisp = destPoint - block.WorldPosition;
+			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
 			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
 
 			// switch to using local vectors
 
-			Matrix positionToLocal = Block.CubeBlock.WorldMatrixNormalizedInv;
-			Matrix directionToLocal = positionToLocal.GetOrientation();
+			MatrixD positionToLocal = Block.CubeBlock.WorldMatrixNormalizedInv;
+			MatrixD directionToLocal = positionToLocal.GetOrientation();
 
 			destDisp = Vector3.Transform(destDisp, directionToLocal);
 			destVelocity = Vector3.Transform(destVelocity, directionToLocal);
@@ -656,6 +669,7 @@ namespace Rynchodon.Autopilot.Movement
 				// if cannot rotate and not calculating move, move away from obstruction
 				if (obstruction != null)
 				{
+					obstruction.GetTopMostParent();
 					Vector3 displacement = Block.CubeBlock.GetPosition() - obstruction.GetCentre();
 					Vector3 away;
 					Vector3.Normalize(ref displacement, out away);
