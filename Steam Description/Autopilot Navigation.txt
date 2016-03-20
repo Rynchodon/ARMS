@@ -100,7 +100,7 @@ Example - [ E 0, Fight, Ram ] - If weapons become disabled while fighting, ram t
 E <distance>, Self-Destruct : Starts the countdown on all warheads on autopilot's ship.
 Example - [ E 100, Self-Destruct ] : Explode if an enemy comes within 100 m.
 Example - [ E 0, Fight, Ram, Self-Destruct ] - Fight the enemy. If weapons become disabled, ram the enemy. If thrusters become disabled, explode.
-E <distance>, ID <entityID>, <response> : An autopilot can be instructed to attack a specific enemy using the entity ID of the enemy.
+E <distance>, ID <entityID>, <response> : An autopilot can be instructed to respond to a specific enemy using the entity ID of the enemy. Other enemies will be ignored.
 Example - [ E 0, ID 12345, Fight ] - Fight the enemy with ID 12345.
 
 F <r>, <u>, <b> : fly a distance relative to self. coordinates are rightward, upward, backwards

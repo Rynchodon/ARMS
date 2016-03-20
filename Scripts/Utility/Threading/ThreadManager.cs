@@ -81,12 +81,8 @@ namespace Rynchodon.Threading
 				if (ThreadName != null)
 					ThreadTracker.ThreadName = ThreadName + '(' + ThreadTracker.ThreadNumber + ')';
 				Action currentItem;
-				while (true)
-				{
-					if (!ActionQueue.TryDequeue(out currentItem))
-						return;
+				while (ActionQueue.TryDequeue(out currentItem) && currentItem != null)
 					currentItem();
-				}
 			}
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
 			finally

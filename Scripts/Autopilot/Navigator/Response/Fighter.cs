@@ -18,8 +18,6 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// Uses weapons to attack enemy ship
 	/// </summary>
-	/// TODO:
-	///		check ammo?
 	public class Fighter : NavigatorMover, IEnemyResponse
 	{
 
@@ -57,6 +55,9 @@ namespace Rynchodon.Autopilot.Navigator
 				return false;
 
 			GetPrimaryWeapon();
+			if (m_weapon_primary == null)
+				return false;
+
 			if (m_weaponDataDirty)
 				UpdateWeaponData();
 
@@ -122,7 +123,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_weapon_primary == null)
 			{
-				m_logger.debugLog("no primary weapon", "Rotate()");
+				m_logger.debugLog("no primary weapon", "Move()");
 				m_mover.StopMove();
 				return;
 			}
@@ -263,6 +264,12 @@ namespace Rynchodon.Autopilot.Navigator
 			m_weaponDataDirty = true;
 		}
 
+		/// <summary>
+		/// Finds a primary weapon for m_weapon_primary and m_weapon_primary_pseudo.
+		/// A primary weapon can be any working weapon with ammo.
+		/// Preference is given to fixed weapons and weapons with targets.
+		/// If no weapons have ammo, m_weapon_primary and m_weapon_primary_pseudo will be null.
+		/// </summary>
 		private void GetPrimaryWeapon()
 		{
 			if (m_weapon_primary != null && m_weapon_primary.CubeBlock.IsWorking && m_weapon_primary.CurrentTarget.Entity != null)
@@ -275,12 +282,21 @@ namespace Rynchodon.Autopilot.Navigator
 			foreach (FixedWeapon weapon in m_weapons_fixed)
 				if (weapon.CubeBlock.IsWorking)
 				{
-					m_weapon_primary = weapon;
-					if (weapon.CurrentTarget.Entity != null)
-						break;
+					if (weapon.HasAmmo)
+					{
+						m_weapon_primary = weapon;
+						if (weapon.CurrentTarget.Entity != null)
+						{
+							m_logger.debugLog("has target: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
+							break;
+						}
+					}
+					else
+						m_logger.debugLog("no ammo: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
 				}
 				else
 				{
+					m_logger.debugLog("not working: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
 					m_weapons_fixed.Remove(weapon);
 					weapon.EngagerReleaseControl();
 					removed = true;
@@ -290,12 +306,21 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (WeaponTargeting weapon in m_weapons_all)
 					if (weapon.CubeBlock.IsWorking)
 					{
-						m_weapon_primary = weapon;
-						if (weapon.CurrentTarget.Entity != null)
-							break;
+						if (weapon.HasAmmo)
+						{
+							m_weapon_primary = weapon;
+							if (weapon.CurrentTarget.Entity != null)
+							{
+								m_logger.debugLog("has target: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
+								break;
+							}
+						}
+						else
+							m_logger.debugLog("no ammo: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
 					}
 					else
 					{
+						m_logger.debugLog("not working: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
 						m_weapons_all.Remove(weapon);
 						removed = true;
 					}

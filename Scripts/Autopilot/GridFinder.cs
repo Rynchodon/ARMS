@@ -179,8 +179,10 @@ namespace Rynchodon.Autopilot
 				{
 					Grid = target;
 					m_logger.debugLog("found target: " + target.Entity.getBestName(), "GridSearch_Enemy()");
-					return;
 				}
+				else
+					Grid = null;
+				return;
 			}
 
 			List<LastSeen> enemies = ResourcePool<List<LastSeen>>.Get();

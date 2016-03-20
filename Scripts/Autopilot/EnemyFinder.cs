@@ -26,8 +26,6 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		private const ulong SearchInterval = 100ul;
-
 		private readonly Logger m_logger;
 		private readonly Mover m_mover;
 		private readonly AllNavigationSettings m_navSet;

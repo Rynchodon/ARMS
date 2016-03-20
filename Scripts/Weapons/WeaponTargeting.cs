@@ -96,6 +96,9 @@ namespace Rynchodon.Weapons
 						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10));
 				}
 
+				if (value == Control.Engager)
+					UpdateAmmo();
+
 				value_currentControl = value;
 				FireWeapon = false;
 			}
@@ -105,6 +108,11 @@ namespace Rynchodon.Weapons
 		public bool CanControl
 		{
 			get { return CubeBlock.IsWorking && (!IsNormalTurret || !myTurret.IsUnderControl) && CubeBlock.OwnerId != 0; }
+		}
+
+		public bool HasAmmo
+		{
+			get { return LoadedAmmo != null; }
 		}
 
 		public bool GuidedLauncher { get; set; }
@@ -221,6 +229,9 @@ namespace Rynchodon.Weapons
 
 		protected override float ProjectileSpeed(Vector3D targetPos)
 		{
+			if (LoadedAmmo == null)
+				return 1f;
+
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
 			{
 				myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
@@ -264,12 +275,14 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed || CurrentTarget.TType == TargetType.None)
+			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
+			{
+				FireWeapon = false;
 				return;
-
-			CheckFire();
+			}
 
 			SetFiringDirection();
+			CheckFire();
 		}
 
 		/// <summary>
@@ -284,6 +297,7 @@ namespace Rynchodon.Weapons
 			if (LoadedAmmo == null)
 			{
 				//myLogger.debugLog("No ammo loaded", "Update10()");
+				CurrentTarget = NoTarget.Instance;
 				return;
 			}
 
@@ -352,11 +366,8 @@ namespace Rynchodon.Weapons
 		private void UpdateAmmo()
 		{
 			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
-			if (newAmmo != null && newAmmo != LoadedAmmo)
-			{
+			if (newAmmo != LoadedAmmo)
 				LoadedAmmo = newAmmo;
-				myLogger.debugLog("loaded ammo: " + LoadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-			}
 		}
 
 		private Vector3 previousFiringDirection;
@@ -381,7 +392,7 @@ namespace Rynchodon.Weapons
 			if (directionChange > 0.01f)
 			{
 				// weapon is still being aimed
-				//myLogger.debugLog("still turning, change: " + directionChange, "CheckFire()");
+				myLogger.debugLog("still turning, change: " + directionChange, "CheckFire()");
 				FireWeapon = false;
 				return;
 			}
@@ -393,7 +404,7 @@ namespace Rynchodon.Weapons
 			if (accuracy > 0.0003f) // might be too low for fixed weapons
 			{
 				// not facing target
-				//myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
+				myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
 				FireWeapon = false;
 				return;
 			}

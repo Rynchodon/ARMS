@@ -312,7 +312,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (speed < 1f)
 						speed = 1f;
 					IMyEntity destEntity = m_navSet.Settings_Current.DestinationEntity;
-					if (obstructing == destEntity || obstructing.GetTopMostParent() == destEntity)
+					if (obstructing.GetTopMostParent() == destEntity.GetTopMostParent())
 					{
 						m_navSet.Settings_Task_NavWay.SpeedMaxRelative = speed;
 						m_logger.debugLog("Set SpeedMaxRelative to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity, "TestPath()", Logger.severity.TRACE);

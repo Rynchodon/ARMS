@@ -92,7 +92,7 @@ namespace Rynchodon.AntennaRelay
 		public NetworkNode(IMyCubeBlock block)
 		{
 			this.m_loggingName = () => block.DisplayNameText;
-			this.m_logger = new Logger(GetType().Name, block);// { MinimumLevel = Logger.severity.DEBUG };
+			this.m_logger = new Logger(GetType().Name, block) { MinimumLevel = Logger.severity.INFO };
 			this.m_ownerId = () => block.OwnerId;
 			this.m_entity = block;
 			this.m_comp_blockAttach = block;

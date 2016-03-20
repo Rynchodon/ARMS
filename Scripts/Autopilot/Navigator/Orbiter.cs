@@ -153,12 +153,12 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			Vector3 targetCentre = OrbitEntity.GetCentre();
+			Vector3D targetCentre = OrbitEntity.GetCentre();
 
 			m_faceDirection = Vector3.Reject(targetCentre - m_navBlock.WorldPosition, m_orbitAxis);
 			float alt = m_faceDirection.Normalize();
 			Vector3 orbitDirection = m_faceDirection.Cross(m_orbitAxis);
-			Vector3 destination = targetCentre - m_faceDirection * m_altitude;
+			Vector3D destination = targetCentre - m_faceDirection * m_altitude;
 			float speed = alt > m_altitude ?
 				Math.Max(1f, m_orbitSpeed - alt + m_altitude) : 
 				m_orbitSpeed;
@@ -194,7 +194,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (OrbitEntity == null)
 				m_mover.StopRotate();
-			else if (OrbitEntity is MyPlanet || m_navSet.DistanceLessThan(10f))
+			else if (OrbitEntity is MyPlanet || m_navSet.DistanceLessThan(m_orbitSpeed))
 				m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_faceDirection));
 			else
 				m_mover.CalcRotate();

@@ -32,8 +32,9 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly bool m_landGearWithoutTargetBlock;
 
 		private TimeSpan m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
-		private Vector3D m_navBlockPos, m_targetPosition;
+		private Vector3D m_targetPosition;
 		private LandingState value_landingState = LandingState.None;
+		private float m_landingSpeedFudge;
 		private ulong next_attemptLock;
 		private bool m_beforeMerge;
 
@@ -188,15 +189,14 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 			{
-				m_navBlockPos = m_navBlock.WorldPosition;
-				m_targetPosition = m_gridFinder.GetPosition(m_navBlockPos, m_navSet.Settings_Current.DestinationOffset);
+				m_targetPosition = m_gridFinder.GetPosition(m_navBlock.WorldPosition, m_navSet.Settings_Current.DestinationOffset);
 
 				if (m_gridFinder.Block != null && m_landingState != LandingState.Landing)
 					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 
 				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
-				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlockPos, m_targetPosition) < destRadius)
+				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlock.WorldPosition, m_targetPosition) < destRadius)
 				{
 					//m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
 					//m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,
@@ -207,7 +207,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 
 				// set destination to be short of grid so pathfinder knows we will not hit it
-				Vector3 targetToNav = m_navBlockPos - m_targetPosition;
+				Vector3 targetToNav = m_navBlock.WorldPosition - m_targetPosition;
 				targetToNav.Normalize();
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
 				Vector3 destination = m_targetPosition + targetToNav * adjustment;
@@ -226,7 +226,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_navSet.Settings_Current.Distance > m_navSet.Settings_Current.DestinationRadius * 1.5f)
+			if (m_landingState <= LandingState.Holding)
 			{
 				//m_logger.debugLog("facing controller towards target : " + m_targetPosition, "Rotate()");
 				m_mover.CalcRotate();
@@ -237,7 +237,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (m_landGearWithoutTargetBlock)
 				{
-					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_targetPosition - m_navBlockPos));
+					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_targetPosition - m_navBlock.WorldPosition));
 					return;
 				}
 
@@ -373,11 +373,11 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 
 						Vector3 destination = m_targetPosition;
-						Vector3 directAway = m_navBlockPos - destination;
+						Vector3 directAway = m_navBlock.WorldPosition - destination;
 						if (directAway.LengthSquared() < 1)
 						{
 							destination = m_gridFinder.Grid.Entity.WorldAABB.Center;
-							directAway = m_navBlockPos - destination;
+							directAway = m_navBlock.WorldPosition - destination;
 						}
 						Vector3D targetPosition = destination + Vector3.Normalize(directAway) * m_navSet.Settings_Current.DestinationRadius;
 
@@ -406,7 +406,7 @@ namespace Rynchodon.Autopilot.Navigator
 						// move to line from target block outwards
 						Vector3D landFaceVector = GetLandingFaceVector();
 						Line destinationLine = new Line(m_targetPosition + landFaceVector * 20, m_targetPosition + landFaceVector * 1000);
-						Vector3D closestPoint = destinationLine.ClosestPoint(m_navBlockPos);
+						Vector3D closestPoint = destinationLine.ClosestPoint(m_navBlock.WorldPosition);
 
 						//m_logger.debugLog("Flying to closest point on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint, "Move_Land()");
 						m_mover.CalcMove(m_navBlock, closestPoint, m_gridFinder.Grid.GetLinearVelocity());
@@ -425,15 +425,24 @@ namespace Rynchodon.Autopilot.Navigator
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
 							m_logger.debugLog("waiting for direction to match", "Move_Land()");
-							m_mover.CalcMove(m_navBlock, m_navBlockPos, m_gridFinder.Grid.GetLinearVelocity(), true);
+							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity(), true);
 							return;
 						}
 
 						LockConnector();
 
-						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize;
+						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize + 0.1f;
 						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
-						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween, m_gridFinder.Grid.GetLinearVelocity(), true);
+
+						if (m_navSet.DistanceLessThan(1f))
+						{
+							m_landingSpeedFudge += 0.0001f;
+							if (m_landingSpeedFudge > 0.1f)
+								m_landingSpeedFudge = -0.1f;
+						}
+
+						Vector3 fudgeDistance = m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
+						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween + fudgeDistance, m_gridFinder.Grid.GetLinearVelocity(), true);
 						return;
 					}
 				case LandingState.Catch:
@@ -441,7 +450,7 @@ namespace Rynchodon.Autopilot.Navigator
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
 							m_logger.debugLog("waiting for direction to match", "Move_Land()");
-							m_mover.CalcMove(m_navBlock, m_navBlockPos, m_gridFinder.Grid.GetLinearVelocity(), true);
+							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity(), true);
 							return;
 						}
 
