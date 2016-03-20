@@ -26,33 +26,33 @@ namespace Rynchodon.Weapons
 		/// <para>One thread has no trouble putting enough projectiles into play to slow the game to a crawl.</para>
 		/// </remarks>
 		private static ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
-		private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
-		private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
+		//private static List<Vector3> obstructionOffsets_turret = new List<Vector3>();
+		//private static List<Vector3> obstructionOffsets_fixed = new List<Vector3>();
 
 		private static ITerminalProperty<bool> TPro_Shoot;
 
 		static WeaponTargeting()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
-			obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
+			//obstructionOffsets_turret.Add(new Vector3(0, -1.25f, 0));
+			//obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, 2.5f));
+			//obstructionOffsets_turret.Add(new Vector3(2.5f, 5f, -2.5f));
+			//obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, 2.5f));
+			//obstructionOffsets_turret.Add(new Vector3(-2.5f, 5f, -2.5f));
 
-			obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
-			obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
+			//obstructionOffsets_fixed.Add(new Vector3(0, 0, 0));
+			//obstructionOffsets_fixed.Add(new Vector3(-2.5f, -2.5f, 0));
+			//obstructionOffsets_fixed.Add(new Vector3(-2.5f, 2.5f, 0));
+			//obstructionOffsets_fixed.Add(new Vector3(2.5f, -2.5f, 0));
+			//obstructionOffsets_fixed.Add(new Vector3(2.5f, 2.5f, 0));
 		}
 
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			Thread = null;
-			obstructionOffsets_turret = null;
-			obstructionOffsets_fixed = null;
+			//obstructionOffsets_turret = null;
+			//obstructionOffsets_fixed = null;
 		}
 
 		public readonly Ingame.IMyLargeTurretBase myTurret;
@@ -264,13 +264,12 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update1()
 		{
-			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed)
+			if (CurrentControl == Control.Off || LoadedAmmo == null || CurrentTarget == null || CurrentTarget.Entity == null || CurrentTarget.Entity.Closed || CurrentTarget.TType == TargetType.None)
 				return;
 
-			if (CurrentTarget.TType != TargetType.None)
-				SetFiringDirection();
-
 			CheckFire();
+
+			SetFiringDirection();
 		}
 
 		/// <summary>
@@ -373,47 +372,43 @@ namespace Rynchodon.Weapons
 			}
 
 			Vector3 weaponPosition = ProjectilePosition();
-			float distance = Vector3.Distance(weaponPosition, target.ContactPoint.Value);
 
-			//using (lock_CurrentDirection.AcquireSharedUsing())
-			//{
 			Vector3 CurrentDirection = Facing();
 			float directionChange;
 			Vector3.DistanceSquared(ref CurrentDirection, ref previousFiringDirection, out directionChange);
-				previousFiringDirection = CurrentDirection;
+			previousFiringDirection = CurrentDirection;
 
-				Vector3 p0 = weaponPosition + target.FiringDirection.Value * distance;
-				Vector3 p1 = weaponPosition + CurrentDirection * distance;
-				float threshold;
-				if (directionChange <= 0.01f)
-					threshold = 100f;
-				else if (directionChange >= 1f)
-					threshold = 1f;
-				else
-					threshold = 1f / directionChange;
-				//myLogger.debugLog("origin: " + weaponPosition + ", direction to target: " + Vector3.Normalize(p0 - weaponPosition) + ", diff to FiringDirection: " + Vector3.DistanceSquared(Vector3.Normalize(p0 - weaponPosition), target.FiringDirection.Value), "CheckFire()");
-				myLogger.debugLog("firing direction: " + target.FiringDirection + ", current direct: " + CurrentDirection + ", P0: " + p0 + ", P1: " + p1 + ", diff sq: " + Vector3.DistanceSquared(p0, p1) + ", threshold: " + threshold, "CheckFire()");
-				if (Vector3.DistanceSquared(p0, p1) > threshold)
-				{
-					FireWeapon = false;
-					return;
-				}
-
-				if (Obstructed(target.ContactPoint.Value))
-				{
-					myLogger.debugLog("target is obstructed", "CheckFire()");
-					if (directionChange < 0.01f)
-					{
-						myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
-						BlacklistTarget();
-					}
-					FireWeapon = false;
-					return;
-				}
-
-				FireWeapon = true;
+			if (directionChange > 0.01f)
+			{
+				// weapon is still being aimed
+				//myLogger.debugLog("still turning, change: " + directionChange, "CheckFire()");
+				FireWeapon = false;
+				return;
 			}
-		//}
+
+			Vector3 firingDirection = target.FiringDirection.Value;
+			float accuracy;
+			Vector3.DistanceSquared(ref CurrentDirection, ref firingDirection, out accuracy);
+
+			if (accuracy > 0.0003f) // might be too low for fixed weapons
+			{
+				// not facing target
+				//myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
+				FireWeapon = false;
+				return;
+			}
+
+			if (Obstructed(target.ContactPoint.Value))
+			{
+				myLogger.debugLog("target is obstructed", "CheckFire()");
+				myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
+				BlacklistTarget();
+				FireWeapon = false;
+				return;
+			}
+
+			FireWeapon = true;
+		}
 
 		/// <summary>
 		/// <para>Test line segment between weapon and target for obstructing entities.</para>
@@ -428,23 +423,23 @@ namespace Rynchodon.Weapons
 
 			// build offset rays
 			List<Line> AllTestLines = new List<Line>();
-			if (Options.FlagSet(TargetingFlags.Interior))
-				AllTestLines.Add(new Line(ProjectilePosition(), targetPosition, false));
-			else
-			{
-				List<Vector3> obstructionOffsets;
-				if (IsNormalTurret)
-					obstructionOffsets = obstructionOffsets_turret;
-				else
-					obstructionOffsets = obstructionOffsets_fixed;
+			//if (Options.FlagSet(TargetingFlags.Interior))
+			AllTestLines.Add(new Line(ProjectilePosition(), targetPosition, false));
+			//else
+			//{
+			//	List<Vector3> obstructionOffsets;
+			//	if (IsNormalTurret)
+			//		obstructionOffsets = obstructionOffsets_turret;
+			//	else
+			//		obstructionOffsets = obstructionOffsets_fixed;
 
-				Vector3D BarrelPosition = ProjectilePosition();
-				foreach (Vector3 offsetBlock in obstructionOffsets)
-				{
-					Vector3 offsetWorld = RelativeDirection3F.FromBlock(CubeBlock, offsetBlock).ToWorld();
-					AllTestLines.Add(new Line(BarrelPosition + offsetWorld, targetPosition + offsetWorld, false));
-				}
-			}
+			//	Vector3D BarrelPosition = ProjectilePosition();
+			//	foreach (Vector3 offsetBlock in obstructionOffsets)
+			//	{
+			//		Vector3 offsetWorld = RelativeDirection3F.FromBlock(CubeBlock, offsetBlock).ToWorld();
+			//		AllTestLines.Add(new Line(BarrelPosition + offsetWorld, targetPosition + offsetWorld, false));
+			//	}
+			//}
 
 			return RayCast.Obstructed(AllTestLines, PotentialObstruction, ObstructionIgnore, true);
 		}
@@ -509,7 +504,7 @@ namespace Rynchodon.Weapons
 				MyAPIGateway.Utilities.InvokeOnGameThread(FuncBlock.RefreshCustomInfo);
 		}
 
-		private void ConditionChange<T>(T condition, ref T previous) 
+		private void ConditionChange<T>(T condition, ref T previous)
 		{
 			if (!condition.Equals(previous))
 			{

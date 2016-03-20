@@ -43,6 +43,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Check for blocks are functional, rather than working.</summary>
 		Functional = 1 << 0,
 		/// <summary>Reduce the number of rays to check for obstructions.</summary>
+		[Obsolete]
 		Interior = 1 << 1,
 		/// <summary>Causes a fixed weapon to be treated as a rotor-turret.</summary>
 		Turret = 1 << 2,

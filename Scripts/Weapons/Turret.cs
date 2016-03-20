@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
@@ -21,6 +24,7 @@ namespace Rynchodon.Weapons
 		/// <summary>vanilla property</summary>
 		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
 
+		private readonly MyEntitySubpart m_barrel;
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
 		private readonly float minElevation, maxElevation, minAzimuth, maxAzimuth;
 		/// <summary>speeds are in rads per update</summary>
@@ -72,10 +76,13 @@ namespace Rynchodon.Weapons
 			setElevation = myTurret.Elevation;
 			setAzimuth = myTurret.Azimuth;
 
-			//if (CubeBlock.OwnedNPC() && s_npcHasOpts && ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_ARMS_Control))
-			//	myTurret.ApplyAction("ARMS_Control");
-			//if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret" && !ArmsGuiWeapons.GetPropertyValue(myTurret, ref ArmsGuiWeapons.TP_Interior_Turret))
-			//	myTurret.ApplyAction("Interior_Turret");
+			// subparts for turrets form a chain
+			var subparts = ((MyCubeBlock)CubeBlock).Subparts;
+			while (subparts.Count != 0)
+			{
+				m_barrel = subparts.FirstPair().Value;
+				subparts = m_barrel.Subparts;
+			}
 
 			myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
 			myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
@@ -102,9 +109,6 @@ namespace Rynchodon.Weapons
 				Options.CanTarget |= TargetType.Station;
 
 			Options.TargetingRange = myTurret.Range;
-
-			if (myTurret is Ingame.IMyLargeInteriorTurret && myTurret.BlockDefinition.SubtypeName == "LargeInteriorTurret")
-				Options.Flags |= TargetingFlags.Interior;
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
@@ -145,14 +149,14 @@ namespace Rynchodon.Weapons
 			return true;
 		}
 
+		protected override Vector3D ProjectilePosition()
+		{
+			return m_barrel.PositionComp.GetPosition();
+		}
+
 		protected override Vector3 Facing()
 		{
-			Vector3 directionBlock;
-			Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
-
-			myLogger.debugLog("azimuth: " + myTurret.Azimuth + " elevation: " + myTurret.Elevation + ", direction block: " + directionBlock + ", direction world: " + RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized(), "Facing()");
-
-			return RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
+			return m_barrel.PositionComp.WorldMatrix.Forward;
 		}
 
 		/// <remarks>
@@ -180,22 +184,9 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
-			//// check firing direction
-			//Vector3 directionBlock;
-			//Vector3.CreateFromAzimuthAndElevation(myTurret.Azimuth, myTurret.Elevation, out directionBlock);
-
-			////Vector3 directionWorld = weapon.directionToWorld(directionBlock);
-			//Vector3 directionWorld = RelativeDirection3F.FromBlock(CubeBlock, directionBlock).ToWorldNormalized();
-
-			////myLogger.debugLog("forward = " + WorldMatrix.Forward + ", Up = " + WorldMatrix.Up + ", right = " + WorldMatrix.Right, "RotateAndFire()");
-			//myLogger.debugLog("direction block = " + directionBlock + ", direction world = " + directionWorld, "RotateAndFire()");
-
-			//CheckFire(directionWorld);
-
 			if (myTurret.AIEnabled)
 			{
-				// need to find out if SE adjusts for our velocity
-				myTurret.SetTarget(GotTarget.ContactPoint.Value);
+				myTurret.SetTarget(ProjectilePosition() + GotTarget.FiringDirection.Value * 100f);
 				return;
 			}
 
