@@ -17,6 +17,8 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Orbiter : NavigatorMover, INavigatorRotator
   {
 
+		public readonly string m_orbitEntity_name;
+
 		private readonly Logger m_logger;
 		private readonly PseudoBlock m_navBlock;
 		private readonly GridFinder m_gridFinder;
@@ -76,11 +78,12 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Creates an Orbiter for a specific entity, fake orbit only.
 		/// Does not add itself to navSet.
 		/// </summary>
-		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float altitude)
+		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float altitude, string name)
 			: base(mover, navSet)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_navBlock = faceBlock;
+			this.m_orbitEntity_name = name;
 
 			OrbitEntity = entity;
 			m_altitude = altitude;
@@ -180,6 +183,8 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine("Asteroid");
 			else if (OrbitEntity is MyPlanet)
 				customInfo.AppendLine("Planet");
+			else if (m_orbitEntity_name != null)
+				customInfo.AppendLine(m_orbitEntity_name);
 			else if (m_navBlock.Block.canConsiderFriendly(OrbitEntity))
 				customInfo.AppendLine(OrbitEntity.DisplayName);
 			else

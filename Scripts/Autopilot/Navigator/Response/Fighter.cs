@@ -80,7 +80,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("new target: " + enemy.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
 				m_currentTarget = enemy;
-				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 50f);
+				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
 			}
 		}
 
@@ -169,13 +169,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			if (m_currentTarget != null)
-			{
-				customInfo.Append("Attacking an enemy at ");
-				customInfo.AppendLine(m_currentTarget.GetPosition().ToPretty());
-			}
 			if (m_orbiter != null)
 				m_orbiter.AppendCustomInfo(customInfo);
+			else
+				customInfo.AppendLine("No orbiter");
 		}
 
 		private void Arm()

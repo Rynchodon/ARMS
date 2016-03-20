@@ -59,7 +59,7 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 [*]Blocks are considered to take up as much space as is required to place them.
 [*]Weapon Control assumes that any fixed weapon will not be able to hit the grid they are apart of.
 [list][*]In other words, it assumes that if it fires a fixed weapon, there isn't a part of the ship its attached to in the way of the projectile.[/list][/list]
-[list]For vanilla (default game) interior turrets, Weapon Control will test a single line out from the weapon to the target for obstructions. For all other weapons, Weapon Control will test multiple lines out from points around the weapon to the target for obstructions. You can switch to testing a single line(at your own peril) with the Interior command. See the "Commands List" for more information.[/list]
+[list]Weapon Control will test a single line out from the barrel of the weapon to the target for obstructions.[/list]
 
 [b][u]Targeting On/Off Toggles and Commands[/u][/b]
 [list]Weapons can be told what to target and fire at either by using commands or by individually selecting the On/Off Targeting toggles found in the control panel for all turret weapons. All fixed weapons, however, must be told what to target and shoot through commands.[/list]
@@ -75,7 +75,6 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 
 [u]Uncommon Commands[/u]
 [list][*]Functional - [i]Block can be operational but not necessarily "ON"[/i]
-[*]Interior - [i]Reduces the number of obstruction tests that will be performed, always enabled for vanilla interior turrets.[/i]
 [*]ID <entityId> - [i]Only allows the weapon to target the given entity. entityId can be found by displaying detected grids on a text panel.[/i][/list]
 
 [u]Priority Commands[/u]

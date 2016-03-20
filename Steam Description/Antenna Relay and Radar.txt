@@ -15,6 +15,7 @@ GPS : Include GPS tags, requires Display Detected or entity ids from a programma
 Entity ID : Include entity ids, requires Display Detected or entity ids from a programmable block
 Example - [ Display Detected ; GPS ; Entity ID ] - Display everything
 Autopilot Status : Write the status of autopilots to the text panel. Must have two-way communication with the autopilot and sharing access.
+Refresh : Force the display to refresh when it is updated. Will cause the display to flicker.
 
 [h1]Programmable block[/h1]
 Can handle detected entities or transmit messages to other Programmable blocks or to Autopilot blocks. The Programmable block scripts contain the documentation.

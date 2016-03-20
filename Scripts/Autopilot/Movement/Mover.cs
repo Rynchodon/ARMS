@@ -636,11 +636,14 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		/// <param name="accel">negative number, maximum deceleration</param>
 		/// <param name="dist">positive number, distance to travel</param>
-		/// <returns>The maximum angular speed to stop the destination</returns>
+		/// <returns>The maximum angular speed to stop at the destination</returns>
 		private float MaxAngleSpeed(float accel, float dist, bool fast)
 		{
 			//myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
-			return Math.Min((float)Math.Sqrt(-2 * accel * dist), dist * (fast ? 8f : 2f)); // capped for the sake of autopilot's reaction time
+			float actual = (float)Math.Sqrt(-2 * accel * dist);
+			if (fast)
+				return actual;
+			return Math.Min(actual, dist * 2f);
 		}
 
 		/// <summary>

@@ -31,7 +31,8 @@ namespace Rynchodon.AntennaRelay
 			DisplayDetected = 1,
 			GPS = 2,
 			EntityId = 4,
-			AutopilotStatus = 8
+			AutopilotStatus = 8,
+			Refresh = 16,
 		}
 
 		static TextPanel()
@@ -105,6 +106,12 @@ namespace Rynchodon.AntennaRelay
 				Display();
 			else if ((m_options & Option.AutopilotStatus) != 0)
 				DisplyAutopilotStatus();
+
+			if ((m_options & Option.Refresh) != 0)
+			{
+				m_textPanel.ShowTextureOnScreen();
+				m_textPanel.ShowPublicTextOnScreen();
+			}
 		}
 
 		private void Display(List<long> entityIds = null)
