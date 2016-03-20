@@ -33,11 +33,11 @@ namespace Rynchodon.AntennaRelay
 		public readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
-		public readonly TimeSpan LastBroadcast = TimeSpan.MinValue;
+		public readonly TimeSpan LastBroadcast = new TimeSpan(long.MinValue / 2);
 		/// <summary>The last time Entity was using a radar</summary>
-		public readonly TimeSpan LastRadar = TimeSpan.MinValue;
+		public readonly TimeSpan LastRadar = new TimeSpan(long.MinValue / 2);
 		/// <summary>The last time Entity was using a jammer</summary>
-		public readonly TimeSpan LastJam = TimeSpan.MinValue;
+		public readonly TimeSpan LastJam = new TimeSpan(long.MinValue / 2);
 
 		public EntityType Type
 		{

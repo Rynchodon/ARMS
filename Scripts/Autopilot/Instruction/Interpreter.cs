@@ -565,7 +565,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return true;
 			}
 
-			float distance = 0f;
+			float distance = float.MinValue;
 			long entityId = 0L;
 			List<EnemyFinder.Response> responses = new List<EnemyFinder.Response>();
 			foreach (string s in split)
@@ -627,7 +627,7 @@ namespace Rynchodon.Autopilot.Instruction
 					responses.Add(r);
 			}
 
-			if (distance < 1f)
+			if (distance < 0f)
 			{
 				m_logger.debugLog("failed to get distance", "getAction_engage()");
 				instructionAction = null;
