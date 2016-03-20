@@ -105,7 +105,7 @@ namespace Rynchodon.AntennaRelay
 			store.ForEachLastSeen((LastSeen seen) => {
 				ExtensionsRelations.Relations relations = (m_progBlock as IMyCubeBlock).getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 				bool friendly = ExtensionsRelations.toIsFriendly(relations);
-				string bestName = friendly ? seen.Entity.getBestName() : "Unknown";
+				string bestName = friendly ? seen.Entity.getBestName() : seen.HostileName();
 				TimeSpan sinceSeen;
 				Vector3D predictedPosition = seen.predictPosition(out sinceSeen);
 

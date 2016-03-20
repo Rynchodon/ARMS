@@ -1,4 +1,5 @@
 ﻿using System;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -22,6 +23,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
 		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
+
 		private EntityType m_type;
 
 		public readonly IMyEntity Entity;
@@ -196,6 +198,58 @@ namespace Rynchodon.AntennaRelay
 		{
 			return !Entity.MarkedForClose && isRecent() ? Entity.Physics.LinearVelocity
 				: (Vector3)LastKnownVelocity;
+		}
+
+		public string HostileName()
+		{
+			if (!isRecent_Broadcast())
+				return "Unknown";
+
+			switch (Type)
+			{
+				case EntityType.Character:
+					if (string.IsNullOrEmpty(Entity.DisplayName))
+						return "Creature";
+					return Entity.DisplayName;
+				case EntityType.Grid:
+					break;
+				default:
+					return Type.ToString();
+			}
+
+			CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)Entity);
+			if (cache == null)
+				return "Error";
+
+			float longestRange = float.MinValue;
+			string name = null;
+			var blocks = cache.GetBlocksOfType(typeof(MyObjectBuilder_Beacon));
+			if (blocks != null)
+				foreach (var b in blocks)
+					if (b.IsWorking)
+					{
+						float radius = ((Sandbox.ModAPI.Ingame.IMyBeacon)b).Radius;
+						if (radius > longestRange)
+						{
+							longestRange = radius;
+							name = b.DisplayNameText;
+						}
+					}
+
+			blocks = cache.GetBlocksOfType(typeof(MyObjectBuilder_RadioAntenna));
+			if (blocks != null)
+				foreach (var ra in blocks)
+					if (ra.IsWorking)
+					{
+						Sandbox.ModAPI.Ingame.IMyRadioAntenna asRA = (Sandbox.ModAPI.Ingame.IMyRadioAntenna)ra;
+						if (asRA.IsBroadcasting && asRA.Radius > longestRange)
+						{
+							longestRange = asRA.Radius;
+							name = ra.DisplayNameText;
+						}
+					}
+
+			return name ?? "Unknown";
 		}
 
 	}

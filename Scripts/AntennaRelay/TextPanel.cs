@@ -273,18 +273,18 @@ namespace Rynchodon.AntennaRelay
 			{
 				string time = (seconds / 60).ToString("00") + separator + (seconds % 60).ToString("00");
 				bool friendly = relations.HasAnyFlag(ExtensionsRelations.Relations.Faction) || relations.HasAnyFlag(ExtensionsRelations.Relations.Owner);
-				string bestName = friendly ? seen.Entity.getBestName() : null;
+				string bestName = friendly ? seen.Entity.getBestName() : seen.HostileName();
 
 				builder.Append(relations);
 				builder.Append(tab);
 				builder.Append(seen.Type);
 				builder.Append(tab);
-				if (friendly)
-				{
-					builder.Append(bestName);
-					builder.Append(tab);
-				}
-				else
+				//if (friendly)
+				//{
+				builder.Append(bestName);
+				builder.Append(tab);
+				//}
+				if (!friendly)
 				{
 					if (seen.isRecent_Radar())
 					{

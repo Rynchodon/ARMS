@@ -176,6 +176,7 @@ namespace Rynchodon.AntennaRelay
 
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
+				// we do not display if it is broadcasting so there is no reason to use LastSeen.HostileName()
 				string name;
 				switch (setting)
 				{
@@ -187,7 +188,7 @@ namespace Rynchodon.AntennaRelay
 						name = "Missile " + index;
 						break;
 					case UserSettings.ByteSettingName.NeutralOnHUD:
-						name = "Netural " + index;
+						name = "Neutral " + index;
 						break;
 					case UserSettings.ByteSettingName.EnemiesOnHUD:
 						name = "Enemy " + index;
