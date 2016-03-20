@@ -45,7 +45,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private GridCellCache m_enemyCells;
 		private Vector3D m_targetPosition;
-		private TimeSpan m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + SearchTimeout;
+		private TimeSpan m_timeoutAt = Globals.ElapsedTime + SearchTimeout;
 		private ulong m_next_grinderFullCheck;
 		private ulong m_next_grinderCheck;
 		private bool m_grinderFull;
@@ -166,7 +166,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (!set_enemy(m_finder.Grid != null ? m_finder.Grid.Entity as IMyCubeGrid : null) || m_enemy == null)
 			{
 				m_mover.StopMove();
-				if (MyAPIGateway.Session.ElapsedPlayTime >= m_timeoutAt)
+				if (Globals.ElapsedTime >= m_timeoutAt)
 				{
 					m_logger.debugLog("Search timed out", "Move()");
 					m_navSet.OnTaskComplete_NavRot();
@@ -175,7 +175,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + SearchTimeout;
+			m_timeoutAt = Globals.ElapsedTime + SearchTimeout;
 			Vector3 targetCentre = m_enemy.GetCentre();
 
 			Vector3 enemyVelocity = m_enemy.GetLinearVelocity();
@@ -292,7 +292,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_enemy == null)
 			{
 				customInfo.Append("Searching for a ship, timeout in ");
-				customInfo.Append((m_timeoutAt - MyAPIGateway.Session.ElapsedPlayTime).Seconds);
+				customInfo.Append((m_timeoutAt - Globals.ElapsedTime).Seconds);
 				customInfo.AppendLine(" seconds.");
 				switch (m_finder.m_reason)
 				{

@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Data
 			{
 				m_navigationBlock = new PseudoBlock(NavBlock);
 
-				m_waitUntil = MyAPIGateway.Session.ElapsedPlayTime.Add(new TimeSpan(0, 0, 1));
+				m_waitUntil = Globals.ElapsedTime.Add(new TimeSpan(0, 0, 1));
 
 				m_destinationOffset = Vector3D.Zero;
 

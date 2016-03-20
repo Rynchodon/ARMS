@@ -234,7 +234,7 @@ namespace Rynchodon.Autopilot
 
 			if (m_mustBeRecent && !Grid.isRecent())
 			{
-				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (MyAPIGateway.Session.ElapsedPlayTime - Grid.LastSeenAt), "CanTarget()");
+				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (Globals.ElapsedTime - Grid.LastSeenAt), "CanTarget()");
 				Grid = null;
 				return;
 			}

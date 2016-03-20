@@ -105,7 +105,7 @@ FinishedBlocks:
 			if (applied != 0)
 			{
 				m_logger.debugLog("Added new effect, strength: " + applied, "AddEffect()");
-				m_expire = MyAPIGateway.Session.ElapsedPlayTime.Add(duration);
+				m_expire = Globals.ElapsedTime.Add(duration);
 			}
 
 			UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
@@ -116,7 +116,7 @@ FinishedBlocks:
 		/// </summary>
 		protected void UpdateEffect()
 		{
-			if (MyAPIGateway.Session.ElapsedPlayTime > m_expire)
+			if (Globals.ElapsedTime > m_expire)
 			{
 				m_logger.debugLog("Removing the effect", "UpdateEffect()", Logger.severity.DEBUG);
 				UpdateManager.Unregister(UpdateFrequency, UpdateEffect);

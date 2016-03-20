@@ -133,11 +133,11 @@ namespace Rynchodon.Weapons
 				if (!m_accel)
 				{
 					m_lastPostion = m_block != null ? m_block.GetPosition() : m_lastSeen.Entity.GetCentre();
-					m_lastPositionUpdate = MyAPIGateway.Session.ElapsedPlayTime;
+					m_lastPositionUpdate = Globals.ElapsedTime;
 					return m_lastPostion;
 				}
 			}
-			return m_lastPostion + m_lastSeen.GetLinearVelocity() * (float)(MyAPIGateway.Session.ElapsedPlayTime - m_lastPositionUpdate).TotalSeconds;
+			return m_lastPostion + m_lastSeen.GetLinearVelocity() * (float)(Globals.ElapsedTime - m_lastPositionUpdate).TotalSeconds;
 		}
 
 		public override Vector3 GetLinearVelocity()

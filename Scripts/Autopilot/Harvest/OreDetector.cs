@@ -49,7 +49,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(1000);
 			private readonly MyStorageData m_storage = new MyStorageData();
 
-			private TimeSpan m_throwOutVoxelData = MyAPIGateway.Session.ElapsedPlayTime + LifeSpan_VoxelData;
+			private TimeSpan m_throwOutVoxelData = Globals.ElapsedTime + LifeSpan_VoxelData;
 			private readonly FastResourceLock lock_throwOut = new FastResourceLock();
 
 			public bool NeedsUpdate { get; private set; }
@@ -76,7 +76,7 @@ namespace Rynchodon.Autopilot.Harvest
 			public bool IsValid()
 			{
 				using (lock_throwOut.AcquireExclusiveUsing())
-					return MyAPIGateway.Session.ElapsedPlayTime < m_throwOutVoxelData;
+					return Globals.ElapsedTime < m_throwOutVoxelData;
 			}
 
 			public bool GetClosest(byte[] oreType, ref Vector3D worldPosition, out Vector3D closest, out byte foundOre)
@@ -128,7 +128,7 @@ namespace Rynchodon.Autopilot.Harvest
 			public void Read()
 			{
 				using (lock_throwOut.AcquireExclusiveUsing())
-					m_throwOutVoxelData = MyAPIGateway.Session.ElapsedPlayTime + LifeSpan_VoxelData;
+					m_throwOutVoxelData = Globals.ElapsedTime + LifeSpan_VoxelData;
 
 				NeedsUpdate = false;
 				Vector3D m_oreDetectorPosition = m_oreDetector.GetPosition();

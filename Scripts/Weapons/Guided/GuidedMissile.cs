@@ -27,7 +27,7 @@ namespace Rynchodon.Weapons.Guided
 			{
 				RailStart = start;
 				Rail = new LineSegmentD();
-				Created = MyAPIGateway.Session.ElapsedPlayTime;
+				Created = Globals.ElapsedTime;
 			}
 		}
 
@@ -506,7 +506,7 @@ namespace Rynchodon.Weapons.Guided
 						m_rail = null;
 						if (myDescr.SemiActiveLaser)
 						{
-							myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
+							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 							myLogger.debugLog("past arming range, semi-active.", "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.SemiActive;
 							return;
@@ -525,7 +525,7 @@ namespace Rynchodon.Weapons.Guided
 						}
 						else
 						{
-							myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
+							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 							myLogger.debugLog("past arming range, starting guidance.", "CheckGuidance()", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
@@ -550,13 +550,13 @@ namespace Rynchodon.Weapons.Guided
 					{
 						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Guided;
-						myGuidanceEnds = MyAPIGateway.Session.ElapsedPlayTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
+						myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 						m_gravData = null;
 					}
 					return;
 				case Stage.SemiActive:
 				case Stage.Guided:
-					if (MyAPIGateway.Session.ElapsedPlayTime >= myGuidanceEnds)
+					if (Globals.ElapsedTime >= myGuidanceEnds)
 					{
 						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
@@ -603,7 +603,7 @@ namespace Rynchodon.Weapons.Guided
 			matrix.Translation = closest;
 			MyEntity.WorldMatrix = matrix;
 
-			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(MyAPIGateway.Session.ElapsedPlayTime - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
+			float speed = myAmmo.MissileDefinition.MissileInitialSpeed + (float)(Globals.ElapsedTime - m_rail.Created).TotalSeconds * myAmmo.MissileDefinition.MissileAcceleration;
 			MyEntity.Physics.LinearVelocity = CubeBlock.CubeGrid.Physics.LinearVelocity + matrix.Forward * myAmmo.MissileDefinition.MissileInitialSpeed;
 		}
 

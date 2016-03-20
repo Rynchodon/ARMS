@@ -45,7 +45,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public void Update10()
 		{
-			if (MyAPIGateway.Session.ElapsedPlayTime < m_nextHack)
+			if (Globals.ElapsedTime < m_nextHack)
 				return;
 			if (!m_hackBlock.IsWorking)
 			{
@@ -82,7 +82,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 					return;
 				}
 
-			m_nextHack = MyAPIGateway.Session.ElapsedPlayTime + s_hackFrequency;
+			m_nextHack = Globals.ElapsedTime + s_hackFrequency;
 
 			m_strengthLeft += s_hackStrength;
 

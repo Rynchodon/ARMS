@@ -931,7 +931,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				NavSet.Settings_Task_NavWay.WaitUntil = MyAPIGateway.Session.ElapsedPlayTime.Add(new TimeSpan(0, 0, seconds));
+				NavSet.Settings_Task_NavWay.WaitUntil = Globals.ElapsedTime.Add(new TimeSpan(0, 0, seconds));
 				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
 			};
 			return true;

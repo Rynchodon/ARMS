@@ -16,10 +16,18 @@ namespace Rynchodon
 		/// <summary>Duration of one update in seconds.</summary>
 		public const float UpdateDuration = 1f / (float)UpdatesPerSecond;
 
+		public const double UpdatesToTicks = (double)TimeSpan.TicksPerSecond / (double)UpdatesPerSecond;
+
 		public static readonly Random Random = new Random();
 
 		/// <summary>The number of updates since mod started.</summary>
 		public static ulong UpdateCount = 0;
+
+		/// <summary>Elapsed time based on number of updates i.e. not incremented while paused.</summary>
+		public static TimeSpan ElapsedTime
+		{
+			get { return new TimeSpan((long)(UpdateCount * UpdatesToTicks)); }
+		}
 
 		public static readonly Vector3I[] CellNeighbours = 
 		{

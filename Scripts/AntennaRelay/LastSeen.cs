@@ -33,11 +33,11 @@ namespace Rynchodon.AntennaRelay
 		public readonly Vector3 LastKnownVelocity;
 
 		/// <summary>The last time Entity was broadcasting</summary>
-		public readonly TimeSpan LastBroadcast = new TimeSpan(-1, 0, 0);
+		public readonly TimeSpan LastBroadcast = TimeSpan.MinValue;
 		/// <summary>The last time Entity was using a radar</summary>
-		public readonly TimeSpan LastRadar = new TimeSpan(-1, 0, 0);
+		public readonly TimeSpan LastRadar = TimeSpan.MinValue;
 		/// <summary>The last time Entity was using a jammer</summary>
-		public readonly TimeSpan LastJam = new TimeSpan(-1, 0, 0);
+		public readonly TimeSpan LastJam = TimeSpan.MinValue;
 
 		public EntityType Type
 		{
@@ -61,7 +61,7 @@ namespace Rynchodon.AntennaRelay
 		private LastSeen(IMyEntity entity)
 		{
 			this.Entity = entity;
-			this.LastSeenAt = MyAPIGateway.Session.ElapsedPlayTime;
+			this.LastSeenAt = Globals.ElapsedTime;
 			this.LastKnownPosition = entity.GetCentre();
 			if (entity.Physics == null)
 				this.LastKnownVelocity = Vector3D.Zero;
@@ -98,11 +98,11 @@ namespace Rynchodon.AntennaRelay
 			: this(entity)
 		{
 			if ((times & UpdateTime.Broadcasting) != 0)
-				this.LastBroadcast = MyAPIGateway.Session.ElapsedPlayTime;
+				this.LastBroadcast = Globals.ElapsedTime;
 			if ((times & UpdateTime.HasJammer) != 0)
-				this.LastJam = MyAPIGateway.Session.ElapsedPlayTime;
+				this.LastJam = Globals.ElapsedTime;
 			if ((times & UpdateTime.HasRadar) != 0)
-				this.LastRadar = MyAPIGateway.Session.ElapsedPlayTime;
+				this.LastRadar = Globals.ElapsedTime;
 		}
 
 		/// <summary>
@@ -142,11 +142,11 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		public Vector3D predictPosition()
-		{ return LastKnownPosition + LastKnownVelocity * (float)(MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt).TotalSeconds; }
+		{ return LastKnownPosition + LastKnownVelocity * (float)(Globals.ElapsedTime - LastSeenAt).TotalSeconds; }
 
 		public Vector3D predictPosition(out TimeSpan sinceLastSeen)
 		{
-			sinceLastSeen = MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt;
+			sinceLastSeen = Globals.ElapsedTime - LastSeenAt;
 			return LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 
@@ -155,7 +155,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			get
 			{
-				if (value_isValid && (Entity == null || Entity.Closed || (MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt).CompareTo(MaximumLifetime) > 0))
+				if (value_isValid && (Entity == null || Entity.Closed || (Globals.ElapsedTime - LastSeenAt).CompareTo(MaximumLifetime) > 0))
 					value_isValid = false;
 				return value_isValid;
 			}
@@ -168,17 +168,17 @@ namespace Rynchodon.AntennaRelay
 		{ return GetTimeSinceLastSeen() < Recent; }
 
 		public bool isRecent_Broadcast()
-		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastBroadcast) < Recent; }
+		{ return (Globals.ElapsedTime - LastBroadcast) < Recent; }
 
 		public bool isRecent_Jam()
-		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastJam) < Recent; }
+		{ return (Globals.ElapsedTime - LastJam) < Recent; }
 
 		public bool isRecent_Radar()
-		{ return (MyAPIGateway.Session.ElapsedPlayTime - LastRadar) < Recent; }
+		{ return (Globals.ElapsedTime - LastRadar) < Recent; }
 
 		/// <summary>A time span object representing the difference between the current time and the last time this LastSeen was updated</summary>
 		public TimeSpan GetTimeSinceLastSeen()
-		{ return MyAPIGateway.Session.ElapsedPlayTime - LastSeenAt; }
+		{ return Globals.ElapsedTime - LastSeenAt; }
 
 		/// <summary>
 		/// If Entity has been seen recently, gets its position. Otherwise, predicts its position.
@@ -264,7 +264,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RadarInfo(float volume)
 		{
-			this.DetectedAt = MyAPIGateway.Session.ElapsedPlayTime;
+			this.DetectedAt = Globals.ElapsedTime;
 			this.Volume = volume;
 		}
 

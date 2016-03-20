@@ -214,7 +214,7 @@ namespace Rynchodon.Weapons.Guided
 			FuncBlock.RequestEnable(false);
 			FuncBlock.ApplyAction("Shoot_Off");
 			onCooldown = true;
-			cooldownUntil = MyAPIGateway.Session.ElapsedPlayTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
+			cooldownUntil = Globals.ElapsedTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
 		}
 
 		private void CheckCooldown()
@@ -222,7 +222,7 @@ namespace Rynchodon.Weapons.Guided
 			if (!onCooldown)
 				return;
 
-			if (cooldownUntil > MyAPIGateway.Session.ElapsedPlayTime)
+			if (cooldownUntil > Globals.ElapsedTime)
 			{
 				if (FuncBlock.Enabled)
 				{

@@ -469,8 +469,8 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("angular: " + angularVelocity, "CalcRotate()");
 			float gyroForce = myGyro.TotalGyroForce();
 
-			float secondsSinceLast = (float)(MyAPIGateway.Session.ElapsedPlayTime - updated_prevAngleVel).TotalSeconds;
-			updated_prevAngleVel = MyAPIGateway.Session.ElapsedPlayTime;
+			float secondsSinceLast = (float)(Globals.ElapsedTime - updated_prevAngleVel).TotalSeconds;
+			updated_prevAngleVel = Globals.ElapsedTime;
 
 			if (rotateForceRatio != Vector3.Zero)
 			{

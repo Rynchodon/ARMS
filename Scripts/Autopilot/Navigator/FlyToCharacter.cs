@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => charName);
 			this.m_charName = charName.LowerRemoveWhitespace();
-			this.m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + timeout;
+			this.m_timeoutAt = Globals.ElapsedTime + timeout;
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
 		}
@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_character == null)
 			{
 				m_mover.StopMove();
-				if (MyAPIGateway.Session.ElapsedPlayTime > m_timeoutAt)
+				if (Globals.ElapsedTime > m_timeoutAt)
 				{
 					m_logger.debugLog("terminating search", "Move()");
 					m_navSet.OnTaskComplete_NavMove();
@@ -97,7 +97,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_logger.debugLog("failed to update last seen", "UpdateLastSeen()", Logger.severity.WARNING);
 					m_character = null;
-					m_timeoutAt = MyAPIGateway.Session.ElapsedPlayTime + timeout;
+					m_timeoutAt = Globals.ElapsedTime + timeout;
 				}
 
 			store.SearchLastSeen((LastSeen seen) => {
