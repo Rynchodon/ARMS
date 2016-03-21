@@ -79,13 +79,13 @@ namespace Rynchodon
 
 		#region Array
 
-		private static void AppendBytes(byteUnion16 u, byte[] bytes, ref int pos)
+		private static void AppendBytes(byte[] bytes, byteUnion16 u, ref int pos)
 		{
 			bytes[pos++] = u.b0;
 			bytes[pos++] = u.b1;
 		}
 
-		private static void AppendBytes(byteUnion32 u, byte[] bytes, ref int pos)
+		private static void AppendBytes(byte[] bytes, byteUnion32 u, ref int pos)
 		{
 			bytes[pos++] = u.b0;
 			bytes[pos++] = u.b1;
@@ -93,7 +93,7 @@ namespace Rynchodon
 			bytes[pos++] = u.b3;
 		}
 
-		private static void AppendBytes(byteUnion64 u, byte[] bytes, ref int pos)
+		private static void AppendBytes(byte[] bytes, byteUnion64 u, ref int pos)
 		{
 			bytes[pos++] = u.b0;
 			bytes[pos++] = u.b1;
@@ -105,7 +105,7 @@ namespace Rynchodon
 			bytes[pos++] = u.b7;
 		}
 
-		public static void AppendBytes(bool b, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, bool b, ref int pos)
 		{
 			if (b)
 				bytes[pos++] = 1;
@@ -113,49 +113,49 @@ namespace Rynchodon
 				bytes[pos++] = 0;
 		}
 
-		public static void AppendBytes(byte b, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, byte b, ref int pos)
 		{
 			bytes[pos++] = b;
 		}
 
-		public static void AppendBytes(short s, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, short s, ref int pos)
 		{
-			AppendBytes(new byteUnion16() { s = s }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion16() { s = s }, ref pos);
 		}
 
-		public static void AppendBytes(ushort us, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, ushort us, ref int pos)
 		{
-			AppendBytes(new byteUnion16() { us = us }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion16() { us = us }, ref pos);
 		}
 
-		public static void AppendBytes(int i, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, int i, ref int pos)
 		{
-			AppendBytes(new byteUnion32() { i = i }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion32() { i = i }, ref pos);
 		}
 
-		public static void AppendBytes(uint ui, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, uint ui, ref int pos)
 		{
-			AppendBytes(new byteUnion32() { ui = ui }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion32() { ui = ui }, ref pos);
 		}
 
-		public static void AppendBytes(float f, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, float f, ref int pos)
 		{
-			AppendBytes(new byteUnion32() { f = f }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion32() { f = f }, ref pos);
 		}
 
-		public static void AppendBytes(long l, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, long l, ref int pos)
 		{
-			AppendBytes(new byteUnion64() { l = l }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion64() { l = l }, ref pos);
 		}
 
-		public static void AppendBytes(ulong ul, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, ulong ul, ref int pos)
 		{
-			AppendBytes(new byteUnion64() { ul = ul }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion64() { ul = ul }, ref pos);
 		}
 
-		public static void AppendBytes(double d, byte[] bytes, ref int pos)
+		public static void AppendBytes(byte[] bytes, double d, ref int pos)
 		{
-			AppendBytes(new byteUnion64() { d = d }, bytes, ref pos);
+			AppendBytes(bytes, new byteUnion64() { d = d }, ref pos);
 		}
 
 		#endregion Array

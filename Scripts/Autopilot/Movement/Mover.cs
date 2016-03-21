@@ -45,7 +45,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 prevAngleVel = Vector3.Zero;
 		private DateTime updated_prevAngleVel; // needs to be precise, regardless of updates
 
-		private float best_distance, best_angle;
+		private float best_distance = float.MaxValue, best_angle = float.MaxValue;
 		private ulong m_stuckAt = ulong.MaxValue;
 
 		private bool m_stopped, m_overworked;
@@ -180,13 +180,13 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
-				NavSet.Settings_Task_NavWay.Distance = distance;
 
 				if (distance + 2f < best_distance || float.IsNaN(NavSet.Settings_Current.Distance))
 				{
 					best_distance = distance;
 					m_stuckAt = Globals.UpdateCount + StuckAfter;
 				}
+
 				targetVelocity = MaximumVelocity(destDisp);
 
 				// project targetVelocity onto destination direction (take shortest path)
@@ -215,10 +215,10 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				targetVelocity = Vector3.Zero;
 				distance = 0f;
-				NavSet.Settings_Task_NavWay.Distance = distance;
 				m_stuckAt = Globals.UpdateCount + StuckAfter;
 			}
 
+			NavSet.Settings_Task_NavWay.Distance = distance;
 			targetVelocity += destVelocity;
 
 			// apply speed limit

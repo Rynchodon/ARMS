@@ -169,7 +169,7 @@ namespace Rynchodon.Settings
 
 			byte[] message = new byte[8];
 			int pos = 0;
-			ByteConverter.AppendBytes(MyAPIGateway.Session.Player.SteamUserId, message, ref pos);
+			ByteConverter.AppendBytes(message, MyAPIGateway.Session.Player.SteamUserId, ref pos);
 
 			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
 				myLogger.debugLog("Sent request to server", "RequestSettingsFromServer()", Logger.severity.INFO);

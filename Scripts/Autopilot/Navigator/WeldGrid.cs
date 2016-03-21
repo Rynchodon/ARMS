@@ -90,9 +90,11 @@ namespace Rynchodon.Autopilot.Navigator
 			if (repairable == null)
 			{
 				m_logger.debugLog("failed to find a repairable block", "Move()", Logger.severity.DEBUG);
+				GetDamagedBlocks();
 				if (m_shopAfter)
 					CreateShopper();
 				m_navSet.OnTaskComplete_NavMove();
+				new Complainer(m_navSet, 10, m_damagedBlocks.Count + " blocks still need to be welded");
 				return;
 			}
 
@@ -262,8 +264,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		private void CreateShopper()
 		{
-			GetDamagedBlocks();
-
 			m_components_missing.Clear();
 			foreach (IMySlimBlock slim in m_damagedBlocks)
 			{

@@ -1,4 +1,5 @@
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
+using Rynchodon.Settings;
 using Sandbox.ModAPI; // from Sandbox.Common.dll
 using VRage.Game.ModAPI; // from VRage.Game.dll
 using VRage.ModAPI;
@@ -12,11 +13,15 @@ namespace Rynchodon.Autopilot.Harvest
 
 		public static void RegisterMiner(IMyCubeGrid miner, IMyVoxelBase voxel)
 		{
+			if (Instance == null || !ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
+				return;
 			Instance.miners.Add(miner, voxel);
 		}
 
 		public static bool UnregisterMiner(IMyCubeGrid miner)
 		{
+			if (Instance == null || !ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
+				return false;
 			return Instance.miners.Remove(miner);
 		}
 

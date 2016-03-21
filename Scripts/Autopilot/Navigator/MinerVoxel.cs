@@ -3,7 +3,6 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
-using Rynchodon.Settings;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -34,9 +33,9 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private MultiBlock<MyObjectBuilder_Drill> m_navDrill;
 		private State value_state;
-		private Line m_approach;
+		private LineSegmentD m_approach;
 		private Vector3D m_depositPos;
-		private Vector3 m_currentTarget;
+		private Vector3D m_currentTarget;
 		private string m_depositOre;
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
@@ -48,13 +47,10 @@ namespace Rynchodon.Autopilot.Navigator
 			get { return value_targetVoxel; }
 			set
 			{
-				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
-				{
-					if (value_targetVoxel != null)
-						DamageHandler.UnregisterMiner(m_controlBlock.CubeGrid);
-					if (value != null)
-						DamageHandler.RegisterMiner(m_controlBlock.CubeGrid, value);
-				}
+				if (value_targetVoxel != null)
+					DamageHandler.UnregisterMiner(m_controlBlock.CubeGrid);
+				if (value != null)
+					DamageHandler.RegisterMiner(m_controlBlock.CubeGrid, value);
 				value_targetVoxel = value;
 			}
 		}
@@ -82,6 +78,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_navSet.OnTaskComplete_NavRot();
 							m_mover.StopMove();
 							m_mover.StopRotate();
+							new Complainer(m_navSet, 10, "Drills are full, time to go home");
 							return;
 						}
 						else if (m_mover.ThrustersOverWorked(0.8f))
@@ -90,6 +87,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_navSet.OnTaskComplete_NavRot();
 							m_mover.StopMove();
 							m_mover.StopRotate();
+							new Complainer(m_navSet, 10, "Thrusters are overworked, time to go home");
 							return;
 						}
 						else
@@ -107,12 +105,13 @@ namespace Rynchodon.Autopilot.Navigator
 						m_currentTarget = m_depositPos;
 						break;
 					case State.MoveTo:
-						EnableDrills(true);
+						m_currentTarget = m_approach.To;
 						m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 						break;
 					case State.Mining:
 						{
-							Vector3 pos = m_navDrill.WorldPosition;
+							EnableDrills(true);
+							Vector3D pos = m_navDrill.WorldPosition;
 							m_currentTarget = pos + (m_depositPos - pos) * 2f;
 							m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
 							break;
@@ -135,8 +134,8 @@ namespace Rynchodon.Autopilot.Navigator
 						{
 							EnableDrills(false);
 							m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
-							Vector3 pos = m_navDrill.WorldPosition;
-							m_currentTarget = pos + Vector3.Normalize(pos - m_targetVoxel.GetCentre()) * 100f;
+							Vector3D pos = m_navDrill.WorldPosition;
+							m_currentTarget = pos + Vector3D.Normalize(pos - m_targetVoxel.GetCentre()) * 100d;
 							m_navSet.Settings_Task_NavMove.IgnoreAsteroid = false; 
 							break;
 						}
@@ -212,7 +211,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Approaching:
 					// measure distance from line, but move to a point
 					m_currentTarget = m_approach.ClosestPoint(m_navDrill.WorldPosition);
-					m_logger.debugLog("target: " + m_currentTarget + ", distance: " + Vector3.Distance(m_currentTarget, m_navDrill.WorldPosition), "Move()");
+					//m_logger.debugLog("target: " + m_currentTarget + ", distance: " + Vector3.Distance(m_currentTarget, m_navDrill.WorldPosition), "Move()");
 					if (Vector3.DistanceSquared(m_currentTarget, m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
@@ -245,8 +244,6 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
-					if (IsNearVoxel(4d))
-						m_navSet.Settings_Task_NavMove.SpeedTarget = 1f;
 					break;
 				case State.Mining:
 					// do not check for inside asteroid as we may not have reached it yet and target is inside asteroid
@@ -540,6 +537,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("No ore target found", "OnOreSearchComplete()", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
+				new Complainer(m_navSet, 60, "No ore found");
 				return;
 			}
 
@@ -550,12 +548,13 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
 			float bufferDist = Math.Max(m_longestDimension, m_navSet.Settings_Current.DestinationRadius);
 			GetExteriorPoint(m_depositPos, toCentre, bufferDist, exterior => {
-				m_approach = new Line(exterior - toCentre * bufferDist * 10f, exterior);
+				m_approach = new LineSegmentD(exterior - toCentre * bufferDist * 10f, exterior);
 				m_state = State.Approaching;
+				m_logger.debugLog("approach: " + m_approach.From.ToGpsTag("From") + ", " + m_approach.To.ToGpsTag("To"), "OnOreSearchComplete()");
 			});
 		}
 
-		private void GetExteriorPoint(Vector3 startPoint, Vector3 direction, float buffer, Action<Vector3> callback)
+		private void GetExteriorPoint(Vector3D startPoint, Vector3 direction, float buffer, Action<Vector3D> callback)
 		{
 			if (m_targetVoxel is IMyVoxelMap)
 				callback(GetExteriorPoint_Asteroid(startPoint, direction, buffer));
@@ -569,7 +568,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="startPoint">Where to start the search from, must be inside WorldAABB, can be inside or outside asteroid.</param>
 		/// <param name="direction">Direction from outside asteroid towards inside asteroid</param>
 		/// <param name="buffer">Minimum distance between the voxel and exterior point</param>
-		private Vector3 GetExteriorPoint_Asteroid(Vector3 startPoint, Vector3 direction, float buffer)
+		private Vector3D GetExteriorPoint_Asteroid(Vector3D startPoint, Vector3 direction, float buffer)
 		{
 			IMyVoxelMap voxel = m_targetVoxel as IMyVoxelMap;
 			if (voxel == null)
@@ -596,8 +595,8 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="startPoint">Where to start the search from, can be inside or outside planet.</param>
 		/// <param name="direction">Direction from outside of planet to inside planet.</param>
 		/// <param name="buffer">Minimum distance between planet surface and exterior point</param>
-		/// <param name="callback">Will be invoked game thread with result</param>
-		private void GetExteriorPoint_Planet(Vector3D startPoint, Vector3 direction, float buffer, Action<Vector3> callback)
+		/// <param name="callback">Will be invoked on game thread with result</param>
+		private void GetExteriorPoint_Planet(Vector3D startPoint, Vector3 direction, float buffer, Action<Vector3D> callback)
 		{
 			MyPlanet planet = m_targetVoxel as MyPlanet;
 			if (planet == null)
@@ -607,8 +606,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				Vector3 surfacePoint = planet.GetClosestSurfacePointGlobal(ref startPoint);
-				Vector3 exteriorPoint = surfacePoint - direction * buffer;
+				Vector3D surfacePoint = planet.GetClosestSurfacePointGlobal(ref startPoint);
+				Vector3D exteriorPoint = surfacePoint - direction * buffer;
 				callback(exteriorPoint);
 			}, m_logger);
 		}
