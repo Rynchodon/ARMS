@@ -10,6 +10,7 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 
 namespace Rynchodon.Weapons
@@ -363,7 +364,7 @@ namespace Rynchodon.Weapons
 			if (grid == null)
 				return true;
 
-			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
+			if (Options.blocksToTarget.IsNullOrEmpty() && (Options.CanTarget & TargetType.Destroy) == 0)
 				return true;
 
 			double distValue;
@@ -625,7 +626,7 @@ namespace Rynchodon.Weapons
 			target = null;
 			distanceValue = double.MaxValue;
 
-			if (cache.TotalByDefinition() == 0)
+			if (cache.TerminalBlocks == 0)
 			{
 				myLogger.debugLog("no terminal blocks on grid: " + grid.DisplayName, "GetTargetBlock()");
 				return false;
@@ -659,46 +660,54 @@ namespace Rynchodon.Weapons
 
 			// get block from blocksToTarget
 			int multiplier = 1;
-			foreach (string blocksSearch in Options.blocksToTarget)
-			{
-				multiplier++;
-				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
-				foreach (var blocksWithDef in master)
-					foreach (IMyCubeBlock block in blocksWithDef)
-					{
-						if (!TargetableBlock(block, true))
-						{
-							myLogger.debugLog("not targetable: " + block.DisplayNameText, "GetTargetBlock()");
-							continue;
-						}
-
-						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
-						{
-							myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
-							continue;
-						}
-						distanceSq *= multiplier * multiplier * multiplier;
-
-						//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
-						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
-						{
-							target = block;
-							distanceValue = distanceSq;
-						}
-						//else
-						//	myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
-					}
-				if (target != null) // found a block from blocksToTarget
+			if (Options.listOfBlocks != null)
+				using (Options.listOfBlocks.m_lock.AcquireSharedUsing())
 				{
-					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + blocksSearch + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
-					return true;
+					Options.listOfBlocks.UpdateFromSource();
+					foreach (List<MyObjectBuilderType> typesWithString in Options.listOfBlocks.blocks)
+					{
+						multiplier++;
+						foreach (MyObjectBuilderType blockType in typesWithString)
+						{
+							var blockList = cache.GetBlocksOfType(blockType);
+							foreach (IMyCubeBlock block in blockList)
+							{
+								if (!TargetableBlock(block, true))
+								{
+									myLogger.debugLog("not targetable: " + block.DisplayNameText, "GetTargetBlock()");
+									continue;
+								}
+
+								double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+								if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
+								{
+									myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
+									continue;
+								}
+								distanceSq *= multiplier * multiplier * multiplier;
+
+								//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
+								if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
+								{
+									target = block;
+									distanceValue = distanceSq;
+								}
+								//else
+								//	myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
+							}
+						}
+
+						if (target != null) // found a block from blocksToTarget
+						{
+							myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + typesWithString + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+							return true;
+						}
+					}
 				}
-			}
 
 			// get any terminal block
 			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
-			if (destroy || Options.blocksToTarget.Count == 0)
+			if (destroy || Options.blocksToTarget.IsNullOrEmpty())
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);

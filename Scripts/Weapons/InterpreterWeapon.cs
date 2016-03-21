@@ -133,9 +133,7 @@ namespace Rynchodon.Weapons
 		private void ParseBlockList(string blockList)
 		{
 			string[] splitList = blockList.Split(new char[]{','}, StringSplitOptions.RemoveEmptyEntries);
-			foreach (string block in splitList)
-				Options.blocksToTarget.Add(block);
-
+			Options.blocksToTarget = splitList;
 			return;
 		}
 

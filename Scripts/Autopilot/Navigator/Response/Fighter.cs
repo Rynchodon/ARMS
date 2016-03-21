@@ -87,7 +87,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public bool CanTarget(IMyCubeGrid grid)
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			if (m_destroySet && cache.TotalByDefinition() > 0)
+			if (m_destroySet && cache.TerminalBlocks > 0)
 				return true;
 
 			TargetType gridType = grid.GridSizeEnum == MyCubeSize.Small ? TargetType.SmallGrid
