@@ -5,8 +5,8 @@ namespace Rynchodon
 {
 	public class LockedDictionary<TKey, TValue>
 	{
-		private readonly Dictionary<TKey, TValue> Dictionary;
-		private readonly FastResourceLock lock_Dictionary = new FastResourceLock();
+		public readonly Dictionary<TKey, TValue> Dictionary;
+		public readonly FastResourceLock lock_Dictionary = new FastResourceLock();
 
 		public LockedDictionary()
 		{
@@ -80,6 +80,20 @@ namespace Rynchodon
 		{
 			using (lock_Dictionary.AcquireSharedUsing())
 				return Dictionary.TryGetValue(key, out value);
+		}
+
+		public bool TrySet(TKey key, TValue value)
+		{
+			bool contains;
+			using (lock_Dictionary.AcquireSharedUsing())
+				contains = Dictionary.ContainsKey(key);
+			if (!contains)
+			{
+				using (lock_Dictionary.AcquireExclusiveUsing())
+					Dictionary[key] = value;
+				return true;
+			}
+			return false;
 		}
 
 		public void ForEach(Func<TKey, bool> function)

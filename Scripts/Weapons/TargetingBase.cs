@@ -10,6 +10,7 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
 
 namespace Rynchodon.Weapons
@@ -363,7 +364,7 @@ namespace Rynchodon.Weapons
 			if (grid == null)
 				return true;
 
-			if (Options.blocksToTarget.Count == 0 && (Options.CanTarget & TargetType.Destroy) == 0)
+			if (Options.blocksToTarget.IsNullOrEmpty() && (Options.CanTarget & TargetType.Destroy) == 0)
 				return true;
 
 			double distValue;
@@ -612,7 +613,7 @@ namespace Rynchodon.Weapons
 		/// <param name="distanceValue">The value assigned based on distance and position in blocksToTarget.</param>
 		/// <remarks>
 		/// <para>Decoy blocks will be given a distanceValue of the distance squared to weapon.</para>
-		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * index^3.</para>
+		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * (index + 1)^3.</para>
 		/// <para>Other blocks will be given a distanceValue of the distance squared * (1e12).</para>
 		/// </remarks>
 		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
@@ -625,7 +626,7 @@ namespace Rynchodon.Weapons
 			target = null;
 			distanceValue = double.MaxValue;
 
-			if (cache.TotalByDefinition() == 0)
+			if (cache.TerminalBlocks == 0)
 			{
 				myLogger.debugLog("no terminal blocks on grid: " + grid.DisplayName, "GetTargetBlock()");
 				return false;
@@ -658,50 +659,47 @@ namespace Rynchodon.Weapons
 			}
 
 			// get block from blocksToTarget
-			int multiplier = 1;
-			foreach (string blocksSearch in Options.blocksToTarget)
+			if (!Options.blocksToTarget.IsNullOrEmpty())
 			{
-				multiplier++;
-				var master = cache.GetBlocksByDefLooseContains(blocksSearch);
-				foreach (var blocksWithDef in master)
-					foreach (IMyCubeBlock block in blocksWithDef)
+				int index = 0;
+				IMyCubeBlock in_target = target;
+				double in_distValue = distanceValue;
+
+				Options.listOfBlocks.ForEach(cache, ref index, block => {
+					if (!TargetableBlock(block, true))
+						return;
+
+					double distSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+					if (doRangeTest && distSq > Options.TargetingRangeSquared)
+						return;
+
+					int multiplier = index + 1;
+					distSq *= multiplier * multiplier * multiplier;
+
+					if (distSq < in_distValue && CubeBlock.canConsiderHostile(block))
 					{
-						if (!TargetableBlock(block, true))
-						{
-							myLogger.debugLog("not targetable: " + block.DisplayNameText, "GetTargetBlock()");
-							continue;
-						}
-
-						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
-						{
-							myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
-							continue;
-						}
-						distanceSq *= multiplier * multiplier * multiplier;
-
-						//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
-						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
-						{
-							target = block;
-							distanceValue = distanceSq;
-						}
-						//else
-						//	myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
+						in_target = block;
+						in_distValue = distSq;
 					}
+				});
+
+				target = in_target;
+				distanceValue = in_distValue;
+
 				if (target != null) // found a block from blocksToTarget
 				{
-					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + blocksSearch + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText + 
+						", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue, "GetTargetBlock()");
 					return true;
 				}
 			}
 
-			// get any terminal block
+			// get any IMyTerminalBlock
 			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
-			if (destroy || Options.blocksToTarget.Count == 0)
+			if (destroy || Options.blocksToTarget.IsNullOrEmpty())
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
+				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock is IMyTerminalBlock);
 
 				double closest = double.MaxValue;
 

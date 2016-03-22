@@ -83,7 +83,13 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
-		public List<string> blocksToTarget = new List<string>();
+		public BlockTypeList listOfBlocks { get; private set; }
+
+		public string[] blocksToTarget
+		{
+			get { return listOfBlocks.BlockNamesContain; }
+			set { listOfBlocks = CubeGridCache.GetBlockList(value); }
+		}
 
 		public TargetingFlags Flags = TargetingFlags.None;
 		public bool FlagSet(TargetingFlags flag)
@@ -109,11 +115,12 @@ namespace Rynchodon.Weapons
 		public override string ToString()
 		{
 			StringBuilder blocks = new StringBuilder();
-			foreach (string block in blocksToTarget)
-			{
-				blocks.Append(block);
-				blocks.Append(", ");
-			}
+			if (blocksToTarget != null)
+				foreach (string block in blocksToTarget)
+				{
+					blocks.Append(block);
+					blocks.Append(", ");
+				}
 
 			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", TargetEntityId = " + TargetEntityId + ", Blocks = (" + blocks + ")";
 		}

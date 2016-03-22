@@ -29,7 +29,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private readonly CachingList<FixedWeapon> m_weapons_fixed = new CachingList<FixedWeapon>();
 		private readonly CachingList<WeaponTargeting> m_weapons_all = new CachingList<WeaponTargeting>();
-		private readonly Dictionary<TargetType, List<string>> m_cumulative_targeting = new Dictionary<TargetType, List<string>>();
+		private readonly Dictionary<TargetType, BlockTypeList> m_cumulative_targeting = new Dictionary<TargetType, BlockTypeList>();
 		private WeaponTargeting m_weapon_primary;
 		private PseudoBlock m_weapon_primary_pseudo;
 		private LastSeen m_currentTarget;
@@ -87,26 +87,16 @@ namespace Rynchodon.Autopilot.Navigator
 		public bool CanTarget(IMyCubeGrid grid)
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			if (m_destroySet && cache.TotalByDefinition() > 0)
+			if (m_destroySet && cache.TerminalBlocks > 0)
 				return true;
 
 			TargetType gridType = grid.GridSizeEnum == MyCubeSize.Small ? TargetType.SmallGrid
 				: grid.IsStatic ? TargetType.Station
 				: TargetType.LargeGrid;
 
-			List<string> targetBlocks;
+			BlockTypeList targetBlocks;
 			if (m_cumulative_targeting.TryGetValue(gridType, out targetBlocks))
-			{
-				foreach (string blockType in targetBlocks)
-				{
-					m_logger.debugLog("checking " + grid.DisplayName + " for " + blockType + " blocks", "CanTarget()");
-					if (cache.CountByDefLooseContains(blockType, func => func.IsWorking, 1) != 0)
-					{
-						m_logger.debugLog("at least one of " + blockType, "CanTarget()");
-						return true;
-					}
-				}
-			}
+				return targetBlocks.HasAny(cache);
 			else
 				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
 
@@ -372,7 +362,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				foreach (TargetType type in CumulativeTypes)
 					if (weapon.Options.CanTargetType(type))
-						AddToCumulative(type, weapon.Options.blocksToTarget);
+						AddToCumulative(type, weapon.Options.listOfBlocks);
 			}
 
 			m_weapons_fixed.ApplyRemovals();
@@ -387,9 +377,9 @@ namespace Rynchodon.Autopilot.Navigator
 			m_weaponDataDirty = false;
 		}
 
-		private void AddToCumulative(TargetType type, List<string> blocks)
+		private void AddToCumulative(TargetType type, BlockTypeList blocks)
 		{
-			m_logger.debugLog("adding to type: " + type + ", count: " + blocks.Count, "AddToCumulative()");
+			m_logger.debugLog("adding to type: " + type + ", count: " + blocks.BlockNamesContain.Length, "AddToCumulative()");
 
 			if (type == TargetType.AllGrid)
 			{
@@ -399,20 +389,11 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			List<string> targetBlocks;
+			BlockTypeList targetBlocks;
 			if (m_cumulative_targeting.TryGetValue(type, out targetBlocks))
-			{
-				foreach (string b in blocks)
-					if (!targetBlocks.Contains(b))
-						targetBlocks.Add(b);
-			}
+				m_cumulative_targeting[type] = BlockTypeList.Union(targetBlocks, blocks);
 			else
-			{
-				targetBlocks = new List<string>();
-				m_cumulative_targeting.Add(type, targetBlocks);
-				foreach (string b in blocks)
-					targetBlocks.Add(b);
-			}
+				m_cumulative_targeting[type] = blocks;
 		}
 
 		private void Weapon_OnClosing(IMyEntity obj)
