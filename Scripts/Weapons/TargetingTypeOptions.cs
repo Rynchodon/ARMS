@@ -87,7 +87,7 @@ namespace Rynchodon.Weapons
 
 		public string[] blocksToTarget
 		{
-			get { return listOfBlocks.m_blockNamesContain; }
+			get { return listOfBlocks.BlockNamesContain; }
 			set { listOfBlocks = CubeGridCache.GetBlockList(value); }
 		}
 

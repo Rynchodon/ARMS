@@ -613,7 +613,7 @@ namespace Rynchodon.Weapons
 		/// <param name="distanceValue">The value assigned based on distance and position in blocksToTarget.</param>
 		/// <remarks>
 		/// <para>Decoy blocks will be given a distanceValue of the distance squared to weapon.</para>
-		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * index^3.</para>
+		/// <para>Blocks from blocksToTarget will be given a distanceValue of the distance squared * (index + 1)^3.</para>
 		/// <para>Other blocks will be given a distanceValue of the distance squared * (1e12).</para>
 		/// </remarks>
 		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
@@ -659,58 +659,47 @@ namespace Rynchodon.Weapons
 			}
 
 			// get block from blocksToTarget
-			int multiplier = 1;
-			if (Options.listOfBlocks != null)
-				using (Options.listOfBlocks.m_lock.AcquireSharedUsing())
-				{
-					Options.listOfBlocks.UpdateFromSource();
-					foreach (List<MyObjectBuilderType> typesWithString in Options.listOfBlocks.blocks)
+			if (!Options.blocksToTarget.IsNullOrEmpty())
+			{
+				int index = 0;
+				IMyCubeBlock in_target = target;
+				double in_distValue = distanceValue;
+
+				Options.listOfBlocks.ForEach(cache, ref index, block => {
+					if (!TargetableBlock(block, true))
+						return;
+
+					double distSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+					if (doRangeTest && distSq > Options.TargetingRangeSquared)
+						return;
+
+					int multiplier = index + 1;
+					distSq *= multiplier * multiplier * multiplier;
+
+					if (distSq < in_distValue && CubeBlock.canConsiderHostile(block))
 					{
-						multiplier++;
-						foreach (MyObjectBuilderType blockType in typesWithString)
-						{
-							var blockList = cache.GetBlocksOfType(blockType);
-							foreach (IMyCubeBlock block in blockList)
-							{
-								if (!TargetableBlock(block, true))
-								{
-									myLogger.debugLog("not targetable: " + block.DisplayNameText, "GetTargetBlock()");
-									continue;
-								}
-
-								double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-								if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
-								{
-									myLogger.debugLog("too far: " + block.DisplayNameText + ", distanceSq = " + distanceSq + ", TargetingRangeSquared = " + Options.TargetingRangeSquared, "GetTargetBlock()");
-									continue;
-								}
-								distanceSq *= multiplier * multiplier * multiplier;
-
-								//myLogger.debugLog("blocksSearch = " + blocksSearch + ", block = " + block.DisplayNameText + ", distance value = " + distanceSq, "GetTargetBlock()");
-								if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
-								{
-									target = block;
-									distanceValue = distanceSq;
-								}
-								//else
-								//	myLogger.debugLog("have a closer block than " + block.DisplayNameText + ", close = " + target.getBestName() + ", distance value = " + distanceValue, "GetTargetBlock()");
-							}
-						}
-
-						if (target != null) // found a block from blocksToTarget
-						{
-							myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", blocksSearch = " + typesWithString + ", target = " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
-							return true;
-						}
+						in_target = block;
+						in_distValue = distSq;
 					}
-				}
+				});
 
-			// get any terminal block
+				target = in_target;
+				distanceValue = in_distValue;
+
+				if (target != null) // found a block from blocksToTarget
+				{
+					myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText + 
+						", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					return true;
+				}
+			}
+
+			// get any IMyTerminalBlock
 			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
 			if (destroy || Options.blocksToTarget.IsNullOrEmpty())
 			{
 				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock != null);
+				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock is IMyTerminalBlock);
 
 				double closest = double.MaxValue;
 
