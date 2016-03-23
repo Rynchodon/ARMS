@@ -24,6 +24,11 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
+		private const float MinAccel_Abort = 0.75f, MinAccel_Return = 1f;
+		private const string
+			ReturnCause_Full = "Drills are full, need to unload",
+			ReturnCause_Heavy = "Ship is too massive, need to unload",
+			ReturnCause_OverWorked = "Thrusters overworked, need to unload";
 
 		private enum State : byte { GetTarget, Approaching, Rotating, MoveTo, Mining, Mining_Escape, Mining_Tunnel, Move_Away }
 
@@ -71,27 +76,35 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (value)
 				{
 					case State.GetTarget:
-						EnableDrills(false);
-						if (DrillFullness() >= FullAmount_Return)
 						{
-							m_logger.debugLog("Drills are full, time to go home", "m_state()");
-							m_navSet.OnTaskComplete_NavRot();
-							m_mover.StopMove();
-							m_mover.StopRotate();
-							new Complainer(m_navSet, 10, "Drills are full, time to go home");
-							return;
-						}
-						else if (m_mover.ThrustersOverWorked(0.8f))
-						{
-							m_logger.debugLog("Thrusters are overworked, time to go home", "set_m_state()");
-							m_navSet.OnTaskComplete_NavRot();
-							m_mover.StopMove();
-							m_mover.StopRotate();
-							new Complainer(m_navSet, 10, "Thrusters are overworked, time to go home");
-							return;
-						}
-						else
-						{
+							EnableDrills(false);
+							if (DrillFullness() >= FullAmount_Return)
+							{
+								m_logger.debugLog(ReturnCause_Full, "m_state()");
+								m_navSet.OnTaskComplete_NavRot();
+								m_mover.StopMove();
+								m_mover.StopRotate();
+								new Complainer(m_navSet, 10, ReturnCause_Full);
+								return;
+							}
+							if (GetAcceleration() < MinAccel_Return)
+							{
+								m_logger.debugLog(ReturnCause_Heavy, "set_m_state()");
+								m_navSet.OnTaskComplete_NavRot();
+								m_mover.StopMove();
+								m_mover.StopRotate();
+								new Complainer(m_navSet, 10, ReturnCause_Heavy);
+								return;
+							}
+							if (m_mover.ThrustersOverWorked(0.8f))
+							{
+								m_logger.debugLog(ReturnCause_OverWorked, "set_m_state()");
+								m_navSet.OnTaskComplete_NavRot();
+								m_mover.StopMove();
+								m_mover.StopRotate();
+								new Complainer(m_navSet, 10, ReturnCause_OverWorked);
+								return;
+							}
 							// request ore detector update
 							m_logger.debugLog("Requesting ore update", "m_state()");
 							m_navSet.OnTaskComplete_NavMove();
@@ -166,10 +179,10 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("No Drills!", "MinerVoxel()", Logger.severity.INFO);
 				return;
 			}
-			if (MyAPIGateway.Session.CreativeMode)
-				foreach (IMyShipDrill drill in allDrills)
-					if (drill.UseConveyorSystem)
-						drill.ApplyAction("UseConveyor");
+			//if (MyAPIGateway.Session.CreativeMode)
+			//	foreach (IMyShipDrill drill in allDrills)
+			//		if (drill.UseConveyorSystem)
+			//			drill.ApplyAction("UseConveyor");
 
 			// if a drill has been chosen by player, use it
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -250,6 +263,12 @@ namespace Rynchodon.Autopilot.Navigator
 					if (DrillFullness() > FullAmount_Abort)
 					{
 						m_logger.debugLog("Drills are full, aborting", "Move()", Logger.severity.DEBUG);
+						m_state = State.Mining_Escape;
+						return;
+					}
+					if (GetAcceleration() < MinAccel_Abort)
+					{
+						m_logger.debugLog("Ship is heavy, aborting", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -439,7 +458,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Rotating:
 					customInfo.AppendLine("Rotating to face deposit");
 					customInfo.Append("Angle: ");
-					customInfo.AppendLine(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle).ToString());
+					customInfo.AppendLine(PrettySI.toSigFigs(MathHelper.ToDegrees(m_navSet.Settings_Current.DistanceAngle)) + '°');
 					break;
 				case State.MoveTo:
 					customInfo.Append("Moving to ");
@@ -502,6 +521,18 @@ namespace Rynchodon.Autopilot.Navigator
 				m_current_drillFull = (float)content / (float)capacity;
 
 			return m_current_drillFull;
+		}
+
+		/// <summary>
+		/// Finds the maximum forward and backwards accelerations and returns the lesser of the two.
+		/// </summary>
+		/// <returns>The lesser of maximum forward and backwards accelerations.</returns>
+		private float GetAcceleration()
+		{
+			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward));
+			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward));
+
+			return Math.Min(forwardForce, backwardForce) / m_navDrill.Physics.Mass;
 		}
 
 		private void EnableDrills(bool enable)

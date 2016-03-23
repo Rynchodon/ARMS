@@ -26,7 +26,8 @@ namespace Rynchodon.Autopilot.Movement
 
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
 		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
-		private const ulong StuckAfter = 1000;
+
+		private const ulong WriggleAfter = 500ul, StuckAfter = WriggleAfter + 2000ul, MoveAwayAfter = StuckAfter + 100ul;
 
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
@@ -46,7 +47,7 @@ namespace Rynchodon.Autopilot.Movement
 		private DateTime updated_prevAngleVel; // needs to be precise, regardless of updates
 
 		private float best_distance = float.MaxValue, best_angle = float.MaxValue;
-		private ulong m_stuckAt = ulong.MaxValue;
+		private ulong m_lastmove = ulong.MaxValue;
 
 		private bool m_stopped, m_overworked;
 
@@ -58,16 +59,14 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			get
 			{
-				//myLogger.debugLog("distance: " + NavSet.Settings_Current.Distance + ", best: " + best_distance + ", angle: " + NavSet.Settings_Current.DistanceAngle + ", best: " + best_angle +
-				//	", update: " + Globals.UpdateCount + ", stuck at: " + m_stuckAt, "get_IsStuck()");
-				return Globals.UpdateCount >= m_stuckAt;
+				return (Globals.UpdateCount - m_lastmove) > StuckAfter;
 			}
 			set
 			{
 				if (value)
-					m_stuckAt = 0ul;
+					m_lastmove = ulong.MinValue;
 				else
-					m_stuckAt = Globals.UpdateCount + StuckAfter;
+					m_lastmove = Globals.UpdateCount;
 			}
 		}
 
@@ -184,7 +183,7 @@ namespace Rynchodon.Autopilot.Movement
 				if (distance + 2f < best_distance || float.IsNaN(NavSet.Settings_Current.Distance))
 				{
 					best_distance = distance;
-					m_stuckAt = Globals.UpdateCount + StuckAfter;
+					m_lastmove = Globals.UpdateCount;
 				}
 
 				targetVelocity = MaximumVelocity(destDisp);
@@ -215,7 +214,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				targetVelocity = Vector3.Zero;
 				distance = 0f;
-				m_stuckAt = Globals.UpdateCount + StuckAfter;
+				m_lastmove = Globals.UpdateCount;
 			}
 
 			NavSet.Settings_Task_NavWay.Distance = distance;
@@ -573,7 +572,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (distanceAngle < best_angle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
 			{
 				best_angle = distanceAngle;
-				m_stuckAt = Globals.UpdateCount + StuckAfter;
+				m_lastmove = Globals.UpdateCount;
 			}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
@@ -693,12 +692,11 @@ namespace Rynchodon.Autopilot.Movement
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 			MyShipController controller = Block.Controller;
 
-			myLogger.debugLog("stuck in: " + (m_stuckAt + StuckAfter - Globals.UpdateCount), "MoveAndRotate()");
+			IMyEntity obstruction = myPathfinder.MoveObstruction ?? myPathfinder.RotateObstruction;
+			ulong upWoMove = Globals.UpdateCount - m_lastmove;
 
-			// only iff stuck for extra time (Nav may want to handle stuck)
-			if (NavSet.Settings_Current.PathfinderCanChangeCourse && Globals.UpdateCount >= m_stuckAt + StuckAfter)
+			if (NavSet.Settings_Current.PathfinderCanChangeCourse && upWoMove > MoveAwayAfter)
 			{
-				IMyEntity obstruction = myPathfinder.RotateObstruction ?? myPathfinder.MoveObstruction;
 				// if cannot rotate and not calculating move, move away from obstruction
 				if (obstruction != null)
 				{
@@ -708,16 +706,29 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3.Normalize(ref displacement, out away);
 					myLogger.debugLog("Stuck, creating Waypoint to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
 					new Waypoint(this, NavSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + NavSet.Settings_Current.DestinationRadius));
-					m_stuckAt = Globals.UpdateCount + StuckAfter;
+					m_lastmove = Globals.UpdateCount;
 				}
 			}
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
-			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
+			if (moveForceRatio == Vector3.Zero)
 			{
-				//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
-				MoveAndRotateStop();
-				return;
+				if (rotateForceRatio == Vector3.Zero)
+				{
+					//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
+					MoveAndRotateStop();
+					return;
+				}
+			}
+			else if (obstruction == null && upWoMove > WriggleAfter)
+			{
+				Logger.debugNotify("Wriggle", 50);
+
+				// if pathfinder is clear and we are not moving, wriggle
+				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
+				rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
 			}
 
 			// clamp values and invert operations MoveAndRotate will perform
