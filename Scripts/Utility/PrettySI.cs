@@ -129,5 +129,24 @@ namespace Rynchodon
 		//	return 0;
 		//}
 
+		
+		public static string makePretty(TimeSpan span)
+		{
+			double totalSeconds = span.TotalSeconds;
+
+			if (totalSeconds < 60d)
+			{
+				if (totalSeconds < 1d)
+					return makePretty(totalSeconds) + 's';
+				return span.Seconds.ToString() + " s";
+			}
+
+			int minutes = span.Minutes;
+			if (minutes < 60)
+				return minutes + " min";
+
+			return span.Hours + " h";
+		}
+
 	}
 }

@@ -94,7 +94,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_shopAfter)
 					CreateShopper();
 				m_navSet.OnTaskComplete_NavMove();
-				new Complainer(m_navSet, 10, m_damagedBlocks.Count + " blocks still need to be welded");
+				m_navSet.Settings_Commands.Complaint = m_damagedBlocks.Count + " blocks still need to be welded";
 				return;
 			}
 

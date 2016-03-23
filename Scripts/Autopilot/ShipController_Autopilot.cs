@@ -526,13 +526,12 @@ namespace Rynchodon.Autopilot
 
 			bool moving = true;
 
-			double wait = (m_navSet.Settings_Current.WaitUntil - Globals.ElapsedTime).TotalSeconds;
-			if (wait > 0)
+			TimeSpan waitUntil = m_navSet.Settings_Current.WaitUntil;
+			if (waitUntil > Globals.ElapsedTime)
 			{
 				moving = false;
 				m_customInfo_build.Append("Waiting for ");
-				m_customInfo_build.Append((int)wait);
-				m_customInfo_build.AppendLine("s");
+				m_customInfo_build.AppendLine(PrettySI.makePretty(waitUntil - Globals.ElapsedTime));
 			}
 
 			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid);
@@ -595,6 +594,10 @@ namespace Rynchodon.Autopilot
 						break;
 				}
 			}
+
+			string complaint = m_navSet.Settings_Current.Complaint;
+			if (complaint != null)
+				m_customInfo_build.AppendLine(complaint);
 		}
 
 		private void SendCustomInfo()

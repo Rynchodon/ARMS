@@ -26,6 +26,7 @@ namespace Rynchodon.Autopilot.Data
 			private EnemyFinder m_enemyFinder;
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
+			private string m_complaint;
 			private BlockNameOrientation m_destBlock;
 			private IMyEntity m_destEntity;
 
@@ -129,6 +130,21 @@ namespace Rynchodon.Autopilot.Data
 					return m_navigatorRotator ?? parent.NavigatorRotator;
 				}
 				set { m_navigatorRotator = value; }
+			}
+
+			/// <summary>
+			/// <para>May be null</para>
+			/// <para>The active complaint.</para>
+			/// </summary>
+			public string Complaint
+			{
+				get
+				{
+					if (parent == null)
+						return m_complaint;
+					return m_complaint ?? parent.Complaint;
+				}
+				set { m_complaint = value; }
 			}
 
 			/// <summary>ShipController will not run the navigator until after this time.</summary>

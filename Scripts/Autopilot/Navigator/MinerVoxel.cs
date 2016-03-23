@@ -84,7 +84,7 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								new Complainer(m_navSet, 10, ReturnCause_Full);
+								m_navSet.Settings_Commands.Complaint = ReturnCause_Full;
 								return;
 							}
 							if (GetAcceleration() < MinAccel_Return)
@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								new Complainer(m_navSet, 10, ReturnCause_Heavy);
+								m_navSet.Settings_Commands.Complaint = ReturnCause_Heavy;
 								return;
 							}
 							if (m_mover.ThrustersOverWorked(0.8f))
@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								new Complainer(m_navSet, 10, ReturnCause_OverWorked);
+								m_navSet.Settings_Commands.Complaint = ReturnCause_OverWorked;
 								return;
 							}
 							// request ore detector update
@@ -568,7 +568,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("No ore target found", "OnOreSearchComplete()", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
-				new Complainer(m_navSet, 60, "No ore found");
+				m_navSet.Settings_Commands.Complaint = "No ore found";
 				return;
 			}
 
