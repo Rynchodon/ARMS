@@ -71,7 +71,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
-			m_mover.CalcRotate();
+			m_mover.CalcRotate_Stop();
 		}
 
 	}

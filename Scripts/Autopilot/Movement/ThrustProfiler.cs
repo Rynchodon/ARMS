@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.Autopilot.Data;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -13,6 +14,18 @@ namespace Rynchodon.Autopilot.Movement
 	/// </summary>
 	public class ThrustProfiler
 	{
+
+		private struct ForceInDirection
+		{
+			public Base6Directions.Direction Direction;
+			public float Force;
+
+			public override string ToString()
+			{
+				return "Direction: " + Direction + ", Force: " + Force;
+			}
+		}
+
 		private Logger myLogger = null;
 
 		private IMyCubeGrid myGrid;
@@ -22,13 +35,19 @@ namespace Rynchodon.Autopilot.Movement
 		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
 		private Dictionary<Base6Directions.Direction, float> m_totalThrustForce = new Dictionary<Base6Directions.Direction, float>();
 
-		public ThrustProfiler(IMyCubeGrid grid)
-		{
-			if (grid == null)
-				throw new NullReferenceException("grid");
+		private ForceInDirection m_primaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Forward };
+		private ForceInDirection m_secondaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Up };
 
-			myLogger = new Logger("ThrustProfiler", () => grid.DisplayName);
-			myGrid = grid;
+		public StandardFlight Standard { get; private set; }
+
+		public ThrustProfiler(IMyCubeBlock autopilot)
+		{
+			if (autopilot == null)
+				throw new NullReferenceException("autopilot");
+
+			myLogger = new Logger(GetType().Name, autopilot);
+			myGrid = autopilot.CubeGrid;
+			Standard = new StandardFlight(autopilot, Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
 
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 				thrustersInDirection.Add(direction, new List<MyThrust>());
@@ -119,7 +138,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (adjustForGravity)
 			{
 				float change = Base6Directions.GetVector(direction).Dot(m_localGravity) * myGrid.Physics.Mass;
-				myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
+				//myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
 				force += change;
 			}
 
@@ -150,9 +169,22 @@ namespace Rynchodon.Autopilot.Movement
 			allPlanets.Clear();
 			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
 
+			if (m_primaryForce.Force < 1f)
+			{
+				CalcForceInDirection(Base6Directions.Direction.Forward);
+				CalcForceInDirection(Base6Directions.Direction.Backward);
+				CalcForceInDirection(Base6Directions.Direction.Up);
+				CalcForceInDirection(Base6Directions.Direction.Down);
+				CalcForceInDirection(Base6Directions.Direction.Left);
+				CalcForceInDirection(Base6Directions.Direction.Right);
+
+				if (m_primaryForce.Force < 1f)
+					throw new Exception("Ship has no thrusters");
+			}
+
 			if (m_worldGravity.LengthSquared() < 0.01f)
 			{
-				myLogger.debugLog("Not in gravity well", "Update()");
+				//myLogger.debugLog("Not in gravity well", "Update()");
 				m_localGravity = Vector3.Zero;
 				m_gravityReactRatio = Vector3.Zero;
 				m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
@@ -204,6 +236,39 @@ namespace Rynchodon.Autopilot.Movement
 				}
 
 			m_totalThrustForce[direction] = force;
+
+			if (direction == m_primaryForce.Direction)
+			{
+				//myLogger.debugLog("updating primary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
+				m_primaryForce.Force = force;
+			}
+			else if (force > m_primaryForce.Force)
+			{
+				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", primary: " + m_primaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				m_secondaryForce = m_primaryForce;
+				m_primaryForce.Direction = direction;
+				m_primaryForce.Force = force;
+
+				if (m_secondaryForce.Direction == Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
+					m_secondaryForce = new ForceInDirection() { Direction = Base6Directions.GetPerpendicular(m_primaryForce.Direction) };
+
+				myLogger.debugLog("secondary: " + m_secondaryForce, "CalcForceInDirection()");
+
+				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
+			}
+			else if (direction == m_secondaryForce.Direction)
+			{
+				//myLogger.debugLog("updating secondary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
+				m_secondaryForce.Force = force;
+			}
+			else if (force > m_secondaryForce.Force && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
+			{
+				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", secondary: " + m_secondaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				m_secondaryForce.Direction = direction;
+				m_secondaryForce.Force = force;
+				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
+			}
+
 			return force;
 		}
 

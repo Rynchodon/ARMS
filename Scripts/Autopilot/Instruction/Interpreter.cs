@@ -666,7 +666,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			execute = () => {
-				result = Vector3.Transform(result, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
+				result = Vector3D.Transform(result, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
 				new GOLIS(Mover, NavSet, result);
 			};
 			return true;

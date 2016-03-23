@@ -46,6 +46,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private GridCellCache m_enemyCells;
 		private Vector3D m_targetPosition;
 		private TimeSpan m_timeoutAt = Globals.ElapsedTime + SearchTimeout;
+		private LineSegmentD m_approach = new LineSegmentD();
 		private ulong m_next_grinderFullCheck;
 		private ulong m_next_grinderCheck;
 		private bool m_grinderFull;
@@ -176,23 +177,21 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_timeoutAt = Globals.ElapsedTime + SearchTimeout;
-			Vector3 targetCentre = m_enemy.GetCentre();
+			Vector3D targetCentre = m_enemy.GetCentre();
 
 			Vector3 enemyVelocity = m_enemy.GetLinearVelocity();
 			if (enemyVelocity.LengthSquared() > 10f)
 			{
 				float targetLongest = m_enemy.LocalAABB.GetLongestDim();
 
-				Vector3 furthest = targetCentre + enemyVelocity * 1000000f;
-				Line approachTo = new Line(targetCentre, furthest, false);
+				m_approach.From = targetCentre;
+				m_approach.To = targetCentre + enemyVelocity * 1e6f;
 
 				float multi = m_stage == Stage.Intercept ? 0.5f : 1f;
-				if (!approachTo.PointInCylinder(targetLongest * multi, m_navGrind.WorldPosition))
+				if (!m_approach.PointInCylinder(targetLongest * multi, m_navGrind.WorldPosition))
 				{
 					m_targetPosition = targetCentre;
-					Vector3 direction = furthest - targetCentre;
-					direction.Normalize();
-					Move_Intercept(targetCentre + direction * (targetLongest + m_longestDimension));
+					Move_Intercept(targetCentre + m_approach.Direction * (targetLongest + m_longestDimension));
 					return;
 				}
 			}
@@ -239,7 +238,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			float distSq = Vector3.DistanceSquared(m_targetPosition, grindPosition);
+			float distSq = (float)Vector3D.DistanceSquared(m_targetPosition, grindPosition);
 			float offset = m_grinderOffset + m_enemy.GridSize;
 			float offsetEpsilon = offset + 5f;
 			if (distSq > offsetEpsilon * offsetEpsilon)
@@ -259,7 +258,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		private void Move_Intercept(Vector3 position)
+		private void Move_Intercept(Vector3D position)
 		{
 			if (m_stage != Stage.Intercept)
 			{

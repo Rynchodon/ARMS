@@ -54,11 +54,11 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			Vector3 position = m_mover.Block.CubeBlock.GetPosition();
-			Vector3 flyDirection = position - m_enemy.GetPosition();
+			Vector3D position = m_mover.Block.CubeBlock.GetPosition();
+			Vector3D flyDirection = position - m_enemy.GetPosition();
 			flyDirection.Normalize();
 
-			Vector3 destination = position + flyDirection * 1000000f;
+			Vector3D destination = position + flyDirection * 1e6;
 			m_mover.CalcMove(m_mover.Block.Pseudo, destination, Vector3.Zero);
 		}
 

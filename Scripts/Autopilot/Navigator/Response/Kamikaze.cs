@@ -13,7 +13,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger m_logger;
 
 		private LastSeen m_enemy;
-		private Vector3 m_flyDirection;
+		private Vector3D m_flyDirection;
 
 		public Kamikaze(Mover mover, AllNavigationSettings navSet)
 			: base(mover, navSet)
@@ -53,11 +53,11 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			Vector3 position = m_mover.Block.CubeBlock.GetPosition();
+			Vector3D position = m_mover.Block.CubeBlock.GetPosition();
 			m_flyDirection = m_enemy.GetPosition() - position;
 			m_flyDirection.Normalize();
 
-			Vector3 destination = position + m_flyDirection * 1000000f;
+			Vector3D destination = position + m_flyDirection * 1e6;
 			m_mover.CalcMove(m_mover.Block.Pseudo, destination, Vector3.Zero);
 		}
 

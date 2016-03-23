@@ -207,10 +207,10 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 
 				// set destination to be short of grid so pathfinder knows we will not hit it
-				Vector3 targetToNav = m_navBlock.WorldPosition - m_targetPosition;
+				Vector3D targetToNav = m_navBlock.WorldPosition - m_targetPosition;
 				targetToNav.Normalize();
 				float adjustment = m_navSet.Settings_Current.DestinationRadius * 0.5f;
-				Vector3 destination = m_targetPosition + targetToNav * adjustment;
+				Vector3D destination = m_targetPosition + targetToNav * adjustment;
 
 				//m_logger.debugLog("m_targetPosition: " + m_targetPosition + ", moved by " + adjustment + " to " + destination + ", velocity: " + m_gridFinder.Grid.GetLinearVelocity(), "Move()");
 				m_mover.CalcMove(m_navBlock, destination, m_gridFinder.Grid.GetLinearVelocity());

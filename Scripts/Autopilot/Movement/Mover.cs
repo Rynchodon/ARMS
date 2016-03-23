@@ -132,7 +132,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		[Obsolete("Navigators should be upgraded to double precision")]
+		[Obsolete("Navigators should use double precision")]
 		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
 			CalcMove(block, (Vector3D)destPoint, destVelocity, landing);
@@ -229,7 +229,7 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 				myLogger.debugLog("imposing speed limit: " + speedRequest + ", targetVelocity: " + targetVelocity, "CalcMove()");
 			}
-			else
+			else if (tarSpeedSq < velocity.LengthSquared())
 				NavSet.Settings_Task_NavWay.NearingDestination = true;
 
 			m_moveAccel = targetVelocity - velocity - myThrust.m_localGravity;
@@ -272,9 +272,11 @@ namespace Rynchodon.Autopilot.Movement
 
 			Block.SetDamping(enableDampeners);
 
-			myLogger.debugLog("dest point: " + destPoint
-				+ ", position: " + block.WorldPosition
-				+ ", destDisp: " + destDisp
+			myLogger.debugLog(string.Empty
+				//+ "block: " + block.Block.getBestName()
+				//+ ", dest point: " + destPoint
+				//+ ", position: " + block.WorldPosition
+				+ "destDisp: " + destDisp
 				+ ", destVelocity: " + destVelocity
 				+ ", targetVelocity: " + targetVelocity
 				+ ", velocity: " + velocity
@@ -292,17 +294,17 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 result = Vector3.Zero;
 
 			if (localDisp.X > 0f)
-				result.X = MaximumSpeed(localDisp.X, Base6Directions.Direction.Right);
+				result.X = MaximumSpeed(localDisp.X, Base6Directions.Direction.Left);
 			else if (localDisp.X < 0f)
-				result.X = -MaximumSpeed(-localDisp.X, Base6Directions.Direction.Left);
+				result.X = -MaximumSpeed(-localDisp.X, Base6Directions.Direction.Right);
 			if (localDisp.Y > 0f)
-				result.Y = MaximumSpeed(localDisp.Y, Base6Directions.Direction.Up);
+				result.Y = MaximumSpeed(localDisp.Y, Base6Directions.Direction.Down);
 			else if (localDisp.Y < 0f)
-				result.Y = -MaximumSpeed(-localDisp.Y, Base6Directions.Direction.Down);
+				result.Y = -MaximumSpeed(-localDisp.Y, Base6Directions.Direction.Up);
 			if (localDisp.Z > 0f)
-				result.Z = MaximumSpeed(localDisp.Z, Base6Directions.Direction.Backward);
+				result.Z = MaximumSpeed(localDisp.Z, Base6Directions.Direction.Forward);
 			else if (localDisp.Z < 0f)
-				result.Z = -MaximumSpeed(-localDisp.Z, Base6Directions.Direction.Forward);
+				result.Z = -MaximumSpeed(-localDisp.Z, Base6Directions.Direction.Backward);
 
 			myLogger.debugLog("displacement: " + localDisp + ", maximum velocity: " + result, "MaximumVelocity()");
 
@@ -317,18 +319,18 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>The maximum speed that will allow the grid to stop at the destination.</returns>
 		private float MaximumSpeed(float dist, Base6Directions.Direction direct)
 		{
-			if (dist < 0.1f)
+			if (dist < 0.01f)
 				return 0f;
 
-			direct = Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.GetDirectionVector(direct));
+			direct = Block.CubeBlock.Orientation.TransformDirection(direct);
 			float force = myThrust.GetForceInDirection(direct, true) * AvailableForceRatio;
 			if (force < 1f)
 			{
-				myLogger.debugLog("No thrust available in direction: " + direct, "MaximumSpeed()", Logger.severity.DEBUG);
-				return 0f;
+				myLogger.debugLog("No thrust available in direction: " + direct + ", dist: " + dist, "MaximumSpeed()", Logger.severity.DEBUG);
+				return dist * 0.1f;
 			}
 			float accel = -force / Block.Physics.Mass;
-			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + "m/s" + ", cap: " + dist * 2f + " m/s", "MaximumSpeed()");
+			myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + " m/s" + ", cap: " + dist * 0.5f + " m/s", "MaximumSpeed()");
 			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.5f); // capped for the sake of autopilot's reaction time
 		}
 
@@ -342,17 +344,17 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 result = Vector3.Zero;
 
 			if (localAccel.X > 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Right));
+				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Left));
 			else if (localAccel.X < 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Left));
+				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Left);
 			if (localAccel.Y > 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Up));
+				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Up);
 			else if (localAccel.Y < 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Down));
+				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Up));
 			if (localAccel.Z > 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Backward));
+				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Forward));
 			else if (localAccel.Z < 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(Block.CubeBlock.LocalMatrix.Forward));
+				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward);
 
 			myLogger.debugLog("accel: " + localAccel + ", force ratio: " + result + ", mass: " + Block.Physics.Mass, "ToForceRatio()");
 
@@ -365,6 +367,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>True iff the ship is in gravity.</returns>
 		private bool InGravity_LevelOff()
 		{
+			// TODO: use myThrust.Standard
+
 			if (myThrust.m_localGravity == Vector3.Zero)
 				return false;
 
@@ -385,25 +389,44 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate()
 		{
-			if (m_moveAccel.LengthSquared() > 100f)
-			{
-				myLogger.debugLog("rotate to accel, m_moveAccel: " + m_moveAccel, "CalcRotate()");
-				CalcRotate(Block.Pseudo, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
-				return;
-			}
-
 			if (InGravity_LevelOff())
 				return;
+
+			if (Block.Physics.LinearVelocity.LengthSquared() < 100f)
+			{
+				myLogger.debugLog("speed low, rotate to accel, LinearVelocity: " + Block.Physics.LinearVelocity, "CalcRotate()");
+				CalcRotate(myThrust.Standard, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
+				return;
+			}
 
 			if (NavSet.Settings_Current.NearingDestination && NavSet.Settings_Current.Distance > 10f) // orbiter needs to be exempt
 			{
 				myLogger.debugLog("rotate to stop", "CalcRotate()");
-				CalcRotate(Block.Pseudo, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+				CalcRotate(myThrust.Standard, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+				return;
+			}
+
+			if (m_moveAccel.LengthSquared() > 100f)
+			{
+				myLogger.debugLog("accel high, rotate to accel, m_moveAccel: " + m_moveAccel, "CalcRotate()");
+				CalcRotate(myThrust.Standard, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
 				return;
 			}
 
 			myLogger.debugLog("stopping rotation", "CalcRotate()");
 			StopRotate();
+		}
+
+		/// <summary>
+		/// Calculate the best rotation to stop the ship.
+		/// </summary>
+		public void CalcRotate_Stop()
+		{
+			if (InGravity_LevelOff())
+				return; 
+			
+			myLogger.debugLog("rotate to stop", "CalcRotate_Stop()");
+			CalcRotate(myThrust.Standard, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
 		}
 
 		/// <summary>
@@ -722,7 +745,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				myLogger.debugLog(myGrid != null, "Grid Changed! from " + myGrid.getBestName() + " to " + Block.CubeGrid.getBestName(), "CheckGrid()", Logger.severity.INFO);
 				myGrid = Block.CubeGrid;
-				this.myThrust = new ThrustProfiler(myGrid);
+				this.myThrust = new ThrustProfiler(Block.CubeBlock);
 				this.myGyro = new GyroProfiler(myGrid);
 				this.myPathfinder = new Pathfinder.Pathfinder(myGrid, NavSet, this);
 			}

@@ -30,7 +30,7 @@ namespace Rynchodon.Attached
 
 			myLogger.debugLog("Created for: " + block.DisplayNameText, "AttachableBlockBase()");
 
-			block.OnClose += Detach;
+			block.OnMarkForClose += Detach;
 			Registrar.Add(this.myBlock, this);
 		}
 
@@ -60,7 +60,7 @@ namespace Rynchodon.Attached
 				return;
 
 			Attach(block.CubeGrid, true);
-			block.OnClose += Detach;
+			block.OnMarkForClose += Detach;
 			curAttToBlock = block;
 		}
 
@@ -78,8 +78,8 @@ namespace Rynchodon.Attached
 			Detach();
 
 			myGrid = myBlock.CubeGrid;
-			myGrid.OnClose += Detach;
-			grid.OnClose += Detach;
+			myGrid.OnMarkForClose += Detach;
+			grid.OnMarkForClose += Detach;
 
 			myLogger.debugLog("attaching " + myGrid.DisplayName + " to " + grid.DisplayName, "Attach()", Logger.severity.DEBUG);
 			AttachedGrid.AddRemoveConnection(AttachmentKind, myGrid, grid, true);
@@ -91,11 +91,11 @@ namespace Rynchodon.Attached
 			if (curAttTo == null)
 				return;
 
-			myGrid.OnClose -= Detach;
-			curAttTo.OnClose -= Detach;
+			myGrid.OnMarkForClose -= Detach;
+			curAttTo.OnMarkForClose -= Detach;
 			if (curAttToBlock != null)
 			{
-				curAttToBlock.OnClose -= Detach;
+				curAttToBlock.OnMarkForClose -= Detach;
 				curAttToBlock = null;
 			}
 
@@ -106,7 +106,7 @@ namespace Rynchodon.Attached
 
 		private void Detach(IMyEntity obj)
 		{
-			myLogger.debugLog("closed object: " + obj.getBestName() + ")", "Detach()");
+			myLogger.debugLog("closed object: " + obj.getBestName(), "Detach()");
 			try
 			{ Detach(); }
 			catch (Exception ex)

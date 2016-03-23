@@ -73,6 +73,7 @@ namespace Rynchodon.Attached
 
 		private static FastResourceLock lock_search = new FastResourceLock();
 		private static uint searchIdPool = 1;
+		private static Logger s_logger = new Logger("AttachedGrid");
 
 		static AttachedGrid()
 		{
@@ -83,6 +84,7 @@ namespace Rynchodon.Attached
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			lock_search = null;
+			s_logger = null;
 		}
 
 		/// <summary>
@@ -165,10 +167,8 @@ namespace Rynchodon.Attached
 				attached1 = GetFor(grid1),
 				attached2 = GetFor(grid2);
 
-			if (attached1 != null)
-				attached1.AddRemoveConnection(kind, attached2, add);
-			if (attached2 != null)
-				attached2.AddRemoveConnection(kind, attached1, add);
+			attached1.AddRemoveConnection(kind, attached2, add);
+			attached2.AddRemoveConnection(kind, attached1, add);
 		}
 
 		private static AttachedGrid GetFor(IMyCubeGrid grid)
@@ -201,6 +201,8 @@ namespace Rynchodon.Attached
 			this.myLogger = new Logger("AttachedGrid", () => grid.DisplayName);
 			this.myGrid = grid;
 			Registrar.Add(grid, this);
+
+			myLogger.debugLog("Initialized", "AttachedGrid()");
 		}
 
 		private void AddRemoveConnection(AttachmentKind kind, AttachedGrid attached, bool add)
@@ -210,8 +212,16 @@ namespace Rynchodon.Attached
 				Attachments attach;
 				if (!Connections.TryGetValue(attached, out attach))
 				{
-					attach = new Attachments(myGrid, attached.myGrid);
-					Connections.Add(attached, attach);
+					if (add)
+					{
+						attach = new Attachments(myGrid, attached.myGrid);
+						Connections.Add(attached, attach);
+					}
+					else
+					{
+						myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, "AddRemoveConnection()", Logger.severity.ERROR);
+						return;
+					}
 				}
 
 				if (add)

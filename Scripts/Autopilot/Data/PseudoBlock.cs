@@ -30,7 +30,7 @@ namespace Rynchodon.Autopilot.Data
 	public class PseudoBlock
 	{
 
-		private readonly Logger m_logger;
+		protected readonly Logger m_logger;
 		private readonly Func<IMyCubeGrid> m_grid;
 		private ulong m_lastCalc_worldMatrix;
 		private MatrixD value_worldMatrix;
@@ -70,6 +70,15 @@ namespace Rynchodon.Autopilot.Data
 		}
 
 		/// <summary>
+		/// Creates an incomplete PsuedoBlock from a grid.
+		/// </summary>
+		protected PseudoBlock(Func<IMyCubeGrid> grid)
+		{
+			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
+			this.m_grid = grid;
+		}
+
+		/// <summary>
 		/// Creates a PseudoBlock from a grid and a local matrix.
 		/// </summary>
 		public PseudoBlock(Func<IMyCubeGrid> grid, Matrix local)
@@ -97,17 +106,43 @@ namespace Rynchodon.Autopilot.Data
 				up2 = Base6Directions.GetPerpendicular(for2);
 			}
 
-			Matrix constructed = Matrix.Zero;
+			this.LocalMatrix = new Matrix()
+			{
+				Forward = block.LocalMatrix.GetDirectionVector(for2),
+				Up = block.LocalMatrix.GetDirectionVector(up2),
+				Right = block.LocalMatrix.GetDirectionVector(Base6Directions.GetCross(for2, up2)),
+				M41 = block.LocalMatrix.M41,
+				M42 = block.LocalMatrix.M42,
+				M43 = block.LocalMatrix.M43,
+				M44 = block.LocalMatrix.M44
+			};
+		}
 
-			constructed.Forward = block.LocalMatrix.GetDirectionVector(for2);
-			constructed.Up = block.LocalMatrix.GetDirectionVector(up2);
-			constructed.Right = block.LocalMatrix.GetDirectionVector(Base6Directions.GetCross(for2, up2));
-			constructed.M41 = block.LocalMatrix.M41;
-			constructed.M42 = block.LocalMatrix.M42;
-			constructed.M43 = block.LocalMatrix.M43;
-			constructed.M44 = block.LocalMatrix.M44;
+	}
 
-			this.LocalMatrix = constructed;
+	public class StandardFlight : PseudoBlock
+	{
+
+		public StandardFlight(IMyCubeBlock autopilot, Base6Directions.Direction forward, Base6Directions.Direction up)
+			: base(autopilot)
+		{
+			SetMatrixOrientation(forward, up);
+		}
+
+		public void SetMatrixOrientation(Base6Directions.Direction forward, Base6Directions.Direction up)
+		{
+			if (forward == up || forward == Base6Directions.GetFlippedDirection(up))
+			{
+				m_logger.alwaysLog("incompatible directions, for2: " + forward + ", up2: " + up, "RotateMatrix()", Logger.severity.FATAL);
+				throw new ArgumentException("forward is not perpendicular to up");
+			}
+
+			Matrix localMatrix = LocalMatrix;
+			localMatrix.Forward = Base6Directions.GetVector(forward);
+			localMatrix.Up = Base6Directions.GetVector(up);
+			localMatrix.Right = Base6Directions.GetVector(Base6Directions.GetCross(forward, up));
+
+			this.LocalMatrix = localMatrix;
 		}
 
 	}
@@ -118,8 +153,6 @@ namespace Rynchodon.Autopilot.Data
 	/// <typeparam name="T">The type of blocks to combine.</typeparam>
 	public class MultiBlock<T> : PseudoBlock where T : MyObjectBuilder_CubeBlock
 	{
-
-		private readonly Logger m_logger;
 
 		public int FunctionalBlocks { get; private set; }
 
@@ -138,9 +171,8 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		/// <param name="grid">The grid to use blocks from.</param>
 		public MultiBlock(Func<IMyCubeGrid> grid)
-			: base(grid, Matrix.Zero)
+			: base(grid)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
 			calculateLocalMatrix();
 		}
 
@@ -161,6 +193,7 @@ namespace Rynchodon.Autopilot.Data
 				return;
 
 			var blocksOfT = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(T));
+			Block = null;
 
 			FunctionalBlocks = 0;
 			Matrix LocalMatrix = Matrix.Zero;

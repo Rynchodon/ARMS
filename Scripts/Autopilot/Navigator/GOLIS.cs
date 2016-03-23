@@ -13,7 +13,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private readonly Logger myLogger;
 		private readonly PseudoBlock NavigationBlock;
-		private readonly Vector3 location;
+		private readonly Vector3D location;
 		private readonly AllNavigationSettings.SettingsLevelName m_level;
 
 		/// <summary>
@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="mover">The mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="location">The location to fly to</param>
-		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3 location, AllNavigationSettings.SettingsLevelName level = AllNavigationSettings.SettingsLevelName.NavMove)
+		public GOLIS(Mover mover, AllNavigationSettings navSet, Vector3D location, AllNavigationSettings.SettingsLevelName level = AllNavigationSettings.SettingsLevelName.NavMove)
 			: base(mover, navSet)
 		{
 			this.myLogger = new Logger("GOLIS", m_controlBlock.CubeBlock);

@@ -7,7 +7,7 @@ Variables P and V affect all destinations that come after
 
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
 
-In order for Autopilot to control a grid, it must have a gyroscope, have thrusters in every direction, and must not be currently controlled.
+In order for Autopilot to control a grid, it must have a gyroscope, at least one thruster, and must not be currently controlled.
 The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
 All distances and coordinates are in metres, speed is in metres per second.
 When the end of the commands is reached, Autopilot will start back at the first command.
