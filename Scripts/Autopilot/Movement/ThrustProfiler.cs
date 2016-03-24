@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Movement
 	public class ThrustProfiler
 	{
 
-		private struct ForceInDirection
+		public struct ForceInDirection
 		{
 			public Base6Directions.Direction Direction;
 			public float Force;
@@ -35,10 +35,20 @@ namespace Rynchodon.Autopilot.Movement
 		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
 		private Dictionary<Base6Directions.Direction, float> m_totalThrustForce = new Dictionary<Base6Directions.Direction, float>();
 
+		/// <summary>Direction with strongest thrusters.</summary>
 		private ForceInDirection m_primaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Forward };
+		/// <summary>Direction, perpendicular to primary, with strongest thrusters.</summary>
 		private ForceInDirection m_secondaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Up };
 
+		/// <summary>Forward is the direction with the strongest thrusters and upward is the direction, perpendicular to forward, that has the strongest thrusters.</summary>
 		public StandardFlight Standard { get; private set; }
+
+		/// <summary>Upward is the direction with the strongest thrusters and forward is the direction, perpendicular to upward, that has the strongest thrusters.</summary>
+		public StandardFlight Gravity { get; private set; }
+
+		/// <summary>Maximum force of thrusters in direction of Standard's upward.</summary>
+		public float SecondaryForce
+		{ get { return m_secondaryForce.Force; } }
 
 		public ThrustProfiler(IMyCubeBlock autopilot)
 		{
@@ -48,6 +58,7 @@ namespace Rynchodon.Autopilot.Movement
 			myLogger = new Logger(GetType().Name, autopilot);
 			myGrid = autopilot.CubeGrid;
 			Standard = new StandardFlight(autopilot, Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
+			Gravity = new StandardFlight(autopilot, Base6Directions.Direction.Up, Base6Directions.Direction.Forward);
 
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 				thrustersInDirection.Add(direction, new List<MyThrust>());
@@ -255,6 +266,7 @@ namespace Rynchodon.Autopilot.Movement
 				myLogger.debugLog("secondary: " + m_secondaryForce, "CalcForceInDirection()");
 
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
+				Gravity.SetMatrixOrientation(m_secondaryForce.Direction, m_primaryForce.Direction);
 			}
 			else if (direction == m_secondaryForce.Direction)
 			{
@@ -267,6 +279,7 @@ namespace Rynchodon.Autopilot.Movement
 				m_secondaryForce.Direction = direction;
 				m_secondaryForce.Force = force;
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
+				Gravity.SetMatrixOrientation(m_secondaryForce.Direction, m_primaryForce.Direction);
 			}
 
 			return force;

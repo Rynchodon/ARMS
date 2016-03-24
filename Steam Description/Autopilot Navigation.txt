@@ -34,14 +34,13 @@ Pathfinding runs in a separate thread from the rest of the game; if the pathfind
 All Autopilots share <yParallelPathfinder> threads; each pathfinder uses one thread. If all the threads are in use, the pathfinder will have to wait.
 
 [h1]Autopilot Orientation[/h1]
-If a navigation block has a target to face towards, that will always take precedence.
-Otherwise, the autopilot will face the autopilot block or the navigation block towards the destination while accelerating and cruising and will face it away from the destination while decelerating.
-When flying a ship in a gravity well, the autopilot block will attempt to remain upright; facing "up" away from the gravity source.
+The orientation of the autopilot has no effect on the direction the ship will face while flying to the destination.
+For commands that do not force the ship to face a particular direction, the autopilot will automatically determine the best way to face the ship in order to reach the destination quickly and safely; it should not be expected to face the destination.
 
 [h1]Commands[/h1]
 C <x>, <y>, <z> : for flying to specific world coordinates.
 Example - [ C 0, 0, 0 : C 500, 500, 500 ] - fly to {0, 0, 0} then fly to {500, 500, 500}, will keep flying back and forth
-C GPS:<name>:<x>:<y>:<z>: : GPS tags will be replaced with the appropriate coordinates.
+C GPS:<name>:<x>:<y>:<z>: : GPS tags will be replaced with the appropriate coordinates. Keep in mind that GPS tags end with a colon which autopilot will not treat as a command separator.
 Example - [ C GPS:Origin:1:2:3: ] - becomes [ C 1,2,3 ]
 
 Character, <name> : Fly to a character, <name> is the character's name
@@ -153,6 +152,8 @@ U <name> : unlock the specified block and move away from the attached object
 Example - [ U Landing Gear ]
 U <name>, <f>, <u> : If directions were used to land the block, they should also be used to unland it.
 Unlock : unlock the most recently landed / docked block and move away from the attached object. The L command can also be used in combination with Unlock.
+Unland : alias for Unlock
+Undock : alias for Unlock
 Example - [ L Landing Gear ; B Landing Pad, D ; G Platform ; W 60 ; Unlock ] - Attach Landing Gear to top of Landing Pad, wait 60 seconds, detach and move away.
 Example - [ L Landing Gear ; Unlock ] - Detach Landing Gear from whatever it is connected to and move away.
 

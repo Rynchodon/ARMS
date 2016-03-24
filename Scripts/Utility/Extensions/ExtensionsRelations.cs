@@ -211,10 +211,16 @@ namespace Rynchodon
 			return toIsFriendly(getRelationsTo(playerId, target));
 		}
 
+		public static bool canConsiderFriendly(this long playerId, IMyCubeGrid target)
+		{
+			return toIsFriendly(getRelationsTo(playerId, target));
+		}
+
 		public static bool canConsiderHostile(this long playerId, long target)
 		{
 			return toIsHostile(getRelationsTo(playerId, target));
 		}
+
 
 		public static bool canConsiderFriendly(this IMyPlayer player, long playerID)
 		{ return toIsFriendly(player.getRelationsTo(playerID)); }

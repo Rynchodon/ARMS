@@ -232,6 +232,8 @@ namespace Rynchodon.Autopilot.Instruction
 						wordAction = () => { new Stopper(Mover, NavSet); };
 						return true;
 					}
+				case "undock":
+				case "unland":
 				case "unlock":
 					{
 						wordAction = () => new UnLander(Mover, NavSet);

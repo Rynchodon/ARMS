@@ -550,11 +550,27 @@ namespace Rynchodon.Autopilot
 			{
 				if (!path.CanMove || !path.CanRotate)
 				{
-					m_customInfo_build.Append("Pathfinder: ");
+					m_customInfo_build.AppendLine("Pathfinder:");
 					if (!path.CanMove)
-						m_customInfo_build.AppendLine(path.PathStatus);
+					{
+						if (path.MoveObstruction != null)
+						{
+							m_customInfo_build.Append("Movement blocked by ");
+							m_customInfo_build.AppendLine(path.MoveObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+						}
+						else
+							m_customInfo_build.AppendLine("Cannot move");
+					}
 					else if (!path.CanRotate)
-						m_customInfo_build.AppendLine("Cannot rotate safely");
+					{
+						if (path.RotateObstruction != null)
+						{
+							m_customInfo_build.Append("Rotation blocked by ");
+							m_customInfo_build.AppendLine(path.RotateObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+						}
+						else
+							m_customInfo_build.AppendLine("Cannot rotate safely");
+					}
 					m_customInfo_build.AppendLine();
 				}
 			}

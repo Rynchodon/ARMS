@@ -228,7 +228,7 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 				myLogger.debugLog("imposing speed limit: " + speedRequest + ", targetVelocity: " + targetVelocity, "CalcMove()");
 			}
-			else if (tarSpeedSq < velocity.LengthSquared())
+			else if (velocity.Dot(destDisp) > 0 && tarSpeedSq < velocity.LengthSquared())
 				NavSet.Settings_Task_NavWay.NearingDestination = true;
 
 			m_moveAccel = targetVelocity - velocity - myThrust.m_localGravity;
@@ -366,20 +366,26 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>True iff the ship is in gravity.</returns>
 		private bool InGravity_LevelOff()
 		{
-			// TODO: use myThrust.Standard
-
 			if (myThrust.m_localGravity == Vector3.Zero)
 				return false;
 
-			myLogger.debugLog("Rotating to fight gravity", "InGravity_LevelOff()", Logger.severity.TRACE);
-			//Logger.notify("Rotating to fight gravity", 50);
-			Matrix localMatrix = Block.CubeBlock.LocalMatrix;
-			localMatrix.Forward = Block.CubeBlock.LocalMatrix.Up;
-			localMatrix.Up = Block.CubeBlock.LocalMatrix.Backward;
-			RelativeDirection3F Direction = RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.m_localGravity);
-			RelativeDirection3F UpDirect = null;
+			// TODO: test
 
-			CalcRotate(localMatrix, Direction, UpDirect, true);
+			PseudoBlock pseudo;
+			float accel = myThrust.SecondaryForce / Block.Physics.Mass;
+			if (accel * accel > myThrust.m_localGravity.LengthSquared())
+			{
+				myLogger.debugLog("Secondary thrusters are strong enough, using secondary thrusters to fight gravity", "InGravity_LevelOff()");
+				pseudo = myThrust.Gravity;
+			}
+			else
+			{
+				myLogger.debugLog("Secondary thrusters are not strong enough, using primary thrusters to fight gravity", "InGravity_LevelOff()");
+				pseudo = myThrust.Standard;
+			}
+
+			CalcRotate(pseudo, RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.m_localGravity));
+
 			return true;
 		}
 
@@ -388,8 +394,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate()
 		{
-			if (InGravity_LevelOff())
-				return;
+			//if (InGravity_LevelOff())
+			//	return;
 
 			if (Block.Physics.LinearVelocity.LengthSquared() < 100f)
 			{
@@ -720,12 +726,15 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 				}
 			}
-			else if (obstruction == null && upWoMove > WriggleAfter)
+			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f)
 			{
 				Logger.debugNotify("Wriggle", 50);
 
 				// if pathfinder is clear and we are not moving, wriggle
 				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
+
+				myLogger.debugLog("wriggle: " + wriggle, "MoveAndRotate()");
+
 				rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
 				rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
 				rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;

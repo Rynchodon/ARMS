@@ -116,7 +116,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
-		public string PathStatus { get { return m_pathState.ToString(); } }
 		public IMyEntity RotateObstruction { get; private set; }
 		public IMyEntity MoveObstruction { get; private set; }
 
@@ -234,6 +233,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void TestPath(Vector3D destination, MyEntity ignoreEntity, byte runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
 		{
+			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", "TestPath()", Logger.severity.FATAL);
+
 			if (runId != m_runId)
 			{
 				m_logger.debugLog("destination changed, abort", "TestPath()", Logger.severity.DEBUG);
@@ -252,7 +253,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				if (m_grid != m_navBlock.Grid)
 				{
-					m_logger.debugLog("Grid has changed, from " + m_grid.DisplayName + " to " + m_navBlock.Grid.DisplayName + ", nav block: " + m_navBlock.Block.getBestName(), "TestPath()", Logger.severity.WARNING);
+					m_logger.debugLog("Grid has changed, from " + m_grid.getBestName() + " to " + m_navBlock.Grid.getBestName() + ", nav block: " + m_navBlock.Block.getBestName(), "TestPath()", Logger.severity.WARNING);
 					return;
 				}
 				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + ignoreEntity + ", runId :" + runId
@@ -312,7 +313,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (speed < 1f)
 						speed = 1f;
 					IMyEntity destEntity = m_navSet.Settings_Current.DestinationEntity;
-					if (obstructing.GetTopMostParent() == destEntity.GetTopMostParent())
+					if (destEntity != null)
+						destEntity = destEntity.GetTopMostParent();
+					if (obstructing.GetTopMostParent() == destEntity)
 					{
 						m_navSet.Settings_Task_NavWay.SpeedMaxRelative = speed;
 						m_logger.debugLog("Set SpeedMaxRelative to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity, "TestPath()", Logger.severity.TRACE);
