@@ -199,7 +199,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, out Target initialTarget)
 			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
@@ -232,6 +232,7 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("getting initial target from launcher", "GuidedMissile()", Logger.severity.DEBUG);
 				GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
 			}
+			initialTarget = CurrentTarget;
 
 			if (myAmmo.RadarDefinition != null)
 			{
@@ -248,8 +249,8 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher)
-			: this(missiles.Master, launcher)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, out Target initialTarget)
+			: this(missiles.Master, launcher, out initialTarget)
 		{
 			myCluster = missiles;
 		}

@@ -63,7 +63,7 @@ namespace Rynchodon.Weapons
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
 		private Logger myLogger;
-		private Ammo LoadedAmmo;
+		public Ammo LoadedAmmo { get; private set; }
 		private long UpdateNumber = 0;
 
 		private InterpreterWeapon Interpreter;
@@ -290,10 +290,14 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void Update10()
 		{
+			if (GuidedLauncher)
+				UpdateAmmo();
+
 			if (CurrentControl == Control.Off)
 				return;
 
-			UpdateAmmo();
+			if (!GuidedLauncher)
+				UpdateAmmo();
 			if (LoadedAmmo == null)
 			{
 				//myLogger.debugLog("No ammo loaded", "Update10()");
@@ -365,9 +369,7 @@ namespace Rynchodon.Weapons
 
 		private void UpdateAmmo()
 		{
-			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
-			if (newAmmo != LoadedAmmo)
-				LoadedAmmo = newAmmo;
+			LoadedAmmo = Ammo.GetLoadedAmmo(CubeBlock);
 		}
 
 		private Vector3 previousFiringDirection;
@@ -526,6 +528,34 @@ namespace Rynchodon.Weapons
 
 		private void FuncBlock_AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
 		{
+			if (GuidedLauncher)
+			{
+				Target t = CurrentTarget;
+				if (t.Entity != null)
+				{
+					Ammo la = LoadedAmmo;
+					if (la != null && !string.IsNullOrEmpty(la.AmmoDefinition.DisplayNameString))
+						customInfo.Append(la.AmmoDefinition.DisplayNameString);
+					else
+						customInfo.Append("Guided Missile");
+					customInfo.Append(" fired at ");
+
+					LastSeenTarget lst = t as LastSeenTarget;
+					if (lst != null)
+					{
+						if (lst.Block != null)
+						{
+							customInfo.Append(lst.Block.DefinitionDisplayNameText);
+							customInfo.Append(" on ");
+						}
+						customInfo.AppendLine(lst.LastSeen.HostileName());
+					}
+					else
+						customInfo.AppendLine(t.Entity.GetNameForDisplay(CubeBlock.OwnerId));
+				}
+				// else, guided missile has no initial target though it may acquire one
+			}
+
 			if (!CubeBlock.IsWorking)
 			{
 				customInfo.AppendLine("Off");

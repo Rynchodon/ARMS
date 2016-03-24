@@ -62,11 +62,12 @@ namespace Rynchodon.Weapons.Guided
 		private ulong nextCheckInventory;
 		private MyFixedPoint prev_mass;
 		private MyFixedPoint prev_volume;
-		public Ammo loadedAmmo { get; private set; }
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool onCooldown;
 		private TimeSpan cooldownUntil;
+
+		public Ammo loadedAmmo { get { return m_weaponTarget.LoadedAmmo; } }
 
 		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
@@ -102,7 +103,6 @@ namespace Rynchodon.Weapons.Guided
 
 		public void Update1()
 		{
-			UpdateLoadedMissile();
 			CheckCooldown();
 		}
 
@@ -174,14 +174,16 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
+				Target initialTarget;
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this);
+					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, out initialTarget);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, this);
+					new GuidedMissile(missile, this, out initialTarget);
+				m_weaponTarget.CurrentTarget = initialTarget;
 			}
 			catch (Exception ex)
 			{
@@ -190,23 +192,6 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			return true;
-		}
-
-		private void UpdateLoadedMissile()
-		{
-			if (myInventory.CurrentMass == prev_mass && myInventory.CurrentVolume == prev_volume && Globals.UpdateCount >= nextCheckInventory)
-				return;
-
-			nextCheckInventory = Globals.UpdateCount + checkInventoryInterval;
-			prev_mass = myInventory.CurrentMass;
-			prev_volume = myInventory.CurrentVolume;
-
-			Ammo newAmmo = Ammo.GetLoadedAmmo(CubeBlock);
-			if (newAmmo != null && newAmmo != loadedAmmo)
-			{
-				loadedAmmo = newAmmo;
-				myLogger.debugLog("loaded ammo: " + loadedAmmo.AmmoDefinition, "UpdateLoadedMissile()");
-			}
 		}
 
 		private void StartCooldown()

@@ -110,6 +110,11 @@ namespace Rynchodon.Weapons
 			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
 		}
 
+		public LastSeen LastSeen
+		{
+			get { return m_lastSeen; }
+		}
+
 		public IMyCubeBlock Block
 		{
 			get { return m_block; }

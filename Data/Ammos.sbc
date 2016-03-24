@@ -7,6 +7,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_R12VP_Missile</SubtypeId>
       </Id>
+      <DisplayName>Cruise Missile R12VP</DisplayName>
       <Description>
         GuidanceSeconds=90;
         RotationPerUpdate=0.017453292519943;
@@ -35,6 +36,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_R8EA_Missile</SubtypeId>
       </Id>
+      <DisplayName>EMP Missile R8EA</DisplayName>
       <Description>
         GuidanceSeconds=60;
         Acceleration=100;
@@ -67,6 +69,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
+      <DisplayName>18x Swarm Missile B3MP</DisplayName>
       <Description>
         GuidanceSeconds=15;
         Acceleration=100;
@@ -96,6 +99,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
+      <DisplayName>Interceptor Missile R1VT</DisplayName>
       <Description>
         GuidanceSeconds=15;
         TargetRange=800;
