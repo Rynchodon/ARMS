@@ -167,7 +167,7 @@ namespace Rynchodon.Autopilot
 					originalPosition = m_originalPosition;
 				float distance = (float)Vector3D.Distance(m_mover.Block.CubeBlock.GetPosition(), originalPosition);
 				MaximumRange = CurrentResponse.SearchRange - 0.5f * distance;
-				m_logger.debugLog("SearchRange: " + CurrentResponse.SearchRange + ", distance: " + distance + ", MaximumRange: " + MaximumRange, "Update()");
+				//m_logger.debugLog("SearchRange: " + CurrentResponse.SearchRange + ", distance: " + distance + ", MaximumRange: " + MaximumRange, "Update()");
 				if (!m_engageSet && distance < m_navSet.Settings_Current.DestinationRadius)
 				{
 					m_logger.debugLog("returned to original position", "Update()");

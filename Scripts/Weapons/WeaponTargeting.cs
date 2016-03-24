@@ -562,14 +562,8 @@ namespace Rynchodon.Weapons
 				customInfo.AppendLine("No target");
 			else
 			{
-				IMyCubeBlock targetBlock = CurrentTarget.Entity as IMyCubeBlock;
-				if (targetBlock != null)
-				{
-					customInfo.Append("Has target: ");
-					customInfo.AppendLine(targetBlock.DefinitionDisplayNameText);
-				}
-				else
-					customInfo.AppendLine("Has target");
+				customInfo.Append("Has target: ");
+				customInfo.AppendLine(CurrentTarget.Entity.GetNameForDisplay(CubeBlock.OwnerId));
 			}
 		}
 

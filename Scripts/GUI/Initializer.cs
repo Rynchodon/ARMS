@@ -79,7 +79,7 @@ namespace Rynchodon.GUI
 			if (MyAPIGateway.Multiplayer.SendMessageToSelf(message.ToArray()))
 				m_logger.debugLog("sent message", "DisplayEntities()", Logger.severity.DEBUG);
 			else
-				m_logger.alwaysLog("failed to send message", "DisplayEntities()", Logger.severity.WARNING);
+				m_logger.alwaysLog("failed to send message:\nMessage too long (" + message.Count + " > 4096 bytes)\n", "DisplayEntities()", Logger.severity.WARNING);
 			message.Clear();
 		}
 

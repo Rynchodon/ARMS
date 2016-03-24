@@ -600,13 +600,16 @@ namespace Rynchodon.Autopilot
 						m_customInfo_build.AppendLine("No enemy detected");
 						break;
 					case GridFinder.ReasonCannotTarget.Too_Far:
-						m_customInfo_build.AppendLine("Enemy too far");
+						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+						m_customInfo_build.AppendLine(" is too far");
 						break;
 					case GridFinder.ReasonCannotTarget.Too_Fast:
-						m_customInfo_build.AppendLine("Enemy too fast");
+						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+						m_customInfo_build.AppendLine(" is too fast");
 						break;
 					case GridFinder.ReasonCannotTarget.Grid_Condition:
-						m_customInfo_build.AppendLine("Enemy cannot be targeted");
+						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+						m_customInfo_build.AppendLine(" cannot be targeted");
 						break;
 				}
 			}

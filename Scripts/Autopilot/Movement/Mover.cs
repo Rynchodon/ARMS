@@ -728,8 +728,6 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f)
 			{
-				Logger.debugNotify("Wriggle", 50);
-
 				// if pathfinder is clear and we are not moving, wriggle
 				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 

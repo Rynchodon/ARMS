@@ -293,28 +293,38 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.Append("Searching for a ship, timeout in ");
 				customInfo.Append((m_timeoutAt - Globals.ElapsedTime).Seconds);
 				customInfo.AppendLine(" seconds.");
+
 				switch (m_finder.m_reason)
 				{
 					case GridFinder.ReasonCannotTarget.Too_Far:
-						customInfo.AppendLine("Best target is too far away");
+						customInfo.Append(m_finder.m_bestGrid.HostileName());
+						customInfo.AppendLine(" is too far");
 						break;
 					case GridFinder.ReasonCannotTarget.Too_Fast:
-						customInfo.AppendLine("Best target is moving too quickly");
+						customInfo.Append(m_finder.m_bestGrid.HostileName());
+						customInfo.AppendLine(" is too fast");
 						break;
 					case GridFinder.ReasonCannotTarget.Grid_Condition:
 						IMyCubeGrid claimedBy;
-						if (GridsClaimed.TryGetValue(m_finder.m_reasonGrid, out claimedBy))
+						if (GridsClaimed.TryGetValue(m_finder.m_bestGrid.Entity.EntityId, out claimedBy))
 						{
 							if (m_controlBlock.CubeBlock.canConsiderFriendly(claimedBy))
 							{
-								customInfo.Append("Best target is claimed by ");
+								customInfo.Append(m_finder.m_bestGrid.HostileName());
+								customInfo.Append(" is claimed by ");
 								customInfo.AppendLine(claimedBy.DisplayName);
 							}
 							else
-								customInfo.AppendLine("Best target is claimed by another recyler.");
+							{
+								customInfo.Append(m_finder.m_bestGrid.HostileName());
+								customInfo.AppendLine(" is claimed by another recyler.");
+							}
 						}
 						else
-							customInfo.AppendLine("Best target was claimed, should be available shortly.");
+						{
+							customInfo.Append(m_finder.m_bestGrid.HostileName());
+							customInfo.AppendLine(" was claimed, should be available shortly.");
+						}
 						break;
 				}
 				return;
@@ -323,10 +333,13 @@ namespace Rynchodon.Autopilot.Navigator
 			switch (m_stage)
 			{
 				case Stage.Intercept:
-					customInfo.AppendLine("Moving towards a ship");
+					customInfo.Append("Moving towards ");
+					customInfo.AppendLine(m_finder.m_bestGrid.HostileName());
 					break;
 				case Stage.Grind:
-					customInfo.AppendLine("Reducing a ship to its constituent parts");
+					customInfo.Append("Reducing ");
+					customInfo.Append(m_finder.m_bestGrid.HostileName());
+					customInfo.AppendLine(" to its constituent parts");
 					break;
 			}
 		}

@@ -90,13 +90,16 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_destroySet && cache.TerminalBlocks > 0)
 				return true;
 
+			if (m_currentTarget != null && grid == m_currentTarget.Entity && m_weapon_primary.CurrentTarget.TType != TargetType.None)
+				return true;
+
 			TargetType gridType = grid.GridSizeEnum == MyCubeSize.Small ? TargetType.SmallGrid
 				: grid.IsStatic ? TargetType.Station
 				: TargetType.LargeGrid;
 
 			BlockTypeList targetBlocks;
 			if (m_cumulative_targeting.TryGetValue(gridType, out targetBlocks))
-				return targetBlocks.HasAny(cache);
+				return targetBlocks.HasAny(cache, block => block.IsWorking);
 			else
 				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
 
@@ -162,7 +165,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_orbiter != null)
 				m_orbiter.AppendCustomInfo(customInfo);
 			else
-				customInfo.AppendLine("No orbiter");
+				customInfo.AppendLine("No orbiter!");
 		}
 
 		private void Arm()

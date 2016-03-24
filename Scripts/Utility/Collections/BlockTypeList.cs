@@ -13,6 +13,8 @@ namespace Rynchodon
 	public class BlockTypeList
 	{
 
+		public static readonly Logger m_logger = new Logger("BlockTypeList");
+
 		public static BlockTypeList Union(BlockTypeList first, BlockTypeList second)
 		{
 			return new BlockTypeList(first.BlockNamesContain.Union(second.BlockNamesContain).ToArray());
@@ -58,7 +60,7 @@ namespace Rynchodon
 		/// </summary>
 		/// <param name="cache">Where to search for blocks.</param>
 		/// <returns>True iff the cache contains any blocks matching any string from BlockNamesContain</returns>
-		public bool HasAny(CubeGridCache cache)
+		public bool HasAny(CubeGridCache cache, Func<IMyCubeBlock, bool> condition)
 		{
 			if (m_sourceCount != CubeGridCache.DefinitionType.Count)
 				UpdateFromSource();
@@ -66,7 +68,7 @@ namespace Rynchodon
 			using (m_lock.AcquireSharedUsing())
 				foreach (List<MyObjectBuilderType> typesWithString in m_blocks)
 					foreach (MyObjectBuilderType blockType in typesWithString)
-						if (cache.CountByType(blockType) != 0)
+						if (cache.CountByType(blockType, condition, 1) != 0)
 							return true;
 
 			return false;

@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot
 		/// <summary>Block requirements, other than can control.</summary>
 		public Func<IMyCubeBlock, bool> BlockCondition;
 		public ReasonCannotTarget m_reason;
-		public long m_reasonGrid;
+		public LastSeen m_bestGrid;
 
 		protected float MaximumRange;
 		protected long m_targetEntityId;
@@ -343,7 +343,7 @@ namespace Rynchodon.Autopilot
 					if (m_reason < ReasonCannotTarget.Too_Far)
 					{
 						m_reason = ReasonCannotTarget.Too_Far;
-						m_reasonGrid = seen.Entity.EntityId;
+						m_bestGrid = seen;
 					}
 					return false;
 				}
@@ -356,7 +356,7 @@ namespace Rynchodon.Autopilot
 					if (m_reason < ReasonCannotTarget.Too_Fast)
 					{
 						m_reason = ReasonCannotTarget.Too_Fast;
-						m_reasonGrid = seen.Entity.EntityId;
+						m_bestGrid = seen;
 					}
 					return false;
 				}
@@ -367,11 +367,12 @@ namespace Rynchodon.Autopilot
 					if (m_reason < ReasonCannotTarget.Grid_Condition)
 					{
 						m_reason = ReasonCannotTarget.Grid_Condition;
-						m_reasonGrid = seen.Entity.EntityId;
+						m_bestGrid = seen;
 					}
 					return false;
 				}
 
+				m_bestGrid = seen;
 				return true;
 			}
 			catch (NullReferenceException nre)

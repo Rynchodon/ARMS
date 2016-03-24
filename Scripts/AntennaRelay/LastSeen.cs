@@ -202,9 +202,6 @@ namespace Rynchodon.AntennaRelay
 
 		public string HostileName()
 		{
-			if (!isRecent_Broadcast())
-				return "Unknown";
-
 			switch (Type)
 			{
 				case EntityType.Character:
@@ -216,6 +213,9 @@ namespace Rynchodon.AntennaRelay
 				default:
 					return Type.ToString();
 			}
+
+			if (!isRecent_Broadcast())
+				return ((IMyCubeGrid)Entity).SimpleName();
 
 			CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)Entity);
 			if (cache == null)
@@ -249,7 +249,7 @@ namespace Rynchodon.AntennaRelay
 						}
 					}
 
-			return name ?? "Unknown";
+			return name ?? ((IMyCubeGrid)Entity).SimpleName();
 		}
 
 	}

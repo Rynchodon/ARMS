@@ -21,7 +21,7 @@ namespace Rynchodon
 				if (playerId.canConsiderFriendly(asGrid))
 					return asGrid.DisplayName;
 				else
-					return "Unknown Grid";
+					return asGrid.SimpleName();
 			}
 
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
