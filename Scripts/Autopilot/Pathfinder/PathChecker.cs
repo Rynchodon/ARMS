@@ -179,12 +179,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (testSection.Intersects(asteroid, out pointOfObstruction))
 					return false;
 			}
-			else
-			{
-				MyPlanet planet = voxel as MyPlanet;
-				if (planet != null && testSection.Intersects(planet, out pointOfObstruction))
-					return false;
-			}
+			// planet test is done by PlanetChecker
 
 			m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
 			pointOfObstruction = null;
@@ -193,81 +188,81 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private List<MyVoxelBase> m_voxels = new List<MyVoxelBase>();
 
-		public bool GravityTest(LineSegmentD line, Vector3D finalDestination, out MyEntity blockingPath, out Vector3? pointOfObstruction)
-		{
-			if (Vector3.DistanceSquared(line.From, line.To) > 10000f)
-			{
-				BoundingBoxD box = line.BoundingBox;
-				m_voxels.Clear();
-				MyGamePruningStructure.GetAllVoxelMapsInBox(ref box, m_voxels);
+		//public bool GravityTest(LineSegmentD line, Vector3D finalDestination, out MyEntity blockingPath, out Vector3? pointOfObstruction)
+		//{
+		//	if (Vector3.DistanceSquared(line.From, line.To) > 10000f)
+		//	{
+		//		BoundingBoxD box = line.BoundingBox;
+		//		m_voxels.Clear();
+		//		MyGamePruningStructure.GetAllVoxelMapsInBox(ref box, m_voxels);
 
-				foreach (MyEntity entity in m_voxels)
-				{
-					MyPlanet planet = entity as MyPlanet;
-					if (planet == null)
-						continue;
+		//		foreach (MyEntity entity in m_voxels)
+		//		{
+		//			MyPlanet planet = entity as MyPlanet;
+		//			if (planet == null)
+		//				continue;
 
-					Vector3D planetCentre = planet.GetCentre();
-					Vector3D closestPoint = line.ClosestPoint(planetCentre);
+		//			Vector3D planetCentre = planet.GetCentre();
+		//			Vector3D closestPoint = line.ClosestPoint(planetCentre);
 
-					if (!planet.IsPositionInGravityWell(closestPoint))
-						continue;
+		//			if (!planet.IsPositionInGravityWell(closestPoint))
+		//				continue;
 
-					m_logger.debugLog("path: " + line.From + " to " + line.To + ", final: " + finalDestination + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()");
+		//			m_logger.debugLog("path: " + line.From + " to " + line.To + ", final: " + finalDestination + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()");
 			
-					if (closestPoint == line.From)
-					{
-						m_logger.debugLog("closest point is start", "GravityTest()");
-						continue;
-					}
-					if (closestPoint == line.To)
-					{
-						if (line.To == finalDestination )
-						{
-							m_logger.debugLog("closest point is final", "GravityTest()");
-							continue;
-						}
-						if (Vector3D.DistanceSquared(planetCentre, closestPoint) < Vector3D.DistanceSquared(planetCentre, finalDestination))
-						{
-							m_logger.debugLog("closest point is end, which is closer to planet than final dest is", "GravityTest()");
-							blockingPath = entity;
-							pointOfObstruction = closestPoint;
-							return false;
-						}
-						m_logger.debugLog("closest point is end", "GravityTest()");
-						continue;
-					}
+		//			if (closestPoint == line.From)
+		//			{
+		//				m_logger.debugLog("closest point is start", "GravityTest()");
+		//				continue;
+		//			}
+		//			if (closestPoint == line.To)
+		//			{
+		//				if (line.To == finalDestination )
+		//				{
+		//					m_logger.debugLog("closest point is final", "GravityTest()");
+		//					continue;
+		//				}
+		//				if (Vector3D.DistanceSquared(planetCentre, closestPoint) < Vector3D.DistanceSquared(planetCentre, finalDestination))
+		//				{
+		//					m_logger.debugLog("closest point is end, which is closer to planet than final dest is", "GravityTest()");
+		//					blockingPath = entity;
+		//					pointOfObstruction = closestPoint;
+		//					return false;
+		//				}
+		//				m_logger.debugLog("closest point is end", "GravityTest()");
+		//				continue;
+		//			}
 
-					//float startGravity = planet.GetWorldGravityGrid( line.From).LengthSquared();
-					//float closestGravity = planet.GetWorldGravityGrid(closestPoint).LengthSquared();
+		//			//float startGravity = planet.GetWorldGravityGrid( line.From).LengthSquared();
+		//			//float closestGravity = planet.GetWorldGravityGrid(closestPoint).LengthSquared();
 
-					//double toDistSq = Vector3D.DistanceSquared(planetCentre, line.To);
+		//			//double toDistSq = Vector3D.DistanceSquared(planetCentre, line.To);
 
-					//if (closestPoint == line.To && (line.To == finalDestination ||     ))
-					//{
-					//	m_logger.debugLog("path: " + line.From + " to " + line.To + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()");
-					//	m_logger.debugLog("closest point is end", "GravityTest()");
-					//	continue;
-					//}
+		//			//if (closestPoint == line.To && (line.To == finalDestination ||     ))
+		//			//{
+		//			//	m_logger.debugLog("path: " + line.From + " to " + line.To + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()");
+		//			//	m_logger.debugLog("closest point is end", "GravityTest()");
+		//			//	continue;
+		//			//}
 
-					//m_logger.debugLog("path: " + line.From + " to " + line.To + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()", Logger.severity.DEBUG);
+		//			//m_logger.debugLog("path: " + line.From + " to " + line.To + ", closest point: " + closestPoint + ", planet @ " + planetCentre + " : " + planet.getBestName(), "GravityTest()", Logger.severity.DEBUG);
 
 
-					double closestDistSq = Vector3D.DistanceSquared(planetCentre, closestPoint) + 1f;
-					if (closestDistSq < Vector3D.DistanceSquared(planetCentre, line.From) || closestDistSq < Vector3D.DistanceSquared(planetCentre, line.To))
-					{
-						m_logger.debugLog("path moves ship closer to planet. closestDistSq: " + closestDistSq + ", from dist sq: " + Vector3D.DistanceSquared(planetCentre, line.From) + ", to dist sq: " + Vector3D.DistanceSquared(planetCentre, line.To), "GravityTest()", Logger.severity.INFO);
-						blockingPath = entity;
-						pointOfObstruction = closestPoint;
-						return false;
-					}
-				}
-			}
+		//			double closestDistSq = Vector3D.DistanceSquared(planetCentre, closestPoint) + 1f;
+		//			if (closestDistSq < Vector3D.DistanceSquared(planetCentre, line.From) || closestDistSq < Vector3D.DistanceSquared(planetCentre, line.To))
+		//			{
+		//				m_logger.debugLog("path moves ship closer to planet. closestDistSq: " + closestDistSq + ", from dist sq: " + Vector3D.DistanceSquared(planetCentre, line.From) + ", to dist sq: " + Vector3D.DistanceSquared(planetCentre, line.To), "GravityTest()", Logger.severity.INFO);
+		//				blockingPath = entity;
+		//				pointOfObstruction = closestPoint;
+		//				return false;
+		//			}
+		//		}
+		//	}
 
-			blockingPath = null;
-			pointOfObstruction = null;
-			return true;
-		}
+		//	blockingPath = null;
+		//	pointOfObstruction = null;
+		//	return true;
+		//}
 
 		/// <summary>
 		/// How far long the line would the ship be able to travel? Uses a capsule derived from previously calculated path.
@@ -365,7 +360,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <returns>true iff the entity should be kept</returns>
 		public static bool collect_Entity(IMyCubeGrid myGrid, MyEntity entity)
 		{
-			if (!(entity is IMyCubeGrid) && !(entity is IMyVoxelBase) && !(entity is IMyFloatingObject))
+			if (!(entity is IMyCubeGrid) && !(entity is IMyVoxelMap) && !(entity is IMyFloatingObject))
 				return false;
 
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;

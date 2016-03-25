@@ -87,12 +87,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 							}
 							continue;
 						}
-						MyPlanet planet = entity as MyPlanet;
-						if (planet != null && planet.Intersects(ref surroundingSphere))
-						{
-							obstruction = planet;
-							return false;
-						}
+
+						// planet test is done by PlanetChecker
 						continue;
 					}
 

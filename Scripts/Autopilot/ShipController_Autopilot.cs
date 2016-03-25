@@ -10,6 +10,7 @@ using Rynchodon.Threading;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 

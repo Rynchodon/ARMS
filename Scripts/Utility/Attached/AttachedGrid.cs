@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game.ModAPI;
 using Ingame = VRage.Game.ModAPI.Ingame;
 

@@ -4,6 +4,7 @@ using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -19,7 +20,7 @@ namespace Rynchodon
 	{
 
 		private static Logger myLogger = new Logger("MainLock");
-		private static FastResourceLock Lock_MainThread = new FastResourceLock("Lock_MainThread");
+		private static FastResourceLock Lock_MainThread = new FastResourceLock();
 		private static FastResourceLock lock_RayCast = new FastResourceLock();
 
 		static MainLock()

@@ -6,6 +6,7 @@ using Rynchodon.Threading;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Voxels;
@@ -341,9 +342,9 @@ Finished_Deposit:
 		private readonly NetworkClient m_netClient;
 
 		private readonly Dictionary<IMyVoxelBase, VoxelData> m_voxelData = new Dictionary<IMyVoxelBase, VoxelData>();
-		private readonly FastResourceLock l_voxelData = new FastResourceLock("l_voxelData");
+		private readonly FastResourceLock l_voxelData = new FastResourceLock();
 
-		private readonly FastResourceLock l_getOreLocations = new FastResourceLock("l_getOreLocations");
+		private readonly FastResourceLock l_getOreLocations = new FastResourceLock();
 
 		/// <summary>
 		/// Create an OreDetector for the given block.
