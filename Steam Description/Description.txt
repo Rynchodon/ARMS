@@ -64,6 +64,8 @@ The Phased array Radar model has a small texture issue on DX9.
 
 Autopilot cannot fly near planets, Pathfinder: Path_Blocked will be displayed.
 
+Due to mod API limitations, Weapon Control will not target hounds or spiders.
+
 [h1]Credits[/h1]
 Marketing Coordinator - Souper07
 GitMaster Extraordinaire - [uRxP]DrChocolate

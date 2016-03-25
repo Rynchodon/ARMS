@@ -183,7 +183,10 @@ namespace Rynchodon.Weapons.Guided
 				}
 				else
 					new GuidedMissile(missile, this, out initialTarget);
-				m_weaponTarget.CurrentTarget = initialTarget;
+
+				// display target in custom info
+				if (m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off)
+					m_weaponTarget.CurrentTarget = initialTarget;
 			}
 			catch (Exception ex)
 			{

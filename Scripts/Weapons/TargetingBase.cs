@@ -410,6 +410,12 @@ namespace Rynchodon.Weapons
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{
+					if (string.IsNullOrEmpty(entity.DisplayName))
+					{
+						myLogger.debugLog("Cannot target creatures, cannot get identity", "CollectTargets()");
+						continue;
+					}
+
 					IMyIdentity asIdentity = asChar.GetIdentity_Safe();
 					if (asIdentity != null)
 					{
