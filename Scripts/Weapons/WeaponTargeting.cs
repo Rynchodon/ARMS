@@ -88,7 +88,7 @@ namespace Rynchodon.Weapons
 
 				myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
 
-				if (IsNormalTurret)
+				if (IsNormalTurret && MyAPIGateway.Multiplayer.IsServer)
 				{
 					if (value == Control.Off)
 						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
@@ -160,10 +160,13 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public void Update_Targeting()
 		{
+			if (!MyAPIGateway.Multiplayer.IsServer && !MyAPIGateway.Session.Player.IdentityId.canControlBlock(CubeBlock))
+				return;
+
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (CurrentControl != Control.Off && FireWeapon != IsFiringWeapon)
+				if (CurrentControl != Control.Off && FireWeapon != IsFiringWeapon && MyAPIGateway.Multiplayer.IsServer)
 				{
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
@@ -191,10 +194,10 @@ namespace Rynchodon.Weapons
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
-				FuncBlock.RequestEnable(false);
+				if (MyAPIGateway.Multiplayer.IsServer)
+					FuncBlock.RequestEnable(false);
 
-				IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
-				func.SetCustomName("<Broken>" + func.DisplayNameText);
+				((IMyFunctionalBlock)CubeBlock).AppendCustomInfo("ARMS targeting crashed, see log for details");
 			}
 		}
 
@@ -363,8 +366,6 @@ namespace Rynchodon.Weapons
 			}
 			else
 				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
-
-			WriteErrors(Interpreter.Errors);
 		}
 
 		private void UpdateAmmo()
@@ -457,44 +458,9 @@ namespace Rynchodon.Weapons
 			return RayCast.Obstructed(AllTestLines, PotentialObstruction, ObstructionIgnore, true);
 		}
 
-		/// <summary>
-		/// Write errors to weapon, using angle brackets.
-		/// </summary>
-		private void WriteErrors(List<string> Errors)
-		{
-			string DisplayName = CubeBlock.DisplayNameText;
-			//myLogger.debugLog("initial name: " + DisplayName, "WriteErrors()");
-			int start = DisplayName.IndexOf('>') + 1;
-			if (start > 0)
-				DisplayName = DisplayName.Substring(start);
-
-			//myLogger.debugLog("chopped name: " + DisplayName, "WriteErrors()");
-
-			StringBuilder build = new StringBuilder();
-			if (Errors.Count > 0)
-			{
-				build.Append("<ERROR(");
-				for (int index = 0; index < Errors.Count; index++)
-				{
-					//myLogger.debugLog("Error: " + Errors[index], "WriteErrors()");
-					build.Append(Errors[index]);
-					if (index + 1 < Errors.Count)
-						build.Append(',');
-				}
-				build.Append(")>");
-				build.Append(DisplayName);
-
-				//myLogger.debugLog("New name: " + build, "WriteErrors()");
-				GameThreadActions.Enqueue(() =>
-					(CubeBlock as IMyTerminalBlock).SetCustomName(build));
-			}
-			else
-				GameThreadActions.Enqueue(() =>
-					(CubeBlock as IMyTerminalBlock).SetCustomName(DisplayName));
-		}
-
 		private bool condition_changed;
 		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo;
+		private int prev_errors;
 		private Target prev_target;
 		private Control prev_control;
 
@@ -508,6 +474,8 @@ namespace Rynchodon.Weapons
 			ConditionChange(CubeBlock.IsWorking, ref prev_working);
 			ConditionChange(IsNormalTurret && myTurret.IsUnderControl, ref prev_playerControl);
 			ConditionChange(CubeBlock.OwnerId == 0, ref prev_noOwn);
+
+			ConditionChange(Interpreter.Errors.Count, ref prev_errors);
 
 			ConditionChange(CurrentControl, ref prev_control);
 			ConditionChange(LoadedAmmo == null, ref prev_ammo);
@@ -528,6 +496,13 @@ namespace Rynchodon.Weapons
 
 		private void FuncBlock_AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
 		{
+			if (Interpreter.Errors.Count != 0)
+			{
+				customInfo.AppendLine("Syntax Errors: ");
+				customInfo.AppendLine(string.Join("\n", Interpreter.Errors));
+				customInfo.AppendLine();
+			}
+
 			if (GuidedLauncher)
 			{
 				Target t = CurrentTarget;

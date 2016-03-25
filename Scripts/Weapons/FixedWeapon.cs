@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Rynchodon.Attached;
+using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -12,6 +13,44 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class FixedWeapon : WeaponTargeting
 	{
+
+		static FixedWeapon()
+		{
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.FW_EngagerControl, Handler_EngagerControl);
+		}
+
+		private static void SendToClient_EngagerControl(long entityId, bool control)
+		{
+			if (MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			List<byte> message = new List<byte>();
+
+			ByteConverter.AppendBytes(message, (byte)MessageHandler.SubMod.FW_EngagerControl);
+			ByteConverter.AppendBytes(message, entityId);
+			ByteConverter.AppendBytes(message, control);
+
+			if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, message.ToArray()))
+				(new Logger("FixedWeapon")).alwaysLog("Failed to send message", "SendToClient_EngagerControl()", Logger.severity.ERROR);
+		}
+
+		private static void Handler_EngagerControl(byte[] message, int pos)
+		{
+			long entityId = ByteConverter.GetLong(message, ref pos);
+			bool control  = ByteConverter.GetBool(message, ref pos);
+
+			FixedWeapon weapon;
+			if (!Registrar.TryGetValue(entityId, out weapon))
+			{
+				(new Logger("FixedWeapon")).debugLog("Weapon not in registrar: " + entityId, "SendToClient_EngagerControl()", Logger.severity.WARNING);
+				return;
+			}
+
+			if (control)
+				weapon.EngagerTakeControl();
+			else
+				weapon.EngagerReleaseControl();
+		}
 
 		private MotorTurret MyMotorTurret = null;
 
@@ -38,6 +77,9 @@ namespace Rynchodon.Weapons
 			{
 				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
 				CurrentControl = Control.Engager;
+
+				if (MyAPIGateway.Multiplayer.IsServer)
+					SendToClient_EngagerControl(CubeBlock.EntityId, true);
 				return true;
 			}
 
@@ -47,6 +89,8 @@ namespace Rynchodon.Weapons
 		public void EngagerReleaseControl()
 		{
 			CurrentControl = Control.Off;
+			if (MyAPIGateway.Multiplayer != null && MyAPIGateway.Multiplayer.IsServer)
+				SendToClient_EngagerControl(CubeBlock.OwnerId, false);
 		}
 
 		/// <summary>
@@ -54,7 +98,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update1_GameThread()
 		{
-			if (CurrentControl == Control.Off)
+			if (CurrentControl == Control.Off || !MyAPIGateway.Multiplayer.IsServer)
 				return;
 
 			// CurrentTarget may be changed by WeaponTargeting
@@ -86,7 +130,7 @@ namespace Rynchodon.Weapons
 			{
 				if (MyMotorTurret == null && CanControl)
 				{
-					myLogger.debugLog("Turret is now enabled", "Update_Options()", Logger.severity.INFO);
+					myLogger.debugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
 				}
 			}
@@ -94,7 +138,7 @@ namespace Rynchodon.Weapons
 			{
 				if (MyMotorTurret != null)
 				{
-					myLogger.debugLog("Turret is now disabled", "Update_Options()", Logger.severity.INFO);
+					myLogger.debugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
 				}
 			}
@@ -141,5 +185,6 @@ namespace Rynchodon.Weapons
 			}
 			ObstructionIgnore = ignore;
 		}
+
 	}
 }

@@ -106,9 +106,9 @@ FinishedBlocks:
 			{
 				m_logger.debugLog("Added new effect, strength: " + applied, "AddEffect()");
 				m_expire = Globals.ElapsedTime.Add(duration);
-			}
 
-			UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
+				UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
+			}
 		}
 
 		/// <summary>

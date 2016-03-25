@@ -3,11 +3,14 @@
 # This script combines the individual module folders into a single structure
 # for Space Engineers to load (and a bunch of other useful deploy tasks)
 #
-# It will create two mods,
-#   "%AppData%\SpaceEngineers\Mods\ARMS" and
-#   "%AppData%\SpaceEngineers\Mods\ARMS Dev".
+# It will create three mods,
+#   "%AppData%\SpaceEngineers\Mods\ARMS",
+#   "%AppData%\SpaceEngineers\Mods\ARMS Dev", and
+#   "%AppData%\SpaceEngineers\Mods\ARMS Model".
 #
-# The Dev version has logging enabled
+# ARMS is the release version
+# ARMS Dev only has scripts and has logging enabled
+# ARMS Model has data files, models, and textures
 
 import datetime, errno, os.path, re, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
 
@@ -21,6 +24,7 @@ cSharp = startDir + "/Scripts/"
 # paths files are moved to
 finalDir = os.getenv('APPDATA') + '\SpaceEngineers\Mods\ARMS'
 finalDirDev = finalDir + ' Dev'
+finalDirModel = finalDir + ' Model'
 
 # do not change or else log file and settings file will be moved
 finalScript = finalDir + '\Data\Scripts\Autopilot\\'
@@ -178,7 +182,7 @@ def build_help():
 	#print("wrote(Dev): "+replaceIn_file)
 
 
-def copyWithExtension(l_from, l_to, l_ext):
+def copyWithExtension(l_from, l_to, l_ext, log):
 	# delete orphan files
 	for path, dirs, files, in os.walk(l_to):
 		for file in files:
@@ -199,7 +203,8 @@ def copyWithExtension(l_from, l_to, l_ext):
 						continue
 				else:
 					createDir(target)
-				print ("Copying file: " + file)
+				if log:
+					print ("Copying file: " + file)
 				shutil.copy2(sourceFile, target)
 				
 
@@ -221,6 +226,9 @@ if (os.path.isdir(path)):
 path = finalDirDev + '\\Data'
 if (os.path.isdir(path)):
 	eraseDir(path)
+path = finalDirModel + '\\Data'
+if (os.path.isdir(path)):
+	eraseDir(path)
 
 # get modules
 os.chdir(startDir + '/Scripts/')
@@ -231,12 +239,14 @@ for file in os.listdir(startDir + '/Scripts/'):
 		modules.append(file)
 
 # copy data, models, and textures
-copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc')
-copyWithExtension(startDir + '/Data/', finalDirDev + '/Data/', '.sbc')
-copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm')
-copyWithExtension(startDir + '/Models/', finalDirDev + '/Models/', '.mwm')
-copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds')
-copyWithExtension(startDir + '/Textures/', finalDirDev + '/Textures/', '.dds')
+copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
+copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
+copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
+copyWithExtension(startDir + '/Data/', finalDirModel + '/Data/', '.sbc', False)
+copyWithExtension(startDir + '/Models/', finalDirModel + '/Models/', '.mwm', False)
+copyWithExtension(startDir + '/Textures/', finalDirModel + '/Textures/', '.dds', False)
+eraseDir(finalDirDev + '/Models/')
+eraseDir(finalDirDev + '/Textures/')
 
 # build scripts
 createDir(finalScript)

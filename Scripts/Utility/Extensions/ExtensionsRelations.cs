@@ -254,9 +254,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Different from the others because share mode matters.
 		/// </summary>
-		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
+		public static bool canControlBlock(this long ownerId, IMyCubeBlock target)
 		{
-			switch (target.GetUserRelationToOwner(block.OwnerId))
+			switch (target.GetUserRelationToOwner(ownerId))
 			{
 				case MyRelationsBetweenPlayerAndBlock.Enemies:
 				case MyRelationsBetweenPlayerAndBlock.Neutral:
@@ -268,6 +268,14 @@ namespace Rynchodon
 				default:
 					return target.OwnerId == 0;
 			}
+		}
+
+		/// <summary>
+		/// Different from the others because share mode matters.
+		/// </summary>
+		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
+		{
+			return canControlBlock(block.OwnerId, target);
 		}
 
 	}

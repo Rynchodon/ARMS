@@ -120,7 +120,7 @@ namespace Rynchodon.Weapons
 					else
 					{
 						myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
-						Errors.Add(CurrentIndex.ToString());
+						Errors.Add(instruct);
 					}
 			}
 		}

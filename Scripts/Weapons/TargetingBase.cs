@@ -251,7 +251,6 @@ namespace Rynchodon.Weapons
 				LastSeenTarget lst = myTarget as LastSeenTarget;
 				if (lst != null && lst.Block != null && !lst.Block.Closed)
 				{
-					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition() + " and keeping block: " + lst.Block.DisplayNameText, "GetLastSeenTarget()", Logger.severity.DEBUG);
 					lst.Update(processing);
 					CurrentTarget = myTarget;
 					return;
@@ -259,7 +258,6 @@ namespace Rynchodon.Weapons
 
 				if (ChooseBlock(processing, out targetBlock))
 				{
-					myLogger.debugLog("using previous last seen: " + processing.Entity.getBestName() + " at " + processing.GetPosition() + " and using new block: " + targetBlock.DisplayNameText, "GetLastSeenTarget()", Logger.severity.DEBUG);
 					myTarget = new LastSeenTarget(processing, targetBlock);
 					CurrentTarget = myTarget;
 					return;
@@ -270,7 +268,6 @@ namespace Rynchodon.Weapons
 			{
 				if (storage.TryGetLastSeen(Options.TargetEntityId.Value, out processing))
 				{
-					myLogger.debugLog("using last seen from entityId: " + processing.Entity.getBestName() + " at " + processing.GetPosition(), "GetLastSeenTarget()", Logger.severity.DEBUG);
 					ChooseBlock(processing, out targetBlock);
 					myTarget = new LastSeenTarget(processing, targetBlock);
 					CurrentTarget = myTarget;
@@ -337,7 +334,6 @@ namespace Rynchodon.Weapons
 			}
 			else
 			{
-				myLogger.debugLog("got a target from last seen: " + processing.Entity.getBestName() + " at " + processing.LastKnownPosition + ", block: " + targetBlock.getBestName(), "GetLastSeenTarget()", Logger.severity.DEBUG);
 				myTarget = new LastSeenTarget(processing, targetBlock);
 				CurrentTarget = myTarget;
 			}

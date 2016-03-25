@@ -71,6 +71,8 @@ namespace Rynchodon
 		{
 			//myLogger.debugLog("entered FaceTowards()", "FaceTowards()");
 
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+
 			if (!SetupStators())
 				return;
 
@@ -97,6 +99,8 @@ namespace Rynchodon
 
 		public void Stop()
 		{
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+
 			if (!StatorOK())
 				return;
 
@@ -191,6 +195,8 @@ namespace Rynchodon
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+
 			float speed = angle * RotationSpeedMultiplier;
 
 			if (!speed.IsValid())

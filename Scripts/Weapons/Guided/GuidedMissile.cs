@@ -368,7 +368,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			{ // check for proxmity det
-				if (angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
+				if (MyAPIGateway.Multiplayer.IsServer && angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
 					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity());
 					//myLogger.debugLog("distSquared: " + distSquared, "Update()");
@@ -453,6 +453,8 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Explode()
 		{
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "Explode()", Logger.severity.FATAL);
+
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (MyEntity.Closed)
 					return;
@@ -484,7 +486,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </summary>
 		private void RemoveRock()
 		{
-			if (myRock == null || myRock.Closed)
+			if (myRock == null || myRock.Closed || !MyAPIGateway.Multiplayer.IsServer)
 				return;
 
 			myLogger.debugLog("removing rock", "RemoveRock()");
@@ -583,7 +585,7 @@ namespace Rynchodon.Weapons.Guided
 			NetworkStorage store = m_launcherClient.GetStorage();
 			if (store == null)
 			{
-				myLogger.debugLog("Net client does not have a storage", "UpdateNetwork()", Logger.severity.WARNING);
+				myLogger.debugLog("Launcher's net client does not have a storage", "UpdateNetwork()", Logger.severity.WARNING);
 				return;
 			}
 

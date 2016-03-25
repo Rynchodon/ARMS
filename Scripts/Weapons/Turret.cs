@@ -164,6 +164,9 @@ namespace Rynchodon.Weapons
 		/// </remarks>
 		protected override void Update1_GameThread()
 		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
 			if (CurrentControl == Control.Off)
 			{
 				if (!myTurret.AIEnabled)
