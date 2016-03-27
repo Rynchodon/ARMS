@@ -17,10 +17,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 		public enum State : byte { None = 0, Running = 1, Clear = 2, Blocked = 4, BlockedGravity = 8 }
 
 		private const float MinGravityAvoid = 0.25f / 9.81f;
-		private const int ChecksPerUpdate = 10;
+		private static readonly long CutOffAfter = (long)(Globals.UpdateDuration / 100f * MyGameTimer.Frequency);
 
 		private static LockedQueue<Action> DoTests = new LockedQueue<Action>();
 		private static LineSegmentD Path = new LineSegmentD();
+		private static MyGameTimer Timer = new MyGameTimer();
+		private static Logger s_logger = new Logger("PlanetChecker");
 
 		static PlanetChecker()
 		{
@@ -32,18 +34,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			DoTests = null;
+			Path = null;
+			Timer = null;
+			s_logger = null;
 		}
 
 		private static void DoTest()
 		{
-			for (int i = 0; i < ChecksPerUpdate; i++)
+			int count = 0;
+			long cutoff = Timer.ElapsedTicks + CutOffAfter;
+			while (Timer.ElapsedTicks < cutoff)
 			{
+				count++;
 				Action test;
 				if (DoTests.TryDequeue(out test))
 					test.Invoke();
 				else
 					return;
 			}
+			s_logger.debugLog("tests: " + count, "DoTest()");
 		}
 
 		private readonly Logger m_logger;
@@ -66,14 +75,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 			this.m_cellsUnique = new HashSet<Vector3I>();
 		}
 
+		/// <summary>
+		/// Starts checking path against the geometry of the closest planet.
+		/// </summary>
+		/// <param name="displacement">Destination - current postion</param>
 		public void Start(Vector3 displacement)
 		{
-			if ((CurrentState & State.Running) != 0)
-				return;
-			CurrentState |= State.Running;
-
 			using (m_lock.AcquireExclusiveUsing())
 			{
+				if ((CurrentState & State.Running) != 0)
+					return;
+				CurrentState |= State.Running;
+
 				m_displacement = displacement;
 
 				m_cells.Clear();
@@ -94,6 +107,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					//m_logger.debugLog("Outside maximum radius of closest planet", "Start()", Logger.severity.TRACE);
 
 					// gravity test
+					// TODO: it might be worthwhile to perform gravity test against multiple planets
 					Path.From = gridCentre;
 					Path.To = gridCentre + displacement;
 
@@ -166,10 +180,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (ClosestPlanet.GetIntersectionWithLine(ref worldLine, out contact))
 					{
 						//var intersect = timer.Elapsed;
+						m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact, "TestPath()", Logger.severity.DEBUG);
 						//m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact + ", createLine: " + createLine.ToPrettySeconds() + ", intersect: " + intersect.ToPrettySeconds(), "TestPath()", Logger.severity.DEBUG);
 						ObstructionPoint = contact.Value;
 						CurrentState = State.Blocked;
 						m_cells.Clear();
+						return;
 					}
 					//else
 					//{
@@ -180,10 +196,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 					DoTests.Enqueue(TestPath);
 				}
 				else
-				//{
-				//	m_logger.debugLog("finished, clear", "TestPath()", Logger.severity.DEBUG);
+				{
+					m_logger.debugLog("finished, clear", "TestPath()", Logger.severity.DEBUG);
 					CurrentState = State.Clear;
-				//}
+				}
 			}
 		}
 

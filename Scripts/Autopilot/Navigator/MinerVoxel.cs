@@ -27,8 +27,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private const float MinAccel_Abort = 0.75f, MinAccel_Return = 1f;
 		private const string
 			ReturnCause_Full = "Drills are full, need to unload",
-			ReturnCause_Heavy = "Ship is too massive, need to unload",
-			ReturnCause_OverWorked = "Thrusters overworked, need to unload";
+			ReturnCause_Heavy = "Ship is too massive, need to unload";
+			//ReturnCause_OverWorked = "Thrusters overworked, need to unload";
 
 		private enum State : byte { GetTarget, Approaching, Rotating, MoveTo, Mining, Mining_Escape, Mining_Tunnel, Move_Away }
 
@@ -96,15 +96,15 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.Settings_Commands.Complaint = ReturnCause_Heavy;
 								return;
 							}
-							if (m_mover.ThrustersOverWorked(0.8f))
-							{
-								m_logger.debugLog(ReturnCause_OverWorked, "set_m_state()");
-								m_navSet.OnTaskComplete_NavRot();
-								m_mover.StopMove();
-								m_mover.StopRotate();
-								m_navSet.Settings_Commands.Complaint = ReturnCause_OverWorked;
-								return;
-							}
+							//if (m_mover.ThrustersOverWorked(0.8f))
+							//{
+							//	m_logger.debugLog(ReturnCause_OverWorked, "set_m_state()");
+							//	m_navSet.OnTaskComplete_NavRot();
+							//	m_mover.StopMove();
+							//	m_mover.StopRotate();
+							//	m_navSet.Settings_Commands.Complaint = ReturnCause_OverWorked;
+							//	return;
+							//}
 							// request ore detector update
 							m_logger.debugLog("Requesting ore update", "m_state()");
 							m_navSet.OnTaskComplete_NavMove();
@@ -272,12 +272,12 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
-					if (m_mover.ThrustersOverWorked())
-					{
-						m_logger.debugLog("Drills overworked, aborting", "Move()", Logger.severity.DEBUG);
-						m_state = State.Mining_Escape;
-						return;
-					}
+					//if (m_mover.ThrustersOverWorked())
+					//{
+					//	m_logger.debugLog("Thrusters overworked, aborting", "Move()", Logger.severity.DEBUG);
+					//	m_state = State.Mining_Escape;
+					//	return;
+					//}
 					if (m_navSet.Settings_Current.Distance < 1f)
 					{
 						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
@@ -529,8 +529,8 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <returns>The lesser of maximum forward and backwards accelerations.</returns>
 		private float GetAcceleration()
 		{
-			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward));
-			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward));
+			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), true);
+			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), true);
 
 			return Math.Min(forwardForce, backwardForce) / m_navDrill.Physics.Mass;
 		}
