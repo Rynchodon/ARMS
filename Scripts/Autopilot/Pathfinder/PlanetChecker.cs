@@ -81,6 +81,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="displacement">Destination - current postion</param>
 		public void Start(Vector3 displacement)
 		{
+			Start(ref displacement);
+		}
+
+		/// <summary>
+		/// Starts checking path against the geometry of the closest planet.
+		/// </summary>
+		/// <param name="displacement">Destination - current postion</param>
+		private void Start(ref Vector3 displacement)
+		{
 			using (m_lock.AcquireExclusiveUsing())
 			{
 				if ((CurrentState & State.Running) != 0)
@@ -145,10 +154,16 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 		}
 
+		/// <summary>
+		/// Stop testing, set CurrentState to None.
+		/// </summary>
 		public void Stop()
 		{
 			using (m_lock.AcquireExclusiveUsing())
+			{
 				CurrentState = State.None;
+				m_cells.Clear();
+			}
 		}
 
 		private void TestPath()

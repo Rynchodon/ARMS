@@ -92,7 +92,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly Mover m_mover;
 		private readonly FastResourceLock lock_testPath = new FastResourceLock();
 		//private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
-		private readonly PlanetChecker m_planetCheck;
+		private readonly PlanetChecker m_planetCheckDest, m_planetCheckSpeed;
 
 		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
 		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
@@ -116,7 +116,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>The best waypoint found so far.</summary>
 		public Vector3D m_altPath_Waypoint;
 
-		public bool CanMove { get { return m_pathState == PathState.No_Obstruction && (m_planetCheck.CurrentState & PlanetChecker.State.Clear) != 0; } }
+		public bool CanMove { get { return m_pathState == PathState.No_Obstruction && (m_planetCheckDest.CurrentState & PlanetChecker.State.Clear) != 0; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
 		public IMyEntity RotateObstruction { get; private set; }
 		public IMyEntity MoveObstruction { get; private set; }
@@ -130,7 +130,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;
 			m_mover = mover;
-			m_planetCheck = new PlanetChecker(grid);
+			m_planetCheckDest = new PlanetChecker(grid);
+			m_planetCheckSpeed = new PlanetChecker(grid);
 			m_logger.debugLog("Initialized, grid: " + grid.DisplayName, "Pathfinder()");
 		}
 
@@ -145,7 +146,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_pathLow.Clear();
 				ClearAltPath();
 				m_pathState = PathState.Not_Running;
-				m_planetCheck.Stop();
+				m_planetCheckDest.Stop();
+				m_planetCheckSpeed.Stop();
 			}
 			//else
 			//	m_logger.debugLog("destination unchanged", "TestPath()");
@@ -194,14 +196,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_logger.debugLog("using actual destination: " + destination, "TestPath()");
 
 			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate: false, tryAlternates: true));
-
-			m_planetCheck.Start(destination - m_navBlock.WorldPosition);
+			m_planetCheckDest.Start(destination - m_navBlock.WorldPosition);
 
 			// given velocity and distance, calculate destination
 			if (speedSquared > 1f)
 			{
 				Vector3D moveDest = m_navBlock.WorldPosition + move_direction * LookAheadSpeed_Seconds;
 				m_pathHigh.Enqueue(() => TestPath(moveDest, null, runId, isAlternate: false, tryAlternates: false, slowDown: true));
+				m_planetCheckSpeed.Start(moveDest - m_navBlock.WorldPosition);
 			}
 			else
 			{
@@ -264,35 +266,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + ignoreEntity + ", runId :" + runId
 						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
-				
+
 				MyEntity obstructing;
 				Vector3? pointOfObstruction;
-
-				//if ((isAlternate || tryAlternates) && !m_pathChecker.GravityTest(new LineSegmentD(m_navBlock.WorldPosition, destination), m_destination, out obstructing, out pointOfObstruction))
-				//{
-				//	m_pathState = PathState.Searching;
-				//	m_logger.debugLog("blocked by gravity at " + pointOfObstruction, "TestGravity()", Logger.severity.DEBUG);
-				//	if (tryAlternates)
-				//	{
-				//		Vector3D point = pointOfObstruction.Value;
-				//		Vector3 direction = m_navBlock.WorldPosition - obstructing.GetCentre(); direction.Normalize();
-				//		float distance = Vector3.Distance(m_navBlock.WorldPosition, pointOfObstruction.Value);
-				//		float minDist = m_navSet.Settings_Current.DestinationRadius;
-				//		if (minDist < 1000f)
-				//		{
-				//			minDist = 1500f;
-				//			m_navSet.Settings_Current.DestinationRadius = 1000f;
-				//		}
-				//		else
-				//			minDist *= 1.5f;
-
-				//		MoveObstruction = obstructing;
-				//		m_pathHigh.Clear();
-				//		FindAlternate_AroundObstruction(pointOfObstruction.Value, new Vector3[] { direction }, distance, minDist * minDist, runId);
-				//		m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
-				//	}
-				//	return;
-				//}
 
 				if (m_pathChecker.TestFast(m_navBlock, destination, m_ignoreAsteroid, ignoreEntity, m_landing))
 				{

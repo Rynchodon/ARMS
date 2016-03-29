@@ -1,6 +1,7 @@
 using System;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -52,7 +53,7 @@ namespace Rynchodon.Autopilot.Movement
 		private bool m_stopped, m_thrustHigh;
 
 		public Pathfinder.Pathfinder myPathfinder { get; private set; }
-		public Vector3 WorldGravity { get { return myThrust.m_worldGravity; } }
+		public DirectionWorld WorldGravity { get { return myThrust.WorldGravity; } }
 
 		/// <summary>Value is false iff this Mover is making progress.</summary>
 		public bool IsStuck
@@ -123,6 +124,8 @@ namespace Rynchodon.Autopilot.Movement
 
 			return myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward, true) > Block.Physics.Mass;
 		}
+
+		#region Move
 
 		/// <summary>
 		/// Calculates the force necessary to move the grid.
@@ -228,12 +231,17 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
 				//myLogger.debugLog("imposing speed limit: " + speedRequest + ", targetVelocity: " + targetVelocity, "CalcMove()");
 			}
-			else if (velocity.Dot(destDisp) > 0 && tarSpeedSq < velocity.LengthSquared())
-				NavSet.Settings_Task_NavWay.NearingDestination = true;
+			else
+			{
+				float velocityTowardsDest = velocity.Dot(destDisp);
+				if (velocityTowardsDest * velocityTowardsDest > tarSpeedSq)
+					NavSet.Settings_Task_NavWay.NearingDestination = true;
+			}
 
-			m_moveAccel = targetVelocity - velocity - myThrust.m_localGravity;
+			m_moveAccel = targetVelocity - velocity;
 
-			moveForceRatio = ToForceRatio(m_moveAccel);
+			DirectionBlock gravBlock = myThrust.WorldGravity.ToBlock(Block.CubeBlock);
+			moveForceRatio = ToForceRatio(m_moveAccel - gravBlock.vector);
 
 			// dampeners
 			bool enableDampeners = false;
@@ -339,45 +347,55 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>
 		/// Calculate the force ratio from acceleration.
 		/// </summary>
-		/// <param name="localAccel">Acceleration</param>
+		/// <param name="blockAccel">Acceleration</param>
 		/// <returns>Force ratio</returns>
-		private Vector3 ToForceRatio(Vector3 localAccel)
+		private Vector3 ToForceRatio(Vector3 blockAccel)
 		{
 			Vector3 result = Vector3.Zero;
 
-			if (localAccel.X > 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Left));
-			else if (localAccel.X < 0f)
-				result.X = localAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Left);
-			if (localAccel.Y > 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Up);
-			else if (localAccel.Y < 0f)
-				result.Y = localAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Up));
-			if (localAccel.Z > 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Forward));
-			else if (localAccel.Z < 0f)
-				result.Z = localAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward);
+			if (blockAccel.X > 0f)
+				result.X = blockAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Left));
+			else if (blockAccel.X < 0f)
+				result.X = blockAccel.X * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Left);
+			if (blockAccel.Y > 0f)
+				result.Y = blockAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Up);
+			else if (blockAccel.Y < 0f)
+				result.Y = blockAccel.Y * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Up));
+			if (blockAccel.Z > 0f)
+				result.Z = blockAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Base6Directions.GetFlippedDirection(Block.CubeBlock.Orientation.Forward));
+			else if (blockAccel.Z < 0f)
+				result.Z = blockAccel.Z * Block.Physics.Mass / myThrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward);
+
+			//float projection;
+			//(blockGravity / myThrust.GravityStrength).Dot(ref 
 
 			//myLogger.debugLog("accel: " + localAccel + ", force ratio: " + result + ", mass: " + Block.Physics.Mass, "ToForceRatio()");
 
 			return result;
 		}
 
+		#endregion Move
+
+		#region Rotate
+
 		/// <summary>
 		/// Rotate to face the best direction for flight.
 		/// </summary>
 		public void CalcRotate()
 		{
-			if (NavSet.Settings_Current.NearingDestination || (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanMove))
-			{
-				CalcRotate_Stop();
-				return;
-			}
-
 			if (m_moveAccel.LengthSquared() > 100f)
 			{
 				myLogger.debugLog("accel high, rotate to accel, m_moveAccel: " + m_moveAccel, "CalcRotate()");
 				CalcRotate(myThrust.Standard.LocalMatrix, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
+				return;
+			}
+
+			if (NavSet.Settings_Current.NearingDestination || (NavSet.Settings_Current.CollisionAvoidance && !myPathfinder.CanMove))
+			{
+				myLogger.debugLog(NavSet.Settings_Current.NearingDestination, "Nearing dest", "CalcRotate()", Logger.severity.TRACE);
+				myLogger.debugLog(!NavSet.Settings_Current.NearingDestination, "Pathfinder blocking", "CalcRotate()", Logger.severity.TRACE);
+
+				CalcRotate_Stop();
 				return;
 			}
 
@@ -388,6 +406,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>
 		/// Calculate the best rotation to stop the ship.
 		/// </summary>
+		/// TODO: if ship cannot rotate quickly, find a reasonable alternative to facing primary
 		public void CalcRotate_Stop()
 		{
 			if (m_thrustHigh || Block.Physics.LinearVelocity.LengthSquared() > 1f)
@@ -401,15 +420,15 @@ namespace Rynchodon.Autopilot.Movement
 				if (ThrustersOverWorked())
 				{
 					float accel = myThrust.SecondaryForce / Block.Physics.Mass;
-					if (accel * accel > myThrust.m_localGravity.LengthSquared())
+					if (accel > myThrust.GravityStrength)
 					{
 						myLogger.debugLog("facing secondary away from gravity", "CalcRotate_Stop()");
-						CalcRotate(myThrust.Gravity.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.m_localGravity), levelingOff: true);
+						CalcRotate(myThrust.Gravity.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.LocalGravity.vector), levelingOff: true);
 					}
 					else
 					{
 						myLogger.debugLog("facing primary away from gravity", "CalcRotate_Stop()");
-						CalcRotate(myThrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.m_localGravity), levelingOff: true);
+						CalcRotate(myThrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.LocalGravity.vector), levelingOff: true);
 					}
 				}
 				else
@@ -469,30 +488,64 @@ namespace Rynchodon.Autopilot.Movement
 
 		private void CalcRotate_InGravity(RelativeDirection3F direction)
 		{
-			float accel = myThrust.SecondaryForce / Block.Physics.Mass;
-			RelativeDirection3F fightGrav = RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.m_localGravity);
-			if (accel * accel > myThrust.m_localGravity.LengthSquared())
+			float secondaryAccel = myThrust.SecondaryForce / Block.Physics.Mass;
+			//float gravSquared = myThrust.LocalGravity.LengthSquared();
+
+			RelativeDirection3F fightGrav = RelativeDirection3F.FromLocal(Block.CubeGrid, -myThrust.LocalGravity.vector);
+			if (secondaryAccel > myThrust.GravityStrength)
 			{
 				// secondary thrusters are strong enough to fight gravity
 				if (Vector3.Dot(direction.ToLocalNormalized(), fightGrav.ToLocalNormalized()) > 0f)
 				{
 					// direction is away from gravity
-					myLogger.debugLog("Facing primary towards direction (" + direction.ToWorldNormalized() + "), rolling secondary away from gravity (" + myThrust.m_worldGravity + ")", "CalcRotate_InGravity()");
-					CalcRotate(myThrust.Standard.LocalMatrix, direction, fightGrav, true);
+					myLogger.debugLog("Facing primary towards direction, rolling secondary away from gravity", "CalcRotate_InGravity()");
+					CalcRotate(myThrust.Standard.LocalMatrix, direction, fightGrav, levelingOff: true);
+					return;
 				}
 				else
 				{
 					// direction is towards gravity
-					myLogger.debugLog("Facing secondary away from gravity (" + myThrust.m_worldGravity + "), rolling primary towards direction (" + direction.ToWorldNormalized() + ")", "CalcRotate_InGravity()");
-					CalcRotate(myThrust.Gravity.LocalMatrix, fightGrav, direction, true);
+					myLogger.debugLog("Facing secondary away from gravity, rolling primary towards direction", "CalcRotate_InGravity()");
+					CalcRotate(myThrust.Gravity.LocalMatrix, fightGrav, direction, levelingOff: true);
+					return;
 				}
 			}
-			else
+
+			// secondary thrusters are not strong enough
+			float primaryAccel = myThrust.PrimaryForce / Block.Physics.Mass - myThrust.GravityStrength - 0.25f; // obviously less than actual value but we do not need maximum theoretical acceleration
+			if (primaryAccel > 0f)
 			{
-				// secondary thrusters are not strong enough
-				myLogger.debugLog("Facing primary away from gravity (" + myThrust.m_worldGravity + "), rolling secondary towards direction (" + direction.ToWorldNormalized() + ")", "CalcRotate_InGravity()");
-				CalcRotate(myThrust.Standard.LocalMatrix, fightGrav, direction, true);
+				// primary thrusters are strong enough to fight gravity
+
+				DirectionGrid moveAccel = m_moveAccel != Vector3.Zero ? ((DirectionBlock)m_moveAccel).ToGrid(Block.CubeBlock) : ((DirectionWorld)(-Block.Physics.LinearVelocity)).ToGrid(Block.CubeGrid);
+
+				if (moveAccel.vector.LengthSquared() > primaryAccel * primaryAccel)
+				{
+					//myLogger.debugLog("move accel is over available acceleration: " + moveAccel.vector.Length() + " > " + primaryAccel, "CalcRotate_InGravity()");
+					moveAccel = Vector3.Normalize(moveAccel.vector) * primaryAccel;
+				}
+
+				myLogger.debugLog("Facing primary away from gravity and towards direction, moveAccel: " + moveAccel + ", fight gravity: " + fightGrav.ToLocal() + ", new direction: " + (moveAccel + fightGrav.ToLocal()), "CalcRotate_InGravity()");
+
+				Vector3 dirV = moveAccel + fightGrav.ToLocal();
+				direction = RelativeDirection3F.FromLocal(Block.CubeGrid, dirV);
+				CalcRotate(myThrust.Standard.LocalMatrix, direction, levelingOff: true);
+
+				Vector3 fightGravDirection = fightGrav.ToLocal() / myThrust.GravityStrength;
+
+				// determine acceleration needed in forward direction to move to desired altitude or remain at current altitude
+				float projectionMagnitude = Vector3.Dot(dirV, fightGravDirection) / Vector3.Dot(myThrust.Standard.LocalMatrix.Forward, fightGravDirection);
+				Vector3 projectionDirection = ((DirectionGrid)myThrust.Standard.LocalMatrix.Forward).ToBlock(Block.CubeBlock);
+
+				moveForceRatio = projectionDirection * projectionMagnitude * Block.CubeGrid.Physics.Mass / myThrust.PrimaryForce;
+				myLogger.debugLog("changed moveForceRatio, projectionMagnitude: " + projectionMagnitude + ", projectionDirection: " + projectionDirection + ", moveForceRatio: " + moveForceRatio, "CalcRotate_InGravity()");
+				return;
 			}
+
+			// primary cannot fight gravity, unsupported
+			myLogger.debugLog("Primary thrusters cannot fight gravity, autopilot cannot fly the ship, primaryAccel: " + primaryAccel + ", GravityStrength: " + myThrust.GravityStrength, "CalcRotate_InGravity()", Logger.severity.WARNING);
+			CalcRotate(myThrust.Standard.LocalMatrix, fightGrav, levelingOff: true);
+			return;
 		}
 
 		/// <summary>
@@ -676,6 +729,8 @@ namespace Rynchodon.Autopilot.Movement
 			return Math.Min(actual, dist * 2f);
 		}
 
+		#endregion Rotate
+
 		/// <summary>
 		/// Apply the calculated force ratios to the controller.
 		/// </summary>
@@ -774,7 +829,7 @@ namespace Rynchodon.Autopilot.Movement
 		private bool ThrustersOverWorked()
 		{
 			myLogger.debugLog(myThrust == null, "myThrust == null", "ThrustersOverWorked()", Logger.severity.FATAL);
-			return myThrust.m_gravityReactRatio.AbsMax() >= 0.5f;
+			return myThrust.GravityReactRatio.vector.AbsMax() >= 0.5f;
 		}
 
 	}

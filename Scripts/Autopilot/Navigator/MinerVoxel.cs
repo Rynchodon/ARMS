@@ -392,7 +392,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 						break;
 				}
-				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.WorldGravity));
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.WorldGravity.vector));
 				return;
 			}
 
