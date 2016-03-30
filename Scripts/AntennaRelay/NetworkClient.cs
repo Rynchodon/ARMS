@@ -39,21 +39,24 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (Globals.UpdateCount < m_nextNodeSet)
 				return value_node;
+			m_nextNodeSet = Globals.UpdateCount + UpdateFrequency;
 
-			if (value_node == null || !IsConnected(value_node))
+			NetworkNode newNode = value_node;
+			if (newNode == null || !IsConnected(newNode))
 			{
-				value_node = null;
+				newNode = null;
 				Registrar.ForEach<NetworkNode>(node => {
 					if (node.Block != null && IsConnected(node))
 					{
-						value_node = node;
+						newNode = node;
 						return true;
 					}
 					return false;
 				});
+
+				value_node = newNode;
 			}
 
-			m_nextNodeSet = Globals.UpdateCount + UpdateFrequency;
 			return value_node;
 		}
 
@@ -66,7 +69,8 @@ namespace Rynchodon.AntennaRelay
 		{
 			NetworkNode node = GetNode();
 			NetworkStorage store = node != null ? node.Storage : null;
-			m_logger.debugLog("current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store), "get_Storage()");
+
+			m_logger.debugLog(m_storage != store, "current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store), "get_Storage()");
 			if (store != m_storage && m_messageHandler != null)
 			{
 				if (m_storage != null)

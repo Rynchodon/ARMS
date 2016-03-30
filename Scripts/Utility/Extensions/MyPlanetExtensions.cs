@@ -8,6 +8,12 @@ namespace Rynchodon
 	public static class MyPlanetExtensions
 	{
 
+		public static MyPlanet GetClosestPlanet(Vector3D position)
+		{
+			double distSquared;
+			return GetClosestPlanet(position, out distSquared);
+		}
+
 		public static MyPlanet GetClosestPlanet(Vector3D position, out double distSquared)
 		{
 			IMyVoxelBase closest = null;

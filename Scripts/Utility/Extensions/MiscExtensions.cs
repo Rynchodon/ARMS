@@ -129,7 +129,6 @@ namespace Rynchodon
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
 		/// <returns>The minimum distance squared between the line and the point</returns>
-		[Obsolete("Use LineSegment")]
 		public static float DistanceSquared(this Line line, Vector3 point)
 		{
 			if (line.From == line.To)
@@ -149,7 +148,6 @@ namespace Rynchodon
 			return Vector3.DistanceSquared(point, closestPoint);
 		}
 
-		[Obsolete("Use LineSegment")]
 		public static bool PointInCylinder(this Line line, float radius, Vector3 point)
 		{
 			radius *= radius;
@@ -177,7 +175,6 @@ namespace Rynchodon
 		/// <remarks>
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
-		[Obsolete("Use LineSegment")]
 		public static Vector3 ClosestPoint(this Line line, Vector3 coordinates)
 		{
 			if (line.From == line.To)
@@ -200,14 +197,12 @@ namespace Rynchodon
 		/// Minimum distance between a line and a point.
 		/// </summary>
 		/// <returns>Minimum distance between a line and a point.</returns>
-		[Obsolete("Use LineSegment")]
 		public static float Distance(this Line line, Vector3 point)
-		{ return (float)Math.Pow(line.DistanceSquared(point), 0.5); }
+		{ return (float)Math.Sqrt(line.DistanceSquared(point)); }
 
 		/// <summary>
 		/// Tests that the distance between line and point is less than or equal to supplied distance
 		/// </summary>
-		[Obsolete("Use LineSegment")]
 		public static bool DistanceLessEqual(this Line line, Vector3 point, float distance)
 		{
 			distance *= distance;
@@ -248,7 +243,7 @@ namespace Rynchodon
 		}
 
 		public static double Distance(this BoundingBoxD first, BoundingBoxD second)
-		{ return Math.Pow(first.DistanceSquared(second), 0.5); }
+		{ return Math.Sqrt(first.DistanceSquared(second)); }
 
 		public static double DistanceSquared(this BoundingBoxD box, Vector3D point)
 		{

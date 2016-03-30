@@ -543,7 +543,8 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			// primary cannot fight gravity, unsupported
-			myLogger.debugLog("Primary thrusters cannot fight gravity, autopilot cannot fly the ship, primaryAccel: " + primaryAccel + ", GravityStrength: " + myThrust.GravityStrength, "CalcRotate_InGravity()", Logger.severity.WARNING);
+			myLogger.debugLog("Primary thrusters cannot fight gravity, autopilot cannot fly the ship, primaryAccel: " + primaryAccel + ", GravityStrength: " + myThrust.GravityStrength +
+				", primary force: " + myThrust.PrimaryForce + ", mass: " + Block.CubeGrid.Physics.Mass, "CalcRotate_InGravity()", Logger.severity.WARNING);
 			CalcRotate(myThrust.Standard.LocalMatrix, fightGrav, levelingOff: true);
 			return;
 		}
@@ -783,7 +784,7 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 				}
 			}
-			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f)
+			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f && NavSet.Settings_Current.Distance > 1f)
 			{
 				// if pathfinder is clear and we are not moving, wriggle
 				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
