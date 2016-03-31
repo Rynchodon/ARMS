@@ -420,11 +420,8 @@ namespace Rynchodon.Autopilot
 
 			m_controlledGrid = myGrid;
 			// toggle thrusters off and on to make sure thrusters are actually online
-			if (this.m_block.Controller.ControlThrusters)
-			{
-				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
-				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
-			}
+			this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+			this.m_block.CubeBlock.ApplyAction("ControlThrusters");
 			return true;
 		}
 
@@ -548,10 +545,10 @@ namespace Rynchodon.Autopilot
 			Pathfinder.Pathfinder path = m_interpreter.Mover.myPathfinder;
 			if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
 			{
-				if (!path.CanMove || !path.CanRotate)
+				if (!path.ReportCanMove || !path.ReportCanRotate)
 				{
 					m_customInfo_build.AppendLine("Pathfinder:");
-					if (!path.CanMove)
+					if (!path.ReportCanMove)
 					{
 						if (path.MoveObstruction != null)
 						{
@@ -561,7 +558,7 @@ namespace Rynchodon.Autopilot
 						else
 							m_customInfo_build.AppendLine("Cannot move");
 					}
-					else if (!path.CanRotate)
+					else if (!path.ReportCanRotate)
 					{
 						if (path.RotateObstruction != null)
 						{

@@ -91,6 +91,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void StopMove(bool enableDampeners = true)
 		{
+			//myLogger.debugLog("entered", "StopMove()");
+
 			moveForceRatio = Vector3.Zero;
 			m_moveAccel = Vector3.Zero;
 			Block.SetDamping(enableDampeners);
@@ -104,12 +106,22 @@ namespace Rynchodon.Autopilot.Movement
 			rotateForceRatio = Vector3.Zero;
 		}
 
-		public void MoveAndRotateStop()
+		/// <summary>
+		/// Stop movement and rotation of the controller.
+		/// </summary>
+		/// <param name="enableDampeners">If true, dampeners will be enabled. If false, they will not be toggled.</param>
+		public void MoveAndRotateStop(bool enableDampeners = true)
 		{
 			if (m_stopped)
 				return;
 
-			StopMove();
+			myLogger.debugLog("stopping movement and rotation", "MoveAndRotateStop()");
+
+			moveForceRatio = Vector3.Zero;
+			m_moveAccel = Vector3.Zero;
+			if (enableDampeners)
+				Block.SetDamping(true);
+
 			StopRotate();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
 			m_stopped = true;
@@ -289,7 +301,7 @@ namespace Rynchodon.Autopilot.Movement
 
 				if (Math.Sign(forceRatio) * Math.Sign(velDim) < 0)
 				{
-					//myLogger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
+					myLogger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 					moveForceRatio.SetDim(i, 0);
 					enableDampeners = true;
 				}
@@ -817,8 +829,9 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				if (rotateForceRatio == Vector3.Zero)
 				{
-					//myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
-					MoveAndRotateStop();
+					myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
+					// should not toggle dampeners, grid may just have landed
+					MoveAndRotateStop(false);
 					return;
 				}
 			}
@@ -848,7 +861,7 @@ namespace Rynchodon.Autopilot.Movement
 			m_stopped = false;
 			//myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				//myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl, "MoveAndRotate()");
+				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl, "MoveAndRotate()");
 				controller.MoveAndRotate(moveControl, rotateControl, rollControl);
 			}, myLogger);
 		}

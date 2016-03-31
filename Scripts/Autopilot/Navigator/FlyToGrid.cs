@@ -167,6 +167,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_gridFinder.Grid == null)
 			{
+				m_logger.debugLog("searching", "Move()");
 				m_mover.StopMove();
 
 				// only timeout if (Grid == null), ship could simply be waiting its turn
@@ -249,6 +250,11 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_landingState != LandingState.None)
 			{
 				//m_logger.debugLog("rotating for landing", "Rotate()");
+				if (IsLocked())
+				{
+					m_logger.debugLog("already landed", "Rotate()");
+					return;
+				}
 				m_mover.CalcRotate(m_navBlock, m_gridFinder.Block, m_landingDirection, m_targetBlock.Upward);
 				return;
 			}
@@ -432,7 +438,7 @@ namespace Rynchodon.Autopilot.Navigator
 						LockConnector();
 
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize + 0.1f;
-						m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
+						//m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 
 						if (m_navSet.DistanceLessThan(1f))
 						{

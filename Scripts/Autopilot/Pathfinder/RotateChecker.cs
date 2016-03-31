@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -16,6 +17,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly GridCellCache m_cells;
 
 		private List<MyEntity> m_obstructions = new List<MyEntity>();
+
+		public Pathfinder.PathState PlanetState { get; private set; }
+		public MyPlanet ClosestPlanet { get; private set; }
 
 		public RotateChecker(IMyCubeGrid grid)
 		{
@@ -88,7 +92,15 @@ namespace Rynchodon.Autopilot.Pathfinder
 							continue;
 						}
 
-						// planet test is done by PlanetChecker
+						m_logger.debugLog(!(entity is MyPlanet), "entity is not a planet", "TestRotate()", Logger.severity.FATAL);
+						ClosestPlanet = (MyPlanet)entity;
+						MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet, m_logger); 
+						if (PlanetState != Pathfinder.PathState.No_Obstruction)
+						{
+							m_logger.debugLog("planet blocking", "TestRotate()");
+							obstruction = ClosestPlanet;
+							return false;
+						}
 						continue;
 					}
 
@@ -126,6 +138,41 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			obstruction = null;
 			return true;
+		}
+
+		private void TestPlanet()
+		{
+			Vector3D myPos = m_grid.GetCentre();
+			Vector3D planetCentre = ClosestPlanet.GetCentre();
+
+			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
+			if (distSqToPlanet > ClosestPlanet.MaximumRadius * ClosestPlanet.MaximumRadius)
+			{
+				m_logger.debugLog("higher than planet maximum", "TestPlanet()");
+				PlanetState = Pathfinder.PathState.No_Obstruction;
+				return;
+			}
+
+			Vector3D surface = ClosestPlanet.GetClosestSurfacePointGlobal(ref myPos);
+
+			if (distSqToPlanet < Vector3D.DistanceSquared(surface, planetCentre))
+			{
+				m_logger.debugLog("below surface", "TestPlanet()");
+				PlanetState = Pathfinder.PathState.Path_Blocked;
+				return;
+			}
+
+			float longest = m_grid.GetLongestDim();
+			if (Vector3D.DistanceSquared(myPos, surface) < longest * longest)
+			{
+				m_logger.debugLog("near surface", "TestPlanet()");
+				PlanetState = Pathfinder.PathState.Path_Blocked;
+				return;
+			}
+
+			m_logger.debugLog("clear", "TestPlanet()");
+			PlanetState = Pathfinder.PathState.No_Obstruction;
+			return;
 		}
 
 	}
