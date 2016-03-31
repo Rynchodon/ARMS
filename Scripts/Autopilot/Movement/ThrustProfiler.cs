@@ -33,6 +33,7 @@ namespace Rynchodon.Autopilot.Movement
 		private float m_airDensity;
 		private float? m_gravStrength;
 		private ulong m_nextUpdate;
+		private bool m_primaryDirty;
 
 		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
 		private Dictionary<Base6Directions.Direction, float> m_totalThrustForce = new Dictionary<Base6Directions.Direction, float>();
@@ -98,13 +99,12 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>
-		/// Creates properties for a thruster and adds it to allMyThrusters. If the thruster is working, calls enableDisableThruster(true).
+		/// Adds thruster to thrustersInDirection
 		/// </summary>
 		/// <param name="thruster">The new thruster</param>
 		private void newThruster(IMySlimBlock thruster)
 		{
 			thrustersInDirection[Base6Directions.GetFlippedDirection(thruster.FatBlock.Orientation.Forward)].Add(thruster.FatBlock as MyThrust);
-			return;
 		}
 
 		/// <summary>
@@ -120,7 +120,10 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 
 				if (added.FatBlock is IMyThrust)
+				{
 					newThruster(added);
+					m_primaryDirty = true;
+				}
 			}
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, "grid_OnBlockAdded()", Logger.severity.ERROR); }
@@ -129,7 +132,7 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>
-		/// if removed is a thruster, remove it from allMyThrusters, unregister for block_IsWorkingChanged, and call enableDisableThruster(properties, false)
+		/// if removed is a thruster, remove it from thrustersInDirection
 		/// </summary>
 		/// <remarks>
 		/// if a working block is destroyed, block_IsWorkingChange() is called first
@@ -148,6 +151,7 @@ namespace Rynchodon.Autopilot.Movement
 
 				thrustersInDirection[Base6Directions.GetFlippedDirection(asThrust.Orientation.Forward)].Remove(asThrust);
 				myLogger.debugLog("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + "/" + asThrust.DisplayNameText, "grid_OnBlockRemoved()", Logger.severity.DEBUG);
+				m_primaryDirty = true; 
 				return;
 			}
 			catch (Exception e)
@@ -178,6 +182,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			if (Globals.UpdateCount < m_nextUpdate)
 				return;
+			m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 
 			m_totalThrustForce.Clear();
 
@@ -210,8 +215,10 @@ namespace Rynchodon.Autopilot.Movement
 			allPlanets.Clear();
 			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
 
-			if (m_primaryForce.Force < 1f)
+			if (m_primaryDirty)
 			{
+				m_primaryDirty = false;
+
 				CalcForceInDirection(Base6Directions.Direction.Forward);
 				CalcForceInDirection(Base6Directions.Direction.Backward);
 				CalcForceInDirection(Base6Directions.Direction.Up);
@@ -229,7 +236,6 @@ namespace Rynchodon.Autopilot.Movement
 				WorldGravity = Vector3.Zero;
 				LocalGravity = Vector3.Zero;
 				m_gravStrength = 0f;
-				m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 				return;
 			}
 			WorldGravity = worldGravity;
@@ -251,7 +257,6 @@ namespace Rynchodon.Autopilot.Movement
 			GravityReactRatio = gravityReactRatio;
 
 			myLogger.debugLog("Gravity: " + WorldGravity + ", local: " + LocalGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "Update()");
-			m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
 		}
 
 		private float CalcForceInDirection(Base6Directions.Direction direction)
@@ -284,9 +289,9 @@ namespace Rynchodon.Autopilot.Movement
 				//myLogger.debugLog("updating primary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
 				m_primaryForce.Force = force;
 			}
-			else if (force > m_primaryForce.Force)
+			else if (force > m_primaryForce.Force * 1.1f)
 			{
-				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", primary: " + m_primaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", primary: " + m_primaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
 				m_secondaryForce = m_primaryForce;
 				m_primaryForce.Direction = direction;
 				m_primaryForce.Force = force;
@@ -304,9 +309,9 @@ namespace Rynchodon.Autopilot.Movement
 				//myLogger.debugLog("updating secondary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
 				m_secondaryForce.Force = force;
 			}
-			else if (force > m_secondaryForce.Force && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
+			else if (force > m_secondaryForce.Force * 1.1f && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
 			{
-				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", secondary: " + m_secondaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", secondary: " + m_secondaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
 				m_secondaryForce.Direction = direction;
 				m_secondaryForce.Force = force;
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);

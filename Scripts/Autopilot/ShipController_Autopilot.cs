@@ -217,13 +217,6 @@ namespace Rynchodon.Autopilot
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
 
-			// toggle thrusters off and on to make sure thrusters are actually online
-			if (this.m_block.Controller.ControlThrusters)
-			{
-				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
-				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
-			}
-
 			// for my German friends...
 			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
 				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
@@ -426,6 +419,12 @@ namespace Rynchodon.Autopilot
 				return false;
 
 			m_controlledGrid = myGrid;
+			// toggle thrusters off and on to make sure thrusters are actually online
+			if (this.m_block.Controller.ControlThrusters)
+			{
+				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+			}
 			return true;
 		}
 

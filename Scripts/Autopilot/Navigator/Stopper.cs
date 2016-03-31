@@ -25,8 +25,7 @@ namespace Rynchodon.Autopilot.Navigator
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			m_exitAfter = exitAfter;
 
-			m_mover.StopMove();
-			m_mover.StopRotate();
+			m_mover.MoveAndRotateStop();
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 		}
@@ -48,7 +47,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
-				m_mover.StopRotate();
+				m_mover.MoveAndRotateStop();
 				_logger.debugLog("stopped", "Stopper()");
 				m_navSet.OnTaskComplete_NavRot();
 				if (m_exitAfter)

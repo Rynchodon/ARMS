@@ -18,7 +18,7 @@ namespace Rynchodon.Settings
 			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			yParallelPathfinder,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
-			sWeaponCommandsNPC
+			sDefaultWeaponCommandsNPC
 		}
 
 		private const ushort ModID = 54310; // no idea what this is supposed to be
@@ -195,7 +195,7 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
 			AllSettings.Add(SettingName.fMaxWeaponRange, new SettingMinMax<float>(100, float.MaxValue, 800));
 
-			AllSettings.Add(SettingName.sWeaponCommandsNPC, new SettingString("[(Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar) ; Destroy ]"));
+			AllSettings.Add(SettingName.sDefaultWeaponCommandsNPC, new SettingString(string.Empty));
 		}
 
 		/// <summary>

@@ -270,6 +270,33 @@ namespace Rynchodon.Autopilot.Pathfinder
 				MyEntity obstructing;
 				Vector3? pointOfObstruction;
 
+				if (!isAlternate)
+				{
+					PlanetChecker checker = slowDown ? m_planetCheckSpeed : m_planetCheckDest;
+					if ((checker.CurrentState & PlanetChecker.State.Blocked) != 0)
+					{
+						m_logger.debugLog("path blocked by planet", "TestPath()");
+
+						m_pathState = PathState.Searching;
+						obstructing = checker.ClosestPlanet;
+			
+						Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - obstructing.GetCentre());
+						pointOfObstruction = checker.ObstructionPoint + direction * 1e3f;
+
+						float distance = Vector3.Distance(m_navBlock.WorldPosition, pointOfObstruction.Value);
+
+						MoveObstruction = obstructing;
+						m_pathHigh.Clear();
+						if ((checker.CurrentState & PlanetChecker.State.BlockedPath) != 0)
+							FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e4f, 1e6f, runId);
+						else // blocked by gravity
+							FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e6f, 1e8f, runId);
+						m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
+
+						return;
+					}
+				}
+
 				if (m_pathChecker.TestFast(m_navBlock, destination, m_ignoreAsteroid, ignoreEntity, m_landing))
 				{
 					m_logger.debugLog("path is clear (fast)", "TestPath()", Logger.severity.TRACE);
@@ -415,7 +442,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
 			destRadius *= destRadius;
 
-			FindAlternate_AroundObstruction(displacement, AcceptableDirections, distance, destRadius, runId);
+			FindAlternate_AroundObstruction(displacement, AcceptableDirections, destRadius, distance * 10f, runId);
 		}
 
 		/// <summary>
@@ -423,20 +450,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="displacement">Displacement from autopilot block to destination.</param>
 		/// <param name="directions">Directions to search for alternate paths in.</param>
-		/// <param name="distance">Distance from autopilot to pointOfObstruction.</param>
 		/// <param name="minDistSq">Square of minimum distance between autopilot and waypoint.</param>
+		/// <param name="maxDistSq">Square of maximum distance between autopilot and waypoint.</param>
 		/// <param name="runId">Id of this search.</param>
-		private void FindAlternate_AroundObstruction(Vector3 displacement, IEnumerable<Vector3> directions, float distance, float minDistSq, byte runId)
+		private void FindAlternate_AroundObstruction(Vector3 displacement, IEnumerable<Vector3> directions, float minDistSq, float maxDistSq, byte runId)
 		{
 			//m_logger.debugLog("point: " + pointOfObstruction + ", direction: " + direction + ", distance: " + distance + ", dest radius: " + minDistSq, "FindAlternate_AroundObstruction()");
-			for (int newPathDistance = 8; newPathDistance < 1000000 && newPathDistance < distance * 10f; newPathDistance *= 2)
+			for (int newPathDistance = 8; newPathDistance < 1000000; newPathDistance *= 2)
 			{
 				Vector3 basePosition = m_navBlock.WorldPosition + displacement;
 				foreach (Vector3 direction in directions)
 				{
 					Vector3 tryDest = basePosition + newPathDistance * direction;
-					if (Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest) > minDistSq)
+					float distSq = Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest);
+					if (distSq > minDistSq)
+					{
+						if (distSq > maxDistSq)
+							return;
 						m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
+					}
 				}
 				displacement *= 1.05f;
 			}
@@ -559,7 +591,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			m_pathLow.Clear();
 			IMyEntity top = MoveObstruction.GetTopMostParent();
-			new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, top, m_altPath_Waypoint - top.GetPosition());
+			if (top.Physics != null)
+				new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, top, m_altPath_Waypoint - top.GetPosition());
+			else
+				new GOLIS(m_mover, m_navSet, m_altPath_Waypoint, AllNavigationSettings.SettingsLevelName.NavWay);
 			m_navSet.Settings_Current.DestinationRadius = (float)Math.Max(Vector3D.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2d, 1d);
 			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "IncrementAlternatesFound()", Logger.severity.DEBUG);
 		}

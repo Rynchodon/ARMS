@@ -14,7 +14,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	{
 
 		[Flags]
-		public enum State : byte { None = 0, Running = 1, Clear = 2, Blocked = 4, BlockedGravity = 8 }
+		public enum State : byte { None = 0, Running = 1, Clear = 2, BlockedPath = 4, BlockedGravity = 8, Blocked = BlockedPath | BlockedGravity }
 
 		private const float MinGravityAvoid = 0.25f / 9.81f;
 		private static readonly long CutOffAfter = (long)(Globals.UpdateDuration / 100f * MyGameTimer.Frequency);
@@ -172,7 +172,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				if (m_grid.MarkedForClose)
 				{
-					CurrentState = State.Blocked;
+					CurrentState = State.BlockedPath;
 					m_cells.Clear();
 					return;
 				}
@@ -198,7 +198,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact, "TestPath()", Logger.severity.DEBUG);
 						//m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact + ", createLine: " + createLine.ToPrettySeconds() + ", intersect: " + intersect.ToPrettySeconds(), "TestPath()", Logger.severity.DEBUG);
 						ObstructionPoint = contact.Value;
-						CurrentState = State.Blocked;
+						CurrentState = State.BlockedPath;
 						m_cells.Clear();
 						return;
 					}
