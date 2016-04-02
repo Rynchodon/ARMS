@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Xml.Serialization;
+using Rynchodon.Update;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -10,6 +12,18 @@ namespace Rynchodon.AntennaRelay
 	// must be immutable
 	public class LastSeen
 	{
+
+		[Serializable]
+		public class Builder_LastSeen
+		{
+			[XmlAttribute]
+			public long EntityId;
+			public Vector3D LastKnownPosition;
+			public Vector3 LastKnownVelocity;
+			public SerializableGameTime LastSeenAt, LastBroadcast, LastRadar, LastJam;
+			public RadarInfo.Builder_RadarInfo Info;
+		}
+
 		[Flags]
 		public enum UpdateTime : byte
 		{
@@ -112,6 +126,24 @@ namespace Rynchodon.AntennaRelay
 			: this(entity, times)
 		{
 			this.Info = info;
+		}
+
+		public LastSeen(Builder_LastSeen builder)
+		{
+			if (!MyAPIGateway.Entities.TryGetEntityById(builder.EntityId, out this.Entity))
+			{
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.EntityId, "LastSeen()", Logger.severity.WARNING);
+				return;
+			}
+			this.LastSeenAt = builder.LastSeenAt.ToTimeSpan();
+			this.LastKnownPosition = builder.LastKnownPosition;
+			this.LastKnownVelocity = builder.LastKnownVelocity;
+			this.LastBroadcast = builder.LastBroadcast.ToTimeSpan();
+			this.LastRadar = builder.LastRadar.ToTimeSpan();
+			this.LastJam = builder.LastJam.ToTimeSpan();
+			if (builder.Info != null)
+				this.Info = new RadarInfo(builder.Info);
+			this.value_isValid = true;
 		}
 
 		private bool isNewerThan(LastSeen other)
@@ -252,10 +284,35 @@ namespace Rynchodon.AntennaRelay
 			return name ?? ((IMyCubeGrid)Entity).SimpleName();
 		}
 
+		public Builder_LastSeen GetBuilder()
+		{
+			Builder_LastSeen result = new Builder_LastSeen()
+			 {
+				 EntityId = Entity.EntityId,
+				 LastSeenAt = new SerializableGameTime(LastSeenAt),
+				 LastKnownPosition = LastKnownPosition,
+				 LastKnownVelocity = LastKnownVelocity,
+				 LastBroadcast = new SerializableGameTime(LastBroadcast),
+				 LastRadar = new SerializableGameTime(LastRadar),
+				 LastJam = new SerializableGameTime(LastJam)
+			 };
+			if (Info != null)
+				result.Info = Info.GetBuilder();
+			return result;
+		}
+
 	}
 
 	public class RadarInfo
 	{
+
+		[Serializable]
+		public class Builder_RadarInfo
+		{
+			public SerializableGameTime DetectedAt;
+			public float Volume;
+		}
+
 		public readonly TimeSpan DetectedAt;
 		public readonly float Volume;
 
@@ -266,6 +323,12 @@ namespace Rynchodon.AntennaRelay
 		{
 			this.DetectedAt = Globals.ElapsedTime;
 			this.Volume = volume;
+		}
+
+		public RadarInfo(Builder_RadarInfo builder)
+		{
+			this.DetectedAt = builder.DetectedAt.ToTimeSpan();
+			this.Volume = builder.Volume;
 		}
 
 		public bool IsNewerThan(RadarInfo other)
@@ -281,5 +344,15 @@ namespace Rynchodon.AntennaRelay
 				return first;
 			return second;
 		}
+
+		public Builder_RadarInfo GetBuilder()
+		{
+			return new Builder_RadarInfo()
+			{
+				DetectedAt = new SerializableGameTime(DetectedAt),
+				Volume = Volume
+			};
+		}
+
 	}
 }

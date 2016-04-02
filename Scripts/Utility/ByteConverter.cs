@@ -421,6 +421,12 @@ namespace Rynchodon
 			throw new ArgumentException("Invalid TypeCode: " + code);
 		}
 
+		public static string GetString(byte[] bytes)
+		{
+			int pos = 0;
+			return GetString(bytes, bytes.Length / 2, ref pos);
+		}
+
 		public static string GetString(byte[] bytes, ref int pos)
 		{
 			return GetString(bytes, (bytes.Length - pos) / 2, ref pos);

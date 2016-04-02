@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
+using Rynchodon.Update;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -9,6 +11,29 @@ namespace Rynchodon.AntennaRelay
 {
 	public class Message
 	{
+
+		[Serializable]
+		public class Builder_Message
+		{
+			[XmlAttribute]
+			public long DestCubeBlock, SourceCubeBlock;
+			// may contain some gnarly characters
+			public byte[] Content, SourceGridName, SourceBlockName;
+			public SerializableGameTime created;
+			public long destOwnerID;
+
+			public override bool Equals(object obj)
+			{
+				return this == obj || GetHashCode() == obj.GetHashCode();
+			}
+
+			public override int GetHashCode()
+			{
+				return (DestCubeBlock + SourceCubeBlock + created.Value).GetHashCode();
+			}
+
+		}
+
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0); // one hour
 
 		public readonly string Content, SourceGridName, SourceBlockName;
@@ -30,6 +55,30 @@ namespace Rynchodon.AntennaRelay
 			this.destOwnerID = DestCubeblock.OwnerId;
 
 			created = Globals.ElapsedTime;
+		}
+
+		public Message(Builder_Message builder)
+		{
+			this.Content = ByteConverter.GetString(builder.Content);
+			this.SourceGridName = ByteConverter.GetString(builder.SourceGridName);
+			this.SourceBlockName = ByteConverter.GetString(builder.SourceBlockName);
+
+			IMyEntity entity;
+			if (!MyAPIGateway.Entities.TryGetEntityById(builder.DestCubeBlock, out entity) || !(entity is IMyCubeBlock))
+			{
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.DestCubeBlock, "LastSeen()", Logger.severity.WARNING);
+				return;
+			}
+			this.DestCubeBlock = (IMyCubeBlock)entity;
+			if (!MyAPIGateway.Entities.TryGetEntityById(builder.SourceCubeBlock, out entity) || !(entity is IMyCubeBlock))
+			{
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.SourceCubeBlock, "LastSeen()", Logger.severity.WARNING);
+				return;
+			}
+			this.SourceCubeBlock = (IMyCubeBlock)entity;
+
+			this.created = builder.created.ToTimeSpan();
+			this.destOwnerID = builder.destOwnerID;
 		}
 
 		public static List<Message> buildMessages(string Content, string DestGridName, string DestBlockName, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
@@ -58,7 +107,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			get
 			{
-				if (value_isValid && (DestCubeBlock == null
+				if (value_isValid &&
+					(DestCubeBlock == null
+					|| SourceCubeBlock == null
 					|| DestCubeBlock.Closed
 					|| destOwnerID != DestCubeBlock.OwnerId // dest owner changed
 					|| (Globals.ElapsedTime - created).CompareTo(MaximumLifetime) > 0)) // expired
@@ -71,5 +122,31 @@ namespace Rynchodon.AntennaRelay
 					value_isValid = false;
 			}
 		}
+
+		public Builder_Message GetBuilder()
+		{
+			Builder_Message result = new Builder_Message()
+			{
+				DestCubeBlock = DestCubeBlock.EntityId,
+				SourceCubeBlock = SourceCubeBlock.EntityId,
+				created = new SerializableGameTime(created),
+				destOwnerID = destOwnerID
+			};
+
+			List<byte> bytes = new List<byte>(Content.Length * 2);
+			ByteConverter.AppendBytes(bytes, Content);
+			result.Content = bytes.ToArray();
+
+			bytes.Clear();
+			ByteConverter.AppendBytes(bytes, SourceGridName);
+			result.SourceGridName = bytes.ToArray();
+
+			bytes.Clear();
+			ByteConverter.AppendBytes(bytes, SourceBlockName);
+			result.SourceBlockName = bytes.ToArray();
+
+			return result;
+		}
+
 	}
 }

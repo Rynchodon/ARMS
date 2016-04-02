@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Serialization;
 using Rynchodon.Update;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
 namespace Rynchodon.Weapons.SystemDisruption
@@ -13,8 +16,21 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public abstract class Disruption
 	{
 
+		[Serializable]
+		public class Builder_Disruption
+		{
+			[XmlAttribute]
+			public string Type;
+			[XmlAttribute]
+			public long EffectOwner;
+			public SerializableGameTime Expires;
+			public long[] Affected_Blocks;
+			public MyIDModule[] Affected_Owner;
+		}
+
 		private const uint UpdateFrequency = 10u;
 
+		public static HashSet<Disruption> AllDisruptions = new HashSet<Disruption>();
 		private static HashSet<IMyCubeBlock> m_allAffected = new HashSet<IMyCubeBlock>();
 
 		static Disruption()
@@ -25,10 +41,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 		static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			AllDisruptions = null;
 			m_allAffected = null;
 		}
 
 		protected Logger m_logger { get; private set; }
+
+		private long m_effectOwner;
 
 		private TimeSpan m_expire;
 		private Dictionary<IMyCubeBlock, MyIDModule> m_affected = new Dictionary<IMyCubeBlock, MyIDModule>();
@@ -51,7 +70,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		/// <param name="effectOwner">The owner of the disruption.</param>
 		public void Start(IMyCubeGrid grid, TimeSpan duration, ref int strength, long effectOwner)
 		{
-			m_logger = new Logger(GetType().Name, () => grid.DisplayName);
+			this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
 
 			if (strength < MinCost)
 			{
@@ -63,6 +82,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			int applied = 0;
 			if (!EffectOwnerCanAccess)
 				effectOwner = long.MinValue;
+			m_effectOwner = effectOwner;
 			foreach (MyObjectBuilderType type in BlocksAffected)
 			{
 				var blockGroup = cache.GetBlocksOfType(type);
@@ -102,12 +122,44 @@ namespace Rynchodon.Weapons.SystemDisruption
 					m_logger.debugLog("no blocks of type: " + type, "AddEffect()");
 			}
 FinishedBlocks:
-			if (applied != 0)
+			if (m_affected.Count != 0)
 			{
 				m_logger.debugLog("Added new effect, strength: " + applied, "AddEffect()");
 				m_expire = Globals.ElapsedTime.Add(duration);
 
-				UpdateManager.Register(UpdateFrequency, UpdateEffect, grid);
+				UpdateManager.Register(UpdateFrequency, UpdateEffect); // don't unregister on grid close, blocks can still be valid
+				AllDisruptions.Add(this);
+			}
+		}
+
+		public void Start(Builder_Disruption builder)
+		{
+			this.m_logger = new Logger(GetType().Name);
+			this.m_effectOwner = builder.EffectOwner;
+
+			for (int index = 0; index < builder.Affected_Blocks.Length; index++)
+			{
+				IMyEntity entity;
+				if (!MyAPIGateway.Entities.TryGetEntityById(builder.Affected_Blocks[index], out entity) || !(entity is IMyCubeBlock))
+				{
+					m_logger.debugLog("Block is not in world: " + builder.Affected_Blocks[index], "Start()", Logger.severity.WARNING);
+					continue;
+				}
+				IMyCubeBlock block  = (IMyCubeBlock)entity;
+				StartEffect(block);
+				// save/load will change ownership from long.MinValue to 0L
+				((MyCubeBlock)block).ChangeOwner(m_effectOwner, MyOwnershipShareModeEnum.Faction);
+				m_affected.Add(block, builder.Affected_Owner[index]);
+
+				block.SetDamageEffect(true);
+			}
+
+			if (m_affected.Count != 0)
+			{
+				m_logger.debugLog("Added old effect from builder", "AddEffect()");
+				m_expire = builder.Expires.ToTimeSpan();
+				UpdateManager.Register(UpdateFrequency, UpdateEffect);
+				AllDisruptions.Add(this);
 			}
 		}
 
@@ -120,6 +172,7 @@ FinishedBlocks:
 			{
 				m_logger.debugLog("Removing the effect", "UpdateEffect()", Logger.severity.DEBUG);
 				UpdateManager.Unregister(UpdateFrequency, UpdateEffect);
+				AllDisruptions.Remove(this);
 				RemoveEffect();
 			}
 		}
@@ -133,7 +186,7 @@ FinishedBlocks:
 			{
 				IMyCubeBlock block = pair.Key;
 				EndEffect(block);
-				
+
 				// sound files are not linked properly
 				try { block.SetDamageEffect(false); }
 				catch (NullReferenceException nre)
@@ -189,6 +242,28 @@ FinishedBlocks:
 		/// </summary>
 		/// <param name="block">The block to try to end the disruption on.</param>
 		protected virtual void EndEffect(IMyCubeBlock block) { }
+
+		public Builder_Disruption GetBuilder()
+		{
+			Builder_Disruption result = new Builder_Disruption()
+			{
+				Type = GetType().Name,
+				EffectOwner = m_effectOwner,
+				Expires = new SerializableGameTime(m_expire)
+			};
+
+			result.Affected_Blocks = new long[m_affected.Count];
+			result.Affected_Owner = new MyIDModule[m_affected.Count];
+
+			int index = 0;
+			foreach (var pair in m_affected)
+			{
+				result.Affected_Blocks[index] = pair.Key.EntityId;
+				result.Affected_Owner[index++] = pair.Value;
+			}
+
+			return result;
+		}
 
 	}
 }

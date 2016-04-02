@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage;
@@ -12,6 +13,15 @@ namespace Rynchodon.AntennaRelay
 	/// </summary>
 	public class NetworkStorage
 	{
+
+		[Serializable]
+		public class Builder_NetworkStorage
+		{
+			[XmlAttribute]
+			public long PrimaryNode;
+			public LastSeen.Builder_LastSeen[] LastSeenList;
+			public Message.Builder_Message[] MessageList;
+		}
 
 		private const ulong s_cleanInterval = Globals.UpdatesPerSecond * 60;
 
@@ -100,7 +110,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Copies all the transmissions to the target storage. Used when merging storages.
+		/// Copies all the transmissions to the target storage. Used when merging storages or adding a push to.
 		/// </summary>
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(NetworkStorage recipient)
@@ -130,11 +140,28 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("added push to: " + node.LoggingName + ", count: " + (count + 1), "AddPushTo()", Logger.severity.DEBUG);
 
 			if (count != 0)
+			{
+				m_logger.debugLog("not first connection, no copy. count: " + count, "AddPushTo()", Logger.severity.TRACE);
 				return;
+			}
+
+			if (node.Storage == null)
+			{
+				m_logger.debugLog("target node has no storage, no copy. node: " + node.LoggingName, "AddPushTo()", Logger.severity.TRACE);
+				return;
+			}
 
 			foreach (NetworkNode n in m_pushTo_count.Keys)
+			{
+				if (node == n || n.Storage == null)
+					continue;
 				if (node.Storage == n.Storage)
+				{
+					m_logger.debugLog("already pushing to storage, no copy. node: " + node.LoggingName + ", node.Storage: " + node.Storage.PrimaryNode.LoggingName +
+						", n: " + n.LoggingName + ", n.Storage: " + n.Storage.PrimaryNode.LoggingName, "AddPushTo()", Logger.severity.TRACE);
 					return;
+				}
+			}
 
 			CopyTo(node.Storage);
 		}
@@ -502,6 +529,28 @@ namespace Rynchodon.AntennaRelay
 				m_logger.debugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, "receive()", Logger.severity.DEBUG);
 			else
 				m_logger.debugLog("already have message: " + msg.Content + ", count is now " + m_messages.Count, "receive()", Logger.severity.DEBUG);
+		}
+
+		public Builder_NetworkStorage GetBuilder()
+		{
+			List<LastSeen.Builder_LastSeen> serialLastSeen = new List<LastSeen.Builder_LastSeen>(m_lastSeen.Count);
+			using (lock_lastSeen.AcquireExclusiveUsing())
+				foreach (LastSeen item in m_lastSeen.Values)
+					if (item.IsValid)
+						serialLastSeen.Add(item.GetBuilder());
+
+			List<Message.Builder_Message> serialMessage = new List<Message.Builder_Message>(m_messages.Count);
+			using (lock_messages.AcquireExclusiveUsing())
+				foreach (Message item in m_messages)
+					if (item.IsValid)
+						serialMessage.Add(item.GetBuilder());
+
+			return new Builder_NetworkStorage()
+			{
+				PrimaryNode = PrimaryNode.EntityId,
+				LastSeenList = serialLastSeen.ToArray(),
+				MessageList = serialMessage.ToArray()
+			};
 		}
 
 	}

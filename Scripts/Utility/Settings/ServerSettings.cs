@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Linq;
 using Sandbox.ModAPI;
+using Rynchodon.Utility.Network;
 
 namespace Rynchodon.Settings
 {
@@ -17,11 +18,12 @@ namespace Rynchodon.Settings
 		{
 			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			yParallelPathfinder,
+			iMaxSaveKeep,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sDefaultWeaponCommandsNPC
 		}
 
-		private const ushort ModID = 54310; // no idea what this is supposed to be
+		private static ushort ModID { get { return MessageHandler.ModId; } }
 
 		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 
@@ -190,6 +192,8 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
+
+			AllSettings.Add(SettingName.iMaxSaveKeep, new SettingMinMax<int>(1, int.MaxValue, 100));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));

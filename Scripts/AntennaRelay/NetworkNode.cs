@@ -59,6 +59,8 @@ namespace Rynchodon.AntennaRelay
 
 		public IMyCubeBlock Block { get { return m_entity as IMyCubeBlock; } }
 
+		public long EntityId { get { return m_entity.EntityId; } }
+
 		/// <summary>Contains all the LastSeen and Message for this node.</summary>
 		public NetworkStorage Storage
 		{
@@ -126,11 +128,11 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Create a NetworkNode for a missile. Update100() will have to be invoked by GuidedMissile.
 		/// </summary>
-		public NetworkNode(IMyEntity missile, IMyCubeBlock weapon, ComponentRadio radio)
+		public NetworkNode(IMyEntity missile, Func<long> ownerId, ComponentRadio radio)
 		{
 			this.m_loggingName = missile.getBestName;
 			this.m_logger = new Logger(GetType().Name, missile) { MinimumLevel = Logger.severity.INFO };
-			this.m_ownerId = () => weapon.OwnerId;
+			this.m_ownerId = ownerId;
 			this.m_entity = missile;
 			this.m_comp_radio = radio;
 
@@ -173,7 +175,20 @@ namespace Rynchodon.AntennaRelay
 						}
 						else if (node.Storage != null && this.Storage != node.Storage)
 						{
-							if (this.Storage.Size < node.Storage.Size)
+							// should prefer blocks since they are less likely to be removed from world while offline
+							if (this.Block != null && node.Block == null)
+							{
+								m_logger.debugLog("Nodes have different storages, copying to this node's storage because this node is a block", "Update()", Logger.severity.DEBUG);
+								node.Storage.CopyTo(this.Storage);
+								node.Storage = this.Storage;
+							}
+							else if (this.Block == null && node.Block != null)
+							{
+								m_logger.debugLog("Nodes have different storages, copying to other node's storage beacause other node is a block", "Update()", Logger.severity.DEBUG);
+								this.Storage.CopyTo(node.Storage);
+								this.Storage = node.Storage;
+							}
+							else if (this.Storage.Size < node.Storage.Size)
 							{
 								m_logger.debugLog("Nodes have different storages, copying to other node's storage", "Update()", Logger.severity.DEBUG);
 								this.Storage.CopyTo(node.Storage);
@@ -233,6 +248,14 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", "Update()", Logger.severity.TRACE);
 			s_sendPositionTo.Add(Storage);
 			NetworkStorage.Receive(s_sendPositionTo, new LastSeen(m_entity.GetTopMostParent(), LastSeen.UpdateTime.Broadcasting));
+		}
+
+		/// <summary>
+		/// Force this node to create a storage. Should only be called from game thread.
+		/// </summary>
+		public void ForceCreateStorage()
+		{
+			Storage = new NetworkStorage(this);
 		}
 
 		/// <summary>
