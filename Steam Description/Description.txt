@@ -52,6 +52,7 @@ bAllowWeaponControl - Enables Weapon Control and E command
 bImmortalMiner - prevents a mining Autopilot's ship from being damaged by an asteroid
 bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
+iMaxSaveKeep - The maximum number of worlds to keep save data for
 fDefaultSpeed - the desired speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to

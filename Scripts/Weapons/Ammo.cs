@@ -117,13 +117,19 @@ namespace Rynchodon.Weapons
 			try { magazineId = inv.GetItems()[0].Content.GetId(); }
 			catch (IndexOutOfRangeException)
 			{ return null; }
+
+			return GetAmmo(magazineId);
+		}
+
+		public static Ammo GetAmmo(MyDefinitionId magazineId)
+		{
 			Ammo value;
 			if (KnownDefinitions_Ammo.TryGetValue(magazineId, out value))
 				return value;
 
 			MyAmmoMagazineDefinition magDef = MyDefinitionManager.Static.GetAmmoMagazineDefinition(magazineId);
 			if (magDef == null)
-				throw new InvalidOperationException("inventory contains item that is not a magazine: " + weapon.getBestName());
+				throw new InvalidOperationException("not a magazine: " + magazineId);
 
 			value = new Ammo(magDef);
 			KnownDefinitions_Ammo.Add(magazineId, value);

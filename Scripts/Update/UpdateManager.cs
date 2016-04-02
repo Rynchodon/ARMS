@@ -414,16 +414,16 @@ namespace Rynchodon.Update
 		{
 			RegisterScripts_ClientAndServer();
 
-			if (AllBlockScriptConstructors.Count == 0
-				&& EveryBlockScriptConstructors.Count == 0
-				&& CharacterScriptConstructors.Count == 0
-				&& PlayerScriptConstructors.Count == 0
-				&& GridScriptConstructors.Count == 0)
-			{
-				myLogger.alwaysLog("No scripts registered, terminating manager", "Start()", Logger.severity.INFO);
-				ManagerStatus = Status.Terminated;
-				return;
-			}
+			//if (AllBlockScriptConstructors.Count == 0
+			//	&& EveryBlockScriptConstructors.Count == 0
+			//	&& CharacterScriptConstructors.Count == 0
+			//	&& PlayerScriptConstructors.Count == 0
+			//	&& GridScriptConstructors.Count == 0)
+			//{
+			//	myLogger.alwaysLog("No scripts registered, terminating manager", "Start()", Logger.severity.INFO);
+			//	ManagerStatus = Status.Terminated;
+			//	return;
+			//}
 
 			if (PlayerScriptConstructors.Count != 0)
 				RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
@@ -469,6 +469,9 @@ namespace Rynchodon.Update
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Large")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Small")).Enabled = false;
 			}
+
+			// load persistent data
+			Saver.Instance.DoLoad();
 		}
 
 		/// <summary>

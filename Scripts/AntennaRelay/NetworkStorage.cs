@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage.Collections;
@@ -11,6 +12,15 @@ namespace Rynchodon.AntennaRelay
 	/// </summary>
 	public class NetworkStorage
 	{
+
+		[Serializable]
+		public class Builder_NetworkStorage
+		{
+			[XmlAttribute]
+			public long PrimaryNode;
+			public LastSeen.Builder_LastSeen[] LastSeenList;
+			public Message.Builder_Message[] MessageList;
+		}
 
 		private const ulong s_cleanInterval = Globals.UpdatesPerSecond * 60;
 
@@ -78,6 +88,25 @@ namespace Rynchodon.AntennaRelay
 			this.PrimaryNode = primary;
 
 			m_logger.debugLog("Created", "NetworkStorage()", Logger.severity.DEBUG);
+		}
+
+		public NetworkStorage(Builder_NetworkStorage builder)
+		{
+			if (!Registrar.TryGetValue(builder.PrimaryNode, out PrimaryNode))
+			{
+				this.m_logger = new Logger(GetType().Name, "Invalid");
+				this.m_logger.alwaysLog("Failed to get primary node from builder: " + builder.PrimaryNode, "NetworkStorage()", Logger.severity.WARNING);
+				return;
+			}
+			this.m_logger = new Logger(GetType().Name, () => PrimaryNode.LoggingName);
+
+			foreach (LastSeen.Builder_LastSeen bls in builder.LastSeenList)
+				m_lastSeen.Add(bls.EntityId, new LastSeen(bls));
+
+			foreach (Message.Builder_Message bm in builder.MessageList)
+				m_messages.Add(new Message(bm));
+
+			m_logger.debugLog("Created from Builder_NetworkStorage", "NetworkStorage()", Logger.severity.DEBUG);
 		}
 
 		/// <summary>
@@ -501,6 +530,28 @@ namespace Rynchodon.AntennaRelay
 				m_logger.debugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, "receive()", Logger.severity.DEBUG);
 			else
 				m_logger.debugLog("already have message: " + msg.Content + ", count is now " + m_messages.Count, "receive()", Logger.severity.DEBUG);
+		}
+
+		public Builder_NetworkStorage GetBuilder()
+		{
+			List<LastSeen.Builder_LastSeen> serialLastSeen = new List<LastSeen.Builder_LastSeen>(m_lastSeen.Count);
+			using (lock_lastSeen.AcquireExclusiveUsing())
+				foreach (LastSeen item in m_lastSeen.Values)
+					if (item.IsValid)
+						serialLastSeen.Add(item.GetBuilder());
+
+			List<Message.Builder_Message> serialMessage = new List<Message.Builder_Message>(m_messages.Count);
+			using (lock_messages.AcquireExclusiveUsing())
+				foreach (Message item in m_messages)
+					if (item.IsValid)
+						serialMessage.Add(item.GetBuilder());
+
+			return new Builder_NetworkStorage()
+			{
+				PrimaryNode = PrimaryNode.EntityId,
+				LastSeenList = serialLastSeen.ToArray(),
+				MessageList = serialMessage.ToArray()
+			};
 		}
 
 	}
