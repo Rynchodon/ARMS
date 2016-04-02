@@ -90,25 +90,6 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("Created", "NetworkStorage()", Logger.severity.DEBUG);
 		}
 
-		public NetworkStorage(Builder_NetworkStorage builder)
-		{
-			if (!Registrar.TryGetValue(builder.PrimaryNode, out PrimaryNode))
-			{
-				this.m_logger = new Logger(GetType().Name, "Invalid");
-				this.m_logger.alwaysLog("Failed to get primary node from builder: " + builder.PrimaryNode, "NetworkStorage()", Logger.severity.WARNING);
-				return;
-			}
-			this.m_logger = new Logger(GetType().Name, () => PrimaryNode.LoggingName);
-
-			foreach (LastSeen.Builder_LastSeen bls in builder.LastSeenList)
-				m_lastSeen.Add(bls.EntityId, new LastSeen(bls));
-
-			foreach (Message.Builder_Message bm in builder.MessageList)
-				m_messages.Add(new Message(bm));
-
-			m_logger.debugLog("Created from Builder_NetworkStorage", "NetworkStorage()", Logger.severity.DEBUG);
-		}
-
 		/// <summary>
 		/// Creates a new NetworkStorage with all the same LastSeen and Message. Used when nodes lose connection.
 		/// </summary>
@@ -128,7 +109,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Copies all the transmissions to the target storage. Used when merging storages.
+		/// Copies all the transmissions to the target storage. Used when merging storages or adding a push to.
 		/// </summary>
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(NetworkStorage recipient)
@@ -158,11 +139,28 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("added push to: " + node.LoggingName + ", count: " + (count + 1), "AddPushTo()", Logger.severity.DEBUG);
 
 			if (count != 0)
+			{
+				m_logger.debugLog("not first connection, no copy. count: " + count, "AddPushTo()", Logger.severity.TRACE);
 				return;
+			}
+
+			if (node.Storage == null)
+			{
+				m_logger.debugLog("target node has no storage, no copy. node: " + node.LoggingName, "AddPushTo()", Logger.severity.TRACE);
+				return;
+			}
 
 			foreach (NetworkNode n in m_pushTo_count.Keys)
+			{
+				if (node == n || n.Storage == null)
+					continue;
 				if (node.Storage == n.Storage)
+				{
+					m_logger.debugLog("already pushing to storage, no copy. node: " + node.LoggingName + ", node.Storage: " + node.Storage.PrimaryNode.LoggingName +
+						", n: " + n.LoggingName + ", n.Storage: " + n.Storage.PrimaryNode.LoggingName, "AddPushTo()", Logger.severity.TRACE);
 					return;
+				}
+			}
 
 			CopyTo(node.Storage);
 		}

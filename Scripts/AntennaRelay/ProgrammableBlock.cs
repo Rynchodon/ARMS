@@ -72,6 +72,8 @@ namespace Rynchodon.AntennaRelay
 
 		public void Update100()
 		{
+			m_networkClient.GetStorage(); // force update so messages do not get stuck
+
 			UpdateInstructions();
 
 			if (!HasInstructions)
@@ -163,7 +165,6 @@ namespace Rynchodon.AntennaRelay
 					if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
 					{
 						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
-						program.m_networkClient.GetStorage(); // force update of storage
 						store.Receive(new Message(message, block, m_block));
 						count++;
 					}
@@ -179,7 +180,6 @@ namespace Rynchodon.AntennaRelay
 					if (MyAPIGateway.Multiplayer.IsServer)
 					{
 						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
-						autopilot.m_block.NetClient.GetStorage(); // force update of storage
 						store.Receive(new Message(message, block, m_block));
 					}
 					else

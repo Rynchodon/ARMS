@@ -104,6 +104,7 @@ namespace Rynchodon.Update
 
 				Builder_ArmsData data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
 
+				Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
 				SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
 				foreach (NetworkStorage.Builder_NetworkStorage bns in data.AntennaStorage)
 				{
@@ -130,15 +131,28 @@ namespace Rynchodon.Update
 						LastSeen ls = new LastSeen(bls);
 						if (ls.IsValid)
 							store.Receive(ls);
+						else
+							m_logger.debugLog("failed to create a valid last seen from builder", "DoLoad()", Logger.severity.WARNING);
 					}
 
 					m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, "DoLoad()", Logger.severity.DEBUG);
 
 					foreach (Message.Builder_Message bm in bns.MessageList)
 					{
-						Message m = new Message(bm);
-						if (m.IsValid)
-							store.Receive(m);
+						Message msg;
+						if (!messages.TryGetValue(bm, out msg))
+						{
+							msg = new Message(bm);
+							messages.Add(bm, msg);
+						}
+						else
+						{
+							m_logger.debugLog("found linked message", "DoLoad()", Logger.severity.TRACE);
+						}
+						if (msg.IsValid)
+							store.Receive(msg);
+						else
+							m_logger.debugLog("failed to create a valid message from builder", "DoLoad()", Logger.severity.WARNING);
 					}
 
 					m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, "DoLoad()", Logger.severity.DEBUG);

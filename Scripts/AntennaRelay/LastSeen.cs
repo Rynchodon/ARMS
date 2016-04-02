@@ -143,6 +143,7 @@ namespace Rynchodon.AntennaRelay
 			this.LastJam = builder.LastJam.ToTimeSpan();
 			if (builder.Info != null)
 				this.Info = new RadarInfo(builder.Info);
+			this.value_isValid = true;
 		}
 
 		private bool isNewerThan(LastSeen other)

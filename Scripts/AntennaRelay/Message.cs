@@ -21,6 +21,17 @@ namespace Rynchodon.AntennaRelay
 			public byte[] Content, SourceGridName, SourceBlockName;
 			public SerializableGameTime created;
 			public long destOwnerID;
+
+			public override bool Equals(object obj)
+			{
+				return this == obj || GetHashCode() == obj.GetHashCode();
+			}
+
+			public override int GetHashCode()
+			{
+				return (DestCubeBlock + SourceCubeBlock + created.Value).GetHashCode();
+			}
+
 		}
 
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0); // one hour
