@@ -15,6 +15,10 @@ namespace Rynchodon.Update
 	/// <summary>
 	/// Saves/loads persistent data to/from a file.
 	/// </summary>
+	/// <remarks>
+	/// Path is used as unique identifier for saving. Name is updated after using "Save As".
+	/// Path is saved as a variable inside the save file so that if "Save As" is used from main menu, data can be loaded from previous save.
+	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Saver : MySessionComponentBase
 	{
@@ -28,10 +32,9 @@ namespace Rynchodon.Update
 			public long SaveTime = Globals.ElapsedTime.Ticks;
 			public NetworkStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
-			public GuidedMissile.Builder_GuidedMissile[] GuidedMissiles;
 		}
 
-		private const string FileIdString = "ARMS save file id";
+		private const string SaveIdString = "ARMS save file id";
 
 		public static Saver Instance;
 
@@ -56,16 +59,47 @@ namespace Rynchodon.Update
 
 				m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", ServerSettings.GetSetting<int>(ServerSettings.SettingName.iMaxSaveKeep));
 
-				long fileId;
-				if (!MyAPIGateway.Utilities.GetVariable<long>(FileIdString, out fileId))
-					return;
+				string saveId_fromPath = GetSaveIdFromPath();
+				string saveId_fromWorld;
+				System.IO.TextReader reader = m_fileMaster.GetTextReader(saveId_fromPath);
 
-				var reader = m_fileMaster.GetTextReader(fileId + ".xml");
-
-				if (reader == null)
+				// if file from path exists, it should match stored value
+				if (reader != null)
 				{
-					m_logger.debugLog("Save file is missing!", "DoLoad()", Logger.severity.ERROR);
-					return;
+					if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
+					{
+						m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, "DoLoad()", Logger.severity.ERROR);
+					}
+					else if (saveId_fromPath != saveId_fromWorld)
+					{
+						m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, "DoLoad()", Logger.severity.ERROR);
+
+						// prefer from world
+						System.IO.TextReader reader2 = m_fileMaster.GetTextReader(saveId_fromWorld);
+						if (reader2 != null)
+							reader = reader2;
+						else
+							m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, "DoLoad()", Logger.severity.ERROR);
+					}
+				}
+				else
+				{
+					if (MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
+					{
+						reader = m_fileMaster.GetTextReader(saveId_fromWorld);
+						if (reader != null)
+							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, "DoLoad()", Logger.severity.DEBUG);
+						else
+						{
+							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, "DoLoad()", Logger.severity.DEBUG);
+							return;
+						}
+					}
+					else
+					{
+						m_logger.alwaysLog("Cannot load world, no save id found", "DoLoad()", Logger.severity.DEBUG);
+						return;
+					}
 				}
 
 				Builder_ArmsData data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
@@ -149,11 +183,7 @@ namespace Rynchodon.Update
 					disrupt.Start(bd);
 				}
 
-				foreach (GuidedMissile.Builder_GuidedMissile bgm in data.GuidedMissiles)
-					GuidedMissile.CreateFromBuilder(bgm);
-
-				m_logger.debugLog("loading complete", "DoLoad()", Logger.severity.INFO);
-				Logger.debugNotify("loading complete: " + fileId, 10000, Logger.severity.INFO);
+				m_logger.debugLog("Loaded from " + saveId_fromWorld, "DoLoad()", Logger.severity.INFO);
 			}
 			catch (Exception ex)
 			{
@@ -169,6 +199,10 @@ namespace Rynchodon.Update
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer || m_fileMaster == null)
 				return;
+
+			// critical this happens before SE saves variables (has not been an issue)
+			string fileId = GetSaveIdFromPath();
+			MyAPIGateway.Utilities.SetVariable(SaveIdString, fileId);
 
 			try
 			{
@@ -194,30 +228,23 @@ namespace Rynchodon.Update
 
 				data.SystemDisruption = systemDisrupt.ToArray();
 
-				List<GuidedMissile.Builder_GuidedMissile> guidedMissiles = new List<GuidedMissile.Builder_GuidedMissile>();
-				GuidedMissile.ForEach(guided => {
-					GuidedMissile.Builder_GuidedMissile bgm = guided.GetBuilder();
-					if (bgm != null)
-						guidedMissiles.Add(bgm);
-				});
-
-				data.GuidedMissiles = guidedMissiles.ToArray();
-
-				long Ticks = DateTime.UtcNow.Ticks;
-				MyAPIGateway.Utilities.SetVariable<long>(FileIdString, Ticks);
-
-				var writer = m_fileMaster.GetTextWriter(Ticks + ".xml");
+				var writer = m_fileMaster.GetTextWriter(fileId);
 				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));
 				writer.Close();
 
-				m_logger.debugLog("Saved to " + Ticks, "SaveData()", Logger.severity.INFO);
-				Logger.debugNotify("Saved to " + Ticks, 10000, Logger.severity.INFO);
+				m_logger.debugLog("Saved to " + fileId, "SaveData()", Logger.severity.INFO);
 			}
 			catch (Exception ex)
 			{
 				m_logger.alwaysLog("Exception: " + ex, "SaveData()", Logger.severity.ERROR);
 				Logger.notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
 			}
+		}
+
+		private string GetSaveIdFromPath()
+		{
+			string path = MyAPIGateway.Session.CurrentPath;
+			return path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1) + ".xml";
 		}
 
 	}
