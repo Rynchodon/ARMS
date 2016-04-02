@@ -232,17 +232,21 @@ namespace Rynchodon.Autopilot
 			m_navSet.OnTaskComplete_NavEngage();
 			m_mover.MoveAndRotateStop();
 
-			m_logger.debugLog(!m_originalPosition.IsValid(), "original position is invalid", "EndEngage()", Logger.severity.FATAL);
-			if (m_originalDestEntity != null)
+			if (m_originalPosition.IsValid())
 			{
-				m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
-				new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
+				if (m_originalDestEntity != null)
+				{
+					m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
+					new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
+				}
+				else
+				{
+					m_logger.debugLog("return to original position: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
+					new GOLIS(m_mover, m_navSet, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
+				}
 			}
 			else
-			{
-				m_logger.debugLog("return to original position: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
-				new GOLIS(m_mover, m_navSet, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
-			}
+				m_logger.debugLog("original postion is invalid, no return possible", "EndEngage()");
 
 			m_engageSet = false;
 		}

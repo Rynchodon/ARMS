@@ -43,7 +43,7 @@ namespace Rynchodon.Weapons
 			{
 				if (FallBackInstruct == null)
 				{
-					FallBackInstruct = ServerSettings.GetSettingString(ServerSettings.SettingName.sWeaponCommandsNPC);
+					FallBackInstruct = ServerSettings.GetSettingString(ServerSettings.SettingName.sDefaultWeaponCommandsNPC);
 					if (string.IsNullOrWhiteSpace(FallBackInstruct))
 						FallBackInstruct = null;
 				}

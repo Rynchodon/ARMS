@@ -41,6 +41,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private LineSegmentD m_approach;
 		private Vector3D m_depositPos;
 		private Vector3D m_currentTarget;
+		/// <summary>For planet, we save a surface point and use that to check if we are near the planet.</summary>
+		private Vector3D m_surfacePoint;
 		private string m_depositOre;
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
@@ -96,7 +98,7 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.Settings_Commands.Complaint = ReturnCause_Heavy;
 								return;
 							}
-							if (m_mover.ThrustersOverWorked(0.8f))
+							if (m_mover.ThrustersOverWorked(Mover.OverworkedThreshold - 0.1f))
 							{
 								m_logger.debugLog(ReturnCause_OverWorked, "set_m_state()");
 								m_navSet.OnTaskComplete_NavRot();
@@ -149,7 +151,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
 							Vector3D pos = m_navDrill.WorldPosition;
 							m_currentTarget = pos + Vector3D.Normalize(pos - m_targetVoxel.GetCentre()) * 100d;
-							m_navSet.Settings_Task_NavMove.IgnoreAsteroid = false; 
+							m_navSet.Settings_Task_NavMove.IgnoreAsteroid = false;
 							break;
 						}
 					default:
@@ -233,6 +235,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					if (m_mover.IsStuck)
 					{
+						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -241,6 +244,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.StopMove();
 					if (m_mover.IsStuck)
 					{
+						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -248,12 +252,13 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.MoveTo:
 					if (m_navSet.Settings_Current.Distance < m_longestDimension)
 					{
-						m_logger.debugLog("Reached asteroid", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Reached target voxel", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining;
 						return;
 					}
 					if (m_mover.IsStuck)
 					{
+						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -274,7 +279,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					if (m_mover.ThrustersOverWorked())
 					{
-						m_logger.debugLog("Drills overworked, aborting", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Thrusters overworked, aborting", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -287,6 +292,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 					if (m_mover.IsStuck)
 					{
+						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -303,7 +309,6 @@ namespace Rynchodon.Autopilot.Navigator
 					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
-						Logger.debugNotify("Stuck", 16);
 						m_state = State.Mining_Tunnel;
 						return;
 					}
@@ -325,6 +330,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 					if (m_mover.IsStuck)
 					{
+						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -339,7 +345,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Move_Away:
 					if (m_targetVoxel == null)
 					{
-						m_logger.debugLog("no asteroid centre", "Move()");
+						m_logger.debugLog("no target voxel", "Move()");
 						m_state = State.GetTarget;
 						return;
 					}
@@ -352,7 +358,6 @@ namespace Rynchodon.Autopilot.Navigator
 					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", "Move()");
-						Logger.debugNotify("Stuck", 16);
 						m_state = State.Mining_Tunnel;
 						return;
 					}
@@ -392,7 +397,8 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 						break;
 				}
-				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.WorldGravity));
+				m_mover.myThrust.Update();
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.myThrust.WorldGravity.vector));
 				return;
 			}
 
@@ -431,12 +437,14 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 			//m_logger.debugLog("rotating to face " + m_currentTarget, "Rotate()");
 			if (m_state == State.Approaching)
 				m_mover.CalcRotate();
 			else
+			{
+				Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
 				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+			}
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -453,7 +461,10 @@ namespace Rynchodon.Autopilot.Navigator
 			switch (m_state)
 			{
 				case State.Approaching:
-					customInfo.AppendLine("Approaching asteroid");
+					if (isMiningPlanet)
+						customInfo.AppendLine("Approaching planet");
+					else
+						customInfo.AppendLine("Approaching asteroid");
 					break;
 				case State.Rotating:
 					customInfo.AppendLine("Rotating to face deposit");
@@ -469,13 +480,19 @@ namespace Rynchodon.Autopilot.Navigator
 					customInfo.AppendLine(m_depositPos.ToPretty());
 					break;
 				case State.Mining_Escape:
-					customInfo.AppendLine("Leaving asteroid");
+					if (isMiningPlanet)
+						customInfo.AppendLine("Leaving planet");
+					else
+						customInfo.AppendLine("Leaving asteroid");
 					break;
 				case State.Mining_Tunnel:
 					customInfo.AppendLine("Tunneling");
 					break;
 				case State.Move_Away:
-					customInfo.AppendLine("Moving away from asteroid");
+					if (isMiningPlanet)
+						customInfo.AppendLine("Moving away from planet");
+					else
+						customInfo.AppendLine("Moving away from asteroid");
 					break;
 			}
 		}
@@ -529,8 +546,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <returns>The lesser of maximum forward and backwards accelerations.</returns>
 		private float GetAcceleration()
 		{
-			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward));
-			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward));
+			m_mover.myThrust.Update();
+			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), true);
+			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), true);
 
 			return Math.Min(forwardForce, backwardForce) / m_navDrill.Physics.Mass;
 		}
@@ -577,9 +595,8 @@ namespace Rynchodon.Autopilot.Navigator
 			m_depositOre = oreName;
 
 			Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
-			float bufferDist = Math.Max(m_longestDimension, m_navSet.Settings_Current.DestinationRadius);
-			GetExteriorPoint(m_depositPos, toCentre, bufferDist, exterior => {
-				m_approach = new LineSegmentD(exterior - toCentre * bufferDist * 10f, exterior);
+			GetExteriorPoint(m_depositPos, toCentre, m_longestDimension, exterior => {
+				m_approach = new LineSegmentD(exterior - toCentre * m_longestDimension * 10f, exterior);
 				m_state = State.Approaching;
 				m_logger.debugLog("approach: " + m_approach.From.ToGpsTag("From") + ", " + m_approach.To.ToGpsTag("To"), "OnOreSearchComplete()");
 			});
@@ -637,19 +654,24 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				Vector3D surfacePoint = planet.GetClosestSurfacePointGlobal(ref startPoint);
-				Vector3D exteriorPoint = surfacePoint - direction * buffer;
+				m_surfacePoint = planet.GetClosestSurfacePointGlobal(ref startPoint);
+				Vector3D exteriorPoint = m_surfacePoint - direction * buffer;
 				callback(exteriorPoint);
 			}, m_logger);
 		}
 
 		private bool IsNearVoxel(double lengthMulti = 1d)
 		{
-			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
 			if (m_targetVoxel is IMyVoxelMap)
+			{
+			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
 				return m_targetVoxel.GetIntersectionWithSphere(ref surround);
+			}
 			else
-				return false;
+			{
+				Vector3D planetCentre = m_targetVoxel.GetCentre();
+				return Vector3D.Distance(m_navDrill.WorldPosition, planetCentre) - m_longestDimension * lengthMulti < Vector3D.Distance(m_surfacePoint, planetCentre);
+			}
 		}
 
 		private void MoveCurrent()

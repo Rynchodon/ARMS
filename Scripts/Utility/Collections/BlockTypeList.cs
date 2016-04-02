@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
 using System.Linq;
+using VRage;
 using VRage.Game.ModAPI; // from VRage.Game.dll
 using VRage.ObjectBuilders;
 

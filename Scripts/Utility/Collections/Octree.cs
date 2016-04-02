@@ -1,3 +1,5 @@
+// skip file on build
+
 using System; // (partial) from mscorlib.dll
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
 using VRage.Library.Utils; // from VRage.Library.dll

@@ -18,7 +18,7 @@ namespace Rynchodon.Weapons
 
 		static Turret()
 		{
-			s_npcHasOpts = !string.IsNullOrWhiteSpace(Settings.ServerSettings.GetSettingString(Settings.ServerSettings.SettingName.sWeaponCommandsNPC));
+			s_npcHasOpts = !string.IsNullOrWhiteSpace(Settings.ServerSettings.GetSettingString(Settings.ServerSettings.SettingName.sDefaultWeaponCommandsNPC));
 		}
 
 		/// <summary>vanilla property</summary>

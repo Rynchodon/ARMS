@@ -5,6 +5,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;

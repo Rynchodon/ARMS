@@ -125,8 +125,8 @@ namespace Rynchodon
 
 		public Vector3 ToLocalNormalized()
 		{
-			if (!norm_world.HasValue)
-				norm_world = Vector3.Normalize(ToLocal());
+			if (!norm_local.HasValue)
+				norm_local = Vector3.Normalize(ToLocal());
 			return norm_local.Value;
 		}
 

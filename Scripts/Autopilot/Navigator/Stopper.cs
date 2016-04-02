@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -24,8 +25,7 @@ namespace Rynchodon.Autopilot.Navigator
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			m_exitAfter = exitAfter;
 
-			m_mover.StopMove();
-			m_mover.StopRotate();
+			m_mover.MoveAndRotateStop();
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 		}
@@ -35,7 +35,10 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() == 0f && m_mover.Block.Physics.AngularVelocity.LengthSquared() == 0f)
+			// stopping in gravity does not work exactly, players should not be using EXIT anyway
+			float threshold = m_mover.myThrust.LocalGravity.vector != Vector3.Zero ? 0.1f : 0f;
+
+			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() <= threshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() <= threshold)
 			{
 				INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
 				if (rotator != null && !m_navSet.DirectionMatched())
@@ -44,7 +47,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
-				m_mover.StopRotate();
+				m_mover.MoveAndRotateStop();
 				_logger.debugLog("stopped", "Stopper()");
 				m_navSet.OnTaskComplete_NavRot();
 				if (m_exitAfter)
@@ -53,8 +56,6 @@ namespace Rynchodon.Autopilot.Navigator
 					m_controlBlock.SetControl(false);
 				}
 			}
-			//else
-			//	_logger.debugLog("not stopped", "Stopper()");
 		}
 
 		/// <summary>

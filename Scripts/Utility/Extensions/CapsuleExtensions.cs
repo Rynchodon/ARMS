@@ -201,29 +201,29 @@ namespace Rynchodon
 				|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength);
 		}
 
-		public static bool Intersects(this Capsule capsule, MyPlanet planet, out Vector3? pointOfObstruction, float capsuleLength = -1)
-		{
-			if (capsuleLength < 0)
-				capsuleLength = capsule.get_length();
-			float halfLength = capsuleLength / 2;
-			Vector3 middle = capsule.get_Middle();
+		//public static bool Intersects(this Capsule capsule, MyPlanet planet, out Vector3? pointOfObstruction, float capsuleLength = -1)
+		//{
+		//	if (capsuleLength < 0)
+		//		capsuleLength = capsule.get_length();
+		//	float halfLength = capsuleLength / 2;
+		//	Vector3 middle = capsule.get_Middle();
 
-			BoundingSphereD checkSphere = new BoundingSphereD(middle, halfLength + capsule.Radius);
-			if (!planet.Intersects(ref checkSphere))
-			{
-				pointOfObstruction = null;
-				return false;
-			}
+		//	BoundingSphereD checkSphere = new BoundingSphereD(middle, halfLength + capsule.Radius);
+		//	if (!planet.Intersects(ref checkSphere))
+		//	{
+		//		pointOfObstruction = null;
+		//		return false;
+		//	}
 
-			if (capsuleLength < 1f)
-			{
-				pointOfObstruction = middle;
-				return true;
-			}
+		//	if (capsuleLength < 1f)
+		//	{
+		//		pointOfObstruction = middle;
+		//		return true;
+		//	}
 
-			return Intersects(new Capsule(capsule.P0, middle, capsule.Radius), planet, out pointOfObstruction, halfLength)
-				|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), planet, out pointOfObstruction, halfLength);
-		}
+		//	return Intersects(new Capsule(capsule.P0, middle, capsule.Radius), planet, out pointOfObstruction, halfLength)
+		//		|| Intersects(new Capsule(capsule.P1, middle, capsule.Radius), planet, out pointOfObstruction, halfLength);
+		//}
 
 	}
 }

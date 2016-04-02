@@ -1,6 +1,7 @@
 using System.Text; // from mscorlib.dll
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI; // from VRage.Game.dll
 using VRageMath;
@@ -42,6 +43,12 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
 			{
 				m_logger.debugLog("Cannot fly to entity, attached: " + targetEntity.getBestName() + ", creating GOLIS", "Waypoint()", Logger.severity.WARNING);
+				new GOLIS(mover, navSet, TargetPosition, level);
+				return;
+			}
+			if (targetEntity.Physics == null)
+			{
+				m_logger.debugLog("Target has no physics: " + targetEntity.getBestName() + ", creating GOLIS", "Waypoint()", Logger.severity.WARNING);
 				new GOLIS(mover, navSet, TargetPosition, level);
 				return;
 			}

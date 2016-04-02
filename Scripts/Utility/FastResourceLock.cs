@@ -1,4 +1,6 @@
-﻿using System;
+﻿// skip file on build
+
+using System;
 using System.Text;
 using Sandbox.ModAPI;
 using VRage;
@@ -9,7 +11,7 @@ namespace Rynchodon
 	/// <summary>
 	/// Wrapper for VRage.FastResourceLock to log problems.
 	/// </summary>
-	public class FastResourceLock
+	public class FastResourceLock_debug
 	{
 		private const int recentActivityCount = 20;
 		private const ulong timeout = 3600ul;

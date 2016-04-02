@@ -26,6 +26,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private float m_altitude;
 		private float m_orbitSpeed;
 		private Vector3 m_orbitAxis;
+		private Vector3 m_targetPositionOffset = Vector3.Zero;
+		private bool m_flyTo = true;
 
 		private Vector3 m_faceDirection;
 
@@ -36,12 +38,49 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				value_orbitEntity = value;
 				if (value == null)
+				{
+					m_altitude = 0f;
+					m_targetPositionOffset = Vector3.Zero;
 					return;
-				m_altitude = (float)Vector3D.Distance(m_navBlock.WorldPosition, value_orbitEntity.GetCentre());
+				}
+
+				m_navSet.Settings_Task_NavMove.DestinationEntity = value;
+
+				if (value is IMyCubeGrid)
+				{
+					Vector3D navBlockPos = m_navBlock.WorldPosition;
+					double distSquared;
+					MyPlanet closest = MyPlanetExtensions.GetClosestPlanet(navBlockPos, out distSquared);
+					m_logger.debugLog(closest != null, () => "distance to closest: " + Math.Sqrt(distSquared) + ", MaximumRadius: " + closest.MaximumRadius, "set_OrbitEntity()");
+					if (closest != null && distSquared < closest.MaximumRadius * closest.MaximumRadius)
+					{
+						Vector3D targetCentre = value.GetCentre();
+						m_orbitAxis = Vector3D.Normalize(targetCentre - closest.GetCentre());
+
+						const float heightRatio = 0.866f; // sin(60°), target can be at most 60° below horizontal
+						float maxAxisHeight = m_altitude < 1f ? (float)Vector3D.Distance(navBlockPos, targetCentre) * heightRatio : m_altitude * heightRatio;
+
+						Line orbitAxis = new Line(Vector3.Zero, m_orbitAxis * maxAxisHeight);
+						Vector3D closestPoint = orbitAxis.ClosestPoint(navBlockPos - targetCentre) + targetCentre;
+						m_targetPositionOffset = closestPoint - targetCentre;
+
+						if (m_altitude < 1f)
+							m_altitude = (float)Vector3D.Distance(navBlockPos, closestPoint);
+						else
+							m_altitude = (float)Math.Sqrt(m_altitude * m_altitude - Vector3D.DistanceSquared(closestPoint, targetCentre));
+
+						m_logger.debugLog("near a planet, circling at constant distance to planet, altitude: " + m_altitude + ", axis: " + m_orbitAxis + ", target centre: " +
+							targetCentre + ", closestPoint: " + closestPoint + ", target offset: " + m_targetPositionOffset, "set_OrbitEntity()", Logger.severity.DEBUG);
+						return;
+					}
+				}
+				if (m_altitude < 1f)
+					m_altitude = (float)Vector3D.Distance(m_navBlock.WorldPosition, value_orbitEntity.GetCentre());
 				Vector3D toTarget = value_orbitEntity.GetCentre() - m_navBlock.WorldPosition;
 				m_orbitAxis = Vector3D.CalculatePerpendicularVector(toTarget);
 				m_orbitAxis.Normalize();
-				m_navSet.Settings_Task_NavMove.DestinationEntity = value;
+
+				m_logger.debugLog("altitude: " + m_altitude + ", axis: " + m_orbitAxis, "set_OrbitEntity()", Logger.severity.DEBUG);
 			}
 		}
 
@@ -85,8 +124,9 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_navBlock = faceBlock;
 			this.m_orbitEntity_name = name;
 
-			OrbitEntity = entity;
 			m_altitude = altitude;
+			OrbitEntity = entity;
+
 			CalcFakeOrbitSpeedForce();
 			m_logger.debugLog("Orbiting: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
 		}
@@ -118,6 +158,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			float maxSpeed = m_navSet.Settings_Task_NavMove.SpeedTarget;
 			float forceForMaxSpeed = m_navBlock.Grid.Physics.Mass * maxSpeed * maxSpeed / m_altitude;
+			m_mover.myThrust.Update();
 			float maxForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navBlock.LocalMatrix.Forward)) * Mover.AvailableForceRatio;
 
 			m_logger.debugLog("maxSpeed: " + maxSpeed + ", mass: " + m_navBlock.Grid.Physics.Mass + ", m_altitude: " + m_altitude + ", forceForMaxSpeed: " + forceForMaxSpeed + ", maxForce: " + maxForce, "CalcFakeOrbitSpeedForce()", Logger.severity.INFO);
@@ -138,7 +179,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_gridFinder != null)
 			{
-				m_logger.debugLog("updating grid finder", "Move()");
+				//m_logger.debugLog("updating grid finder", "Move()");
 				m_gridFinder.Update();
 
 				if (m_gridFinder.Grid == null)
@@ -156,7 +197,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			Vector3D targetCentre = OrbitEntity.GetCentre();
+			Vector3D targetCentre = OrbitEntity.GetCentre() + m_targetPositionOffset;
 
 			m_faceDirection = Vector3.Reject(targetCentre - m_navBlock.WorldPosition, m_orbitAxis);
 			float alt = m_faceDirection.Normalize();
@@ -178,7 +219,10 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			customInfo.Append("Orbiting: ");
+			if (m_flyTo)
+				customInfo.Append("Orbiter moving to: ");
+			else
+				customInfo.Append("Orbiting: ");
 			if (OrbitEntity is MyVoxelMap)
 				customInfo.AppendLine("Asteroid");
 			else if (OrbitEntity is MyPlanet)
@@ -198,11 +242,29 @@ namespace Rynchodon.Autopilot.Navigator
 		public void Rotate()
 		{
 			if (OrbitEntity == null)
+			{
+				m_flyTo = true;
 				m_mover.StopRotate();
-			else if (OrbitEntity is MyPlanet || m_navSet.DistanceLessThan(m_orbitSpeed))
+			}
+			else if (OrbitEntity is MyPlanet)
+			{
+				m_flyTo = false;
 				m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_faceDirection));
+			}
+			else if (m_navSet.DistanceLessThan(m_orbitSpeed))
+			{
+				if (m_flyTo)
+				{
+					CalcFakeOrbitSpeedForce();
+					m_flyTo = false;
+				}
+				m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_faceDirection));
+			}
 			else
+			{
+				m_flyTo = true;
 				m_mover.CalcRotate();
+			}
 		}
 
 	}

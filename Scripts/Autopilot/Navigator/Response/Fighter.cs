@@ -80,7 +80,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("new target: " + enemy.Entity.getBestName(), "UpdateTarget()", Logger.severity.DEBUG);
 				m_currentTarget = enemy;
-				m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, enemy.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
+				m_navSet.Settings_Task_NavEngage.DestinationEntity = m_currentTarget.Entity;
 			}
 		}
 
@@ -121,10 +121,21 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_orbiter == null)
+			if (m_currentTarget == null)
 			{
 				m_mover.StopMove();
 				return;
+			}
+
+			if (m_orbiter == null)
+			{
+				if (m_navSet.DistanceLessThan(m_weaponRange_min * 2f))
+					m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
+				else
+				{
+					m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition(), m_currentTarget.Entity.Physics.LinearVelocity);
+					return;
+				}
 			}
 
 			m_orbiter.Move();
@@ -152,7 +163,8 @@ namespace Rynchodon.Autopilot.Navigator
 			if (!FiringDirection.HasValue)
 			{
 				//m_logger.debugLog("no target", "Rotate()");
-				m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget.Entity.GetCentre() - m_controlBlock.CubeBlock.GetPosition()));
+				//m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget.Entity.GetCentre() - m_controlBlock.CubeBlock.GetPosition()));
+				m_mover.CalcRotate();
 				return;
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
@@ -165,7 +177,10 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_orbiter != null)
 				m_orbiter.AppendCustomInfo(customInfo);
 			else
-				customInfo.AppendLine("No orbiter!");
+			{
+				customInfo.Append("Fighter moving to: ");
+				customInfo.AppendLine(m_currentTarget.HostileName());
+			}
 		}
 
 		private void Arm()
