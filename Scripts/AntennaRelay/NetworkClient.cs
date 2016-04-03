@@ -32,7 +32,7 @@ namespace Rynchodon.AntennaRelay
 
 		private bool IsConnected(NetworkNode node)
 		{
-			return !node.Block.Closed && m_block.canConsiderFriendly(node.Block) && AttachedGrid.IsGridAttached(m_block.CubeGrid, node.Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal);
+			return !node.Block.Closed && node.Block.IsWorking && m_block.canConsiderFriendly(node.Block) && AttachedGrid.IsGridAttached(m_block.CubeGrid, node.Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal);
 		}
 
 		private NetworkNode GetNode()

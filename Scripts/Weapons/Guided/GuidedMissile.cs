@@ -69,7 +69,6 @@ namespace Rynchodon.Weapons.Guided
 		private static ThreadManager Thread = new ThreadManager();
 		private static CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 		private static FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
-		private static Dictionary<long, long> s_missileOwners = new Dictionary<long, long>();
 
 		static GuidedMissile()
 		{
@@ -83,28 +82,27 @@ namespace Rynchodon.Weapons.Guided
 			Thread = null;
 			AllGuidedMissiles = null;
 			lock_AllGuidedMissiles = null;
-			s_missileOwners = null;
 		}
 
-		public static void CreateFromBuilder(Builder_GuidedMissile builder)
-		{
-			Logger m_logger = new Logger("GuidedMissile");
+		//public static void CreateFromBuilder(Builder_GuidedMissile builder)
+		//{
+		//	Logger m_logger = new Logger("GuidedMissile");
 
-			IMyEntity missile;
-			if (!MyAPIGateway.Entities.TryGetEntityById(builder.Missile, out missile))
-			{
-				m_logger.alwaysLog("Missile is not in world: " + builder.Missile, "CreateFromBuilder()", Logger.severity.WARNING);
-				return;
-			}
-			GuidedMissileLauncher launcher;
-			if (!Registrar.TryGetValue(builder.Launcher, out launcher))
-			{
-				m_logger.alwaysLog("Launcher is not in world: " + builder.Launcher, "CreateFromBuilder()", Logger.severity.WARNING);
-				return;
-			}
+		//	IMyEntity missile;
+		//	if (!MyAPIGateway.Entities.TryGetEntityById(builder.Missile, out missile))
+		//	{
+		//		m_logger.alwaysLog("Missile is not in world: " + builder.Missile, "CreateFromBuilder()", Logger.severity.WARNING);
+		//		return;
+		//	}
+		//	GuidedMissileLauncher launcher;
+		//	if (!Registrar.TryGetValue(builder.Launcher, out launcher))
+		//	{
+		//		m_logger.alwaysLog("Launcher is not in world: " + builder.Launcher, "CreateFromBuilder()", Logger.severity.WARNING);
+		//		return;
+		//	}
 
-			new GuidedMissile(missile, launcher, builder);
-		}
+		//	new GuidedMissile(missile, launcher, builder);
+		//}
 
 		public static void Update1()
 		{
@@ -182,36 +180,22 @@ namespace Rynchodon.Weapons.Guided
 					invoke(missile);
 		}
 
-		[Obsolete("Use TryGetOwnerId")]
-		public static long GetOwnerId(long missileId)
-		{
-			long owner;
-			if (s_missileOwners.TryGetValue(missileId, out owner))
-				return owner;
-			return 0L;
-		}
-
 		public static bool TryGetOwnerId(long missileId, out long OwnerId)
 		{
-			return s_missileOwners.TryGetValue(missileId, out OwnerId);
+			GuidedMissile missile;
+			if (!Registrar.TryGetValue(missileId, out missile))
+			{
+				OwnerId = default(long);
+				return false;
+			}
+
+			OwnerId = missile.m_owner;
+			return true;
 		}
 
 		public static bool IsGuidedMissile(long missileId)
 		{
-			return s_missileOwners.ContainsKey(missileId);
-		}
-
-		private static void AddMissileOwner(IMyEntity missile, long owner)
-		{
-			s_missileOwners.Add(missile.EntityId, owner);
-			missile.OnClose += missile_OnClose;
-		}
-
-		private static void missile_OnClose(IMyEntity obj)
-		{
-			if (s_missileOwners == null)
-				return;
-			s_missileOwners.Remove(obj.EntityId);
+			return Registrar.Contains<GuidedMissile>(missileId);
 		}
 
 		private readonly Logger myLogger;
@@ -229,7 +213,7 @@ namespace Rynchodon.Weapons.Guided
 		private GravityData m_gravData;
 		private RadarEquipment m_radar;
 
-		private bool Stopped
+		public bool Stopped
 		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
 
 		private Ammo.AmmoDescription myDescr
@@ -254,7 +238,6 @@ namespace Rynchodon.Weapons.Guided
 			SEAD = myAmmo.Description.SEAD;
 
 			AllGuidedMissiles.Add(this);
-			AddMissileOwner(MyEntity, m_owner);
 			MyEntity.OnClose += MyEntity_OnClose;
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
@@ -288,6 +271,8 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
+			Registrar.Add(missile, this);
+
 			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
@@ -298,71 +283,71 @@ namespace Rynchodon.Weapons.Guided
 			myCluster = missiles;
 		}
 
-		private GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, Builder_GuidedMissile builder)
-			: base(missile, launcher.CubeBlock)
-		{
-			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
-			m_launcher = launcher;
-			myAmmo = Ammo.GetAmmo(builder.Ammo);
-			m_owner = builder.Owner;
-			myGuidanceEnds = builder.GuidanceEnds.ToTimeSpan();
-			m_stage = builder.CurrentStage;
+		//private GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, Builder_GuidedMissile builder)
+		//	: base(missile, launcher.CubeBlock)
+		//{
+		//	myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
+		//	m_launcher = launcher;
+		//	myAmmo = Ammo.GetAmmo(builder.Ammo);
+		//	m_owner = builder.Owner;
+		//	myGuidanceEnds = builder.GuidanceEnds.ToTimeSpan();
+		//	m_stage = builder.CurrentStage;
 
-			if (builder.Cluster != null)
-				myCluster = new Cluster(missile, builder.Cluster);
+		//	if (builder.Cluster != null)
+		//		myCluster = new Cluster(missile, builder.Cluster);
 
-			if (myAmmo.Description.HasAntenna)
-				myAntenna = new NetworkNode(missile, () => m_owner, ComponentRadio.CreateRadio(missile, 0f));
-			TryHard = true;
-			SEAD = myAmmo.Description.SEAD;
+		//	if (myAmmo.Description.HasAntenna)
+		//		myAntenna = new NetworkNode(missile, () => m_owner, ComponentRadio.CreateRadio(missile, 0f));
+		//	TryHard = true;
+		//	SEAD = myAmmo.Description.SEAD;
 
-			AllGuidedMissiles.Add(this);
-			AddMissileOwner(MyEntity, m_owner);
-			MyEntity.OnClose += MyEntity_OnClose;
+		//	AllGuidedMissiles.Add(this);
+		//	MyEntity.OnClose += MyEntity_OnClose;
 
-			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
-			addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
+		//	acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
+		//	addSpeedPerUpdate = myDescr.Acceleration * Globals.UpdateDuration;
 
-			Options = m_launcher.m_weaponTarget.Options.Clone();
-			Options.TargetingRange = myAmmo.Description.TargetRange;
+		//	Options = m_launcher.m_weaponTarget.Options.Clone();
+		//	Options.TargetingRange = myAmmo.Description.TargetRange;
 
-			NetworkStorage storage = launcher.m_netClient.GetStorage();
-			if (storage == null)
-			{
-				myLogger.debugLog("failed to get storage for launcher", "GuidedMissile()", Logger.severity.WARNING);
-			}
-			else
-			{
-				myLogger.debugLog("getting initial target from launcher", "GuidedMissile()", Logger.severity.DEBUG);
-				GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
-			}
+		//	NetworkStorage storage = launcher.m_netClient.GetStorage();
+		//	if (storage == null)
+		//	{
+		//		myLogger.debugLog("failed to get storage for launcher", "GuidedMissile()", Logger.severity.WARNING);
+		//	}
+		//	else
+		//	{
+		//		myLogger.debugLog("getting initial target from launcher", "GuidedMissile()", Logger.severity.DEBUG);
+		//		GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
+		//	}
 
-			if (myAmmo.RadarDefinition != null)
-			{
-				myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
-				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
-				if (myAntenna == null)
-				{
-					myLogger.debugLog("Creating node for radar", "GuidedMissile()");
-					myAntenna = new NetworkNode(missile, ()=> m_owner, null);
-				}
-			}
+		//	if (myAmmo.RadarDefinition != null)
+		//	{
+		//		myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
+		//		m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
+		//		if (myAntenna == null)
+		//		{
+		//			myLogger.debugLog("Creating node for radar", "GuidedMissile()");
+		//			myAntenna = new NetworkNode(missile, ()=> m_owner, null);
+		//		}
+		//	}
 
-			switch (m_stage)
-			{
-				case Stage.Rail:
-					if (!(launcher.CubeBlock is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
-						m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
-					break;
-				case Stage.Boost:
-				case Stage.MidCourse:
-					StartGravity();
-					break;
-			}
+		//	switch (m_stage)
+		//	{
+		//		case Stage.Rail:
+		//			if (!(launcher.CubeBlock is Sandbox.ModAPI.Ingame.IMyLargeTurretBase))
+		//				m_rail = new RailData(Vector3D.Transform(MyEntity.GetPosition(), CubeBlock.WorldMatrixNormalizedInv));
+		//			break;
+		//		case Stage.Boost:
+		//		case Stage.MidCourse:
+		//			StartGravity();
+		//			break;
+		//	}
 
-			myLogger.debugLog("Created from builder", "GuidedMissile()");
-			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
-		}
+		//	Registrar.Add(missile, this);
+		//	myLogger.debugLog("Created from builder", "GuidedMissile()");
+		//	myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
+		//}
 
 		private void MyEntity_OnClose(IMyEntity obj)
 		{

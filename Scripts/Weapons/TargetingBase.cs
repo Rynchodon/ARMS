@@ -747,8 +747,8 @@ namespace Rynchodon.Weapons
 
 					if (tType == TargetType.Missile)
 					{
-						long owner = Guided.GuidedMissile.GetOwnerId(entity.EntityId);
-						if (!CubeBlock.canConsiderHostile(owner))
+						long owner;
+						if (Guided.GuidedMissile.TryGetOwnerId(entity.EntityId, out owner) && !CubeBlock.canConsiderHostile(owner))
 						{
 							myLogger.debugLog("owner is not hostile", "PickAProjectile()");
 							continue;

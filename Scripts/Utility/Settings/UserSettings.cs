@@ -22,6 +22,11 @@ namespace Rynchodon.Settings
 			UpdateIntervalHUD,
 		}
 
+		public enum BoolSettingName : byte
+		{
+			MissileWarning
+		}
+
 		private const string userSettings_fileName = "UserSettings.txt";
 		private const string chatDesignator = "/arms set";
 		private const string alt_chatDesignator = "/autopilot set";
@@ -38,6 +43,11 @@ namespace Rynchodon.Settings
 			return Instance.ByteSettings[name].Value;
 		}
 
+		public static bool GetSetting(BoolSettingName name)
+		{
+			return Instance.BoolSettings[name].Value;
+		}
+
 		public static void SetSetting(ByteSettingName name, byte value)
 		{
 			if (Instance.ByteSettings[name].Value == value)
@@ -48,12 +58,23 @@ namespace Rynchodon.Settings
 			Instance.writeAll();
 		}
 
+		public static void SetSetting(BoolSettingName name, bool value)
+		{
+			if (Instance.BoolSettings[name].Value == value)
+				return;
+
+			Instance.myLogger.debugLog("Setting " + name + " to " + value, "SetSetting()", Logger.severity.DEBUG);
+			Instance.BoolSettings[name].Value = value;
+			Instance.writeAll();
+		}
+
 		public static void SetSetting(string nameValue)
 		{
 			Instance.SetSetting_FromString(nameValue);
 		}
 
 		private readonly Dictionary<ByteSettingName, SettingSimple<byte>> ByteSettings = new Dictionary<ByteSettingName, SettingSimple<byte>>();
+		private readonly Dictionary<BoolSettingName, SettingSimple<bool>> BoolSettings = new Dictionary<BoolSettingName, SettingSimple<bool>>();
 		private readonly Logger myLogger;
 
 		private UserSettings()
@@ -82,6 +103,8 @@ namespace Rynchodon.Settings
 			ByteSettings.Add(ByteSettingName.OwnerOnHUD, new SettingSimple<byte>(5));
 			ByteSettings.Add(ByteSettingName.MissileOnHUD, new SettingSimple<byte>(5));
 			ByteSettings.Add(ByteSettingName.UpdateIntervalHUD, new SettingSimple<byte>(100));
+
+			BoolSettings.Add(BoolSettingName.MissileWarning, new SettingSimple<bool>(true));
 		}
 
 		/// <summary>
@@ -226,6 +249,22 @@ namespace Rynchodon.Settings
 					name = ByteSettingName.UpdateIntervalHUD;
 				}
 			}
+			else if (split[0].Contains("missile") || split[0].Contains("warning"))
+			{
+				myLogger.debugLog("IntervalMissileWarning variation: " + split[0], "ChatHandler()");
+				bool warn;
+				if (!bool.TryParse(split[1], out warn))
+				{
+					myLogger.debugLog("failed to parse: " + split[1], "ChatHandler()", Logger.severity.INFO);
+					MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + split[1] + '"');
+				}
+				else
+				{
+					SetSetting(BoolSettingName.MissileWarning, warn);
+					MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + warn);
+				}
+				return;
+			}
 
 			if (name == ByteSettingName.None)
 			{
@@ -237,8 +276,8 @@ namespace Rynchodon.Settings
 			byte value;
 			if (!byte.TryParse(split[1], out value))
 			{
-				myLogger.debugLog("failed to parse: " + nameValue[3], "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + nameValue[3] + '"');
+				myLogger.debugLog("failed to parse: " + split[1], "ChatHandler()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + split[1] + '"');
 				return;
 			}
 

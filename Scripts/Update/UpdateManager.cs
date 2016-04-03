@@ -309,14 +309,14 @@ namespace Rynchodon.Update
 
 		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
-			Instance.AddRemoveActions.Enqueue(() => {
+			Instance.ExternalRegistrations.Enqueue(() => {
 				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
 			});
 		}
 
 		public static void Unregister(uint frequency, Action toInvoke)
 		{
-			Instance.AddRemoveActions.Enqueue(() => {
+			Instance.ExternalRegistrations.Enqueue(() => {
 				Instance.UnRegisterForUpdates(frequency, toInvoke);
 			});
 		}
@@ -339,6 +339,7 @@ namespace Rynchodon.Update
 		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedQueue<Action> AddRemoveActions;
+		private LockedQueue<Action> ExternalRegistrations;
 		private List<IMyPlayer> playersAPI;
 		private List<IMyPlayer> playersCached;
 
@@ -383,6 +384,7 @@ namespace Rynchodon.Update
 				playersCached = new List<IMyPlayer>();
 
 				AddRemoveActions = new LockedQueue<Action>(8);
+				ExternalRegistrations = new LockedQueue<Action>(1);
 
 				if (!MyAPIGateway.Multiplayer.MultiplayerActive)
 				{
@@ -506,6 +508,11 @@ namespace Rynchodon.Update
 				{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
 				catch (Exception ex)
 				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
+				
+				try
+				{ ExternalRegistrations.DequeueAll(action => action.Invoke()); }
+				catch (Exception ex)
+				{ myLogger.alwaysLog("Exception in ExternalRegistrations: " + ex, "UpdateAfterSimulation()", Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Globals.UpdateCount % pair.Key == 0)

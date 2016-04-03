@@ -115,7 +115,8 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(NetworkStorage recipient)
 		{
-			m_logger.debugLog("copying to, " + recipient.PrimaryNode.LoggingName, "CopyTo()", Logger.severity.DEBUG);
+			m_logger.debugLog(recipient == this, "recipient == this", "CopyTo()", Logger.severity.FATAL);
+			m_logger.debugLog("copying to: " + recipient.PrimaryNode.LoggingName, "CopyTo()", Logger.severity.DEBUG);
 
 			using (recipient.lock_lastSeen.AcquireExclusiveUsing())
 				ForEachLastSeen(recipient.in_Receive);
@@ -148,6 +149,12 @@ namespace Rynchodon.AntennaRelay
 			if (node.Storage == null)
 			{
 				m_logger.debugLog("target node has no storage, no copy. node: " + node.LoggingName, "AddPushTo()", Logger.severity.TRACE);
+				return;
+			}
+
+			if (node.Storage == this)
+			{
+				m_logger.debugLog("target node's storage is this, no copy. node: " + node.LoggingName, "AddPushTo()", Logger.severity.TRACE);
 				return;
 			}
 

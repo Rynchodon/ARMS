@@ -291,7 +291,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (force > m_primaryForce.Force * 1.1f)
 			{
-				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", primary: " + m_primaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than primary force, disp: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", primary: " + m_primaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
 				m_secondaryForce = m_primaryForce;
 				m_primaryForce.Direction = direction;
 				m_primaryForce.Force = force;
@@ -311,7 +311,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (force > m_secondaryForce.Force * 1.1f && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
 			{
-				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", secondary: " + m_secondaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than secondary force, disp: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", secondary: " + m_secondaryForce, "CalcForceInDirection()", Logger.severity.DEBUG);
 				m_secondaryForce.Direction = direction;
 				m_secondaryForce.Force = force;
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);

@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Sounds>
+    <Sound>
+      <Id>
+        <TypeId>MyObjectBuilder_AudioDefinition</TypeId>
+        <SubtypeId>ArcMissileLockOnSound</SubtypeId>
+      </Id>
+      <Category>HUD</Category>
+      <Volume>1</Volume>
+      <Waves>
+        <Wave Type="D3">
+          <Start>Audio\MissileLockOnShort.xwm</Start>
+        </Wave>
+      </Waves>
+     </Sound>
+    <Sound>
+      <Id>
+        <TypeId>MyObjectBuilder_AudioDefinition</TypeId>
+        <SubtypeId>RealMissileLockOnSound</SubtypeId>
+      </Id>
+      <Category>HUD</Category>
+      <Volume>1</Volume>
+      <Waves>
+        <Wave Type="D3">
+          <Start>Audio\MissileLockOnShort.xwm</Start>
+        </Wave>
+      </Waves>
+     </Sound>
+  </Sounds>
+</Definitions>

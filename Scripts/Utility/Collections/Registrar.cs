@@ -66,6 +66,12 @@ namespace Rynchodon
 							return;
 			}
 
+			public static bool Contains(long entityId)
+			{
+				using (m_lock.AcquireSharedUsing())
+					return m_dictionary.ContainsKey(entityId);
+			}
+
 		}
 
 		public static void Add<T>(IMyEntity entity, T item)
@@ -105,6 +111,11 @@ namespace Rynchodon
 		public static void ForEach<T>(Func<T, bool> function)
 		{
 			Register<T>.ForEach(function);
+		}
+
+		public static bool Contains<T>(long entityId)
+		{
+			return Register<T>.Contains(entityId);
 		}
 
 		private static void OnClosing<T>(IMyEntity obj)

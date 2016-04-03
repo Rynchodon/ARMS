@@ -137,10 +137,10 @@ namespace Rynchodon
 					return getRelationsTo(playerId, player.IdentityId);
 			}
 
-			long missileOwner = GuidedMissile.GetOwnerId(target.EntityId);
-			if (missileOwner != 0L)
+			long missileOwner;
+			if (GuidedMissile.TryGetOwnerId(target.EntityId, out missileOwner))
 				return getRelationsTo(playerId, missileOwner);
-			return Relations.None;
+			return Relations.Enemy;
 		}
 
 		public static Relations getRelationsTo(this IMyPlayer player, long playerID)
@@ -194,8 +194,10 @@ namespace Rynchodon
 						return block.getRelationsTo(player.IdentityId);
 				}
 
-				long missileOwner = GuidedMissile.GetOwnerId(entity.EntityId);
-				return block.getRelationsTo(missileOwner);
+				long missileOwner;
+				if (GuidedMissile.TryGetOwnerId(entity.EntityId, out missileOwner))
+					return getRelationsTo(block, missileOwner);
+				return Relations.Enemy;
 			}
 
 			IMyPlayer asPlayer = target as IMyPlayer;
