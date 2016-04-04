@@ -52,18 +52,36 @@ namespace Rynchodon.Autopilot.Navigator
 		public bool CanRespond()
 		{
 			if (!m_weaponArmed)
+			{
+				m_navSet.Settings_Commands.Complaint = "Fighter is unarmed";
 				return false;
+			}
 
 			GetPrimaryWeapon();
 			if (m_weapon_primary == null)
+			{
+				m_navSet.Settings_Commands.Complaint = "Fighter has no weapon to target with";
 				return false;
+			}
+
+			if (m_mover.ThrustersOverWorked())
+			{
+				m_navSet.Settings_Commands.Complaint = "Fighter cannot stabilize in gravity";
+				return false;
+			}
 
 			if (m_weaponDataDirty)
 				UpdateWeaponData();
 
 			//m_logger.debugLog("weapon count: " + m_weapons_all.Count, "CanRespond()"); 
 
-			return m_weapons_all.Count != 0;
+			if (m_weapons_all.Count == 0)
+			{
+				m_navSet.Settings_Commands.Complaint = "Fighter has no usable weapons";
+				return false;
+			}
+
+			return true;
 		}
 
 		public void UpdateTarget(LastSeen enemy)
