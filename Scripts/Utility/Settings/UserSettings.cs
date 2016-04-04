@@ -24,6 +24,7 @@ namespace Rynchodon.Settings
 
 		public enum BoolSettingName : byte
 		{
+			None,
 			MissileWarning
 		}
 
@@ -48,8 +49,11 @@ namespace Rynchodon.Settings
 			return Instance.BoolSettings[name].Value;
 		}
 
-		public static void SetSetting(ByteSettingName name, byte value)
+		public static void SetSetting(ByteSettingName name, byte value, bool notify = false)
 		{
+			if (notify)
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + value);
+
 			if (Instance.ByteSettings[name].Value == value)
 				return;
 
@@ -58,8 +62,11 @@ namespace Rynchodon.Settings
 			Instance.writeAll();
 		}
 
-		public static void SetSetting(BoolSettingName name, bool value)
+		public static void SetSetting(BoolSettingName name, bool value, bool notify = false)
 		{
+			if (notify)
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + value);
+
 			if (Instance.BoolSettings[name].Value == value)
 				return;
 
@@ -212,77 +219,128 @@ namespace Rynchodon.Settings
 
 		private void SetSetting_FromString(string nameValue)
 		{
-			string[] split = nameValue.Split(new char[] { ' ' });
-			ByteSettingName name = ByteSettingName.None;
+			try
+			{
+				if (nameValue == null)
+				{
+					MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: " + nameValue);
+					return;
+				}
 
-			// variations
-			if (split[0].Contains("hud"))
-			{
-				if (split[0].Contains("enemy") || split[0].Contains("enemies"))
+				string[] split = nameValue.Split(new char[] { ' ' });
+
+				if (split.Length < 2)
 				{
-					myLogger.debugLog("EnemiesOnHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.EnemiesOnHUD;
+					MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: " + nameValue);
+					return;
 				}
-				else if (split[0].Contains("neutral"))
+
+				string name = split[0];
+				string value = split[1];
+
+				ByteSettingName byteSet;
+				if (Enum.TryParse(name, out byteSet))
 				{
-					myLogger.debugLog("NeutralOnHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.NeutralOnHUD;
+					byte y;
+					if (byte.TryParse(value, out y))
+						SetSetting(byteSet, y, true);
+					else
+					{
+						myLogger.debugLog("failed to parse as byte: " + value, "SetSetting_FromString()", Logger.severity.INFO);
+						MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a byte: \"" + value + '"');
+					}
+					return;
 				}
-				else if (split[0].Contains("faction"))
+
+				BoolSettingName boolSet;
+				if (Enum.TryParse(name, out boolSet))
 				{
-					myLogger.debugLog("FactionOnHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.FactionOnHUD;
+					bool b;
+					if (bool.TryParse(value, out b))
+						SetSetting(boolSet, b, true);
+					else
+					{
+						myLogger.debugLog("failed to parse as bool: " + value, "SetSetting_FromString()", Logger.severity.INFO);
+						MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a bool: \"" + value + '"');
+					}
+					return;
 				}
-				else if (split[0].Contains("owner"))
-				{
-					myLogger.debugLog("OwnerOnHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.OwnerOnHUD;
-				}
-				else if (split[0].Contains("missile"))
-				{
-					myLogger.debugLog("MissileOnHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.MissileOnHUD;
-				}
-				else if (split[0].Contains("interval") || split[0].Contains("update"))
-				{
-					myLogger.debugLog("UpdateIntervalHUD variation: " + split[0], "ChatHandler()");
-					name = ByteSettingName.UpdateIntervalHUD;
-				}
-			}
-			else if (split[0].Contains("missile") || split[0].Contains("warning"))
-			{
-				myLogger.debugLog("IntervalMissileWarning variation: " + split[0], "ChatHandler()");
-				bool warn;
-				if (!bool.TryParse(split[1], out warn))
-				{
-					myLogger.debugLog("failed to parse: " + split[1], "ChatHandler()", Logger.severity.INFO);
-					MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + split[1] + '"');
-				}
-				else
-				{
-					SetSetting(BoolSettingName.MissileWarning, warn);
-					MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + warn);
-				}
+
+				if (SetSetting_FuzzyByte(name, value))
+					return;
+
+				if (SetSetting_FuzzyBool(name, value))
+					return;
+
+				myLogger.debugLog("failed to find enum for " + name, "SetSetting_FromString()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + name + '"');
 				return;
-			}
 
-			if (name == ByteSettingName.None)
+			}
+			catch (Exception ex)
 			{
-				myLogger.debugLog("failed to find enum for " + split[0], "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + split[0] + '"');
-				return;
+				myLogger.debugLog("Exception: " + ex, "SetSetting_FromString()", Logger.severity.ERROR);
+				Logger.notify("Error while parsing set command", 10000, Logger.severity.ERROR);
 			}
+		}
 
-			byte value;
-			if (!byte.TryParse(split[1], out value))
+		private bool SetSetting_FuzzyByte(string name, string value)
+		{
+			if (!name.Contains("hud"))
+				return false;
+
+			ByteSettingName setting = ByteSettingName.None;
+			if (name.Contains("enemy") || name.Contains("enemies"))
+				setting = ByteSettingName.EnemiesOnHUD;
+			else if (name.Contains("neutral"))
+				setting = ByteSettingName.NeutralOnHUD;
+			else if (name.Contains("faction"))
+				setting = ByteSettingName.FactionOnHUD;
+			else if (name.Contains("owner"))
+				setting = ByteSettingName.OwnerOnHUD;
+			else if (name.Contains("missile"))
+				setting = ByteSettingName.MissileOnHUD;
+			else if (name.Contains("interval") || name.Contains("update"))
+				setting = ByteSettingName.UpdateIntervalHUD;
+
+			if (setting == ByteSettingName.None)
+				return false;
+
+			myLogger.debugLog(setting + " variation: " + name, "SetSetting_FuzzyByte()");
+
+			byte y;
+			if (byte.TryParse(value, out y))
+				SetSetting(setting, y, true);
+			else
 			{
-				myLogger.debugLog("failed to parse: " + split[1], "ChatHandler()", Logger.severity.INFO);
-				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed to parse: \"" + split[1] + '"');
-				return;
+				myLogger.debugLog("failed to parse as byte: " + value, "SetSetting_FuzzyByte()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a byte: \"" + value + '"');
 			}
 
-			SetSetting(name, value);
-			MyAPIGateway.Utilities.ShowMessage("ARMS", "Set " + name + " to " + value);
+			return true;
+		}
+
+		private bool SetSetting_FuzzyBool(string name, string value)
+		{
+			BoolSettingName setting = BoolSettingName.None;
+			if (name.Contains("missile") || name.Contains("warning"))
+				setting = BoolSettingName.MissileWarning;
+
+			if (setting == BoolSettingName.None)
+				return false;
+
+			myLogger.debugLog(setting + " variation: " + name, "SetSetting_FuzzyBool()");
+
+			bool b;
+			if (bool.TryParse(value, out b))
+				SetSetting(setting, b, true);
+			else
+			{
+				myLogger.debugLog("failed to parse: " + value, "SetSetting_FuzzyBool()", Logger.severity.INFO);
+				MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a bool: \"" + value + '"');
+			}
+
+			return true;
 		}
 
 	}

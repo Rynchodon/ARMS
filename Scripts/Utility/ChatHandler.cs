@@ -81,6 +81,7 @@ namespace Rynchodon.Utility
 			Append(display, UserSettings.ByteSettingName.OwnerOnHUD);
 			Append(display, UserSettings.ByteSettingName.MissileOnHUD);
 			Append(display, UserSettings.ByteSettingName.UpdateIntervalHUD);
+			Append(display, UserSettings.BoolSettingName.MissileWarning);
 
 			MyAPIGateway.Utilities.ShowMissionScreen("ARMS Settings", string.Empty, string.Empty, display.ToString());
 		}
@@ -94,6 +95,14 @@ namespace Rynchodon.Utility
 		}
 
 		private void Append(StringBuilder builder, UserSettings.ByteSettingName setName)
+		{
+			builder.Append(setName);
+			builder.Append('=');
+			builder.Append(UserSettings.GetSetting(setName));
+			builder.AppendLine();
+		}
+
+		private void Append(StringBuilder builder, UserSettings.BoolSettingName setName)
 		{
 			builder.Append(setName);
 			builder.Append('=');
