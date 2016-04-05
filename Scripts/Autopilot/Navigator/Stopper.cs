@@ -36,6 +36,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void Move()
 		{
 			// stopping in gravity does not work exactly, players should not be using EXIT anyway
+			m_mover.myThrust.Update();
 			float threshold = m_mover.myThrust.LocalGravity.vector != Vector3.Zero ? 0.1f : 0f;
 
 			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() <= threshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() <= threshold)
@@ -53,9 +54,11 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_exitAfter)
 				{
 					_logger.debugLog("setting disable", "Move()", Logger.severity.DEBUG);
-					m_controlBlock.SetControl(false);
+					m_mover.SetControl(false);
 				}
 			}
+			else
+				_logger.debugLog("linear: " + m_mover.Block.Physics.LinearVelocity + ", angular: " + m_mover.Block.Physics.AngularVelocity, "Move()");
 		}
 
 		/// <summary>

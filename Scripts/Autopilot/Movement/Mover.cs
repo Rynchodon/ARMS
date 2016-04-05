@@ -13,6 +13,7 @@ namespace Rynchodon.Autopilot.Movement
 	/// <summary>
 	/// Performs the movement calculations and the movements.
 	/// </summary>
+	/// Old calculations for ship controls will stay for now, hopefully Keen will give mods access again.
 	public class Mover
 	{
 		#region S.E. Constants
@@ -44,6 +45,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		private Vector3 moveForceRatio = Vector3.Zero;
 		private Vector3 rotateForceRatio = Vector3.Zero;
+		private Vector3 m_rotateTargetVelocity = Vector3.Zero;
 		private Vector3 m_moveAccel;
 
 		private Vector3 prevAngleVel = Vector3.Zero;
@@ -95,7 +97,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			moveForceRatio = Vector3.Zero;
 			m_moveAccel = Vector3.Zero;
-			Block.SetDamping(enableDampeners);
+			SetDamping(enableDampeners);
 		}
 
 		/// <summary>
@@ -103,7 +105,10 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void StopRotate()
 		{
+			myLogger.debugLog("stopping rotation", "StopRotate()");
+
 			rotateForceRatio = Vector3.Zero;
+			m_rotateTargetVelocity = Vector3.Zero;
 		}
 
 		/// <summary>
@@ -120,10 +125,18 @@ namespace Rynchodon.Autopilot.Movement
 			moveForceRatio = Vector3.Zero;
 			m_moveAccel = Vector3.Zero;
 			if (enableDampeners)
-				Block.SetDamping(true);
+				SetDamping(true);
 
 			StopRotate();
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
+
+			// :(
+			//MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Block.Controller.MoveAndRotateStopped());
+
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				myThrust.ClearOverrides();
+				myGyro.ClearOverrides();
+			}, myLogger);
+
 			m_stopped = true;
 		}
 
@@ -309,7 +322,7 @@ namespace Rynchodon.Autopilot.Movement
 				//	myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
 			}
 
-			Block.SetDamping(enableDampeners);
+			SetDamping(enableDampeners);
 
 			myLogger.debugLog(string.Empty
 				//+ "block: " + block.Block.getBestName()
@@ -694,11 +707,12 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				// do a test
 				myLogger.debugLog("torqueAccelRatio == 0", "CalcRotate()");
-				rotateForceRatio = new Vector3(0, 1f, 0);
+				rotateForceRatio = new Vector3(0f, 1f, 0f);
+				m_rotateTargetVelocity = rotateForceRatio * MathHelper.TwoPi;
 				return;
 			}
 
-			Vector3 targetVelocity = MaxAngleVelocity(displacement, secondsSinceLast, targetEntity != null);
+			m_rotateTargetVelocity = MaxAngleVelocity(displacement, secondsSinceLast, targetEntity != null);
 
 			//float timeToReachVelocity;
 			// adjustment to face a moving entity
@@ -716,25 +730,40 @@ namespace Rynchodon.Autopilot.Movement
 
 				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch, "CalcRotate()");
 
-				targetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
+				m_rotateTargetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
 			}
 
-			rotateForceRatio = (targetVelocity - angularVelocity) / (myGyro.torqueAccelRatio * gyroForce * 0.1f);
+			rotateForceRatio = (m_rotateTargetVelocity - angularVelocity) / (myGyro.torqueAccelRatio * gyroForce * 0.1f);
 
-			//myLogger.debugLog("targetVelocity: " + targetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (targetVelocity - angularVelocity), "CalcRotate()");
-			//myLogger.debugLog("accel: " + (targetVelocity - angularVelocity) + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
+			myLogger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity - angularVelocity), "CalcRotate()");
+			myLogger.debugLog("accel: " + (m_rotateTargetVelocity - angularVelocity) + ", torque: " + (myGyro.torqueAccelRatio * gyroForce) + ", rotateForceRatio: " + rotateForceRatio, "CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)
 			{
 				// if targetVelocity is close to 0, use dampeners
 
-				float target = targetVelocity.GetDim(i);
+				float target = m_rotateTargetVelocity.GetDim(i);
 				if (target > -0.01f && target < 0.01f)
 				{
-					//myLogger.debugLog("target near 0 for " + i + ", " + target, "CalcRotate()");
+					myLogger.debugLog("target near 0 for " + i + ", " + target, "CalcRotate()");
 					rotateForceRatio.SetDim(i, 0f);
+					m_rotateTargetVelocity.SetDim(i, 0f);
 					continue;
+				}
+
+				float vel = angularVelocity.GetDim(i);
+				if (target < -0.1f && vel > 0.1f)
+				{
+					myLogger.debugLog("target below 0 for " + i + ", target: " + target + ", vel: " + vel, "CalcRotate()");
+					rotateForceRatio.SetDim(i, 0f);
+					m_rotateTargetVelocity.SetDim(i, 0f);
+				}
+				else if (target > 0.1f && vel < -0.1f)
+				{
+					myLogger.debugLog("target above 0 for " + i + ", target: " + target + ", vel: " + vel, "CalcRotate()");
+					rotateForceRatio.SetDim(i, 0f);
+					m_rotateTargetVelocity.SetDim(i, 0f);
 				}
 			}
 		}
@@ -751,7 +780,7 @@ namespace Rynchodon.Autopilot.Movement
 			// S.E. provides damping for angular motion, we will ignore this
 			float accel = -myGyro.torqueAccelRatio * myGyro.TotalGyroForce();
 
-			//myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
+			myLogger.debugLog("torqueAccelRatio: " + myGyro.torqueAccelRatio + ", TotalGyroForce: " + myGyro.TotalGyroForce() + ", accel: " + accel, "MaxAngleVelocity()");
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -773,7 +802,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <returns>The maximum angular speed to stop at the destination</returns>
 		private float MaxAngleSpeed(float accel, float dist, bool fast)
 		{
-			//myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
+			myLogger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
 			float actual = (float)Math.Sqrt(-2 * accel * dist);
 			if (fast)
 				return actual;
@@ -825,15 +854,12 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
-			if (moveForceRatio == Vector3.Zero)
+			if (moveForceRatio == Vector3.Zero && rotateForceRatio == Vector3.Zero)
 			{
-				if (rotateForceRatio == Vector3.Zero)
-				{
-					myLogger.debugLog("Stopping the ship", "MoveAndRotate()");
-					// should not toggle dampeners, grid may just have landed
-					MoveAndRotateStop(false);
-					return;
-				}
+				myLogger.debugLog("Stopping the ship, move: " + moveForceRatio + ", rotate: " + rotateForceRatio, "MoveAndRotate()");
+				// should not toggle dampeners, grid may just have landed
+				MoveAndRotateStop(false);
+				return;
 			}
 			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f && NavSet.Settings_Current.Distance > 1f)
 			{
@@ -842,27 +868,44 @@ namespace Rynchodon.Autopilot.Movement
 
 				myLogger.debugLog("wriggle: " + wriggle, "MoveAndRotate()");
 
-				rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-				rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-				rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				//rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				//rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				//rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+
+				m_rotateTargetVelocity.X += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
+				m_rotateTargetVelocity.Y += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
+				m_rotateTargetVelocity.Z += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
+
+				// increase force
+				moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.01f;
 			}
 
 			// clamp values and invert operations MoveAndRotate will perform
 			Vector3 moveControl; moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
+			//Vector3 rotateControl; rotateForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out rotateControl);
 
-			Vector2 rotateControl = Vector2.Zero;
-			rotateControl.X = MathHelper.Clamp(rotateForceRatio.X, -1, 1) * pixelsForMaxRotation;
-			rotateControl.Y = MathHelper.Clamp(rotateForceRatio.Y, -1, 1) * pixelsForMaxRotation;
+			//Vector2 rotateControl = Vector2.Zero;
+			//rotateControl.X = MathHelper.Clamp(rotateForceRatio.X, -1, 1) * pixelsForMaxRotation;
+			//rotateControl.Y = MathHelper.Clamp(rotateForceRatio.Y, -1, 1) * pixelsForMaxRotation;
 
-			float rollControl = MathHelper.Clamp(rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
+			//float rollControl = MathHelper.Clamp(rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
 
 			//myLogger.debugLog("moveControl: " + moveControl + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
 			m_stopped = false;
 			//myLogger.debugLog("Queueing Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl + ", unstick: " + unstick, "MoveAndRotate()");
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl, "MoveAndRotate()");
-				controller.MoveAndRotate(moveControl, rotateControl, rollControl);
+				//myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + rotateControl + ", roll: " + rollControl, "MoveAndRotate()");
+
+				// :(
+				//controller.MoveAndRotate(moveControl, rotateControl, rollControl);
+
+				myLogger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + m_rotateTargetVelocity, "MoveAndRotate()");
+
+				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
+				myThrust.SetOverrides(ref gridMove);
+				DirectionWorld gridRotate = ((DirectionBlock)m_rotateTargetVelocity).ToWorld(Block.CubeBlock);
+				myGyro.SetOverrides(ref gridRotate);
 			}, myLogger);
 		}
 
@@ -893,6 +936,40 @@ namespace Rynchodon.Autopilot.Movement
 		public bool SignificantGravity()
 		{
 			return myThrust.GravityStrength > 1f;
+		}
+
+		public void SetControl(bool enable)
+		{
+			if (Block.Controller.ControlThrusters != enable)
+			{
+				myLogger.debugLog("setting control, ControlThrusters: " + Block.Controller.ControlThrusters + ", enable: " + enable, "SetDamping()");
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (!enable)
+					{
+						// :(
+						//Block.Controller.MoveAndRotateStopped();
+						
+						myThrust.ClearOverrides();
+						myGyro.ClearOverrides();
+					}
+					if (Block.Controller.ControlThrusters != enable)
+						// SwitchThrusts() only works for jetpacks
+						Block.CubeBlock.ApplyAction("ControlThrusters");
+				}, myLogger);
+			}
+		}
+
+		public void SetDamping(bool enable)
+		{
+			Sandbox.Game.Entities.IMyControllableEntity control = Block.Controller as Sandbox.Game.Entities.IMyControllableEntity;
+			if (control.EnabledDamping != enable)
+			{
+				myLogger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (control.EnabledDamping != enable)
+						control.SwitchDamping();
+				}, myLogger);
+			}
 		}
 
 	}

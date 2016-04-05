@@ -64,12 +64,6 @@ namespace Rynchodon.Autopilot.Navigator
 				return false;
 			}
 
-			if (m_mover.ThrustersOverWorked())
-			{
-				m_navSet.Settings_Commands.Complaint = "Fighter cannot stabilize in gravity";
-				return false;
-			}
-
 			if (m_weaponDataDirty)
 				UpdateWeaponData();
 

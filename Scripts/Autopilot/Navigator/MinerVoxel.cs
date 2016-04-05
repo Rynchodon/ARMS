@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{ return value_state; }
 			set
 			{
-				m_logger.debugLog("Changing state to " + value, "m_state()");
+				m_logger.debugLog("Changing state to " + value, "set_m_state()");
 				value_state = value;
 				switch (value)
 				{
@@ -82,7 +82,7 @@ namespace Rynchodon.Autopilot.Navigator
 							EnableDrills(false);
 							if (DrillFullness() >= FullAmount_Return)
 							{
-								m_logger.debugLog(ReturnCause_Full, "m_state()");
+								m_logger.debugLog(ReturnCause_Full, "set_m_state()");
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
@@ -108,7 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 								return;
 							}
 							// request ore detector update
-							m_logger.debugLog("Requesting ore update", "m_state()");
+							m_logger.debugLog("Requesting ore update", "set_m_state()");
 							m_navSet.OnTaskComplete_NavMove();
 							OreDetector.SearchForMaterial(m_mover.Block, OreTargets, OnOreSearchComplete);
 						}
@@ -158,7 +158,7 @@ namespace Rynchodon.Autopilot.Navigator
 						VRage.Exceptions.ThrowIf<NotImplementedException>(true, "State not implemented: " + value);
 						break;
 				}
-				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition, "m_state()");
+				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition, "set_m_state()");
 				m_mover.StopMove();
 				m_mover.StopRotate();
 				m_mover.IsStuck = false;
@@ -225,9 +225,8 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				case State.Approaching:
 					// measure distance from line, but move to a point
-					m_currentTarget = m_approach.ClosestPoint(m_navDrill.WorldPosition);
-					//m_logger.debugLog("target: " + m_currentTarget + ", distance: " + Vector3.Distance(m_currentTarget, m_navDrill.WorldPosition), "Move()");
-					if (Vector3.DistanceSquared(m_currentTarget, m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
+					// ok to adjust m_approach itself but we cannot move to closest point on line
+					if (m_approach.DistanceSquared(m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
 					{
 						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
 						m_state = State.Rotating;
@@ -385,7 +384,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (m_state)
 				{
 					case State.Approaching:
-						m_mover.StopRotate();
+						m_mover.CalcRotate();
 						return;
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())
@@ -402,24 +401,32 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_navDrill.FunctionalBlocks == 0)
-				return;
-
 			switch (m_state)
 			{
 				case State.Approaching:
-				default:
-					if (m_navSet.Settings_Current.Distance < m_longestDimension)
+					if (m_navSet.DistanceLessThan(m_longestDimension))
+					{
+						m_logger.debugLog("closer to destination than longest dim", "Rotate()");
+						m_mover.StopRotate();
+					}
+					else
+						m_mover.CalcRotate();
+					return;
+				case State.GetTarget:
+				case State.Mining_Escape:
+				case State.Move_Away:
+					m_logger.debugLog("no rotation", "Rotate()");
+					m_mover.StopRotate();
+					return;
+				case State.MoveTo:
+				case State.Mining:
+				case State.Mining_Tunnel:
+					if (m_navSet.DistanceLessThan(3f))
 					{
 						m_mover.StopRotate();
 						return;
 					}
 					break;
-				case State.GetTarget:
-				case State.Mining_Escape:
-				case State.Move_Away:
-					m_mover.StopRotate();
-					return;
 				case State.Rotating:
 					if (m_navSet.DirectionMatched())
 					{
@@ -429,21 +436,19 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 					break;
+				default:
+					throw new Exception("case not implemented: " + m_state);
 			}
 
-			if (m_state != State.Rotating && m_navSet.Settings_Current.Distance < 3f)
+			if (m_navDrill.FunctionalBlocks == 0)
 			{
+				m_logger.debugLog("no functional blocks, cannot rotate", "Rotate()");
 				m_mover.StopRotate();
-				return;
 			}
-
-			//m_logger.debugLog("rotating to face " + m_currentTarget, "Rotate()");
-			if (m_state == State.Approaching)
-				m_mover.CalcRotate();
 			else
 			{
-				Vector3 direction = m_currentTarget - m_navDrill.WorldPosition;
-				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, direction));
+				m_logger.debugLog("rotate to face " + m_currentTarget, "Rotate()");
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget - m_navDrill.WorldPosition));
 			}
 		}
 
@@ -596,7 +601,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			Vector3 toCentre = Vector3.Normalize(m_targetVoxel.GetCentre() - m_depositPos);
 			GetExteriorPoint(m_depositPos, toCentre, m_longestDimension, exterior => {
-				m_approach = new LineSegmentD(exterior - toCentre * m_longestDimension * 10f, exterior);
+				m_approach = new LineSegmentD(exterior - toCentre * m_longestDimension * 5f, exterior);
 				m_state = State.Approaching;
 				m_logger.debugLog("approach: " + m_approach.From.ToGpsTag("From") + ", " + m_approach.To.ToGpsTag("To"), "OnOreSearchComplete()");
 			});
@@ -664,7 +669,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_targetVoxel is IMyVoxelMap)
 			{
-			BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
+				BoundingSphereD surround = new BoundingSphereD(m_navDrill.Grid.GetCentre(), m_longestDimension * lengthMulti);
 				return m_targetVoxel.GetIntersectionWithSphere(ref surround);
 			}
 			else
@@ -675,7 +680,10 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		private void MoveCurrent()
-		{ m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo); }
+		{
+			m_logger.debugLog("current target: " + m_currentTarget, "MoveCurrent()");
+			m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo);
+		}
 
 	}
 }

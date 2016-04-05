@@ -201,7 +201,7 @@ namespace Rynchodon.Autopilot
 			m_navSet.Settings_Task_NavEngage.PathfinderCanChangeCourse = true;
 			m_navSet.Settings_Task_NavEngage.DestinationEntity = m_mover.Block.CubeBlock;
 
-			if (!m_originalPosition.IsValid())
+			if (!m_originalPosition.IsValid() && MaximumRange > 1f)
 			{
 				m_originalDestEntity = m_navSet.Settings_Task_NavMove.DestinationEntity;
 				if (m_originalDestEntity == null)
