@@ -224,7 +224,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
-				if (!m_mover.myPathfinder.CanRotate)
+				if (!m_mover.Pathfinder.CanRotate)
 				{
 					m_logger.debugLog("Extricating ship from target", "Move_Grind()");
 					m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;

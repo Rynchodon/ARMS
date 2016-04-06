@@ -41,39 +41,6 @@ namespace Rynchodon.Autopilot
 			NetClient = netClient;
 		}
 
-		public void ApplyAction(string action)
-		{
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Terminal.GetActionWithName(action).Apply(Terminal), m_logger);
-		}
-
-		public void SetControl(bool enable)
-		{
-			if (Controller.ControlThrusters != enable)
-			{
-				m_logger.debugLog("setting control, ControlThrusters: " + Controller.ControlThrusters + ", enable: " + enable, "SetDamping()");
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					if (!enable)
-						Controller.MoveAndRotateStopped();
-					if (Controller.ControlThrusters != enable)
-						// SwitchThrusts() only works for jetpacks
-						CubeBlock.ApplyAction("ControlThrusters");
-				}, m_logger);
-			}
-		}
-
-		public void SetDamping(bool enable)
-		{
-			Sandbox.Game.Entities.IMyControllableEntity control = Controller as Sandbox.Game.Entities.IMyControllableEntity;
-			if (control.EnabledDamping != enable)
-			{
-				m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable, "SetDamping()");
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					if (control.EnabledDamping != enable)
-						control.SwitchDamping();
-				}, m_logger);
-			}
-		}
-
 	}
 
 	/// <summary>
@@ -182,6 +149,7 @@ namespace Rynchodon.Autopilot
 				switch (value_state)
 				{
 					case State.Enabled:
+						//((MyCubeBlock)m_block.CubeBlock).ResourceSink.RequiredInput = 1f;
 						return;
 
 					case State.Disabled:
@@ -192,8 +160,8 @@ namespace Rynchodon.Autopilot
 
 					case State.Halted:
 						m_endOfHalt = Globals.ElapsedTime.Add(new TimeSpan(0, 5, 0));
-						m_block.SetDamping(true);
-						m_block.Controller.MoveAndRotateStopped();
+						m_interpreter.Mover.SetDamping(true);
+						m_interpreter.Mover.MoveAndRotateStop();
 						return;
 
 					case State.Closed:
@@ -420,8 +388,10 @@ namespace Rynchodon.Autopilot
 
 			m_controlledGrid = myGrid;
 			// toggle thrusters off and on to make sure thrusters are actually online
-			this.m_block.CubeBlock.ApplyAction("ControlThrusters");
-			this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+			});
 			return true;
 		}
 
@@ -542,7 +512,7 @@ namespace Rynchodon.Autopilot
 			if (!moving)
 				return;
 
-			Pathfinder.Pathfinder path = m_interpreter.Mover.myPathfinder;
+			Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
 			if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
 			{
 				if (!path.ReportCanMove || !path.ReportCanRotate)
@@ -637,7 +607,7 @@ namespace Rynchodon.Autopilot
 		private void HandleMessage(Message msg)
 		{
 			m_message = msg;
-			m_block.SetControl(true);
+			m_interpreter.Mover.SetControl(true);
 		}
 
 	}

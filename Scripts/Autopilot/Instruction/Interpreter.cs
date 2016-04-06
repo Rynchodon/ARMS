@@ -70,7 +70,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (string.IsNullOrWhiteSpace(instructions))
 			{
-				Mover.Block.SetControl(false);
+				Mover.SetControl(false);
 				return;
 			}
 		
@@ -199,7 +199,7 @@ namespace Rynchodon.Autopilot.Instruction
 					{
 						wordAction = () => {
 							m_logger.debugLog("Disabling", "getAction_word()", Logger.severity.DEBUG);
-							Controller.SetControl(false);
+							Mover.SetControl(false);
 						};
 						return true;
 					}

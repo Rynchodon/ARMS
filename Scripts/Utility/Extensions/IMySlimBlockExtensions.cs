@@ -28,7 +28,11 @@ namespace Rynchodon
 		}
 
 		public static Vector3 LocalPosition(this IMySlimBlock block)
-		{ return block.Position * block.CubeGrid.GridSize; }
+		{
+			if (block.FatBlock != null)
+				return block.FatBlock.LocalPosition();
+			return block.Position * block.CubeGrid.GridSize;
+		}
 
 		public static bool Closed(this IMySlimBlock block)
 		{

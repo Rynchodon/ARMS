@@ -299,11 +299,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 					{
 						if ((m_planetCheckDest.CurrentState & PlanetChecker.State.Blocked) != 0 &&
 							// planet checker is using an older displacement so verify that obstruction is closer than destination
-							Vector3D.DistanceSquared(m_navBlock.WorldPosition, m_planetCheckDest.ObstructionPoint) < Vector3D.DistanceSquared(m_navBlock.WorldPosition, destination))
+								Vector3D.DistanceSquared(m_navBlock.WorldPosition, m_planetCheckDest.ObstructionPoint) < Vector3D.DistanceSquared(m_navBlock.WorldPosition, destination))
 						{
 							m_logger.debugLog("path blocked by planet, to destination: " + (destination - m_navBlock.WorldPosition) + ", to obstruction: " + (m_planetCheckDest.ObstructionPoint - m_navBlock.WorldPosition), "TestPath()");
 
-							m_pathState = PathState.Searching;
+							if (m_pathState < PathState.Searching)
+								m_pathState = PathState.Searching;
 							obstructing = m_planetCheckDest.ClosestPlanet;
 
 							Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - obstructing.GetCentre());
@@ -314,9 +315,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 							MoveObstruction = obstructing;
 							m_pathHigh.Clear();
 							if ((m_planetCheckDest.CurrentState & PlanetChecker.State.BlockedPath) != 0)
-								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e4f, 1e6f, runId);
+								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e4f, runId);
 							else // blocked by gravity
-								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e6f, 1e8f, runId);
+								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e6f, runId);
 							m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
 
 							return;
@@ -403,18 +404,18 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="obstructing">The entity that is obstructing the path.</param>
 		private void TryAlternates(byte runId, Vector3 pointOfObstruction, IMyEntity obstructing)
 		{
-			try
-			{
-				m_pathHigh.Clear();
-			}
-			catch (IndexOutOfRangeException ioore)
-			{
-				m_logger.debugLog("Caught IndexOutOfRangeException", "TryAlternates()", Logger.severity.ERROR);
-				m_logger.debugLog("Count: " + m_pathHigh.Count, "TryAlternates()", Logger.severity.ERROR);
-				m_logger.debugLog("Exception: " + ioore, "TryAlternates()", Logger.severity.ERROR);
+			//try
+			//{
+			m_pathHigh.Clear();
+			//}
+			//catch (IndexOutOfRangeException ioore)
+			//{
+			//	m_logger.debugLog("Caught IndexOutOfRangeException", "TryAlternates()", Logger.severity.ERROR);
+			//	m_logger.debugLog("Count: " + m_pathHigh.Count, "TryAlternates()", Logger.severity.ERROR);
+			//	m_logger.debugLog("Exception: " + ioore, "TryAlternates()", Logger.severity.ERROR);
 
-				throw ioore;
-			}
+			//	throw ioore;
+			//}
 
 			Vector3 displacement = pointOfObstruction - m_navBlock.WorldPosition;
 
@@ -469,7 +470,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
 			destRadius *= destRadius;
 
-			FindAlternate_AroundObstruction(displacement, AcceptableDirections, destRadius, distance * 10f, runId);
+			FindAlternate_AroundObstruction(displacement, AcceptableDirections, destRadius, runId);
 		}
 
 		/// <summary>
@@ -478,9 +479,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="displacement">Displacement from autopilot block to destination.</param>
 		/// <param name="directions">Directions to search for alternate paths in.</param>
 		/// <param name="minDistSq">Square of minimum distance between autopilot and waypoint.</param>
-		/// <param name="maxDistSq">Square of maximum distance between autopilot and waypoint.</param>
+		/// 
 		/// <param name="runId">Id of this search.</param>
-		private void FindAlternate_AroundObstruction(Vector3 displacement, IEnumerable<Vector3> directions, float minDistSq, float maxDistSq, byte runId)
+		private void FindAlternate_AroundObstruction(Vector3 displacement, IEnumerable<Vector3> directions, float minDistSq, byte runId)
 		{
 			//m_logger.debugLog("point: " + pointOfObstruction + ", direction: " + direction + ", distance: " + distance + ", dest radius: " + minDistSq, "FindAlternate_AroundObstruction()");
 			for (int newPathDistance = 8; newPathDistance < 1000000; newPathDistance *= 2)
@@ -491,11 +492,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					Vector3 tryDest = basePosition + newPathDistance * direction;
 					float distSq = Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest);
 					if (distSq > minDistSq)
-					{
-						if (distSq > maxDistSq)
-							return;
 						m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
-					}
 				}
 				displacement *= 1.05f;
 			}
@@ -568,6 +565,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					m_navSet.Settings_Task_NavWay.SpeedTarget = float.MaxValue;
 					return;
 				}
+				m_logger.debugLog(m_pathLow.Count != 0, "path clear, throwing out search", "PathClear()", Logger.severity.DEBUG);
 				MoveObstruction = null;
 				m_pathState = PathState.No_Obstruction;
 				m_pathLow.Clear();

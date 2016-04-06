@@ -44,7 +44,9 @@ namespace Rynchodon
 		}
 
 		public static Vector3 LocalPosition(this IMyCubeBlock block)
-		{ return block.Position * block.CubeGrid.GridSize; }
+		{
+			return (block.Min + block.Max) * 0.5f * block.CubeGrid.GridSize;
+		}
 
 		/// <summary>
 		/// Determines if a block is owned by "hostile NPC"
