@@ -54,7 +54,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			if (m_shoppingList.Count != 0)
-				Shop();
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(Shop, m_logger);
 			else
 			{
 				m_logger.debugLog("Shopping finished, proceed to checkout", "Move()", Logger.severity.INFO);
@@ -183,9 +183,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 
 					MyFixedPoint amountInDest = destination.GetItemAmount(defId);
-					bool result = false;
-					MainLock.UsingShared(() => result = destination.TransferItemFrom(source, sourceIndex, amount: amountToMove));
-					if (result)
+					if (destination.TransferItemFrom(source, sourceIndex, amount: amountToMove))
 					{
 						MyFixedPoint amountNow = destination.GetItemAmount(defId);
 						if (amountNow == amountInDest)
