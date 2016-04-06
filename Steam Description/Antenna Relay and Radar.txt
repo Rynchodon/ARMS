@@ -70,6 +70,9 @@ You can change the frequency of HUD Updates with the chat command:
 /arms set UpdateIntervalHUD <frequency>
 where <frequency> is a number between 1 and 255. 60 is once per second, 30 is twice per second.
 
+You can disable Missile Warnings with this command
+/arms set MissileWarning false
+
 To change the number of marked enemy grids to 10:
 /arms set EnemiesOnHUD 10
 To change the number of marked owned grids to 0:
