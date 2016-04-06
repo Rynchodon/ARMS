@@ -20,6 +20,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public Pathfinder.PathState PlanetState { get; private set; }
 		public MyPlanet ClosestPlanet { get; private set; }
+		public Vector3D ClosestPoint { get; private set; }
 
 		public RotateChecker(IMyCubeGrid grid)
 		{

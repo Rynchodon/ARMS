@@ -187,7 +187,11 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
 			if (m_orbiter != null)
+			{
+				if (m_mover.ThrustersOverWorked())
+					customInfo.AppendLine("Fighter cannot stabilize in gravity");
 				m_orbiter.AppendCustomInfo(customInfo);
+			}
 			else
 			{
 				customInfo.Append("Fighter moving to: ");

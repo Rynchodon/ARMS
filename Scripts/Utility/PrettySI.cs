@@ -19,7 +19,7 @@ namespace Rynchodon
 		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>
-		/// For a double between 0 and 1000, round to a number of significant figures. Minimum of three significant figures.
+		/// For a double between 0.1 and 999, round to a number of significant figures. Minimum of three significant figures.
 		/// </summary>
 		/// <param name="toRound">number to round</param>
 		/// <param name="sigFig">number of significant figures in result</param>

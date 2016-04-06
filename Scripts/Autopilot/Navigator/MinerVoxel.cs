@@ -396,8 +396,8 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 						break;
 				}
-				m_mover.myThrust.Update();
-				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.myThrust.WorldGravity.vector));
+				m_mover.Thrust.Update();
+				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_mover.Thrust.WorldGravity.vector));
 				return;
 			}
 
@@ -551,9 +551,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <returns>The lesser of maximum forward and backwards accelerations.</returns>
 		private float GetAcceleration()
 		{
-			m_mover.myThrust.Update();
-			float forwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), true);
-			float backwardForce = m_mover.myThrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), true);
+			m_mover.Thrust.Update();
+			float forwardForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), true);
+			float backwardForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), true);
 
 			return Math.Min(forwardForce, backwardForce) / m_navDrill.Physics.Mass;
 		}

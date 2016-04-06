@@ -131,5 +131,22 @@ namespace Rynchodon
 			return X * X + Y * Y + Z * Z;
 		}
 
+		public static Matrix OuterProduct(this Vector3 first, ref Vector3 second, out Matrix result)
+		{
+			result = new Matrix()
+			{
+				M11 = first.X * second.X,
+				M12 = first.X * second.Y,
+				M13 = first.X * second.Z,
+				M22 = first.Y * second.Y,
+				M23 = first.Y * second.Z,
+				M33 = first.Z * second.Z
+			};
+			result.M21 = result.M12;
+			result.M31 = result.M13;
+			result.M32 = result.M23;
+			return result;
+		}
+
 	}
 }

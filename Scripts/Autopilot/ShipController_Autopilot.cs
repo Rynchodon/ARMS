@@ -149,6 +149,7 @@ namespace Rynchodon.Autopilot
 				switch (value_state)
 				{
 					case State.Enabled:
+						//((MyCubeBlock)m_block.CubeBlock).ResourceSink.RequiredInput = 1f;
 						return;
 
 					case State.Disabled:
@@ -511,7 +512,7 @@ namespace Rynchodon.Autopilot
 			if (!moving)
 				return;
 
-			Pathfinder.Pathfinder path = m_interpreter.Mover.myPathfinder;
+			Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
 			if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
 			{
 				if (!path.ReportCanMove || !path.ReportCanRotate)
