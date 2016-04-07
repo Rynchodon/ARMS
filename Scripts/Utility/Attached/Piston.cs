@@ -21,7 +21,9 @@ namespace Rynchodon.Attached
 				var builder = myBlock.GetObjectBuilder_Safe() as MyObjectBuilder_ExtendedPistonBase;
 				if (builder == null)
 					throw new NullReferenceException("builder");
-				return GetPartner(builder.TopBlockId);
+				if (builder.TopBlockId.HasValue)
+					return GetPartner(builder.TopBlockId.Value);
+				return null;
 			}
 		}
 
