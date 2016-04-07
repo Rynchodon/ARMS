@@ -1,4 +1,6 @@
 using System;
+using VRage.Game;
+using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 namespace Rynchodon
@@ -61,6 +63,8 @@ namespace Rynchodon
 			new Vector3I(1, 1, 0),
 			new Vector3I(1, 1, 1),
 		};
+
+		public static readonly MyDefinitionId Electricity = new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity");
 
 	}
 }

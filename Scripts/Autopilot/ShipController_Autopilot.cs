@@ -11,8 +11,11 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.Game.ObjectBuilders.Definitions;
+using VRage.ObjectBuilders;
 
 namespace Rynchodon.Autopilot
 {
@@ -149,7 +152,6 @@ namespace Rynchodon.Autopilot
 				switch (value_state)
 				{
 					case State.Enabled:
-						//((MyCubeBlock)m_block.CubeBlock).ResourceSink.RequiredInput = 1f;
 						return;
 
 					case State.Disabled:
@@ -184,6 +186,8 @@ namespace Rynchodon.Autopilot
 			this.m_interpreter = new Interpreter(m_block);
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
+
+			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity"), PowerRequired);
 
 			// for my German friends...
 			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
@@ -608,6 +612,23 @@ namespace Rynchodon.Autopilot
 		{
 			m_message = msg;
 			m_interpreter.Mover.SetControl(true);
+		}
+
+		private float PowerRequired()
+		{
+			switch (m_state)
+			{
+				case State.Enabled:
+					if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
+						return 0.01f;
+					return 0.1f;
+				case State.Halted:
+					return 0.01f;
+				case State.Closed:
+				case State.Disabled:
+				default:
+					return 0f;
+			}
 		}
 
 	}

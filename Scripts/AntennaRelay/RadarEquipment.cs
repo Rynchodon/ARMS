@@ -9,8 +9,10 @@ using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.Game.ObjectBuilders.Definitions;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -380,7 +382,14 @@ namespace Rynchodon.AntennaRelay
 			TermBlock.AppendingCustomInfo += AppendingCustomInfo;
 
 			UpdateTargetPowerLevel();
-			PowerLevel_Current = PowerLevel_Target;
+			PowerLevel_Current = Math.Min(PowerLevel_Target, myDefinition.MaxPowerLevel);
+			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
+			
+			IMyFunctionalBlock func = block as IMyFunctionalBlock;
+			func.RequestEnable(false);
+			func.RequestEnable(true);
+
+			TermBlock.RefreshCustomInfo();
 
 			byte detectionTypes = 0;
 			if (myDefinition.Radar)
@@ -590,8 +599,12 @@ namespace Rynchodon.AntennaRelay
 								if (asRadio != null)
 									asRadio.SetValueFloat("Radius", PowerLevel_Target);
 							}
+
+							UpdatePowerConsumption();
 						}, myLogger);
 					}
+					else
+						MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
 				}
 			}
 
@@ -601,6 +614,7 @@ namespace Rynchodon.AntennaRelay
 			PowerLevel_Current += myDefinition.PowerIncrease;
 			if (PowerLevel_Current > PowerLevel_Target)
 				PowerLevel_Current = PowerLevel_Target;
+			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
 			myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", PowerLevel_Current: " + PowerLevel_Current, "UpdatePowerLevel()", Logger.severity.TRACE);
 		}
 
@@ -1055,9 +1069,17 @@ namespace Rynchodon.AntennaRelay
 			{
 				customInfo.AppendLine("Detecting " + myLastSeen.Count + " of " + myDefinition.MaxTargets_Tracking + " objects");
 			}
+
+			customInfo.AppendLine("Power use: " + PrettySI.makePretty(((MyCubeBlock)block).ResourceSink.RequiredInputByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity")) * 1e6f) + 'W');
 		}
 
 		#endregion
+
+		private void UpdatePowerConsumption()
+		{
+			float powerConsumption = CubeBlock.IsWorking ? PowerLevel_Current * 1e-4f : 0f;
+			((MyCubeBlock)CubeBlock).ResourceSink.SetRequiredInputByType(Globals.Electricity, powerConsumption);
+		}
 
 	}
 }
