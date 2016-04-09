@@ -148,6 +148,7 @@ namespace Rynchodon.Autopilot
 					return;
 				m_logger.debugLog("state change from " + value_state + " to " + value, "set_m_state()", Logger.severity.DEBUG);
 				value_state = value;
+				m_interpreter.Mover.MoveAndRotateStop();
 
 				switch (value_state)
 				{
@@ -163,7 +164,6 @@ namespace Rynchodon.Autopilot
 					case State.Halted:
 						m_endOfHalt = Globals.ElapsedTime.Add(new TimeSpan(0, 5, 0));
 						m_interpreter.Mover.SetDamping(true);
-						m_interpreter.Mover.MoveAndRotateStop();
 						return;
 
 					case State.Closed:
@@ -243,8 +243,11 @@ namespace Rynchodon.Autopilot
 				}
 
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) != null)
+				{
+					m_interpreter.Mover.MoveAndRotateStop(false);
 					// wait for player to give back control, do not reset
 					return;
+				}
 
 				if (m_message != null)
 				{

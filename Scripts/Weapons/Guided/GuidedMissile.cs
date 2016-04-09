@@ -357,7 +357,7 @@ namespace Rynchodon.Weapons.Guided
 				RemoveRock();
 
 				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength, "MyEntity_OnClose()");
-				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0)
+				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
 				{
 					myLogger.debugLog("Creating EMP effect", "MyEntity_OnClose()", Logger.severity.DEBUG);
 					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);

@@ -42,9 +42,7 @@ namespace Rynchodon.Threading
 
 		public void EnqueueAction(Action toQueue)
 		{
-			myLogger.debugLog("item count: " + ActionQueue.Count, "EnqueueAction()");
 			ActionQueue.Enqueue(toQueue);
-			myLogger.debugLog("item count: " + ActionQueue.Count, "EnqueueAction()");
 			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
 			using (lock_parallelTasks.AcquireExclusiveUsing())
@@ -84,14 +82,12 @@ namespace Rynchodon.Threading
 					ThreadTracker.ThreadName = ThreadName + '(' + ThreadTracker.ThreadNumber + ')';
 				Action currentItem;
 				while (ActionQueue.TryDequeue(out currentItem))
+				{
 					if (currentItem != null)
-					{
-						myLogger.debugLog("running action", "Run()", Logger.severity.TRACE);
 						currentItem();
-					}
 					else
 						myLogger.debugLog("null action", "Run()", Logger.severity.WARNING);
-				myLogger.debugLog("queue finished", "Run()");
+				}
 			}
 			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
 			finally

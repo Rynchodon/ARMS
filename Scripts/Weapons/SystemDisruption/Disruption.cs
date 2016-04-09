@@ -53,7 +53,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private Dictionary<IMyCubeBlock, MyIDModule> m_affected = new Dictionary<IMyCubeBlock, MyIDModule>();
 
 		/// <summary>When strength is less than this value, stop trying to start an effect.</summary>
-		protected virtual int MinCost { get { return 1; } }
+		protected virtual float MinCost { get { return 1f; } }
 
 		/// <summary>Iff true, the owner of the disruption effect can access the blocks while disrupted.</summary>
 		protected virtual bool EffectOwnerCanAccess { get { return false; } }
@@ -68,7 +68,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		/// <param name="duration">Duration of disruption</param>
 		/// <param name="strength">Strength of disruption (in hackyness)</param>
 		/// <param name="effectOwner">The owner of the disruption.</param>
-		public void Start(IMyCubeGrid grid, TimeSpan duration, ref int strength, long effectOwner)
+		public void Start(IMyCubeGrid grid, TimeSpan duration, ref float strength, long effectOwner)
 		{
 			this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
 
@@ -79,7 +79,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			}
 
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			int applied = 0;
+			float applied = 0;
 			if (!EffectOwnerCanAccess)
 				effectOwner = long.MinValue;
 			m_effectOwner = effectOwner;
@@ -95,7 +95,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 							m_logger.debugLog("cannot disrupt: " + block, "AddEffect()");
 							continue;
 						}
-						int cost = BlockCost(block);
+						float cost = BlockCost(block);
 						if (cost > strength)
 						{
 							m_logger.debugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength, "AddEffect()");
@@ -204,8 +204,8 @@ FinishedBlocks:
 		/// Blocks will be affected in ascending order of the values returned by this function.
 		/// </summary>
 		/// <param name="block">Block to order.</param>
-		/// <returns>An integer that affects the order blocks are affected in.</returns>
-		protected virtual int OrderBy(IMyCubeBlock block)
+		/// <returns>An float that reflects the order blocks are affected in.</returns>
+		protected virtual float OrderBy(IMyCubeBlock block)
 		{
 			return Globals.Random.Next();
 		}
@@ -226,7 +226,7 @@ FinishedBlocks:
 		/// </summary>
 		/// <param name="block">The block the disruption may be started on,.</param>
 		/// <returns>The cost of starting an effect on this block.</returns>
-		protected virtual int BlockCost(IMyCubeBlock block)
+		protected virtual float BlockCost(IMyCubeBlock block)
 		{
 			return MinCost;
 		}

@@ -13,7 +13,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			get { return new MyObjectBuilderType[] { typeof(MyObjectBuilder_LargeGatlingTurret), typeof(MyObjectBuilder_LargeMissileTurret), typeof(MyObjectBuilder_InteriorTurret) }; }
 		}
 
-		protected override int MinCost { get { return 15; } }
+		protected override float MinCost { get { return 15f; } }
 
 		protected override void StartEffect(IMyCubeBlock block)
 		{

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -17,10 +18,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly GridCellCache m_cells;
 
 		private List<MyEntity> m_obstructions = new List<MyEntity>();
+		private Vector3D m_closestPoint;
+		private FastResourceLock lock_closestPoint = new FastResourceLock();
 
 		public Pathfinder.PathState PlanetState { get; private set; }
 		public MyPlanet ClosestPlanet { get; private set; }
-		public Vector3D ClosestPoint { get; private set; }
+		public Vector3D ClosestPoint
+		{
+			get
+			{
+				using (lock_closestPoint.AcquireSharedUsing())
+					return m_closestPoint;
+			}
+		}
 
 		public RotateChecker(IMyCubeGrid grid)
 		{
@@ -73,6 +83,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			LineSegment axisSegment = new LineSegment();
 
+			ClosestPlanet = MyPlanetExtensions.GetClosestPlanet(centreOfMass);
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet, m_logger);
+
 			foreach (MyEntity entity in m_obstructions)
 				if (PathChecker.collect_Entity(m_grid, entity))
 				{
@@ -93,9 +106,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 							continue;
 						}
 
-						m_logger.debugLog(!(entity is MyPlanet), "entity is not a planet", "TestRotate()", Logger.severity.FATAL);
-						ClosestPlanet = (MyPlanet)entity;
-						MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet, m_logger); 
 						if (PlanetState != Pathfinder.PathState.No_Obstruction)
 						{
 							m_logger.debugLog("planet blocking", "TestRotate()");
@@ -143,20 +153,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void TestPlanet()
 		{
+			MyPlanet planet = ClosestPlanet;
+			if (planet == null)
+				return;
+
 			Vector3D myPos = m_grid.GetCentre();
-			Vector3D planetCentre = ClosestPlanet.GetCentre();
+			Vector3D planetCentre = planet.GetCentre();
 
 			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
-			if (distSqToPlanet > ClosestPlanet.MaximumRadius * ClosestPlanet.MaximumRadius)
+			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
 			{
 				m_logger.debugLog("higher than planet maximum", "TestPlanet()");
 				PlanetState = Pathfinder.PathState.No_Obstruction;
 				return;
 			}
 
-			Vector3D surface = ClosestPlanet.GetClosestSurfacePointGlobal(ref myPos);
+			using (lock_closestPoint.AcquireExclusiveUsing())
+				m_closestPoint = planet.GetClosestSurfacePointGlobal(ref myPos);
 
-			if (distSqToPlanet < Vector3D.DistanceSquared(surface, planetCentre))
+			if (distSqToPlanet < Vector3D.DistanceSquared(m_closestPoint, planetCentre))
 			{
 				m_logger.debugLog("below surface", "TestPlanet()");
 				PlanetState = Pathfinder.PathState.Path_Blocked;
@@ -164,7 +179,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			float longest = m_grid.GetLongestDim();
-			if (Vector3D.DistanceSquared(myPos, surface) < longest * longest)
+			if (Vector3D.DistanceSquared(myPos, m_closestPoint) < longest * longest)
 			{
 				m_logger.debugLog("near surface", "TestPlanet()");
 				PlanetState = Pathfinder.PathState.Path_Blocked;

@@ -35,9 +35,8 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public override void Move()
 		{
-			// stopping in gravity does not work exactly, players should not be using EXIT anyway
-			m_mover.Thrust.Update();
-			float threshold = m_mover.Thrust.LocalGravity.vector != Vector3.Zero ? 0.1f : 0f;
+			// stopping in gravity does not work exactly, players should not be using EXIT in gravity anyway
+			float threshold = m_exitAfter ? 0f : 0.1f;
 
 			if (m_mover.Block.Physics.LinearVelocity.LengthSquared() <= threshold && m_mover.Block.Physics.AngularVelocity.LengthSquared() <= threshold)
 			{

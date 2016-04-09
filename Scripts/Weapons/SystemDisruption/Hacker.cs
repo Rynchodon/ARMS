@@ -15,7 +15,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 	public class Hacker
 	{
 
-		private const int s_hackStrength = 50;
+		private const float s_hackStrength = 50f;
 		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
 		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
 		private static float allowedBreakForce = 1f;
@@ -32,7 +32,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private readonly IMyLandingGear m_hackBlock;
 
 		private TimeSpan m_nextHack;
-		private int m_strengthLeft;
+		private float m_strengthLeft;
 
 		public Hacker(IMyCubeBlock block)
 		{
@@ -49,13 +49,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 				return;
 			if (!m_hackBlock.IsWorking)
 			{
-				m_strengthLeft = 0;
+				m_strengthLeft = 0f;
 				return;
 			}
 			IMyCubeGrid attached = m_hackBlock.GetAttachedEntity() as IMyCubeGrid;
 			if (attached == null)
 			{
-				m_strengthLeft = 0;
+				m_strengthLeft = 0f;
 				return;
 			}
 			if (m_hackBlock.BreakForce > allowedBreakForce)

@@ -35,6 +35,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Logger myLogger = null;
 
 		private IMyCubeGrid myGrid;
+		private MyPlanet m_planetAtmos;
 		private float m_airDensity;
 		private float? m_gravStrength;
 		private ulong m_nextUpdate;
@@ -103,6 +104,8 @@ namespace Rynchodon.Autopilot.Movement
 
 			myGrid.OnBlockAdded += grid_OnBlockAdded;
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
+
+			ClearOverrides();
 		}
 
 		/// <summary>
@@ -189,7 +192,9 @@ namespace Rynchodon.Autopilot.Movement
 				force += change;
 			}
 
-			return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
+			return force;
+
+			//return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
 		}
 
 		public void Update()
@@ -203,6 +208,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3D position = myGrid.GetPosition();
 			bool first = true;
 			Vector3 worldGravity = Vector3.Zero;
+			m_planetAtmos = null;
 			m_airDensity = 0f;
 			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
 			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
@@ -223,7 +229,10 @@ namespace Rynchodon.Autopilot.Movement
 						m_gravStrength = null;
 					}
 					if (planet.HasAtmosphere)
+					{
 						m_airDensity += planet.GetAirDensity(position);
+						m_planetAtmos = planet;
+					}
 				}
 
 			allPlanets.Clear();

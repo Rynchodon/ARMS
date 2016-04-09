@@ -19,12 +19,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public readonly string m_orbitEntity_name;
 
+		/// <summary>Distance from point being orbited. If orbiting a grid in gravity, the orbited point will usually be above the grid. </summary>
+		public float Altitude;
+		public float OrbitSpeed { get; private set; }
+
 		private readonly Logger m_logger;
 		private readonly PseudoBlock m_navBlock;
 		private readonly GridFinder m_gridFinder;
 		private IMyEntity value_orbitEntity;
-		private float m_altitude;
-		private float m_orbitSpeed;
 		private Vector3 m_orbitAxis;
 		private Vector3 m_targetPositionOffset = Vector3.Zero;
 		private bool m_flyTo = true;
@@ -39,7 +41,7 @@ namespace Rynchodon.Autopilot.Navigator
 				value_orbitEntity = value;
 				if (value == null)
 				{
-					m_altitude = 0f;
+					Altitude = 0f;
 					m_targetPositionOffset = Vector3.Zero;
 					return;
 				}
@@ -58,29 +60,29 @@ namespace Rynchodon.Autopilot.Navigator
 						m_orbitAxis = Vector3D.Normalize(targetCentre - closest.GetCentre());
 
 						const float heightRatio = 0.866f; // sin(60°), target can be at most 60° below horizontal
-						float maxAxisHeight = m_altitude < 1f ? (float)Vector3D.Distance(navBlockPos, targetCentre) * heightRatio : m_altitude * heightRatio;
+						float maxAxisHeight = Altitude < 1f ? (float)Vector3D.Distance(navBlockPos, targetCentre) * heightRatio : Altitude * heightRatio;
 
 						Line orbitAxis = new Line(Vector3.Zero, m_orbitAxis * maxAxisHeight);
 						Vector3D closestPoint = orbitAxis.ClosestPoint(navBlockPos - targetCentre) + targetCentre;
 						m_targetPositionOffset = closestPoint - targetCentre;
 
-						if (m_altitude < 1f)
-							m_altitude = (float)Vector3D.Distance(navBlockPos, closestPoint);
+						if (Altitude < 1f)
+							Altitude = (float)Vector3D.Distance(navBlockPos, closestPoint);
 						else
-							m_altitude = (float)Math.Sqrt(m_altitude * m_altitude - Vector3D.DistanceSquared(closestPoint, targetCentre));
+							Altitude = (float)Math.Sqrt(Altitude * Altitude - Vector3D.DistanceSquared(closestPoint, targetCentre));
 
-						m_logger.debugLog("near a planet, circling at constant distance to planet, altitude: " + m_altitude + ", axis: " + m_orbitAxis + ", target centre: " +
+						m_logger.debugLog("near a planet, circling at constant distance to planet, altitude: " + Altitude + ", axis: " + m_orbitAxis + ", target centre: " +
 							targetCentre + ", closestPoint: " + closestPoint + ", target offset: " + m_targetPositionOffset, "set_OrbitEntity()", Logger.severity.DEBUG);
 						return;
 					}
 				}
-				if (m_altitude < 1f)
-					m_altitude = (float)Vector3D.Distance(m_navBlock.WorldPosition, value_orbitEntity.GetCentre());
+				if (Altitude < 1f)
+					Altitude = (float)Vector3D.Distance(m_navBlock.WorldPosition, value_orbitEntity.GetCentre());
 				Vector3D toTarget = value_orbitEntity.GetCentre() - m_navBlock.WorldPosition;
 				m_orbitAxis = Vector3D.CalculatePerpendicularVector(toTarget);
 				m_orbitAxis.Normalize();
 
-				m_logger.debugLog("altitude: " + m_altitude + ", axis: " + m_orbitAxis, "set_OrbitEntity()", Logger.severity.DEBUG);
+				m_logger.debugLog("altitude: " + Altitude + ", axis: " + m_orbitAxis, "set_OrbitEntity()", Logger.severity.DEBUG);
 			}
 		}
 
@@ -99,8 +101,8 @@ namespace Rynchodon.Autopilot.Navigator
 					break;
 				case "planet":
 					SetOrbitClosestVoxel(false);
-					m_orbitSpeed = (float)Math.Sqrt((OrbitEntity as MyPlanet).GetGravityMultiplier(m_navBlock.WorldPosition) * 9.81f * m_altitude);
-					if (m_orbitSpeed < 1f)
+					OrbitSpeed = (float)Math.Sqrt((OrbitEntity as MyPlanet).GetGravityMultiplier(m_navBlock.WorldPosition) * 9.81f * Altitude);
+					if (OrbitSpeed < 1f)
 						CalcFakeOrbitSpeedForce();
 					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
 					break;
@@ -117,14 +119,18 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Creates an Orbiter for a specific entity, fake orbit only.
 		/// Does not add itself to navSet.
 		/// </summary>
-		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float altitude, string name)
+		/// <param name="faceBlock">The block that will be faced towards the orbited entity</param>
+		/// <param name="entity">The entity to be orbited</param>
+		/// <param name="distance">The distance between the orbiter and the orbited entity</param>
+		/// <param name="name">What to call the orbited entity</param>
+		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
 			: base(mover, navSet)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_navBlock = faceBlock;
 			this.m_orbitEntity_name = name;
 
-			m_altitude = altitude;
+			Altitude = distance;
 			OrbitEntity = entity;
 
 			CalcFakeOrbitSpeedForce();
@@ -157,21 +163,21 @@ namespace Rynchodon.Autopilot.Navigator
 		private void CalcFakeOrbitSpeedForce()
 		{
 			float maxSpeed = m_navSet.Settings_Task_NavMove.SpeedTarget;
-			float forceForMaxSpeed = m_navBlock.Grid.Physics.Mass * maxSpeed * maxSpeed / m_altitude;
+			float forceForMaxSpeed = m_navBlock.Grid.Physics.Mass * maxSpeed * maxSpeed / Altitude;
 			m_mover.Thrust.Update();
 			float maxForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navBlock.LocalMatrix.Forward)) * Mover.AvailableForceRatio;
 
-			m_logger.debugLog("maxSpeed: " + maxSpeed + ", mass: " + m_navBlock.Grid.Physics.Mass + ", m_altitude: " + m_altitude + ", forceForMaxSpeed: " + forceForMaxSpeed + ", maxForce: " + maxForce, "CalcFakeOrbitSpeedForce()", Logger.severity.INFO);
+			m_logger.debugLog("maxSpeed: " + maxSpeed + ", mass: " + m_navBlock.Grid.Physics.Mass + ", m_altitude: " + Altitude + ", forceForMaxSpeed: " + forceForMaxSpeed + ", maxForce: " + maxForce, "CalcFakeOrbitSpeedForce()", Logger.severity.INFO);
 
 			if (forceForMaxSpeed < maxForce)
 			{
-				m_orbitSpeed = maxSpeed;
+				OrbitSpeed = maxSpeed;
 				m_logger.debugLog("hold onto your hats!", "CalcFakeOrbitSpeed()", Logger.severity.INFO);
 			}
 			else
 			{
-				m_orbitSpeed = (float)Math.Sqrt(maxForce / m_navBlock.Grid.Physics.Mass * m_altitude);
-				m_logger.debugLog("choosing a more reasonable speed, m_orbitSpeed: " + m_orbitSpeed, "CalcFakeOrbitSpeed()", Logger.severity.INFO);
+				OrbitSpeed = (float)Math.Sqrt(maxForce / m_navBlock.Grid.Physics.Mass * Altitude);
+				m_logger.debugLog("choosing a more reasonable speed, m_orbitSpeed: " + OrbitSpeed, "CalcFakeOrbitSpeed()", Logger.severity.INFO);
 			}
 		}
 
@@ -202,10 +208,10 @@ namespace Rynchodon.Autopilot.Navigator
 			m_faceDirection = Vector3.Reject(targetCentre - m_navBlock.WorldPosition, m_orbitAxis);
 			float alt = m_faceDirection.Normalize();
 			Vector3 orbitDirection = m_faceDirection.Cross(m_orbitAxis);
-			Vector3D destination = targetCentre - m_faceDirection * m_altitude;
-			float speed = alt > m_altitude ?
-				Math.Max(1f, m_orbitSpeed - alt + m_altitude) : 
-				m_orbitSpeed;
+			Vector3D destination = targetCentre - m_faceDirection * Altitude;
+			float speed = alt > Altitude ?
+				Math.Max(1f, OrbitSpeed - alt + Altitude) : 
+				OrbitSpeed;
 
 			m_mover.CalcMove(m_navBlock, destination, OrbitEntity.GetLinearVelocity() + orbitDirection * speed);
 		}
@@ -235,7 +241,7 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine("Enemy");
 
 			customInfo.Append("Orbital speed: ");
-			customInfo.Append(PrettySI.makePretty(m_orbitSpeed));
+			customInfo.Append(PrettySI.makePretty(OrbitSpeed));
 			customInfo.AppendLine("m/s");
 		}
 
@@ -251,7 +257,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_flyTo = false;
 				m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_faceDirection));
 			}
-			else if (m_navSet.DistanceLessThan(m_orbitSpeed))
+			else if (m_navSet.DistanceLessThan(OrbitSpeed))
 			{
 				if (m_flyTo)
 				{

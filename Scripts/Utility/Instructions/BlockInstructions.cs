@@ -117,28 +117,28 @@ namespace Rynchodon.Instructions
 			m_monitors.Clear();
 			HasInstructions = false;
 
-			m_logger.debugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
+			//m_logger.debugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
 			if (GetInstructions(m_displayName))
 			{
-				m_logger.debugLog("Got instructions from name", "GetInstructions()", Logger.severity.DEBUG);
+				//m_logger.debugLog("Got instructions from name", "GetInstructions()", Logger.severity.DEBUG);
 				return;
 			}
 
 			Ingame.IMyTextPanel asPanel = m_block as Ingame.IMyTextPanel;
 			if (asPanel != null)
 			{
-				m_logger.debugLog("Trying to get instructions from public title: " + asPanel.GetPublicTitle(), "GetInstructions()");
+				//m_logger.debugLog("Trying to get instructions from public title: " + asPanel.GetPublicTitle(), "GetInstructions()");
 				AddMonitor(asPanel.GetPublicTitle);
 				if (GetInstructions(asPanel.GetPublicTitle()))
 				{
-					m_logger.debugLog("Got instructions from public title", "GetInstructions()", Logger.severity.DEBUG);
+					//m_logger.debugLog("Got instructions from public title", "GetInstructions()", Logger.severity.DEBUG);
 					return;
 				}
-				m_logger.debugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
+				//m_logger.debugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
 				AddMonitor(asPanel.GetPrivateTitle);
 				if (GetInstructions(asPanel.GetPrivateTitle()))
 				{
-					m_logger.debugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
+					//m_logger.debugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
 					return;
 				}
 			}
@@ -149,7 +149,7 @@ namespace Rynchodon.Instructions
 					FallBackInstruct = FallBackInstruct.Substring(1, FallBackInstruct.Length - 2);
 				if (ParseAll(FallBackInstruct))
 				{
-					m_logger.debugLog("Setting instructions to fallback: " + FallBackInstruct, "GetInstrucions()");
+					//m_logger.debugLog("Setting instructions to fallback: " + FallBackInstruct, "GetInstrucions()");
 					HasInstructions = true;
 					m_instructions = FallBackInstruct;
 					return;
@@ -166,7 +166,7 @@ namespace Rynchodon.Instructions
 				string instruct = matches[i].Value.Substring(1, matches[i].Value.Length - 2);
 				if (ParseAll(instruct))
 				{
-					m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
+					//m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
 					HasInstructions = true;
 					m_instructions = instruct;
 					return true;

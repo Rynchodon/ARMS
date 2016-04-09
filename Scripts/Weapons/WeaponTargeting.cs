@@ -403,9 +403,9 @@ namespace Rynchodon.Weapons
 
 			Vector3 firingDirection = target.FiringDirection.Value;
 			float accuracy;
-			Vector3.DistanceSquared(ref CurrentDirection, ref firingDirection, out accuracy);
+			Vector3.Dot(ref CurrentDirection, ref firingDirection, out accuracy);
 
-			if (accuracy > 0.0003f) // might be too low for fixed weapons
+			if (accuracy >= 0.999f)
 			{
 				// not facing target
 				myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
@@ -497,6 +497,9 @@ namespace Rynchodon.Weapons
 
 		private void FuncBlock_AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
 		{
+			if (block == null || block.Closed)
+				return;
+
 			if (Interpreter.Errors.Count != 0)
 			{
 				customInfo.AppendLine("Syntax Errors: ");

@@ -62,13 +62,13 @@ namespace Rynchodon.Autopilot
 
 		private void MessageHandler(byte[] message, ref int pos)
 		{
-			m_logger.debugLog("Received a message, length: " + message.Length, "MessageHandler()", Logger.severity.DEBUG);
+			//m_logger.debugLog("Received a message, length: " + message.Length, "MessageHandler()", Logger.severity.DEBUG);
 
 			m_customInfo.Clear();
 			while (pos < message.Length)
 				m_customInfo.Append(ByteConverter.GetChar(message, ref pos));
 
-			m_logger.debugLog("Message:\n" + m_customInfo, "MessageHandler()");
+			//m_logger.debugLog("Message:\n" + m_customInfo, "MessageHandler()");
 
 			m_block.RefreshCustomInfo();
 		}

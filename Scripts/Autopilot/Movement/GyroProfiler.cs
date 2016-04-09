@@ -36,6 +36,8 @@ namespace Rynchodon.Autopilot.Movement
 		private bool m_updating;
 		private FastResourceLock m_lock = new FastResourceLock();
 
+		public float GyroForce { get; private set; }
+
 		/// <summary>The three moments of inertial for the coordinate axes</summary>
 		public Vector3 InertiaMoment
 		{
@@ -60,24 +62,30 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			this.m_logger = new Logger("GyroProfiler", () => grid.DisplayName);
 			this.myGrid = grid;
+
+			ClearOverrides();
 		}
 
-		public float TotalGyroForce()
+		private void CalcGyroForce()
 		{
 			ReadOnlyList<IMyCubeBlock> gyros = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
 			if (gyros == null)
-				return 0f;
+			{
+				GyroForce = 0f;
+			}
 
 			float force = 0f;
 			foreach (MyGyro g in gyros)
 				if (g.IsWorking)
 					force += g.MaxGyroForce; // MaxGyroForce accounts for power ratio and modules
 
-			return force;
+			GyroForce = force;
 		}
 
 		public void Update()
 		{
+			CalcGyroForce();
+
 			PositionGrid centre = ((PositionWorld)myGrid.Physics.CenterOfMassWorld).ToGrid(myGrid);
 
 			if (Vector3.DistanceSquared(centre, m_centreOfMass) > 1f || Math.Abs(myGrid.Physics.Mass - m_mass) > 10f)

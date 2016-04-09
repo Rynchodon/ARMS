@@ -25,6 +25,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private const float SqRtHalf = 0.70710678f;
 		private const float SqRtThird = 0.57735026f;
 		private const float LookAheadSpeed_Seconds = 10f;
+		/// <summary>Pathfinder is biased against a waypoint by distance to waypoint * WaypointDistanceBias</summary>
+		private const float WaypointDistanceBias = 0.01f;
 		/// <summary>Maximum number of alternate paths to check before choosing one, count starts after a viable path is found.</summary>
 		private const int AlternatesToCheck = 25;
 
@@ -98,7 +100,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
 
 		private PseudoBlock m_navBlock;
-		private Vector3 m_destination;
+		private Vector3D m_destination;
 		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
 		private PathState m_pathState = PathState.Not_Running;
@@ -125,6 +127,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public IMyEntity RotateObstruction { get; private set; }
 		public IMyEntity MoveObstruction { get; private set; }
+
+		/// <summary>Closest surface point found by rotate checker.</summary>
+		public Vector3D ClosestSurfacePoint { get { return m_rotateChecker.ClosestPoint; } }
 
 		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
@@ -314,14 +319,33 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 							MoveObstruction = obstructing;
 							m_pathHigh.Clear();
+							ClearAltPath();
 							if ((m_planetCheckDest.CurrentState & PlanetChecker.State.BlockedPath) != 0)
 								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e4f, runId);
 							else // blocked by gravity
 								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e6f, runId);
+							m_pathLow.Enqueue(() => {
+								if (m_altPath_AlternatesFound != 0)
+									SetWaypoint();
+								RunItem();
+							});
 							m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
 
 							return;
 						}
+					}
+				}
+
+				// for alternates, check that it can be better than current value
+				if (isAlternate)
+				{
+					float distToWaypointSquared = (float)Vector3D.DistanceSquared(m_navBlock.WorldPosition, destination);
+					if (distToWaypointSquared * WaypointDistanceBias * WaypointDistanceBias > m_altPath_PathValue * m_altPath_PathValue)
+					{
+						m_logger.debugLog("no point in checking alternate path, bias is too high", "TestPath()", Logger.severity.TRACE);
+						m_logger.debugLog(m_altPath_AlternatesFound == 0, "no alternate, yet path value is set", "TestPath()", Logger.severity.ERROR);
+						IncrementAlternatesFound();
+						return;
 					}
 				}
 
@@ -550,8 +574,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (isAlternate)
 				{
 					LineSegment line = new LineSegment() { From = destination, To = m_destination };
-					float pathValue = m_pathChecker.distanceCanTravel(line);
-					m_logger.debugLog("for point: " + line.From + ", waypoint distance: " + Vector3D.Distance(m_navBlock.WorldPosition, destination) + ", path value: " + pathValue + ", required: " + m_altPath_PathValue, "PathClear()", Logger.severity.TRACE);
+					float distToWaypoint = (float)Vector3D.Distance(m_navBlock.WorldPosition, destination);
+					float pathValue = m_pathChecker.distanceCanTravel(line) + distToWaypoint * WaypointDistanceBias;
+					m_logger.debugLog("for point: " + line.From + ", waypoint distance: " + (float)Vector3D.Distance(m_navBlock.WorldPosition, destination) + ", path value: " + pathValue + ", required: " + m_altPath_PathValue, "PathClear()", Logger.severity.TRACE);
 
 					if (!AddAlternatePath(pathValue, ref destination))
 						m_logger.debugLog("throwing out: " + line.From + ", path value: " + pathValue + ", required: " + m_altPath_PathValue, "PathClear()", Logger.severity.TRACE);
@@ -621,7 +646,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			else
 				new GOLIS(m_mover, m_navSet, m_altPath_Waypoint, AllNavigationSettings.SettingsLevelName.NavWay);
 			m_navSet.Settings_Current.DestinationRadius = (float)Math.Max(Vector3D.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2d, 1d);
-			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "IncrementAlternatesFound()", Logger.severity.DEBUG);
+			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, "SetWaypoint()", Logger.severity.DEBUG);
 		}
 
 	}

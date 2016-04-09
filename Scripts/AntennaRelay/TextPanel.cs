@@ -119,7 +119,7 @@ namespace Rynchodon.AntennaRelay
 			if (entityIds != null)
 				UpdateInstructions();
 
-			myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
+			//myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
 
 			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
@@ -175,7 +175,7 @@ namespace Rynchodon.AntennaRelay
 
 				ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 				m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
-				myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display()");
+				//myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display()");
 			});
 		}
 
@@ -190,14 +190,14 @@ namespace Rynchodon.AntennaRelay
 				{
 					ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 					m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
-					myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display_FromProgram()");
+					//myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display_FromProgram()");
 				}
 			}
 		}
 
 		private void DisplyAutopilotStatus()
 		{
-			myLogger.debugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
+			//myLogger.debugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
 
 			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
@@ -213,11 +213,11 @@ namespace Rynchodon.AntennaRelay
 				NetworkStorage apStore = ap.m_block.NetClient.GetStorage();
 				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
 				{
-					myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");
+					//myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");
 					autopilots.Add(new SortableAutopilot(ap, mypos));
 				}
-				else
-					myLogger.debugLog("not adding: " + ap.m_block.CubeBlock.DisplayNameText + ", " + (apStore != null) + ", " + (apStore == store) + ", " + (m_block.canConsiderFriendly(ap.m_block.CubeBlock)), "DisplyAutopilotStatus()");
+				//else
+				//	myLogger.debugLog("not adding: " + ap.m_block.CubeBlock.DisplayNameText + ", " + (apStore != null) + ", " + (apStore == store) + ", " + (m_block.canConsiderFriendly(ap.m_block.CubeBlock)), "DisplyAutopilotStatus()");
 			});
 
 			autopilots.Sort();

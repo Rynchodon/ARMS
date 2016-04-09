@@ -34,6 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private PseudoBlock m_weapon_primary_pseudo;
 		private LastSeen m_currentTarget;
 		private Orbiter m_orbiter;
+		private float m_finalOrbitAltitude;
 		private float m_weaponRange_min;
 		private bool m_weaponArmed = false;
 		private bool m_destroySet = false;
@@ -142,13 +143,28 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_orbiter == null)
 			{
 				if (m_navSet.DistanceLessThan(m_weaponRange_min * 2f))
+				{
+					// we give orbiter a lower distance, so it will calculate orbital speed from that
 					m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
+					// start further out so we can spiral inwards
+					m_finalOrbitAltitude = m_orbiter.Altitude;
+					m_orbiter.Altitude = m_finalOrbitAltitude * 1.5f;
+					m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude, "Move()", Logger.severity.DEBUG);
+				}
 				else
 				{
-					m_mover.CalcMove(m_weapon_primary_pseudo, m_currentTarget.GetPosition(), m_currentTarget.Entity.Physics.LinearVelocity);
+					Vector3D targetPosition = m_currentTarget.GetPosition();
+					Vector3D direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - targetPosition);
+					targetPosition += direction * m_weaponRange_min * 1.9f;
+
+					m_mover.CalcMove(m_weapon_primary_pseudo, targetPosition, m_currentTarget.Entity.Physics.LinearVelocity);
 					return;
 				}
 			}
+
+			Target current = m_weapon_primary.CurrentTarget;
+			if ((current == null || current.Entity == null) && m_orbiter.Altitude > m_finalOrbitAltitude && m_navSet.DistanceLessThan(m_orbiter.OrbitSpeed))
+				m_orbiter.Altitude -= 0.5f;
 
 			m_orbiter.Move();
 
@@ -174,9 +190,10 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3? FiringDirection = m_weapon_primary.CurrentTarget.FiringDirection;
 			if (!FiringDirection.HasValue)
 			{
-				//m_logger.debugLog("no target", "Rotate()");
-				//m_mover.CalcRotate(m_controlBlock.Pseudo, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget.Entity.GetCentre() - m_controlBlock.CubeBlock.GetPosition()));
-				m_mover.CalcRotate();
+				if (m_orbiter != null)
+					m_orbiter.Rotate();
+				else
+					m_mover.CalcRotate();
 				return;
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");

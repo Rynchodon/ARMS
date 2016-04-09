@@ -17,7 +17,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		private static List<MyEntity> s_entitiesEMP = new List<MyEntity>();
 
-		public static void ApplyEMP(BoundingSphereD location, int strength, TimeSpan duration)
+		public static void ApplyEMP(BoundingSphereD location, float strength, TimeSpan duration)
 		{
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref location, s_entitiesEMP);
@@ -34,21 +34,21 @@ namespace Rynchodon.Weapons.SystemDisruption
 			});
 		}
 
-		protected override int MinCost { get { return 1000; } }
+		protected override float MinCost { get { return 500f; } }
 
 		protected override MyObjectBuilderType[] BlocksAffected
 		{
 			get { return  new MyObjectBuilderType[] { typeof(MyObjectBuilder_BatteryBlock), typeof(MyObjectBuilder_Reactor) }; }
 		}
 
-		protected override int OrderBy(IMyCubeBlock block)
+		protected override float OrderBy(IMyCubeBlock block)
 		{
 			return -BlockCost(block);
 		}
 
-		protected override int BlockCost(IMyCubeBlock block)
+		protected override float BlockCost(IMyCubeBlock block)
 		{
-			return (int)((block.GetCubeBlockDefinition() as MyPowerProducerDefinition).MaxPowerOutput * 1000f);
+			return ((block.GetCubeBlockDefinition() as MyPowerProducerDefinition).MaxPowerOutput * 1000f);
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)
