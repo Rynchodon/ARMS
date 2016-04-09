@@ -219,7 +219,7 @@ namespace Rynchodon
 				return;
 			}
 
-			myLogger.debugLog(Stator.DisplayNameText + ", speed changed to " + speed, "SetVelocity()");
+			//myLogger.debugLog(Stator.DisplayNameText + ", speed changed to " + speed, "SetVelocity()");
 			var prop = Stator.GetProperty("Velocity").AsFloat();
 
 			if (Stator == StatorEl)

@@ -62,7 +62,7 @@ namespace Rynchodon.Weapons
 		{
 			myLogger = new Logger("FixedWeapon", block);
 			Registrar.Add(CubeBlock, this);
-			myLogger.debugLog("Initialized", "FixedWeapon()");
+			//myLogger.debugLog("Initialized", "FixedWeapon()");
 
 			AllowFighterControl = WeaponDescription.GetFor(block).AllowFighterControl;
 		}
@@ -75,7 +75,7 @@ namespace Rynchodon.Weapons
 		{
 			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
-				myLogger.debugLog("engager takes control", "EngagerTakeControl()");
+				//myLogger.debugLog("engager takes control", "EngagerTakeControl()");
 				CurrentControl = Control.Engager;
 
 				if (MyAPIGateway.Multiplayer.IsServer)
@@ -130,7 +130,7 @@ namespace Rynchodon.Weapons
 			{
 				if (MyMotorTurret == null && CanControl)
 				{
-					myLogger.debugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
+					//myLogger.debugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
 				}
 			}
@@ -138,7 +138,7 @@ namespace Rynchodon.Weapons
 			{
 				if (MyMotorTurret != null)
 				{
-					myLogger.debugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
+					//myLogger.debugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
 				}
 			}
@@ -166,19 +166,19 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void MyMotorTurret_OnStatorChange(IMyMotorStator statorEl, IMyMotorStator statorAz)
 		{
-			myLogger.debugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
+			//myLogger.debugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
 
 			List<IMyEntity> ignore = new List<IMyEntity>();
 			if (statorEl != null)
 			{
-				myLogger.debugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
+				//myLogger.debugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorEl.CubeGrid);
 
 				// elevation rotor will be on same grid as weapon, already ignored
 			}
 			if (statorAz != null)
 			{
-				myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
+				//myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorAz);
 
 				// azimuth rotor will be on same grid as elevation stator, ignored above

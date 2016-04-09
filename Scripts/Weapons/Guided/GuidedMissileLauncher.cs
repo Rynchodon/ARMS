@@ -89,11 +89,11 @@ namespace Rynchodon.Weapons.Guided
 			MissileSpawnBox = BoundingBox.CreateFromPoints(points);
 			if (m_weaponTarget.myTurret != null)
 			{
-				myLogger.debugLog("original box: " + MissileSpawnBox, "GuidedMissileLauncher()");
+				//myLogger.debugLog("original box: " + MissileSpawnBox, "GuidedMissileLauncher()");
 				MissileSpawnBox.Inflate(CubeBlock.CubeGrid.GridSize * 2f);
 			}
 
-			myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
+			//myLogger.debugLog("MissileSpawnBox: " + MissileSpawnBox, "GuidedMissileLauncher()");
 
 			myInventory = ((MyEntity)CubeBlock).GetInventoryBase(0);
 
@@ -110,21 +110,21 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (m_weaponTarget.myTurret == null && !(CubeBlock as Ingame.IMyUserControllableGun).IsShooting)
 			{
-				myLogger.debugLog("Not mine, not shooting", "MissileBelongsTo()");
+				//myLogger.debugLog("Not mine, not shooting", "MissileBelongsTo()");
 				return false;
 			}
 			Vector3D local = Vector3D.Transform(missile.GetPosition(), CubeBlock.WorldMatrixNormalizedInv);
 			if (MissileSpawnBox.Contains(local) != ContainmentType.Contains)
 			{
-				myLogger.debugLog("Not in my box: " + missile + ", position: " + local, "MissileBelongsTo()");
+				//myLogger.debugLog("Not in my box: " + missile + ", position: " + local, "MissileBelongsTo()");
 				return false;
 			}
 			if (m_weaponTarget.myTurret == null)
 			{
 				if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
 				{
-					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward
-						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
+					//myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward
+					//	+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
 					return false;
 				}
 			}
@@ -135,21 +135,21 @@ namespace Rynchodon.Weapons.Guided
 				turretDirection = Vector3.Transform(turretDirection, CubeBlock.WorldMatrix.GetOrientation());
 				if (Vector3D.RectangularDistance(turretDirection, missile.WorldMatrix.Forward) > 0.01)
 				{
-					myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", turret direction: " + turretDirection
-						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
+					//myLogger.debugLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", turret direction: " + turretDirection
+					//	+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward), "MissileBelongsTo()");
 					return false;
 				}
 			}
 
 			if (loadedAmmo == null)
 			{
-				myLogger.debugLog("Mine but no loaded ammo!", "MissileBelongsTo()", Logger.severity.INFO);
+				//myLogger.debugLog("Mine but no loaded ammo!", "MissileBelongsTo()", Logger.severity.INFO);
 				return true;
 			}
 
 			if (loadedAmmo.Description == null || loadedAmmo.Description.GuidanceSeconds < 1f)
 			{
-				myLogger.debugLog("Mine but not a guided missile!", "MissileBelongsTo()", Logger.severity.INFO);
+				//myLogger.debugLog("Mine but not a guided missile!", "MissileBelongsTo()", Logger.severity.INFO);
 				return true;
 			}
 
@@ -164,16 +164,16 @@ namespace Rynchodon.Weapons.Guided
 					m_cluster.Add(missile);
 					if (m_cluster.Count >= loadedAmmo.MagazineDefinition.Capacity)
 					{
-						myLogger.debugLog("Final missile in cluster: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
+						//myLogger.debugLog("Final missile in cluster: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
 					}
 					else
 					{
-						myLogger.debugLog("Added to cluster: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
+						//myLogger.debugLog("Added to cluster: " + missile, "MissileBelongsTo()", Logger.severity.DEBUG);
 						return true;
 					}
 				}
 
-				myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
+				//myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
 				Target initialTarget;
 				if (m_cluster.Count != 0)
 				{
@@ -220,7 +220,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 			else
 			{
-				myLogger.debugLog("off cooldown", "CheckCooldown()");
+				//myLogger.debugLog("off cooldown", "CheckCooldown()");
 				onCooldown = false;
 				FuncBlock.RequestEnable(true);
 				// do not restore shooting toggle, makes it difficult to turn the thing off

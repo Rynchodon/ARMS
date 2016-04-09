@@ -501,7 +501,7 @@ namespace Rynchodon.Weapons.Guided
 				if (distSquared >= moveUpdateSq)
 				{
 					slaveVelocity[i] = (destination - slavePos) / (float)Math.Sqrt(distSquared) * moveSpeed;
-					myLogger.debugLog("slave: " + i + ", pos: " + slavePos + ", destination: " + destination + ", dist: " + ((float)Math.Sqrt(distSquared)) + ", velocity: " + slaveVelocity[i], "UpdateCluster()");
+					//myLogger.debugLog("slave: " + i + ", pos: " + slavePos + ", destination: " + destination + ", dist: " + ((float)Math.Sqrt(distSquared)) + ", velocity: " + slaveVelocity[i], "UpdateCluster()");
 				}
 				else
 					slaveVelocity[i] = Vector3.Zero;
@@ -533,7 +533,7 @@ namespace Rynchodon.Weapons.Guided
 					worldMatrix.Translation = myCluster.Slaves[i].GetPosition();
 					myCluster.Slaves[i].WorldMatrix = worldMatrix;
 					myCluster.Slaves[i].Physics.LinearVelocity = MyEntity.Physics.LinearVelocity + slaveVelocity[i];
-					myLogger.debugLog("slave: " + i + ", linear velocity: " + myCluster.Slaves[i].Physics.LinearVelocity, "UpdateCluster()");
+					//myLogger.debugLog("slave: " + i + ", linear velocity: " + myCluster.Slaves[i].Physics.LinearVelocity, "UpdateCluster()");
 				}
 
 			}, myLogger);
@@ -571,7 +571,7 @@ namespace Rynchodon.Weapons.Guided
 				};
 
 				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
-				myLogger.debugLog("created rock at " + MyEntity.GetPosition() + ", " + myRock.getBestName(), "Explode()");
+				//myLogger.debugLog("created rock at " + MyEntity.GetPosition() + ", " + myRock.getBestName(), "Explode()");
 			}, myLogger);
 		}
 
@@ -583,7 +583,7 @@ namespace Rynchodon.Weapons.Guided
 			if (myRock == null || myRock.Closed || !MyAPIGateway.Multiplayer.IsServer)
 				return;
 
-			myLogger.debugLog("removing rock", "RemoveRock()");
+			//myLogger.debugLog("removing rock", "RemoveRock()");
 			myRock.Delete();
 		}
 
@@ -744,7 +744,7 @@ namespace Rynchodon.Weapons.Guided
 				m_gravData.AccelPerUpdate = m_gravData.Normal * grav * Globals.UpdateDuration;
 			}
 
-			myLogger.debugLog("updated gravity, norm: " + m_gravData.Normal, "UpdateGravity()");
+			//myLogger.debugLog("updated gravity, norm: " + m_gravData.Normal, "UpdateGravity()");
 		}
 
 		/// <summary>

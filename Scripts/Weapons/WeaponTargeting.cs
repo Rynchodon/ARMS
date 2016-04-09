@@ -87,7 +87,7 @@ namespace Rynchodon.Weapons
 				if (value_currentControl == value)
 					return;
 
-				myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
+				//myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
 
 				if (IsNormalTurret && MyAPIGateway.Multiplayer.IsServer)
 				{
@@ -127,7 +127,7 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
-			this.myLogger = new Logger("WeaponTargeting", weapon) { MinimumLevel = Logger.severity.INFO };
+			this.myLogger = new Logger("WeaponTargeting", weapon);
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.Options = new TargetingOptions();
@@ -142,18 +142,18 @@ namespace Rynchodon.Weapons
 			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
 				m_netClient = new NetworkClient(weapon);
 
-			myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
+			//myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
-			myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+			//myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
 
 			CubeBlock.OnClose -= weapon_OnClose;
 			if (Options == null)
 				Options.Flags = TargetingFlags.None;
 
-			myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
+			//myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
 		/// <summary>
@@ -172,12 +172,12 @@ namespace Rynchodon.Weapons
 					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
 					{
-						myLogger.debugLog("Opening fire", "Update_Targeting()");
+						//myLogger.debugLog("Opening fire", "Update_Targeting()");
 						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
 					}
 					else
 					{
-						myLogger.debugLog("Holding fire", "Update_Targeting()");
+						//myLogger.debugLog("Holding fire", "Update_Targeting()");
 						IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
 						func.GetActionWithName("Shoot_Off").Apply(CubeBlock);
 
@@ -238,7 +238,7 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
 			{
-				myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
+				//myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
 				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
@@ -321,14 +321,14 @@ namespace Rynchodon.Weapons
 
 			if (!CanControl)
 			{
-				myLogger.debugLog("cannot control", "Update100()");
+				//myLogger.debugLog("cannot control", "Update100()");
 				CurrentControl = Control.Off;
 				Options.Flags = TargetingFlags.None;
 				return;
 			}
 
 			IsFiringWeapon = TPro_Shoot.GetValue(CubeBlock);
-			myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
+			//myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
 			ClearBlacklist();
 
 			if (Interpreter.UpdateInstruction())
@@ -349,7 +349,7 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			myLogger.debugLog("Not running targeting", "Update100()");
+			//myLogger.debugLog("Not running targeting", "Update100()");
 			CurrentControl = Control.Off;
 		}
 
@@ -363,10 +363,10 @@ namespace Rynchodon.Weapons
 					Options = Interpreter.Options.Clone();
 				InterpreterErrorCount = Interpreter.Errors.Count;
 				Update100_Options_TargetingThread(Options);
-				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
+				//myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
 			}
-			else
-				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
+			//else
+				//myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
 		}
 
 		private void UpdateAmmo()
@@ -396,7 +396,7 @@ namespace Rynchodon.Weapons
 			if (directionChange > 0.01f)
 			{
 				// weapon is still being aimed
-				myLogger.debugLog("still turning, change: " + directionChange, "CheckFire()");
+				//myLogger.debugLog("still turning, change: " + directionChange, "CheckFire()");
 				FireWeapon = false;
 				return;
 			}
@@ -408,15 +408,15 @@ namespace Rynchodon.Weapons
 			if (accuracy >= 0.999f)
 			{
 				// not facing target
-				myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
+				//myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
 				FireWeapon = false;
 				return;
 			}
 
 			if (Obstructed(target.ContactPoint.Value))
 			{
-				myLogger.debugLog("target is obstructed", "CheckFire()");
-				myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
+				//myLogger.debugLog("target is obstructed", "CheckFire()");
+				//myLogger.debugLog("blacklisting: " + target.Entity.getBestName(), "CheckFire()");
 				BlacklistTarget();
 				FireWeapon = false;
 				return;
