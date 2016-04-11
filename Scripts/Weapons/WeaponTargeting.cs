@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
+using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage;
@@ -79,6 +80,8 @@ namespace Rynchodon.Weapons
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
 		public readonly NetworkClient m_netClient;
 
+		public readonly WeaponDefinitionExpanded WeaponDefinition;
+
 		public Control CurrentControl
 		{
 			get { return value_currentControl; }
@@ -141,6 +144,8 @@ namespace Rynchodon.Weapons
 
 			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
 				m_netClient = new NetworkClient(weapon);
+
+			WeaponDefinition = MyDefinitionManager.Static.GetWeaponDefinition(((MyWeaponBlockDefinition)weapon.GetCubeBlockDefinition()).WeaponDefinitionId);
 
 			//myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
@@ -371,7 +376,7 @@ namespace Rynchodon.Weapons
 
 		private void UpdateAmmo()
 		{
-			LoadedAmmo = Ammo.GetLoadedAmmo(CubeBlock);
+			LoadedAmmo = MyAPIGateway.Session.CreativeMode ? WeaponDefinition.FirstAmmo : Ammo.GetLoadedAmmo(CubeBlock);
 		}
 
 		private Vector3 previousFiringDirection;
@@ -405,7 +410,7 @@ namespace Rynchodon.Weapons
 			float accuracy;
 			Vector3.Dot(ref CurrentDirection, ref firingDirection, out accuracy);
 
-			if (accuracy >= 0.999f)
+			if (accuracy < WeaponDefinition.RequiredAccuracy)
 			{
 				// not facing target
 				//myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");

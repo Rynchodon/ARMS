@@ -20,7 +20,6 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [*]"Fixed Weapons" refers to weapons that only fire in one direction. In vanilla, these are Gatling Gun, Rocket Launcher, and Reloadable-Rocket Launcher.
 [*]"Turret" refers to Interior Turret, Gatling Turret, Missile Turret, and mod-added turrets.
 [*]"Rotor-Turret" is what happens when you stick a fixed weapon on top of a couple of rotors.
-[*]Even in creative mode, weapons must be loaded with ammunition or they will not function.
 [*]Vanilla means Space Engineers without any mods.[/list]
 
 [b][u]Debugging[/u][/b]

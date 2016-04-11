@@ -161,14 +161,12 @@ namespace Rynchodon
 
 		public static MyCubeBlockDefinition GetCubeBlockDefinition(this VRage.Game.ModAPI.Ingame.IMyCubeBlock block)
 		{
-			MyCubeBlock cubeBlock = block as MyCubeBlock;
-			return cubeBlock.BlockDefinition;
+			return ((MyCubeBlock)block).BlockDefinition;
 		}
 
 		public static MyCubeBlockDefinition GetCubeBlockDefinition(this IMyCubeBlock block)
 		{
-			MyCubeBlock cubeBlock = block as MyCubeBlock;
-			return cubeBlock.BlockDefinition;
+			return ((MyCubeBlock)block).BlockDefinition;
 		}
 
 	}
