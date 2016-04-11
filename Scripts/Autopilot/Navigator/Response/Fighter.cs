@@ -148,7 +148,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
 					// start further out so we can spiral inwards
 					m_finalOrbitAltitude = m_orbiter.Altitude;
-					m_orbiter.Altitude = m_finalOrbitAltitude * 1.5f;
+					m_orbiter.Altitude = m_finalOrbitAltitude + m_weaponRange_min * 0.5f;
 					m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude, "Move()", Logger.severity.DEBUG);
 				}
 				else

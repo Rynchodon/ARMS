@@ -215,21 +215,22 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3D planetCentre = MyPlanetExtensions.GetClosestPlanet(Block.CubeBlock.GetPosition()).GetCentre();
 					float deltaAltitude = (float)(Vector3D.Distance(destPoint, planetCentre) - Vector3D.Distance(Block.CubeBlock.GetPosition(), planetCentre));
 
-					Vector3 gravityDirection = Thrust.WorldGravity.ToBlock(Block.CubeBlock).vector / Thrust.GravityStrength;
-					Vector3 dispReject;
-					Vector3.Reject(ref destDisp, ref gravityDirection, out dispReject);
-
 					//m_logger.debugLog("displacement: " + destDisp + ", gravity: " + gravityDirection + ", dispReject: " + dispReject + ", delta altitude: " + deltaAltitude +
 					//	", altitude adjustment: " + (-gravityDirection * deltaAltitude) + ", new disp: " + (dispReject - gravityDirection * deltaAltitude), "CalcMove()");
 
-					// adjust for distance to surface
+					// keep a minimum height from the ground
 					float heightAboveSurfaceSquared = (float)Vector3D.DistanceSquared(Block.CubeBlock.GetPosition(), Pathfinder.ClosestSurfacePoint);
 					float minimumHeight = Math.Min(1000f, distance * 0.3f);
+					deltaAltitude += minimumHeight;
 					if (heightAboveSurfaceSquared < minimumHeight * minimumHeight)
 					{
-						m_logger.debugLog("near surface, gain altitude. delta altitude: " + deltaAltitude + ", height above surface: " + Math.Sqrt(heightAboveSurfaceSquared) + ", minimum height: " + minimumHeight, "CalcMove()");
-						deltaAltitude += (minimumHeight - (float)Math.Sqrt(heightAboveSurfaceSquared)) * distance * 0.001f;
+						float height = (float)Math.Sqrt(heightAboveSurfaceSquared);
+						deltaAltitude += distance * (minimumHeight - height) / height;
 					}
+
+					Vector3 gravityDirection = Thrust.WorldGravity.ToBlock(Block.CubeBlock).vector / Thrust.GravityStrength;
+					Vector3 dispReject;
+					Vector3.Reject(ref destDisp, ref gravityDirection, out dispReject);
 
 					destDisp = dispReject - gravityDirection * deltaAltitude;
 				}
@@ -711,14 +712,14 @@ namespace Rynchodon.Autopilot.Movement
 				float angl_pitch = (float)Math.Atan2(RLV_pitch, distance);
 				float angl_yaw = (float)Math.Atan2(RLV_yaw, distance);
 
-				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch, "CalcRotate()");
+				m_logger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", RLV_yaw: " + RLV_yaw + ", RLV_pitch: " + RLV_pitch + ", angl_yaw: " + angl_yaw + ", angl_pitch: " + angl_pitch + ", total adjustment: " + (NFR_right * angl_pitch + NFR_up * angl_yaw), "CalcRotate()");
 
-				m_rotateTargetVelocity += new Vector3(angl_pitch, angl_yaw, 0f);
+				m_rotateTargetVelocity += NFR_right * angl_pitch + NFR_up * angl_yaw;
 			}
 			m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity, "CalcRotate()");
 
 			//Vector3 angularVelocity = ((DirectionWorld)(-Block.Physics.AngularVelocity)).ToBlock(Block.CubeBlock);
-			//m_rotateForceRatio = (m_rotateTargetVelocity - angularVelocity) / (minimumMoment * m_gyro.GyroForce) * 1000f;
+			//m_rotateForceRatio = (m_rotateTargetVelocity - angularVelocity) / (minimumMoment * m_gyro.GyroForce);
 
 			//m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity - angularVelocity), "CalcRotate()");
 			//m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio, "CalcRotate()");
@@ -736,8 +737,6 @@ namespace Rynchodon.Autopilot.Movement
 					//m_rotateForceRatio.SetDim(i, 0f);
 					continue;
 				}
-
-				// TODO: dampen if gyros are being taxed
 
 			}
 		}
@@ -777,7 +776,7 @@ namespace Rynchodon.Autopilot.Movement
 			//m_logger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
 			float actual = (float)Math.Sqrt(-2 * accel * dist);
 			if (fast)
-				return actual;
+				return Math.Min(actual, dist * 30f);
 			return Math.Min(actual, dist * 2f);
 		}
 
@@ -853,7 +852,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			//// clamp values and invert operations MoveAndRotate will perform
-			//Vector3 moveControl; m_moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
+			Vector3 moveControl; m_moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
 			//m_logger.debugLog("m_moveForceRatio: " + m_moveForceRatio + ", moveControl: " + moveControl, "MoveAndRotate()");
 
 			//Vector2 rotateControl = Vector2.Zero;
@@ -861,6 +860,9 @@ namespace Rynchodon.Autopilot.Movement
 			//rotateControl.Y = MathHelper.Clamp(m_rotateForceRatio.Y, -1, 1) * pixelsForMaxRotation;
 
 			//float rollControl = MathHelper.Clamp(m_rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
+
+			// gyros use opposite values from MoveAndRotate
+			Vector3 rotateRollControl; m_rotateTargetVelocity.ApplyOperation(dim => MathHelper.Clamp(-dim, -MathHelper.TwoPi, MathHelper.TwoPi), out rotateRollControl);
 
 			//m_logger.debugLog("m_rotateForceRatio: " + m_rotateForceRatio + ", rotateControl: " + rotateControl + ", rollControl: " + rollControl, "MoveAndRotate()");
 
@@ -874,12 +876,11 @@ namespace Rynchodon.Autopilot.Movement
 				//m_prevRotateControl = rotateControl;
 				//m_prevRollControl = rollControl;
 
-				m_logger.debugLog("Applying Move and Rotate, move: " + m_moveForceRatio + ", rotate: " + m_rotateTargetVelocity, "MoveAndRotate()");
+				m_logger.debugLog("Applying Move and Rotate, move: " + moveControl + ", rotate: " + m_rotateTargetVelocity, "MoveAndRotate()");
 
-				DirectionGrid gridMove = ((DirectionBlock)m_moveForceRatio).ToGrid(Block.CubeBlock);
+				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
 				Thrust.SetOverrides(ref gridMove);
-				// gyros use opposite values from MoveAndRotate
-				DirectionWorld gridRotate = ((DirectionBlock)(-m_rotateTargetVelocity)).ToWorld(Block.CubeBlock);
+				DirectionWorld gridRotate = ((DirectionBlock)(rotateRollControl)).ToWorld(Block.CubeBlock);
 				m_gyro.SetOverrides(ref gridRotate);
 			}, m_logger);
 		}
