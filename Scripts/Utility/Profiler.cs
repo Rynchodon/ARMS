@@ -9,6 +9,11 @@ using VRage.Library.Utils;
 
 namespace Rynchodon.Utility
 {
+	/// <summary>
+	/// Measures the execution time of methods.
+	/// Keep in mind that this will include time spent waiting on a lock.
+	/// Sum counts the time spent in the outermost blocks.
+	/// </summary>
 	public class Profiler
 	{
 
