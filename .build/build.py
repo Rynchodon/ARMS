@@ -31,6 +31,7 @@ finalScript = finalDir + '\Data\Scripts\Autopilot\\'
 finalScriptDev = finalDirDev + '\Data\Scripts\Autopilot\\'
 
 # in case build.ini is missing variables
+DevCondition = "LOG_ENABLED"
 Zip7 = os.devnull
 
 modules = []
@@ -94,7 +95,7 @@ def copyScripts(l_source):
 						destFile.write("// pre-processor symbol removed by build.py\n")
 						destFileDev.write("// pre-processor symbol removed by build.py\n")
 						continue
-					if ("System.Diagnostics.Conditional" in line):
+					if ('[System.Diagnostics.Conditional("' + DevCondition + '")]' in line):
 						destFile.write(line)
 						destFileDev.write("// Conditional removed by build.py\n")
 						continue

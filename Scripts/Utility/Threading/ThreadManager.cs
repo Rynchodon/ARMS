@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using VRage;
 using VRage.Collections;
+using Rynchodon.Utility;
 
 namespace Rynchodon.Threading
 {
@@ -84,7 +85,8 @@ namespace Rynchodon.Threading
 				while (ActionQueue.TryDequeue(out currentItem))
 				{
 					if (currentItem != null)
-						currentItem();
+						//currentItem.Invoke();
+						Profiler.Profile(currentItem);
 					else
 						myLogger.debugLog("null action", "Run()", Logger.severity.WARNING);
 				}

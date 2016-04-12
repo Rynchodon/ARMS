@@ -98,11 +98,11 @@ namespace Rynchodon.Update
 			}
 			RegisterForBlock(typeof(MyObjectBuilder_OxygenFarm), (block) => {
 				Solar s = new Solar(block);
-				RegisterForUpdates(1, s.Update1, block);
+				RegisterForUpdates(100, s.Update100, block);
 			});
 			RegisterForBlock(typeof(MyObjectBuilder_SolarPanel), (block) => {
 				Solar s = new Solar(block);
-				RegisterForUpdates(1, s.Update1, block);
+				RegisterForUpdates(100, s.Update100, block);
 			});
 
 			#endregion
@@ -519,7 +519,10 @@ namespace Rynchodon.Update
 					{
 						foreach (Action item in pair.Value)
 							try
-							{ item.Invoke(); }
+							{
+								//item.Invoke();
+								Profiler.Profile(item);
+							}
 							catch (Exception ex2)
 							{
 								if (Unregister == null)
@@ -834,6 +837,8 @@ namespace Rynchodon.Update
 			Characters = null;
 
 			Instance = null;
+
+			Profiler.Write();
 		}
 
 		/// <summary>
@@ -863,5 +868,6 @@ namespace Rynchodon.Update
 			}
 			return updates;
 		}
+
 	}
 }

@@ -75,6 +75,7 @@ namespace Rynchodon
 
 		#region IMyEntities
 
+		[Obsolete("Use MyGamePruningStructure")]
 		public static void GetEntities_Safe(this IMyEntities entitiesObject, HashSet<IMyEntity> entities, Func<IMyEntity, bool> collect = null)
 		{
 			UsingShared(() => entitiesObject.GetEntities(entities, collect));

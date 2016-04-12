@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -268,10 +269,10 @@ namespace Rynchodon.Weapons
 				if (UpdateNumber % 10 == 0)
 				{
 					if (UpdateNumber % 100 == 0)
-						Update100();
-					Update10();
+						Profiler.Profile(Update100);
+					Profiler.Profile(Update10);
 				}
-				Update1();
+				Profiler.Profile(Update1);
 
 				UpdateNumber++;
 			}

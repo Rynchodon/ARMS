@@ -7,6 +7,7 @@ using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -323,19 +324,19 @@ namespace Rynchodon.Autopilot
 			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
 			if (navM != null)
 			{
-				navM.Move();
+				Profiler.Profile(navM.Move);
 
 				INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator; // fetched here because mover might remove it
 				if (navR != null)
-					navR.Rotate();
+					Profiler.Profile(navR.Rotate);
 				else
 				{
 					navR = navM as INavigatorRotator;
 					if (navR != null)
-						navR.Rotate();
+						Profiler.Profile(navR.Rotate);
 				}
 
-				m_interpreter.Mover.MoveAndRotate();
+				Profiler.Profile(m_interpreter.Mover.MoveAndRotate);
 				return true;
 			}
 			return false;
@@ -348,9 +349,9 @@ namespace Rynchodon.Autopilot
 			{
 				//run the rotator by itself until direction is matched
 
-				navR.Rotate();
+				Profiler.Profile(navR.Rotate);
 
-				m_interpreter.Mover.MoveAndRotate();
+				Profiler.Profile(m_interpreter.Mover.MoveAndRotate);
 
 				if (!m_navSet.DirectionMatched())
 					return true;

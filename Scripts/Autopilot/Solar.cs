@@ -13,7 +13,6 @@ namespace Rynchodon.Autopilot
 		private readonly Logger myLogger;
 
 		private MotorTurret myMotorTurret;
-		private ulong updateCount;
 		private byte sinceNameChange = 0;
 
 		/// <param name="block">Must be an IMyTerminalBlock</param>
@@ -31,12 +30,10 @@ namespace Rynchodon.Autopilot
 			myBlock.OnClose -= myBlock_OnClose;
 		}
 
-		public void Update1()
+		public void Update100()
 		{
 			try
 			{
-				updateCount++;
-
 				if (myMotorTurret != null)
 					myMotorTurret.FaceTowards(RelativeDirection3F.FromWorld(myBlock.CubeGrid, SunProperties.SunDirection));
 
