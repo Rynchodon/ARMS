@@ -35,7 +35,7 @@ namespace Rynchodon.AntennaRelay
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
-		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
+		private static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0);
 		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
 
 		private EntityType m_type;

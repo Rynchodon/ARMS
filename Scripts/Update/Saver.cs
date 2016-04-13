@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Autopilot;
 using Rynchodon.Settings;
 using Rynchodon.Utility;
 using Rynchodon.Weapons.Guided;
@@ -32,6 +33,7 @@ namespace Rynchodon.Update
 			public long SaveTime = Globals.ElapsedTime.Ticks;
 			public NetworkStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
+			public ShipAutopilot.Builder_Autopilot[] Autopilot;
 		}
 
 		private const string SaveIdString = "ARMS save file id";
@@ -104,6 +106,8 @@ namespace Rynchodon.Update
 
 				Builder_ArmsData data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
 
+				// network
+
 				Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
 				SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
 				foreach (NetworkStorage.Builder_NetworkStorage bns in data.AntennaStorage)
@@ -158,6 +162,8 @@ namespace Rynchodon.Update
 					m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, "DoLoad()", Logger.severity.DEBUG);
 				}
 
+				// system disruption
+
 				foreach (Disruption.Builder_Disruption bd in data.SystemDisruption)
 				{
 					Disruption disrupt;
@@ -197,6 +203,17 @@ namespace Rynchodon.Update
 					disrupt.Start(bd);
 				}
 
+				// autopilot
+
+				foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
+				{
+					ShipAutopilot autopilot;
+					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
+						autopilot.Resume = ba;
+					else
+						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, "DoLoad()", Logger.severity.WARNING);
+				}
+
 				m_logger.debugLog("Loaded from " + saveId_fromWorld, "DoLoad()", Logger.severity.INFO);
 			}
 			catch (Exception ex)
@@ -224,6 +241,8 @@ namespace Rynchodon.Update
 
 				Builder_ArmsData data = new Builder_ArmsData();
 
+				// network data
+
 				Dictionary<long, NetworkStorage.Builder_NetworkStorage> storages = new Dictionary<long, NetworkStorage.Builder_NetworkStorage>();
 
 				Registrar.ForEach<NetworkNode>(node => {
@@ -236,11 +255,24 @@ namespace Rynchodon.Update
 
 				data.AntennaStorage = storages.Values.ToArray();
 
+				// disruption
+
 				List<Disruption.Builder_Disruption> systemDisrupt = new List<Disruption.Builder_Disruption>();
 				foreach (Disruption disrupt in Disruption.AllDisruptions)
 					systemDisrupt.Add(disrupt.GetBuilder());
 
 				data.SystemDisruption = systemDisrupt.ToArray();
+
+				// autopilot
+
+				List<ShipAutopilot.Builder_Autopilot> buildAuto = new List<ShipAutopilot.Builder_Autopilot>();
+				Registrar.ForEach<ShipAutopilot>(autopilot => {
+					ShipAutopilot.Builder_Autopilot builder = autopilot.GetBuilder();
+					if (builder != null)
+						buildAuto.Add(builder);
+				});
+
+				data.Autopilot = buildAuto.ToArray();
 
 				var writer = m_fileMaster.GetTextWriter(fileId);
 				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));

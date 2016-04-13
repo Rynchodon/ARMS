@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
@@ -16,7 +17,7 @@ using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Definitions;
-using VRage.ObjectBuilders;
+using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
@@ -50,8 +51,22 @@ namespace Rynchodon.Autopilot
 	/// <summary>
 	/// Core class for all Autopilot functionality.
 	/// </summary>
-	public class ShipController_Autopilot
+	public class ShipAutopilot
 	{
+
+		[Serializable]
+		public class Builder_Autopilot
+		{
+			[XmlAttribute]
+			public long AutopilotBlock;
+			// may contain some gnarly characters
+			public byte[] Commands;
+			public int CurrentCommand;
+
+			public Vector3D EngagerOriginalPosition = Vector3D.PositiveInfinity;
+			public long EngagerOriginalEntity;
+		}
+
 		public const uint UpdateFrequency = 3u;
 		public const ushort ModId_CustomInfo = 54311;
 
@@ -61,7 +76,7 @@ namespace Rynchodon.Autopilot
 		private static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
-		static ShipController_Autopilot()
+		static ShipAutopilot()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -136,6 +151,8 @@ namespace Rynchodon.Autopilot
 
 		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
 
+		public Builder_Autopilot Resume;
+
 		public StringBuilder CustomInfo { get { return m_customInfo_send; } }
 
 		public bool Enabled { get { return value_state == State.Enabled; } }
@@ -180,10 +197,10 @@ namespace Rynchodon.Autopilot
 		/// Creates an Autopilot for the given ship controller.
 		/// </summary>
 		/// <param name="block">The ship controller to use</param>
-		public ShipController_Autopilot(IMyCubeBlock block)
+		public ShipAutopilot(IMyCubeBlock block)
 		{
 			this.m_block = new ShipControllerBlock(block, new NetworkClient(block, HandleMessage));
-			this.m_logger = new Logger("ShipController_Autopilot", block);
+			this.m_logger = new Logger(GetType().Name, block);
 			this.m_interpreter = new Interpreter(m_block);
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
@@ -194,7 +211,7 @@ namespace Rynchodon.Autopilot
 			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
 				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
 
-			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText, "ShipController_Autopilot()");
+			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText, GetType().Name);
 
 			Registrar.Add(block, this);
 		}
@@ -256,6 +273,9 @@ namespace Rynchodon.Autopilot
 					m_message = null;
 					m_navSet.OnStartOfCommands();
 				}
+
+				if (this.Resume != null)
+					ResumeFromSave();
 
 				EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
 				if (ef != null)
@@ -633,6 +653,89 @@ namespace Rynchodon.Autopilot
 				default:
 					return 0f;
 			}
+		}
+
+		public Builder_Autopilot GetBuilder()
+		{
+			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };
+
+			result.CurrentCommand = m_interpreter.instructionQueueString.Count - m_interpreter.instructionQueue.Count - 1;
+			m_logger.debugLog("current command: " + result.CurrentCommand, "GetBuilder()");
+
+			// don't need to save if we are not running (-1) or on first command (0)
+			if (result.CurrentCommand <= 0)
+				return null;
+
+			string commands = string.Join(";", m_interpreter.instructionQueueString);
+			m_logger.debugLog("commands: " + commands, "GetBuilder()");
+
+			List<byte> bytes = new List<byte>(commands.Length * 2);
+			ByteConverter.AppendBytes(bytes, commands);
+			result.Commands = bytes.ToArray();
+
+			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
+			if (finder != null)
+			{
+				result.EngagerOriginalEntity = finder.m_originalDestEntity == null ? 0L : finder.m_originalDestEntity.EntityId;
+				result.EngagerOriginalPosition = finder.m_originalPosition;
+				m_logger.debugLog("added EngagerOriginalEntity: " + result.EngagerOriginalEntity + ", and EngagerOriginalPosition: " + result.EngagerOriginalPosition, "GetBuilder()");
+			}
+
+			return result;
+		}
+
+		private void ResumeFromSave()
+		{
+			Builder_Autopilot builder = this.Resume;
+			this.Resume = null;
+			m_navSet.OnStartOfCommands();
+			m_logger.debugLog("resume: " + ByteConverter.GetString(builder.Commands), "ResumeFromSave()", Logger.severity.DEBUG);
+			m_interpreter.enqueueAllActions(ByteConverter.GetString(builder.Commands));
+			m_logger.debugLog("from builder, added " + m_interpreter.instructionQueue.Count + " commands", "ResumeFromSave()");
+
+			int i;
+			for (i = 0; i < builder.CurrentCommand; i++)
+			{
+				m_logger.debugLog("fast forward: " + m_interpreter.instructionQueueString[i], "ResumeFromSave()");
+				m_interpreter.instructionQueue.Dequeue().Invoke();
+
+				// clear navigators' levels
+				for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
+				{
+					AllNavigationSettings.SettingsLevel settingsAtLevel = m_navSet.GetSettingsLevel(levelName);
+					if (settingsAtLevel.NavigatorMover != null || settingsAtLevel.NavigatorRotator != null)
+					{
+						m_logger.debugLog("clear " + levelName, "ResumeFromSave()");
+						m_navSet.OnTaskComplete(levelName);
+					}
+				}
+			}
+
+			// clear wait
+			m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavWay);
+
+			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
+			if (finder != null)
+			{
+				if (builder.EngagerOriginalEntity != 0L)
+				{
+					if (!MyAPIGateway.Entities.TryGetEntityById(builder.EngagerOriginalEntity, out finder.m_originalDestEntity))
+					{
+						m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, "ResumeFromSave()", Logger.severity.WARNING);
+						finder.m_originalDestEntity = null;
+					}
+					else
+						m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName(), "ResumeFromSave()");
+				}
+				if (builder.EngagerOriginalPosition.IsValid())
+				{
+					finder.m_originalPosition = builder.EngagerOriginalPosition;
+					m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition, "ResumeFromSave()");
+				}
+			}
+
+			m_logger.debugLog("resume: " + m_interpreter.instructionQueueString[i], "ResumeFromSave()");
+			m_interpreter.instructionQueue.Dequeue().Invoke();
 		}
 
 	}

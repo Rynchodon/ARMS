@@ -35,8 +35,8 @@ namespace Rynchodon.Autopilot
 		private ResponseRange m_curResponse;
 		private int m_responseIndex;
 
-		private Vector3D m_originalPosition = Vector3D.PositiveInfinity;
-		private IMyEntity m_originalDestEntity;
+		public Vector3D m_originalPosition = Vector3D.PositiveInfinity;
+		public IMyEntity m_originalDestEntity;
 		private bool m_engageSet;
 
 		private LastSeen value_grid;

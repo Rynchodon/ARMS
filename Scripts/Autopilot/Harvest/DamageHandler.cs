@@ -11,6 +11,17 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private static DamageHandler Instance;
 
+		static DamageHandler()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Instance = null;
+		}
+
 		public static void RegisterMiner(IMyCubeGrid miner, IMyVoxelBase voxel)
 		{
 			if (Instance == null || !ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))

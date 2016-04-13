@@ -55,6 +55,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// All the instructions queued.
 		/// </summary>
 		public readonly MyQueue<Action> instructionQueue = new MyQueue<Action>(8);
+		public readonly List<string> instructionQueueString = new List<string>(8);
 
 		public readonly StringBuilder Errors = new StringBuilder();
 
@@ -67,6 +68,7 @@ namespace Rynchodon.Autopilot.Instruction
 			SyntaxError = false;
 			string instructions = preParse().getInstructions();
 			instructionQueue.Clear();
+			instructionQueueString.Clear();
 
 			if (string.IsNullOrWhiteSpace(instructions))
 			{
@@ -89,6 +91,7 @@ namespace Rynchodon.Autopilot.Instruction
 			string preParsed;
 			instructions.GpsToCSV(out preParsed);
 			instructionQueue.Clear();
+			instructionQueueString.Clear();
 
 			if (string.IsNullOrWhiteSpace(preParsed))
 				return;
@@ -161,17 +164,17 @@ namespace Rynchodon.Autopilot.Instruction
 			if (getAction_word(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
-				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
+				instructionQueueString.Add(instruction);
 				return true;
 			}
 			if (getAction_multiple(instruction))
 			{
-				//instructionQueueString.Add("[" + currentInstruction + "] " + instruction);
 				return true;
 			}
 			if (getAction_single(instruction, out singleAction))
 			{
 				instructionQueue.Enqueue(singleAction);
+				instructionQueueString.Add(instruction);
 				return true;
 			}
 			return false;
@@ -479,7 +482,7 @@ namespace Rynchodon.Autopilot.Instruction
 					return false;
 
 				// name test
-				if (ShipController_Autopilot.IsAutopilotBlock(fatblock))
+				if (ShipAutopilot.IsAutopilotBlock(fatblock))
 				{
 					string nameOnly = fatblock.getNameOnly();
 					if (nameOnly == null || !nameOnly.looseContains(blockName))

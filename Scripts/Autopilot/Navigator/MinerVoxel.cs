@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
@@ -181,10 +182,6 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("No Drills!", "MinerVoxel()", Logger.severity.INFO);
 				return;
 			}
-			//if (MyAPIGateway.Session.CreativeMode)
-			//	foreach (IMyShipDrill drill in allDrills)
-			//		if (drill.UseConveyorSystem)
-			//			drill.ApplyAction("UseConveyor");
 
 			// if a drill has been chosen by player, use it
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -202,6 +199,25 @@ namespace Rynchodon.Autopilot.Navigator
 			m_longestDimension = m_controlBlock.CubeGrid.GetLongestDim();
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
+
+			// check for currently touching voxel, usually resume from save
+			BoundingSphereD nearby = new BoundingSphereD(m_navDrill.WorldPosition, m_longestDimension * 4d);
+			List<MyEntity> nearbyEntities = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, nearbyEntities, MyEntityQueryType.Static);
+			foreach (MyEntity entity in nearbyEntities)
+			{
+				m_targetVoxel = entity as IMyVoxelBase;
+				if (m_targetVoxel != null)
+				{
+					m_logger.debugLog("near a voxel, escape first", "MinerVoxel()", Logger.severity.DEBUG);
+					m_state = State.Mining_Escape;
+					var setLevel = m_navSet.GetSettingsLevel(AllNavigationSettings.SettingsLevelName.NavMove);
+					setLevel.IgnoreAsteroid = true;
+					setLevel.SpeedTarget = 1f;
+					return;
+				}
+			}
+
 			m_state = State.GetTarget;
 		}
 

@@ -168,6 +168,8 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
 		public void CalcMove(PseudoBlock block, Vector3D destPoint, Vector3 destVelocity, bool landing = false)
 		{
+			const float landingSpeedFactor = 0.2f;
+
 			CheckGrid();
 
 			// using world vectors
@@ -202,7 +204,7 @@ namespace Rynchodon.Autopilot.Movement
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
 
-				if (distance + 2f < m_bestDistance || float.IsNaN(m_navSet.Settings_Current.Distance))
+				if (distance + (landing ? landingSpeedFactor : 1f) < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(m_navSet.Settings_Current.Distance))
 				{
 					m_bestDistance = distance;
 					m_lastmove = Globals.UpdateCount;
@@ -245,7 +247,7 @@ namespace Rynchodon.Autopilot.Movement
 				float relSpeedLimit = m_navSet.Settings_Current.SpeedMaxRelative;
 				if (landing)
 				{
-					float landingSpeed = Math.Max(distance * 0.2f, 0.2f);
+					float landingSpeed = Math.Max(distance * landingSpeedFactor, landingSpeedFactor);
 					if (relSpeedLimit > landingSpeed)
 						relSpeedLimit = landingSpeed;
 				}
@@ -837,7 +839,7 @@ namespace Rynchodon.Autopilot.Movement
 				// if pathfinder is clear and we are not moving, wriggle
 				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 
-				m_logger.debugLog("wriggle: " + wriggle, "MoveAndRotate()");
+				m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove, "MoveAndRotate()");
 
 				//m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
 				//m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;

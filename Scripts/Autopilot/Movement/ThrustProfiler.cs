@@ -201,7 +201,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			if (Globals.UpdateCount < m_nextUpdate)
 				return;
-			m_nextUpdate = Globals.UpdateCount + ShipController_Autopilot.UpdateFrequency;
+			m_nextUpdate = Globals.UpdateCount + ShipAutopilot.UpdateFrequency;
 
 			m_totalThrustForce.Clear();
 

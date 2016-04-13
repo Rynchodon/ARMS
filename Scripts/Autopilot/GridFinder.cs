@@ -283,7 +283,7 @@ namespace Rynchodon.Autopilot
 				string blockName;
 				try
 				{
-					blockName = ShipController_Autopilot.IsAutopilotBlock(Fatblock)
+					blockName = ShipAutopilot.IsAutopilotBlock(Fatblock)
 							? Fatblock.getNameOnly().LowerRemoveWhitespace()
 							: Fatblock.DisplayNameText.LowerRemoveWhitespace();
 				}

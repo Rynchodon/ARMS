@@ -209,7 +209,7 @@ namespace Rynchodon.AntennaRelay
 			List<SortableAutopilot> autopilots = ResourcePool<List<SortableAutopilot>>.Get();
 			Vector3D mypos = m_block.GetPosition();
 
-			Registrar.ForEach<ShipController_Autopilot>(ap => {
+			Registrar.ForEach<ShipAutopilot>(ap => {
 				NetworkStorage apStore = ap.m_block.NetClient.GetStorage();
 				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
 				{
@@ -368,7 +368,7 @@ namespace Rynchodon.AntennaRelay
 
 			private float? distance;
 
-			public readonly ShipController_Autopilot Autopilot;
+			public readonly ShipAutopilot Autopilot;
 			public readonly float DistanceSquared;
 
 			public float Distance
@@ -381,7 +381,7 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 
-			public SortableAutopilot(ShipController_Autopilot autopilot, Vector3D mypos)
+			public SortableAutopilot(ShipAutopilot autopilot, Vector3D mypos)
 			{
 				this.Autopilot = autopilot;
 				this.DistanceSquared = (float)Vector3D.DistanceSquared(autopilot.m_block.CubeBlock.GetPosition(), mypos);

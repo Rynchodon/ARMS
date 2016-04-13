@@ -172,7 +172,7 @@ namespace Rynchodon.AntennaRelay
 
 			bool sts = false;
 
-			Registrar.ForEach((ShipController_Autopilot autopilot) => {
+			Registrar.ForEach((ShipAutopilot autopilot) => {
 				IMyCubeBlock block = autopilot.m_block.CubeBlock;
 				IMyCubeGrid grid = block.CubeGrid;
 				if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))

@@ -30,6 +30,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>Half of length of landing block in the direction it will be landing.</summary>
 		private readonly float m_landingHalfSize;
 		private readonly bool m_landGearWithoutTargetBlock;
+		private readonly AllNavigationSettings.SettingsLevelName m_settingLevel;
 
 		private TimeSpan m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 		private Vector3D m_targetPosition;
@@ -52,7 +53,7 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (value)
 				{
 					case LandingState.Catch:
-						m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Grid.Entity;
+						m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Grid.Entity;
 						goto case LandingState.Landing;
 					case LandingState.Landing:
 						{
@@ -143,7 +144,7 @@ namespace Rynchodon.Autopilot.Navigator
 					if (m_navSet.Settings_Current.DestinationRadius < minDestRadius)
 					{
 						m_logger.debugLog("Increasing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + minDestRadius, "FlyToGrid()", Logger.severity.DEBUG);
-						m_navSet.Settings_Task_NavMove.DestinationRadius = minDestRadius;
+						m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
 					}
 
 					new UnLander(mover, navSet, landingBlock);
@@ -153,7 +154,8 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
+			m_settingLevel = m_landingState != LandingState.None ? AllNavigationSettings.SettingsLevelName.NavRot : AllNavigationSettings.SettingsLevelName.NavMove;
+			m_navSet.GetSettingsLevel(m_settingLevel).NavigatorMover = this;
 		}
 
 		public override void Move()
@@ -174,7 +176,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (Globals.ElapsedTime > m_searchTimeoutAt)
 				{
 					m_logger.debugLog("Search timed out", "Move()", Logger.severity.INFO);
-					m_navSet.OnTaskComplete_NavMove();
+					m_navSet.OnTaskComplete(m_settingLevel);
 					m_mover.StopMove();
 					m_mover.StopRotate();
 					return;
@@ -193,7 +195,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_targetPosition = m_gridFinder.GetPosition(m_navBlock.WorldPosition, m_navSet.Settings_Current.DestinationOffset);
 
 				if (m_gridFinder.Block != null && m_landingState != LandingState.Landing)
-					m_navSet.Settings_Task_NavMove.DestinationEntity = m_gridFinder.Block;
+					m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Block;
 				m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 
 				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
@@ -261,11 +263,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_targetBlock.Forward.HasValue)
 			{
-				m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
+				m_navSet.GetSettingsLevel(m_settingLevel).NavigatorRotator = this;
 				if (!m_navSet.Settings_Current.Stay_In_Formation && m_navSet.DirectionMatched())
 				{
 					m_logger.debugLog("Direction matched", "Rotate()", Logger.severity.INFO);
-					m_navSet.OnTaskComplete_NavRot(); // even though this is not FlyToGrid's level, it must clear
+					m_navSet.OnTaskComplete(m_settingLevel);
 					m_mover.StopMove(true);
 					m_mover.StopRotate();
 					return;
@@ -297,7 +299,7 @@ namespace Rynchodon.Autopilot.Navigator
 				customInfo.AppendLine(m_gridFinder.Grid.Entity.DisplayName);
 
 				//customInfo.Append("Distance: ");
-				//customInfo.AppendLine(m_navSet.PrettyDistance());
+				//customInfo.AppendLine(SPrettyDistance());
 			}
 			else
 			{
@@ -325,7 +327,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (IsLocked())
 			{
 				m_logger.debugLog("Attached!", "Move_Land()", Logger.severity.INFO);
-				m_navSet.OnTaskComplete_NavRot(); // even though this is not FlyToGrid's level, it must clear
+				m_navSet.OnTaskComplete(m_settingLevel);
 				m_mover.StopMove(false);
 				m_mover.StopRotate();
 				if (m_navSet.Shopper != null)
@@ -348,7 +350,7 @@ namespace Rynchodon.Autopilot.Navigator
 						else
 						{
 							m_logger.debugLog("Arrived at target", "Move_Land()", Logger.severity.INFO);
-							m_navSet.OnTaskComplete_NavMove();
+							m_navSet.OnTaskComplete(m_settingLevel);
 							m_mover.StopMove();
 							m_mover.StopRotate();
 						}
@@ -356,8 +358,8 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				case LandingState.Approach:
 					{
-						m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
-						m_navSet.Settings_Task_NavMove.NavigationBlock = m_navBlock;
+						m_navSet.GetSettingsLevel(m_settingLevel).NavigatorRotator = this;
+						m_navSet.GetSettingsLevel(m_settingLevel).NavigationBlock = m_navBlock;
 						if (m_landGearWithoutTargetBlock)
 						{
 							m_landingState = LandingState.Catch;

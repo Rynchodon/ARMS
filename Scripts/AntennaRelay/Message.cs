@@ -34,7 +34,7 @@ namespace Rynchodon.AntennaRelay
 
 		}
 
-		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0); // one hour
+		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
 
 		public readonly string Content, SourceGridName, SourceBlockName;
 		public readonly IMyCubeBlock DestCubeBlock, SourceCubeBlock;

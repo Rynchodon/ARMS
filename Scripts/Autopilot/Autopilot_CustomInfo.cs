@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot
 		static Autopilot_CustomInfo()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			MyAPIGateway.Multiplayer.RegisterMessageHandler(ShipController_Autopilot.ModId_CustomInfo, MessageHandler);
+			MyAPIGateway.Multiplayer.RegisterMessageHandler(ShipAutopilot.ModId_CustomInfo, MessageHandler);
 			s_logger.debugLog("Registerd for messages", "Autopilot_CustomInfo()", Logger.severity.DEBUG);
 		}
 
@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ShipController_Autopilot.ModId_CustomInfo, MessageHandler);
+			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ShipAutopilot.ModId_CustomInfo, MessageHandler);
 			s_logger.debugLog("Unregisterd for messages", "Autopilot_CustomInfo()", Logger.severity.DEBUG);
 			s_logger = null;
 		}

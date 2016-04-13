@@ -55,17 +55,17 @@ namespace Rynchodon.Update
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
+					if (ShipAutopilot.IsAutopilotBlock(block))
 					{
-						var sca = new ShipController_Autopilot(block);
-						RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+						var sca = new ShipAutopilot(block);
+						RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
 					}
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
+				if (ShipAutopilot.IsAutopilotBlock(block))
 				{
-					var sca = new ShipController_Autopilot(block);
-					RegisterForUpdates(ShipController_Autopilot.UpdateFrequency, sca.Update, block);
+					var sca = new ShipAutopilot(block);
+					RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
 				}
 			});
 
@@ -198,11 +198,11 @@ namespace Rynchodon.Update
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipController_Autopilot.IsAutopilotBlock(block))
+					if (ShipAutopilot.IsAutopilotBlock(block))
 						new Autopilot_CustomInfo(block);
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipController_Autopilot.IsAutopilotBlock(block))
+				if (ShipAutopilot.IsAutopilotBlock(block))
 					new Autopilot_CustomInfo(block);
 			});
 
