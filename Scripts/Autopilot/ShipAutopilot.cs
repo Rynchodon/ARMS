@@ -129,7 +129,7 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private enum State : byte { Disabled, Enabled, Halted, Closed }
+		private enum State : byte { Disabled, Player, Enabled, Halted, Closed }
 
 		public readonly ShipControllerBlock m_block;
 
@@ -251,18 +251,24 @@ namespace Rynchodon.Autopilot
 							break;
 						m_state = State.Disabled;
 						return;
+					case State.Player:
+						// wait for player to give back control, do not reset
+						if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) == null)
+							m_state = State.Enabled;
+						return;
 					case State.Halted:
 						if (!m_block.Controller.ControlThrusters || Globals.ElapsedTime > m_endOfHalt)
 							m_state = State.Disabled;
 						return;
 					case State.Closed:
 						return;
+					default:
+						throw new Exception("Case not implemented: "+m_state);
 				}
 
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) != null)
 				{
-					m_interpreter.Mover.MoveAndRotateStop(false);
-					// wait for player to give back control, do not reset
+					m_state = State.Player;
 					return;
 				}
 
@@ -271,6 +277,7 @@ namespace Rynchodon.Autopilot
 					m_interpreter.enqueueAllActions(m_message.Content);
 					m_message = null;
 					m_navSet.OnStartOfCommands();
+					m_interpreter.Mover.MoveAndRotateStop(false);
 				}
 
 				if (this.Resume != null)
@@ -328,6 +335,7 @@ namespace Rynchodon.Autopilot
 				if (!m_interpreter.hasInstructions())
 					ReleaseControlledGrid();
 				m_navSet.OnStartOfCommands();
+				m_interpreter.Mover.MoveAndRotateStop(false);
 			}
 			catch (Exception ex)
 			{
@@ -536,53 +544,54 @@ namespace Rynchodon.Autopilot
 				m_customInfo_build.AppendLine(controlling.DisplayName);
 			}
 
-			if (!moving)
-				return;
-
-			Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
-			if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
+			if (moving)
 			{
-				if (!path.ReportCanMove || !path.ReportCanRotate)
-				{
-					m_customInfo_build.AppendLine("Pathfinder:");
-					if (!path.ReportCanMove)
-					{
-						if (path.MoveObstruction != null)
-						{
-							m_customInfo_build.Append("Movement blocked by ");
-							m_customInfo_build.AppendLine(path.MoveObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
-						}
-						else
-							m_customInfo_build.AppendLine("Cannot move");
-					}
-					else if (!path.ReportCanRotate)
-					{
-						if (path.RotateObstruction != null)
-						{
-							m_customInfo_build.Append("Rotation blocked by ");
-							m_customInfo_build.AppendLine(path.RotateObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
-						}
-						else
-							m_customInfo_build.AppendLine("Cannot rotate safely");
-					}
-					m_customInfo_build.AppendLine();
-				}
-			}
 
-			INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
-			if (navM != null)
-			{
-				navM.AppendCustomInfo(m_customInfo_build);
-				if (!float.IsNaN(m_navSet.Settings_Current.Distance))
+				Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
+				if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
 				{
-					m_customInfo_build.Append("Distance: ");
-					m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+					if (!path.ReportCanMove || !path.ReportCanRotate)
+					{
+						m_customInfo_build.AppendLine("Pathfinder:");
+						if (!path.ReportCanMove)
+						{
+							if (path.MoveObstruction != null)
+							{
+								m_customInfo_build.Append("Movement blocked by ");
+								m_customInfo_build.AppendLine(path.MoveObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+							}
+							else
+								m_customInfo_build.AppendLine("Cannot move");
+						}
+						else if (!path.ReportCanRotate)
+						{
+							if (path.RotateObstruction != null)
+							{
+								m_customInfo_build.Append("Rotation blocked by ");
+								m_customInfo_build.AppendLine(path.RotateObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+							}
+							else
+								m_customInfo_build.AppendLine("Cannot rotate safely");
+						}
+						m_customInfo_build.AppendLine();
+					}
 				}
-			}
 
-			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
-			if (navR != null && navR != navM)
-				navR.AppendCustomInfo(m_customInfo_build);
+				INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
+				if (navM != null)
+				{
+					navM.AppendCustomInfo(m_customInfo_build);
+					if (!float.IsNaN(m_navSet.Settings_Current.Distance))
+					{
+						m_customInfo_build.Append("Distance: ");
+						m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+					}
+				}
+
+				INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
+				if (navR != null && navR != navM)
+					navR.AppendCustomInfo(m_customInfo_build);
+			}
 
 			EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
 			if (ef != null && ef.Grid == null)

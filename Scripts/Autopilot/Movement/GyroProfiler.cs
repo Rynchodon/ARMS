@@ -173,26 +173,22 @@ namespace Rynchodon.Autopilot.Movement
 			m_calcInertiaMoment += moment;
 		}
 
-		// TODO: make fewer edits to reduce bandwidth
-		// SE scales each desired velocity by gyro foce, sums them, then divides by total force
-		// if gyros have different velocities they are fighting each other, wasting force and energy
+		///// <summary>
+		///// Sets the overrides of gyros to match RotateVelocity. Should be called on game thread.
+		///// </summary>
+		//public void SetOverrides(ref DirectionWorld RotateVelocity)
+		//{
+		//	ReadOnlyList<IMyCubeBlock> gyros = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
+		//	if (gyros == null)
+		//		return;
 
-		/// <summary>
-		/// Sets the overrides of gyros to match RotateVelocity. Should be called on game thread.
-		/// </summary>
-		public void SetOverrides(ref DirectionWorld RotateVelocity)
-		{
-			ReadOnlyList<IMyCubeBlock> gyros = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
-			if (gyros == null)
-				return;
-
-			foreach (MyGyro gyro in gyros)
-			{
-				if (!gyro.GyroOverride)
-					SetOverride(gyro, true);
-				gyro.SetGyroTorque(RotateVelocity.ToBlock(gyro));
-			}
-		}
+		//	foreach (MyGyro gyro in gyros)
+		//	{
+		//		if (!gyro.GyroOverride)
+		//			SetOverride(gyro, true);
+		//		gyro.SetGyroTorque(RotateVelocity.ToBlock(gyro));
+		//	}
+		//}
 
 		/// <summary>
 		/// Disable overrides for every gyro. Should be called on game thread.
