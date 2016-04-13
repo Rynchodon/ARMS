@@ -59,8 +59,7 @@ namespace Rynchodon.Autopilot
 		{
 			[XmlAttribute]
 			public long AutopilotBlock;
-			// may contain some gnarly characters
-			public byte[] Commands;
+			public string Commands;
 			public int CurrentCommand;
 
 			public Vector3D EngagerOriginalPosition = Vector3D.PositiveInfinity;
@@ -666,12 +665,8 @@ namespace Rynchodon.Autopilot
 			if (result.CurrentCommand <= 0)
 				return null;
 
-			string commands = string.Join(";", m_interpreter.instructionQueueString);
-			m_logger.debugLog("commands: " + commands, "GetBuilder()");
-
-			List<byte> bytes = new List<byte>(commands.Length * 2);
-			ByteConverter.AppendBytes(bytes, commands);
-			result.Commands = bytes.ToArray();
+			result.Commands = string.Join(";", m_interpreter.instructionQueueString);
+			m_logger.debugLog("commands: " + result.Commands, "GetBuilder()");
 
 			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
 			if (finder != null)
@@ -689,8 +684,8 @@ namespace Rynchodon.Autopilot
 			Builder_Autopilot builder = this.Resume;
 			this.Resume = null;
 			m_navSet.OnStartOfCommands();
-			m_logger.debugLog("resume: " + ByteConverter.GetString(builder.Commands), "ResumeFromSave()", Logger.severity.DEBUG);
-			m_interpreter.enqueueAllActions(ByteConverter.GetString(builder.Commands));
+			m_logger.debugLog("resume: " + builder.Commands, "ResumeFromSave()", Logger.severity.DEBUG);
+			m_interpreter.enqueueAllActions(builder.Commands);
 			m_logger.debugLog("from builder, added " + m_interpreter.instructionQueue.Count + " commands", "ResumeFromSave()");
 
 			int i;

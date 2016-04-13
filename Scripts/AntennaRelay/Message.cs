@@ -17,8 +17,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			[XmlAttribute]
 			public long DestCubeBlock, SourceCubeBlock;
-			// may contain some gnarly characters
-			public byte[] Content, SourceGridName, SourceBlockName;
+			public string Content, SourceGridName, SourceBlockName;
 			public SerializableGameTime created;
 			public long destOwnerID;
 
@@ -59,9 +58,9 @@ namespace Rynchodon.AntennaRelay
 
 		public Message(Builder_Message builder)
 		{
-			this.Content = ByteConverter.GetString(builder.Content);
-			this.SourceGridName = ByteConverter.GetString(builder.SourceGridName);
-			this.SourceBlockName = ByteConverter.GetString(builder.SourceBlockName);
+			this.Content = builder.Content;
+			this.SourceGridName = builder.SourceGridName;
+			this.SourceBlockName = builder.SourceBlockName;
 
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.DestCubeBlock, out entity) || !(entity is IMyCubeBlock))
@@ -125,27 +124,16 @@ namespace Rynchodon.AntennaRelay
 
 		public Builder_Message GetBuilder()
 		{
-			Builder_Message result = new Builder_Message()
+			return new Builder_Message()
 			{
 				DestCubeBlock = DestCubeBlock.EntityId,
 				SourceCubeBlock = SourceCubeBlock.EntityId,
 				created = new SerializableGameTime(created),
-				destOwnerID = destOwnerID
+				destOwnerID = destOwnerID,
+				Content = Content,
+				SourceGridName = SourceGridName,
+				SourceBlockName = SourceBlockName
 			};
-
-			List<byte> bytes = new List<byte>(Content.Length * 2);
-			ByteConverter.AppendBytes(bytes, Content);
-			result.Content = bytes.ToArray();
-
-			bytes.Clear();
-			ByteConverter.AppendBytes(bytes, SourceGridName);
-			result.SourceGridName = bytes.ToArray();
-
-			bytes.Clear();
-			ByteConverter.AppendBytes(bytes, SourceBlockName);
-			result.SourceBlockName = bytes.ToArray();
-
-			return result;
 		}
 
 	}
