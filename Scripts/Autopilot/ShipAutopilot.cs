@@ -358,7 +358,7 @@ namespace Rynchodon.Autopilot
 					Profiler.Profile(navR.Rotate);
 				else
 				{
-					navR = navM as INavigatorRotator;
+					navR = m_navSet.Settings_Current.NavigatorMover as INavigatorRotator; // fetch again in case it was removed
 					if (navR != null)
 						Profiler.Profile(navR.Rotate);
 				}

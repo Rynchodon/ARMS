@@ -54,6 +54,7 @@ namespace Rynchodon.Weapons
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			Thread = null;
+			TPro_Shoot = null;
 			//obstructionOffsets_turret = null;
 			//obstructionOffsets_fixed = null;
 		}

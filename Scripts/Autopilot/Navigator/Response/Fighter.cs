@@ -99,9 +99,18 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanTarget(IMyCubeGrid grid)
 		{
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			if (m_destroySet && cache.TerminalBlocks > 0)
-				return true;
+			CubeGridCache cache = null;
+			if (m_destroySet)
+			{
+				cache = CubeGridCache.GetFor(grid);
+				if (cache.TerminalBlocks > 0)
+				{
+					m_logger.debugLog("destoy: " + grid.DisplayName, "CanTarget()");
+					return true;
+				}
+				else
+					m_logger.debugLog("destroy set but no terminal blocks found: " + grid.DisplayName, "CanTarget()"); 
+			}
 
 			if (m_currentTarget != null && grid == m_currentTarget.Entity && m_weapon_primary.CurrentTarget.TType != TargetType.None)
 				return true;
@@ -112,7 +121,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 			BlockTypeList targetBlocks;
 			if (m_cumulative_targeting.TryGetValue(gridType, out targetBlocks))
+			{
+				if (cache == null)
+					cache = CubeGridCache.GetFor(grid);
 				return targetBlocks.HasAny(cache, block => block.IsWorking);
+			}
 			else
 				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName, "CanTarget()");
 
@@ -198,7 +211,11 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			//m_logger.debugLog("facing target at " + firingDirection.Value, "Rotate()");
 
-			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, FiringDirection.Value), targetEntity: m_weapon_primary.CurrentTarget.Entity);
+			RelativeDirection3F upDirect = null;
+			if (m_mover.SignificantGravity())
+				upDirect = RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, -m_mover.Thrust.WorldGravity.vector);
+
+			m_mover.CalcRotate(m_weapon_primary_pseudo, RelativeDirection3F.FromWorld(m_weapon_primary_pseudo.Grid, FiringDirection.Value), UpDirect: upDirect, targetEntity: m_weapon_primary.CurrentTarget.Entity);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -313,8 +330,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_weapon_primary != null && m_weapon_primary.CubeBlock.IsWorking && m_weapon_primary.CurrentTarget.Entity != null)
 				return;
 
-			m_weapon_primary = null;
-			m_weapon_primary_pseudo = null;
+			WeaponTargeting weapon_primary = null;
 
 			bool removed = false;
 			foreach (FixedWeapon weapon in m_weapons_fixed)
@@ -322,7 +338,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					if (weapon.HasAmmo)
 					{
-						m_weapon_primary = weapon;
+						weapon_primary = weapon;
 						if (weapon.CurrentTarget.Entity != null)
 						{
 							m_logger.debugLog("has target: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
@@ -340,13 +356,13 @@ namespace Rynchodon.Autopilot.Navigator
 					removed = true;
 				}
 
-			if (m_weapon_primary == null)
+			if (weapon_primary == null)
 				foreach (WeaponTargeting weapon in m_weapons_all)
 					if (weapon.CubeBlock.IsWorking)
 					{
 						if (weapon.HasAmmo)
 						{
-							m_weapon_primary = weapon;
+							weapon_primary = weapon;
 							if (weapon.CurrentTarget.Entity != null)
 							{
 								m_logger.debugLog("has target: " + weapon.CubeBlock.DisplayNameText, "GetPrimaryWeapon()");
@@ -370,8 +386,39 @@ namespace Rynchodon.Autopilot.Navigator
 				m_weaponDataDirty = true;
 			}
 
-			if (m_weapon_primary != null)
-				m_weapon_primary_pseudo = new PseudoBlock(m_weapon_primary.CubeBlock);
+			if (weapon_primary == null)
+			{
+				m_weapon_primary = null;
+				m_weapon_primary_pseudo = null;
+				return;
+			}
+
+			if (m_weapon_primary != weapon_primary)
+			{
+				m_weapon_primary = weapon_primary;
+				if (m_mover.SignificantGravity())
+				{
+					if (m_mover.Thrust.Standard.LocalMatrix.Forward == weapon_primary.CubeBlock.LocalMatrix.Forward)
+					{
+						m_logger.debugLog("primary forward matches Standard forward", "GetPrimaryWeapon()");
+						Matrix localMatrix = m_mover.Thrust.Standard.LocalMatrix;
+						localMatrix.Translation = weapon_primary.CubeBlock.LocalMatrix.Translation;
+						m_weapon_primary_pseudo = new PseudoBlock(() => weapon_primary.CubeBlock.CubeGrid, localMatrix);
+						return;
+					}
+					if (m_mover.Thrust.Gravity.LocalMatrix.Forward == weapon_primary.CubeBlock.LocalMatrix.Forward)
+					{
+						m_logger.debugLog("primary forward matches Gravity forward", "GetPrimaryWeapon()");
+						Matrix localMatrix = m_mover.Thrust.Gravity.LocalMatrix;
+						localMatrix.Translation = weapon_primary.CubeBlock.LocalMatrix.Translation;
+						m_weapon_primary_pseudo = new PseudoBlock(() => weapon_primary.CubeBlock.CubeGrid, localMatrix);
+						return;
+					}
+					m_logger.debugLog("cannot match primary forward to a standard flight matrix. primary forward: " + weapon_primary.CubeBlock.LocalMatrix.Forward +
+						", Standard forward: " + m_mover.Thrust.Standard.LocalMatrix.Forward + ", gravity forward: " + m_mover.Thrust.Gravity.LocalMatrix.Forward, "GetPrimaryWeapon()");
+				}
+				m_weapon_primary_pseudo = new PseudoBlock(weapon_primary.CubeBlock);
+			}
 		}
 
 		private void UpdateWeaponData()
@@ -394,8 +441,13 @@ namespace Rynchodon.Autopilot.Navigator
 					continue;
 				}
 
+				bool destroy = weapon.Options.CanTargetType(TargetType.Destroy);
+
+				if (!weapon.Options.CanTargetType(TargetType.AllGrid) && !destroy)
+					continue;
+
 				float TargetingRange = weapon.Options.TargetingRange;
-				if (TargetingRange < 1 || !weapon.Options.CanTargetType(TargetType.AllGrid))
+				if (TargetingRange < 1f)
 					continue;
 
 				if (TargetingRange < m_weaponRange_min)
@@ -404,12 +456,15 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_destroySet)
 					continue;
 
-				if (weapon.Options.CanTargetType(TargetType.Destroy))
+				if (destroy)
 				{
+					m_logger.debugLog("destroy set for " + weapon.CubeBlock.DisplayNameText, "UpdateWeaponData()");
 					m_destroySet = true;
 					m_cumulative_targeting.Clear();
 					continue;
 				}
+				else
+					m_logger.debugLog("destroy NOT set for " + weapon.CubeBlock.DisplayNameText, "UpdateWeaponData()");
 
 				foreach (TargetType type in CumulativeTypes)
 					if (weapon.Options.CanTargetType(type))

@@ -62,9 +62,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			if (m_navSet.DistanceLessThanDestRadius())
+			if (m_navSet.DistanceLessThanDestRadius() || m_targetEntity.MarkedForClose)
 			{
-				m_logger.debugLog("Reached destination: " + TargetPosition, "Move()", Logger.severity.INFO);
+				m_logger.debugLog(!m_targetEntity.Closed, () => "Reached destination: " + TargetPosition, "Move()", Logger.severity.INFO);
+				m_logger.debugLog(m_targetEntity.Closed, "Target entity closed", "Move()", Logger.severity.INFO);
+
 				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();
 				m_mover.StopRotate();

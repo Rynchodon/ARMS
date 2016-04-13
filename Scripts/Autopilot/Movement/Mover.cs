@@ -43,8 +43,8 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 m_rotateForceRatio = Vector3.Zero;
 		private Vector3 m_moveAccel;
 		//private Vector3 m_prevMoveControl = Vector3.Zero;
-		private Vector2 m_prevRotateControl = Vector2.Zero;
-		private float m_prevRollControl = 0f;
+		//private Vector2 m_prevRotateControl = Vector2.Zero;
+		//private float m_prevRollControl = 0f;
 
 		private float m_bestDistance = float.MaxValue, m_bestAngle = float.MaxValue;
 		private ulong m_lastmove = ulong.MaxValue;
@@ -105,8 +105,8 @@ namespace Rynchodon.Autopilot.Movement
 			//m_logger.debugLog("stopping rotation", "StopRotate()");
 
 			m_rotateTargetVelocity = m_rotateForceRatio = Vector3.Zero;
-			m_prevRotateControl = Vector2.Zero;
-			m_prevRollControl = 0f;
+			//m_prevRotateControl = Vector2.Zero;
+			//m_prevRollControl = 0f;
 		}
 
 		/// <summary>
@@ -728,8 +728,8 @@ namespace Rynchodon.Autopilot.Movement
 
 			m_rotateForceRatio = (m_rotateTargetVelocity - angularVelocity) / (minimumMoment * m_gyro.GyroForce);
 
-			//m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity - angularVelocity), "in_CalcRotate()");
-			//m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio, "in_CalcRotate()");
+			m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity - angularVelocity), "in_CalcRotate()");
+			m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio, "in_CalcRotate()");
 
 			// dampeners
 			for (int i = 0; i < 3; i++)
@@ -783,7 +783,7 @@ namespace Rynchodon.Autopilot.Movement
 			//m_logger.debugLog("accel: " + accel + ", dist: " + dist, "MaxAngleSpeed()");
 			float actual = (float)Math.Sqrt(-2 * accel * dist);
 			if (fast)
-				return Math.Min(actual, dist * 30f);
+				return Math.Min(actual, dist * 10f);
 			return Math.Min(actual, dist * 2f);
 		}
 
@@ -873,10 +873,14 @@ namespace Rynchodon.Autopilot.Movement
 
 			m_stopped = false;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				controller.MoveAndRotate(Vector3.Zero, rotateControl - m_prevRotateControl, rollControl - m_prevRollControl);
+
+				//m_logger.debugLog("rotate control: " + rotateControl + ", previous: " + m_prevRotateControl + ", delta: " + (rotateControl - m_prevRotateControl), "MoveAndRotate()");
+
+				controller.MoveAndRotateStopped();
+				controller.MoveAndRotate(Vector3.Zero, rotateControl, rollControl);
 				//m_prevMoveControl = moveControl;
-				m_prevRotateControl = rotateControl;
-				m_prevRollControl = rollControl;
+				//m_prevRotateControl = rotateControl;
+				//m_prevRollControl = rollControl;
 
 				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
 				Thrust.SetOverrides(ref gridMove);

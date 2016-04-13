@@ -205,20 +205,21 @@ namespace Rynchodon.Update
 
 				// autopilot
 
-				foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
-				{
-					ShipAutopilot autopilot;
-					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
-						autopilot.Resume = ba;
-					else
-						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, "DoLoad()", Logger.severity.WARNING);
-				}
+				if(data.Autopilot != null)
+					foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
+					{
+						ShipAutopilot autopilot;
+						if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
+							autopilot.Resume = ba;
+						else
+							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, "DoLoad()", Logger.severity.WARNING);
+					}
 
 				m_logger.debugLog("Loaded from " + saveId_fromWorld, "DoLoad()", Logger.severity.INFO);
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, "DoSave()", Logger.severity.ERROR);
+				m_logger.alwaysLog("Exception: " + ex, "DoLoad()", Logger.severity.ERROR);
 				Logger.notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
 			}
 		}

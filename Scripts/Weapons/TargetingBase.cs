@@ -833,7 +833,7 @@ namespace Rynchodon.Weapons
 
 			Vector3 myVelocity = MyEntity.GetLinearVelocity();
 			Vector3 targetVelocity = myTarget.GetLinearVelocity();
-			Vector3 TargetPosition = myTarget.GetPosition();
+			Vector3D TargetPosition = myTarget.GetPosition();
 
 			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
 			if (myTarget.Entity != null)
@@ -850,7 +850,7 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/</remarks>
-		private void FindInterceptVector(Vector3 shotOrigin, Vector3 shooterVel, float shotSpeed, Vector3 targetOrigin, Vector3 targetVel)
+		private void FindInterceptVector(Vector3D shotOrigin, Vector3 shooterVel, float shotSpeed, Vector3D targetOrigin, Vector3 targetVel)
 		{
 			Vector3 relativeVel = targetVel - shooterVel;
 			Vector3 displacementToTarget = targetOrigin - shotOrigin;
