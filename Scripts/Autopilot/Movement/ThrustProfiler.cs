@@ -282,29 +282,32 @@ namespace Rynchodon.Autopilot.Movement
 			myLogger.debugLog("Gravity: " + WorldGravity + ", local: " + LocalGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity, "Update()");
 		}
 
+		private float GetThrusterMaxForce(MyThrust thruster)
+		{
+			float thrusterForce = thruster.BlockDefinition.ForceMagnitude * (thruster as IMyThrust).ThrustMultiplier;
+			if (thruster.BlockDefinition.NeedsAtmosphereForInfluence)
+				if (m_airDensity <= thruster.BlockDefinition.MinPlanetaryInfluence)
+					thrusterForce *= thruster.BlockDefinition.EffectivenessAtMinInfluence;
+				else if (m_airDensity >= thruster.BlockDefinition.MaxPlanetaryInfluence)
+					thrusterForce *= thruster.BlockDefinition.EffectivenessAtMaxInfluence;
+				else
+				{
+					float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
+					float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
+					float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
+					//myLogger.debugLog("for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "CalcForceInDirection()");
+					thrusterForce *= effectiveness;
+				}
+			return thrusterForce;
+		}
+
 		private float CalcForceInDirection(Base6Directions.Direction direction)
 		{
 			float force = 0;
 			using (lock_thrustersInDirection.AcquireSharedUsing())
 				foreach (MyThrust thruster in thrustersInDirection[direction])
 				if (!thruster.Closed && thruster.IsWorking)
-				{
-					float thrusterForce = thruster.BlockDefinition.ForceMagnitude * (thruster as IMyThrust).ThrustMultiplier;
-					if (thruster.BlockDefinition.NeedsAtmosphereForInfluence)
-						if (m_airDensity <= thruster.BlockDefinition.MinPlanetaryInfluence)
-							thrusterForce *= thruster.BlockDefinition.EffectivenessAtMinInfluence;
-						else if (m_airDensity >= thruster.BlockDefinition.MaxPlanetaryInfluence)
-							thrusterForce *= thruster.BlockDefinition.EffectivenessAtMaxInfluence;
-						else
-						{
-							float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
-							float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
-							float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
-							//myLogger.debugLog("direction: " + direction + ", for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "CalcForceInDirection()");
-							thrusterForce *= effectiveness;
-						}
-					force += thrusterForce;
-				}
+					force += GetThrusterMaxForce(thruster);
 
 			m_totalThrustForce[direction] = force;
 
@@ -412,22 +415,24 @@ namespace Rynchodon.Autopilot.Movement
 					{
 						if (TP_ThrustOverride.GetValue(thruster) != 0f)
 							TP_ThrustOverride.SetValue(thruster, 0f);
+						continue;
 					}
-					else if (thruster.BlockDefinition.ForceMagnitude > force)
-					{
-						float overrideValue = force / thruster.BlockDefinition.ForceMagnitude * maxThrustOverrideValue;
-						if (overrideValue <= 1f)
-							overrideValue = 0f;
 
+					float maxForce = GetThrusterMaxForce(thruster);
+					if (maxForce > force)
+					{
+						float overrideValue = force / maxForce * maxThrustOverrideValue;
 						if (TP_ThrustOverride.GetValue(thruster) != overrideValue)
 							TP_ThrustOverride.SetValue(thruster, overrideValue);
+						//myLogger.debugLog("direction: " + direction + ", thruster: " + thruster.DisplayNameText + ", add partial force " + force + " of " + maxForce + ", overrideValue: " + overrideValue, "SetOverrides()");
 						force = 0f;
 					}
 					else
 					{
 						if (TP_ThrustOverride.GetValue(thruster) != maxThrustOverrideValue)
 							TP_ThrustOverride.SetValue(thruster, maxThrustOverrideValue);
-						force -= thruster.BlockDefinition.ForceMagnitude;
+						force -= maxForce;
+						//myLogger.debugLog("direction: " + direction + ", thruster at full force: " + thruster.DisplayNameText, "SetOverrides()");
 					}
 				}
 		}

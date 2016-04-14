@@ -236,6 +236,7 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3 dispReject;
 					Vector3.Reject(ref destDisp, ref gravityDirection, out dispReject);
 
+					m_logger.debugLog("changed dest disp from " + destDisp + " to " + (dispReject - gravityDirection * deltaAltitude), "CalcMove()");
 					destDisp = dispReject - gravityDirection * deltaAltitude;
 				}
 
@@ -710,7 +711,7 @@ namespace Rynchodon.Autopilot.Movement
 			// adjustment to face a moving entity
 			if (targetEntity != null)
 			{
-				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity - Block.Physics.LinearAcceleration * 0.1f;
+				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity;
 				float distance = Vector3.Distance(targetEntity.GetCentre(), Block.CubeBlock.GetPosition());
 
 				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", tangentialVelocity: " + tangentialVelocity + ", localTangVel: " + localTangVel, "in_CalcRotate()");
