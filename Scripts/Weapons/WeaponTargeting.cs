@@ -238,7 +238,7 @@ namespace Rynchodon.Weapons
 		/// <summary>World direction that the weapon is facing.</summary>
 		protected abstract Vector3 Facing();
 
-		protected override float ProjectileSpeed(Vector3D targetPos)
+		protected override float ProjectileSpeed(ref Vector3D targetPos)
 		{
 			if (LoadedAmmo == null)
 				return 1f;
@@ -370,10 +370,10 @@ namespace Rynchodon.Weapons
 					Options = Interpreter.Options.Clone();
 				InterpreterErrorCount = Interpreter.Errors.Count;
 				Update100_Options_TargetingThread(Options);
-				//myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
+				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
 			}
-			//else
-				//myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
+			else
+				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
 		}
 
 		private void UpdateAmmo()
@@ -415,7 +415,7 @@ namespace Rynchodon.Weapons
 			if (accuracy < WeaponDefinition.RequiredAccuracy)
 			{
 				// not facing target
-				//myLogger.debugLog("not facing, accuracy: " + accuracy, "CheckFire()");
+				//myLogger.debugLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy, "CheckFire()");
 				FireWeapon = false;
 				return;
 			}

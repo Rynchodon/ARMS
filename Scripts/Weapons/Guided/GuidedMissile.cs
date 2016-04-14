@@ -376,7 +376,7 @@ namespace Rynchodon.Weapons.Guided
 			return false;
 		}
 
-		protected override float ProjectileSpeed(Vector3D targetPos)
+		protected override float ProjectileSpeed(ref Vector3D targetPos)
 		{
 			return acceleration;
 		}

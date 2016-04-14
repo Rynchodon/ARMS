@@ -187,11 +187,12 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
-			if (myTurret.AIEnabled)
-			{
-				myTurret.SetTarget(ProjectilePosition() + GotTarget.FiringDirection.Value * 100f);
-				return;
-			}
+			// as of SE 01.130.010 SetTarget does not work
+			//if (myTurret.AIEnabled)
+			//{
+			//	myTurret.SetTarget(ProjectilePosition() + GotTarget.FiringDirection.Value * 100f);
+			//	return;
+			//}
 
 			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
 			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(CubeBlock);

@@ -160,7 +160,7 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Determines the speed of the projectile.
 		/// </summary>
-		protected abstract float ProjectileSpeed(Vector3D targetPos);
+		protected abstract float ProjectileSpeed(ref Vector3D targetPos);
 
 		/// <summary>
 		/// If the projectile has not been fired, aproximately where it will be created.
@@ -825,17 +825,12 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Calculates FiringDirection and InterceptionPoint
 		/// </summary>
-		/// TODO: if target is accelerating, look ahead (missiles and such)
 		protected void SetFiringDirection()
 		{
 			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
 				return;
 
-			Vector3 myVelocity = MyEntity.GetLinearVelocity();
-			Vector3 targetVelocity = myTarget.GetLinearVelocity();
-			Vector3D TargetPosition = myTarget.GetPosition();
-
-			FindInterceptVector(ProjectilePosition(), myVelocity, ProjectileSpeed(TargetPosition), TargetPosition, targetVelocity);
+			FindInterceptVector();
 			if (myTarget.Entity != null)
 			{
 				if (PhysicalProblem(myTarget.ContactPoint.Value))
@@ -850,9 +845,17 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/</remarks>
-		private void FindInterceptVector(Vector3D shotOrigin, Vector3 shooterVel, float shotSpeed, Vector3D targetOrigin, Vector3 targetVel)
+		private void FindInterceptVector()
 		{
-			Vector3 relativeVel = targetVel - shooterVel;
+			Vector3D shotOrigin = ProjectilePosition();
+			Vector3 shooterVel = MyEntity.GetLinearVelocity();
+			Vector3D targetOrigin = myTarget.GetPosition();
+
+			Vector3 targetVel = myTarget.GetLinearVelocity();
+			Vector3 relativeVel = (targetVel - shooterVel);
+			targetOrigin += relativeVel * Globals.UpdateDuration;
+			float shotSpeed = ProjectileSpeed(ref targetOrigin);
+
 			Vector3 displacementToTarget = targetOrigin - shotOrigin;
 			float distanceToTarget = displacementToTarget.Length();
 			Vector3 directionToTarget = displacementToTarget / distanceToTarget;

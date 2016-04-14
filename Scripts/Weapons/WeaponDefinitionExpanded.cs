@@ -33,7 +33,7 @@ namespace Rynchodon.Weapons
 				{
 					AmmoType = (MyAmmoType)i;
 					FirstAmmo = Ammo.GetAmmo(WeaponDefinition.AmmoMagazinesId[0]);
-					RequiredAccuracy = (float)Math.Cos(0.005f + Math.Min(weaponDefn.WeaponAmmoDatas[i].RateOfFire, 1000) / 72000f);
+					RequiredAccuracy = (float)Math.Cos(0.02f + Math.Min(weaponDefn.WeaponAmmoDatas[i].RateOfFire, 1000) / 72000f);
 					return;
 				}
 			}

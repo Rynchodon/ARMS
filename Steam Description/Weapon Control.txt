@@ -42,7 +42,6 @@ As mentioned above, the <ERROR:#> added to the display name indicates an error a
 
 [b][u]Known Issues[/u][/b]
 [list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
-[*]A turret that does not have an A.I. can be used but it is dangerous; due to a bug in Space Engineers the no-A.I. turrets will glitch while moving. This can cause projectiles to be fired in the wrong direction.
 [*]Engage command is not aware of rotor-turrets.[/list]
 
 [b][u]Important Information[/u][/b]

@@ -140,7 +140,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_weapon_primary == null)
+			if (m_weapon_primary == null || m_weapon_primary.CubeBlock.Closed)
 			{
 				m_logger.debugLog("no primary weapon", "Move()");
 				m_mover.StopMove();
@@ -161,7 +161,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
 					// start further out so we can spiral inwards
 					m_finalOrbitAltitude = m_orbiter.Altitude;
-					m_orbiter.Altitude = m_finalOrbitAltitude + m_weaponRange_min * 0.5f;
+					m_orbiter.Altitude = m_finalOrbitAltitude + 250f;
 					m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude, "Move()", Logger.severity.DEBUG);
 				}
 				else
@@ -176,8 +176,12 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Target current = m_weapon_primary.CurrentTarget;
-			if ((current == null || current.Entity == null) && m_orbiter.Altitude > m_finalOrbitAltitude && m_navSet.DistanceLessThan(m_orbiter.OrbitSpeed))
-				m_orbiter.Altitude -= 0.5f;
+			if ((current == null || current.Entity == null) && m_orbiter.Altitude > m_finalOrbitAltitude && m_navSet.DistanceLessThan(m_orbiter.OrbitSpeed * 0.5f))
+			{
+				m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude +
+					", dist: " + m_navSet.Settings_Current.Distance + ", orbit speed: " + m_orbiter.OrbitSpeed, "Move()", Logger.severity.TRACE);
+				m_orbiter.Altitude -= 2;
+			}
 
 			m_orbiter.Move();
 
@@ -193,7 +197,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			if (m_weapon_primary == null)
+			if (m_weapon_primary == null || m_weapon_primary.CubeBlock.Closed)
 			{
 				m_logger.debugLog("no primary weapon", "Rotate()");
 				Disarm();
