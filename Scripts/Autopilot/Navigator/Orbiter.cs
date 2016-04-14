@@ -146,15 +146,19 @@ namespace Rynchodon.Autopilot.Navigator
 				MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxels, voxel => voxel is MyPlanet);
 
 			double closest = double.MaxValue;
+			IMyEntity closestEntity = null;
 			foreach (IMyEntity ent in voxels)
 			{
 				double dist = Vector3D.DistanceSquared(m_navBlock.WorldPosition, ent.GetCentre());
 				if (dist < closest)
 				{
+					m_logger.debugLog("closer than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest), "SetOrbitClosestVoxel()");
 					closest = dist;
-					OrbitEntity = ent;
+					closestEntity = ent;
 				}
+				m_logger.debugLog("further than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest), "SetOrbitClosestVoxel()");
 			}
+			OrbitEntity = closestEntity;
 
 			voxels.Clear();
 			ResourcePool<List<IMyVoxelBase>>.Return(voxels);
@@ -188,7 +192,8 @@ namespace Rynchodon.Autopilot.Navigator
 				//m_logger.debugLog("updating grid finder", "Move()");
 				m_gridFinder.Update();
 
-				if (m_gridFinder.Grid == null)
+				// if grid finder picks a new entity, have to set OrbitEntity to null first or altitude will be incorrect
+				if (m_gridFinder.Grid == null || OrbitEntity != m_gridFinder.Grid)
 				{
 					m_logger.debugLog("no grid found", "Move()");
 					OrbitEntity = null;
