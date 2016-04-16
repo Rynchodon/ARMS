@@ -3,6 +3,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Navigator.Response;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -12,7 +13,7 @@ namespace Rynchodon.Autopilot
 	public class EnemyFinder : GridFinder
 	{
 
-		public enum Response : byte { None, Fight, Flee, Ram, Self_Destruct }
+		public enum Response : byte { None, Fight, Flee, Ram, Self_Destruct, Land }
 
 		private struct ResponseRange
 		{
@@ -30,6 +31,8 @@ namespace Rynchodon.Autopilot
 		private readonly Mover m_mover;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
+		/// <summary>The landing block at the time enemy finder is created, it will be vetted by EnemyLander</summary>
+		private readonly PseudoBlock m_landingGear;
 
 		private IEnemyResponse m_navResponse;
 		private ResponseRange m_curResponse;
@@ -95,6 +98,9 @@ namespace Rynchodon.Autopilot
 					case Response.Self_Destruct:
 						m_navResponse = new Self_Destruct(m_mover.Block.CubeBlock);
 						break;
+					case Response.Land:
+						m_navResponse = new EnemyLander(m_mover, m_navSet, m_landingGear);
+						break;
 					default:
 						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, "set_CurrentResponse()", Logger.severity.WARNING);
 						NextResponse();
@@ -117,6 +123,7 @@ namespace Rynchodon.Autopilot
 			this.m_mover = mover;
 			this.m_navSet = navSet;
 			this.m_targetEntityId = entityId;
+			this.m_landingGear = m_navSet.Settings_Current.LandingBlock;
 
 			m_logger.debugLog("Initialized", "EnemyFinder()");
 		}
@@ -199,7 +206,8 @@ namespace Rynchodon.Autopilot
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
 			m_navSet.Settings_Task_NavEngage.IgnoreAsteroid = false;
 			m_navSet.Settings_Task_NavEngage.PathfinderCanChangeCourse = true;
-			m_navSet.Settings_Task_NavEngage.DestinationEntity = m_mover.Block.CubeBlock;
+			if (!(m_navResponse is EnemyLander))
+				m_navSet.Settings_Task_NavEngage.DestinationEntity = m_mover.Block.CubeBlock;
 
 			if (!m_originalPosition.IsValid() && MaximumRange > 1f)
 			{

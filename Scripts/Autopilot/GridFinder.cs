@@ -163,7 +163,7 @@ namespace Rynchodon.Autopilot
 				m_logger.debugLog("Best match LastSeen: " + Grid.Entity.getBestName(), "GridSearch_Friend()");
 		}
 
-		protected void GridSearch_Enemy()
+		private void GridSearch_Enemy()
 		{
 			NetworkStorage store = m_client.GetStorage();
 			if (store == null)
@@ -248,10 +248,18 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
+			NetworkStorage storage = m_client.GetStorage();
+			if (storage == null)
+			{
+				m_logger.debugLog("lost storage", "GridUpdate()", Logger.severity.DEBUG);
+				Grid = null;
+				return;
+			}
+
 			LastSeen updated;
 			if (!m_client.GetStorage().TryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
-				m_logger.alwaysLog("Where does the good go? Searching for "+Grid.Entity.EntityId, "GridUpdate()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Where does the good go? Searching for " + Grid.Entity.EntityId, "GridUpdate()", Logger.severity.WARNING);
 				Grid = null;
 				return;
 			}

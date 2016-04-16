@@ -267,7 +267,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (!lock_testPath.TryAcquireExclusive())
 			{
-				m_logger.debugLog("Already running, requeue (destination:" + destination + ", destEntity: " + ignoreEntity + ", runId :" + runId
+				m_logger.debugLog("Already running, requeue (destination:" + destination + ", ignoreEntity: " + ignoreEntity.getBestName() + ", runId :" + runId
 					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
 				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
 				queue.Enqueue(() => TestPath(destination, ignoreEntity, runId, isAlternate, tryAlternates));
@@ -280,7 +280,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					m_logger.debugLog("Grid has changed, from " + m_grid.getBestName() + " to " + m_navBlock.Grid.getBestName() + ", nav block: " + m_navBlock.Block.getBestName(), "TestPath()", Logger.severity.WARNING);
 					return;
 				}
-				m_logger.debugLog("Running, (destination:" + destination + ", destEntity: " + ignoreEntity + ", runId :" + runId
+				m_logger.debugLog("Running, (destination:" + destination + ", ignoreEntity: " + ignoreEntity.getBestName() + ", runId :" + runId
 						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")", "TestPath()");
 
 				MyEntity obstructing;
@@ -393,7 +393,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (m_pathState < PathState.Searching)
 					m_pathState = PathState.Searching;
 
-				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", destEntity: " + ignoreEntity.getBestName(), "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
+				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", ignoreEntity: " + ignoreEntity.getBestName(), "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 				m_logger.debugLog(obstructing is IMyCubeBlock, "grid: " + obstructing.GetTopMostParent().DisplayName, "TestPath()", isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
 
 				if (isAlternate && m_altPath_AlternatesFound != 0)

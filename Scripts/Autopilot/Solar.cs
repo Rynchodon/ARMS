@@ -56,8 +56,7 @@ namespace Rynchodon.Autopilot
 						myLogger.debugLog("no longer set to face sun", "Update10()", Logger.severity.INFO);
 
 					myMotorTurret = new MotorTurret(myBlock);
-					myMotorTurret.RotationSpeedMultiplier = 10f;
-					//myMotorTurret.SpeedLimt = 0.25f;
+					myMotorTurret.RotationSpeedMultiplier = 2f;
 				}
 			}
 			catch (Exception ex)

@@ -161,7 +161,7 @@ namespace Rynchodon.Autopilot
 			get { return value_state; }
 			set
 			{
-				if (value_state == value)
+				if (value_state == value || value_state == State.Closed)
 					return;
 				m_logger.debugLog("state change from " + value_state + " to " + value, "set_m_state()", Logger.severity.DEBUG);
 				value_state = value;

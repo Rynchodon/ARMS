@@ -53,12 +53,13 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			Vector3D position = m_mover.Block.CubeBlock.GetPosition();
-			m_flyDirection = m_enemy.GetPosition() - position;
-			m_flyDirection.Normalize();
+			Vector3 displacement = m_enemy.GetPosition() - m_mover.Block.CubeBlock.GetPosition();
+			float distance = displacement.Length();
+			Vector3 direction; Vector3.Divide(ref displacement, distance, out direction);
+			Vector3 velocity = m_enemy.GetLinearVelocity() - m_mover.Block.CubeBlock.GetLinearVelocity();
+			Vector3 tangVel; Vector3.Reject(ref velocity, ref direction, out tangVel);
 
-			Vector3D destination = position + m_flyDirection * 1e6;
-			m_mover.CalcMove(m_mover.Block.Pseudo, destination, Vector3.Zero);
+			m_mover.CalcMove(m_mover.Block.Pseudo, m_enemy.GetPosition(), m_enemy.GetLinearVelocity() + direction * m_navSet.Settings_Task_NavEngage.SpeedTarget + tangVel * 3f);
 		}
 
 		public void Rotate()

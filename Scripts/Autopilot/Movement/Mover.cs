@@ -142,8 +142,9 @@ namespace Rynchodon.Autopilot.Movement
 		public bool CanMoveForward()
 		{
 			CheckGrid();
+			Thrust.Update();
 
-			return Thrust.GetForceInDirection(Block.CubeBlock.Orientation.Forward, true) > Block.Physics.Mass;
+			return Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(Thrust.Standard.LocalMatrix.Forward), true) > Block.Physics.Mass;
 		}
 
 		#region Move
