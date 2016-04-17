@@ -19,7 +19,7 @@ namespace Rynchodon.Weapons
 		public Vector3? FiringDirection { get; set; }
 
 		/// <summary>The point where contact will be made. For obstruction test, do not point the weapon here!</summary>
-		public Vector3? ContactPoint { get; set; }
+		public Vector3D? ContactPoint { get; set; }
 
 	}
 

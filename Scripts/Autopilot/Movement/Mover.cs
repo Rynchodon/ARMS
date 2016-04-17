@@ -26,6 +26,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Fraction of force used to calculate maximum speed.</summary>
 		public const float AvailableForceRatio = 0.5f;
 		public const float OverworkedThreshold = 0.75f;
+		public const float PlanetMoveDist = 1000f;
 
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
 		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
@@ -150,6 +151,35 @@ namespace Rynchodon.Autopilot.Movement
 		#region Move
 
 		/// <summary>
+		/// Set the move acceleration.
+		/// </summary>
+		/// <param name="block">Block that will be moved to destination</param>
+		/// <param name="destPoint">For pathfinding.</param>
+		/// <param name="acceleration">Move acceleration, local to autopilot block.</param>
+		public void SetMove(PseudoBlock block, Vector3D destPoint, DirectionBlock acceleration)
+		{
+			CheckGrid();
+
+			if (m_navSet.Settings_Current.CollisionAvoidance)
+			{
+				Pathfinder.TestPath(destPoint, false);
+				if (!Pathfinder.CanMove)
+				{
+					m_logger.debugLog("Pathfinder not allowing movement", "SetMove()");
+					return;
+				}
+			}
+
+			Thrust.Update();
+
+			DirectionWorld velocity = Block.CubeGrid.Physics.LinearVelocity;
+			Vector3 blockVelocity = velocity.ToBlock(Block.CubeBlock);
+
+			m_moveAccel = acceleration;
+			CalcMove(ref blockVelocity);
+		}
+
+		/// <summary>
 		/// Calculates the force necessary to move the grid.
 		/// </summary>
 		/// <param name="block">To get world position from.</param>
@@ -214,7 +244,7 @@ namespace Rynchodon.Autopilot.Movement
 				}
 
 				// while on a planet, take a curved path to target instead of making pathfinder do all the work
-				if (SignificantGravity() && distance > 1000f)
+				if (SignificantGravity() && distance > PlanetMoveDist)
 				{
 					// adjust for curvature of the planet
 					Vector3D planetCentre = MyPlanetExtensions.GetClosestPlanet(Block.CubeBlock.GetPosition()).GetCentre();
@@ -292,6 +322,22 @@ namespace Rynchodon.Autopilot.Movement
 
 			m_moveAccel = targetVelocity - velocity;
 
+			CalcMove(ref velocity);
+
+			m_logger.debugLog(string.Empty
+				//+ "block: " + block.Block.getBestName()
+				//+ ", dest point: " + destPoint
+				//+ ", position: " + block.WorldPosition
+				+ "destDisp: " + destDisp
+				+ ", destVelocity: " + destVelocity
+				+ ", targetVelocity: " + targetVelocity
+				+ ", velocity: " + velocity
+				+ ", m_moveAccel: " + m_moveAccel
+				+ ", moveForceRatio: " + m_moveForceRatio, "CalcMove()");
+		}
+
+		private void CalcMove(ref Vector3 velocity)
+		{
 			DirectionBlock gravBlock = Thrust.WorldGravity.ToBlock(Block.CubeBlock);
 			m_moveForceRatio = ToForceRatio(m_moveAccel - gravBlock.vector);
 
@@ -305,7 +351,7 @@ namespace Rynchodon.Autopilot.Movement
 				//const float zeroForceRatio = 0.01f;
 
 				float forceRatio = m_moveForceRatio.GetDim(i);
-				
+
 				if (forceRatio < 1f && forceRatio > -1f)
 				{
 					//if (forceRatio > zeroForceRatio && forceRatio < minForceRatio)
@@ -340,17 +386,6 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			SetDamping(enableDampeners);
-
-			m_logger.debugLog(string.Empty
-				//+ "block: " + block.Block.getBestName()
-				//+ ", dest point: " + destPoint
-				//+ ", position: " + block.WorldPosition
-				+ "destDisp: " + destDisp
-				+ ", destVelocity: " + destVelocity
-				+ ", targetVelocity: " + targetVelocity
-				+ ", velocity: " + velocity
-				+ ", m_moveAccel: " + m_moveAccel
-				+ ", moveForceRatio: " + m_moveForceRatio, "CalcMove()");
 		}
 
 		/// <summary>

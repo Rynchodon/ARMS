@@ -2,6 +2,8 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Utility.Vectors;
+using Rynchodon.Weapons;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -38,7 +40,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public void UpdateTarget(LastSeen enemy)
 		{
 			m_enemy = enemy;
-			m_navSet.Settings_Task_NavEngage.CollisionAvoidance = false;
+			m_navSet.Settings_Task_NavEngage.DestinationEntity = enemy.Entity;
 		}
 
 		#endregion
@@ -53,13 +55,20 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			Vector3 displacement = m_enemy.GetPosition() - m_mover.Block.CubeBlock.GetPosition();
-			float distance = displacement.Length();
-			Vector3 direction; Vector3.Divide(ref displacement, distance, out direction);
-			Vector3 velocity = m_enemy.GetLinearVelocity() - m_mover.Block.CubeBlock.GetLinearVelocity();
-			Vector3 tangVel; Vector3.Reject(ref velocity, ref direction, out tangVel);
+			m_mover.Thrust.Update();
+			if (m_mover.SignificantGravity() && !m_navSet.DistanceLessThan(Mover.PlanetMoveDist))
+			{
+				m_mover.CalcMove(m_mover.Block.Pseudo, m_enemy.GetPosition(), m_enemy.GetLinearVelocity());
+				return;
+			}
 
-			m_mover.CalcMove(m_mover.Block.Pseudo, m_enemy.GetPosition(), m_enemy.GetLinearVelocity() + direction * m_navSet.Settings_Task_NavEngage.SpeedTarget + tangVel * 3f);
+			Vector3D enemyPosition = m_enemy.GetPosition();
+			float myAccel = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_mover.Thrust.Standard.LocalMatrix.Forward)) / m_controlBlock.Physics.Mass;
+			Vector3 aimDirection;
+			Vector3D contactPoint;
+			TargetingBase.FindInterceptVector(m_controlBlock.Pseudo.WorldPosition, m_controlBlock.Physics.LinearVelocity, enemyPosition, m_enemy.GetLinearVelocity(), myAccel, true, out aimDirection, out contactPoint);
+
+			m_mover.SetMove(m_controlBlock.Pseudo, enemyPosition, ((DirectionWorld)(aimDirection * myAccel)).ToBlock(m_mover.Block.CubeBlock));
 		}
 
 		public void Rotate()

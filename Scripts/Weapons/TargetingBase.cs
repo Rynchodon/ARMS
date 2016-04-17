@@ -921,6 +921,74 @@ namespace Rynchodon.Weapons
 			}
 		}
 
+		/// <remarks>From http://danikgames.com/blog/moving-target-intercept-in-3d/</remarks>
+		public static bool FindInterceptVector(Vector3D shotOrigin, Vector3 shooterVel, Vector3D targetOrigin, Vector3 targetVel, float shotSpeed, bool tryHard, out Vector3 firingDirection, out Vector3D contactPoint)
+		{
+			Vector3 relativeVel = (targetVel - shooterVel);
+			targetOrigin += relativeVel * Globals.UpdateDuration;
+
+			Vector3 displacementToTarget = targetOrigin - shotOrigin;
+			float distanceToTarget = displacementToTarget.Length();
+			Vector3 directionToTarget = displacementToTarget / distanceToTarget;
+
+			// Decompose the target's velocity into the part parallel to the
+			// direction to the cannon and the part tangential to it.
+			// The part towards the cannon is found by projecting the target's
+			// velocity on directionToTarget using a dot product.
+			float targetSpeedOrth = Vector3.Dot(relativeVel, directionToTarget);
+			Vector3 relativeVelOrth = targetSpeedOrth * directionToTarget;
+
+			// The tangential part is then found by subtracting the
+			// result from the target velocity.
+			Vector3 relativeVelTang = relativeVel - relativeVelOrth;
+
+			// The tangential component of the velocities should be the same
+			// (or there is no chance to hit)
+			// THIS IS THE MAIN INSIGHT!
+			Vector3 shotVelTang = relativeVelTang;
+
+			if (tryHard)
+				shotVelTang *= 3f;
+
+			// Now all we have to find is the orthogonal velocity of the shot
+
+			float shotVelSpeedSquared = shotVelTang.LengthSquared();
+			if (shotVelSpeedSquared > shotSpeed * shotSpeed)
+			{
+				// Shot is too slow to intercept target.
+				if (tryHard)
+				{
+					// direction is a trade-off between facing the target and fighting tangential velocity
+					Vector3 direction = directionToTarget + displacementToTarget * 0.01f + shotVelTang;
+					direction.Normalize();
+					firingDirection = direction;
+					contactPoint = shotOrigin + direction * distanceToTarget;
+					return true;
+				}
+				firingDirection = Vector3.Zero;
+				contactPoint = Vector3D.Zero;
+				return false;
+			}
+			else
+			{
+				// We know the shot speed, and the tangential velocity.
+				// Using pythagoras we can find the orthogonal velocity.
+				float shotSpeedOrth = (float)Math.Sqrt(shotSpeed * shotSpeed - shotVelSpeedSquared);
+				Vector3 shotVelOrth = directionToTarget * shotSpeedOrth;
+
+				// Finally, add the tangential and orthogonal velocities.
+				firingDirection = Vector3.Normalize(shotVelOrth + shotVelTang);
+
+				// Find the time of collision (distance / relative velocity)
+				float timeToCollision = distanceToTarget / (shotSpeedOrth - targetSpeedOrth);
+
+				// Calculate where the shot will be at the time of collision
+				Vector3 shotVel = shotVelOrth + shotVelTang;
+				contactPoint = shotOrigin + (shotVel + shooterVel) * timeToCollision;
+				return true;
+			}
+		}
+
 		#endregion
 
 	}
