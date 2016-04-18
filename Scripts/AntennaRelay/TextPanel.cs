@@ -210,7 +210,7 @@ namespace Rynchodon.AntennaRelay
 			Vector3D mypos = m_block.GetPosition();
 
 			Registrar.ForEach<ShipAutopilot>(ap => {
-				NetworkStorage apStore = ap.m_block.NetClient.GetStorage();
+				NetworkStorage apStore = ap.m_block.NetworkStorage;
 				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
 				{
 					//myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");

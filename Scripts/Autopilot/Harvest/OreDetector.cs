@@ -308,7 +308,7 @@ Finished_Deposit:
 		public static void SearchForMaterial(ShipControllerBlock requester, byte[] oreType, OreSearchComplete onComplete)
 		{
 			Vector3D position = requester.CubeBlock.GetPosition();
-			NetworkStorage storage = requester.NetClient.GetStorage();
+			NetworkStorage storage = requester.NetworkStorage;
 
 			m_thread.EnqueueAction(() => {
 				List<OreDetector> oreDetectors = ResourcePool<List<OreDetector>>.Get();

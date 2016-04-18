@@ -42,7 +42,7 @@ namespace Rynchodon.Autopilot
 		protected float MaximumRange;
 		protected long m_targetEntityId;
 
-		private NetworkClient m_client { get { return m_controlBlock.NetClient; } }
+		private NetworkStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
 
 		/// <summary>
 		/// Creates a GridFinder to find a friendly grid based on its name.
@@ -137,7 +137,7 @@ namespace Rynchodon.Autopilot
 		private void GridSearch_Friend()
 		{
 			int bestNameLength = int.MaxValue;
-			NetworkStorage store = m_client.GetStorage();
+			NetworkStorage store = m_netStore;
 			if (store == null)
 			{
 				m_logger.debugLog("no storage", "GridSearch_Friend()", Logger.severity.WARNING);
@@ -165,7 +165,7 @@ namespace Rynchodon.Autopilot
 
 		private void GridSearch_Enemy()
 		{
-			NetworkStorage store = m_client.GetStorage();
+			NetworkStorage store = m_netStore;
 			if (store == null)
 			{
 				m_logger.debugLog("no storage", "GridSearch_Enemy()", Logger.severity.WARNING);
@@ -248,7 +248,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			NetworkStorage storage = m_client.GetStorage();
+			NetworkStorage storage = m_netStore;
 			if (storage == null)
 			{
 				m_logger.debugLog("lost storage", "GridUpdate()", Logger.severity.DEBUG);
@@ -257,7 +257,7 @@ namespace Rynchodon.Autopilot
 			}
 
 			LastSeen updated;
-			if (!m_client.GetStorage().TryGetLastSeen(Grid.Entity.EntityId, out updated))
+			if (!m_netStore.TryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
 				m_logger.alwaysLog("Where does the good go? Searching for " + Grid.Entity.EntityId, "GridUpdate()", Logger.severity.WARNING);
 				Grid = null;

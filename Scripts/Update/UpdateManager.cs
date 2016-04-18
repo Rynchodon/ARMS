@@ -199,11 +199,17 @@ namespace Rynchodon.Update
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
 					if (ShipAutopilot.IsAutopilotBlock(block))
+					{
+						nodeConstruct(block);
 						new Autopilot_CustomInfo(block);
+					}
 				});
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 				if (ShipAutopilot.IsAutopilotBlock(block))
+				{
+					nodeConstruct(block);
 					new Autopilot_CustomInfo(block);
+				}
 			});
 
 			#endregion

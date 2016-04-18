@@ -74,15 +74,9 @@ namespace Rynchodon.AntennaRelay
 			if (store != m_storage && m_messageHandler != null)
 			{
 				if (m_storage != null)
-				{
-					m_logger.debugLog("removing handler: " + m_block.EntityId, "get_Storage()");
 					m_storage.RemoveMessageHandler(m_block.EntityId);
-				}
 				if (store != null)
-				{
-					m_logger.debugLog("adding handler: " + m_block.EntityId, "get_Storage()");
 					store.AddMessageHandler(m_block.EntityId, m_messageHandler);
-				}
 			}
 			m_storage = store;
 			return m_storage;

@@ -29,21 +29,21 @@ namespace Rynchodon.Autopilot
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyTerminalBlock Terminal;
 		public readonly PseudoBlock Pseudo;
-		public readonly NetworkClient NetClient;
+		public NetworkNode NetworkNode;
 
 		private readonly Logger m_logger;
 
+		public NetworkStorage NetworkStorage { get { return NetworkNode.Storage; } }
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
 
-		public ShipControllerBlock(IMyCubeBlock block, NetworkClient netClient)
+		public ShipControllerBlock(IMyCubeBlock block)
 		{
 			m_logger = new Logger(GetType().Name, block);
 			Controller = block as MyShipController;
 			CubeBlock = block;
 			Terminal = block as IMyTerminalBlock;
 			Pseudo = new PseudoBlock(block);
-			NetClient = netClient;
 		}
 
 	}
@@ -198,7 +198,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="block">The ship controller to use</param>
 		public ShipAutopilot(IMyCubeBlock block)
 		{
-			this.m_block = new ShipControllerBlock(block, new NetworkClient(block, HandleMessage));
+			this.m_block = new ShipControllerBlock(block);
 			this.m_logger = new Logger(GetType().Name, block);
 			this.m_interpreter = new Interpreter(m_block);
 
@@ -243,6 +243,17 @@ namespace Rynchodon.Autopilot
 				switch (m_state)
 				{
 					case State.Disabled:
+						if (m_block.NetworkNode == null )
+							if (!Registrar.TryGetValue(m_block.CubeBlock.EntityId, out m_block.NetworkNode))
+							{
+								m_logger.debugLog("failed to get node", "UpdateThread()", Logger.severity.WARNING);
+								return;
+							}
+							else
+							{
+								m_logger.debugLog("got node", "UpdateThread()", Logger.severity.DEBUG);
+								m_block.NetworkNode.MessageHandler = HandleMessage;
+							}
 						if (CheckControl())
 							m_state = State.Enabled;
 						return;

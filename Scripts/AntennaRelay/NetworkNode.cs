@@ -53,6 +53,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly HashSet<NetworkNode> m_oneWayConnect = new HashSet<NetworkNode>();
 		private int m_lastSearchId;
 		private NetworkStorage value_storage;
+		private Action<Message> value_messageHandler;
 
 		/// <summary>Name used to identify this node.</summary>
 		public string LoggingName { get { return m_loggingName.Invoke(); } }
@@ -60,6 +61,22 @@ namespace Rynchodon.AntennaRelay
 		public IMyCubeBlock Block { get { return m_entity as IMyCubeBlock; } }
 
 		public long EntityId { get { return m_entity.EntityId; } }
+
+		public Action<Message> MessageHandler
+		{
+			get { return value_messageHandler; }
+			set
+			{
+				if (Storage != null)
+				{
+					if (value_messageHandler != null)
+						Storage.RemoveMessageHandler(EntityId);
+					if (value != null)
+						Storage.AddMessageHandler(EntityId, value);
+				}
+				value_messageHandler = value;
+			}
+		}
 
 		/// <summary>Contains all the LastSeen and Message for this node.</summary>
 		public NetworkStorage Storage
@@ -76,10 +93,17 @@ namespace Rynchodon.AntennaRelay
 					foreach (NetworkNode node in m_oneWayConnect)
 						Storage.RemovePushTo(node);
 					m_oneWayConnect.Clear();
+
+					if (MessageHandler != null)
+						value_storage.RemoveMessageHandler(EntityId);
 				}
 				else
 					m_logger.debugLog("new storage, primary node: " + value.PrimaryNode.LoggingName,
 						"set_m_storage()", Logger.severity.DEBUG);
+
+				if (value != null && MessageHandler != null)
+					value.AddMessageHandler(EntityId, MessageHandler);
+
 				value_storage = value;
 				foreach (NetworkNode node in m_directConnect)
 					if (node.Storage != this.Storage)

@@ -199,6 +199,8 @@ namespace Rynchodon.AntennaRelay
 		/// <exception cref="ArgumentException">iff the block already has a handler registered.</exception>
 		public void AddMessageHandler(long entityId, Action<Message> handler)
 		{
+			m_logger.debugLog("Adding message handler for " + entityId, "AddMessageHandler()", Logger.severity.DEBUG);
+
 			using (lock_messageHandlers.AcquireExclusiveUsing())
 				m_messageHandlers.Add(entityId, handler);
 
@@ -217,6 +219,8 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="entityId">The EntityId of the block to unregister for</param>
 		public void RemoveMessageHandler(long entityId)
 		{
+			m_logger.debugLog("Removing message handler for " + entityId, "AddMessageHandler()", Logger.severity.DEBUG);
+
 			using (lock_messageHandlers.AcquireExclusiveUsing())
 				m_messageHandlers.Remove(entityId);
 		}

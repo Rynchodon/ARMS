@@ -351,6 +351,20 @@ namespace Rynchodon.Autopilot.Movement
 				//const float zeroForceRatio = 0.01f;
 
 				float forceRatio = m_moveForceRatio.GetDim(i);
+				float velDim = velocity.GetDim(i);
+
+				// dampeners are useful for precise stopping but they do not always work properly
+				if (velDim < 1f && velDim > -1f)
+				{
+					float targetVelDim = m_moveAccel.GetDim(i) + velDim;
+
+					if (targetVelDim < 0.01f && targetVelDim > -0.01f)
+					{
+						m_logger.debugLog("for dim: " + i + ", target velocity near zero: " + targetVelDim, "CalcMove()");
+						m_moveForceRatio.SetDim(i, 0f);
+						continue;
+					}
+				}
 
 				if (forceRatio < 1f && forceRatio > -1f)
 				{
@@ -371,7 +385,6 @@ namespace Rynchodon.Autopilot.Movement
 
 				// force ratio is > 1 || < -1. If it is useful, use dampeners
 
-				float velDim = velocity.GetDim(i);
 				if (velDim < 1f && velDim > -1f)
 					continue;
 

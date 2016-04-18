@@ -79,7 +79,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void UpdateLastSeen()
 		{
-			NetworkStorage store = m_controlBlock.NetClient.GetStorage();
+			NetworkStorage store = m_controlBlock.NetworkStorage;
 			if (store == null)
 			{
 				m_logger.debugLog("failed to get storage", "UpdateLastSeen()", Logger.severity.INFO);
