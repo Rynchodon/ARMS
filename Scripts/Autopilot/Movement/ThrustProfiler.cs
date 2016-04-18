@@ -29,7 +29,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
-		private const float maxThrustOverrideValue = 100f;
+		private const float maxThrustOverrideValue = 100f, minThrustOverrideValue = 1f;
 		private static ITerminalProperty<float> TP_ThrustOverride;
 
 		private Logger myLogger = null;
@@ -421,7 +421,7 @@ namespace Rynchodon.Autopilot.Movement
 					float maxForce = GetThrusterMaxForce(thruster);
 					if (maxForce > force)
 					{
-						float overrideValue = force / maxForce * maxThrustOverrideValue;
+						float overrideValue = Math.Max(force / maxForce * maxThrustOverrideValue, minThrustOverrideValue);
 						if (TP_ThrustOverride.GetValue(thruster) != overrideValue)
 							TP_ThrustOverride.SetValue(thruster, overrideValue);
 						//myLogger.debugLog("direction: " + direction + ", thruster: " + thruster.DisplayNameText + ", add partial force " + force + " of " + maxForce + ", overrideValue: " + overrideValue, "SetOverrides()");

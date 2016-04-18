@@ -626,7 +626,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			float primaryAccel = Math.Max(Thrust.PrimaryForce / Block.Physics.Mass - Thrust.GravityStrength, 1f); // obviously less than actual value but we do not need maximum theoretical acceleration
 
-			DirectionGrid moveAccel = m_moveAccel != Vector3.Zero ? ((DirectionBlock)m_moveAccel).ToGrid(Block.CubeBlock) : ((DirectionWorld)(-Block.Physics.LinearVelocity)).ToGrid(Block.CubeGrid);
+			DirectionGrid moveAccel = m_moveAccel != Vector3.Zero ? ((DirectionBlock)m_moveAccel).ToGrid(Block.CubeBlock) : ((DirectionWorld)(Block.Physics.LinearVelocity * -0.5f)).ToGrid(Block.CubeGrid);
 
 			if (moveAccel.vector.LengthSquared() > primaryAccel * primaryAccel)
 			{
