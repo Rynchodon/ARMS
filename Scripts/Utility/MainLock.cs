@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.Threading;
-using Rynchodon.Utility;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using VRageMath;
 using Ingame = VRage.Game.ModAPI.Ingame;
 
 namespace Rynchodon
@@ -21,7 +18,8 @@ namespace Rynchodon
 
 		private static Logger myLogger = new Logger("MainLock");
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
-		private static FastResourceLock lock_RayCast = new FastResourceLock();
+		/// <summary>Dummy lock, exclusive is never held</summary>
+		private static FastResourceLock lock_dummy = new FastResourceLock();
 
 		static MainLock()
 		{
@@ -35,7 +33,7 @@ namespace Rynchodon
 			myLogger = null;
 			MainThread_ReleaseExclusive();
 			Lock_MainThread = null;
-			lock_RayCast = null;
+			lock_dummy = null;
 		}
 
 		/// <summary>
@@ -66,6 +64,17 @@ namespace Rynchodon
 			else
 				using (Lock_MainThread.AcquireSharedUsing())
 					unsafeAction.Invoke();
+		}
+
+		/// <summary>
+		/// Acquire shared using lock on main thread.
+		/// </summary>
+		/// <returns>Shared using lock on main thread.</returns>
+		public static VRage.FastResourceLockExtensions.MySharedLock AcquireSharedUsing()
+		{
+			if (ThreadTracker.IsGameThread)
+				return lock_dummy.AcquireSharedUsing();
+			return Lock_MainThread.AcquireSharedUsing();
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
@@ -105,21 +114,6 @@ namespace Rynchodon
 		public static void GetInstances_Safe(this IMyVoxelMaps mapsObject, List<IMyVoxelBase> list, Func<IMyVoxelBase, bool> collect = null)
 		{
 			UsingShared(() => mapsObject.GetInstances(list, collect));
-		}
-
-		/// <summary>
-		/// Now I'm getting memory access violations...
-		/// </summary>
-		/// <remarks>
-		/// Only one ray cast can be performed at a time.
-		/// </remarks>
-		public static bool RayCastVoxel_Safe(this IMyEntities entities, Vector3 from, Vector3 to, out Vector3 boundary)
-		{
-			Vector3 in_boundary = Vector3.Zero;
-			using (lock_RayCast.AcquireExclusiveUsing())
-				UsingShared(() => entities.IsInsideVoxel(from, to, out in_boundary));
-			boundary = in_boundary;
-			return (boundary != from);
 		}
 
 		public static IMyIdentity GetIdentity_Safe(this IMyCharacter character)

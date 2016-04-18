@@ -436,17 +436,16 @@ namespace Rynchodon.Weapons
 		/// <para>Test line segment between weapon and target for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, non-hostile character, or non-hostile grid.</para>
 		/// </summary>
-		/// <param name="targetPosition">position of entity to shoot</param>
+		/// <param name="contactPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
-		protected override bool Obstructed(Vector3D targetPosition)
+		protected override bool Obstructed(Vector3D contactPosition)
 		{
-			if (CubeBlock == null)
-				throw new ArgumentNullException("weapon");
+			myLogger.debugLog(CubeBlock == null, "CubeBlock == null", "Obstructed()", Logger.severity.FATAL);
 
-			// build offset rays
-			List<Line> AllTestLines = new List<Line>();
+			//// build offset rays
+			//List<Line> AllTestLines = new List<Line>();
 			//if (Options.FlagSet(TargetingFlags.Interior))
-			AllTestLines.Add(new Line(ProjectilePosition(), targetPosition, false));
+			//AllTestLines.Add(new Line(ProjectilePosition(), targetPosition, false));
 			//else
 			//{
 			//	List<Vector3> obstructionOffsets;
@@ -463,7 +462,7 @@ namespace Rynchodon.Weapons
 			//	}
 			//}
 
-			return RayCast.Obstructed(AllTestLines, PotentialObstruction, ObstructionIgnore, true);
+			return RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, ObstructionIgnore, true);
 		}
 
 		private bool condition_changed;

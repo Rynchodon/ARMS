@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
+using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -9,11 +12,6 @@ using VRageMath;
 
 namespace Rynchodon
 {
-	/*
-	 * TODO:
-	 * write a method that uses MyGamePruningStructure.GetAllEntitiesInRay()
-	 * write a method for raycasting voxels
-	 */
 	public static class RayCast
 	{
 
@@ -23,20 +21,20 @@ namespace Rynchodon
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
 		/// </summary>
-		public static bool Obstructed<Tobstruct, Tignore>(List<Line> lines, ICollection<Tobstruct> potentialObstructions, ICollection<Tignore> ignoreList, bool checkVoxel = true)
+		public static bool Obstructed<Tobstruct, Tignore>(LineD line, ICollection<Tobstruct> potentialObstructions, ICollection<Tignore> ignoreList, bool checkVoxel = true)
 			where Tobstruct : IMyEntity
 			where Tignore : IMyEntity
 		{
 			Profiler.StartProfileBlock("RayCast", "Obstructed");
 			try
 			{
-				// Voxel Test
 				if (checkVoxel)
 				{
-					Vector3 boundary;
-					foreach (Line testLine in lines)
-						if (MyAPIGateway.Entities.RayCastVoxel_Safe(testLine.From, testLine.To, out boundary))
-							return true;
+					// Voxel Test
+					MyVoxelBase contactVoxel;
+					Vector3D? contactPoint;
+					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
+						return true;
 				}
 
 				// Test each entity
@@ -52,12 +50,8 @@ namespace Rynchodon
 					if (asChar != null)
 					{
 						double distance;
-						foreach (Line testLine in lines)
-						{
-							LineD l = (LineD)testLine;
-							if (entity.WorldAABB.Intersects(ref l, out distance))
-								return true;
-						}
+						if (entity.WorldAABB.Intersects(ref line, out distance))
+							return true;
 						continue;
 					}
 
@@ -66,25 +60,10 @@ namespace Rynchodon
 					{
 						ICollection<Vector3I> allHitCells;
 
-						if (lines.Count == 1)
-						{
-							List<Vector3I> hitCells = new List<Vector3I>();
-							asGrid.RayCastCells(lines[0].From, lines[0].To, hitCells);
+						List<Vector3I> hitCells = new List<Vector3I>();
+						asGrid.RayCastCells(line.From, line.To, hitCells);
 
-							allHitCells = hitCells;
-						}
-						else
-						{
-							allHitCells = new HashSet<Vector3I>();
-							foreach (Line testLine in lines)
-							{
-								List<Vector3I> hitCells = new List<Vector3I>();
-								asGrid.RayCastCells(testLine.From, testLine.To, hitCells);
-
-								foreach (Vector3I cell in hitCells)
-									allHitCells.Add(cell);
-							}
-						}
+						allHitCells = hitCells;
 
 						foreach (Vector3I pos in allHitCells)
 						{
@@ -146,6 +125,65 @@ namespace Rynchodon
 				return false;
 			}
 			finally { Profiler.EndProfileBlock(); }
+		}
+
+		private static readonly FastResourceLock lock_rayCastVoxel = new FastResourceLock();
+
+		/// <summary>
+		/// Ray cast a particular voxel to check for intersection or get contact point.
+		/// </summary>
+		/// <param name="voxel">The voxel to ray cast</param>
+		/// <param name="line">The line to check</param>
+		/// <param name="contact">First intersection of line and voxel</param>
+		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
+		/// <param name="flags">Due to bug in SE, not used ATM</param>
+		/// <returns>True iff the voxel intersects the line</returns>
+		public static bool RayCastVoxel(MyVoxelBase voxel, ref LineD line, out Vector3D? contact, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
+		{
+			using (MainLock.AcquireSharedUsing())
+			{
+				using (lock_rayCastVoxel.AcquireExclusiveUsing())
+					return voxel.GetIntersectionWithLine(ref line, out contact, useCollisionModel, flags);
+			}
+		}
+
+		/// <summary>
+		/// Ray cast all the voxels in the world to check for intersection. Iterates voxels in no particular order and breaks on first contact.
+		/// </summary>
+		/// <param name="line">The line to check</param>
+		/// <param name="contactVoxel">The voxel hit</param>
+		/// <param name="contactPoint">First interesection of line and voxel</param>
+		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
+		/// <param name="flags">Due to bug in SE, not used ATM</param>
+		/// <returns>True iff any voxel intersects the line</returns>
+		public static bool RayCastVoxels(ref LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
+		{
+			List<MyLineSegmentOverlapResult<MyVoxelBase>> list = ResourcePool<List<MyLineSegmentOverlapResult<MyVoxelBase>>>.Get();
+			try
+			{
+				MyGamePruningStructure.GetVoxelMapsOverlappingRay(ref line, list);
+				list.OrderBy(item => item.Distance);
+
+				using (MainLock.AcquireSharedUsing())
+				{
+					using (lock_rayCastVoxel.AcquireExclusiveUsing())
+						foreach (var voxel in list)
+							if (voxel.Element.GetIntersectionWithLine(ref line, out contactPoint, useCollisionModel, flags))
+							{
+								contactVoxel = voxel.Element;
+								return true;
+							}
+				}
+
+				contactVoxel = null;
+				contactPoint = null;
+				return false;
+			}
+			finally
+			{
+				list.Clear();
+				ResourcePool<List<MyLineSegmentOverlapResult<MyVoxelBase>>>.Return(list);
+			}
 		}
 
 	}

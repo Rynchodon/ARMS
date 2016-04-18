@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Threading;
-using Rynchodon.Utility;
 using Rynchodon.Weapons.Guided;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
@@ -340,7 +339,6 @@ namespace Rynchodon.AntennaRelay
 
 		private int deliberateJamming = 0;
 
-		private List<Line> obstructed_lines = new List<Line>();
 		private List<IMyEntity> obstructed_ignore = new List<IMyEntity>();
 		/// <summary>Only GetNearby() should fill this list.</summary>
 		private List<MyEntity> m_nearbyEntities = new List<MyEntity>();
@@ -902,8 +900,6 @@ namespace Rynchodon.AntennaRelay
 			return azimuth < myDefinition.MinAzimuth || azimuth > myDefinition.MaxAzimuth || elevation < myDefinition.MinElevation || elevation > myDefinition.MaxElevation;
 		}
 
-		List<MyLineSegmentOverlapResult<MyEntity>> overlaps = new List<MyLineSegmentOverlapResult<MyEntity>>();
-
 		/// <summary>
 		/// Determines if there is an obstruction between radar and target.
 		/// </summary>
@@ -911,18 +907,13 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
 
-			obstructed_lines.Clear();
-			obstructed_lines.Add(new Line(Entity.GetCentre(), target.GetCentre(), false));
-
 			GetNearby(range);
 
 			obstructed_ignore.Clear();
 			obstructed_ignore.Add(Entity);
 			obstructed_ignore.Add(target);
 
-			overlaps.Clear();
-
-			return RayCast.Obstructed(obstructed_lines, m_nearbyEntities, obstructed_ignore);
+			return RayCast.Obstructed(new LineD(Entity.GetCentre(), target.GetCentre()), m_nearbyEntities, obstructed_ignore);
 		}
 
 		#endregion

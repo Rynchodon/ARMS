@@ -7,7 +7,7 @@ Variables P and V affect all destinations that come after
 
 To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
 
-In order for Autopilot to control a grid, it must have a gyroscope, at least one thruster, and must not be currently controlled.
+In order for Autopilot to control a grid, it must have a gyroscope, thrusters in every direction, and must not be currently controlled. Basic move commands will work as long as the grid has at least one thruster.
 The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
 All distances and coordinates are in metres, speed is in metres per second.
 When the end of the commands is reached, Autopilot will start back at the first command.
@@ -117,7 +117,10 @@ Example - [ N Laser Antenna : L Connector : B Connector : G Platform ] - Autopil
 L <name>, <f> : <f> is the direction of the landing block that will be treated as the front of the block
 L <name>, <f>, <u> : <u> is the direction of the landing block that will be used as upward.
 
-LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through piston/rotor doors.
+LAND, <Asteroid/Planet> : Land in the closest asteroid or planet. You must have specified a landing block.
+Example - [ Land, Asteroid ] - Land the ship on the closest asteroid.
+
+LINE : Autopilot will attempt to fly in a straight line towards the next destination. Useful for flying through doors that open when approached or navigating inside a tight area.
 
 N <block name> : Navigation block. If the block is a Solar Panel or an Oxygen Farm, face it towards the sun. If the block is a laser antenna, face it towards its target. N may be combined with B and G to orient the ship relative to the B block.
 Example - [ N Solar Panel ] - Face Solar Panel towards the sun.

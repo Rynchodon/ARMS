@@ -265,6 +265,8 @@ namespace Rynchodon.Autopilot.Instruction
 					case "char":
 					case "character":
 						return getAction_FlyToCharacter(out wordAction, split);
+					case "land":
+						return getAction_landVoxel(out wordAction, split);
 					case "orbit":
 						return getAction_orbit(out wordAction, split);
 					case "weld":
@@ -773,6 +775,29 @@ namespace Rynchodon.Autopilot.Instruction
 			};
 
 			return true;
+		}
+
+		private bool getAction_landVoxel(out Action instructionAction, string[] instruction)
+		{
+			if (instruction.Length == 2)
+			{
+				switch (instruction[1].LowerRemoveWhitespace())
+				{
+					case "asteroid":
+						instructionAction = () => new VoxelLander(Mover, NavSet, false);
+						return true;
+					case "planet":
+						instructionAction = () => new VoxelLander(Mover, NavSet, true);
+						return true;
+					default:
+						Errors.Append("Not a voxel type: ");
+						Errors.AppendLine(instruction[1]);
+						break;
+				}
+			}
+
+			instructionAction = null;
+			return false;
 		}
 
 		private bool getAction_navigationBlock(out Action instructionAction, string instruction)
