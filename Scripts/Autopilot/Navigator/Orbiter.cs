@@ -79,7 +79,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (Altitude < 1f)
 					Altitude = (float)Vector3D.Distance(m_navBlock.WorldPosition, value_orbitEntity.GetCentre());
 				Vector3D toTarget = value_orbitEntity.GetCentre() - m_navBlock.WorldPosition;
-				m_orbitAxis = Vector3D.CalculatePerpendicularVector(toTarget);
+				toTarget.Normalize();
+				m_orbitAxis = VRage.Utils.MyUtils.GetRandomPerpendicularVector(ref toTarget);
 				m_orbitAxis.Normalize();
 
 				m_logger.debugLog("altitude: " + Altitude + ", axis: " + m_orbitAxis, "set_OrbitEntity()", Logger.severity.DEBUG);
