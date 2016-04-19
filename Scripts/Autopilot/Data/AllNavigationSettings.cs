@@ -16,7 +16,7 @@ namespace Rynchodon.Autopilot.Data
 
 		public enum SettingsLevelName : byte { Commands, NavRot, NavMove, NavEngage, NavWay, Current = NavWay };
 
-		public class SettingsLevel
+		public class SettingsLevel : IDisposable
 		{
 			private SettingsLevel parent;
 
@@ -68,6 +68,16 @@ namespace Rynchodon.Autopilot.Data
 			/// </summary>
 			internal SettingsLevel(SettingsLevel parent)
 			{ this.parent = parent; }
+
+			public void Dispose()
+			{
+				IDisposable disposable = m_navigatorMover as IDisposable;
+				if (disposable != null)
+					disposable.Dispose();
+				disposable = m_navigatorRotator as IDisposable;
+				if (disposable != null)
+					disposable.Dispose();
+			}
 
 			/// <summary>The navigation block chosen by the player or else the controller block.</summary>
 			public PseudoBlock NavigationBlock
@@ -349,30 +359,40 @@ namespace Rynchodon.Autopilot.Data
 
 		public void OnStartOfCommands()
 		{
+			if (Settings_Commands != null)
+				Settings_Commands.Dispose();
 			Settings_Commands = new SettingsLevel(defaultNavBlock);
 			OnTaskComplete_NavRot();
 		}
 
 		public void OnTaskComplete_NavRot()
 		{
+			if (Settings_Task_NavRot != null)
+				Settings_Task_NavRot.Dispose();
 			Settings_Task_NavRot = new SettingsLevel(Settings_Commands);
 			OnTaskComplete_NavMove();
 		}
 
 		public void OnTaskComplete_NavMove()
 		{
+			if (Settings_Task_NavMove != null)
+				Settings_Task_NavMove.Dispose();
 			Settings_Task_NavMove = new SettingsLevel(Settings_Task_NavRot);
 			OnTaskComplete_NavEngage();
 		}
 
 		public void OnTaskComplete_NavEngage()
 		{
+			if (Settings_Task_NavEngage != null)
+				Settings_Task_NavEngage.Dispose();
 			Settings_Task_NavEngage = new SettingsLevel(Settings_Task_NavMove);
 			OnTaskComplete_NavWay();
 		}
 
 		public void OnTaskComplete_NavWay()
 		{
+			if (Settings_Task_NavWay != null)
+				Settings_Task_NavWay.Dispose();
 			Settings_Task_NavWay = new SettingsLevel(Settings_Task_NavEngage);
 		}
 

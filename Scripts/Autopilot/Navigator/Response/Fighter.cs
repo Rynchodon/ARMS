@@ -180,7 +180,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude +
 					", dist: " + m_navSet.Settings_Current.Distance + ", orbit speed: " + m_orbiter.OrbitSpeed, "Move()", Logger.severity.TRACE);
-				m_orbiter.Altitude -= 2;
+				m_orbiter.Altitude -= 10f;
 			}
 
 			m_orbiter.Move();

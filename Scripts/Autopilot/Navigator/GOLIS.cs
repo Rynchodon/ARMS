@@ -32,7 +32,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var atLevel = m_navSet.GetSettingsLevel(level);
 			atLevel.NavigatorMover = this;
-			atLevel.DestinationEntity = mover.Block.CubeBlock; // in case waypoint is blocked by moving target
+			//atLevel.DestinationEntity = mover.Block.CubeBlock; // in case waypoint is blocked by moving target
 		}
 
 		#region NavigatorMover Members

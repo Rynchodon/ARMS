@@ -401,6 +401,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 				if (tryAlternates)
 				{
+					//float angle = m_navSet.Settings_Current.DistanceAngle;
+					//if (angle > 0.1f && CanRotate)
+					//{
+					//	m_logger.debugLog("wait for rotation", "TestPath()");
+					//	return;
+					//}
+
 					if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
 					{
 						m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", "TestPath()", Logger.severity.DEBUG);

@@ -368,24 +368,24 @@ namespace Rynchodon
 					if (distanceSquared > longestDistanceSquared)
 						longestDistanceSquared = distanceSquared;
 				}
-			Vector3D P0 = RelativePosition3F.FromLocal(m_grid, Centre).ToWorld();
+			Vector3 P0 = RelativePosition3F.FromLocal(m_grid, Centre).ToWorld();
 
-			Vector3D P1;
-			if (m_landing)
-			{
-				P1 = RelativePosition3F.FromLocal(m_grid, centreDestination).ToWorld();
-			}
-			else
-			{
-				//// extend capsule past destination by distance between remote and front of grid
-				//Ray navTowardsDest = new Ray(localPosition, m_directNorm);
-				//float tMin, tMax;
-				//m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
-				//P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
+			//Vector3D P1;
+			//if (m_landing)
+			//{
+			Vector3 P1 = RelativePosition3F.FromLocal(m_grid, centreDestination).ToWorld();
+			//}
+			//else
+			//{
+			//	//// extend capsule past destination by distance between remote and front of grid
+			//	//Ray navTowardsDest = new Ray(localPosition, m_directNorm);
+			//	//float tMin, tMax;
+			//	//m_grid.LocalVolume.IntersectRaySphere(navTowardsDest, out tMin, out tMax);
+			//	//P1 = RelativeVector3F.createFromLocal(centreDestination + tMax * m_directNorm, m_grid).getWorldAbsolute();
 
-				// extend capsule by length of grid
-				P1 = RelativePosition3F.FromLocal(m_grid, centreDestination + m_directNorm * m_grid.GetLongestDim()).ToWorld();
-			}
+			//	// extend capsule by length of grid
+			//	P1 = RelativePosition3F.FromLocal(m_grid, centreDestination + m_directNorm * m_grid.GetLongestDim()).ToWorld();
+			//}
 
 			float CapsuleRadius = (float)Math.Sqrt(longestDistanceSquared) + 3f * m_grid.GridSize;// +(m_landing ? 0f : NotLandingBuffer);
 			Path = new Capsule(P0, P1, CapsuleRadius);

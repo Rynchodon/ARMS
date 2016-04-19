@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
@@ -17,9 +18,12 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger m_logger;
 		private readonly PseudoBlock m_unlandBlock;
 		private readonly IMyEntity m_attachedEntity;
-		private readonly Vector3D m_detatchedOffset;
-
-		private Vector3D m_destination;
+		//private readonly Vector3D m_detatchedOffset;
+		private readonly Vector3 m_detachOffset;
+		private readonly Vector3 m_detachDirection;
+		
+		private float m_detachLength;
+		//private Vector3D m_destination;
 		private bool m_attached = true;
 
 		public UnLander(Mover mover, AllNavigationSettings navSet, PseudoBlock unlandBlock = null)
@@ -82,13 +86,18 @@ namespace Rynchodon.Autopilot.Navigator
 						asGear.ApplyAction("Autolock");
 				}, m_logger);
 
-			Vector3D attachOffset = m_unlandBlock.Block.GetPosition() - m_attachedEntity.GetPosition();
-			Vector3 leaveDirection = m_unlandBlock.WorldMatrix.Backward;
-			m_detatchedOffset = attachOffset + leaveDirection * 20f;
-			m_logger.debugLog("m_detatchedOffset: " + m_detatchedOffset, "UnLander()", Logger.severity.DEBUG);
+			m_detachOffset = m_unlandBlock.Block.GetPosition() - m_attachedEntity.GetPosition();
+			m_detachDirection = m_unlandBlock.WorldMatrix.Backward;
+			m_detachLength = 2f;
+			//m_detatchedOffset = attachOffset + leaveDirection * (20f + m_navSet.Settings_Current.DestinationRadius);
+			//m_logger.debugLog("m_detatchedOffset: " + m_detatchedOffset, "UnLander()", Logger.severity.DEBUG);
+			//m_detatchDirection = attachOffset + leaveDirection
 
-			m_navSet.Settings_Task_NavWay.NavigatorMover = this;
-			m_navSet.Settings_Task_NavWay.NavigatorRotator = this;
+			m_logger.debugLog("offset: " + m_detachOffset + ", direction: " + m_detachDirection, "UnLander()");
+
+			m_navSet.Settings_Task_NavMove.DestinationRadius = 1f;
+			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
+			m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
 		}
 
 		public override void Move()
@@ -130,33 +139,57 @@ namespace Rynchodon.Autopilot.Navigator
 
 				return;
 			}
-
-			if (m_navSet.DistanceLessThan(10f))
+			else if (m_unlandBlock.Block.IsWorking)
 			{
-				m_logger.debugLog("Reached destination: " + m_destination, "Move()", Logger.severity.INFO);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					(m_unlandBlock.Block as IMyFunctionalBlock).RequestEnable(false);
-				});
-				m_navSet.OnTaskComplete_NavWay();
-				m_mover.StopMove();
-				m_mover.StopRotate(); 
-				return;
+					((IMyFunctionalBlock)m_unlandBlock.Block).RequestEnable(false);
+				}, m_logger);
 			}
 
-			m_destination = m_attachedEntity.GetPosition() + m_detatchedOffset;
-			m_mover.CalcMove(m_unlandBlock, m_destination, m_attachedEntity.GetLinearVelocity());
+			if (m_navSet.DistanceLessThanDestRadius())
+			{
+				if (m_detachLength >= Math.Min(m_controlBlock.CubeGrid.GetLongestDim(), m_navSet.Settings_Task_NavEngage.DestinationRadius))
+				{
+					m_logger.debugLog("Moved away. detach length: " + m_detachLength + ", longest dim: " + m_controlBlock.CubeGrid.GetLongestDim() + ", dest radius: " + m_navSet.Settings_Task_NavEngage.DestinationRadius, "Move()", Logger.severity.INFO);
+					//MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					//	(m_unlandBlock.Block as IMyFunctionalBlock).RequestEnable(false);
+					//});
+					m_navSet.OnTaskComplete_NavMove();
+					m_mover.MoveAndRotateStop(false);
+					return;
+				}
+				else
+				{
+					m_detachLength *= 1.1f;
+					m_navSet.Settings_Current.DestinationRadius = m_detachLength * 0.5f;
+					m_logger.debugLog("increased detach length to " + m_detachLength, "Move()");
+				}
+			}
+
+			Vector3D destination = m_attachedEntity.GetPosition() + m_detachOffset + m_detachDirection * m_detachLength;
+			m_mover.CalcMove(m_unlandBlock, destination, m_attachedEntity.GetLinearVelocity());
 		}
 
 		public void Rotate()
 		{
+			// if waypoint or anything moves the ship, there is no point in returning to unland
+			if (m_navSet.Settings_Current.NavigatorMover != this)
+			{
+				m_logger.debugLog("lost control over movement", "Rotate()", Logger.severity.INFO);
+				m_navSet.OnTaskComplete_NavMove();
+				m_mover.MoveAndRotateStop(false);
+				return;
+			}
+
 			m_mover.StopRotate();
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			customInfo.Append("Sideling");
-			customInfo.Append(" to ");
-			customInfo.AppendLine(m_destination.ToPretty());
+			customInfo.Append("Separating from ");
+			customInfo.AppendLine(m_attachedEntity.getBestName());
+			//customInfo.Append(" to ");
+			//customInfo.AppendLine(m_destination.ToPretty());
 
 			//customInfo.AppendLine(m_navSet.PrettyDistance());
 		}

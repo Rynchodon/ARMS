@@ -14,7 +14,7 @@ using Ingame = Sandbox.ModAPI.Ingame;
 namespace Rynchodon.Autopilot.Navigator
 {
 
-	public class Grinder : NavigatorMover, INavigatorRotator
+	public class Grinder : NavigatorMover, INavigatorRotator, IDisposable
 	{
 
 		private const float MaxAngleRotate = 1f;
@@ -136,7 +136,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 		}
 
-		~Grinder()
+		public void Dispose()
 		{
 			try { set_enemy(null); }
 			catch { }

@@ -55,7 +55,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var setLevel = navSet.GetSettingsLevel(level);
 			setLevel.NavigatorMover = this;
-			setLevel.DestinationEntity = mover.Block.CubeBlock; // to force avoidance 
+			//setLevel.DestinationEntity = mover.Block.CubeBlock; // to force avoidance 
 
 			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + TargetPosition, "Waypoint()", Logger.severity.DEBUG);
 		}

@@ -81,9 +81,8 @@ Example - [ A Thrust, OnOff_On ] - turn all the thrusters on
 Asteroid : Disable asteroid collision avoidance, only affects the next destination.
 Example - [ Asteroid : C 0,0,0 : C 1000,0,0 ] - fly to 0,0,0 ignoring asteroids, fly to 1000,0,0 avoiding asteroids
 
-B <name> : for navigating to a specific block on a grid, will only affect the next use of G, E, or M. For friendly grids uses the display name; for hostile grids the definition name. Target block must be working.
+B <name> : for navigating to a specific block on a grid, will only affect the next use of G
 Example - [ B Antenna : G Platform ] - fly to Antenna on Platform
-Example - [ B Reactor : E 0 ] - will only target an enemy with a working reactor
 B <name>, <f> : <f> indicates which direction to face the landing block when landing
 Example - [ L Landing Gear : B Beacon, Right : G Platform : Disable ] - Attach landing gear to the left side of beacon on Platform
 B <name>, <f>, <u> : <f> will be used as forward direction and <u> will be used as upward direction
@@ -125,7 +124,6 @@ LINE : Autopilot will attempt to fly in a straight line towards the next destina
 N <block name> : Navigation block. If the block is a Solar Panel or an Oxygen Farm, face it towards the sun. If the block is a laser antenna, face it towards its target. N may be combined with B and G to orient the ship relative to the B block.
 Example - [ N Solar Panel ] - Face Solar Panel towards the sun.
 Example - [ N Laser Antenna : C 0,0,0 ] - Face "Laser Antenna" towards its target coordinates and fly the ship to {0,0,0}
-Example - [ N Flight Seat : C 0,0,0 ] - Fly to {0,0,0} with "Flight Seat" facing the destination
 N <block name>, <f> : The direction <f> will be treated as the forward direction of the block.
 Example - [ N Laser Antenna, Back ] - Face the back of "Laser Antenna" towards its target
 Example - [ N Cockpit, Forward ; B Antenna, Backward ; G Platform ] - Fly to Platform and face Cockpit's forward in the same direction as Antenna's backward.

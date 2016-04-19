@@ -35,7 +35,6 @@ namespace Rynchodon
 		/// <remarks>
 		/// Does not calculate AABB
 		/// </remarks>
-		[Obsolete("Use get_LineSegment()")]
 		public static Line get_Line(this Capsule cap)
 		{ return new Line(cap.P0, cap.P1, false); }
 
