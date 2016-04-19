@@ -676,6 +676,9 @@ namespace Rynchodon.Autopilot
 
 		public Builder_Autopilot GetBuilder()
 		{
+			if (!m_block.Controller.ControlThrusters)
+				return null;
+
 			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };
 
 			result.CurrentCommand = m_interpreter.instructionQueueString.Count - m_interpreter.instructionQueue.Count - 1;
