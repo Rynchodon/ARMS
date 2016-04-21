@@ -450,6 +450,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			Vector3 displacement = pointOfObstruction - m_navBlock.WorldPosition;
 
+			FindAlternate_HalfwayObstruction(displacement, runId);
 			if (m_canChangeCourse)
 			{
 				// using a halfway point works much better when the obstuction is near the destination
@@ -457,7 +458,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 				//FindAlternate_AroundObstruction(displacement, pointOfObstruction, obstructing.GetLinearVelocity(), runId);
 				FindAlternate_JustMove(runId);
 			}
-			FindAlternate_HalfwayObstruction(displacement, runId);
 			m_pathLow.Enqueue(() => {
 				if (m_altPath_AlternatesFound != 0)
 					SetWaypoint();

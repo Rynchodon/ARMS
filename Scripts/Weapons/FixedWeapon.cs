@@ -19,6 +19,9 @@ namespace Rynchodon.Weapons
 			MessageHandler.Handlers.Add(MessageHandler.SubMod.FW_EngagerControl, Handler_EngagerControl);
 		}
 
+		/// <summary>
+		/// Server sends message to clients to let them know the weapon is being controlled by engager.
+		/// </summary>
 		private static void SendToClient_EngagerControl(long entityId, bool control)
 		{
 			if (MyAPIGateway.Multiplayer.IsServer)

@@ -86,6 +86,10 @@ namespace Rynchodon.AntennaRelay
 			m_options = Option.None;
 			foreach (string opt in opts)
 			{
+				float dontCare;
+				if (float.TryParse(opt, out dontCare))
+					return false;
+
 				Option option;
 				if (Enum.TryParse(opt, true, out option))
 					m_options |= option;

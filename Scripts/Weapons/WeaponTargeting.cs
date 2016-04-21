@@ -466,7 +466,7 @@ namespace Rynchodon.Weapons
 		}
 
 		private bool condition_changed;
-		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo;
+		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo, prev_range, prev_grids;
 		private int prev_errors;
 		private Target prev_target;
 		private Control prev_control;
@@ -481,6 +481,8 @@ namespace Rynchodon.Weapons
 			ConditionChange(CubeBlock.IsWorking, ref prev_working);
 			ConditionChange(IsNormalTurret && myTurret.IsUnderControl, ref prev_playerControl);
 			ConditionChange(CubeBlock.OwnerId == 0, ref prev_noOwn);
+			ConditionChange(Options.TargetingRange < 1f, ref prev_range);
+			ConditionChange(Options.CanTargetType(TargetType.AllGrid | TargetType.Destroy), ref prev_range);
 
 			ConditionChange(Interpreter.Errors.Count, ref prev_errors);
 
@@ -573,6 +575,10 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo == null)
 				customInfo.AppendLine("No ammo");
+			if (Options.TargetingRange < 1f)
+				customInfo.AppendLine("Range is zero");
+			if (!Options.CanTargetType(TargetType.AllGrid | TargetType.Destroy))
+				customInfo.AppendLine("Not targeting ships");
 			if (CurrentTarget.Entity == null)
 				customInfo.AppendLine("No target");
 			else
