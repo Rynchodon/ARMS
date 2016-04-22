@@ -13,7 +13,7 @@ using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using Ingame = Sandbox.ModAPI.Ingame;
 
-namespace Rynchodon.GUI
+namespace Rynchodon.TerminalControl
 {
 	[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
 	public class Initializer : MySessionComponentBase

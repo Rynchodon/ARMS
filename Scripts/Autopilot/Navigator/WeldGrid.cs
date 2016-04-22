@@ -4,11 +4,14 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities; // from Sandbox.Game.dll
 using Sandbox.ModAPI; // from Sandbox.Common.dll
+using VRage.Collections;
 using VRage.Game; // from VRage.Math.dll
 using VRage.Game.Entity; // from VRage.Game.dll
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
@@ -24,7 +27,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private ulong m_timeoutAt;
 		private LastSeen m_currentGrid;
 
-		private readonly List<IMySlimBlock> m_damagedBlocks = new List<IMySlimBlock>();
+		private readonly HashSet<IMySlimBlock> m_damagedBlocks = new HashSet<IMySlimBlock>();
+		private readonly CachingHashSet<IMySlimBlock> m_projectedBlocks = new CachingHashSet<IMySlimBlock>();
 		private readonly Dictionary<string, int> m_components_missing = new Dictionary<string, int>();
 		private readonly Dictionary<string, int> m_components_inventory = new Dictionary<string, int>();
 		private List<IMySlimBlock> m_blocksWithInventory;
@@ -94,7 +98,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_shopAfter)
 					CreateShopper();
 				m_navSet.OnTaskComplete_NavMove();
-				m_navSet.Settings_Commands.Complaint = m_damagedBlocks.Count + " blocks still need to be welded";
+				m_navSet.Settings_Commands.Complaint = m_damagedBlocks.Count + m_projectedBlocks.Count + " blocks still need to be welded";
 				return;
 			}
 
@@ -128,12 +132,103 @@ namespace Rynchodon.Autopilot.Navigator
 		private void GetDamagedBlocks()
 		{
 			m_damagedBlocks.Clear();
+			m_projectedBlocks.Clear();
+
+			// get physical blocks
 
 			Attached.AttachedGrid.RunOnAttachedBlock(m_currentGrid.Entity as IMyCubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, slim => {
 				if (slim.CurrentDamage > 0f || slim.BuildLevelRatio < 1f)
 					m_damagedBlocks.Add(slim);
 				return false;
 			}, true);
+
+			// get projections
+
+			HashSet<IMyEntity> projections = null;
+			Attached.AttachedGrid.RunOnAttached(m_currentGrid.Entity as IMyCubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, grid => {
+				if (CubeGridCache.GetFor(grid).CountByType(typeof(MyObjectBuilder_Projector)) == 0)
+					return false;
+
+				using (MainLock.AcquireSharedUsing())
+				{
+					if (projections == null)
+					{
+						projections = new HashSet<IMyEntity>();
+						MyAPIGateway.Entities.GetEntities(projections, entity => entity is MyCubeGrid && ((MyCubeGrid)entity).Projector != null);
+
+						if (projections.Count == 0)
+							return true;
+					}
+
+					foreach (MyCubeGrid proj in projections)
+						if (proj.Projector.CubeGrid == grid)
+							foreach (IMySlimBlock block in proj.CubeBlocks)
+								m_projectedBlocks.Add(block);
+				}
+
+				return false;
+			}, true);
+			m_projectedBlocks.ApplyAdditions();
+
+			m_logger.debugLog("damaged blocks: " + m_damagedBlocks.Count + ", projected blocks: " + m_projectedBlocks.Count, "GetDamagedBlocks()");
+		}
+
+		/// <summary>
+		/// Move blocks in m_projectedBlocks to m_damagedBlocks if they are touching any real blocks
+		/// </summary>
+		private void ProjectedToDamaged()
+		{
+			foreach (IMySlimBlock block in m_projectedBlocks)
+			{
+				MyCubeGrid projected = (MyCubeGrid)block.CubeGrid;
+				MyCubeGrid projectorGrid = projected.Projector.CubeGrid;
+
+				if (projected.Closed || projected.Projector.Closed || !projected.Projector.IsWorking || projectorGrid.Closed)
+				{
+					m_logger.debugLog("projection closed", "ProjectedToDamaged()");
+					continue;
+				}
+
+				Vector3I min = projectorGrid.WorldToGridInteger(projected.GridIntegerToWorld(block.Min()));
+
+				if (projectorGrid.GetCubeBlock(min) != null)
+				{
+					m_logger.debugLog("space is occupied: " + min, "ProjectedToDamaged()");
+					m_projectedBlocks.Remove(block);
+					continue;
+				}
+
+				IMyCubeBlock cubeBlock = block.FatBlock;
+				if (cubeBlock != null)
+				{
+					Vector3I max = projectorGrid.WorldToGridInteger(projected.GridIntegerToWorld(block.Max()));
+
+					MatrixD invOrient = projectorGrid.PositionComp.WorldMatrixNormalizedInv.GetOrientation();
+					Vector3 forward = Vector3D.Transform(cubeBlock.WorldMatrix.Forward, ref invOrient);
+					Vector3 up = Vector3D.Transform(cubeBlock.WorldMatrix.Up, ref invOrient);
+
+					MyBlockOrientation orient = new MyBlockOrientation(Base6Directions.GetClosestDirection(ref forward), Base6Directions.GetClosestDirection(ref up));
+
+					if (projectorGrid.CanPlaceBlock(min, max, orient, ((MyCubeBlock)cubeBlock).BlockDefinition))
+					{
+						m_logger.debugLog("can place fatblock: " + cubeBlock.DisplayNameText + ", position: " + min + ", world: " + projectorGrid.GridIntegerToWorld(min), "ProjectedToDamaged()");
+						m_damagedBlocks.Add(block);
+						m_projectedBlocks.Remove(block);
+					}
+
+					continue;
+				}
+
+				// no fatblock, cannot get definition
+				if (projectorGrid.IsTouchingAnyNeighbor(min, min))
+				{
+					m_logger.debugLog("can place slimblock: " + block.ToString() + ", position: " + min + ", world: " + projectorGrid.GridIntegerToWorld(min), "ProjectedToDamaged()");
+					m_damagedBlocks.Add(block);
+					m_projectedBlocks.Remove(block);
+				}
+			}
+
+			m_projectedBlocks.ApplyRemovals();
 		}
 
 		/// <summary>
@@ -146,9 +241,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_damagedBlocks.Count == 0)
 			{
-				GetDamagedBlocks();
+				if (m_projectedBlocks.Count != 0)
+					ProjectedToDamaged();
 				if (m_damagedBlocks.Count == 0)
-					return null;
+				{
+					GetDamagedBlocks();
+					if (m_damagedBlocks.Count == 0)
+						return null;
+				}
 			}
 
 			GetInventoryItems();
@@ -164,7 +264,7 @@ namespace Rynchodon.Autopilot.Navigator
 					continue;
 				}
 
-				if (slim.CurrentDamage == 0f && slim.BuildLevelRatio == 1f)
+				if (slim.Damage() == 0f && ((MyCubeGrid)slim.CubeGrid).Projector == null)
 				{
 					m_logger.debugLog("already repaired: " + slim.getBestName(), "FindClosestRepairable()", Logger.severity.DEBUG);
 					if (removeList == null)
@@ -180,7 +280,12 @@ namespace Rynchodon.Autopilot.Navigator
 				if (dist < closest)
 				{
 					m_components_missing.Clear();
-					MainLock.UsingShared(() => slim.GetMissingComponents(m_components_missing));
+
+					if (slim.Damage() != 0f)
+						GetMissingComponents(slim);
+					else
+						// slim is projection
+						GetAllComponents(slim);
 
 					bool haveItem = false;
 
@@ -264,6 +369,8 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		private void CreateShopper()
 		{
+			// we just came from GetDamagedBlocks() so there should be no projected blocks in damaged blocks
+
 			m_components_missing.Clear();
 			foreach (IMySlimBlock slim in m_damagedBlocks)
 			{
@@ -273,8 +380,11 @@ namespace Rynchodon.Autopilot.Navigator
 					continue;
 				}
 
-				MainLock.UsingShared(() => slim.GetMissingComponents(m_components_missing));
+				GetMissingComponents(slim);
 			}
+
+			foreach (IMySlimBlock slim in m_projectedBlocks)
+				GetAllComponents(slim);
 
 			if (m_components_missing.Count != 0)
 			{
@@ -283,6 +393,36 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 				m_logger.debugLog("nothing to shop for", "CreateShopper()");
+		}
+
+		private void GetMissingComponents(IMySlimBlock slim)
+		{
+			using (MainLock.AcquireSharedUsing())
+				slim.GetMissingComponents(m_components_missing);
+		}
+
+		private void GetAllComponents(IMySlimBlock slim)
+		{
+			using (MainLock.AcquireSharedUsing())
+			{
+				MyCubeBlockDefinition definition;
+
+				IMyCubeBlock fat = slim.FatBlock;
+				if (fat != null)
+					definition = fat.GetCubeBlockDefinition();
+				else
+					definition = MyDefinitionManager.Static.GetCubeBlockDefinition(slim.GetObjectBuilder());
+
+				foreach (var component in definition.Components)
+				{
+					int currentCount;
+					if (!m_components_missing.TryGetValue(component.Definition.Id.SubtypeName, out currentCount))
+						currentCount = 0;
+					currentCount += component.Count;
+					m_components_missing[component.Definition.Id.SubtypeName] = currentCount;
+					//m_logger.debugLog("missing " + component.Definition.Id.SubtypeName + ": " + component.Count + ", total: " + currentCount, "GetAllComponents()");
+				}
+			}
 		}
 
 	}

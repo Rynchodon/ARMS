@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot.Movement
 		//private float m_prevRollControl = 0f;
 
 		private float m_bestDistance = float.MaxValue, m_bestAngle = float.MaxValue;
-		private ulong m_lastmove = ulong.MaxValue;
+		private ulong m_lastMoveAttempt = ulong.MaxValue, m_lastMove = ulong.MaxValue;
 
 		private bool m_stopped, m_thrustHigh;
 
@@ -57,19 +57,24 @@ namespace Rynchodon.Autopilot.Movement
 		public ThrustProfiler Thrust { get; private set; }
 		public Pathfinder.Pathfinder Pathfinder { get; private set; }
 
+		private bool CheckStuck(ulong duration)
+		{
+			return (Globals.UpdateCount - m_lastMoveAttempt) < 100ul && (Globals.UpdateCount - m_lastMove) > duration;
+		}
+
 		/// <summary>Value is false iff this Mover is making progress.</summary>
 		public bool IsStuck
 		{
 			get
 			{
-				return (Globals.UpdateCount - m_lastmove) > StuckAfter;
+				return CheckStuck(StuckAfter);
 			}
 			set
 			{
 				if (value)
-					m_lastmove = ulong.MinValue;
+					m_lastMove = ulong.MinValue;
 				else
-					m_lastmove = Globals.UpdateCount;
+					m_lastMove = Globals.UpdateCount;
 			}
 		}
 
@@ -207,13 +212,22 @@ namespace Rynchodon.Autopilot.Movement
 
 			// using world vectors
 
+			m_lastMoveAttempt = Globals.UpdateCount;
 			if (m_navSet.Settings_Current.CollisionAvoidance)
 			{
 				Pathfinder.TestPath(destPoint, landing);
-				if (!Pathfinder.CanMove)
+
+				switch (Pathfinder.m_pathState)
 				{
-					m_logger.debugLog("Pathfinder not allowing movement", "CalcMove()");
-					return;
+					case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+						m_logger.debugLog("Pathfinder not run yet", "CalcMove()");
+						m_lastMove = Globals.UpdateCount;
+						return;
+					case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+						break;
+					default:
+						m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState, "CalcMove()");
+						return;
 				}
 			}
 
@@ -240,7 +254,7 @@ namespace Rynchodon.Autopilot.Movement
 				if (distance + (landing ? landingSpeedFactor : 1f) < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(m_navSet.Settings_Current.Distance))
 				{
 					m_bestDistance = distance;
-					m_lastmove = Globals.UpdateCount;
+					m_lastMove = Globals.UpdateCount;
 				}
 
 				// while on a planet, take a curved path to target instead of making pathfinder do all the work
@@ -299,7 +313,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				targetVelocity = Vector3.Zero;
 				distance = 0f;
-				m_lastmove = Globals.UpdateCount;
+				m_lastMove = Globals.UpdateCount;
 			}
 
 			m_navSet.Settings_Task_NavWay.Distance = distance;
@@ -735,13 +749,22 @@ namespace Rynchodon.Autopilot.Movement
 				displacement += roll * NFR_backward;
 			}
 
+			m_lastMoveAttempt = Globals.UpdateCount;
 			if (m_navSet.Settings_Current.CollisionAvoidance)
 			{
 				Pathfinder.TestRotate(displacement);
-				if (!Pathfinder.CanRotate)
+
+				switch (Pathfinder.m_rotateState)
 				{
-					m_logger.debugLog("Pathfinder not allowing rotation", "in_CalcRotate()");
-					return;
+					case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+						m_logger.debugLog("Pathfinder not run yet: " + Pathfinder.m_rotateState, "in_CalcRotate()");
+						m_lastMove = Globals.UpdateCount;
+						return;
+					case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+						break;
+					default:
+						m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState, "in_CalcRotate()");
+						return;
 				}
 			}
 
@@ -749,7 +772,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (distanceAngle < m_bestAngle || float.IsNaN(m_navSet.Settings_Current.DistanceAngle))
 			{
 				m_bestAngle = distanceAngle;
-				m_lastmove = Globals.UpdateCount;
+				m_lastMove = Globals.UpdateCount;
 			}
 			m_navSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
@@ -861,15 +884,13 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
-			MyShipController controller = Block.Controller;
 
 			IMyEntity obstruction = Pathfinder.MoveObstruction ?? Pathfinder.RotateObstruction;
-			ulong upWoMove = Globals.UpdateCount - m_lastmove;
 
-			if (m_navSet.Settings_Current.PathfinderCanChangeCourse && upWoMove > MoveAwayAfter)
+			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
+			if (m_moveForceRatio == Vector3.Zero && m_rotateTargetVelocity == Vector3.Zero)
 			{
-				// if cannot rotate and not calculating move, move away from obstruction
-				if (obstruction != null)
+				if (CheckStuck(MoveAwayAfter) && obstruction != null)
 				{
 					obstruction = obstruction.GetTopMostParent();
 					Vector3 displacement = Block.CubeBlock.GetPosition() - obstruction.GetCentre();
@@ -877,20 +898,18 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3.Normalize(ref displacement, out away);
 					m_logger.debugLog("Stuck, creating Waypoint to move away from obstruction", "MoveAndRotate()", Logger.severity.INFO);
 					new Waypoint(this, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + m_navSet.Settings_Current.DestinationRadius));
-					m_lastmove = Globals.UpdateCount;
+					return;
 				}
-			}
 
-			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
-			if (m_moveForceRatio == Vector3.Zero && m_rotateTargetVelocity == Vector3.Zero)
-			{
 				m_logger.debugLog("Stopping the ship, move: " + m_moveForceRatio + ", rotate: " + m_rotateTargetVelocity, "MoveAndRotate()");
 				// should not toggle dampeners, grid may just have landed
 				MoveAndRotateStop(false);
 				return;
 			}
-			else if (obstruction == null && upWoMove > WriggleAfter && Block.Physics.LinearVelocity.LengthSquared() < 1f && m_navSet.Settings_Current.Distance > 1f)
+			else if (CheckStuck(WriggleAfter) && obstruction == null)// && Block.Physics.LinearVelocity.LengthSquared() < 1f && m_navSet.Settings_Current.Distance > 1f)
 			{
+				ulong upWoMove = Globals.UpdateCount - m_lastMove;
+
 				// if pathfinder is clear and we are not moving, wriggle
 				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 
@@ -922,6 +941,7 @@ namespace Rynchodon.Autopilot.Movement
 			//Vector3 rotateRollControl; m_rotateTargetVelocity.ApplyOperation(dim => MathHelper.Clamp(-dim, -MathHelper.TwoPi, MathHelper.TwoPi), out rotateRollControl);
 
 			m_stopped = false;
+			MyShipController controller = Block.Controller;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 
 				//m_logger.debugLog("rotate control: " + rotateControl + ", previous: " + m_prevRotateControl + ", delta: " + (rotateControl - m_prevRotateControl), "MoveAndRotate()");

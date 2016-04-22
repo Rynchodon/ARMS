@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using VRageMath;
 
 namespace Rynchodon
@@ -87,6 +88,15 @@ namespace Rynchodon
 					for (vector.Z = min.Z; vector.Z <= max.Z; vector.Z++)
 						if (invokeOnEach.Invoke(vector))
 							return;
+		}
+
+		public static IEnumerator<Vector3I> ForEachVector(this Vector3I min, Vector3I max)
+		{
+			Vector3I vector ;
+			for (vector.X = min.X; vector.X <= max.X; vector.X++)
+				for (vector.Y = min.Y; vector.Y <= max.Y; vector.Y++)
+					for (vector.Z = min.Z; vector.Z <= max.Z; vector.Z++)
+						yield return vector;
 		}
 
 		/// <summary>

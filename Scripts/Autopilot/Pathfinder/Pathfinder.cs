@@ -103,8 +103,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private Vector3D m_destination;
 		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
 
-		private PathState m_pathState = PathState.Not_Running;
-		private PathState m_rotateState = PathState.Not_Running;
+		public PathState m_pathState { get; private set; }
+		public PathState m_rotateState { get; private set; }
 
 		private ulong m_nextRunPath;
 		private ulong m_nextRunRotate;
@@ -112,11 +112,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private INavigatorMover m_prevMover;
 
 		/// <summary>Number of alternates tried, count starts after the first alternate is found that is better than base.</summary>
-		public int m_altPath_AlternatesFound;
+		private int m_altPath_AlternatesFound;
 		/// <summary>A value used to compare waypoints to determine the best one.</summary>
-		public float m_altPath_PathValue;
+		private float m_altPath_PathValue;
 		/// <summary>The best waypoint found so far.</summary>
-		public Vector3D m_altPath_Waypoint;
+		private Vector3D m_altPath_Waypoint;
 
 		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
 		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
