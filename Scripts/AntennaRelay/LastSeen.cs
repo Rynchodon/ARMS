@@ -36,7 +36,7 @@ namespace Rynchodon.AntennaRelay
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
 		private static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0);
-		private static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
+		public static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
 
 		private EntityType m_type;
 
@@ -193,18 +193,19 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		/// <summary>
-		/// Use this instead of hard-coding.
-		/// </summary>
+		/// <summary>True if the entity was detected recently</summary>
 		public bool isRecent()
 		{ return GetTimeSinceLastSeen() < Recent; }
 
+		/// <summary>True if the entity was seen broadcasting recently.</summary>
 		public bool isRecent_Broadcast()
 		{ return (Globals.ElapsedTime - LastBroadcast) < Recent; }
 
+		/// <summary>True if a radar jammer was seen on the entity recently.</summary>
 		public bool isRecent_Jam()
 		{ return (Globals.ElapsedTime - LastJam) < Recent; }
 
+		/// <summary>True if a radar was seen on the entity recently.</summary>
 		public bool isRecent_Radar()
 		{ return (Globals.ElapsedTime - LastRadar) < Recent; }
 
@@ -343,6 +344,11 @@ namespace Rynchodon.AntennaRelay
 			if (first.IsNewerThan(second))
 				return first;
 			return second;
+		}
+
+		public bool IsRecent()
+		{
+			return (Globals.ElapsedTime - DetectedAt) < LastSeen.Recent;
 		}
 
 		public Builder_RadarInfo GetBuilder()

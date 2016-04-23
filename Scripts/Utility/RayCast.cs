@@ -15,7 +15,7 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
-		private static Logger myLogger = new Logger("RayCast");
+		private static Logger m_logger = new Logger("RayCast");
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
@@ -34,7 +34,10 @@ namespace Rynchodon
 					MyVoxelBase contactVoxel;
 					Vector3D? contactPoint;
 					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
+					{
+						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint, "Obstructed()");
 						return true;
+					}
 				}
 
 				// Test each entity
@@ -51,13 +54,19 @@ namespace Rynchodon
 					{
 						double distance;
 						if (entity.WorldAABB.Intersects(ref line, out distance))
+						{
+							m_logger.debugLog("obstructed by character: " + entity.getBestName(), "Obstructed()");
 							return true;
+						}
 						continue;
 					}
 
 					IMyCubeGrid asGrid = entity as IMyCubeGrid;
 					if (asGrid != null)
 					{
+						if (!asGrid.Save)
+							continue;
+
 						ICollection<Vector3I> allHitCells;
 
 						List<Vector3I> hitCells = new List<Vector3I>();
@@ -86,11 +95,11 @@ namespace Rynchodon
 
 										if (slim.FatBlock.LocalAABB.Contains(positionPart) == ContainmentType.Disjoint)
 										{
-											myLogger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+											m_logger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
 										}
 										else
 										{
-											myLogger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+											m_logger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
 											subpartHit = true;
 											break;
 										}
@@ -108,14 +117,16 @@ namespace Rynchodon
 
 									if (slim.FatBlock.LocalAABB.Contains(positionBlock) == ContainmentType.Disjoint)
 									{
-										myLogger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+										m_logger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
 										continue;
 									}
 									else
-										myLogger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+										m_logger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
 								}
 
 							}
+
+							m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId, "Obstructed()");
 							return true;
 						}
 					}

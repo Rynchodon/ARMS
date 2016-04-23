@@ -449,7 +449,7 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (m_node != null || Registrar.TryGetValue(Entity, out m_node))
 					{
-						myLogger.debugLog("sending to attached: " + myLastSeen.Count, "Update100()");
+						myLogger.debugLog("sending to storage: " + myLastSeen.Count, "Update100()");
 						m_node.Storage.Receive(myLastSeen);
 					}
 					else

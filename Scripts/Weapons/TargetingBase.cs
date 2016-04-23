@@ -353,7 +353,7 @@ namespace Rynchodon.Weapons
 				return RadarEquipment.GetRadarEquipment(seen, out block, out powerLevel);
 			}
 
-			if (seen.Info == null)
+			if (seen.Info == null || !seen.Info.IsRecent())
 				return true;
 
 			IMyCubeGrid grid = seen.Entity as IMyCubeGrid;
