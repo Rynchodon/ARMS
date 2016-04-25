@@ -468,7 +468,7 @@ namespace Rynchodon.Weapons
 		private bool condition_changed;
 		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo, prev_range, prev_grids;
 		private int prev_errors;
-		private Target prev_target;
+		private long prev_target;
 		private Control prev_control;
 
 		/// <summary>
@@ -488,13 +488,15 @@ namespace Rynchodon.Weapons
 
 			ConditionChange(CurrentControl, ref prev_control);
 			ConditionChange(LoadedAmmo == null, ref prev_ammo);
-			ConditionChange(CurrentTarget, ref prev_target);
+
+			long target = CurrentTarget != null && CurrentTarget.Entity != null ? CurrentTarget.Entity.EntityId : 0L;
+			ConditionChange(target, ref prev_target);
 
 			if (condition_changed)
 				MyAPIGateway.Utilities.InvokeOnGameThread(FuncBlock.RefreshCustomInfo);
 		}
 
-		private void ConditionChange<T>(T condition, ref T previous)
+		private void ConditionChange<T>(T condition, ref T previous) where T : struct
 		{
 			if (!condition.Equals(previous))
 			{

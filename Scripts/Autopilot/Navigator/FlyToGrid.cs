@@ -288,7 +288,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_landingState == LandingState.None)
 			{
-				if (m_targetBlock.Forward.HasValue)
+				if (m_targetBlock != null && m_targetBlock.Forward.HasValue)
 				{
 					m_navSet.GetSettingsLevel(m_settingLevel).NavigatorRotator = this;
 					//m_logger.debugLog("matching target direction", "Rotate()");
