@@ -28,18 +28,6 @@ namespace Rynchodon
 			Profiler.StartProfileBlock("RayCast", "Obstructed");
 			try
 			{
-				if (checkVoxel)
-				{
-					// Voxel Test
-					MyVoxelBase contactVoxel;
-					Vector3D? contactPoint;
-					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
-					{
-						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint, "Obstructed()");
-						return true;
-					}
-				}
-
 				// Test each entity
 				foreach (IMyEntity entity in potentialObstructions)
 				{
@@ -129,6 +117,18 @@ namespace Rynchodon
 							m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId, "Obstructed()");
 							return true;
 						}
+					}
+				}
+
+				if (checkVoxel)
+				{
+					// Voxel Test
+					MyVoxelBase contactVoxel;
+					Vector3D? contactPoint;
+					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
+					{
+						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint, "Obstructed()");
+						return true;
 					}
 				}
 
