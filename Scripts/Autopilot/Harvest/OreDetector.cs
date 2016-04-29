@@ -426,11 +426,13 @@ Finished_Deposit:
 						m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest), "FindClosestOre()");
 						string oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOre).MinedOre;
 						onComplete(true, closest, nearbyMap, oreName);
+						m_nearbyVoxel.Clear();
 						return true;
 					}
 				}
 			}
 
+			m_nearbyVoxel.Clear();
 			return false;
 		}
 

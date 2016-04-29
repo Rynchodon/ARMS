@@ -202,21 +202,21 @@ namespace Rynchodon.Autopilot.Navigator
 
 			// check for currently touching voxel, usually resume from save
 			BoundingSphereD nearby = new BoundingSphereD(m_navDrill.WorldPosition, m_longestDimension * 4d);
-			List<MyEntity> nearbyEntities = new List<MyEntity>();
-			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, nearbyEntities, MyEntityQueryType.Static);
-			foreach (MyEntity entity in nearbyEntities)
-			{
-				m_targetVoxel = entity as IMyVoxelBase;
-				if (m_targetVoxel != null)
+			List<MyVoxelBase> nearbyVoxels = new List<MyVoxelBase>();
+			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref nearby, nearbyVoxels);
+
+			foreach (MyVoxelBase voxel in nearbyVoxels)
+				// skip planet physics, ship should be near planet as well
+				if (voxel is IMyVoxelMap || voxel is MyPlanet)
 				{
 					m_logger.debugLog("near a voxel, escape first", "MinerVoxel()", Logger.severity.DEBUG);
+					m_targetVoxel = voxel;
 					m_state = State.Mining_Escape;
 					var setLevel = m_navSet.GetSettingsLevel(AllNavigationSettings.SettingsLevelName.NavMove);
 					setLevel.IgnoreAsteroid = true;
 					setLevel.SpeedTarget = 1f;
 					return;
 				}
-			}
 
 			m_state = State.GetTarget;
 		}
