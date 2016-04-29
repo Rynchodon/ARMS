@@ -90,6 +90,9 @@ namespace Rynchodon
 
 				foreach (MyCubeBlock door in LargeDoors)
 				{
+					if (door.Closed)
+						continue;
+
 					Dictionary<string, MyEntitySubpart> subparts = door.Subparts;
 					foreach (var part in subparts)
 						action(m_grid.WorldToGridInteger(part.Value.PositionComp.GetPosition()));
@@ -107,6 +110,9 @@ namespace Rynchodon
 
 				foreach (MyCubeBlock door in LargeDoors)
 				{
+					if (door.Closed)
+						continue;
+
 					Dictionary<string, MyEntitySubpart> subparts = door.Subparts;
 					foreach (var part in subparts)
 						if (function(m_grid.WorldToGridInteger(part.Value.PositionComp.GetPosition())))
@@ -179,12 +185,20 @@ namespace Rynchodon
 
 		private void grid_OnBlockRemoved(IMySlimBlock slim)
 		{
-			// some cells may not be occupied
 			using (lock_cellPositions.AcquireExclusiveUsing())
+			{
+				if (slim.FatBlock is IMyDoor && ((MyCubeBlock)slim.FatBlock).Subparts.Count != 0)
+				{
+					LargeDoors.Remove((MyCubeBlock)slim.FatBlock);
+					return;
+				}
+
+				// some cells may not be occupied
 				slim.ForEachCell(cell => {
 					CellPositions.Remove(cell);
 					return false;
 				});
+			}
 		}
 
 		private void Add(IMySlimBlock slim)
