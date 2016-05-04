@@ -1067,7 +1067,7 @@ namespace Rynchodon.AntennaRelay
 		private void UpdatePowerConsumption()
 		{
 			// if required input is zero, the block will not be consider working by SE
-			float powerConsumption = Math.Max(PowerLevel_Current, 1f) * 1e-4f;
+			float powerConsumption = Math.Max(PowerLevel_Target, 1f) * 1e-4f;
 			((MyCubeBlock)CubeBlock).ResourceSink.SetRequiredInputByType(Globals.Electricity, powerConsumption);
 		}
 

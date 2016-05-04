@@ -4,13 +4,16 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Utility.Network;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage.Collections;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
+using VRage.Utils;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.TerminalControl
@@ -46,7 +49,45 @@ namespace Rynchodon.TerminalControl
 			};
 			MyTerminalControlFactory.AddAction(programmable_sendMessage);
 
-			m_logger = new Logger("GUI." + GetType().Name);
+			// move radar blocks to radar resource group
+			// resource groups have the same issues as terminal actions / controls so this is included
+
+			// first make sure radar group exists. If it does not, radar will stay in its original group.
+			MyStringHash radar = MyStringHash.GetOrCompute("Radar");
+			foreach (MyDefinitionBase radarGroupDefn in MyDefinitionManager.Static.GetAllDefinitions())
+				if (radarGroupDefn is MyResourceDistributionGroupDefinition && radarGroupDefn.Id.SubtypeId == radar)
+				{
+					// find each radar block and move it to radar group
+					foreach (MyDefinitionBase radarBlockDefn in MyDefinitionManager.Static.GetAllDefinitions())
+						if (radarBlockDefn is MyCubeBlockDefinition &&
+							radarBlockDefn.Id.SubtypeName.ToLower().Contains("radar")) // RadarEquipment.IsRadarOrJammer
+						{
+							MyBeaconDefinition beaconDefn = radarBlockDefn as MyBeaconDefinition;
+							if (beaconDefn != null)
+							{
+								beaconDefn.ResourceSinkGroup = radar.ToString();
+								continue;
+							}
+							MyLaserAntennaDefinition lasAntDefn = radarBlockDefn as MyLaserAntennaDefinition;
+							if (lasAntDefn != null)
+							{
+								lasAntDefn.ResourceSinkGroup = radar;
+								continue;
+							}
+							MyRadioAntennaDefinition radAntDefn = radarBlockDefn as MyRadioAntennaDefinition;
+							if (radAntDefn != null)
+							{
+								radAntDefn.ResourceSinkGroup = radar;
+								continue;
+							}
+
+							// stop trying to guess what the radar block is made of
+						}
+
+					break;
+				}
+
+			m_logger = new Logger("TerminalControl." + GetType().Name);
 		}
 
 		private bool IsLoaded()
