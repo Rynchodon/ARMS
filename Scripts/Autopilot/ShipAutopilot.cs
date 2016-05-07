@@ -165,28 +165,35 @@ namespace Rynchodon.Autopilot
 					return;
 				m_logger.debugLog("state change from " + value_state + " to " + value, "set_m_state()", Logger.severity.DEBUG);
 				value_state = value;
-				m_interpreter.Mover.MoveAndRotateStop();
 
 				switch (value_state)
 				{
 					case State.Enabled:
+					case State.Player:
+						m_interpreter.Mover.MoveAndRotateStop(false);
 						return;
 
 					case State.Disabled:
-						m_navSet.OnStartOfCommands(); // here so that fighter gets thrown out and weapons disabled
+						m_navSet.OnStartOfCommands(); // here so that navigators are disposed of
 						m_interpreter.instructionQueue.Clear();
 						m_nextAllowedInstructions = Globals.ElapsedTime;
+						m_interpreter.Mover.MoveAndRotateStop();
 						return;
 
 					case State.Halted:
 						m_endOfHalt = Globals.ElapsedTime.Add(new TimeSpan(0, 5, 0));
 						m_interpreter.Mover.SetDamping(true);
+						m_interpreter.Mover.MoveAndRotateStop();
 						return;
 
 					case State.Closed:
 						if (GridBeingControlled != null)
 							ReleaseControlledGrid();
 						m_interpreter = null;
+						return;
+
+					default:
+						m_logger.alwaysLog("State not implemented: " + value, "set_m_state()", Logger.severity.FATAL);
 						return;
 				}
 			}

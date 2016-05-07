@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
@@ -18,7 +19,7 @@ namespace Rynchodon.Autopilot.Navigator
 	/// <summary>
 	/// Uses weapons to attack enemy ship
 	/// </summary>
-	public class Fighter : NavigatorMover, IEnemyResponse
+	public class Fighter : NavigatorMover, IEnemyResponse, IDisposable
 	{
 
 		private static readonly MyObjectBuilderType[] FixedWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
@@ -47,8 +48,10 @@ namespace Rynchodon.Autopilot.Navigator
 			Arm();
 		}
 
-		~Fighter()
-		{ Disarm(); }
+		public void Dispose()
+		{
+			Disarm();
+		}
 
 		public bool CanRespond()
 		{
