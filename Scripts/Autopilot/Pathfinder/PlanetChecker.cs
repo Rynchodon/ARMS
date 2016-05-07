@@ -52,7 +52,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				else
 					return;
 			}
-			s_logger.debugLog("tests: " + count, "DoTest()");
+			s_logger.debugLog("tests: " + count);
 		}
 
 		private readonly Logger m_logger;
@@ -195,7 +195,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (RayCast.RayCastVoxel(ClosestPlanet, ref worldLine, out contact))
 					{
 						//var intersect = timer.Elapsed;
-						m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact, "TestPath()", Logger.severity.DEBUG);
+						m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact, Logger.severity.DEBUG);
 						//m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact + ", createLine: " + createLine.ToPrettySeconds() + ", intersect: " + intersect.ToPrettySeconds(), "TestPath()", Logger.severity.DEBUG);
 						ObstructionPoint = contact.Value;
 						CurrentState = State.BlockedPath;
@@ -212,7 +212,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 				else
 				{
-					m_logger.debugLog("finished, clear", "TestPath()", Logger.severity.DEBUG);
+					m_logger.debugLog("finished, clear", Logger.severity.DEBUG);
 					CurrentState = State.Clear;
 				}
 			}

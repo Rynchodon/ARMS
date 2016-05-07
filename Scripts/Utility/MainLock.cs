@@ -199,6 +199,6 @@ namespace Rynchodon
 		}
 
 		private static void LogLockStats(string source)
-		{ myLogger.debugLog("Lock Stats: Owned = " + Lock_MainThread.Owned + ", Shared Owners = " + Lock_MainThread.SharedOwners + ", Exclusive Waiters = " + Lock_MainThread.ExclusiveWaiters + ", Shared Waiters = " + Lock_MainThread.SharedWaiters, source); }
+		{ myLogger.debugLog("Lock Stats: Owned = " + Lock_MainThread.Owned + ", Shared Owners = " + Lock_MainThread.SharedOwners + ", Exclusive Waiters = " + Lock_MainThread.ExclusiveWaiters + ", Shared Waiters = " + Lock_MainThread.SharedWaiters); }
 	}
 }

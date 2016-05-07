@@ -43,21 +43,21 @@ namespace Rynchodon.Autopilot.Navigator
 				INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
 				if (rotator != null && !m_navSet.DirectionMatched())
 				{
-					_logger.debugLog("waiting for rotator to match", "Move()");
+					_logger.debugLog("waiting for rotator to match");
 					return;
 				}
 
 				m_mover.MoveAndRotateStop();
-				_logger.debugLog("stopped", "Stopper()");
+				_logger.debugLog("stopped");
 				m_navSet.OnTaskComplete_NavRot();
 				if (m_exitAfter)
 				{
-					_logger.debugLog("setting disable", "Move()", Logger.severity.DEBUG);
+					_logger.debugLog("setting disable", Logger.severity.DEBUG);
 					m_mover.SetControl(false);
 				}
 			}
 			else
-				_logger.debugLog("linear: " + m_mover.Block.Physics.LinearVelocity + ", angular: " + m_mover.Block.Physics.AngularVelocity, "Move()");
+				_logger.debugLog("linear: " + m_mover.Block.Physics.LinearVelocity + ", angular: " + m_mover.Block.Physics.AngularVelocity);
 		}
 
 		/// <summary>

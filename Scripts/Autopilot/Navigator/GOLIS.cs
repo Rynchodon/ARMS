@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
-				myLogger.debugLog("Reached destination: " + location, "Move()", Logger.severity.INFO);
+				myLogger.debugLog("Reached destination: " + location, Logger.severity.INFO);
 				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();
 				m_mover.StopRotate();

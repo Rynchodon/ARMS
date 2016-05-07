@@ -56,7 +56,7 @@ namespace Rynchodon.Threading
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 				if (MyAPIGateway.Parallel == null)
 				{
-					myLogger.debugLog("Parallel == null", "EnqueueAction()", Logger.severity.WARNING);
+					myLogger.debugLog("Parallel == null", Logger.severity.WARNING);
 					return;
 				}
 
@@ -88,10 +88,10 @@ namespace Rynchodon.Threading
 						//currentItem.Invoke();
 						Profiler.Profile(currentItem);
 					else
-						myLogger.debugLog("null action", "Run()", Logger.severity.WARNING);
+						myLogger.debugLog("null action", Logger.severity.WARNING);
 				}
 			}
-			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, "Run()", Logger.severity.ERROR); }
+			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 			finally
 			{
 				using (lock_parallelTasks.AcquireExclusiveUsing())

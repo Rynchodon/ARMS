@@ -34,17 +34,17 @@ namespace Rynchodon.AntennaRelay
 			ProgrammableBlock program;
 			if (!Registrar.TryGetValue(programId, out program))
 			{
-				s_logger.alwaysLog("Programmble block not found in registrar: " + programId, "Handler_SendMessage()", Logger.severity.ERROR);
+				s_logger.alwaysLog("Programmble block not found in registrar: " + programId, Logger.severity.ERROR);
 				return;
 			}
 
-			s_logger.debugLog("Found programmable block with id: " + programId, "Handler_SendMessage()");
+			s_logger.debugLog("Found programmable block with id: " + programId);
 
 			string[] text = ByteConverter.GetString(message, ref pos).Split(messageSeparator);
 
 			if (text.Length != 3)
 			{
-				s_logger.alwaysLog("text has wrong length, expected 3, got " + text.Length, "Handler_SendMessage()", Logger.severity.ERROR);
+				s_logger.alwaysLog("text has wrong length, expected 3, got " + text.Length, Logger.severity.ERROR);
 				return;
 			}
 
@@ -138,19 +138,19 @@ namespace Rynchodon.AntennaRelay
 			if (!m_progBlock.TryRun(parameter.ToString()))
 			//	m_logger.debugLog("running program, parameter:\n" + parameter.ToString(), "HandleDetected()");
 			//else
-				m_logger.alwaysLog("Failed to run program", "HandleDetected()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Failed to run program", Logger.severity.WARNING);
 		}
 
 		private void SendMessage(string recipientGrid, string recipientBlock, string message, bool clientSent, out bool sendToServer)
 		{
 			bool sentToSelf = !clientSent || !MyAPIGateway.Multiplayer.IsServer;
 			sendToServer = false;
-			m_logger.debugLog("client sent: " + clientSent + ", is server: " + MyAPIGateway.Multiplayer.IsServer + ", sentToSelf: " + sentToSelf, "SendMessage()");
+			m_logger.debugLog("client sent: " + clientSent + ", is server: " + MyAPIGateway.Multiplayer.IsServer + ", sentToSelf: " + sentToSelf);
 
 			NetworkStorage store = m_networkClient.GetStorage();
 			if (store == null)
 			{
-				m_logger.debugLog("not connected to a network", "SendMessage()", Logger.severity.DEBUG);
+				m_logger.debugLog("not connected to a network", Logger.severity.DEBUG);
 				if (sentToSelf && MyAPIGateway.Session.Player != null)
 					(m_block as IMyTerminalBlock).AppendCustomInfo("Failed to send message:\nNot connected to a network");
 				return;
@@ -164,7 +164,7 @@ namespace Rynchodon.AntennaRelay
 					IMyCubeGrid grid = block.CubeGrid;
 					if (m_block.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
 					{
-						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, Logger.severity.DEBUG);
 						store.Receive(new Message(message, block, m_block));
 						count++;
 					}
@@ -179,7 +179,7 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (MyAPIGateway.Multiplayer.IsServer)
 					{
-						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, "SendMessage()", Logger.severity.DEBUG);
+						m_logger.debugLog("sending message to " + block.gridBlockName() + ", content: " + message, Logger.severity.DEBUG);
 						store.Receive(new Message(message, block, m_block));
 					}
 					else
@@ -200,13 +200,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_progBlock.TryRun(param))
 			{
-				m_logger.debugLog("Sent message to program", "HandleMessage()", Logger.severity.DEBUG);
+				m_logger.debugLog("Sent message to program", Logger.severity.DEBUG);
 				if (MyAPIGateway.Session.Player != null)
 					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message");
 			}
 			else
 			{
-				m_logger.debugLog("Failed to send message to program", "HandleMessage()", Logger.severity.WARNING);
+				m_logger.debugLog("Failed to send message to program", Logger.severity.WARNING);
 				if (MyAPIGateway.Session.Player != null)
 					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message but failed to run program.");
 			}

@@ -58,12 +58,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Ray upper = new Ray(myLocalCentre + myLocalAxis * longestDim * 2f, -myLocalAxis);
 			float? upperBound = m_grid.LocalAABB.Intersects(upper);
 			if (!upperBound.HasValue)
-				m_logger.alwaysLog("Math fail, upperBound does not have a value", "TestRotate()", Logger.severity.FATAL);
+				m_logger.alwaysLog("Math fail, upperBound does not have a value", Logger.severity.FATAL);
 			Ray lower = new Ray(myLocalCentre - myLocalAxis * longestDim * 2f, myLocalAxis);
 			float? lowerBound = m_grid.LocalAABB.Intersects(lower);
 			if (!lowerBound.HasValue)
-				m_logger.alwaysLog("Math fail, lowerBound does not have a value", "TestRotate()", Logger.severity.FATAL);
-			m_logger.debugLog("LocalAABB: " + m_grid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower, "TestRotate()");
+				m_logger.alwaysLog("Math fail, lowerBound does not have a value", Logger.severity.FATAL);
+			m_logger.debugLog("LocalAABB: " + m_grid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
 			float height = longestDim * 4f - upperBound.Value - lowerBound.Value;
 
 			float furthest = 0f;
@@ -75,7 +75,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			});
 			float length = (float)Math.Sqrt(furthest) + m_grid.GridSize * 0.5f;
 
-			m_logger.debugLog("height: " + height + ", length: " + length, "TestRotate()");
+			m_logger.debugLog("height: " + height + ", length: " + length);
 
 			BoundingSphereD surroundingSphere = new BoundingSphereD(centreOfMass, Math.Max(length, height));
 			m_obstructions.Clear();
@@ -99,7 +99,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						{
 							if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
 							{
-								m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius, "TestRotate()");
+								m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
 								obstruction = voxel;
 								return false;
 							}
@@ -108,7 +108,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 						if (PlanetState != Pathfinder.PathState.No_Obstruction)
 						{
-							m_logger.debugLog("planet blocking", "TestRotate()");
+							m_logger.debugLog("planet blocking");
 							obstruction = ClosestPlanet;
 							return false;
 						}
@@ -142,7 +142,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						continue;
 					}
 
-					m_logger.debugLog("No tests for object: " + entity.getBestName(), "TestRotate()", Logger.severity.INFO);
+					m_logger.debugLog("No tests for object: " + entity.getBestName(), Logger.severity.INFO);
 					obstruction = entity;
 					return false;
 				}
@@ -163,7 +163,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
 			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
 			{
-				m_logger.debugLog("higher than planet maximum", "TestPlanet()");
+				m_logger.debugLog("higher than planet maximum");
 				PlanetState = Pathfinder.PathState.No_Obstruction;
 				return;
 			}
@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (distSqToPlanet < Vector3D.DistanceSquared(m_closestPoint, planetCentre))
 			{
-				m_logger.debugLog("below surface", "TestPlanet()");
+				m_logger.debugLog("below surface");
 				PlanetState = Pathfinder.PathState.Path_Blocked;
 				return;
 			}
@@ -181,12 +181,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			float longest = m_grid.GetLongestDim();
 			if (Vector3D.DistanceSquared(myPos, m_closestPoint) < longest * longest)
 			{
-				m_logger.debugLog("near surface", "TestPlanet()");
+				m_logger.debugLog("near surface");
 				PlanetState = Pathfinder.PathState.Path_Blocked;
 				return;
 			}
 
-			m_logger.debugLog("clear", "TestPlanet()");
+			m_logger.debugLog("clear");
 			PlanetState = Pathfinder.PathState.No_Obstruction;
 			return;
 		}

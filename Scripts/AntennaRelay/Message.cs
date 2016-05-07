@@ -65,13 +65,13 @@ namespace Rynchodon.AntennaRelay
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.DestCubeBlock, out entity) || !(entity is IMyCubeBlock))
 			{
-				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.DestCubeBlock, "LastSeen()", Logger.severity.WARNING);
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.DestCubeBlock, Logger.severity.WARNING);
 				return;
 			}
 			this.DestCubeBlock = (IMyCubeBlock)entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.SourceCubeBlock, out entity) || !(entity is IMyCubeBlock))
 			{
-				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.SourceCubeBlock, "LastSeen()", Logger.severity.WARNING);
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.SourceCubeBlock, Logger.severity.WARNING);
 				return;
 			}
 			this.SourceCubeBlock = (IMyCubeBlock)entity;

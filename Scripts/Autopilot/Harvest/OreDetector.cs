@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Harvest
 				(this.m_voxel as MyVoxelBase).RangeChanged += m_voxel_RangeChanged;
 				this.NeedsUpdate = true;
 
-				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner, "VoxelData()");
+				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner);
 			}
 
 			private void m_voxel_RangeChanged(MyVoxelBase storage, Vector3I minVoxelChanged, Vector3I maxVoxelChanged, MyStorageDataTypeFlags changedData)
@@ -83,10 +83,10 @@ namespace Rynchodon.Autopilot.Harvest
 			public bool GetClosest(byte[] oreType, ref Vector3D worldPosition, out Vector3D closest, out byte foundOre)
 			{
 				if (oreType == null)
-					m_logger.debugLog("searching for any", "GetClosest()");
+					m_logger.debugLog("searching for any");
 				else
 					foreach (byte b in oreType)
-						m_logger.debugLog("searching for: " + b, "GetClosest()");
+						m_logger.debugLog("searching for: " + b);
 
 				Vector3I search_voxelCellCoord;
 				MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldPosition, out search_voxelCellCoord);
@@ -97,7 +97,7 @@ namespace Rynchodon.Autopilot.Harvest
 				foundOre = 255;
 
 				int closestDistance = int.MaxValue;
-				m_logger.debugLog("material count: " + m_materialLocations.Count, "GetClosest()");
+				m_logger.debugLog("material count: " + m_materialLocations.Count);
 				foreach (var matLoc in m_materialLocations)
 					if (oreType == null || oreType.Contains(matLoc.Value))
 					{
@@ -107,10 +107,10 @@ namespace Rynchodon.Autopilot.Harvest
 							Vector3D deposit_localPosition = matLoc.Key << QUERY_LOD;
 							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out closest);
 
-							m_logger.debugLog("entry position: " + matLoc.Key + ", local: " + deposit_localPosition + ", world: " + closest + ", distance: " + (float)Math.Sqrt(dist), "GetClosest()");
+							m_logger.debugLog("entry position: " + matLoc.Key + ", local: " + deposit_localPosition + ", world: " + closest + ", distance: " + (float)Math.Sqrt(dist));
 
 							MyVoxelBase map = m_voxel as MyVoxelBase;
-							m_logger.debugLog("stor min: " + map.StorageMin, "GetClosest()");
+							m_logger.debugLog("stor min: " + map.StorageMin);
 
 							closestDistance = dist;
 							found = true;
@@ -152,10 +152,10 @@ namespace Rynchodon.Autopilot.Harvest
 				m_localMin >>= QUERY_LOD;
 				m_localMax >>= QUERY_LOD;
 				odPosVoxelStorage >>= QUERY_LOD;
-				m_logger.debugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax + ", odPosVoxelStorage: " + odPosVoxelStorage, "Read()");
+				m_logger.debugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax + ", odPosVoxelStorage: " + odPosVoxelStorage);
 
 				Vector3I size = m_localMax - m_localMin;
-				m_logger.debugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1), "Read()");
+				m_logger.debugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1));
 				ulong processed = 0;
 				m_materialLocations.Clear();
 
@@ -192,7 +192,7 @@ Finished_Deposit:
 								processed++;
 							}
 
-				m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, "Read()", Logger.severity.DEBUG);
+				m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
 			}
 
 		}
@@ -376,7 +376,7 @@ Finished_Deposit:
 				foreach (var voxelData in m_voxelData)
 					if (!voxelData.Value.IsValid())
 					{
-						m_logger.debugLog("removing old: " + voxelData.Key, "Update()");
+						m_logger.debugLog("removing old: " + voxelData.Key);
 						m_voxelData.Remove(voxelData.Key);
 						break;
 					}
@@ -391,7 +391,7 @@ Finished_Deposit:
 		/// <returns>true iff an ore is found</returns>
 		private bool GetOreLocations(Vector3D position, byte[] oreType, OreSearchComplete onComplete)
 		{
-			m_logger.debugLog("entered GetOreLocations()", "GetOreLocations()");
+			m_logger.debugLog("entered GetOreLocations()");
 
 			BoundingSphereD detection = new BoundingSphereD(m_oreDetector.GetPosition(), m_maxRange);
 			m_nearbyVoxel.Clear();
@@ -413,17 +413,17 @@ Finished_Deposit:
 
 					if (data.NeedsUpdate)
 					{
-						m_logger.debugLog("Data needs to be updated for " + nearbyMap.getBestName(), "GetOreLocations()");
+						m_logger.debugLog("Data needs to be updated for " + nearbyMap.getBestName());
 						data.Read();
 					}
 					else
-						m_logger.debugLog("Old data OK for " + nearbyMap.getBestName(), "GetOreLocations()");
+						m_logger.debugLog("Old data OK for " + nearbyMap.getBestName());
 
 					Vector3D closest;
 					byte foundOre;
 					if (data.GetClosest(oreType, ref position, out closest, out foundOre))
 					{
-						m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest), "FindClosestOre()");
+						m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest));
 						string oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOre).MinedOre;
 						onComplete(true, closest, nearbyMap, oreName);
 						m_nearbyVoxel.Clear();

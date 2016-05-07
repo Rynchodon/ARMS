@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (this.m_landBlock == null)
 			{
-				m_logger.debugLog("No landing block", "VoxelLander()", Logger.severity.INFO);
+				m_logger.debugLog("No landing block", Logger.severity.INFO);
 				return;
 			}
 
@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGear != null)
 			{
 				ITerminalProperty<bool> autolock = asGear.GetProperty("Autolock") as ITerminalProperty<bool>;
-				m_logger.debugLog(autolock == null, "autolock == null", "VoxelLander()", Logger.severity.FATAL);
+				m_logger.debugLog(autolock == null, "autolock == null", Logger.severity.FATAL);
 				if (!autolock.GetValue(asGear))
 					autolock.SetValue(asGear, true);
 			}
@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (closest == null)
 				{
-					m_logger.debugLog("No planets in the world", "VoxelLander()", Logger.severity.WARNING);
+					m_logger.debugLog("No planets in the world", Logger.severity.WARNING);
 					return;
 				}
 			}
@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (closest == null)
 				{
-					m_logger.debugLog("No asteroids nearby", "VoxelLander()", Logger.severity.WARNING);
+					m_logger.debugLog("No asteroids nearby", Logger.severity.WARNING);
 					return;
 				}
 			}
@@ -97,7 +97,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.IgnoreAsteroid = true;
 
-			m_logger.debugLog("Landing on " + m_targetType + " at " + m_targetPostion, "VoxelLander()", Logger.severity.DEBUG);
+			m_logger.debugLog("Landing on " + m_targetType + " at " + m_targetPostion, Logger.severity.DEBUG);
 		}
 
 		public override void Move()
@@ -107,7 +107,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case Stage.Approach:
 					if (m_navSet.DistanceLessThanDestRadius())
 					{
-						m_logger.debugLog("finished approach, creating stopper", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("finished approach, creating stopper", Logger.severity.DEBUG);
 						m_stage = Stage.Rotate;
 						m_mover.StopMove();
 					}
@@ -117,7 +117,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case Stage.Rotate:
 					if (m_navSet.DirectionMatched(0.01f))
 					{
-						m_logger.debugLog("finished rotating, now landing", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("finished rotating, now landing", Logger.severity.DEBUG);
 						m_stage = Stage.Land;
 					}
 					return;
@@ -127,7 +127,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (gear.IsLocked)
 						{
-							m_logger.debugLog("locked", "Move()", Logger.severity.INFO);
+							m_logger.debugLog("locked", Logger.severity.INFO);
 							m_mover.MoveAndRotateStop(false);
 							m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavRot);
 							return;
@@ -135,7 +135,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					else if (m_navSet.DistanceLessThan(1f))
 					{
-						m_logger.debugLog("close enough", "Move()", Logger.severity.INFO);
+						m_logger.debugLog("close enough", Logger.severity.INFO);
 						m_mover.MoveAndRotateStop(false);
 						m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavRot);
 						return;

@@ -251,29 +251,29 @@ namespace Rynchodon.Weapons.Guided
 			NetworkStorage storage = launcher.m_netClient.GetStorage();
 			if (storage == null)
 			{
-				myLogger.debugLog("failed to get storage for launcher", "GuidedMissile()", Logger.severity.WARNING);
+				myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
 			}
 			else
 			{
-				myLogger.debugLog("getting initial target from launcher", "GuidedMissile()", Logger.severity.DEBUG);
+				myLogger.debugLog("getting initial target from launcher", Logger.severity.DEBUG);
 				GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
 			}
 			initialTarget = CurrentTarget;
 
 			if (myAmmo.RadarDefinition != null)
 			{
-				myLogger.debugLog("Has a radar definiton", "GuidedMissile()");
+				myLogger.debugLog("Has a radar definiton");
 				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
 				if (myAntenna == null)
 				{
-					myLogger.debugLog("Creating node for radar", "GuidedMissile()");
+					myLogger.debugLog("Creating node for radar");
 					myAntenna = new NetworkNode(missile, () => m_owner, null);
 				}
 			}
 
 			Registrar.Add(missile, this);
 
-			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
+			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()));
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
@@ -356,10 +356,10 @@ namespace Rynchodon.Weapons.Guided
 				AllGuidedMissiles.Remove(this);
 				RemoveRock();
 
-				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength, "MyEntity_OnClose()");
+				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength);
 				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
 				{
-					myLogger.debugLog("Creating EMP effect", "MyEntity_OnClose()", Logger.severity.DEBUG);
+					myLogger.debugLog("Creating EMP effect", Logger.severity.DEBUG);
 					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
 					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
 				}
@@ -386,7 +386,7 @@ namespace Rynchodon.Weapons.Guided
 			SemiActiveTarget sat = myTarget as SemiActiveTarget;
 			if (sat == null)
 			{
-				myLogger.debugLog("creating semi-active target", "TargetSemiActive()", Logger.severity.DEBUG);
+				myLogger.debugLog("creating semi-active target", Logger.severity.DEBUG);
 				sat = new SemiActiveTarget(m_launcher.CubeBlock);
 				myTarget = sat;
 			}
@@ -410,7 +410,7 @@ namespace Rynchodon.Weapons.Guided
 			switch (m_stage)
 			{
 				case Stage.Boost:
-					myLogger.debugLog(m_gravData == null, "m_gravData == null", "Update()", Logger.severity.FATAL);
+					myLogger.debugLog(m_gravData == null, "m_gravData == null", Logger.severity.FATAL);
 					targetDirection = -m_gravData.Normal;
 					break;
 				case Stage.MidCourse:
@@ -517,13 +517,13 @@ namespace Rynchodon.Weapons.Guided
 				Vector3.DistanceSquared(ref masterVelocity, ref myCluster.masterVelocity, out distSq);
 				if (distSq > maxVelChangeSq)
 				{
-					myLogger.debugLog("massive change in master velocity, terminating", "UpdateCluster()", Logger.severity.INFO);
+					myLogger.debugLog("massive change in master velocity, terminating", Logger.severity.INFO);
 					m_stage = Stage.Terminated;
 					return;
 				}
 				myCluster.masterVelocity = masterVelocity;
 
-				myLogger.debugLog(myCluster == null, "myCluster == null", "UpdateCluster()", Logger.severity.FATAL);
+				myLogger.debugLog(myCluster == null, "myCluster == null", Logger.severity.FATAL);
 				MatrixD worldMatrix = MyEntity.WorldMatrix;
 
 				for (int i = 0; i < myCluster.Slaves.Count; i++)
@@ -547,7 +547,7 @@ namespace Rynchodon.Weapons.Guided
 		/// </remarks>
 		private void Explode()
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "Explode()", Logger.severity.FATAL);
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				if (MyEntity.Closed)
@@ -604,26 +604,26 @@ namespace Rynchodon.Weapons.Guided
 						if (myDescr.SemiActiveLaser)
 						{
 							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
-							myLogger.debugLog("past arming range, semi-active.", "CheckGuidance()", Logger.severity.INFO);
+							myLogger.debugLog("past arming range, semi-active.", Logger.severity.INFO);
 							m_stage = Stage.SemiActive;
 							return;
 						}
 
 						if (myAmmo.Description.BoostDistance > 1f)
 						{
-							myLogger.debugLog("past arming range, starting boost stage", "CheckGuidance()", Logger.severity.INFO);
+							myLogger.debugLog("past arming range, starting boost stage", Logger.severity.INFO);
 							StartGravity();
 							m_stage = Stage.Boost;
 							if (m_gravData == null)
 							{
-								myLogger.debugLog("no gravity, terminating", "CheckGuidance()", Logger.severity.WARNING);
+								myLogger.debugLog("no gravity, terminating", Logger.severity.WARNING);
 								m_stage = Stage.Terminated;
 							}
 						}
 						else
 						{
 							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
-							myLogger.debugLog("past arming range, starting guidance.", "CheckGuidance()", Logger.severity.INFO);
+							myLogger.debugLog("past arming range, starting guidance.", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
 					}
@@ -631,7 +631,7 @@ namespace Rynchodon.Weapons.Guided
 				case Stage.Boost:
 					if (Vector3D.DistanceSquared(CubeBlock.GetPosition(), MyEntity.GetPosition()) >= myAmmo.Description.BoostDistance * myAmmo.Description.BoostDistance)
 					{
-						myLogger.debugLog("completed boost stage, starting mid course stage", "CheckGuidance()", Logger.severity.INFO);
+						myLogger.debugLog("completed boost stage, starting mid course stage", Logger.severity.INFO);
 						m_stage = Stage.MidCourse;
 					}
 					return;
@@ -645,7 +645,7 @@ namespace Rynchodon.Weapons.Guided
 
 					if (toTarget < toLaunch)
 					{
-						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", "CheckGuidance()", Logger.severity.INFO);
+						myLogger.debugLog("closer to target(" + toTarget + ") than to launch(" + toLaunch + "), starting guidance", Logger.severity.INFO);
 						m_stage = Stage.Guided;
 						myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 						m_gravData = null;
@@ -655,7 +655,7 @@ namespace Rynchodon.Weapons.Guided
 				case Stage.Guided:
 					if (Globals.ElapsedTime >= myGuidanceEnds)
 					{
-						myLogger.debugLog("finished guidance", "CheckGuidance()", Logger.severity.INFO);
+						myLogger.debugLog("finished guidance", Logger.severity.INFO);
 						m_stage = Stage.Ballistic;
 					}
 					return;
@@ -672,14 +672,14 @@ namespace Rynchodon.Weapons.Guided
 
 			if (m_launcherClient == null)
 			{
-				myLogger.debugLog("No launcher client", "UpdateNetwork()", Logger.severity.WARNING);
+				myLogger.debugLog("No launcher client", Logger.severity.WARNING);
 				return;
 			}
 
 			NetworkStorage store = m_launcherClient.GetStorage();
 			if (store == null)
 			{
-				myLogger.debugLog("Launcher's net client does not have a storage", "UpdateNetwork()", Logger.severity.WARNING);
+				myLogger.debugLog("Launcher's net client does not have a storage", Logger.severity.WARNING);
 				return;
 			}
 
@@ -716,7 +716,7 @@ namespace Rynchodon.Weapons.Guided
 					Vector3D targetPosition = CurrentTarget.GetPosition();
 					if (!planet.IsPositionInGravityWell(targetPosition))
 					{
-						myLogger.debugLog("Target is not in gravity well, target position: " + targetPosition + ", planet: " + planet.getBestName(), "UpdateGravity()", Logger.severity.WARNING);
+						myLogger.debugLog("Target is not in gravity well, target position: " + targetPosition + ", planet: " + planet.getBestName(), Logger.severity.WARNING);
 						return;
 					}
 					Vector3 gravAtTarget = planet.GetWorldGravityNormalized(ref targetPosition);

@@ -70,18 +70,18 @@ namespace Rynchodon.Update
 				{
 					if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
 					{
-						m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, "DoLoad()", Logger.severity.ERROR);
+						m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Logger.severity.ERROR);
 					}
 					else if (saveId_fromPath != saveId_fromWorld)
 					{
-						m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, "DoLoad()", Logger.severity.ERROR);
+						m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Logger.severity.ERROR);
 
 						// prefer from world
 						System.IO.TextReader reader2 = m_fileMaster.GetTextReader(saveId_fromWorld);
 						if (reader2 != null)
 							reader = reader2;
 						else
-							m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, "DoLoad()", Logger.severity.ERROR);
+							m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Logger.severity.ERROR);
 					}
 				}
 				else
@@ -90,16 +90,16 @@ namespace Rynchodon.Update
 					{
 						reader = m_fileMaster.GetTextReader(saveId_fromWorld);
 						if (reader != null)
-							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, "DoLoad()", Logger.severity.DEBUG);
+							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
 						else
 						{
-							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, "DoLoad()", Logger.severity.DEBUG);
+							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
 							return;
 						}
 					}
 					else
 					{
-						m_logger.alwaysLog("Cannot load world, no save id found", "DoLoad()", Logger.severity.DEBUG);
+						m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
 						return;
 					}
 				}
@@ -115,7 +115,7 @@ namespace Rynchodon.Update
 					NetworkNode node;
 					if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
 					{
-						m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, "DoLoad()", Logger.severity.WARNING);
+						m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
 						continue;
 					}
 					NetworkStorage store = node.Storage;
@@ -125,7 +125,7 @@ namespace Rynchodon.Update
 						store = node.Storage;
 						if (store == null)
 						{
-							m_logger.debugLog("failed to create storage for " + node.LoggingName, "DoLoad()", Logger.severity.WARNING);
+							m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.WARNING);
 							continue;
 						}
 					}
@@ -136,10 +136,10 @@ namespace Rynchodon.Update
 						if (ls.IsValid)
 							store.Receive(ls);
 						else
-							m_logger.debugLog("failed to create a valid last seen from builder", "DoLoad()", Logger.severity.WARNING);
+							m_logger.debugLog("failed to create a valid last seen from builder", Logger.severity.WARNING);
 					}
 
-					m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, "DoLoad()", Logger.severity.DEBUG);
+					m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 					foreach (Message.Builder_Message bm in bns.MessageList)
 					{
@@ -151,15 +151,15 @@ namespace Rynchodon.Update
 						}
 						else
 						{
-							m_logger.debugLog("found linked message", "DoLoad()", Logger.severity.TRACE);
+							m_logger.debugLog("found linked message", Logger.severity.TRACE);
 						}
 						if (msg.IsValid)
 							store.Receive(msg);
 						else
-							m_logger.debugLog("failed to create a valid message from builder", "DoLoad()", Logger.severity.WARNING);
+							m_logger.debugLog("failed to create a valid message from builder", Logger.severity.WARNING);
 					}
 
-					m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, "DoLoad()", Logger.severity.DEBUG);
+					m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 				}
 
 				// system disruption
@@ -197,7 +197,7 @@ namespace Rynchodon.Update
 							disrupt = new TraitorTurret();
 							break;
 						default:
-							m_logger.alwaysLog("Unknown disruption: " + bd.Type, "DoLoad()", Logger.severity.WARNING);
+							m_logger.alwaysLog("Unknown disruption: " + bd.Type, Logger.severity.WARNING);
 							continue;
 					}
 					disrupt.Start(bd);
@@ -212,14 +212,14 @@ namespace Rynchodon.Update
 						if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
 							autopilot.Resume = ba;
 						else
-							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, "DoLoad()", Logger.severity.WARNING);
+							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 					}
 
-				m_logger.debugLog("Loaded from " + saveId_fromWorld, "DoLoad()", Logger.severity.INFO);
+				m_logger.debugLog("Loaded from " + saveId_fromWorld, Logger.severity.INFO);
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, "DoLoad()", Logger.severity.ERROR);
+				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
 			}
 		}
@@ -279,11 +279,11 @@ namespace Rynchodon.Update
 				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));
 				writer.Close();
 
-				m_logger.debugLog("Saved to " + fileId, "SaveData()", Logger.severity.INFO);
+				m_logger.debugLog("Saved to " + fileId, Logger.severity.INFO);
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, "SaveData()", Logger.severity.ERROR);
+				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
 			}
 		}

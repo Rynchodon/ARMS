@@ -368,9 +368,9 @@ namespace Rynchodon
 				catch (Exception ex)
 				{
 					if (logTo != null)
-						logTo.alwaysLog("Exception: " + ex, "TryOnGameThread()", Logger.severity.ERROR);
+						logTo.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					else
-						(new Logger("MiscExtensions")).alwaysLog("Exception: " + ex, "TryOnGameThread()", Logger.severity.ERROR);
+						(new Logger("MiscExtensions")).alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				}
 			});
 		}

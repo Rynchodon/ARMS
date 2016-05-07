@@ -45,7 +45,7 @@ namespace Rynchodon.Weapons
 
 			if (TP_TargetMissiles == null)
 			{
-				myLogger.debugLog("Filling Terminal Properties", "Turret()", Logger.severity.INFO);
+				myLogger.debugLog("Filling Terminal Properties", Logger.severity.INFO);
 				IMyTerminalBlock term = CubeBlock as IMyTerminalBlock;
 				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
 				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();

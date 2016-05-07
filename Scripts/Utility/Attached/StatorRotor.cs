@@ -21,7 +21,7 @@ namespace Rynchodon.Attached
 			Stator value;
 			if (!Registrar.TryGetValue(stator.EntityId, out value))
 			{
-				myLogger.alwaysLog("failed to get stator from registrar: " + stator.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get stator from registrar: " + stator.DisplayNameText, Logger.severity.WARNING);
 				rotor = null;
 				return false;
 			}
@@ -46,7 +46,7 @@ namespace Rynchodon.Attached
 			Rotor value;
 			if (!Registrar.TryGetValue(rotor.EntityId, out value))
 			{
-				myLogger.alwaysLog("failed to get rotor from registrar: " + rotor.DisplayNameText, "TryGetRotor()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get rotor from registrar: " + rotor.DisplayNameText, Logger.severity.WARNING);
 				stator = null;
 				return false;
 			}
@@ -84,18 +84,18 @@ namespace Rynchodon.Attached
 						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetObjectBuilder_Safe() as MyObjectBuilder_MotorStator;
 						if (Registrar.TryGetValue(statorBuilder.RotorEntityId.Value, out partner))
 						{
-							myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
+							myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, Logger.severity.INFO);
 							Attach(partner.myRotor);
 							partner.partner = this;
 						}
 						else
-							myLogger.alwaysLog("Failed to set partner, Rotor not in registrar.", "Update10()", Logger.severity.WARNING);
+							myLogger.alwaysLog("Failed to set partner, Rotor not in registrar.", Logger.severity.WARNING);
 					}
 				}
 				else // partner != null
 					if (!myStator.IsAttached && !myStator.IsLocked)
 					{
-						myLogger.debugLog("Removing partner " + partner.myRotor.DisplayNameText, "Update10()", Logger.severity.INFO);
+						myLogger.debugLog("Removing partner " + partner.myRotor.DisplayNameText, Logger.severity.INFO);
 						Detach();
 						partner.partner = null;
 						partner = null;

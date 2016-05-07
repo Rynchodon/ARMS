@@ -86,11 +86,11 @@ namespace Rynchodon.AntennaRelay
 			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
-				myLogger.debugLog("# of gps: " + list.Count, "Player()");
+				myLogger.debugLog("# of gps: " + list.Count);
 				foreach (IMyGps gps in list)
 					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
-						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords, "player()");
+						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords);
 						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 					}
 			}
@@ -101,7 +101,7 @@ namespace Rynchodon.AntennaRelay
 			UpdateManager.Register(30, MissileHudWarning);
 			UpdateManager.Register(1, MissileAudioWarning);
 
-			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, "Player()", Logger.severity.DEBUG);
+			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, Logger.severity.DEBUG);
 		}
 
 		private void Update()
@@ -119,23 +119,23 @@ namespace Rynchodon.AntennaRelay
 					NetworkNode charNode;
 					if (!Registrar.TryGetValue(controlled, out charNode))
 					{
-						myLogger.debugLog("Failed to get node for character: " + controlled.getBestName(), "Update()", Logger.severity.WARNING);
+						myLogger.debugLog("Failed to get node for character: " + controlled.getBestName(), Logger.severity.WARNING);
 						m_storage = null;
 						return;
 					}
 					m_storage = () => charNode.Storage;
-					myLogger.debugLog("now controlling a character", "Update()", Logger.severity.DEBUG);
+					myLogger.debugLog("now controlling a character", Logger.severity.DEBUG);
 				}
 				else if (controlled is IMyCubeBlock)
 				{
 					NetworkClient shipClient = new NetworkClient((IMyCubeBlock)controlled);
 					m_storage = shipClient.GetStorage;
 					m_soundEmitter = new MyEntity3DSoundEmitter((MyEntity)controlled);
-					myLogger.debugLog("now controlling a ship", "Update()", Logger.severity.DEBUG);
+					myLogger.debugLog("now controlling a ship", Logger.severity.DEBUG);
 				}
 				else
 				{
-					myLogger.debugLog("player controlling incompatible entity: " + controlled.getBestName(), "Update()", Logger.severity.TRACE);
+					myLogger.debugLog("player controlling incompatible entity: " + controlled.getBestName(), Logger.severity.TRACE);
 					m_storage = null;
 					m_soundEmitter = null;
 					m_threat = null;
@@ -144,7 +144,7 @@ namespace Rynchodon.AntennaRelay
 			}
 			else if (m_storage == null || m_storage.Invoke() == null)
 			{
-				myLogger.debugLog("no storage", "Update()", Logger.severity.TRACE);
+				myLogger.debugLog("no storage", Logger.severity.TRACE);
 				m_threat = null;
 				return;
 			}
@@ -162,7 +162,7 @@ namespace Rynchodon.AntennaRelay
 			byte newInterval = UserSettings.GetSetting(UserSettings.ByteSettingName.UpdateIntervalHUD);
 			if (newInterval != m_updateIntervalGPS)
 			{
-				myLogger.debugLog("Update interval changed from " + m_updateIntervalGPS + " to " + newInterval, "UpdateGPS()", Logger.severity.DEBUG);
+				myLogger.debugLog("Update interval changed from " + m_updateIntervalGPS + " to " + newInterval, Logger.severity.DEBUG);
 
 				UpdateManager.Unregister(m_updateIntervalGPS, UpdateGPS);
 				UpdateManager.Register(newInterval, UpdateGPS);
@@ -171,7 +171,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_storage == null)
 			{
-				myLogger.debugLog("no storage getter", "UpdateGPS()");
+				myLogger.debugLog("no storage getter");
 				return;
 			}
 
@@ -179,13 +179,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (store == null)
 			{
-				myLogger.debugLog("no storage", "UpdateGPS()");
+				myLogger.debugLog("no storage");
 				return;
 			}
 
 			if (store.LastSeenCount == 0)
 			{
-				myLogger.debugLog("No LastSeen", "UpdateGPS()");
+				myLogger.debugLog("No LastSeen");
 				return;
 			}
 
@@ -214,7 +214,7 @@ namespace Rynchodon.AntennaRelay
 				GpsData relateData;
 				if (!Data.TryGetValue(setting, out relateData))
 				{
-					myLogger.debugLog("failed to get setting data, setting: " + setting, "UpdateGPS()", Logger.severity.WARNING);
+					myLogger.debugLog("failed to get setting data, setting: " + setting, Logger.severity.WARNING);
 					return;
 				}
 
@@ -241,7 +241,7 @@ namespace Rynchodon.AntennaRelay
 			for (index = 0; index < relateData.distanceSeen.Count && index < relateData.activeGPS.Count; index++)
 			{
 				//myLogger.debugLog("getting seen...", "UpdateGPS()");
-				myLogger.debugLog(index >= relateData.distanceSeen.Count, "index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", "UpdateGPS()", Logger.severity.FATAL);
+				myLogger.debugLog(index >= relateData.distanceSeen.Count, "index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", Logger.severity.FATAL);
 				LastSeen seen = relateData.distanceSeen[index].Seen;
 
 				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
@@ -264,7 +264,7 @@ namespace Rynchodon.AntennaRelay
 						name = "Enemy " + index;
 						break;
 					default:
-						myLogger.alwaysLog("case not implemented: " + setting, "UpdateGPS()", Logger.severity.ERROR);
+						myLogger.alwaysLog("case not implemented: " + setting, Logger.severity.ERROR);
 						continue;
 				}
 
@@ -277,11 +277,11 @@ namespace Rynchodon.AntennaRelay
 
 				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
 				//myLogger.debugLog("index >= relateData.activeGPS.Count: " + (index >= relateData.activeGPS.Count), "UpdateGPS()");
-				myLogger.debugLog(index >= relateData.activeGPS.Count, "index(" + index + ") >= relateData.activeGPS.Count(" + relateData.activeGPS.Count + ")", "UpdateGPS()", Logger.severity.FATAL);
+				myLogger.debugLog(index >= relateData.activeGPS.Count, "index(" + index + ") >= relateData.activeGPS.Count(" + relateData.activeGPS.Count + ")", Logger.severity.FATAL);
 				if (relateData.activeGPS[index] == null)
 				{
 					relateData.activeGPS[index] = MyAPIGateway.Session.GPS.Create(name, description, coords, true, true);
-					myLogger.debugLog("adding new GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
+					myLogger.debugLog("adding new GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash);
 					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
 				}
 				else if (Update(relateData.activeGPS[index], name, description, coords))
@@ -300,7 +300,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (relateData.activeGPS[index] != null)
 				{
-					myLogger.debugLog("removing GPS " + index + ", name: " + relateData.activeGPS[index].Name + ", coords: " + relateData.activeGPS[index].Coords, "UpdateGPS()");
+					myLogger.debugLog("removing GPS " + index + ", name: " + relateData.activeGPS[index].Name + ", coords: " + relateData.activeGPS[index].Coords);
 					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
 					relateData.activeGPS[index] = null;
 				}
@@ -408,13 +408,13 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!(m_controlled is IMyCubeBlock))
 			{
-				myLogger.debugLog("not controlling a ship", "UpdateMissileThreat()");
+				myLogger.debugLog("not controlling a ship");
 				return;
 			}
 
 			if (m_storage == null)
 			{
-				myLogger.debugLog("no storage getter", "UpdateMissileThreat()");
+				myLogger.debugLog("no storage getter");
 				return;
 			}
 
@@ -422,7 +422,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (store == null)
 			{
-				myLogger.debugLog("no storage", "UpdateMissileThreat()");
+				myLogger.debugLog("no storage");
 				return;
 			}
 
@@ -434,7 +434,7 @@ namespace Rynchodon.AntennaRelay
 					GuidedMissile guided;
 					if (Registrar.TryGetValue(seen.Entity, out guided) && IsThreat(guided))
 					{
-						myLogger.debugLog("threat: " + guided.MyEntity, "UpdateMissileThreat()", Logger.severity.TRACE);
+						myLogger.debugLog("threat: " + guided.MyEntity, Logger.severity.TRACE);
 						byte tti;
 						if (GetTimeToImpact(guided, out tti) && tti < timeToImpact)
 						{
@@ -489,7 +489,7 @@ namespace Rynchodon.AntennaRelay
 			if (!GetTimeToImpact(m_threat, out tti))
 			{
 				m_threat = null;
-				myLogger.debugLog("missile is no longer approaching", "MissileAudioWarning()", Logger.severity.DEBUG);
+				myLogger.debugLog("missile is no longer approaching", Logger.severity.DEBUG);
 				return;
 			}
 

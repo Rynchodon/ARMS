@@ -47,11 +47,11 @@ namespace Rynchodon.AntennaRelay
 			TextPanel panel;
 			if (!Registrar.TryGetValue(panelId, out panel))
 			{
-				s_logger.alwaysLog("Text panel not found in registrar: " + panelId, "Handler_DisplayEntities()", Logger.severity.ERROR);
+				s_logger.alwaysLog("Text panel not found in registrar: " + panelId, Logger.severity.ERROR);
 				return;
 			}
 
-			s_logger.debugLog("Found text panel with id: " + panelId, "Handler_DisplayEntities()");
+			s_logger.debugLog("Found text panel with id: " + panelId);
 
 			List<long> detectedIds = new List<long>();
 			while (pos < message.Length)
@@ -75,7 +75,7 @@ namespace Rynchodon.AntennaRelay
 			m_textPanel = block as Ingame.IMyTextPanel;
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new NetworkClient(block);
-			myLogger.debugLog("init: " + m_block.DisplayNameText, "TextPanel()");
+			myLogger.debugLog("init: " + m_block.DisplayNameText);
 
 			Registrar.Add(block, this);
 		}

@@ -29,8 +29,8 @@ namespace Rynchodon.Weapons
 				catch (Exception ex)
 				{
 					Logger.debugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
-					desc.myLogger.alwaysLog("Failed to load description for an ammo", "CreateFrom()", Logger.severity.ERROR);
-					desc.myLogger.alwaysLog("Exception: " + ex, "CreateFrom()", Logger.severity.ERROR);
+					desc.myLogger.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
+					desc.myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					return null;
 				}
 			}
@@ -177,7 +177,7 @@ namespace Rynchodon.Weapons
 
 			if (Description.ClusterCooldown > 0f)
 			{
-				myLogger.debugLog("Is a cluster missile", "Ammo()");
+				myLogger.debugLog("Is a cluster missile");
 				IsCluster = true;
 			}
 			if (!string.IsNullOrWhiteSpace(Description.Radar))
@@ -189,13 +189,13 @@ namespace Rynchodon.Weapons
 					ammender.primarySeparator = new char[] { ',' };
 					ammender.AmendAll(Description.Radar, true);
 					RadarDefinition = ammender.Deserialize();
-					myLogger.debugLog("Loaded description for radar", "Ammo()", Logger.severity.DEBUG);
+					myLogger.debugLog("Loaded description for radar", Logger.severity.DEBUG);
 				}
 				catch (Exception ex)
 				{
 					Logger.debugNotify("Failed to load radar description for an ammo", 10000, Logger.severity.ERROR);
-					myLogger.alwaysLog("Failed to load radar description for an ammo", "Ammo()", Logger.severity.ERROR);
-					myLogger.alwaysLog("Exception: " + ex, "Ammo()", Logger.severity.ERROR);
+					myLogger.alwaysLog("Failed to load radar description for an ammo", Logger.severity.ERROR);
+					myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					RadarDefinition = null;
 				}
 			}
@@ -203,7 +203,7 @@ namespace Rynchodon.Weapons
 
 		public float MissileSpeed(float distance)
 		{
-			myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed, "LoadedAmmoSpeed()");
+			myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed);
 			if (distance < DistanceToMaxSpeed)
 			{
 				float finalSpeed = (float)Math.Sqrt(MissileDefinition.MissileInitialSpeed * MissileDefinition.MissileInitialSpeed + 2 * MissileDefinition.MissileAcceleration * distance);
@@ -217,7 +217,7 @@ namespace Rynchodon.Weapons
 				float timeAfterMaxVel = distanceAfterMaxVel / MissileDefinition.DesiredSpeed;
 
 				myLogger.debugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
-					+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+					+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)));
 				//myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
 				return distance / (TimeToMaxSpeed + timeAfterMaxVel);
 			}

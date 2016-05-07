@@ -78,7 +78,7 @@ namespace Rynchodon
 				grid.OnClosing += grid_OnClosing;
 			});
 
-			m_logger.debugLog("Initialized", "GridCellCache()");
+			m_logger.debugLog("Initialized");
 		}
 
 		public void ForEach(Action<Vector3I> action)
@@ -285,7 +285,7 @@ namespace Rynchodon
 		/// <returns>True iff there is a collision</returns>
 		public bool rejectionIntersects(IMyCubeGrid grid, IMyCubeBlock ignore, out MyEntity entity, out Vector3? pointOfObstruction)
 		{
-			m_logger.debugLog(m_grid == null, "m_grid == null", "Init()", Logger.severity.FATAL);
+			m_logger.debugLog(m_grid == null, "m_grid == null", Logger.severity.FATAL);
 
 			//m_logger.debugLog("testing grid: " + grid.getBestName(), "rejectionIntersects()");
 
@@ -404,7 +404,7 @@ namespace Rynchodon
 			float CapsuleRadius = (float)Math.Sqrt(longestDistanceSquared) + 3f * m_grid.GridSize;// +(m_landing ? 0f : NotLandingBuffer);
 			Path = new Capsule(P0, P1, CapsuleRadius);
 
-			m_logger.debugLog("Path capsule created from " + P0 + " to " + P1 + ", radius: " + CapsuleRadius, "createCapsule()");
+			m_logger.debugLog("Path capsule created from " + P0 + " to " + P1 + ", radius: " + CapsuleRadius);
 		}
 
 	}

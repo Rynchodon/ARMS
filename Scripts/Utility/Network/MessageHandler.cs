@@ -41,13 +41,13 @@ namespace Rynchodon.Utility.Network
 				try { handler(received, position); }
 				catch (Exception ex)
 				{
-					s_logger.alwaysLog("Handler threw exception: " + ex, "HandleMessage()", Logger.severity.ERROR);
-					s_logger.alwaysLog("Removing handler for " + dest, "HandleMessage()", Logger.severity.ERROR);
+					s_logger.alwaysLog("Handler threw exception: " + ex, Logger.severity.ERROR);
+					s_logger.alwaysLog("Removing handler for " + dest, Logger.severity.ERROR);
 					Handlers.Remove(dest);
 				}
 			}
 			else
-				s_logger.alwaysLog("No handler for " + dest, "HandleMessage()", Logger.severity.WARNING);
+				s_logger.alwaysLog("No handler for " + dest, Logger.severity.WARNING);
 		}
 
 	}

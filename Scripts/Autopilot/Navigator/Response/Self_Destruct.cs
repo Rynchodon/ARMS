@@ -38,7 +38,7 @@ namespace Rynchodon.Autopilot.Navigator
 					foreach (var war in warheads)
 						if (m_block.canControlBlock(war))
 						{
-							m_logger.debugLog("Starting countdown for " + war.getBestName(), "set_CurrentResponse()", Logger.severity.DEBUG);
+							m_logger.debugLog("Starting countdown for " + war.getBestName(), Logger.severity.DEBUG);
 							war.ApplyAction("StartCountdown");
 						}
 				return false;

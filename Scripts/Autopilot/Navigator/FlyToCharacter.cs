@@ -45,7 +45,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 				if (Globals.ElapsedTime > m_timeoutAt)
 				{
-					m_logger.debugLog("terminating search", "Move()");
+					m_logger.debugLog("terminating search");
 					m_navSet.OnTaskComplete_NavMove();
 				}
 				return;
@@ -53,7 +53,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
-				m_logger.debugLog("Reached player", "Move()", Logger.severity.INFO);
+				m_logger.debugLog("Reached player", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavMove();
 			}
 			else
@@ -82,7 +82,7 @@ namespace Rynchodon.Autopilot.Navigator
 			NetworkStorage store = m_controlBlock.NetworkStorage;
 			if (store == null)
 			{
-				m_logger.debugLog("failed to get storage", "UpdateLastSeen()", Logger.severity.INFO);
+				m_logger.debugLog("failed to get storage", Logger.severity.INFO);
 				m_character = null;
 				return;
 			}
@@ -90,28 +90,28 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_character != null)
 				if (store.TryGetLastSeen(m_character.Entity.EntityId, out m_character))
 				{
-					m_logger.debugLog("got updated last seen", "UpdateLastSeen()");
+					m_logger.debugLog("got updated last seen");
 					return;
 				}
 				else
 				{
-					m_logger.debugLog("failed to update last seen", "UpdateLastSeen()", Logger.severity.WARNING);
+					m_logger.debugLog("failed to update last seen", Logger.severity.WARNING);
 					m_character = null;
 					m_timeoutAt = Globals.ElapsedTime + timeout;
 				}
 
 			store.SearchLastSeen((LastSeen seen) => {
-				m_logger.debugLog("seen: " + seen.Entity.getBestName(), "UpdateLastSeen()");
+				m_logger.debugLog("seen: " + seen.Entity.getBestName());
 				if (seen.Entity is IMyCharacter && seen.Entity.DisplayName.LowerRemoveWhitespace().Contains(m_charName))
 				{
-					m_logger.debugLog("found a last seen for character", "UpdateLastSeen()");
+					m_logger.debugLog("found a last seen for character");
 					m_character = seen;
 					return true;
 				}
 				return false;
 			});
 
-			m_logger.debugLog(m_character == null, "failed to find a character from last seen", "UpdateLastSeen()");
+			m_logger.debugLog(m_character == null, "failed to find a character from last seen");
 		}
 
 	}

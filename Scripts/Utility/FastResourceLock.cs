@@ -137,7 +137,7 @@ namespace Rynchodon
 				while (recentActivity.Count != 0)
 				{
 					string recent = recentActivity.Dequeue().Invoke();
-					myLogger.debugLog("Recent: " + recent, "PrintRecent()", Logger.severity.DEBUG);
+					myLogger.debugLog("Recent: " + recent, Logger.severity.DEBUG);
 				}
 		}
 
@@ -158,7 +158,7 @@ namespace Rynchodon
 
 			// timed out
 			PrintRecent();
-			myLogger.alwaysLog("Lock timed out while trying to acquire exclusive. " + State(), "AcquireExclusive_Debug()", Logger.severity.ERROR);
+			myLogger.alwaysLog("Lock timed out while trying to acquire exclusive. " + State(), Logger.severity.ERROR);
 			throw new TimeoutException("lock timed out");
 		}
 
@@ -180,7 +180,7 @@ namespace Rynchodon
 
 			// timed out
 			PrintRecent();
-			myLogger.alwaysLog("Lock timed out while trying to acquire shared. " + State(), "AcquireShared_Debug()", Logger.severity.ERROR);
+			myLogger.alwaysLog("Lock timed out while trying to acquire shared. " + State(), Logger.severity.ERROR);
 			throw new TimeoutException("lock timed out");
 		}
 
@@ -192,13 +192,13 @@ namespace Rynchodon
 			if (issue)
 			{
 				PrintRecent();
-				myLogger.alwaysLog("Might not be able to release exclusive lock. " + State(), "ReleaseExclusive_Debug()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Might not be able to release exclusive lock. " + State(), Logger.severity.WARNING);
 			}
 
 			FastLock.ReleaseExclusive();
 
 			if (issue)
-				myLogger.alwaysLog("Released exclusive lock successfully.", "ReleaseExclusive_Debug()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Released exclusive lock successfully.", Logger.severity.WARNING);
 
 			AddRecent("leaving ReleaseExclusive_Debug().");
 		}
@@ -211,13 +211,13 @@ namespace Rynchodon
 			if (issue)
 			{
 				PrintRecent();
-				myLogger.alwaysLog("Might not be able to release shared lock. " + State(), "ReleaseShared_Debug()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Might not be able to release shared lock. " + State(), Logger.severity.WARNING);
 			}
 
 			FastLock.ReleaseShared();
 
 			if (issue)
-				myLogger.alwaysLog("Released shared lock successfully.", "ReleaseShared_Debug()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Released shared lock successfully.", Logger.severity.WARNING);
 
 			AddRecent("leaving ReleaseShared_Debug().");
 		}

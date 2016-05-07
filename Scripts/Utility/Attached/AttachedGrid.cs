@@ -25,7 +25,7 @@ namespace Rynchodon.Attached
 
 			public void Add(AttachmentKind kind)
 			{
-				myLogger.debugLog("adding: " + kind, "Add()");
+				myLogger.debugLog("adding: " + kind);
 
 				ushort count;
 				if (!dictionary.TryGetValue(kind, out count))
@@ -35,13 +35,13 @@ namespace Rynchodon.Attached
 				}
 
 				count++;
-				myLogger.debugLog(kind + " count: " + count, "Add()");
+				myLogger.debugLog(kind + " count: " + count);
 				dictionary[kind] = count;
 			}
 
 			public void Remove(AttachmentKind kind)
 			{
-				myLogger.debugLog("removing: " + kind, "Remove()");
+				myLogger.debugLog("removing: " + kind);
 
 				ushort count = dictionary[kind];
 				count--;
@@ -53,7 +53,7 @@ namespace Rynchodon.Attached
 				else
 					dictionary[kind] = count;
 
-				myLogger.debugLog(kind + " count: " + count, "Add()");
+				myLogger.debugLog(kind + " count: " + count);
 			}
 
 		}
@@ -203,7 +203,7 @@ namespace Rynchodon.Attached
 			this.myGrid = grid;
 			Registrar.Add(grid, this);
 
-			myLogger.debugLog("Initialized", "AttachedGrid()");
+			myLogger.debugLog("Initialized");
 		}
 
 		private void AddRemoveConnection(AttachmentKind kind, AttachedGrid attached, bool add)
@@ -220,7 +220,7 @@ namespace Rynchodon.Attached
 					}
 					else
 					{
-						myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, "AddRemoveConnection()", Logger.severity.ERROR);
+						myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, Logger.severity.ERROR);
 						return;
 					}
 				}
@@ -234,7 +234,7 @@ namespace Rynchodon.Attached
 
 		private bool IsGridAttached(AttachedGrid target, AttachmentKind allowedConnections, uint searchId)
 		{
-			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", "IsGridAttached()", Logger.severity.ERROR);
+			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", Logger.severity.ERROR);
 			lastSearchId = searchId;
 
 			using (lock_Connections.AcquireSharedUsing())
@@ -257,7 +257,7 @@ namespace Rynchodon.Attached
 
 		private void RunOnAttached(AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, uint searchId)
 		{
-			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", "GetAttached()", Logger.severity.ERROR);
+			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", Logger.severity.ERROR);
 			lastSearchId = searchId;
 
 			using (lock_Connections.AcquireSharedUsing())

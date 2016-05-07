@@ -56,7 +56,7 @@ namespace Rynchodon
 			CubeGrid.OnClosing += CubeGrid_OnClosing;
 
 			Registrar.Add(CubeGrid, this);
-			myLogger.debugLog("built for: " + CubeGrid.DisplayName, ".ctor()", Logger.severity.DEBUG);
+			myLogger.debugLog("built for: " + CubeGrid.DisplayName, Logger.severity.DEBUG);
 		}
 
 		private void CubeGrid_OnClosing(IMyEntity grid)
@@ -65,12 +65,12 @@ namespace Rynchodon
 			CubeGrid.OnBlockRemoved -= CubeGrid_OnBlockRemoved;
 			CubeGrid.OnClosing -= CubeGrid_OnClosing;
 
-			myLogger.debugLog("closing", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
+			myLogger.debugLog("closing", Logger.severity.DEBUG);
 
 			using (lock_CubeBlocks.AcquireExclusiveUsing())
 				CubeBlocks_Type = null;
 
-			myLogger.debugLog("closed", "CubeGrid_OnMarkForClose()", Logger.severity.DEBUG);
+			myLogger.debugLog("closed", Logger.severity.DEBUG);
 		}
 
 		private void CubeGrid_OnBlockAdded(IMySlimBlock obj)
@@ -100,7 +100,7 @@ namespace Rynchodon
 				DefinitionType.TrySet(asTerm.DefinitionDisplayNameText, myOBtype);
 				TerminalBlocks++;
 			}
-			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockAdded()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
 		}
 
@@ -110,8 +110,8 @@ namespace Rynchodon
 			if (fatblock == null)
 				return;
 
-			myLogger.debugLog("block removed: " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
-			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
+			myLogger.debugLog("block removed: " + obj.getBestName());
+			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName());
 			lock_CubeBlocks.AcquireExclusive();
 			try
 			{
@@ -120,7 +120,7 @@ namespace Rynchodon
 				ListSnapshots<IMyCubeBlock> setBlocks_Type;
 				if (!CubeBlocks_Type.TryGetValue(myOBtype, out setBlocks_Type))
 				{
-					myLogger.debugLog("failed to get list of type: " + myOBtype, "CubeGrid_OnBlockRemoved()");
+					myLogger.debugLog("failed to get list of type: " + myOBtype);
 					return;
 				}
 				if (setBlocks_Type.Count == 1)
@@ -133,9 +133,9 @@ namespace Rynchodon
 				if (asTerm != null)
 					TerminalBlocks--;
 			}
-			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, "CubeGrid_OnBlockRemoved()", Logger.severity.ERROR); }
+			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally { lock_CubeBlocks.ReleaseExclusive(); }
-			myLogger.debugLog("leaving CubeGrid_OnBlockRemoved(): " + obj.getBestName(), "CubeGrid_OnBlockRemoved()");
+			myLogger.debugLog("leaving CubeGrid_OnBlockRemoved(): " + obj.getBestName());
 		}
 
 		/// <returns>an immutable read only list or null if there are no blocks of type T</returns>
@@ -237,7 +237,7 @@ namespace Rynchodon
 				{ return new CubeGridCache(grid); }
 				catch (Exception e)
 				{
-					(new Logger(null, "CubeGridCache")).alwaysLog("Exception on creation: " + e, "GetFor()", Logger.severity.WARNING);
+					(new Logger(null, "CubeGridCache")).alwaysLog("Exception on creation: " + e, Logger.severity.WARNING);
 					return null;
 				}
 			}

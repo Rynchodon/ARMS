@@ -38,7 +38,7 @@ namespace Rynchodon.Settings
 		{
 			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
 			set.Value = value;
-			myLogger.alwaysLog("Setting " + name + " = " + value, "SetSetting()", Logger.severity.INFO);
+			myLogger.alwaysLog("Setting " + name + " = " + value, Logger.severity.INFO);
 		}
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
@@ -76,7 +76,7 @@ namespace Rynchodon.Settings
 				fileVersion = readAll();
 				if (fileVersion != latestVersion)
 					Logger.debugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
-				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, "static Constructor", Logger.severity.INFO);
+				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, Logger.severity.INFO);
 
 				writeAll(); // writing immediately decreases user errors & whining
 			}
@@ -102,19 +102,19 @@ namespace Rynchodon.Settings
 			{
 				if (message == null)
 				{
-					myLogger.debugLog("Message is null", "Server_ReceiveMessage()");
+					myLogger.debugLog("Message is null");
 					return;
 				}
 				if( message.Length < 8)
 				{
-					myLogger.debugLog("Message is too short: " + message.Length, "Server_ReceiveMessage()");
+					myLogger.debugLog("Message is too short: " + message.Length);
 					return;
 				}
 
 				int pos = 0;
 				ulong SteamUserId = ByteConverter.GetUlong(message, ref pos);
 
-				myLogger.debugLog("Received request from: " + SteamUserId, "Server_ReceiveMessage()");
+				myLogger.debugLog("Received request from: " + SteamUserId);
 
 				List<byte> send = new List<byte>();
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
@@ -128,19 +128,19 @@ namespace Rynchodon.Settings
 				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxWeaponRange));
 
 				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, send.ToArray(), SteamUserId))
-					myLogger.debugLog("Sent settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.INFO);
+					myLogger.debugLog("Sent settings to " + SteamUserId, Logger.severity.INFO);
 				else
-					myLogger.alwaysLog("Failed to send settings to " + SteamUserId, "Server_ReceiveMessage()", Logger.severity.ERROR);
+					myLogger.alwaysLog("Failed to send settings to " + SteamUserId, Logger.severity.ERROR);
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, "Server_ReceiveMessage()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
 		private static void Client_ReceiveMessage(byte[] message)
 		{
 			try
 			{
-				myLogger.debugLog("Received settings from server", "Client_ReceiveMessage()");
+				myLogger.debugLog("Received settings from server");
 
 				int pos = 0;
 		
@@ -157,14 +157,14 @@ namespace Rynchodon.Settings
 				SettingsLoaded = true;
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, "Client_ReceiveMessage()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
 		private static void RequestSettingsFromServer()
 		{
 			if (MyAPIGateway.Session.Player == null)
 			{
-				myLogger.alwaysLog("Could not get player, not requesting server settings.", "RequestSettingsFromServer()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Could not get player, not requesting server settings.", Logger.severity.WARNING);
 				SettingsLoaded = true;
 				return;
 			}
@@ -174,9 +174,9 @@ namespace Rynchodon.Settings
 			ByteConverter.AppendBytes(message, MyAPIGateway.Session.Player.SteamUserId, ref pos);
 
 			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
-				myLogger.debugLog("Sent request to server", "RequestSettingsFromServer()", Logger.severity.INFO);
+				myLogger.debugLog("Sent request to server", Logger.severity.INFO);
 			else
-				myLogger.alwaysLog("Failed to send request to server", "RequestSettingsFromServer()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Failed to send request to server", Logger.severity.ERROR);
 		}
 
 		/// <summary>
@@ -236,7 +236,7 @@ namespace Rynchodon.Settings
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, "readAll()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, Logger.severity.WARNING);
 				return -4; // exception while reading
 			}
 			finally
@@ -264,7 +264,7 @@ namespace Rynchodon.Settings
 				settingsWriter.Flush();
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, "writeAll()", Logger.severity.WARNING); }
+			{ myLogger.alwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, Logger.severity.WARNING); }
 			finally
 			{
 				if (settingsWriter != null)
@@ -298,7 +298,7 @@ namespace Rynchodon.Settings
 
 			if (split.Length != 2)
 			{
-				myLogger.alwaysLog("split wrong length: " + split.Length + ", line: " + line, "parse()", Logger.severity.WARNING);
+				myLogger.alwaysLog("split wrong length: " + split.Length + ", line: " + line, Logger.severity.WARNING);
 				return;
 			}
 
@@ -307,12 +307,12 @@ namespace Rynchodon.Settings
 				try
 				{
 					if (AllSettings[name].ValueFromString(split[1]))
-						myLogger.alwaysLog("Setting " + name + " = " + split[1], "parse()", Logger.severity.INFO);
+						myLogger.alwaysLog("Setting " + name + " = " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, "parse()", Logger.severity.WARNING); }
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
 			else
-				myLogger.alwaysLog("Setting does not exist: " + split[0], "parse()", Logger.severity.WARNING);
+				myLogger.alwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
 		}
 
 	}

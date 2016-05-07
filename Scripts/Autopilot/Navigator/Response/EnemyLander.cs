@@ -22,13 +22,13 @@ namespace Rynchodon.Autopilot.Navigator.Response
 
 			if (landingGear == null)
 			{
-				m_logger.debugLog("landingGear param is null, not going to land", "EnemyLander()");
+				m_logger.debugLog("landingGear param is null, not going to land");
 				return;
 			}
 			this.m_hasLandingGear = landingGear.Block is IMyLandingGear;
 			if (!this.m_hasLandingGear)
 			{
-				m_logger.debugLog("landingGear param is not landing geat: " + landingGear.Block.getBestName() + ", not going to land", "EnemyLander()");
+				m_logger.debugLog("landingGear param is not landing geat: " + landingGear.Block.getBestName() + ", not going to land");
 				return;
 			}
 			this.m_flyToGrid = new FlyToGrid(mover, navSet, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);

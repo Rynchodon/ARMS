@@ -61,12 +61,12 @@ namespace Rynchodon.Autopilot
 				value_grid = value;
 				if (value_grid == null)
 				{
-					m_logger.debugLog("no longer have an Enemy", "set_Enemy()", Logger.severity.DEBUG);
+					m_logger.debugLog("no longer have an Enemy", Logger.severity.DEBUG);
 					EndEngage();
 				}
 				else
 				{
-					m_logger.debugLog("Enemy is now: " + value_grid.Entity.getBestName(), "set_Enemy()", Logger.severity.DEBUG);
+					m_logger.debugLog("Enemy is now: " + value_grid.Entity.getBestName(), Logger.severity.DEBUG);
 					SetEngage();
 				}
 			}
@@ -77,13 +77,13 @@ namespace Rynchodon.Autopilot
 			get { return m_curResponse; }
 			set
 			{
-				m_logger.debugLog("Changing response from " + m_curResponse.Response + " to " + value.Response, "set_CurrentResponse()", Logger.severity.DEBUG);
+				m_logger.debugLog("Changing response from " + m_curResponse.Response + " to " + value.Response, Logger.severity.DEBUG);
 				m_navResponse = null;
 				m_curResponse = value;
 				switch (m_curResponse.Response)
 				{
 					case Response.None:
-						m_logger.debugLog("No responses left", "set_Enemy()", Logger.severity.DEBUG);
+						m_logger.debugLog("No responses left", Logger.severity.DEBUG);
 						EndEngage();
 						return;
 					case Response.Fight:
@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 						m_navResponse = new EnemyLander(m_mover, m_navSet, m_landingGear);
 						break;
 					default:
-						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, "set_CurrentResponse()", Logger.severity.WARNING);
+						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, Logger.severity.WARNING);
 						NextResponse();
 						return;
 				}
@@ -110,7 +110,7 @@ namespace Rynchodon.Autopilot
 				GridCondition = m_navResponse.CanTarget;
 				if (Grid != null)
 				{
-					m_logger.debugLog("adding responder: " + m_navResponse, "set_CurrentResponse()", Logger.severity.DEBUG);
+					m_logger.debugLog("adding responder: " + m_navResponse, Logger.severity.DEBUG);
 					SetEngage();
 				}
 			}
@@ -125,7 +125,7 @@ namespace Rynchodon.Autopilot
 			this.m_targetEntityId = entityId;
 			this.m_landingGear = m_navSet.Settings_Current.LandingBlock;
 
-			m_logger.debugLog("Initialized", "EnemyFinder()");
+			m_logger.debugLog("Initialized");
 		}
 
 		public void AddResponses(float range, List<Response> responses)
@@ -138,14 +138,14 @@ namespace Rynchodon.Autopilot
 					ResponseRange rr = m_allResponses[i];
 					if (r == rr.Response)
 					{
-						m_logger.debugLog("ammending old response: " + r + ", range: " + range, "AddResponses()");
+						m_logger.debugLog("ammending old response: " + r + ", range: " + range);
 						found = true;
 						rr.SearchRange = range;
 					}
 				}
 				if (!found)
 				{
-					m_logger.debugLog("adding new response: " + r + ", range: " + range, "AddResponses()");
+					m_logger.debugLog("adding new response: " + r + ", range: " + range);
 					m_allResponses.Add(new ResponseRange(r, range));
 				}
 			}
@@ -160,7 +160,7 @@ namespace Rynchodon.Autopilot
 
 			if (!m_navResponse.CanRespond())
 			{
-				m_logger.debugLog("cannot respond", "Update()");
+				m_logger.debugLog("cannot respond");
 				NextResponse();
 				return;
 			}
@@ -177,7 +177,7 @@ namespace Rynchodon.Autopilot
 				//m_logger.debugLog("SearchRange: " + CurrentResponse.SearchRange + ", distance: " + distance + ", MaximumRange: " + MaximumRange, "Update()");
 				if (!m_engageSet && distance < m_navSet.Settings_Current.DestinationRadius)
 				{
-					m_logger.debugLog("returned to original position", "Update()");
+					m_logger.debugLog("returned to original position");
 					m_originalPosition = Vector3D.PositiveInfinity;
 				}
 			}
@@ -200,7 +200,7 @@ namespace Rynchodon.Autopilot
 		/// This runs after m_navResponse is created and will override settings.
 		private void SetEngage()
 		{
-			m_logger.debugLog("entered", "SetEngage()", Logger.severity.DEBUG);
+			m_logger.debugLog("entered", Logger.severity.DEBUG);
 			m_navSet.OnTaskComplete_NavEngage();
 			m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
@@ -215,21 +215,21 @@ namespace Rynchodon.Autopilot
 				if (m_originalDestEntity == null)
 				{
 					m_originalPosition = m_mover.Block.CubeBlock.GetPosition();
-					m_logger.debugLog("original entity null", "SetEngage()", Logger.severity.DEBUG);
+					m_logger.debugLog("original entity null", Logger.severity.DEBUG);
 				}
 				else if (m_originalDestEntity == m_mover.Block.CubeBlock || m_originalDestEntity == m_mover.Block.CubeGrid)
 				{
 					m_originalDestEntity = null;
 					m_originalPosition = m_mover.Block.CubeBlock.GetPosition();
-					m_logger.debugLog("original entity is me", "SetEngage()", Logger.severity.DEBUG);
+					m_logger.debugLog("original entity is me", Logger.severity.DEBUG);
 				}
 				else
 				{
-					m_logger.debugLog("original entity OK", "SetEngage()", Logger.severity.DEBUG);
+					m_logger.debugLog("original entity OK", Logger.severity.DEBUG);
 					m_originalPosition = m_mover.Block.CubeBlock.GetPosition() - m_originalDestEntity.GetPosition();
 				}
 
-				m_logger.debugLog("original dest entity: " + m_originalDestEntity.getBestName() + ", original position: " + m_originalPosition, "SetEngage()", Logger.severity.DEBUG);
+				m_logger.debugLog("original dest entity: " + m_originalDestEntity.getBestName() + ", original position: " + m_originalPosition, Logger.severity.DEBUG);
 			}
 
 			m_engageSet = true;
@@ -244,17 +244,17 @@ namespace Rynchodon.Autopilot
 			{
 				if (m_originalDestEntity != null)
 				{
-					m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
+					m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, Logger.severity.DEBUG);
 					new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
 				}
 				else
 				{
-					m_logger.debugLog("return to original position: " + m_originalPosition, "EndEngage())", Logger.severity.DEBUG);
+					m_logger.debugLog("return to original position: " + m_originalPosition, Logger.severity.DEBUG);
 					new GOLIS(m_mover, m_navSet, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
 				}
 			}
 			else
-				m_logger.debugLog("original postion is invalid, no return possible", "EndEngage()");
+				m_logger.debugLog("original postion is invalid, no return possible");
 
 			m_engageSet = false;
 		}

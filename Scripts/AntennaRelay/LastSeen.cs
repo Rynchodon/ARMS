@@ -132,7 +132,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.EntityId, out this.Entity))
 			{
-				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.EntityId, "LastSeen()", Logger.severity.WARNING);
+				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.EntityId, Logger.severity.WARNING);
 				return;
 			}
 			this.LastSeenAt = builder.LastSeenAt.ToTimeSpan();

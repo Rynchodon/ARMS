@@ -60,7 +60,7 @@ namespace Rynchodon
 
 				if (matchCount == 0)
 				{
-					myLogger.alwaysLog("failed to match key: " + key + '/' + value, "AmendEntry()", Logger.severity.WARNING);
+					myLogger.alwaysLog("failed to match key: " + key + '/' + value, Logger.severity.WARNING);
 					Failed.Add(key, value);
 				}
 			}

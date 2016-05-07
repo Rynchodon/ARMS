@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
@@ -25,7 +26,7 @@ namespace Rynchodon
 	///	<para>removed for Dev version:</para>
 	///	<para>    System.Diagnostics.Conditional</para>
 	/// <para> </para>
-	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%Class][%Method][%PriState][%SecState]%Message</para>
+	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%Class][%Member][%Line][%PriState][%SecState]%Message</para>
 	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Logger : MySessionComponentBase
@@ -176,8 +177,8 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
-		{ log(level, methodName, toLog, primaryState, secondaryState); }
+		public void debugLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{ log(level, member, lineNumber, toLog, primaryState, secondaryState); }
 
 		/// <summary>
 		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
@@ -189,10 +190,10 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		public void debugLog(bool condition, string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				log(level, methodName, toLog, primaryState, secondaryState);
+				log(level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -205,10 +206,10 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(bool condition, Func<string> toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		public void debugLog(bool condition, Func<string> toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				log(level, methodName, toLog.Invoke(), primaryState, secondaryState);
+				log(level, member, lineNumber, toLog.Invoke(), primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -219,23 +220,9 @@ namespace Rynchodon
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		public void alwaysLog(string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
+		public void alwaysLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			log(level, methodName, toLog, primaryState, secondaryState);
-		}
-
-		/// <summary>
-		/// For logging WARNING and higher severity.
-		/// </summary>
-		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		public void alwaysLog(bool condition, string toLog, string methodName, severity level = severity.TRACE, string primaryState = null, string secondaryState = null)
-		{
-			if (condition)
-				log(level, methodName, toLog, primaryState, secondaryState);
+			log(level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -246,7 +233,7 @@ namespace Rynchodon
 		/// <param name="toLog">message to log</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		private void log(severity level, string methodName, string toLog, string primaryState = null, string secondaryState = null)
+		private void log(severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
 		{
 			if (loggingClosed)
 				return;
@@ -263,7 +250,7 @@ namespace Rynchodon
 			{
 				string[] split = toLog.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 				foreach (string line in split)
-					log(level, methodName, line, primaryState, secondaryState);
+					log(level, member, lineNumber, line, primaryState, secondaryState);
 				return;
 			}
 
@@ -300,7 +287,8 @@ namespace Rynchodon
 				catch { appendWithBrackets("N/A"); }
 				appendWithBrackets(context);
 				appendWithBrackets(m_classname);
-				appendWithBrackets(methodName);
+				appendWithBrackets(member);
+				appendWithBrackets(lineNumber.ToString());
 				appendWithBrackets(primaryState);
 				appendWithBrackets(secondaryState);
 				stringCache.Append(toLog);
@@ -333,7 +321,7 @@ namespace Rynchodon
 			{
 				if (logWriter == null)
 					return;
-				log(severity.INFO, "close()", "Closing log.");
+				alwaysLog("Closing log.");
 				using (lock_log.AcquireExclusiveUsing())
 				{
 					logWriter.Flush();

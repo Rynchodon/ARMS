@@ -111,16 +111,16 @@ namespace Rynchodon.TerminalControl
 			{
 				if (arg.TypeCode != TypeCode.Int64)
 				{
-					m_logger.debugLog("TerminalActionParameter is of wrong type, expected Int64, got " + arg.TypeCode, "DisplayEntities()", Logger.severity.WARNING);
+					m_logger.debugLog("TerminalActionParameter is of wrong type, expected Int64, got " + arg.TypeCode, Logger.severity.WARNING);
 					return;
 				}
 				ByteConverter.AppendBytes(message, (long)arg.Value);
 			}
 
 			if (MyAPIGateway.Multiplayer.SendMessageToSelf(message.ToArray()))
-				m_logger.debugLog("sent message", "DisplayEntities()", Logger.severity.DEBUG);
+				m_logger.debugLog("sent message", Logger.severity.DEBUG);
 			else
-				m_logger.alwaysLog("failed to send message:\nMessage too long (" + message.Count + " > 4096 bytes)\n", "DisplayEntities()", Logger.severity.WARNING);
+				m_logger.alwaysLog("failed to send message:\nMessage too long (" + message.Count + " > 4096 bytes)\n", Logger.severity.WARNING);
 			message.Clear();
 		}
 
@@ -129,7 +129,7 @@ namespace Rynchodon.TerminalControl
 		{
 			if (args.Count != 3)
 			{
-				m_logger.debugLog("Wrong number of arguments, expected 3, got " + args.Count, "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				m_logger.debugLog("Wrong number of arguments, expected 3, got " + args.Count, Logger.severity.WARNING);
 				if (MyAPIGateway.Session.Player != null)
 					block.AppendCustomInfo("Failed to send message:\nWrong number of arguments, expected 3, got " + args.Count + '\n');
 				return;
@@ -145,7 +145,7 @@ namespace Rynchodon.TerminalControl
 			{
 				if (args[i].TypeCode != TypeCode.String)
 				{
-					m_logger.debugLog("TerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode, "DisplayEntities()", Logger.severity.WARNING);
+					m_logger.debugLog("TerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode, Logger.severity.WARNING);
 					if (MyAPIGateway.Session.Player != null)
 						block.AppendCustomInfo("Failed to send message:\nTerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode + '\n');
 					return;
@@ -156,10 +156,10 @@ namespace Rynchodon.TerminalControl
 			}
 
 			if (MyAPIGateway.Multiplayer.SendMessageToSelf(message.ToArray()))
-				m_logger.debugLog("Sent message", "ProgrammableBlock_SendMessage()", Logger.severity.DEBUG);
+				m_logger.debugLog("Sent message", Logger.severity.DEBUG);
 			else
 			{
-				m_logger.alwaysLog("Message too long", "ProgrammableBlock_SendMessage()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Message too long", Logger.severity.WARNING);
 				if (MyAPIGateway.Session.Player != null)
 					block.AppendCustomInfo("Failed to send message:\nMessage too long (" + message.Count + " > 4096 bytes)\n");
 			}

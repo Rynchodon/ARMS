@@ -42,9 +42,9 @@ namespace Rynchodon
 			EnableSunRotation = MyAPIGateway.Session.SessionSettings.EnableSunRotation;
 			mySunDirection = DefSunDirection;
 
-			myLogger.debugLog("Definition SunDirection: " + mySunDirection + ", EnableSunRotation: " + EnableSunRotation + ", SunRotationIntervalMinutes: " + SunRotationIntervalMinutes, "SunProperties()", Logger.severity.INFO);
+			myLogger.debugLog("Definition SunDirection: " + mySunDirection + ", EnableSunRotation: " + EnableSunRotation + ", SunRotationIntervalMinutes: " + SunRotationIntervalMinutes, Logger.severity.INFO);
 			float azimuth, elevation; Vector3.GetAzimuthAndElevation(mySunDirection, out azimuth, out elevation);
-			myLogger.debugLog("azimuth: " + azimuth + ", elevation: " + elevation, "SunProperties()", Logger.severity.DEBUG);
+			myLogger.debugLog("azimuth: " + azimuth + ", elevation: " + elevation, Logger.severity.DEBUG);
 			Instance = this;
 		}
 

@@ -271,11 +271,11 @@ namespace Rynchodon.AntennaRelay
 
 			if (AllDefinitions.TryGetValue(ID, out result))
 			{
-				staticLogger.debugLog("definition already loaded for " + ID, "GetDefinition()");
+				staticLogger.debugLog("definition already loaded for " + ID);
 				return result;
 			}
 
-			staticLogger.debugLog("creating new definition for " + ID, "GetDefinition()");
+			staticLogger.debugLog("creating new definition for " + ID);
 			result = new Definition();
 
 			MyCubeBlockDefinition def = block.GetCubeBlockDefinition();
@@ -284,7 +284,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (string.IsNullOrWhiteSpace(def.DescriptionString))
 			{
-				staticLogger.debugLog("No description, using defaults for " + ID, "GetDefinition()", Logger.severity.WARNING);
+				staticLogger.debugLog("No description, using defaults for " + ID, Logger.severity.WARNING);
 				result.Radar = true;
 				AllDefinitions.Add(ID, result);
 				return result;
@@ -406,7 +406,7 @@ namespace Rynchodon.AntennaRelay
 			if (detectionTypes > 1)
 				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
 
-			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, "RadarEquipment()", Logger.severity.INFO);
+			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
 		}
 
 		public RadarEquipment(IMyEntity radarEntity, Definition radarDef, IMyCubeBlock relationsBlock)
@@ -430,7 +430,7 @@ namespace Rynchodon.AntennaRelay
 			if (detectionTypes > 1)
 				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
 
-			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, "RadarEquipment()", Logger.severity.INFO);
+			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
 		}
 
 		private void CustomInfoBlock_OnClose(IMyEntity obj)
@@ -449,11 +449,11 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (m_node != null || Registrar.TryGetValue(Entity, out m_node))
 					{
-						myLogger.debugLog("sending to storage: " + myLastSeen.Count, "Update100()");
+						myLogger.debugLog("sending to storage: " + myLastSeen.Count);
 						m_node.Storage.Receive(myLastSeen);
 					}
 					else
-						myLogger.debugLog("failed to get node", "Update100()", Logger.severity.WARNING);
+						myLogger.debugLog("failed to get node", Logger.severity.WARNING);
 				}
 
 				myThread.EnqueueAction(Update_OnThread);
@@ -507,7 +507,7 @@ namespace Rynchodon.AntennaRelay
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, "Update_OnThread()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (CubeBlock != null)
 						(CubeBlock as IMyFunctionalBlock).RequestEnable(false);
@@ -541,12 +541,12 @@ namespace Rynchodon.AntennaRelay
 				}
 				else
 				{
-					myLogger.debugLog("making slider match name", "UpdateTargetPowerLevel()");
+					myLogger.debugLog("making slider match name");
 					// make sure slider matches name
 					asBeacon = CubeBlock as Ingame.IMyBeacon;
 					if (asBeacon != null)
 					{
-						myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asBeacon.Radius: " + asBeacon.Radius, "UpdateTargetPowerLevel()");
+						myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asBeacon.Radius: " + asBeacon.Radius);
 						if (PowerLevel_Target != asBeacon.Radius)
 							asBeacon.SetValueFloat("Radius", PowerLevel_Target);
 					}
@@ -555,7 +555,7 @@ namespace Rynchodon.AntennaRelay
 						asRadio = CubeBlock as Ingame.IMyRadioAntenna;
 						if (asRadio != null && PowerLevel_Target != asRadio.Radius)
 						{
-							myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asRadio.Radius: " + asRadio.Radius, "UpdateTargetPowerLevel()");
+							myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asRadio.Radius: " + asRadio.Radius);
 							asRadio.SetValueFloat("Radius", PowerLevel_Target);
 						}
 					}
@@ -567,7 +567,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (this.CubeBlock == null)
 			{
-				myLogger.debugLog("not updating power levels, not a block", "UpdateTargetPowerLevel()");
+				myLogger.debugLog("not updating power levels, not a block");
 				return;
 			}
 
@@ -575,7 +575,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (PowerLevel_Current == PowerLevel_Target)
 			{
-				myLogger.debugLog("at target power level: " + PowerLevel_Current, "UpdatePowerLevel()", Logger.severity.TRACE);
+				myLogger.debugLog("at target power level: " + PowerLevel_Current, Logger.severity.TRACE);
 				return;
 			}
 
@@ -590,7 +590,7 @@ namespace Rynchodon.AntennaRelay
 						IMyCubeBlock CubeBlock = this.CubeBlock;
 
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, "UpdatePowerLevel()", Logger.severity.INFO);
+							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, Logger.severity.INFO);
 
 							string instructions = GetInstructions();
 							if (instructions != null)
@@ -622,7 +622,7 @@ namespace Rynchodon.AntennaRelay
 			if (PowerLevel_Current > PowerLevel_Target)
 				PowerLevel_Current = PowerLevel_Target;
 			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
-			myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", PowerLevel_Current: " + PowerLevel_Current, "UpdatePowerLevel()", Logger.severity.TRACE);
+			myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", PowerLevel_Current: " + PowerLevel_Current, Logger.severity.TRACE);
 		}
 
 		private void JamRadar()
@@ -635,7 +635,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (effectivePowerLevel <= 0)
 			{
-				myLogger.debugLog("no power for jamming", "JamRadar()");
+				myLogger.debugLog("no power for jamming");
 				return;
 			}
 
@@ -654,7 +654,7 @@ namespace Rynchodon.AntennaRelay
 				bool notHostile = !RelationsBlock.canConsiderHostile(otherDevice.RelationsBlock);
 				if (notHostile && myDefinition.JamIncidental == 0f)
 				{
-					myLogger.debugLog("cannot jam a friendly: " + otherDevice.Entity.getBestName(), "JamRadar()", Logger.severity.TRACE);
+					myLogger.debugLog("cannot jam a friendly: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
 					return;
 				}
 
@@ -665,12 +665,12 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (notHostile)
 					{
-						myLogger.debugLog("adding friendly: " + otherDevice.Entity.getBestName(), "JamRadar()", Logger.severity.TRACE);
+						myLogger.debugLog("adding friendly: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
 						jamming_friendly.Add(signalStrength, otherDevice);
 					}
 					else
 					{
-						myLogger.debugLog("adding enemy: " + otherDevice.Entity.getBestName(), "JamRadar()", Logger.severity.TRACE);
+						myLogger.debugLog("adding enemy: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
 						jamming_enemy.Add(signalStrength, otherDevice);
 					}
 				}
@@ -679,7 +679,7 @@ namespace Rynchodon.AntennaRelay
 			// apply jamming
 			if (jamming_enemy.Count == 0)
 			{
-				myLogger.debugLog("no targets to jam", "JamRadar()", Logger.severity.TRACE);
+				myLogger.debugLog("no targets to jam", Logger.severity.TRACE);
 				jamming_friendly.Clear();
 
 				PowerRatio_Jammer = 0f;
@@ -693,23 +693,23 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (deliberateJamming < myDefinition.MaxTargets_Jamming)
 				{
-					myLogger.debugLog("jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key, "JamRadar()", Logger.severity.TRACE);
+					myLogger.debugLog("jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key, Logger.severity.TRACE);
 					pair.Value.beingJammedBy.Add(this, pair.Key);
 					deliberateJamming++;
 				}
 				else
 				{
-					myLogger.debugLog("incidentally jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, "JamRadar()", Logger.severity.TRACE);
+					myLogger.debugLog("incidentally jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, Logger.severity.TRACE);
 					pair.Value.beingJammedBy.Add(this, pair.Key * myDefinition.JamIncidental);
 				}
 			}
 
 			PowerRatio_Jammer = (float)deliberateJamming / (float)myDefinition.MaxTargets_Jamming;
-			myLogger.debugLog("PowerRatio_Jammer: " + PowerRatio_Jammer, "JamRadar()", Logger.severity.TRACE);
+			myLogger.debugLog("PowerRatio_Jammer: " + PowerRatio_Jammer, Logger.severity.TRACE);
 
 			foreach (var pair in jamming_friendly)
 			{
-				myLogger.debugLog("incidentally jamming friendly: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, "JamRadar()", Logger.severity.TRACE);
+				myLogger.debugLog("incidentally jamming friendly: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, Logger.severity.TRACE);
 				pair.Value.beingJammedBy.Add(this, pair.Key * myDefinition.JamIncidental);
 			}
 		}
@@ -720,7 +720,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (PowerLevel_RadarEffective <= 0f)
 			{
-				myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.DEBUG);
+				myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, Logger.severity.DEBUG);
 				return;
 			}
 
@@ -735,17 +735,17 @@ namespace Rynchodon.AntennaRelay
 				if (jamSum > 0f)
 					PowerLevel_RadarEffective -= jamSum;
 
-				myLogger.debugLog("being jammed by " + beingJammedBy.Count + " jammers, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.TRACE);
+				myLogger.debugLog("being jammed by " + beingJammedBy.Count + " jammers, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
 
 				if (PowerLevel_RadarEffective <= 0f)
 				{
-					myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.DEBUG);
+					myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, Logger.severity.DEBUG);
 					PowerLevel_RadarEffective = 0f;
 					return;
 				}
 			}
 			else
-				myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, "ActiveDetection()", Logger.severity.TRACE);
+				myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
 
 			GetNearby(PowerLevel_RadarEffective);
 
@@ -792,7 +792,7 @@ namespace Rynchodon.AntennaRelay
 				radarSignature += decoySignal * decoys;
 
 				myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-					+ ", radar signature: " + radarSignature + ", decoys: " + decoys, "ActiveDetection()", Logger.severity.TRACE);
+					+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
 
 				if (radarSignature > 0)
 				{
@@ -840,7 +840,7 @@ namespace Rynchodon.AntennaRelay
 
 				if (signalStrength > 0)
 				{
-					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), "PassiveDetection()", Logger.severity.TRACE);
+					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
 
 					DetectedInfo detFo;
 					IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;

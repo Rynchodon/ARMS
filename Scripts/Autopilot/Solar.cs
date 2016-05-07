@@ -51,16 +51,16 @@ namespace Rynchodon.Autopilot
 				if (nowFace == (myMotorTurret == null))
 				{
 					if (nowFace)
-						myLogger.debugLog("now set to face sun", "Update10()", Logger.severity.INFO);
+						myLogger.debugLog("now set to face sun", Logger.severity.INFO);
 					else
-						myLogger.debugLog("no longer set to face sun", "Update10()", Logger.severity.INFO);
+						myLogger.debugLog("no longer set to face sun", Logger.severity.INFO);
 
 					myMotorTurret = new MotorTurret(myBlock);
 					myMotorTurret.RotationSpeedMultiplier = 2f;
 				}
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, "Update1()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
 		private void Solar_CustomNameChanged(IMyTerminalBlock obj)

@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Data
 		{
 			get
 			{
-				m_logger.debugLog(Grid == null, "Grid == null", "get_WorldMatrix()", Logger.severity.FATAL);
+				m_logger.debugLog(Grid == null, "Grid == null", Logger.severity.FATAL);
 
 				if (m_lastCalc_worldMatrix != Globals.UpdateCount)
 				{
@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot.Data
 
 			if (for2 == up2 || for2 == Base6Directions.GetFlippedDirection(up2))
 			{
-				m_logger.debugLog("incompatible directions, for2: " + for2 + ", up2: " + up2, "PseudoBlock()");
+				m_logger.debugLog("incompatible directions, for2: " + for2 + ", up2: " + up2);
 				up2 = Base6Directions.GetPerpendicular(for2);
 			}
 
@@ -133,7 +133,7 @@ namespace Rynchodon.Autopilot.Data
 		{
 			if (forward == up || forward == Base6Directions.GetFlippedDirection(up))
 			{
-				m_logger.alwaysLog("incompatible directions, for2: " + forward + ", up2: " + up, "RotateMatrix()", Logger.severity.FATAL);
+				m_logger.alwaysLog("incompatible directions, for2: " + forward + ", up2: " + up, Logger.severity.FATAL);
 				throw new ArgumentException("forward is not perpendicular to up");
 			}
 
@@ -180,11 +180,11 @@ namespace Rynchodon.Autopilot.Data
 		{
 			try
 			{
-				m_logger.debugLog("Closed block: " + obj.getBestName(), "block_OnClose()");
+				m_logger.debugLog("Closed block: " + obj.getBestName());
 				calculateLocalMatrix();
 			}
 			catch (Exception ex)
-			{ m_logger.debugLog("Exception: " + ex, "block_OnClose()"); }
+			{ m_logger.debugLog("Exception: " + ex); }
 		}
 
 		private void calculateLocalMatrix()

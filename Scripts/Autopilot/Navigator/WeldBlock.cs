@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (value_stage == value)
 					return;
 
-				m_logger.debugLog("stage changed from " + value_stage + " to " + value, "set_m_stage()", Logger.severity.DEBUG);
+				m_logger.debugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
 				value_stage = value;
 				m_navSet.OnTaskComplete_NavWay();
 
@@ -119,7 +119,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_targetSlim.Closed())
 			{
-				m_logger.debugLog("target block closed: " + m_targetSlim.getBestName(), "Move()", Logger.severity.INFO);
+				m_logger.debugLog("target block closed: " + m_targetSlim.getBestName(), Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavEngage();
 				EnableWelders(false);
 				return;
@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (m_closestEmptyNeighbour.HasValue && Globals.UpdateCount > m_timeout_start)
 				{
-					m_logger.debugLog("failed to start, dropping neighbour: " + m_closestEmptyNeighbour, "Move()", Logger.severity.DEBUG);
+					m_logger.debugLog("failed to start, dropping neighbour: " + m_closestEmptyNeighbour, Logger.severity.DEBUG);
 
 					if (m_emptyNeighbours.Count > 1)
 					{
@@ -150,7 +150,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					else
 					{
-						m_logger.debugLog("tried every empty neighbour, giving up", "Move()", Logger.severity.INFO);
+						m_logger.debugLog("tried every empty neighbour, giving up", Logger.severity.INFO);
 
 						EnableWelders(false);
 						m_stage = Stage.Retreat;
@@ -164,7 +164,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 					if (!m_closestEmptyNeighbour.HasValue)
 					{
-						m_logger.debugLog("tried every empty neighbour, giving up", "Move()", Logger.severity.INFO);
+						m_logger.debugLog("tried every empty neighbour, giving up", Logger.severity.INFO);
 
 						EnableWelders(false);
 						m_stage = Stage.Retreat;
@@ -200,10 +200,10 @@ namespace Rynchodon.Autopilot.Navigator
 			float minDist = m_offset + 10f; minDist *= minDist;
 			if (Vector3D.DistanceSquared(m_welder.WorldPosition, m_targetWorld) > minDist)
 			{
-				m_logger.debugLog("moved away from: " + m_targetSlim.getBestName(), "Retreat()", Logger.severity.DEBUG);
+				m_logger.debugLog("moved away from: " + m_targetSlim.getBestName(), Logger.severity.DEBUG);
 				if (!m_weldProjection && m_targetSlim.Damage() < m_slimTarget_initDmg)
 				{
-					m_logger.debugLog(m_targetSlim.Damage() != 0f, "assuming ship ran out of components, damage: " + m_targetSlim.Damage(), "Retreat()");
+					m_logger.debugLog(m_targetSlim.Damage() != 0f, "assuming ship ran out of components, damage: " + m_targetSlim.Damage());
 					m_navSet.OnTaskComplete_NavEngage();
 					m_mover.StopMove();
 					m_mover.StopRotate();
@@ -211,7 +211,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					m_logger.debugLog("no welding done, trying another approach", "Retreat()");
+					m_logger.debugLog("no welding done, trying another approach");
 					if (m_emptyNeighbours.Count > 1)
 					{
 						// if we were very close when we started, no neighbour would have been chosen
@@ -225,7 +225,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					else
 					{
-						m_logger.debugLog("tried every empty neighbour, giving up", "Retreat()", Logger.severity.INFO);
+						m_logger.debugLog("tried every empty neighbour, giving up", Logger.severity.INFO);
 						m_navSet.OnTaskComplete_NavEngage();
 						m_mover.StopMove();
 						m_mover.StopRotate();
@@ -241,11 +241,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void MoveToTarget()
 		{
-			m_logger.debugLog(m_stage != Stage.Approach && m_stage != Stage.Weld, "moving to target in wrong stage", "MoveToTarget()", Logger.severity.FATAL);
+			m_logger.debugLog(m_stage != Stage.Approach && m_stage != Stage.Weld, "moving to target in wrong stage", Logger.severity.FATAL);
 
 			if ((Globals.UpdateCount - m_lastWeld) > 1200ul)
 			{
-				m_logger.debugLog("failed to repair block", "MoveToTarget()");
+				m_logger.debugLog("failed to repair block");
 				EnableWelders(false);
 				m_stage = Stage.Retreat;
 				return;
@@ -257,7 +257,7 @@ namespace Rynchodon.Autopilot.Navigator
 				IMySlimBlock placed = m_realGrid.GetCubeBlock(m_targetCell);
 				if (placed != null)
 				{
-					m_logger.debugLog("projected target placed", "MoveToTarget()", Logger.severity.DEBUG);
+					m_logger.debugLog("projected target placed", Logger.severity.DEBUG);
 					m_weldProjection = false;
 					m_targetSlim = placed;
 				}
@@ -280,7 +280,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (!m_weldProjection && m_targetSlim.Damage() == 0f && (Globals.UpdateCount - m_lastWeld) > 120ul)
 			{
-				m_logger.debugLog("target block repaired: " + m_targetSlim.getBestName(), "MoveToTarget()", Logger.severity.DEBUG);
+				m_logger.debugLog("target block repaired: " + m_targetSlim.getBestName(), Logger.severity.DEBUG);
 				EnableWelders(false);
 				m_stage = Stage.Retreat;
 				return;
@@ -316,20 +316,20 @@ namespace Rynchodon.Autopilot.Navigator
 			m_weldersEnabled = enable;
 
 			if (enable)
-				m_logger.debugLog("Enabling welders", "EnableWelders()", Logger.severity.DEBUG);
+				m_logger.debugLog("Enabling welders", Logger.severity.DEBUG);
 			else
-				m_logger.debugLog("Disabling welders", "EnableWelders()", Logger.severity.DEBUG);
+				m_logger.debugLog("Disabling welders", Logger.severity.DEBUG);
 
 			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 			if (cache == null)
 			{
-				m_logger.debugLog("Failed to get cache", "EnableWelders()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return;
 			}
 			var allWelders = cache.GetBlocksOfType(typeof(MyObjectBuilder_ShipWelder));
 			if (allWelders == null)
 			{
-				m_logger.debugLog("Failed to get block list", "EnableWelders()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
 				return;
 			}
 
@@ -351,7 +351,7 @@ namespace Rynchodon.Autopilot.Navigator
 				IMySlimBlock slim = m_realGrid.GetCubeBlock(emptyCell);
 				if (slim != null)
 				{
-					m_logger.debugLog("block placed at " + emptyCell, "GetClosestEmptyNeighbour()", Logger.severity.DEBUG);
+					m_logger.debugLog("block placed at " + emptyCell, Logger.severity.DEBUG);
 					if (removeList == null)
 						removeList = new List<Vector3I>();
 					removeList.Add(emptyCell);
@@ -371,8 +371,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (Vector3I cell in removeList)
 					m_emptyNeighbours.Remove(cell);
 
-			m_logger.debugLog(m_closestEmptyNeighbour.HasValue,
-				() => "closest cell: " + m_closestEmptyNeighbour + ", closest position: " + m_realGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value), "GetClosestEmptyNeighbour()", Logger.severity.DEBUG);
+			m_logger.debugLog(m_closestEmptyNeighbour.HasValue, () => "closest cell: " + m_closestEmptyNeighbour + ", closest position: " + m_realGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value), Logger.severity.DEBUG);
 		}
 
 	}

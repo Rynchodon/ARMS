@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (value_landingState == value)
 					return;
 
-				m_logger.debugLog("changing landing state to " + value, "set_m_landingState()", Logger.severity.DEBUG);
+				m_logger.debugLog("changing landing state to " + value, Logger.severity.DEBUG);
 				value_landingState = value;
 
 				switch (value)
@@ -78,7 +78,7 @@ namespace Rynchodon.Autopilot.Navigator
 							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
 							if (asFunc != null && !asFunc.Enabled)
 							{
-								m_logger.debugLog("Enabling m_navBlock: " + m_navBlock.Block.DisplayNameText, "set_m_landingState()", Logger.severity.DEBUG);
+								m_logger.debugLog("Enabling m_navBlock: " + m_navBlock.Block.DisplayNameText, Logger.severity.DEBUG);
 								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(true), m_logger);
 							}
 							IMyLandingGear asGear = m_navBlock.Block as IMyLandingGear;
@@ -122,7 +122,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_landingState = LandingState.Approach;
 				else
 				{
-					m_logger.debugLog("landingBlock is not functional, player error? : " + landingBlock.Block.DisplayNameText, "FlyToGrid()", Logger.severity.INFO);
+					m_logger.debugLog("landingBlock is not functional, player error? : " + landingBlock.Block.DisplayNameText, Logger.severity.INFO);
 					m_landingState = LandingState.None;
 				}
 
@@ -130,12 +130,12 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					if (!(landingBlock.Block is IMyLandingGear))
 					{
-						m_logger.debugLog("cannot land block without a target", "FlyToGrid()", Logger.severity.INFO);
+						m_logger.debugLog("cannot land block without a target", Logger.severity.INFO);
 						m_landingState = LandingState.None;
 					}
 					else
 					{
-						m_logger.debugLog("golden retriever mode enabled", "FlyToGrid()", Logger.severity.INFO);
+						m_logger.debugLog("golden retriever mode enabled", Logger.severity.INFO);
 						m_landGearWithoutTargetBlock = true;
 					}
 				}
@@ -157,7 +157,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_landingDirection = m_targetBlock.Forward.Value;
 				else
 				{
-					m_logger.debugLog("Player failed to specify landing direction and it could not be determined.", "FlyToGrid()", Logger.severity.INFO);
+					m_logger.debugLog("Player failed to specify landing direction and it could not be determined.", Logger.severity.INFO);
 					m_landingState = LandingState.None;
 				}
 
@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot.Navigator
 					new UnLander(mover, navSet, landingBlock);
 
 					m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
-					m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize, "FlyToGrid()");
+					m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize);
 				}
 			}
 
@@ -190,7 +190,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_reservedTarget != 0L && s_reservedTargets != null)
 			{
-				m_logger.debugLog("unreserve: " + m_reservedTarget, "UnreserveTarget()");
+				m_logger.debugLog("unreserve: " + m_reservedTarget);
 				s_reservedTargets.Remove(m_reservedTarget);
 				m_reservedTarget = 0L;
 			}
@@ -205,33 +205,33 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (s_reservedTargets.Add(target))
 			{
-				m_logger.debugLog("reserve: " + target, "ReserveTarget()");
+				m_logger.debugLog("reserve: " + target);
 				m_reservedTarget = target;
 				return true;
 			}
 			else
-				m_logger.debugLog("cannot reserve: " + target, "ReserveTarget()");
+				m_logger.debugLog("cannot reserve: " + target);
 			return false;
 		}
 
 		public override void Move()
 		{
-			m_logger.debugLog(m_gridFinder == null, "m_gridFinder == null", "Move()", Logger.severity.FATAL);
-			m_logger.debugLog(m_navSet == null, "m_navSet == null", "Move()", Logger.severity.FATAL);
-			m_logger.debugLog(m_mover == null, "m_mover == null", "Move()", Logger.severity.FATAL);
-			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", "Move()", Logger.severity.FATAL);
+			m_logger.debugLog(m_gridFinder == null, "m_gridFinder == null", Logger.severity.FATAL);
+			m_logger.debugLog(m_navSet == null, "m_navSet == null", Logger.severity.FATAL);
+			m_logger.debugLog(m_mover == null, "m_mover == null", Logger.severity.FATAL);
+			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", Logger.severity.FATAL);
 
 			m_gridFinder.Update();
 
 			if (m_gridFinder.Grid == null)
 			{
-				m_logger.debugLog("searching", "Move()");
+				m_logger.debugLog("searching");
 				m_mover.StopMove();
 
 				// only timeout if (Grid == null), ship could simply be waiting its turn
 				if (Globals.ElapsedTime > m_searchTimeoutAt)
 				{
-					m_logger.debugLog("Search timed out", "Move()", Logger.severity.INFO);
+					m_logger.debugLog("Search timed out", Logger.severity.INFO);
 					m_navSet.OnTaskComplete(m_settingLevel);
 					UnreserveTarget();
 					m_mover.StopMove();
@@ -241,7 +241,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (m_landingState > LandingState.Approach)
 				{
-					m_logger.debugLog("Decreasing landing state from " + m_landingState + " to " + LandingState.Approach, "Move()", Logger.severity.DEBUG);
+					m_logger.debugLog("Decreasing landing state from " + m_landingState + " to " + LandingState.Approach, Logger.severity.DEBUG);
 					m_landingState = LandingState.Approach;
 				}
 
@@ -315,7 +315,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
-				m_logger.debugLog("no Block, not facing", "Rotate()");
+				m_logger.debugLog("no Block, not facing");
 				m_mover.StopRotate();
 				return;
 			}
@@ -323,7 +323,7 @@ namespace Rynchodon.Autopilot.Navigator
 			//m_logger.debugLog("rotating for landing", "Rotate()");
 			if (IsLocked())
 			{
-				m_logger.debugLog("already landed", "Rotate()");
+				m_logger.debugLog("already landed");
 				return;
 			}
 			m_mover.CalcRotate(m_navBlock, m_gridFinder.Block, m_landingDirection, m_targetBlock.Upward);
@@ -375,14 +375,14 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (IsLocked())
 			{
-				m_logger.debugLog("Attached!", "Move_Land()", Logger.severity.INFO);
+				m_logger.debugLog("Attached!", Logger.severity.INFO);
 				m_navSet.OnTaskComplete(m_settingLevel);
 				UnreserveTarget();
 				m_mover.StopMove(false);
 				m_mover.StopRotate();
 				if (m_navSet.Shopper != null)
 				{
-					m_logger.debugLog("starting shopper", "Move_Land()");
+					m_logger.debugLog("starting shopper");
 					m_navSet.Shopper.Start();
 				}
 				return;
@@ -394,14 +394,14 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_navSet.Settings_Current.Stay_In_Formation)
 						{
-							m_logger.debugLog("Maintaining relative position to target", "Move_Land()");
+							m_logger.debugLog("Maintaining relative position to target");
 							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
 						}
 						else
 						{
 							if (m_navSet.DirectionMatched())
 							{
-								m_logger.debugLog("Arrived at target", "Move_Land()", Logger.severity.INFO);
+								m_logger.debugLog("Arrived at target", Logger.severity.INFO);
 								m_navSet.OnTaskComplete(m_settingLevel);
 								UnreserveTarget();
 								m_mover.StopRotate();
@@ -429,7 +429,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_gridFinder.Block != null)
 						{
-							m_logger.debugLog("Have a block, starting landing sequence", "Move_Land()", Logger.severity.DEBUG);
+							m_logger.debugLog("Have a block, starting landing sequence", Logger.severity.DEBUG);
 							m_landingState = LandingState.LineUp;
 							return;
 						}
@@ -440,7 +440,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_gridFinder.Block == null)
 						{
-							m_logger.debugLog("lost block", "Move_Land()");
+							m_logger.debugLog("lost block");
 							m_landingState = LandingState.Holding;
 							return;
 						}
@@ -449,7 +449,7 @@ namespace Rynchodon.Autopilot.Navigator
 						{
 							if (m_navSet.Settings_Current.Distance < 10f)
 							{
-								m_logger.debugLog("Reached line: " + m_navSet.Settings_Current.Distance, "Move_Land()");
+								m_logger.debugLog("Reached line: " + m_navSet.Settings_Current.Distance);
 								m_landingState = LandingState.Landing;
 								return;
 							}
@@ -466,7 +466,7 @@ namespace Rynchodon.Autopilot.Navigator
 							Vector3D targetPosition = destination + Vector3.Normalize(directAway) * m_navSet.Settings_Current.DestinationRadius;
 
 							m_logger.debugLog("Pathfinder cannot rotate, moving away. destination: " + destination + ", directAway: " + Vector3.Normalize(directAway) +
-								", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius + ", targetPosition: " + targetPosition, "Move_Land()");
+								", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius + ", targetPosition: " + targetPosition);
 
 							m_mover.CalcMove(m_navBlock, targetPosition, m_gridFinder.Grid.GetLinearVelocity());
 							return;
@@ -492,14 +492,14 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_gridFinder.Block == null)
 						{
-							m_logger.debugLog("lost block", "Move_Land()");
+							m_logger.debugLog("lost block");
 							m_landingState = LandingState.Holding;
 							return;
 						}
 
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
-							m_logger.debugLog("waiting for direction to match", "Move_Land()");
+							m_logger.debugLog("waiting for direction to match");
 							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
 							return;
 						}
@@ -524,12 +524,12 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
-							m_logger.debugLog("waiting for direction to match", "Move_Land()");
+							m_logger.debugLog("waiting for direction to match");
 							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
 							return;
 						}
 
-						m_logger.debugLog("moving to " + m_targetPosition, "Move_Land()");
+						m_logger.debugLog("moving to " + m_targetPosition);
 						m_mover.CalcMove(m_navBlock, m_targetPosition, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);
 						return;
 					}

@@ -63,7 +63,7 @@ namespace Rynchodon.Weapons
 
 			Parse(instructions);
 
-			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count, "ParseAll()");
+			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count);
 			return InstructFound || Errors.Count == 0;
 		}
 
@@ -77,13 +77,13 @@ namespace Rynchodon.Weapons
 		{
 			if (string.IsNullOrWhiteSpace(instructions))
 			{
-				myLogger.debugLog("no instructions", "Parse()");
+				myLogger.debugLog("no instructions");
 				return;
 			}
 
 			if (CurrentIndex >= 1000)
 			{
-				myLogger.debugLog("Instruction limit", "Parse()", Logger.severity.WARNING);
+				myLogger.debugLog("Instruction limit", Logger.severity.WARNING);
 				Errors.Add("limit");
 				return;
 			}
@@ -92,19 +92,19 @@ namespace Rynchodon.Weapons
 
 			if (splitInstructions.Length == 0)
 			{
-				myLogger.debugLog("No instructions after split: " + instructions, "Parse()", Logger.severity.WARNING);
+				myLogger.debugLog("No instructions after split: " + instructions, Logger.severity.WARNING);
 				return;
 			}
 
 			foreach (string instruct in splitInstructions)
 			{
-				myLogger.debugLog("instruct = " + instruct, "Parse()");
+				myLogger.debugLog("instruct = " + instruct);
 				CurrentIndex++;
 				if (instruct.StartsWith("(") && instruct.EndsWith(")"))
 				{
 					string blockList = instruct.Substring(1, instruct.Length - 2);
 					ParseBlockList(blockList);
-					myLogger.debugLog("good instruct: " + instruct, "Parse()");
+					myLogger.debugLog("good instruct: " + instruct);
 					InstructFound = true;
 				}
 				else
@@ -114,12 +114,12 @@ namespace Rynchodon.Weapons
 						|| ParseEntityId(instruct)
 						|| GetFromPanel(instruct))
 					{
-						myLogger.debugLog("good instruct: " + instruct, "Parse()");
+						myLogger.debugLog("good instruct: " + instruct);
 						InstructFound = true;
 					}
 					else
 					{
-						myLogger.debugLog("failed to parse: " + instruct, "Parse()", Logger.severity.WARNING);
+						myLogger.debugLog("failed to parse: " + instruct, Logger.severity.WARNING);
 						Errors.Add(instruct);
 					}
 			}
@@ -151,7 +151,7 @@ namespace Rynchodon.Weapons
 			TargetType result;
 			if (Enum.TryParse<TargetType>(toParse, true, out result))
 			{
-				myLogger.debugLog("Adding target type: " + toParse + "/" + result, "ParseTargetType()");
+				myLogger.debugLog("Adding target type: " + toParse + "/" + result);
 				Options.CanTarget |= result;
 				return true;
 			}
@@ -172,7 +172,7 @@ namespace Rynchodon.Weapons
 			TargetingFlags result;
 			if (Enum.TryParse<TargetingFlags>(toParse, true, out result))
 			{
-				myLogger.debugLog("Adding target flag: " + toParse, "ParseTargetFlag()");
+				myLogger.debugLog("Adding target flag: " + toParse);
 				Options.Flags |= result;
 				return true;
 			}
@@ -206,11 +206,11 @@ namespace Rynchodon.Weapons
 			int range;
 			if (int.TryParse(rangeString, out range))
 			{
-				myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString, "ParseRadius()");
+				myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString);
 				Options.TargetingRange = range;
 				return true;
 			}
-			myLogger.debugLog("failed to parse:" + rangeString, "ParseRadius()", Logger.severity.WARNING);
+			myLogger.debugLog("failed to parse:" + rangeString, Logger.severity.WARNING);
 			return false;
 		}
 
@@ -262,18 +262,18 @@ namespace Rynchodon.Weapons
 			Ingame.IMyTextPanel panel;
 			if (!GetTextPanel(panelName, out panel))
 			{
-				myLogger.debugLog("Panel not found: " + panelName, "GetFromPanel()");
+				myLogger.debugLog("Panel not found: " + panelName);
 				return false;
 			}
 
-			myLogger.debugLog("Found panel: " + panel.DisplayNameText, "GetFromPanel()");
+			myLogger.debugLog("Found panel: " + panel.DisplayNameText);
 
 			string panelText = panel.GetPublicText();
 			AddMonitor(panel.GetPublicText);
 
 			if (string.IsNullOrWhiteSpace(panelText))
 			{
-				myLogger.debugLog("Panel has no text: " + panel.DisplayNameText, "GetFromPanel()");
+				myLogger.debugLog("Panel has no text: " + panel.DisplayNameText);
 				return true;
 			}
 
@@ -288,7 +288,7 @@ namespace Rynchodon.Weapons
 				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
-					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 					return false;
 				}
 				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
@@ -302,14 +302,14 @@ namespace Rynchodon.Weapons
 
 			if (startOfCommands < 0)
 			{
-				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				return false;
 			}
 
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
-				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				return false;
 			}
 

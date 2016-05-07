@@ -78,7 +78,7 @@ namespace Rynchodon.Autopilot.Instruction
 		
 			Errors.Clear();
 
-			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions, "enqueueAllActions()");
+			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions);
 			enqueueAllActions_continue(instructions);
 		}
 
@@ -98,7 +98,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			Errors.Clear();
 
-			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParsed + ", instructions = " + instructions, "enqueueAllActions()");
+			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParsed + ", instructions = " + instructions);
 			enqueueAllActions_continue(preParsed);
 		}
 
@@ -130,12 +130,12 @@ namespace Rynchodon.Autopilot.Instruction
 			{
 				if (!enqueueAction(splitInstructions[i].RemoveWhitespace()))
 				{
-					m_logger.debugLog("Failed to parse instruction " + splitInstructions[i], "enqueueAllActions()", Logger.severity.WARNING);
+					m_logger.debugLog("Failed to parse instruction " + splitInstructions[i], Logger.severity.WARNING);
 					Errors.AppendLine("Syntax:" + splitInstructions[i]);
 					SyntaxError = true;
 				}
 				else
-					m_logger.debugLog("Parsed instruction " + splitInstructions[i], "enqueueAllActions()");
+					m_logger.debugLog("Parsed instruction " + splitInstructions[i]);
 			}
 		}
 
@@ -150,13 +150,13 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (string.IsNullOrWhiteSpace(instruction))
 			{
-				m_logger.debugLog("Ignoring whitespace: \"" + instruction + "\"", "enqueueAction()");
+				m_logger.debugLog("Ignoring whitespace: \"" + instruction + "\"");
 				return true;
 			}
 
 			if (instruction.Length < 2)
 			{
-				m_logger.debugLog("instruction too short: " + instruction.Length, "getAction()", Logger.severity.TRACE);
+				m_logger.debugLog("instruction too short: " + instruction.Length, Logger.severity.TRACE);
 				return false;
 			}
 
@@ -201,7 +201,7 @@ namespace Rynchodon.Autopilot.Instruction
 				case "disable":
 					{
 						wordAction = () => {
-							m_logger.debugLog("Disabling", "getAction_word()", Logger.severity.DEBUG);
+							m_logger.debugLog("Disabling", Logger.severity.DEBUG);
 							Mover.SetControl(false);
 						};
 						return true;
@@ -224,7 +224,7 @@ namespace Rynchodon.Autopilot.Instruction
 				case "line":
 					{
 						wordAction = () => {
-							m_logger.debugLog("set line", "getAction_word()");
+							m_logger.debugLog("set line");
 							NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
 							NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
 						};
@@ -299,7 +299,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			string lowerCase = instruction.ToLower();
 			string dataLowerCase = lowerCase.Substring(1);
-			m_logger.debugLog("instruction = " + instruction + ", lowerCase = " + lowerCase + ", dataLowerCase = " + dataLowerCase + ", lowerCase[0] = " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+			m_logger.debugLog("instruction = " + instruction + ", lowerCase = " + lowerCase + ", dataLowerCase = " + dataLowerCase + ", lowerCase[0] = " + lowerCase[0], Logger.severity.TRACE);
 
 			switch (lowerCase[0])
 			{
@@ -335,7 +335,7 @@ namespace Rynchodon.Autopilot.Instruction
 					return getAction_wait(out instructionAction, dataLowerCase);
 				default:
 					{
-						m_logger.debugLog("could not match: " + lowerCase[0], "getAction()", Logger.severity.TRACE);
+						m_logger.debugLog("could not match: " + lowerCase[0], Logger.severity.TRACE);
 						instructionAction = null;
 						return false;
 					}
@@ -369,7 +369,7 @@ namespace Rynchodon.Autopilot.Instruction
 			Ingame.IMyTextPanel panel = panelAsCubeBlock as Ingame.IMyTextPanel;
 			if (panel == null)
 			{
-				m_logger.debugLog("not a Text Panel: " + panelAsCubeBlock.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				m_logger.debugLog("not a Text Panel: " + panelAsCubeBlock.DisplayNameText, Logger.severity.DEBUG);
 				return false;
 			}
 
@@ -394,7 +394,7 @@ namespace Rynchodon.Autopilot.Instruction
 				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
-					m_logger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+					m_logger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 					Errors.Append("For ");
 					Errors.Append(panel.DisplayNameText);
 					Errors.Append(", could not find ");
@@ -412,7 +412,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (startOfCommands < 0)
 			{
-				m_logger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				m_logger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				Errors.Append("For ");
 				Errors.Append(panel.DisplayNameText);
 				if (identifier != null)
@@ -427,7 +427,7 @@ namespace Rynchodon.Autopilot.Instruction
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
-				m_logger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.DEBUG);
+				m_logger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				Errors.Append("For ");
 				Errors.Append(panel.DisplayNameText);
 				if (identifier != null)
@@ -439,7 +439,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return true;
 			}
 
-			m_logger.debugLog("fetching commands from panel: " + panel.DisplayNameText, "addAction_textPanel()", Logger.severity.TRACE);
+			m_logger.debugLog("fetching commands from panel: " + panel.DisplayNameText, Logger.severity.TRACE);
 			string commands = panelText.Substring(startOfCommands, endOfCommands - startOfCommands);
 			commands.GpsToCSV(out commands);
 			enqueueAllActions_continue(commands);
@@ -500,11 +500,11 @@ namespace Rynchodon.Autopilot.Instruction
 				ITerminalAction actionToRun = terminalBlock.GetActionWithName(actionString); // get actionToRun on every iteration so invalid blocks can be ignored
 				if (actionToRun != null)
 				{
-					m_logger.debugLog("running action: " + actionString + " on block: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.DEBUG);
+					m_logger.debugLog("running action: " + actionString + " on block: " + fatblock.DisplayNameText, Logger.severity.DEBUG);
 					actionToRun.Apply(fatblock);
 				}
 				else
-					m_logger.debugLog("could not get action: " + actionString + " for: " + fatblock.DisplayNameText, "runActionOnBlock()", Logger.severity.TRACE);
+					m_logger.debugLog("could not get action: " + actionString + " for: " + fatblock.DisplayNameText, Logger.severity.TRACE);
 
 				return false;
 			}, true);
@@ -525,7 +525,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			instructionAction = () => {
-				m_logger.debugLog("name: " + name + ", forward: " + forward + ", upward: " + upward, "getAction_blockSearch()");
+				m_logger.debugLog("name: " + name + ", forward: " + forward + ", upward: " + upward);
 				NavSet.Settings_Task_NavRot.DestinationBlock = new BlockNameOrientation(name, forward, upward);
 			};
 			return true;
@@ -558,7 +558,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
 			{
-				m_logger.debugLog("Cannot engage, weapon control is disabled.", "getAction_engage()", Logger.severity.WARNING);
+				m_logger.debugLog("Cannot engage, weapon control is disabled.", Logger.severity.WARNING);
 				Errors.AppendLine("Weapon control is disabled");
 				instructionAction = null;
 				return false;
@@ -636,7 +636,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (distance < 0f)
 			{
-				m_logger.debugLog("failed to get distance", "getAction_engage()");
+				m_logger.debugLog("failed to get distance");
 				instructionAction = null;
 				return false;
 			}
@@ -661,13 +661,13 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			execute = null;
 			Vector3 result;
-			m_logger.debugLog("checking flyOldStyle", "getAction_flyTo()", Logger.severity.TRACE);
+			m_logger.debugLog("checking flyOldStyle", Logger.severity.TRACE);
 			if (!flyOldStyle(out result, instruction))
 			{
-				m_logger.debugLog("checking flyTo_generic", "getAction_flyTo()", Logger.severity.TRACE);
+				m_logger.debugLog("checking flyTo_generic", Logger.severity.TRACE);
 				if (!flyTo_generic(out result, instruction))
 				{
-					m_logger.debugLog("failed both styles", "getAction_flyTo()", Logger.severity.TRACE);
+					m_logger.debugLog("failed both styles", Logger.severity.TRACE);
 					return false;
 				}
 			}
@@ -685,7 +685,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>true iff successful</returns>
 		private bool flyOldStyle(out Vector3 result, string instruction)
 		{
-			m_logger.debugLog("entered flyOldStyle(result, " + instruction + ")", "flyTo_generic()", Logger.severity.TRACE);
+			m_logger.debugLog("entered flyOldStyle(result, " + instruction + ")", Logger.severity.TRACE);
 
 			result = Vector3.Zero;
 			string[] coordsString = instruction.Split(',');
@@ -712,7 +712,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
-			m_logger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")", "getAction_gridDest()");
+			m_logger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")");
 			execute = () => new FlyToGrid(Mover, NavSet, instruction);
 
 			return true;
@@ -739,7 +739,7 @@ namespace Rynchodon.Autopilot.Instruction
 					byte[] oreIds;
 					if (!OreDetector.TryGetMaterial(splitComma[i], out oreIds))
 					{
-						m_logger.debugLog("Syntax Error. Not ore: " + oreName, "getAction_harvestVoxel()", Logger.severity.WARNING);
+						m_logger.debugLog("Syntax Error. Not ore: " + oreName, Logger.severity.WARNING);
 						Errors.Append("Not ore: ");
 						Errors.AppendLine(oreName);
 						execute = null;
@@ -769,7 +769,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionAction = () => {
 				PseudoBlock asPB = new PseudoBlock(landingBlock, forward, upward);
 
-				m_logger.debugLog("setting LandingBlock to " + landingBlock.DisplayNameText, "GetLocalBlock()");
+				m_logger.debugLog("setting LandingBlock to " + landingBlock.DisplayNameText);
 				NavSet.Settings_Task_NavRot.LandingBlock = asPB;
 				NavSet.LastLandingBlock = asPB;
 			};
@@ -815,7 +815,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				if (navigationBlock is IMyLaserAntenna || navigationBlock is SE_Ingame.IMySolarPanel || navigationBlock is SE_Ingame.IMyOxygenFarm)
 					new Facer(Mover, NavSet, asPB);
-				m_logger.debugLog("setting NavigationBlock to " + navigationBlock.DisplayNameText, "GetLocalBlock()");
+				m_logger.debugLog("setting NavigationBlock to " + navigationBlock.DisplayNameText);
 				NavSet.Settings_Task_NavRot.NavigationBlock = asPB;
 			};
 
@@ -848,7 +848,7 @@ namespace Rynchodon.Autopilot.Instruction
 				for (int i = 0; i < coordsFloat.Length; i++)
 					if (!float.TryParse(coordsString[i], out coordsFloat[i]))
 					{
-						m_logger.debugLog("failed to parse: " + coordsString[i], "offset_oldStyle()", Logger.severity.TRACE);
+						m_logger.debugLog("failed to parse: " + coordsString[i], Logger.severity.TRACE);
 						return false;
 					}
 				result = new Vector3(coordsFloat[0], coordsFloat[1], coordsFloat[2]);
@@ -856,7 +856,7 @@ namespace Rynchodon.Autopilot.Instruction
 				//owner.CNS.destination_offset = new Vector3I((int)coordsDouble[0], (int)coordsDouble[1], (int)coordsDouble[2]);
 				//myLogger.debugLog("setting offset to " + owner.CNS.destination_offset, "addInstruction()", Logger.severity.DEBUG);
 			}
-			m_logger.debugLog("wrong length: " + coordsString.Length, "offset_oldStyle()", Logger.severity.TRACE);
+			m_logger.debugLog("wrong length: " + coordsString.Length, Logger.severity.TRACE);
 			return false;
 		}
 
@@ -932,7 +932,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			instructionAction = () => {
 				PseudoBlock asPB = new PseudoBlock(unlandBlock, forward, upward);
-				m_logger.debugLog("unlanding " + unlandBlock.DisplayNameText, "GetLocalBlock()");
+				m_logger.debugLog("unlanding " + unlandBlock.DisplayNameText);
 				new UnLander(Mover, NavSet, asPB);
 			};
 
@@ -962,7 +962,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			instructionAction = () => {
 				NavSet.Settings_Task_NavWay.WaitUntil = Globals.ElapsedTime.Add(new TimeSpan(0, 0, seconds));
-				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, "getAction_wait()", Logger.severity.DEBUG);
+				m_logger.debugLog("waiting until: " + NavSet.Settings_Task_NavWay.WaitUntil, Logger.severity.DEBUG);
 			};
 			return true;
 		}
@@ -998,7 +998,7 @@ namespace Rynchodon.Autopilot.Instruction
 			string[] parts = instruction.Split(',');
 			if (parts.Length == 0)
 			{
-				m_logger.debugLog("parts.Length == 0", "flyTo_generic()", Logger.severity.DEBUG);
+				m_logger.debugLog("parts.Length == 0", Logger.severity.DEBUG);
 				result = new Vector3();
 				return false;
 			}
@@ -1030,13 +1030,13 @@ namespace Rynchodon.Autopilot.Instruction
 			string numberString = numberRegex.Match(vectorString).Value;
 			if (string.IsNullOrEmpty(numberString))
 			{
-				m_logger.debugLog("invalid(" + numberString + ")", "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("invalid(" + numberString + ")", Logger.severity.TRACE);
 				return false;
 			}
 			float number;
 			if (!float.TryParse(numberString, out number))
 			{
-				m_logger.debugLog("failed to parse number: " + numberString, "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("failed to parse number: " + numberString, Logger.severity.TRACE);
 				return false;
 			}
 
@@ -1044,14 +1044,14 @@ namespace Rynchodon.Autopilot.Instruction
 			string letterString = vectorString.Replace(numberString, string.Empty);
 			if (string.IsNullOrEmpty(letterString))
 			{
-				m_logger.debugLog("invalid(" + letterString + ")", "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("invalid(" + letterString + ")", Logger.severity.TRACE);
 				return false;
 			}
 			int modifier = metreModifier(ref letterString);
 			Base6Directions.Direction? direction = stringToDirection(letterString);
 			if (direction == null)
 			{
-				m_logger.debugLog("failed to parse letter: " + letterString, "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("failed to parse letter: " + letterString, Logger.severity.TRACE);
 				return false;
 			}
 
@@ -1067,12 +1067,12 @@ namespace Rynchodon.Autopilot.Instruction
 			string numberString = numberRegex.Match(distanceString).Value;
 			if (string.IsNullOrEmpty(numberString))
 			{
-				m_logger.debugLog("invalid(" + numberString + ")", "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("invalid(" + numberString + ")", Logger.severity.TRACE);
 				return false;
 			}
 			if (!float.TryParse(numberString, out result))
 			{
-				m_logger.debugLog("failed to parse number: " + numberString, "stringToVector3()", Logger.severity.TRACE);
+				m_logger.debugLog("failed to parse number: " + numberString, Logger.severity.TRACE);
 				return false;
 			}
 
@@ -1125,12 +1125,12 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (!int.TryParse(m.Groups[1].Value, out seconds))
 			{
-				m_logger.debugLog("failed to parse: " + m.Groups[1].Value + " to int", "GetSeconds()", Logger.severity.DEBUG);
+				m_logger.debugLog("failed to parse: " + m.Groups[1].Value + " to int", Logger.severity.DEBUG);
 				Errors.Append("Not an integer: ");
 				Errors.AppendLine(m.Groups[1].Value);
 				return false;
 			}
-			m_logger.debugLog("parsed " + m.Groups[1].Value + " to " + seconds, "GetSeconds()");
+			m_logger.debugLog("parsed " + m.Groups[1].Value + " to " + seconds);
 
 			if (m.Groups.Count == 1 || string.IsNullOrWhiteSpace(m.Groups[2].Value))
 				return true;
@@ -1147,7 +1147,7 @@ namespace Rynchodon.Autopilot.Instruction
 					break;
 				default:
 					seconds = 0;
-					m_logger.debugLog("not recognized: " + m.Groups[2].Value, "GetSeconds()", Logger.severity.DEBUG);
+					m_logger.debugLog("not recognized: " + m.Groups[2].Value, Logger.severity.DEBUG);
 					Errors.Append("Not time mod: ");
 					Errors.AppendLine(m.Groups[2].Value);
 					return false;
@@ -1195,7 +1195,7 @@ namespace Rynchodon.Autopilot.Instruction
 					forward = stringToDirection(splitComma[1]);
 					if (!forward.HasValue)
 					{
-						m_logger.debugLog("Syntax Error. Not a direction: " + splitComma[1], "SplitNameDirections()", Logger.severity.WARNING);
+						m_logger.debugLog("Syntax Error. Not a direction: " + splitComma[1], Logger.severity.WARNING);
 						Errors.Append("Not a direction: ");
 						Errors.AppendLine(splitComma[1]);
 						return false;
@@ -1205,14 +1205,14 @@ namespace Rynchodon.Autopilot.Instruction
 					upward = stringToDirection(splitComma[2]);
 					if (!upward.HasValue)
 					{
-						m_logger.debugLog("Syntax Error. Not a direction: " + splitComma[2], "SplitNameDirections()", Logger.severity.WARNING);
+						m_logger.debugLog("Syntax Error. Not a direction: " + splitComma[2], Logger.severity.WARNING);
 						Errors.Append("Not a direction: ");
 						Errors.AppendLine(splitComma[2]);
 						return false;
 					}
 					goto case 2;
 				default:
-					m_logger.debugLog("Syntax Error. Too many commas: " + toSplit, "SplitNameDirections()", Logger.severity.WARNING);
+					m_logger.debugLog("Syntax Error. Too many commas: " + toSplit, Logger.severity.WARNING);
 					Errors.Append("Too many commas: " + toSplit);
 					Errors.AppendLine(toSplit);
 					return false;
@@ -1229,7 +1229,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
-			m_logger.debugLog("searching for localBlock: " + searchFor, "GetLocalBlock()");
+			m_logger.debugLog("searching for localBlock: " + searchFor);
 
 			AttachedGrid.RunOnAttachedBlock(Controller.CubeGrid, allowedAttachments, slim => {
 				IMyCubeBlock Fatblock = slim.FatBlock;
@@ -1240,7 +1240,7 @@ namespace Rynchodon.Autopilot.Instruction
 					{ blockName = Fatblock.getNameOnly().LowerRemoveWhitespace(); }
 					catch (NullReferenceException ex)
 					{
-						m_logger.alwaysLog("Failed to process block name of " + Fatblock.DisplayNameText + '/' + Fatblock.DefinitionDisplayNameText, "GetLocalBlock()", Logger.severity.ERROR);
+						m_logger.alwaysLog("Failed to process block name of " + Fatblock.DisplayNameText + '/' + Fatblock.DefinitionDisplayNameText, Logger.severity.ERROR);
 						throw ex;
 					}
 
@@ -1250,7 +1250,7 @@ namespace Rynchodon.Autopilot.Instruction
 						bestNameLength = blockName.Length;
 						if (searchFor.Length == bestNameLength)
 						{
-							m_logger.debugLog("found a perfect match for: " + searchFor + ", block name: " + blockName, "GetLocalBlock()");
+							m_logger.debugLog("found a perfect match for: " + searchFor + ", block name: " + blockName);
 							return true;
 						}
 					}
@@ -1260,14 +1260,14 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (foundBlock == null)
 			{
-				m_logger.debugLog("could not get a localBlock for " + searchFor, "GetLocalBlock()", Logger.severity.INFO);
+				m_logger.debugLog("could not get a localBlock for " + searchFor, Logger.severity.INFO);
 				Errors.AppendLine("Not Found: " + searchFor);
 				localBlock = null;
 				return false;
 			}
 
 			localBlock = foundBlock;
-			m_logger.debugLog("found localBlock: " + foundBlock.DisplayNameText, "GetLocalBlock()");
+			m_logger.debugLog("found localBlock: " + foundBlock.DisplayNameText);
 
 			return true;
 		}

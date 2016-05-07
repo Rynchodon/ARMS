@@ -163,7 +163,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (value_state == value || value_state == State.Closed)
 					return;
-				m_logger.debugLog("state change from " + value_state + " to " + value, "set_m_state()", Logger.severity.DEBUG);
+				m_logger.debugLog("state change from " + value_state + " to " + value, Logger.severity.DEBUG);
 				value_state = value;
 
 				switch (value_state)
@@ -193,7 +193,7 @@ namespace Rynchodon.Autopilot
 						return;
 
 					default:
-						m_logger.alwaysLog("State not implemented: " + value, "set_m_state()", Logger.severity.FATAL);
+						m_logger.alwaysLog("State not implemented: " + value, Logger.severity.FATAL);
 						return;
 				}
 			}
@@ -217,7 +217,7 @@ namespace Rynchodon.Autopilot
 			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
 				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
 
-			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText, GetType().Name);
+			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
 
 			Registrar.Add(block, this);
 		}
@@ -253,12 +253,12 @@ namespace Rynchodon.Autopilot
 						if (m_block.NetworkNode == null )
 							if (!Registrar.TryGetValue(m_block.CubeBlock.EntityId, out m_block.NetworkNode))
 							{
-								m_logger.debugLog("failed to get node", "UpdateThread()", Logger.severity.WARNING);
+								m_logger.debugLog("failed to get node", Logger.severity.WARNING);
 								return;
 							}
 							else
 							{
-								m_logger.debugLog("got node", "UpdateThread()", Logger.severity.DEBUG);
+								m_logger.debugLog("got node", Logger.severity.DEBUG);
 								m_block.NetworkNode.MessageHandler = HandleMessage;
 							}
 						if (CheckControl())
@@ -315,21 +315,21 @@ namespace Rynchodon.Autopilot
 
 				if (m_interpreter.hasInstructions())
 				{
-					m_logger.debugLog("running instructions", "Update()");
+					m_logger.debugLog("running instructions");
 
 					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
 					{
 						m_interpreter.instructionQueue.Dequeue().Invoke();
 						if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 						{
-							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil, "Update()");
+							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
 							return;
 						}
 					}
 
 					if (m_navSet.Settings_Current.NavigatorMover == null)
 					{
-						m_logger.debugLog("interpreter did not yield a navigator", "Update()", Logger.severity.INFO);
+						m_logger.debugLog("interpreter did not yield a navigator", Logger.severity.INFO);
 						ReleaseControlledGrid();
 					}
 					return;
@@ -341,12 +341,12 @@ namespace Rynchodon.Autopilot
 
 				if (m_nextAllowedInstructions > Globals.ElapsedTime)
 				{
-					m_logger.debugLog("Delaying instructions", "UpdateThread()", Logger.severity.INFO);
+					m_logger.debugLog("Delaying instructions", Logger.severity.INFO);
 					m_navSet.Settings_Task_NavWay.WaitUntil = m_nextAllowedInstructions;
 					return;
 				}
 
-				m_logger.debugLog("enqueing instructions", "Update()", Logger.severity.DEBUG);
+				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
 				m_nextAllowedInstructions = Globals.ElapsedTime + MinTimeInstructions;
 				m_interpreter.enqueueAllActions();
 
@@ -357,7 +357,7 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, "Update()", Logger.severity.ERROR);
+				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				m_state = State.Halted;
 			}
 			finally
@@ -480,7 +480,7 @@ namespace Rynchodon.Autopilot
 
 			if (!GridBeingControlled.Remove(m_controlledGrid))
 			{
-				m_logger.alwaysLog("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled", "ReleaseControlledGrid()", Logger.severity.FATAL);
+				m_logger.alwaysLog("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled", Logger.severity.FATAL);
 				throw new InvalidOperationException("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled");
 			}
 
@@ -645,8 +645,8 @@ namespace Rynchodon.Autopilot
 			ByteConverter.AppendBytes(m_customInfo_message, m_block.CubeBlock.EntityId);
 			ByteConverter.AppendBytes(m_customInfo_message, m_customInfo_send.ToString());
 
-			m_logger.debugLog("sending message, length: " + m_customInfo_message.Count, "SendCustomInfo()");
-			m_logger.debugLog("Message:\n" + m_customInfo_send, "SendCustomInfo()");
+			m_logger.debugLog("sending message, length: " + m_customInfo_message.Count);
+			m_logger.debugLog("Message:\n" + m_customInfo_send);
 			byte[] asByteArray = m_customInfo_message.ToArray();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
@@ -689,21 +689,21 @@ namespace Rynchodon.Autopilot
 			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };
 
 			result.CurrentCommand = m_interpreter.instructionQueueString.Count - m_interpreter.instructionQueue.Count - 1;
-			m_logger.debugLog("current command: " + result.CurrentCommand, "GetBuilder()");
+			m_logger.debugLog("current command: " + result.CurrentCommand);
 
 			// don't need to save if we are not running (-1) or on first command (0)
 			if (result.CurrentCommand <= 0)
 				return null;
 
 			result.Commands = string.Join(";", m_interpreter.instructionQueueString);
-			m_logger.debugLog("commands: " + result.Commands, "GetBuilder()");
+			m_logger.debugLog("commands: " + result.Commands);
 
 			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
 			if (finder != null)
 			{
 				result.EngagerOriginalEntity = finder.m_originalDestEntity == null ? 0L : finder.m_originalDestEntity.EntityId;
 				result.EngagerOriginalPosition = finder.m_originalPosition;
-				m_logger.debugLog("added EngagerOriginalEntity: " + result.EngagerOriginalEntity + ", and EngagerOriginalPosition: " + result.EngagerOriginalPosition, "GetBuilder()");
+				m_logger.debugLog("added EngagerOriginalEntity: " + result.EngagerOriginalEntity + ", and EngagerOriginalPosition: " + result.EngagerOriginalPosition);
 			}
 
 			return result;
@@ -714,14 +714,14 @@ namespace Rynchodon.Autopilot
 			Builder_Autopilot builder = this.Resume;
 			this.Resume = null;
 			m_navSet.OnStartOfCommands();
-			m_logger.debugLog("resume: " + builder.Commands, "ResumeFromSave()", Logger.severity.DEBUG);
+			m_logger.debugLog("resume: " + builder.Commands, Logger.severity.DEBUG);
 			m_interpreter.enqueueAllActions(builder.Commands);
-			m_logger.debugLog("from builder, added " + m_interpreter.instructionQueue.Count + " commands", "ResumeFromSave()");
+			m_logger.debugLog("from builder, added " + m_interpreter.instructionQueue.Count + " commands");
 
 			int i;
 			for (i = 0; i < builder.CurrentCommand; i++)
 			{
-				m_logger.debugLog("fast forward: " + m_interpreter.instructionQueueString[i], "ResumeFromSave()");
+				m_logger.debugLog("fast forward: " + m_interpreter.instructionQueueString[i]);
 				m_interpreter.instructionQueue.Dequeue().Invoke();
 
 				// clear navigators' levels
@@ -730,7 +730,7 @@ namespace Rynchodon.Autopilot
 					AllNavigationSettings.SettingsLevel settingsAtLevel = m_navSet.GetSettingsLevel(levelName);
 					if (settingsAtLevel.NavigatorMover != null || settingsAtLevel.NavigatorRotator != null)
 					{
-						m_logger.debugLog("clear " + levelName, "ResumeFromSave()");
+						m_logger.debugLog("clear " + levelName);
 						m_navSet.OnTaskComplete(levelName);
 					}
 				}
@@ -746,20 +746,20 @@ namespace Rynchodon.Autopilot
 				{
 					if (!MyAPIGateway.Entities.TryGetEntityById(builder.EngagerOriginalEntity, out finder.m_originalDestEntity))
 					{
-						m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, "ResumeFromSave()", Logger.severity.WARNING);
+						m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, Logger.severity.WARNING);
 						finder.m_originalDestEntity = null;
 					}
 					else
-						m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName(), "ResumeFromSave()");
+						m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName());
 				}
 				if (builder.EngagerOriginalPosition.IsValid())
 				{
 					finder.m_originalPosition = builder.EngagerOriginalPosition;
-					m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition, "ResumeFromSave()");
+					m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
 				}
 			}
 
-			m_logger.debugLog("resume: " + m_interpreter.instructionQueueString[i], "ResumeFromSave()");
+			m_logger.debugLog("resume: " + m_interpreter.instructionQueueString[i]);
 			m_interpreter.instructionQueue.Dequeue().Invoke();
 		}
 

@@ -65,7 +65,7 @@ namespace Rynchodon.Weapons
 				Slaves.Add(miss);
 				SlaveOffsets.Add(Vector3.Transform(miss.GetPosition(), masterInv));
 				float distSq = Vector3.DistanceSquared(miss.GetPosition(), masterPos);
-				m_logger.debugLog("slave: " + miss + ", offset: " + SlaveOffsets[SlaveOffsets.Count - 1], "Cluster()", Logger.severity.TRACE);
+				m_logger.debugLog("slave: " + miss + ", offset: " + SlaveOffsets[SlaveOffsets.Count - 1], Logger.severity.TRACE);
 				if (distSq > Furthest)
 					Furthest = distSq;
 			}
@@ -75,7 +75,7 @@ namespace Rynchodon.Weapons
 
 			MinOffMult = Furthest * 2f;
 			OffsetMulti = Furthest * 1e6f; // looks pretty
-			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, "Cluster()", Logger.severity.DEBUG);
+			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, Logger.severity.DEBUG);
 		}
 
 		public Cluster(IMyEntity master, Builder_Cluster builder)
@@ -93,7 +93,7 @@ namespace Rynchodon.Weapons
 				IMyEntity slave;
 				if (!MyAPIGateway.Entities.TryGetEntityById(builder.Slaves[index], out slave))
 				{
-					m_logger.alwaysLog("Failed to get slave for " + builder.Slaves[index], "Cluster()", Logger.severity.WARNING);
+					m_logger.alwaysLog("Failed to get slave for " + builder.Slaves[index], Logger.severity.WARNING);
 					continue;
 				}
 				this.Slaves[index] = slave;

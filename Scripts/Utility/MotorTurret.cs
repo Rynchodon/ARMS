@@ -71,7 +71,7 @@ namespace Rynchodon
 		{
 			//myLogger.debugLog("entered FaceTowards()", "FaceTowards()");
 
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
 			if (!SetupStators())
 				return;
@@ -99,7 +99,7 @@ namespace Rynchodon
 
 		public void Stop()
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
 			if (!StatorOK())
 				return;
@@ -124,7 +124,7 @@ namespace Rynchodon
 			IMyCubeBlock RotorEl;
 			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator, out RotorEl))
 			{
-				myLogger.debugLog("Failed to get StatorEl", "SetupStators()");
+				myLogger.debugLog("Failed to get StatorEl");
 				StatorEl = null;
 				OnStatorChange(StatorEl, StatorAz);
 				return false;
@@ -141,14 +141,14 @@ namespace Rynchodon
 			IMyCubeBlock RotorAz;
 			if (!GetStatorRotor(getBFrom, out tempStator, out RotorAz, StatorEl, RotorEl))
 			{
-				myLogger.debugLog("Failed to get StatorAz", "SetupStators()");
+				myLogger.debugLog("Failed to get StatorAz");
 				StatorAz = null;
 				OnStatorChange(StatorEl, StatorAz);
 				return false;
 			}
 			StatorAz = tempStator;
 
-			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText, "SetupStators()");
+			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText);
 			OnStatorChange(StatorEl, StatorAz);
 			Stop();
 			return true;
@@ -195,13 +195,13 @@ namespace Rynchodon
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", "FaceTowards()", Logger.severity.FATAL);
+			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
 			float speed = angle * RotationSpeedMultiplier;
 
 			if (!speed.IsValid())
 			{
-				myLogger.debugLog("invalid speed: " + speed, "SetVelocity()");
+				myLogger.debugLog("invalid speed: " + speed);
 				speed = 0;
 			}
 			else

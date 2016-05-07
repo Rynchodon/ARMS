@@ -32,7 +32,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (!(rotBlock.Block is Ingame.IMySolarPanel) && !(rotBlock.Block is Ingame.IMyOxygenFarm))
 				{
-					m_logger.alwaysLog("Block is of wrong type: " + rotBlock.Block.DisplayNameText, "Facer()", Logger.severity.FATAL);
+					m_logger.alwaysLog("Block is of wrong type: " + rotBlock.Block.DisplayNameText, Logger.severity.FATAL);
 					throw new Exception("Block is of wrong type: " + rotBlock.Block.DisplayNameText);
 				}
 			}

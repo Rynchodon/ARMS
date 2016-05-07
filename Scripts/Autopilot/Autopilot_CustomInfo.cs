@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			MyAPIGateway.Multiplayer.RegisterMessageHandler(ShipAutopilot.ModId_CustomInfo, MessageHandler);
-			s_logger.debugLog("Registerd for messages", "Autopilot_CustomInfo()", Logger.severity.DEBUG);
+			s_logger.debugLog("Registerd for messages", Logger.severity.DEBUG);
 		}
 
 		public static void MessageHandler(byte[] message)
@@ -30,7 +30,7 @@ namespace Rynchodon.Autopilot
 			Autopilot_CustomInfo recipient;
 			if (!Registrar.TryGetValue(entityId, out recipient))
 			{
-				s_logger.debugLog("Recipient block is closed: " + entityId, "MessageHandler()", Logger.severity.INFO);
+				s_logger.debugLog("Recipient block is closed: " + entityId, Logger.severity.INFO);
 				return;
 			}
 			recipient.MessageHandler(message, ref pos);
@@ -40,7 +40,7 @@ namespace Rynchodon.Autopilot
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ShipAutopilot.ModId_CustomInfo, MessageHandler);
-			s_logger.debugLog("Unregisterd for messages", "Autopilot_CustomInfo()", Logger.severity.DEBUG);
+			s_logger.debugLog("Unregisterd for messages", Logger.severity.DEBUG);
 			s_logger = null;
 		}
 
@@ -57,7 +57,7 @@ namespace Rynchodon.Autopilot
 			m_block.AppendingCustomInfo += AppendingCustomInfo;
 
 			Registrar.Add(block, this);
-			m_logger.debugLog("Initialized", "Autopilot_CustomInfo()", Logger.severity.INFO);
+			m_logger.debugLog("Initialized", Logger.severity.INFO);
 		}
 
 		private void MessageHandler(byte[] message, ref int pos)

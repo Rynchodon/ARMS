@@ -94,7 +94,7 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					if (m_updating)
 					{
-						m_logger.debugLog("already updating", "Update()", Logger.severity.DEBUG);
+						m_logger.debugLog("already updating", Logger.severity.DEBUG);
 						return;
 					}
 					m_updating = true;
@@ -109,7 +109,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		private void CalculateInertiaMoment()
 		{
-			m_logger.debugLog("recalculating inertia moment", "Update()", Logger.severity.INFO);
+			m_logger.debugLog("recalculating inertia moment", Logger.severity.INFO);
 			MyGameTimer timer = new MyGameTimer();
 
 			List<IMySlimBlock> blocks = ResourcePool<List<IMySlimBlock>>.Get();
@@ -130,9 +130,9 @@ namespace Rynchodon.Autopilot.Movement
 				m_invertedInertiaMoment = 1f / m_inertiaMoment;
 			}
 
-			m_logger.debugLog("Calculated in " + timer.Elapsed.ToPrettySeconds(), "Update()");
-			m_logger.debugLog("Inertia moment: " + m_inertiaMoment, "Update()", Logger.severity.DEBUG);
-			m_logger.debugLog("Inverted inertia moment: " + m_invertedInertiaMoment, "Update()", Logger.severity.DEBUG);
+			m_logger.debugLog("Calculated in " + timer.Elapsed.ToPrettySeconds());
+			m_logger.debugLog("Inertia moment: " + m_inertiaMoment, Logger.severity.DEBUG);
+			m_logger.debugLog("Inverted inertia moment: " + m_invertedInertiaMoment, Logger.severity.DEBUG);
 
 			m_updating = false;
 		}

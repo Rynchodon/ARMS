@@ -201,7 +201,7 @@ namespace Rynchodon.Weapons
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, "Update_Targeting()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				if (MyAPIGateway.Multiplayer.IsServer)
 					FuncBlock.RequestEnable(false);
 
@@ -251,7 +251,7 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo.MissileDefinition == null)
 			{
-				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.AmmoDefinition.DisplayNameText, "LoadedAmmoSpeed()", Logger.severity.ERROR);
+				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.AmmoDefinition.DisplayNameText, Logger.severity.ERROR);
 				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
@@ -278,7 +278,7 @@ namespace Rynchodon.Weapons
 				UpdateNumber++;
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, "Update_Thread()", Logger.severity.WARNING); }
+			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.WARNING); }
 		}
 
 		/// <summary>
@@ -370,10 +370,10 @@ namespace Rynchodon.Weapons
 					Options = Interpreter.Options.Clone();
 				InterpreterErrorCount = Interpreter.Errors.Count;
 				Update100_Options_TargetingThread(Options);
-				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options, "UpdateOptions()");
+				myLogger.debugLog("updating Options, Error Count = " + Interpreter.Errors.Count + ", Options: " + Options);
 			}
 			else
-				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count, "UpdateOptions()");
+				myLogger.debugLog("not updating Options, Error Count = " + Interpreter.Errors.Count);
 		}
 
 		private void UpdateAmmo()
@@ -440,7 +440,7 @@ namespace Rynchodon.Weapons
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		protected override bool Obstructed(Vector3D contactPosition)
 		{
-			myLogger.debugLog(CubeBlock == null, "CubeBlock == null", "Obstructed()", Logger.severity.FATAL);
+			myLogger.debugLog(CubeBlock == null, "CubeBlock == null", Logger.severity.FATAL);
 
 			//// build offset rays
 			//List<Line> AllTestLines = new List<Line>();

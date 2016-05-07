@@ -40,7 +40,7 @@ namespace Rynchodon.Autopilot
 
 		private void initialize()
 		{
-			myLogger.debugLog("initializing", "initialize()", Logger.severity.TRACE);
+			myLogger.debugLog("initializing", Logger.severity.TRACE);
 			help_messages = new Dictionary<string, LinkedList<Command>>();
 			List<Command> allCommands = new List<Command>();
 
@@ -51,12 +51,12 @@ namespace Rynchodon.Autopilot
 				LinkedList<Command> bucket;
 				if (help_messages.TryGetValue(current.command, out bucket))
 				{
-					myLogger.debugLog("adding to existing bucket: " + current.command, "initialize()", Logger.severity.TRACE);
+					myLogger.debugLog("adding to existing bucket: " + current.command, Logger.severity.TRACE);
 					bucket.AddLast(current);
 				}
 				else
 				{
-					myLogger.debugLog("creating new bucket for: " + current.command, "initialize()", Logger.severity.TRACE);
+					myLogger.debugLog("creating new bucket for: " + current.command, Logger.severity.TRACE);
 					bucket = new LinkedList<Command>();
 					bucket.AddLast(current);
 					help_messages.Add(current.command, bucket);
@@ -78,29 +78,29 @@ namespace Rynchodon.Autopilot
 					printSingleCommand(message);
 			}
 			catch (Exception e)
-			{ myLogger.alwaysLog("Exception: " + e, "printCommand()", Logger.severity.ERROR); }
+			{ myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
 		}
 
 		private void printListCommands()
 		{
-			myLogger.debugLog("entered printListCommands()", "printListCommands()", Logger.severity.TRACE);
+			myLogger.debugLog("entered printListCommands()", Logger.severity.TRACE);
 			StringBuilder print = new StringBuilder();
 			foreach (LinkedList<Command> bucket in help_messages.Values)
 			{
-				myLogger.debugLog("printing a bucket.", "printListCommands()", Logger.severity.TRACE);
+				myLogger.debugLog("printing a bucket.", Logger.severity.TRACE);
 				foreach (Command current in bucket)
 				{
-					myLogger.debugLog("sending message for command: " + current.command, "printListCommands()", Logger.severity.TRACE);
+					myLogger.debugLog("sending message for command: " + current.command, Logger.severity.TRACE);
 					print.AppendLine(current.commandExt);
 				}
 			}
-			myLogger.debugLog("showing mission screen for all", "printListCommands()", Logger.severity.TRACE);
+			myLogger.debugLog("showing mission screen for all", Logger.severity.TRACE);
 			MyAPIGateway.Utilities.ShowMissionScreen("Autopilot Help", "Help Topics", string.Empty, print.ToString());
 		}
 
 		private bool printSingleCommand(string command)
 		{
-			myLogger.debugLog("entered printSingleCommand()", "printSingleCommand()", Logger.severity.TRACE);
+			myLogger.debugLog("entered printSingleCommand()", Logger.severity.TRACE);
 			StringBuilder print = new StringBuilder();
 			if (command.Equals("direction", StringComparison.OrdinalIgnoreCase) || command.Equals("distance", StringComparison.OrdinalIgnoreCase))
 				command += 's';
@@ -109,16 +109,16 @@ namespace Rynchodon.Autopilot
 			LinkedList<Command> bucket;
 			if (!help_messages.TryGetValue(command, out bucket))
 			{
-				myLogger.alwaysLog("failed to get a bucket for: " + command, "printSingleCommand()", Logger.severity.WARNING);
+				myLogger.alwaysLog("failed to get a bucket for: " + command, Logger.severity.WARNING);
 				return false;
 			}
 			foreach (Command current in bucket)
 			{
-				myLogger.debugLog("sending message for command: " + current.command, "printSingleCommand()", Logger.severity.TRACE);
+				myLogger.debugLog("sending message for command: " + current.command, Logger.severity.TRACE);
 				print.AppendLine(current.description);
 				print.AppendLine();
 			}
-			myLogger.debugLog("showing mission screen for command: " + command, "printSingleCommand()", Logger.severity.TRACE);
+			myLogger.debugLog("showing mission screen for command: " + command, Logger.severity.TRACE);
 			MyAPIGateway.Utilities.ShowMissionScreen("Autopilot Help", command, string.Empty, print.ToString());
 			return true;
 		}

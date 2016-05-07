@@ -39,8 +39,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_logger = new Logger(GetType().Name, block);
 			m_hackBlock = block as IMyLandingGear;
 
-			m_logger.debugLog("created for: " + block.DisplayNameText, "Hacker()");
-			m_logger.debugLog(!IsHacker(block), "Not a hacker", "Hacker()", Logger.severity.FATAL);
+			m_logger.debugLog("created for: " + block.DisplayNameText);
+			m_logger.debugLog(!IsHacker(block), "Not a hacker", Logger.severity.FATAL);
 		}
 
 		public void Update10()
@@ -60,11 +60,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 			}
 			if (m_hackBlock.BreakForce > allowedBreakForce)
 			{
-				m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce, "Update10()");
+				m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce);
 				ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
 				if (prop == null)
 				{
-					m_logger.debugLog("break force is disabled in SE", "Update10()", Logger.severity.INFO);
+					m_logger.debugLog("break force is disabled in SE", Logger.severity.INFO);
 					allowedBreakForce = float.PositiveInfinity;
 				}
 				else
@@ -74,7 +74,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 				// landing gear is unbreakable, disconnect / fail if not otherwise attached
 				if (!AttachedGrid.IsGridAttached(m_hackBlock.CubeGrid as IMyCubeGrid, attached, AttachedGrid.AttachmentKind.Physics))
 				{
-					m_logger.debugLog("no other connection to attached, hacker must disconnect", "Update10()", Logger.severity.DEBUG);
+					m_logger.debugLog("no other connection to attached, hacker must disconnect", Logger.severity.DEBUG);
 					ITerminalProperty<bool> autolock = m_hackBlock.GetProperty("Autolock") as ITerminalProperty<bool>;
 					if (autolock.GetValue(m_hackBlock))
 						autolock.SetValue(m_hackBlock, false);
@@ -116,7 +116,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 						disrupt = new MedicalRoom();
 						break;
 					default:
-						m_logger.alwaysLog("Case not implemented: " + i, "Update10()", Logger.severity.FATAL);
+						m_logger.alwaysLog("Case not implemented: " + i, Logger.severity.FATAL);
 						continue;
 				}
 				AttachedGrid.RunOnAttached(attached, AttachedGrid.AttachmentKind.Terminal, grid => {

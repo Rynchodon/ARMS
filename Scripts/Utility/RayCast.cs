@@ -43,7 +43,7 @@ namespace Rynchodon
 						double distance;
 						if (entity.WorldAABB.Intersects(ref line, out distance))
 						{
-							m_logger.debugLog("obstructed by character: " + entity.getBestName(), "Obstructed()");
+							m_logger.debugLog("obstructed by character: " + entity.getBestName());
 							return true;
 						}
 						continue;
@@ -83,11 +83,11 @@ namespace Rynchodon
 
 										if (slim.FatBlock.LocalAABB.Contains(positionPart) == ContainmentType.Disjoint)
 										{
-											m_logger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+											m_logger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart);
 										}
 										else
 										{
-											m_logger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart, "Obstructed()");
+											m_logger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart);
 											subpartHit = true;
 											break;
 										}
@@ -105,16 +105,16 @@ namespace Rynchodon
 
 									if (slim.FatBlock.LocalAABB.Contains(positionBlock) == ContainmentType.Disjoint)
 									{
-										m_logger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+										m_logger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock);
 										continue;
 									}
 									else
-										m_logger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock, "Obstructed()");
+										m_logger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock);
 								}
 
 							}
 
-							m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId, "Obstructed()");
+							m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
 							return true;
 						}
 					}
@@ -127,7 +127,7 @@ namespace Rynchodon
 					Vector3D? contactPoint;
 					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
 					{
-						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint, "Obstructed()");
+						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint);
 						return true;
 					}
 				}

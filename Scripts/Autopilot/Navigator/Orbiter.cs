@@ -53,7 +53,7 @@ namespace Rynchodon.Autopilot.Navigator
 					Vector3D navBlockPos = m_navBlock.WorldPosition;
 					double distSquared;
 					MyPlanet closest = MyPlanetExtensions.GetClosestPlanet(navBlockPos, out distSquared);
-					m_logger.debugLog(closest != null, () => "distance to closest: " + Math.Sqrt(distSquared) + ", MaximumRadius: " + closest.MaximumRadius, "set_OrbitEntity()");
+					m_logger.debugLog(closest != null, () => "distance to closest: " + Math.Sqrt(distSquared) + ", MaximumRadius: " + closest.MaximumRadius);
 					if (closest != null && distSquared < closest.MaximumRadius * closest.MaximumRadius)
 					{
 						Vector3D targetCentre = value.GetCentre();
@@ -72,7 +72,7 @@ namespace Rynchodon.Autopilot.Navigator
 							Altitude = (float)Math.Sqrt(Altitude * Altitude - Vector3D.DistanceSquared(closestPoint, targetCentre));
 
 						m_logger.debugLog("near a planet, circling at constant distance to planet, altitude: " + Altitude + ", axis: " + m_orbitAxis + ", target centre: " +
-							targetCentre + ", closestPoint: " + closestPoint + ", target offset: " + m_targetPositionOffset, "set_OrbitEntity()", Logger.severity.DEBUG);
+							targetCentre + ", closestPoint: " + closestPoint + ", target offset: " + m_targetPositionOffset, Logger.severity.DEBUG);
 						return;
 					}
 				}
@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_orbitAxis = VRage.Utils.MyUtils.GetRandomPerpendicularVector(ref toTarget);
 				m_orbitAxis.Normalize();
 
-				m_logger.debugLog("altitude: " + Altitude + ", axis: " + m_orbitAxis, "set_OrbitEntity()", Logger.severity.DEBUG);
+				m_logger.debugLog("altitude: " + Altitude + ", axis: " + m_orbitAxis, Logger.severity.DEBUG);
 			}
 		}
 
@@ -98,18 +98,18 @@ namespace Rynchodon.Autopilot.Navigator
 				case "asteroid":
 					SetOrbitClosestVoxel(true);
 					CalcFakeOrbitSpeedForce();
-					m_logger.debugLog("Orbiting asteroid: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
+					m_logger.debugLog("Orbiting asteroid: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 					break;
 				case "planet":
 					SetOrbitClosestVoxel(false);
 					OrbitSpeed = (float)Math.Sqrt((OrbitEntity as MyPlanet).GetGravityMultiplier(m_navBlock.WorldPosition) * 9.81f * Altitude);
 					if (OrbitSpeed < 1f)
 						CalcFakeOrbitSpeedForce();
-					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
+					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 					break;
 				default:
 					m_gridFinder = new GridFinder(navSet, mover.Block, entity, mustBeRecent: true);
-					m_logger.debugLog("Searching for a grid: " + entity, "Orbiter()", Logger.severity.INFO);
+					m_logger.debugLog("Searching for a grid: " + entity, Logger.severity.INFO);
 					break;
 			}
 
@@ -135,7 +135,7 @@ namespace Rynchodon.Autopilot.Navigator
 			OrbitEntity = entity;
 
 			CalcFakeOrbitSpeedForce();
-			m_logger.debugLog("Orbiting: " + OrbitEntity.getBestName(), "Orbiter()", Logger.severity.INFO);
+			m_logger.debugLog("Orbiting: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 		}
 
 		private void SetOrbitClosestVoxel(bool asteroid)
@@ -153,11 +153,11 @@ namespace Rynchodon.Autopilot.Navigator
 				double dist = Vector3D.DistanceSquared(m_navBlock.WorldPosition, ent.GetCentre());
 				if (dist < closest)
 				{
-					m_logger.debugLog("closer than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest), "SetOrbitClosestVoxel()");
+					m_logger.debugLog("closer than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
 					closest = dist;
 					closestEntity = ent;
 				}
-				m_logger.debugLog("further than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest), "SetOrbitClosestVoxel()");
+				m_logger.debugLog("further than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
 			}
 			OrbitEntity = closestEntity;
 
@@ -172,17 +172,17 @@ namespace Rynchodon.Autopilot.Navigator
 			m_mover.Thrust.Update();
 			float maxForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navBlock.LocalMatrix.Forward)) * Mover.AvailableForceRatio;
 
-			m_logger.debugLog("maxSpeed: " + maxSpeed + ", mass: " + m_navBlock.Grid.Physics.Mass + ", m_altitude: " + Altitude + ", forceForMaxSpeed: " + forceForMaxSpeed + ", maxForce: " + maxForce, "CalcFakeOrbitSpeedForce()", Logger.severity.INFO);
+			m_logger.debugLog("maxSpeed: " + maxSpeed + ", mass: " + m_navBlock.Grid.Physics.Mass + ", m_altitude: " + Altitude + ", forceForMaxSpeed: " + forceForMaxSpeed + ", maxForce: " + maxForce, Logger.severity.INFO);
 
 			if (forceForMaxSpeed < maxForce)
 			{
 				OrbitSpeed = maxSpeed;
-				m_logger.debugLog("hold onto your hats!", "CalcFakeOrbitSpeed()", Logger.severity.INFO);
+				m_logger.debugLog("hold onto your hats!", Logger.severity.INFO);
 			}
 			else
 			{
 				OrbitSpeed = (float)Math.Sqrt(maxForce / m_navBlock.Grid.Physics.Mass * Altitude);
-				m_logger.debugLog("choosing a more reasonable speed, m_orbitSpeed: " + OrbitSpeed, "CalcFakeOrbitSpeed()", Logger.severity.INFO);
+				m_logger.debugLog("choosing a more reasonable speed, m_orbitSpeed: " + OrbitSpeed, Logger.severity.INFO);
 			}
 		}
 
@@ -196,14 +196,14 @@ namespace Rynchodon.Autopilot.Navigator
 				// if grid finder picks a new entity, have to set OrbitEntity to null first or altitude will be incorrect
 				if (m_gridFinder.Grid == null || OrbitEntity != m_gridFinder.Grid)
 				{
-					m_logger.debugLog("no grid found", "Move()");
+					m_logger.debugLog("no grid found");
 					OrbitEntity = null;
 					m_mover.StopMove();
 					return;
 				}
 				if (OrbitEntity == null)
 				{
-					m_logger.debugLog("found grid: " + m_gridFinder.Grid.Entity.DisplayName, "Move()");
+					m_logger.debugLog("found grid: " + m_gridFinder.Grid.Entity.DisplayName);
 					OrbitEntity = m_gridFinder.Grid.Entity;
 					CalcFakeOrbitSpeedForce();
 				}

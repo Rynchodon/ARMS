@@ -37,18 +37,18 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_targetEntity = targetEntity;
 			this.m_targetOffset = worldOffset;
 
-			m_logger.debugLog(targetEntity != targetEntity.GetTopMostParent(), "targetEntity is not top-most", "Waypoint()", Logger.severity.FATAL);
+			m_logger.debugLog(targetEntity != targetEntity.GetTopMostParent(), "targetEntity is not top-most", Logger.severity.FATAL);
 
 			IMyCubeGrid asGrid = targetEntity as IMyCubeGrid;
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
 			{
-				m_logger.debugLog("Cannot fly to entity, attached: " + targetEntity.getBestName() + ", creating GOLIS", "Waypoint()", Logger.severity.WARNING);
+				m_logger.debugLog("Cannot fly to entity, attached: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
 				new GOLIS(mover, navSet, TargetPosition, level);
 				return;
 			}
 			if (targetEntity.Physics == null)
 			{
-				m_logger.debugLog("Target has no physics: " + targetEntity.getBestName() + ", creating GOLIS", "Waypoint()", Logger.severity.WARNING);
+				m_logger.debugLog("Target has no physics: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
 				new GOLIS(mover, navSet, TargetPosition, level);
 				return;
 			}
@@ -57,15 +57,15 @@ namespace Rynchodon.Autopilot.Navigator
 			setLevel.NavigatorMover = this;
 			//setLevel.DestinationEntity = mover.Block.CubeBlock; // to force avoidance 
 
-			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + TargetPosition, "Waypoint()", Logger.severity.DEBUG);
+			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + TargetPosition, Logger.severity.DEBUG);
 		}
 
 		public override void Move()
 		{
 			if (m_navSet.DistanceLessThanDestRadius() || m_targetEntity.MarkedForClose)
 			{
-				m_logger.debugLog(!m_targetEntity.Closed, () => "Reached destination: " + TargetPosition, "Move()", Logger.severity.INFO);
-				m_logger.debugLog(m_targetEntity.Closed, "Target entity closed", "Move()", Logger.severity.INFO);
+				m_logger.debugLog(!m_targetEntity.Closed, () => "Reached destination: " + TargetPosition, Logger.severity.INFO);
+				m_logger.debugLog(m_targetEntity.Closed, "Target entity closed", Logger.severity.INFO);
 
 				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();

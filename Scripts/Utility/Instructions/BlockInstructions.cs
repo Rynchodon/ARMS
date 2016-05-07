@@ -66,7 +66,7 @@ namespace Rynchodon.Instructions
 			foreach (TextMonitor monitor in m_monitors)
 				if (monitor.Changed())
 				{
-					m_logger.debugLog("Monitor value changed", "Update()");
+					m_logger.debugLog("Monitor value changed");
 					m_displayNameDirty = false;
 					m_displayName = m_block.DisplayNameText;
 					GetInstructions();
@@ -79,10 +79,10 @@ namespace Rynchodon.Instructions
 
 			if (m_displayName == m_block.DisplayNameText)
 			{
-				m_logger.debugLog("no name change", "Update()");
+				m_logger.debugLog("no name change");
 				return false;
 			}
-			m_logger.debugLog("name changed to " + m_block.DisplayNameText, "Update()");
+			m_logger.debugLog("name changed to " + m_block.DisplayNameText);
 			m_displayName = m_block.DisplayNameText;
 			GetInstructions();
 			return HasInstructions;

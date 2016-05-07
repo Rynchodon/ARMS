@@ -74,7 +74,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{ return value_state; }
 			set
 			{
-				m_logger.debugLog("Changing state to " + value, "set_m_state()");
+				m_logger.debugLog("Changing state to " + value);
 				value_state = value;
 				switch (value)
 				{
@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Navigator
 							EnableDrills(false);
 							if (DrillFullness() >= FullAmount_Return)
 							{
-								m_logger.debugLog(ReturnCause_Full, "set_m_state()");
+								m_logger.debugLog(ReturnCause_Full);
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
@@ -92,7 +92,7 @@ namespace Rynchodon.Autopilot.Navigator
 							}
 							if (GetAcceleration() < MinAccel_Return)
 							{
-								m_logger.debugLog(ReturnCause_Heavy, "set_m_state()");
+								m_logger.debugLog(ReturnCause_Heavy);
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
@@ -101,7 +101,7 @@ namespace Rynchodon.Autopilot.Navigator
 							}
 							if (m_mover.ThrustersOverWorked(Mover.OverworkedThreshold - 0.1f))
 							{
-								m_logger.debugLog(ReturnCause_OverWorked, "set_m_state()");
+								m_logger.debugLog(ReturnCause_OverWorked);
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
@@ -109,7 +109,7 @@ namespace Rynchodon.Autopilot.Navigator
 								return;
 							}
 							// request ore detector update
-							m_logger.debugLog("Requesting ore update", "set_m_state()");
+							m_logger.debugLog("Requesting ore update");
 							m_navSet.OnTaskComplete_NavMove();
 							OreDetector.SearchForMaterial(m_mover.Block, OreTargets, OnOreSearchComplete);
 						}
@@ -139,7 +139,7 @@ namespace Rynchodon.Autopilot.Navigator
 					case State.Mining_Tunnel:
 						if (isMiningPlanet)
 						{
-							m_logger.debugLog("Cannot tunnel through a planet, care to guess why?", "set_m_state()");
+							m_logger.debugLog("Cannot tunnel through a planet, care to guess why?");
 							m_state = State.Mining_Escape;
 							return;
 						}
@@ -159,7 +159,7 @@ namespace Rynchodon.Autopilot.Navigator
 						VRage.Exceptions.ThrowIf<NotImplementedException>(true, "State not implemented: " + value);
 						break;
 				}
-				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition, "set_m_state()");
+				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition);
 				m_mover.StopMove();
 				m_mover.StopRotate();
 				m_mover.IsStuck = false;
@@ -179,7 +179,7 @@ namespace Rynchodon.Autopilot.Navigator
 			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			if (allDrills == null || allDrills.Count == 0)
 			{
-				m_logger.debugLog("No Drills!", "MinerVoxel()", Logger.severity.INFO);
+				m_logger.debugLog("No Drills!", Logger.severity.INFO);
 				return;
 			}
 
@@ -192,7 +192,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navDrill.FunctionalBlocks == 0)
 			{
-				m_logger.debugLog("no working drills", "MinerVoxel()", Logger.severity.INFO);
+				m_logger.debugLog("no working drills", Logger.severity.INFO);
 				return;
 			}
 
@@ -209,7 +209,7 @@ namespace Rynchodon.Autopilot.Navigator
 				// skip planet physics, ship should be near planet as well
 				if (voxel is IMyVoxelMap || voxel is MyPlanet)
 				{
-					m_logger.debugLog("near a voxel, escape first", "MinerVoxel()", Logger.severity.DEBUG);
+					m_logger.debugLog("near a voxel, escape first", Logger.severity.DEBUG);
 					m_targetVoxel = voxel;
 					m_state = State.Mining_Escape;
 					var setLevel = m_navSet.GetSettingsLevel(AllNavigationSettings.SettingsLevelName.NavMove);
@@ -230,7 +230,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_state != State.Mining_Escape && m_navDrill.FunctionalBlocks == 0)
 			{
-				m_logger.debugLog("No drills, must escape!", "Move()");
+				m_logger.debugLog("No drills, must escape!");
 				m_state = State.Mining_Escape;
 			}
 
@@ -244,13 +244,13 @@ namespace Rynchodon.Autopilot.Navigator
 					// ok to adjust m_approach itself but we cannot move to closest point on line
 					if (m_approach.DistanceSquared(m_navDrill.WorldPosition) < m_longestDimension * m_longestDimension)
 					{
-						m_logger.debugLog("Finished approach", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Finished approach", Logger.severity.DEBUG);
 						m_state = State.Rotating;
 						return;
 					}
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -259,7 +259,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_mover.StopMove();
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -267,13 +267,13 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.MoveTo:
 					if (m_navSet.Settings_Current.Distance < m_longestDimension)
 					{
-						m_logger.debugLog("Reached target voxel", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Reached target voxel", Logger.severity.DEBUG);
 						m_state = State.Mining;
 						return;
 					}
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -282,32 +282,32 @@ namespace Rynchodon.Autopilot.Navigator
 					// do not check for inside asteroid as we may not have reached it yet and target is inside asteroid
 					if (DrillFullness() > FullAmount_Abort)
 					{
-						m_logger.debugLog("Drills are full, aborting", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Drills are full, aborting", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
 					if (GetAcceleration() < MinAccel_Abort)
 					{
-						m_logger.debugLog("Ship is heavy, aborting", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Ship is heavy, aborting", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
 					if (m_mover.ThrustersOverWorked())
 					{
-						m_logger.debugLog("Thrusters overworked, aborting", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Thrusters overworked, aborting", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
 					if (m_navSet.Settings_Current.Distance < 1f)
 					{
-						m_logger.debugLog("Reached position: " + m_currentTarget, "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Reached position: " + m_currentTarget, Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
 
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -316,14 +316,14 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Mining_Escape:
 					if (!IsNearVoxel(2d))
 					{
-						m_logger.debugLog("left voxel", "Move()");
+						m_logger.debugLog("left voxel");
 						m_state = State.Move_Away;
 						return;
 					}
 
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()");
+						m_logger.debugLog("Stuck");
 						m_state = State.Mining_Tunnel;
 						return;
 					}
@@ -338,14 +338,14 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Mining_Tunnel:
 					if (!IsNearVoxel(2d))
 					{
-						m_logger.debugLog("left voxel", "Mine()");
+						m_logger.debugLog("left voxel");
 						m_state = State.Move_Away;
 						return;
 					}
 
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()", Logger.severity.DEBUG);
+						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
@@ -360,19 +360,19 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Move_Away:
 					if (m_targetVoxel == null)
 					{
-						m_logger.debugLog("no target voxel", "Move()");
+						m_logger.debugLog("no target voxel");
 						m_state = State.GetTarget;
 						return;
 					}
 					if (!IsNearVoxel(4d))
 					{
-						m_logger.debugLog("far enough away", "Move()");
+						m_logger.debugLog("far enough away");
 						m_state = State.GetTarget;
 						return;
 					}
 					if (m_mover.IsStuck)
 					{
-						m_logger.debugLog("Stuck", "Move()");
+						m_logger.debugLog("Stuck");
 						m_state = State.Mining_Tunnel;
 						return;
 					}
@@ -405,7 +405,7 @@ namespace Rynchodon.Autopilot.Navigator
 					case State.Rotating:
 						if (m_navSet.DirectionMatched())
 						{
-							m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
+							m_logger.debugLog("Finished rotating", Logger.severity.INFO);
 							m_state = State.MoveTo;
 							m_mover.StopRotate();
 							return;
@@ -422,7 +422,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Approaching:
 					if (m_navSet.DistanceLessThan(m_longestDimension))
 					{
-						m_logger.debugLog("closer to destination than longest dim", "Rotate()");
+						m_logger.debugLog("closer to destination than longest dim");
 						m_mover.StopRotate();
 					}
 					else
@@ -431,7 +431,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.GetTarget:
 				case State.Mining_Escape:
 				case State.Move_Away:
-					m_logger.debugLog("no rotation", "Rotate()");
+					m_logger.debugLog("no rotation");
 					m_mover.StopRotate();
 					return;
 				case State.MoveTo:
@@ -446,7 +446,7 @@ namespace Rynchodon.Autopilot.Navigator
 				case State.Rotating:
 					if (m_navSet.DirectionMatched())
 					{
-						m_logger.debugLog("Finished rotating", "Rotate()", Logger.severity.INFO);
+						m_logger.debugLog("Finished rotating", Logger.severity.INFO);
 						m_state = State.MoveTo;
 						m_mover.StopRotate();
 						return;
@@ -458,12 +458,12 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navDrill.FunctionalBlocks == 0)
 			{
-				m_logger.debugLog("no functional blocks, cannot rotate", "Rotate()");
+				m_logger.debugLog("no functional blocks, cannot rotate");
 				m_mover.StopRotate();
 			}
 			else
 			{
-				m_logger.debugLog("rotate to face " + m_currentTarget, "Rotate()");
+				m_logger.debugLog("rotate to face " + m_currentTarget);
 				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget - m_navDrill.WorldPosition));
 			}
 		}
@@ -534,13 +534,13 @@ namespace Rynchodon.Autopilot.Navigator
 			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 			if (cache == null)
 			{
-				m_logger.debugLog("Failed to get cache", "DrillFullness()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return float.MaxValue;
 			}
 			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			if (allDrills == null)
 			{
-				m_logger.debugLog("Failed to get block list", "DrillFullness()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
 				return float.MaxValue;
 			}
 
@@ -577,20 +577,20 @@ namespace Rynchodon.Autopilot.Navigator
 		private void EnableDrills(bool enable)
 		{
 			if (enable)
-				m_logger.debugLog("Enabling drills", "EnableDrills()", Logger.severity.DEBUG);
+				m_logger.debugLog("Enabling drills", Logger.severity.DEBUG);
 			else
-				m_logger.debugLog("Disabling drills", "EnableDrills()", Logger.severity.DEBUG);
+				m_logger.debugLog("Disabling drills", Logger.severity.DEBUG);
 
 			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 			if (cache == null)
 			{
-				m_logger.debugLog("Failed to get cache", "EnableDrills()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return;
 			}
 			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
 			if (allDrills == null)
 			{
-				m_logger.debugLog("Failed to get block list", "EnableDrills()", Logger.severity.INFO);
+				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
 				return;
 			}
 
@@ -605,7 +605,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (!success)
 			{
-				m_logger.debugLog("No ore target found", "OnOreSearchComplete()", Logger.severity.INFO);
+				m_logger.debugLog("No ore target found", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
 				m_navSet.Settings_Commands.Complaint = "No ore found";
 				return;
@@ -619,7 +619,7 @@ namespace Rynchodon.Autopilot.Navigator
 			GetExteriorPoint(m_depositPos, toCentre, m_longestDimension, exterior => {
 				m_approach = new LineSegmentD(exterior - toCentre * m_longestDimension * 5f, exterior);
 				m_state = State.Approaching;
-				m_logger.debugLog("approach: " + m_approach.From.ToGpsTag("From") + ", " + m_approach.To.ToGpsTag("To"), "OnOreSearchComplete()");
+				m_logger.debugLog("approach: " + m_approach.From.ToGpsTag("From") + ", " + m_approach.To.ToGpsTag("To"));
 			});
 		}
 
@@ -642,7 +642,7 @@ namespace Rynchodon.Autopilot.Navigator
 			IMyVoxelMap voxel = m_targetVoxel as IMyVoxelMap;
 			if (voxel == null)
 			{
-				m_logger.alwaysLog("m_targetVoxel is not IMyVoxelMap: " + m_targetVoxel.getBestName(), "GetSurfacePoint()", Logger.severity.FATAL);
+				m_logger.alwaysLog("m_targetVoxel is not IMyVoxelMap: " + m_targetVoxel.getBestName(), Logger.severity.FATAL);
 				throw new InvalidOperationException("m_targetVoxel is not IMyVoxelMap");
 			}
 
@@ -653,7 +653,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return obstruction.Value;
 			else
 			{
-				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0", "GetSurfacePoint()", Logger.severity.WARNING);
+				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0", Logger.severity.WARNING);
 				return surfaceFinder.P0;
 			}
 		}
@@ -670,7 +670,7 @@ namespace Rynchodon.Autopilot.Navigator
 			MyPlanet planet = m_targetVoxel as MyPlanet;
 			if (planet == null)
 			{
-				m_logger.alwaysLog("m_targetVoxel is not MyPlanet: " + m_targetVoxel.getBestName(), "GetSurfacePoint()", Logger.severity.FATAL);
+				m_logger.alwaysLog("m_targetVoxel is not MyPlanet: " + m_targetVoxel.getBestName(), Logger.severity.FATAL);
 				throw new InvalidOperationException("m_targetVoxel is not MyPlanet");
 			}
 
@@ -697,7 +697,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void MoveCurrent()
 		{
-			m_logger.debugLog("current target: " + m_currentTarget, "MoveCurrent()");
+			m_logger.debugLog("current target: " + m_currentTarget);
 			m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo);
 		}
 

@@ -28,7 +28,7 @@ namespace Rynchodon.Attached
 			AttachmentKind = kind;
 			myBlock = block;
 
-			myLogger.debugLog("Created for: " + block.DisplayNameText, "AttachableBlockBase()");
+			myLogger.debugLog("Created for: " + block.DisplayNameText);
 
 			block.OnMarkForClose += Detach;
 			Registrar.Add(this.myBlock, this);
@@ -45,7 +45,7 @@ namespace Rynchodon.Attached
 			AttachableBlockBase result;
 			if (!Registrar.TryGetValue(entityId, out result))
 			{
-				myLogger.debugLog("Failed to get partner, " + entityId + " not in registry.", "CheckPartner()", Logger.severity.DEBUG);
+				myLogger.debugLog("Failed to get partner, " + entityId + " not in registry.", Logger.severity.DEBUG);
 				return null;
 			}
 
@@ -81,7 +81,7 @@ namespace Rynchodon.Attached
 			myGrid.OnMarkForClose += Detach;
 			grid.OnMarkForClose += Detach;
 
-			myLogger.debugLog("attaching " + myGrid.DisplayName + " to " + grid.DisplayName, "Attach()", Logger.severity.DEBUG);
+			myLogger.debugLog("attaching " + myGrid.DisplayName + " to " + grid.DisplayName, Logger.severity.DEBUG);
 			AttachedGrid.AddRemoveConnection(AttachmentKind, myGrid, grid, true);
 			curAttTo = grid;
 		}
@@ -99,19 +99,19 @@ namespace Rynchodon.Attached
 				curAttToBlock = null;
 			}
 
-			myLogger.debugLog("detaching " + myGrid.DisplayName + " from " + curAttTo.DisplayName, "Detach()", Logger.severity.DEBUG);
+			myLogger.debugLog("detaching " + myGrid.DisplayName + " from " + curAttTo.DisplayName, Logger.severity.DEBUG);
 			AttachedGrid.AddRemoveConnection(AttachmentKind, myGrid, curAttTo, false);
 			curAttTo = null;
 		}
 
 		private void Detach(IMyEntity obj)
 		{
-			myLogger.debugLog("closed object: " + obj.getBestName(), "Detach()");
+			myLogger.debugLog("closed object: " + obj.getBestName());
 			try
 			{ Detach(); }
 			catch (Exception ex)
 			{
-				myLogger.debugLog("Exception: " + ex, "Detach()", Logger.severity.ERROR);
+				myLogger.debugLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.debugNotify("Detach encountered an exception", 10000, Logger.severity.ERROR);
 			}
 		}

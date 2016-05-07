@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
 
-			m_logger.debugLog("Initialized", "Kamikaze()");
+			m_logger.debugLog("Initialized");
 		}
 
 		#region IEnemyResponse Members
@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			m_logger.debugLog("entered", "Move()");
+			m_logger.debugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
-			m_logger.debugLog("entered", "Rotate()");
+			m_logger.debugLog("entered");
 
 			if (m_enemy == null)
 			{

@@ -190,8 +190,8 @@ namespace Rynchodon.Weapons.Guided
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("failed to create GuidedMissile", "MissileBelongsTo()", Logger.severity.ERROR);
-				myLogger.alwaysLog("Exception: " + ex, "MissileBelongsTo()", Logger.severity.ERROR);
+				myLogger.alwaysLog("failed to create GuidedMissile", Logger.severity.ERROR);
+				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 			}
 
 			return true;

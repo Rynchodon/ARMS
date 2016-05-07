@@ -51,7 +51,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <returns>True if path is clear. False if slow test needs to be run.</returns>
 		public bool TestFast(PseudoBlock NavigationBlock, Vector3D worldDestination, bool ignoreAsteroid, MyEntity ignoreEntity, bool landing)
 		{
-			m_logger.debugLog(NavigationBlock.Grid != m_grid, "NavigationBlock.CubeGrid != m_grid", "TestFast()", Logger.severity.FATAL);
+			m_logger.debugLog(NavigationBlock.Grid != m_grid, "NavigationBlock.CubeGrid != m_grid", Logger.severity.FATAL);
 
 			//CheckInterrupt();
 
@@ -67,10 +67,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			ICollection<MyEntity> offenders = EntitiesInLargeAABB(m_grid.WorldAABB, AtDest);
 			if (offenders.Count == 0)
 			{
-				m_logger.debugLog("AABB is empty", "TestPath()", Logger.severity.TRACE);
+				m_logger.debugLog("AABB is empty", Logger.severity.TRACE);
 				return true;
 			}
-			m_logger.debugLog("collected entities to test: " + offenders.Count, "TestPath()");
+			m_logger.debugLog("collected entities to test: " + offenders.Count);
 
 			// perform capsule vs AABB test
 			List<MyEntity> remove = new List<MyEntity>();
@@ -85,10 +85,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (offenders.Count == 0)
 			{
-				m_logger.debugLog("no entities intersect path", "TestFast()", Logger.severity.TRACE);
+				m_logger.debugLog("no entities intersect path", Logger.severity.TRACE);
 				return true;
 			}
-			m_logger.debugLog("entities intersecting path: " + offenders.Count, "TestPath()");
+			m_logger.debugLog("entities intersecting path: " + offenders.Count);
 
 			//foreach (var ent in offenders)
 			//	m_logger.debugLog("entity: " + ent.getBestName(), "TestPath()");
@@ -100,13 +100,13 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public bool TestSlow(out MyEntity blockingPath, out Vector3? pointOfObstruction)
 		{
-			m_logger.debugLog(m_offendingEntities == null, "m_offendingEntities == null, did you remember to call TestFast()?", "TestSlow()", Logger.severity.FATAL);
+			m_logger.debugLog(m_offendingEntities == null, "m_offendingEntities == null, did you remember to call TestFast()?", Logger.severity.FATAL);
 
 			IMyCubeBlock ignoreBlock = m_ignoreEntity as IMyCubeBlock;
 
 			foreach (MyEntity entity in m_offendingEntities)
 			{
-				m_logger.debugLog("checking entity: " + entity.getBestName(), "TestSlow()");
+				m_logger.debugLog("checking entity: " + entity.getBestName());
 
 				MyVoxelBase voxel = entity as MyVoxelBase;
 				if (voxel != null)
@@ -126,14 +126,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 					continue;
 				}
 
-				m_logger.debugLog("not a grid, testing bounds", "TestSlow()");
+				m_logger.debugLog("not a grid, testing bounds");
 				if (!m_path.IntersectsAABB(entity))
 					continue;
 
 				if (!m_path.IntersectsVolume(entity))
 					continue;
 
-				m_logger.debugLog("no more tests for non-grids are implemented", "TestSlow()", Logger.severity.DEBUG);
+				m_logger.debugLog("no more tests for non-grids are implemented", Logger.severity.DEBUG);
 				pointOfObstruction = m_path.get_Line().ClosestPoint(entity.GetCentre());
 				blockingPath = entity;
 				return false;
@@ -152,7 +152,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			if (m_ignoreAsteroid)
 			{
-				m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName(), "TestSlow()");
+				m_logger.debugLog("Ignoring asteroid: " + voxel.getBestName());
 				pointOfObstruction = null;
 				return true;
 			}
@@ -160,14 +160,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3[] intersection = new Vector3[2];
 			if (!path.IntersectsAABB(voxel, out  intersection[0]))
 			{
-				m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
+				m_logger.debugLog("path does not intersect AABB. " + voxel.getBestName(), Logger.severity.TRACE);
 				pointOfObstruction = null;
 				return true;
 			}
 
 			if (!path.get_Reverse().IntersectsAABB(voxel, out intersection[1]))
 			{
-				m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), "TestSlow()", Logger.severity.WARNING);
+				m_logger.debugLog("Reversed path does not intersect AABB, perhaps it moved? " + voxel.getBestName(), Logger.severity.WARNING);
 				pointOfObstruction = null;
 				return true;
 			}
@@ -181,7 +181,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 			// planet test is done by PlanetChecker
 
-			m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), "TestSlow()", Logger.severity.TRACE);
+			m_logger.debugLog("Does not intersect path: " + voxel.getBestName(), Logger.severity.TRACE);
 			pointOfObstruction = null;
 			return true;
 		}
@@ -280,10 +280,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			ICollection<MyEntity> offenders = EntitiesInLargeAABB(atFrom, atTo);
 			if (offenders.Count == 0)
 			{
-				m_logger.debugLog("AABB is empty", "distanceCanTravel()");
+				m_logger.debugLog("AABB is empty");
 				return 0;
 			}
-			m_logger.debugLog("collected entities to test: " + offenders.Count, "distanceCanTravel()");
+			m_logger.debugLog("collected entities to test: " + offenders.Count);
 			IOrderedEnumerable<MyEntity> ordered = offenders.OrderBy(entity => Vector3D.Distance(canTravel.From, entity.GetCentre()));
 
 			Capsule path = new Capsule(canTravel.From, canTravel.To, m_path.Radius);
@@ -295,7 +295,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (voxel != null)
 						if (!TestVoxel(voxel, path, out pointOfObstruction))
 						{
-							m_logger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction), "distanceCanTravel()");
+							m_logger.debugLog("obstruction at " + pointOfObstruction + " distance from dest is " + Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction));
 							return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
 						}
 
@@ -317,17 +317,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 							return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
 					}
 
-					m_logger.debugLog("not a grid, testing bounds", "distanceCanTravel()");
+					m_logger.debugLog("not a grid, testing bounds");
 					if (!m_path.IntersectsVolume(entity))
 						continue;
 
-					m_logger.debugLog("no more tests for non-grids are implemented", "distanceCanTravel()", Logger.severity.DEBUG);
+					m_logger.debugLog("no more tests for non-grids are implemented", Logger.severity.DEBUG);
 					pointOfObstruction = m_path.get_Line().ClosestPoint(entity.GetCentre());
 					return Vector3.Distance(canTravel.To, (Vector3)pointOfObstruction);
 				}
 
 			// no obstruction
-			m_logger.debugLog("no obstruction", "distanceCanTravel()");
+			m_logger.debugLog("no obstruction");
 			return 0f;
 		}
 

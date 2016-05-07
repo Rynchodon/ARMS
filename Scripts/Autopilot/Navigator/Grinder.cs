@@ -62,7 +62,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (value == value_stage)
 					return;
-				m_logger.debugLog("Changing stage from " + value_stage + " to " + value, "set_m_stage()", Logger.severity.DEBUG);
+				m_logger.debugLog("Changing stage from " + value_stage + " to " + value, Logger.severity.DEBUG);
 				value_stage = value;
 
 				if (value_stage == Stage.None)
@@ -82,15 +82,15 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (value_enemy != null)
 				if (GridsClaimed.Remove(value_enemy.EntityId))
-					m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsClaimed", "Move()", Logger.severity.TRACE);
+					m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.TRACE);
 				else
-					m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsClaimed", "Move()", Logger.severity.WARNING);
+					m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.WARNING);
 
 			if (value != null)
 			{
 				if (GridsClaimed.ContainsKey(value.EntityId))
 				{
-					m_logger.debugLog("Already claimed: " + value.getBestName(), "set_m_enemy()", Logger.severity.INFO);
+					m_logger.debugLog("Already claimed: " + value.getBestName(), Logger.severity.INFO);
 					return false;
 				}
 				else
@@ -118,14 +118,14 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navGrind.FunctionalBlocks == 0)
 			{
-				m_logger.debugLog("no working grinders", "Grinder()", Logger.severity.INFO);
+				m_logger.debugLog("no working grinders", Logger.severity.INFO);
 				return;
 			}
 
 			m_grinderOffset = m_navGrind.Block.GetLengthInDirection(m_navGrind.Block.GetFaceDirection()[0]) * 0.5f + 2.5f;
 			if (m_navSet.Settings_Current.DestinationRadius > m_longestDimension)
 			{
-				m_logger.debugLog("Reducing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + m_longestDimension, "MinerVoxel()", Logger.severity.DEBUG);
+				m_logger.debugLog("Reducing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + m_longestDimension, Logger.severity.DEBUG);
 				m_navSet.Settings_Task_NavRot.DestinationRadius = m_longestDimension;
 			}
 
@@ -146,7 +146,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_navGrind.FunctionalBlocks == 0)
 			{
-				m_logger.debugLog("No functional grinders remaining", "Move()", Logger.severity.INFO);
+				m_logger.debugLog("No functional grinders remaining", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
 				EnableGrinders(false);
 				return;
@@ -157,7 +157,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (GrinderFull())
 			{
-				m_logger.debugLog("Grinders are full", "Move()", Logger.severity.INFO);
+				m_logger.debugLog("Grinders are full", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
 				EnableGrinders(false);
 				return;
@@ -169,7 +169,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 				if (Globals.ElapsedTime >= m_timeoutAt)
 				{
-					m_logger.debugLog("Search timed out", "Move()");
+					m_logger.debugLog("Search timed out");
 					m_navSet.OnTaskComplete_NavRot();
 					EnableGrinders(false);
 				}
@@ -203,7 +203,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_stage != Stage.Grind)
 			{
-				m_logger.debugLog("Now grinding", "Move_Grind()", Logger.severity.DEBUG);
+				m_logger.debugLog("Now grinding", Logger.severity.DEBUG);
 				m_navSet.OnTaskComplete_NavMove();
 				EnableGrinders(true);
 				m_stage = Stage.Grind;
@@ -215,24 +215,24 @@ namespace Rynchodon.Autopilot.Navigator
 			IMySlimBlock block = m_enemy.GetCubeBlock(cellPosition);
 			if (block == null)
 			{
-				m_logger.debugLog("No block found at cell position: " + cellPosition, "Move_Grind()", Logger.severity.INFO);
+				m_logger.debugLog("No block found at cell position: " + cellPosition, Logger.severity.INFO);
 				return;
 			}
-			m_logger.debugLog("block: " + block, "Move_Grind()");
+			m_logger.debugLog("block: " + block);
 			m_targetPosition = m_enemy.GridIntegerToWorld(m_enemy.GetCubeBlock(cellPosition).Position);
-			m_logger.debugLog("cellPosition: " + cellPosition + ", block: " + m_enemy.GetCubeBlock(cellPosition) + ", world: " + m_targetPosition, "Move_Grind()");
+			m_logger.debugLog("cellPosition: " + cellPosition + ", block: " + m_enemy.GetCubeBlock(cellPosition) + ", world: " + m_targetPosition);
 
 			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
 				if (!m_mover.Pathfinder.CanRotate)
 				{
-					m_logger.debugLog("Extricating ship from target", "Move_Grind()");
+					m_logger.debugLog("Extricating ship from target");
 					m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 					m_mover.CalcMove(m_navGrind, m_targetPosition + m_navGrind.WorldMatrix.Backward * 100f, m_enemy.GetLinearVelocity(), false);
 				}
 				else
 				{
-					m_logger.debugLog("Waiting for angle to match", "Move_Grind()");
+					m_logger.debugLog("Waiting for angle to match");
 					m_mover.CalcMove(m_navGrind, m_navGrind.WorldPosition, m_enemy.GetLinearVelocity(), false);
 				}
 				return;
@@ -246,13 +246,13 @@ namespace Rynchodon.Autopilot.Navigator
 				Vector3D targetToGrinder = grindPosition - m_targetPosition;
 				targetToGrinder.Normalize();
 
-				m_logger.debugLog("far away(" + distSq + "), moving to " + (m_targetPosition + targetToGrinder * offset), "Move_Grind()");
+				m_logger.debugLog("far away(" + distSq + "), moving to " + (m_targetPosition + targetToGrinder * offset));
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_mover.CalcMove(m_navGrind, m_targetPosition + targetToGrinder * offset, m_enemy.GetLinearVelocity(), true);
 			}
 			else
 			{
-				m_logger.debugLog("close(" + distSq + "), moving to " + m_targetPosition, "Move_Grind()");
+				m_logger.debugLog("close(" + distSq + "), moving to " + m_targetPosition);
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = 1f;
 				m_mover.CalcMove(m_navGrind, m_targetPosition, m_enemy.GetLinearVelocity(), true);
 			}
@@ -262,14 +262,14 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_stage != Stage.Intercept)
 			{
-				m_logger.debugLog("Now intercepting", "Move_Intercept()", Logger.severity.DEBUG);
+				m_logger.debugLog("Now intercepting", Logger.severity.DEBUG);
 				m_navSet.OnTaskComplete_NavMove();
 				EnableGrinders(false);
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				m_stage = Stage.Intercept;
-			} 
+			}
 
-			m_logger.debugLog("Moving to " + position, "Move_Intercept()");
+			m_logger.debugLog("Moving to " + position);
 			m_mover.CalcMove(m_navGrind, position, m_enemy.GetLinearVelocity());
 		}
 
@@ -281,7 +281,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_logger.debugLog("rotating to " + m_targetPosition, "Rotate()");
+			m_logger.debugLog("rotating to " + m_targetPosition);
 			m_mover.CalcRotate(m_navGrind, RelativeDirection3F.FromWorld(m_navGrind.Grid, m_targetPosition - m_navGrind.WorldPosition));
 		}
 
@@ -399,12 +399,12 @@ namespace Rynchodon.Autopilot.Navigator
 			if (claimedBy != m_controlBlock.CubeGrid)
 				return false;
 
-			m_logger.debugLog("This grid has staked a claim but forgot about it", "GridCondition()", Logger.severity.INFO);
+			m_logger.debugLog("This grid has staked a claim but forgot about it", Logger.severity.INFO);
 			set_enemy(null);
 			if (GridsClaimed.Remove(grid.EntityId))
-				m_logger.debugLog("removed claim", "GridCondition()");
+				m_logger.debugLog("removed claim");
 			else
-				m_logger.alwaysLog("Failed to remove claim: " + grid.DisplayName, "GridCondition()", Logger.severity.WARNING);
+				m_logger.alwaysLog("Failed to remove claim: " + grid.DisplayName, Logger.severity.WARNING);
 			return true;
 		}
 
