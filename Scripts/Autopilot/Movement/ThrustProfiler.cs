@@ -448,5 +448,41 @@ namespace Rynchodon.Autopilot.Movement
 					TP_ThrustOverride.SetValue(thruster, 0f);
 		}
 
+		/// <summary>
+		/// Determines if the ship has enough force to accelerate in the specified direction. Checks against gravity.
+		/// </summary>
+		/// <param name="accelertation">The minimum acceleration required, in m/s/s</param>
+		public bool CanMoveDirection(Base6Directions.Direction direction, float acceleration = 1f)
+		{
+			Update();
+			return GetForceInDirection(direction, true) > Grid.Physics.Mass * acceleration;
+		}
+
+		/// <summary>
+		/// Determines if the ship has enough force to accelerate forward. Checks against gravity.
+		/// </summary>
+		/// <param name="acceleration">The ammount of acceleration required, in m/s/s</param>
+		public bool CanMoveForward(float acceleration = 1f)
+		{
+			Update();
+			return GetForceInDirection(Base6Directions.GetDirection(Standard.LocalMatrix.Forward), true) > Grid.Physics.Mass * acceleration;
+		}
+
+		/// <summary>
+		/// Determines if the ship has enough force to move in any direction. Checks against gravity.
+		/// </summary>
+		/// <param name="acceleration">The minimum acceleration required, in m/s/s</param>
+		public bool CanMoveAnyDirection(float acceleration = 1f)
+		{
+			Update();
+
+			float force = Grid.Physics.Mass * acceleration;
+			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
+				if (GetForceInDirection(direction, true) < force)
+					return false;
+
+			return true;
+		}
+
 	}
 }

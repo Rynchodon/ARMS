@@ -48,6 +48,11 @@ namespace Rynchodon.Autopilot.Navigator
 			Arm();
 		}
 
+		~Fighter()
+		{
+			Dispose();
+		}
+
 		public void Dispose()
 		{
 			Disarm();

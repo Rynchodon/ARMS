@@ -181,6 +181,11 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.GetSettingsLevel(m_settingLevel).NavigatorMover = this;
 		}
 
+		~FlyToGrid()
+		{
+			Dispose();
+		}
+
 		public void Dispose()
 		{
 			UnreserveTarget();

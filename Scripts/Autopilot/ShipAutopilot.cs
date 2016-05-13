@@ -566,7 +566,7 @@ namespace Rynchodon.Autopilot
 			{
 
 				Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
-				if (path != null && m_navSet.Settings_Current.CollisionAvoidance)
+				if (path != null)
 				{
 					if (!path.ReportCanMove || !path.ReportCanRotate)
 					{

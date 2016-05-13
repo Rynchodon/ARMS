@@ -136,6 +136,11 @@ namespace Rynchodon.Autopilot.Navigator
 			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
 		}
 
+		~Grinder()
+		{
+			Dispose();
+		}
+
 		public void Dispose()
 		{
 			try { set_enemy(null); }

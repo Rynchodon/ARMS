@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Navigator
 	/// Mines an IMyVoxelBase
 	/// Will not insist on rotation control until it is ready to start mining.
 	/// </summary>
-	public class MinerVoxel : NavigatorMover, INavigatorRotator
+	public class MinerVoxel : NavigatorMover, INavigatorRotator, IDisposable
 	{
 
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
@@ -90,7 +90,7 @@ namespace Rynchodon.Autopilot.Navigator
 								m_navSet.Settings_Commands.Complaint = ReturnCause_Full;
 								return;
 							}
-							if (GetAcceleration() < MinAccel_Return)
+							if (!SufficientAcceleration(MinAccel_Return))
 							{
 								m_logger.debugLog(ReturnCause_Heavy);
 								m_navSet.OnTaskComplete_NavRot();
@@ -223,6 +223,11 @@ namespace Rynchodon.Autopilot.Navigator
 
 		~MinerVoxel()
 		{
+			Dispose();
+		}
+
+		public void Dispose()
+		{
 			m_targetVoxel = null;
 		}
 
@@ -286,7 +291,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining_Escape;
 						return;
 					}
-					if (GetAcceleration() < MinAccel_Abort)
+					if (!SufficientAcceleration(MinAccel_Abort))
 					{
 						m_logger.debugLog("Ship is heavy, aborting", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -562,16 +567,12 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		/// <summary>
-		/// Finds the maximum forward and backwards accelerations and returns the lesser of the two.
+		/// Checks for enough acceleration to move the ship forward and backward with the specified acceleration.
 		/// </summary>
-		/// <returns>The lesser of maximum forward and backwards accelerations.</returns>
-		private float GetAcceleration()
+		private bool SufficientAcceleration(float acceleration)
 		{
-			m_mover.Thrust.Update();
-			float forwardForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), true);
-			float backwardForce = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), true);
-
-			return Math.Min(forwardForce, backwardForce) / m_navDrill.Physics.Mass;
+			return m_mover.Thrust.CanMoveDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Forward), acceleration) &&
+				m_mover.Thrust.CanMoveDirection(Base6Directions.GetClosestDirection(m_navDrill.LocalMatrix.Backward), acceleration);
 		}
 
 		private void EnableDrills(bool enable)

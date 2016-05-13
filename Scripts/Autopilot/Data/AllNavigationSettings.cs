@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative;
 
-			private bool? m_ignoreAsteroid, m_destChanged, m_collisionAvoidance, m_pathfindeCanChangeCourse, m_formation, m_nearingDestination;
+			private bool? m_ignoreAsteroid, m_destChanged, m_pathfindeCanChangeCourse, m_formation, m_nearingDestination;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -57,7 +57,6 @@ namespace Rynchodon.Autopilot.Data
 
 				m_ignoreAsteroid = false;
 				m_destChanged = true;
-				m_collisionAvoidance = true;
 				m_pathfindeCanChangeCourse = true;
 				m_formation = false;
 				m_nearingDestination = false;
@@ -276,13 +275,6 @@ namespace Rynchodon.Autopilot.Data
 			{
 				get { return m_destChanged ?? parent.DestinationChanged; }
 				set { m_destChanged = value; }
-			}
-
-			/// <summary>For Kamikaze</summary>
-			public bool CollisionAvoidance
-			{
-				get { return m_collisionAvoidance ?? parent.CollisionAvoidance; }
-				set { m_collisionAvoidance = value; }
 			}
 
 			/// <summary>For final landing stage and "Line" command</summary>

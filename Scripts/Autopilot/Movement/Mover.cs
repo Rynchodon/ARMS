@@ -13,6 +13,8 @@ namespace Rynchodon.Autopilot.Movement
 	/// <summary>
 	/// Performs the movement calculations and the movements.
 	/// </summary>
+	/// TODO: mover components, normal ship, missing thrusters, and helicopter
+	/// current system is a mess of trying to guess what is going on
 	public class Mover
 	{
 		#region S.E. Constants
@@ -26,6 +28,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Fraction of force used to calculate maximum speed.</summary>
 		public const float AvailableForceRatio = 0.5f;
 		public const float OverworkedThreshold = 0.75f;
+		/// <summary>How far from the destination a ship needs to be to take a curved path instead of a straight one.</summary>
 		public const float PlanetMoveDist = 1000f;
 
 		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
@@ -141,18 +144,6 @@ namespace Rynchodon.Autopilot.Movement
 			m_stopped = true;
 		}
 
-		/// <summary>
-		/// Calculates whether or not the grid has sufficient thrust to accelerate forwards at 1 m/s/s.
-		/// </summary>
-		/// <returns>True iff there is sufficient thrust available.</returns>
-		public bool CanMoveForward()
-		{
-			CheckGrid();
-			Thrust.Update();
-
-			return Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(Thrust.Standard.LocalMatrix.Forward), true) > Block.Physics.Mass;
-		}
-
 		#region Move
 
 		/// <summary>
@@ -165,14 +156,11 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			if (m_navSet.Settings_Current.CollisionAvoidance)
+			Pathfinder.TestPath(destPoint, false);
+			if (!Pathfinder.CanMove)
 			{
-				Pathfinder.TestPath(destPoint, false);
-				if (!Pathfinder.CanMove)
-				{
-					m_logger.debugLog("Pathfinder not allowing movement");
-					return;
-				}
+				m_logger.debugLog("Pathfinder not allowing movement");
+				return;
 			}
 
 			Thrust.Update();
@@ -191,6 +179,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
+		/// Do not remove this method, Vector3 can be implicitly converted to Vector3D, suppressing the warning.
 		[Obsolete("Navigators should use double precision")]
 		public void CalcMove(PseudoBlock block, Vector3 destPoint, Vector3 destVelocity, bool landing = false)
 		{
@@ -213,22 +202,19 @@ namespace Rynchodon.Autopilot.Movement
 			// using world vectors
 
 			m_lastMoveAttempt = Globals.UpdateCount;
-			if (m_navSet.Settings_Current.CollisionAvoidance)
-			{
-				Pathfinder.TestPath(destPoint, landing);
+			Pathfinder.TestPath(destPoint, landing);
 
-				switch (Pathfinder.m_pathState)
-				{
-					case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
-						m_logger.debugLog("Pathfinder not run yet");
-						m_lastMove = Globals.UpdateCount;
-						return;
-					case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
-						break;
-					default:
-						m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
-						return;
-				}
+			switch (Pathfinder.m_pathState)
+			{
+				case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+					m_logger.debugLog("Pathfinder not run yet");
+					m_lastMove = Globals.UpdateCount;
+					return;
+				case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+					break;
+				default:
+					m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
+					return;
 			}
 
 			Thrust.Update();
@@ -359,26 +345,28 @@ namespace Rynchodon.Autopilot.Movement
 			bool enableDampeners = false;
 			m_thrustHigh = false;
 
-			for (int i = 0; i < 3; i++)
+			for (int index = 0; index < 3; index++)
 			{
 				//const float minForceRatio = 0.1f;
 				//const float zeroForceRatio = 0.01f;
 
-				float forceRatio = m_moveForceRatio.GetDim(i);
-				float velDim = velocity.GetDim(i);
+				float velDim = velocity.GetDim(index);
 
 				// dampeners are useful for precise stopping but they do not always work properly
 				if (velDim < 1f && velDim > -1f)
 				{
-					float targetVelDim = m_moveAccel.GetDim(i) + velDim;
+					float targetVelDim = m_moveAccel.GetDim(index) + velDim;
 
 					if (targetVelDim < 0.01f && targetVelDim > -0.01f)
 					{
-						m_logger.debugLog("for dim: " + i + ", target velocity near zero: " + targetVelDim);
-						m_moveForceRatio.SetDim(i, 0f);
+						m_logger.debugLog("for dim: " + index + ", target velocity near zero: " + targetVelDim);
+						m_moveForceRatio.SetDim(index, 0f);
+						enableDampeners = true;
 						continue;
 					}
 				}
+
+				float forceRatio = m_moveForceRatio.GetDim(index);
 
 				if (forceRatio < 1f && forceRatio > -1f)
 				{
@@ -391,12 +379,6 @@ namespace Rynchodon.Autopilot.Movement
 
 				m_thrustHigh = true;
 
-				if (float.IsInfinity(forceRatio))
-				{
-					m_moveForceRatio.SetDim(i, 0f);
-					continue;
-				}
-
 				// force ratio is > 1 || < -1. If it is useful, use dampeners
 
 				if (velDim < 1f && velDim > -1f)
@@ -404,8 +386,8 @@ namespace Rynchodon.Autopilot.Movement
 
 				if (Math.Sign(forceRatio) * Math.Sign(velDim) < 0)
 				{
-					m_logger.debugLog("damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim));
-					m_moveForceRatio.SetDim(i, 0);
+					m_logger.debugLog("damping, i: " + index + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim));
+					m_moveForceRatio.SetDim(index, 0);
 					enableDampeners = true;
 				}
 				//else
@@ -503,27 +485,31 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate()", "CalcRotate()");
 
-			// nearing dest check comes first otherwise navigator becomes indecisive
-			if (m_navSet.Settings_Current.NearingDestination || (m_navSet.Settings_Current.CollisionAvoidance && !Pathfinder.CanMove))
+			if (!Pathfinder.CanMove)
 			{
-				m_logger.debugLog(m_navSet.Settings_Current.NearingDestination, "Nearing dest", Logger.severity.TRACE);
-				m_logger.debugLog(!m_navSet.Settings_Current.NearingDestination, "Pathfinder blocking", Logger.severity.TRACE);
-
 				CalcRotate_Stop();
-
 				return;
 			}
 
-			if (m_thrustHigh && m_moveAccel.LengthSquared() > 0.01f)
+			// if the ship is limited, it must always face accel direction
+			if (!Thrust.CanMoveAnyDirection() && m_moveAccel != Vector3.Zero)
+			{
+				m_logger.debugLog("limited thrust");
+				CalcRotate_Accel();
+				return;
+			}
+
+			if (m_navSet.Settings_Current.NearingDestination)
+			{
+				CalcRotate_Stop();
+				return;
+			}
+
+			if (m_thrustHigh && m_moveAccel != Vector3.Zero)
 			{
 				m_thrustHigh = false;
-				m_logger.debugLog("thrust high, rotate to accel, m_moveAccel: " + m_moveAccel);
-
-				if (SignificantGravity())
-					CalcRotate_InGravity(RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
-				else
-					CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
-
+				m_logger.debugLog("accel high");
+				CalcRotate_Accel();
 				return;
 			}
 
@@ -541,7 +527,7 @@ namespace Rynchodon.Autopilot.Movement
 		public void CalcRotate(PseudoBlock block, IMyCubeBlock destBlock, Base6Directions.Direction? forward, Base6Directions.Direction? upward)
 		{
 			//m_logger.debugLog("entered CalcRotate(PseudoBlock block, IMyCubeBlock destBlock, Base6Directions.Direction? forward, Base6Directions.Direction? upward)", "CalcRotate()");
-		
+
 			if (forward == null)
 				forward = Base6Directions.Direction.Forward;
 
@@ -560,8 +546,25 @@ namespace Rynchodon.Autopilot.Movement
 		public void CalcRotate(PseudoBlock block, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null, IMyEntity targetEntity = null)
 		{
 			//m_logger.debugLog("entered CalcRotate(PseudoBlock block, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null, IMyEntity targetEntity = null)", "CalcRotate()");
-		
+
 			CalcRotate(block.LocalMatrix, Direction, UpDirect, targetEntity: targetEntity);
+		}
+
+		/// <summary>
+		/// Rotate to face the acceleration direction. If acceleration is zero, invokes CalcRotate_Stop.
+		/// </summary>
+		public void CalcRotate_Accel()
+		{
+			if (m_moveAccel == Vector3.Zero)
+			{
+				CalcRotate_Stop();
+				return;
+			}
+		
+			if (SignificantGravity())
+				CalcRotate_InGravity(RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
+			else
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
 		}
 
 		/// <summary>
@@ -572,9 +575,8 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate_Stop()", "CalcRotate_Stop()");
 
-			if (m_thrustHigh || Block.Physics.LinearVelocity.LengthSquared() > 1f)
+			if (!Thrust.CanMoveAnyDirection() || Block.Physics.LinearVelocity.LengthSquared() > 1f)
 			{
-				m_thrustHigh = false;
 				m_logger.debugLog("rotate to stop");
 
 				if (SignificantGravity())
@@ -627,14 +629,14 @@ namespace Rynchodon.Autopilot.Movement
 				if (Vector3.Dot(direction.ToLocalNormalized(), fightGrav.ToLocalNormalized()) > 0f)
 				{
 					// direction is away from gravity
-					m_logger.debugLog("Facing primary towards direction, rolling secondary away from gravity");
+					m_logger.debugLog("Facing primary towards direction(" + direction.ToLocalNormalized() + "), rolling secondary away from gravity(" + fightGrav.ToLocalNormalized() + ")");
 					CalcRotate(Thrust.Standard.LocalMatrix, direction, fightGrav, gravityAdjusted: true);
 					return;
 				}
 				else
 				{
 					// direction is towards gravity
-					m_logger.debugLog("Facing secondary away from gravity, rolling primary towards direction");
+					m_logger.debugLog("Facing secondary away from gravity(" + fightGrav.ToLocalNormalized() + "), rolling primary towards direction(" + direction.ToLocalNormalized() + ")");
 					CalcRotate(Thrust.Gravity.LocalMatrix, fightGrav, direction, gravityAdjusted: true);
 					return;
 				}
@@ -644,7 +646,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			if (secondaryAccel > 1f)
 			{
-				m_logger.debugLog("Facing primary towards gravity, rolling secondary towards direction");
+				m_logger.debugLog("Facing primary towards gravity(" + fightGrav.ToLocalNormalized() + "), rolling secondary towards direction(" + direction.ToLocalNormalized() + ")");
 				CalcRotate(Thrust.Standard.LocalMatrix, fightGrav, direction, gravityAdjusted: true);
 				return;
 			}
@@ -661,7 +663,7 @@ namespace Rynchodon.Autopilot.Movement
 				moveAccel = Vector3.Normalize(moveAccel.vector) * primaryAccel;
 			}
 
-			m_logger.debugLog("Facing primary away from gravity and towards direction, moveAccel: " + moveAccel + ", fight gravity: " + fightGrav.ToLocal() + ", new direction: " + (moveAccel + fightGrav.ToLocal()));
+			m_logger.debugLog("Facing primary away from gravity and towards direction, moveAccel: " + moveAccel + ", fight gravity: " + fightGrav.ToLocal() + ", direction: " + direction.ToLocalNormalized() + ", new direction: " + (moveAccel + fightGrav.ToLocal()));
 
 			Vector3 dirV = moveAccel + fightGrav.ToLocal();
 			direction = RelativeDirection3F.FromLocal(Block.CubeGrid, dirV);
@@ -750,22 +752,19 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			m_lastMoveAttempt = Globals.UpdateCount;
-			if (m_navSet.Settings_Current.CollisionAvoidance)
-			{
-				Pathfinder.TestRotate(displacement);
+			Pathfinder.TestRotate(displacement);
 
-				switch (Pathfinder.m_rotateState)
-				{
-					case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
-						m_logger.debugLog("Pathfinder not run yet: " + Pathfinder.m_rotateState);
-						m_lastMove = Globals.UpdateCount;
-						return;
-					case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
-						break;
-					default:
-						m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
-						return;
-				}
+			switch (Pathfinder.m_rotateState)
+			{
+				case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+					m_logger.debugLog("Pathfinder not run yet: " + Pathfinder.m_rotateState);
+					m_lastMove = Globals.UpdateCount;
+					return;
+				case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+					break;
+				default:
+					m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
+					return;
 			}
 
 			float distanceAngle = displacement.Length();
@@ -805,16 +804,16 @@ namespace Rynchodon.Autopilot.Movement
 			m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio);
 
 			// dampeners
-			for (int i = 0; i < 3; i++)
+			for (int index = 0; index < 3; index++)
 			{
 				// if targetVelocity is close to 0, use dampeners
 
-				float target = m_rotateTargetVelocity.GetDim(i);
+				float target = m_rotateTargetVelocity.GetDim(index);
 				if (target > -0.01f && target < 0.01f)
 				{
 					//m_logger.debugLog("target near 0 for " + i + ", " + target, "in_CalcRotate()");
-					m_rotateTargetVelocity.SetDim(i, 0f);
-					m_rotateForceRatio.SetDim(i, 0f);
+					m_rotateTargetVelocity.SetDim(index, 0f);
+					m_rotateForceRatio.SetDim(index, 0f);
 					continue;
 				}
 
@@ -833,13 +832,13 @@ namespace Rynchodon.Autopilot.Movement
 			// S.E. provides damping for angular motion, we will ignore this
 			float accel = -minimumMoment * m_gyro.GyroForce;
 
-			for (int i = 0; i < 3; i++)
+			for (int index = 0; index < 3; index++)
 			{
-				float dim = disp.GetDim(i);
+				float dim = disp.GetDim(index);
 				if (dim > 0)
-					result.SetDim(i, MaxAngleSpeed(accel, dim, fast));
+					result.SetDim(index, MaxAngleSpeed(accel, dim, fast));
 				else if (dim < 0)
-					result.SetDim(i, -MaxAngleSpeed(accel, -dim, fast));
+					result.SetDim(index, -MaxAngleSpeed(accel, -dim, fast));
 			}
 
 			return result;
@@ -869,18 +868,15 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			if (m_navSet.Settings_Current.CollisionAvoidance)
+			if (!Pathfinder.CanMove)
 			{
-				if (!Pathfinder.CanMove)
-				{
-					//myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
-					StopMove();
-				}
-				if (!Pathfinder.CanRotate)
-				{
-					//myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
-					StopRotate();
-				}
+				//myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
+				StopMove();
+			}
+			if (!Pathfinder.CanRotate)
+			{
+				//myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
+				StopRotate();
 			}
 
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
