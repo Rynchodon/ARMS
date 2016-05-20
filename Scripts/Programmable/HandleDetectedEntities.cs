@@ -63,6 +63,7 @@ namespace Rynchodon.Programmable
     public void Main(string arguments)
     {
       enemies.Clear();
+      lostContact.Clear();
 
       DetectedEntityData entityData;
       foreach (string serialized in arguments.Split(entitySeparator))
