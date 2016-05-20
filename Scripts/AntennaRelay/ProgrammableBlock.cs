@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
+using Sandbox.Game.Entities.Blocks;
+using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using VRage.Collections;
 using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -17,12 +22,71 @@ namespace Rynchodon.AntennaRelay
 		public const char messageSeparator = '«';
 		public const string numberFormat = "e2";
 
-		private static readonly Logger s_logger = new Logger("ProgrammableBlock");
+		private static Logger s_logger = new Logger("ProgrammableBlock");
+		private static List<byte> s_message = new List<byte>();
 
 		static ProgrammableBlock()
 		{
 			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage_Client, Handler_SendMessage);
 			MessageHandler.Handlers.Add(MessageHandler.SubMod.PB_SendMessage_Server, Handler_SendMessage);
+
+			MyTerminalAction<MyProgrammableBlock> programmable_sendMessage = new MyTerminalAction<MyProgrammableBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			{
+				ValidForGroups = false,
+				ActionWithParameters = ProgrammableBlock_SendMessage
+			};
+			MyTerminalControlFactory.AddAction(programmable_sendMessage);
+
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			s_logger = null;
+			s_message = null;
+		}
+
+		/// <param name="args">Recipient grid, recipient block, message</param>
+		private static void ProgrammableBlock_SendMessage(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
+		{
+			if (args.Count != 3)
+			{
+				s_logger.debugLog("Wrong number of arguments, expected 3, got " + args.Count, Logger.severity.WARNING);
+				if (MyAPIGateway.Session.Player != null)
+					block.AppendCustomInfo("Failed to send message:\nWrong number of arguments, expected 3, got " + args.Count + '\n');
+				return;
+			}
+
+			if (MyAPIGateway.Multiplayer.IsServer)
+				ByteConverter.AppendBytes(s_message, (byte)MessageHandler.SubMod.PB_SendMessage_Server);
+			else
+				ByteConverter.AppendBytes(s_message, (byte)MessageHandler.SubMod.PB_SendMessage_Client);
+			ByteConverter.AppendBytes(s_message, block.EntityId);
+
+			for (int i = 0; i < 3; i++)
+			{
+				if (args[i].TypeCode != TypeCode.String)
+				{
+					s_logger.debugLog("TerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode, Logger.severity.WARNING);
+					if (MyAPIGateway.Session.Player != null)
+						block.AppendCustomInfo("Failed to send message:\nTerminalActionParameter #" + i + " is of wrong type, expected String, got " + args[i].TypeCode + '\n');
+					return;
+				}
+				ByteConverter.AppendBytes(s_message, (string)args[i].Value);
+				if (i != 2)
+					ByteConverter.AppendBytes(s_message, ProgrammableBlock.messageSeparator);
+			}
+
+			if (MyAPIGateway.Multiplayer.SendMessageToSelf(s_message.ToArray()))
+				s_logger.debugLog("Sent message", Logger.severity.DEBUG);
+			else
+			{
+				s_logger.alwaysLog("Message too long", Logger.severity.WARNING);
+				if (MyAPIGateway.Session.Player != null)
+					block.AppendCustomInfo("Failed to send message:\nMessage too long (" + s_message.Count + " > 4096 bytes)\n");
+			}
+			s_message.Clear();
 		}
 
 		private static void Handler_SendMessage(byte[] message, int pos)

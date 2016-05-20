@@ -4,8 +4,11 @@ using System.Text;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
-using Rynchodon.Utility.Network;
+using Sandbox.Game.Entities.Blocks;
+using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using VRage.Collections;
 using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -20,9 +23,9 @@ namespace Rynchodon.AntennaRelay
 		private const string timeString = "Current as of: ";
 		private const string tab = "    ";
 
-		private static readonly char[] OptionsSeparators = { ',', ';', ':' };
-
-		private static readonly Logger s_logger = new Logger("TextPanel");
+		private static char[] OptionsSeparators = { ',', ';', ':' };
+		private static Logger s_logger = new Logger("TextPanel");
+		private static List<long> s_detectedIds = new List<long>();
 
 		[Flags]
 		private enum Option : byte
@@ -37,27 +40,51 @@ namespace Rynchodon.AntennaRelay
 
 		static TextPanel()
 		{
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.TP_DisplayEntities, Handler_DisplayEntities);
+			MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			{
+				ValidForGroups = false,
+				ActionWithParameters = TextPanel_DisplayEntities
+			};
+			MyTerminalControlFactory.AddAction(textPanel_displayEntities);
+
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private static void Handler_DisplayEntities(byte[] message, int pos)
+		private static void Entities_OnCloseAll()
 		{
-			long panelId = ByteConverter.GetLong(message, ref pos);
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			OptionsSeparators = null;
+			s_logger = null;
+			s_detectedIds = null;
+		}
+
+		/// <param name="args">EntityIds as long</param>
+		private static void TextPanel_DisplayEntities(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
+		{
+			s_detectedIds.Clear();
+
+			for (int i = 0; i < args.Count; i++)
+			{
+				if (args[i].TypeCode != TypeCode.Int64)
+				{
+					s_logger.debugLog("TerminalActionParameter # " + i + " is of wrong type, expected Int64, got " + args[i].TypeCode, Logger.severity.WARNING);
+					if (MyAPIGateway.Session.Player != null)
+						block.AppendCustomInfo("Failed to display entities:\nTerminalActionParameter #" + i + " is of wrong type, expected Int64 (AKA long), got " + args[i].TypeCode + '\n');
+					return;
+				}
+				s_detectedIds.Add((long)args[i].Value);
+			}
 
 			TextPanel panel;
-			if (!Registrar.TryGetValue(panelId, out panel))
+			if (!Registrar.TryGetValue(block.EntityId, out panel))
 			{
-				s_logger.alwaysLog("Text panel not found in registrar: " + panelId, Logger.severity.ERROR);
+				s_logger.alwaysLog("Text panel not found in registrar: " + block.EntityId, Logger.severity.ERROR);
 				return;
 			}
 
-			s_logger.debugLog("Found text panel with id: " + panelId);
+			s_logger.debugLog("Found text panel with id: " + block.EntityId);
 
-			List<long> detectedIds = new List<long>();
-			while (pos < message.Length)
-				detectedIds.Add(ByteConverter.GetLong(message, ref pos));
-
-			panel.Display(detectedIds);
+			panel.Display(s_detectedIds);
 		}
 
 		private Ingame.IMyTextPanel m_textPanel;
