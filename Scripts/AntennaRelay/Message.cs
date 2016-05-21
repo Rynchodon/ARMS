@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using Rynchodon.Autopilot;
 using Rynchodon.Update;
-using Sandbox.Common.ObjectBuilders;
+using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -33,14 +34,188 @@ namespace Rynchodon.AntennaRelay
 
 		}
 
-		private static readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
+		private class StaticVariables
+		{
+			public readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
+			public readonly Logger logger = new Logger("Message");
+			public readonly List<byte> bytes = new List<byte>();
+		}
+
+		private static StaticVariables Static = new StaticVariables();
+
+		static Message()
+		{
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.Message, FromClient);
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Static = null;
+		}
+
+		#region Create & Send
+
+		/// <summary>
+		/// Inform the server to send message to autopilot block.
+		/// </summary>
+		private static void ToServer(long sender, string recipientGrid, string recipientBlock, string message)
+		{
+			Static.bytes.Clear();
+
+			ByteConverter.AppendBytes(Static.bytes, (byte)MessageHandler.SubMod.Message);
+			ByteConverter.AppendBytes(Static.bytes, sender);
+			ByteConverter.AppendBytes(Static.bytes, recipientGrid.Length);
+			ByteConverter.AppendBytes(Static.bytes, recipientGrid);
+			ByteConverter.AppendBytes(Static.bytes, recipientBlock.Length);
+			ByteConverter.AppendBytes(Static.bytes, recipientBlock);
+			ByteConverter.AppendBytes(Static.bytes, message.Length);
+			ByteConverter.AppendBytes(Static.bytes, message);
+
+			if (MyAPIGateway.Multiplayer.SendMessageToServer(Static.bytes.ToArray()))
+				Static.logger.debugLog("Sent message to server");
+			else
+			{
+				Static.logger.alwaysLog("Message too long", Logger.severity.WARNING);
+
+				IMyEntity entity;
+				if (MyAPIGateway.Entities.TryGetEntityById(sender, out entity))
+				{
+					IMyTerminalBlock block = entity as IMyTerminalBlock;
+					if (block != null)
+						block.AppendCustomInfo("Failed to send message:\nMessage too long (" + Static.bytes.Count + " > 4096 bytes)\n");
+				}
+			}
+		}
+
+		private static void FromClient(byte[] bytes, int pos)
+		{
+			long sender = ByteConverter.GetLong(bytes, ref pos);
+			int length = ByteConverter.GetInt(bytes, ref pos);
+			string recipientGrid = ByteConverter.GetString(bytes, length, ref pos);
+			length = ByteConverter.GetInt(bytes, ref pos);
+			string recipientBlock = ByteConverter.GetString(bytes, length, ref pos);
+			length = ByteConverter.GetInt(bytes, ref pos);
+			string message = ByteConverter.GetString(bytes, length, ref pos);
+
+			CreateAndSendMessage_Autopilot(sender, recipientGrid, recipientBlock, message);
+		}
+
+		private static void GetStorage(long entityId, out IMyCubeBlock block, out NetworkStorage storage)
+		{
+			IMyEntity entity;
+			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
+			{
+				Static.logger.alwaysLog("Failed to get entity id for " + entityId, Logger.severity.WARNING);
+				block = null;
+				storage = null;
+				return;
+			}
+
+			block = entity as IMyCubeBlock;
+			if (block == null)
+			{
+				Static.logger.alwaysLog("Entity is not a block: " + entityId, Logger.severity.WARNING);
+				storage = null;
+				return;
+			}
+
+			NetworkNode node;
+			if (Registrar.TryGetValue(entityId, out node))
+			{
+				storage = node.Storage;
+				return;
+			}
+
+			NetworkClient client = new NetworkClient(block);
+			storage = client.GetStorage();
+		}
+
+		/// <summary>
+		/// Creates a message and sends it.
+		/// </summary>
+		/// <param name="sender">Block sending the message.</param>
+		/// <param name="recipientGrid">Grid that will receive the message.</param>
+		/// <param name="recipientBlock">Block that will receive the message.</param>
+		/// <param name="message">The content of the message.</param>
+		/// <returns>The number of blocks that will receive the message.</returns>
+		public static int CreateAndSendMessage(long sender, string recipientGrid, string recipientBlock, string message)
+		{
+			Static.logger.debugLog("sender: " + sender + ", recipientGrid: " + recipientGrid + ", recipientBlock: " + recipientBlock + ", message: " + message);
+
+			int count =  CreateAndSendMessage_Autopilot(sender, recipientGrid, recipientBlock, message);
+			if (count != 0 && !MyAPIGateway.Multiplayer.IsServer)
+				ToServer(sender, recipientGrid, recipientBlock, message);
+
+			count += CreateAndSendMessage_Program(sender, recipientGrid, recipientBlock, message);
+
+			return count;
+		}
+
+		private static int CreateAndSendMessage_Autopilot(long sender, string recipientGrid, string recipientBlock, string message)
+		{
+			int count = 0;
+
+			IMyCubeBlock senderBlock;
+			NetworkStorage storage;
+			GetStorage(sender, out senderBlock, out storage);
+
+			if (storage == null)
+			{
+				Static.logger.debugLog("No storage");
+				return 0;
+			}
+
+			Registrar.ForEach((ShipAutopilot autopilot) => {
+				IMyCubeBlock block = autopilot.m_block.CubeBlock;
+				IMyCubeGrid grid = block.CubeGrid;
+				if (senderBlock.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				{
+					count++;
+					if (MyAPIGateway.Multiplayer.IsServer)
+						storage.Receive(new Message(message, block, senderBlock));
+				}
+			});
+
+			return count;
+		}
+
+		private static int CreateAndSendMessage_Program(long sender, string recipientGrid, string recipientBlock, string message)
+		{
+			int count = 0;
+
+			IMyCubeBlock senderBlock;
+			NetworkStorage storage;
+			GetStorage(sender, out senderBlock, out storage);
+
+			if (storage == null)
+			{
+				Static.logger.debugLog("No storage");
+				return 0;
+			}
+
+			Registrar.ForEach((ProgrammableBlock pb) => {
+				IMyCubeBlock block = pb.m_block;
+				IMyCubeGrid grid = block.CubeGrid;
+				if (senderBlock.canControlBlock(block) && grid.DisplayName.looseContains(recipientGrid) && block.DisplayNameText.looseContains(recipientBlock))
+				{
+					count++;
+					storage.Receive(new Message(message, block, senderBlock));
+				}
+			});
+
+			return count;
+		}
+
+		#endregion Create & Send
 
 		public readonly string Content, SourceGridName, SourceBlockName;
 		public readonly IMyCubeBlock DestCubeBlock, SourceCubeBlock;
 		public readonly TimeSpan created;
 		private readonly long destOwnerID;
 
-		public Message(string Content, IMyCubeBlock DestCubeblock, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
+		private Message(string Content, IMyCubeBlock DestCubeblock, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
 		{
 			this.Content = Content;
 			this.DestCubeBlock = DestCubeblock;
@@ -80,24 +255,6 @@ namespace Rynchodon.AntennaRelay
 			this.destOwnerID = builder.destOwnerID;
 		}
 
-		public static List<Message> buildMessages(string Content, string DestGridName, string DestBlockName, IMyCubeBlock SourceCubeBlock, string SourceBlockName = null)
-		{
-			List<Message> result = new List<Message>();
-			HashSet<IMyEntity> matchingGrids = new HashSet<IMyEntity>();
-			MyAPIGateway.Entities.GetEntities_Safe(matchingGrids, ent => ent is IMyCubeGrid && ent.DisplayName.looseContains(DestGridName));
-			foreach (IMyCubeGrid grid in matchingGrids)
-			{
-				var progs = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_MyProgrammableBlock));
-				foreach (IMyCubeBlock block in progs)
-				{
-					if (block.DisplayNameText.looseContains(DestBlockName)
-						&& SourceCubeBlock.canControlBlock(block))
-						result.Add(new Message(Content, block, SourceCubeBlock, SourceBlockName));
-				}
-			}
-			return result;
-		}
-
 		private bool value_isValid = true;
 		/// <summary>
 		/// can only be set to false, once invalid always invalid
@@ -111,7 +268,7 @@ namespace Rynchodon.AntennaRelay
 					|| SourceCubeBlock == null
 					|| DestCubeBlock.Closed
 					|| destOwnerID != DestCubeBlock.OwnerId // dest owner changed
-					|| (Globals.ElapsedTime - created).CompareTo(MaximumLifetime) > 0)) // expired
+					|| (Globals.ElapsedTime - created).CompareTo(Static.MaximumLifetime) > 0)) // expired
 					value_isValid = false;
 				return value_isValid;
 			}
