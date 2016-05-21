@@ -34,6 +34,8 @@ namespace Rynchodon.Update
 			public NetworkStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
+			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
+			public TextPanel.Builder_TextPanel[] TextPanel;
 		}
 
 		private const string SaveIdString = "ARMS save file id";
@@ -215,6 +217,30 @@ namespace Rynchodon.Update
 							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 					}
 
+				// programmable block
+
+				if (data.ProgrammableBlock != null)
+					foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
+					{
+						ProgrammableBlock pb;
+						if (Registrar.TryGetValue(bpa.BlockId, out pb))
+							pb.ResumeFromSave(bpa);
+						else
+							m_logger.alwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
+					}
+
+				// text panel
+
+				if (data.TextPanel != null)
+					foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
+					{
+						TextPanel panel;
+						if (Registrar.TryGetValue(btp.BlockId, out panel))
+							panel.ResumeFromSave(btp);
+						else
+							m_logger.alwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
+					}
+
 				m_logger.debugLog("Loaded from " + saveId_fromWorld, Logger.severity.INFO);
 			}
 			catch (Exception ex)
@@ -274,6 +300,28 @@ namespace Rynchodon.Update
 				});
 
 				data.Autopilot = buildAuto.ToArray();
+
+				// programmable block
+
+				List<ProgrammableBlock.Builder_ProgrammableBlock> buildProgram = new List<ProgrammableBlock.Builder_ProgrammableBlock>();
+				Registrar.ForEach<ProgrammableBlock>(program => {
+					ProgrammableBlock.Builder_ProgrammableBlock builder = program.GetBuilder();
+					if (builder != null)
+						buildProgram.Add(builder);
+				});
+
+				data.ProgrammableBlock = buildProgram.ToArray();
+
+				// text panel
+
+				List<TextPanel.Builder_TextPanel> buildPanel = new List<TextPanel.Builder_TextPanel>();
+				Registrar.ForEach<TextPanel>(panel => {
+					TextPanel.Builder_TextPanel builder = panel.GetBuilder();
+					if (builder != null)
+						buildPanel.Add(builder);
+				});
+
+				data.TextPanel = buildPanel.ToArray();
 
 				var writer = m_fileMaster.GetTextWriter(fileId);
 				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));

@@ -1,19 +1,31 @@
 ﻿using System;
 using System.Text;
+using System.Xml.Serialization;
 using Rynchodon.Instructions;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Collections;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
+
 	public class ProgrammableBlock : BlockInstructions
 	{
+
+		[Serializable]
+		public class Builder_ProgrammableBlock
+		{
+			[XmlAttribute]
+			public long BlockId;
+			public bool HandleDetected;
+		}
 
 		public const char fieldSeparator = '«', entitySeparator = '»';
 		public const char messageSeparator = '«';
@@ -29,6 +41,14 @@ namespace Rynchodon.AntennaRelay
 				ActionWithParameters = ProgrammableBlock_SendMessage
 			};
 			MyTerminalControlFactory.AddAction(programmable_sendMessage);
+
+			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
+
+			MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
+			IMyTerminalValueControl<bool> valueControl = handleDetected as IMyTerminalValueControl<bool>;
+			valueControl.Getter = GetHandleDetectedTerminal;
+			valueControl.Setter = SetHandleDetectedTerminal;
+			MyTerminalControlFactory.AddControl(handleDetected);
 
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -69,11 +89,29 @@ namespace Rynchodon.AntennaRelay
 				(block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));
 		}
 
+		private static bool GetHandleDetectedTerminal(IMyTerminalBlock block)
+		{
+			ProgrammableBlock pb;
+			if (!Registrar.TryGetValue(block, out pb))
+				throw new ArgumentException("block id not found in registrar");
+
+			return pb.m_handleDetectedTerminal;
+		}
+
+		private static void SetHandleDetectedTerminal(IMyTerminalBlock block, bool value)
+		{
+			ProgrammableBlock pb;
+			if (!Registrar.TryGetValue(block, out pb))
+				throw new ArgumentException("block id not found in registrar");
+
+			pb.m_handleDetectedTerminal = value;
+		}
+
 		private Ingame.IMyProgrammableBlock m_progBlock;
 		private NetworkClient m_networkClient;
 		private Logger m_logger;
 
-		private bool m_handleDetected;
+		private bool m_handleDetected, m_handleDetectedTerminal;
 
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
@@ -85,11 +123,38 @@ namespace Rynchodon.AntennaRelay
 			Registrar.Add(block, this);
 		}
 
+		public void ResumeFromSave(Builder_ProgrammableBlock builder)
+		{
+			if (this.m_block.EntityId != builder.BlockId)
+				throw new ArgumentException("Serialized block id " + builder.BlockId + " does not match block id " + this.m_block.EntityId);
+
+			this.m_handleDetectedTerminal = builder.HandleDetected;
+		}
+
+		public Builder_ProgrammableBlock GetBuilder()
+		{
+			// do not save if default
+			if (!this.m_handleDetectedTerminal)
+				return null;
+
+			return new Builder_ProgrammableBlock()
+			{
+				BlockId = this.m_block.EntityId,
+				HandleDetected = this.m_handleDetectedTerminal
+			};
+		}
+
 		public void Update100()
 		{
 			m_networkClient.GetStorage(); // force update so messages do not get stuck
 
 			UpdateInstructions();
+
+			if (m_handleDetectedTerminal)
+			{
+				HandleDetected();
+				return;
+			}
 
 			if (!HasInstructions)
 				return;
