@@ -45,12 +45,12 @@ namespace Rynchodon
     /// <summary>Task that is in progress.</summary>
     Task currentTask;
 
-    /// <summary>The next time uranium levels will be checked</summary>
-    TimeSpan nextUpdate_uranium;
-    /// <summary>The next time gas levels will be checked.</summary>
-    TimeSpan nextUpdate_gas;
-    /// <summary>The next time cargo volume will be checked.</summary>
-    TimeSpan nextUpdate_cargo;
+    /// <summary>The last time uranium levels were checked</summary>
+    TimeSpan lastUpdate_uranium;
+    /// <summary>The last time gas levels were checked.</summary>
+    TimeSpan lastUpdate_gas;
+    /// <summary>The last time cargo volume were checked.</summary>
+    TimeSpan lastUpdate_cargo;
 
     /// <summary>Amount of uranium currently stored in the reactors.</summary>
     VRage.MyFixedPoint uraniumMass;
@@ -73,6 +73,10 @@ namespace Rynchodon
 
     public void Main(string args)
     {
+      lastUpdate_uranium += Runtime.TimeSinceLastRun;
+      lastUpdate_gas += Runtime.TimeSinceLastRun;
+      lastUpdate_cargo += Runtime.TimeSinceLastRun;
+
       if (allTasks == null)
       {
         allTasks = new List<Task>();
@@ -199,9 +203,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateReactorUranium()
     {
-      if (ElapsedTime < nextUpdate_uranium)
+      if (lastUpdate_uranium < updateInterval)
         return;
-      nextUpdate_uranium = ElapsedTime + updateInterval;
+      lastUpdate_uranium = new TimeSpan();
 
       uraniumMass = 0;
 
@@ -225,9 +229,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateGasStored()
     {
-      if (ElapsedTime < nextUpdate_gas)
+      if (lastUpdate_gas < updateInterval)
         return;
-      nextUpdate_gas = ElapsedTime + updateInterval;
+      lastUpdate_gas = new TimeSpan();
 
       float hydrogenStored = 0f, maxHydrogen = 0f, oxygenStored = 0f, maxOxygen = 0f;
 
@@ -271,9 +275,9 @@ namespace Rynchodon
     /// </summary>
     void UpdateCargoRatio()
     {
-      if (ElapsedTime < nextUpdate_cargo)
+      if (lastUpdate_cargo < updateInterval)
         return;
-      nextUpdate_cargo = ElapsedTime + updateInterval;
+      lastUpdate_cargo = new TimeSpan();
 
       prev_cargoRatio = cargoRatio;
       VRage.MyFixedPoint cargoVolume = 0, cargoMaxVolume = 0;
@@ -349,8 +353,7 @@ namespace Rynchodon
 
       ITerminalAction action = Me.GetActionWithName("SendMessage");
       if (action == null)
-        Echo("ARMS actions are not loaded. ARMS must be present in the first world loaded after " +
-          "launching Space Engineers for actions to be loaded.");
+        Echo("ARMS is not loaded. ARMS is a prerequisite for this script.");
       else
         Me.ApplyAction("SendMessage", parameters);
     }

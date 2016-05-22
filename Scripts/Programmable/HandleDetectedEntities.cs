@@ -31,7 +31,7 @@ namespace Rynchodon.Programmable
 
     /*
      * Handles entities detected by ARMS
-     * Add [ Handle Detected ] to the name of a programmable block for ARMS to give it detected entities
+     * Enabled "Handle Detected" on this programmable block for ARMS to give it detected entities
      * Detected entities will be passed via "arguments" of Main
      * Detected entities can be displayed on a text panel by applying an action on the text panel
      */
@@ -51,8 +51,8 @@ namespace Rynchodon.Programmable
     /// <summary>Time between sounding alarm (hours, minutes, seconds)</summary>
     TimeSpan alarmInterval = new TimeSpan(0, 0, 10);
 
-    /// <summary>The next time the alarm will be allowed to sound.</summary>
-    TimeSpan nextAlarmTime;
+    /// <summary>The time elapsed since the previous alarm.</summary>
+    TimeSpan sinceLastAlarm;
 
     /// <summary>List of enemy entity IDs</summary>
     List<TerminalActionParameter> enemies = new List<TerminalActionParameter>();
@@ -65,6 +65,8 @@ namespace Rynchodon.Programmable
       enemies.Clear();
       lostContact.Clear();
 
+      sinceLastAlarm += Runtime.TimeSinceLastRun;
+
       DetectedEntityData entityData;
       foreach (string serialized in arguments.Split(entitySeparator))
         if (DetectedEntityData.TryDeserialize(serialized, out entityData))
@@ -74,12 +76,12 @@ namespace Rynchodon.Programmable
             enemies.Add(TerminalActionParameter.Get(entityData.entityId));
 
             // sound alarm if enemy is near
-            if (ElapsedTime >= nextAlarmTime &&
+            if (sinceLastAlarm >= alarmInterval &&
               (entityData.volume > 100 || entityData.volume == 0f) &&
               entityData.secondsSinceDetected < 60 &&
               Vector3D.DistanceSquared(Me.GetPosition(), entityData.predictedPosition) < 10000 * 10000)
             {
-              nextAlarmTime = ElapsedTime + alarmInterval;
+              sinceLastAlarm = new TimeSpan();
 
               IMySoundBlock alarm = GridTerminalSystem.GetBlockWithName("Proximity Alarm")
                 as IMySoundBlock;
@@ -107,7 +109,7 @@ namespace Rynchodon.Programmable
 
     /// <summary>
     /// Sends entity IDs to a text panel for display. To display GPS or Entity ID on the text panel,
-    /// the appropriate command should be added to the text panel.
+    /// the appropriate command should be enabled on the text panel.
     /// </summary>
     /// <param name="panelName">The name of the text panel</param>
     /// <param name="entityIds">List of entity IDs to display. Order of the list does not affect
@@ -129,8 +131,7 @@ namespace Rynchodon.Programmable
       ITerminalAction act = panel.GetActionWithName(displayAction);
       if (act == null)
       {
-        Terminate("ARMS actions are not loaded. ARMS must be present in the first world loaded after " +
-          "launching Space Engineers for actions to be loaded.");
+        Terminate("ARMS is not loaded. ARMS is a prerequisite for this script.");
         return;
       }
       panel.ApplyAction(displayAction, entityIds);

@@ -93,7 +93,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			ProgrammableBlock pb;
 			if (!Registrar.TryGetValue(block, out pb))
+			{
+				if (s_logger == null)
+					return false;
 				throw new ArgumentException("block id not found in registrar");
+			}
 
 			return pb.m_handleDetectedTerminal;
 		}
@@ -102,7 +106,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			ProgrammableBlock pb;
 			if (!Registrar.TryGetValue(block, out pb))
+			{
+				if (s_logger == null)
+					return;
 				throw new ArgumentException("block id not found in registrar");
+			}
 
 			pb.m_handleDetectedTerminal = value;
 		}

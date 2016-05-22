@@ -118,7 +118,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
+			{
+				if (s_logger == null)
+					return false;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
+			}
 
 			return (panel.m_optionsTerminal & opt) != 0;
 		}
@@ -127,7 +131,11 @@ namespace Rynchodon.AntennaRelay
 		{
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
+			{
+				if (s_logger == null)
+					return;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
+			}
 
 			if (value)
 				panel.m_optionsTerminal |= opt;
