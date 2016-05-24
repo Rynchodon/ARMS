@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Rynchodon.AntennaRelay;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -9,7 +8,7 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
 using VRage.Utils;
 
-namespace Rynchodon.TerminalControl
+namespace Rynchodon.AntennaRelay
 {
 	/// <summary>
 	/// For players sending a message through the terminal.
@@ -85,6 +84,17 @@ namespace Rynchodon.TerminalControl
 
 			if (instance.m_sending)
 			{
+				if (instance.m_targetShipName.Length < 3)
+				{
+					(block as IMyTerminalBlock).AppendCustomInfo("Ship Name(s) must be at least 3 characters");
+					return;
+				}
+				if (instance.m_targetBlockName.Length < 3)
+				{
+					(block as IMyTerminalBlock).AppendCustomInfo("Block Name(s) must be at least 3 characters");
+					return;
+				}
+
 				int count = Message.CreateAndSendMessage(block.EntityId, instance.m_targetShipName.ToString(), instance.m_targetBlockName.ToString(), instance.m_message.ToString());
 				if (MyAPIGateway.Session.Player != null)
 					(block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));

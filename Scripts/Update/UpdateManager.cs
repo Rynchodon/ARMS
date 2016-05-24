@@ -6,7 +6,7 @@ using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
-using Rynchodon.TerminalControl;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Weapons;
