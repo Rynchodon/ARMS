@@ -69,6 +69,7 @@ namespace Rynchodon.Programmable
 
       DetectedEntityData entityData;
       foreach (string serialized in arguments.Split(entitySeparator))
+      {
         if (DetectedEntityData.TryDeserialize(serialized, out entityData))
         {
           if (entityData.relations == Relation_Enemy)
@@ -102,6 +103,7 @@ namespace Rynchodon.Programmable
           Terminate("Deserialize failed: " + serialized);
           return;
         }
+      }
 
       DisplayEntitiesOnPanel("Wide LCD panel for Enemy", enemies);
       DisplayEntitiesOnPanel("Wide LCD panel for Lost Contact", lostContact);
@@ -199,8 +201,16 @@ namespace Rynchodon.Programmable
           deserialized.lastKnownVelocity = new Vector3(x, y, z);
         }
 
-        // not always present
-        float.TryParse(fields[index++], out deserialized.volume);
+        if (!float.TryParse(fields[index++], out deserialized.volume))
+          return false;
+
+        if (index < fields.Length)
+        {
+          deserialized.blockCounts = new int[fields.Length - index];
+          for (int block = 0; block < deserialized.blockCounts.Length; block++)
+            if (!int.TryParse(fields[index++], out deserialized.blockCounts[block]))
+              return false;
+        }
 
         return true;
       }
@@ -215,6 +225,10 @@ namespace Rynchodon.Programmable
       public Vector3D predictedPosition;
       public Vector3 lastKnownVelocity;
       public float volume;
+      public int[] blockCounts;
+
+      public Vector3D lastKnownPosition
+      { get { return predictedPosition - lastKnownVelocity * secondsSinceDetected; } }
 
       private DetectedEntityData() { }
 

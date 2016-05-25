@@ -6,6 +6,7 @@ using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Collections;
 using VRage.Game.ModAPI;
@@ -25,6 +26,7 @@ namespace Rynchodon.AntennaRelay
 			[XmlAttribute]
 			public long BlockId;
 			public bool HandleDetected;
+			public string BlockCountList;
 		}
 
 		public const char fieldSeparator = '«', entitySeparator = '»';
@@ -49,6 +51,13 @@ namespace Rynchodon.AntennaRelay
 			valueControl.Getter = GetHandleDetectedTerminal;
 			valueControl.Setter = SetHandleDetectedTerminal;
 			MyTerminalControlFactory.AddControl(handleDetected);
+
+			MyTerminalControlTextbox<MyProgrammableBlock> blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separate list of blocks to count"));
+			blockCountList.Visible = block => ((ITerminalProperty<bool>)((IMyTerminalBlock)block).GetProperty("HandleDetected")).GetValue(block);
+			IMyTerminalControlTextbox asInterface = blockCountList as IMyTerminalControlTextbox;
+			asInterface.Getter = GetBlockCountList;
+			asInterface.Setter = SetBlockCountList;
+			MyTerminalControlFactory.AddControl(blockCountList);
 
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -113,6 +122,33 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			pb.m_handleDetectedTerminal = value;
+			MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
+		}
+
+		private static StringBuilder GetBlockCountList(IMyTerminalBlock block)
+		{
+			ProgrammableBlock pb;
+			if (!Registrar.TryGetValue(block, out pb))
+			{
+				if (s_logger == null)
+					return new StringBuilder();
+				throw new ArgumentException("block id not found in registrar");
+			}
+
+			return pb.m_blockCountList_sb;
+		}
+
+		private static void SetBlockCountList(IMyTerminalBlock block, StringBuilder value)
+		{
+			ProgrammableBlock pb;
+			if (!Registrar.TryGetValue(block, out pb))
+			{
+				if (s_logger == null)
+					return;
+				throw new ArgumentException("block id not found in registrar");
+			}
+
+			pb.m_blockCountList_sb = value;
 		}
 
 		private Ingame.IMyProgrammableBlock m_progBlock;
@@ -120,6 +156,34 @@ namespace Rynchodon.AntennaRelay
 		private Logger m_logger;
 
 		private bool m_handleDetected, m_handleDetectedTerminal;
+
+		private StringBuilder value_blockCountList_sb = new StringBuilder();
+		private BlockTypeList value_blockCountList_btl;
+
+		private StringBuilder m_blockCountList_sb
+		{
+			get { return value_blockCountList_sb; }
+			set
+			{
+				m_logger.debugLog("text changed: " + value);
+				value_blockCountList_sb = value;
+				m_blockCountList_btl = null;
+			}
+		}
+
+		private BlockTypeList m_blockCountList_btl
+		{
+			get
+			{
+				if (value_blockCountList_btl == null)
+				{
+					m_logger.debugLog("building BlockTypeList: " + value_blockCountList_sb);
+					value_blockCountList_btl = new BlockTypeList(m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','));
+				}
+				return value_blockCountList_btl;
+			}
+			set { value_blockCountList_btl = value; }
+		}
 
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
@@ -137,18 +201,20 @@ namespace Rynchodon.AntennaRelay
 				throw new ArgumentException("Serialized block id " + builder.BlockId + " does not match block id " + this.m_block.EntityId);
 
 			this.m_handleDetectedTerminal = builder.HandleDetected;
+			this.m_blockCountList_sb = new StringBuilder(builder.BlockCountList);
 		}
 
 		public Builder_ProgrammableBlock GetBuilder()
 		{
 			// do not save if default
-			if (!this.m_handleDetectedTerminal)
+			if (!this.m_handleDetectedTerminal && this.m_blockCountList_sb.Length == 0)
 				return null;
 
 			return new Builder_ProgrammableBlock()
 			{
 				BlockId = this.m_block.EntityId,
-				HandleDetected = this.m_handleDetectedTerminal
+				HandleDetected = this.m_handleDetectedTerminal,
+				BlockCountList = this.m_blockCountList_sb.ToString()
 			};
 		}
 
@@ -211,18 +277,36 @@ namespace Rynchodon.AntennaRelay
 				parameter.Append(seen.isRecent_Radar()); parameter.Append(fieldSeparator);
 				parameter.Append(seen.isRecent_Jam()); parameter.Append(fieldSeparator);
 				parameter.Append((int)sinceSeen.TotalSeconds); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
-				parameter.Append(predictedPosition.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.X.ToString(numberFormat)); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.Y.ToString(numberFormat)); parameter.Append(fieldSeparator);
-				parameter.Append(seen.LastKnownVelocity.Z.ToString(numberFormat)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(predictedPosition.X, 1)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(predictedPosition.Y, 1)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(predictedPosition.Z, 1)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(seen.LastKnownVelocity.X, 1)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(seen.LastKnownVelocity.Y, 1)); parameter.Append(fieldSeparator);
+				parameter.Append(Math.Round(seen.LastKnownVelocity.Z, 1)); parameter.Append(fieldSeparator);
 
 				if (seen.Info != null)
 					parameter.Append(seen.Info.Volume);
-				parameter.Append(fieldSeparator);
+				else
+					parameter.Append(0f);
+
+				if (!friendly && seen.Type == LastSeen.EntityType.Grid && m_blockCountList_sb.Length > 2 && seen.isRecent())
+				{
+					int[] blockCounts = m_blockCountList_btl.Count(CubeGridCache.GetFor((IMyCubeGrid)seen.Entity));
+					if (blockCounts.Length != 0)
+					{
+						parameter.Append(fieldSeparator);
+						parameter.Append(string.Join(fieldSeparator.ToString(), blockCounts));
+					}
+				}
 			});
 
+			if (parameter.Length == 0)
+			{
+				m_logger.debugLog("no detected entities");
+				return;
+			}
+
+			//m_logger.debugLog("parameters:\n" + parameter.ToString().Replace(string.Empty + entitySeparator, entitySeparator + "\n"));
 			if (!m_progBlock.TryRun(parameter.ToString()))
 				m_logger.alwaysLog("Failed to run program", Logger.severity.WARNING);
 		}
