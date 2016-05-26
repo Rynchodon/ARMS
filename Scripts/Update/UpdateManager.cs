@@ -74,9 +74,7 @@ namespace Rynchodon.Update
 
 			#region Weapons
 
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
-			{
-
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowHacker))
 				RegisterForBlock(typeof(MyObjectBuilder_LandingGear), block => {
 					if (Hacker.IsHacker(block))
 					{
@@ -84,10 +82,8 @@ namespace Rynchodon.Update
 						RegisterForUpdates(10, h.Update10, block);
 					}
 				});
-
-			}
 			else
-				myLogger.debugLog("Weapon Control is disabled", Logger.severity.INFO);
+				myLogger.debugLog("Hacker is disabled in settings");
 
 			#endregion
 
@@ -467,6 +463,12 @@ namespace Rynchodon.Update
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R8EA_Launcher")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_B3MP_Launcher")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LargeMissileTurret), "Souper_Missile_Defense_Turret")).Enabled = false;
+			}
+			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowHacker))
+			{
+				myLogger.alwaysLog("Disabling hacker blocks", Logger.severity.INFO);
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LandingGear), "ARMS_SmallHackerBlock")).Enabled = false;
+				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LandingGear), "ARMS_LargeHackerBlock")).Enabled = false;
 			}
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{

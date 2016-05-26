@@ -66,6 +66,7 @@ namespace Rynchodon.Utility
 			display.AppendLine("Server settings:");
 			Append<bool>(display, ServerSettings.SettingName.bAllowAutopilot);
 			Append<bool>(display, ServerSettings.SettingName.bAllowGuidedMissile);
+			Append<bool>(display, ServerSettings.SettingName.bAllowHacker);
 			Append<bool>(display, ServerSettings.SettingName.bAllowRadar);
 			Append<bool>(display, ServerSettings.SettingName.bAllowWeaponControl);
 			Append<bool>(display, ServerSettings.SettingName.bImmortalMiner);

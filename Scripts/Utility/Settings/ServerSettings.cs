@@ -16,7 +16,7 @@ namespace Rynchodon.Settings
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowGuidedMissile, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
+			bAllowAutopilot, bAllowGuidedMissile, bAllowHacker, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			yParallelPathfinder,
 			iMaxSaveKeep,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
@@ -119,6 +119,7 @@ namespace Rynchodon.Settings
 				List<byte> send = new List<byte>();
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowHacker));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowRadar));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowWeaponControl));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bImmortalMiner));
@@ -146,6 +147,7 @@ namespace Rynchodon.Settings
 		
 				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
+				SetSetting<bool>(SettingName.bAllowHacker, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowRadar, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowWeaponControl, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bImmortalMiner, ByteConverter.GetBool(message, ref pos));
@@ -186,6 +188,7 @@ namespace Rynchodon.Settings
 		{
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowGuidedMissile, new SettingSimple<bool>(true));
+			AllSettings.Add(SettingName.bAllowHacker, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowRadar, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bImmortalMiner, new SettingSimple<bool>(false));
