@@ -93,24 +93,25 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update100_Options_TargetingThread(TargetingOptions Options)
 		{
-			if (TP_TargetMissiles.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.Missile;
-			if (TP_TargetMeteors.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.Meteor;
-			if (TP_TargetCharacters.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.Character;
-			if (TP_TargetMoving.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.Moving;
-			if (TP_TargetLargeGrids.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.LargeGrid;
-			if (TP_TargetSmallGrids.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.SmallGrid;
-			if (TP_TargetStations.GetValue(CubeBlock))
-				Options.CanTarget |= TargetType.Station;
+			SetFlag(TP_TargetMissiles, TargetType.Missile);
+			SetFlag(TP_TargetMeteors, TargetType.Meteor);
+			SetFlag(TP_TargetCharacters, TargetType.Character);
+			SetFlag(TP_TargetMoving, TargetType.Moving);
+			SetFlag(TP_TargetLargeGrids, TargetType.LargeGrid);
+			SetFlag(TP_TargetSmallGrids, TargetType.SmallGrid);
+			SetFlag(TP_TargetStations, TargetType.Station);
 
 			Options.TargetingRange = myTurret.Range;
 
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
+		}
+
+		private void SetFlag(ITerminalProperty<bool> prop, TargetType typeFlag)
+		{
+			if (prop.GetValue(CubeBlock))
+				Options.CanTarget |= typeFlag;
+			else
+				Options.CanTarget &= ~typeFlag;
 		}
 
 		protected override bool CanRotateTo(Vector3D targetPoint)
@@ -181,7 +182,7 @@ namespace Rynchodon.Weapons
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
-				FireWeapon = false;
+				//FireWeapon = false;
 				return;
 			}
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot

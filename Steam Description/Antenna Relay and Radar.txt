@@ -7,15 +7,11 @@ Antennae, radars, and Autopilot blocks in attached grids share information.
 Each antenna and Autopilot block keeps track of the last time a grid was seen, where it was, and its velocity. This information is used to predict the current location of a grid.
 
 [h1]Text Panel[/h1]
-Can be used to display detected entities. Commands can be added to the text panel's name, public title, or private title.
-Commands are contained within square brackets and are separated by ; or :
-
-Display Detected : Write detected entities to the public text of the panel
-GPS : Include GPS tags, requires Display Detected or entity ids from a programmable block
-Entity ID : Include entity ids, requires Display Detected or entity ids from a programmable block
-Example - [ Display Detected ; GPS ; Entity ID ] - Display everything
-Autopilot Status : Write the status of autopilots to the text panel. Must have two-way communication with the autopilot and sharing access.
-Refresh : Force the display to refresh when it is updated. Will cause the display to flicker.
+ARMS adds the following options to the Control Panel of Text Panels:
+[list][*]Display Detected - Write detected entities to the public text of the panel
+[*]Display GPS - Include GPS tags, requires Display Detected or entity ids from a programmable block
+[*]Display Entity ID - Include entity ids, requires Display Detected or entity ids from a programmable block
+[*]Autopilot Status - Write the status of autopilots to the text panel. Must have two-way communication with the autopilot and sharing access.[/list]
 
 [h1]Programmable block[/h1]
 Can handle detected entities or transmit messages to other Programmable blocks or to Autopilot blocks. The Programmable block scripts contain the documentation.

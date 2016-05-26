@@ -81,8 +81,7 @@ namespace Rynchodon.Programmable
 
       ITerminalAction action = Me.GetActionWithName("SendMessage");
       if (action == null)
-        Echo("ARMS actions are not loaded. ARMS must be present in the first world loaded after " +
-          "launching Space Engineers for actions to be loaded.");
+        Echo("ARMS is not loaded. ARMS is a prerequisite for this script.");
       else
         Me.ApplyAction("SendMessage", arguments);
     }

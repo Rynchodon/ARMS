@@ -6,7 +6,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
 using Rynchodon.Settings;
 using Rynchodon.Utility;
-using Rynchodon.Weapons.Guided;
+using Rynchodon.Weapons;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
@@ -34,6 +34,9 @@ namespace Rynchodon.Update
 			public NetworkStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
+			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
+			public TextPanel.Builder_TextPanel[] TextPanel;
+			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
 		}
 
 		private const string SaveIdString = "ARMS save file id";
@@ -205,7 +208,7 @@ namespace Rynchodon.Update
 
 				// autopilot
 
-				if(data.Autopilot != null)
+				if (data.Autopilot != null)
 					foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
 					{
 						ShipAutopilot autopilot;
@@ -213,6 +216,42 @@ namespace Rynchodon.Update
 							autopilot.Resume = ba;
 						else
 							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
+					}
+
+				// programmable block
+
+				if (data.ProgrammableBlock != null)
+					foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
+					{
+						ProgrammableBlock pb;
+						if (Registrar.TryGetValue(bpa.BlockId, out pb))
+							pb.ResumeFromSave(bpa);
+						else
+							m_logger.alwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
+					}
+
+				// text panel
+
+				if (data.TextPanel != null)
+					foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
+					{
+						TextPanel panel;
+						if (Registrar.TryGetValue(btp.BlockId, out panel))
+							panel.ResumeFromSave(btp);
+						else
+							m_logger.alwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
+					}
+
+				// weapon
+
+				if (data.Weapon != null)
+					foreach (WeaponTargeting.Builder_WeaponTargeting bwt in data.Weapon)
+					{
+						WeaponTargeting targeting;
+						if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
+							targeting.ResumeFromSave(bwt);
+						else
+							m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 					}
 
 				m_logger.debugLog("Loaded from " + saveId_fromWorld, Logger.severity.INFO);
@@ -253,7 +292,6 @@ namespace Rynchodon.Update
 						storages.Add(bns.PrimaryNode, bns);
 					}
 				});
-
 				data.AntennaStorage = storages.Values.ToArray();
 
 				// disruption
@@ -261,7 +299,6 @@ namespace Rynchodon.Update
 				List<Disruption.Builder_Disruption> systemDisrupt = new List<Disruption.Builder_Disruption>();
 				foreach (Disruption disrupt in Disruption.AllDisruptions)
 					systemDisrupt.Add(disrupt.GetBuilder());
-
 				data.SystemDisruption = systemDisrupt.ToArray();
 
 				// autopilot
@@ -272,8 +309,39 @@ namespace Rynchodon.Update
 					if (builder != null)
 						buildAuto.Add(builder);
 				});
-
 				data.Autopilot = buildAuto.ToArray();
+
+				// programmable block
+
+				List<ProgrammableBlock.Builder_ProgrammableBlock> buildProgram = new List<ProgrammableBlock.Builder_ProgrammableBlock>();
+				Registrar.ForEach<ProgrammableBlock>(program => {
+					ProgrammableBlock.Builder_ProgrammableBlock builder = program.GetBuilder();
+					if (builder != null)
+						buildProgram.Add(builder);
+				});
+				data.ProgrammableBlock = buildProgram.ToArray();
+
+				// text panel
+
+				List<TextPanel.Builder_TextPanel> buildPanel = new List<TextPanel.Builder_TextPanel>();
+				Registrar.ForEach<TextPanel>(panel => {
+					TextPanel.Builder_TextPanel builder = panel.GetBuilder();
+					if (builder != null)
+						buildPanel.Add(builder);
+				});
+				data.TextPanel = buildPanel.ToArray();
+
+				// weapon
+
+				List<WeaponTargeting.Builder_WeaponTargeting> buildWeapon = new List<WeaponTargeting.Builder_WeaponTargeting>();
+				Action<WeaponTargeting> act = weapon => {
+					WeaponTargeting.Builder_WeaponTargeting builder = weapon.GetBuilder();
+					if (builder != null)
+						buildWeapon.Add(builder);
+				};
+				Registrar.ForEach<FixedWeapon>(act);
+				Registrar.ForEach<Turret>(act);
+				data.Weapon = buildWeapon.ToArray();
 
 				var writer = m_fileMaster.GetTextWriter(fileId);
 				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));

@@ -47,8 +47,10 @@ namespace Rynchodon.Weapons
 		Interior = 1 << 1,
 		/// <summary>Causes a fixed weapon to be treated as a rotor-turret.</summary>
 		Turret = 1 << 2,
-		///// <summary>Turns ARMS targeting on for the turret.</summary>
-		//ArmsEnabled = 1 << 3
+		/// <summary>Turns ARMS targeting on for the turret.</summary>
+		ArmsEnabled = 1 << 3,
+		/// <summary>ARMS will attempt to leave the target intact instead of shooting through blocks</summary>
+		Preserve = 1 << 4
 	}
 
 	public class TargetingOptions
@@ -90,7 +92,7 @@ namespace Rynchodon.Weapons
 			get { return listOfBlocks == null ? null : listOfBlocks.BlockNamesContain; }
 			set
 			{
-				if (value == null)
+				if (value.IsNullOrEmpty())
 					listOfBlocks = null;
 				else
 					listOfBlocks = CubeGridCache.GetBlockList(value);
@@ -116,6 +118,18 @@ namespace Rynchodon.Weapons
 				TargetingRange = this.TargetingRange,
 				TargetEntityId = this.TargetEntityId
 			};
+		}
+
+		/// <summary>
+		/// Overwrite this TargetingOptions with cumulative values from first and second.
+		/// </summary>
+		public void Assimilate(TargetingOptions first, TargetingOptions second)
+		{
+			this.blocksToTarget = first.blocksToTarget ?? second.blocksToTarget;
+			this.CanTarget = first.CanTarget | second.CanTarget;
+			this.Flags = first.Flags | second.Flags;
+			this.TargetingRange = Math.Max(first.TargetingRange, second.TargetingRange);
+			this.TargetEntityId = first.TargetEntityId ?? second.TargetEntityId;
 		}
 
 		public override string ToString()

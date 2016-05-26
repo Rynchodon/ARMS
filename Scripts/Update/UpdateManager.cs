@@ -6,6 +6,7 @@ using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Weapons;
@@ -242,6 +243,12 @@ namespace Rynchodon.Update
 			}
 
 			#endregion
+
+			#region Terminal Control
+
+			RegisterForBlock(new MyObjectBuilderType[] { typeof(MyObjectBuilder_RadioAntenna), typeof(MyObjectBuilder_LaserAntenna) }, block => new ManualMessage(block));
+
+			#endregion Terminal Control
 
 			#region Weapon Control
 
@@ -628,6 +635,12 @@ namespace Rynchodon.Update
 		{
 			//myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
 			BlockScriptConstructor(objBuildType).Add(constructor);
+		}
+
+		private void RegisterForBlock(IEnumerable<MyObjectBuilderType> objBuildTypes, Action<IMyCubeBlock> constructor)
+		{
+			foreach (MyObjectBuilderType obt in objBuildTypes)
+				RegisterForBlock(obt, constructor);
 		}
 
 		/// <summary>

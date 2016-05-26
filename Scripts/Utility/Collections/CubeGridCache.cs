@@ -28,6 +28,7 @@ namespace Rynchodon
 			DefinitionType = null;
 		}
 
+		[Obsolete("Use BlockTypeList constructor")]
 		public static BlockTypeList GetBlockList(string[] blockNamesContain)
 		{
 			return new BlockTypeList(blockNamesContain);

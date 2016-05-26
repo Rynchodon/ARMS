@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Serialization;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
@@ -8,8 +9,10 @@ using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Collections;
 using VRage.Game.ModAPI;
+using VRage.Utils;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -17,6 +20,14 @@ namespace Rynchodon.AntennaRelay
 {
 	public class TextPanel : BlockInstructions
 	{
+
+		[Serializable]
+		public class Builder_TextPanel
+		{
+			[XmlAttribute]
+			public long BlockId;
+			public byte Options;
+		}
 
 		private const char separator = ':';
 		private const string radarIconId = "Radar";
@@ -47,7 +58,23 @@ namespace Rynchodon.AntennaRelay
 			};
 			MyTerminalControlFactory.AddAction(textPanel_displayEntities);
 
+			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
+
+			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
+			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
+			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
+			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Stauts", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
+
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
+		{
+			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
+			IMyTerminalValueControl<bool> valueControl = control as IMyTerminalValueControl<bool>;
+			valueControl.Getter = block => GetOptionTerminal(block, opt);
+			valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
+			MyTerminalControlFactory.AddControl(control);
 		}
 
 		private static void Entities_OnCloseAll()
@@ -87,6 +114,35 @@ namespace Rynchodon.AntennaRelay
 			panel.Display(s_detectedIds);
 		}
 
+		private static bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
+		{
+			TextPanel panel;
+			if (!Registrar.TryGetValue(block, out panel))
+			{
+				if (s_logger == null)
+					return false;
+				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
+			}
+
+			return (panel.m_optionsTerminal & opt) != 0;
+		}
+
+		private static void SetOptionTerminal(IMyTerminalBlock block, Option opt, bool value)
+		{
+			TextPanel panel;
+			if (!Registrar.TryGetValue(block, out panel))
+			{
+				if (s_logger == null)
+					return;
+				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
+			}
+
+			if (value)
+				panel.m_optionsTerminal |= opt;
+			else
+				panel.m_optionsTerminal &= ~opt;
+		}
+
 		private Ingame.IMyTextPanel m_textPanel;
 		private Logger myLogger = new Logger(null, "TextPanel");
 
@@ -94,6 +150,8 @@ namespace Rynchodon.AntennaRelay
 		private NetworkClient m_networkClient;
 		private Option m_options;
 		private List<sortableLastSeen> m_sortableList;
+		private TimeSpan m_lastDisplay;
+		private Option m_optionsTerminal;
 
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
@@ -105,6 +163,27 @@ namespace Rynchodon.AntennaRelay
 			myLogger.debugLog("init: " + m_block.DisplayNameText);
 
 			Registrar.Add(block, this);
+		}
+
+		public void ResumeFromSave(Builder_TextPanel builder)
+		{
+			if (this.m_block.EntityId != builder.BlockId)
+				throw new ArgumentException("Serialized block id " + builder.BlockId + " does not match block id " + this.m_block.EntityId);
+
+			this.m_optionsTerminal = (Option)builder.Options;
+		}
+
+		public Builder_TextPanel GetBuilder()
+		{
+			// do not save if default
+			if (m_optionsTerminal == Option.None)
+				return null;
+
+			return new Builder_TextPanel()
+			{
+				BlockId = m_block.EntityId,
+				Options = (byte)m_optionsTerminal
+			};
 		}
 
 		protected override bool ParseAll(string instructions)
@@ -130,7 +209,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			UpdateInstructions();
 
-			if (!HasInstructions)
+			if (m_optionsTerminal != Option.None)
+				m_options = m_optionsTerminal;
+			else if (!HasInstructions)
 				return;
 
 			if ((m_options & Option.DisplayDetected) != 0)
@@ -172,6 +253,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
+			m_lastDisplay = Globals.ElapsedTime;
 			m_sortableList.Sort();
 
 			StringBuilder displayText = new StringBuilder();

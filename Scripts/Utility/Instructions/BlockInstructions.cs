@@ -38,7 +38,7 @@ namespace Rynchodon.Instructions
 		private string m_displayName;
 		private string m_instructions;
 
-		protected readonly IMyCubeBlock m_block;
+		public readonly IMyCubeBlock m_block;
 
 		/// <summary>Instructions that will be used iff there are none in the name.</summary>
 		protected string FallBackInstruct;

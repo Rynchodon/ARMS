@@ -75,6 +75,29 @@ namespace Rynchodon
 			return false;
 		}
 
+		/// <summary>
+		/// Count the number of blocks the cache contains that match BlockNamesContain.
+		/// </summary>
+		/// <param name="cache">Where to search for blocks.</param>
+		/// <returns>An array of integers indicating how many blocks match each string in BlockNamesContain.</returns>
+		public int[] Count(CubeGridCache cache)
+		{
+			if (m_sourceCount != CubeGridCache.DefinitionType.Count)
+				UpdateFromSource();
+
+			int[] results = new int[m_blocks.Count];
+
+			using (m_lock.AcquireSharedUsing())
+				for (int index = 0; index < m_blocks.Count; index++)
+					foreach (MyObjectBuilderType blockType in m_blocks[index])
+					{
+						int count = cache.CountByType(blockType);
+						results[index] += count;
+					}
+
+			return results;
+		}
+
 		// not used
 		//public void Search(CubeGridCache cache, Action<IMyCubeBlock> action)
 		//{

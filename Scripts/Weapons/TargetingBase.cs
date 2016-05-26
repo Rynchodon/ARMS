@@ -90,7 +90,11 @@ namespace Rynchodon.Weapons
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
+		/// <summary>Accumulation of custom terminal, vanilla terminal, and text commands.</summary>
 		public TargetingOptions Options { get; protected set; }
+
+		/// <summary>Custom terminal options for ARMS, does not include vanilla controls</summary>
+		public TargetingOptions TerminalOptions { get; protected set; }
 
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
@@ -127,6 +131,7 @@ namespace Rynchodon.Weapons
 
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
+			TerminalOptions = new TargetingOptions();
 			Options = new TargetingOptions();
 			entity.OnClose += obj => {
 				if (WeaponsTargetingProjectile != null)
@@ -142,9 +147,9 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("TargetingBase", block);
 		}
 
-		private bool PhysicalProblem(Vector3D targetPos)
+		private bool PhysicalProblem(Vector3D targetPos, IMyEntity target)
 		{
-			return !CanRotateTo(targetPos) || Obstructed(targetPos);
+			return !CanRotateTo(targetPos) || Obstructed(targetPos, target);
 		}
 
 		/// <summary>
@@ -155,7 +160,7 @@ namespace Rynchodon.Weapons
 		/// <remarks>Invoked on targeting thread.</remarks>
 		protected abstract bool CanRotateTo(Vector3D targetPos);
 
-		protected abstract bool Obstructed(Vector3D targetPos);
+		protected abstract bool Obstructed(Vector3D targetPos, IMyEntity target);
 
 		/// <summary>
 		/// Determines the speed of the projectile.
@@ -199,7 +204,7 @@ namespace Rynchodon.Weapons
 		{
 			if (Options.TargetingRange < 1f)
 			{
-				//myLogger.debugLog("Not targeting, zero range", "UpdateTarget()");
+				myLogger.debugLog("Not targeting, zero range");
 				return;
 			}
 
@@ -215,9 +220,9 @@ namespace Rynchodon.Weapons
 			CollectTargets();
 			PickATarget();
 			//if (myTarget.Entity != null && CurrentTarget != myTarget)
-			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName(), "UpdateTarget()");
+			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName());
 			//else if (CurrentTarget != null && CurrentTarget.Entity != null)
-			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName(), "UpdateTarget()");
+			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName());
 			CurrentTarget = myTarget;
 		}
 
@@ -374,7 +379,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void CollectTargets()
 		{
-			//myLogger.debugLog("entered", "CollectTargets()");
+			myLogger.debugLog("entered");
 			Available_Targets.Clear();
 			PotentialObstruction.Clear();
 			nearbyEntities.Clear();
@@ -384,7 +389,7 @@ namespace Rynchodon.Weapons
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				//myLogger.debugLog("entity: " + entity.getBestName(), "CollectTargets()");
+				myLogger.debugLog("entity: " + entity.getBestName());
 
 				if (Options.TargetEntityId.HasValue && entity.EntityId != Options.TargetEntityId.Value)
 					continue;
@@ -412,7 +417,7 @@ namespace Rynchodon.Weapons
 				{
 					if (string.IsNullOrEmpty(entity.DisplayName))
 					{
-						//myLogger.debugLog("Cannot target creatures, cannot get identity", "CollectTargets()");
+						myLogger.debugLog("Cannot target creatures, cannot get identity");
 						continue;
 					}
 
@@ -421,7 +426,7 @@ namespace Rynchodon.Weapons
 					{
 						if (asIdentity.IsDead)
 						{
-							//myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName(), "CollectTargets()");
+							myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName());
 							continue;
 						}
 					}
@@ -451,6 +456,9 @@ namespace Rynchodon.Weapons
 							AddTarget(TargetType.LargeGrid, entity);
 						else
 							AddTarget(TargetType.SmallGrid, entity);
+
+						if (Options.FlagSet(TargetingFlags.Preserve))
+							PotentialObstruction.Add(entity);
 					}
 					else
 						PotentialObstruction.Add(entity);
@@ -515,7 +523,7 @@ namespace Rynchodon.Weapons
 			if (!Available_Targets.TryGetValue(tType, out targetsOfType))
 				return false;
 
-			//myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count, "SetClosest()");
+			myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count);
 
 			IMyEntity closest = null;
 
@@ -553,7 +561,7 @@ namespace Rynchodon.Weapons
 						continue;
 					}
 
-					if (PhysicalProblem(targetPosition))
+					if (PhysicalProblem(targetPosition, target))
 					{
 						//myLogger.debugLog("can't target: " + target.getBestName(), "SetClosest()");
 						Blacklist.Add(target);
@@ -690,8 +698,8 @@ namespace Rynchodon.Weapons
 
 				if (target != null) // found a block from blocksToTarget
 				{
-					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText + 
-					//	", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText +
+					//	", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue);
 					return true;
 				}
 			}
@@ -722,7 +730,7 @@ namespace Rynchodon.Weapons
 
 				if (target != null)
 				{
-					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue);
 					return true;
 				}
 			}
@@ -777,7 +785,7 @@ namespace Rynchodon.Weapons
 
 					if (ProjectileIsThreat(projectile, tType))
 					{
-						if (!PhysicalProblem(projectile.GetPosition()))
+						if (!PhysicalProblem(projectile.GetPosition(), projectile))
 						{
 							//myLogger.debugLog("Is a threat: " + projectile.getBestName() + ", weapons targeting: " + GetWeaponsTargetingProjectile(projectile), "PickAProjectile()");
 							myTarget = new TurretTarget(projectile, tType);
@@ -833,7 +841,7 @@ namespace Rynchodon.Weapons
 			FindInterceptVector();
 			if (myTarget.Entity != null)
 			{
-				if (PhysicalProblem(myTarget.ContactPoint.Value))
+				if (PhysicalProblem(myTarget.ContactPoint.Value, myTarget.Entity))
 				{
 					//myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
 					BlacklistTarget();
