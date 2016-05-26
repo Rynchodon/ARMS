@@ -32,15 +32,30 @@ namespace Rynchodon
 	public class Logger : MySessionComponentBase
 	{
 
+		private struct LogItem
+		{
+			public Logger logger;
+			public severity level;
+			public string member, toLog, primaryState, secondaryState, thread;
+			public int lineNumber;
+			public DateTime time;
+		}
+
 		private const string s_logMaster = "log-master.txt";
 
-		private static System.IO.TextWriter logWriter = null;
-		private StringBuilder stringCache = new StringBuilder();
+		private class StaticVariables
+		{
+			public LockedQueue<LogItem> m_logItems = new LockedQueue<LogItem>();
+			public FastResourceLock m_lockLogging = new FastResourceLock();
 
-		private static int maxNumLines = 1000000;
-		private static int numLines = 0;
-		//private static int numLoggers = 0;
-		private static bool worldClosed, loggingClosed;
+			public System.IO.TextWriter logWriter = null;
+			public StringBuilder stringCache = new StringBuilder();
+
+			public int maxNumLines = 1000000;
+			public int numLines = 0;
+		}
+
+		private static StaticVariables Static = new StaticVariables();
 
 		private readonly string m_classname;
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
@@ -134,28 +149,28 @@ namespace Rynchodon
 			this.m_classname = className;
 		}
 
-		private void deleteIfExists(string filename)
+		private static void deleteIfExists(string filename)
 		{
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(filename, typeof(Logger)))
 				MyAPIGateway.Utilities.DeleteFileInLocalStorage(filename, typeof(Logger));
 		}
 
-		private bool createLog()
+		private static bool createLog()
 		{
-			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(s_logMaster, GetType()))
+			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(s_logMaster, typeof(Logger)))
 			{
 				for (int i = 0; i < 10; i++)
 					try
 					{ deleteIfExists("log-" + i + ".txt"); }
 					catch { }
 				FileMaster master = new FileMaster(s_logMaster, "log-", 10);
-				logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
+				Static.logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
 			}
 			else
 			{
 				for (int i = 0; i < 10; i++)
-					if (logWriter == null)
-						try { logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
+					if (Static.logWriter == null)
+						try { Static.logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
 						catch { }
 					else
 						try
@@ -163,10 +178,8 @@ namespace Rynchodon
 						catch { }
 			}
 
-			return logWriter != null;
+			return Static.logWriter != null;
 		}
-
-		private static VRage.FastResourceLock lock_log = new VRage.FastResourceLock();
 
 		/// <summary>
 		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
@@ -235,10 +248,10 @@ namespace Rynchodon
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		private void log(severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
 		{
-			if (loggingClosed)
+			if (Static == null)
 				return;
 
-			if (numLines >= maxNumLines)
+			if (Static.numLines >= Static.maxNumLines)
 				return;
 
 			if (level <= severity.WARNING)
@@ -246,97 +259,145 @@ namespace Rynchodon
 			else if (level > MinimumLevel)
 				return;
 
-			if (toLog.Contains("\n") || toLog.Contains("\r"))
+			Static.m_logItems.Enqueue(new LogItem()
 			{
-				string[] split = toLog.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+				logger = this,
+				time = DateTime.Now,
+				level = level,
+				member = member,
+				lineNumber = lineNumber,
+				toLog = toLog,
+				primaryState = primaryState,
+				secondaryState = secondaryState,
+				thread = ThreadTracker.GetNameOrNumber()
+			});
+
+			if (MyAPIGateway.Parallel != null)
+				MyAPIGateway.Parallel.StartBackground(logLoop);
+		}
+
+		private static void logLoop()
+		{
+			if (Static == null || MyAPIGateway.Utilities == null || !Static.m_lockLogging.TryAcquireExclusive())
+				return;
+
+			try
+			{
+				LogItem item;
+				while (Static.m_logItems.TryDequeue(out item))
+					log(item);
+			}
+			finally
+			{
+				Static.m_lockLogging.ReleaseExclusive();
+			}
+		}
+
+		private static void log(LogItem item)
+		{
+			if (Static.numLines >= Static.maxNumLines)
+				return;
+
+			if (item.toLog.Contains("\n") || item.toLog.Contains("\r"))
+			{
+				string[] split = item.toLog.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 				foreach (string line in split)
-					log(level, member, lineNumber, line, primaryState, secondaryState);
+				{
+					item.toLog = line;
+					log(item);
+				}
 				return;
 			}
 
-			lock_log.AcquireExclusive();
-			try
+			if (Static.logWriter == null)
+				if (!createLog())
+					return; // cannot log
+
+			string context;
+			if (item.logger.f_context != null)
+				try { context = item.logger.f_context.Invoke(); }
+				catch { context = string.Empty; }
+			else
+				context = string.Empty;
+			if (item.primaryState == null)
 			{
-				if (logWriter == null)
-					if (MyAPIGateway.Utilities == null || !createLog())
-						return; // cannot log
-
-				string context;
-				if (f_context != null)
-					try { context = f_context.Invoke(); }
-					catch { context = string.Empty; }
-				else
-					context = string.Empty;
-				if (primaryState == null)
-				{
-					if (f_state_primary != null)
-						try { primaryState = f_state_primary.Invoke(); }
-						catch { primaryState = string.Empty; }
-				}
-				if (secondaryState == null)
-				{
-					if (f_state_secondary != null)
-						try { secondaryState = f_state_secondary.Invoke(); }
-						catch { secondaryState = string.Empty; }
-				}
-
-				numLines++;
-				appendWithBrackets(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss,fff"));
-				appendWithBrackets(level.ToString());
-				try { appendWithBrackets(ThreadTracker.GetNameOrNumber()); }
-				catch { appendWithBrackets("N/A"); }
-				appendWithBrackets(context);
-				appendWithBrackets(m_classname);
-				appendWithBrackets(member);
-				appendWithBrackets(lineNumber.ToString());
-				appendWithBrackets(primaryState);
-				appendWithBrackets(secondaryState);
-				stringCache.Append(toLog);
-
-				logWriter.WriteLine(stringCache);
-				logWriter.Flush();
-				stringCache.Clear();
+				if (item.logger.f_state_primary != null)
+					try { item.primaryState = item.logger.f_state_primary.Invoke(); }
+					catch { item.primaryState = string.Empty; }
 			}
-			//catch (Exception ex)
-			//{
-			//	debugNotify("Exception while logging", 2000, severity.ERROR);
-			//	MyAPIGateway.Utilities.ShowMissionScreen(ex.GetType().Name, screenDescription: ex.ToString());
-			//}
-			finally { lock_log.ReleaseExclusive(); }
+			if (item.secondaryState == null)
+			{
+				if (item.logger.f_state_secondary != null)
+					try { item.secondaryState = item.logger.f_state_secondary.Invoke(); }
+					catch { item.secondaryState = string.Empty; }
+			}
+
+			Static.numLines++;
+			appendWithBrackets(item.time.ToString("yyyy-MM-dd HH:mm:ss,fff"));
+			appendWithBrackets(item.level.ToString());
+			appendWithBrackets(item.thread);
+			appendWithBrackets(context);
+			appendWithBrackets(item.logger.m_classname);
+			appendWithBrackets(item.member);
+			appendWithBrackets(item.lineNumber.ToString());
+			appendWithBrackets(item.primaryState);
+			appendWithBrackets(item.secondaryState);
+			Static.stringCache.Append(item.toLog);
+
+			Static.logWriter.WriteLine(Static.stringCache);
+			Static.logWriter.Flush();
+			Static.stringCache.Clear();
 		}
 
-		private void appendWithBrackets(string append)
+		private static void appendWithBrackets(string append)
 		{
 			if (append == null)
 				append = String.Empty;
-			append = append.Replace('[', '{').Replace(']', '}');
-			stringCache.Append('[');
-			stringCache.Append(append);
-			stringCache.Append(']');
+			else
+				append = append.Replace('[', '{').Replace(']', '}');
+			Static.stringCache.Append('[');
+			Static.stringCache.Append(append);
+			Static.stringCache.Append(']');
 		}
 
 		private void close()
 		{
+			Static.m_lockLogging.AcquireExclusive();
+			
+			log(new LogItem()
+			{
+				logger = this,
+				time = DateTime.Now,
+				level = severity.INFO,
+				member = string.Empty,
+				lineNumber = 0,
+				toLog = "Closing log",
+				primaryState = null,
+				secondaryState = null,
+				thread = ThreadTracker.GetNameOrNumber()
+			});
+
+			StaticVariables temp = Static;
+			Static = null;
+
 			try
 			{
-				if (logWriter == null)
-					return;
-				alwaysLog("Closing log.");
-				using (lock_log.AcquireExclusiveUsing())
+				if (temp.logWriter != null)
 				{
-					logWriter.Flush();
-					logWriter.Close();
-					logWriter = null;
-					loggingClosed = true;
+					temp.logWriter.Flush();
+					temp.logWriter.Close();
 				}
 			}
 			catch (ObjectDisposedException) { }
+			finally
+			{
+				temp.m_lockLogging.ReleaseExclusive();
+			}
 		}
 
 		protected override void UnloadData()
 		{
 			base.UnloadData();
-			worldClosed = true;
 			close();
 		}
 
@@ -360,7 +421,7 @@ namespace Rynchodon
 		/// <returns>true iff the message was displayed</returns>
 		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
-			if (worldClosed)
+			if (Static == null)
 				return;
 
 			MyFontEnum font = fontForSeverity(level);
