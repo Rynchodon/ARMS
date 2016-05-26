@@ -18,7 +18,6 @@ namespace Rynchodon.Settings
 		{
 			bAllowAutopilot, bAllowGuidedMissile, bAllowHacker, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			yParallelPathfinder,
-			iMaxSaveKeep,
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange,
 			sDefaultWeaponCommandsNPC
 		}
@@ -195,8 +194,6 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 
 			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
-
-			AllSettings.Add(SettingName.iMaxSaveKeep, new SettingMinMax<int>(1, int.MaxValue, 100));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));

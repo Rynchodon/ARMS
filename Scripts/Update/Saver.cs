@@ -14,12 +14,8 @@ using VRage.Game.Components;
 namespace Rynchodon.Update
 {
 	/// <summary>
-	/// Saves/loads persistent data to/from a file.
+	/// Saves/loads persistent data to/from a save file.
 	/// </summary>
-	/// <remarks>
-	/// Path is used as unique identifier for saving. Name is updated after using "Save As".
-	/// Path is saved as a variable inside the save file so that if "Save As" is used from main menu, data can be loaded from previous save.
-	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Saver : MySessionComponentBase
 	{
@@ -39,7 +35,7 @@ namespace Rynchodon.Update
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
 		}
 
-		private const string SaveIdString = "ARMS save file id";
+		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
 
 		public static Saver Instance;
 
@@ -62,199 +58,36 @@ namespace Rynchodon.Update
 				if (!MyAPIGateway.Multiplayer.IsServer)
 					return;
 
-				m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", ServerSettings.GetSetting<int>(ServerSettings.SettingName.iMaxSaveKeep));
+				m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", int.MaxValue);
 
-				string saveId_fromPath = GetSaveIdFromPath();
-				string saveId_fromWorld;
-				System.IO.TextReader reader = m_fileMaster.GetTextReader(saveId_fromPath);
-
-				// if file from path exists, it should match stored value
-				if (reader != null)
+				string serialized;
+				if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
 				{
-					if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
+					Builder_ArmsData armsData = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
+					if (armsData != null)
 					{
-						m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Logger.severity.ERROR);
-					}
-					else if (saveId_fromPath != saveId_fromWorld)
-					{
-						m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Logger.severity.ERROR);
-
-						// prefer from world
-						System.IO.TextReader reader2 = m_fileMaster.GetTextReader(saveId_fromWorld);
-						if (reader2 != null)
-							reader = reader2;
-						else
-							m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Logger.severity.ERROR);
-					}
-				}
-				else
-				{
-					if (MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
-					{
-						reader = m_fileMaster.GetTextReader(saveId_fromWorld);
-						if (reader != null)
-							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
-						else
-						{
-							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
-							return;
-						}
-					}
-					else
-					{
-						m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
+						m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
+						DoLoad(armsData);
 						return;
 					}
 				}
 
-				Builder_ArmsData data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
-
-				// network
-
-				Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
-				SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
-				foreach (NetworkStorage.Builder_NetworkStorage bns in data.AntennaStorage)
+				string identifier = LegacyIdentifier();
+				if (identifier == null)
 				{
-					NetworkNode node;
-					if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
-					{
-						m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
-						continue;
-					}
-					NetworkStorage store = node.Storage;
-					if (store == null) // probably always true
-					{
-						node.ForceCreateStorage();
-						store = node.Storage;
-						if (store == null)
-						{
-							m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.WARNING);
-							continue;
-						}
-					}
-
-					foreach (LastSeen.Builder_LastSeen bls in bns.LastSeenList)
-					{
-						LastSeen ls = new LastSeen(bls);
-						if (ls.IsValid)
-							store.Receive(ls);
-						else
-							m_logger.debugLog("failed to create a valid last seen from builder", Logger.severity.WARNING);
-					}
-
-					m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
-
-					foreach (Message.Builder_Message bm in bns.MessageList)
-					{
-						Message msg;
-						if (!messages.TryGetValue(bm, out msg))
-						{
-							msg = new Message(bm);
-							messages.Add(bm, msg);
-						}
-						else
-						{
-							m_logger.debugLog("found linked message", Logger.severity.TRACE);
-						}
-						if (msg.IsValid)
-							store.Receive(msg);
-						else
-							m_logger.debugLog("failed to create a valid message from builder", Logger.severity.WARNING);
-					}
-
-					m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+					m_logger.debugLog("no identifier");
+					return;
 				}
 
-				// system disruption
-
-				foreach (Disruption.Builder_Disruption bd in data.SystemDisruption)
+				var reader = m_fileMaster.GetTextReader(identifier);
+				if (reader != null)
 				{
-					Disruption disrupt;
-					switch (bd.Type)
-					{
-						case "AirVentDepressurize":
-							disrupt = new AirVentDepressurize();
-							break;
-						case "CryoChamberMurder":
-							disrupt = new CryoChamberMurder();
-							break;
-						case "DisableTurret":
-							disrupt = new DisableTurret();
-							break;
-						case "DoorLock":
-							disrupt = new DoorLock();
-							break;
-						case "EMP":
-							disrupt = new EMP();
-							break;
-						case "GravityReverse":
-							disrupt = new GravityReverse();
-							break;
-						case "JumpDriveDrain":
-							disrupt = new JumpDriveDrain();
-							break;
-						case "MedicalRoom":
-							disrupt = new MedicalRoom();
-							break;
-						case "TraitorTurret":
-							disrupt = new TraitorTurret();
-							break;
-						default:
-							m_logger.alwaysLog("Unknown disruption: " + bd.Type, Logger.severity.WARNING);
-							continue;
-					}
-					disrupt.Start(bd);
+					m_logger.debugLog("loading from file: " + identifier);
+					DoLoad(MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd()));
+					reader.Close();
 				}
-
-				// autopilot
-
-				if (data.Autopilot != null)
-					foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
-					{
-						ShipAutopilot autopilot;
-						if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
-							autopilot.Resume = ba;
-						else
-							m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
-					}
-
-				// programmable block
-
-				if (data.ProgrammableBlock != null)
-					foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
-					{
-						ProgrammableBlock pb;
-						if (Registrar.TryGetValue(bpa.BlockId, out pb))
-							pb.ResumeFromSave(bpa);
-						else
-							m_logger.alwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
-					}
-
-				// text panel
-
-				if (data.TextPanel != null)
-					foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
-					{
-						TextPanel panel;
-						if (Registrar.TryGetValue(btp.BlockId, out panel))
-							panel.ResumeFromSave(btp);
-						else
-							m_logger.alwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
-					}
-
-				// weapon
-
-				if (data.Weapon != null)
-					foreach (WeaponTargeting.Builder_WeaponTargeting bwt in data.Weapon)
-					{
-						WeaponTargeting targeting;
-						if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
-							targeting.ResumeFromSave(bwt);
-						else
-							m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
-					}
-
-				m_logger.debugLog("Loaded from " + saveId_fromWorld, Logger.severity.INFO);
+				else
+					m_logger.alwaysLog("Failed to open file reader for " + identifier);
 			}
 			catch (Exception ex)
 			{
@@ -263,17 +96,214 @@ namespace Rynchodon.Update
 			}
 		}
 
+		private string LegacyIdentifier()
+		{
+			string path = MyAPIGateway.Session.CurrentPath;
+			string saveId_fromPath = path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1) + ".xml";
+			string saveId_fromWorld;
+
+			string saveId = null;
+			if (m_fileMaster.FileExists(saveId_fromPath))
+				saveId = saveId_fromPath;
+
+			// if file from path exists, it should match stored value
+			if (saveId != null)
+			{
+				if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
+				{
+					m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Logger.severity.ERROR);
+				}
+				else if (saveId_fromPath != saveId_fromWorld)
+				{
+					m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Logger.severity.ERROR);
+
+					// prefer from world
+					if (m_fileMaster.FileExists(saveId_fromWorld))
+						saveId = saveId_fromWorld;
+					else
+						m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Logger.severity.ERROR);
+				}
+			}
+			else
+			{
+				if (MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
+				{
+					if (m_fileMaster.FileExists(saveId_fromWorld))
+					{
+						m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
+						saveId = saveId_fromWorld;
+					}
+					else
+					{
+						m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
+						return null;
+					}
+				}
+				else
+				{
+					m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
+					return null;
+				}
+			}
+
+			return saveId;
+		}
+
+		private void DoLoad(Builder_ArmsData data)
+		{
+			// network
+
+			Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
+			SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
+			foreach (NetworkStorage.Builder_NetworkStorage bns in data.AntennaStorage)
+			{
+				NetworkNode node;
+				if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
+				{
+					m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
+					continue;
+				}
+				NetworkStorage store = node.Storage;
+				if (store == null) // probably always true
+				{
+					node.ForceCreateStorage();
+					store = node.Storage;
+					if (store == null)
+					{
+						m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.WARNING);
+						continue;
+					}
+				}
+
+				foreach (LastSeen.Builder_LastSeen bls in bns.LastSeenList)
+				{
+					LastSeen ls = new LastSeen(bls);
+					if (ls.IsValid)
+						store.Receive(ls);
+					else
+						m_logger.debugLog("failed to create a valid last seen from builder", Logger.severity.WARNING);
+				}
+
+				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+
+				foreach (Message.Builder_Message bm in bns.MessageList)
+				{
+					Message msg;
+					if (!messages.TryGetValue(bm, out msg))
+					{
+						msg = new Message(bm);
+						messages.Add(bm, msg);
+					}
+					else
+					{
+						m_logger.debugLog("found linked message", Logger.severity.TRACE);
+					}
+					if (msg.IsValid)
+						store.Receive(msg);
+					else
+						m_logger.debugLog("failed to create a valid message from builder", Logger.severity.WARNING);
+				}
+
+				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+			}
+
+			// system disruption
+
+			foreach (Disruption.Builder_Disruption bd in data.SystemDisruption)
+			{
+				Disruption disrupt;
+				switch (bd.Type)
+				{
+					case "AirVentDepressurize":
+						disrupt = new AirVentDepressurize();
+						break;
+					case "CryoChamberMurder":
+						disrupt = new CryoChamberMurder();
+						break;
+					case "DisableTurret":
+						disrupt = new DisableTurret();
+						break;
+					case "DoorLock":
+						disrupt = new DoorLock();
+						break;
+					case "EMP":
+						disrupt = new EMP();
+						break;
+					case "GravityReverse":
+						disrupt = new GravityReverse();
+						break;
+					case "JumpDriveDrain":
+						disrupt = new JumpDriveDrain();
+						break;
+					case "MedicalRoom":
+						disrupt = new MedicalRoom();
+						break;
+					case "TraitorTurret":
+						disrupt = new TraitorTurret();
+						break;
+					default:
+						m_logger.alwaysLog("Unknown disruption: " + bd.Type, Logger.severity.WARNING);
+						continue;
+				}
+				disrupt.Start(bd);
+			}
+
+			// autopilot
+
+			if (data.Autopilot != null)
+				foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
+				{
+					ShipAutopilot autopilot;
+					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
+						autopilot.Resume = ba;
+					else
+						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
+				}
+
+			// programmable block
+
+			if (data.ProgrammableBlock != null)
+				foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
+				{
+					ProgrammableBlock pb;
+					if (Registrar.TryGetValue(bpa.BlockId, out pb))
+						pb.ResumeFromSave(bpa);
+					else
+						m_logger.alwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
+				}
+
+			// text panel
+
+			if (data.TextPanel != null)
+				foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
+				{
+					TextPanel panel;
+					if (Registrar.TryGetValue(btp.BlockId, out panel))
+						panel.ResumeFromSave(btp);
+					else
+						m_logger.alwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
+				}
+
+			// weapon
+
+			if (data.Weapon != null)
+				foreach (WeaponTargeting.Builder_WeaponTargeting bwt in data.Weapon)
+				{
+					WeaponTargeting targeting;
+					if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
+						targeting.ResumeFromSave(bwt);
+					else
+						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
+				}
+		}
+
 		/// <summary>
-		/// Saves data to a file.
+		/// Saves data to a variable.
 		/// </summary>
 		public override void SaveData()
 		{
-			if (!MyAPIGateway.Multiplayer.IsServer || m_fileMaster == null)
+			if (!MyAPIGateway.Multiplayer.IsServer)
 				return;
-
-			// critical this happens before SE saves variables (has not been an issue)
-			string fileId = GetSaveIdFromPath();
-			MyAPIGateway.Utilities.SetVariable(SaveIdString, fileId);
 
 			try
 			{
@@ -343,23 +373,22 @@ namespace Rynchodon.Update
 				Registrar.ForEach<Turret>(act);
 				data.Weapon = buildWeapon.ToArray();
 
-				var writer = m_fileMaster.GetTextWriter(fileId);
-				writer.Write(MyAPIGateway.Utilities.SerializeToXML(data));
-				writer.Close();
 
-				m_logger.debugLog("Saved to " + fileId, Logger.severity.INFO);
+				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
+
+				if (m_fileMaster != null)
+				{
+					string identifier = LegacyIdentifier();
+					if (identifier != null)
+						if (m_fileMaster.Delete(identifier))
+							m_logger.debugLog("file deleted: " + identifier);
+				}
 			}
 			catch (Exception ex)
 			{
 				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
 			}
-		}
-
-		private string GetSaveIdFromPath()
-		{
-			string path = MyAPIGateway.Session.CurrentPath;
-			return path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1) + ".xml";
 		}
 
 	}

@@ -60,6 +60,28 @@ namespace Rynchodon.Utility
 				return null;
 		}
 
+		public bool Delete(string identifier)
+		{
+			string fileName = m_slaveName + identifier;
+			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(fileName, GetType()))
+				return false;
+
+			try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(fileName, GetType()); }
+			catch (Exception) { }
+			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(fileName, GetType()))
+				return false;
+
+			m_fileAgeName.RemoveAt(m_fileAgeName.IndexOfValue(fileName));
+			WriteMaster();
+			return true;
+		}
+
+		public bool FileExists(string identifier)
+		{
+			string fileName = m_slaveName + identifier;
+			return MyAPIGateway.Utilities.FileExistsInLocalStorage(fileName, GetType());
+		}
+
 		private void GetWriter(string filename)
 		{
 			int index = m_fileAgeName.IndexOfValue(filename);
