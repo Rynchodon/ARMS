@@ -90,8 +90,10 @@ namespace Rynchodon.Weapons
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
+		/// <summary>Accumulation of custom terminal, vanilla terminal, and text commands.</summary>
 		public TargetingOptions Options { get; protected set; }
 
+		/// <summary>Custom terminal options for ARMS, does not include vanilla controls</summary>
 		public TargetingOptions TerminalOptions { get; protected set; }
 
 		/// <summary>The target that has been chosen.</summary>
@@ -202,7 +204,7 @@ namespace Rynchodon.Weapons
 		{
 			if (Options.TargetingRange < 1f)
 			{
-				//myLogger.debugLog("Not targeting, zero range", "UpdateTarget()");
+				myLogger.debugLog("Not targeting, zero range");
 				return;
 			}
 
@@ -218,9 +220,9 @@ namespace Rynchodon.Weapons
 			CollectTargets();
 			PickATarget();
 			//if (myTarget.Entity != null && CurrentTarget != myTarget)
-			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName(), "UpdateTarget()");
+			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName());
 			//else if (CurrentTarget != null && CurrentTarget.Entity != null)
-			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName(), "UpdateTarget()");
+			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName());
 			CurrentTarget = myTarget;
 		}
 
@@ -377,7 +379,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void CollectTargets()
 		{
-			//myLogger.debugLog("entered", "CollectTargets()");
+			myLogger.debugLog("entered");
 			Available_Targets.Clear();
 			PotentialObstruction.Clear();
 			nearbyEntities.Clear();
@@ -387,7 +389,7 @@ namespace Rynchodon.Weapons
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				//myLogger.debugLog("entity: " + entity.getBestName(), "CollectTargets()");
+				myLogger.debugLog("entity: " + entity.getBestName());
 
 				if (Options.TargetEntityId.HasValue && entity.EntityId != Options.TargetEntityId.Value)
 					continue;
@@ -415,7 +417,7 @@ namespace Rynchodon.Weapons
 				{
 					if (string.IsNullOrEmpty(entity.DisplayName))
 					{
-						//myLogger.debugLog("Cannot target creatures, cannot get identity", "CollectTargets()");
+						myLogger.debugLog("Cannot target creatures, cannot get identity");
 						continue;
 					}
 
@@ -424,7 +426,7 @@ namespace Rynchodon.Weapons
 					{
 						if (asIdentity.IsDead)
 						{
-							//myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName(), "CollectTargets()");
+							myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName());
 							continue;
 						}
 					}
@@ -521,7 +523,7 @@ namespace Rynchodon.Weapons
 			if (!Available_Targets.TryGetValue(tType, out targetsOfType))
 				return false;
 
-			//myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count, "SetClosest()");
+			myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count);
 
 			IMyEntity closest = null;
 

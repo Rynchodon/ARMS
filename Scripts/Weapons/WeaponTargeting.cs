@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
@@ -25,6 +26,18 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public abstract class WeaponTargeting : TargetingBase
 	{
+
+		[Serializable]
+		public class Builder_WeaponTargeting
+		{
+			[XmlAttribute]
+			public long WeaponId;
+			public TargetType TargetTypeFlags;
+			public TargetingFlags TargetOptFlags;
+			public float Range;
+			public string TargetBlockList;
+			public string TargetEntityId;
+		}
 
 		public enum Control : byte { Off, On, Engager }
 
@@ -76,7 +89,7 @@ namespace Rynchodon.Weapons
 			Static.armsTargeting = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("ArmsTargeting", MyStringId.GetOrCompute("ARMS Targeting"), MyStringId.GetOrCompute("ARMS will control this turret"));
 			AddGetSet(Static.armsTargeting, TargetingFlags.ArmsEnabled);
 
-			Static.motorTurret = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("RotorTurret", MyStringId.GetOrCompute("Rotor Turret"), MyStringId.GetOrCompute("ARMS will treat the weapon as part of a rotor-turret"));
+			Static.motorTurret = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("RotorTurret", MyStringId.GetOrCompute("Rotor-Turret"), MyStringId.GetOrCompute("ARMS will treat the weapon as part of a rotor-turret"));
 			AddGetSet(Static.motorTurret, TargetingFlags.Turret);
 
 			MyTerminalControlCheckbox<MyUserControllableGun> functional = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetFunctional", MyStringId.GetOrCompute("Target Functional"),
@@ -84,7 +97,7 @@ namespace Rynchodon.Weapons
 			AddGetSet(functional, TargetingFlags.Functional);
 			Static.sharedControls.Add(functional);
 
-			MyTerminalControlCheckbox<MyUserControllableGun> preserve = new MyTerminalControlCheckbox<MyUserControllableGun>("PreserveTarget", MyStringId.GetOrCompute("Preserve Target"),
+			MyTerminalControlCheckbox<MyUserControllableGun> preserve = new MyTerminalControlCheckbox<MyUserControllableGun>("PreserveEnemy", MyStringId.GetOrCompute("Preserve Enemy"),
 				MyStringId.GetOrCompute("ARMS will not shoot through hostile blocks to destroy targets"));
 			AddGetSet(preserve, TargetingFlags.Preserve);
 			Static.sharedControls.Add(preserve);
@@ -202,17 +215,20 @@ namespace Rynchodon.Weapons
 					controlList.Insert(index++, control);
 		}
 
-		private static bool TryGetWeaponTargeting(IMyEntity block, out WeaponTargeting result)
+		/// <summary>
+		/// FixedWeapons and Turrets are stored separately in Registrar, this makes it simpler to retreive one when only base class is needed.
+		/// </summary>
+		public static bool TryGetWeaponTargeting(long blockId, out WeaponTargeting result)
 		{
 			FixedWeapon fixedWpn;
-			if (Registrar.TryGetValue(block, out fixedWpn))
+			if (Registrar.TryGetValue(blockId, out fixedWpn))
 			{
 				result = fixedWpn;
 				return true;
 			}
 
 			Turret turretWpn;
-			if (Registrar.TryGetValue(block, out turretWpn))
+			if (Registrar.TryGetValue(blockId, out turretWpn))
 			{
 				result = turretWpn;
 				return true;
@@ -224,9 +240,12 @@ namespace Rynchodon.Weapons
 				return false;
 			}
 
-			if (!(block is IMyCubeBlock))
-				throw new ArgumentException("enitity " + block.EntityId + " is not a block");
-			throw new ArgumentException("block " + block.EntityId + " not found in registrar");
+			throw new ArgumentException("block " + blockId + " not found in registrar");
+		}
+
+		public static bool TryGetWeaponTargeting(IMyEntity block, out WeaponTargeting result)
+		{
+			return TryGetWeaponTargeting(block.EntityId, out result);
 		}
 
 		private static float GetRange(IMyTerminalBlock block)
@@ -466,6 +485,33 @@ namespace Rynchodon.Weapons
 			//myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
+		public Builder_WeaponTargeting GetBuilder()
+		{
+			if (TerminalOptions.CanTarget == TargetType.None && TerminalOptions.Flags == TargetingFlags.None && TerminalOptions.TargetingRange == 0f)
+				return null;
+
+			return new Builder_WeaponTargeting()
+			{
+				WeaponId = CubeBlock.EntityId,
+				TargetTypeFlags = TerminalOptions.CanTarget,
+				TargetOptFlags = TerminalOptions.Flags,
+				Range = TerminalOptions.TargetingRange,
+				TargetBlockList = m_blockListBox.ToString(),
+				TargetEntityId = m_targetEntityBox.ToString()
+			};
+		}
+
+		public void ResumeFromSave(Builder_WeaponTargeting builder)
+		{
+			GameThreadActions.Enqueue(() => {
+				TerminalOptions.CanTarget = builder.TargetTypeFlags;
+				TerminalOptions.Flags = builder.TargetOptFlags;
+				TerminalOptions.TargetingRange = builder.Range;
+				m_blockListBox = new StringBuilder(builder.TargetBlockList);
+				m_targetEntityBox = new StringBuilder(builder.TargetEntityId);
+			});
+		}
+
 		/// <summary>
 		/// UpdateManger invokes this every update.
 		/// </summary>
@@ -656,13 +702,13 @@ namespace Rynchodon.Weapons
 
 			if (IsNormalTurret ?
 				(Interpreter.HasInstructions || Options.FlagSet(TargetingFlags.ArmsEnabled)) :
-				Options.FlagSet(TargetingFlags.ArmsEnabled))
+				(Options.FlagSet(TargetingFlags.ArmsEnabled) || Options.FlagSet(TargetingFlags.Turret)))
 			{
 				CurrentControl = Control.On;
 				return;
 			}
 
-			//myLogger.debugLog("Not running targeting", "Update100()");
+			myLogger.debugLog("Not running targeting");
 			CurrentControl = Control.Off;
 		}
 
