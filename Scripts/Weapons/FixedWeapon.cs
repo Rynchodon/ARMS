@@ -108,7 +108,7 @@ namespace Rynchodon.Weapons
 			Target GotTarget = CurrentTarget;
 			if (GotTarget.Entity == null)
 			{
-				FireWeapon = false;
+				//FireWeapon = false;
 				if (MyMotorTurret != null)
 					MyMotorTurret.Stop();
 				return;
@@ -186,7 +186,7 @@ namespace Rynchodon.Weapons
 
 				// azimuth rotor will be on same grid as elevation stator, ignored above
 			}
-			ObstructionIgnore = ignore;
+			Ignore(ignore);
 		}
 
 	}

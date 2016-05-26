@@ -37,7 +37,7 @@ namespace Rynchodon.Weapons
 		/// <summary>
 		/// Updates instructions if necessary.
 		/// </summary>
-		public bool UpdateInstruction()
+		public void UpdateInstruction()
 		{
 			if (Block.OwnedNPC())
 			{
@@ -51,7 +51,9 @@ namespace Rynchodon.Weapons
 			else
 				FallBackInstruct = null;
 
-			return base.UpdateInstructions();
+			base.UpdateInstructions();
+			if (!HasInstructions)
+				Options = new TargetingOptions();
 		}
 
 		protected override bool ParseAll(string instructions)

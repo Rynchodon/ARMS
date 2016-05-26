@@ -92,6 +92,8 @@ namespace Rynchodon.Weapons
 
 		public TargetingOptions Options { get; protected set; }
 
+		public TargetingOptions TerminalOptions { get; protected set; }
+
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
 		{
@@ -127,6 +129,7 @@ namespace Rynchodon.Weapons
 
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
+			TerminalOptions = new TargetingOptions();
 			Options = new TargetingOptions();
 			entity.OnClose += obj => {
 				if (WeaponsTargetingProjectile != null)
@@ -142,9 +145,9 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger("TargetingBase", block);
 		}
 
-		private bool PhysicalProblem(Vector3D targetPos)
+		private bool PhysicalProblem(Vector3D targetPos, IMyEntity target)
 		{
-			return !CanRotateTo(targetPos) || Obstructed(targetPos);
+			return !CanRotateTo(targetPos) || Obstructed(targetPos, target);
 		}
 
 		/// <summary>
@@ -155,7 +158,7 @@ namespace Rynchodon.Weapons
 		/// <remarks>Invoked on targeting thread.</remarks>
 		protected abstract bool CanRotateTo(Vector3D targetPos);
 
-		protected abstract bool Obstructed(Vector3D targetPos);
+		protected abstract bool Obstructed(Vector3D targetPos, IMyEntity target);
 
 		/// <summary>
 		/// Determines the speed of the projectile.
@@ -451,6 +454,9 @@ namespace Rynchodon.Weapons
 							AddTarget(TargetType.LargeGrid, entity);
 						else
 							AddTarget(TargetType.SmallGrid, entity);
+
+						if (Options.FlagSet(TargetingFlags.Preserve))
+							PotentialObstruction.Add(entity);
 					}
 					else
 						PotentialObstruction.Add(entity);
@@ -553,7 +559,7 @@ namespace Rynchodon.Weapons
 						continue;
 					}
 
-					if (PhysicalProblem(targetPosition))
+					if (PhysicalProblem(targetPosition, target))
 					{
 						//myLogger.debugLog("can't target: " + target.getBestName(), "SetClosest()");
 						Blacklist.Add(target);
@@ -690,8 +696,8 @@ namespace Rynchodon.Weapons
 
 				if (target != null) // found a block from blocksToTarget
 				{
-					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText + 
-					//	", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", target = " + target.DisplayNameText +
+					//	", distance = " + Vector3D.Distance(myPosition, target.GetPosition()) + ", distanceValue = " + distanceValue);
 					return true;
 				}
 			}
@@ -722,7 +728,7 @@ namespace Rynchodon.Weapons
 
 				if (target != null)
 				{
-					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue, "GetTargetBlock()");
+					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a block: " + target.DisplayNameText + ", distanceValue = " + distanceValue);
 					return true;
 				}
 			}
@@ -777,7 +783,7 @@ namespace Rynchodon.Weapons
 
 					if (ProjectileIsThreat(projectile, tType))
 					{
-						if (!PhysicalProblem(projectile.GetPosition()))
+						if (!PhysicalProblem(projectile.GetPosition(), projectile))
 						{
 							//myLogger.debugLog("Is a threat: " + projectile.getBestName() + ", weapons targeting: " + GetWeaponsTargetingProjectile(projectile), "PickAProjectile()");
 							myTarget = new TurretTarget(projectile, tType);
@@ -833,7 +839,7 @@ namespace Rynchodon.Weapons
 			FindInterceptVector();
 			if (myTarget.Entity != null)
 			{
-				if (PhysicalProblem(myTarget.ContactPoint.Value))
+				if (PhysicalProblem(myTarget.ContactPoint.Value, myTarget.Entity))
 				{
 					//myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
 					BlacklistTarget();

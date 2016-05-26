@@ -371,7 +371,7 @@ namespace Rynchodon.Weapons.Guided
 			return true;
 		}
 
-		protected override bool Obstructed(Vector3D targetPos)
+		protected override bool Obstructed(Vector3D targetPos, IMyEntity target)
 		{
 			return false;
 		}
