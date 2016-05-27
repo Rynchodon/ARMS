@@ -47,12 +47,12 @@ To reset a value to its default, simply delete it.
 type "/arms settings" in game to see the current settings. Not all server settings will be displayed.
 bAllowAutopilot - this mod can control the movement of grids
 bAllowGuidedMissile - allows guided missiles, requires bAllowWeaponControl
+bAllowHacker - allows hacker block
 bAllowRadar - radar can be used to detect grids, otherwise functions as a beacon
 bAllowWeaponControl - Enables Weapon Control and E command
 bImmortalMiner - prevents a mining Autopilot's ship from being damaged by an asteroid
 bUseRemoteControl - set to true if you want to use remote controls as Autopilot blocks
 yParallelPathfinder - Number of pathfinding tasks that can run in parallel
-iMaxSaveKeep - The maximum number of worlds to keep save data for
 fDefaultSpeed - the desired speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
@@ -84,7 +84,6 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/368542585864609881/] Discuss Balance [/url]
 
 [b]Public Domain License[/b]
 To the extent possible under law, Alexander Durand has waived all copyright and related or neighbouring rights to ARMS. This work is published from: Canada.
