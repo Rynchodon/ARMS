@@ -43,9 +43,13 @@ namespace Rynchodon.AntennaRelay
 
 		private static StaticVariables Static = new StaticVariables();
 
-		static Message()
+		/// <summary>
+		/// Message needs to be explicitly initialized because there may be none in the world.
+		/// </summary>
+		public static void Init()
 		{
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.Message, FromClient);
+			if (MyAPIGateway.Multiplayer.IsServer)
+				MessageHandler.Handlers.Add(MessageHandler.SubMod.Message, FromClient);
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
@@ -91,6 +95,8 @@ namespace Rynchodon.AntennaRelay
 
 		private static void FromClient(byte[] bytes, int pos)
 		{
+			Static.logger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not the server!", Logger.severity.ERROR);
+
 			long sender = ByteConverter.GetLong(bytes, ref pos);
 			int length = ByteConverter.GetInt(bytes, ref pos);
 			string recipientGrid = ByteConverter.GetString(bytes, length, ref pos);

@@ -93,8 +93,8 @@ namespace Rynchodon.Weapons
 		/// <summary>Accumulation of custom terminal, vanilla terminal, and text commands.</summary>
 		public TargetingOptions Options { get; protected set; }
 
-		/// <summary>Custom terminal options for ARMS, does not include vanilla controls</summary>
-		public TargetingOptions TerminalOptions { get; protected set; }
+		///// <summary>Custom terminal options for ARMS, does not include vanilla controls</summary>
+		//public TargetingOptions TerminalOptions { get; protected set; }
 
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
@@ -131,7 +131,6 @@ namespace Rynchodon.Weapons
 
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
-			TerminalOptions = new TargetingOptions();
 			Options = new TargetingOptions();
 			entity.OnClose += obj => {
 				if (WeaponsTargetingProjectile != null)

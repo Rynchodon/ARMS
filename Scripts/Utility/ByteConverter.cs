@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Rynchodon
 {
@@ -252,6 +253,12 @@ namespace Rynchodon
 				AppendBytes(bytes, c);
 		}
 
+		public static void AppendBytes(List<byte> bytes, StringBuilder s)
+		{
+			for (int index = 0; index < s.Length; index++)
+				AppendBytes(bytes, s[index]);
+		}
+
 		public static void AppendBytes(List<byte> bytes, object data)
 		{
 			TypeCode code = Convert.GetTypeCode(data);
@@ -259,40 +266,44 @@ namespace Rynchodon
 			{
 				case TypeCode.Boolean:
 					AppendBytes(bytes, (bool)data);
-					break;
+					return;
 				case TypeCode.Byte:
 					AppendBytes(bytes, (byte)data);
-					break;
+					return;
 				case TypeCode.Int16:
 					AppendBytes(bytes, (short)data);
-					break;
+					return;
 				case TypeCode.UInt16:
 					AppendBytes(bytes, (ushort)data);
-					break;
+					return;
 				case TypeCode.Int32:
 					AppendBytes(bytes, (int)data);
-					break;
+					return;
 				case TypeCode.UInt32:
 					AppendBytes(bytes, (uint)data);
-					break;
+					return;
 				case TypeCode.Int64:
 					AppendBytes(bytes, (long)data);
-					break;
+					return;
 				case TypeCode.UInt64:
 					AppendBytes(bytes, (ulong)data);
-					break;
+					return;
 				case TypeCode.Single:
 					AppendBytes(bytes, (float)data);
-					break;
+					return;
 				case TypeCode.Double:
 					AppendBytes(bytes, (double)data);
-					break;
+					return;
 				case TypeCode.String:
 					AppendBytes(bytes, (string)data);
-					break;
-				default:
-					throw new InvalidCastException("Argument is not a primitive: " + code + ", " + data);
+					return;
 			}
+			if (data is StringBuilder)
+			{
+				AppendBytes(bytes, (StringBuilder)data);
+				return;
+			}
+			throw new InvalidCastException("Argument is not a primitive: " + code + ", " + data);
 		}
 
 		#endregion List
@@ -391,34 +402,53 @@ namespace Rynchodon
 			return GetByteUnion64(bytes, ref pos).d;
 		}
 
-		public static object GetOfType(byte[] bytes, TypeCode code, ref int pos)
+		public static void GetOfType<T>(byte[] bytes, ref int pos, ref T value)
 		{
-			switch (code)
+			switch (Convert.GetTypeCode(value))
 			{
 				case TypeCode.Boolean:
-					return GetBool(bytes, ref pos);
+					value = (T)(object)GetBool(bytes, ref pos);
+					return;
 				case TypeCode.Byte:
-					return GetByte(bytes, ref pos);
+					value = (T)(object)GetByte(bytes, ref pos);
+					return;
 				case TypeCode.Int16:
-					return GetShort(bytes, ref pos);
+					value = (T)(object)GetShort(bytes, ref pos);
+					return;
 				case TypeCode.UInt16:
-					return GetUshort(bytes, ref pos);
+					value = (T)(object)GetUshort(bytes, ref pos);
+					return;
 				case TypeCode.Int32:
-					return GetInt(bytes, ref pos);
+					value = (T)(object)GetInt(bytes, ref pos);
+					return;
 				case TypeCode.UInt32:
-					return GetUint(bytes, ref pos);
+					value = (T)(object)GetUint(bytes, ref pos);
+					return;
 				case TypeCode.Int64:
-					return GetLong(bytes, ref pos);
+					value = (T)(object)GetLong(bytes, ref pos);
+					return;
 				case TypeCode.UInt64:
-					return GetUlong(bytes, ref pos);
+					value = (T)(object)GetUlong(bytes, ref pos);
+					return;
 				case TypeCode.Single:
-					return GetFloat(bytes, ref pos);
+					value = (T)(object)GetFloat(bytes, ref pos);
+					return;
 				case TypeCode.Double:
-					return GetFloat(bytes, ref pos);
+					value = (T)(object)GetFloat(bytes, ref pos);
+					return;
 				case TypeCode.Char:
-					return GetChar(bytes, ref pos);
+					value = (T)(object)GetChar(bytes, ref pos);
+					return;
+				case TypeCode.String:
+					value = (T)(object)GetString(bytes, ref pos);
+					return;
 			}
-			throw new ArgumentException("Invalid TypeCode: " + code);
+			if (typeof(T) == typeof(StringBuilder))
+			{
+				value = (T)(object)new StringBuilder(GetString(bytes, ref pos));
+				return;
+			}
+			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));
 		}
 
 		public static string GetString(byte[] bytes)

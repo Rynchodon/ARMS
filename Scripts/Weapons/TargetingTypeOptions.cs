@@ -14,7 +14,7 @@ namespace Rynchodon.Weapons
 	/// <para>Defined in the order of precedence</para>
 	/// </summary>
 	[Flags]
-	public enum TargetType : ushort
+	public enum TargetType : byte
 	{
 		None = 0,
 		Missile = 1 << 0,
@@ -26,7 +26,7 @@ namespace Rynchodon.Weapons
 		SmallGrid = 1 << 5,
 		Station = 1 << 6,
 		/// <summary>Destroy every terminal block on all grids</summary>
-		Destroy = 1 << 8,
+		Destroy = 1 << 7,
 
 		Projectile = Missile + Meteor + Moving,
 		AllGrid = LargeGrid + SmallGrid + Station,
@@ -55,6 +55,7 @@ namespace Rynchodon.Weapons
 
 	public class TargetingOptions
 	{
+
 		public TargetType CanTarget = TargetType.None;
 
 		/// <summary>Returns true if any of the specified types can be targeted.</summary>
@@ -92,10 +93,13 @@ namespace Rynchodon.Weapons
 			get { return listOfBlocks == null ? null : listOfBlocks.BlockNamesContain; }
 			set
 			{
+				if (listOfBlocks != null && listOfBlocks.BlockNamesContain == value)
+					return;
+
 				if (value.IsNullOrEmpty())
 					listOfBlocks = null;
 				else
-					listOfBlocks = CubeGridCache.GetBlockList(value);
+					listOfBlocks = new BlockTypeList(value);
 			}
 		}
 
@@ -120,16 +124,13 @@ namespace Rynchodon.Weapons
 			};
 		}
 
-		/// <summary>
-		/// Overwrite this TargetingOptions with cumulative values from first and second.
-		/// </summary>
-		public void Assimilate(TargetingOptions first, TargetingOptions second)
+		public void Assimilate(TargetingOptions fallback, TargetType typeFlags, TargetingFlags optFlags, float range, long? targetEntityId, string[] blocksToTarget)
 		{
-			this.blocksToTarget = first.blocksToTarget ?? second.blocksToTarget;
-			this.CanTarget = first.CanTarget | second.CanTarget;
-			this.Flags = first.Flags | second.Flags;
-			this.TargetingRange = Math.Max(first.TargetingRange, second.TargetingRange);
-			this.TargetEntityId = first.TargetEntityId ?? second.TargetEntityId;
+			this.CanTarget = typeFlags | fallback.CanTarget;
+			this.Flags = optFlags | fallback.Flags;
+			this.TargetingRange = Math.Max(range, fallback.TargetingRange);
+			this.TargetEntityId = targetEntityId ?? fallback.TargetEntityId;
+			this.blocksToTarget = blocksToTarget ?? fallback.blocksToTarget;
 		}
 
 		public override string ToString()

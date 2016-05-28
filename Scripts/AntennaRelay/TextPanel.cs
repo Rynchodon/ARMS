@@ -5,6 +5,7 @@ using System.Xml.Serialization;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
+using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
@@ -63,7 +64,7 @@ namespace Rynchodon.AntennaRelay
 			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
 			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
 			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
-			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Stauts", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
+			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
 
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -143,15 +144,22 @@ namespace Rynchodon.AntennaRelay
 				panel.m_optionsTerminal &= ~opt;
 		}
 
-		private Ingame.IMyTextPanel m_textPanel;
-		private Logger myLogger = new Logger(null, "TextPanel");
+		private readonly Ingame.IMyTextPanel m_textPanel;
+		private readonly Logger myLogger = new Logger(null, "TextPanel");
+
+		private readonly EntityValue<Option> m_optionsTerminal_ev;
 
 		private IMyTerminalBlock myTermBlock;
 		private NetworkClient m_networkClient;
 		private Option m_options;
 		private List<sortableLastSeen> m_sortableList;
 		private TimeSpan m_lastDisplay;
-		private Option m_optionsTerminal;
+
+		private Option m_optionsTerminal
+		{
+			get { return m_optionsTerminal_ev.Value; }
+			set { m_optionsTerminal_ev.Value = value; }
+		}
 
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
@@ -161,6 +169,7 @@ namespace Rynchodon.AntennaRelay
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new NetworkClient(block);
 			myLogger.debugLog("init: " + m_block.DisplayNameText);
+			m_optionsTerminal_ev = new EntityValue<Option>(block.EntityId, 0, Option.None);
 
 			Registrar.Add(block, this);
 		}

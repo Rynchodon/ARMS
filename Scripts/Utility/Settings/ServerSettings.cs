@@ -70,7 +70,7 @@ namespace Rynchodon.Settings
 			if (MyAPIGateway.Multiplayer.IsServer)
 			{
 				SettingsLoaded = true;
-				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Server_ReceiveMessage);
+				MessageHandler.Handlers.Add(MessageHandler.SubMod.ServerSettings, Server_ReceiveMessage);
 
 				fileVersion = readAll();
 				if (fileVersion != latestVersion)
@@ -81,7 +81,7 @@ namespace Rynchodon.Settings
 			}
 			else
 			{
-				MyAPIGateway.Multiplayer.RegisterMessageHandler(ModID, Client_ReceiveMessage);
+				MessageHandler.Handlers.Add(MessageHandler.SubMod.ServerSettings, Client_ReceiveMessage);
 				RequestSettingsFromServer();
 			}
 		}
@@ -89,13 +89,11 @@ namespace Rynchodon.Settings
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, Server_ReceiveMessage);
-			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModID, Client_ReceiveMessage);
 			AllSettings = null;
 			myLogger = null;
 		}
 
-		private static void Server_ReceiveMessage(byte[] message)
+		private static void Server_ReceiveMessage(byte[] message, int pos)
 		{
 			try
 			{
@@ -110,12 +108,12 @@ namespace Rynchodon.Settings
 					return;
 				}
 
-				int pos = 0;
 				ulong SteamUserId = ByteConverter.GetUlong(message, ref pos);
 
 				myLogger.debugLog("Received request from: " + SteamUserId);
 
 				List<byte> send = new List<byte>();
+				ByteConverter.AppendBytes(send, (byte)MessageHandler.SubMod.ServerSettings);
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowHacker));
@@ -136,14 +134,12 @@ namespace Rynchodon.Settings
 			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
-		private static void Client_ReceiveMessage(byte[] message)
+		private static void Client_ReceiveMessage(byte[] message, int pos)
 		{
 			try
 			{
 				myLogger.debugLog("Received settings from server");
 
-				int pos = 0;
-		
 				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowHacker, ByteConverter.GetBool(message, ref pos));
@@ -170,11 +166,11 @@ namespace Rynchodon.Settings
 				return;
 			}
 
-			byte[] message = new byte[8];
-			int pos = 0;
-			ByteConverter.AppendBytes(message, MyAPIGateway.Session.Player.SteamUserId, ref pos);
+			List<byte> bytes = new List<byte>();
+			ByteConverter.AppendBytes(bytes, (byte)MessageHandler.SubMod.ServerSettings);
+			ByteConverter.AppendBytes(bytes, MyAPIGateway.Session.Player.SteamUserId);
 
-			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, message))
+			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, bytes.ToArray()))
 				myLogger.debugLog("Sent request to server", Logger.severity.INFO);
 			else
 				myLogger.alwaysLog("Failed to send request to server", Logger.severity.ERROR);

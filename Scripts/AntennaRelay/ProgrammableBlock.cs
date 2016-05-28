@@ -2,6 +2,7 @@
 using System.Text;
 using System.Xml.Serialization;
 using Rynchodon.Instructions;
+using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
@@ -151,24 +152,27 @@ namespace Rynchodon.AntennaRelay
 			pb.m_blockCountList_sb = value;
 		}
 
-		private Ingame.IMyProgrammableBlock m_progBlock;
-		private NetworkClient m_networkClient;
-		private Logger m_logger;
+		private readonly Ingame.IMyProgrammableBlock m_progBlock;
+		private readonly NetworkClient m_networkClient;
+		private readonly Logger m_logger;
 
-		private bool m_handleDetected, m_handleDetectedTerminal;
+		private readonly EntityValue<bool> m_handleDetectedTerminal_ev;
+		private readonly EntityValue<StringBuilder> m_blockCountList_ev;
+	
+		private bool m_handleDetected;
 
-		private StringBuilder value_blockCountList_sb = new StringBuilder();
 		private BlockTypeList value_blockCountList_btl;
+
+		private bool m_handleDetectedTerminal
+		{
+			get { return m_handleDetectedTerminal_ev.Value; }
+			set { m_handleDetectedTerminal_ev.Value = value; }
+		}
 
 		private StringBuilder m_blockCountList_sb
 		{
-			get { return value_blockCountList_sb; }
-			set
-			{
-				m_logger.debugLog("text changed: " + value);
-				value_blockCountList_sb = value;
-				m_blockCountList_btl = null;
-			}
+			get { return m_blockCountList_ev.Value; }
+			set { m_blockCountList_ev.Value = value; }
 		}
 
 		private BlockTypeList m_blockCountList_btl
@@ -177,12 +181,11 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (value_blockCountList_btl == null)
 				{
-					m_logger.debugLog("building BlockTypeList: " + value_blockCountList_sb);
+					m_logger.debugLog("building BlockTypeList: " + m_blockCountList_sb);
 					value_blockCountList_btl = new BlockTypeList(m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','));
 				}
 				return value_blockCountList_btl;
 			}
-			set { value_blockCountList_btl = value; }
 		}
 
 		public ProgrammableBlock(IMyCubeBlock block)
@@ -191,6 +194,10 @@ namespace Rynchodon.AntennaRelay
 			m_logger = new Logger(GetType().Name, block);
 			m_progBlock = block as Ingame.IMyProgrammableBlock;
 			m_networkClient = new NetworkClient(block, HandleMessage);
+
+			byte index = 0;
+			m_handleDetectedTerminal_ev = new EntityValue<bool>(block.EntityId, index++, false);
+			m_blockCountList_ev = new EntityValue<StringBuilder>(block.EntityId, index++, new StringBuilder()) { AfterValueChanged = () => value_blockCountList_btl = null };
 
 			Registrar.Add(block, this);
 		}

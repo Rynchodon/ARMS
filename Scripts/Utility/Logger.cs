@@ -285,7 +285,7 @@ namespace Rynchodon
 			{
 				LogItem item;
 				while (Static.m_logItems.TryDequeue(out item))
-					log(item);
+					log(ref item);
 			}
 			finally
 			{
@@ -293,7 +293,7 @@ namespace Rynchodon
 			}
 		}
 
-		private static void log(LogItem item)
+		private static void log(ref LogItem item)
 		{
 			if (Static.numLines >= Static.maxNumLines)
 				return;
@@ -304,7 +304,7 @@ namespace Rynchodon
 				foreach (string line in split)
 				{
 					item.toLog = line;
-					log(item);
+					log(ref item);
 				}
 				return;
 			}
@@ -364,7 +364,7 @@ namespace Rynchodon
 		{
 			Static.m_lockLogging.AcquireExclusive();
 			
-			log(new LogItem()
+			LogItem closingLog = new LogItem()
 			{
 				logger = this,
 				time = DateTime.Now,
@@ -375,7 +375,8 @@ namespace Rynchodon
 				primaryState = null,
 				secondaryState = null,
 				thread = ThreadTracker.GetNameOrNumber()
-			});
+			};
+			log(ref closingLog);
 
 			StaticVariables temp = Static;
 			Static = null;
