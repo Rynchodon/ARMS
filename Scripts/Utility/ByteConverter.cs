@@ -249,12 +249,14 @@ namespace Rynchodon
 
 		public static void AppendBytes(List<byte> bytes, string s)
 		{
+			AppendBytes(bytes, s.Length);
 			foreach (char c in s)
 				AppendBytes(bytes, c);
 		}
 
 		public static void AppendBytes(List<byte> bytes, StringBuilder s)
 		{
+			AppendBytes(bytes, s.Length);
 			for (int index = 0; index < s.Length; index++)
 				AppendBytes(bytes, s[index]);
 		}
@@ -303,7 +305,7 @@ namespace Rynchodon
 				AppendBytes(bytes, (StringBuilder)data);
 				return;
 			}
-			throw new InvalidCastException("Argument is not a primitive: " + code + ", " + data);
+			throw new InvalidCastException("data is of invalid type: " + code + ", " + data);
 		}
 
 		#endregion List
@@ -451,23 +453,17 @@ namespace Rynchodon
 			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));
 		}
 
-		public static string GetString(byte[] bytes)
-		{
-			int pos = 0;
-			return GetString(bytes, bytes.Length / 2, ref pos);
-		}
-
 		public static string GetString(byte[] bytes, ref int pos)
 		{
-			return GetString(bytes, (bytes.Length - pos) / 2, ref pos);
-		}
-
-		public static string GetString(byte[] bytes, int length, ref int pos)
-		{
-			char[] result = new char[length];
-			for (int index = 0; index < length; index++)
+			char[] result = new char[GetInt(bytes, ref pos)];
+			for (int index = 0; index< result.Length; index++)
 				result[index] = GetChar(bytes, ref pos);
 			return new string(result);
+		}
+
+		public static StringBuilder GetStringBuilder(byte[] bytes, ref int pos)
+		{
+			return new StringBuilder(GetString(bytes, ref pos));
 		}
 
 		#endregion From Byte Array

@@ -261,7 +261,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 
 				float destRadius = m_navSet.Settings_Current.DestinationRadius; destRadius *= destRadius;
-				if (m_landingState > LandingState.Approach || Vector3.DistanceSquared(m_navBlock.WorldPosition, m_targetPosition) < destRadius)
+				if (m_landingState > LandingState.Approach || m_navBlock.Grid.WorldAABB.Distance(m_targetPosition) < destRadius)
 				{
 					//m_logger.debugLog(m_landingState > LandingState.Approach, "m_landingState > LandingState.Approach", "Move()");
 					//m_logger.debugLog(m_navSet.Settings_Current.Distance < m_navSet.Settings_Current.DestinationRadius,

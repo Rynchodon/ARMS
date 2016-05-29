@@ -497,7 +497,7 @@ namespace Rynchodon.AntennaRelay
 						m_messages.Remove(msg);
 			}
 
-			m_nextClean_message = Globals.UpdateCount;
+			m_nextClean_message = Globals.UpdateCount + s_cleanInterval;
 		}
 
 		/// <summary>

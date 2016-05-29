@@ -68,13 +68,10 @@ namespace Rynchodon.AntennaRelay
 		{
 			Static.bytes.Clear();
 
-			ByteConverter.AppendBytes(Static.bytes, (byte)MessageHandler.SubMod.Message);
+			ByteConverter.AppendBytes(Static.bytes, MessageHandler.SubMod.Message);
 			ByteConverter.AppendBytes(Static.bytes, sender);
-			ByteConverter.AppendBytes(Static.bytes, recipientGrid.Length);
 			ByteConverter.AppendBytes(Static.bytes, recipientGrid);
-			ByteConverter.AppendBytes(Static.bytes, recipientBlock.Length);
 			ByteConverter.AppendBytes(Static.bytes, recipientBlock);
-			ByteConverter.AppendBytes(Static.bytes, message.Length);
 			ByteConverter.AppendBytes(Static.bytes, message);
 
 			if (MyAPIGateway.Multiplayer.SendMessageToServer(Static.bytes.ToArray()))
@@ -98,12 +95,9 @@ namespace Rynchodon.AntennaRelay
 			Static.logger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not the server!", Logger.severity.ERROR);
 
 			long sender = ByteConverter.GetLong(bytes, ref pos);
-			int length = ByteConverter.GetInt(bytes, ref pos);
-			string recipientGrid = ByteConverter.GetString(bytes, length, ref pos);
-			length = ByteConverter.GetInt(bytes, ref pos);
-			string recipientBlock = ByteConverter.GetString(bytes, length, ref pos);
-			length = ByteConverter.GetInt(bytes, ref pos);
-			string message = ByteConverter.GetString(bytes, length, ref pos);
+			string recipientGrid = ByteConverter.GetString(bytes, ref pos);
+			string recipientBlock = ByteConverter.GetString(bytes, ref pos);
+			string message = ByteConverter.GetString(bytes, ref pos);
 
 			CreateAndSendMessage_Autopilot(sender, recipientGrid, recipientBlock, message);
 		}

@@ -284,7 +284,7 @@ namespace Rynchodon.Weapons
 		{
 			WeaponTargeting instance;
 			if (TryGetWeaponTargeting(block, out instance))
-				return (instance.m_termControl_targetType & flag) != 0;
+				return (instance.m_termControl_targetType_ev.Value & flag) != 0;
 			return false;
 		}
 
@@ -294,16 +294,16 @@ namespace Rynchodon.Weapons
 			if (!TryGetWeaponTargeting(block, out instance))
 				return;
 			if (value)
-				instance.m_termControl_targetType |= flag;
+				instance.m_termControl_targetType_ev.Value |= flag;
 			else
-				instance.m_termControl_targetType &= ~flag;
+				instance.m_termControl_targetType_ev.Value &= ~flag;
 		}
 
 		private static bool GetFlag(IMyTerminalBlock block, TargetingFlags flag)
 		{
 			WeaponTargeting instance;
 			if (TryGetWeaponTargeting(block, out instance))
-				return (instance.m_termControl_targetFlag & flag) != 0;
+				return (instance.m_termControl_targetFlag_ev.Value & flag) != 0;
 			return false;
 		}
 
@@ -313,9 +313,9 @@ namespace Rynchodon.Weapons
 			if (!TryGetWeaponTargeting(block, out instance))
 				return;
 			if (value)
-				instance.m_termControl_targetFlag |= flag;
+				instance.m_termControl_targetFlag_ev.Value |= flag;
 			else
-				instance.m_termControl_targetFlag &= ~flag;
+				instance.m_termControl_targetFlag_ev.Value &= ~flag;
 		}
 
 		private static StringBuilder GetBlockList(IMyTerminalBlock block)
@@ -354,6 +354,16 @@ namespace Rynchodon.Weapons
 			instance.m_termControl_targetEntity_ev.Value = value;
 		}
 
+		private static void UpdateVisual()
+		{
+			Static.armsTargeting.UpdateVisual();
+			Static.motorTurret.UpdateVisual();
+			foreach (var control in Static.sharedControls)
+				control.UpdateVisual();
+			foreach (var control in Static.fixedControls)
+				control.UpdateVisual();
+		}
+
 		#endregion Static
 
 		public readonly Ingame.IMyLargeTurretBase myTurret;
@@ -381,26 +391,13 @@ namespace Rynchodon.Weapons
 
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
 
-		private bool dirty_blockList, dirty_targetEntity;
-
 		private string[] m_termControl_blockList;
 		private long? m_termControl_targetEntityId;
 
-		private EntityValue<byte> m_termControl_targetType_ev, m_termControl_targetFlag_ev;
+		private EntityValue<TargetType> m_termControl_targetType_ev;
+		private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
 		private EntityValue<float> m_termControl_range_ev;
-		private EntityValue<StringBuilder> m_termControl_blockList_ev, m_termControl_targetEntity_ev;
-
-		private TargetType m_termControl_targetType
-		{
-			get { return (TargetType)m_termControl_targetType_ev.Value; }
-			set { m_termControl_targetType_ev.Value = Convert.ToByte(value); }
-		}
-
-		private TargetingFlags m_termControl_targetFlag
-		{
-			get { return (TargetingFlags)m_termControl_targetFlag_ev.Value; }
-			set { m_termControl_targetFlag_ev.Value = Convert.ToByte(value); }
-		}
+		private EntityStringBuilder m_termControl_blockList_ev, m_termControl_targetEntity_ev;
 
 		public Control CurrentControl
 		{
@@ -463,11 +460,21 @@ namespace Rynchodon.Weapons
 			this.FuncBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
 
 			byte index = 0;
-			this.m_termControl_targetType_ev = new EntityValue<byte>(weapon.EntityId, index++);
-			this.m_termControl_targetFlag_ev = new EntityValue<byte>(weapon.EntityId, index++);
-			this.m_termControl_range_ev = new EntityValue<float>(weapon.EntityId, index++);
-			this.m_termControl_blockList_ev = new EntityValue<StringBuilder>(weapon.EntityId, index++, new StringBuilder()) { AfterValueChanged = () => dirty_blockList = true };
-			this.m_termControl_targetEntity_ev = new EntityValue<StringBuilder>(weapon.EntityId, index++, new StringBuilder()) { AfterValueChanged = () => dirty_targetEntity = true };
+			this.m_termControl_targetType_ev = new EntityValue<TargetType>(weapon, index++, UpdateVisual);
+			this.m_termControl_targetFlag_ev = new EntityValue<TargetingFlags>(weapon, index++, UpdateVisual);
+			this.m_termControl_range_ev = new EntityValue<float>(weapon, index++, UpdateVisual);
+			this.m_termControl_blockList_ev = new EntityStringBuilder(weapon, index++, () => {
+				UpdateVisual();
+				m_termControl_blockList = m_termControl_blockList_ev.Value.ToString().LowerRemoveWhitespace().Split(',');
+			});
+			this.m_termControl_targetEntity_ev = new EntityStringBuilder(weapon, index++, () => {
+				UpdateVisual();
+				long entityId;
+				if (long.TryParse(m_termControl_targetEntity_ev.ToString().RemoveWhitespace(), out entityId))
+					m_termControl_targetEntityId = entityId;
+				else
+					m_termControl_targetEntityId = null;
+			});
 
 			if (Static.TPro_Shoot == null)
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
@@ -496,8 +503,8 @@ namespace Rynchodon.Weapons
 			return new Builder_WeaponTargeting()
 			{
 				WeaponId = CubeBlock.EntityId,
-				TargetTypeFlags = m_termControl_targetType,
-				TargetOptFlags = m_termControl_targetFlag,
+				TargetTypeFlags = m_termControl_targetType_ev.Value,
+				TargetOptFlags = m_termControl_targetFlag_ev.Value,
 				Range = m_termControl_range_ev.Value,
 				TargetBlockList = m_termControl_blockList_ev.Value.ToString(),
 				TargetEntityId = m_termControl_targetEntity_ev.Value.ToString()
@@ -507,8 +514,8 @@ namespace Rynchodon.Weapons
 		public void ResumeFromSave(Builder_WeaponTargeting builder)
 		{
 			GameThreadActions.Enqueue(() => {
-				m_termControl_targetType = builder.TargetTypeFlags;
-				m_termControl_targetFlag = builder.TargetOptFlags;
+				m_termControl_targetType_ev.Value = builder.TargetTypeFlags;
+				m_termControl_targetFlag_ev.Value = builder.TargetOptFlags;
 				m_termControl_range_ev.Value = builder.Range;
 				m_termControl_blockList_ev.Value = new StringBuilder(builder.TargetBlockList);
 				m_termControl_targetEntity_ev.Value = new StringBuilder(builder.TargetEntityId);
@@ -679,23 +686,8 @@ namespace Rynchodon.Weapons
 			//myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
 			ClearBlacklist();
 
-			if (dirty_blockList)
-			{
-				dirty_blockList = false;
-				m_termControl_blockList = m_termControl_blockList_ev.Value.ToString().LowerRemoveWhitespace().Split(',');
-			}
-			if (dirty_targetEntity)
-			{
-				dirty_targetEntity = false;
-				long entityId;
-				if (long.TryParse(m_termControl_targetEntity_ev.ToString().RemoveWhitespace(), out entityId))
-					m_termControl_targetEntityId = entityId;
-				else
-					m_termControl_targetEntityId = null;
-			}
-
 			Interpreter.UpdateInstruction();
-			Options.Assimilate(Interpreter.Options, m_termControl_targetType, m_termControl_targetFlag, m_termControl_range_ev.Value, m_termControl_targetEntityId, m_termControl_blockList);
+			Options.Assimilate(Interpreter.Options, m_termControl_targetType_ev.Value, m_termControl_targetFlag_ev.Value, m_termControl_range_ev.Value, m_termControl_targetEntityId, m_termControl_blockList);
 			Update100_Options_TargetingThread(Options);
 
 			if (CurrentControl == Control.Engager)

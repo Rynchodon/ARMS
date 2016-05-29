@@ -35,10 +35,6 @@ namespace Rynchodon.AntennaRelay
 		private const string timeString = "Current as of: ";
 		private const string tab = "    ";
 
-		private static char[] OptionsSeparators = { ',', ';', ':' };
-		private static Logger s_logger = new Logger("TextPanel");
-		private static List<long> s_detectedIds = new List<long>();
-
 		[Flags]
 		private enum Option : byte
 		{
@@ -49,6 +45,16 @@ namespace Rynchodon.AntennaRelay
 			AutopilotStatus = 8,
 			Refresh = 16,
 		}
+
+		private class StaticVariables
+		{
+			public char[] OptionsSeparators = { ',', ';', ':' };
+			public Logger s_logger = new Logger("TextPanel");
+			public List<long> s_detectedIds = new List<long>();
+			public List<MyTerminalControlCheckbox<MyTextPanel>> checkboxes = new List<MyTerminalControlCheckbox<MyTextPanel>>();
+		}
+
+		private static StaticVariables Static = new StaticVariables();
 
 		static TextPanel()
 		{
@@ -76,43 +82,42 @@ namespace Rynchodon.AntennaRelay
 			valueControl.Getter = block => GetOptionTerminal(block, opt);
 			valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
 			MyTerminalControlFactory.AddControl(control);
+			Static.checkboxes.Add(control);
 		}
 
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			OptionsSeparators = null;
-			s_logger = null;
-			s_detectedIds = null;
+			Static = null;
 		}
 
 		/// <param name="args">EntityIds as long</param>
 		private static void TextPanel_DisplayEntities(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
 		{
-			s_detectedIds.Clear();
+			Static.s_detectedIds.Clear();
 
 			for (int i = 0; i < args.Count; i++)
 			{
 				if (args[i].TypeCode != TypeCode.Int64)
 				{
-					s_logger.debugLog("TerminalActionParameter # " + i + " is of wrong type, expected Int64, got " + args[i].TypeCode, Logger.severity.WARNING);
+					Static.s_logger.debugLog("TerminalActionParameter # " + i + " is of wrong type, expected Int64, got " + args[i].TypeCode, Logger.severity.WARNING);
 					if (MyAPIGateway.Session.Player != null)
 						block.AppendCustomInfo("Failed to display entities:\nTerminalActionParameter #" + i + " is of wrong type, expected Int64 (AKA long), got " + args[i].TypeCode + '\n');
 					return;
 				}
-				s_detectedIds.Add((long)args[i].Value);
+				Static.s_detectedIds.Add((long)args[i].Value);
 			}
 
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block.EntityId, out panel))
 			{
-				s_logger.alwaysLog("Text panel not found in registrar: " + block.EntityId, Logger.severity.ERROR);
+				Static.s_logger.alwaysLog("Text panel not found in registrar: " + block.EntityId, Logger.severity.ERROR);
 				return;
 			}
 
-			s_logger.debugLog("Found text panel with id: " + block.EntityId);
+			Static.s_logger.debugLog("Found text panel with id: " + block.EntityId);
 
-			panel.Display(s_detectedIds);
+			panel.Display(Static.s_detectedIds);
 		}
 
 		private static bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
@@ -120,7 +125,7 @@ namespace Rynchodon.AntennaRelay
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
 			{
-				if (s_logger == null)
+				if (Static == null)
 					return false;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
 			}
@@ -133,7 +138,7 @@ namespace Rynchodon.AntennaRelay
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
 			{
-				if (s_logger == null)
+				if (Static == null)
 					return;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
 			}
@@ -142,6 +147,12 @@ namespace Rynchodon.AntennaRelay
 				panel.m_optionsTerminal |= opt;
 			else
 				panel.m_optionsTerminal &= ~opt;
+		}
+
+		private static void UpdateVisual()
+		{
+			foreach (var control in Static.checkboxes)
+				control.UpdateVisual();
 		}
 
 		private readonly Ingame.IMyTextPanel m_textPanel;
@@ -169,7 +180,7 @@ namespace Rynchodon.AntennaRelay
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new NetworkClient(block);
 			myLogger.debugLog("init: " + m_block.DisplayNameText);
-			m_optionsTerminal_ev = new EntityValue<Option>(block.EntityId, 0, Option.None);
+			m_optionsTerminal_ev = new EntityValue<Option>(block, 0, UpdateVisual);
 
 			Registrar.Add(block, this);
 		}
@@ -197,7 +208,7 @@ namespace Rynchodon.AntennaRelay
 
 		protected override bool ParseAll(string instructions)
 		{
-			string[] opts = instructions.RemoveWhitespace().Split(OptionsSeparators);
+			string[] opts = instructions.RemoveWhitespace().Split(Static.OptionsSeparators);
 			m_options = Option.None;
 			foreach (string opt in opts)
 			{

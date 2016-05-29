@@ -4,8 +4,8 @@ using System.Linq;
 using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot;
-using Rynchodon.Settings;
 using Rynchodon.Utility;
+using Rynchodon.Utility.Network;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.ModAPI;
@@ -33,6 +33,7 @@ namespace Rynchodon.Update
 			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
 			public TextPanel.Builder_TextPanel[] TextPanel;
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
+			public EntityValue.Builder_EntityValues[] EntityValues;
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
@@ -295,6 +296,12 @@ namespace Rynchodon.Update
 					else
 						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 				}
+
+			// entity values
+
+			if (data.EntityValues != null)
+				EntityValue.ResumeFromSave(data.EntityValues);
+
 		}
 
 		/// <summary>
@@ -341,37 +348,41 @@ namespace Rynchodon.Update
 				});
 				data.Autopilot = buildAuto.ToArray();
 
-				// programmable block
+				//// programmable block
 
-				List<ProgrammableBlock.Builder_ProgrammableBlock> buildProgram = new List<ProgrammableBlock.Builder_ProgrammableBlock>();
-				Registrar.ForEach<ProgrammableBlock>(program => {
-					ProgrammableBlock.Builder_ProgrammableBlock builder = program.GetBuilder();
-					if (builder != null)
-						buildProgram.Add(builder);
-				});
-				data.ProgrammableBlock = buildProgram.ToArray();
+				//List<ProgrammableBlock.Builder_ProgrammableBlock> buildProgram = new List<ProgrammableBlock.Builder_ProgrammableBlock>();
+				//Registrar.ForEach<ProgrammableBlock>(program => {
+				//	ProgrammableBlock.Builder_ProgrammableBlock builder = program.GetBuilder();
+				//	if (builder != null)
+				//		buildProgram.Add(builder);
+				//});
+				//data.ProgrammableBlock = buildProgram.ToArray();
 
-				// text panel
+				//// text panel
 
-				List<TextPanel.Builder_TextPanel> buildPanel = new List<TextPanel.Builder_TextPanel>();
-				Registrar.ForEach<TextPanel>(panel => {
-					TextPanel.Builder_TextPanel builder = panel.GetBuilder();
-					if (builder != null)
-						buildPanel.Add(builder);
-				});
-				data.TextPanel = buildPanel.ToArray();
+				//List<TextPanel.Builder_TextPanel> buildPanel = new List<TextPanel.Builder_TextPanel>();
+				//Registrar.ForEach<TextPanel>(panel => {
+				//	TextPanel.Builder_TextPanel builder = panel.GetBuilder();
+				//	if (builder != null)
+				//		buildPanel.Add(builder);
+				//});
+				//data.TextPanel = buildPanel.ToArray();
 
-				// weapon
+				//// weapon
 
-				List<WeaponTargeting.Builder_WeaponTargeting> buildWeapon = new List<WeaponTargeting.Builder_WeaponTargeting>();
-				Action<WeaponTargeting> act = weapon => {
-					WeaponTargeting.Builder_WeaponTargeting builder = weapon.GetBuilder();
-					if (builder != null)
-						buildWeapon.Add(builder);
-				};
-				Registrar.ForEach<FixedWeapon>(act);
-				Registrar.ForEach<Turret>(act);
-				data.Weapon = buildWeapon.ToArray();
+				//List<WeaponTargeting.Builder_WeaponTargeting> buildWeapon = new List<WeaponTargeting.Builder_WeaponTargeting>();
+				//Action<WeaponTargeting> act = weapon => {
+				//	WeaponTargeting.Builder_WeaponTargeting builder = weapon.GetBuilder();
+				//	if (builder != null)
+				//		buildWeapon.Add(builder);
+				//};
+				//Registrar.ForEach<FixedWeapon>(act);
+				//Registrar.ForEach<Turret>(act);
+				//data.Weapon = buildWeapon.ToArray();
+
+				// entity values
+
+				data.EntityValues = EntityValue.GetBuilders();
 
 
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));

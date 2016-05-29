@@ -25,6 +25,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [list][*]Example - Warhead, Turret, Rocket, Gatling, Reactor, Battery, Solar[/list]
 [*]Entity ID - If an ID is added here the weapon will only target that grid.[/list]
 Vanilla targeting controls are respected by ARMS. Meteors, Missiles, and Moving grids will only be targeted if they are approaching the weapon.
+Weapon range cannot be set higher than fMaxWeaponRange in settings.
 
 [b][u]Understanding Obstructions[/u][/b]
 [list][*]An obstruction can be an asteroid, a friendly character, or a friendly grid.
