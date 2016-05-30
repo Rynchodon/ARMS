@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 using Entities.Blocks;
+using Rynchodon.Settings;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Rynchodon.Utility.Vectors;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
@@ -23,10 +25,6 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Projects miniature ships. Could do asteroids / planets in the future or other entities.
 	/// </summary>
-	/// TODO:
-	/// special case, only display this ship, use full radius?
-	/// offset adjustment
-	/// ToHSV methods don't produce correct results
 	public class Projector
 	{
 
@@ -38,7 +36,8 @@ namespace Rynchodon.AntennaRelay
 			Neutral = ExtensionsRelations.Relations.Neutral,
 			Enemy = ExtensionsRelations.Relations.Enemy,
 			OnOff = 16,
-			Integrity = 32
+			Integrity = 32,
+			ShowOffset = 64
 		}
 
 		private class StaticVariables
@@ -50,10 +49,54 @@ namespace Rynchodon.AntennaRelay
 
 			public readonly Logger logger = new Logger("Projector");
 			public readonly List<IMyTerminalControl> TermControls = new List<IMyTerminalControl>();
+			public readonly List<IMyTerminalControl> TermControls_Offset = new List<IMyTerminalControl>();
 
-			// per-user options, should be saved
 			public bool MouseControls;
-			public Color FullIntegrity = Color.Blue, ZeroIntegrity = Color.Red;
+			public Color
+				value_IntegrityFull = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityFull),
+				value_IntegrityFunctional = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityFunctional),
+				value_IntegrityDamaged = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityDamaged),
+				value_IntegrityZero = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityZero);
+		}
+
+		public static Color IntegrityFull
+		{
+			get { return Static.value_IntegrityFull; }
+			set
+			{
+				Static.value_IntegrityFull = value;
+				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityFull, value);
+			}
+		}
+
+		public static Color IntegrityFunctional
+		{
+			get { return Static.value_IntegrityFunctional; }
+			set
+			{
+				Static.value_IntegrityFunctional = value;
+				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityFunctional, value);
+			}
+		}
+
+		public static Color IntegrityDamaged
+		{
+			get { return Static.value_IntegrityDamaged; }
+			set
+			{
+				Static.value_IntegrityDamaged = value;
+				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityDamaged, value);
+			}
+		}
+
+		public static Color IntegrityZero
+		{
+			get { return Static.value_IntegrityZero; }
+			set
+			{
+				Static.value_IntegrityZero = value;
+				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityZero, value);
+			}
 		}
 
 		private class SeenHolo
@@ -63,11 +106,12 @@ namespace Rynchodon.AntennaRelay
 			public bool ColouredByIntegrity;
 		}
 
-		private const double CrosshairRange = 20d;
 		private const float InputScrollMulti = 1f / 120f, ScrollRangeMulti = 1.1f;
 		private const float MinRangeDetection = 1e2f, MaxRangeDetection = 1e5f, DefaultRangeDetection = 1e3f;
 		private const float MinRadiusHolo = 1f, MaxRadiusHolo = 10f, DefaultRadiusHolo = 2.5f;
-		private const float MinSizeScale = 1, MaxSizeScale = 1e3f, DefaultSizeScale = 10f;
+		private const float MinSizeScale = 1f, MaxSizeScale = 1e3f, DefaultSizeScale = 10f;
+		private const float MinOffset = -10f, MaxOffset = 10f;
+		private const double CrosshairRange = 20d;
 
 		private static StaticVariables Static = new StaticVariables();
 
@@ -118,28 +162,60 @@ namespace Rynchodon.AntennaRelay
 
 			Static.TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
-			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"), MyStringId.GetOrCompute("Allow manipulation of holgram with mouse"));
+			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"), 
+				MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
 			IMyTerminalValueControl<bool> valueControlBool = control;
 			valueControlBool.Getter = block => Static.MouseControls;
 			valueControlBool.Setter = (block, value) => Static.MouseControls = value;
 			Static.TermControls.Add(control);
 
+			AddCheckbox("HD_ShowOffset", "Show Offset Controls", "Display controls that can be used to adjust the position of the hologram", Option.ShowOffset);
+
+			AddOffsetSlider("HD_OffsetX", "Right/Left Offset", "+ve moves hologram to the right, -ve moves hologram to the left", 0);
+			AddOffsetSlider("HD_OffsetY", "Up/Down Offset", "+ve moves hologram up, -ve moves hologram down", 1);
+			AddOffsetSlider("HD_OffsetZ", "Back/Fore Offset", "+ve moves hologram back, -ve moves hologram forward", 2);
+
+			Static.TermControls_Offset.Add(new MyTerminalControlSeparator<MySpaceProjector>());
+
 			AddCheckbox("HD_IntegrityColour", "Colour by integrity", "Colour blocks according to their integrities", Option.Integrity);
 
 			IMyTerminalControlColor colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_FullIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Full Integrity Colour");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has full integrity");
-			colour.Getter = (block) => Static.FullIntegrity;
-			colour.Setter = (block, value) => Static.FullIntegrity = value;
+			colour.Title = MyStringId.GetOrCompute("Whole");
+			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has full integrity. User-specific setting.");
+			colour.Getter = (block) => IntegrityFull;
+			colour.Setter = (block, value) => IntegrityFull = value;
+			Static.TermControls.Add(colour);
+
+			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
+			colour.Title = MyStringId.GetOrCompute("Func.");
+			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just above critical integrity. User-specific setting.");
+			colour.Getter = (block) => IntegrityFunctional;
+			colour.Setter = (block, value) => IntegrityFunctional = value;
+			Static.TermControls.Add(colour);
+
+			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
+			colour.Title = MyStringId.GetOrCompute("Broken");
+			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just below critical integrity. User-specific setting.");
+			colour.Getter = (block) => IntegrityDamaged;
+			colour.Setter = (block, value) => IntegrityDamaged = value;
 			Static.TermControls.Add(colour);
 
 			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_ZeroIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Zero Integrity Colour");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has zero integrity");
-			colour.Getter = (block) => Static.ZeroIntegrity;
-			colour.Setter = (block, value) => Static.ZeroIntegrity = value;
+			colour.Title = MyStringId.GetOrCompute("Razed");
+			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has zero integrity. User-specific setting.");
+			colour.Getter = (block) => IntegrityZero;
+			colour.Setter = (block, value) => IntegrityZero = value;
 			Static.TermControls.Add(colour);
 		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
+			Static = null;
+		}
+
+		#region Terminal Controls
 
 		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
 		{
@@ -152,6 +228,20 @@ namespace Rynchodon.AntennaRelay
 			Static.TermControls.Add(control);
 		}
 
+		private static void AddOffsetSlider(string id, string title, string toolTip, int dim)
+		{
+			MyTerminalControlSlider<MySpaceProjector> control = new MyTerminalControlSlider<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
+			Func<IMyTerminalBlock, float> getter = block => GetOffset(block, dim);
+			control.DefaultValue = dim == 1 ? 2.5f : 0f;
+			control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);
+			control.Denormalizer = (block, value) => Denormalizer(MinOffset, MaxOffset, block, value);
+			control.Writer = (block, sb) => WriterMetres(getter, block, sb);
+			IMyTerminalValueControl<float> valueControl = control;
+			valueControl.Getter = getter;
+			valueControl.Setter = (block, value) => SetOffset(block, dim, value);
+			Static.TermControls_Offset.Add(control);
+		}
+
 		private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
 		{
 			if (GetOptionTerminal(block, Option.OnOff))
@@ -162,16 +252,19 @@ namespace Rynchodon.AntennaRelay
 				// remove all controls after ShowOnHUD and before separator
 				controls.RemoveRange(indexSOH + 1, controls.Count - indexSOH - 3);
 
-				for (int index = 1; index < Static.TermControls.Count; index++)
-					controls.Add(Static.TermControls[index]);
-			}
-		}
+				bool showOffset = GetOptionTerminal(block, Option.ShowOffset);
 
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
-			Static = null;
+				for (int index = 1; index < Static.TermControls.Count; index++)
+				{
+					controls.Add(Static.TermControls[index]);
+					if (showOffset && Static.TermControls[index].Id == "HD_ShowOffset")
+					{
+						showOffset = false;
+						foreach (var offset in Static.TermControls_Offset)
+							controls.Add(offset);
+					}
+				}
+			}
 		}
 
 		private static bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
@@ -194,7 +287,7 @@ namespace Rynchodon.AntennaRelay
 			else
 				proj.m_options.Value &= ~opt;
 
-			if (opt == Option.OnOff)
+			if (opt == Option.OnOff || opt == Option.ShowOffset)
 				MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
 		}
 
@@ -252,6 +345,26 @@ namespace Rynchodon.AntennaRelay
 			proj.m_sizeDistScale.Value = value;
 		}
 
+		private static float GetOffset(IMyTerminalBlock block, int dim)
+		{
+			Projector proj;
+			if (!Registrar.TryGetValue(block, out proj))
+				return 0f;
+
+			return proj.m_offset_ev.Value.GetDim(dim);
+		}
+
+		private static void SetOffset(IMyTerminalBlock block, int dim, float value)
+		{
+			Projector proj;
+			if (!Registrar.TryGetValue(block, out proj))
+				return;
+
+			Vector3 offset = proj.m_offset_ev.Value ;//.SetDim(dim, value);
+			offset.SetDim(dim, value);
+			proj.m_offset_ev.Value = offset;
+		}
+
 		private static float Normalizer(float min, float max, IMyTerminalBlock block, float value)
 		{
 			return (value - min) / (max - min);
@@ -274,9 +387,15 @@ namespace Rynchodon.AntennaRelay
 				control.UpdateVisual();
 		}
 
+		#endregion Terminal Controls
+
 		private static void AfterDamageHandler(object obj, MyDamageInformation damageInfo)
 		{
 			if (!(obj is IMySlimBlock))
+				return;
+
+			// grind damage is handled by OnBlockIntegrityChanged, which is faster
+			if (damageInfo.Type == MyDamageType.Grind)
 				return;
 
 			IMySlimBlock block = (IMySlimBlock)obj;
@@ -285,12 +404,97 @@ namespace Rynchodon.AntennaRelay
 				SeenHolo sh;
 				if (!proj.m_holoEntities.TryGetValue(gridId, out sh) || !sh.Holo.Render.Visible || !sh.ColouredByIntegrity)
 					return;
-
-				float integrityRatio = (block.BuildIntegrity - block.CurrentDamage) / block.MaxIntegrity;
-				Color blockColour = Static.FullIntegrity * integrityRatio + Static.ZeroIntegrity * (1 - integrityRatio);
-				Static.logger.debugLog("integrityRatio: " + integrityRatio + ", blockColour: " + blockColour);
-				((MyCubeGrid)sh.Holo).ColorBlocks(block.Position, block.Position, blockColour.ColorToHSVDX11(), false);
+				ColourBlock(block, (IMyCubeGrid)sh.Holo);
 			});
+		}
+
+		/// <summary>
+		/// Prepare a projected entity by disabling physics, game logic, etc.
+		/// </summary>
+		private static void SetupProjection(IMyEntity entity)
+		{
+			if (entity.Physics != null && entity.Physics.Enabled)
+				entity.Physics.Enabled = false;
+
+			MyCubeBlock block = entity as MyCubeBlock;
+			if (block != null)
+			{
+				if (block.UseObjectsComponent.DetectorPhysics != null && block.UseObjectsComponent.DetectorPhysics.Enabled)
+					block.UseObjectsComponent.DetectorPhysics.Enabled = false;
+				block.NeedsUpdate = MyEntityUpdateEnum.NONE;
+
+				if (block is Ingame.IMyBeacon || block is Ingame.IMyRadioAntenna)
+					((IMyFunctionalBlock)block).RequestEnable(false);
+			}
+
+			foreach (var child in entity.Hierarchy.Children)
+				SetupProjection(child.Container.Entity);
+		}
+
+		/// <summary>
+		/// Colours a block according to its integrity.
+		/// </summary>
+		private static void ColourBlock(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
+		{
+			Static.logger.debugLog(realBlock == null, "realBlock == null", Logger.severity.FATAL);
+
+			float integrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
+			float criticalRatio = ((MyCubeBlockDefinition)realBlock.BlockDefinition).CriticalIntegrityRatio;
+
+			float scaledRatio;
+			Color blockColour;
+			Static.logger.debugLog(integrityRatio != 1f, "integrityRatio: " + integrityRatio + ", criticalRatio: " + criticalRatio + ", fatblock: " + realBlock.FatBlock.getBestName() + ", functional: " + (realBlock.FatBlock != null && realBlock.FatBlock.IsFunctional));
+			if (integrityRatio > criticalRatio && (realBlock.FatBlock == null || realBlock.FatBlock.IsFunctional))
+			{
+				scaledRatio = (integrityRatio - criticalRatio) / (1f - criticalRatio);
+				blockColour = IntegrityFull * scaledRatio + IntegrityFunctional * (1f - scaledRatio);
+			}
+			else
+			{
+				scaledRatio = integrityRatio / criticalRatio;
+				blockColour = IntegrityDamaged * scaledRatio + IntegrityZero * (1f - scaledRatio);
+			}
+			holoGrid.ColorBlocks(realBlock.Position, realBlock.Position, blockColour.ColorToHSVDX11());
+		}
+
+		/// <summary>
+		/// Updates the appearance of the block if the integrity has changed. Only used for welding/griding.
+		/// </summary>
+		private static void UpdateBlockModel(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
+		{
+			IMySlimBlock holoBlock = holoGrid.GetCubeBlock(realBlock.Position);
+			Static.logger.debugLog(holoBlock == null, "holoBlock == null", Logger.severity.FATAL);
+
+			float realIntegrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
+			float holoIntegrityRatio = (holoBlock.BuildIntegrity - holoBlock.CurrentDamage) / holoBlock.MaxIntegrity;
+
+			if (realIntegrityRatio == holoIntegrityRatio)
+				return;
+
+			float min, max;
+			if (realIntegrityRatio > holoIntegrityRatio)
+			{
+				max = realIntegrityRatio;
+				min = holoIntegrityRatio;
+			}
+			else
+			{
+				max = holoIntegrityRatio;
+				min = realIntegrityRatio;
+			}
+
+			if (((MyCubeBlockDefinition)realBlock.BlockDefinition).ModelChangeIsNeeded(min, max))
+			{
+				holoGrid.RemoveBlock(holoBlock);
+
+				MyObjectBuilder_CubeBlock objBuilder = realBlock.GetObjectBuilder();
+				objBuilder.EntityId = 0L;
+				holoGrid.AddBlock(objBuilder, false);
+
+				IMyCubeBlock cubeBlock = holoGrid.GetCubeBlock(realBlock.Position).FatBlock;
+				if (cubeBlock != null)
+					SetupProjection(cubeBlock);
+			}
 		}
 
 		private readonly Logger m_logger;
@@ -301,8 +505,6 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>List of entities to remove holo entirely, it will have to be re-created to be displayed again</summary>
 		private readonly List<long> m_holoEntitiesRemove = new List<long>();
 
-		private PositionBlock m_offset = new Vector3(0f, 2.5f, 0f);
-
 		private EntityValue<Option> m_options;
 		/// <summary>How close a detected entity needs to be to be placed inside the holographic area.</summary>
 		private EntityValue<float> m_rangeDetection;
@@ -312,6 +514,7 @@ namespace Rynchodon.AntennaRelay
 		private EntityValue<float> m_sizeDistScale;
 		/// <summary>Id of the real entity that is centred</summary>
 		private EntityValue<long> m_centreEntityId;
+		private EntityValue<Vector3> m_offset_ev;
 
 		private DateTime m_clearAllAt = DateTime.UtcNow + Static.keepInCache;
 		/// <summary>The real entity that is centred</summary>
@@ -321,6 +524,8 @@ namespace Rynchodon.AntennaRelay
 		private bool Enabled { get { return m_block.IsWorking && (m_options.Value & Option.OnOff) != 0; } }
 
 		private IMyEntity m_centreEntity { get { return value_centreEntity ?? m_block; } }
+
+		private PositionBlock m_offset { get { return m_offset_ev.Value; } }
 
 		public Projector(IMyCubeBlock block)
 		{
@@ -334,6 +539,10 @@ namespace Rynchodon.AntennaRelay
 			this.m_radiusHolo = new EntityValue<float>(block, index++, UpdateVisual, DefaultRadiusHolo);
 			this.m_sizeDistScale = new EntityValue<float>(block, index++, UpdateVisual, DefaultSizeScale);
 			this.m_centreEntityId = new EntityValue<long>(block, index++, m_centreEntityId_AfterValueChanged);
+			this.m_offset_ev = new EntityValue<Vector3>(block, index++, () => {
+				UpdateVisual();
+				m_logger.debugLog("offset: " + m_offset_ev.Value);
+			}, new Vector3(0f, 2.5f, 0f));
 
 			Registrar.Add(block, this);
 		}
@@ -347,16 +556,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				m_logger.debugLog("clearing all holo entities");
 				foreach (SeenHolo sh in m_holoEntities.Values)
-				{
-					MyEntities.Remove(sh.Holo);
-					MyCubeGrid grid = sh.Seen.Entity as MyCubeGrid;
-					if (grid != null)
-					{
-						grid.OnBlockAdded -= Actual_OnBlockAdded;
-						grid.OnBlockRemoved -= Actual_OnBlockRemoved;
-						grid.OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
-					}
-				}
+					OnRemove(sh);
 				m_holoEntities.Clear();
 			}
 
@@ -407,14 +607,7 @@ namespace Rynchodon.AntennaRelay
 				foreach (long entityId in m_holoEntitiesRemove)
 				{
 					SeenHolo sh = m_holoEntities[entityId];
-					MyEntities.Remove(sh.Holo);
-					MyCubeGrid grid = sh.Seen.Entity as MyCubeGrid;
-					if (grid != null)
-					{
-						grid.OnBlockAdded -= Actual_OnBlockAdded;
-						grid.OnBlockRemoved -= Actual_OnBlockRemoved;
-						grid.OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
-					}
+					OnRemove(sh);
 					m_holoEntities.Remove(entityId);
 				}
 				m_holoEntitiesRemove.Clear();
@@ -570,31 +763,25 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("created holo for " + seen.Entity.getBestName() + "(" + seen.Entity.EntityId + ")");
 			m_holoEntities.Add(seen.Entity.EntityId, new SeenHolo() { Seen = seen, Holo = holo });
 
-			IMyCubeGrid actual = (IMyCubeGrid)seen.Entity;
+			MyCubeGrid actual = (MyCubeGrid)seen.Entity;
 			actual.OnBlockAdded += Actual_OnBlockAdded;
 			actual.OnBlockRemoved += Actual_OnBlockRemoved;
+			actual.OnBlockIntegrityChanged += OnBlockIntegrityChanged;
 		}
 
-		private void SetupProjection(IMyEntity entity)
+		/// <summary>
+		/// Actions that must be performed when removing an entry from m_holoEntities
+		/// </summary>
+		private void OnRemove(SeenHolo sh)
 		{
-			if (entity.Physics != null && entity.Physics.Enabled)
-				entity.Physics.Enabled = false;
-
-			entity.Render.Transparency = 0.5f;
-
-			MyCubeBlock block = entity as MyCubeBlock;
-			if (block != null)
+			MyEntities.Remove(sh.Holo);
+			MyCubeGrid grid = sh.Seen.Entity as MyCubeGrid;
+			if (grid != null)
 			{
-				if (block.UseObjectsComponent.DetectorPhysics != null && block.UseObjectsComponent.DetectorPhysics.Enabled)
-					block.UseObjectsComponent.DetectorPhysics.Enabled = false;
-				block.NeedsUpdate = MyEntityUpdateEnum.NONE;
-
-				if (block is Ingame.IMyBeacon || block is Ingame.IMyRadioAntenna)
-					((IMyFunctionalBlock)block).RequestEnable(false);
+				grid.OnBlockAdded -= Actual_OnBlockAdded;
+				grid.OnBlockRemoved -= Actual_OnBlockRemoved;
+				grid.OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
 			}
-
-			foreach (var child in entity.Hierarchy.Children)
-				SetupProjection(child.Container.Entity);
 		}
 
 		private void Actual_OnBlockAdded(IMySlimBlock obj)
@@ -650,13 +837,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			m_logger.debugLog("colouring by integriy: " + sh.Seen.Entity.getBestName());
 			MyCubeGrid realGrid = (MyCubeGrid)sh.Seen.Entity;
+			IMyCubeGrid holoGrid = (IMyCubeGrid)sh.Holo;
 			foreach (IMySlimBlock block in realGrid.CubeBlocks)
-			{
-				float integrityRatio = (block.BuildIntegrity - block.CurrentDamage) / block.MaxIntegrity;
-				Color blockColour = Static.FullIntegrity * integrityRatio + Static.ZeroIntegrity * (1 - integrityRatio);
-				((MyCubeGrid)sh.Holo).ColorBlocks(block.Position, block.Position, blockColour.ColorToHSVDX11(), false);
-			}
-			realGrid.OnBlockIntegrityChanged += OnBlockIntegrityChanged;
+				ColourBlock(block, holoGrid);
 			sh.ColouredByIntegrity = true;
 		}
 
@@ -667,7 +850,6 @@ namespace Rynchodon.AntennaRelay
 			MyCubeGrid holo = (MyCubeGrid)sh.Holo;
 			foreach (IMySlimBlock block in realGrid.CubeBlocks)
 				holo.ColorBlocks(block.Position, block.Position, block.GetColorMask(), false);
-			realGrid.OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
 			sh.ColouredByIntegrity = false;
 		}
 
@@ -680,10 +862,10 @@ namespace Rynchodon.AntennaRelay
 				((MyCubeGrid)block.CubeGrid).OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
 				return;
 			}
-
-			float integrityRatio = (block.BuildIntegrity - block.CurrentDamage) / block.MaxIntegrity;
-			Color blockColour = Static.FullIntegrity * integrityRatio + Static.ZeroIntegrity * (1 - integrityRatio);
-			((MyCubeGrid)sh.Holo).ColorBlocks(block.Position, block.Position, blockColour.ColorToHSVDX11(), false);
+			IMyCubeGrid grid = (IMyCubeGrid)sh.Holo;
+			if (sh.ColouredByIntegrity)
+				ColourBlock(block, grid);
+			UpdateBlockModel(block, grid);
 		}
 
 		private void m_centreEntityId_AfterValueChanged()
