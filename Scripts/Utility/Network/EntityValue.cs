@@ -172,16 +172,17 @@ namespace Rynchodon.Utility.Network
 					return;
 				m_synced = true;
 				m_value = value;
-				m_afterValueChanged.InvokeIfExists();
 				SendValue();
+				// set value will invoke m_afterValueChanged
 			}
 		}
 
 		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
-		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged)
+		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged = null, T defaultValue = default(T))
 		{
 			this.m_entityId = entity.EntityId;
 			this.m_valueId = valueId;
+			this.m_value = defaultValue;
 			this.m_afterValueChanged = afterValueChanged;
 			this.m_synced = MyAPIGateway.Multiplayer.IsServer;
 

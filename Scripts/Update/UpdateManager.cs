@@ -186,6 +186,15 @@ namespace Rynchodon.Update
 					RegisterForUpdates(100, tp.Update100, block);
 			});
 
+			RegisterForBlock(typeof(MyObjectBuilder_Projector), block => {
+				Projector p = new Projector(block);
+				if (MyAPIGateway.Session.Player != null)
+				{
+					RegisterForUpdates(100, p.Update100, block);
+					RegisterForUpdates(1, p.Update1, block);
+				}
+			});
+
 			if (MyAPIGateway.Session.Player != null)
 				new Player();
 

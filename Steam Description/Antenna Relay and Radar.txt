@@ -73,3 +73,37 @@ To change the number of marked enemy grids to 10:
 /arms set EnemiesOnHUD 10
 To change the number of marked owned grids to 0:
 /arms set OwnerOnHUD 0
+
+[h1]Projector[/h1]
+ARMS can use projectors to display detected ships holographically.
+
+[i]There may be a significant FPS hit for using this feature, dependant upon the number of blocks that need to be rendered.[/i]
+
+[b]Holographic Display[/b] - activates / deactivates the hologram
+[list][*]This Ship - Display the ship the projector is on.
+[*]Owned Ship - Display ships owned by the owner of the projector.
+[*]Faction  Ships - Display ships owned by the faction that the owner of the projector is in.
+[*]Neutral Ships - Display ships that are owned by factions that are at peace with the owner of the projector.
+[*]Enemy Ships - Display ships that are owned by players that are at war with the owner of the projector.[/list]
+
+Detection Range - How close an entity needs to be for it to be displayed.
+Hologram Radius - How big the hologram will be.
+Entity Size Scale - Increases the size of entities in the hologram.
+
+[b]Mouse Controls[/b] are only available while the option is enabled in the terminal. Toggling this option affects all Projector blocks. This option is not synchronized between game clients or saved between game sessions.
+[list][*]Left clicking on an entity brings that entity to the centre of the hologram.
+[*]Right clicking anywhere on the hologram restores the projector block to the centre.
+[*]The scroll wheel can be used to adjust "Detection Range".[/list]
+[i]If Space Engineers looses focus while Mouse Controls are enabled, "Detection Range" may change.[/i]
+
+[b]Show Offset Controls[/b] - Show/Hide controls that allow repositioning of the hologram.
+Right/Left Offset - Move hologram to the right or left, relative to the projector
+Up/Down Offset - Move hologram down or up, relative to the projector
+Back/Fore Offset - Move hologram backwards or forwards, relative to the projector
+
+[b]Colour by integrity[/b] - Blocks will change colour according to their integrity values. When enabled, colours can be changed.
+Colours picked affect all projectors, are not synchronized between game clients, and are saved on the client.
+Whole - Colour used when block is at full integrity
+Func. - Colour used when block integrity is just above functional threshold
+Broken - Colour used when block integrity is just below functional threshold
+Razed - Colour used when block integrity is zero

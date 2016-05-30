@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Sandbox.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Settings
 {
@@ -28,6 +29,15 @@ namespace Rynchodon.Settings
 			MissileWarning
 		}
 
+		public enum ColourSettingName : byte
+		{
+			None,
+			IntegrityFull,
+			IntegrityFunctional,
+			IntegrityDamaged,
+			IntegrityZero
+		}
+
 		private const string userSettings_fileName = "UserSettings.txt";
 		private const string chatDesignator = "/arms set";
 		private const string alt_chatDesignator = "/autopilot set";
@@ -47,6 +57,11 @@ namespace Rynchodon.Settings
 		public static bool GetSetting(BoolSettingName name)
 		{
 			return Instance.BoolSettings[name].Value;
+		}
+
+		public static Color GetSetting(ColourSettingName name)
+		{
+			return Instance.ColourSettings[name].Value;
 		}
 
 		public static void SetSetting(ByteSettingName name, byte value, bool notify = false)
@@ -75,6 +90,12 @@ namespace Rynchodon.Settings
 			Instance.writeAll();
 		}
 
+		public static void SetSetting(ColourSettingName name, Color value)
+		{
+			Instance.ColourSettings[name].Value = value;
+			Instance.writeAll();
+		}
+
 		public static void SetSetting(string nameValue)
 		{
 			Instance.SetSetting_FromString(nameValue);
@@ -82,6 +103,8 @@ namespace Rynchodon.Settings
 
 		private readonly Dictionary<ByteSettingName, SettingSimple<byte>> ByteSettings = new Dictionary<ByteSettingName, SettingSimple<byte>>();
 		private readonly Dictionary<BoolSettingName, SettingSimple<bool>> BoolSettings = new Dictionary<BoolSettingName, SettingSimple<bool>>();
+		private readonly Dictionary<ColourSettingName, SettingSimple<Color>> ColourSettings = new Dictionary<ColourSettingName, SettingSimple<Color>>();
+		
 		private readonly Logger myLogger;
 
 		private UserSettings()
@@ -112,6 +135,11 @@ namespace Rynchodon.Settings
 			ByteSettings.Add(ByteSettingName.UpdateIntervalHUD, new SettingSimple<byte>(100));
 
 			BoolSettings.Add(BoolSettingName.MissileWarning, new SettingSimple<bool>(true));
+
+			ColourSettings.Add(ColourSettingName.IntegrityFull, new SettingSimple<Color>(Color.DarkGreen));
+			ColourSettings.Add(ColourSettingName.IntegrityFunctional, new SettingSimple<Color>(Color.Yellow));
+			ColourSettings.Add(ColourSettingName.IntegrityDamaged, new SettingSimple<Color>(Color.Red));
+			ColourSettings.Add(ColourSettingName.IntegrityZero, new SettingSimple<Color>(Color.Gray));
 		}
 
 		/// <summary>
@@ -163,6 +191,12 @@ namespace Rynchodon.Settings
 				foreach (KeyValuePair<ByteSettingName, SettingSimple<byte>> pair in ByteSettings)
 					write(settingsWriter, pair.Key.ToString(), pair.Value.ValueAsString());
 
+				foreach (KeyValuePair<BoolSettingName, SettingSimple<bool>> pair in BoolSettings)
+					write(settingsWriter, pair.Key.ToString(), pair.Value.ValueAsString());
+
+				foreach (KeyValuePair<ColourSettingName, SettingSimple<Color>> pair in ColourSettings)
+					write(settingsWriter, pair.Key.ToString(), pair.Value.ValueAsString());
+
 				settingsWriter.Flush();
 			}
 			catch (Exception ex)
@@ -206,15 +240,43 @@ namespace Rynchodon.Settings
 
 			ByteSettingName name;
 			if (Enum.TryParse<ByteSettingName>(split[0], out name))
-				try
+			{	try
 				{
 					if (ByteSettings[name].ValueFromString(split[1]))
 						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
 				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
-			else
-				myLogger.alwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
+				return;
+			}
+
+			BoolSettingName boolSet;
+			if (Enum.TryParse<BoolSettingName>(split[0], out boolSet))
+			{
+				try
+				{
+					if (BoolSettings[boolSet].ValueFromString(split[1]))
+						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
+				}
+				catch (Exception)
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				return;
+			}
+
+			ColourSettingName colourSet;
+			if (Enum.TryParse<ColourSettingName>(split[0], out colourSet))
+			{
+				try
+				{
+					if (ColourSettings[colourSet].ValueFromString(split[1]))
+						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
+				}
+				catch (Exception)
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				return;
+			}
+
+			myLogger.alwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
 		}
 
 		private void SetSetting_FromString(string nameValue)

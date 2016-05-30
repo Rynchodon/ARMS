@@ -9,6 +9,7 @@ namespace Rynchodon
 {
 	public static class ExtensionsRelations
 	{
+		// Projector is "extending" this enum
 		[Flags]
 		public enum Relations : byte
 		{

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using VRageMath;
 
 namespace Rynchodon
 {
@@ -261,48 +262,60 @@ namespace Rynchodon
 				AppendBytes(bytes, s[index]);
 		}
 
-		public static void AppendBytes(List<byte> bytes, object data)
+		public static void AppendBytes(List<byte> bytes, Vector3 v)
+		{
+			AppendBytes(bytes, v.X);
+			AppendBytes(bytes, v.Y);
+			AppendBytes(bytes, v.Z);
+		}
+
+		public static void AppendBytes<T>(List<byte> bytes, T data)
 		{
 			TypeCode code = Convert.GetTypeCode(data);
 			switch (code)
 			{
 				case TypeCode.Boolean:
-					AppendBytes(bytes, (bool)data);
+					AppendBytes(bytes, (bool)(object)data);
 					return;
 				case TypeCode.Byte:
-					AppendBytes(bytes, (byte)data);
+					AppendBytes(bytes, (byte)(object)data);
 					return;
 				case TypeCode.Int16:
-					AppendBytes(bytes, (short)data);
+					AppendBytes(bytes, (short)(object)data);
 					return;
 				case TypeCode.UInt16:
-					AppendBytes(bytes, (ushort)data);
+					AppendBytes(bytes, (ushort)(object)data);
 					return;
 				case TypeCode.Int32:
-					AppendBytes(bytes, (int)data);
+					AppendBytes(bytes, (int)(object)data);
 					return;
 				case TypeCode.UInt32:
-					AppendBytes(bytes, (uint)data);
+					AppendBytes(bytes, (uint)(object)data);
 					return;
 				case TypeCode.Int64:
-					AppendBytes(bytes, (long)data);
+					AppendBytes(bytes, (long)(object)data);
 					return;
 				case TypeCode.UInt64:
-					AppendBytes(bytes, (ulong)data);
+					AppendBytes(bytes, (ulong)(object)data);
 					return;
 				case TypeCode.Single:
-					AppendBytes(bytes, (float)data);
+					AppendBytes(bytes, (float)(object)data);
 					return;
 				case TypeCode.Double:
-					AppendBytes(bytes, (double)data);
+					AppendBytes(bytes, (double)(object)data);
 					return;
 				case TypeCode.String:
-					AppendBytes(bytes, (string)data);
+					AppendBytes(bytes, (string)(object)data);
 					return;
 			}
-			if (data is StringBuilder)
+			if (typeof(T) == typeof(StringBuilder))
 			{
-				AppendBytes(bytes, (StringBuilder)data);
+				AppendBytes(bytes, (StringBuilder)(object)data);
+				return;
+			}
+			if (typeof(T) == typeof(Vector3))
+			{
+				AppendBytes(bytes, (Vector3)(object)data);
 				return;
 			}
 			throw new InvalidCastException("data is of invalid type: " + code + ", " + data);
@@ -404,6 +417,24 @@ namespace Rynchodon
 			return GetByteUnion64(bytes, ref pos).d;
 		}
 
+		public static string GetString(byte[] bytes, ref int pos)
+		{
+			char[] result = new char[GetInt(bytes, ref pos)];
+			for (int index = 0; index < result.Length; index++)
+				result[index] = GetChar(bytes, ref pos);
+			return new string(result);
+		}
+
+		public static StringBuilder GetStringBuilder(byte[] bytes, ref int pos)
+		{
+			return new StringBuilder(GetString(bytes, ref pos));
+		}
+
+		public static Vector3 GetVector3(byte[] bytes, ref int pos)
+		{
+			return new Vector3(GetFloat(bytes, ref pos), GetFloat(bytes, ref pos), GetFloat(bytes, ref pos));
+		}
+
 		public static void GetOfType<T>(byte[] bytes, ref int pos, ref T value)
 		{
 			switch (Convert.GetTypeCode(value))
@@ -450,20 +481,12 @@ namespace Rynchodon
 				value = (T)(object)new StringBuilder(GetString(bytes, ref pos));
 				return;
 			}
+			if (typeof(T) == typeof(Vector3))
+			{
+				value = (T)(object)GetVector3(bytes, ref pos);
+				return;
+			}
 			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));
-		}
-
-		public static string GetString(byte[] bytes, ref int pos)
-		{
-			char[] result = new char[GetInt(bytes, ref pos)];
-			for (int index = 0; index< result.Length; index++)
-				result[index] = GetChar(bytes, ref pos);
-			return new string(result);
-		}
-
-		public static StringBuilder GetStringBuilder(byte[] bytes, ref int pos)
-		{
-			return new StringBuilder(GetString(bytes, ref pos));
 		}
 
 		#endregion From Byte Array
