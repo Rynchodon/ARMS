@@ -35,8 +35,9 @@ namespace Rynchodon.AntennaRelay
 			Faction = ExtensionsRelations.Relations.Faction,
 			Neutral = ExtensionsRelations.Relations.Neutral,
 			Enemy = ExtensionsRelations.Relations.Enemy,
+			ThisShip = 128,
 			OnOff = 16,
-			Integrity = 32,
+			IntegrityColours = 32,
 			ShowOffset = 64
 		}
 
@@ -49,6 +50,7 @@ namespace Rynchodon.AntennaRelay
 
 			public readonly Logger logger = new Logger("Projector");
 			public readonly List<IMyTerminalControl> TermControls = new List<IMyTerminalControl>();
+			public readonly List<IMyTerminalControl> TermControls_Colours = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Offset = new List<IMyTerminalControl>();
 
 			public bool MouseControls;
@@ -109,7 +111,7 @@ namespace Rynchodon.AntennaRelay
 		private const float InputScrollMulti = 1f / 120f, ScrollRangeMulti = 1.1f;
 		private const float MinRangeDetection = 1e2f, MaxRangeDetection = 1e5f, DefaultRangeDetection = 1e3f;
 		private const float MinRadiusHolo = 1f, MaxRadiusHolo = 10f, DefaultRadiusHolo = 2.5f;
-		private const float MinSizeScale = 1f, MaxSizeScale = 1e3f, DefaultSizeScale = 10f;
+		private const float MinSizeScale = 1f, MaxSizeScale = 1e3f, DefaultSizeScale = 1f;
 		private const float MinOffset = -10f, MaxOffset = 10f;
 		private const double CrosshairRange = 20d;
 
@@ -124,7 +126,8 @@ namespace Rynchodon.AntennaRelay
 
 			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySpaceProjector>());
 
-			AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this grid and nearby detected grids", Option.OnOff);
+			AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this ship and nearby detected ships", Option.OnOff);
+			AddCheckbox("HD_This Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
 			AddCheckbox("HD_Owner", "Owned Ships", "Holographically display ships owned by this block's owner", Option.Owner);
 			AddCheckbox("HD_Faction", "Faction Ships", "Holographically display faction owned ships", Option.Faction);
 			AddCheckbox("HD_Neutral", "Neutral Ships", "Holographically display neutral ships", Option.Neutral);
@@ -150,7 +153,7 @@ namespace Rynchodon.AntennaRelay
 			valueControl.Setter = SetRadiusHolo;
 			Static.TermControls.Add(slider);
 
-			slider = new MyTerminalControlSlider<MySpaceProjector>("HD_SizeScale", MyStringId.GetOrCompute("Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to apear larger"));
+			slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
 			slider.DefaultValue = DefaultSizeScale;
 			slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
 			slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
@@ -177,35 +180,35 @@ namespace Rynchodon.AntennaRelay
 
 			Static.TermControls_Offset.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
-			AddCheckbox("HD_IntegrityColour", "Colour by integrity", "Colour blocks according to their integrities", Option.Integrity);
+			AddCheckbox("HD_IntegrityColour", "Colour by Integrity", "Colour blocks according to their integrities", Option.IntegrityColours);
 
 			IMyTerminalControlColor colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_FullIntegriyColour");
 			colour.Title = MyStringId.GetOrCompute("Whole");
 			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has full integrity. User-specific setting.");
 			colour.Getter = (block) => IntegrityFull;
 			colour.Setter = (block, value) => IntegrityFull = value;
-			Static.TermControls.Add(colour);
+			Static.TermControls_Colours.Add(colour);
 
 			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
 			colour.Title = MyStringId.GetOrCompute("Func.");
 			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just above critical integrity. User-specific setting.");
 			colour.Getter = (block) => IntegrityFunctional;
 			colour.Setter = (block, value) => IntegrityFunctional = value;
-			Static.TermControls.Add(colour);
+			Static.TermControls_Colours.Add(colour);
 
 			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
 			colour.Title = MyStringId.GetOrCompute("Broken");
 			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just below critical integrity. User-specific setting.");
 			colour.Getter = (block) => IntegrityDamaged;
 			colour.Setter = (block, value) => IntegrityDamaged = value;
-			Static.TermControls.Add(colour);
+			Static.TermControls_Colours.Add(colour);
 
 			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_ZeroIntegriyColour");
 			colour.Title = MyStringId.GetOrCompute("Razed");
 			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has zero integrity. User-specific setting.");
 			colour.Getter = (block) => IntegrityZero;
 			colour.Setter = (block, value) => IntegrityZero = value;
-			Static.TermControls.Add(colour);
+			Static.TermControls_Colours.Add(colour);
 		}
 
 		private static void Entities_OnCloseAll()
@@ -264,6 +267,10 @@ namespace Rynchodon.AntennaRelay
 							controls.Add(offset);
 					}
 				}
+
+				if (GetOptionTerminal(block, Option.IntegrityColours))
+					foreach (var colour in Static.TermControls_Colours)
+						controls.Add(colour);
 			}
 		}
 
@@ -287,7 +294,7 @@ namespace Rynchodon.AntennaRelay
 			else
 				proj.m_options.Value &= ~opt;
 
-			if (opt == Option.OnOff || opt == Option.ShowOffset)
+			if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
 				MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
 		}
 
@@ -539,10 +546,7 @@ namespace Rynchodon.AntennaRelay
 			this.m_radiusHolo = new EntityValue<float>(block, index++, UpdateVisual, DefaultRadiusHolo);
 			this.m_sizeDistScale = new EntityValue<float>(block, index++, UpdateVisual, DefaultSizeScale);
 			this.m_centreEntityId = new EntityValue<long>(block, index++, m_centreEntityId_AfterValueChanged);
-			this.m_offset_ev = new EntityValue<Vector3>(block, index++, () => {
-				UpdateVisual();
-				m_logger.debugLog("offset: " + m_offset_ev.Value);
-			}, new Vector3(0f, 2.5f, 0f));
+			this.m_offset_ev = new EntityValue<Vector3>(block, index++, UpdateVisual, new Vector3(0f, 2.5f, 0f));
 
 			Registrar.Add(block, this);
 		}
@@ -587,7 +591,7 @@ namespace Rynchodon.AntennaRelay
 						SetupProjection(sh.Holo);
 						SetVisible(sh.Holo, true);
 					}
-					if (sh.Seen.Entity is MyCubeGrid && sh.ColouredByIntegrity != ((m_options.Value & Option.Integrity) != 0))
+					if (sh.Seen.Entity is MyCubeGrid && sh.ColouredByIntegrity != ((m_options.Value & Option.IntegrityColours) != 0))
 					{
 						if (sh.ColouredByIntegrity)
 							RestoreColour(sh);
@@ -687,7 +691,7 @@ namespace Rynchodon.AntennaRelay
 				double firstHitDistance = CrosshairRange;
 
 				foreach (SeenHolo sh in m_holoEntities.Values)
-					if (sh.Holo.PositionComp.WorldAABB.Intersect(ref ray, out tmin, out tmax) && tmin < firstHitDistance)
+					if (sh.Holo.Render.Visible && sh.Holo.PositionComp.WorldAABB.Intersect(ref ray, out tmin, out tmax) && tmin < firstHitDistance)
 					{
 						firstHit = sh.Seen.Entity;
 						firstHitDistance = tmin;
@@ -717,7 +721,7 @@ namespace Rynchodon.AntennaRelay
 
 		private bool CheckRelations(IMyEntity entity)
 		{
-			return entity == m_block.CubeGrid || (m_options.Value & (Option)m_block.getRelationsTo(entity)) != 0;
+			return entity == m_block.CubeGrid ? (m_options.Value & Option.ThisShip) != 0 : (m_options.Value & (Option)m_block.getRelationsTo(entity)) != 0;
 		}
 
 		private void CreateHolo(LastSeen seen)
