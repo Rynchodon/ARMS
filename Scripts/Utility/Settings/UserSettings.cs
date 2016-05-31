@@ -39,8 +39,6 @@ namespace Rynchodon.Settings
 		}
 
 		private const string userSettings_fileName = "UserSettings.txt";
-		private const string chatDesignator = "/arms set";
-		private const string alt_chatDesignator = "/autopilot set";
 
 		private static UserSettings Instance;
 

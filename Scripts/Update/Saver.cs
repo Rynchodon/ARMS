@@ -41,12 +41,64 @@ namespace Rynchodon.Update
 		public static Saver Instance;
 
 		private readonly Logger m_logger;
+		private int m_loadModVersion;
 		private FileMaster m_fileMaster;
+
+		private Builder_ArmsData m_data;
+
+		/// <summary>Only works on server.</summary>
+		public bool LoadOldVersion(int olderThan)
+		{
+			return m_loadModVersion != 0 && m_loadModVersion < olderThan;
+		}
 
 		public Saver()
 		{
 			this.m_logger = new Logger(GetType().Name);
 			Instance = this;
+		}
+
+		public void Initialize()
+		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			GetData();
+			if (m_data != null)
+				m_loadModVersion = m_data.ModVersion;
+		}
+
+		private void GetData()
+		{
+			m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", int.MaxValue);
+
+			string serialized;
+			if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
+			{
+				m_data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
+				if (m_data != null)
+				{
+					m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
+					return;
+				}
+			}
+
+			string identifier = LegacyIdentifier();
+			if (identifier == null)
+			{
+				m_logger.debugLog("no identifier");
+				return;
+			}
+
+			var reader = m_fileMaster.GetTextReader(identifier);
+			if (reader != null)
+			{
+				m_logger.debugLog("loading from file: " + identifier);
+				m_data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
+				reader.Close();
+			}
+			else
+				m_logger.alwaysLog("Failed to open file reader for " + identifier);
 		}
 
 		/// <summary>
@@ -56,39 +108,7 @@ namespace Rynchodon.Update
 		{
 			try
 			{
-				if (!MyAPIGateway.Multiplayer.IsServer)
-					return;
-
-				m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", int.MaxValue);
-
-				string serialized;
-				if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
-				{
-					Builder_ArmsData armsData = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
-					if (armsData != null)
-					{
-						m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
-						DoLoad(armsData);
-						return;
-					}
-				}
-
-				string identifier = LegacyIdentifier();
-				if (identifier == null)
-				{
-					m_logger.debugLog("no identifier");
-					return;
-				}
-
-				var reader = m_fileMaster.GetTextReader(identifier);
-				if (reader != null)
-				{
-					m_logger.debugLog("loading from file: " + identifier);
-					DoLoad(MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd()));
-					reader.Close();
-				}
-				else
-					m_logger.alwaysLog("Failed to open file reader for " + identifier);
+				LoadData();
 			}
 			catch (Exception ex)
 			{
@@ -150,13 +170,21 @@ namespace Rynchodon.Update
 			return saveId;
 		}
 
-		private void DoLoad(Builder_ArmsData data)
+		private void LoadData()
 		{
+			if (m_data == null)
+			{
+				m_logger.debugLog("No data to load");
+				return;
+			}
+
+			m_logger.alwaysLog("Save version: " + m_data.ModVersion, Logger.severity.INFO);
+
 			// network
 
 			Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
-			SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
-			foreach (NetworkStorage.Builder_NetworkStorage bns in data.AntennaStorage)
+			SerializableGameTime.Adjust = new TimeSpan(m_data.SaveTime);
+			foreach (NetworkStorage.Builder_NetworkStorage bns in m_data.AntennaStorage)
 			{
 				NetworkNode node;
 				if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
@@ -210,7 +238,7 @@ namespace Rynchodon.Update
 
 			// system disruption
 
-			foreach (Disruption.Builder_Disruption bd in data.SystemDisruption)
+			foreach (Disruption.Builder_Disruption bd in m_data.SystemDisruption)
 			{
 				Disruption disrupt;
 				switch (bd.Type)
@@ -251,8 +279,8 @@ namespace Rynchodon.Update
 
 			// autopilot
 
-			if (data.Autopilot != null)
-				foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
+			if (m_data.Autopilot != null)
+				foreach (ShipAutopilot.Builder_Autopilot ba in m_data.Autopilot)
 				{
 					ShipAutopilot autopilot;
 					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
@@ -263,8 +291,8 @@ namespace Rynchodon.Update
 
 			// programmable block
 
-			if (data.ProgrammableBlock != null)
-				foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
+			if (m_data.ProgrammableBlock != null)
+				foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in m_data.ProgrammableBlock)
 				{
 					ProgrammableBlock pb;
 					if (Registrar.TryGetValue(bpa.BlockId, out pb))
@@ -275,8 +303,8 @@ namespace Rynchodon.Update
 
 			// text panel
 
-			if (data.TextPanel != null)
-				foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
+			if (m_data.TextPanel != null)
+				foreach (TextPanel.Builder_TextPanel btp in m_data.TextPanel)
 				{
 					TextPanel panel;
 					if (Registrar.TryGetValue(btp.BlockId, out panel))
@@ -287,8 +315,8 @@ namespace Rynchodon.Update
 
 			// weapon
 
-			if (data.Weapon != null)
-				foreach (WeaponTargeting.Builder_WeaponTargeting bwt in data.Weapon)
+			if (m_data.Weapon != null)
+				foreach (WeaponTargeting.Builder_WeaponTargeting bwt in m_data.Weapon)
 				{
 					WeaponTargeting targeting;
 					if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
@@ -299,9 +327,10 @@ namespace Rynchodon.Update
 
 			// entity values
 
-			if (data.EntityValues != null)
-				EntityValue.ResumeFromSave(data.EntityValues);
+			if (m_data.EntityValues != null)
+				EntityValue.ResumeFromSave(m_data.EntityValues);
 
+			m_data = null;
 		}
 
 		/// <summary>

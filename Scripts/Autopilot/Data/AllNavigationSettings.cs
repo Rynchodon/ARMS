@@ -1,6 +1,7 @@
 ﻿using System;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
+using Rynchodon.Utility.Vectors;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -32,7 +33,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private TimeSpan? m_waitUntil;
 
-			private Vector3D? m_destinationOffset;
+			private PositionBlock? m_destinationOffset;
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative;
 
@@ -47,7 +48,7 @@ namespace Rynchodon.Autopilot.Data
 
 				m_waitUntil = Globals.ElapsedTime.Add(new TimeSpan(0, 0, 1));
 
-				m_destinationOffset = Vector3D.Zero;
+				m_destinationOffset = new PositionBlock() { vector = Vector3D.Zero };
 
 				m_destRadius = 100f;
 				m_distance = float.NaN;
@@ -164,7 +165,7 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>Added to position of target block</summary>
-			public Vector3D DestinationOffset
+			public PositionBlock DestinationOffset
 			{
 				get { return m_destinationOffset ?? parent.DestinationOffset; }
 				set { m_destinationOffset = value; }

@@ -8,6 +8,7 @@ using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
+using Rynchodon.Update;
 using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
@@ -25,25 +26,32 @@ namespace Rynchodon.Autopilot
 	public class ShipControllerBlock
 	{
 
-		public readonly MyShipController Controller;
 		public readonly IMyCubeBlock CubeBlock;
-		public readonly IMyTerminalBlock Terminal;
 		public readonly PseudoBlock Pseudo;
-		public NetworkNode NetworkNode;
+		public readonly NetworkNode NetworkNode;
+		public readonly AutopilotTerminal AutopilotTerminal;
 
 		private readonly Logger m_logger;
 
+		public MyShipController Controller { get { return (MyShipController)CubeBlock; } }
+		public IMyTerminalBlock Terminal { get { return (IMyTerminalBlock)CubeBlock; } }
 		public NetworkStorage NetworkStorage { get { return NetworkNode.Storage; } }
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
 
+		public bool AutopilotControl
+		{
+			get { return AutopilotTerminal.AutopilotControl; }
+			set { AutopilotTerminal.AutopilotControl = value; }
+		}
+
 		public ShipControllerBlock(IMyCubeBlock block)
 		{
 			m_logger = new Logger(GetType().Name, block);
-			Controller = block as MyShipController;
 			CubeBlock = block;
-			Terminal = block as IMyTerminalBlock;
 			Pseudo = new PseudoBlock(block);
+			NetworkNode = new NetworkNode(block);
+			AutopilotTerminal = new AutopilotTerminal(block);
 		}
 
 	}
@@ -213,9 +221,20 @@ namespace Rynchodon.Autopilot
 
 			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity"), PowerRequired);
 
-			// for my German friends...
-			if (!m_block.Terminal.DisplayNameText.Contains("[") && !m_block.Terminal.DisplayNameText.Contains("]"))
-				m_block.Terminal.SetCustomName(m_block.Terminal.DisplayNameText + " []");
+			if (Saver.Instance.LoadOldVersion(69))
+			{
+				int start = block.DisplayNameText.IndexOf('[') + 1, end = block.DisplayNameText.IndexOf(']');
+				if (start > 0 && end > start)
+				{
+					m_block.AutopilotTerminal.AutopilotCommands = new StringBuilder(block.DisplayNameText.Substring(start, end - start).Trim());
+					int lengthBefore = start - 1;
+					string nameBefore = lengthBefore > 0 ? m_block.Terminal.DisplayNameText.Substring(0, lengthBefore) : string.Empty;
+					end++;
+					int lengthAfter  = m_block.Terminal.DisplayNameText.Length - end;
+					string nameAfter = lengthAfter > 0 ? m_block.Terminal.DisplayNameText.Substring(end, lengthAfter) : string.Empty;
+					m_block.Terminal.SetCustomName((nameBefore + nameAfter).Trim());
+				}
+			}
 
 			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
 
@@ -250,17 +269,6 @@ namespace Rynchodon.Autopilot
 				switch (m_state)
 				{
 					case State.Disabled:
-						if (m_block.NetworkNode == null )
-							if (!Registrar.TryGetValue(m_block.CubeBlock.EntityId, out m_block.NetworkNode))
-							{
-								m_logger.debugLog("failed to get node", Logger.severity.WARNING);
-								return;
-							}
-							else
-							{
-								m_logger.debugLog("got node", Logger.severity.DEBUG);
-								m_block.NetworkNode.MessageHandler = HandleMessage;
-							}
 						if (CheckControl())
 							m_state = State.Enabled;
 						return;
@@ -275,7 +283,7 @@ namespace Rynchodon.Autopilot
 							m_state = State.Enabled;
 						return;
 					case State.Halted:
-						if (!m_block.Controller.ControlThrusters || Globals.ElapsedTime > m_endOfHalt)
+						if (!m_block.AutopilotControl || Globals.ElapsedTime > m_endOfHalt)
 							m_state = State.Disabled;
 						return;
 					case State.Closed:
@@ -348,7 +356,7 @@ namespace Rynchodon.Autopilot
 
 				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
 				m_nextAllowedInstructions = Globals.ElapsedTime + MinTimeInstructions;
-				m_interpreter.enqueueAllActions();
+				m_interpreter.enqueueAllActions(m_block.AutopilotTerminal.AutopilotCommands.ToString(), true);
 
 				if (!m_interpreter.hasInstructions())
 					ReleaseControlledGrid();
@@ -442,7 +450,8 @@ namespace Rynchodon.Autopilot
 			m_controlledGrid = myGrid;
 			// toggle thrusters off and on to make sure thrusters are actually online
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
+				if (this.m_block.Controller.ControlThrusters)
+					this.m_block.CubeBlock.ApplyAction("ControlThrusters");
 				this.m_block.CubeBlock.ApplyAction("ControlThrusters");
 			});
 			return true;
@@ -460,7 +469,7 @@ namespace Rynchodon.Autopilot
 
 			// is block ready
 			if (!m_block.Controller.IsWorking
-				|| !m_block.Controller.ControlThrusters)
+				|| !m_block.AutopilotControl)
 				return false;
 
 			MyCubeGrid mcg = grid as MyCubeGrid;
@@ -523,7 +532,7 @@ namespace Rynchodon.Autopilot
 
 			if (m_controlledGrid == null)
 			{
-				if (!m_block.Controller.ControlThrusters)
+				if (!m_block.AutopilotControl)
 					m_customInfo_build.AppendLine("Disabled");
 				else if (m_block.CubeGrid.IsStatic)
 					m_customInfo_build.AppendLine("Grid is a station");
@@ -650,7 +659,6 @@ namespace Rynchodon.Autopilot
 			byte[] asByteArray = m_customInfo_message.ToArray();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
-				Autopilot_CustomInfo.MessageHandler(asByteArray);
 			}, m_logger);
 
 			m_customInfo_message.Clear();
@@ -666,24 +674,12 @@ namespace Rynchodon.Autopilot
 
 		private float PowerRequired()
 		{
-			switch (m_state)
-			{
-				case State.Enabled:
-					if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
-						return 0.01f;
-					return 0.1f;
-				case State.Halted:
-					return 0.01f;
-				case State.Closed:
-				case State.Disabled:
-				default:
-					return 0f;
-			}
+			return m_state == State.Enabled && m_navSet.Settings_Current.WaitUntil < Globals.ElapsedTime ? 0.1f : 0.01f;
 		}
 
 		public Builder_Autopilot GetBuilder()
 		{
-			if (!m_block.Controller.ControlThrusters)
+			if (!m_block.AutopilotControl)
 				return null;
 
 			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };

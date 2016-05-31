@@ -59,33 +59,33 @@ namespace Rynchodon.Autopilot.Instruction
 
 		public readonly StringBuilder Errors = new StringBuilder();
 
-		/// <summary>
-		/// convert instructions from block to Action, then enqueue to instructionQueue
-		/// </summary>
-		/// <param name="block">block with instructions</param>
-		public void enqueueAllActions()
-		{
-			SyntaxError = false;
-			string instructions = preParse().getInstructions();
-			instructionQueue.Clear();
-			instructionQueueString.Clear();
+		///// <summary>
+		///// convert instructions from block to Action, then enqueue to instructionQueue
+		///// </summary>
+		///// <param name="block">block with instructions</param>
+		//public void enqueueAllActions()
+		//{
+		//	SyntaxError = false;
+		//	string instructions = preParse().getInstructions();
+		//	instructionQueue.Clear();
+		//	instructionQueueString.Clear();
 
-			if (string.IsNullOrWhiteSpace(instructions))
-			{
-				Mover.SetControl(false);
-				return;
-			}
+		//	if (string.IsNullOrWhiteSpace(instructions))
+		//	{
+		//		Mover.SetControl(false);
+		//		return;
+		//	}
 		
-			Errors.Clear();
+		//	Errors.Clear();
 
-			m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions);
-			enqueueAllActions_continue(instructions);
-		}
+		//	m_logger.debugLog("block: " + Controller.Terminal.DisplayNameText + ", preParse = " + preParse() + ", instructions = " + instructions);
+		//	enqueueAllActions_continue(instructions);
+		//}
 
 		/// <summary>
 		/// Convert supplied instructions to Action, then enqueue to instructionQueue
 		/// </summary>
-		public void enqueueAllActions(string instructions)
+		public void enqueueAllActions(string instructions, bool disableIfNone = false)
 		{
 			SyntaxError = false;
 			string preParsed;
@@ -94,7 +94,11 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionQueueString.Clear();
 
 			if (string.IsNullOrWhiteSpace(preParsed))
+			{
+				if (disableIfNone)
+					Mover.SetControl(false);
 				return;
+			}
 
 			Errors.Clear();
 
@@ -102,19 +106,19 @@ namespace Rynchodon.Autopilot.Instruction
 			enqueueAllActions_continue(preParsed);
 		}
 
-		/// <summary>
-		/// <para>performs actions before splitting instructions by : and ;</para>
-		/// <para>Currently, performs a substitution for pasted GPS tags</para>
-		/// </summary>
-		private string preParse()
-		{
-			string blockName = Controller.Terminal.DisplayNameText;
+		///// <summary>
+		///// <para>performs actions before splitting instructions by : and ;</para>
+		///// <para>Currently, performs a substitution for pasted GPS tags</para>
+		///// </summary>
+		//private string preParse()
+		//{
+		//	string blockName = Controller.Terminal.DisplayNameText;
 
-			if (blockName.GpsToCSV(out blockName) != 0)
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Controller.Terminal.SetCustomName(blockName));
+		//	if (blockName.GpsToCSV(out blockName) != 0)
+		//		MyAPIGateway.Utilities.TryInvokeOnGameThread(() => Controller.Terminal.SetCustomName(blockName));
 
-			return blockName;
-		}
+		//	return blockName;
+		//}
 
 		/// <summary>
 		/// Does the heavy lifting for enqueueAllActions

@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Utility.Vectors;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -108,17 +109,11 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public Vector3D GetPosition(Vector3D NavPos, Vector3D blockOffset)
+		public Vector3D GetPosition(Vector3D NavPos, PositionBlock blockOffset)
 		{
-			return !Grid.isRecent() ? Grid.predictPosition()
-				: Block != null ? GetBlockPosition(blockOffset)
-				: GridCellCache.GetCellCache(Grid.Entity as IMyCubeGrid).GetClosestOccupiedCellPosition(NavPos);
-		}
-
-		private Vector3D GetBlockPosition(Vector3D blockOffset)
-		{
-			MatrixD WorldMatrix = Block.WorldMatrix;
-			return Block.GetPosition() + WorldMatrix.Right * blockOffset.X + WorldMatrix.Up * blockOffset.Y + WorldMatrix.Backward * blockOffset.Z;
+			return !Grid.isRecent() ? Grid.predictPosition() :
+				Block != null ? (Vector3D)blockOffset.ToWorld(Block) :
+				GridCellCache.GetCellCache(Grid.Entity as IMyCubeGrid).GetClosestOccupiedCellPosition(NavPos);
 		}
 
 		/// <summary>

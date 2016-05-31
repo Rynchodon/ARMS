@@ -20,6 +20,13 @@ namespace Rynchodon.Weapons.SystemDisruption
 			get { return true; }
 		}
 
+		protected override void StartEffect(IMyCubeBlock block)
+		{
+			// stop turret from shooting its current target
+			(block as IMyFunctionalBlock).RequestEnable(false);
+			block.ApplyAction("OnOff_On");
+		}
+
 		protected override void EndEffect(IMyCubeBlock block)
 		{
 			// stop turret from shooting its current target

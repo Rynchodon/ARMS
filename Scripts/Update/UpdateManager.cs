@@ -19,6 +19,7 @@ using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
+using Rynchodon.Utility.Network;
 
 namespace Rynchodon.Update
 {
@@ -54,21 +55,18 @@ namespace Rynchodon.Update
 		{
 			#region Autopilot
 
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-					if (ShipAutopilot.IsAutopilotBlock(block))
-					{
-						var sca = new ShipAutopilot(block);
-						RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
-					}
-				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
+			Action<IMyCubeBlock> construct = block => {
 				if (ShipAutopilot.IsAutopilotBlock(block))
 				{
 					var sca = new ShipAutopilot(block);
 					RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
+					RegisterForUpdates(100, sca.m_block.NetworkNode.Update100, block);
 				}
-			});
+			};
+
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), construct);
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), construct);
 
 			#endregion
 
@@ -202,21 +200,24 @@ namespace Rynchodon.Update
 
 			#region Autopilot
 
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
+					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
+						if (ShipAutopilot.IsAutopilotBlock(block))
+						{
+							nodeConstruct(block);
+							new AutopilotTerminal(block);
+						}
+					});
+				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
 					if (ShipAutopilot.IsAutopilotBlock(block))
 					{
 						nodeConstruct(block);
-						new Autopilot_CustomInfo(block);
+						new AutopilotTerminal(block);
 					}
 				});
-			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-				if (ShipAutopilot.IsAutopilotBlock(block))
-				{
-					nodeConstruct(block);
-					new Autopilot_CustomInfo(block);
-				}
-			});
+			}
 
 			#endregion
 
@@ -388,6 +389,8 @@ namespace Rynchodon.Update
 					return;
 
 				myLogger.alwaysLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
+
+				Saver.Instance.Initialize();
 
 				UpdateRegistrar = new Dictionary<uint, List<Action>>();
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();

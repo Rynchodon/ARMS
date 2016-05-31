@@ -984,9 +984,9 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void SetControl(bool enable)
 		{
-			if (Block.Controller.ControlThrusters != enable)
+			if (Block.AutopilotControl != enable)
 			{
-				m_logger.debugLog("setting control, ControlThrusters: " + Block.Controller.ControlThrusters + ", enable: " + enable);
+				m_logger.debugLog("setting control, AutopilotControl: " + Block.AutopilotControl + ", enable: " + enable);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (!enable)
 					{
@@ -994,9 +994,7 @@ namespace Rynchodon.Autopilot.Movement
 						Thrust.ClearOverrides();
 						//m_gyro.ClearOverrides();
 					}
-					if (Block.Controller.ControlThrusters != enable)
-						// SwitchThrusts() only works for jetpacks
-						Block.CubeBlock.ApplyAction("ControlThrusters");
+					Block.AutopilotControl = enable;
 				}, m_logger);
 			}
 		}

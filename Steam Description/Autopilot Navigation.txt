@@ -5,7 +5,7 @@ All commands are in the display name of a Autopilot block.
 Aa Interpreter is case insensitive
 Variables P and V affect all destinations that come after
 
-To reset the Autopilot: disable "Control Thrusters", wait a second, turn it back on.
+To reset the Autopilot: disable "ARMS Autopilot", wait a second, turn it back on.
 
 In order for Autopilot to control a grid, it must have a gyroscope, thrusters in every direction, and must not be currently controlled. Basic move commands will work as long as the grid has at least one thruster.
 The G, E, and R commands require that the target be detected, see the video for Antenna Relay and Radar.
@@ -47,7 +47,7 @@ Character, <name> : Fly to a character, <name> is the character's name
 Example - [ Character, Rynchodon ] - Send your ship to me
 Char, <name> : Same as Character, <name>
 
-DISABLE : Disable control thrusters for the Autopilot, does not bring it to a stop.
+DISABLE : Disable "ARMS Autopilot" for the Autopilot, does not bring it to a stop.
 Example - [ C 0, 0, 0 : Disable ] - Upon reaching {0, 0, 0}, will turn off and drift away...
 Example - [ C 0, 0, 0 : STOP : Disable ] - Upon reaching {0, 0, 0}, will come to a stop and then turn off
 Example - [ L Connector ; B Connector ; G Red Ship ; Disable ] - Will switch Autopilot off after docking.
