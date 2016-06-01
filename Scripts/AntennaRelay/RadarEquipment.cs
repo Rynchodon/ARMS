@@ -38,6 +38,9 @@ namespace Rynchodon.AntennaRelay
 			/// </summary>
 			public bool Radar = false;
 
+			/// <summary>Equipment requires line of sight to work.</summary>
+			public bool LineOfSight = true;
+
 			/// <summary>The maximum number of targets that can be detected (active + passive).</summary>
 			public int MaxTargets_Tracking = 1;
 
@@ -64,8 +67,8 @@ namespace Rynchodon.AntennaRelay
 			/// </summary>
 			public float SignalEnhance = 1;
 
-			/// <summary>Not implemented. How well the signal can penetrate a solid object.</summary>
-			public float Penetration = 0;
+			///// <summary>Not implemented. How well the signal can penetrate a solid object.</summary>
+			//public float Penetration = 0;
 
 			/// <summary>How much the jamming effect affects this radar. In the range [1-0].</summary>
 			public float JammingEffect = 1f;
@@ -418,7 +421,7 @@ namespace Rynchodon.AntennaRelay
 			this.myDefinition = radarDef;
 
 			Registrar.Add(radarEntity, this);
-			PowerLevel_Current = this.myDefinition.MaxPowerLevel;
+			PowerLevel_Current = PowerLevel_Target = this.myDefinition.MaxPowerLevel;
 
 			byte detectionTypes = 0;
 			if (myDefinition.Radar)
@@ -519,47 +522,14 @@ namespace Rynchodon.AntennaRelay
 
 		private void UpdateTargetPowerLevel()
 		{
-			// get target power level
+			Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
+			if (asBeacon != null)
+				PowerLevel_Target = asBeacon.Radius;
+			else
 			{
-				Ingame.IMyBeacon asBeacon;
-				Ingame.IMyRadioAntenna asRadio;
-
-				// from name
-				string instructions = GetInstructions();
-				if (instructions == null || !float.TryParse(instructions, out PowerLevel_Target))
-				{
-					// from block
-					asBeacon = CubeBlock as Ingame.IMyBeacon;
-					if (asBeacon != null)
-						PowerLevel_Target = asBeacon.Radius;
-					else
-					{
-						asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-						if (asRadio != null)
-							PowerLevel_Target = asRadio.Radius;
-					}
-				}
-				else
-				{
-					myLogger.debugLog("making slider match name");
-					// make sure slider matches name
-					asBeacon = CubeBlock as Ingame.IMyBeacon;
-					if (asBeacon != null)
-					{
-						myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asBeacon.Radius: " + asBeacon.Radius);
-						if (PowerLevel_Target != asBeacon.Radius)
-							asBeacon.SetValueFloat("Radius", PowerLevel_Target);
-					}
-					else
-					{
-						asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-						if (asRadio != null && PowerLevel_Target != asRadio.Radius)
-						{
-							myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", asRadio.Radius: " + asRadio.Radius);
-							asRadio.SetValueFloat("Radius", PowerLevel_Target);
-						}
-					}
-				}
+				Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
+				if (asRadio != null)
+					PowerLevel_Target = asRadio.Radius;
 			}
 		}
 
@@ -574,10 +544,9 @@ namespace Rynchodon.AntennaRelay
 			UpdateTargetPowerLevel();
 
 			if (PowerLevel_Current == PowerLevel_Target)
-			{
-				myLogger.debugLog("at target power level: " + PowerLevel_Current, Logger.severity.TRACE);
 				return;
-			}
+
+			myLogger.debugLog("current power level: " + PowerLevel_Current + ", target power level: " + PowerLevel_Target, Logger.severity.TRACE);
 
 			// cap power level
 			{
@@ -591,10 +560,6 @@ namespace Rynchodon.AntennaRelay
 
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, Logger.severity.INFO);
-
-							string instructions = GetInstructions();
-							if (instructions != null)
-								TermBlock.SetCustomName(CubeBlock.DisplayNameText.Replace(instructions, myDefinition.MaxPowerLevel.ToString()));
 
 							// turn down slider
 							Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
@@ -791,8 +756,8 @@ namespace Rynchodon.AntennaRelay
 				int decoys = WorkingDecoys(entity);
 				radarSignature += decoySignal * decoys;
 
-				myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-					+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
+				//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
 
 				if (radarSignature > 0)
 				{
@@ -907,6 +872,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
 
+			if (!myDefinition.LineOfSight)
+				return false;
+
 			GetNearby(range);
 
 			obstructed_ignore.Clear();
@@ -917,13 +885,6 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		#endregion
-
-		private string GetInstructions()
-		{
-			if (CubeBlock == null || CubeBlock.Closed)
-				return null;
-			return CubeBlock.getInstructions();
-		}
 
 		private int WorkingDecoys(IMyEntity target)
 		{

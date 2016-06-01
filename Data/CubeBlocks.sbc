@@ -9,6 +9,12 @@
         <TypeId>Cockpit</TypeId>
         <SubtypeId>Autopilot-Block_Large</SubtypeId>
       </Id>
+      <Description>
+        Radar=true
+        LineOfSight=false
+        MaxTargets_Tracking=3
+        MaxPowerLevel=1000
+      </Description>
       <DisplayName>Autopilot Block</DisplayName>
       <Icon>Textures\Icon\Autopilot-Block.dds</Icon>
       <CubeSize>Large</CubeSize>

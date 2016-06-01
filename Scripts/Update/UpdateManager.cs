@@ -55,12 +55,22 @@ namespace Rynchodon.Update
 		{
 			#region Autopilot
 
+			RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
+			{
+				Radar = true,
+				LineOfSight = false,
+				MaxTargets_Tracking = 3,
+				MaxPowerLevel = 1000
+			};
+
 			Action<IMyCubeBlock> construct = block => {
 				if (ShipAutopilot.IsAutopilotBlock(block))
 				{
 					var sca = new ShipAutopilot(block);
 					RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
 					RegisterForUpdates(100, sca.m_block.NetworkNode.Update100, block);
+					RadarEquipment r = new RadarEquipment(block, apRadar, block);
+					RegisterForUpdates(100, r.Update100, block);
 				}
 			};
 
@@ -201,23 +211,29 @@ namespace Rynchodon.Update
 
 			#region Autopilot
 
+			RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
+			{
+				Radar = true,
+				LineOfSight = false,
+				MaxTargets_Tracking = 3,
+				MaxPowerLevel = 1000
+			};
+
+			Action<IMyCubeBlock> apConstruct = (block) => {
+				if (ShipAutopilot.IsAutopilotBlock(block))
+				{
+					nodeConstruct(block);
+					new AutopilotTerminal(block);
+					RadarEquipment r = new RadarEquipment(block, apRadar, block);
+					RegisterForUpdates(100, r.Update100, block);
+				}
+			};
+
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
-					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), (IMyCubeBlock block) => {
-						if (ShipAutopilot.IsAutopilotBlock(block))
-						{
-							nodeConstruct(block);
-							new AutopilotTerminal(block);
-						}
-					});
-				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), (IMyCubeBlock block) => {
-					if (ShipAutopilot.IsAutopilotBlock(block))
-					{
-						nodeConstruct(block);
-						new AutopilotTerminal(block);
-					}
-				});
+					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), apConstruct);
+				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), apConstruct);
 			}
 
 			#endregion
@@ -536,7 +552,7 @@ namespace Rynchodon.Update
 				{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
 				catch (Exception ex)
 				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
-				
+
 				try
 				{ ExternalRegistrations.DequeueAll(action => action.Invoke()); }
 				catch (Exception ex)
