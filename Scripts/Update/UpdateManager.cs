@@ -165,11 +165,12 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), nodeConstruct);
 
 			RegisterForCharacter(character => {
-				if (!character.IsNpc()) // cyberhounds and spiders do not work properly, robots do not exist yet anyway
+				if (character.IsPlayer)
 				{
 					NetworkNode node = new NetworkNode(character);
 					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
 				}
+				new CharacterStateTracker(character);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {
@@ -371,7 +372,7 @@ namespace Rynchodon.Update
 
 		public UpdateManager()
 		{
-			myLogger = new Logger("UpdateManager", null, () => { return ManagerStatus.ToString(); });
+			myLogger = new Logger("UpdateManager", () => string.Empty, () => { return ManagerStatus.ToString(); });
 			ThreadTracker.SetGameThread();
 			Instance = this;
 		}

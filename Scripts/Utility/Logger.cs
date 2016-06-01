@@ -34,9 +34,8 @@ namespace Rynchodon
 
 		private struct LogItem
 		{
-			public Logger logger;
 			public severity level;
-			public string member, toLog, primaryState, secondaryState, thread;
+			public string context, className, member, toLog, primaryState, secondaryState, thread;
 			public int lineNumber;
 			public DateTime time;
 		}
@@ -87,7 +86,19 @@ namespace Rynchodon
 		{
 			this.m_classname = calling_class;
 
-			this.f_context = () => block.CubeGrid.DisplayName + " - " + block.CubeGrid.EntityId;
+			if (block == null)
+			{
+				f_context = () => "Null block";
+				return;
+			}
+
+			this.f_context = () => {
+				IMyCubeGrid grid = block.CubeGrid;
+				if (grid == null)
+					return "Null grid";
+				return grid.DisplayName + " - " + grid.EntityId;
+			};
+					
 			if (default_secondary == null)
 			{
 				this.f_state_primary = () => block.DefinitionDisplayNameText;
@@ -103,6 +114,12 @@ namespace Rynchodon
 		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null)
 		{
 			this.m_classname = calling_class;
+
+			if (grid == null)
+			{
+				f_context = () => "Null grid";
+				return;
+			}
 
 			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
 			this.f_state_primary = default_primary;
@@ -135,7 +152,10 @@ namespace Rynchodon
 		/// <summary>
 		/// needed for MySessionComponentBase
 		/// </summary>
-		public Logger() { }
+		public Logger()
+		{
+			this.m_classname = GetType().Name;
+		}
 
 		/// <summary>
 		/// Deprecated. Creates a Logger without default states.
@@ -238,6 +258,19 @@ namespace Rynchodon
 			log(level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		public static void debugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
+			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
+		public static void alwaysLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
+			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
 		/// <summary>
 		/// Do not call from outside Logger class, use debugLog or alwaysLog.
 		/// </summary>
@@ -261,7 +294,37 @@ namespace Rynchodon
 
 			Static.m_logItems.Enqueue(new LogItem()
 			{
-				logger = this,
+				context = f_context.InvokeIfExists(),
+				className = m_classname,
+				time = DateTime.Now,
+				level = level,
+				member = member,
+				lineNumber = lineNumber,
+				toLog = toLog,
+				primaryState = primaryState ?? f_state_primary.InvokeIfExists(),
+				secondaryState = secondaryState ?? f_state_secondary.InvokeIfExists(),
+				thread = ThreadTracker.GetNameOrNumber()
+			});
+
+			if (MyAPIGateway.Parallel != null)
+				MyAPIGateway.Parallel.StartBackground(logLoop);
+		}
+
+		private static void log(string context, string className, severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
+		{
+			if (Static == null)
+				return;
+
+			if (Static.numLines >= Static.maxNumLines)
+				return;
+
+			if (level <= severity.WARNING)
+				debugNotify("Logger: " + level, 2000, level);
+
+			Static.m_logItems.Enqueue(new LogItem()
+			{
+				context = context,
+				className = className,
 				time = DateTime.Now,
 				level = level,
 				member = member,
@@ -313,31 +376,12 @@ namespace Rynchodon
 				if (!createLog())
 					return; // cannot log
 
-			string context;
-			if (item.logger.f_context != null)
-				try { context = item.logger.f_context.Invoke(); }
-				catch { context = string.Empty; }
-			else
-				context = string.Empty;
-			if (item.primaryState == null)
-			{
-				if (item.logger.f_state_primary != null)
-					try { item.primaryState = item.logger.f_state_primary.Invoke(); }
-					catch { item.primaryState = string.Empty; }
-			}
-			if (item.secondaryState == null)
-			{
-				if (item.logger.f_state_secondary != null)
-					try { item.secondaryState = item.logger.f_state_secondary.Invoke(); }
-					catch { item.secondaryState = string.Empty; }
-			}
-
 			Static.numLines++;
 			appendWithBrackets(item.time.ToString("yyyy-MM-dd HH:mm:ss,fff"));
 			appendWithBrackets(item.level.ToString());
 			appendWithBrackets(item.thread);
-			appendWithBrackets(context);
-			appendWithBrackets(item.logger.m_classname);
+			appendWithBrackets(item.context);
+			appendWithBrackets(item.className);
 			appendWithBrackets(item.member);
 			appendWithBrackets(item.lineNumber.ToString());
 			appendWithBrackets(item.primaryState);
@@ -366,14 +410,15 @@ namespace Rynchodon
 			
 			LogItem closingLog = new LogItem()
 			{
-				logger = this,
+				context = f_context.InvokeIfExists(),
+				className = m_classname,
 				time = DateTime.Now,
 				level = severity.INFO,
-				member = string.Empty,
-				lineNumber = 0,
+				//member = null,
+				//lineNumber = 0,
 				toLog = "Closing log",
-				primaryState = null,
-				secondaryState = null,
+				//primaryState = null,
+				//secondaryState = null,
 				thread = ThreadTracker.GetNameOrNumber()
 			};
 			log(ref closingLog);

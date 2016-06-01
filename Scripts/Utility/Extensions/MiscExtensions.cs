@@ -42,6 +42,11 @@ namespace Rynchodon
 			return name;
 		}
 
+		public static string nameWithId(this IMyEntity entity)
+		{
+			return getBestName(entity) + '(' + entity.EntityId + ')';
+		}
+
 		public static Vector3 GetLinearAcceleration(this MyPhysicsComponentBase Physics)
 		{
 			if (Physics.CanUpdateAccelerations && Physics.LinearAcceleration == Vector3.Zero)
@@ -80,35 +85,6 @@ namespace Rynchodon
 				return asteroid.WorldAABB.Center;
 
 			return Vector3D.Transform(entity.LocalAABB.Center, entity.WorldMatrix);
-		}
-
-		public static bool IsNpc(this long playerID)
-		{
-			if (playerID == 0)
-				return false;
-
-			bool npc = true;
-			MyAPIGateway.Players.GetPlayers(null, player => {
-				if (player.PlayerID == playerID)
-					npc = false;
-				return false;
-			});
-			return npc;
-		}
-
-		public static bool IsNpc(this IMyCharacter character)
-		{
-			string name = (character as IMyEntity).DisplayName;
-			if (string.IsNullOrEmpty(name))
-				return true;
-
-			bool npc = true;
-			MyAPIGateway.Players.GetPlayers(null, player => {
-				if (player.DisplayName == name)
-					npc = false;
-				return false;
-			});
-			return npc;
 		}
 
 		public static void throwIfNull_argument(this object argument, string name)

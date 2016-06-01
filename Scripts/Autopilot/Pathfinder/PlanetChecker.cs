@@ -192,7 +192,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					//timer = new MyGameTimer();
 
 					Vector3D? contact;
-					if (RayCast.RayCastVoxel(ClosestPlanet, ref worldLine, out contact))
+					if (RayCast.RayCastVoxel(ClosestPlanet, worldLine, out contact))
 					{
 						//var intersect = timer.Elapsed;
 						m_logger.debugLog("Intersected line: " + worldLine.From + " to " + worldLine.To + ", at " + contact, Logger.severity.DEBUG);

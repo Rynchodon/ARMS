@@ -701,7 +701,7 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			myLogger.debugLog("Not running targeting");
+			//myLogger.debugLog("Not running targeting");
 			CurrentControl = Control.Off;
 		}
 

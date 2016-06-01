@@ -378,7 +378,6 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void CollectTargets()
 		{
-			myLogger.debugLog("entered");
 			Available_Targets.Clear();
 			PotentialObstruction.Clear();
 			nearbyEntities.Clear();
@@ -388,8 +387,6 @@ namespace Rynchodon.Weapons
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				myLogger.debugLog("entity: " + entity.getBestName());
-
 				if (Options.TargetEntityId.HasValue && entity.EntityId != Options.TargetEntityId.Value)
 					continue;
 
@@ -414,28 +411,24 @@ namespace Rynchodon.Weapons
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{
-					if (string.IsNullOrEmpty(entity.DisplayName))
+					myLogger.debugLog("character: " + entity.nameWithId());
+
+					if (CharacterStateTracker.CurrentState(entity) == MyCharacterMovementEnum.Died)
 					{
-						myLogger.debugLog("Cannot target creatures, cannot get identity");
+						myLogger.debugLog("(s)he's dead, jim: " + entity.nameWithId());
 						continue;
 					}
 
-					IMyIdentity asIdentity = asChar.GetIdentity_Safe();
-					if (asIdentity != null)
+					if (asChar.IsBot || CubeBlock.canConsiderHostile(asChar.GetIdentity_Safe().PlayerId))
 					{
-						if (asIdentity.IsDead)
-						{
-							myLogger.debugLog("(s)he's dead, jim: " + entity.getBestName());
-							continue;
-						}
-					}
-					//else
-					//	myLogger.debugLog("Found a robot! : " + asChar + " . " + entity.getBestName(), "CollectTargets()");
-
-					if (asIdentity == null || CubeBlock.canConsiderHostile(asIdentity.PlayerId))
+						myLogger.debugLog("hostile: " + entity.nameWithId());
 						AddTarget(TargetType.Character, entity);
+					}
 					else
+					{
+						myLogger.debugLog("not hostile: " + entity.nameWithId());
 						PotentialObstruction.Add(entity);
+					}
 					continue;
 				}
 

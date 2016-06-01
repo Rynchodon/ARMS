@@ -88,9 +88,8 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			LineD toCentre = new LineD(currentPostion, closest.GetCentre());
 			Vector3D? contact;
-			if (!RayCast.RayCastVoxel(closest, ref toCentre, out contact))
+			if (!RayCast.RayCastVoxel(closest, new LineD(currentPostion, closest.GetCentre()), out contact))
 				throw new Exception("Failed to intersect voxel");
 
 			m_targetPostion = contact.Value;

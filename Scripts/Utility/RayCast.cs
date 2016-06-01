@@ -21,6 +21,9 @@ namespace Rynchodon
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
 		/// </summary>
+		/// <remarks>
+		/// Voxel test is not very accurate and we want to be able to interact with entities at the surface, so line is shortened by 1 m for voxel raycast.
+		/// </remarks>
 		public static bool Obstructed<Tobstruct, Tignore>(LineD line, ICollection<Tobstruct> potentialObstructions, ICollection<Tignore> ignoreList, bool checkVoxel = true)
 			where Tobstruct : IMyEntity
 			where Tignore : IMyEntity
@@ -125,7 +128,7 @@ namespace Rynchodon
 					// Voxel Test
 					MyVoxelBase contactVoxel;
 					Vector3D? contactPoint;
-					if (checkVoxel && RayCastVoxels(ref line, out contactVoxel, out contactPoint))
+					if (checkVoxel && RayCastVoxels(line, out contactVoxel, out contactPoint))
 					{
 						m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint);
 						return true;
@@ -149,12 +152,26 @@ namespace Rynchodon
 		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
 		/// <param name="flags">Due to bug in SE, not used ATM</param>
 		/// <returns>True iff the voxel intersects the line</returns>
-		public static bool RayCastVoxel(MyVoxelBase voxel, ref LineD line, out Vector3D? contact, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
+		/// <remarks>
+		/// Voxel test is not very accurate and we want to be able to interact with entities at the surface, so line is shortened by 1 m.
+		/// </remarks>
+		public static bool RayCastVoxel(MyVoxelBase voxel, LineD line, out Vector3D? contact, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
 		{
+			if (line.Length < 1d)
+			{
+				contact = null;
+				return false;
+			}
+
+			line.Length -= 1d;
+			line.To -= line.Direction;
+
 			using (MainLock.AcquireSharedUsing())
 			{
 				using (lock_rayCastVoxel.AcquireExclusiveUsing())
+				{
 					return voxel.GetIntersectionWithLine(ref line, out contact, useCollisionModel, flags);
+				}
 			}
 		}
 
@@ -167,8 +184,21 @@ namespace Rynchodon
 		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
 		/// <param name="flags">Due to bug in SE, not used ATM</param>
 		/// <returns>True iff any voxel intersects the line</returns>
-		public static bool RayCastVoxels(ref LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
+		/// <remarks>
+		/// Voxel test is not very accurate and we want to be able to interact with entities at the surface, so line is shortened by 1 m.
+		/// </remarks>
+		public static bool RayCastVoxels(LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES)
 		{
+			if (line.Length < 1d)
+			{
+				contactVoxel = null;
+				contactPoint = null;
+				return false;
+			}
+
+			line.Length -= 1d;
+			line.To -= line.Direction;
+
 			List<MyLineSegmentOverlapResult<MyVoxelBase>> list = ResourcePool<List<MyLineSegmentOverlapResult<MyVoxelBase>>>.Get();
 			try
 			{

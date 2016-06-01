@@ -232,13 +232,24 @@ namespace Rynchodon.Utility.Network
 		{
 			if (m_value.Equals(default(T)))
 				return null;
+
+			TypeCode code = Convert.GetTypeCode(m_value);
+			if (code == TypeCode.Object)
+				return MyAPIGateway.Utilities.SerializeToXML<T>(m_value);
+
 			// enum must be changed to underlying type
-			return Convert.ChangeType(m_value, Convert.GetTypeCode(m_value)).ToString();
+			return Convert.ChangeType(m_value, code).ToString();
 		}
 
 		protected override void SetValue(string value)
 		{
-			m_value = (T)Convert.ChangeType(value, Convert.GetTypeCode(m_value));
+			TypeCode code = Convert.GetTypeCode(m_value);
+			if (code == TypeCode.Object)
+			{
+				m_value = MyAPIGateway.Utilities.SerializeFromXML<T>(value);
+				return;
+			}
+			m_value = (T)Convert.ChangeType(value, code);
 		}
 
 		private void RequestEntityValueFromServer()
