@@ -20,8 +20,7 @@ namespace Rynchodon
 		{
 			get
 			{
-				using (lock_Queue.AcquireSharedUsing())
-					return Queue.Count;
+				return Queue.Count;
 			}
 		}
 

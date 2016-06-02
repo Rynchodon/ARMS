@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Entities.Blocks;
 using Rynchodon.Settings;
@@ -43,6 +44,8 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
+			public readonly Vector3[] Directions = { Vector3.Zero, Vector3.Right, Vector3.Left, Vector3.Up, Vector3.Down, Vector3.Backward, Vector3.Forward };
+
 			/// <summary>Maximum time since detection for entity to be displayed.</summary>
 			public readonly TimeSpan displayAllowed = new TimeSpan(0, 0, 2);
 			/// <summary>Maximum time since detection for entity to be kept in cache.</summary>
@@ -55,10 +58,10 @@ namespace Rynchodon.AntennaRelay
 
 			public bool MouseControls;
 			public Color
-				value_IntegrityFull = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityFull),
-				value_IntegrityFunctional = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityFunctional),
-				value_IntegrityDamaged = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityDamaged),
-				value_IntegrityZero = UserSettings.GetSetting(UserSettings.ColourSettingName.IntegrityZero);
+				value_IntegrityFull = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityFull)),
+				value_IntegrityFunctional = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityFunctional)),
+				value_IntegrityDamaged = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityDamaged)),
+				value_IntegrityZero = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityZero));
 		}
 
 		public static Color IntegrityFull
@@ -67,7 +70,7 @@ namespace Rynchodon.AntennaRelay
 			set
 			{
 				Static.value_IntegrityFull = value;
-				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityFull, value);
+				UserSettings.SetSetting(UserSettings.IntSettingName.IntegrityFull, value.PackedValue);
 			}
 		}
 
@@ -77,7 +80,7 @@ namespace Rynchodon.AntennaRelay
 			set
 			{
 				Static.value_IntegrityFunctional = value;
-				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityFunctional, value);
+				UserSettings.SetSetting(UserSettings.IntSettingName.IntegrityFunctional, value.PackedValue);
 			}
 		}
 
@@ -87,7 +90,7 @@ namespace Rynchodon.AntennaRelay
 			set
 			{
 				Static.value_IntegrityDamaged = value;
-				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityDamaged, value);
+				UserSettings.SetSetting(UserSettings.IntSettingName.IntegrityDamaged, value.PackedValue);
 			}
 		}
 
@@ -97,8 +100,14 @@ namespace Rynchodon.AntennaRelay
 			set
 			{
 				Static.value_IntegrityZero = value;
-				UserSettings.SetSetting(UserSettings.ColourSettingName.IntegrityZero, value);
+				UserSettings.SetSetting(UserSettings.IntSettingName.IntegrityZero, value.PackedValue);
 			}
+		}
+
+		public static bool ShowBoundary
+		{
+			get { return UserSettings.GetSetting(UserSettings.BoolSettingName.HologramShowBoundary); }
+			set { UserSettings.SetSetting(UserSettings.BoolSettingName.HologramShowBoundary, value); }
 		}
 
 		private class SeenHolo
@@ -112,7 +121,7 @@ namespace Rynchodon.AntennaRelay
 		private const float MinRangeDetection = 1e2f, MaxRangeDetection = 1e5f, DefaultRangeDetection = 1e3f;
 		private const float MinRadiusHolo = 1f, MaxRadiusHolo = 10f, DefaultRadiusHolo = 2.5f;
 		private const float MinSizeScale = 1f, MaxSizeScale = 1e3f, DefaultSizeScale = 1f;
-		private const float MinOffset = -10f, MaxOffset = 10f;
+		private const float MinOffset = -20f, MaxOffset = 20f;
 		private const double CrosshairRange = 20d;
 
 		private static StaticVariables Static = new StaticVariables();
@@ -165,11 +174,17 @@ namespace Rynchodon.AntennaRelay
 
 			Static.TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
-			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"), 
+			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"),
 				MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
 			IMyTerminalValueControl<bool> valueControlBool = control;
 			valueControlBool.Getter = block => Static.MouseControls;
 			valueControlBool.Setter = (block, value) => Static.MouseControls = value;
+			Static.TermControls.Add(control);
+
+			control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowBoundary", MyStringId.GetOrCompute("Show Boundary"), MyStringId.GetOrCompute("Show the boundaries of the hologram. User-specific setting."));
+			valueControlBool = control;
+			valueControlBool.Getter = block => ShowBoundary;
+			valueControlBool.Setter = (block, value) => ShowBoundary = value;
 			Static.TermControls.Add(control);
 
 			AddCheckbox("HD_ShowOffset", "Show Offset Controls", "Display controls that can be used to adjust the position of the hologram", Option.ShowOffset);
@@ -367,7 +382,7 @@ namespace Rynchodon.AntennaRelay
 			if (!Registrar.TryGetValue(block, out proj))
 				return;
 
-			Vector3 offset = proj.m_offset_ev.Value ;//.SetDim(dim, value);
+			Vector3 offset = proj.m_offset_ev.Value;//.SetDim(dim, value);
 			offset.SetDim(dim, value);
 			proj.m_offset_ev.Value = offset;
 		}
@@ -568,7 +583,29 @@ namespace Rynchodon.AntennaRelay
 				return;
 
 			Vector3D playerPos = MyAPIGateway.Session.Player.GetPosition(), holoCentre = m_offset.ToWorld(m_block);
-			m_playerCanSee = Vector3D.DistanceSquared(playerPos, holoCentre) <= 1e4d;// && !MyAPIGateway.Entities.IsRaycastBlocked(playerPos, holoCentre);
+			double distSquared = Vector3D.DistanceSquared(playerPos, holoCentre);
+			m_playerCanSee = distSquared <= 1e4d;
+			if (m_playerCanSee && distSquared > 100d)
+			{
+				List<MyLineSegmentOverlapResult<MyEntity>> entitiesInRay = ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Get();
+
+				m_playerCanSee = false;
+				MyEntity[] ignore = new MyEntity[] { (MyEntity)MyAPIGateway.Session.Player.Controller.ControlledEntity };
+				foreach (Vector3 vector in Static.Directions)
+				{
+					LineD ray = new LineD(playerPos, holoCentre + vector * m_radiusHolo.Value);
+					MyGamePruningStructure.GetTopmostEntitiesOverlappingRay(ref ray, entitiesInRay);
+					if (!RayCast.Obstructed(ray, entitiesInRay.Select(overlap => overlap.Element), ignore))
+					{
+						m_playerCanSee = true;
+						entitiesInRay.Clear();
+						break;
+					}
+					entitiesInRay.Clear();
+				}
+
+				ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Return(entitiesInRay);
+			}
 
 			if (!m_playerCanSee)
 				return;
@@ -634,7 +671,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			if (MyGuiScreenTerminal.GetCurrentScreen() == MyTerminalPageEnum.None && MyAPIGateway.Session.ControlledObject.Entity is IMyCharacter &&  Static.MouseControls)
+			if (MyGuiScreenTerminal.GetCurrentScreen() == MyTerminalPageEnum.None && MyAPIGateway.Session.ControlledObject.Entity is IMyCharacter && Static.MouseControls)
 				CheckInput();
 
 			PositionWorld projectionCentre = m_offset.ToWorld(m_block);
@@ -649,6 +686,14 @@ namespace Rynchodon.AntennaRelay
 				//m_logger.debugLog("entity: " + sh.Seen.Entity.getBestName() + "(" + sh.Seen.Entity.EntityId + "), centre: " + projectionCentre + ", offset: " + (worldMatrix.Translation - projectionCentre) + ", position: " + worldMatrix.Translation);
 				sh.Holo.PositionComp.SetWorldMatrix(worldMatrix);
 				sh.Holo.PositionComp.Scale = sizeScale;
+			}
+
+			if (ShowBoundary)
+			{
+				MatrixD sphereMatrix = m_block.WorldMatrix;
+				sphereMatrix.Translation = projectionCentre;
+				Color c = Color.Yellow;
+				MySimpleObjectDraw.DrawTransparentSphere(ref sphereMatrix, m_radiusHolo.Value, ref c, MySimpleObjectRasterizer.Wireframe, 8);
 			}
 		}
 

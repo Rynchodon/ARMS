@@ -31,38 +31,38 @@ namespace Rynchodon
 			get { return new TimeSpan((long)(UpdateCount * UpdatesToTicks)); }
 		}
 
-		public static readonly Vector3I[] CellNeighbours = 
-		{
-			new	Vector3I(-1, -1, -1),
-			new Vector3I(-1, -1, 0),
-			new Vector3I(-1, -1, 1),
-			new Vector3I(-1, 0, -1),
-			new Vector3I(-1, 0, 0),
-			new Vector3I(-1, 0, 1),
-			new Vector3I(-1, 1, -1),
-			new Vector3I(-1, 1, 0),
-			new Vector3I(-1, 1, 1),
+		//public static readonly Vector3I[] CellNeighbours = 
+		//{
+		//	new	Vector3I(-1, -1, -1),
+		//	new Vector3I(-1, -1, 0),
+		//	new Vector3I(-1, -1, 1),
+		//	new Vector3I(-1, 0, -1),
+		//	new Vector3I(-1, 0, 0),
+		//	new Vector3I(-1, 0, 1),
+		//	new Vector3I(-1, 1, -1),
+		//	new Vector3I(-1, 1, 0),
+		//	new Vector3I(-1, 1, 1),
 
-			new	Vector3I(0, -1, -1),
-			new Vector3I(0, -1, 0),
-			new Vector3I(0, -1, 1),
-			new Vector3I(0, 0, -1),
-			// new Vector3I(0, 0, 0), // not a neighbour
-			new Vector3I(0, 0, 1),
-			new Vector3I(0, 1, -1),
-			new Vector3I(0, 1, 0),
-			new Vector3I(0, 1, 1),
+		//	new	Vector3I(0, -1, -1),
+		//	new Vector3I(0, -1, 0),
+		//	new Vector3I(0, -1, 1),
+		//	new Vector3I(0, 0, -1),
+		//	// new Vector3I(0, 0, 0), // not a neighbour
+		//	new Vector3I(0, 0, 1),
+		//	new Vector3I(0, 1, -1),
+		//	new Vector3I(0, 1, 0),
+		//	new Vector3I(0, 1, 1),
 			
-			new	Vector3I(1, -1, -1),
-			new Vector3I(1, -1, 0),
-			new Vector3I(1, -1, 1),
-			new Vector3I(1, 0, -1),
-			new Vector3I(1, 0, 0),
-			new Vector3I(1, 0, 1),
-			new Vector3I(1, 1, -1),
-			new Vector3I(1, 1, 0),
-			new Vector3I(1, 1, 1),
-		};
+		//	new	Vector3I(1, -1, -1),
+		//	new Vector3I(1, -1, 0),
+		//	new Vector3I(1, -1, 1),
+		//	new Vector3I(1, 0, -1),
+		//	new Vector3I(1, 0, 0),
+		//	new Vector3I(1, 0, 1),
+		//	new Vector3I(1, 1, -1),
+		//	new Vector3I(1, 1, 0),
+		//	new Vector3I(1, 1, 1),
+		//};
 
 		public static readonly MyDefinitionId Electricity = new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity");
 

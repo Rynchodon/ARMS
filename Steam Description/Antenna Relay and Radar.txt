@@ -99,6 +99,8 @@ Entity Size Scale - Increases the size of entities in the hologram.
 [*]The scroll wheel can be used to adjust "Detection Range".[/list]
 [i]If Space Engineers looses focus while Mouse Controls are enabled, "Detection Range" may change.[/i]
 
+Show Boundary - shows the boundaries of the hologram. Affects all projectors, not synchronized between game clients, and saved on the client.
+
 [b]Show Offset Controls[/b] - Show/Hide controls that allow repositioning of the hologram.
 Right/Left Offset - Move hologram to the right or left, relative to the projector
 Up/Down Offset - Move hologram down or up, relative to the projector

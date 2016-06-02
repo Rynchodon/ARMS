@@ -1,9 +1,7 @@
-﻿using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
-using VRage;
-using VRage.Collections;
+﻿using System;
 using Rynchodon.Utility;
+using Sandbox.ModAPI;
+using VRage;
 
 namespace Rynchodon.Threading
 {
@@ -46,12 +44,8 @@ namespace Rynchodon.Threading
 			ActionQueue.Enqueue(toQueue);
 			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
-			using (lock_parallelTasks.AcquireExclusiveUsing())
-			{
-				if (ParallelTasks >= AllowedParallel)
-					return;
-				ParallelTasks++;
-			}
+			if (ParallelTasks >= AllowedParallel)
+				return;
 
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 				if (MyAPIGateway.Parallel == null)
@@ -69,14 +63,18 @@ namespace Rynchodon.Threading
 
 		public void EnqueueIfIdle(Action toQueue)
 		{
-			bool idle = ActionQueue.Count == 0;
-
-			if (idle)
+			if (ActionQueue.Count == 0)
 				EnqueueAction(toQueue);
 		}
 
 		private void Run()
 		{
+			using (lock_parallelTasks.AcquireExclusiveUsing())
+			{
+				if (ParallelTasks >= AllowedParallel)
+					return;
+				ParallelTasks++;
+			}
 			try
 			{
 				if (ThreadName != null)

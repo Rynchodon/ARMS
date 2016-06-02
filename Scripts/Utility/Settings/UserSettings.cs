@@ -26,10 +26,11 @@ namespace Rynchodon.Settings
 		public enum BoolSettingName : byte
 		{
 			None,
-			MissileWarning
+			MissileWarning,
+			HologramShowBoundary
 		}
 
-		public enum ColourSettingName : byte
+		public enum IntSettingName : byte
 		{
 			None,
 			IntegrityFull,
@@ -57,9 +58,9 @@ namespace Rynchodon.Settings
 			return Instance.BoolSettings[name].Value;
 		}
 
-		public static Color GetSetting(ColourSettingName name)
+		public static uint GetSetting(IntSettingName name)
 		{
-			return Instance.ColourSettings[name].Value;
+			return Instance.IntSettings[name].Value;
 		}
 
 		public static void SetSetting(ByteSettingName name, byte value, bool notify = false)
@@ -72,7 +73,6 @@ namespace Rynchodon.Settings
 
 			Instance.myLogger.debugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
 			Instance.ByteSettings[name].Value = value;
-			Instance.writeAll();
 		}
 
 		public static void SetSetting(BoolSettingName name, bool value, bool notify = false)
@@ -85,13 +85,11 @@ namespace Rynchodon.Settings
 
 			Instance.myLogger.debugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
 			Instance.BoolSettings[name].Value = value;
-			Instance.writeAll();
 		}
 
-		public static void SetSetting(ColourSettingName name, Color value)
+		public static void SetSetting(IntSettingName name, uint value)
 		{
-			Instance.ColourSettings[name].Value = value;
-			Instance.writeAll();
+			Instance.IntSettings[name].Value = value;
 		}
 
 		public static void SetSetting(string nameValue)
@@ -101,7 +99,7 @@ namespace Rynchodon.Settings
 
 		private readonly Dictionary<ByteSettingName, SettingSimple<byte>> ByteSettings = new Dictionary<ByteSettingName, SettingSimple<byte>>();
 		private readonly Dictionary<BoolSettingName, SettingSimple<bool>> BoolSettings = new Dictionary<BoolSettingName, SettingSimple<bool>>();
-		private readonly Dictionary<ColourSettingName, SettingSimple<Color>> ColourSettings = new Dictionary<ColourSettingName, SettingSimple<Color>>();
+		private readonly Dictionary<IntSettingName, SettingSimple<uint>> IntSettings = new Dictionary<IntSettingName, SettingSimple<uint>>();
 		
 		private readonly Logger myLogger;
 
@@ -118,6 +116,7 @@ namespace Rynchodon.Settings
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			Instance = null;
+			writeAll();
 		}
 
 		/// <summary>
@@ -133,11 +132,12 @@ namespace Rynchodon.Settings
 			ByteSettings.Add(ByteSettingName.UpdateIntervalHUD, new SettingSimple<byte>(100));
 
 			BoolSettings.Add(BoolSettingName.MissileWarning, new SettingSimple<bool>(true));
+			BoolSettings.Add(BoolSettingName.HologramShowBoundary, new SettingSimple<bool>(true));
 
-			ColourSettings.Add(ColourSettingName.IntegrityFull, new SettingSimple<Color>(Color.DarkGreen));
-			ColourSettings.Add(ColourSettingName.IntegrityFunctional, new SettingSimple<Color>(Color.Yellow));
-			ColourSettings.Add(ColourSettingName.IntegrityDamaged, new SettingSimple<Color>(Color.Red));
-			ColourSettings.Add(ColourSettingName.IntegrityZero, new SettingSimple<Color>(Color.Gray));
+			IntSettings.Add(IntSettingName.IntegrityFull, new SettingSimple<uint>(Color.DarkGreen.PackedValue));
+			IntSettings.Add(IntSettingName.IntegrityFunctional, new SettingSimple<uint>(Color.Yellow.PackedValue));
+			IntSettings.Add(IntSettingName.IntegrityDamaged, new SettingSimple<uint>(Color.Red.PackedValue));
+			IntSettings.Add(IntSettingName.IntegrityZero, new SettingSimple<uint>(Color.Gray.PackedValue));
 		}
 
 		/// <summary>
@@ -192,7 +192,7 @@ namespace Rynchodon.Settings
 				foreach (KeyValuePair<BoolSettingName, SettingSimple<bool>> pair in BoolSettings)
 					write(settingsWriter, pair.Key.ToString(), pair.Value.ValueAsString());
 
-				foreach (KeyValuePair<ColourSettingName, SettingSimple<Color>> pair in ColourSettings)
+				foreach (KeyValuePair<IntSettingName, SettingSimple<uint>> pair in IntSettings)
 					write(settingsWriter, pair.Key.ToString(), pair.Value.ValueAsString());
 
 				settingsWriter.Flush();
@@ -236,15 +236,15 @@ namespace Rynchodon.Settings
 				return;
 			}
 
-			ByteSettingName name;
-			if (Enum.TryParse<ByteSettingName>(split[0], out name))
+			ByteSettingName byteSet;
+			if (Enum.TryParse<ByteSettingName>(split[0], out byteSet))
 			{	try
 				{
-					if (ByteSettings[name].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
+					if (ByteSettings[byteSet].ValueFromString(split[1]))
+						myLogger.alwaysLog("Set " + byteSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + byteSet, Logger.severity.WARNING); }
 				return;
 			}
 
@@ -254,23 +254,23 @@ namespace Rynchodon.Settings
 				try
 				{
 					if (BoolSettings[boolSet].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
+						myLogger.alwaysLog("Set " + boolSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + boolSet, Logger.severity.WARNING); }
 				return;
 			}
 
-			ColourSettingName colourSet;
-			if (Enum.TryParse<ColourSettingName>(split[0], out colourSet))
+			IntSettingName uintSet;
+			if (Enum.TryParse<IntSettingName>(split[0], out uintSet))
 			{
 				try
 				{
-					if (ColourSettings[colourSet].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + name + " to " + split[1], Logger.severity.INFO);
+					if (IntSettings[uintSet].ValueFromString(split[1]))
+						myLogger.alwaysLog("Set " + uintSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + uintSet, Logger.severity.WARNING); }
 				return;
 			}
 

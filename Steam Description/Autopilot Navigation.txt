@@ -1,7 +1,7 @@
-All commands are in the display name of a Autopilot block.
-[] All commands are contained within a single set of square brackets
+Commands are read from the "Autopilot Commands" text box in the terminal screen.
+Do not use square brackets [], except in text panels.
 :; Commands are separated by colons and/or semicolons
-    Interpreter ignores all spaces
+   Interpreter ignores all spaces
 Aa Interpreter is case insensitive
 Variables P and V affect all destinations that come after
 
