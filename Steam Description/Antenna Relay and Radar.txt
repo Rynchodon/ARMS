@@ -79,6 +79,7 @@ To change the number of marked owned grids to 0:
 
 [h1]Projector[/h1]
 ARMS can use projectors to display detected ships holographically.
+Must be attached to an antenna or a radar to function.
 
 [i]There may be a significant FPS hit for using this feature, dependant upon the number of blocks that need to be rendered.[/i]
 
@@ -92,12 +93,6 @@ ARMS can use projectors to display detected ships holographically.
 Detection Range - How close an entity needs to be for it to be displayed.
 Hologram Radius - How big the hologram will be.
 Entity Size Scale - Increases the size of entities in the hologram.
-
-[b]Mouse Controls[/b] are only available while the option is enabled in the terminal. Toggling this option affects all Projector blocks. This option is not synchronized between game clients or saved between game sessions.
-[list][*]Left clicking on an entity brings that entity to the centre of the hologram.
-[*]Right clicking anywhere on the hologram restores the projector block to the centre.
-[*]The scroll wheel can be used to adjust "Detection Range".[/list]
-[i]If Space Engineers looses focus while Mouse Controls are enabled, "Detection Range" may change.[/i]
 
 Show Boundary - shows the boundaries of the hologram. Affects all projectors, not synchronized between game clients, and saved on the client.
 
