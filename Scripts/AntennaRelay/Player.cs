@@ -63,7 +63,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 
 		private IMyEntity m_controlled;
-		private Func<NetworkStorage> m_storage;
+		private Func<RelayStorage> m_storage;
 
 		private byte m_updateIntervalGPS;
 
@@ -116,7 +116,7 @@ namespace Rynchodon.AntennaRelay
 				{
 					m_soundEmitter = null;
 					m_threat = null;
-					NetworkNode charNode;
+					RelayNode charNode;
 					if (!Registrar.TryGetValue(controlled, out charNode))
 					{
 						myLogger.debugLog("Failed to get node for character: " + controlled.getBestName(), Logger.severity.WARNING);
@@ -128,7 +128,7 @@ namespace Rynchodon.AntennaRelay
 				}
 				else if (controlled is IMyCubeBlock)
 				{
-					IRelayPart shipClient = NetworkClient.GetOrCreateRelayPart((IMyCubeBlock)controlled);
+					IRelayPart shipClient = RelayClient.GetOrCreateRelayPart((IMyCubeBlock)controlled);
 					m_storage = shipClient.GetStorage;
 					m_soundEmitter = new MyEntity3DSoundEmitter((MyEntity)controlled);
 					myLogger.debugLog("now controlling a ship", Logger.severity.DEBUG);
@@ -175,7 +175,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			NetworkStorage store = m_storage.Invoke();
+			RelayStorage store = m_storage.Invoke();
 
 			if (store == null)
 			{
@@ -418,7 +418,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			NetworkStorage store = m_storage.Invoke();
+			RelayStorage store = m_storage.Invoke();
 
 			if (store == null)
 			{

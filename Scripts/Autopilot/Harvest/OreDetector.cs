@@ -308,7 +308,7 @@ Finished_Deposit:
 		public static void SearchForMaterial(ShipControllerBlock requester, byte[] oreType, OreSearchComplete onComplete)
 		{
 			Vector3D position = requester.CubeBlock.GetPosition();
-			NetworkStorage storage = requester.NetworkStorage;
+			RelayStorage storage = requester.NetworkStorage;
 
 			m_thread.EnqueueAction(() => {
 				List<OreDetector> oreDetectors = ResourcePool<List<OreDetector>>.Get();
@@ -339,7 +339,7 @@ Finished_Deposit:
 		private readonly Logger m_logger;
 		private readonly Ingame.IMyOreDetector m_oreDetector;
 		private readonly float m_maxRange;
-		private readonly NetworkClient m_netClient;
+		private readonly RelayClient m_netClient;
 
 		private readonly Dictionary<IMyVoxelBase, VoxelData> m_voxelData = new Dictionary<IMyVoxelBase, VoxelData>();
 		private readonly FastResourceLock l_voxelData = new FastResourceLock();
@@ -355,7 +355,7 @@ Finished_Deposit:
 			this.m_logger = new Logger("OreDetector", oreDetector);
 			this.Block = oreDetector;
 			this.m_oreDetector = oreDetector as Ingame.IMyOreDetector;
-			this.m_netClient = new NetworkClient(oreDetector);
+			this.m_netClient = new RelayClient(oreDetector);
 
 			float maxrange = 0f;
 			MainLock.UsingShared(() => {

@@ -480,7 +480,7 @@ namespace Rynchodon.Weapons
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
 
 			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
-				m_relayPart = NetworkClient.GetOrCreateRelayPart(weapon);
+				m_relayPart = RelayClient.GetOrCreateRelayPart(weapon);
 
 			WeaponDefinition = MyDefinitionManager.Static.GetWeaponDefinition(((MyWeaponBlockDefinition)weapon.GetCubeBlockDefinition()).WeaponDefinitionId);
 

@@ -102,7 +102,7 @@ namespace Rynchodon.AntennaRelay
 			CreateAndSendMessage_Autopilot(sender, recipientGrid, recipientBlock, message);
 		}
 
-		private static void GetStorage(long entityId, out IMyCubeBlock block, out NetworkStorage storage)
+		private static void GetStorage(long entityId, out IMyCubeBlock block, out RelayStorage storage)
 		{
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
@@ -121,7 +121,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			storage = NetworkClient.GetOrCreateRelayPart(block).GetStorage();
+			storage = RelayClient.GetOrCreateRelayPart(block).GetStorage();
 		}
 
 		/// <summary>
@@ -150,7 +150,7 @@ namespace Rynchodon.AntennaRelay
 			int count = 0;
 
 			IMyCubeBlock senderBlock;
-			NetworkStorage storage;
+			RelayStorage storage;
 			GetStorage(sender, out senderBlock, out storage);
 
 			if (storage == null)
@@ -178,7 +178,7 @@ namespace Rynchodon.AntennaRelay
 			int count = 0;
 
 			IMyCubeBlock senderBlock;
-			NetworkStorage storage;
+			RelayStorage storage;
 			GetStorage(sender, out senderBlock, out storage);
 
 			if (storage == null)

@@ -9,7 +9,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Block that is a partial participant in a network, only connects to a single node.
 	/// </summary>
-	public class NetworkClient : IRelayPart
+	public class RelayClient : IRelayPart
 	{
 
 		private const ulong UpdateFrequency = 10ul;
@@ -19,29 +19,29 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public static IRelayPart GetOrCreateRelayPart(IMyCubeBlock block)
 		{
-			NetworkNode node;
+			RelayNode node;
 			if (Registrar.TryGetValue(block, out node))
 				return node;
-			NetworkClient client;
+			RelayClient client;
 			if (Registrar.TryGetValue(block, out client))
 				return client;
-			return new NetworkClient(block);
+			return new RelayClient(block);
 		}
 
 		private readonly IMyCubeBlock m_block;
 		private readonly Logger m_logger;
 
-		private NetworkNode value_node;
+		private RelayNode value_node;
 		private ulong m_nextNodeSet;
 
-		private NetworkStorage m_storage;
+		private RelayStorage m_storage;
 
 		private Action<Message> m_messageHandler;
 
 		/// <summary>
 		/// Use GetOrCreateRelayPart if client may already exist.
 		/// </summary>
-		public NetworkClient(IMyCubeBlock block, Action<Message> messageHandler = null)
+		public RelayClient(IMyCubeBlock block, Action<Message> messageHandler = null)
 		{
 			this.m_block = block;
 			this.m_messageHandler = messageHandler;
@@ -50,22 +50,22 @@ namespace Rynchodon.AntennaRelay
 			Registrar.Add(block, this);
 		}
 
-		private bool IsConnected(NetworkNode node)
+		private bool IsConnected(RelayNode node)
 		{
 			return !node.Block.Closed && node.Block.IsWorking && m_block.canConsiderFriendly(node.Block) && AttachedGrid.IsGridAttached(m_block.CubeGrid, node.Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal);
 		}
 
-		private NetworkNode GetNode()
+		private RelayNode GetNode()
 		{
 			if (Globals.UpdateCount < m_nextNodeSet)
 				return value_node;
 			m_nextNodeSet = Globals.UpdateCount + UpdateFrequency;
 
-			NetworkNode newNode = value_node;
+			RelayNode newNode = value_node;
 			if (newNode == null || !IsConnected(newNode))
 			{
 				newNode = null;
-				Registrar.ForEach<NetworkNode>(node => {
+				Registrar.ForEach<RelayNode>(node => {
 					if (node.Block != null && IsConnected(node))
 					{
 						newNode = node;
@@ -85,10 +85,10 @@ namespace Rynchodon.AntennaRelay
 		/// Always test against null, player may forget to put an antenna on the ship.
 		/// </summary>
 		/// <returns>The NetworkStorage this client is connected to or null.</returns>
-		public NetworkStorage GetStorage()
+		public RelayStorage GetStorage()
 		{
-			NetworkNode node = GetNode();
-			NetworkStorage store = node != null ? node.Storage : null;
+			RelayNode node = GetNode();
+			RelayStorage store = node != null ? node.Storage : null;
 
 			m_logger.debugLog(m_storage != store, "current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store));
 			if (store != m_storage && m_messageHandler != null)
@@ -102,7 +102,7 @@ namespace Rynchodon.AntennaRelay
 			return m_storage;
 		}
 
-		private string StorageName(NetworkStorage store)
+		private string StorageName(RelayStorage store)
 		{
 			if (store == null)
 				return "null";

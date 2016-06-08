@@ -229,7 +229,7 @@ namespace Rynchodon.Weapons
 		/// Targets a LastSeen chosen from the given storage, will overrride current target.
 		/// </summary>
 		/// <param name="storage">NetworkStorage to get LastSeen from.</param>
-		protected void GetLastSeenTarget(NetworkStorage storage, double range)
+		protected void GetLastSeenTarget(RelayStorage storage, double range)
 		{
 			if (Globals.UpdateCount < m_nextLastSeenSearch)
 				return;

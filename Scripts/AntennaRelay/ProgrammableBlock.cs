@@ -166,7 +166,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private readonly Ingame.IMyProgrammableBlock m_progBlock;
-		private readonly NetworkClient m_networkClient;
+		private readonly RelayClient m_networkClient;
 		private readonly Logger m_logger;
 
 		private readonly EntityValue<bool> m_handleDetectedTerminal_ev;
@@ -193,7 +193,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			m_logger = new Logger(GetType().Name, block);
 			m_progBlock = block as Ingame.IMyProgrammableBlock;
-			m_networkClient = new NetworkClient(block, HandleMessage);
+			m_networkClient = new RelayClient(block, HandleMessage);
 
 			byte index = 0;
 			m_handleDetectedTerminal_ev = new EntityValue<bool>(block, index++, UpdateVisual);
@@ -264,7 +264,7 @@ namespace Rynchodon.AntennaRelay
 			StringBuilder parameter = new StringBuilder();
 			bool first = true;
 
-			NetworkStorage store = m_networkClient.GetStorage();
+			RelayStorage store = m_networkClient.GetStorage();
 			if (store == null)
 				return;
 

@@ -318,7 +318,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Entity as IMyTerminalBlock</summary>
 		private IMyTerminalBlock TermBlock
 		{ get { return CubeBlock as IMyTerminalBlock; } }
-		private NetworkNode m_node;
+		private RelayNode m_node;
 
 		private readonly Logger myLogger;
 		private readonly Definition myDefinition;

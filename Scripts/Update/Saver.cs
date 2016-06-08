@@ -28,7 +28,7 @@ namespace Rynchodon.Update
 			public int ModVersion = Settings.ServerSettings.latestVersion;
 			[XmlAttribute]
 			public long SaveTime = Globals.ElapsedTime.Ticks;
-			public NetworkStorage.Builder_NetworkStorage[] AntennaStorage;
+			public RelayStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
 			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
@@ -185,15 +185,15 @@ namespace Rynchodon.Update
 
 			Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
 			SerializableGameTime.Adjust = new TimeSpan(m_data.SaveTime);
-			foreach (NetworkStorage.Builder_NetworkStorage bns in m_data.AntennaStorage)
+			foreach (RelayStorage.Builder_NetworkStorage bns in m_data.AntennaStorage)
 			{
-				NetworkNode node;
+				RelayNode node;
 				if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
 				{
 					m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
 					continue;
 				}
-				NetworkStorage store = node.Storage;
+				RelayStorage store = node.Storage;
 				if (store == null) // probably always true
 				{
 					node.ForceCreateStorage();
@@ -350,15 +350,15 @@ namespace Rynchodon.Update
 
 				// network data
 
-				Dictionary<long, NetworkStorage.Builder_NetworkStorage> storages = new Dictionary<long, NetworkStorage.Builder_NetworkStorage>();
+				Dictionary<long, RelayStorage.Builder_NetworkStorage> storages = new Dictionary<long, RelayStorage.Builder_NetworkStorage>();
 
-				Registrar.ForEach<NetworkNode>(node => {
+				Registrar.ForEach<RelayNode>(node => {
 					// players never load properly
 					if (node.m_player != null)
 						return;
 					if (node.Storage != null && !storages.ContainsKey(node.Storage.PrimaryNode.EntityId))
 					{
-						NetworkStorage.Builder_NetworkStorage bns = node.Storage.GetBuilder();
+						RelayStorage.Builder_NetworkStorage bns = node.Storage.GetBuilder();
 						storages.Add(bns.PrimaryNode, bns);
 					}
 				});

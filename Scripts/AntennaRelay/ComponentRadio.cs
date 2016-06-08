@@ -68,25 +68,25 @@ namespace Rynchodon.AntennaRelay
 		/// Tests for a connection from this radio to another radio.
 		/// </summary>
 		/// <param name="other">The radio that may be connected.</param>
-		public NetworkNode.CommunicationType TestConnection(ComponentRadio other)
+		public RelayNode.CommunicationType TestConnection(ComponentRadio other)
 		{
 			if (!IsWorking || !other.IsWorking)
-				return NetworkNode.CommunicationType.None;
+				return RelayNode.CommunicationType.None;
 
 			if (!CanBroadcastData || !other.CanReceive)
-				return NetworkNode.CommunicationType.None;
+				return RelayNode.CommunicationType.None;
 
 			float distSquared = Vector3.DistanceSquared(Entity.GetPosition(), other.Entity.GetPosition());
 			if (distSquared > Radius * Radius)
-				return NetworkNode.CommunicationType.None;
+				return RelayNode.CommunicationType.None;
 
 			if (!CanReceive || !other.CanBroadcastData)
-				return NetworkNode.CommunicationType.OneWay;
+				return RelayNode.CommunicationType.OneWay;
 
 			if (distSquared > other.Radius * other.Radius)
-				return NetworkNode.CommunicationType.OneWay;
+				return RelayNode.CommunicationType.OneWay;
 
-			return NetworkNode.CommunicationType.TwoWay;
+			return RelayNode.CommunicationType.TwoWay;
 		}
 
 		/// <summary>

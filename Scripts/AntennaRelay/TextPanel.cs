@@ -161,7 +161,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly EntityValue<Option> m_optionsTerminal_ev;
 
 		private IMyTerminalBlock myTermBlock;
-		private NetworkClient m_networkClient;
+		private RelayClient m_networkClient;
 		private Option m_options;
 		private List<sortableLastSeen> m_sortableList;
 		private TimeSpan m_lastDisplay;
@@ -178,7 +178,7 @@ namespace Rynchodon.AntennaRelay
 			myLogger = new Logger(GetType().Name, block);
 			m_textPanel = block as Ingame.IMyTextPanel;
 			myTermBlock = block as IMyTerminalBlock;
-			m_networkClient = new NetworkClient(block);
+			m_networkClient = new RelayClient(block);
 			myLogger.debugLog("init: " + m_block.DisplayNameText);
 			m_optionsTerminal_ev = new EntityValue<Option>(block, 0, UpdateVisual);
 
@@ -253,7 +253,7 @@ namespace Rynchodon.AntennaRelay
 
 			//myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
 
-			NetworkStorage store = m_networkClient.GetStorage();
+			RelayStorage store = m_networkClient.GetStorage();
 			if (store == null)
 			{
 				m_textPanel.WritePublicText("No network connection");
@@ -297,7 +297,7 @@ namespace Rynchodon.AntennaRelay
 			m_textPanel.WritePublicText(displayText.ToString());
 		}
 
-		private void AllLastSeen(NetworkStorage store)
+		private void AllLastSeen(RelayStorage store)
 		{
 			Vector3D myPos = m_block.GetPosition();
 
@@ -312,7 +312,7 @@ namespace Rynchodon.AntennaRelay
 			});
 		}
 
-		private void SelectLastSeen(NetworkStorage store, List<long> entityIds)
+		private void SelectLastSeen(RelayStorage store, List<long> entityIds)
 		{
 			Vector3D myPos = m_block.GetPosition();
 
@@ -332,7 +332,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			//myLogger.debugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
 
-			NetworkStorage store = m_networkClient.GetStorage();
+			RelayStorage store = m_networkClient.GetStorage();
 			if (store == null)
 			{
 				m_textPanel.WritePublicText("No network connection");
@@ -343,7 +343,7 @@ namespace Rynchodon.AntennaRelay
 			Vector3D mypos = m_block.GetPosition();
 
 			Registrar.ForEach<ShipAutopilot>(ap => {
-				NetworkStorage apStore = ap.m_block.NetworkStorage;
+				RelayStorage apStore = ap.m_block.NetworkStorage;
 				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
 				{
 					//myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");

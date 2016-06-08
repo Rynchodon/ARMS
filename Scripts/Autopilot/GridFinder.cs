@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot
 		protected float MaximumRange;
 		protected long m_targetEntityId;
 
-		private NetworkStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
+		private RelayStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
 
 		/// <summary>
 		/// Creates a GridFinder to find a friendly grid based on its name.
@@ -132,7 +132,7 @@ namespace Rynchodon.Autopilot
 		private void GridSearch_Friend()
 		{
 			int bestNameLength = int.MaxValue;
-			NetworkStorage store = m_netStore;
+			RelayStorage store = m_netStore;
 			if (store == null)
 			{
 				m_logger.debugLog("no storage", Logger.severity.WARNING);
@@ -160,7 +160,7 @@ namespace Rynchodon.Autopilot
 
 		private void GridSearch_Enemy()
 		{
-			NetworkStorage store = m_netStore;
+			RelayStorage store = m_netStore;
 			if (store == null)
 			{
 				m_logger.debugLog("no storage", Logger.severity.WARNING);
@@ -243,7 +243,7 @@ namespace Rynchodon.Autopilot
 				return;
 			}
 
-			NetworkStorage storage = m_netStore;
+			RelayStorage storage = m_netStore;
 			if (storage == null)
 			{
 				m_logger.debugLog("lost storage", Logger.severity.DEBUG);

@@ -202,7 +202,7 @@ namespace Rynchodon.Weapons.Guided
 
 		private readonly Logger myLogger;
 		private readonly Ammo myAmmo;
-		private readonly NetworkNode myAntenna;
+		private readonly RelayNode myAntenna;
 		private readonly GuidedMissileLauncher m_launcher;
 		private readonly long m_owner;
 
@@ -235,7 +235,7 @@ namespace Rynchodon.Weapons.Guided
 			myAmmo = launcher.loadedAmmo;
 			m_owner = launcher.CubeBlock.OwnerId;
 			if (myAmmo.Description.HasAntenna)
-				myAntenna = new NetworkNode(missile, () => m_owner, ComponentRadio.CreateRadio(missile, 0f));
+				myAntenna = new RelayNode(missile, () => m_owner, ComponentRadio.CreateRadio(missile, 0f));
 			TryHard = true;
 			SEAD = myAmmo.Description.SEAD;
 
@@ -250,7 +250,7 @@ namespace Rynchodon.Weapons.Guided
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
 
-			NetworkStorage storage = launcher.m_relayPart.GetStorage();
+			RelayStorage storage = launcher.m_relayPart.GetStorage();
 			if (storage == null)
 			{
 				myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
@@ -269,7 +269,7 @@ namespace Rynchodon.Weapons.Guided
 				if (myAntenna == null)
 				{
 					myLogger.debugLog("Creating node for radar");
-					myAntenna = new NetworkNode(missile, () => m_owner, null);
+					myAntenna = new RelayNode(missile, () => m_owner, null);
 				}
 			}
 
@@ -721,7 +721,7 @@ namespace Rynchodon.Weapons.Guided
 				return;
 			}
 
-			NetworkStorage store = m_launcherRelay.GetStorage();
+			RelayStorage store = m_launcherRelay.GetStorage();
 			if (store == null)
 			{
 				myLogger.debugLog("Launcher's net client does not have a storage", Logger.severity.WARNING);

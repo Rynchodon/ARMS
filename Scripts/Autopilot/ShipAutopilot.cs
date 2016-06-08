@@ -28,14 +28,14 @@ namespace Rynchodon.Autopilot
 
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly PseudoBlock Pseudo;
-		public readonly NetworkNode NetworkNode;
+		public readonly RelayNode NetworkNode;
 		public readonly AutopilotTerminal AutopilotTerminal;
 
 		private readonly Logger m_logger;
 
 		public MyShipController Controller { get { return (MyShipController)CubeBlock; } }
 		public IMyTerminalBlock Terminal { get { return (IMyTerminalBlock)CubeBlock; } }
-		public NetworkStorage NetworkStorage { get { return NetworkNode.Storage; } }
+		public RelayStorage NetworkStorage { get { return NetworkNode.Storage; } }
 		public IMyCubeGrid CubeGrid { get { return Controller.CubeGrid; } }
 		public MyPhysicsComponentBase Physics { get { return Controller.CubeGrid.Physics; } }
 
@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot
 			m_logger = new Logger(GetType().Name, block);
 			CubeBlock = block;
 			Pseudo = new PseudoBlock(block);
-			NetworkNode = new NetworkNode(block);
+			NetworkNode = new RelayNode(block);
 			AutopilotTerminal = new AutopilotTerminal(block);
 		}
 

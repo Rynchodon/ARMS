@@ -7,7 +7,7 @@ namespace Rynchodon.AntennaRelay
 	public interface IRelayPart
 	{
 
-		NetworkStorage GetStorage();
+		RelayStorage GetStorage();
 
 	}
 }

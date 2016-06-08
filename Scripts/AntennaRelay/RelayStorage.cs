@@ -11,7 +11,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Holds transmissions for one or more connected Node
 	/// </summary>
-	public class NetworkStorage
+	public class RelayStorage
 	{
 
 		[Serializable]
@@ -28,22 +28,22 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Send a LastSeen to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
 		/// </summary>
-		public static void Receive(ICollection<NetworkStorage> storage, LastSeen seen)
+		public static void Receive(ICollection<RelayStorage> storage, LastSeen seen)
 		{
-			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
 			try
 			{
-				foreach (NetworkStorage sto in storage)
+				foreach (RelayStorage sto in storage)
 					AddStorage(sendToSet, sto);
 
-				foreach (NetworkStorage sto in sendToSet)
+				foreach (RelayStorage sto in sendToSet)
 					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
 			}
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
@@ -52,11 +52,11 @@ namespace Rynchodon.AntennaRelay
 		///// <para>lock_sendToSet should be exclusively locked before invoking this method.</para>
 		/// </summary>
 		/// <param name="storage">NetworkStorage to add to sendToSet</param>
-		private static void AddStorage(HashSet<NetworkStorage> sendToSet, NetworkStorage storage)
+		private static void AddStorage(HashSet<RelayStorage> sendToSet, RelayStorage storage)
 		{
 			if (sendToSet.Add(storage))
 				using (storage.lock_pushTo_count.AcquireSharedUsing())
-					foreach (NetworkNode connected in storage.m_pushTo_count.Keys)
+					foreach (RelayNode connected in storage.m_pushTo_count.Keys)
 						if (connected.Storage != null)
 							AddStorage(sendToSet, connected.Storage);
 		}
@@ -69,11 +69,11 @@ namespace Rynchodon.AntennaRelay
 		private readonly HashSet<Message> m_messages = new HashSet<Message>();
 		private readonly FastResourceLock lock_pushTo_count = new FastResourceLock();
 		/// <summary>For one way radio communication.</summary>
-		private readonly Dictionary<NetworkNode, int> m_pushTo_count = new Dictionary<NetworkNode, int>();
+		private readonly Dictionary<RelayNode, int> m_pushTo_count = new Dictionary<RelayNode, int>();
 		private readonly FastResourceLock lock_messageHandlers = new FastResourceLock();
 		private readonly Dictionary<long, Action<Message>> m_messageHandlers = new Dictionary<long, Action<Message>>();
 
-		public readonly NetworkNode PrimaryNode;
+		public readonly RelayNode PrimaryNode;
 
 		private ulong m_nextClean_lastSeen, m_nextClean_message;
 
@@ -83,7 +83,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Number of LastSeen stored</summary>
 		public int LastSeenCount { get { return m_lastSeen.Count; } }
 
-		public NetworkStorage(NetworkNode primary)
+		public RelayStorage(RelayNode primary)
 		{
 			this.m_logger = new Logger(GetType().Name, () => primary.LoggingName);
 			this.PrimaryNode = primary;
@@ -96,11 +96,11 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		/// <param name="primary">The node that will be the primary for the new storage.</param>
 		/// <returns>A new storage that is a copy of this one.</returns>
-		public NetworkStorage Clone(NetworkNode primary)
+		public RelayStorage Clone(RelayNode primary)
 		{
 			m_logger.debugLog("cloning, primary " + primary.LoggingName, Logger.severity.DEBUG);
 
-			NetworkStorage clone = new NetworkStorage(primary);
+			RelayStorage clone = new RelayStorage(primary);
 
 			// locks need not be held on clone
 			ForEachLastSeen(clone.m_lastSeen.Add);
@@ -113,7 +113,7 @@ namespace Rynchodon.AntennaRelay
 		/// Copies all the transmissions to the target storage. Used when merging storages or adding a push to.
 		/// </summary>
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
-		public void CopyTo(NetworkStorage recipient)
+		public void CopyTo(RelayStorage recipient)
 		{
 			m_logger.debugLog(recipient == this, "recipient == this", Logger.severity.FATAL);
 			m_logger.debugLog("copying to: " + recipient.PrimaryNode.LoggingName, Logger.severity.DEBUG);
@@ -128,7 +128,7 @@ namespace Rynchodon.AntennaRelay
 		/// Add a network connection that data will be pushed through.
 		/// </summary>
 		/// <param name="node">Node that will receive data.</param>
-		public void AddPushTo(NetworkNode node)
+		public void AddPushTo(RelayNode node)
 		{
 			int count;
 			using (lock_pushTo_count.AcquireExclusiveUsing())
@@ -158,7 +158,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			foreach (NetworkNode n in m_pushTo_count.Keys)
+			foreach (RelayNode n in m_pushTo_count.Keys)
 			{
 				if (node == n || n.Storage == null)
 					continue;
@@ -177,7 +177,7 @@ namespace Rynchodon.AntennaRelay
 		/// Remove a network connection that data was pushed through.
 		/// </summary>
 		/// <param name="node">Node that was receiving data.</param>
-		public void RemovePushTo(NetworkNode node)
+		public void RemovePushTo(RelayNode node)
 		{
 			using (lock_pushTo_count.AcquireExclusiveUsing())
 			{
@@ -232,12 +232,12 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="seen">LastSeen data to receive.</param>
 		public void Receive(LastSeen seen)
 		{
-			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
 
-				foreach (NetworkStorage sto in sendToSet)
+				foreach (RelayStorage sto in sendToSet)
 				{
 					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						sto.in_Receive(seen);
@@ -251,7 +251,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
@@ -262,12 +262,12 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="msg">Message to receive.</param>
 		public void Receive(Message msg)
 		{
-			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
 
-				foreach (NetworkStorage sto in sendToSet)
+				foreach (RelayStorage sto in sendToSet)
 				{
 					using (sto.lock_messages.AcquireExclusiveUsing())
 						sto.in_Receive(msg);
@@ -281,7 +281,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
 			}
 		}
 
@@ -291,12 +291,12 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="seen">Collection of LastSeen entitites.</param>
 		public void Receive(ICollection<LastSeen> seen)
 		{
-			HashSet<NetworkStorage> sendToSet = ResourcePool<HashSet<NetworkStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
 
-				foreach (NetworkStorage sto in sendToSet)
+				foreach (RelayStorage sto in sendToSet)
 				{
 					using (sto.lock_lastSeen.AcquireExclusiveUsing())
 						foreach (LastSeen s in seen)
@@ -311,7 +311,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<NetworkStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
 			}
 		}
 

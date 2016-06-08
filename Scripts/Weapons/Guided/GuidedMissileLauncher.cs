@@ -73,7 +73,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			m_weaponTarget = weapon;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
-			m_relayPart = NetworkClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
+			m_relayPart = RelayClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
 
 			var defn = CubeBlock.GetCubeBlockDefinition();
 

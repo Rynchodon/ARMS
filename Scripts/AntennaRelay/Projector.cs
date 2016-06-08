@@ -521,7 +521,7 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
-		private readonly NetworkClient m_netClient;
+		private readonly RelayClient m_netClient;
 
 		private readonly Dictionary<long, SeenHolo> m_holoEntities = new Dictionary<long, SeenHolo>();
 		/// <summary>List of entities to remove holo entirely, it will have to be re-created to be displayed again</summary>
@@ -553,7 +553,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			this.m_logger = new Logger(GetType().Name, block);
 			this.m_block = block;
-			this.m_netClient = new NetworkClient(block);
+			this.m_netClient = new RelayClient(block);
 
 			byte index = 0;
 			this.m_options = new EntityValue<Option>(block, index++, UpdateVisual);
@@ -610,7 +610,7 @@ namespace Rynchodon.AntennaRelay
 			if (!m_playerCanSee)
 				return;
 
-			NetworkStorage storage = m_netClient.GetStorage();
+			RelayStorage storage = m_netClient.GetStorage();
 			if (storage == null)
 				return;
 

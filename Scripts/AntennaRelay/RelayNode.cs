@@ -11,7 +11,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Full participant in a network, connects to other nodes.
 	/// </summary>
-	public class NetworkNode : IRelayPart
+	public class RelayNode : IRelayPart
 	{
 
 		public enum CommunicationType : byte
@@ -26,9 +26,9 @@ namespace Rynchodon.AntennaRelay
 
 		private static int s_searchIdPool;
 		/// <summary>Storages that receive the position of this node but not data.</summary>
-		private static HashSet<NetworkStorage> s_sendPositionTo = new HashSet<NetworkStorage>();
+		private static HashSet<RelayStorage> s_sendPositionTo = new HashSet<RelayStorage>();
 
-		static NetworkNode()
+		static RelayNode()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -49,11 +49,11 @@ namespace Rynchodon.AntennaRelay
 		private readonly ComponentLaser m_comp_laser;
 
 		/// <summary>Two-way communication is established between this node and these nodes.</summary>
-		private readonly HashSet<NetworkNode> m_directConnect = new HashSet<NetworkNode>();
+		private readonly HashSet<RelayNode> m_directConnect = new HashSet<RelayNode>();
 		/// <summary>Data can be sent from this node to these nodes.</summary>
-		private readonly HashSet<NetworkNode> m_oneWayConnect = new HashSet<NetworkNode>();
+		private readonly HashSet<RelayNode> m_oneWayConnect = new HashSet<RelayNode>();
 		private int m_lastSearchId;
-		private NetworkStorage value_storage;
+		private RelayStorage value_storage;
 		private Action<Message> value_messageHandler;
 
 		/// <summary>Name used to identify this node.</summary>
@@ -80,7 +80,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>Contains all the LastSeen and Message for this node.</summary>
-		public NetworkStorage Storage
+		public RelayStorage Storage
 		{
 			get { return value_storage; }
 			private set
@@ -91,7 +91,7 @@ namespace Rynchodon.AntennaRelay
 						" => " + value.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 					// one ways are no longer valid
-					foreach (NetworkNode node in m_oneWayConnect)
+					foreach (RelayNode node in m_oneWayConnect)
 						Storage.RemovePushTo(node);
 					m_oneWayConnect.Clear();
 
@@ -105,13 +105,13 @@ namespace Rynchodon.AntennaRelay
 					value.AddMessageHandler(EntityId, MessageHandler);
 
 				value_storage = value;
-				foreach (NetworkNode node in m_directConnect)
+				foreach (RelayNode node in m_directConnect)
 					if (node.Storage != this.Storage)
 						node.Storage = this.Storage;
 			}
 		}
 
-		public NetworkStorage GetStorage()
+		public RelayStorage GetStorage()
 		{
 			return Storage;
 		}
@@ -120,7 +120,7 @@ namespace Rynchodon.AntennaRelay
 		/// Creates a NetworkNode for a block, checking block attachments, laser, and radio communication.
 		/// </summary>
 		/// <param name="block">The block to create the NetworkNode for.</param>
-		public NetworkNode(IMyCubeBlock block)
+		public RelayNode(IMyCubeBlock block)
 		{
 			this.m_loggingName = () => block.DisplayNameText;
 			this.m_logger = new Logger(GetType().Name, block) { MinimumLevel = Logger.severity.INFO };
@@ -140,7 +140,7 @@ namespace Rynchodon.AntennaRelay
 		/// Creates a NetworkNode for a character, checking radio communication.
 		/// </summary>
 		/// <param name="character">The character to create the NetworkNode for.</param>
-		public NetworkNode(IMyCharacter character)
+		public RelayNode(IMyCharacter character)
 		{
 			IMyPlayer player = character.GetPlayer_Safe();
 
@@ -157,7 +157,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Create a NetworkNode for a missile. Update100() will have to be invoked by GuidedMissile.
 		/// </summary>
-		public NetworkNode(IMyEntity missile, Func<long> ownerId, ComponentRadio radio)
+		public RelayNode(IMyEntity missile, Func<long> ownerId, ComponentRadio radio)
 		{
 			this.m_loggingName = missile.getBestName;
 			this.m_logger = new Logger(GetType().Name, missile) { MinimumLevel = Logger.severity.INFO };
@@ -181,7 +181,7 @@ namespace Rynchodon.AntennaRelay
 
 			bool checkPrimary = false;
 
-			Registrar.ForEach((NetworkNode node) => {
+			Registrar.ForEach((RelayNode node) => {
 				if (node == this)
 					return;
 
@@ -263,7 +263,7 @@ namespace Rynchodon.AntennaRelay
 			if (Storage == null)
 			{
 				m_logger.debugLog("No storage, creating a new one", Logger.severity.INFO);
-				Storage = new NetworkStorage(this);
+				Storage = new RelayStorage(this);
 			}
 			else if (checkPrimary && !IsConnectedTo(Storage.PrimaryNode))
 			{
@@ -277,7 +277,7 @@ namespace Rynchodon.AntennaRelay
 			IMyEntity topEntity = m_entity.GetTopMostParent();
 
 			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
-			NetworkStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
+			RelayStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
 
 			Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new RadarInfo(topEntity)));
 		}
@@ -287,14 +287,14 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public void ForceCreateStorage()
 		{
-			Storage = new NetworkStorage(this);
+			Storage = new RelayStorage(this);
 		}
 
 		/// <summary>
 		/// Tests whether a connection is possible between this and another NetworkNode.
 		/// </summary>
 		/// <param name="other">Node to test connection to this.</param>
-		private CommunicationType TestConnection(NetworkNode other)
+		private CommunicationType TestConnection(RelayNode other)
 		{
 			if (!this.m_ownerId().canConsiderFriendly(other.m_ownerId()))
 			{
@@ -341,7 +341,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		/// <param name="other">The other node to check</param>
 		/// <returns>true iff the nodes are connected.</returns>
-		private bool IsConnectedTo(NetworkNode other)
+		private bool IsConnectedTo(RelayNode other)
 		{
 			if (this == other)
 				return true;
@@ -355,14 +355,14 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="other">the other node to check</param>
 		/// <param name="id">the search id</param>
 		/// <returns>true iff the nodes are connected.</returns>
-		private bool IsConnectedTo(NetworkNode other, int id)
+		private bool IsConnectedTo(RelayNode other, int id)
 		{
 			m_lastSearchId = id;
 
 			if (m_directConnect.Contains(other))
 				return true;
 
-			foreach (NetworkNode node in m_directConnect)
+			foreach (RelayNode node in m_directConnect)
 				if (node.m_lastSearchId != id && node.IsConnectedTo(other, id))
 					return true;
 

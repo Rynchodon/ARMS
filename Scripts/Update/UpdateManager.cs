@@ -166,7 +166,7 @@ namespace Rynchodon.Update
 			#region Antenna Communication
 
 			Action<IMyCubeBlock> nodeConstruct = block => {
-				NetworkNode node = new NetworkNode(block);
+				RelayNode node = new RelayNode(block);
 				RegisterForUpdates(100, node.Update100, block);
 			};
 
@@ -177,7 +177,7 @@ namespace Rynchodon.Update
 			RegisterForCharacter(character => {
 				if (character.IsPlayer)
 				{
-					NetworkNode node = new NetworkNode(character);
+					RelayNode node = new RelayNode(character);
 					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
 				}
 				new CharacterStateTracker(character);
