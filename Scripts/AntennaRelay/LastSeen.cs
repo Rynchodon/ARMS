@@ -35,8 +35,7 @@ namespace Rynchodon.AntennaRelay
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
-		private static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0);
-		public static readonly TimeSpan Recent = new TimeSpan(0, 0, 10);
+		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), Recent = new TimeSpan(0, 0, 10);
 
 		private EntityType m_type;
 
@@ -46,12 +45,14 @@ namespace Rynchodon.AntennaRelay
 		public readonly RadarInfo Info;
 		public readonly Vector3 LastKnownVelocity;
 
+		// TODO? replace these times with flags
+
 		/// <summary>The last time Entity was broadcasting</summary>
-		public readonly TimeSpan LastBroadcast = new TimeSpan(long.MinValue / 2);
+		private readonly TimeSpan LastBroadcast = new TimeSpan(long.MinValue / 2);
 		/// <summary>The last time Entity was using a radar</summary>
-		public readonly TimeSpan LastRadar = new TimeSpan(long.MinValue / 2);
+		private readonly TimeSpan LastRadar = new TimeSpan(long.MinValue / 2);
 		/// <summary>The last time Entity was using a jammer</summary>
-		public readonly TimeSpan LastJam = new TimeSpan(long.MinValue / 2);
+		private readonly TimeSpan LastJam = new TimeSpan(long.MinValue / 2);
 
 		public EntityType Type
 		{
@@ -304,6 +305,9 @@ namespace Rynchodon.AntennaRelay
 
 	}
 
+	/// <summary>
+	/// Information available when an entity has been scanned by radar or is sending data.
+	/// </summary>
 	public class RadarInfo
 	{
 
@@ -314,6 +318,17 @@ namespace Rynchodon.AntennaRelay
 			public float Volume;
 		}
 
+		public static float GetVolume(IMyEntity entity)
+		{
+			IMyCubeGrid grid = entity as IMyCubeGrid;
+			if (grid != null)
+				return GridCellCache.GetCellCache(grid).CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
+			return entity.LocalAABB.Volume();
+		}
+
+		/// <summary>
+		/// When the RadarInfo was last updated.
+		/// </summary>
 		public readonly TimeSpan DetectedAt;
 		public readonly float Volume;
 
@@ -325,6 +340,8 @@ namespace Rynchodon.AntennaRelay
 			this.DetectedAt = Globals.ElapsedTime;
 			this.Volume = volume;
 		}
+
+		public RadarInfo(IMyEntity grid) : this(GetVolume(grid)) { }
 
 		public RadarInfo(Builder_RadarInfo builder)
 		{

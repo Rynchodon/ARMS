@@ -121,15 +121,7 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			NetworkNode node;
-			if (Registrar.TryGetValue(entityId, out node))
-			{
-				storage = node.Storage;
-				return;
-			}
-
-			NetworkClient client = new NetworkClient(block);
-			storage = client.GetStorage();
+			storage = NetworkClient.GetOrCreateRelayPart(block).GetStorage();
 		}
 
 		/// <summary>

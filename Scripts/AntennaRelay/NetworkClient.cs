@@ -2,16 +2,31 @@ using System;
 using Rynchodon.Attached;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 
 namespace Rynchodon.AntennaRelay
 {
 	/// <summary>
 	/// Block that is a partial participant in a network, only connects to a single node.
 	/// </summary>
-	public class NetworkClient
+	public class NetworkClient : IRelayPart
 	{
 
 		private const ulong UpdateFrequency = 10ul;
+
+		/// <summary>
+		/// If a node or client already exists for the block, returns that. Otherwise, creates a new NetworkClient and returns it.
+		/// </summary>
+		public static IRelayPart GetOrCreateRelayPart(IMyCubeBlock block)
+		{
+			NetworkNode node;
+			if (Registrar.TryGetValue(block, out node))
+				return node;
+			NetworkClient client;
+			if (Registrar.TryGetValue(block, out client))
+				return client;
+			return new NetworkClient(block);
+		}
 
 		private readonly IMyCubeBlock m_block;
 		private readonly Logger m_logger;
@@ -23,11 +38,16 @@ namespace Rynchodon.AntennaRelay
 
 		private Action<Message> m_messageHandler;
 
+		/// <summary>
+		/// Use GetOrCreateRelayPart if client may already exist.
+		/// </summary>
 		public NetworkClient(IMyCubeBlock block, Action<Message> messageHandler = null)
 		{
 			this.m_block = block;
 			this.m_messageHandler = messageHandler;
 			this.m_logger = new Logger(GetType().Name, block);
+
+			Registrar.Add(block, this);
 		}
 
 		private bool IsConnected(NetworkNode node)

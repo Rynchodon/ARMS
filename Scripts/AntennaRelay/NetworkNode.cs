@@ -11,7 +11,7 @@ namespace Rynchodon.AntennaRelay
 	/// <summary>
 	/// Full participant in a network, connects to other nodes.
 	/// </summary>
-	public class NetworkNode
+	public class NetworkNode : IRelayPart
 	{
 
 		public enum CommunicationType : byte
@@ -25,6 +25,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private static int s_searchIdPool;
+		/// <summary>Storages that receive the position of this node but not data.</summary>
 		private static HashSet<NetworkStorage> s_sendPositionTo = new HashSet<NetworkStorage>();
 
 		static NetworkNode()
@@ -108,6 +109,11 @@ namespace Rynchodon.AntennaRelay
 					if (node.Storage != this.Storage)
 						node.Storage = this.Storage;
 			}
+		}
+
+		public NetworkStorage GetStorage()
+		{
+			return Storage;
 		}
 
 		/// <summary>
@@ -268,9 +274,12 @@ namespace Rynchodon.AntennaRelay
 			// connections don't update immediately, so don't worry about a single message (per block)
 			m_logger.debugLog(!IsConnectedTo(Storage.PrimaryNode), "Not connected to primary node", Logger.severity.INFO);
 
+			IMyEntity topEntity = m_entity.GetTopMostParent();
+
 			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
-			s_sendPositionTo.Add(Storage);
-			NetworkStorage.Receive(s_sendPositionTo, new LastSeen(m_entity.GetTopMostParent(), LastSeen.UpdateTime.Broadcasting));
+			NetworkStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
+
+			Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new RadarInfo(topEntity)));
 		}
 
 		/// <summary>
@@ -310,17 +319,19 @@ namespace Rynchodon.AntennaRelay
 			// test radio
 			if (this.m_comp_radio != null && other.m_comp_radio != null)
 			{
+				// check radio antenna to radio antenna
 				CommunicationType radioResult;
 				radioResult = this.m_comp_radio.TestConnection(other.m_comp_radio);
 				if (radioResult != CommunicationType.None)
 					return radioResult;
-			}
 
-			if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
-				if (s_sendPositionTo.Add(other.Storage))
-					m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
-				else
-					m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
+				// check beacon to radio antenna
+				if (this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
+					if (s_sendPositionTo.Add(other.Storage))
+						m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
+					else
+						m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
+			}
 
 			return CommunicationType.None;
 		}

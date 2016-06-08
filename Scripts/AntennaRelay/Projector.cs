@@ -752,7 +752,10 @@ namespace Rynchodon.AntennaRelay
 			if (!CheckRelations(seen.Entity))
 				return false;
 
-			TimeSpan time = seen.GetTimeSinceLastSeen();
+			if (seen.Info == null)
+				return false;
+
+			TimeSpan time = Globals.ElapsedTime - seen.Info.DetectedAt;
 			if (time > Static.displayAllowed)
 			{
 				if (time > Static.keepInCache)

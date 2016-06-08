@@ -57,7 +57,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
 		private readonly MyInventoryBase myInventory;
-		public readonly NetworkClient m_netClient;
+		public readonly IRelayPart m_relayPart;
 
 		private ulong nextCheckInventory;
 		private MyFixedPoint prev_mass;
@@ -73,10 +73,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			m_weaponTarget = weapon;
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
-			if (m_weaponTarget.m_netClient != null)
-				m_netClient = m_weaponTarget.m_netClient;
-			else
-				m_netClient = new NetworkClient(m_weaponTarget.CubeBlock);
+			m_relayPart = NetworkClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
 
 			var defn = CubeBlock.GetCubeBlockDefinition();
 

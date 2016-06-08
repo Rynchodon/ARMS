@@ -239,6 +239,7 @@ namespace Rynchodon.Update
 			#endregion
 
 			#region Radar
+			// must come after nodes are created
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{

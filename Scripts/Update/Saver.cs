@@ -16,6 +16,7 @@ namespace Rynchodon.Update
 	/// <summary>
 	/// Saves/loads persistent data to/from a save file.
 	/// </summary>
+	/// TODO: client saving
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Saver : MySessionComponentBase
 	{

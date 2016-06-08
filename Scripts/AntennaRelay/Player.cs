@@ -128,7 +128,7 @@ namespace Rynchodon.AntennaRelay
 				}
 				else if (controlled is IMyCubeBlock)
 				{
-					NetworkClient shipClient = new NetworkClient((IMyCubeBlock)controlled);
+					IRelayPart shipClient = NetworkClient.GetOrCreateRelayPart((IMyCubeBlock)controlled);
 					m_storage = shipClient.GetStorage;
 					m_soundEmitter = new MyEntity3DSoundEmitter((MyEntity)controlled);
 					myLogger.debugLog("now controlling a ship", Logger.severity.DEBUG);

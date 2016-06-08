@@ -387,7 +387,7 @@ namespace Rynchodon.Weapons
 		private IMyEntity[] m_ignoreList = new IMyEntity[2];
 
 		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
-		public readonly NetworkClient m_netClient;
+		private readonly IRelayPart m_relayPart;
 
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
 
@@ -480,7 +480,7 @@ namespace Rynchodon.Weapons
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
 
 			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
-				m_netClient = new NetworkClient(weapon);
+				m_relayPart = NetworkClient.GetOrCreateRelayPart(weapon);
 
 			WeaponDefinition = MyDefinitionManager.Static.GetWeaponDefinition(((MyWeaponBlockDefinition)weapon.GetCubeBlockDefinition()).WeaponDefinitionId);
 
@@ -666,8 +666,8 @@ namespace Rynchodon.Weapons
 
 			UpdateTarget();
 
-			if ((CurrentTarget.TType == TargetType.None || CurrentTarget is LastSeenTarget) && m_netClient != null)
-				GetLastSeenTarget(m_netClient.GetStorage(), LoadedAmmo.MissileDefinition.MaxTrajectory);
+			if ((CurrentTarget.TType == TargetType.None || CurrentTarget is LastSeenTarget) && m_relayPart != null)
+				GetLastSeenTarget(m_relayPart.GetStorage(), LoadedAmmo.MissileDefinition.MaxTrajectory);
 		}
 
 		private void Update100()

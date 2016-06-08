@@ -221,8 +221,8 @@ namespace Rynchodon.Weapons.Guided
 		private Ammo.AmmoDescription myDescr
 		{ get { return myAmmo.Description; } }
 
-		private NetworkClient m_launcherClient
-		{ get { return m_launcher.m_netClient; } }
+		private IRelayPart m_launcherRelay
+		{ get { return m_launcher.m_relayPart; } }
 
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
@@ -250,7 +250,7 @@ namespace Rynchodon.Weapons.Guided
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
 
-			NetworkStorage storage = launcher.m_netClient.GetStorage();
+			NetworkStorage storage = launcher.m_relayPart.GetStorage();
 			if (storage == null)
 			{
 				myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
@@ -715,13 +715,13 @@ namespace Rynchodon.Weapons.Guided
 			if (myAntenna != null)
 				myAntenna.Update100();
 
-			if (m_launcherClient == null)
+			if (m_launcherRelay == null)
 			{
 				myLogger.debugLog("No launcher client", Logger.severity.WARNING);
 				return;
 			}
 
-			NetworkStorage store = m_launcherClient.GetStorage();
+			NetworkStorage store = m_launcherRelay.GetStorage();
 			if (store == null)
 			{
 				myLogger.debugLog("Launcher's net client does not have a storage", Logger.severity.WARNING);

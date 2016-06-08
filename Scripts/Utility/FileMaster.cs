@@ -96,7 +96,7 @@ namespace Rynchodon.Utility
 				catch (Exception) { }
 				if (MyAPIGateway.Utilities.FileExistsInLocalStorage(delete, GetType()))
 				{
-					m_logger.alwaysLog("Failed to delete: " + delete, Logger.severity.WARNING);
+					m_logger.alwaysLog("Failed to delete: " + delete, Logger.severity.INFO);
 					break;
 				}
 				m_fileAgeName.RemoveAt(0);
