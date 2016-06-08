@@ -63,7 +63,7 @@ namespace Rynchodon.AntennaRelay
 						m_type = EntityType.Grid;
 					else if (Entity is IMyCharacter)
 						m_type = EntityType.Character;
-					else if (Entity.ToString().StartsWith("MyMissile"))
+					else if (Entity.IsMissile())
 						m_type = EntityType.Missile;
 					else
 						m_type = EntityType.Unknown;

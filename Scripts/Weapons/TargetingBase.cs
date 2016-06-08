@@ -457,7 +457,7 @@ namespace Rynchodon.Weapons
 					continue;
 				}
 
-				if (entity.ToString().StartsWith("MyMissile"))
+				if (entity.IsMissile())
 				{
 					AddTarget(TargetType.Missile, entity);
 					continue;
@@ -756,7 +756,7 @@ namespace Rynchodon.Weapons
 					}
 
 					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.ToString().StartsWith("MyMissile")))
+					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.IsMissile()))
 						continue;
 
 					IMyEntity projectile = entity;

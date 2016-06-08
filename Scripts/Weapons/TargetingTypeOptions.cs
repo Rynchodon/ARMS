@@ -80,7 +80,7 @@ namespace Rynchodon.Weapons
 				return CanTargetType(TargetType.Character);
 			if (entity is IMyMeteor)
 				return CanTargetType(TargetType.Meteor);
-			if (entity.ToString().StartsWith("MyMissile"))
+			if (entity.IsMissile())
 				return CanTargetType(TargetType.Missile);
 
 			return false;

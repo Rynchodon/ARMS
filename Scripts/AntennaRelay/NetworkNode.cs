@@ -42,7 +42,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly Func<string> m_loggingName;
 		private readonly Func<long> m_ownerId;
 		private readonly IMyEntity m_entity;
-		private readonly IMyPlayer m_player;
+		public readonly IMyPlayer m_player;
 		private readonly IMyCubeBlock m_comp_blockAttach;
 		private readonly ComponentRadio m_comp_radio;
 		private readonly ComponentLaser m_comp_laser;

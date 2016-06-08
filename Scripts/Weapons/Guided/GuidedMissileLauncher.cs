@@ -40,7 +40,7 @@ namespace Rynchodon.Weapons.Guided
 
 		private static void Entities_OnEntityAdd(IMyEntity obj)
 		{
-			if (obj is MyAmmoBase && obj.ToString().StartsWith("MyMissile"))
+			if (obj.IsMissile())
 			{
 				Registrar.ForEach((GuidedMissileLauncher launcher) => {
 					return launcher.MissileBelongsTo(obj);

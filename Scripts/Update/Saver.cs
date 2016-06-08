@@ -199,7 +199,7 @@ namespace Rynchodon.Update
 					store = node.Storage;
 					if (store == null)
 					{
-						m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.WARNING);
+						m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.ERROR);
 						continue;
 					}
 				}
@@ -210,7 +210,7 @@ namespace Rynchodon.Update
 					if (ls.IsValid)
 						store.Receive(ls);
 					else
-						m_logger.debugLog("failed to create a valid last seen from builder", Logger.severity.WARNING);
+						m_logger.debugLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.WARNING);
 				}
 
 				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
@@ -230,7 +230,7 @@ namespace Rynchodon.Update
 					if (msg.IsValid)
 						store.Receive(msg);
 					else
-						m_logger.debugLog("failed to create a valid message from builder", Logger.severity.WARNING);
+						m_logger.debugLog("failed to create a valid message from builder for " + bm.DestCubeBlock, Logger.severity.WARNING);
 				}
 
 				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
@@ -352,6 +352,9 @@ namespace Rynchodon.Update
 				Dictionary<long, NetworkStorage.Builder_NetworkStorage> storages = new Dictionary<long, NetworkStorage.Builder_NetworkStorage>();
 
 				Registrar.ForEach<NetworkNode>(node => {
+					// players never load properly
+					if (node.m_player != null)
+						return;
 					if (node.Storage != null && !storages.ContainsKey(node.Storage.PrimaryNode.EntityId))
 					{
 						NetworkStorage.Builder_NetworkStorage bns = node.Storage.GetBuilder();

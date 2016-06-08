@@ -1,4 +1,5 @@
 using Sandbox.Game.Entities;
+using Sandbox.Game.Weapons;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
@@ -47,10 +48,19 @@ namespace Rynchodon
 			if (entity is MyPlanet)
 				return "Planet";
 
-			if (entity.ToString().StartsWith("MyMissile"))
+			if (entity.IsMissile())
 				return "Missile";
 
 			return entity.getBestName();
+		}
+
+		/// <summary>
+		/// Current best hack for determining if an entity is a missile.
+		/// </summary>
+		public static bool IsMissile(this IMyEntity entity)
+		{
+			// only MyMissile derives from MyAmmoBase
+			return entity is MyAmmoBase;
 		}
 
 	}

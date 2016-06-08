@@ -6,10 +6,12 @@ using Rynchodon.Threading;
 using Rynchodon.Update;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
 using VRage.Game;
+using VRage.Game.Entity;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -205,7 +207,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly long m_owner;
 
 		private Cluster myCluster;
-		private IMyEntity myRock;
+		private MyEntity myRock;
 		private TimeSpan myGuidanceEnds;
 		private float addSpeedPerUpdate, acceleration;
 		private Stage m_stage;
@@ -351,18 +353,36 @@ namespace Rynchodon.Weapons.Guided
 
 		private void MyEntity_OnClose(IMyEntity obj)
 		{
-			if (AllGuidedMissiles != null)
-			{
-				AllGuidedMissiles.Remove(this);
-				RemoveRock();
+			if (AllGuidedMissiles == null)
+				return;
 
-				myLogger.debugLog("EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength);
-				if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
+			myLogger.debugLog("on close");
+
+			AllGuidedMissiles.Remove(this);
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			RemoveRock();
+
+			// destroy all missiles in radius
+			BoundingSphereD explosion = new BoundingSphereD(MyEntity.GetPosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
+			List<MyEntity> entitiesInExplosion = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref explosion, entitiesInExplosion, MyEntityQueryType.Dynamic);
+			foreach (MyEntity entity in entitiesInExplosion)
+				if (entity.IsMissile())
 				{
-					myLogger.debugLog("Creating EMP effect", Logger.severity.DEBUG);
-					BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-					EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
+					GuidedMissile hit;
+					if (Registrar.TryGetValue(entity, out hit))
+						hit.Explode();
+					else
+						entity.Delete();
 				}
+
+			if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
+			{
+				myLogger.debugLog("Creating EMP effect. EMP_Seconds: " + myDescr.EMP_Seconds + ", EMP_Strength: " + myDescr.EMP_Strength);
+				BoundingSphereD empSphere = new BoundingSphereD(ProjectilePosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
+				EMP.ApplyEMP(empSphere, myDescr.EMP_Strength, TimeSpan.FromSeconds(myDescr.EMP_Seconds));
 			}
 		}
 
@@ -461,14 +481,39 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
-			{ // check for proxmity det
+			if (!MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			if (myDescr.DetonateRange > 0f)
+			{ // detonate missile before it hits anything to increase the damage
+				Vector3D position = MyEntity.GetPosition();
+				Vector3D contact = Vector3D.Zero;
+				if (MyHudCrosshair.GetTarget(position, position + MyEntity.Physics.LinearVelocity * Globals.UpdateDuration * 5f, ref contact))
+				{
+					myLogger.debugLog("detonating in front of entity at " + contact);
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+						if (Vector3D.DistanceSquared(position, contact) > 1f)
+						{
+							MyEntity.SetPosition(contact - Vector3.Normalize(MyEntity.Physics.LinearVelocity));
+							myLogger.debugLog("moved entity from " + position + " to " + MyEntity.GetPosition());
+						}
+						Explode();
+					}, myLogger);
+					m_stage = Stage.Terminated;
+					return;
+				}
+			}
+
+			{ // detonate when barely missing the target
 				if (MyAPIGateway.Multiplayer.IsServer && angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
 				{
 					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity());
 					//myLogger.debugLog("distSquared: " + distSquared, "Update()");
 					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
 					{
-						Explode();
+						myLogger.debugLog("proximity detonation");
+						MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode, myLogger);
+						m_stage = Stage.Terminated;
 						return;
 					}
 				}
@@ -540,39 +585,39 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Spawns a rock to explode the missile.
+		/// Only call from game thread! Spawns a rock to explode the missile.
 		/// </summary>
-		/// <remarks>
-		/// Runs on separate thread. (sort-of)
-		/// </remarks>
 		private void Explode()
 		{
 			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				if (MyEntity.Closed)
-					return;
-				m_stage = Stage.Terminated;
+			if (MyEntity.Closed)
+				return;
+			m_stage = Stage.Terminated;
 
-				MyEntity.Physics.LinearVelocity = Vector3.Zero;
+			MyEntity.Physics.LinearVelocity = Vector3.Zero;
 
-				RemoveRock();
+			RemoveRock();
 
-				MyObjectBuilder_InventoryItem item = new MyObjectBuilder_InventoryItem() { Amount = 100, Content = new MyObjectBuilder_Ore() { SubtypeName = "Stone" } };
+			MyObjectBuilder_InventoryItem item = new MyObjectBuilder_InventoryItem() { Amount = 1, PhysicalContent = new MyObjectBuilder_Ore() { SubtypeName = "Stone" } };
 
-				MyObjectBuilder_FloatingObject rockBuilder = new MyObjectBuilder_FloatingObject();
-				rockBuilder.Item = item;
-				rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
-				rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
-				{
-					Position = MyEntity.GetPosition(),
-					Forward = (Vector3)MyEntity.WorldMatrix.Forward,
-					Up = (Vector3)MyEntity.WorldMatrix.Up
-				};
+			MyObjectBuilder_FloatingObject rockBuilder = new MyObjectBuilder_FloatingObject();
+			rockBuilder.Item = item;
+			rockBuilder.PersistentFlags = MyPersistentEntityFlags2.InScene;
+			rockBuilder.PositionAndOrientation = new MyPositionAndOrientation()
+			{
+				Position = MyEntity.GetPosition(),
+				Forward = Vector3.Forward,
+				Up = Vector3.Up
+			};
 
-				myRock = MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(rockBuilder);
-				//myLogger.debugLog("created rock at " + MyEntity.GetPosition() + ", " + myRock.getBestName(), "Explode()");
-			}, myLogger);
+			myRock = MyEntities.CreateFromObjectBuilderAndAdd(rockBuilder);
+			if (myRock == null)
+			{
+				myLogger.alwaysLog("failed to create rock, builder:\n" + MyAPIGateway.Utilities.SerializeToXML(rockBuilder), Logger.severity.ERROR);
+				return;
+			}
+			myLogger.debugLog("created rock at " + myRock.PositionComp.GetPosition() + ", " + myRock.getBestName());
 		}
 
 		/// <summary>
