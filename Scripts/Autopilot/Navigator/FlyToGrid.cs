@@ -19,9 +19,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public enum LandingState : byte { None, Approach, Holding, LineUp, Landing, Catch }
 
-		/// <summary>Multiply by destination radius to get the lineup distance.</summary>
-		private const float MinLineupDist = 0.1f, MaxLineupDist = 10f;
-
 		private static readonly TimeSpan SearchTimeout = new TimeSpan(0, 1, 0);
 		private static HashSet<long> s_reservedTargets = new HashSet<long>();
 
@@ -447,7 +444,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 						if (m_navSet.DirectionMatched())
 						{
-							if (m_navSet.Settings_Current.Distance < 10f)
+							if (m_navSet.Settings_Current.Distance < 1f)
 							{
 								m_logger.debugLog("Reached line: " + m_navSet.Settings_Current.Distance);
 								m_landingState = LandingState.Landing;

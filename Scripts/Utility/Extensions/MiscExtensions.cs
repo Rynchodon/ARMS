@@ -59,7 +59,7 @@ namespace Rynchodon
 			entity = entity.GetTopMostParent();
 			if (entity.Physics == null)
 				return Vector3.Zero;
-			return entity.Physics.LinearVelocity;
+			return entity.Physics.LinearVelocity * Globals.SimSpeed;
 		}
 
 		public static Vector3D GetCentre(this IMyCubeBlock block)

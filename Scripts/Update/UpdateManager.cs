@@ -387,6 +387,8 @@ namespace Rynchodon.Update
 
 		private bool player_wait_message = false;
 
+		private DateTime m_lastUpdate;
+
 		public UpdateManager()
 		{
 			myLogger = new Logger("UpdateManager", () => string.Empty, () => { return ManagerStatus.ToString(); });
@@ -549,15 +551,17 @@ namespace Rynchodon.Update
 				}
 				Dictionary<Action, uint> Unregister = null;
 
-				try
-				{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
-				catch (Exception ex)
-				{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
+				if (AddRemoveActions.Count != 0)
+					try
+					{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
+					catch (Exception ex)
+					{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
 
-				try
-				{ ExternalRegistrations.DequeueAll(action => action.Invoke()); }
-				catch (Exception ex)
-				{ myLogger.alwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
+				if (ExternalRegistrations.Count != 0)
+					try
+					{ ExternalRegistrations.DequeueAll(action => action.Invoke()); }
+					catch (Exception ex)
+					{ myLogger.alwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Globals.UpdateCount % pair.Key == 0)
@@ -593,6 +597,16 @@ namespace Rynchodon.Update
 			finally
 			{
 				Globals.UpdateCount++;
+
+				float updateTimeSec = (float)(DateTime.UtcNow - m_lastUpdate).TotalSeconds;
+				if (updateTimeSec < 1f)
+				{
+					float instantSimSpeed = Globals.UpdateDuration / updateTimeSec;
+					Globals.SimSpeed = Globals.SimSpeed * 0.9f + instantSimSpeed * 0.1f;
+					//myLogger.debugLog("instantSimSpeed: " + instantSimSpeed + ", SimSpeed: " + Globals.SimSpeed);
+				}
+				m_lastUpdate = DateTime.UtcNow;
+
 				MainLock.MainThread_AcquireExclusive();
 			}
 		}

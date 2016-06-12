@@ -7,6 +7,7 @@ using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
@@ -41,6 +42,8 @@ namespace Rynchodon.Weapons
 		}
 
 		public enum Control : byte { Off, On, Engager }
+
+		private enum SpecialTarget : byte { None, EntityId, Golis }
 
 		#region Static
 
@@ -117,12 +120,25 @@ namespace Rynchodon.Weapons
 			valueControl.Setter = SetBlockList;
 			Static.sharedControls.Add(textBox);
 
+			MyTerminalControlCheckbox<MyUserControllableGun> targetById = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByEntityId", MyStringId.GetOrCompute("Target by Entity ID"),
+				MyStringId.GetOrCompute("Use ID of an entity for targeting"));
+			AddGetSet(targetById, SpecialTarget.EntityId);
+			Static.sharedControls.Add(targetById);
+
 			textBox = new MyTerminalControlTextbox<MyUserControllableGun>("EntityId", MyStringId.GetOrCompute("Target Entity ID"),
 				MyStringId.GetOrCompute("ID of entity to target"));
+			textBox.Visible = block => GetEnum(block, SpecialTarget.EntityId);
 			valueControl = textBox;
 			valueControl.Getter = GetTargetEntity;
 			valueControl.Setter = SetTargetEntity;
 			Static.sharedControls.Add(textBox);
+
+			//MyTerminalControlCheckbox<MyUserControllableGun> targetGolis = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByGps", MyStringId.GetOrCompute("Target by GPS"),
+			//MyStringId.GetOrCompute("Use GPS for targeting"));
+			//AddGetSet(targetGolis, SpecialTarget.Golis);
+			//Static.sharedControls.Add(targetGolis);
+
+			// GPS list
 
 			Static.fixedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
 
@@ -131,6 +147,7 @@ namespace Rynchodon.Weapons
 			rangeSlider.Normalizer = NormalizeRange;
 			rangeSlider.Denormalizer = DenormalizeRange;
 			rangeSlider.Writer = (x, result) => result.Append(PrettySI.makePretty(GetRange(x))).Append('m');
+			rangeSlider.Visible = RangeSliderVisible;
 			IMyTerminalValueControl<float> asInter = (IMyTerminalValueControl<float>)rangeSlider;
 			asInter.Getter = GetRange;
 			asInter.Setter = SetRange;
@@ -157,14 +174,20 @@ namespace Rynchodon.Weapons
 
 		private static void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetType flag)
 		{
-			valueControl.Getter = block => GetFlag(block, flag);
-			valueControl.Setter = (block, value) => SetFlag(block, flag, value);
+			valueControl.Getter = block => GetEnum(block, flag);
+			valueControl.Setter = (block, value) => SetEnum(block, flag, value);
 		}
 
 		private static void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetingFlags flag)
 		{
-			valueControl.Getter = block => GetFlag(block, flag);
-			valueControl.Setter = (block, value) => SetFlag(block, flag, value);
+			valueControl.Getter = block => GetEnum(block, flag);
+			valueControl.Setter = (block, value) => SetEnum(block, flag, value);
+		}
+
+		private static void AddGetSet(IMyTerminalValueControl<bool> valueControl, SpecialTarget which)
+		{
+			valueControl.Getter = block => GetEnum(block, which);
+			valueControl.Setter = (block, value) => SetEnum(block, which, value);
 		}
 
 		private static void CloneTurretControl_OnOff(string id, TargetType flag)
@@ -280,7 +303,7 @@ namespace Rynchodon.Weapons
 			return 0f;
 		}
 
-		private static bool GetFlag(IMyTerminalBlock block, TargetType flag)
+		private static bool GetEnum(IMyTerminalBlock block, TargetType flag)
 		{
 			WeaponTargeting instance;
 			if (TryGetWeaponTargeting(block, out instance))
@@ -288,7 +311,7 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
-		private static void SetFlag(IMyTerminalBlock block, TargetType flag, bool value)
+		private static void SetEnum(IMyTerminalBlock block, TargetType flag, bool value)
 		{
 			WeaponTargeting instance;
 			if (!TryGetWeaponTargeting(block, out instance))
@@ -299,7 +322,7 @@ namespace Rynchodon.Weapons
 				instance.m_termControl_targetType_ev.Value &= ~flag;
 		}
 
-		private static bool GetFlag(IMyTerminalBlock block, TargetingFlags flag)
+		private static bool GetEnum(IMyTerminalBlock block, TargetingFlags flag)
 		{
 			WeaponTargeting instance;
 			if (TryGetWeaponTargeting(block, out instance))
@@ -307,7 +330,7 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
-		private static void SetFlag(IMyTerminalBlock block, TargetingFlags flag, bool value)
+		private static void SetEnum(IMyTerminalBlock block, TargetingFlags flag, bool value)
 		{
 			WeaponTargeting instance;
 			if (!TryGetWeaponTargeting(block, out instance))
@@ -316,6 +339,29 @@ namespace Rynchodon.Weapons
 				instance.m_termControl_targetFlag_ev.Value |= flag;
 			else
 				instance.m_termControl_targetFlag_ev.Value &= ~flag;
+		}
+
+		private static bool GetEnum(IMyTerminalBlock block, SpecialTarget which)
+		{
+			WeaponTargeting instance;
+			if (!TryGetWeaponTargeting(block, out instance))
+				return false;
+			return instance.m_termControl_specialTarget_ev.Value == which;
+		}
+
+		private static void SetEnum(IMyTerminalBlock block, SpecialTarget which, bool value)
+		{
+			WeaponTargeting instance;
+			if (!TryGetWeaponTargeting(block, out instance))
+				return;
+			if (value)
+			{
+				instance.m_termControl_specialTarget_ev.Value = which;
+				// ISSUE: using SwitchToControlPanelBlock can cause input to be applied to new page, need to delay until mouse/key/button up
+				//MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
+			}
+			else
+				instance.m_termControl_specialTarget_ev.Value = SpecialTarget.None;
 		}
 
 		private static StringBuilder GetBlockList(IMyTerminalBlock block)
@@ -352,6 +398,15 @@ namespace Rynchodon.Weapons
 				return;
 
 			instance.m_termControl_targetEntity_ev.Value = value;
+		}
+
+		private static bool RangeSliderVisible(IMyTerminalBlock block)
+		{
+			WeaponTargeting instance;
+			if (!TryGetWeaponTargeting(block, out instance))
+				return false;
+
+			return instance.IsNormalTurret || !instance.GuidedLauncher;
 		}
 
 		private static void UpdateVisual()
@@ -392,10 +447,12 @@ namespace Rynchodon.Weapons
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
 
 		private string[] m_termControl_blockList;
+		private Vector3D? m_termControl_targetGolis;
 		private long? m_termControl_targetEntityId;
 
 		private EntityValue<TargetType> m_termControl_targetType_ev;
 		private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
+		private EntityValue<SpecialTarget> m_termControl_specialTarget_ev;
 		private EntityValue<float> m_termControl_range_ev;
 		private EntityStringBuilder m_termControl_blockList_ev, m_termControl_targetEntity_ev;
 
@@ -475,6 +532,7 @@ namespace Rynchodon.Weapons
 				else
 					m_termControl_targetEntityId = null;
 			});
+			this.m_termControl_specialTarget_ev = new EntityValue<SpecialTarget>(weapon, index++, UpdateVisual, SpecialTarget.EntityId);
 
 			if (Static.TPro_Shoot == null)
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
@@ -687,7 +745,7 @@ namespace Rynchodon.Weapons
 			ClearBlacklist();
 
 			Interpreter.UpdateInstruction();
-			Options.Assimilate(Interpreter.Options, m_termControl_targetType_ev.Value, m_termControl_targetFlag_ev.Value, m_termControl_range_ev.Value, m_termControl_targetEntityId, m_termControl_blockList);
+			Options.Assimilate(Interpreter.Options, m_termControl_targetType_ev.Value, m_termControl_targetFlag_ev.Value, m_termControl_range_ev.Value, m_termControl_targetGolis, m_termControl_targetEntityId, m_termControl_blockList);
 			Update100_Options_TargetingThread(Options);
 
 			if (CurrentControl == Control.Engager)

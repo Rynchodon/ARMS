@@ -81,6 +81,16 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
+		public DirectionWorld LinearVelocity
+		{
+			get { return Block.Physics.LinearVelocity * Globals.SimSpeed; }
+		}
+
+		public DirectionWorld AngularVelocity
+		{
+			get { return Block.Physics.AngularVelocity * Globals.SimSpeed; }
+		}
+
 		/// <summary>
 		/// Creates a Mover for a given ShipControllerBlock and AllNavigationSettings
 		/// </summary>
@@ -165,8 +175,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			Thrust.Update();
 
-			DirectionWorld velocity = Block.CubeGrid.Physics.LinearVelocity;
-			Vector3 blockVelocity = velocity.ToBlock(Block.CubeBlock);
+			Vector3 blockVelocity = LinearVelocity.ToBlock(Block.CubeBlock);
 
 			m_moveAccel = acceleration;
 			CalcMove(ref blockVelocity);
@@ -220,7 +229,7 @@ namespace Rynchodon.Autopilot.Movement
 			Thrust.Update();
 
 			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
-			Vector3 velocity = Block.CubeGrid.Physics.LinearVelocity;
+			Vector3 velocity = LinearVelocity;
 
 			// switch to using local vectors
 
@@ -575,14 +584,15 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate_Stop()", "CalcRotate_Stop()");
 
-			if (!Thrust.CanMoveAnyDirection() || Block.Physics.LinearVelocity.LengthSquared() > 1f)
+			Vector3 linearVelocity = LinearVelocity;
+			if (!Thrust.CanMoveAnyDirection() || linearVelocity.LengthSquared() > 1f)
 			{
 				m_logger.debugLog("rotate to stop");
 
 				if (SignificantGravity())
-					CalcRotate_InGravity(RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+					CalcRotate_InGravity(RelativeDirection3F.FromWorld(Block.CubeGrid, -linearVelocity));
 				else
-					CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromWorld(Block.CubeGrid, -Block.Physics.LinearVelocity));
+					CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromWorld(Block.CubeGrid, -linearVelocity));
 
 				return;
 			}
@@ -655,7 +665,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			float primaryAccel = Math.Max(Thrust.PrimaryForce / Block.Physics.Mass - Thrust.GravityStrength, 1f); // obviously less than actual value but we do not need maximum theoretical acceleration
 
-			DirectionGrid moveAccel = m_moveAccel != Vector3.Zero ? ((DirectionBlock)m_moveAccel).ToGrid(Block.CubeBlock) : ((DirectionWorld)(Block.Physics.LinearVelocity * -0.5f)).ToGrid(Block.CubeGrid);
+			DirectionGrid moveAccel = m_moveAccel != Vector3.Zero ? ((DirectionBlock)m_moveAccel).ToGrid(Block.CubeBlock) : LinearVelocity.ToGrid(Block.CubeGrid) * -0.5f;
 
 			if (moveAccel.vector.LengthSquared() > primaryAccel * primaryAccel)
 			{
@@ -704,7 +714,6 @@ namespace Rynchodon.Autopilot.Movement
 		private void in_CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, IMyEntity targetEntity)
 		{
 			m_logger.debugLog(Direction == null, "Direction == null", Logger.severity.ERROR);
-			Vector3 angularVelocity = ((DirectionWorld)(-Block.Physics.AngularVelocity)).ToBlock(Block.CubeBlock);
 
 			m_gyro.Update();
 			float minimumMoment = Math.Min(m_gyro.InvertedInertiaMoment.Min(), MaxInverseTensor);
@@ -782,7 +791,7 @@ namespace Rynchodon.Autopilot.Movement
 			// adjustment to face a moving entity
 			if (targetEntity != null)
 			{
-				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - Block.Physics.LinearVelocity;
+				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - LinearVelocity;
 				float distance = Vector3.Distance(targetEntity.GetCentre(), Block.CubeBlock.GetPosition());
 
 				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", tangentialVelocity: " + tangentialVelocity + ", localTangVel: " + localTangVel, "in_CalcRotate()");
@@ -798,9 +807,11 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			//m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity, "in_CalcRotate()");
 
-			m_rotateForceRatio = (m_rotateTargetVelocity - angularVelocity) / (minimumMoment * m_gyro.GyroForce);
+			// angular velocity is reversed
+			Vector3 angularVelocity = AngularVelocity.ToBlock(Block.CubeBlock);// ((DirectionWorld)(-Block.Physics.AngularVelocity)).ToBlock(Block.CubeBlock);
+			m_rotateForceRatio = (m_rotateTargetVelocity + angularVelocity) / (minimumMoment * m_gyro.GyroForce);
 
-			m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity - angularVelocity));
+			m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity + angularVelocity));
 			m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio);
 
 			// dampeners
@@ -881,12 +892,11 @@ namespace Rynchodon.Autopilot.Movement
 
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 
-			IMyEntity obstruction = Pathfinder.MoveObstruction ?? Pathfinder.RotateObstruction;
-
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (m_moveForceRatio == Vector3.Zero && m_rotateTargetVelocity == Vector3.Zero)
 			{
-				if (CheckStuck(MoveAwayAfter) && obstruction != null)
+				IMyEntity obstruction = Pathfinder.MoveObstruction ?? Pathfinder.RotateObstruction;
+				if (obstruction != null && CheckStuck(MoveAwayAfter))
 				{
 					obstruction = obstruction.GetTopMostParent();
 					Vector3 displacement = Block.CubeBlock.GetPosition() - obstruction.GetCentre();
@@ -902,25 +912,25 @@ namespace Rynchodon.Autopilot.Movement
 				MoveAndRotateStop(false);
 				return;
 			}
-			else if (CheckStuck(WriggleAfter) && obstruction == null)// && Block.Physics.LinearVelocity.LengthSquared() < 1f && m_navSet.Settings_Current.Distance > 1f)
+
+			if (Pathfinder.MoveObstruction == null && CheckStuck(WriggleAfter))
 			{
 				ulong upWoMove = Globals.UpdateCount - m_lastMove;
 
-				// if pathfinder is clear and we are not moving, wriggle
-				float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
+				if (Pathfinder.RotateObstruction == null)
+				{
+					// wriggle
+					float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 
-				m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
+					m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
 
-				m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-				m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-				m_rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-
-				//m_rotateTargetVelocity.X += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
-				//m_rotateTargetVelocity.Y += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
-				//m_rotateTargetVelocity.Z += (MathHelper.Pi - MathHelper.TwoPi * (float)Globals.Random.NextDouble()) * wriggle;
+					m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+					m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+					m_rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				}
 
 				// increase force
-				m_moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.01f;
+				m_moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.1f;
 			}
 
 			//// clamp values and invert operations MoveAndRotate will perform

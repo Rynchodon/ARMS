@@ -25,6 +25,9 @@ namespace Rynchodon
 		/// <summary>The number of updates since mod started.</summary>
 		public static ulong UpdateCount = 0;
 
+		/// <summary>Simulation speed of game based on time between updates.</summary>
+		public static float SimSpeed = 1f;
+
 		/// <summary>Elapsed time based on number of updates i.e. not incremented while paused.</summary>
 		public static TimeSpan ElapsedTime
 		{

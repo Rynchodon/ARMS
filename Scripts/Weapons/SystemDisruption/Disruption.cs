@@ -86,7 +86,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			foreach (MyObjectBuilderType type in BlocksAffected)
 			{
 				var blockGroup = cache.GetBlocksOfType(type);
-				if (blockGroup != null)
+				if (blockGroup != null && blockGroup.Count != 0)
 				{
 					foreach (IMyCubeBlock block in blockGroup.OrderBy(OrderBy))
 					{

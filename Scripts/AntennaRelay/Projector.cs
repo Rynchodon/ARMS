@@ -174,15 +174,15 @@ namespace Rynchodon.AntennaRelay
 
 			Static.TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
-			//MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"),
-			//	MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
-			//IMyTerminalValueControl<bool> valueControlBool = control;
-			//valueControlBool.Getter = block => Static.MouseControls;
-			//valueControlBool.Setter = (block, value) => Static.MouseControls = value;
-			//Static.TermControls.Add(control);
-
-			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowBoundary", MyStringId.GetOrCompute("Show Boundary"), MyStringId.GetOrCompute("Show the boundaries of the hologram. User-specific setting."));
+			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"),
+				MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
 			IMyTerminalValueControl<bool> valueControlBool = control;
+			valueControlBool.Getter = block => Static.MouseControls;
+			valueControlBool.Setter = (block, value) => Static.MouseControls = value;
+			Static.TermControls.Add(control);
+
+			control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowBoundary", MyStringId.GetOrCompute("Show Boundary"), MyStringId.GetOrCompute("Show the boundaries of the hologram. User-specific setting."));
+			valueControlBool = control;
 			valueControlBool.Getter = block => ShowBoundary;
 			valueControlBool.Setter = (block, value) => ShowBoundary = value;
 			Static.TermControls.Add(control);
@@ -435,15 +435,31 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static void SetupProjection(IMyEntity entity)
 		{
+			Static.logger.debugLog(entity is IMyCubeGrid, "setup: " + entity.nameWithId());
+			if (entity is IMyCubeBlock)
+			{
+				IMyCubeBlock block2 = (IMyCubeBlock)entity;
+				Static.logger.debugLog("setup: " + block2.nameWithId() + ", on " + block2.CubeGrid.nameWithId());
+			}
+
 			if (entity.Physics != null && entity.Physics.Enabled)
 				entity.Physics.Enabled = false;
+
+			Static.logger.debugLog("initial flags: " + entity.Flags);
+
+			entity.Flags &= ~EntityFlags.Save;
+			entity.Flags &= ~EntityFlags.Sync;
+			entity.NeedsUpdate = MyEntityUpdateEnum.NONE;
+			((MyEntity)entity).IsPreview = true;
+
+			Static.logger.debugLog("final flags: " + entity.Flags);
 
 			MyCubeBlock block = entity as MyCubeBlock;
 			if (block != null)
 			{
 				if (block.UseObjectsComponent.DetectorPhysics != null && block.UseObjectsComponent.DetectorPhysics.Enabled)
 					block.UseObjectsComponent.DetectorPhysics.Enabled = false;
-				block.NeedsUpdate = MyEntityUpdateEnum.NONE;
+				//block.NeedsUpdate = MyEntityUpdateEnum.NONE;
 
 				if (block is Ingame.IMyBeacon || block is Ingame.IMyRadioAntenna)
 					((IMyFunctionalBlock)block).RequestEnable(false);
@@ -575,7 +591,10 @@ namespace Rynchodon.AntennaRelay
 			{
 				m_logger.debugLog("clearing all holo entities");
 				foreach (SeenHolo sh in m_holoEntities.Values)
+				{
+					m_logger.debugLog("removing " + sh.Seen.Entity.EntityId + "from m_holoEntities (clear all)");
 					OnRemove(sh);
+				}
 				m_holoEntities.Clear();
 			}
 
@@ -647,7 +666,14 @@ namespace Rynchodon.AntennaRelay
 			{
 				foreach (long entityId in m_holoEntitiesRemove)
 				{
-					SeenHolo sh = m_holoEntities[entityId];
+					m_logger.debugLog("removing " + entityId + "from m_holoEntities");
+					SeenHolo sh;
+					if (!m_holoEntities.TryGetValue(entityId, out sh))
+					{
+						// this may be normal
+						m_logger.debugLog("not in m_holoEntities: " + entityId, Logger.severity.WARNING);
+						continue;
+					}
 					OnRemove(sh);
 					m_holoEntities.Remove(entityId);
 				}
@@ -671,8 +697,8 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
-			//if (MyGuiScreenTerminal.GetCurrentScreen() == MyTerminalPageEnum.None && MyAPIGateway.Session.ControlledObject.Entity is IMyCharacter && Static.MouseControls)
-			//	CheckInput();
+			if (MyGuiScreenTerminal.GetCurrentScreen() == MyTerminalPageEnum.None && MyAPIGateway.Session.ControlledObject.Entity is IMyCharacter && Static.MouseControls)
+				CheckInput();
 
 			PositionWorld projectionCentre = m_offset.ToWorld(m_block);
 
@@ -697,55 +723,55 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		//private void CheckInput()
-		//{
-		//	MatrixD headMatrix = MyAPIGateway.Session.ControlledObject.GetHeadMatrix(true);
-		//	RayD ray = new RayD(headMatrix.Translation, headMatrix.Forward);
+		private void CheckInput()
+		{
+			MatrixD headMatrix = MyAPIGateway.Session.ControlledObject.GetHeadMatrix(true);
+			RayD ray = new RayD(headMatrix.Translation, headMatrix.Forward);
 
-		//	BoundingSphereD holoSphere = new BoundingSphereD(m_offset.ToWorld(m_block), m_radiusHolo.Value);
-		//	double tmin, tmax;
+			BoundingSphereD holoSphere = new BoundingSphereD(m_offset.ToWorld(m_block), m_radiusHolo.Value);
+			double tmin, tmax;
 
-		//	if (!holoSphere.IntersectRaySphere(ray, out tmin, out tmax) || tmin > CrosshairRange)
-		//		return;
+			if (!holoSphere.IntersectRaySphere(ray, out tmin, out tmax) || tmin > CrosshairRange)
+				return;
 
-		//	int scroll = MyAPIGateway.Input.DeltaMouseScrollWheelValue();
-		//	if (scroll != 0)
-		//	{
-		//		int scrollSteps = (int)Math.Round(scroll * InputScrollMulti);
-		//		float rangeMulti = 1f;
-		//		while (scrollSteps > 0)
-		//		{
-		//			rangeMulti *= ScrollRangeMulti;
-		//			scrollSteps--;
-		//		}
-		//		while (scrollSteps < 0)
-		//		{
-		//			rangeMulti /= ScrollRangeMulti;
-		//			scrollSteps++;
-		//		}
-		//		m_rangeDetection.Value *= rangeMulti;
-		//	}
+			int scroll = MyAPIGateway.Input.DeltaMouseScrollWheelValue();
+			if (scroll != 0)
+			{
+				int scrollSteps = (int)Math.Round(scroll * InputScrollMulti);
+				float rangeMulti = 1f;
+				while (scrollSteps > 0)
+				{
+					rangeMulti *= ScrollRangeMulti;
+					scrollSteps--;
+				}
+				while (scrollSteps < 0)
+				{
+					rangeMulti /= ScrollRangeMulti;
+					scrollSteps++;
+				}
+				m_rangeDetection.Value *= rangeMulti;
+			}
 
-		//	if (MyAPIGateway.Input.IsNewRightMousePressed())
-		//	{
-		//		m_centreEntityId.Value = 0L;
-		//	}
-		//	else if (MyAPIGateway.Input.IsNewLeftMousePressed())
-		//	{
-		//		IMyEntity firstHit = null;
-		//		double firstHitDistance = CrosshairRange;
+			if (MyAPIGateway.Input.IsNewRightMousePressed())
+			{
+				m_centreEntityId.Value = 0L;
+			}
+			else if (MyAPIGateway.Input.IsNewLeftMousePressed())
+			{
+				IMyEntity firstHit = null;
+				double firstHitDistance = CrosshairRange;
 
-		//		foreach (SeenHolo sh in m_holoEntities.Values)
-		//			if (sh.Holo.Render.Visible && sh.Holo.PositionComp.WorldAABB.Intersect(ref ray, out tmin, out tmax) && tmin < firstHitDistance)
-		//			{
-		//				firstHit = sh.Seen.Entity;
-		//				firstHitDistance = tmin;
-		//			}
+				foreach (SeenHolo sh in m_holoEntities.Values)
+					if (sh.Holo.Render.Visible && sh.Holo.PositionComp.WorldAABB.Intersect(ref ray, out tmin, out tmax) && tmin < firstHitDistance)
+					{
+						firstHit = sh.Seen.Entity;
+						firstHitDistance = tmin;
+					}
 
-		//		if (firstHit != null)
-		//			m_centreEntityId.Value = firstHit.EntityId;
-		//	}
-		//}
+				if (firstHit != null)
+					m_centreEntityId.Value = firstHit.EntityId;
+			}
+		}
 
 		private bool CanDisplay(LastSeen seen)
 		{
@@ -801,9 +827,6 @@ namespace Rynchodon.AntennaRelay
 			MyCubeGrid holo = (MyCubeGrid)MyEntities.CreateFromObjectBuilder(builder);
 			Profiler.EndProfileBlock();
 
-			holo.IsPreview = true;
-			holo.Save = false;
-
 			Profiler.StartProfileBlock(GetType().Name, "CreateHolo.SetupProjection");
 			SetupProjection(holo);
 			Profiler.EndProfileBlock();
@@ -812,7 +835,7 @@ namespace Rynchodon.AntennaRelay
 			MyAPIGateway.Entities.AddEntity(holo);
 			Profiler.EndProfileBlock();
 
-			m_logger.debugLog("created holo for " + seen.Entity.getBestName() + "(" + seen.Entity.EntityId + ")");
+			m_logger.debugLog("created holo for " + seen.Entity.nameWithId() + ", holo: " + holo.nameWithId());
 			m_holoEntities.Add(seen.Entity.EntityId, new SeenHolo() { Seen = seen, Holo = holo });
 
 			MyCubeGrid actual = (MyCubeGrid)seen.Entity;

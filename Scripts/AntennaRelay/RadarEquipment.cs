@@ -465,11 +465,11 @@ namespace Rynchodon.AntennaRelay
 
 				// actions on main thread
 				CheckCustomInfo();
-				if (myLastSeen.Count > 0)
-				{
-					myLogger.debugLog("sending to storage: " + myLastSeen.Count);
-					m_node.Storage.Receive(myLastSeen);
-				}
+				//if (myLastSeen.Count > 0)
+				//{
+				//	myLogger.debugLog("sending to storage: " + myLastSeen.Count);
+				//	m_node.Storage.Receive(myLastSeen);
+				//}
 
 				myThread.EnqueueAction(Update_OnThread);
 			}
@@ -516,8 +516,10 @@ namespace Rynchodon.AntennaRelay
 					{
 						DetectedInfo detFo = detectedObjects_list[i];
 						myLastSeen.Add(new LastSeen(detFo.Entity, detFo.Times, detFo.Info));
-						//myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName(), "Update_OnThread()");
+						//myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName());
 					}
+					//myLogger.debugLog("sending to storage: " + myLastSeen.Count);
+					m_node.Storage.Receive(myLastSeen);
 				}
 			}
 			catch (Exception ex)
@@ -733,7 +735,7 @@ namespace Rynchodon.AntennaRelay
 
 				if (AlreadyHaveInfo(entity))
 				{
-					myLogger.debugLog("already have info for " + entity.nameWithId());
+					//myLogger.debugLog("already have info for " + entity.nameWithId());
 					continue;
 				}
 

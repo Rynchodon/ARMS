@@ -6,6 +6,7 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Weapons
 {
@@ -107,7 +108,10 @@ namespace Rynchodon.Weapons
 		public bool FlagSet(TargetingFlags flag)
 		{ return (Flags & flag) != 0; }
 
-		/// <summary>If set, only target a top most entity with this id.</summary>
+		/// <summary>If set, target coordinates. Overrides TargetEntityId.</summary>
+		public Vector3D? TargetGolis;
+
+		/// <summary>If set, only target a top most entity with this id. Defers to TargetGolis.</summary>
 		public long? TargetEntityId;
 
 		public TargetingOptions() { }
@@ -120,15 +124,17 @@ namespace Rynchodon.Weapons
 				CanTarget = this.CanTarget,
 				Flags = this.Flags,
 				TargetingRange = this.TargetingRange,
+				TargetGolis = this.TargetGolis,
 				TargetEntityId = this.TargetEntityId
 			};
 		}
 
-		public void Assimilate(TargetingOptions fallback, TargetType typeFlags, TargetingFlags optFlags, float range, long? targetEntityId, string[] blocksToTarget)
+		public void Assimilate(TargetingOptions fallback, TargetType typeFlags, TargetingFlags optFlags, float range, Vector3D? targetGolis, long? targetEntityId, string[] blocksToTarget)
 		{
 			this.CanTarget = typeFlags | fallback.CanTarget;
 			this.Flags = optFlags | fallback.Flags;
 			this.TargetingRange = Math.Max(range, fallback.TargetingRange);
+			this.TargetGolis = targetGolis ?? fallback.TargetGolis;
 			this.TargetEntityId = targetEntityId ?? fallback.TargetEntityId;
 			this.blocksToTarget = blocksToTarget ?? fallback.blocksToTarget;
 		}
@@ -143,7 +149,7 @@ namespace Rynchodon.Weapons
 					blocks.Append(", ");
 				}
 
-			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", TargetEntityId = " + TargetEntityId + ", Blocks = (" + blocks + ")";
+			return "CanTarget = " + CanTarget.ToString() + ", Flags = " + Flags.ToString() + ", Range = " + TargetingRange + ", TargetGolis: " + TargetGolis + ", TargetEntityId = " + TargetEntityId + ", Blocks = (" + blocks + ")";
 		}
 
 		private static readonly float GlobalMaxRange = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fMaxWeaponRange);

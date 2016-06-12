@@ -65,6 +65,11 @@ namespace Rynchodon.Utility.Vectors
 			return new DirectionGrid() { vector = vector };
 		}
 
+		public static DirectionGrid operator *(DirectionGrid direction, float value)
+		{
+			return new DirectionGrid() { vector = direction.vector * value };
+		}
+
 		public Vector3 vector;
 
 		public DirectionBlock ToBlock(IMyCubeBlock block)
