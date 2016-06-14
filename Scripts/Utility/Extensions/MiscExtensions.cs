@@ -44,7 +44,7 @@ namespace Rynchodon
 
 		public static string nameWithId(this IMyEntity entity)
 		{
-			return getBestName(entity) + '(' + entity.EntityId + ')';
+			return entity == null ? "N/A" : getBestName(entity) + '(' + entity.EntityId + ')';
 		}
 
 		public static Vector3 GetLinearAcceleration(this MyPhysicsComponentBase Physics)

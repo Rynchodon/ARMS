@@ -18,6 +18,7 @@ using VRageMath;
 
 namespace Rynchodon.Weapons.Guided
 {
+	// TODO: periodically sync position & velocity of missile
 	public class GuidedMissile : TargetingBase
 	{
 
@@ -230,7 +231,7 @@ namespace Rynchodon.Weapons.Guided
 		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, out Target initialTarget)
 			: base(missile, launcher.CubeBlock)
 		{
-			myLogger = new Logger("GuidedMissile", () => missile.getBestName(), () => m_stage.ToString());
+			myLogger = new Logger("GuidedMissile", () => myAmmo.AmmoDefinition.DisplayNameText, () => missile.getBestName(), () => m_stage.ToString());
 			m_launcher = launcher;
 			myAmmo = launcher.loadedAmmo;
 			m_owner = launcher.CubeBlock.OwnerId;
@@ -364,19 +365,22 @@ namespace Rynchodon.Weapons.Guided
 
 			RemoveRock();
 
-			// destroy all missiles in radius
-			BoundingSphereD explosion = new BoundingSphereD(MyEntity.GetPosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-			List<MyEntity> entitiesInExplosion = new List<MyEntity>();
-			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref explosion, entitiesInExplosion, MyEntityQueryType.Dynamic);
-			foreach (MyEntity entity in entitiesInExplosion)
-				if (entity.IsMissile())
-				{
-					GuidedMissile hit;
-					if (Registrar.TryGetValue(entity, out hit))
-						hit.Explode();
-					else
-						entity.Delete();
-				}
+			if (myCluster == null)
+			{
+				// destroy all missiles in radius
+				BoundingSphereD explosion = new BoundingSphereD(MyEntity.GetPosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
+				List<MyEntity> entitiesInExplosion = new List<MyEntity>();
+				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref explosion, entitiesInExplosion, MyEntityQueryType.Dynamic);
+				foreach (MyEntity entity in entitiesInExplosion)
+					if (entity.IsMissile())
+					{
+						GuidedMissile hit;
+						if (Registrar.TryGetValue(entity, out hit))
+							hit.Explode();
+						else
+							entity.Delete();
+					}
+			}
 
 			if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
 			{
@@ -387,6 +391,17 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		protected override bool CanRotateTo(Vector3D targetPos)
+		{
+			if (myDescr.CanRotateArc == MathHelper.Pi)
+				return true;
+
+			Vector3 displacement = targetPos - MyEntity.GetPosition();
+			displacement.Normalize();
+			myLogger.debugLog("forwardness: " + Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) + ", CosCanRotateArc: " + myDescr.CosCanRotateArc);
+			return Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) > myDescr.CosCanRotateArc;
+		}
+
+		protected override bool myTarget_CanRotateTo(Vector3D targetPos)
 		{
 			return true;
 		}
@@ -487,20 +502,27 @@ namespace Rynchodon.Weapons.Guided
 			if (myDescr.DetonateRange > 0f)
 			{ // detonate missile before it hits anything to increase the damage
 				Vector3D position = MyEntity.GetPosition();
+				Vector3D nextPosition = position + MyEntity.Physics.LinearVelocity * Globals.UpdateDuration * 5f;
 				Vector3D contact = Vector3D.Zero;
-				if (MyHudCrosshair.GetTarget(position, position + MyEntity.Physics.LinearVelocity * Globals.UpdateDuration * 5f, ref contact))
+				if (MyHudCrosshair.GetTarget(position, nextPosition, ref contact))
 				{
-					myLogger.debugLog("detonating in front of entity at " + contact);
-					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-						if (Vector3D.DistanceSquared(position, contact) > 1f)
-						{
-							MyEntity.SetPosition(contact - Vector3.Normalize(MyEntity.Physics.LinearVelocity));
-							myLogger.debugLog("moved entity from " + position + " to " + MyEntity.GetPosition());
-						}
-						Explode();
-					}, myLogger);
-					m_stage = Stage.Terminated;
-					return;
+					// there are a few false positives, perform a second test
+					if (RayCast.Obstructed(new LineD(position, nextPosition), new IMyEntity[] { MyEntity }, checkVoxel: false))
+					{
+						myLogger.debugLog("detonating in front of entity at " + contact);
+						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+							if (Vector3D.DistanceSquared(position, contact) > 1f)
+							{
+								MyEntity.SetPosition(contact - Vector3.Normalize(MyEntity.Physics.LinearVelocity));
+								myLogger.debugLog("moved entity from " + position + " to " + MyEntity.GetPosition());
+							}
+							Explode();
+						}, myLogger);
+						m_stage = Stage.Terminated;
+						return;
+					}
+					else
+						myLogger.debugLog("failed obstructed test, maybe ray hit this entity. missile position: " + MyEntity.GetPosition() + ", contact: " + contact);
 				}
 			}
 

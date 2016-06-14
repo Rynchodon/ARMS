@@ -26,6 +26,8 @@ namespace Rynchodon.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
+	/// TODO: stop firing if ARMS disabled
+	/// TODO? guided missile avoiding switching targets
 	public abstract class WeaponTargeting : TargetingBase
 	{
 
@@ -498,8 +500,6 @@ namespace Rynchodon.Weapons
 			get { return LoadedAmmo == null ? 800f : LoadedAmmo.AmmoDefinition.MaxTrajectory; }
 		}
 
-		public bool GuidedLauncher { get; set; }
-
 		public WeaponTargeting(IMyCubeBlock weapon)
 			: base(weapon)
 		{
@@ -752,8 +752,8 @@ namespace Rynchodon.Weapons
 				return;
 
 			if (IsNormalTurret ?
-				(Interpreter.HasInstructions || Options.FlagSet(TargetingFlags.ArmsEnabled)) :
-				(Options.FlagSet(TargetingFlags.ArmsEnabled) || Options.FlagSet(TargetingFlags.Turret)))
+				Interpreter.HasInstructions || Options.FlagSet(TargetingFlags.ArmsEnabled) :
+				Options.FlagSet(TargetingFlags.Turret))
 			{
 				CurrentControl = Control.On;
 				return;

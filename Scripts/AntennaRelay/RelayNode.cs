@@ -279,7 +279,18 @@ namespace Rynchodon.AntennaRelay
 			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
 			RelayStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
 
-			Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new RadarInfo(topEntity)));
+			if (Storage.VeryRecentRadarInfo(topEntity.EntityId))
+				return;
+
+			if (Block == null)
+				Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new RadarInfo(topEntity)));
+			else
+			{
+				AttachedGrid.RunOnAttached(Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
+					Storage.Receive(new LastSeen(grid, LastSeen.UpdateTime.Broadcasting, new RadarInfo(grid)));
+					return false;
+				}, true);
+			}
 		}
 
 		/// <summary>

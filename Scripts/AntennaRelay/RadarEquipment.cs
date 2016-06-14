@@ -202,9 +202,6 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Ammount each decoy adds to reported volume of ship.</summary>
 		private const float decoyVolume = 10000f;
 
-		// radar updates on separate thread so we use a lower value
-		private static readonly TimeSpan UpdateFrequency = TimeSpan.FromSeconds(50d / (double)Globals.UpdatesPerSecond);
-
 		private static Logger staticLogger = new Logger("N/A", "RadarEquipment");
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
@@ -733,11 +730,10 @@ namespace Rynchodon.AntennaRelay
 				if (entity.MarkedForClose)
 					continue;
 
-				if (AlreadyHaveInfo(entity))
-				{
-					//myLogger.debugLog("already have info for " + entity.nameWithId());
+				if (m_node.Storage.VeryRecentRadarInfo(entity.EntityId))
 					continue;
-				}
+
+				// TODO: swarm missile should be easier to detect
 
 				bool isMissile;
 				if (entity is IMyCubeGrid)
@@ -806,7 +802,7 @@ namespace Rynchodon.AntennaRelay
 					return;
 
 				IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;
-				if (AlreadyHaveInfo(otherEntity))
+				if (m_node.Storage.VeryRecentRadarInfo(otherEntity.EntityId))
 					return;
 
 				float otherPowerLevel = radar ? otherDevice.PowerLevel_Radar : otherDevice.PowerLevel_Jammer;
@@ -1060,15 +1056,6 @@ namespace Rynchodon.AntennaRelay
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, m_nearbyEntities);
 				m_nearbyRange = range;
 			}
-		}
-
-		/// <summary>
-		/// Check for very recent info about the entity; more recent than update frequency.
-		/// </summary>
-		private bool AlreadyHaveInfo(IMyEntity entity)
-		{
-			LastSeen seen;
-			return m_node.Storage.TryGetLastSeen(entity.EntityId, out seen) && seen.Info != null && (Globals.ElapsedTime - seen.Info.DetectedAt) < UpdateFrequency;
 		}
 
 	}

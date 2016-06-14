@@ -24,6 +24,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private const ulong s_cleanInterval = Globals.UpdatesPerSecond * 60;
+		private static readonly TimeSpan VeryRecentTime = TimeSpan.FromSeconds(50d / (double)Globals.UpdatesPerSecond);
 
 		/// <summary>
 		/// Send a LastSeen to one or more NetworkStorage. Faster than looping through the collection and invoking Receive() for each one.
@@ -547,7 +548,7 @@ namespace Rynchodon.AntennaRelay
 			List<LastSeen.Builder_LastSeen> serialLastSeen = new List<LastSeen.Builder_LastSeen>(m_lastSeen.Count);
 			using (lock_lastSeen.AcquireExclusiveUsing())
 				foreach (LastSeen item in m_lastSeen.Values)
-					if (item.IsValid)
+					if (item.IsValid && item.Type == LastSeen.EntityType.Grid)
 						serialLastSeen.Add(item.GetBuilder());
 
 			List<Message.Builder_Message> serialMessage = new List<Message.Builder_Message>(m_messages.Count);
@@ -562,6 +563,17 @@ namespace Rynchodon.AntennaRelay
 				LastSeenList = serialLastSeen.ToArray(),
 				MessageList = serialMessage.ToArray()
 			};
+		}
+
+		/// <summary>
+		/// Check for an entity having a LastSeen with very recent RadarInfo, no reason to update.
+		/// </summary>
+		/// <param name="entityId">ID of the entity</param>
+		/// <returns>true iff there is a LastSeen for the entity with very recent RadarInfo</returns>
+		public bool VeryRecentRadarInfo(long entityId)
+		{
+			LastSeen seen;
+			return TryGetLastSeen(entityId, out seen) && seen.Info != null && (Globals.ElapsedTime - seen.Info.DetectedAt) < VeryRecentTime;
 		}
 
 	}

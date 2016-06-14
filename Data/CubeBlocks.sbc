@@ -105,7 +105,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
+        MaxTargets_Tracking=5
         MaxPowerLevel=25000
         SignalEnhance=2
         MinAzimuth=-1.963495408493621
@@ -153,7 +153,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=10
+        MaxTargets_Tracking=5
         MaxPowerLevel=10000
         SignalEnhance=2
         MinAzimuth=-1.963495408493621
@@ -204,7 +204,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=30
+        MaxTargets_Tracking=15
         MaxPowerLevel=20000
         SignalEnhance=2.25
         JammingEffect=0.7
@@ -250,7 +250,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=30
+        MaxTargets_Tracking=15
         MaxPowerLevel=8000
         SignalEnhance=2.25
         JammingEffect=0.7
@@ -299,7 +299,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=100
+        MaxTargets_Tracking=50
         MaxPowerLevel=10000
         SignalEnhance=4
         JammingEffect=0.4
@@ -350,7 +350,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=100
+        MaxTargets_Tracking=50
         MaxPowerLevel=4000
         SignalEnhance=4
         JammingEffect=0.4
@@ -402,7 +402,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=100
+        MaxTargets_Tracking=50
         MaxPowerLevel=10000
         SignalEnhance=4
         JammingEffect=0.4
@@ -453,7 +453,7 @@
       </Id>
       <Description>
         Radar=true
-        MaxTargets_Tracking=100
+        MaxTargets_Tracking=50
         MaxPowerLevel=4000
         SignalEnhance=4
         JammingEffect=0.4
@@ -515,7 +515,7 @@
       </MountPoints>
       <Description>
         Radar=true
-        MaxTargets_Tracking=30
+        MaxTargets_Tracking=15
         MaxPowerLevel=25000
         SignalEnhance=2.4
         JammingEffect=1.25
@@ -562,7 +562,7 @@
       <BlockTopology>TriangleMesh</BlockTopology>
       <Description>
         Radar=true
-        MaxTargets_Tracking=30
+        MaxTargets_Tracking=15
         MaxPowerLevel=10000
         SignalEnhance=2.4
         JammingEffect=1.25

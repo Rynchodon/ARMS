@@ -1,6 +1,4 @@
-﻿// skip file on build
-
-using System;
+﻿using System;
 using System.Text;
 using Sandbox.ModAPI;
 using VRage;
@@ -22,14 +20,14 @@ namespace Rynchodon
 		private MyQueue<Func<string>> recentActivity = new MyQueue<Func<string>>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
 
-		static FastResourceLock()
+		static FastResourceLock_debug()
 		{ Set_Debug_Conditional(); }
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private static void Set_Debug_Conditional()
 		{ Debug = true; }
 
-		public FastResourceLock(string LockName = "N/A")
+		public FastResourceLock_debug(string LockName = "N/A")
 		{ 
 			this.myLogger = new Logger("FastResourceLock", null, () => LockName);
 		}
@@ -253,9 +251,9 @@ namespace Rynchodon
 
 		public class ExclusiveLock : IDisposable
 		{
-			private FastResourceLock MyLock;
+			private FastResourceLock_debug MyLock;
 
-			public ExclusiveLock(FastResourceLock toLock)
+			public ExclusiveLock(FastResourceLock_debug toLock)
 			{
 				this.MyLock = toLock;
 				this.MyLock.AcquireExclusive();
@@ -267,9 +265,9 @@ namespace Rynchodon
 
 		public class SharedLock : IDisposable
 		{
-			private FastResourceLock MyLock;
+			private FastResourceLock_debug MyLock;
 
-			public SharedLock(FastResourceLock toLock)
+			public SharedLock(FastResourceLock_debug toLock)
 			{
 				this.MyLock = toLock;
 				this.MyLock.AcquireShared();

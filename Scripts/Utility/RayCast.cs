@@ -22,6 +22,21 @@ namespace Rynchodon
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
 		/// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// </summary>
+		public static bool Obstructed<Tignore>(LineD line, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool shortTest = true) where Tignore : IMyEntity
+		{
+			List<MyLineSegmentOverlapResult<MyEntity>> potentialObstruction = ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Get();
+			MyGamePruningStructure.GetAllEntitiesInRay(ref line, potentialObstruction);
+			bool result = Obstructed(line, potentialObstruction.Select(overlap => overlap.Element), ignoreList, checkVoxel, shortTest);
+			potentialObstruction.Clear();
+			ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Return(potentialObstruction);
+			return result;
+		}
+
+		/// <summary>
+		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
+		/// <para>Tests for obstructing voxel map, character, or grid.</para>
+		/// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
+		/// </summary>
 		public static bool Obstructed<Tobstruct, Tignore>(LineD line, IEnumerable<Tobstruct> potentialObstructions, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool shortTest = true)
 			where Tobstruct : IMyEntity
 			where Tignore : IMyEntity

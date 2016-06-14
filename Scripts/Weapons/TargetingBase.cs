@@ -5,12 +5,12 @@ using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using VRage.ObjectBuilders;
 using VRageMath;
 
 namespace Rynchodon.Weapons
@@ -18,12 +18,22 @@ namespace Rynchodon.Weapons
 	public abstract class TargetingBase
 	{
 
+		private struct WeaponCounts
+		{
+			public byte BasicWeapon, GuidedLauncher, GuidedMissile;
+			public int Value { get { return BasicWeapon + GuidedLauncher * 10 + GuidedMissile * 100; } }
+
+			public override string ToString()
+			{
+				return "BasicWeapon: " + BasicWeapon + ", GuidedLauncher: " + GuidedLauncher + ", GuidedMissile: " + GuidedMissile;
+			}
+		}
+
 		#region Static
 
-		public const short zero = 0, one = 1, guidedValue = 100, negOne = -one, negGuidVal = -guidedValue;
-
-		private static Dictionary<long, short> WeaponsTargetingProjectile = new Dictionary<long, short>();
-		//private static Logger s_logger = new Logger("TargetingBase");
+		private static Dictionary<long, WeaponCounts> WeaponsTargetingProjectile = new Dictionary<long, WeaponCounts>();
+		private static Logger s_logger = new Logger("TargetingBase");
+		private static FastResourceLock_debug lock_WeaponsTargetingProjectile = new FastResourceLock_debug("WeaponsTargetingProjectile");
 
 		static TargetingBase()
 		{
@@ -34,39 +44,45 @@ namespace Rynchodon.Weapons
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			WeaponsTargetingProjectile = null;
-			//s_logger = null;
+			s_logger = null;
+			lock_WeaponsTargetingProjectile = null;
 		}
 
-		public static short GetWeaponsTargetingProjectile(IMyEntity entity)
+		public static int GetWeaponsTargetingProjectile(IMyEntity entity)
 		{
-			short result;
-			if (!WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out result))
-				result = 0;
-			return result;
+			WeaponCounts result;
+			using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
+				if (!WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out result))
+					return 0;
+			return result.Value;
 		}
 
-		private static void AddWeaponsTargetingProjectile(IMyEntity entity, short number)
-		{
-			//s_logger.debugLog("entity: " + entity.getBestName() + ", number: " + number, "AddWeaponsTargetingProjectile()");
+		//private static void AddWeaponsTargetingProjectile(IMyEntity entity, short number)
+		//{
+		//	using (lock_WeaponsTargetingProjectile.AcquireExclusiveUsing())
+		//	{
+		//		//s_logger.debugLog("number: " + number, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
 
-			short count;
-			if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count))
-			{
-				//s_logger.debugLog("count: " + count, "AddWeaponsTargetingProjectile()");
-				count += number;
-				if (count == zero)
-				{
-					WeaponsTargetingProjectile.Remove(entity.EntityId);
-					return;
-				}
-				//s_logger.debugLog(count < zero, "count is negative: " + count + ", for " + entity.getBestName(), "AddWeaponsTargetingProjectile()", Logger.severity.FATAL);
-			}
-			else
-				count = number;
+		//		short count;
+		//		if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count))
+		//		{
+		//			//s_logger.debugLog("count: " + count + " => " + (count + number), primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
+		//			count += number;
+		//			if (count == zero)
+		//			{
+		//				WeaponsTargetingProjectile.Remove(entity.EntityId);
+		//				return;
+		//			}
+		//			s_logger.debugLog(count < zero, () => "count is negative: " + count + ", for " + entity.getBestName(), Logger.severity.FATAL, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
+		//		}
+		//		else
+		//			count = number;
 
-			//s_logger.debugLog(count > short.MaxValue / 2, "many weapons targeting: " + entity.getBestName() + ", count: " + count, "AddWeaponsTargetingProjectile()", Logger.severity.WARNING);
-			WeaponsTargetingProjectile[entity.EntityId] = count;
-		}
+		//		s_logger.debugLog(count > short.MaxValue / 2, () => "many weapons targeting: " + entity.getBestName() + ", count: " + count, Logger.severity.WARNING, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
+		//		//s_logger.debugLog("count: " + count + " => " + (count + number), primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
+		//		WeaponsTargetingProjectile[entity.EntityId] = count;
+		//	}
+		//}
 
 		#endregion Static
 
@@ -76,7 +92,7 @@ namespace Rynchodon.Weapons
 		public readonly IMyCubeBlock CubeBlock;
 		public readonly IMyFunctionalBlock FuncBlock;
 
-		/// <summary>Iff true, the projectile will attempt to chase-down a target.</summary>
+		/// <summary>TryHard means the weapon is less inclined to switch targets and will continue to track targets when an intercept vector cannot be found.</summary>
 		protected bool TryHard = false;
 		protected bool SEAD = false;
 		private ulong m_nextLastSeenSearch;
@@ -93,8 +109,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Accumulation of custom terminal, vanilla terminal, and text commands.</summary>
 		public TargetingOptions Options { get; protected set; }
 
-		///// <summary>Custom terminal options for ARMS, does not include vanilla controls</summary>
-		//public TargetingOptions TerminalOptions { get; protected set; }
+		public bool GuidedLauncher { get; set; }
 
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
@@ -108,10 +123,47 @@ namespace Rynchodon.Weapons
 					return;
 				}
 
-				if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
-					AddWeaponsTargetingProjectile(value_CurrentTarget.Entity, this is Guided.GuidedMissile ? negGuidVal : negOne);
-				if (value != null && (value.TType & TargetType.Projectile) != 0)
-					AddWeaponsTargetingProjectile(value.Entity, this is Guided.GuidedMissile ? guidedValue : one);
+				using (lock_WeaponsTargetingProjectile.AcquireExclusiveUsing())
+				{
+					if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
+					{
+						WeaponCounts counts;
+						if (!WeaponsTargetingProjectile.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
+							throw new Exception("WeaponsTargetingProjectile does not contain " + value_CurrentTarget.Entity.nameWithId());
+						myLogger.debugLog("counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
+						if (GuidedLauncher)
+							counts.GuidedLauncher--;
+						else if (this is Guided.GuidedMissile)
+							counts.GuidedMissile--;
+						else
+							counts.BasicWeapon--;
+						if (counts.BasicWeapon == 0 && counts.GuidedLauncher == 0 && counts.GuidedMissile == 0)
+						{
+							myLogger.debugLog("removing. counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
+							WeaponsTargetingProjectile.Remove(value_CurrentTarget.Entity.EntityId);
+						}
+						else
+						{
+							myLogger.debugLog("counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
+							WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId] = counts;
+						}
+					}
+					if (value != null && (value.TType & TargetType.Projectile) != 0)
+					{
+						WeaponCounts counts;
+						if (!WeaponsTargetingProjectile.TryGetValue(value.Entity.EntityId, out counts))
+							counts = new WeaponCounts();
+						myLogger.debugLog("counts are now: " + counts, primaryState: value.Entity.getBestName(), secondaryState: value.Entity.EntityId.ToString());
+						if (GuidedLauncher)
+							counts.GuidedLauncher++;
+						else if (this is Guided.GuidedMissile)
+							counts.GuidedMissile++;
+						else
+							counts.BasicWeapon++;
+						WeaponsTargetingProjectile[value.Entity.EntityId] = counts;
+						myLogger.debugLog("counts are now: " + counts, primaryState: value.Entity.getBestName(), secondaryState: value.Entity.EntityId.ToString());
+					}
+				}
 
 				value_CurrentTarget = value;
 			}
@@ -151,13 +203,31 @@ namespace Rynchodon.Weapons
 			return !CanRotateTo(targetPos) || Obstructed(targetPos, target);
 		}
 
+		private bool myTarget_PhysicalProblem()
+		{
+			myLogger.debugLog(myTarget == null || myTarget.Entity == null, "No current target", Logger.severity.FATAL);
+			Vector3D targetPos = myTarget.GetPosition();
+			return !myTarget_CanRotateTo(targetPos) || Obstructed(targetPos, myTarget.Entity);
+		}
+
 		/// <summary>
-		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
+		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth. Tested for new targets.
 		/// </summary>
-		/// <param name="targetPoint">The point of the target.</param>
+		/// <param name="targetPos">The position of the target.</param>
 		/// <returns>true if the rotation is allowed</returns>
 		/// <remarks>Invoked on targeting thread.</remarks>
 		protected abstract bool CanRotateTo(Vector3D targetPos);
+
+		/// <summary>
+		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth. Tested for current target.
+		/// </summary>
+		/// <param name="targetPos">The position of the target.</param>
+		/// <returns>true if the rotation is allowed</returns>
+		/// <remarks>Invoked on targeting thread.</remarks>
+		protected virtual bool myTarget_CanRotateTo(Vector3D targetPos)
+		{
+			return CanRotateTo(targetPos);
+		}
 
 		protected abstract bool Obstructed(Vector3D targetPos, IMyEntity target);
 
@@ -207,12 +277,18 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			if ((myTarget.TType & TargetType.Projectile) != 0 && !myTarget.Entity.Closed)
-				if (TryHard || ProjectileIsThreat(myTarget.Entity, myTarget.TType))
+			myTarget = CurrentTarget;
+
+			if (myTarget.Entity != null && !myTarget.Entity.Closed)
+			{
+				if (TryHard)
 				{
-					//myLogger.debugLog("Keeping Target = " + myTarget.Entity.getBestName(), "UpdateTarget()");
-					return;
+					if (!myTarget_PhysicalProblem())
+						return;
 				}
+				else if ((myTarget.TType & TargetType.Projectile) != 0 && ProjectileIsThreat(myTarget.Entity, myTarget.TType) && !myTarget_PhysicalProblem())
+					return;
+			}
 
 			myTarget = NoTarget.Instance;
 
@@ -222,6 +298,7 @@ namespace Rynchodon.Weapons
 			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName());
 			//else if (CurrentTarget != null && CurrentTarget.Entity != null)
 			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName());
+
 			CurrentTarget = myTarget;
 		}
 
@@ -411,7 +488,7 @@ namespace Rynchodon.Weapons
 				IMyCharacter asChar = entity as IMyCharacter;
 				if (asChar != null)
 				{
-					myLogger.debugLog("character: " + entity.nameWithId());
+					//myLogger.debugLog("character: " + entity.nameWithId());
 
 					if (CharacterStateTracker.CurrentState(entity) == MyCharacterMovementEnum.Died)
 					{
@@ -421,12 +498,12 @@ namespace Rynchodon.Weapons
 
 					if (asChar.IsBot || CubeBlock.canConsiderHostile(asChar.GetIdentity_Safe().PlayerId))
 					{
-						myLogger.debugLog("hostile: " + entity.nameWithId());
+						//myLogger.debugLog("hostile: " + entity.nameWithId());
 						AddTarget(TargetType.Character, entity);
 					}
 					else
 					{
-						myLogger.debugLog("not hostile: " + entity.nameWithId());
+						//myLogger.debugLog("not hostile: " + entity.nameWithId());
 						PotentialObstruction.Add(entity);
 					}
 					continue;
@@ -738,12 +815,22 @@ namespace Rynchodon.Weapons
 			List<IMyEntity> targetsOfType;
 			if (Available_Targets.TryGetValue(tType, out targetsOfType))
 			{
-				var sorted = targetsOfType.OrderBy(entity => GetWeaponsTargetingProjectile(entity));
+				IOrderedEnumerable<IMyEntity> sorted;
+				using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
+					sorted = targetsOfType.OrderBy(entity => GetWeaponsTargetingProjectile(entity));
 
 				foreach (IMyEntity entity in sorted)
 				{
 					if (entity.Closed)
 						continue;
+
+					if (GuidedLauncher && tType != TargetType.Moving)
+					{
+						WeaponCounts count;
+						using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
+							if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count) && count.GuidedLauncher != 0)
+								continue;
+					}
 
 					if (tType == TargetType.Missile)
 					{
@@ -756,7 +843,7 @@ namespace Rynchodon.Weapons
 					}
 
 					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || entity.GetLinearVelocity().LengthSquared() > 100 || entity.IsMissile()))
+					if (!(entity is IMyMeteor || entity.IsMissile() || entity.GetLinearVelocity().LengthSquared() > 100))
 						continue;
 
 					IMyEntity projectile = entity;
@@ -833,7 +920,7 @@ namespace Rynchodon.Weapons
 			FindInterceptVector();
 			if (myTarget.Entity != null)
 			{
-				if (PhysicalProblem(myTarget.ContactPoint.Value, myTarget.Entity))
+				if (myTarget_PhysicalProblem())
 				{
 					//myLogger.debugLog("Shot path is obstructed, blacklisting " + myTarget.Entity.getBestName(), "SetFiringDirection()");
 					BlacklistTarget();

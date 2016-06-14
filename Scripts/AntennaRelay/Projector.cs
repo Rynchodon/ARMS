@@ -17,6 +17,7 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -435,24 +436,28 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static void SetupProjection(IMyEntity entity)
 		{
-			Static.logger.debugLog(entity is IMyCubeGrid, "setup: " + entity.nameWithId());
-			if (entity is IMyCubeBlock)
-			{
-				IMyCubeBlock block2 = (IMyCubeBlock)entity;
-				Static.logger.debugLog("setup: " + block2.nameWithId() + ", on " + block2.CubeGrid.nameWithId());
-			}
+			//Static.logger.debugLog(entity is IMyCubeGrid, "setup: " + entity.nameWithId());
+			//if (entity is IMyCubeBlock)
+			//{
+			//	IMyCubeBlock block2 = (IMyCubeBlock)entity;
+			//	Static.logger.debugLog("setup: " + block2.nameWithId() + ", on " + block2.CubeGrid.nameWithId());
+			//}
 
 			if (entity.Physics != null && entity.Physics.Enabled)
 				entity.Physics.Enabled = false;
 
-			Static.logger.debugLog("initial flags: " + entity.Flags);
+			//Static.logger.debugLog("initial flags: " + entity.Flags);
 
+			entity.Flags &= ~EntityFlags.NeedsResolveCastShadow;
 			entity.Flags &= ~EntityFlags.Save;
 			entity.Flags &= ~EntityFlags.Sync;
 			entity.NeedsUpdate = MyEntityUpdateEnum.NONE;
+			entity.PersistentFlags &= ~MyPersistentEntityFlags2.CastShadows;
+
+			entity.Flags |= EntityFlags.SkipIfTooSmall;
 			((MyEntity)entity).IsPreview = true;
 
-			Static.logger.debugLog("final flags: " + entity.Flags);
+			//Static.logger.debugLog("final flags: " + entity.Flags);
 
 			MyCubeBlock block = entity as MyCubeBlock;
 			if (block != null)
@@ -461,8 +466,8 @@ namespace Rynchodon.AntennaRelay
 					block.UseObjectsComponent.DetectorPhysics.Enabled = false;
 				//block.NeedsUpdate = MyEntityUpdateEnum.NONE;
 
-				if (block is Ingame.IMyBeacon || block is Ingame.IMyRadioAntenna)
-					((IMyFunctionalBlock)block).RequestEnable(false);
+				//if (block is Ingame.IMyBeacon || block is Ingame.IMyRadioAntenna)
+				//	((IMyFunctionalBlock)block).RequestEnable(false);
 			}
 
 			foreach (var child in entity.Hierarchy.Children)

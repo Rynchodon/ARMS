@@ -408,7 +408,7 @@ namespace Rynchodon.Update
 				if (!MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Session.Player == null)
 					return;
 
-				myLogger.alwaysLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
+				myLogger.debugLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
 
 				Saver.Instance.Initialize();
 

@@ -6,6 +6,7 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Weapons
 {
@@ -18,19 +19,22 @@ namespace Rynchodon.Weapons
 				if (string.IsNullOrWhiteSpace(ammo.DescriptionString))
 					return null;
 
-				AmmoDescription desc = new AmmoDescription(ammo.Id.SubtypeName);
+				AmmoDescription desc = new AmmoDescription();
 				try
 				{
 					XML_Amendments<AmmoDescription> ammender = new XML_Amendments<AmmoDescription>(desc);
 					ammender.primarySeparator = new char[] { ';' };
 					ammender.AmendAll(ammo.DescriptionString, true);
-					return ammender.Deserialize();
+					desc = ammender.Deserialize();
+					desc.CosCanRotateArc = (float)Math.Cos(desc.CanRotateArc);
+					return desc;
 				}
 				catch (Exception ex)
 				{
 					Logger.debugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
-					desc.myLogger.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
-					desc.myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+					Logger log = new Logger(ammo.Id.SubtypeName);
+					log.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
+					log.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					return null;
 				}
 			}
@@ -42,6 +46,11 @@ namespace Rynchodon.Weapons
 			public float RotationPerUpdate = 0.0349065850398866f; // 2°
 			/// <summary>In metres per second</summary>
 			public float Acceleration;
+			/// <summary>Maximum angle, in radians, between nose and target to acquire the target. Default is no limit.</summary>
+			/// <remarks>Will not cause missile to loose current target.</remarks>
+			public float CanRotateArc = MathHelper.Pi;
+			/// <summary>Set automatically, cosine of CanRotateArc.</summary>
+			public float CosCanRotateArc;
 
 			/// <summary>For ICBM, distance from launcher when boost phase ends</summary>
 			public float BoostDistance;
@@ -77,17 +86,7 @@ namespace Rynchodon.Weapons
 			#endregion Cluster
 			#endregion Payload
 
-			private readonly Logger myLogger;
-
-			public AmmoDescription()
-			{
-				myLogger = new Logger("AmmoDescription", null, () => "Deserialized");
-			}
-
-			private AmmoDescription(string SubtypeName)
-			{
-				myLogger = new Logger("AmmoDescription", null, () => SubtypeName);
-			}
+			public AmmoDescription() { }
 		}
 
 		private static Dictionary<MyDefinitionId, Ammo> KnownDefinitions_Ammo = new Dictionary<MyDefinitionId, Ammo>();

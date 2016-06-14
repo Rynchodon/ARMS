@@ -102,6 +102,7 @@
       <DisplayName>Interceptor Missile R1VT</DisplayName>
       <Description>
         GuidanceSeconds=15;
+        CanRotateArc=1.57;
         TargetRange=800;
         DetonateRange=10;
       </Description>

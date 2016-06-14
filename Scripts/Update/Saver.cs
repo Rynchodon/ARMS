@@ -353,10 +353,7 @@ namespace Rynchodon.Update
 				Dictionary<long, RelayStorage.Builder_NetworkStorage> storages = new Dictionary<long, RelayStorage.Builder_NetworkStorage>();
 
 				Registrar.ForEach<RelayNode>(node => {
-					// players never load properly
-					if (node.m_player != null)
-						return;
-					if (node.Storage != null && !storages.ContainsKey(node.Storage.PrimaryNode.EntityId))
+					if (node.Block != null && node.Storage != null && !storages.ContainsKey(node.Storage.PrimaryNode.EntityId))
 					{
 						RelayStorage.Builder_NetworkStorage bns = node.Storage.GetBuilder();
 						storages.Add(bns.PrimaryNode, bns);
