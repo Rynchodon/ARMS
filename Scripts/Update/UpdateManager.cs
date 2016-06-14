@@ -598,13 +598,10 @@ namespace Rynchodon.Update
 			{
 				Globals.UpdateCount++;
 
-				float updateTimeSec = (float)(DateTime.UtcNow - m_lastUpdate).TotalSeconds;
-				if (updateTimeSec < 1f)
-				{
-					float instantSimSpeed = Globals.UpdateDuration / updateTimeSec;
+				float instantSimSpeed = Globals.UpdateDuration / (float)(DateTime.UtcNow - m_lastUpdate).TotalSeconds;
+				if (instantSimSpeed > 0.01f && instantSimSpeed < 1.1f)
 					Globals.SimSpeed = Globals.SimSpeed * 0.9f + instantSimSpeed * 0.1f;
-					//myLogger.debugLog("instantSimSpeed: " + instantSimSpeed + ", SimSpeed: " + Globals.SimSpeed);
-				}
+				//myLogger.debugLog("instantSimSpeed: " + instantSimSpeed + ", SimSpeed: " + Globals.SimSpeed);
 				m_lastUpdate = DateTime.UtcNow;
 
 				MainLock.MainThread_AcquireExclusive();

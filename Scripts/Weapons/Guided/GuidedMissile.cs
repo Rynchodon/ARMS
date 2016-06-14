@@ -397,7 +397,7 @@ namespace Rynchodon.Weapons.Guided
 
 			Vector3 displacement = targetPos - MyEntity.GetPosition();
 			displacement.Normalize();
-			myLogger.debugLog("forwardness: " + Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) + ", CosCanRotateArc: " + myDescr.CosCanRotateArc);
+			//myLogger.debugLog("forwardness: " + Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) + ", CosCanRotateArc: " + myDescr.CosCanRotateArc);
 			return Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) > myDescr.CosCanRotateArc;
 		}
 
@@ -438,7 +438,10 @@ namespace Rynchodon.Weapons.Guided
 			if (!cached.FiringDirection.HasValue)
 				return;
 
-			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint, "Update()");
+			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint);
+
+			myLogger.debugLog(!cached.FiringDirection.IsValid(), "FiringDirection invalid: " + cached.FiringDirection, Logger.severity.FATAL);
+			myLogger.debugLog(!cached.ContactPoint.IsValid(), "ContactPoint invalid: " + cached.ContactPoint, Logger.severity.FATAL);
 
 			Vector3 targetDirection;
 
@@ -483,7 +486,7 @@ namespace Rynchodon.Weapons.Guided
 				}, myLogger);
 			}
 
-			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward, "Update()");
+			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward);
 
 			{ // accelerate if facing target
 				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)

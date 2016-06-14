@@ -6,14 +6,16 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
-using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -71,10 +73,20 @@ namespace Rynchodon.Weapons
 
 		static WeaponTargeting()
 		{
+			// When we get controls later, SE will create a list if there is none, which will prevent MyLargeTurretBase from creating the controls.
+			if (!MyTerminalControlFactory.AreControlsCreated<MyLargeTurretBase>())
+			{
+				Static.logger.debugLog("forcing creation of turret controls");
+
+				MyObjectBuilder_CubeGrid gridBuilder = new MyObjectBuilder_CubeGrid();
+				gridBuilder.CubeBlocks.Add(new MyObjectBuilder_InteriorTurret());
+				MyEntity grid = MyEntities.CreateFromObjectBuilder(gridBuilder);
+			}
+
 			var controls = MyTerminalControlFactory.GetControls(typeof(MyUserControllableGun));
 
-			Static.logger.debugLog("controls: " + controls);
-			Static.logger.debugLog("control count: " + controls.Count);
+			//Static.logger.debugLog("controls: " + controls);
+			//Static.logger.debugLog("control count: " + controls.Count);
 
 			// find the current position of shoot On/Off
 			int currentIndex = 0;
@@ -88,7 +100,7 @@ namespace Rynchodon.Weapons
 				currentIndex++;
 			}
 
-			Static.logger.debugLog("shoot index: " + Static.indexShoot);
+			//Static.logger.debugLog("shoot index: " + Static.indexShoot);
 
 			Static.sharedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
 
@@ -212,6 +224,7 @@ namespace Rynchodon.Weapons
 		{
 			foreach (IMyTerminalControl control in MyTerminalControlFactory.GetControls(typeof(MyLargeTurretBase)))
 			{
+				Static.logger.debugLog("control: " + control.Id);
 				MyTerminalControlSlider<MyLargeTurretBase> slider = control as MyTerminalControlSlider<MyLargeTurretBase>;
 				if (slider != null && slider.Id == id)
 					return new MyTerminalControlSlider<MyUserControllableGun>(id, slider.Title, slider.Tooltip);
