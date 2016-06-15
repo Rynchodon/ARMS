@@ -733,42 +733,44 @@ namespace Rynchodon.AntennaRelay
 				if (m_node.Storage.VeryRecentRadarInfo(entity.EntityId))
 					continue;
 
-				// TODO: swarm missile should be easier to detect
-
-				bool isMissile;
-				if (entity is IMyCubeGrid)
+				float volume, reflectivity;
+				if (entity.IsMissile())
+				{
+					GuidedMissile guided;
+					if (!Registrar.TryGetValue(entity, out guided))
+						continue;
+					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
+						continue;
+					volume = RadarInfo.GetVolume(entity);
+					reflectivity = guided.RadarReflectivity;
+					myLogger.debugLog("missile volume: " + volume + ", reflectivity: " + reflectivity);
+				}
+				else if (entity is IMyCubeGrid)
 				{
 					if (!entity.Save)
+						continue; 
+					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
-					isMissile = false;
+					volume = RadarInfo.GetVolume(entity);
+					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				}
 				else if (entity is IMyCharacter)
-					isMissile = false;
-				else if (entity.IsMissile() && GuidedMissile.IsGuidedMissile(entity.EntityId))
-					isMissile = true;
-				else
-					continue;
-
-				if (SignalCannotReach(entity, PowerLevel_RadarEffective))
-					continue;
-
-				float volume = RadarInfo.GetVolume(entity);
-
-				float reflectivity;
-				if (isMissile)
 				{
-					float useVolume = volume * volume;
-					reflectivity = (useVolume + myDefinition.Reflect_A) / (useVolume + myDefinition.Reflect_B);
+					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
+						continue;
+					volume = RadarInfo.GetVolume(entity);
+					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				}
 				else
-					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
+					continue;
+
 				float distance = Vector3.Distance(Entity.GetCentre(), entity.GetCentre());
 				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
 				int decoys = WorkingDecoys(entity);
 				radarSignature += decoySignal * decoys;
 
-				//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
+				myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+					+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
 
 				if (radarSignature > 0)
 				{

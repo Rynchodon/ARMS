@@ -92,6 +92,7 @@ namespace Rynchodon.Weapons
 		private Vector3D m_lastPostion;
 		private TimeSpan m_lastPositionUpdate;
 		private bool m_accel;
+		private TargetType m_targetType;
 
 		public LastSeenTarget(LastSeen seen, IMyCubeBlock block = null)
 		{
@@ -99,6 +100,7 @@ namespace Rynchodon.Weapons
 			m_block = block;
 			m_lastPostion = m_lastSeen.LastKnownPosition;
 			m_lastPositionUpdate = m_lastSeen.LastSeenAt;
+			m_targetType = TargetingOptions.GetTargetType(seen.Entity);
 		}
 
 		public void Update(LastSeen seen, IMyCubeBlock block = null)
@@ -127,7 +129,7 @@ namespace Rynchodon.Weapons
 
 		public override TargetType TType
 		{
-			get { return TargetType.AllGrid; }
+			get { return m_targetType; }
 		}
 
 		public override Vector3D GetPosition()

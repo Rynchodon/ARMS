@@ -26,7 +26,7 @@ namespace Rynchodon.Weapons
 					ammender.primarySeparator = new char[] { ';' };
 					ammender.AmendAll(ammo.DescriptionString, true);
 					desc = ammender.Deserialize();
-					desc.CosCanRotateArc = (float)Math.Cos(desc.CanRotateArc);
+					desc.CosAcquisitionAngle = (float)Math.Cos(desc.AcquisitionAngle);
 					return desc;
 				}
 				catch (Exception ex)
@@ -48,9 +48,11 @@ namespace Rynchodon.Weapons
 			public float Acceleration;
 			/// <summary>Maximum angle, in radians, between nose and target to acquire the target. Default is no limit.</summary>
 			/// <remarks>Will not cause missile to loose current target.</remarks>
-			public float CanRotateArc = MathHelper.Pi;
-			/// <summary>Set automatically, cosine of CanRotateArc.</summary>
-			public float CosCanRotateArc;
+			public float AcquisitionAngle = MathHelper.Pi;
+			/// <summary>Set automatically, cosine of AcquisitionAngle.</summary>
+			public float CosAcquisitionAngle;
+			/// <summary>How visible the missile is to radar.</summary>
+			public float RadarReflectivity = 0.025f;
 
 			/// <summary>For ICBM, distance from launcher when boost phase ends</summary>
 			public float BoostDistance;

@@ -31,9 +31,9 @@ namespace Rynchodon.Weapons
 
 		#region Static
 
-		private static Dictionary<long, WeaponCounts> WeaponsTargetingProjectile = new Dictionary<long, WeaponCounts>();
+		private static Dictionary<long, WeaponCounts> WeaponsTargeting = new Dictionary<long, WeaponCounts>();
 		private static Logger s_logger = new Logger("TargetingBase");
-		private static FastResourceLock_debug lock_WeaponsTargetingProjectile = new FastResourceLock_debug("WeaponsTargetingProjectile");
+		private static FastResourceLock lock_WeaponsTargeting = new FastResourceLock();
 
 		static TargetingBase()
 		{
@@ -43,16 +43,16 @@ namespace Rynchodon.Weapons
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			WeaponsTargetingProjectile = null;
+			WeaponsTargeting = null;
 			s_logger = null;
-			lock_WeaponsTargetingProjectile = null;
+			lock_WeaponsTargeting = null;
 		}
 
 		public static int GetWeaponsTargetingProjectile(IMyEntity entity)
 		{
 			WeaponCounts result;
-			using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
-				if (!WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out result))
+			using (lock_WeaponsTargeting.AcquireSharedUsing())
+				if (!WeaponsTargeting.TryGetValue(entity.EntityId, out result))
 					return 0;
 			return result.Value;
 		}
@@ -123,14 +123,14 @@ namespace Rynchodon.Weapons
 					return;
 				}
 
-				using (lock_WeaponsTargetingProjectile.AcquireExclusiveUsing())
+				using (lock_WeaponsTargeting.AcquireExclusiveUsing())
 				{
 					if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
 					{
 						WeaponCounts counts;
-						if (!WeaponsTargetingProjectile.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
+						if (!WeaponsTargeting.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
 							throw new Exception("WeaponsTargetingProjectile does not contain " + value_CurrentTarget.Entity.nameWithId());
-						myLogger.debugLog("counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
+						myLogger.debugLog("counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
 						if (GuidedLauncher)
 							counts.GuidedLauncher--;
 						else if (this is Guided.GuidedMissile)
@@ -139,29 +139,29 @@ namespace Rynchodon.Weapons
 							counts.BasicWeapon--;
 						if (counts.BasicWeapon == 0 && counts.GuidedLauncher == 0 && counts.GuidedMissile == 0)
 						{
-							myLogger.debugLog("removing. counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
-							WeaponsTargetingProjectile.Remove(value_CurrentTarget.Entity.EntityId);
+							myLogger.debugLog("removing. counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
+							WeaponsTargeting.Remove(value_CurrentTarget.Entity.EntityId);
 						}
 						else
 						{
-							myLogger.debugLog("counts are now: " + counts, primaryState: value_CurrentTarget.Entity.getBestName(), secondaryState: value_CurrentTarget.Entity.EntityId.ToString());
-							WeaponsTargetingProjectile[value_CurrentTarget.Entity.EntityId] = counts;
+							myLogger.debugLog("-- counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
+							WeaponsTargeting[value_CurrentTarget.Entity.EntityId] = counts;
 						}
 					}
 					if (value != null && (value.TType & TargetType.Projectile) != 0)
 					{
 						WeaponCounts counts;
-						if (!WeaponsTargetingProjectile.TryGetValue(value.Entity.EntityId, out counts))
+						if (!WeaponsTargeting.TryGetValue(value.Entity.EntityId, out counts))
 							counts = new WeaponCounts();
-						myLogger.debugLog("counts are now: " + counts, primaryState: value.Entity.getBestName(), secondaryState: value.Entity.EntityId.ToString());
+						myLogger.debugLog("counts are now: " + counts + ", target: " + value.Entity.nameWithId());
 						if (GuidedLauncher)
 							counts.GuidedLauncher++;
 						else if (this is Guided.GuidedMissile)
 							counts.GuidedMissile++;
 						else
 							counts.BasicWeapon++;
-						WeaponsTargetingProjectile[value.Entity.EntityId] = counts;
-						myLogger.debugLog("counts are now: " + counts, primaryState: value.Entity.getBestName(), secondaryState: value.Entity.EntityId.ToString());
+						WeaponsTargeting[value.Entity.EntityId] = counts;
+						myLogger.debugLog("++ counts are now: " + counts + ", target: " + value.Entity.nameWithId());
 					}
 				}
 
@@ -185,7 +185,7 @@ namespace Rynchodon.Weapons
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
 			entity.OnClose += obj => {
-				if (WeaponsTargetingProjectile != null)
+				if (WeaponsTargeting != null)
 					CurrentTarget = null;
 			};
 
@@ -381,30 +381,35 @@ namespace Rynchodon.Weapons
 			}
 			else
 			{
-				// choose closest grid
 				Vector3D myPos = ProjectilePosition();
-				double closestDist = range * range;
+				TargetType bestType = TargetType.LowestPriority;
+				double maxRange = range * range;
+				double closestDist = maxRange;
 
 				storage.ForEachLastSeen(seen => {
-					if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
+					TargetType typeOfSeen = TargetingOptions.GetTargetType(seen.Entity);
+					if (typeOfSeen <= bestType && seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(typeOfSeen))
 					{
 						IMyCubeBlock block;
-						if (!ChooseBlock(seen, out block))
+						if (!ChooseBlock(seen, out block) || !CheckWeaponsTargeting(typeOfSeen, seen.Entity))
 							return;
 
-						// always prefer a grid with a block
-						if (targetBlock != null && block == null)
+						if (typeOfSeen == bestType && targetBlock != null && block == null)
 							return;
 
 						double dist = Vector3D.DistanceSquared(myPos, seen.LastKnownPosition);
-						if (dist < closestDist)
+						if ((typeOfSeen < bestType && dist < maxRange) || dist < closestDist)
 						{
 							closestDist = dist;
+							bestType = typeOfSeen;
 							processing = seen;
 							targetBlock = block;
 						}
 					}
 				});
+
+				myLogger.debugLog(processing != null, () => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist);
+				myLogger.debugLog(processing == null, "no last seen target found");
 			}
 
 			if (processing == null)
@@ -807,6 +812,27 @@ namespace Rynchodon.Weapons
 			return false;
 		}
 
+		private bool CheckWeaponsTargeting(TargetType tType, IMyEntity entity)
+		{
+			if ((tType & TargetType.LimitTargeting) == 0)
+				return true;
+
+			if (GuidedLauncher)
+			{
+				WeaponCounts count;
+				using (lock_WeaponsTargeting.AcquireSharedUsing())
+					return !WeaponsTargeting.TryGetValue(entity.EntityId, out count) || (count.GuidedLauncher == 0 && count.GuidedMissile == 0);
+			}
+			else if (this is Guided.GuidedMissile)
+			{
+				WeaponCounts count;
+				using (lock_WeaponsTargeting.AcquireSharedUsing())
+					return !WeaponsTargeting.TryGetValue(entity.EntityId, out count) || count.GuidedMissile == 0;
+			}
+
+			return true;
+		}
+
 		/// <summary>
 		/// Get any projectile which is a threat from Available_Targets[tType].
 		/// </summary>
@@ -816,7 +842,7 @@ namespace Rynchodon.Weapons
 			if (Available_Targets.TryGetValue(tType, out targetsOfType))
 			{
 				IOrderedEnumerable<IMyEntity> sorted;
-				using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
+				using (lock_WeaponsTargeting.AcquireSharedUsing())
 					sorted = targetsOfType.OrderBy(entity => GetWeaponsTargetingProjectile(entity));
 
 				foreach (IMyEntity entity in sorted)
@@ -824,13 +850,8 @@ namespace Rynchodon.Weapons
 					if (entity.Closed)
 						continue;
 
-					if (GuidedLauncher && tType != TargetType.Moving)
-					{
-						WeaponCounts count;
-						using (lock_WeaponsTargetingProjectile.AcquireSharedUsing())
-							if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count) && count.GuidedLauncher != 0)
-								continue;
-					}
+					if (!CheckWeaponsTargeting(tType, entity))
+						continue;
 
 					if (tType == TargetType.Missile)
 					{

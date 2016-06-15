@@ -11,6 +11,7 @@
       <Description>
         GuidanceSeconds=90;
         RotationPerUpdate=0.017453292519943;
+        RadarReflectivity=0.067;
         DetonateRange=3;
       </Description>
       <BasicProperties>
@@ -41,6 +42,7 @@
         GuidanceSeconds=60;
         Acceleration=100;
         RotationPerUpdate=0.017453292519943;
+        RadarReflectivity=0.053;
         HasAntenna=true;
         DetonateRange=3;
         EMP_Strength=300000;
@@ -74,6 +76,7 @@
         GuidanceSeconds=15;
         Acceleration=100;
         RotationPerUpdate=0.01;
+        RadarReflectivity=0.081;
         ClusterCooldown=5;
       </Description>
       <BasicProperties>
@@ -102,12 +105,13 @@
       <DisplayName>Interceptor Missile R1VT</DisplayName>
       <Description>
         GuidanceSeconds=15;
-        CanRotateArc=1.57;
+        AcquisitionAngle=0.5;
+        Acceleration=100;
         TargetRange=800;
         DetonateRange=10;
       </Description>
       <BasicProperties>
-        <DesiredSpeed>650</DesiredSpeed>
+        <DesiredSpeed>1000</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>2000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
@@ -117,7 +121,7 @@
         <MissileMass>30</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Interceptor_Missile.mwm</MissileModelName>
-        <MissileAcceleration>100</MissileAcceleration>
+        <MissileAcceleration>10</MissileAcceleration>
         <MissileInitialSpeed>150</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
         <MissileExplosionDamage>10</MissileExplosionDamage>

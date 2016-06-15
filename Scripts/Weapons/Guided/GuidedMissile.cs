@@ -62,11 +62,10 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		public enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated }
+		public enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated, Exploded }
 
-		private const float Angle_AccelerateWhen = 0.02f;
-		private const float Angle_Detonate = 0.1f;
-		private const float Angle_Cluster = 0.05f;
+		private static readonly float Angle_AccelerateWhen = 0.02f;
+		private static readonly float Cos_Angle_Detonate = (float)Math.Cos(0.3f);
 
 		private static Logger staticLogger = new Logger("GuidedMissile");
 		private static ThreadManager Thread = new ThreadManager();
@@ -217,7 +216,10 @@ namespace Rynchodon.Weapons.Guided
 		private RadarEquipment m_radar;
 
 		public bool Stopped
-		{ get { return MyEntity.Closed || m_stage == Stage.Terminated; } }
+		{ get { return MyEntity.Closed || m_stage >= Stage.Terminated; } }
+
+		public float RadarReflectivity
+		{ get { return myDescr.RadarReflectivity; } }
 
 		private Ammo.AmmoDescription myDescr
 		{ get { return myAmmo.Description; } }
@@ -228,7 +230,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, out Target initialTarget)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, ref Target initialTarget)
 			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger("GuidedMissile", () => myAmmo.AmmoDefinition.DisplayNameText, () => missile.getBestName(), () => m_stage.ToString());
@@ -251,17 +253,25 @@ namespace Rynchodon.Weapons.Guided
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
 
-			RelayStorage storage = launcher.m_relayPart.GetStorage();
-			if (storage == null)
+			if (initialTarget != null && initialTarget.Entity != null)
 			{
-				myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
+				myLogger.debugLog("using target from launcher: " + initialTarget.Entity.nameWithId());
+				CurrentTarget = initialTarget;
 			}
 			else
 			{
-				myLogger.debugLog("getting initial target from launcher", Logger.severity.DEBUG);
-				GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
+				RelayStorage storage = launcher.m_relayPart.GetStorage();
+				if (storage == null)
+				{
+					myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
+				}
+				else
+				{
+					myLogger.debugLog("getting initial target from launcher", Logger.severity.DEBUG);
+					GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
+				}
+				initialTarget = CurrentTarget;
 			}
-			initialTarget = CurrentTarget;
 
 			if (myAmmo.RadarDefinition != null)
 			{
@@ -280,8 +290,8 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, out Target initialTarget)
-			: this(missiles.Master, launcher, out initialTarget)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, ref Target initialTarget)
+			: this(missiles.Master, launcher, ref initialTarget)
 		{
 			myCluster = missiles;
 		}
@@ -354,6 +364,8 @@ namespace Rynchodon.Weapons.Guided
 
 		private void MyEntity_OnClose(IMyEntity obj)
 		{
+			m_stage = Stage.Exploded;
+
 			if (AllGuidedMissiles == null)
 				return;
 
@@ -374,6 +386,8 @@ namespace Rynchodon.Weapons.Guided
 				foreach (MyEntity entity in entitiesInExplosion)
 					if (entity.IsMissile())
 					{
+						if (entity == MyEntity)
+							continue;
 						GuidedMissile hit;
 						if (Registrar.TryGetValue(entity, out hit))
 							hit.Explode();
@@ -392,13 +406,13 @@ namespace Rynchodon.Weapons.Guided
 
 		protected override bool CanRotateTo(Vector3D targetPos)
 		{
-			if (myDescr.CanRotateArc == MathHelper.Pi)
+			if (myDescr.AcquisitionAngle == MathHelper.Pi)
 				return true;
 
 			Vector3 displacement = targetPos - MyEntity.GetPosition();
 			displacement.Normalize();
 			//myLogger.debugLog("forwardness: " + Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) + ", CosCanRotateArc: " + myDescr.CosCanRotateArc);
-			return Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) > myDescr.CosCanRotateArc;
+			return Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) > myDescr.CosAcquisitionAngle;
 		}
 
 		protected override bool myTarget_CanRotateTo(Vector3D targetPos)
@@ -464,7 +478,9 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
-			float angle = forward.AngleBetween(targetDirection);
+			float angle = (float)Math.Acos(Vector3.Dot(forward, targetDirection));
+
+			//myLogger.debugLog("forward: " + forward + ", targetDirection: " + targetDirection + ", angle: " + angle);
 
 			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
@@ -530,17 +546,14 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			{ // detonate when barely missing the target
-				if (MyAPIGateway.Multiplayer.IsServer && angle >= Angle_Detonate && myDescr.DetonateRange > 0f)
+				if (MyAPIGateway.Multiplayer.IsServer &&
+					Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition()) <= myDescr.DetonateRange * myDescr.DetonateRange &&
+					Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(targetDirection) < Cos_Angle_Detonate)
 				{
-					float distSquared = Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition() + cached.Entity.GetLinearVelocity());
-					//myLogger.debugLog("distSquared: " + distSquared, "Update()");
-					if (distSquared <= myDescr.DetonateRange * myDescr.DetonateRange)
-					{
-						myLogger.debugLog("proximity detonation");
-						MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode, myLogger);
-						m_stage = Stage.Terminated;
-						return;
-					}
+					myLogger.debugLog("proximity detonation");
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode, myLogger);
+					m_stage = Stage.Terminated;
+					return;
 				}
 			}
 		}
@@ -616,9 +629,9 @@ namespace Rynchodon.Weapons.Guided
 		{
 			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
-			if (MyEntity.Closed)
+			if (MyEntity.Closed || m_stage == Stage.Exploded)
 				return;
-			m_stage = Stage.Terminated;
+			m_stage = Stage.Exploded;
 
 			MyEntity.Physics.LinearVelocity = Vector3.Zero;
 
@@ -823,29 +836,6 @@ namespace Rynchodon.Weapons.Guided
 		private void ApplyGravity()
 		{
 			MyEntity.Physics.LinearVelocity += m_gravData.AccelPerUpdate;
-		}
-
-		/// <summary>
-		/// Will return null if missile has been terminated.
-		/// </summary>
-		public Builder_GuidedMissile GetBuilder()
-		{
-			if (m_stage == Stage.Terminated)
-				return null;
-
-			Builder_GuidedMissile result = new Builder_GuidedMissile()
-			{
-				Missile = MyEntity.EntityId,
-				Ammo = myAmmo.MissileDefinition.Id,
-				Launcher = m_launcher.CubeBlock.EntityId,
-				Owner = m_owner,
-				GuidanceEnds = new SerializableGameTime(myGuidanceEnds),
-				CurrentStage = m_stage,
-			};
-			if (myCluster != null)
-				result.Cluster = myCluster.GetBuilder();
-
-			return result;
 		}
 
 	}

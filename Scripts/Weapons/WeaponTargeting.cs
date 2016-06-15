@@ -28,8 +28,6 @@ namespace Rynchodon.Weapons
 	/// <summary>
 	/// Contains functions that are common to turrets and fixed weapons
 	/// </summary>
-	/// TODO: stop firing if ARMS disabled
-	/// TODO? guided missile avoiding switching targets
 	public abstract class WeaponTargeting : TargetingBase
 	{
 
@@ -224,7 +222,6 @@ namespace Rynchodon.Weapons
 		{
 			foreach (IMyTerminalControl control in MyTerminalControlFactory.GetControls(typeof(MyLargeTurretBase)))
 			{
-				Static.logger.debugLog("control: " + control.Id);
 				MyTerminalControlSlider<MyLargeTurretBase> slider = control as MyTerminalControlSlider<MyLargeTurretBase>;
 				if (slider != null && slider.Id == id)
 					return new MyTerminalControlSlider<MyUserControllableGun>(id, slider.Title, slider.Tooltip);
@@ -471,6 +468,19 @@ namespace Rynchodon.Weapons
 		private EntityValue<float> m_termControl_range_ev;
 		private EntityStringBuilder m_termControl_blockList_ev, m_termControl_targetEntity_ev;
 
+		private bool value_suppressTargeting;
+
+		public bool SuppressTargeting
+		{
+			get { return value_suppressTargeting; }
+			set
+			{
+				if (value)
+					myTarget = CurrentTarget = NoTarget.Instance;
+				value_suppressTargeting = value;
+			}
+		}
+
 		public Control CurrentControl
 		{
 			get { return value_currentControl; }
@@ -481,12 +491,17 @@ namespace Rynchodon.Weapons
 
 				//myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
 
-				if (IsNormalTurret && MyAPIGateway.Multiplayer.IsServer)
+				if (MyAPIGateway.Multiplayer.IsServer)
 				{
+					if (IsNormalTurret)
+					{
+						if (value == Control.Off)
+							GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
+						else
+							GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10));
+					}
 					if (value == Control.Off)
-						GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
-					else
-						GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10));
+						GameThreadActions.Enqueue(() => ((IMyFunctionalBlock)CubeBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
 				}
 
 				if (value == Control.Engager)
@@ -723,7 +738,7 @@ namespace Rynchodon.Weapons
 			if (GuidedLauncher)
 				UpdateAmmo();
 
-			if (CurrentControl == Control.Off)
+			if (CurrentControl == Control.Off || SuppressTargeting)
 				return;
 
 			if (!GuidedLauncher)

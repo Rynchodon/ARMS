@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Sandbox.Definitions;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -64,7 +66,8 @@ namespace Rynchodon.Weapons.Guided
 		private MyFixedPoint prev_volume;
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
-		private bool onCooldown;
+		private bool m_onCooldown, m_onGameCooldown;
+		private TimeSpan m_gameCooldownTime;
 		private TimeSpan cooldownUntil;
 
 		public Ammo loadedAmmo { get { return m_weaponTarget.LoadedAmmo; } }
@@ -75,13 +78,13 @@ namespace Rynchodon.Weapons.Guided
 			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
 			m_relayPart = RelayClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
 
-			var defn = CubeBlock.GetCubeBlockDefinition();
+			MyWeaponBlockDefinition defn = (MyWeaponBlockDefinition)CubeBlock.GetCubeBlockDefinition();
 
 			Vector3[] points = new Vector3[3];
 			Vector3 forwardAdjust = Vector3.Forward * WeaponDescription.GetFor(CubeBlock).MissileSpawnForward;
 			points[0] = CubeBlock.LocalAABB.Min + forwardAdjust;
 			points[1] = CubeBlock.LocalAABB.Max + forwardAdjust;
-			points[2] = CubeBlock.LocalAABB.Min + Vector3.Up * CubeBlock.GetCubeBlockDefinition().Size.Y * CubeBlock.CubeGrid.GridSize + forwardAdjust;
+			points[2] = CubeBlock.LocalAABB.Min + Vector3.Up * defn.Size.Y * CubeBlock.CubeGrid.GridSize + forwardAdjust;
 
 			MissileSpawnBox = BoundingBox.CreateFromPoints(points);
 			if (m_weaponTarget.myTurret != null)
@@ -96,6 +99,9 @@ namespace Rynchodon.Weapons.Guided
 
 			Registrar.Add(weapon.FuncBlock, this);
 			m_weaponTarget.GuidedLauncher = true;
+
+			m_gameCooldownTime = TimeSpan.FromSeconds(60d / MyDefinitionManager.Static.GetWeaponDefinition(defn.WeaponDefinitionId).WeaponAmmoDatas[(int)MyAmmoType.Missile].RateOfFire);
+			myLogger.debugLog("m_gameCooldownTime: " + m_gameCooldownTime);
 		}
 
 		public void Update1()
@@ -171,15 +177,18 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 				//myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
-				Target initialTarget;
+				Target initialTarget = m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off ? null : m_weaponTarget.CurrentTarget;
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, out initialTarget);
+					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, ref initialTarget);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
-					new GuidedMissile(missile, this, out initialTarget);
+				{
+					new GuidedMissile(missile, this, ref initialTarget);
+					StartCooldown(true);
+				}
 
 				// display target in custom info
 				if (m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off)
@@ -194,33 +203,48 @@ namespace Rynchodon.Weapons.Guided
 			return true;
 		}
 
-		private void StartCooldown()
+		private void StartCooldown(bool gameCooldown = false)
 		{
-			FuncBlock.RequestEnable(false);
-			FuncBlock.ApplyAction("Shoot_Off");
-			onCooldown = true;
-			cooldownUntil = Globals.ElapsedTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
+			if (gameCooldown)
+			{
+				m_onGameCooldown = true;
+				m_weaponTarget.SuppressTargeting = true;
+				cooldownUntil = Globals.ElapsedTime + m_gameCooldownTime;
+				myLogger.debugLog("started game cooldown, suppressing targeting until " + cooldownUntil);
+			}
+			else
+			{
+				m_onCooldown = true;
+				FuncBlock.RequestEnable(false);
+				FuncBlock.ApplyAction("Shoot_Off");
+				cooldownUntil = Globals.ElapsedTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
+			}
 		}
 
 		private void CheckCooldown()
 		{
-			if (!onCooldown)
+			if (!m_onCooldown && !m_onGameCooldown)
 				return;
 
 			if (cooldownUntil > Globals.ElapsedTime)
 			{
-				if (FuncBlock.Enabled)
+				if (m_onCooldown && FuncBlock.Enabled)
 				{
+					myLogger.debugLog("deactivating");
 					FuncBlock.RequestEnable(false);
 					FuncBlock.ApplyAction("Shoot_Off");
 				}
 			}
 			else
 			{
-				//myLogger.debugLog("off cooldown", "CheckCooldown()");
-				onCooldown = false;
-				FuncBlock.RequestEnable(true);
-				// do not restore shooting toggle, makes it difficult to turn the thing off
+				myLogger.debugLog("off cooldown");
+				if (m_onCooldown)
+					// do not restore shooting toggle, makes it difficult to turn the thing off
+					FuncBlock.RequestEnable(true);
+				if (m_onGameCooldown)
+					m_weaponTarget.SuppressTargeting = false;
+				m_onCooldown = false;
+				m_onGameCooldown = false;
 			}
 		}
 

@@ -70,7 +70,7 @@ namespace Rynchodon
 		/// Acquire shared using lock on main thread.
 		/// </summary>
 		/// <returns>Shared using lock on main thread.</returns>
-		public static VRage.FastResourceLockExtensions.MySharedLock AcquireSharedUsing()
+		public static IDisposable AcquireSharedUsing()
 		{
 			if (ThreadTracker.IsGameThread)
 				return lock_dummy.AcquireSharedUsing();

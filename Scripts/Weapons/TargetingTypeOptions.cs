@@ -29,12 +29,15 @@ namespace Rynchodon.Weapons
 		/// <summary>Destroy every terminal block on all grids</summary>
 		Destroy = 1 << 7,
 
+		LimitTargeting = Missile + Meteor,
 		Projectile = Missile + Meteor + Moving,
 		AllGrid = LargeGrid + SmallGrid + Station,
 
 		LargeShip = LargeGrid,
 		SmallShip = SmallGrid,
 		AllShip = AllGrid,
+
+		LowestPriority = Destroy
 	}
 
 	[Flags]
@@ -57,6 +60,30 @@ namespace Rynchodon.Weapons
 	public class TargetingOptions
 	{
 
+		public static TargetType GetTargetType(IMyEntity entity)
+		{
+			IMyCubeGrid grid = entity as IMyCubeGrid;
+			if (grid != null)
+			{
+				if (grid.IsStatic)
+					return TargetType.Station;
+				if (grid.GridSizeEnum == MyCubeSize.Large)
+					return TargetType.LargeGrid;
+				if (grid.GridSizeEnum == MyCubeSize.Small)
+					return TargetType.SmallGrid;
+
+				throw new Exception("Unknown grid size: " + grid.DisplayName);
+			}
+			if (entity is IMyCharacter)
+				return TargetType.Character;
+			if (entity is IMyMeteor)
+				return TargetType.Meteor;
+			if (entity.IsMissile())
+				return TargetType.Missile;
+
+			return TargetType.None;
+		}
+
 		public TargetType CanTarget = TargetType.None;
 
 		/// <summary>Returns true if any of the specified types can be targeted.</summary>
@@ -65,26 +92,7 @@ namespace Rynchodon.Weapons
 
 		public bool CanTargetType(IMyEntity entity)
 		{
-			IMyCubeGrid grid = entity as IMyCubeGrid;
-			if (grid != null)
-			{
-				if (grid.IsStatic)
-					return CanTargetType(TargetType.Station);
-				if (grid.GridSizeEnum == MyCubeSize.Large)
-					return CanTargetType(TargetType.LargeGrid);
-				if (grid.GridSizeEnum == MyCubeSize.Small)
-					return CanTargetType(TargetType.SmallGrid);
-
-				throw new Exception("Unknown grid size: " + grid.DisplayName);
-			}
-			if (entity is IMyCharacter)
-				return CanTargetType(TargetType.Character);
-			if (entity is IMyMeteor)
-				return CanTargetType(TargetType.Meteor);
-			if (entity.IsMissile())
-				return CanTargetType(TargetType.Missile);
-
-			return false;
+			return CanTargetType(GetTargetType(entity));
 		}
 
 		public BlockTypeList listOfBlocks { get; private set; }
