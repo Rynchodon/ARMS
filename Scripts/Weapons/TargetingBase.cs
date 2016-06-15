@@ -240,7 +240,7 @@ namespace Rynchodon.Weapons
 
 		protected void BlacklistTarget()
 		{
-			//myLogger.debugLog("Blacklisting " + myTarget.Entity, "BlacklistTarget()");
+			myLogger.debugLog("Blacklisting " + myTarget.Entity);
 			Blacklist.Add(myTarget.Entity);
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
@@ -276,10 +276,8 @@ namespace Rynchodon.Weapons
 
 			CollectTargets();
 			PickATarget();
-			//if (myTarget.Entity != null && CurrentTarget != myTarget)
-			//	myLogger.debugLog("New target: " + myTarget.Entity.getBestName());
-			//else if (CurrentTarget != null && CurrentTarget.Entity != null)
-			//	myLogger.debugLog("Lost target: " + CurrentTarget.Entity.getBestName());
+
+			//myLogger.debugLog(CurrentTarget != myTarget && CurrentTarget != null && myTarget != null, () => "current target: " + CurrentTarget.Entity.getBestName() + ", new target: " + myTarget.Entity.getBestName());
 
 			CurrentTarget = myTarget;
 		}
@@ -579,7 +577,7 @@ namespace Rynchodon.Weapons
 			if (!Available_Targets.TryGetValue(tType, out targetsOfType))
 				return false;
 
-			myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count);
+			//myLogger.debugLog("getting closest " + tType + ", from list of " + targetsOfType.Count);
 
 			IMyEntity closest = null;
 
@@ -634,6 +632,7 @@ namespace Rynchodon.Weapons
 
 			if (closest != null)
 			{
+				//myLogger.debugLog("closest: " + closest.nameWithId());
 				myTarget = new TurretTarget(closest, tType);
 				return true;
 			}
@@ -684,7 +683,7 @@ namespace Rynchodon.Weapons
 		/// </remarks>
 		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
 		{
-			//myLogger.debugLog("getting block from " + grid.DisplayName + ", target type = " + tType);
+			//myLogger.debugLog("getting block from " + grid.DisplayName + ", target type = " + tType + ", block list: " + string.Join(", ", Options.blocksToTarget));
 
 			Vector3D myPosition = ProjectilePosition();
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
@@ -988,7 +987,7 @@ namespace Rynchodon.Weapons
 						", direction: " + direction + ", distanceToTarget: " + distanceToTarget, Logger.severity.FATAL);
 					return;
 				}
-				//myLogger.debugLog("shot too slow, blacklisting", "FindInterceptVector()");
+				//myLogger.debugLog("shot too slow, blacklisting");
 				BlacklistTarget();
 				return;
 			}

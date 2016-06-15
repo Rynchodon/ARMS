@@ -497,6 +497,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void AddToCumulative(TargetType type, BlockTypeList blocks)
 		{
+			if (blocks == null)
+				return;
 			m_logger.debugLog("adding to type: " + type + ", count: " + blocks.BlockNamesContain.Length);
 
 			if (type == TargetType.AllGrid)

@@ -13,7 +13,7 @@ namespace Rynchodon
 		[Flags]
 		public enum Relations : byte
 		{
-			None = 0,
+			NoOwner = 0,
 			/// <summary>
 			/// Owner/Player is a member of an at war faction
 			/// </summary>
@@ -53,7 +53,7 @@ namespace Rynchodon
 			if (rel.HasAnyFlag(Relations.Enemy))
 				return true;
 
-			if (rel == Relations.None)
+			if (rel == Relations.NoOwner)
 				return ownerlessHostile;
 
 			return false;
@@ -64,7 +64,7 @@ namespace Rynchodon
 			foreach (Relations flag in relationsPriority)
 				if (rel.HasAnyFlag(flag))
 					return flag;
-			return Relations.None;
+			return Relations.NoOwner;
 		}
 
 		public static byte PriorityOrder(this Relations rel)
@@ -81,7 +81,7 @@ namespace Rynchodon
 				return Relations.Owner;
 
 			if (identityId1 == 0L || identityId2 == 0L)
-				return Relations.None;
+				return Relations.NoOwner;
 
 			IMyFaction fact1 = MyAPIGateway.Session.Factions.TryGetPlayerFaction(identityId1);
 			if (fact1 == null)
@@ -99,40 +99,40 @@ namespace Rynchodon
 			return Relations.Enemy;
 		}
 
-		public static Relations getRelationsTo(this long identityId, IMyCubeGrid target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this long identityId, IMyCubeGrid target, Relations breakOn = Relations.NoOwner)
 		{
 			if (identityId == 0L)
-				return Relations.None;
+				return Relations.NoOwner;
 
 			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(target);
 			if (controlling != null)
 				return getRelationsTo(identityId, controlling.IdentityId); 
 
 			if (target.BigOwners.Count == 0 && target.SmallOwners.Count == 0) // grid has no owner
-				return Relations.None;
+				return Relations.NoOwner;
 
-			Relations relationsToGrid = Relations.None;
+			Relations relationsToGrid = Relations.NoOwner;
 			foreach (long gridOwner in target.BigOwners)
 			{
 				relationsToGrid |= getRelationsTo(identityId, gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasAnyFlag(breakOn))
+				if (breakOn != Relations.NoOwner && relationsToGrid.HasAnyFlag(breakOn))
 					return relationsToGrid;
 			}
 
 			foreach (long gridOwner in target.SmallOwners)
 			{
 				relationsToGrid |= getRelationsTo(identityId, gridOwner);
-				if (breakOn != Relations.None && relationsToGrid.HasAnyFlag(breakOn))
+				if (breakOn != Relations.NoOwner && relationsToGrid.HasAnyFlag(breakOn))
 					return relationsToGrid;
 			}
 
 			return relationsToGrid;
 		}
 
-		public static Relations getRelationsTo(this long identityId, IMyEntity target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this long identityId, IMyEntity target, Relations breakOn = Relations.NoOwner)
 		{
 			if (identityId == 0L)
-				return Relations.None;
+				return Relations.NoOwner;
 
 			IMyCubeBlock asBlock = target as IMyCubeBlock;
 			if (asBlock != null)
@@ -180,7 +180,7 @@ namespace Rynchodon
 			return getRelationsTo(player.IdentityId, block.OwnerId);
 		}
 
-		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeGrid target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this IMyPlayer player, IMyCubeGrid target, Relations breakOn = Relations.NoOwner)
 		{
 			return getRelationsTo(player.IdentityId, target, breakOn);
 		}
@@ -195,12 +195,12 @@ namespace Rynchodon
 			return getRelationsTo(block1.OwnerId, block2.OwnerId);
 		}
 
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this IMyCubeBlock block, IMyCubeGrid target, Relations breakOn = Relations.NoOwner)
 		{
 			return getRelationsTo(block.OwnerId, target, breakOn);
 		}
 
-		public static Relations getRelationsTo(this IMyCubeBlock block, IMyEntity target, Relations breakOn = Relations.None)
+		public static Relations getRelationsTo(this IMyCubeBlock block, IMyEntity target, Relations breakOn = Relations.NoOwner)
 		{
 			return getRelationsTo(block.OwnerId, target, breakOn);
 		}

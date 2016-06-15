@@ -22,7 +22,7 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <summary>vanilla property</summary>
-		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations;
+		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations, TP_TargetNeutrals;
 
 		private readonly MyEntitySubpart m_barrel;
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
@@ -54,6 +54,7 @@ namespace Rynchodon.Weapons
 				TP_TargetLargeGrids = term.GetProperty("TargetLargeShips").AsBool();
 				TP_TargetSmallGrids = term.GetProperty("TargetSmallShips").AsBool();
 				TP_TargetStations = term.GetProperty("TargetStations").AsBool();
+				TP_TargetNeutrals = term.GetProperty("TargetNeutrals").AsBool();
 			}
 
 			// definition limits
@@ -100,6 +101,10 @@ namespace Rynchodon.Weapons
 			SetFlag(TP_TargetLargeGrids, TargetType.LargeGrid);
 			SetFlag(TP_TargetSmallGrids, TargetType.SmallGrid);
 			SetFlag(TP_TargetStations, TargetType.Station);
+			if (TP_TargetNeutrals.GetValue(CubeBlock))
+				Options.Flags &= ~TargetingFlags.IgnoreOwnerless;
+			else
+				Options.Flags |= TargetingFlags.IgnoreOwnerless;
 
 			Options.TargetingRange = myTurret.Range;
 

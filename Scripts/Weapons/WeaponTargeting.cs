@@ -21,6 +21,7 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
+using System.Linq;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
@@ -45,7 +46,7 @@ namespace Rynchodon.Weapons
 
 		public enum Control : byte { Off, On, Engager }
 
-		private enum SpecialTarget : byte { None, EntityId, Golis }
+		private enum WeaponFlags : byte { None = 0, EntityId = 1, Golis = 2, Laser = 4 }
 
 		#region Static
 
@@ -123,6 +124,11 @@ namespace Rynchodon.Weapons
 			AddGetSet(destroy, TargetType.Destroy);
 			Static.sharedControls.Add(destroy);
 
+			MyTerminalControlCheckbox<MyUserControllableGun> laser = new MyTerminalControlCheckbox<MyUserControllableGun>("ShowLaser", MyStringId.GetOrCompute("Show Laser"),
+				MyStringId.GetOrCompute("Everything is better with lasers!"));
+			AddGetSet(laser, WeaponFlags.Laser);
+			Static.sharedControls.Add(laser);
+
 			Static.sharedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
 
 			MyTerminalControlTextbox<MyUserControllableGun> textBox = new MyTerminalControlTextbox<MyUserControllableGun>("TargetBlocks", MyStringId.GetOrCompute("Target Blocks"),
@@ -134,12 +140,12 @@ namespace Rynchodon.Weapons
 
 			MyTerminalControlCheckbox<MyUserControllableGun> targetById = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByEntityId", MyStringId.GetOrCompute("Target by Entity ID"),
 				MyStringId.GetOrCompute("Use ID of an entity for targeting"));
-			AddGetSet(targetById, SpecialTarget.EntityId);
+			AddGetSet(targetById, WeaponFlags.EntityId);
 			Static.sharedControls.Add(targetById);
 
 			textBox = new MyTerminalControlTextbox<MyUserControllableGun>("EntityId", MyStringId.GetOrCompute("Target Entity ID"),
 				MyStringId.GetOrCompute("ID of entity to target"));
-			textBox.Visible = block => GetEnum(block, SpecialTarget.EntityId);
+			textBox.Visible = block => GetEnum(block, WeaponFlags.EntityId);
 			valueControl = textBox;
 			valueControl.Getter = GetTargetEntity;
 			valueControl.Setter = SetTargetEntity;
@@ -210,7 +216,7 @@ namespace Rynchodon.Weapons
 			valueControl.Setter = (block, value) => SetEnum(block, flag, value);
 		}
 
-		private static void AddGetSet(IMyTerminalValueControl<bool> valueControl, SpecialTarget which)
+		private static void AddGetSet(IMyTerminalValueControl<bool> valueControl, WeaponFlags which)
 		{
 			valueControl.Getter = block => GetEnum(block, which);
 			valueControl.Setter = (block, value) => SetEnum(block, which, value);
@@ -367,27 +373,29 @@ namespace Rynchodon.Weapons
 				instance.m_termControl_targetFlag_ev.Value &= ~flag;
 		}
 
-		private static bool GetEnum(IMyTerminalBlock block, SpecialTarget which)
+		private static bool GetEnum(IMyTerminalBlock block, WeaponFlags flag)
 		{
 			WeaponTargeting instance;
 			if (!TryGetWeaponTargeting(block, out instance))
 				return false;
-			return instance.m_termControl_specialTarget_ev.Value == which;
+			return (instance.m_termControl_weaponFlags_ev.Value & flag) != 0;
 		}
 
-		private static void SetEnum(IMyTerminalBlock block, SpecialTarget which, bool value)
+		private static void SetEnum(IMyTerminalBlock block, WeaponFlags flag, bool value)
 		{
 			WeaponTargeting instance;
 			if (!TryGetWeaponTargeting(block, out instance))
 				return;
 			if (value)
 			{
-				instance.m_termControl_specialTarget_ev.Value = which;
-				// ISSUE: using SwitchToControlPanelBlock can cause input to be applied to new page, need to delay until mouse/key/button up
-				//MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
+				instance.m_termControl_weaponFlags_ev.Value |= flag;
+				if (flag == WeaponFlags.EntityId)
+					instance.m_termControl_weaponFlags_ev.Value &= ~WeaponFlags.Golis;
+				else if (flag == WeaponFlags.Golis)
+					instance.m_termControl_weaponFlags_ev.Value &= ~WeaponFlags.EntityId;
 			}
 			else
-				instance.m_termControl_specialTarget_ev.Value = SpecialTarget.None;
+				instance.m_termControl_weaponFlags_ev.Value &= ~flag;
 		}
 
 		private static StringBuilder GetBlockList(IMyTerminalBlock block)
@@ -478,7 +486,7 @@ namespace Rynchodon.Weapons
 
 		private EntityValue<TargetType> m_termControl_targetType_ev;
 		private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
-		private EntityValue<SpecialTarget> m_termControl_specialTarget_ev;
+		private EntityValue<WeaponFlags> m_termControl_weaponFlags_ev;
 		private EntityValue<float> m_termControl_range_ev;
 		private EntityStringBuilder m_termControl_blockList_ev, m_termControl_targetEntity_ev;
 
@@ -500,7 +508,7 @@ namespace Rynchodon.Weapons
 			get { return value_currentControl; }
 			set
 			{
-				if (value_currentControl == value)
+				if (value_currentControl == value || Static == null)
 					return;
 
 				//myLogger.debugLog("Control changed from " + value_currentControl + " to " + value, "get_CurrentControl()");
@@ -569,12 +577,13 @@ namespace Rynchodon.Weapons
 			this.m_termControl_targetEntity_ev = new EntityStringBuilder(weapon, index++, () => {
 				UpdateVisual();
 				long entityId;
-				if (long.TryParse(m_termControl_targetEntity_ev.ToString().RemoveWhitespace(), out entityId))
+				if (long.TryParse(m_termControl_targetEntity_ev.Value.ToString().RemoveWhitespace(), out entityId))
 					m_termControl_targetEntityId = entityId;
 				else
 					m_termControl_targetEntityId = null;
+				myLogger.debugLog("target entity id: " + m_termControl_targetEntityId + ", string value: "+m_termControl_targetEntity_ev.Value.ToString());
 			});
-			this.m_termControl_specialTarget_ev = new EntityValue<SpecialTarget>(weapon, index++, UpdateVisual, SpecialTarget.EntityId);
+			this.m_termControl_weaponFlags_ev = new EntityValue<WeaponFlags>(weapon, index++, UpdateVisual, WeaponFlags.EntityId);
 
 			if (Static.TPro_Shoot == null)
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
@@ -583,6 +592,8 @@ namespace Rynchodon.Weapons
 				m_relayPart = RelayClient.GetOrCreateRelayPart(weapon);
 
 			WeaponDefinition = MyDefinitionManager.Static.GetWeaponDefinition(((MyWeaponBlockDefinition)weapon.GetCubeBlockDefinition()).WeaponDefinitionId);
+
+			Ignore(new IMyEntity[] { });
 
 			//myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
@@ -651,6 +662,34 @@ namespace Rynchodon.Weapons
 						if (myTurret != null)
 							myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10);
 					}
+				}
+
+				if (CurrentControl != Control.Off && (m_termControl_weaponFlags_ev.Value & WeaponFlags.Laser) != 0 &&
+					MyAPIGateway.Session.Player != null && MyAPIGateway.Session.Player.IdentityId.canControlBlock(CubeBlock) && Vector3D.DistanceSquared(MyAPIGateway.Session.Player.GetPosition(), ProjectilePosition()) < 1e8f)
+				{
+					Vector3D start = ProjectilePosition();
+					float distance;
+			
+					Target target = CurrentTarget;
+					if (target.Entity != null)
+					{
+						if (target.FiringDirection.HasValue && !FireWeapon)
+						{
+							Vector4 yellow = Color.Yellow.ToVector4();
+							MySimpleObjectDraw.DrawLine(start + target.FiringDirection.Value, start + target.FiringDirection.Value * 11f, "WeaponLaser", ref yellow, 0.05f);
+						}
+						distance = (float)Vector3D.Distance(start, target.GetPosition());
+					}
+					else
+						distance = MaxRange;
+
+					Vector4 colour = FireWeapon ? Color.DarkRed.ToVector4() : Color.DarkGreen.ToVector4();
+					Vector3 facing = Facing();
+					Vector3D end = start + facing * distance;
+					Vector3D contact = Vector3D.Zero;
+					if (MyHudCrosshair.GetTarget(start + facing * 10f, end, ref contact))
+						end = contact;
+					MySimpleObjectDraw.DrawLine(start, end, "WeaponLaser", ref colour, 0.05f);
 				}
 
 				Update1_GameThread();
@@ -880,7 +919,7 @@ namespace Rynchodon.Weapons
 		}
 
 		private bool condition_changed;
-		private bool prev_working, prev_playerControl, prev_noOwn, prev_ammo, prev_range, prev_grids;
+		private bool prev_notWorking, prev_playerControl, prev_noOwn, prev_ammo, prev_range, prev_noGrids, prev_noStorage;
 		private int prev_errors;
 		private long prev_target;
 		private Control prev_control;
@@ -892,11 +931,12 @@ namespace Rynchodon.Weapons
 		{
 			condition_changed = false;
 
-			ConditionChange(CubeBlock.IsWorking, ref prev_working);
+			ConditionChange(!CubeBlock.IsWorking, ref prev_notWorking);
 			ConditionChange(IsNormalTurret && myTurret.IsUnderControl, ref prev_playerControl);
 			ConditionChange(CubeBlock.OwnerId == 0, ref prev_noOwn);
 			ConditionChange(Options.TargetingRange < 1f, ref prev_range);
-			ConditionChange(Options.CanTargetType(TargetType.AllGrid | TargetType.Destroy), ref prev_range);
+			ConditionChange(!Options.CanTargetType(TargetType.AllGrid | TargetType.Destroy), ref prev_noGrids);
+			ConditionChange(m_relayPart != null && m_relayPart.GetStorage() == null, ref prev_noStorage);
 
 			ConditionChange(Interpreter.Errors.Count, ref prev_errors);
 
@@ -959,18 +999,20 @@ namespace Rynchodon.Weapons
 				// else, guided missile has no initial target though it may acquire one
 			}
 
-			if (!CubeBlock.IsWorking)
+			if (prev_notWorking)
 			{
 				customInfo.AppendLine("Off");
 				return;
 			}
-			if (IsNormalTurret && myTurret.IsUnderControl)
+			if (prev_playerControl)
 			{
 				customInfo.AppendLine("Being controlled by player");
 				return;
 			}
-			if (CubeBlock.OwnerId == 0)
+			if (prev_noOwn)
 				customInfo.AppendLine("No owner");
+			if (prev_noStorage)
+				customInfo.AppendLine("No network connection");
 
 			switch (CurrentControl)
 			{
@@ -991,16 +1033,17 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo == null)
 				customInfo.AppendLine("No ammo");
-			if (Options.TargetingRange < 1f)
+			if (prev_range)
 				customInfo.AppendLine("Range is zero");
-			if (!Options.CanTargetType(TargetType.AllGrid | TargetType.Destroy))
+			if (prev_noGrids)
 				customInfo.AppendLine("Not targeting ships");
-			if (CurrentTarget.Entity == null)
+			Target target = CurrentTarget;
+			if (target.Entity == null)
 				customInfo.AppendLine("No target");
 			else
 			{
 				customInfo.Append("Has target: ");
-				customInfo.AppendLine(CurrentTarget.Entity.GetNameForDisplay(CubeBlock.OwnerId));
+				customInfo.AppendLine(target.Entity.GetNameForDisplay(CubeBlock.OwnerId));
 			}
 		}
 

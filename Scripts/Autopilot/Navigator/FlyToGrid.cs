@@ -396,7 +396,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 						else
 						{
-							if (m_navSet.DirectionMatched())
+							if (m_targetBlock != null && m_targetBlock.Forward.HasValue ? m_navSet.DirectionMatched() : m_mover.AngularVelocity == Vector3.Zero)
 							{
 								m_logger.debugLog("Arrived at target", Logger.severity.INFO);
 								m_navSet.OnTaskComplete(m_settingLevel);

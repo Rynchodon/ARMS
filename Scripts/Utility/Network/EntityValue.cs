@@ -317,6 +317,7 @@ namespace Rynchodon.Utility.Network
 		protected override void SetValue(string value)
 		{
 			m_value = new StringBuilder(value);
+			m_afterValueChanged.InvokeIfExists();
 		}
 
 		private void Update100()

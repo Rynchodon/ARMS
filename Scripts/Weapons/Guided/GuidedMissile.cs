@@ -214,6 +214,7 @@ namespace Rynchodon.Weapons.Guided
 		private RailData m_rail;
 		private GravityData m_gravData;
 		private RadarEquipment m_radar;
+		private bool m_destroyedNearbyMissiles;
 
 		public bool Stopped
 		{ get { return MyEntity.Closed || m_stage >= Stage.Terminated; } }
@@ -377,24 +378,7 @@ namespace Rynchodon.Weapons.Guided
 
 			RemoveRock();
 
-			if (myCluster == null)
-			{
-				// destroy all missiles in radius
-				BoundingSphereD explosion = new BoundingSphereD(MyEntity.GetPosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
-				List<MyEntity> entitiesInExplosion = new List<MyEntity>();
-				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref explosion, entitiesInExplosion, MyEntityQueryType.Dynamic);
-				foreach (MyEntity entity in entitiesInExplosion)
-					if (entity.IsMissile())
-					{
-						if (entity == MyEntity)
-							continue;
-						GuidedMissile hit;
-						if (Registrar.TryGetValue(entity, out hit))
-							hit.Explode();
-						else
-							entity.Delete();
-					}
-			}
+			DestroyAllNearbyMissiles();
 
 			if (myDescr.EMP_Seconds > 0f && myDescr.EMP_Strength > 0f)
 			{
@@ -529,6 +513,7 @@ namespace Rynchodon.Weapons.Guided
 					if (RayCast.Obstructed(new LineD(position, nextPosition), new IMyEntity[] { MyEntity }, checkVoxel: false))
 					{
 						myLogger.debugLog("detonating in front of entity at " + contact);
+						DestroyAllNearbyMissiles();
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 							if (Vector3D.DistanceSquared(position, contact) > 1f)
 							{
@@ -551,6 +536,7 @@ namespace Rynchodon.Weapons.Guided
 					Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(targetDirection) < Cos_Angle_Detonate)
 				{
 					myLogger.debugLog("proximity detonation");
+					DestroyAllNearbyMissiles();
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode, myLogger);
 					m_stage = Stage.Terminated;
 					return;
@@ -668,6 +654,32 @@ namespace Rynchodon.Weapons.Guided
 
 			//myLogger.debugLog("removing rock", "RemoveRock()");
 			myRock.Delete();
+		}
+
+		/// <summary>
+		/// Destroys missiles in blast radius, safe to call from any thread.
+		/// </summary>
+		private void DestroyAllNearbyMissiles()
+		{
+			if (myCluster != null || m_destroyedNearbyMissiles)
+				return;
+			m_destroyedNearbyMissiles = true;
+
+			BoundingSphereD explosion = new BoundingSphereD(MyEntity.GetPosition(), myAmmo.MissileDefinition.MissileExplosionRadius);
+			List<MyEntity> entitiesInExplosion = new List<MyEntity>();
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref explosion, entitiesInExplosion, MyEntityQueryType.Dynamic);
+
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				foreach (MyEntity entity in entitiesInExplosion)
+					if (!entity.Closed && entity.IsMissile() && entity != MyEntity)
+					{
+						GuidedMissile hit;
+						if (Registrar.TryGetValue(entity, out hit))
+							hit.Explode();
+						else
+							entity.Delete();
+					}
+			}, myLogger);
 		}
 
 		/// <summary>
