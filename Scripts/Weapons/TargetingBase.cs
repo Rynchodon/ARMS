@@ -57,33 +57,6 @@ namespace Rynchodon.Weapons
 			return result.Value;
 		}
 
-		//private static void AddWeaponsTargetingProjectile(IMyEntity entity, short number)
-		//{
-		//	using (lock_WeaponsTargetingProjectile.AcquireExclusiveUsing())
-		//	{
-		//		//s_logger.debugLog("number: " + number, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
-
-		//		short count;
-		//		if (WeaponsTargetingProjectile.TryGetValue(entity.EntityId, out count))
-		//		{
-		//			//s_logger.debugLog("count: " + count + " => " + (count + number), primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
-		//			count += number;
-		//			if (count == zero)
-		//			{
-		//				WeaponsTargetingProjectile.Remove(entity.EntityId);
-		//				return;
-		//			}
-		//			s_logger.debugLog(count < zero, () => "count is negative: " + count + ", for " + entity.getBestName(), Logger.severity.FATAL, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
-		//		}
-		//		else
-		//			count = number;
-
-		//		s_logger.debugLog(count > short.MaxValue / 2, () => "many weapons targeting: " + entity.getBestName() + ", count: " + count, Logger.severity.WARNING, primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
-		//		//s_logger.debugLog("count: " + count + " => " + (count + number), primaryState: entity.getBestName(), secondaryState: entity.EntityId.ToString());
-		//		WeaponsTargetingProjectile[entity.EntityId] = count;
-		//	}
-		//}
-
 		#endregion Static
 
 		private readonly Logger myLogger;
@@ -125,18 +98,27 @@ namespace Rynchodon.Weapons
 
 				using (lock_WeaponsTargeting.AcquireExclusiveUsing())
 				{
-					if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.Projectile) != 0)
+					if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.LimitTargeting) != 0 && CubeBlock.canConsiderHostile(value_CurrentTarget.Entity, true))
 					{
 						WeaponCounts counts;
 						if (!WeaponsTargeting.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
 							throw new Exception("WeaponsTargetingProjectile does not contain " + value_CurrentTarget.Entity.nameWithId());
 						myLogger.debugLog("counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
 						if (GuidedLauncher)
+						{
+							myLogger.debugLog(counts.GuidedLauncher == 0, "guided launcher count is already at 0", Logger.severity.FATAL);
 							counts.GuidedLauncher--;
+						}
 						else if (this is Guided.GuidedMissile)
+						{
+							myLogger.debugLog(counts.GuidedMissile == 0, "guided missile count is already at 0", Logger.severity.FATAL);
 							counts.GuidedMissile--;
+						}
 						else
+						{
+							myLogger.debugLog(counts.BasicWeapon == 0, "basic weapon count is already at 0", Logger.severity.FATAL);
 							counts.BasicWeapon--;
+						}
 						if (counts.BasicWeapon == 0 && counts.GuidedLauncher == 0 && counts.GuidedMissile == 0)
 						{
 							myLogger.debugLog("removing. counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
@@ -148,7 +130,7 @@ namespace Rynchodon.Weapons
 							WeaponsTargeting[value_CurrentTarget.Entity.EntityId] = counts;
 						}
 					}
-					if (value != null && (value.TType & TargetType.Projectile) != 0)
+					if (value != null && (value.TType & TargetType.LimitTargeting) != 0 && CubeBlock.canConsiderHostile(value.Entity, true))
 					{
 						WeaponCounts counts;
 						if (!WeaponsTargeting.TryGetValue(value.Entity.EntityId, out counts))
@@ -366,7 +348,7 @@ namespace Rynchodon.Weapons
 				float highestPowerLevel = 0f;
 
 				storage.ForEachLastSeen((LastSeen seen) => {
-					if (seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(seen.Entity))
+					if (seen.isRecent() && Options.CanTargetType(seen.Entity) && CanConsiderHostile(seen.Entity))
 					{
 						IMyCubeBlock block;
 						float powerLevel;
@@ -388,7 +370,7 @@ namespace Rynchodon.Weapons
 
 				storage.ForEachLastSeen(seen => {
 					TargetType typeOfSeen = TargetingOptions.GetTargetType(seen.Entity);
-					if (typeOfSeen <= bestType && seen.isRecent() && CubeBlock.canConsiderHostile(seen.Entity) && Options.CanTargetType(typeOfSeen))
+					if (typeOfSeen <= bestType && Options.CanTargetType(typeOfSeen) && seen.isRecent() && CanConsiderHostile(seen.Entity))
 					{
 						IMyCubeBlock block;
 						if (!ChooseBlock(seen, out block) || !CheckWeaponsTargeting(typeOfSeen, seen.Entity))
@@ -501,7 +483,7 @@ namespace Rynchodon.Weapons
 						continue;
 					}
 
-					if (asChar.IsBot || CubeBlock.canConsiderHostile(asChar.GetIdentity_Safe().PlayerId))
+					if (asChar.IsBot || CanConsiderHostile(entity))
 					{
 						//myLogger.debugLog("hostile: " + entity.nameWithId());
 						AddTarget(TargetType.Character, entity);
@@ -520,7 +502,7 @@ namespace Rynchodon.Weapons
 					if (!asGrid.Save)
 						continue;
 
-					if (CubeBlock.canConsiderHostile(asGrid))
+					if (CanConsiderHostile(asGrid))
 					{
 						AddTarget(TargetType.Moving, entity);
 						AddTarget(TargetType.Destroy, entity);
@@ -539,7 +521,7 @@ namespace Rynchodon.Weapons
 					continue;
 				}
 
-				if (entity.IsMissile())
+				if (entity.IsMissile() && CanConsiderHostile(entity))
 				{
 					AddTarget(TargetType.Missile, entity);
 					continue;
@@ -729,7 +711,7 @@ namespace Rynchodon.Weapons
 						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 
-						if (distanceSq < distanceValue && CubeBlock.canConsiderHostile(block))
+						if (distanceSq < distanceValue && CanConsiderHostile(block))
 						{
 							target = block;
 							distanceValue = distanceSq;
@@ -760,7 +742,7 @@ namespace Rynchodon.Weapons
 					int multiplier = index + 1;
 					distSq *= multiplier * multiplier * multiplier;
 
-					if (distSq < in_distValue && CubeBlock.canConsiderHostile(block))
+					if (distSq < in_distValue && CanConsiderHostile(block))
 					{
 						in_target = block;
 						in_distValue = distSq;
@@ -795,7 +777,7 @@ namespace Rynchodon.Weapons
 							continue;
 						distanceSq *= 1e12;
 
-						if (distanceSq < closest && CubeBlock.canConsiderHostile(slim.FatBlock))
+						if (distanceSq < closest && CanConsiderHostile(slim.FatBlock))
 						{
 							target = slim.FatBlock;
 							distanceValue = distanceSq;
@@ -852,16 +834,6 @@ namespace Rynchodon.Weapons
 
 					if (!CheckWeaponsTargeting(tType, entity))
 						continue;
-
-					if (tType == TargetType.Missile)
-					{
-						long owner;
-						if (Guided.GuidedMissile.TryGetOwnerId(entity.EntityId, out owner) && !CubeBlock.canConsiderHostile(owner))
-						{
-							//myLogger.debugLog("owner is not hostile", "PickAProjectile()");
-							continue;
-						}
-					}
 
 					// meteors and missiles are dangerous even if they are slow
 					if (!(entity is IMyMeteor || entity.IsMissile() || entity.GetLinearVelocity().LengthSquared() > 100))
@@ -1116,6 +1088,11 @@ namespace Rynchodon.Weapons
 		}
 
 		#endregion
+
+		private bool CanConsiderHostile(IMyEntity target)
+		{
+			return CubeBlock.canConsiderHostile(target, !Options.FlagSet(TargetingFlags.IgnoreOwnerless));
+		}
 
 	}
 }

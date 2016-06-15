@@ -636,7 +636,10 @@ namespace Rynchodon.AntennaRelay
 
 			RelayStorage storage = m_netClient.GetStorage();
 			if (storage == null)
+			{
+				((IMyTerminalBlock)m_block).AppendCustomInfo("No network connection");
 				return;
+			}
 
 			m_clearAllAt = DateTime.UtcNow + Static.keepInCache;
 

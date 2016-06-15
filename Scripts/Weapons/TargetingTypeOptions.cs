@@ -29,6 +29,7 @@ namespace Rynchodon.Weapons
 		/// <summary>Destroy every terminal block on all grids</summary>
 		Destroy = 1 << 7,
 
+		/// <summary>Targets which can only have one guided missile targeting them.</summary>
 		LimitTargeting = Missile + Meteor,
 		Projectile = Missile + Meteor + Moving,
 		AllGrid = LargeGrid + SmallGrid + Station,
@@ -54,7 +55,9 @@ namespace Rynchodon.Weapons
 		/// <summary>Turns ARMS targeting on for the turret.</summary>
 		ArmsEnabled = 1 << 3,
 		/// <summary>ARMS will attempt to leave the target intact instead of shooting through blocks</summary>
-		Preserve = 1 << 4
+		Preserve = 1 << 4,
+		/// <summary>Do not target blocks/grids without ownership.</summary>
+		IgnoreOwnerless = 1 << 5
 	}
 
 	public class TargetingOptions

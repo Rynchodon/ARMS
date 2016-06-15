@@ -173,6 +173,20 @@ namespace Rynchodon.Weapons
 			CloneTurretControl_OnOff("TargetCharacters", TargetType.Character);
 			CloneTurretControl_OnOff("TargetStations", TargetType.Station);
 
+			foreach (IMyTerminalControl control in MyTerminalControlFactory.GetControls(typeof(MyLargeTurretBase)))
+			{
+				MyTerminalControlOnOffSwitch<MyLargeTurretBase> onOff = control as MyTerminalControlOnOffSwitch<MyLargeTurretBase>;
+				if (onOff != null && onOff.Id == "TargetNeutrals")
+				{
+					MyTerminalControlOnOffSwitch<MyUserControllableGun> newControl = new MyTerminalControlOnOffSwitch<MyUserControllableGun>(onOff.Id, onOff.Title, onOff.Tooltip);
+					IMyTerminalValueControl<bool> valueControlB = newControl;
+					valueControlB.Getter = block => !GetEnum(block, TargetingFlags.IgnoreOwnerless);
+					valueControlB.Setter = (block, value) => SetEnum(block, TargetingFlags.IgnoreOwnerless, !value);
+					Static.fixedControls.Add(newControl);
+					break;
+				}
+			}
+
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
 		}
@@ -545,7 +559,7 @@ namespace Rynchodon.Weapons
 			this.FuncBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
 
 			byte index = 0;
-			this.m_termControl_targetType_ev = new EntityValue<TargetType>(weapon, index++, UpdateVisual);
+			this.m_termControl_targetType_ev = new EntityValue<TargetType>(weapon, index++, UpdateVisual, TargetType.AllGrid);
 			this.m_termControl_targetFlag_ev = new EntityValue<TargetingFlags>(weapon, index++, UpdateVisual);
 			this.m_termControl_range_ev = new EntityValue<float>(weapon, index++, UpdateVisual);
 			this.m_termControl_blockList_ev = new EntityStringBuilder(weapon, index++, () => {

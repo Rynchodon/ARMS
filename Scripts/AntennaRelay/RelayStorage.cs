@@ -543,8 +543,14 @@ namespace Rynchodon.AntennaRelay
 				m_logger.debugLog("already have message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
 		}
 
+		/// <remarks>
+		/// Only blocks/grids are saved.
+		/// </remarks>
 		public Builder_NetworkStorage GetBuilder()
 		{
+			if (PrimaryNode.Block == null)
+				return null;
+
 			List<LastSeen.Builder_LastSeen> serialLastSeen = new List<LastSeen.Builder_LastSeen>(m_lastSeen.Count);
 			using (lock_lastSeen.AcquireExclusiveUsing())
 				foreach (LastSeen item in m_lastSeen.Values)

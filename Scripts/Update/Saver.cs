@@ -61,9 +61,6 @@ namespace Rynchodon.Update
 
 		public void Initialize()
 		{
-			if (!MyAPIGateway.Multiplayer.IsServer)
-				return;
-
 			GetData();
 			if (m_data != null)
 				m_loadModVersion = m_data.ModVersion;
@@ -183,7 +180,7 @@ namespace Rynchodon.Update
 
 			// network
 
-			Dictionary<Message.Builder_Message, Message> messages = new Dictionary<Message.Builder_Message, Message>();
+			Dictionary<Message.Builder_Message, Message> messages = MyAPIGateway.Multiplayer.IsServer ? new Dictionary<Message.Builder_Message, Message>() : null;
 			SerializableGameTime.Adjust = new TimeSpan(m_data.SaveTime);
 			foreach (RelayStorage.Builder_NetworkStorage bns in m_data.AntennaStorage)
 			{
@@ -216,6 +213,10 @@ namespace Rynchodon.Update
 
 				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
+				// messages in the save file belong on the server
+				if (messages == null)
+					continue;
+
 				foreach (Message.Builder_Message bm in bns.MessageList)
 				{
 					Message msg;
@@ -235,6 +236,13 @@ namespace Rynchodon.Update
 				}
 
 				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+			}
+
+			// past this point, only synchronized data
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				m_data = null;
+				return;
 			}
 
 			// system disruption
@@ -356,7 +364,8 @@ namespace Rynchodon.Update
 					if (node.Block != null && node.Storage != null && !storages.ContainsKey(node.Storage.PrimaryNode.EntityId))
 					{
 						RelayStorage.Builder_NetworkStorage bns = node.Storage.GetBuilder();
-						storages.Add(bns.PrimaryNode, bns);
+						if (bns != null)
+							storages.Add(bns.PrimaryNode, bns);
 					}
 				});
 				data.AntennaStorage = storages.Values.ToArray();

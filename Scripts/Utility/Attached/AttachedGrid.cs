@@ -161,7 +161,7 @@ namespace Rynchodon.Attached
 
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, IMyCubeGrid grid2, bool add)
 		{
-			if (grid1 == grid2)
+			if (grid1 == grid2 || s_logger == null)
 				return;
 
 			AttachedGrid

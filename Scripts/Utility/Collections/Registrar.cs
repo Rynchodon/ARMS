@@ -77,12 +77,12 @@ namespace Rynchodon
 		public static void Add<T>(IMyEntity entity, T item)
 		{
 			Register<T>.Add(entity.EntityId, item);
-			entity.OnClosing += OnClosing<T>;
+			entity.OnClose += OnClose<T>;
 		}
 
 		public static void Remove<T>(IMyEntity entity)
 		{
-			entity.OnClosing -= OnClosing<T>;
+			entity.OnClose -= OnClose<T>;
 			Register<T>.Remove(entity.EntityId);
 		}
 
@@ -118,9 +118,9 @@ namespace Rynchodon
 			return Register<T>.Contains(entityId);
 		}
 
-		private static void OnClosing<T>(IMyEntity obj)
+		private static void OnClose<T>(IMyEntity obj)
 		{
-			obj.OnClosing -= OnClosing<T>;
+			obj.OnClose -= OnClose<T>;
 			try
 			{ Register<T>.Remove(obj.EntityId); }
 			catch (NullReferenceException nre)

@@ -373,6 +373,7 @@ namespace Rynchodon.AntennaRelay
 					switch (myPlayer.PlayerID.getRelationsTo(seen.Entity))
 					{
 						case ExtensionsRelations.Relations.Enemy:
+						case ExtensionsRelations.Relations.None:
 							settingName = UserSettings.ByteSettingName.EnemiesOnHUD;
 							return true;
 						case ExtensionsRelations.Relations.Neutral:
