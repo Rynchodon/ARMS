@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private const float MinAccel_Abort = 0.75f, MinAccel_Return = 1f;
 		private const string
 			ReturnCause_Full = "Drills are full, need to unload",
-			ReturnCause_Heavy = "Ship is too massive, need to unload",
+			ReturnCause_Heavy = "Ship mass is too great for thrusters",
 			ReturnCause_OverWorked = "Thrusters overworked, need to unload";
 
 		private enum State : byte { GetTarget, Approaching, Rotating, MoveTo, Mining, Mining_Escape, Mining_Tunnel, Move_Away }

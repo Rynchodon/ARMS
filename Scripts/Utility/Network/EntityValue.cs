@@ -148,6 +148,12 @@ namespace Rynchodon.Utility.Network
 	public class EntityValue<T> : EntityValue
 	{
 
+		private static void entity_OnClose(IMyEntity obj)
+		{
+			if (allEntityValues != null)
+				allEntityValues.Remove(obj.EntityId);
+		}
+
 		protected readonly long m_entityId;
 		protected readonly byte m_valueId;
 		protected readonly Action m_afterValueChanged;
@@ -193,6 +199,7 @@ namespace Rynchodon.Utility.Network
 				{
 					entityValues = new Dictionary<byte, EntityValue>();
 					allEntityValues.Add(m_entityId, entityValues);
+					entity.OnClose += entity_OnClose;
 				}
 
 				entityValues.Add(valueId, this);

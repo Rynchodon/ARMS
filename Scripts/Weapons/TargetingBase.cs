@@ -686,8 +686,6 @@ namespace Rynchodon.Weapons
 		/// </remarks>
 		public bool GetTargetBlock(IMyCubeGrid grid, TargetType tType, out IMyCubeBlock target, out double distanceValue, bool doRangeTest = true)
 		{
-			//myLogger.debugLog("getting block from " + grid.DisplayName + ", target type = " + tType + ", block list: " + string.Join(", ", Options.blocksToTarget));
-
 			Vector3D myPosition = ProjectilePosition();
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
@@ -837,11 +835,10 @@ namespace Rynchodon.Weapons
 					if (!CheckWeaponsTargeting(tType, entity))
 						continue;
 
-					// meteors and missiles are dangerous even if they are slow
-					if (!(entity is IMyMeteor || entity.IsMissile() || entity.GetLinearVelocity().LengthSquared() > 100))
-						continue;
-
 					IMyEntity projectile = entity;
+
+					if (!ProjectileIsThreat(projectile, tType))
+						continue;
 
 					IMyCubeGrid asGrid = projectile as IMyCubeGrid;
 					if (asGrid != null)
@@ -851,25 +848,14 @@ namespace Rynchodon.Weapons
 						if (GetTargetBlock(asGrid, tType, out targetBlock, out distanceValue))
 							projectile = targetBlock;
 						else
-						{
-							//myLogger.debugLog("failed to get a block from: " + asGrid.DisplayName, "PickAProjectile()");
 							continue;
-						}
 					}
 
-					if (ProjectileIsThreat(projectile, tType))
+					if (!PhysicalProblem(projectile.GetPosition(), projectile))
 					{
-						if (!PhysicalProblem(projectile.GetPosition(), projectile))
-						{
-							//myLogger.debugLog("Is a threat: " + projectile.getBestName() + ", weapons targeting: " + GetWeaponsTargetingProjectile(projectile), "PickAProjectile()");
-							myTarget = new TurretTarget(projectile, tType);
-							return true;
-						}
-						//else
-						//	myLogger.debugLog("Physical problem: " + projectile.getBestName(), "PickAProjectile()");
+						myTarget = new TurretTarget(projectile, tType);
+						return true;
 					}
-					//else
-					//	myLogger.debugLog("Not a threat: " + projectile.getBestName(), "PickAProjectile()");
 				}
 			}
 
@@ -881,23 +867,17 @@ namespace Rynchodon.Weapons
 			if (projectile.Closed)
 				return false;
 
-			Vector3D projectilePosition = projectile.GetPosition();
+			Vector3D projectilePosition = projectile.GetCentre();
 			BoundingSphereD ignoreArea = new BoundingSphereD(ProjectilePosition(), Options.TargetingRange / 10f);
 			if (ignoreArea.Contains(projectilePosition) == ContainmentType.Contains)
 				return false;
 
 			Vector3D weaponPosition = ProjectilePosition();
-			Vector3D nextPosition = projectilePosition + projectile.GetLinearVelocity() / 60f;
+			Vector3D nextPosition = projectilePosition + (projectile.GetLinearVelocity() - MyEntity.GetLinearVelocity()) / 60f;
 			if (Vector3D.DistanceSquared(weaponPosition, nextPosition) < Vector3D.DistanceSquared(weaponPosition, projectilePosition))
-			{
-				//myLogger.debugLog("projectile: " + projectile.getBestName() + ", is moving towards weapon. D0 = " + Vector3D.DistanceSquared(weaponPosition, nextPosition) + ", D1 = " + Vector3D.DistanceSquared(weaponPosition, projectilePosition), "ProjectileIsThreat()");
 				return true;
-			}
 			else
-			{
-				//myLogger.debugLog("projectile: " + projectile.getBestName() + ", is moving away from weapon. D0 = " + Vector3D.DistanceSquared(weaponPosition, nextPosition) + ", D1 = " + Vector3D.DistanceSquared(weaponPosition, projectilePosition), "ProjectileIsThreat()");
 				return false;
-			}
 		}
 
 		#endregion
