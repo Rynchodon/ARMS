@@ -567,7 +567,8 @@ namespace Rynchodon.Weapons
 			this.FuncBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
 
 			byte index = 0;
-			this.m_termControl_targetType_ev = new EntityValue<TargetType>(weapon, index++, UpdateVisual, TargetType.AllGrid);
+			// do not assign default values, unless interpreter is removed
+			this.m_termControl_targetType_ev = new EntityValue<TargetType>(weapon, index++, UpdateVisual);
 			this.m_termControl_targetFlag_ev = new EntityValue<TargetingFlags>(weapon, index++, UpdateVisual);
 			this.m_termControl_range_ev = new EntityValue<float>(weapon, index++, UpdateVisual);
 			this.m_termControl_blockList_ev = new EntityStringBuilder(weapon, index++, () => {
@@ -581,7 +582,7 @@ namespace Rynchodon.Weapons
 					m_termControl_targetEntityId = entityId;
 				else
 					m_termControl_targetEntityId = null;
-				myLogger.debugLog("target entity id: " + m_termControl_targetEntityId + ", string value: "+m_termControl_targetEntity_ev.Value.ToString());
+				myLogger.debugLog("target entity id: " + m_termControl_targetEntityId + ", string value: " + m_termControl_targetEntity_ev.Value.ToString());
 			});
 			this.m_termControl_weaponFlags_ev = new EntityValue<WeaponFlags>(weapon, index++, UpdateVisual, WeaponFlags.EntityId);
 

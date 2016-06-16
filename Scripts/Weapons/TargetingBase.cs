@@ -84,6 +84,8 @@ namespace Rynchodon.Weapons
 
 		public bool GuidedLauncher { get; set; }
 
+		private bool m_registeredCurrentTarget;
+
 		/// <summary>The target that has been chosen.</summary>
 		public Target CurrentTarget
 		{
@@ -98,7 +100,7 @@ namespace Rynchodon.Weapons
 
 				using (lock_WeaponsTargeting.AcquireExclusiveUsing())
 				{
-					if (value_CurrentTarget != null && (value_CurrentTarget.TType & TargetType.LimitTargeting) != 0 && CubeBlock.canConsiderHostile(value_CurrentTarget.Entity, true))
+					if (m_registeredCurrentTarget)
 					{
 						WeaponCounts counts;
 						if (!WeaponsTargeting.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
@@ -130,7 +132,8 @@ namespace Rynchodon.Weapons
 							WeaponsTargeting[value_CurrentTarget.Entity.EntityId] = counts;
 						}
 					}
-					if (value != null && (value.TType & TargetType.LimitTargeting) != 0 && CubeBlock.canConsiderHostile(value.Entity, true))
+					m_registeredCurrentTarget = value != null && (value.TType & TargetType.LimitTargeting) != 0 && CanConsiderHostile(value.Entity);
+					if (m_registeredCurrentTarget)
 					{
 						WeaponCounts counts;
 						if (!WeaponsTargeting.TryGetValue(value.Entity.EntityId, out counts))

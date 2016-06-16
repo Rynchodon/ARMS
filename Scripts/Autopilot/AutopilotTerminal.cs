@@ -30,9 +30,12 @@ namespace Rynchodon.Autopilot
 			MyAPIGateway.Multiplayer.RegisterMessageHandler(ShipAutopilot.ModId_CustomInfo, MessageHandler);
 			Static.s_logger.debugLog("Registerd for messages", Logger.severity.DEBUG);
 
+			AddControl(new MyTerminalControlSeparator<MyShipController>() { Visible = ShipAutopilot.IsAutopilotBlock });
+
 			Static.autopilotControl = new MyTerminalControlCheckbox<MyShipController>("ArmsAutopilot", MyStringId.GetOrCompute("ARMS Autopilot"), MyStringId.NullOrEmpty);
 			Static.autopilotControl.Enabled = ShipAutopilot.IsAutopilotBlock;
 			Static.autopilotControl.Visible = ShipAutopilot.IsAutopilotBlock;
+			Static.autopilotControl.EnableAction();
 			IMyTerminalValueControl<bool> valueControl = Static.autopilotControl;
 			valueControl.Getter = GetAutopilotControl;
 			valueControl.Setter = SetAutopilotControl;
