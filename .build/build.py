@@ -220,6 +220,7 @@ exec(open(buildIni).read())
 
 createDir(finalDir)
 createDir(finalDirDev)
+createDir(finalDirModel)
 
 # erase old data
 path = finalDir + '\\Data'
