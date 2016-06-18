@@ -659,7 +659,7 @@ namespace Rynchodon.Autopilot
 			byte[] asByteArray = m_customInfo_message.ToArray();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
-			}, m_logger);
+			});
 
 			m_customInfo_message.Clear();
 		}

@@ -143,8 +143,9 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Dispose()
 		{
-			try { set_enemy(null); }
-			catch { }
+			if (Globals.WorldClosed)
+				return;
+			set_enemy(null);
 		}
 
 		public override void Move()
@@ -361,7 +362,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (Ingame.IMyShipGrinder grinder in allGrinders)
 					if (!grinder.Closed)
 						grinder.RequestEnable(enable);
-			}, m_logger);
+			});
 
 			m_next_grinderCheck = Globals.UpdateCount + 1000ul;
 			m_enableGrinders = enable;

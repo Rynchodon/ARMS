@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sandbox.Game.Entities;
@@ -337,16 +338,13 @@ namespace Rynchodon
 		/// <summary>
 		/// Try to perform an Action on game thread, if it fails do not crash the game.
 		/// </summary>
-		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, Logger logTo = null)
+		public static void TryInvokeOnGameThread(this IMyUtilities util, Action invoke, [CallerFilePath] string callerFile = null, [CallerMemberName] string callerMember = null, [CallerLineNumber] int callerLineNumber = 0)
 		{
 			util.InvokeOnGameThread(() => {
 				try { invoke.Invoke(); }
 				catch (Exception ex)
 				{
-					if (logTo != null)
-						logTo.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-					else
-						(new Logger("MiscExtensions")).alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+					Logger.alwaysLog(System.IO.Path.GetFileName(callerFile), "Exception: " + ex, Logger.severity.ERROR, member: callerMember, lineNumber: callerLineNumber);
 				}
 			});
 		}

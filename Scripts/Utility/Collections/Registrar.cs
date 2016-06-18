@@ -88,14 +88,12 @@ namespace Rynchodon
 
 		public static bool TryGetValue<T>(long entityId, out T value)
 		{
-			try { return Register<T>.TryGetValue(entityId, out value); }
-			catch (NullReferenceException nre)
+			if (Globals.WorldClosed)
 			{
-				if (!Register<T>.Closed)
-					throw nre;
 				value = default(T);
 				return false;
 			}
+			return Register<T>.TryGetValue(entityId, out value);
 		}
 
 		public static bool TryGetValue<T>(IMyEntity entity, out T value)
@@ -120,14 +118,10 @@ namespace Rynchodon
 
 		private static void OnClose<T>(IMyEntity obj)
 		{
+			if (Globals.WorldClosed)
+				return;
 			obj.OnClose -= OnClose<T>;
-			try
-			{ Register<T>.Remove(obj.EntityId); }
-			catch (NullReferenceException nre)
-			{
-				if (!Register<T>.Closed)
-					throw nre;
-			}
+			Register<T>.Remove(obj.EntityId);
 		}
 
 	}

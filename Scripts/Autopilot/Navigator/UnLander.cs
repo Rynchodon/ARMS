@@ -84,7 +84,7 @@ namespace Rynchodon.Autopilot.Navigator
 					(block as IMyFunctionalBlock).RequestEnable(true);
 					if ((block.GetObjectBuilderCubeBlock() as MyObjectBuilder_LandingGear).AutoLock)
 						asGear.ApplyAction("Autolock");
-				}, m_logger);
+				});
 
 			m_detachOffset = m_unlandBlock.Block.GetPosition() - m_attachedEntity.GetPosition();
 			m_detachDirection = m_unlandBlock.WorldMatrix.Backward;
@@ -113,7 +113,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_logger.debugLog("Unlocking landing gear", Logger.severity.DEBUG);
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 							asGear.ApplyAction("Unlock");
-						}, m_logger);
+						});
 					}
 				}
 				else
@@ -127,7 +127,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("Unlocking connector", Logger.severity.DEBUG);
 							MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 								asConn.ApplyAction("Unlock");
-							}, m_logger);
+							});
 						}
 					}
 					else
@@ -143,7 +143,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					((IMyFunctionalBlock)m_unlandBlock.Block).RequestEnable(false);
-				}, m_logger);
+				});
 			}
 
 			if (m_navSet.DistanceLessThanDestRadius())

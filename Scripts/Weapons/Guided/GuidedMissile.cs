@@ -483,7 +483,7 @@ namespace Rynchodon.Weapons.Guided
 
 						MyEntity.WorldMatrix = newMatrix;
 					}
-				}, myLogger);
+				});
 			}
 
 			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward);
@@ -495,7 +495,7 @@ namespace Rynchodon.Weapons.Guided
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 						if (!Stopped)
 							MyEntity.Physics.LinearVelocity += MyEntity.WorldMatrix.Forward * addSpeedPerUpdate;
-					}, myLogger);
+					});
 				}
 			}
 
@@ -521,7 +521,7 @@ namespace Rynchodon.Weapons.Guided
 								myLogger.debugLog("moved entity from " + position + " to " + MyEntity.GetPosition());
 							}
 							Explode();
-						}, myLogger);
+						});
 						m_stage = Stage.Terminated;
 						return;
 					}
@@ -537,7 +537,7 @@ namespace Rynchodon.Weapons.Guided
 				{
 					myLogger.debugLog("proximity detonation");
 					DestroyAllNearbyMissiles();
-					MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode, myLogger);
+					MyAPIGateway.Utilities.TryInvokeOnGameThread(Explode);
 					m_stage = Stage.Terminated;
 					return;
 				}
@@ -605,7 +605,7 @@ namespace Rynchodon.Weapons.Guided
 					//myLogger.debugLog("slave: " + i + ", linear velocity: " + myCluster.Slaves[i].Physics.LinearVelocity, "UpdateCluster()");
 				}
 
-			}, myLogger);
+			});
 		}
 
 		/// <summary>
@@ -679,7 +679,7 @@ namespace Rynchodon.Weapons.Guided
 						else
 							entity.Delete();
 					}
-			}, myLogger);
+			});
 		}
 
 		/// <summary>

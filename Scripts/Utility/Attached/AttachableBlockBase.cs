@@ -91,6 +91,9 @@ namespace Rynchodon.Attached
 			if (curAttTo == null)
 				return;
 
+			if (Globals.WorldClosed)
+				return;
+
 			myGrid.OnMarkForClose -= Detach;
 			curAttTo.OnMarkForClose -= Detach;
 			if (curAttToBlock != null)

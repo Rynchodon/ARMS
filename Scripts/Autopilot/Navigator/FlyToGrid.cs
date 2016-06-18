@@ -76,16 +76,16 @@ namespace Rynchodon.Autopilot.Navigator
 							if (asFunc != null && !asFunc.Enabled)
 							{
 								m_logger.debugLog("Enabling m_navBlock: " + m_navBlock.Block.DisplayNameText, Logger.severity.DEBUG);
-								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(true), m_logger);
+								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(true));
 							}
 							IMyLandingGear asGear = m_navBlock.Block as IMyLandingGear;
 							if (asGear != null)
 							{
 								IMyCubeBlock block = m_navBlock.Block;
 								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-									if ( !(block.GetObjectBuilderCubeBlock() as MyObjectBuilder_LandingGear).AutoLock)
+									if (!(block.GetObjectBuilderCubeBlock() as MyObjectBuilder_LandingGear).AutoLock)
 										asGear.ApplyAction("Autolock");
-								}, m_logger);
+								});
 							}
 							break;
 						}
@@ -555,7 +555,7 @@ namespace Rynchodon.Autopilot.Navigator
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (!connector.IsConnected)
 						connector.ApplyAction("Lock");
-				}, m_logger);
+				});
 		}
 
 		/// <summary>

@@ -84,7 +84,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			LineSegment axisSegment = new LineSegment();
 
 			ClosestPlanet = MyPlanetExtensions.GetClosestPlanet(centreOfMass);
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet, m_logger);
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet);
 
 			foreach (MyEntity entity in m_obstructions)
 				if (PathChecker.collect_Entity(m_grid, entity))

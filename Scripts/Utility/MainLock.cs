@@ -30,6 +30,7 @@ namespace Rynchodon
 		static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Globals.WorldClosed = true;
 			myLogger = null;
 			MainThread_ReleaseExclusive();
 			Lock_MainThread = null;

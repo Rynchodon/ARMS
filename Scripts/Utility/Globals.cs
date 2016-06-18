@@ -69,5 +69,7 @@ namespace Rynchodon
 
 		public static readonly MyDefinitionId Electricity = new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity");
 
+		public static bool WorldClosed;
+
 	}
 }

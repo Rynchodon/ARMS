@@ -61,7 +61,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			if (m_shoppingList.Count != 0)
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(m_currentTask, m_logger);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(m_currentTask);
 			else
 			{
 				m_logger.debugLog("Shopping finished, proceed to checkout", Logger.severity.INFO);

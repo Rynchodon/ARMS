@@ -66,7 +66,7 @@ namespace Rynchodon.Utility
 				return false;
 
 			try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(fileName, GetType()); }
-			catch (Exception) { }
+			catch (Exception) { m_logger.alwaysLog("failed to delete file:" + fileName, Logger.severity.INFO); }
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(fileName, GetType()))
 				return false;
 
@@ -93,7 +93,7 @@ namespace Rynchodon.Utility
 				string delete = m_fileAgeName.ElementAt(0).Value;
 				m_logger.alwaysLog("At limit, deleting: " + delete, Logger.severity.INFO);
 				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(delete, GetType()); }
-				catch (Exception) { }
+				catch (Exception) { m_logger.alwaysLog("failed to delete file:" + delete, Logger.severity.INFO); }
 				if (MyAPIGateway.Utilities.FileExistsInLocalStorage(delete, GetType()))
 				{
 					m_logger.alwaysLog("Failed to delete: " + delete, Logger.severity.INFO);

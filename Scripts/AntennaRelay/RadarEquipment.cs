@@ -525,7 +525,7 @@ namespace Rynchodon.AntennaRelay
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (CubeBlock != null)
 						(CubeBlock as IMyFunctionalBlock).RequestEnable(false);
-				}, myLogger);
+				});
 			}
 			finally
 			{ myLock.ReleaseExclusive(); }
@@ -584,7 +584,7 @@ namespace Rynchodon.AntennaRelay
 							}
 
 							UpdatePowerConsumption();
-						}, myLogger);
+						});
 					}
 					else
 						MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);

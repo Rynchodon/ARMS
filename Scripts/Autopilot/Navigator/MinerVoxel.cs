@@ -599,7 +599,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (IMyShipDrill drill in allDrills)
 					if (!drill.Closed)
 						drill.RequestEnable(enable);
-			}, m_logger);
+			});
 		}
 
 		private void OnOreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase foundMap, string oreName)
@@ -679,7 +679,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_surfacePoint = planet.GetClosestSurfacePointGlobal(ref startPoint);
 				Vector3D exteriorPoint = m_surfacePoint - direction * buffer;
 				callback(exteriorPoint);
-			}, m_logger);
+			});
 		}
 
 		private bool IsNearVoxel(double lengthMulti = 1d)

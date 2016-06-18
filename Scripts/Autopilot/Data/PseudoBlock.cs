@@ -178,6 +178,9 @@ namespace Rynchodon.Autopilot.Data
 
 		private void block_OnClose(IMyEntity obj)
 		{
+			if (Globals.WorldClosed)
+				return;
+
 			try
 			{
 				m_logger.debugLog("Closed block: " + obj.getBestName());

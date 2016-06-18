@@ -58,6 +58,19 @@ fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
 sWeaponCommandsNPC - commands that N.P.C. weapons will use
 
+[h1]FAQ[/h1]
+Can you add jump drive support?
+[i]It is not possible at this time.[/i]
+
+Can you make it possible to save ore locations for later use?
+[i]It would be an enormous amount of work and there are more important things for me to be working on.[/i]
+
+Can you add a GUI to programming the autopilot?
+[i]Working on it. It's going to take some time.[/i]
+
+Can you make X feature available as a stand-alone mod?
+[i]No, most features can be disabled via the settings file.[/i]
+
 [h1]Known Issues[/h1]
 These are all the known issues with ARMS. If an issue is not listed here, I do not know about it.
 
@@ -73,6 +86,7 @@ Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 
 [h1]Links[/h1]
+[url=https://www.surveymonkey.com/r/LMNX5LZ] Guided Missile Survey [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=632399714] Programmatic Control Example [/url]
 

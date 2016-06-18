@@ -116,7 +116,7 @@ namespace Rynchodon.Weapons
 
 			MyDefinitionId magazineId;
 			try { magazineId = inv.GetItems()[0].Content.GetId(); }
-			catch (IndexOutOfRangeException)
+			catch (IndexOutOfRangeException) // because of race condition
 			{ return null; }
 
 			return GetAmmo(magazineId);

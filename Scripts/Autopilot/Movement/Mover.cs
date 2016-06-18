@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot.Movement
 				Block.Controller.MoveAndRotateStopped();
 				Thrust.ClearOverrides();
 				//m_gyro.ClearOverrides();
-			}, m_logger);
+			});
 
 			m_stopped = true;
 		}
@@ -960,7 +960,7 @@ namespace Rynchodon.Autopilot.Movement
 
 				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
 				Thrust.SetOverrides(ref gridMove);
-			}, m_logger);
+			});
 		}
 
 		private void CheckGrid()
@@ -1005,7 +1005,7 @@ namespace Rynchodon.Autopilot.Movement
 						//m_gyro.ClearOverrides();
 					}
 					Block.AutopilotControl = enable;
-				}, m_logger);
+				});
 			}
 		}
 
@@ -1018,7 +1018,7 @@ namespace Rynchodon.Autopilot.Movement
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (control.EnabledDamping != enable)
 						control.SwitchDamping();
-				}, m_logger);
+				});
 			}
 		}
 

@@ -337,7 +337,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (IMyShipWelder welder in allWelders)
 					if (!welder.Closed)
 						welder.RequestEnable(enable);
-			}, m_logger);
+			});
 		}
 
 		private void GetClosestEmptyNeighbour()
