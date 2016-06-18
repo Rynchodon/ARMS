@@ -35,70 +35,45 @@ namespace Rynchodon
 			return (MyPlanet)closest;
 		}
 
-		//private static Logger s_logger = new Logger("MyPlanetExtensions");
+		public static bool IsPositionInGravityWell(this MyPlanet planet, ref Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().IsPositionInRange(worldPosition);
+		}
 
-		//private static FastResourceLock lock_getSurfPoint = new FastResourceLock("lock_getSurfPoint");
+		public static bool IsPositionInGravityWell(this MyPlanet planet, Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().IsPositionInRange(worldPosition);
+		}
 
-		//static MyPlanetExtensions()
-		//{
-		//	MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		//}
+		public static Vector3D GetWorldGravityNormalized(this MyPlanet planet, ref Vector3D worldPosition)
+		{
+			return Vector3D.Normalize(planet.WorldMatrix.Translation - worldPosition);
+		}
 
-		//private static void Entities_OnCloseAll()
-		//{
-		//	MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-		//	s_logger = null;
-		//	lock_getSurfPoint = null;
-		//}
+		public static Vector3D GetWorldGravityNormalized(this MyPlanet planet, Vector3D worldPosition)
+		{
+			return Vector3D.Normalize(planet.WorldMatrix.Translation - worldPosition);
+		}
 
-		//public static bool Intersects(this MyPlanet planet, ref BoundingSphereD sphere)
-		//{
-		//	Vector3D sphereCentre = sphere.Center;
-		//	Vector3D planetCentre = planet.GetCentre();
+		public static float GetGravityMultiplier(this MyPlanet planet, ref Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().GetGravityMultiplier(worldPosition);
+		}
 
-		//	double distSq_sphereToPlanetCentre = Vector3D.DistanceSquared(sphereCentre, planetCentre);
-		//	double everest = planet.MaximumRadius + sphere.Radius; everest *= everest;
-		//	if (distSq_sphereToPlanetCentre > everest)
-		//		return false;
+		public static float GetGravityMultiplier(this MyPlanet planet, Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().GetGravityMultiplier(worldPosition);
+		}
 
-		//	return true;
+		public static Vector3D GetWorldGravity(this MyPlanet planet, ref Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().GetWorldGravity(worldPosition);
+		}
 
-		//	Vector3D closestPoint = GetClosestSurfacePointGlobal_Safeish(planet, sphereCentre);
-
-		//	double minDistance = sphere.Radius * sphere.Radius;
-		//	if (Vector3D.DistanceSquared(sphereCentre, closestPoint) <= minDistance)
-		//		return true;
-
-		//	return distSq_sphereToPlanetCentre < Vector3D.DistanceSquared(planetCentre, closestPoint);
-		//}
-
-		//public static Vector3D GetClosestSurfacePointGlobal_Safeish(this MyPlanet planet, Vector3D worldPoint)
-		//{
-		//	bool except = false;
-		//	Vector3D surface = Vector3D.Zero;
-		//	MainLock.UsingShared(() => except = GetClosestSurfacePointGlobal_Sub_Safeish(planet, worldPoint, out surface));
-
-		//	if (except)
-		//		return GetClosestSurfacePointGlobal_Safeish(planet, worldPoint);
-		//	return surface;
-		//}
-
-		//[System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptions]
-		//private static bool GetClosestSurfacePointGlobal_Sub_Safeish(this MyPlanet planet, Vector3D worldPoint, out Vector3D closestPoint)
-		//{
-		//	using (lock_getSurfPoint.AcquireExclusiveUsing())
-		//		try
-		//		{
-		//			closestPoint = planet.GetClosestSurfacePointGlobal(ref worldPoint);
-		//			return false;
-		//		}
-		//		catch (AccessViolationException ex)
-		//		{
-		//			s_logger.debugLog("Caught Exception: " + ex, "GetClosestSurfacePointGlobal_Sub_Safeish()", Logger.severity.DEBUG);
-		//			closestPoint = Vector3D.Zero;
-		//			return true;
-		//		}
-		//}
+		public static Vector3D GetWorldGravity(this MyPlanet planet, Vector3D worldPosition)
+		{
+			return planet.Components.Get<MyGravityProviderComponent>().GetWorldGravity(worldPosition);
+		}
 
 	}
 }
