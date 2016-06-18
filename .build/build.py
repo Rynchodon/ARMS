@@ -4,11 +4,11 @@
 # for Space Engineers to load (and a bunch of other useful deploy tasks)
 #
 # It will create three mods,
-#   "%AppData%\SpaceEngineers\Mods\ARMS",
+#   "%AppData%\SpaceEngineers\Mods\ARMS Unstable",
 #   "%AppData%\SpaceEngineers\Mods\ARMS Dev", and
 #   "%AppData%\SpaceEngineers\Mods\ARMS Model".
 #
-# ARMS is the release version
+# ARMS Unstable only has scripts and is compatible with SE development version
 # ARMS Dev only has scripts and has logging enabled
 # ARMS Model has data files, models, and textures
 
@@ -25,6 +25,7 @@ cSharp = startDir + "/Scripts/"
 finalDir = os.getenv('APPDATA') + '\SpaceEngineers\Mods\ARMS'
 finalDirDev = finalDir + ' Dev'
 finalDirModel = finalDir + ' Model'
+finalDir = finalDir + ' Unstable'
 
 # do not change or else log file and settings file will be moved
 finalScript = finalDir + '\Data\Scripts\Autopilot\\'
@@ -209,7 +210,7 @@ def copyWithExtension(l_from, l_to, l_ext, log):
 				shutil.copy2(sourceFile, target)
 				
 
-print ('\n\n')
+print ('\n\nBuilding UNSTABLE version\n')
 
 if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
@@ -240,14 +241,10 @@ for file in os.listdir(startDir + '/Scripts/'):
 		modules.append(file)
 
 # copy data, models, and textures
-copyWithExtension(startDir + '/Audio/', finalDir + '/Audio/', '.xwm', True)
-copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
-copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
-copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
-copyWithExtension(startDir + '/Audio/', finalDirModel + '/Audio/', '.xwm', False)
-copyWithExtension(startDir + '/Data/', finalDirModel + '/Data/', '.sbc', False)
-copyWithExtension(startDir + '/Models/', finalDirModel + '/Models/', '.mwm', False)
-copyWithExtension(startDir + '/Textures/', finalDirModel + '/Textures/', '.dds', False)
+copyWithExtension(startDir + '/Audio/', finalDirModel + '/Audio/', '.xwm', True)
+copyWithExtension(startDir + '/Data/', finalDirModel + '/Data/', '.sbc', True)
+copyWithExtension(startDir + '/Models/', finalDirModel + '/Models/', '.mwm', True)
+copyWithExtension(startDir + '/Textures/', finalDirModel + '/Textures/', '.dds', True)
 eraseDir(finalDirDev + '/Models/')
 eraseDir(finalDirDev + '/Textures/')
 
