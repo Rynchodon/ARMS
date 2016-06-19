@@ -82,16 +82,18 @@ namespace Rynchodon.AntennaRelay
 			if (!Registrar.TryGetValue(block.EntityId, out instance))
 				throw new ArgumentException("block id not found in registrar");
 
+			block.SwitchTerminalTo();
+
 			if (instance.m_sending)
 			{
 				if (instance.m_targetShipName.Length < 3)
 				{
-					(block as IMyTerminalBlock).AppendCustomInfo("Ship Name(s) must be at least 3 characters");
+					block.AppendCustomInfo("Ship Name(s) must be at least 3 characters");
 					return;
 				}
 				if (instance.m_targetBlockName.Length < 3)
 				{
-					(block as IMyTerminalBlock).AppendCustomInfo("Block Name(s) must be at least 3 characters");
+					block.AppendCustomInfo("Block Name(s) must be at least 3 characters");
 					return;
 				}
 
@@ -100,12 +102,10 @@ namespace Rynchodon.AntennaRelay
 					(block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));
 
 				instance.m_sending = false;
-				MyGuiScreenTerminal.SwitchToControlPanelBlock(block);
 			}
 			else
 			{
 				instance.m_sending = true;
-				MyGuiScreenTerminal.SwitchToControlPanelBlock(block);
 			}
 		}
 
@@ -116,7 +116,7 @@ namespace Rynchodon.AntennaRelay
 				throw new ArgumentException("block id not found in registrar");
 
 			instance.m_sending = false;
-			MyGuiScreenTerminal.SwitchToControlPanelBlock(block);
+			block.SwitchTerminalTo();
 		}
 
 		#region Getter & Setter
