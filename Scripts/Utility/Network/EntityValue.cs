@@ -22,7 +22,6 @@ namespace Rynchodon.Utility.Network
 		}
 
 		protected static Dictionary<long, Dictionary<byte, EntityValue>> allEntityValues = new Dictionary<long, Dictionary<byte, EntityValue>>();
-		protected static FastResourceLock lock_entityValues = new FastResourceLock();
 		protected static Logger logger = new Logger("SyncEntityValue");
 
 		static EntityValue()
@@ -37,7 +36,6 @@ namespace Rynchodon.Utility.Network
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			allEntityValues = null;
-			lock_entityValues = null;
 			logger = null;
 		}
 
@@ -142,6 +140,7 @@ namespace Rynchodon.Utility.Network
 		protected abstract void SetValue(byte[] bytes, ref int pos);
 		protected abstract string GetValue();
 		protected abstract void SetValue(string value);
+		public abstract Type GetValueType();
 
 	}
 
@@ -192,18 +191,22 @@ namespace Rynchodon.Utility.Network
 			this.m_afterValueChanged = afterValueChanged;
 			this.m_synced = MyAPIGateway.Multiplayer.IsServer;
 
-			using (lock_entityValues.AcquireExclusiveUsing())
+			Dictionary<byte, EntityValue> entityValues;
+			if (!allEntityValues.TryGetValue(m_entityId, out entityValues))
 			{
-				Dictionary<byte, EntityValue> entityValues;
-				if (!allEntityValues.TryGetValue(m_entityId, out entityValues))
-				{
-					entityValues = new Dictionary<byte, EntityValue>();
-					allEntityValues.Add(m_entityId, entityValues);
-					entity.OnClose += entity_OnClose;
-				}
-
-				entityValues.Add(valueId, this);
+				entityValues = new Dictionary<byte, EntityValue>();
+				allEntityValues.Add(m_entityId, entityValues);
+				entity.OnClose += entity_OnClose;
 			}
+
+			EntityValue existing;
+			if (entityValues.TryGetValue(valueId, out existing))
+			{
+				logger.alwaysLog("valueId(" + valueId + ") already used for entity(" + entity.nameWithId() + "), this type: " + GetValueType() + ", existing: " + existing.GetValueType(), Logger.severity.FATAL);
+				return;
+			}
+
+			entityValues.Add(valueId, this);
 		}
 
 		protected override void SendValue(ulong? clientId = null)
@@ -276,6 +279,11 @@ namespace Rynchodon.Utility.Network
 				bytes.Clear();
 				ResourcePool<List<byte>>.Return(bytes);
 			}
+		}
+
+		public override Type GetValueType()
+		{
+			return typeof(T);
 		}
 
 	}

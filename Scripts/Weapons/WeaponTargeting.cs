@@ -21,7 +21,6 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
-using System.Linq;
 using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
@@ -290,13 +289,11 @@ namespace Rynchodon.Weapons
 				return true;
 			}
 
-			if (Static == null)
-			{
-				result = null;
-				return false;
-			}
+			if (Static != null)
+				Static.logger.alwaysLog("block: " + blockId + " not found in registrar", Logger.severity.ERROR);
 
-			throw new ArgumentException("block " + blockId + " not found in registrar");
+			result = null;
+			return false;
 		}
 
 		public static bool TryGetWeaponTargeting(IMyEntity block, out WeaponTargeting result)
