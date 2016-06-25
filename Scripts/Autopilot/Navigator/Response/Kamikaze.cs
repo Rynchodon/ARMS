@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_approaching;
 
 		public Kamikaze(Mover mover, AllNavigationSettings navSet)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
 

@@ -51,7 +51,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>The Mover this navigator is using.</summary>
 		protected readonly Mover m_mover;
 		/// <summary>The settings this navigator is using.</summary>
-		protected readonly AllNavigationSettings m_navSet;
+		protected AllNavigationSettings m_navSet { get { return m_mover.m_navSet; } }
 
 		/// <summary>The ship controller the mover is using.</summary>
 		protected ShipControllerBlock m_controlBlock { get { return m_mover.Block; } }
@@ -60,11 +60,10 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_mover and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="mover">The Mover to use</param>
-		/// <param name="navSet">The settings to use</param>
-		protected ANavigator(Mover mover, AllNavigationSettings navSet)
+		/// 
+		protected ANavigator(Mover mover)
 		{
 			this.m_mover = mover;
-			this.m_navSet = navSet;
 		}
 
 	}
@@ -75,9 +74,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_mover and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="mover">The Mover to use</param>
-		/// <param name="navSet">The settings to use</param>
-		protected NavigatorMover(Mover mover, AllNavigationSettings navSet)
-			: base(mover, navSet) { }
+		/// 
+		protected NavigatorMover(Mover mover)
+			: base(mover) { }
 
 		/// <summary>
 		/// Calculate the movement force necessary to reach the target.
@@ -96,9 +95,9 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_mover and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="mover">The Mover to use</param>
-		/// <param name="navSet">The settings to use</param>
-		protected NavigatorRotator(Mover mover, AllNavigationSettings navSet)
-			: base(mover, navSet) { }
+		/// 
+		protected NavigatorRotator(Mover mover)
+			: base(mover) { }
 
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.

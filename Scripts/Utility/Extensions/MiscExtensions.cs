@@ -332,6 +332,9 @@ namespace Rynchodon
 		public static bool IsValid(this float number)
 		{ return !float.IsNaN(number) && !float.IsInfinity(number); }
 
+		public static bool IsValid(this double number)
+		{ return !double.IsNaN(number) && !double.IsInfinity(number); }
+
 		public static bool NullOrClosed(this IMyEntity entity)
 		{ return entity == null || entity.MarkedForClose || entity.Closed; }
 

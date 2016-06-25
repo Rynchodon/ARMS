@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private List<IMySlimBlock> m_blocksWithInventory;
 
 		public WeldGrid(Mover mover, AllNavigationSettings navSet, string gridName, bool shopAfter)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock);
 			this.m_finder = new GridFinder(navSet, m_controlBlock, gridName);

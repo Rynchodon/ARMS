@@ -551,7 +551,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 				// successfully parsed
 				Vector3D destination = new Vector3D(coordsDouble[0], coordsDouble[1], coordsDouble[2]);
-				instructionAction = () => { new GOLIS(Mover, NavSet, destination); };
+				instructionAction = () => { new GOLIS(Mover, destination); };
 				return true;
 			}
 			instructionAction = null;
@@ -678,7 +678,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			execute = () => {
 				result = Vector3D.Transform(result, NavSet.Settings_Current.NavigationBlock.WorldMatrix);
-				new GOLIS(Mover, NavSet, result);
+				new GOLIS(Mover, result);
 			};
 			return true;
 		}

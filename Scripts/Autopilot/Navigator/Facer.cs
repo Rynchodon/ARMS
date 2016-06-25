@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="rotBlock">The block to rotate</param>
 		public Facer(Mover mover, AllNavigationSettings navSet, PseudoBlock rotBlock)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger("Facer", m_controlBlock.CubeBlock);
 

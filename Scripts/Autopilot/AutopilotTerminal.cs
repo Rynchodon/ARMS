@@ -1,4 +1,5 @@
 using System.Text;
+using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Settings;
 using Rynchodon.Update;
 using Rynchodon.Utility.Network;
@@ -11,7 +12,7 @@ using VRage.Utils;
 
 namespace Rynchodon.Autopilot
 {
-	
+
 	public class AutopilotTerminal
 	{
 
@@ -47,6 +48,10 @@ namespace Rynchodon.Autopilot
 			Static.autopilotCommands.Getter = GetAutopilotCommands;
 			Static.autopilotCommands.Setter = SetAutopilotCommands;
 			AddControl(Static.autopilotCommands);
+
+			MyTerminalControlButton<MyShipController> gooeyProgram = new MyTerminalControlButton<MyShipController>("GooeyProgram", MyStringId.GetOrCompute("Program Autopilot"), MyStringId.GetOrCompute("Interactive programming for autopilot"), GooeyProgram);
+			gooeyProgram.Enabled = ShipAutopilot.IsAutopilotBlock;
+			AddControl(gooeyProgram);
 		}
 
 		private static void AddControl(MyTerminalControl<MyShipController> control)
@@ -73,7 +78,8 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal recipient;
 			if (!Registrar.TryGetValue(entityId, out recipient))
 			{
-				Static.s_logger.debugLog("Recipient block is closed: " + entityId, Logger.severity.INFO);
+				if (Static != null)
+					Static.s_logger.debugLog("Recipient block is closed: " + entityId, Logger.severity.INFO);
 				return;
 			}
 			recipient.MessageHandler(message, ref pos);
@@ -84,7 +90,8 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				if (Static != null)
+					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return false;
 			}
 
@@ -96,35 +103,46 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				if (Static != null)
+					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return;
 			}
 
 			autopilot.m_autopilotControl.Value = value;
 		}
 
-		private static StringBuilder GetAutopilotCommands(IMyTerminalBlock block)
+		public static StringBuilder GetAutopilotCommands(IMyTerminalBlock block)
 		{
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				if (Static != null)
+					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return new StringBuilder(); ;
 			}
 
 			return autopilot.m_autopilotCommands.Value;
 		}
 
-		private static void SetAutopilotCommands(IMyTerminalBlock block, StringBuilder value)
+		public static void SetAutopilotCommands(IMyTerminalBlock block, StringBuilder value)
 		{
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				if (Static != null)
+					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return;
 			}
 
 			autopilot.m_autopilotCommands.Value = value;
+		}
+
+		public static void GooeyProgram(MyShipController block)
+		{
+			AutopilotCommands cmds = AutopilotCommands.GetOrCreate(block);
+			if (cmds == null)
+				return;
+			cmds.StartGooeyProgramming(null);
 		}
 
 		private readonly Logger m_logger;
@@ -134,13 +152,13 @@ namespace Rynchodon.Autopilot
 		private EntityValue<bool> m_autopilotControl;
 		private EntityStringBuilder m_autopilotCommands;
 
-		public bool AutopilotControl
+		public bool AutopilotControlSwitch
 		{
 			get { return m_autopilotControl.Value; }
 			set { m_autopilotControl.Value = value; }
 		}
 
-		public StringBuilder AutopilotCommands
+		public StringBuilder AutopilotCommandsText
 		{
 			get { return m_autopilotCommands.Value; }
 			set { m_autopilotCommands.Value = value; }

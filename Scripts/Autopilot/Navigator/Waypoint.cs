@@ -30,7 +30,7 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		public Waypoint(Mover mover, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_level = level;
@@ -43,13 +43,13 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
 			{
 				m_logger.debugLog("Cannot fly to entity, attached: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
-				new GOLIS(mover, navSet, TargetPosition, level);
+				new GOLIS(mover, TargetPosition, level);
 				return;
 			}
 			if (targetEntity.Physics == null)
 			{
 				m_logger.debugLog("Target has no physics: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
-				new GOLIS(mover, navSet, TargetPosition, level);
+				new GOLIS(mover, TargetPosition, level);
 				return;
 			}
 

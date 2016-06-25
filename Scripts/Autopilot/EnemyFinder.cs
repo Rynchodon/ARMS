@@ -250,7 +250,7 @@ namespace Rynchodon.Autopilot
 				else
 				{
 					m_logger.debugLog("return to original position: " + m_originalPosition, Logger.severity.DEBUG);
-					new GOLIS(m_mover, m_navSet, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
+					new GOLIS(m_mover, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
 				}
 			}
 			else

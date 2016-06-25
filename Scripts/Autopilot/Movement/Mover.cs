@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Movement
 		private const ulong WriggleAfter = 500ul, StuckAfter = WriggleAfter + 2000ul, MoveAwayAfter = StuckAfter + 100ul;
 
 		private readonly Logger m_logger;
-		private readonly AllNavigationSettings m_navSet;
+		public readonly AllNavigationSettings m_navSet;
 
 		private IMyCubeGrid m_grid;
 		private GyroProfiler m_gyro;

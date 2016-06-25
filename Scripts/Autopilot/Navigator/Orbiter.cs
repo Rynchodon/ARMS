@@ -88,7 +88,7 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		public Orbiter(Mover mover, AllNavigationSettings navSet, string entity)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -125,7 +125,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="distance">The distance between the orbiter and the orbited entity</param>
 		/// <param name="name">What to call the orbited entity</param>
 		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
 			this.m_navBlock = faceBlock;

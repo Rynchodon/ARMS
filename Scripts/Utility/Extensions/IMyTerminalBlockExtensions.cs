@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Rynchodon.Update;
 using Sandbox.Game.Entities.Cube;
@@ -25,9 +26,10 @@ namespace Rynchodon
 		/// Wait for input to finish, then switch control panel to the specified block.
 		/// </summary>
 		/// <param name="block">The block to switch to.</param>
-		public static void SwitchTerminalTo(this IMyTerminalBlock block)
+		public static void SwitchTerminalTo(this IMyTerminalBlock block, [CallerMemberName] string caller = null)
 		{
 			//Logger.debugLog("IMyTerminalBlockExtensions", "block: " + block.getBestName());
+			Logger.debugLog("IMyTerminalBlockExtensions", "null block from " + caller, Logger.severity.FATAL, condition: block == null);
 			UpdateManager.Unregister(1, SwitchTerminalWhenNoInput);
 			UpdateManager.Register(1, SwitchTerminalWhenNoInput);
 			switchTo = block;

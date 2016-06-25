@@ -257,10 +257,11 @@ namespace Rynchodon
 		}
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public static void debugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
+		public static void debugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+			if (condition)
+				log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		public static void alwaysLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,

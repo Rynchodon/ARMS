@@ -41,8 +41,8 @@ namespace Rynchodon.Autopilot
 
 		public bool AutopilotControl
 		{
-			get { return AutopilotTerminal.AutopilotControl; }
-			set { AutopilotTerminal.AutopilotControl = value; }
+			get { return AutopilotTerminal.AutopilotControlSwitch; }
+			set { AutopilotTerminal.AutopilotControlSwitch = value; }
 		}
 
 		public ShipControllerBlock(IMyCubeBlock block)
@@ -226,7 +226,7 @@ namespace Rynchodon.Autopilot
 				int start = block.DisplayNameText.IndexOf('[') + 1, end = block.DisplayNameText.IndexOf(']');
 				if (start > 0 && end > start)
 				{
-					m_block.AutopilotTerminal.AutopilotCommands = new StringBuilder(block.DisplayNameText.Substring(start, end - start).Trim());
+					m_block.AutopilotTerminal.AutopilotCommandsText = new StringBuilder(block.DisplayNameText.Substring(start, end - start).Trim());
 					int lengthBefore = start - 1;
 					string nameBefore = lengthBefore > 0 ? m_block.Terminal.DisplayNameText.Substring(0, lengthBefore) : string.Empty;
 					end++;
@@ -356,7 +356,7 @@ namespace Rynchodon.Autopilot
 
 				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
 				m_nextAllowedInstructions = Globals.ElapsedTime + MinTimeInstructions;
-				m_interpreter.enqueueAllActions(m_block.AutopilotTerminal.AutopilotCommands.ToString(), true);
+				m_interpreter.enqueueAllActions(m_block.AutopilotTerminal.AutopilotCommandsText.ToString(), true);
 
 				if (!m_interpreter.hasInstructions())
 					ReleaseControlledGrid();

@@ -20,7 +20,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="mover">The Mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		public Stopper(Mover mover, AllNavigationSettings navSet, bool exitAfter = false)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			_logger = new Logger("Stopper", m_controlBlock.Controller);
 			m_exitAfter = exitAfter;
