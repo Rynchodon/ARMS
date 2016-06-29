@@ -9,19 +9,19 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Utils;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Instruction
+namespace Rynchodon.Autopilot.Instruction.Command
 {
 	/// <summary>
 	/// Create a GOLIS from specified coordinates.
 	/// </summary>
-	public class CommandGolisCoordinate : ACommand
+	public class GolisCoordinate : ACommand
 	{
 
-		protected Vector3D destination = new Vector3D(double.NaN, double.NaN, double.NaN);
+		protected Vector3D destination;
 
-		public override ACommand CreateCommand()
+		public override ACommand Clone()
 		{
-			return new CommandGolisCoordinate();
+			return new GolisCoordinate() { destination = destination };
 		}
 
 		public override string Identifier
@@ -29,7 +29,17 @@ namespace Rynchodon.Autopilot.Instruction
 			get { return "c"; }
 		}
 
-		public override string Tooltip
+		public override string AddName
+		{
+			get { return "Coordinates"; }
+		}
+
+		public override string AddDescription
+		{
+			get { return "Fly to manually entered coordinates."; }
+		}
+
+		public override string Description
 		{
 			get { return "Fly to the coordinates: " + destination.X + ',' + destination.Y + ',' + destination.Z; }
 		}
@@ -55,7 +65,7 @@ namespace Rynchodon.Autopilot.Instruction
 			control.Getter = block => new StringBuilder(destination.GetDim(index).ToString());
 			control.Setter = (block, strBuild) => {
 				double value;
-				if (!double.TryParse(strBuild.ToString(), out value))
+				if (!PrettySI.TryParse(strBuild.ToString(), out value))
 					value = double.NaN;
 				destination.SetDim(index, value);
 			};

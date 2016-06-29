@@ -409,7 +409,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!(m_controlled is IMyCubeBlock))
 			{
-				myLogger.debugLog("not controlling a ship");
+				//myLogger.debugLog("not controlling a ship");
 				return;
 			}
 

@@ -33,11 +33,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Dictionary<string, int> m_components_inventory = new Dictionary<string, int>();
 		private List<IMySlimBlock> m_blocksWithInventory;
 
-		public WeldGrid(Mover mover, AllNavigationSettings navSet, string gridName, bool shopAfter)
+		public WeldGrid(Mover mover, string gridName, bool shopAfter)
 			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock);
-			this.m_finder = new GridFinder(navSet, m_controlBlock, gridName);
+			this.m_finder = new GridFinder(mover.m_navSet, m_controlBlock, gridName);
 			this.m_shopAfter = shopAfter;
 
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;

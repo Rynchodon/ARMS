@@ -115,7 +115,7 @@ namespace Rynchodon.Attached
 			catch (Exception ex)
 			{
 				myLogger.debugLog("Exception: " + ex, Logger.severity.ERROR);
-				Logger.debugNotify("Detach encountered an exception", 10000, Logger.severity.ERROR);
+				Logger.DebugNotify("Detach encountered an exception", 10000, Logger.severity.ERROR);
 			}
 		}
 

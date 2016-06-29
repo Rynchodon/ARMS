@@ -8,17 +8,27 @@ using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Instruction
+namespace Rynchodon.Autopilot.Instruction.Command
 {
 	/// <summary>
 	/// Create a GOLIS from the GPS list.
 	/// </summary>
-	public class CommandGolisGps : CommandGolisCoordinate
+	public class GolisGps : GolisCoordinate
 	{
 
-		public override ACommand CreateCommand()
+		public override ACommand Clone()
 		{
-			return new CommandGolisGps();
+			return new GolisGps() { destination = destination };
+		}
+
+		public override string AddName
+		{
+			get { return "GPS"; }
+		}
+
+		public override string AddDescription
+		{
+			get { return "Fly to coordinates chosen from the GPS list."; }
 		}
 
 		public override void AddControls(List<IMyTerminalControl> controls)
@@ -46,7 +56,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void OnItemSelected(IMyTerminalBlock dontCare, List<MyTerminalControlListBoxItem> selected)
 		{
-			Logger.debugLog("CommandGolisGps", "selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
+			Logger.DebugLog("CommandGolisGps", "selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
 
 			if (selected.Count == 0)
 				destination = new Vector3D(double.NaN, double.NaN, double.NaN);

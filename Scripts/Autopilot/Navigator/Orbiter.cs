@@ -87,7 +87,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public Orbiter(Mover mover, AllNavigationSettings navSet, string entity)
+		public Orbiter(Mover mover, string entity)
 			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
@@ -108,7 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 					break;
 				default:
-					m_gridFinder = new GridFinder(navSet, mover.Block, entity, mustBeRecent: true);
+					m_gridFinder = new GridFinder(mover.m_navSet, mover.Block, entity, mustBeRecent: true);
 					m_logger.debugLog("Searching for a grid: " + entity, Logger.severity.INFO);
 					break;
 			}

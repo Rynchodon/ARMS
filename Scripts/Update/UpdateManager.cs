@@ -442,7 +442,7 @@ namespace Rynchodon.Update
 					myLogger.alwaysLog("Client, running client scripts only", Logger.severity.INFO);
 				}
 
-				Logger.debugNotify("ARMS dev version loaded", 10000);
+				Logger.DebugNotify("ARMS dev version loaded", 10000);
 
 				ManagerStatus = Status.Initialized;
 			}
@@ -579,7 +579,7 @@ namespace Rynchodon.Update
 								if (!Unregister.ContainsKey(item))
 								{
 									myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, Logger.severity.ERROR);
-									Logger.debugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
+									Logger.DebugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
 									Unregister.Add(item, pair.Key);
 								}
 							}
@@ -638,7 +638,7 @@ namespace Rynchodon.Update
 				catch (Exception ex)
 				{
 					myLogger.debugLog("Exception in onLeaving: " + ex, Logger.severity.ERROR);
-					Logger.debugNotify("Exception on player leaving", 10000, Logger.severity.ERROR);
+					Logger.DebugNotify("Exception on player leaving", 10000, Logger.severity.ERROR);
 				}
 			});
 		}
@@ -651,13 +651,13 @@ namespace Rynchodon.Update
 			if (UpdateRegistrar == null)
 				return;
 
-			myLogger.debugLog("entered UnRegisterForUpdates()");
+			//myLogger.debugLog("entered UnRegisterForUpdates()");
 			List<Action> UpdateL = UpdateList(frequency);
 			UpdateL.Remove(toInvoke);
 
 			if (UpdateL.Count == 0)
 				UpdateRegistrar.Remove(frequency);
-			myLogger.debugLog("leaving UnRegisterForUpdates()");
+			//myLogger.debugLog("leaving UnRegisterForUpdates()");
 		}
 
 		/// <summary>
@@ -756,7 +756,7 @@ namespace Rynchodon.Update
 					catch (Exception ex)
 					{
 						myLogger.alwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
-						Logger.debugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
+						Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
 					}
 				return;
 			}
@@ -776,7 +776,7 @@ namespace Rynchodon.Update
 					catch (Exception ex)
 					{
 						myLogger.alwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
-						Logger.debugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
+						Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
 					}
 				return;
 			}
@@ -810,7 +810,7 @@ namespace Rynchodon.Update
 						catch (Exception ex)
 						{
 							myLogger.alwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
-							Logger.debugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
+							Logger.DebugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
 						}
 
 				if (EveryBlockScriptConstructors.Count > 0)
@@ -819,7 +819,7 @@ namespace Rynchodon.Update
 						catch (Exception ex)
 						{
 							myLogger.alwaysLog("Exception in every block constructor: " + ex, Logger.severity.ERROR);
-							Logger.debugNotify("Exception in every block constructor", 10000, Logger.severity.ERROR);
+							Logger.DebugNotify("Exception in every block constructor", 10000, Logger.severity.ERROR);
 						}
 
 				return;
@@ -853,7 +853,7 @@ namespace Rynchodon.Update
 						catch (Exception ex)
 						{
 							myLogger.alwaysLog("Exception in player constructor: " + ex, Logger.severity.ERROR);
-							Logger.debugNotify("Exception in player constructor", 10000, Logger.severity.ERROR);
+							Logger.DebugNotify("Exception in player constructor", 10000, Logger.severity.ERROR);
 						}
 				});
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Rynchodon.Autopilot.Instruction.Command;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
@@ -10,6 +11,7 @@ using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.ModAPI;
 using VRage.Utils;
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction
 {
@@ -19,6 +21,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private class StaticVariables
 		{
 			public Dictionary<char, List<ACommand>> dummyCommands = new Dictionary<char, List<ACommand>>();
+			public AddCommandInternalNode addCommandRoot;
 		}
 
 		private static StaticVariables Static = new StaticVariables();
@@ -27,7 +30,46 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 
-			AddDummy(new CommandGolisCoordinate());
+			List<AddCommandInternalNode> rootCommands = new List<AddCommandInternalNode>();
+
+			// fly somewhere
+
+			List<AddCommandLeafNode> flyCommands = new List<AddCommandLeafNode>();
+
+			AddDummy(new GolisCoordinate(), flyCommands);
+			flyCommands.Add(new AddCommandLeafNode(new GolisGps()));
+			AddDummy(new FlyRelative(), flyCommands);
+			AddDummy(new Character(), flyCommands);
+			AddDummy(new LandVoxel(), flyCommands);
+			AddDummy(new Orbit(), flyCommands);
+			AddDummy(new Weld(), flyCommands);
+
+			rootCommands.Add(new AddCommandInternalNode("Fly Somewhere", flyCommands.ToArray()));
+
+			// flow control
+
+			List<AddCommandLeafNode> flowCommands = new List<AddCommandLeafNode>();
+
+			AddDummy(new Wait(), flowCommands);
+			AddDummy(new Disable(), flowCommands);
+			AddDummy(new Exit(), flowCommands);
+			AddDummy(new Stop(), flowCommands);
+
+			rootCommands.Add(new AddCommandInternalNode("Flow control", flowCommands.ToArray()));
+
+			// terminal action/property
+
+			List<AddCommandLeafNode> termActProp = new List<AddCommandLeafNode>();
+			AddDummy(new TerminalAction(), termActProp);
+			AddDummy(new TerminalPropertyBool(), termActProp);
+			AddDummy(new TerminalPropertyFloat(), termActProp);
+			AddDummy(new TerminalPropertyColour(), termActProp);
+
+			rootCommands.Add(new AddCommandInternalNode("Terminal", termActProp.ToArray()));
+
+			Static.addCommandRoot = new AddCommandInternalNode("root", rootCommands.ToArray());
+
+			AddDummy(new BlockSearch());
 		}
 
 		private static void Entities_OnCloseAll()
@@ -36,15 +78,26 @@ namespace Rynchodon.Autopilot.Instruction
 			Static = null;
 		}
 
-		private static void AddDummy(ACommand command)
+		private static void AddDummy(ACommand command, string idOrAlias)
 		{
 			List<ACommand> list;
-			if (!Static.dummyCommands.TryGetValue(command.Identifier[0], out list))
+			if (!Static.dummyCommands.TryGetValue(idOrAlias[0], out list))
 			{
 				list = new List<ACommand>();
-				Static.dummyCommands.Add(command.Identifier[0], list);
+				Static.dummyCommands.Add(idOrAlias[0], list);
 			}
 			list.Add(command);
+		}
+
+		private static void AddDummy(ACommand command, List<AddCommandLeafNode> children = null)
+		{
+			AddDummy(command, command.Identifier);
+			string[] aliases = command.Aliases;
+			if (aliases != null)
+				foreach (string ali in aliases)
+					AddDummy(command, ali);
+			if (children != null)
+				children.Add(new AddCommandLeafNode(command));
 		}
 
 		public static AutopilotCommands GetOrCreate(IMyTerminalBlock block)
@@ -81,7 +134,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (bestMatch == null)
 				return null;
-			return bestMatch.CreateCommand();
+			return bestMatch.Clone();
 		}
 
 		private readonly IMyTerminalBlock m_block;
@@ -90,9 +143,10 @@ namespace Rynchodon.Autopilot.Instruction
 		private readonly Logger m_logger;
 
 		private IMyTerminalControlListbox m_termCommandList;
-		private bool m_listCommands = true;
+		private bool m_listCommands = true, m_replace;
 		private int m_insertIndex;
 		private ACommand m_currentCommand;
+		private Stack<AddCommandInternalNode> m_currentAddNode = new Stack<AddCommandInternalNode>();
 		/// <summary>Action executed once programming ends.</summary>
 		private Action m_completionCallback;
 
@@ -137,8 +191,11 @@ namespace Rynchodon.Autopilot.Instruction
 				Action<Mover> execute = apCmd.SetDisplayString(cmd, out msg);
 				if (execute == null)
 				{
-					m_syntaxErrors.AppendLine("Error with command: \"" + cmd + "\":");
-					m_syntaxErrors.AppendLine("  " + msg);
+					m_syntaxErrors.Append("Error with command: \"");
+					m_syntaxErrors.Append(cmd);
+					m_syntaxErrors.Append("\":\n  ");
+					m_syntaxErrors.AppendLine(msg);
+					m_logger.debugLog("Error with command: \"" + cmd + "\":\n  " + msg, Logger.severity.INFO);
 					continue;
 				}
 
@@ -164,7 +221,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
 		{
-			m_logger.debugLog("entered");
+			//m_logger.debugLog("entered");
 
 			if (block != m_block)
 				return;
@@ -196,10 +253,37 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			if (m_currentCommand == null)
-				// TODO: command tree
-				m_currentCommand = new CommandGolisGps();
+			{
+				// add/insert new command
+				if (m_currentAddNode.Count == 0)
+					m_currentAddNode.Push(Static.addCommandRoot);
 
-			m_logger.debugLog("showing single command");
+				foreach (AddCommandTreeNode child in m_currentAddNode.Peek().Children)
+					controls.Add(new MyTerminalControlButton<MyShipController>(child.Name.RemoveWhitespace(), MyStringId.GetOrCompute(child.Name), MyStringId.GetOrCompute(child.Tooltip), shipController => {
+						AddCommandLeafNode leaf = child as AddCommandLeafNode;
+						if (leaf != null)
+						{
+							m_currentCommand = leaf.Command.Clone();
+							if (!m_currentCommand.HasControls)
+								CheckAndSave(block);
+							m_currentAddNode.Clear();
+						}
+						else
+							m_currentAddNode.Push((AddCommandInternalNode)child);
+						shipController.SwitchTerminalTo();
+					}));
+
+				controls.Add(new MyTerminalControlButton<MyShipController>("UpOneLevel", MyStringId.GetOrCompute("Up one level"), MyStringId.GetOrCompute("Return to previous list"), shipController => {
+					m_currentAddNode.Pop();
+					if (m_currentAddNode.Count == 0)
+						m_listCommands = true;
+					shipController.SwitchTerminalTo();
+				}));
+
+				return;
+			}
+
+			m_logger.debugLog("showing single command: " + m_currentCommand.Identifier);
 
 			m_currentCommand.AddControls(controls);
 			controls.Add(new MyTerminalControlSeparator<MyShipController>());
@@ -214,7 +298,7 @@ namespace Rynchodon.Autopilot.Instruction
 			foreach (ACommand command in m_commandList)
 			{
 				// this will leak memory, as MyTerminalControlListBoxItem uses MyStringId for some stupid reason
-				MyTerminalControlListBoxItem item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(command.DisplayString), MyStringId.GetOrCompute(command.Tooltip), command);
+				MyTerminalControlListBoxItem item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(command.DisplayString), MyStringId.GetOrCompute(command.Description), command);
 				allItems.Add(item);
 				if (command == m_currentCommand && selected.Count == 0)
 					selected.Add(item);
@@ -275,7 +359,13 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 					else
 					{
-						m_logger.debugLog("new command at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
+						if (m_replace)
+						{
+							m_commandList.RemoveAt(m_insertIndex);
+							m_logger.debugLog("replace at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
+						}
+						else
+							m_logger.debugLog("new command at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
 						m_commandList.Insert(m_insertIndex, m_currentCommand);
 					}
 				}
@@ -287,6 +377,7 @@ namespace Rynchodon.Autopilot.Instruction
 				m_logger.debugLog("failed to save command: " + m_currentCommand.DisplayString + ", reason: " + msg);
 				m_block.AppendCustomInfo(msg);
 			}
+
 			m_block.SwitchTerminalTo();
 		}
 
@@ -295,6 +386,7 @@ namespace Rynchodon.Autopilot.Instruction
 			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
 
 			m_insertIndex = -1;
+			m_replace = false;
 			m_currentCommand = null;
 			m_listCommands = false;
 			m_block.SwitchTerminalTo();
@@ -312,6 +404,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			m_insertIndex = m_commandList.IndexOf(m_currentCommand);
+			m_replace = false;
 			m_currentCommand = null;
 			m_listCommands = false;
 			m_block.SwitchTerminalTo();
@@ -345,8 +438,17 @@ namespace Rynchodon.Autopilot.Instruction
 				return;
 			}
 
+			if (!m_currentCommand.HasControls)
+			{
+				LogAndInfo("This command cannot be edited");
+				return;
+			}
+
 			m_logger.debugLog("editing: " + m_currentCommand.DisplayString);
 
+			m_insertIndex = m_commandList.IndexOf(m_currentCommand);
+			m_replace = true;
+			m_currentCommand = m_currentCommand.Clone();
 			m_listCommands = false;
 			m_block.SwitchTerminalTo();
 		}

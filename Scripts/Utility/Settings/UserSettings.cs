@@ -166,7 +166,7 @@ namespace Rynchodon.Settings
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Failed to read settings from " + userSettings_fileName + ": " + ex, Logger.severity.WARNING);
-				Logger.debugNotify("Failed to read user settings from file", 10000, Logger.severity.WARNING);
+				Logger.DebugNotify("Failed to read user settings from file", 10000, Logger.severity.WARNING);
 			}
 			finally
 			{
@@ -340,7 +340,7 @@ namespace Rynchodon.Settings
 			catch (Exception ex)
 			{
 				myLogger.debugLog("Exception: " + ex, Logger.severity.ERROR);
-				Logger.notify("Error while parsing set command", 10000, Logger.severity.ERROR);
+				Logger.Notify("Error while parsing set command", 10000, Logger.severity.ERROR);
 			}
 		}
 

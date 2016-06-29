@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 
 namespace Rynchodon
 {
@@ -16,6 +17,11 @@ namespace Rynchodon
 		private const double k = 1000;
 		private const double m = 0.001f;
 
+		static PrettySI()
+		{
+			Logger.SetFileName("PrettySI");
+		}
+
 		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>
@@ -31,11 +37,11 @@ namespace Rynchodon
 
 			double toRoundAbs = Math.Abs(toRound);
 
-			if (toRoundAbs > 100)
+			if (toRoundAbs >= 100)
 				return toRound.ToString("F" + (sigFig - 3));
-			if (toRoundAbs > 10)
+			if (toRoundAbs >= 10)
 				return toRound.ToString("F" + (sigFig - 2));
-			if (toRoundAbs > 1)
+			if (toRoundAbs >= 1)
 				return toRound.ToString("F" + (sigFig - 1));
 			return toRound.ToString("F" + sigFig);
 		}
@@ -92,6 +98,23 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// Convert a pretty multiple to a double value.
+		/// </summary>
+		/// <returns>0 if pretty is not found, or else a double value to multiply the base by.</returns>
+		private static double getMultiplier(string[] multiple, string[] subMutli, string pretty)
+		{
+			for (int index = 0; index < multiple.Length; index++)
+				if (pretty.StartsWith(multiple[index]))
+					return Math.Pow(1000d, index + 1);
+
+			for (int index = 0; index < subMutli.Length; index++)
+				if (pretty.StartsWith(subMutli[index]))
+					return Math.Pow(0.001d, index + 1);
+
+			return 0d;
+		}
+
+		/// <summary>
 		/// Convert a double to a string with a SI prefix.
 		/// </summary>
 		/// <param name="toPretty">number to make pretty</param>
@@ -116,36 +139,114 @@ namespace Rynchodon
 			//myLogger.debugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
 			return result;
 		}
-
-		//// TODO: 
-		///// <summary>
-		///// Not Yet Implemented. Convert a pretty string with a SI prefix to a double.
-		///// </summary>
-		///// <param name="pretty">string with SI prefix</param>
-		///// <returns>parsed double</returns>
-		//public static double fromPretty(string pretty)
-		//{
-		//	VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-		//	return 0;
-		//}
-
 		
 		public static string makePretty(TimeSpan span)
 		{
-			double totalSeconds = span.TotalSeconds;
+			if (span.Days >= 1d)
+				return span.Days + " days";
+			if (span.Hours >= 1)
+				return span.Hours + " h";
+			if (span.Minutes >= 1)
+				return span.Minutes + " min";
+			if (span.Seconds >= 1)
+				return span.Seconds + " s";
+			return makePretty(span.TotalSeconds) + 's';
+		}
 
-			if (totalSeconds < 60d)
+		public static bool TryParse(string pretty, out double value)
+		{
+			pretty = pretty.Trim();
+
+			if (string.IsNullOrWhiteSpace(pretty))
 			{
-				if (totalSeconds < 1d)
-					return makePretty(totalSeconds) + 's';
-				return span.Seconds.ToString() + " s";
+				value = 0d;
+				return true;
 			}
 
-			int minutes = span.Minutes;
-			if (minutes < 60)
-				return minutes + " min";
+			if (double.TryParse(pretty, out value) && value.IsValid())
+				return true;
 
-			return span.Hours + " h";
+			Match match = Regex.Match(pretty, @"(-?\d*\.?\d*)\s*(\w*)");
+
+			Logger.DebugLog("PrettySI", "pretty: " + pretty + ", group count: " + match.Groups.Count);
+
+			if (match.Groups.Count == 0)
+			{
+				value = default(double);
+				return false;
+			}
+
+			if (!double.TryParse(match.Groups[1].Value, out value))
+				return false;
+
+			if (match.Groups.Count == 1 || string.IsNullOrWhiteSpace(match.Groups[2].Value))
+				return true;
+
+			double multi = getMultiplier(SI_1000_multiples, SI_1000_subMulti, match.Groups[2].Value);
+			if (multi == 0d)
+				return false;
+			value *= multi;
+			return true;
+		}
+
+		public static bool TryParse(string pretty, out float value)
+		{
+			double dv;
+			bool result = TryParse(pretty, out dv);
+			value = (float)dv;
+			return result;
+		}
+
+		public static bool TryParse(string pretty, out TimeSpan span)
+		{
+			Match match = Regex.Match(pretty, @"(-?\d*\.?\d*)\s*(\w*)");
+
+			if (match.Groups.Count == 0)
+			{
+				span = default(TimeSpan);
+				return false;
+			}
+
+			double number;
+			if (!double.TryParse(match.Groups[1].Value, out number))
+			{
+				Logger.DebugLog("PrettySI", "failed to parse as double: " + match.Groups[1].Value);
+				span = default(TimeSpan);
+				return false;
+			}
+
+			if (match.Groups.Count == 1 || string.IsNullOrWhiteSpace(match.Groups[2].Value))
+			{
+				span = TimeSpan.FromSeconds(number);
+				return true;
+			}
+
+			switch (match.Groups[2].Value)
+			{
+				case "days":
+					span = TimeSpan.FromDays(number);
+					return true;
+				case "h":
+					span = TimeSpan.FromHours(number);
+					return true;
+				case "m":
+				case "min":
+					span = TimeSpan.FromMinutes(number);
+					return true;
+				case "s":
+					span = TimeSpan.FromSeconds(number);
+					return true;
+				default:
+					double multi = getMultiplier(SI_1000_multiples, SI_1000_subMulti, match.Groups[2].Value);
+					if (multi == 0d)
+					{
+						Logger.DebugLog("PrettySI", "failed to get multiple: " + match.Groups[2].Value);
+						span = default(TimeSpan);
+						return false;
+					}
+					span = TimeSpan.FromSeconds(number * multi);
+					return true;
+			}
 		}
 
 	}

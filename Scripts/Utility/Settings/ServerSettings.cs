@@ -74,7 +74,7 @@ namespace Rynchodon.Settings
 
 				fileVersion = readAll();
 				if (fileVersion != latestVersion)
-					Logger.debugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
+					Logger.DebugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
 				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, Logger.severity.INFO);
 
 				writeAll(); // writing immediately decreases user errors & whining

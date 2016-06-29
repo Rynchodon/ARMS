@@ -83,6 +83,9 @@ namespace Rynchodon
 				return Dictionary.TryGetValue(key, out value);
 		}
 
+		/// <summary>
+		/// For setting a value unreliably, if the dictionary does not already contain the specified key.
+		/// </summary>
 		public bool TrySet(TKey key, TValue value)
 		{
 			bool contains;

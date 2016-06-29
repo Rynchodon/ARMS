@@ -111,7 +111,7 @@ namespace Rynchodon.Update
 			catch (Exception ex)
 			{
 				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				Logger.notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
+				Logger.Notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
 			}
 		}
 
@@ -437,7 +437,7 @@ namespace Rynchodon.Update
 			catch (Exception ex)
 			{
 				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				Logger.notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
+				Logger.Notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
 			}
 		}
 

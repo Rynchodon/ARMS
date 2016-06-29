@@ -28,6 +28,7 @@ namespace Rynchodon.Autopilot.Instruction
 	/// Parses instructions into Actions.
 	/// Information on command usage can also be found in Steam Description/Autopilot Navigation.txt
 	/// </summary>
+	[Obsolete]
 	public class Interpreter
 	{
 		/// <summary>
@@ -212,7 +213,7 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "exit":
 					{
-						wordAction = () => new Stopper(Mover, NavSet, true);
+						wordAction = () => new Stopper(Mover, true);
 						return true;
 					}
 				case "form":
@@ -236,14 +237,14 @@ namespace Rynchodon.Autopilot.Instruction
 					}
 				case "stop":
 					{
-						wordAction = () => { new Stopper(Mover, NavSet); };
+						wordAction = () => { new Stopper(Mover); };
 						return true;
 					}
 				case "undock":
 				case "unland":
 				case "unlock":
 					{
-						wordAction = () => new UnLander(Mover, NavSet);
+						wordAction = () => new UnLander(Mover);
 						return true;
 					}
 				default:
@@ -788,10 +789,10 @@ namespace Rynchodon.Autopilot.Instruction
 				switch (instruction[1].LowerRemoveWhitespace())
 				{
 					case "asteroid":
-						instructionAction = () => new VoxelLander(Mover, NavSet, false);
+						instructionAction = () => new VoxelLander(Mover, false);
 						return true;
 					case "planet":
-						instructionAction = () => new VoxelLander(Mover, NavSet, true);
+						instructionAction = () => new VoxelLander(Mover, true);
 						return true;
 					default:
 						Errors.Append("Not a voxel type: ");
@@ -875,7 +876,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (instruction.Length == 2)
 			{
-				instructionAction = () => { new Orbiter(Mover, NavSet, instruction[1]); };
+				instructionAction = () => { new Orbiter(Mover, instruction[1]); };
 				return true;
 			}
 
@@ -887,7 +888,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (instruction.Length == 2)
 			{
-				instructionAction = () => { new FlyToCharacter(Mover, NavSet, instruction[1]); };
+				instructionAction = () => { new FlyToCharacter(Mover, instruction[1]); };
 				return true;
 			}
 
@@ -937,7 +938,7 @@ namespace Rynchodon.Autopilot.Instruction
 			instructionAction = () => {
 				PseudoBlock asPB = new PseudoBlock(unlandBlock, forward, upward);
 				m_logger.debugLog("unlanding " + unlandBlock.DisplayNameText);
-				new UnLander(Mover, NavSet, asPB);
+				new UnLander(Mover, asPB);
 			};
 
 			return true;
@@ -975,12 +976,12 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (instruction.Length == 2)
 			{
-				instructionAction = () => { new WeldGrid(Mover, NavSet, instruction[1], false); };
+				instructionAction = () => { new WeldGrid(Mover, instruction[1], false); };
 				return true;
 			}
 			if (instruction.Length == 3 && instruction[2].ToLower() == "fetch")
 			{
-				instructionAction = () => { new WeldGrid(Mover, NavSet, instruction[1], true); };
+				instructionAction = () => { new WeldGrid(Mover, instruction[1], true); };
 				return true;
 			}
 

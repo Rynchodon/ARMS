@@ -151,7 +151,7 @@ namespace Rynchodon
 				if (player != null)
 					return getRelationsTo(identityId, player.IdentityId);
 
-				Logger.debugLog("ExtensionRelations", "character not found, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
+				Logger.DebugLog("ExtensionRelations", "character not found, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
 				return Relations.Enemy;
 			}
 
@@ -166,7 +166,7 @@ namespace Rynchodon
 				return Relations.Enemy;
 			}
 
-			Logger.debugLog("ExtensionRelations", "unknown entity, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
+			Logger.DebugLog("ExtensionRelations", "unknown entity, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
 			return Relations.Enemy;
 		}
 

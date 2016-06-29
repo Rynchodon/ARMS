@@ -51,6 +51,8 @@ namespace Rynchodon
 				}
 			}
 
+			if (j == inputlen)
+				return input;
 			return new String(newarr, 0, j);
 		}
 
