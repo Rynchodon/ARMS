@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new TerminalPropertyFloat() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termProp = new StringBuilder(m_termProp.ToString()), m_value = m_value };
+			return new TerminalPropertyFloat() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termProp = m_termProp, m_value = m_value };
 		}
 
 		protected override void AddValueControl(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)

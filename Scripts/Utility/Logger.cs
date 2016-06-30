@@ -518,7 +518,7 @@ namespace Rynchodon
 		public static void SetFileName(string actualName, [CallerFilePath] string tmpName = null)
 		{
 			if (Static != null)
-				Static.m_fileMap.Add(tmpName, actualName);
+				Static.m_fileMap[tmpName] = actualName;
 		}
 
 		private static string TryGetActualName(string tmpName)

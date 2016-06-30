@@ -88,5 +88,10 @@ namespace Rynchodon
 			return count;
 		}
 
+		public static bool Contains(this string bigString, string littleString, StringComparison compare = StringComparison.InvariantCultureIgnoreCase)
+		{
+			return bigString.IndexOf(littleString, compare) != -1;
+		}
+
 	}
 }

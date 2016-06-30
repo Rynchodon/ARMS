@@ -14,7 +14,7 @@ namespace Rynchodon
 	public class CubeGridCache
 	{
 
-		public class AllBlocksEnumerator : IEnumerator<IMyCubeBlock> 
+		private class AllBlocksEnumerator : IEnumerator<IMyCubeBlock> 
 		{
 			private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> m_dictionary;
 			private FastResourceLock m_fastLock;
@@ -315,13 +315,38 @@ namespace Rynchodon
 			finally { lock_CubeBlocks.ReleaseShared(); }
 		}
 
-		/// <summary>
-		/// Enumerator for all the blocks in the grid. Holds a shared lock on the cache until disposed of.
-		/// </summary>
-		/// <returns>An enumartor for all the blocks in the grid.</returns>
-		public AllBlocksEnumerator CubeBlocks()
+		public IEnumerable<IMyCubeBlock> AllCubeBlocks()
 		{
-			return new AllBlocksEnumerator(CubeBlocks_Type, lock_CubeBlocks);
+			foreach (IMyCubeBlock block in new AllBlocksEnumerator(CubeBlocks_Type, lock_CubeBlocks))
+				yield return block;
+		}
+
+		public static IEnumerable<IMyCubeBlock> AllCubeBlocks(IMyCubeGrid grid)
+		{
+			CubeGridCache cache = GetFor(grid);
+			if (cache == null)
+				yield break;
+
+			foreach (IMyCubeBlock block in cache.AllCubeBlocks())
+				yield return block;
+		}
+
+		public IEnumerable<IMyCubeBlock> OneOfEachCubeBlock()
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+				foreach (var list in CubeBlocks_Type.Values)
+					if (list.Count != 0)
+						yield return list.myList[0];
+		}
+
+		public static IEnumerable<IMyCubeBlock> OneOfEachCubeBlock(IMyCubeGrid grid)
+		{
+			CubeGridCache cache = GetFor(grid);
+			if (cache == null)
+				yield break;
+
+			foreach (IMyCubeBlock block in cache.OneOfEachCubeBlock())
+				yield return block;
 		}
 
 		/// <summary>

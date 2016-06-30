@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
-using VRage;
+using VRage.Collections;
 using VRage.Game.ModAPI;
+using VRage.ObjectBuilders;
 using Ingame = VRage.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Attached
@@ -72,9 +73,14 @@ namespace Rynchodon.Attached
 			Physics = LandingGear | Terminal
 		}
 
-		private static FastResourceLock lock_search = new FastResourceLock();
-		private static uint searchIdPool = 1;
-		private static Logger s_logger = new Logger("AttachedGrid");
+		private class StaticVariables
+		{
+			public Logger s_logger = new Logger("AttachedGrid");
+			public MyConcurrentPool<HashSet<AttachedGrid>> searchSet = new MyConcurrentPool<HashSet<AttachedGrid>>();
+			public MyConcurrentPool<HashSet<SerializableDefinitionId>> foundBlockIds = new MyConcurrentPool<HashSet<SerializableDefinitionId>>();
+		}
+
+		private static StaticVariables Static = new StaticVariables();
 
 		static AttachedGrid()
 		{
@@ -84,8 +90,7 @@ namespace Rynchodon.Attached
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			lock_search = null;
-			s_logger = null;
+			Static = null;
 		}
 
 		/// <summary>
@@ -100,16 +105,18 @@ namespace Rynchodon.Attached
 			if (grid0 == grid1)
 				return true;
 
-			using (lock_search.AcquireExclusiveUsing())
-			{
-				AttachedGrid attached1 = GetFor(grid0);
-				if (attached1 == null)
-					return false;
-				AttachedGrid attached2 = GetFor(grid1);
-				if (attached2 == null)
-					return false;
-				return attached1.IsGridAttached(attached2, allowedConnections, searchIdPool++);
-			}
+			AttachedGrid attached1 = GetFor(grid0);
+			if (attached1 == null)
+				return false;
+			AttachedGrid attached2 = GetFor(grid1);
+			if (attached2 == null)
+				return false;
+
+			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			bool result = attached1.IsGridAttached(attached2, allowedConnections, search);
+			search.Clear();
+			Static.searchSet.Return(search);
+			return result;
 		}
 
 		/// <summary>
@@ -123,13 +130,15 @@ namespace Rynchodon.Attached
 		{
 			if (runOnStartGrid && runFunc(startGrid))
 				return;
-			using (lock_search.AcquireExclusiveUsing())
-			{
-				AttachedGrid attached = GetFor(startGrid);
-				if (attached == null)
-					return;
-				attached.RunOnAttached(allowedConnections, runFunc, searchIdPool++);
-			}
+
+			AttachedGrid attached = GetFor(startGrid);
+			if (attached == null)
+				return;
+
+			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			attached.RunOnAttached(allowedConnections, runFunc, search);
+			search.Clear();
+			Static.searchSet.Return(search);
 		}
 
 		/// <summary>
@@ -156,12 +165,87 @@ namespace Rynchodon.Attached
 			RunOnAttached(startGrid, allowedConnections, runOnGrid, runOnStartGrid);
 		}
 
+		public static IEnumerable<IMyCubeGrid> AttachedGrids(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		{
+			if (runOnStartGrid)
+				yield return startGrid;
+
+			AttachedGrid attached = GetFor(startGrid);
+			if (attached == null)
+				yield break;
+
+			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			try
+			{
+				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
+					yield return grid;
+			}
+			finally
+			{
+				search.Clear();
+				Static.searchSet.Return(search);
+			}
+		}
+
+		public static IEnumerable<IMyCubeBlock> AttachedCubeBlocks(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		{
+			if (runOnStartGrid)
+				foreach (IMyCubeBlock block in CubeGridCache.AllCubeBlocks(startGrid))
+					yield return block;
+
+			AttachedGrid attached = GetFor(startGrid);
+			if (attached == null)
+				yield break;
+
+			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			try
+			{
+				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
+					foreach (IMyCubeBlock block in CubeGridCache.AllCubeBlocks(grid))
+						yield return block;
+			}
+			finally
+			{
+				search.Clear();
+				Static.searchSet.Return(search);
+			}
+		}
+
+		public static IEnumerable<IMyCubeBlock> OneOfEachAttachedCubeBlock(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		{
+			HashSet<SerializableDefinitionId> foundTypes = Static.foundBlockIds.Get();
+			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			try
+			{
+				if (runOnStartGrid)
+					foreach (IMyCubeBlock block in CubeGridCache.OneOfEachCubeBlock(startGrid))
+						if (foundTypes.Add(block.BlockDefinition))
+							yield return block;
+
+				AttachedGrid attached = GetFor(startGrid);
+				if (attached == null)
+					yield break;
+
+				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
+					foreach (IMyCubeBlock block in CubeGridCache.OneOfEachCubeBlock(grid))
+						if (foundTypes.Add(block.BlockDefinition))
+							yield return block;
+			}
+			finally
+			{
+				foundTypes.Clear();
+				Static.foundBlockIds.Return(foundTypes);
+				search.Clear();
+				Static.searchSet.Return(search);
+			}
+		}
+
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, Ingame.IMyCubeGrid grid2, bool add)
 		{ AddRemoveConnection(kind, grid1 as IMyCubeGrid, grid2 as IMyCubeGrid, add); }
 
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, IMyCubeGrid grid2, bool add)
 		{
-			if (grid1 == grid2 || s_logger == null)
+			if (grid1 == grid2 || Static == null)
 				return;
 
 			AttachedGrid
@@ -192,10 +276,7 @@ namespace Rynchodon.Attached
 		/// The grid connected to, the types of connection, the number of connections.
 		/// Some connections are counted twice (this reduces code).
 		/// </summary>
-		private readonly Dictionary<AttachedGrid, Attachments> Connections = new Dictionary<AttachedGrid, Attachments>();
-
-		private readonly FastResourceLock lock_Connections = new FastResourceLock();
-		private uint lastSearchId = 0;
+		private readonly LockedDictionary<AttachedGrid, Attachments> Connections = new LockedDictionary<AttachedGrid, Attachments>();
 
 		private AttachedGrid(IMyCubeGrid grid)
 		{
@@ -208,72 +289,76 @@ namespace Rynchodon.Attached
 
 		private void AddRemoveConnection(AttachmentKind kind, AttachedGrid attached, bool add)
 		{
-			using (lock_Connections.AcquireExclusiveUsing())
+			Attachments attach;
+			if (!Connections.TryGetValue(attached, out attach))
 			{
-				Attachments attach;
-				if (!Connections.TryGetValue(attached, out attach))
-				{
-					if (add)
-					{
-						attach = new Attachments(myGrid, attached.myGrid);
-						Connections.Add(attached, attach);
-					}
-					else
-					{
-						myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, Logger.severity.ERROR);
-						return;
-					}
-				}
-
 				if (add)
-					attach.Add(kind);
+				{
+					attach = new Attachments(myGrid, attached.myGrid);
+					Connections.Add(attached, attach);
+				}
 				else
-					attach.Remove(kind);
+				{
+					myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, Logger.severity.ERROR);
+					return;
+				}
 			}
+
+			if (add)
+				attach.Add(kind);
+			else
+				attach.Remove(kind);
 		}
 
-		private bool IsGridAttached(AttachedGrid target, AttachmentKind allowedConnections, uint searchId)
+		private bool IsGridAttached(AttachedGrid target, AttachmentKind allowedConnections, HashSet<AttachedGrid> searched)
 		{
-			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", Logger.severity.ERROR);
-			lastSearchId = searchId;
+			if (!searched.Add(this))
+				throw new Exception("AttachedGrid already searched");
 
-			using (lock_Connections.AcquireSharedUsing())
-				foreach (var gridAttachments in Connections)
-				{
-					if (searchId == gridAttachments.Key.lastSearchId)
-						continue;
+			foreach (var gridAttach in Connections.GetEnumerator())
+			{
+				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
+					continue;
 
-					if ((gridAttachments.Value.attachmentKinds & allowedConnections) == 0)
-						continue;
-
-					if (gridAttachments.Key == target)
-						return true;
-					if (gridAttachments.Key.IsGridAttached(target, allowedConnections, searchId))
-						return true;
-				}
+				if (gridAttach.Key == target || gridAttach.Key.IsGridAttached(target, allowedConnections, searched))
+					return true;
+			}
 
 			return false;
 		}
 
-		private void RunOnAttached(AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, uint searchId)
+		private bool RunOnAttached(AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, HashSet<AttachedGrid> searched)
 		{
-			myLogger.debugLog(lastSearchId == searchId, "Already searched! lastSearchId == searchId", Logger.severity.ERROR);
-			lastSearchId = searchId;
+			if (!searched.Add(this))
+				throw new Exception("AttachedGrid already searched");
 
-			using (lock_Connections.AcquireSharedUsing())
-				foreach (var gridAttachments in Connections)
-				{
-					if (searchId == gridAttachments.Key.lastSearchId)
-						continue;
+			foreach (var gridAttach in Connections.GetEnumerator())
+			{
+				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
+					continue;
 
-					if ((gridAttachments.Value.attachmentKinds & allowedConnections) == 0)
-						continue;
+				if (runFunc(gridAttach.Key.myGrid) || gridAttach.Key.RunOnAttached(allowedConnections, runFunc, searched))
+					return true;
+			}
 
-					if (runFunc(gridAttachments.Key.myGrid))
-						return;
+			return false;
+		}
 
-					gridAttachments.Key.RunOnAttached(allowedConnections, runFunc, searchId);
-				}
+		private IEnumerable<IMyCubeGrid> Attached(AttachmentKind allowedConnections, HashSet<AttachedGrid> searched)
+		{
+			if (!searched.Add(this))
+				throw new Exception("AttachedGrid already searched");
+
+			foreach (var gridAttach in Connections.GetEnumerator())
+			{
+				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
+					continue;
+
+				yield return gridAttach.Key.myGrid;
+
+				foreach (var result in gridAttach.Key.Attached(allowedConnections, searched))
+					yield return result;
+			}
 		}
 
 	}

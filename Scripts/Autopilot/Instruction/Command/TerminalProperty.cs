@@ -6,15 +6,25 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRage.Utils;
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public abstract class TerminalProperty<T> : ACommand where T : IConvertible
+	public abstract class TerminalProperty<T> : ACommand
 	{
 
-		protected StringBuilder m_targetBlock = new StringBuilder(), m_termProp = new StringBuilder();
+		static TerminalProperty()
+		{
+			Logger.SetFileName("TerminalProperty");
+		}
+
+		protected StringBuilder m_targetBlock = new StringBuilder();
+		// don't save the actual property, as string is more consistent when commands are sent over network
+		protected string m_termProp;
 		protected T m_value;
 		protected bool m_hasValue;
 
@@ -48,11 +58,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			textBox.Setter = (block, value) => m_targetBlock = value;
 			controls.Add(textBox);
 
-			textBox = new MyTerminalControlTextbox<MyShipController>("TermProperty", MyStringId.GetOrCompute("Property"),
-				MyStringId.GetOrCompute("Blocks will have the terminal property with this name set."));
-			textBox.Getter = block => m_termProp;
-			textBox.Setter = (block, value) => m_termProp = value;
-			controls.Add(textBox);
+			IMyTerminalControlListbox propertyList = new MyTerminalControlListbox<MyShipController>("PropertyList", MyStringId.GetOrCompute("Property"), MyStringId.NullOrEmpty);
+			propertyList.ListContent = ListContent;
+			propertyList.ItemSelected = ItemSelected;
+
+			MyTerminalControlButton<MyShipController> searchButton = new MyTerminalControlButton<MyShipController>("SearchButton", MyStringId.GetOrCompute("Search"),
+				MyStringId.GetOrCompute("Search for properties"), block => propertyList.UpdateVisual());
+
+			controls.Add(searchButton);
+			controls.Add(propertyList);
 
 			AddValueControl(controls);
 		}
@@ -72,17 +86,30 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 
 			string split2 = split[2].Trim();
-			try
+			if (m_value is Color)
 			{
-				m_value = (T)Convert.ChangeType(split2, typeof(T));
+				uint packedValue;
+				if (uint.TryParse(split2, out packedValue))
+					m_value = (T)(object)new Color(packedValue);
+				else
+				{
+					message = "Not a colour value: " + split2;
+					m_hasValue = false;
+					return null;
+				}
 			}
-			catch (Exception ex)
-			{
-				Logger.DebugLog("TerminalProperty", "string: " + split2 + ", exception: " + ex);
-				message = ex.GetType() + ex.Message;
-				m_hasValue = false;
-				return null;
-			}
+			else
+				try
+				{
+					m_value = (T)Convert.ChangeType(split2, typeof(T));
+				}
+				catch (Exception ex)
+				{
+					Logger.DebugLog("TerminalProperty", "string: " + split2 + ", exception: " + ex);
+					message = ex.GetType() + ex.Message;
+					m_hasValue = false;
+					return null;
+				}
 			m_hasValue = true;
 			message = null;
 			return mover => SetPropertyOfBlock(mover, split[0], split[1], m_value);
@@ -90,7 +117,49 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		protected override string TermToString()
 		{
-			return Identifier + ' ' + m_targetBlock + ", " + m_termProp + ", " + (m_hasValue ? m_value.ToString() : string.Empty);
+			string result = Identifier + ' ' + m_targetBlock + ", " + m_termProp + ", ";
+			if (!m_hasValue)
+				return result;
+
+			if (m_value is Color)
+			{
+				Color value = (Color)(object)m_value;
+				return result + value.PackedValue;
+			}
+			return result + m_value;
+		}
+
+		private void ListContent(IMyTerminalBlock autopilot, List<MyTerminalControlListBoxItem> items, List<MyTerminalControlListBoxItem> selected)
+		{
+			string blockName = m_targetBlock.ToString().Trim();
+			if (string.IsNullOrWhiteSpace(blockName))
+				return;
+
+			HashSet<ITerminalProperty<T>> termProps = new HashSet<ITerminalProperty<T>>();
+			foreach (IMyCubeBlock block in AttachedGrid.AttachedCubeBlocks((IMyCubeGrid)autopilot.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			{
+				if (!block.DisplayNameText.Contains(blockName, StringComparison.InvariantCultureIgnoreCase))
+					continue;
+				IMyTerminalBlock term = block as IMyTerminalBlock;
+				if (term == null)
+					continue;
+				term.GetProperties(null, property => {
+					ITerminalProperty<T> propT = property as ITerminalProperty<T>;
+					if (propT == null)
+						return false;
+					if (termProps.Add(propT))
+						items.Add(new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(propT.Id), MyStringId.NullOrEmpty, propT));
+					return false;
+				});
+			}
+		}
+
+		private void ItemSelected(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> selected)
+		{
+			if (selected.Count == 0)
+				m_termProp = null;
+			else
+				m_termProp = ((ITerminalProperty<T>)selected[0].UserData).Id;
 		}
 
 		private void SetPropertyOfBlock(Movement.Mover mover, string blockName, string propName, T propValue)

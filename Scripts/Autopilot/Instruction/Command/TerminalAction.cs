@@ -5,7 +5,9 @@ using Rynchodon.Attached;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRage.Utils;
 
 namespace Rynchodon.Autopilot.Instruction.Command
@@ -13,11 +15,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class TerminalAction : ACommand
 	{
 
-		private StringBuilder m_targetBlock = new StringBuilder(), m_termAction = new StringBuilder();
+		private StringBuilder m_targetBlock = new StringBuilder();
+		// don't save the actual action, as string is more consistent when commands are sent over network
+		private string m_termAction;
 	
 		public override ACommand Clone()
 		{
-			return new TerminalAction() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termAction = new StringBuilder(m_termAction.ToString()) };
+			return new TerminalAction() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termAction = m_termAction };
 		}
 
 		public override string Identifier
@@ -48,11 +52,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			textBox.Setter = (block, value) => m_targetBlock = value;
 			controls.Add(textBox);
 
-			textBox = new MyTerminalControlTextbox<MyShipController>("TermAction", MyStringId.GetOrCompute("Action"),
-				MyStringId.GetOrCompute("Blocks will run the terminal action with this name."));
-			textBox.Getter = block => m_termAction;
-			textBox.Setter = (block, value) => m_termAction = value;
-			controls.Add(textBox);
+			IMyTerminalControlListbox actionList = new MyTerminalControlListbox<MyShipController>("ActionList", MyStringId.GetOrCompute("Action"), MyStringId.NullOrEmpty);
+			actionList.ListContent = ListContent;
+			actionList.ItemSelected = ItemSelected;
+
+			MyTerminalControlButton<MyShipController> searchButton = new MyTerminalControlButton<MyShipController>("SearchButton", MyStringId.GetOrCompute("Search"),
+				MyStringId.GetOrCompute("Search for actions"), block => actionList.UpdateVisual());
+			
+			controls.Add(searchButton);
+			controls.Add(actionList);
 		}
 
 		protected override Action<Movement.Mover> Parse(string command, out string message)
@@ -67,6 +75,17 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				return null;
 			}
 
+			if (string.IsNullOrWhiteSpace(split[0]))
+			{
+				message = "missing block name";
+				return null;
+			}
+			if (string.IsNullOrWhiteSpace(split[1]))
+			{
+				message = "missing action";
+				return null;
+			}
+
 			message = null;
 			return mover => RunActionOnBlock(mover, split[0], split[1]);
 		}
@@ -76,9 +95,39 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return Identifier + ' ' + m_targetBlock + ", " + m_termAction;
 		}
 
+		private void ListContent(IMyTerminalBlock autopilot, List<MyTerminalControlListBoxItem> items, List<MyTerminalControlListBoxItem> selected)
+		{
+			string blockName = m_targetBlock.ToString().Trim();
+			if (string.IsNullOrWhiteSpace(blockName))
+				return;
+
+			HashSet<ITerminalAction> termActs = new HashSet<ITerminalAction>();
+			foreach (IMyCubeBlock block in AttachedGrid.AttachedCubeBlocks((IMyCubeGrid)autopilot.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			{
+				if (!block.DisplayNameText.Contains(blockName, StringComparison.InvariantCultureIgnoreCase))
+					continue;
+				IMyTerminalBlock term = block as IMyTerminalBlock;
+				if (term == null)
+					continue;
+				term.GetActions(null, action => {
+					if (termActs.Add((ITerminalAction)action))
+						items.Add(new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(action.Id), MyStringId.NullOrEmpty, action));
+					return false;
+				});
+			}
+		}
+
+		private void ItemSelected(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> selected)
+		{
+			if (selected.Count == 0)
+				m_termAction = null;
+			else
+				m_termAction = ((ITerminalAction)selected[0].UserData).Id;
+		}
+
 		private void RunActionOnBlock(Movement.Mover mover, string blockName, string actionString)
 		{
-			blockName = blockName.LowerRemoveWhitespace();
+			blockName = blockName.Trim();
 			actionString = actionString.Trim(); // leave spaces in actionString
 
 			AttachedGrid.RunOnAttachedBlock(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, block => {
@@ -89,7 +138,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				if (!mover.Block.Controller.canControlBlock(fatblock))
 					return false;
 
-				if (!fatblock.DisplayNameText.LowerRemoveWhitespace().Contains(blockName))
+				if (!fatblock.DisplayNameText.Contains(blockName, StringComparison.InvariantCultureIgnoreCase))
 					return false;
 
 				IMyTerminalBlock terminalBlock = fatblock as IMyTerminalBlock;
