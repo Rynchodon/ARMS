@@ -202,8 +202,14 @@ namespace Rynchodon.Utility.Network
 			EntityValue existing;
 			if (entityValues.TryGetValue(valueId, out existing))
 			{
-				logger.alwaysLog("valueId(" + valueId + ") already used for entity(" + entity.nameWithId() + "), this type: " + GetValueType() + ", existing: " + existing.GetValueType(), Logger.severity.FATAL);
-				return;
+				if (GetValueType() == existing.GetValueType())
+				{
+					logger.alwaysLog("valueId: " + valueId + ", already used for entity: " + entity.nameWithId() + ". types match: " + GetValueType(), Logger.severity.WARNING);
+					return;
+				}
+				else
+					// types don't match, if it gets sent, the server would crash!
+					throw new Exception("valueId: " + valueId + ", already used for entity: " + entity.nameWithId() + ", this type: " + GetValueType() + ", existing: " + existing.GetValueType());
 			}
 
 			entityValues.Add(valueId, this);
