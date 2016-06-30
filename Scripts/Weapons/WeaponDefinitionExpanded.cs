@@ -1,6 +1,7 @@
-
 using System;
+using System.Collections.Generic;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using VRage.Game;
 
 namespace Rynchodon.Weapons
@@ -8,9 +9,31 @@ namespace Rynchodon.Weapons
 	public class WeaponDefinitionExpanded
 	{
 
+		private static Dictionary<MyWeaponDefinition, WeaponDefinitionExpanded> known = new Dictionary<MyWeaponDefinition, WeaponDefinitionExpanded>();
+
+		static WeaponDefinitionExpanded()
+		{
+			MyEntities.OnCloseAll += MyEntities_OnCloseAll;
+		}
+
+		private static void MyEntities_OnCloseAll()
+		{
+			MyEntities.OnCloseAll -= MyEntities_OnCloseAll;
+			known = null;
+		}
+
 		public static implicit operator WeaponDefinitionExpanded(MyWeaponDefinition weaponDefn)
 		{
-			return new WeaponDefinitionExpanded(weaponDefn);
+			if (known == null)
+				return null;
+
+			WeaponDefinitionExpanded result;
+			if (known.TryGetValue(weaponDefn, out result))
+				return result;
+
+			result = new WeaponDefinitionExpanded(weaponDefn);
+			known.Add(weaponDefn, result);
+			return result;
 		}
 
 		public readonly MyWeaponDefinition WeaponDefinition;
@@ -23,7 +46,7 @@ namespace Rynchodon.Weapons
 			get { return WeaponDefinition.WeaponAmmoDatas[(int)AmmoType]; }
 		}
 
-		public WeaponDefinitionExpanded(MyWeaponDefinition weaponDefn)
+		private WeaponDefinitionExpanded(MyWeaponDefinition weaponDefn)
 		{
 			this.WeaponDefinition = weaponDefn;
 

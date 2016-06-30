@@ -284,6 +284,8 @@ namespace Rynchodon.Update
 				Action<IMyCubeBlock> constructor;
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 					constructor = block => {
+						if (!WeaponTargeting.ValidWeaponBlock(block))
+							return;
 						Turret t = new Turret(block);
 						RegisterForUpdates(1, t.Update_Targeting, block);
 						if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
@@ -294,6 +296,8 @@ namespace Rynchodon.Update
 					};
 				else
 					constructor = block => {
+						if (!WeaponTargeting.ValidWeaponBlock(block))
+							return; 
 						Turret t = new Turret(block);
 						RegisterForUpdates(1, t.Update_Targeting, block);
 					};
@@ -309,6 +313,8 @@ namespace Rynchodon.Update
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 				{
 					constructor = block => {
+						if (!WeaponTargeting.ValidWeaponBlock(block))
+							return; 
 						FixedWeapon w = new FixedWeapon(block);
 						RegisterForUpdates(1, w.Update_Targeting, block);
 						if (GuidedMissileLauncher.IsGuidedMissileLauncher(block))
@@ -320,6 +326,8 @@ namespace Rynchodon.Update
 				}
 				else
 					constructor = block => {
+						if (!WeaponTargeting.ValidWeaponBlock(block))
+							return; 
 						FixedWeapon w = new FixedWeapon(block);
 						RegisterForUpdates(1, w.Update_Targeting, block);
 					};
