@@ -716,8 +716,8 @@ namespace Rynchodon.AntennaRelay
 			foreach (SeenHolo sh in m_holoEntities.Values)
 			{
 				MatrixD worldMatrix = sh.Seen.Entity.WorldMatrix;
-				worldMatrix.Translation = projectionCentre + (sh.Seen.Entity.GetPosition() - m_centreEntity.GetPosition()) * distanceScale;
-				//m_logger.debugLog("entity: " + sh.Seen.Entity.getBestName() + "(" + sh.Seen.Entity.EntityId + "), centre: " + projectionCentre + ", offset: " + (worldMatrix.Translation - projectionCentre) + ", position: " + worldMatrix.Translation);
+				worldMatrix.Translation = projectionCentre + (sh.Seen.Entity.GetPosition() - m_centreEntity.GetPosition()) * distanceScale + (sh.Seen.Entity.GetPosition() - sh.Seen.Entity.GetCentre()) * (sizeScale - distanceScale);
+				m_logger.debugLog("entity: " + sh.Seen.Entity.getBestName() + "(" + sh.Seen.Entity.EntityId + "), centre: " + projectionCentre + ", offset: " + (worldMatrix.Translation - projectionCentre) + ", position: " + worldMatrix.Translation);
 				sh.Holo.PositionComp.SetWorldMatrix(worldMatrix);
 				sh.Holo.PositionComp.Scale = sizeScale;
 			}
