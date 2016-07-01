@@ -718,7 +718,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private bool getAction_gridDest(out Action execute, string instruction)
 		{
 			m_logger.debugLog("entered getAction_gridDest(out Action execute, string " + instruction + ")");
-			execute = () => new FlyToGrid(Mover, NavSet, instruction);
+			execute = () => new FlyToGrid(Mover, instruction);
 
 			return true;
 		}
@@ -757,7 +757,7 @@ namespace Rynchodon.Autopilot.Instruction
 				oreType = oreTypeList.ToArray();
 			}
 
-			execute = () => new MinerVoxel(Mover, NavSet, oreType);
+			execute = () => new MinerVoxel(Mover, oreType);
 			return true;
 		}
 

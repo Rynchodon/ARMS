@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Text.RegularExpressions;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.ModAPI.Interfaces.Terminal;
@@ -15,7 +16,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			Logger.SetFileName("ACommand");
 		}
 
-		private string m_displayString;
+		private string m_displayString, m_error;
 
 		/// <summary>The full string that reflects this command, including Identifier.</summary>
 		public string DisplayString { get { return m_displayString; } }
@@ -49,10 +50,21 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// Attempt to create Execute from the terminal control values.
 		/// </summary>
 		/// <param name="message">If controls are valid, null. Otherwise, an error message for the player.</param>
-		/// <returns>If validtion was successful, the action to execute, otherwise null.</returns>
+		/// <returns>If validation was successful, the action to execute, otherwise null.</returns>
 		public Action<Mover> ValidateControls(out string message)
 		{
-			return SetDisplayString(TermToString(), out message);
+			string termString = TermToString();
+			if (termString == null)
+			{
+				termString = TermToString(out message);
+				if (termString == null)
+				{
+					if (message == null)
+						Logger.AlwaysLog("TermToString is not correctly implemented by command: " + Identifier, Logger.severity.ERROR);
+					return null;
+				}
+			}
+			return SetDisplayString(termString, out message);
 		}
 
 		/// <summary>
@@ -92,6 +104,12 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		public virtual string[] Aliases { get { return null; } }
 
 		/// <summary>
+		/// Append custom info for a command that is being added/edited.
+		/// </summary>
+		/// <param name="sb">To append info to</param>
+		public virtual void AppendCustomInfo(StringBuilder sb) { }
+
+		/// <summary>
 		/// Adds terminal controls, specific to the command, to the end of the list for players to interact with.
 		/// </summary>
 		/// <param name="controls">The current list of controls.</param>
@@ -109,7 +127,25 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// Convert the terminal input to a string, which is then parsed. The string shall include the identifier.
 		/// </summary>
 		/// <returns>A string representing the terminal input.</returns>
-		protected abstract string TermToString();
+		/// <remarks>
+		/// Commands should override one or the other TermToString function.
+		/// </remarks>
+		protected virtual string TermToString() { return null; }
+
+		/// <summary>
+		/// Convert the terminal input to a string, which is then parsed. The string shall include the identifier.
+		/// If the command is invalid, returns null and message explains the issue.
+		/// </summary>
+		/// <param name="message">The reason the string could not be created. Null on success.</param>
+		/// <returns>The string representation of this command.</returns>
+		/// <remarks>
+		/// Commands should override one or the other TermToString function.
+		/// </remarks>
+		protected virtual string TermToString(out string message)
+		{
+			message = null;
+			return null;
+		}
 
 		protected bool GetVectorFromGeneric(string[] parts, out Vector3 result)
 		{

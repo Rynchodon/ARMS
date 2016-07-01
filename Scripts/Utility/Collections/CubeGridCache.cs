@@ -325,10 +325,9 @@ namespace Rynchodon
 		{
 			CubeGridCache cache = GetFor(grid);
 			if (cache == null)
-				yield break;
+				return new IMyCubeBlock[] { }; // fail silently
 
-			foreach (IMyCubeBlock block in cache.AllCubeBlocks())
-				yield return block;
+			return cache.AllCubeBlocks();
 		}
 
 		public IEnumerable<IMyCubeBlock> OneOfEachCubeBlock()

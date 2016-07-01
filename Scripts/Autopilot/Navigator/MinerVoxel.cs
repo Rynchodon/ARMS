@@ -167,7 +167,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public MinerVoxel(Mover mover, AllNavigationSettings navSet, byte[] OreTargets)
+		public MinerVoxel(Mover mover, byte[] OreTargets)
 			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_state.ToString());

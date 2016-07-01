@@ -13,6 +13,8 @@ namespace Rynchodon
 		/// <returns>A clone of the original object.</returns>
 		public static T SerialClone<T>(this T obj)
 		{
+			if (obj.Equals(default(T)))
+				return default(T);
 			string serial = MyAPIGateway.Utilities.SerializeToXML(obj);
 			return MyAPIGateway.Utilities.SerializeFromXML<T>(serial);
 		}

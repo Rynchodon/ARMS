@@ -65,5 +65,4 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		}
 
 	}
-
 }

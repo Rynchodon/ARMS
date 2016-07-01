@@ -252,12 +252,18 @@ namespace Rynchodon.Attached
 				attached1 = GetFor(grid1),
 				attached2 = GetFor(grid2);
 
+			if (attached1 == null || attached2 == null)
+				return;
+
 			attached1.AddRemoveConnection(kind, attached2, add);
 			attached2.AddRemoveConnection(kind, attached1, add);
 		}
 
 		private static AttachedGrid GetFor(IMyCubeGrid grid)
 		{
+			if (Globals.WorldClosed)
+				return null;
+
 			AttachedGrid attached;
 			if (!Registrar.TryGetValue(grid.EntityId, out attached))
 			{

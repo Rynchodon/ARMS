@@ -99,7 +99,7 @@ namespace Rynchodon.Autopilot
 						m_navResponse = new Self_Destruct(m_mover.Block.CubeBlock);
 						break;
 					case Response.Land:
-						m_navResponse = new EnemyLander(m_mover, m_navSet, m_landingGear);
+						m_navResponse = new EnemyLander(m_mover, m_landingGear);
 						break;
 					default:
 						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, Logger.severity.WARNING);

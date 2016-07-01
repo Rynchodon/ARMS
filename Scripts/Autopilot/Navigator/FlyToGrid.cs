@@ -95,8 +95,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public FlyToGrid(Mover mover, AllNavigationSettings navSet, string targetGrid = null,
-			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, GridFinder finder = null, PseudoBlock landingBlock = null)
+		public FlyToGrid(Mover mover, string targetGrid = null, AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, GridFinder finder = null, PseudoBlock landingBlock = null)
 			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_landingState.ToString());

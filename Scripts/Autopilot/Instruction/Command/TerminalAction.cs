@@ -90,8 +90,20 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return mover => RunActionOnBlock(mover, split[0], split[1]);
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
+			if (string.IsNullOrWhiteSpace(m_targetBlock.ToString()))
+			{
+				message = "Need a block name";
+				return null;
+			}
+			if (string.IsNullOrWhiteSpace(m_termAction))
+			{
+				message = "Need an action";
+				return null;
+			}
+
+			message = null;
 			return Identifier + ' ' + m_targetBlock + ", " + m_termAction;
 		}
 

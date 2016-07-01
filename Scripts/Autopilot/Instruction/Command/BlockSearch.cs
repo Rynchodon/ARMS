@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using Sandbox.Game.Entities;
+using Sandbox.Game.Gui;
+using VRage.Utils;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class BlockSearch : ACommand
 	{
-		private string m_blockName;
+		private StringBuilder m_blockName;
 		private Base6Directions.Direction? m_forward, m_upward;
 
 		public override ACommand Clone()
 		{
-			return new BlockSearch() { m_blockName = m_blockName, m_forward = m_forward, m_upward = m_upward };
+			return new BlockSearch() { m_blockName = new StringBuilder(m_blockName.ToString()), m_forward = m_forward, m_upward = m_upward };
 		}
 
 		public override string Identifier
@@ -34,27 +38,34 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Search for " + m_blockName + " on the target grid"; }
 		}
 
-		public override bool HasControls
-		{
-			get { return false; }
-		}
-
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
+			MyTerminalControlTextbox<MyShipController> blockName = new MyTerminalControlTextbox<MyShipController>("BlockName", MyStringId.GetOrCompute("Block Name"), MyStringId.NullOrEmpty);
+			blockName.Getter = block => m_blockName;
+			blockName.Setter = (block, value) => m_blockName = value;
+			controls.Add(blockName);
 		}
 
 		protected override Action<Movement.Mover> Parse(string command, out string message)
 		{
-			if (!SplitNameDirections(command, out m_blockName, out m_forward, out m_upward, out message))
+			string blockName;
+			if (!SplitNameDirections(command, out blockName, out m_forward, out m_upward, out message))
 				return null;
 
 			message = null;
-			return mover => mover.m_navSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(m_blockName, m_forward, m_upward);
+			this.m_blockName = new StringBuilder(blockName);
+			return mover => mover.m_navSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(blockName, m_forward, m_upward);
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
+			if (string.IsNullOrWhiteSpace(m_blockName.ToString()))
+			{
+				message = "No block name";
+				return null;
+			}
+
+			message = null;
 			return Identifier + ' ' + m_blockName;
 		}
 	}

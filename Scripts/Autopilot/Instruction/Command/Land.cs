@@ -72,8 +72,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return null;
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
+			if (m_target == Target.none)
+			{
+				message = "Must select either asteroid or planet";
+				return null;
+			}
+
+			message = null;
 			return Identifier + ' ' + m_target;
 		}
 	}

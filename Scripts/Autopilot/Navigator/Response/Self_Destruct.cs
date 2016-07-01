@@ -10,6 +10,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
+		private bool m_countingDown;
 
 		public Self_Destruct(IMyCubeBlock block)
 		{
@@ -19,7 +20,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public bool CanRespond()
 		{
-			return true;
+			return !m_countingDown;
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)
@@ -43,6 +44,8 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 				return false;
 			}, true);
+
+			m_countingDown = true;
 		}
 
 		public void Move() { }

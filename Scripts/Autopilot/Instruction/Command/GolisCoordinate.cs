@@ -17,6 +17,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class GolisCoordinate : ACommand
 	{
 
+		static GolisCoordinate()
+		{
+			Logger.SetFileName("GolisCoordinate");
+		}
+
 		protected Vector3D destination;
 
 		public override ACommand Clone()
@@ -93,8 +98,25 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return null;
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
+			if (!destination.X.IsValid())
+			{
+				message = "Invalid X coordinate";
+				return null;
+			}
+			if (!destination.Y.IsValid())
+			{
+				message = "Invalid Y coordinate";
+				return null;
+			}
+			if (!destination.Z.IsValid())
+			{
+				message = "Invalid Z coordinate";
+				return null;
+			}
+
+			message = null;
 			return Identifier + ' ' + destination.X + ',' + destination.Y + ',' + destination.Z;
 		}
 

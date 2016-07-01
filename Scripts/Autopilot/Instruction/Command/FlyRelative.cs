@@ -135,8 +135,25 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return null;
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
+			if (!destination.X.IsValid())
+			{
+				message = "Invalid right vector";
+				return null;
+			}
+			if (!destination.Y.IsValid())
+			{
+				message = "Invalid up vector";
+				return null;
+			}
+			if (!destination.Z.IsValid())
+			{
+				message = "Invalid back vector";
+				return null;
+			}
+
+			message = null;
 			return Identifier + ' ' + destination.X + ',' + destination.Y + ',' + destination.Z;
 		}
 	}

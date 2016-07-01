@@ -66,6 +66,13 @@ namespace Rynchodon
 							return;
 			}
 
+			public static IEnumerable<T> Scripts()
+			{
+				using (m_lock.AcquireSharedUsing())
+					foreach (T script in m_dictionary.Values)
+						yield return script;
+			}
+
 			public static bool Contains(long entityId)
 			{
 				using (m_lock.AcquireSharedUsing())
@@ -76,12 +83,16 @@ namespace Rynchodon
 
 		public static void Add<T>(IMyEntity entity, T item)
 		{
+			if (Globals.WorldClosed)
+				return;
 			Register<T>.Add(entity.EntityId, item);
 			entity.OnClose += OnClose<T>;
 		}
 
 		public static void Remove<T>(IMyEntity entity)
 		{
+			if (Globals.WorldClosed)
+				return;
 			entity.OnClose -= OnClose<T>;
 			Register<T>.Remove(entity.EntityId);
 		}
@@ -103,16 +114,29 @@ namespace Rynchodon
 
 		public static void ForEach<T>(Action<T> function)
 		{
+			if (Globals.WorldClosed)
+				return;
 			Register<T>.ForEach(function);
 		}
 
 		public static void ForEach<T>(Func<T, bool> function)
 		{
+			if (Globals.WorldClosed)
+				return;
 			Register<T>.ForEach(function);
+		}
+
+		public static IEnumerable<T> Scripts<T>()
+		{
+			if (Globals.WorldClosed)
+				return new T[] { }; // fail silently
+			return Register<T>.Scripts();
 		}
 
 		public static bool Contains<T>(long entityId)
 		{
+			if (Globals.WorldClosed)
+				return false;
 			return Register<T>.Contains(entityId);
 		}
 
