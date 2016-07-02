@@ -4,6 +4,7 @@ using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Update;
+using Rynchodon.Utility.Network;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
@@ -18,7 +19,7 @@ using VRageMath;
 
 namespace Rynchodon.Weapons.Guided
 {
-	// TODO: periodically sync position & velocity of missile
+	// Do not remove Builder, might be able to get it to work
 	public class GuidedMissile : TargetingBase
 	{
 
@@ -64,26 +65,30 @@ namespace Rynchodon.Weapons.Guided
 
 		public enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated, Exploded }
 
-		private static readonly float Angle_AccelerateWhen = 0.02f;
-		private static readonly float Cos_Angle_Detonate = (float)Math.Cos(0.3f);
+		private class StaticVariables
+		{
+			public readonly float Angle_AccelerateWhen = 0.02f;
+			public readonly float Cos_Angle_Detonate = (float)Math.Cos(0.3f);
 
-		private static Logger staticLogger = new Logger("GuidedMissile");
-		private static ThreadManager Thread = new ThreadManager();
-		private static CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
-		private static FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
+			public Logger staticLogger = new Logger("GuidedMissile");
+			public ThreadManager Thread = new ThreadManager();
+			public CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
+			public FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
+			public List<byte> SerialPositions;
+		}
+
+		private static StaticVariables Static = new StaticVariables();
 
 		static GuidedMissile()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			MessageHandler.Handlers.Add(MessageHandler.SubMod.GuidedMissile, ReceiveMissilePositions);
 		}
 
 		private static void Entities_OnCloseAll()
 		{
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			staticLogger = null;
-			Thread = null;
-			AllGuidedMissiles = null;
-			lock_AllGuidedMissiles = null;
+			Static = null;
 		}
 
 		//public static void CreateFromBuilder(Builder_GuidedMissile builder)
@@ -108,16 +113,19 @@ namespace Rynchodon.Weapons.Guided
 
 		public static void Update1()
 		{
-			if (lock_AllGuidedMissiles.TryAcquireExclusive())
+			if (Static.lock_AllGuidedMissiles.TryAcquireExclusive())
 			{
-				AllGuidedMissiles.ApplyChanges();
-				lock_AllGuidedMissiles.ReleaseExclusive();
+				Static.AllGuidedMissiles.ApplyChanges();
+				Static.lock_AllGuidedMissiles.ReleaseExclusive();
 			}
 
-			using (lock_AllGuidedMissiles.AcquireSharedUsing())
-				foreach (GuidedMissile missile in AllGuidedMissiles)
+			if (Static.AllGuidedMissiles.Count == 0)
+				return;
+
+			using (Static.lock_AllGuidedMissiles.AcquireSharedUsing())
+				foreach (GuidedMissile missile in Static.AllGuidedMissiles)
 				{
-					Thread.EnqueueAction(() => {
+					Static.Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
 						if (missile.myCluster != null)
@@ -137,9 +145,12 @@ namespace Rynchodon.Weapons.Guided
 
 		public static void Update10()
 		{
-			using (lock_AllGuidedMissiles.AcquireSharedUsing())
-				foreach (GuidedMissile missile in AllGuidedMissiles)
-					Thread.EnqueueAction(() => {
+			if (Static.AllGuidedMissiles.Count == 0)
+				return;
+
+			using (Static.lock_AllGuidedMissiles.AcquireSharedUsing())
+				foreach (GuidedMissile missile in Static.AllGuidedMissiles)
+					Static.Thread.EnqueueAction(() => {
 						if (missile.Stopped)
 							return;
 						if (missile.m_stage == Stage.SemiActive)
@@ -157,10 +168,25 @@ namespace Rynchodon.Weapons.Guided
 
 		public static void Update100()
 		{
-			using (lock_AllGuidedMissiles.AcquireSharedUsing())
-				foreach (GuidedMissile missile in AllGuidedMissiles)
+			if (Static.AllGuidedMissiles.Count == 0)
+				return;
+
+			if (MyAPIGateway.Multiplayer.IsServer)
+			{
+				if (Static.SerialPositions == null)
+					Static.SerialPositions = new List<byte>();
+				else
+					Static.SerialPositions.Clear();
+				ByteConverter.AppendBytes(Static.SerialPositions, MessageHandler.SubMod.GuidedMissile);
+			}
+
+			using (Static.lock_AllGuidedMissiles.AcquireSharedUsing())
+			{
+				for (int index = Static.AllGuidedMissiles.Count - 1; index >= 0; index--)
 				{
-					Thread.EnqueueAction(() => {
+					GuidedMissile missile = Static.AllGuidedMissiles[index];
+
+					Static.Thread.EnqueueAction(() => {
 						if (!missile.Stopped)
 						{
 							missile.ClearBlacklist();
@@ -172,13 +198,73 @@ namespace Rynchodon.Weapons.Guided
 					});
 					if (!missile.Stopped)
 						missile.UpdateNetwork();
+
+					if (MyAPIGateway.Multiplayer.IsServer && Static.SerialPositions.Count < 4000) // message fails at 4096
+					{
+						ByteConverter.AppendBytes(Static.SerialPositions, missile.MyEntity.PositionComp.GetPosition());
+						ByteConverter.AppendBytes(Static.SerialPositions, missile.MyEntity.Physics.LinearVelocity);
+					}
+				}
+			}
+
+			if (MyAPIGateway.Multiplayer.IsServer)
+				if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, Static.SerialPositions.ToArray(), false))
+					Static.staticLogger.alwaysLog("Missile sync failed, too many missiles in play: " + Static.AllGuidedMissiles.Count + ", byte count: " + Static.SerialPositions.Count);
+		}
+
+		private static void ReceiveMissilePositions(byte[] data, int pos)
+		{
+			if (MyAPIGateway.Multiplayer.IsServer)
+				return;
+
+			int index = Static.AllGuidedMissiles.Count - 1;
+			bool updated = false;
+			using (Static.lock_AllGuidedMissiles.AcquireSharedUsing())
+				while (pos < data.Length)
+				{
+					Vector3D worldPos = ByteConverter.GetVector3D(data, ref pos);
+					Vector3 velocity = ByteConverter.GetVector3(data, ref pos);
+
+					while (true)
+					{
+						if (index < 0)
+						{
+							if (!updated)
+								// it could be that server only has missiles that were generated before the client connects and client only has missiles that were generated after server sent message
+								Static.staticLogger.alwaysLog("Failed to update missile positions. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
+							else
+								// normal when client connects while missiles are in play
+								Static.staticLogger.debugLog("Server has more missiles than client. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
+							return;
+						}
+
+						GuidedMissile missile = Static.AllGuidedMissiles[index--];
+
+						// it is possible that the client has extra missiles
+						Vector3D currentPosition = missile.MyEntity.PositionComp.GetPosition();
+						if (Vector3D.DistanceSquared(worldPos, currentPosition) > 100d)
+						{
+							if (updated)
+								Static.staticLogger.alwaysLog("Interruption in missile position updates, it is likely that threshold needs to be adjusted. " +
+									"Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length + ", distance squared: " + Vector3D.DistanceSquared(worldPos, currentPosition), Logger.severity.WARNING);
+							else
+								Static.staticLogger.debugLog("Position values are far apart, trying next missile");
+							continue;
+						}
+
+						updated = true;
+						Static.staticLogger.debugLog("Update position of " + missile.MyEntity.EntityId + " from " + missile.MyEntity.PositionComp.GetPosition() + " to " + worldPos);
+						missile.MyEntity.SetPosition(worldPos);
+						missile.MyEntity.Physics.LinearVelocity = velocity;
+						break;
+					}
 				}
 		}
 
 		public static void ForEach(Action<GuidedMissile> invoke)
 		{
-			using (lock_AllGuidedMissiles.AcquireSharedUsing())
-				foreach (GuidedMissile missile in AllGuidedMissiles)
+			using (Static.lock_AllGuidedMissiles.AcquireSharedUsing())
+				foreach (GuidedMissile missile in Static.AllGuidedMissiles)
 					invoke(missile);
 		}
 
@@ -243,7 +329,8 @@ namespace Rynchodon.Weapons.Guided
 			TryHard = true;
 			SEAD = myAmmo.Description.SEAD;
 
-			AllGuidedMissiles.Add(this);
+			Static.AllGuidedMissiles.Add(this);
+			Registrar.Add(MyEntity, this);
 			MyEntity.OnClose += MyEntity_OnClose;
 
 			acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
@@ -285,9 +372,7 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
-			Registrar.Add(missile, this);
-
-			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()));
+			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()) + ", entityId: " + missile.EntityId);
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
@@ -315,7 +400,8 @@ namespace Rynchodon.Weapons.Guided
 		//	TryHard = true;
 		//	SEAD = myAmmo.Description.SEAD;
 
-		//	AllGuidedMissiles.Add(this);
+		//	Static.AllGuidedMissiles.Add(this);
+		//	Registrar.Add(MyEntity, this);
 		//	MyEntity.OnClose += MyEntity_OnClose;
 
 		//	acceleration = myDescr.Acceleration + myAmmo.MissileDefinition.MissileAcceleration;
@@ -358,7 +444,6 @@ namespace Rynchodon.Weapons.Guided
 		//			break;
 		//	}
 
-		//	Registrar.Add(missile, this);
 		//	myLogger.debugLog("Created from builder", "GuidedMissile()");
 		//	myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()), "GuidedMissile()");
 		//}
@@ -367,12 +452,12 @@ namespace Rynchodon.Weapons.Guided
 		{
 			m_stage = Stage.Exploded;
 
-			if (AllGuidedMissiles == null)
+			if (Static == null)
 				return;
 
 			myLogger.debugLog("on close");
 
-			AllGuidedMissiles.Remove(this);
+			Static.AllGuidedMissiles.Remove(this);
 			if (!MyAPIGateway.Multiplayer.IsServer)
 				return;
 
@@ -489,7 +574,7 @@ namespace Rynchodon.Weapons.Guided
 			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward);
 
 			{ // accelerate if facing target
-				if (angle < Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)
+				if (angle < Static.Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)
 				{
 					//myLogger.debugLog("accelerate. angle: " + angle, "Update()");
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
@@ -533,7 +618,7 @@ namespace Rynchodon.Weapons.Guided
 			{ // detonate when barely missing the target
 				if (MyAPIGateway.Multiplayer.IsServer &&
 					Vector3.DistanceSquared(MyEntity.GetPosition(), cached.GetPosition()) <= myDescr.DetonateRange * myDescr.DetonateRange &&
-					Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(targetDirection) < Cos_Angle_Detonate)
+					Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(targetDirection) < Static.Cos_Angle_Detonate)
 				{
 					myLogger.debugLog("proximity detonation");
 					DestroyAllNearbyMissiles();
@@ -561,6 +646,9 @@ namespace Rynchodon.Weapons.Guided
 
 			for (int i = 0; i < slaveVelocity.Length; i++)
 			{
+				if (myCluster.Slaves[i].Closed)
+					continue;
+
 				Vector3D slavePos = myCluster.Slaves[i].GetPosition();
 				Vector3D offset = myCluster.SlaveOffsets[i] * myCluster.OffsetMulti;
 				Vector3D destination;

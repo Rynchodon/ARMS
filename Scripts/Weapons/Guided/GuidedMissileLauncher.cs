@@ -180,7 +180,11 @@ namespace Rynchodon.Weapons.Guided
 				Target initialTarget = m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off ? null : m_weaponTarget.CurrentTarget;
 				if (m_cluster.Count != 0)
 				{
-					new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, ref initialTarget);
+					Cluster cluster = new Cluster(m_cluster, CubeBlock);
+					if (cluster.Master != null)
+						new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, ref initialTarget);
+					else
+						myLogger.alwaysLog("Failed to create cluster, all missiles closed", Logger.severity.WARNING);
 					StartCooldown();
 					m_cluster.Clear();
 				}

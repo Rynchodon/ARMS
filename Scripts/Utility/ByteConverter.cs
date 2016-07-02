@@ -269,6 +269,13 @@ namespace Rynchodon
 			AppendBytes(bytes, v.Z);
 		}
 
+		public static void AppendBytes(List<byte> bytes, Vector3D v)
+		{
+			AppendBytes(bytes, v.X);
+			AppendBytes(bytes, v.Y);
+			AppendBytes(bytes, v.Z);
+		}
+
 		public static void AppendBytes<T>(List<byte> bytes, T data)
 		{
 			TypeCode code = Convert.GetTypeCode(data);
@@ -316,6 +323,11 @@ namespace Rynchodon
 			if (typeof(T) == typeof(Vector3))
 			{
 				AppendBytes(bytes, (Vector3)(object)data);
+				return;
+			}
+			if (typeof(T) == typeof(Vector3D))
+			{
+				AppendBytes(bytes, (Vector3D)(object)data);
 				return;
 			}
 			throw new InvalidCastException("data is of invalid type: " + code + ", " + data);
@@ -435,6 +447,11 @@ namespace Rynchodon
 			return new Vector3(GetFloat(bytes, ref pos), GetFloat(bytes, ref pos), GetFloat(bytes, ref pos));
 		}
 
+		public static Vector3D GetVector3D(byte[] bytes, ref int pos)
+		{
+			return new Vector3D(GetDouble(bytes, ref pos), GetDouble(bytes, ref pos), GetDouble(bytes, ref pos));
+		}
+
 		public static void GetOfType<T>(byte[] bytes, ref int pos, ref T value)
 		{
 			switch (Convert.GetTypeCode(value))
@@ -484,6 +501,11 @@ namespace Rynchodon
 			if (typeof(T) == typeof(Vector3))
 			{
 				value = (T)(object)GetVector3(bytes, ref pos);
+				return;
+			}
+			if (typeof(T) == typeof(Vector3D))
+			{
+				value = (T)(object)GetVector3D(bytes, ref pos);
 				return;
 			}
 			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));

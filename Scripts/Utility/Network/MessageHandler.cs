@@ -10,7 +10,7 @@ namespace Rynchodon.Utility.Network
 
 		public static readonly ushort ModId = (ushort)"Autopilot, Radar, and Military Systems".GetHashCode();
 
-		public enum SubMod : byte { FW_EngagerControl, Message, SyncEntityValue, RequestEntityValue, ServerSettings }
+		public enum SubMod : byte { FW_EngagerControl, Message, SyncEntityValue, RequestEntityValue, ServerSettings, GuidedMissile }
 		public delegate void Handler(byte[] message, int position);
 
 		public static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();

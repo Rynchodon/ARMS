@@ -38,6 +38,17 @@ namespace Rynchodon.Weapons
 			float masterDistSq = float.MaxValue;
 			foreach (IMyEntity miss in missiles)
 			{
+				if (miss.Closed)
+				{
+					m_logger.debugLog("missile is closed: " + miss.nameWithId());
+					continue;
+				}
+				if (miss.Physics == null)
+				{
+					m_logger.debugLog("missile has no physics: " + miss.nameWithId());
+					continue;
+				}
+
 				float distSq = Vector3.DistanceSquared(centre, miss.GetPosition());
 				if (distSq < masterDistSq)
 				{
@@ -45,6 +56,9 @@ namespace Rynchodon.Weapons
 					masterDistSq = distSq;
 				}
 			}
+
+			if (Master == null)
+				return;
 
 			masterVelocity = Master.Physics.LinearVelocity;
 
