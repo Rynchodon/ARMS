@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new TerminalPropertyColour() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termProp = m_termProp, m_value = m_value };
+			return new TerminalPropertyColour() { m_targetBlock = m_targetBlock.Clone(), m_termProp = m_termProp, m_value = m_value };
 		}
 
 		protected override void AddValueControl(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
@@ -55,6 +55,47 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				colour.UpdateVisual();
 			};
 			controls.Add(alpha);
+		}
+
+		protected override System.Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		{
+			string[] split = command.Split(',');
+			if (split.Length != 3)
+			{
+				if (split.Length > 3)
+					message = "Too many arguments: " + split.Length;
+				else
+					message = "Too few arguments: " + split.Length;
+				return null;
+			}
+
+			string split2 = split[2].Trim();
+			uint packedValue;
+			if (uint.TryParse(split2, out packedValue))
+				m_value = new Color(packedValue);
+			else
+			{
+				message = "Not a colour value: " + split2;
+				m_hasValue = false;
+				return null;
+			}
+			m_hasValue = true;
+			message = null;
+			return mover => SetPropertyOfBlock(mover, split[0], split[1], m_value);
+		}
+
+		protected override string TermToString(out string message)
+		{
+			string result = Identifier + ' ' + m_targetBlock + ", " + m_termProp + ", ";
+			if (!m_hasValue)
+			{
+				message = "Property has no value";
+				return null;
+			}
+
+			message = null;
+			Color value = m_value;
+			return result + value.PackedValue;
 		}
 
 		private float Normalizer(IMyTerminalBlock block, float value)

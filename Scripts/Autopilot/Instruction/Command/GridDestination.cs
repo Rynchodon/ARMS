@@ -11,11 +11,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class GridDestination : ACommand
 	{
 
-		private StringBuilder m_gridName = new StringBuilder();
+		private StringBuilder m_gridName;
 
 		public override ACommand Clone()
 		{
-			return new GridDestination() { m_gridName = new StringBuilder(m_gridName.ToString()) };
+			return new GridDestination() { m_gridName = m_gridName.Clone() };
 		}
 
 		public override string Identifier
@@ -46,7 +46,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(gridName);
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{

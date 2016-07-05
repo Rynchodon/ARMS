@@ -252,11 +252,10 @@ namespace Rynchodon.Utility.Network
 		{
 			TypeCode code = Convert.GetTypeCode(m_value);
 			if (code == TypeCode.Object)
-			{
 				m_value = MyAPIGateway.Utilities.SerializeFromXML<T>(value);
-				return;
-			}
-			m_value = (T)Convert.ChangeType(value, code);
+			else
+				m_value = (T)Convert.ChangeType(value, code);
+			m_afterValueChanged.InvokeIfExists();
 		}
 
 		private void RequestEntityValueFromServer()

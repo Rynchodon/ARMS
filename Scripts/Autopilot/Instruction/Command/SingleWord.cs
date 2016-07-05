@@ -10,7 +10,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override string AddName
 		{
-			get { return Identifier; }
+			get { return char.ToUpper(Identifier[0]) + Identifier.Substring(1); }
 		}
 
 		public override string Description
@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			throw new InvalidOperationException("No controls to add");
 		}
 
-		protected override sealed Action<Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{

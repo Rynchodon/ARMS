@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock);
-			this.m_finder = new GridFinder(mover.m_navSet, m_controlBlock, gridName);
+			this.m_finder = new GridFinder(mover.NavSet, m_controlBlock, gridName);
 			this.m_shopAfter = shopAfter;
 
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;

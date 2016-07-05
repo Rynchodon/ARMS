@@ -15,11 +15,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		private enum Target : byte { none, asteroid, planet, grid }
 
 		private Target m_target;
-		private StringBuilder m_gridName = new StringBuilder();
+		private StringBuilder m_gridName;
 
 		public override ACommand Clone()
 		{
-			return new Orbit() { m_target = m_target, m_gridName = new StringBuilder(m_gridName.ToString()) };
+			return new Orbit() { m_target = m_target, m_gridName = m_gridName.Clone() };
 		}
 
 		public override string Identifier
@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(gridName);
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{

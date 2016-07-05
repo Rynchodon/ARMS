@@ -15,13 +15,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class TerminalAction : ACommand
 	{
 
-		private StringBuilder m_targetBlock = new StringBuilder();
+		private StringBuilder m_targetBlock;
 		// don't save the actual action, as string is more consistent when commands are sent over network
 		private string m_termAction;
 	
 		public override ACommand Clone()
 		{
-			return new TerminalAction() { m_targetBlock = new StringBuilder(m_targetBlock.ToString()), m_termAction = m_termAction };
+			return new TerminalAction() { m_targetBlock = m_targetBlock.Clone(), m_termAction = m_termAction };
 		}
 
 		public override string Identifier
@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(actionList);
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string[] split = command.Split(',');
 			if (split.Length != 2)

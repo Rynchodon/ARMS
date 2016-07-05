@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new Character() { target = target };
+			return new Character() { target = target.Clone() };
 		}
 
 		public override string Identifier
@@ -46,7 +46,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(name);
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{

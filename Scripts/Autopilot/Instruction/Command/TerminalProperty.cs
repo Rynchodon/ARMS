@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			Logger.SetFileName("TerminalProperty");
 		}
 
-		protected StringBuilder m_targetBlock = new StringBuilder();
+		protected StringBuilder m_targetBlock;
 		// don't save the actual property, as string is more consistent when commands are sent over network
 		protected string m_termProp;
 		protected T m_value;
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		protected abstract void AddValueControl(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls);
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string[] split = command.Split(',');
 			if (split.Length != 3)
@@ -86,46 +86,32 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 
 			string split2 = split[2].Trim();
-			if (m_value is Color)
+			try
 			{
-				uint packedValue;
-				if (uint.TryParse(split2, out packedValue))
-					m_value = (T)(object)new Color(packedValue);
-				else
-				{
-					message = "Not a colour value: " + split2;
-					m_hasValue = false;
-					return null;
-				}
+				m_value = (T)Convert.ChangeType(split2, typeof(T));
 			}
-			else
-				try
-				{
-					m_value = (T)Convert.ChangeType(split2, typeof(T));
-				}
-				catch (Exception ex)
-				{
-					Logger.DebugLog("TerminalProperty", "string: " + split2 + ", exception: " + ex);
-					message = ex.GetType() + ex.Message;
-					m_hasValue = false;
-					return null;
-				}
+			catch (Exception ex)
+			{
+				Logger.DebugLog("TerminalProperty", "string: " + split2 + ", exception: " + ex);
+				message = ex.GetType() + ex.Message;
+				m_hasValue = false;
+				return null;
+			}
 			m_hasValue = true;
 			message = null;
 			return mover => SetPropertyOfBlock(mover, split[0], split[1], m_value);
 		}
 
-		protected override string TermToString()
+		protected override string TermToString(out string message)
 		{
 			string result = Identifier + ' ' + m_targetBlock + ", " + m_termProp + ", ";
 			if (!m_hasValue)
-				return result;
-
-			if (m_value is Color)
 			{
-				Color value = (Color)(object)m_value;
-				return result + value.PackedValue;
+				message = "Property has no value";
+				return null;
 			}
+
+			message = null;
 			return result + m_value;
 		}
 
@@ -162,7 +148,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				m_termProp = ((ITerminalProperty<T>)selected[0].UserData).Id;
 		}
 
-		private void SetPropertyOfBlock(Movement.Mover mover, string blockName, string propName, T propValue)
+		protected void SetPropertyOfBlock(Movement.Mover mover, string blockName, string propName, T propValue)
 		{
 			blockName = blockName.LowerRemoveWhitespace();
 			propName = propName.Trim(); // leave spaces in propName

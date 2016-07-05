@@ -108,7 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 					break;
 				default:
-					m_gridFinder = new GridFinder(mover.m_navSet, mover.Block, entity, mustBeRecent: true);
+					m_gridFinder = new GridFinder(mover.NavSet, mover.Block, entity, mustBeRecent: true);
 					m_logger.debugLog("Searching for a grid: " + entity, Logger.severity.INFO);
 					break;
 			}

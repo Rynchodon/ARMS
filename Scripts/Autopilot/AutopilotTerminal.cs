@@ -118,7 +118,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (Static != null)
 					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
-				return new StringBuilder(); ;
+				return new StringBuilder();
 			}
 
 			return autopilot.m_autopilotCommands.Value;
@@ -140,9 +140,8 @@ namespace Rynchodon.Autopilot
 		public static void GooeyProgram(MyShipController block)
 		{
 			AutopilotCommands cmds = AutopilotCommands.GetOrCreate(block);
-			if (cmds == null)
-				return;
-			cmds.StartGooeyProgramming(null);
+			if (cmds != null)
+				cmds.StartGooeyProgramming(null);
 		}
 
 		private readonly Logger m_logger;
@@ -171,7 +170,12 @@ namespace Rynchodon.Autopilot
 
 			byte index = 0;
 			this.m_autopilotControl = new EntityValue<bool>(block, index++, Static.autopilotControl.UpdateVisual, Saver.Instance.LoadOldVersion(69) && ((MyShipController)block).ControlThrusters);
-			this.m_autopilotCommands = new EntityStringBuilder(block, index++, Static.autopilotCommands.UpdateVisual);
+			this.m_autopilotCommands = new EntityStringBuilder(block, index++, () => {
+				Static.autopilotCommands.UpdateVisual();
+				AutopilotCommands cmds = AutopilotCommands.GetOrCreate((IMyTerminalBlock)block);
+				if (cmds != null)
+					cmds.OnCommandsChanged();
+			});
 
 			m_block.AppendingCustomInfo += AppendingCustomInfo;
 

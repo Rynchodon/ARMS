@@ -7,35 +7,47 @@ namespace Rynchodon.Utility
 
 		public static void InvokeIfExists(this Action action)
 		{
-			if (action != null)
-				action.Invoke();
+			Action act = action;
+			if (act != null)
+				act.Invoke();
 		}
 
 		public static void InvokeIfExists<T>(this Action<T> action, T arg)
 		{
-			if (action != null)
-				action.Invoke(arg);
+			Action<T> act = action;
+			if (act != null)
+				act.Invoke(arg);
 		}
 
 		public static void InvokeIfExists<T1, T2>(this Action<T1, T2> action, T1 arg1, T2 arg2)
 		{
-			if (action != null)
-				action.Invoke(arg1, arg2);
+			Action<T1, T2> act = action;
+			if (act != null)
+				act.Invoke(arg1, arg2);
 		}
 
 		public static TResult InvokeIfExists<TResult>(this Func<TResult> function)
 		{
-			return function != null ? function.Invoke() : default(TResult);
+			Func<TResult> func = function;
+			if (func != null)
+				return func.Invoke();
+			return default(TResult);
 		}
 
 		public static TResult InvokeIfExists<T, TResult>(this Func<T, TResult> function, T arg)
 		{
-			return function != null ? function.Invoke(arg) : default(TResult);
+			Func<T, TResult> func = function;
+			if (func != null)
+				return func.Invoke(arg);
+			return default(TResult);
 		}
 
 		public static TResult InvokeIfExists<T1, T2, TResult>(this Func<T1, T2, TResult> function, T1 arg1, T2 arg2)
 		{
-			return function != null ? function.Invoke(arg1, arg2) : default(TResult);
+			Func<T1, T2, TResult> func = function;
+			if (func != null)
+				return func.Invoke(arg1, arg2);
+			return default(TResult);
 		}
 
 	}

@@ -21,6 +21,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return new GolisGps() { destination = destination };
 		}
 
+		public override string Identifier
+		{
+			get { return "cg"; }
+		}
+
 		public override string AddName
 		{
 			get { return "GPS"; }

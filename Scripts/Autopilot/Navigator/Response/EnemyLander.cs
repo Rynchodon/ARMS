@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Navigator.Response
 		private readonly FlyToGrid m_flyToGrid;
 		private readonly bool m_hasLandingGear;
 
-		private AllNavigationSettings m_navSet { get { return m_mover.m_navSet; } }
+		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
 		public EnemyLander(Mover mover, PseudoBlock landingGear)
 		{

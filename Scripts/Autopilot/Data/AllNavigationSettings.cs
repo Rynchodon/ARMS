@@ -50,10 +50,10 @@ namespace Rynchodon.Autopilot.Data
 
 				m_destinationOffset = new PositionBlock() { vector = Vector3D.Zero };
 
-				m_destRadius = 100f;
+				m_destRadius = DefaultRadius;
 				m_distance = float.NaN;
 				m_distanceAngle = float.NaN;
-				m_speedTarget = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed);
+				m_speedTarget = DefaultSpeed;
 				m_speedMaxRelative = float.MaxValue;
 
 				m_ignoreAsteroid = false;
@@ -300,6 +300,10 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 		}
+
+		public static float DefaultRadius { get { return 100f; } }
+
+		public static float DefaultSpeed { get { return ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed); } }
 
 		private readonly IMyCubeBlock defaultNavBlock;
 

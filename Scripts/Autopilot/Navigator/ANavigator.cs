@@ -51,7 +51,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>The Mover this navigator is using.</summary>
 		protected readonly Mover m_mover;
 		/// <summary>The settings this navigator is using.</summary>
-		protected AllNavigationSettings m_navSet { get { return m_mover.m_navSet; } }
+		protected AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
 		/// <summary>The ship controller the mover is using.</summary>
 		protected ShipControllerBlock m_controlBlock { get { return m_mover.Block; } }

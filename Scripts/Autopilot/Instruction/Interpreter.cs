@@ -819,7 +819,7 @@ namespace Rynchodon.Autopilot.Instruction
 				PseudoBlock asPB = new PseudoBlock(navigationBlock, forward, upward);
 
 				if (navigationBlock is IMyLaserAntenna || navigationBlock is SE_Ingame.IMySolarPanel || navigationBlock is SE_Ingame.IMyOxygenFarm)
-					new Facer(Mover, NavSet, asPB);
+					new Facer(Mover, asPB);
 				m_logger.debugLog("setting NavigationBlock to " + navigationBlock.DisplayNameText);
 				NavSet.Settings_Task_NavRot.NavigationBlock = asPB;
 			};
@@ -918,7 +918,7 @@ namespace Rynchodon.Autopilot.Instruction
 			float distance;
 			if (stringToDistance(out distance, instruction))
 			{
-				instructionAction = () => { new Grinder(Mover, NavSet, distance); };
+				instructionAction = () => { new Grinder(Mover, distance); };
 				return true;
 			}
 			instructionAction = null;

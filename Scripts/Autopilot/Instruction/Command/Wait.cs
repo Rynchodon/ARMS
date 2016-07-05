@@ -87,12 +87,12 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(seconds);
 		}
 
-		protected override Action<Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (PrettySI.TryParse(command.RemoveWhitespace(), out duration))
 			{
 				message = null;
-				return mover => mover.m_navSet.Settings_Task_NavWay.WaitUntil = Globals.ElapsedTime.Add(duration);
+				return mover => mover.NavSet.Settings_Task_NavWay.WaitUntil = Globals.ElapsedTime.Add(duration);
 			}
 			else
 			{

@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		protected override void Action(Movement.Mover mover)
 		{
-			mover.m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
+			mover.NavSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 		}
 
 	}

@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new BlockSearch() { m_blockName = new StringBuilder(m_blockName.ToString()), m_forward = m_forward, m_upward = m_upward };
+			return new BlockSearch() { m_blockName = m_blockName.Clone(), m_forward = m_forward, m_upward = m_upward };
 		}
 
 		public override string Identifier
@@ -40,13 +40,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
-			MyTerminalControlTextbox<MyShipController> blockName = new MyTerminalControlTextbox<MyShipController>("BlockName", MyStringId.GetOrCompute("Block Name"), MyStringId.NullOrEmpty);
+			MyTerminalControlTextbox<MyShipController> blockName = new MyTerminalControlTextbox<MyShipController>("BlockName", MyStringId.GetOrCompute("Block Name"), MyStringId.GetOrCompute(AddDescription));
 			blockName.Getter = block => m_blockName;
 			blockName.Setter = (block, value) => m_blockName = value;
 			controls.Add(blockName);
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string blockName;
 			if (!SplitNameDirections(command, out blockName, out m_forward, out m_upward, out message))
@@ -54,7 +54,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 			message = null;
 			this.m_blockName = new StringBuilder(blockName);
-			return mover => mover.m_navSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(blockName, m_forward, m_upward);
+			return mover => mover.NavSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(blockName, m_forward, m_upward);
 		}
 
 		protected override string TermToString(out string message)

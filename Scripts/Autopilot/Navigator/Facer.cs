@@ -19,9 +19,9 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly IMyLaserAntenna m_laser;
 
 		/// <param name="mover">The mover to use</param>
-		/// <param name="navSet">The settings to use</param>
+		/// 
 		/// <param name="rotBlock">The block to rotate</param>
-		public Facer(Mover mover, AllNavigationSettings navSet, PseudoBlock rotBlock)
+		public Facer(Mover mover, PseudoBlock rotBlock)
 			: base(mover)
 		{
 			this.m_logger = new Logger("Facer", m_controlBlock.CubeBlock);

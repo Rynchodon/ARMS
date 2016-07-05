@@ -9,6 +9,7 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -28,51 +29,84 @@ namespace Rynchodon.Autopilot.Instruction
 
 		static AutopilotCommands()
 		{
+			Logger.SetFileName("AutopilotCommands");
+
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 
 			List<AddCommandInternalNode> rootCommands = new List<AddCommandInternalNode>();
 
 			// fly somewhere
 
-			List<AddCommandLeafNode> flyCommands = new List<AddCommandLeafNode>();
+			List<AddCommandLeafNode> commands = new List<AddCommandLeafNode>();
 
-			AddDummy(new GolisCoordinate(), flyCommands);
-			flyCommands.Add(new AddCommandLeafNode(new GolisGps()));
-			AddDummy(new FlyRelative(), flyCommands);
-			AddDummy(new Character(), flyCommands);
-			AddDummy(new LandVoxel(), flyCommands);
-			AddDummy(new Orbit(), flyCommands);
-			AddDummy(new Weld(), flyCommands);
-			AddDummy(new Enemy(), flyCommands);
-			AddDummy(new HarvestVoxel(), flyCommands);
+			AddDummy(new GolisCoordinate(), commands);
+			AddDummy(new GolisGps(), commands);
+			AddDummy(new FlyRelative(), commands);
+			AddDummy(new Character(), commands);
 
-			rootCommands.Add(new AddCommandInternalNode("Fly Somewhere", flyCommands.ToArray()));
+			rootCommands.Add(new AddCommandInternalNode("Fly Somewhere", commands.ToArray()));
+
+			// friendly grid
+
+			commands.Clear();
+
+			AddDummy(new BlockSearch(), commands);
+			AddDummy(new LandingBlock(), commands);
+			AddDummy(new Offset(), commands);
+			AddDummy(new Form(), commands);
+			AddDummy(new GridDestination(), commands);
+			AddDummy(new Unland(), commands);
+
+			rootCommands.Add(new AddCommandInternalNode("Fly to a Ship", commands.ToArray()));
+
+			// complex task
+
+			commands.Clear();
+
+			AddDummy(new Enemy(), commands);
+			AddDummy(new HarvestVoxel(), commands);
+			AddDummy(new Grind(), commands);
+			AddDummy(new Weld(), commands);
+			AddDummy(new LandVoxel(), commands);
+			AddDummy(new Orbit(), commands);
+			AddDummy(new NavigationBlock(), commands);
+
+			rootCommands.Add(new AddCommandInternalNode("Tasks", commands.ToArray()));
+
+			// variables
+
+			commands.Clear();
+
+			AddDummy(new Proximity(), commands);
+			AddDummy(new SpeedLimit(), commands);
+			AddDummy(new StraightLine(), commands);
+			AddDummy(new Asteroid(), commands);
+
+			rootCommands.Add(new AddCommandInternalNode("Variables", commands.ToArray()));
 
 			// flow control
 
-			List<AddCommandLeafNode> flowCommands = new List<AddCommandLeafNode>();
+			commands.Clear();
 
-			AddDummy(new Wait(), flowCommands);
-			AddDummy(new Disable(), flowCommands);
-			AddDummy(new Exit(), flowCommands);
-			AddDummy(new Stop(), flowCommands);
+			AddDummy(new Wait(), commands);
+			AddDummy(new Exit(), commands);
+			AddDummy(new Stop(), commands);
+			AddDummy(new Disable(), commands);
 
-			rootCommands.Add(new AddCommandInternalNode("Flow control", flowCommands.ToArray()));
+			rootCommands.Add(new AddCommandInternalNode("Flow Control", commands.ToArray()));
 
 			// terminal action/property
 
-			List<AddCommandLeafNode> termActProp = new List<AddCommandLeafNode>();
-			AddDummy(new TerminalAction(), termActProp);
-			AddDummy(new TerminalPropertyBool(), termActProp);
-			AddDummy(new TerminalPropertyFloat(), termActProp);
-			AddDummy(new TerminalPropertyColour(), termActProp);
+			commands.Clear();
 
-			rootCommands.Add(new AddCommandInternalNode("Terminal", termActProp.ToArray()));
+			AddDummy(new TerminalAction(), commands);
+			AddDummy(new TerminalPropertyBool(), commands);
+			AddDummy(new TerminalPropertyFloat(), commands);
+			AddDummy(new TerminalPropertyColour(), commands);
+
+			rootCommands.Add(new AddCommandInternalNode("Terminal", commands.ToArray()));
 
 			Static.addCommandRoot = new AddCommandInternalNode("root", rootCommands.ToArray());
-
-			AddDummy(new BlockSearch());
-			AddDummy(new GridDestination());
 		}
 
 		private static void Entities_OnCloseAll()
@@ -120,30 +154,100 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <returns>The best command associated with parse.</returns>
 		private static ACommand GetCommand(string parse)
 		{
-			parse = parse.TrimStart();
+			parse = parse.TrimStart().ToLower();
 
 			List<ACommand> list;
 			if (!Static.dummyCommands.TryGetValue(parse[0], out list))
+			{
+				Logger.DebugLog("No list for: " + parse[0]);
 				return null;
+			}
 
 			ACommand bestMatch = null;
 			int bestMatchLength = 0;
 			foreach (ACommand cmd in list)
+			{
+				Logger.DebugLog("checking " + cmd + " against " + parse);
 				if (cmd.Identifier.Length > bestMatchLength && parse.StartsWith(cmd.Identifier))
 				{
 					bestMatchLength = cmd.Identifier.Length;
 					bestMatch = cmd;
 				}
+			}
 
 			if (bestMatch == null)
 				return null;
 			return bestMatch.Clone();
 		}
 
+		/// <summary>
+		/// Parse the commands from AutopilotTerminal.GetAutopilotCommands.
+		/// </summary>
+		private static void ParseCommands(IMyTerminalBlock block, List<ACommand> commandList, StringBuilder syntaxErrors)
+		{
+			commandList.Clear();
+			syntaxErrors.Clear();
+
+			string allCommands = AutopilotTerminal.GetAutopilotCommands(block).ToString();
+			if (string.IsNullOrWhiteSpace(allCommands))
+			{
+				Logger.DebugLog("no commands");
+				return;
+			}
+
+			// TODO: GPS replace
+
+			string[] commands = allCommands.Split(new char[] { ';', ':' });
+			foreach (string cmd in commands)
+			{
+				if (string.IsNullOrWhiteSpace(cmd))
+				{
+					Logger.DebugLog("empty command");
+					continue;
+				}
+
+				// TODO: text panel support
+
+				ACommand apCmd = GetCommand(cmd);
+				if (apCmd == null)
+				{
+					syntaxErrors.AppendLine("No command: \"" + cmd + '"');
+					Logger.DebugLog("No command: \"" + cmd + '"');
+					continue;
+				}
+
+				string msg;
+				if (!apCmd.SetDisplayString((IMyCubeBlock)block, cmd, out msg))
+				{
+					syntaxErrors.Append("Error with command: \"");
+					syntaxErrors.Append(cmd);
+					syntaxErrors.Append("\":\n  ");
+					syntaxErrors.AppendLine(msg);
+					Logger.DebugLog("Error with command: \"" + cmd + "\":\n  " + msg, Logger.severity.INFO);
+					continue;
+				}
+
+				commandList.Add(apCmd);
+			}
+		}
+
+		private static List<Action<Mover>> CreateActionList(List<ACommand> commandList)
+		{
+			List<Action<Mover>> list = new List<Action<Mover>>(commandList.Count);
+			foreach (ACommand cmd in commandList)
+				if (cmd.Action == null)
+					Logger.AlwaysLog("Command is missing action: " + cmd.DisplayString, Logger.severity.ERROR);
+				else
+					list.Add(cmd.Action);
+			return list;
+		}
+
 		private readonly IMyTerminalBlock m_block;
 		private readonly List<ACommand> m_commandList = new List<ACommand>();
-		private readonly StringBuilder m_syntaxErrors = new StringBuilder();
 		private readonly Logger m_logger;
+
+		private StringBuilder m_syntaxErrors = new StringBuilder();
+		private List<Action<Mover>> m_actions;
 
 		private IMyTerminalControlListbox m_termCommandList;
 		private bool m_listCommands = true, m_replace;
@@ -159,66 +263,53 @@ namespace Rynchodon.Autopilot.Instruction
 			this.m_block = block;
 			this.m_logger = new Logger(GetType().Name, block);
 
+			m_block.AppendingCustomInfo += m_block_AppendSyntaxErrors;
+
 			Registrar.Add(block, this);
 		}
 
 		/// <summary>
-		/// Parse the commands from AutopilotTerminal.GetAutopilotCommands.
+		/// Invoke when commands textbox changed.
 		/// </summary>
-		public void ParseCommands()
+		public void OnCommandsChanged()
 		{
-			m_commandList.Clear();
-			m_syntaxErrors.Clear();
-
-			string allCommands = AutopilotTerminal.GetAutopilotCommands(m_block).ToString();
-			if (string.IsNullOrWhiteSpace(allCommands))
-				return;
-
-			// TODO: GPS replace
-
-			string[] commands = allCommands.Split(new char[] { ';', ':' });
-			foreach (string cmd in commands)
-			{
-				if (string.IsNullOrWhiteSpace(cmd))
-					continue;
-
-				// TODO: text panel support
-
-				ACommand apCmd = GetCommand(cmd);
-				if (apCmd == null)
-				{
-					m_syntaxErrors.AppendLine("No command: \"" + cmd + '"');
-					continue;
-				}
-
-				string msg;
-				Action<Mover> execute = apCmd.SetDisplayString(cmd, out msg);
-				if (execute == null)
-				{
-					m_syntaxErrors.Append("Error with command: \"");
-					m_syntaxErrors.Append(cmd);
-					m_syntaxErrors.Append("\":\n  ");
-					m_syntaxErrors.AppendLine(msg);
-					m_logger.debugLog("Error with command: \"" + cmd + "\":\n  " + msg, Logger.severity.INFO);
-					continue;
-				}
-
-				m_commandList.Add(apCmd);
-			}
+			m_actions = null;
 		}
 
 		public void StartGooeyProgramming(Action completionCallback)
 		{
 			m_logger.debugLog("entered");
 
-			ParseCommands();
 			m_currentCommand = null;
 			m_listCommands = true;
 
 			m_completionCallback = completionCallback;
 			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
 			m_block.AppendingCustomInfo += m_block_AppendingCustomInfo;
+
+			StringBuilder errors = new StringBuilder();
+			ParseCommands(m_block, m_commandList, errors);
+			if (errors.Length != 0)
+				m_block.RefreshCustomInfo();
+			m_syntaxErrors = errors;
 			m_block.SwitchTerminalTo();
+		}
+
+		public List<Action<Mover>> GetActions()
+		{
+			List<Action<Mover>> acts = m_actions;
+			if (acts != null)
+				return acts;
+
+			List<ACommand> commands = new List<ACommand>();
+			StringBuilder errors = new StringBuilder();
+			ParseCommands(m_block, commands, errors);
+			if (errors.Length != 0)
+				m_block.RefreshCustomInfo();
+			m_syntaxErrors = errors;
+			acts = CreateActionList(commands);
+			m_actions = acts;
+			return acts;
 		}
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
@@ -249,7 +340,8 @@ namespace Rynchodon.Autopilot.Instruction
 				controls.Add(new MyTerminalControlButton<MyShipController>("MoveCommandUp", MyStringId.GetOrCompute("Move Command Up"), MyStringId.NullOrEmpty, MoveCommandUp));
 				controls.Add(new MyTerminalControlButton<MyShipController>("MoveCommandDown", MyStringId.GetOrCompute("Move Command Down"), MyStringId.NullOrEmpty, MoveCommandDown));
 				controls.Add(new MyTerminalControlSeparator<MyShipController>());
-				controls.Add(new MyTerminalControlButton<MyShipController>("Finished", MyStringId.GetOrCompute("Save All Commands"), MyStringId.NullOrEmpty, Finished));
+				controls.Add(new MyTerminalControlButton<MyShipController>("Finished", MyStringId.GetOrCompute("Save & Exit"), MyStringId.GetOrCompute("Save all commands and exit"), b => Finished(true)));
+				controls.Add(new MyTerminalControlButton<MyShipController>("DiscardAll", MyStringId.GetOrCompute("Discard & Exit"), MyStringId.GetOrCompute("Discard all commands and exit"), b => Finished(false)));
 
 				return;
 			}
@@ -345,8 +437,7 @@ namespace Rynchodon.Autopilot.Instruction
 			m_logger.debugLog(m_currentCommand == null, "m_currentCommand == null", Logger.severity.FATAL);
 
 			string msg;
-			Action<Mover> execute = m_currentCommand.ValidateControls(out msg);
-			if (execute != null)
+			if (!m_currentCommand.ValidateControls((IMyCubeBlock)m_block, out msg))
 			{
 				if (m_commandList.Contains(m_currentCommand))
 				{
@@ -379,9 +470,6 @@ namespace Rynchodon.Autopilot.Instruction
 			{
 				m_logger.debugLog("failed to save command: " + m_currentCommand.DisplayString + ", reason: " + msg);
 				LogAndInfo(msg);
-				//m_error = msg;
-				//m_block.RefreshCustomInfo();
-				//m_block.SwitchTerminalTo();
 			}
 		}
 
@@ -499,20 +587,23 @@ namespace Rynchodon.Autopilot.Instruction
 			ClearMessage();
 		}
 
-		private void Finished(IMyTerminalBlock block)
+		private void Finished(bool save)
 		{
 			m_logger.debugLog("entered");
 
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			if (save)
+			{
+				AutopilotTerminal.SetAutopilotCommands(m_block, new StringBuilder(string.Join(" ; ", m_commandList.Select(cmd => cmd.DisplayString))));
+				m_actions = CreateActionList(m_commandList);
+			}
 
-			AutopilotTerminal.SetAutopilotCommands(m_block, new StringBuilder(string.Join(" ; ", m_commandList.Select(cmd => cmd.DisplayString))));
 			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
 			m_block.AppendingCustomInfo -= m_block_AppendingCustomInfo;
+
 			m_block.RefreshCustomInfo();
 			m_block.SwitchTerminalTo();
 
-			m_termCommandList = null;
-			m_currentCommand = null;
+			Cleanup();
 
 			if (m_completionCallback != null)
 			{
@@ -540,26 +631,42 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void m_block_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder arg2)
 		{
-			//if (!m_listCommands && m_currentCommand != null)
-			//{
-			//	arg2.AppendLine();
-			//	m_currentCommand.AppendCustomInfo(arg2);
-			//	arg2.AppendLine();
-			//}
+			m_logger.debugLog("entered");
+
+			if (!m_listCommands && m_currentCommand != null)
+			{
+				m_logger.debugLog("appending command info");
+				arg2.AppendLine();
+				m_currentCommand.AppendCustomInfo(arg2);
+				arg2.AppendLine();
+			}
 
 			if (!string.IsNullOrWhiteSpace(m_infoMessage))
 			{
+				m_logger.debugLog("appending info message: " + m_infoMessage);
 				arg2.AppendLine();
 				arg2.AppendLine(m_infoMessage);
 			}
+		}
 
+		private void m_block_AppendSyntaxErrors(IMyTerminalBlock arg1, StringBuilder arg2)
+		{
 			if (m_syntaxErrors.Length != 0)
 			{
+				m_logger.debugLog("appending syntax errors");
 				arg2.AppendLine();
 				arg2.Append("Syntax Errors:\n");
 				arg2.Append(m_syntaxErrors);
-				m_syntaxErrors.Clear();
 			}
+		}
+
+		private void Cleanup()
+		{
+			m_commandList.Clear();
+
+			m_infoMessage = null;
+			m_termCommandList = null;
+			m_currentCommand = null;
 		}
 
 	}

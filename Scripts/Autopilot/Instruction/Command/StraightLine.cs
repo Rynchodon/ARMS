@@ -2,17 +2,17 @@
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Line : SingleWord
+	public class StraightLine : SingleWord
 	{
 		protected override void Action(Movement.Mover mover)
 		{
-			mover.m_navSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
-			mover.m_navSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
+			mover.NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
+			mover.NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
 		}
 
 		public override ACommand Clone()
 		{
-			return new Line();
+			return new StraightLine();
 		}
 
 		public override string Identifier

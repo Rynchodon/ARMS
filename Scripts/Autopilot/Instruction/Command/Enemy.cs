@@ -18,7 +18,8 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		private MyTerminalControlListBoxItem[] value_allResponses;
 
 		private List<EnemyFinder.Response> m_activeResponses = new List<EnemyFinder.Response>();
-		private StringBuilder m_enemyId = new StringBuilder();
+		/// <summary>0 is not set, -1 is invalid</summary>
+		private long m_enemyId;
 		private float m_range;
 
 		private IMyTerminalControlListbox m_responseListbox;
@@ -44,7 +45,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new Enemy() { m_activeResponses = new List<EnemyFinder.Response>(m_activeResponses), m_enemyId = new StringBuilder(m_enemyId.ToString()), m_range = m_range };
+			return new Enemy() { m_activeResponses = new List<EnemyFinder.Response>(m_activeResponses), m_enemyId = m_enemyId, m_range = m_range };
 		}
 
 		public override string Identifier
@@ -71,15 +72,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					descr = "When any enemy is detected ";
 				else
 					descr = "When an enemy is within " + PrettySI.makePretty(m_range) + "m of this ship ";
+				if (m_enemyId != 0)
+					descr += " with the ID " + m_enemyId;
+				descr += " : ";
 				descr += string.Join(",", m_activeResponses);
-				return AddDescription;
+				return descr;
 			}
 		}
-
-		//public override void AppendCustomInfo(StringBuilder sb)
-		//{
-		//	sb.Append("When autopilot reaches this command it starts searching for enemies. It will continue searching ");
-		//}
 
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
@@ -96,6 +95,14 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				valueControler.Getter = block => m_range;
 				valueControler.Setter = (block, value) => m_range = value;
 				controls.Add(range);
+
+				MyTerminalControlTextbox<MyShipController> enemyId = new MyTerminalControlTextbox<MyShipController>("EnemyId", MyStringId.GetOrCompute("Enemy Entity ID"), MyStringId.GetOrCompute("If set, only target an enemy with this entity ID"));
+				enemyId.Getter = block => new StringBuilder(m_enemyId.ToString());
+				enemyId.Setter = (block, value) => {
+					if (!long.TryParse(value.ToString(), out m_enemyId))
+						m_enemyId = -1L;
+				};
+				controls.Add(enemyId);
 			}
 
 			if (m_responseListbox == null)
@@ -115,7 +122,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override Action<Movement.Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowWeaponControl))
 			{
@@ -133,7 +140,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				if (s.Equals("off", StringComparison.InvariantCultureIgnoreCase))
 				{
 					message = null;
-					return mover => mover.m_navSet.Settings_Commands.EnemyFinder = null;
+					return mover => mover.NavSet.Settings_Commands.EnemyFinder = null;
 				}
 				float range;
 				if (PrettySI.TryParse(s, out range))
@@ -142,7 +149,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					continue;
 				}
 
-				if (s.StartsWith("id"))
+				if (s.StartsWith("id", StringComparison.InvariantCultureIgnoreCase))
 				{
 					if (s.Length < 3)
 					{
@@ -151,13 +158,14 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					}
 
 					string idStr = s.Substring(2, s.Length - 2);
-					if (!long.TryParse(idStr, out entityId))
+					IMyEntity entity;
+					if (!long.TryParse(idStr, out entityId) || !MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
 					{
 						message = "Not an id: " + idStr;
 						return null;
 					}
 					else
-						m_enemyId = new StringBuilder(entityId.ToString());
+						m_enemyId = entityId;
 
 					continue;
 				}
@@ -182,9 +190,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 			message = null;
 			return mover => {
-				if (mover.m_navSet.Settings_Commands.EnemyFinder == null)
-					mover.m_navSet.Settings_Commands.EnemyFinder = new EnemyFinder(mover, mover.m_navSet, entityId);
-				mover.m_navSet.Settings_Commands.EnemyFinder.AddResponses(m_range, m_activeResponses);
+				if (mover.NavSet.Settings_Commands.EnemyFinder == null)
+					mover.NavSet.Settings_Commands.EnemyFinder = new EnemyFinder(mover, mover.NavSet, entityId);
+				mover.NavSet.Settings_Commands.EnemyFinder.AddResponses(m_range, m_activeResponses);
 			};
 		}
 
@@ -192,8 +200,10 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			string result = Identifier + ' ';
 			if (m_range > 0f)
-				result += PrettySI.makePretty(m_range) + "m,";
+				result += PrettySI.makePretty(m_range) + ',';
 			result += string.Join(",", m_activeResponses);
+			if (m_enemyId != 0L)
+				result += ",ID" + m_enemyId;
 			return result;
 		}
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
@@ -107,32 +106,16 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			};
 		}
 
-		protected override Action<Mover> Parse(string command, out string message)
+		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
-			string[] parts = command.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-			if (parts.Length == 3)
+			if (!GetVector(command, out destination))
 			{
-				double[] coords = new double[3];
-				for (int i = 0; i < 3; i++)
-					if (!PrettySI.TryParse(parts[i], out coords[i]))
-						goto GenericForm;
-					else
-						Logger.DebugLog("Parsed dim: " + i + ": " + coords[i] + ", from: " + parts[i]);
-
-				destination = new Vector3(coords[0], coords[1], coords[2]);
-				message = null;
-				return mover => new GOLIS(mover, ((PositionBlock)destination).ToWorld(mover.m_navSet.Settings_Current.NavigationBlock.Block));
+				message = "Failed to parse: " + command;
+				return null;
 			}
 
-			GenericForm:
-			if (GetVectorFromGeneric(parts, out destination))
-			{
-				message = null;
-				return mover => new GOLIS(mover, ((PositionBlock)destination).ToWorld(mover.m_navSet.Settings_Current.NavigationBlock.Block));
-			}
-
-			message = "Failed to parse: " + command;
-			return null;
+			message = null;
+			return mover => new GOLIS(mover, ((PositionBlock)destination).ToWorld(mover.NavSet.Settings_Current.NavigationBlock.Block));
 		}
 
 		protected override string TermToString(out string message)
