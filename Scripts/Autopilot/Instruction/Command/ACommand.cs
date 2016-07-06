@@ -189,7 +189,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					return false;
 				}
 
-			result = Vector3.Invalid;
+			result = new Vector3D(coords[0], coords[1], coords[2]);
 			return true;
 		}
 
@@ -326,13 +326,14 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// </remarks>
 		protected bool GetLocalBlock(IMyCubeBlock autopilot, string searchFor, out IMyCubeBlock localBlock, out string message, AttachedGrid.AttachmentKind allowedAttachments = AttachedGrid.AttachmentKind.None)
 		{
+			searchFor = searchFor.RemoveWhitespace();
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
 
 			foreach (IMyCubeBlock block in AttachedGrid.AttachedCubeBlocks(autopilot.CubeGrid, allowedAttachments, true))
 				if (autopilot.canControlBlock(block))
 				{
-					string blockName = block.DisplayNameText;
+					string blockName = block.DisplayNameText.RemoveWhitespace();
 					if (blockName.Length < bestNameLength && blockName.Contains(searchFor, StringComparison.InvariantCultureIgnoreCase))
 					{
 						foundBlock = block;

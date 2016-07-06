@@ -86,6 +86,8 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				return null;
 			}
 
+			m_targetBlock = new StringBuilder(split[0]);
+			m_termAction = split[1];
 			message = null;
 			return mover => RunActionOnBlock(mover, split[0], split[1]);
 		}

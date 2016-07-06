@@ -83,7 +83,7 @@ namespace Rynchodon
 
 		public static void Add<T>(IMyEntity entity, T item)
 		{
-			if (Globals.WorldClosed)
+			if (Globals.WorldClosed || entity.Closed)
 				return;
 			Register<T>.Add(entity.EntityId, item);
 			entity.OnClose += OnClose<T>;

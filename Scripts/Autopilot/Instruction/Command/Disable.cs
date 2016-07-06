@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override string Identifier
 		{
-			get { return "Disable"; }
+			get { return "disable"; }
 		}
 
 		public override string AddDescription

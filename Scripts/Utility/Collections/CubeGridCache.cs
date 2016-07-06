@@ -11,6 +11,7 @@ namespace Rynchodon
 	/// <summary>
 	/// A better way to get cube blocks of type from a grid.
 	/// </summary>
+	/// TODO: re-write to separate blocks by subtype id
 	public class CubeGridCache
 	{
 

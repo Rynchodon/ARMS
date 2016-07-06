@@ -5,6 +5,7 @@ using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
+using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
@@ -22,7 +23,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot
 {
-
+	/// <summary>
+	/// Contains components of the autopilot block.
+	/// </summary>
 	public class ShipControllerBlock
 	{
 
@@ -79,7 +82,6 @@ namespace Rynchodon.Autopilot
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
-		private static readonly TimeSpan MinTimeInstructions = new TimeSpan(0, 0, 10);
 		private static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
@@ -140,11 +142,10 @@ namespace Rynchodon.Autopilot
 		private enum State : byte { Disabled, Player, Enabled, Halted, Closed }
 
 		public readonly ShipControllerBlock m_block;
-
 		private readonly Logger m_logger;
-		private Interpreter m_interpreter;
-
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
+		private Mover m_mover;
+		private AutopilotCommands m_commands;
 
 		private IMyCubeGrid m_controlledGrid;
 		private State value_state = State.Disabled;
@@ -154,14 +155,16 @@ namespace Rynchodon.Autopilot
 		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
 		private List<byte> m_customInfo_message = new List<byte>();
 		private ulong m_nextCustomInfo;
+
+		private List<Action<Mover>> m_autopilotActions;
+		private int m_currentAction;
 		private Message m_message;
-
-		private AllNavigationSettings m_navSet { get { return m_interpreter.NavSet; } }
-
 		public Builder_Autopilot Resume;
 
-		public StringBuilder CustomInfo { get { return m_customInfo_send; } }
+		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
+		// TODO: these two might cause confusion, get from AutopilotTerminal as it is always available
+		public StringBuilder CustomInfo { get { return m_customInfo_send; } }
 		public bool Enabled { get { return value_state == State.Enabled; } }
 
 		private State m_state
@@ -178,26 +181,25 @@ namespace Rynchodon.Autopilot
 				{
 					case State.Enabled:
 					case State.Player:
-						m_interpreter.Mover.MoveAndRotateStop(false);
+						m_mover.MoveAndRotateStop(false);
 						return;
 
 					case State.Disabled:
 						m_navSet.OnStartOfCommands(); // here so that navigators are disposed of
-						m_interpreter.instructionQueue.Clear();
-						m_nextAllowedInstructions = Globals.ElapsedTime;
-						m_interpreter.Mover.MoveAndRotateStop();
+						m_autopilotActions = null;
+						m_mover.MoveAndRotateStop(false);
 						return;
 
 					case State.Halted:
 						m_endOfHalt = Globals.ElapsedTime.Add(new TimeSpan(0, 5, 0));
-						m_interpreter.Mover.SetDamping(true);
-						m_interpreter.Mover.MoveAndRotateStop();
+						m_mover.MoveAndRotateStop(true);
 						return;
 
 					case State.Closed:
 						if (GridBeingControlled != null)
 							ReleaseControlledGrid();
-						m_interpreter = null;
+						m_mover = null;
+						m_commands = null;
 						return;
 
 					default:
@@ -215,7 +217,8 @@ namespace Rynchodon.Autopilot
 		{
 			this.m_block = new ShipControllerBlock(block);
 			this.m_logger = new Logger(GetType().Name, block);
-			this.m_interpreter = new Interpreter(m_block);
+			this.m_mover = new Mover(m_block);
+			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
 
@@ -289,7 +292,7 @@ namespace Rynchodon.Autopilot
 					case State.Closed:
 						return;
 					default:
-						throw new Exception("Case not implemented: "+m_state);
+						throw new Exception("Case not implemented: " + m_state);
 				}
 
 				if (MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid) != null)
@@ -300,10 +303,11 @@ namespace Rynchodon.Autopilot
 
 				if (m_message != null)
 				{
-					m_interpreter.enqueueAllActions(m_message.Content);
+					m_autopilotActions = m_commands.GetActions(m_message.Content);
+					m_currentAction = -1;
 					m_message = null;
 					m_navSet.OnStartOfCommands();
-					m_interpreter.Mover.MoveAndRotateStop(false);
+					m_mover.MoveAndRotateStop(false);
 				}
 
 				if (this.Resume != null)
@@ -316,18 +320,15 @@ namespace Rynchodon.Autopilot
 				if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 					return;
 
-				if (m_interpreter.SyntaxError)
-					m_interpreter.Mover.MoveAndRotateStop();
-				else if (MoveAndRotate())
+				if (MoveAndRotate())
 					return;
 
-				if (m_interpreter.hasInstructions())
+				if (m_autopilotActions != null && m_currentAction < m_autopilotActions.Count - 1)
 				{
-					m_logger.debugLog("running instructions");
-
-					while (m_interpreter.instructionQueue.Count != 0 && m_navSet.Settings_Current.NavigatorMover == null)
+					while (m_currentAction < m_autopilotActions.Count - 1 && m_navSet.Settings_Current.NavigatorMover == null)
 					{
-						m_interpreter.instructionQueue.Dequeue().Invoke();
+						m_logger.debugLog("getting command: " + (m_currentAction + 1) + " of " + m_autopilotActions.Count);
+						m_autopilotActions[++m_currentAction].Invoke(m_mover);
 						if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 						{
 							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
@@ -337,15 +338,14 @@ namespace Rynchodon.Autopilot
 
 					if (m_navSet.Settings_Current.NavigatorMover == null)
 					{
-						m_logger.debugLog("interpreter did not yield a navigator", Logger.severity.INFO);
+						m_logger.debugLog("commands did not yield a navigator", Logger.severity.INFO);
 						ReleaseControlledGrid();
 					}
 					return;
 				}
 
-				if (!m_interpreter.SyntaxError)
-					if (Rotate())
-						return;
+				if (Rotate())
+					return;
 
 				if (m_nextAllowedInstructions > Globals.ElapsedTime)
 				{
@@ -355,13 +355,17 @@ namespace Rynchodon.Autopilot
 				}
 
 				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
-				m_nextAllowedInstructions = Globals.ElapsedTime + MinTimeInstructions;
-				m_interpreter.enqueueAllActions(m_block.AutopilotTerminal.AutopilotCommandsText.ToString(), true);
+				m_nextAllowedInstructions = Globals.ElapsedTime + TimeSpan.FromSeconds(10d);
+				m_autopilotActions = m_commands.GetActions();
+				m_currentAction = -1;
 
-				if (!m_interpreter.hasInstructions())
+				if (m_autopilotActions == null || m_autopilotActions.Count == 0)
 					ReleaseControlledGrid();
 				m_navSet.OnStartOfCommands();
-				m_interpreter.Mover.MoveAndRotateStop(false);
+				m_mover.MoveAndRotateStop(false);
+
+				if (m_commands.HasSyntaxErrors)
+					m_navSet.Settings_Task_NavWay.WaitUntil = Globals.ElapsedTime + TimeSpan.FromMinutes(1d);
 			}
 			catch (Exception ex)
 			{
@@ -389,7 +393,7 @@ namespace Rynchodon.Autopilot
 						Profiler.Profile(navR.Rotate);
 				}
 
-				Profiler.Profile(m_interpreter.Mover.MoveAndRotate);
+				Profiler.Profile(m_mover.MoveAndRotate);
 				return true;
 			}
 			return false;
@@ -404,11 +408,11 @@ namespace Rynchodon.Autopilot
 
 				Profiler.Profile(navR.Rotate);
 
-				Profiler.Profile(m_interpreter.Mover.MoveAndRotate);
+				Profiler.Profile(m_mover.MoveAndRotate);
 
 				if (!m_navSet.DirectionMatched())
 					return true;
-				m_interpreter.Mover.StopRotate();
+				m_mover.StopRotate();
 			}
 			return false;
 		}
@@ -523,13 +527,6 @@ namespace Rynchodon.Autopilot
 
 		private void BuildCustomInfo()
 		{
-			if (m_interpreter.Errors.Length != 0)
-			{
-				m_customInfo_build.AppendLine("Errors:");
-				m_customInfo_build.Append(m_interpreter.Errors);
-				m_customInfo_build.AppendLine();
-			}
-
 			if (m_controlledGrid == null)
 			{
 				if (!m_block.AutopilotControl)
@@ -574,7 +571,7 @@ namespace Rynchodon.Autopilot
 			if (moving)
 			{
 
-				Pathfinder.Pathfinder path = m_interpreter.Mover.Pathfinder;
+				Pathfinder.Pathfinder path = m_mover.Pathfinder;
 				if (path != null)
 				{
 					if (!path.ReportCanMove || !path.ReportCanRotate)
@@ -669,7 +666,7 @@ namespace Rynchodon.Autopilot
 		private void HandleMessage(Message msg)
 		{
 			m_message = msg;
-			m_interpreter.Mover.SetControl(true);
+			m_mover.SetControl(true);
 		}
 
 		private float PowerRequired()
@@ -684,14 +681,13 @@ namespace Rynchodon.Autopilot
 
 			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };
 
-			result.CurrentCommand = m_interpreter.instructionQueueString.Count - m_interpreter.instructionQueue.Count - 1;
-			m_logger.debugLog("current command: " + result.CurrentCommand);
-
-			// don't need to save if we are not running (-1) or on first command (0)
-			if (result.CurrentCommand <= 0)
+			if (m_autopilotActions == null || m_currentAction <= 0 || m_currentAction >= m_autopilotActions.Count)
 				return null;
 
-			result.Commands = string.Join(";", m_interpreter.instructionQueueString);
+			result.CurrentCommand = m_currentAction;
+			m_logger.debugLog("current command: " + result.CurrentCommand);
+
+			result.Commands = m_commands.Commands;
 			m_logger.debugLog("commands: " + result.Commands);
 
 			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
@@ -711,14 +707,13 @@ namespace Rynchodon.Autopilot
 			this.Resume = null;
 			m_navSet.OnStartOfCommands();
 			m_logger.debugLog("resume: " + builder.Commands, Logger.severity.DEBUG);
-			m_interpreter.enqueueAllActions(builder.Commands);
-			m_logger.debugLog("from builder, added " + m_interpreter.instructionQueue.Count + " commands");
+			m_autopilotActions = m_commands.GetActions(builder.Commands);
+			m_logger.debugLog("from builder, added " + m_autopilotActions.Count + " commands");
 
-			int i;
-			for (i = 0; i < builder.CurrentCommand; i++)
+			for (m_currentAction = 0; m_currentAction < builder.CurrentCommand; m_currentAction++)
 			{
-				m_logger.debugLog("fast forward: " + m_interpreter.instructionQueueString[i]);
-				m_interpreter.instructionQueue.Dequeue().Invoke();
+				m_logger.debugLog("fast forward: " + m_currentAction);
+				m_autopilotActions[m_currentAction].Invoke(m_mover);
 
 				// clear navigators' levels
 				for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
@@ -731,6 +726,7 @@ namespace Rynchodon.Autopilot
 					}
 				}
 			}
+			m_currentAction--;
 
 			// clear wait
 			m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavWay);
@@ -754,9 +750,6 @@ namespace Rynchodon.Autopilot
 					m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
 				}
 			}
-
-			m_logger.debugLog("resume: " + m_interpreter.instructionQueueString[i]);
-			m_interpreter.instructionQueue.Dequeue().Invoke();
 		}
 
 	}

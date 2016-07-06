@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using Rynchodon.Autopilot.Instruction.Command;
 using Rynchodon.Autopilot.Movement;
 using Sandbox.Game.Entities;
@@ -16,11 +17,16 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction
 {
+	/// <summary>
+	/// GUI programming and command interpretation.
+	/// </summary>
 	public class AutopilotCommands
 	{
 
 		private class StaticVariables
 		{
+			public readonly Regex GPS_tag = new Regex(@"[^c]\s*GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
+			public readonly string GPS_replaceWith = @"cg $1, $2, $3";
 			public Dictionary<char, List<ACommand>> dummyCommands = new Dictionary<char, List<ACommand>>();
 			public AddCommandInternalNode addCommandRoot;
 		}
@@ -88,6 +94,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			commands.Clear();
 
+			AddDummy(new TextPanel(), commands);
 			AddDummy(new Wait(), commands);
 			AddDummy(new Exit(), commands);
 			AddDummy(new Stop(), commands);
@@ -139,7 +146,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		public static AutopilotCommands GetOrCreate(IMyTerminalBlock block)
 		{
-			if (Globals.WorldClosed)
+			if (Globals.WorldClosed || block.Closed)
 				return null;
 			AutopilotCommands result;
 			if (!Registrar.TryGetValue(block, out result))
@@ -167,7 +174,7 @@ namespace Rynchodon.Autopilot.Instruction
 			int bestMatchLength = 0;
 			foreach (ACommand cmd in list)
 			{
-				Logger.DebugLog("checking " + cmd + " against " + parse);
+				Logger.DebugLog("checking " + cmd.Identifier + " against " + parse);
 				if (cmd.Identifier.Length > bestMatchLength && parse.StartsWith(cmd.Identifier))
 				{
 					bestMatchLength = cmd.Identifier.Length;
@@ -183,19 +190,20 @@ namespace Rynchodon.Autopilot.Instruction
 		/// <summary>
 		/// Parse the commands from AutopilotTerminal.GetAutopilotCommands.
 		/// </summary>
-		private static void ParseCommands(IMyTerminalBlock block, List<ACommand> commandList, StringBuilder syntaxErrors)
+		private static void ParseCommands(IMyTerminalBlock block, string allCommands, List<ACommand> commandList, StringBuilder syntaxErrors)
 		{
 			commandList.Clear();
 			syntaxErrors.Clear();
 
-			string allCommands = AutopilotTerminal.GetAutopilotCommands(block).ToString();
 			if (string.IsNullOrWhiteSpace(allCommands))
 			{
 				Logger.DebugLog("no commands");
 				return;
 			}
 
-			// TODO: GPS replace
+			Logger.DebugLog("allCommands: " + allCommands);
+			allCommands = Static.GPS_tag.Replace(allCommands, Static.GPS_replaceWith);
+			Logger.DebugLog("allCommands: " + allCommands);
 
 			string[] commands = allCommands.Split(new char[] { ';', ':' });
 			foreach (string cmd in commands)
@@ -205,8 +213,6 @@ namespace Rynchodon.Autopilot.Instruction
 					Logger.DebugLog("empty command");
 					continue;
 				}
-
-				// TODO: text panel support
 
 				ACommand apCmd = GetCommand(cmd);
 				if (apCmd == null)
@@ -254,9 +260,14 @@ namespace Rynchodon.Autopilot.Instruction
 		private int m_insertIndex;
 		private ACommand m_currentCommand;
 		private Stack<AddCommandInternalNode> m_currentAddNode = new Stack<AddCommandInternalNode>();
-		/// <summary>Action executed once programming ends.</summary>
-		private Action m_completionCallback;
 		private string m_infoMessage;
+
+		/// <summary>
+		/// The most recent commands from either terminal or a message.
+		/// </summary>
+		public string Commands { get; private set; }
+
+		public bool HasSyntaxErrors { get { return m_syntaxErrors.Length != 0; } }
 
 		private AutopilotCommands(IMyTerminalBlock block)
 		{
@@ -276,40 +287,54 @@ namespace Rynchodon.Autopilot.Instruction
 			m_actions = null;
 		}
 
-		public void StartGooeyProgramming(Action completionCallback)
+		public void StartGooeyProgramming()
 		{
 			m_logger.debugLog("entered");
 
-			m_currentCommand = null;
-			m_listCommands = true;
+			using (MainLock.AcquireSharedUsing())
+			{
+				m_currentCommand = null;
+				m_listCommands = true;
 
-			m_completionCallback = completionCallback;
-			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
-			m_block.AppendingCustomInfo += m_block_AppendingCustomInfo;
+				MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
+				m_block.AppendingCustomInfo += m_block_AppendingCustomInfo;
 
-			StringBuilder errors = new StringBuilder();
-			ParseCommands(m_block, m_commandList, errors);
-			if (errors.Length != 0)
-				m_block.RefreshCustomInfo();
-			m_syntaxErrors = errors;
-			m_block.SwitchTerminalTo();
+				Commands = AutopilotTerminal.GetAutopilotCommands(m_block).ToString();
+				ParseCommands(m_block, Commands, m_commandList, m_syntaxErrors);
+				if (m_syntaxErrors.Length != 0)
+					m_block.RefreshCustomInfo();
+				m_block.SwitchTerminalTo();
+			}
 		}
 
 		public List<Action<Mover>> GetActions()
 		{
-			List<Action<Mover>> acts = m_actions;
-			if (acts != null)
-				return acts;
+			using (MainLock.AcquireSharedUsing())
+			{
+				if (m_actions != null)
+					return m_actions;
 
-			List<ACommand> commands = new List<ACommand>();
-			StringBuilder errors = new StringBuilder();
-			ParseCommands(m_block, commands, errors);
-			if (errors.Length != 0)
-				m_block.RefreshCustomInfo();
-			m_syntaxErrors = errors;
-			acts = CreateActionList(commands);
-			m_actions = acts;
-			return acts;
+				Commands = AutopilotTerminal.GetAutopilotCommands(m_block).ToString();
+				List<ACommand> commands = new List<ACommand>();
+				ParseCommands(m_block, Commands, commands, m_syntaxErrors);
+				if (m_syntaxErrors.Length != 0)
+					m_block.RefreshCustomInfo();
+				return m_actions = CreateActionList(commands);
+			}
+		}
+
+		public List<Action<Mover>> GetActions(string allCommands)
+		{
+			using (MainLock.AcquireSharedUsing())
+			{
+				Commands = allCommands;
+				List<Action<Mover>> acts;
+				List<ACommand> commands = new List<ACommand>();
+				ParseCommands(m_block, Commands, commands, m_syntaxErrors);
+				if (m_syntaxErrors.Length != 0)
+					m_block.RefreshCustomInfo();
+				return acts = CreateActionList(commands);
+			}
 		}
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
@@ -604,12 +629,6 @@ namespace Rynchodon.Autopilot.Instruction
 			m_block.SwitchTerminalTo();
 
 			Cleanup();
-
-			if (m_completionCallback != null)
-			{
-				m_completionCallback.Invoke();
-				m_completionCallback = null;
-			}
 		}
 
 		#endregion Button Action

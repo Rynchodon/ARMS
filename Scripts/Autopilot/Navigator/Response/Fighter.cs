@@ -62,8 +62,12 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (!m_weaponArmed)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter is unarmed";
-				return false;
+				Arm();
+				if (!m_weaponArmed)
+				{
+					m_navSet.Settings_Commands.Complaint = "Fighter is unarmed";
+					return false;
+				}
 			}
 
 			GetPrimaryWeapon();

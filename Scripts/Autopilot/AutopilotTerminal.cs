@@ -12,7 +12,9 @@ using VRage.Utils;
 
 namespace Rynchodon.Autopilot
 {
-
+	/// <summary>
+	/// Autopilot terminal controls when not using GUI programming.
+	/// </summary>
 	public class AutopilotTerminal
 	{
 
@@ -141,7 +143,7 @@ namespace Rynchodon.Autopilot
 		{
 			AutopilotCommands cmds = AutopilotCommands.GetOrCreate(block);
 			if (cmds != null)
-				cmds.StartGooeyProgramming(null);
+				cmds.StartGooeyProgramming();
 		}
 
 		private readonly Logger m_logger;
@@ -183,6 +185,9 @@ namespace Rynchodon.Autopilot
 			m_logger.debugLog("Initialized", Logger.severity.INFO);
 		}
 
+		/// <summary>
+		/// Set autopilot info from server.
+		/// </summary>
 		private void MessageHandler(byte[] bytes, ref int pos)
 		{
 			//m_logger.debugLog("Received a message, length: " + message.Length, "MessageHandler()", Logger.severity.DEBUG);

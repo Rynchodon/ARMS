@@ -96,11 +96,11 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		/// <param name="block">Controlling block for the grid</param>
 		/// <param name="NavSet">Navigation settings to use.</param>
-		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
+		public Mover(ShipControllerBlock block)
 		{
 			this.m_logger = new Logger("Mover", block.Controller);
 			this.Block = block;
-			this.NavSet = NavSet;
+			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 
 			CheckGrid();
 		}
