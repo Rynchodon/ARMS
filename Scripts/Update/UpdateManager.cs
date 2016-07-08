@@ -212,26 +212,26 @@ namespace Rynchodon.Update
 
 			#region Autopilot
 
-			RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
-			{
-				Radar = true,
-				LineOfSight = false,
-				MaxTargets_Tracking = 3,
-				MaxPowerLevel = 1000
-			};
-
-			Action<IMyCubeBlock> apConstruct = (block) => {
-				if (ShipAutopilot.IsAutopilotBlock(block))
-				{
-					nodeConstruct(block);
-					new AutopilotTerminal(block);
-					RadarEquipment r = new RadarEquipment(block, apRadar, block);
-					RegisterForUpdates(100, r.Update100, block);
-				}
-			};
-
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
+				RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
+				{
+					Radar = true,
+					LineOfSight = false,
+					MaxTargets_Tracking = 3,
+					MaxPowerLevel = 1000
+				};
+
+				Action<IMyCubeBlock> apConstruct = (block) => {
+					if (ShipAutopilot.IsAutopilotBlock(block))
+					{
+						nodeConstruct(block);
+						new AutopilotTerminal(block);
+						RadarEquipment r = new RadarEquipment(block, apRadar, block);
+						RegisterForUpdates(100, r.Update100, block);
+					}
+				};
+
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), apConstruct);
 				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), apConstruct);
@@ -345,6 +345,16 @@ namespace Rynchodon.Update
 			}
 			else
 				myLogger.debugLog("Weapon Control is disabled", Logger.severity.INFO);
+
+			#endregion
+
+			#region Solar
+
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				RegisterForBlock(typeof(MyObjectBuilder_OxygenFarm), (block) => new Solar(block));
+				RegisterForBlock(typeof(MyObjectBuilder_SolarPanel), (block) => new Solar(block));
+			}
 
 			#endregion
 

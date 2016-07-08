@@ -106,7 +106,7 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>
-		/// Stops the thrusters, optionally enables damping.
+		/// Sets target linear force to zero, optionally enables damping.
 		/// </summary>
 		public void StopMove(bool enableDampeners = true)
 		{
@@ -117,7 +117,7 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>
-		/// Stops the gyros.
+		/// Sets target angular force to zero.
 		/// </summary>
 		public void StopRotate()
 		{

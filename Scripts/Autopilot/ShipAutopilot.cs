@@ -344,7 +344,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				if (!m_interpreter.SyntaxError)
-					if (Rotate())
+					if (RotateOnly())
 						return;
 
 				if (m_nextAllowedInstructions > Globals.ElapsedTime)
@@ -395,20 +395,26 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private bool Rotate()
+		/// <summary>
+		/// run the rotator by itself until direction is matched
+		/// </summary>
+		private bool RotateOnly()
 		{
 			INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
 			if (navR != null)
 			{
-				//run the rotator by itself until direction is matched
+				// direction might have been matched by another rotator, so run it first
 
 				Profiler.Profile(navR.Rotate);
-
 				Profiler.Profile(m_interpreter.Mover.MoveAndRotate);
 
-				if (!m_navSet.DirectionMatched())
+				if (m_navSet.DirectionMatched())
+				{
+					m_interpreter.Mover.StopRotate();
+					m_interpreter.Mover.MoveAndRotate();
+				}
+				else
 					return true;
-				m_interpreter.Mover.StopRotate();
 			}
 			return false;
 		}
