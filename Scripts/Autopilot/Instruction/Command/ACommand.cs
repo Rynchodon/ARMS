@@ -36,20 +36,20 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			value = value.Trim();
 			m_displayString = value;
 
-			if (!value.StartsWith(Identifier, StringComparison.InvariantCultureIgnoreCase))
+			foreach (string idOrAlias in IdAndAliases())
 			{
-				message = value + " does not start with " + Identifier;
-				Action = null;
-				return false;
+				Match m = Regex.Match(value, idOrAlias + @"\s*,?\s*(.*)", RegexOptions.IgnoreCase);
+				if (m.Success)
+				{
+					Action = Parse(autopilot, m.Groups[1].Value, out message);
+					return Action != null;
+				}
 			}
 
-			value = value.Substring(Identifier.Length).TrimStart();
-			if (value.StartsWith(","))
-				value = value.Substring(1);
-			value = value.TrimStart();
-
-			Action = Parse(autopilot, value, out message);
-			return Action != null;
+			message = value + " does not start with " + Identifier + " or any alias";
+			Logger.AlwaysLog(message, Logger.severity.ERROR);
+			Action = null;
+			return false;
 		}
 
 		/// <summary>
@@ -72,6 +72,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				}
 			}
 			return SetDisplayString(autopilot, termString, out message);
+		}
+
+		public IEnumerable<string> IdAndAliases()
+		{
+			yield return Identifier;
+			string[] aliases = Aliases;
+			if (aliases != null)
+				foreach (string alias in aliases)
+					yield return alias;
 		}
 
 		/// <summary>
@@ -248,9 +257,17 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		private Base6Directions.Direction? StringToDirection(string str)
 		{
-			if (str.Length < 1)
-				return null;
-			switch (char.ToLower(str[0]))
+			int index;
+			for (index = 0; true; index++)
+				if (index < str.Length)
+				{
+					if (!char.IsWhiteSpace(str[index]))
+						break;
+				}
+				else
+					return null;
+
+			switch (char.ToLower(str[index]))
 			{
 				case 'f':
 					return Base6Directions.Direction.Forward;

@@ -25,36 +25,24 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override string AddDescription
 		{
-			get { return "Block that will be landed on the target ship"; }
+			get { return "Block that will be landed on the target entity"; }
 		}
 
 		public override string Description
 		{
 			get
 			{
-				if (m_block == null)
+				if (m_block.NullOrClosed())
 					return "Missing block!";
 				return "Land " + m_block.DisplayNameText + " on the target ship";
 			}
 		}
 
-		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override void Action(Movement.Mover mover)
 		{
-			string blockName;
-			if (!SplitNameDirections(command, out blockName, out m_forward, out m_upward, out message))
-				return null;
-
-			if (!GetLocalBlock(autopilot, blockName, out m_block, out message))
-				return null;
-
-			message = null;
-			m_searchBlockName = new StringBuilder(blockName);
-			return mover => {
-				PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
-				mover.NavSet.Settings_Task_NavRot.LandingBlock = pseudo;
-				mover.NavSet.LastLandingBlock = pseudo;
-			};
+			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
+			mover.NavSet.Settings_Task_NavRot.LandingBlock = pseudo;
+			mover.NavSet.LastLandingBlock = pseudo;
 		}
-
 	}
 }

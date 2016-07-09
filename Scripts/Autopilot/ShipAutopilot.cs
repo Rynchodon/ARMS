@@ -355,7 +355,7 @@ namespace Rynchodon.Autopilot
 				}
 
 				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
-				m_nextAllowedInstructions = Globals.ElapsedTime + TimeSpan.FromSeconds(10d);
+				m_nextAllowedInstructions = Globals.ElapsedTime + TimeSpan.FromSeconds(ef != null ? 10d : 1d);
 				m_autopilotActions = m_commands.GetActions();
 				m_currentAction = -1;
 

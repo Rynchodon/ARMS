@@ -19,6 +19,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "unland"; }
 		}
 
+		public override string AddName
+		{
+			get { return "Unland Last"; }
+		}
+
 		public override string AddDescription
 		{
 			get { return "Unlock the most recently landed block and move away from the attached entity."; }

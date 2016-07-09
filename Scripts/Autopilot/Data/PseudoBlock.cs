@@ -98,7 +98,8 @@ namespace Rynchodon.Autopilot.Data
 			: this(block)
 		{
 			Base6Directions.Direction for2 = forward ?? block.GetFaceDirection()[0];
-			Base6Directions.Direction up2 = up ?? Base6Directions.GetPerpendicular(for2);
+			Base6Directions.Direction up2 = up ??
+				(for2 == Base6Directions.Direction.Forward ? Base6Directions.Direction.Up : Base6Directions.GetPerpendicular(for2));
 
 			if (for2 == up2 || for2 == Base6Directions.GetFlippedDirection(up2))
 			{

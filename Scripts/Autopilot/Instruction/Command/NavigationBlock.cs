@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			get
 			{
-				if (m_block == null)
+				if (m_block.NullOrClosed())
 					return "Missing block!";
 				if (m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)
 					return "Face " + m_block.DisplayNameText + " towards the sun";
@@ -41,25 +41,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override System.Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override void Action(Movement.Mover mover)
 		{
-			string blockName;
-			if (!SplitNameDirections(command, out blockName, out m_forward, out m_upward, out message))
-				return null;
-
-			if (!GetLocalBlock(autopilot, blockName, out m_block, out message))
-				return null;
-
-			message = null;
-			m_searchBlockName = new StringBuilder(blockName);
-			return mover => {
-				PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
-				if (m_block is IMyLaserAntenna || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)
-					new Facer(mover, pseudo);
-				else
-					mover.NavSet.Settings_Task_NavRot.NavigationBlock = pseudo;
-			};
+			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
+			if (m_block is IMyLaserAntenna || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)
+				new Facer(mover, pseudo);
+			else
+				mover.NavSet.Settings_Task_NavRot.NavigationBlock = pseudo;
 		}
-
 	}
 }

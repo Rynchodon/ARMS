@@ -62,6 +62,7 @@ namespace Rynchodon.Autopilot.Instruction
 			AddDummy(new Form(), commands);
 			AddDummy(new GridDestination(), commands);
 			AddDummy(new Unland(), commands);
+			AddDummy(new UnlandBlock(), commands);
 
 			rootCommands.Add(new AddCommandInternalNode("Fly to a Ship", commands.ToArray()));
 
@@ -130,16 +131,15 @@ namespace Rynchodon.Autopilot.Instruction
 				list = new List<ACommand>();
 				Static.dummyCommands.Add(idOrAlias[0], list);
 			}
-			list.Add(command);
+			if (!list.Contains(command))
+				list.Add(command);
 		}
 
 		private static void AddDummy(ACommand command, List<AddCommandLeafNode> children = null)
 		{
-			AddDummy(command, command.Identifier);
-			string[] aliases = command.Aliases;
-			if (aliases != null)
-				foreach (string ali in aliases)
-					AddDummy(command, ali);
+			foreach (string idOrAlias in command.IdAndAliases())
+				AddDummy(command, idOrAlias);
+			
 			if (children != null)
 				children.Add(new AddCommandLeafNode(command));
 		}
@@ -165,22 +165,17 @@ namespace Rynchodon.Autopilot.Instruction
 
 			List<ACommand> list;
 			if (!Static.dummyCommands.TryGetValue(parse[0], out list))
-			{
-				Logger.DebugLog("No list for: " + parse[0]);
 				return null;
-			}
 
 			ACommand bestMatch = null;
 			int bestMatchLength = 0;
 			foreach (ACommand cmd in list)
-			{
-				Logger.DebugLog("checking " + cmd.Identifier + " against " + parse);
-				if (cmd.Identifier.Length > bestMatchLength && parse.StartsWith(cmd.Identifier))
-				{
-					bestMatchLength = cmd.Identifier.Length;
-					bestMatch = cmd;
-				}
-			}
+				foreach (string idOrAlias in cmd.IdAndAliases())
+					if (idOrAlias.Length > bestMatchLength && parse.StartsWith(idOrAlias))
+					{
+						bestMatchLength = idOrAlias.Length;
+						bestMatch = cmd;
+					}
 
 			if (bestMatch == null)
 				return null;
@@ -192,18 +187,13 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		private static void ParseCommands(IMyTerminalBlock block, string allCommands, List<ACommand> commandList, StringBuilder syntaxErrors)
 		{
-			commandList.Clear();
-			syntaxErrors.Clear();
-
 			if (string.IsNullOrWhiteSpace(allCommands))
 			{
 				Logger.DebugLog("no commands");
 				return;
 			}
 
-			Logger.DebugLog("allCommands: " + allCommands);
 			allCommands = Static.GPS_tag.Replace(allCommands, Static.GPS_replaceWith);
-			Logger.DebugLog("allCommands: " + allCommands);
 
 			string[] commands = allCommands.Split(new char[] { ';', ':' });
 			foreach (string cmd in commands)
@@ -237,22 +227,73 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 		}
 
-		private static List<Action<Mover>> CreateActionList(List<ACommand> commandList)
+		private static IEnumerable<Action<Mover>> GetActions(IMyTerminalBlock autopilot, List<ACommand> commandList, StringBuilder syntaxErrors)
 		{
-			List<Action<Mover>> list = new List<Action<Mover>>(commandList.Count);
+			int count = 0;
+			const int limit = 1000;
+
 			foreach (ACommand cmd in commandList)
-				if (cmd.Action == null)
-					Logger.AlwaysLog("Command is missing action: " + cmd.DisplayString, Logger.severity.ERROR);
-				else
-					list.Add(cmd.Action);
-			return list;
+			{
+				TextPanel tp = cmd as TextPanel;
+				if (tp == null)
+				{
+					if (cmd.Action == null)
+					{
+						Logger.AlwaysLog("Command is missing action: " + cmd.DisplayString, Logger.severity.ERROR);
+						continue;
+					}
+
+					if (++count > limit)
+					{
+						Logger.DebugLog("Reached command limit");
+						syntaxErrors.AppendLine("Reached command limit");
+						yield break;
+					}
+					Logger.DebugLog("yield: " + cmd.DisplayString);
+					yield return cmd.Action;
+					continue;
+				}
+				IMyTextPanel panelBlock;
+				string textPanelCommands;
+				tp.GetCommandsFromPanel(autopilot, out panelBlock, out textPanelCommands);
+				if (panelBlock == null)
+				{
+					Logger.DebugLog("Text panel not found: " + tp.SearchPanelName);
+					syntaxErrors.Append("Text panel not found: ");
+					syntaxErrors.AppendLine(tp.SearchPanelName);
+					continue;
+				}
+				if (textPanelCommands == null)
+				{
+					Logger.DebugLog(panelBlock.DisplayNameText + " has no commands");
+					syntaxErrors.Append(panelBlock.DisplayNameText);
+					syntaxErrors.AppendLine(" has no commands");
+					continue;
+				}
+				//Logger.DebugLog("Getting commands from panel: " + panelBlock.DisplayNameText + ", commands: " + textPanelCommands);
+				List<ACommand> textPanelCommandList = new List<ACommand>();
+				ParseCommands(autopilot, textPanelCommands, textPanelCommandList, syntaxErrors);
+				foreach (Action<Mover> item in GetActions(autopilot, textPanelCommandList, syntaxErrors))
+				{
+					if (++count > limit)
+					{
+						Logger.DebugLog("Reached command limit");
+						syntaxErrors.AppendLine("Reached command limit");
+						yield break;
+					}
+					yield return item;
+				}
+			}
 		}
 
 		private readonly IMyTerminalBlock m_block;
+		/// <summary>Command list for GUI programming, not to be used by others</summary>
 		private readonly List<ACommand> m_commandList = new List<ACommand>();
 		private readonly Logger m_logger;
 
+		/// <summary>Shared from any command source</summary>
 		private StringBuilder m_syntaxErrors = new StringBuilder();
+		/// <summary>Action list for GUI programming and commands text box, not to be used for messaged commands.</summary>
 		private List<Action<Mover>> m_actions;
 
 		private IMyTerminalControlListbox m_termCommandList;
@@ -295,6 +336,8 @@ namespace Rynchodon.Autopilot.Instruction
 			{
 				m_currentCommand = null;
 				m_listCommands = true;
+				m_commandList.Clear();
+				m_syntaxErrors.Clear();
 
 				MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
 				m_block.AppendingCustomInfo += m_block_AppendingCustomInfo;
@@ -313,13 +356,14 @@ namespace Rynchodon.Autopilot.Instruction
 			{
 				if (m_actions != null)
 					return m_actions;
+				m_syntaxErrors.Clear();
 
 				Commands = AutopilotTerminal.GetAutopilotCommands(m_block).ToString();
 				List<ACommand> commands = new List<ACommand>();
 				ParseCommands(m_block, Commands, commands, m_syntaxErrors);
 				if (m_syntaxErrors.Length != 0)
 					m_block.RefreshCustomInfo();
-				return m_actions = CreateActionList(commands);
+				return m_actions = new List<Action<Mover>>(GetActions(m_block, commands, m_syntaxErrors));
 			}
 		}
 
@@ -328,12 +372,13 @@ namespace Rynchodon.Autopilot.Instruction
 			using (MainLock.AcquireSharedUsing())
 			{
 				Commands = allCommands;
-				List<Action<Mover>> acts;
+				m_syntaxErrors.Clear();
+
 				List<ACommand> commands = new List<ACommand>();
 				ParseCommands(m_block, Commands, commands, m_syntaxErrors);
 				if (m_syntaxErrors.Length != 0)
 					m_block.RefreshCustomInfo();
-				return acts = CreateActionList(commands);
+				return new List<Action<Mover>>(GetActions(m_block, commands, m_syntaxErrors));
 			}
 		}
 
@@ -513,7 +558,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private void InsertCommand(IMyTerminalBlock block)
 		{
 			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			
+
 			if (m_currentCommand == null)
 			{
 				LogAndInfo("nothing selected");
@@ -573,7 +618,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private void MoveCommandUp(IMyTerminalBlock block)
 		{
 			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			
+
 			if (m_currentCommand == null)
 			{
 				LogAndInfo("nothing selected");
@@ -594,7 +639,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private void MoveCommandDown(IMyTerminalBlock block)
 		{
 			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			
+
 			if (m_currentCommand == null)
 			{
 				LogAndInfo("nothing selected");
@@ -619,7 +664,7 @@ namespace Rynchodon.Autopilot.Instruction
 			if (save)
 			{
 				AutopilotTerminal.SetAutopilotCommands(m_block, new StringBuilder(string.Join(" ; ", m_commandList.Select(cmd => cmd.DisplayString))));
-				m_actions = CreateActionList(m_commandList);
+				m_actions = new List<Action<Mover>>(GetActions(m_block, m_commandList, m_syntaxErrors));
 			}
 
 			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
