@@ -113,7 +113,7 @@ namespace Rynchodon.Autopilot
 		{
 			return !Grid.isRecent() ? Grid.predictPosition() :
 				Block != null ? (Vector3D)blockOffset.ToWorld(Block) :
-				GridCellCache.GetCellCache(Grid.Entity as IMyCubeGrid).GetClosestOccupiedCellPosition(NavPos);
+				GridCellCache.GetCellCache((IMyCubeGrid)Grid.Entity).GetClosestOccupiedCellPosition(NavPos);
 		}
 
 		/// <summary>

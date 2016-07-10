@@ -68,8 +68,6 @@ namespace Rynchodon.Autopilot.Navigator
 				switch (value)
 				{
 					case LandingState.Catch:
-						m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Grid.Entity;
-						goto case LandingState.Landing;
 					case LandingState.Landing:
 						{
 							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
@@ -255,6 +253,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 				if (m_gridFinder.Block != null && m_landingState < LandingState.Landing)
 					m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Block;
+				else
+					m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Grid.Entity;
 				m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 
 				if (m_landingState > LandingState.Approach || m_navBlock.Grid.WorldAABB.Distance(m_targetPosition) < m_navSet.Settings_Current.DestinationRadius)
@@ -308,7 +308,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (m_landGearWithoutTargetBlock)
 				{
-					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_targetPosition - m_navBlock.WorldPosition));
+					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_gridFinder.Grid.Entity.GetCentre() - m_navBlock.WorldPosition));
 					return;
 				}
 
@@ -512,9 +512,9 @@ namespace Rynchodon.Autopilot.Navigator
 							if (m_landingSpeedFudge > 0.1f)
 								m_landingSpeedFudge = -0.1f;
 						}
+						m_targetPosition += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
 
-						Vector3 fudgeDistance = m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween + fudgeDistance, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);
+						m_mover.CalcMove(m_navBlock, m_targetPosition + GetLandingFaceVector() * distanceBetween, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);
 						return;
 					}
 				case LandingState.Catch:
@@ -525,6 +525,15 @@ namespace Rynchodon.Autopilot.Navigator
 							m_mover.CalcMove(m_navBlock, m_navBlock.WorldPosition, m_gridFinder.Grid.GetLinearVelocity());
 							return;
 						}
+
+						if (m_navSet.DistanceLessThan(1f))
+						{
+							m_landingSpeedFudge += 0.0001f;
+							if (m_landingSpeedFudge > 0.1f)
+								m_landingSpeedFudge = -0.1f;
+							m_logger.debugLog("target position: " + m_targetPosition + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_targetPosition, m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
+						}
+						m_targetPosition += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
 
 						m_logger.debugLog("moving to " + m_targetPosition);
 						m_mover.CalcMove(m_navBlock, m_targetPosition, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);

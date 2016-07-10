@@ -380,12 +380,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (obstructing.GetTopMostParent() == destEntity)
 					{
 						m_navSet.Settings_Task_NavWay.SpeedMaxRelative = speed;
-						m_logger.debugLog("Set SpeedMaxRelative to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity, Logger.severity.TRACE);
+						m_logger.debugLog("Set SpeedMaxRelative to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), Logger.severity.TRACE);
 					}
 					else
 					{
 						m_navSet.Settings_Task_NavWay.SpeedTarget = speed;
-						m_logger.debugLog("Set SpeedTarget to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity, Logger.severity.TRACE);
+						m_logger.debugLog("Set SpeedTarget to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), Logger.severity.TRACE);
 					}
 					return;
 				}
