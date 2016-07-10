@@ -368,7 +368,8 @@ namespace Rynchodon.AntennaRelay
 				displayText.Append(PrettySI.makePretty(ap.Distance));
 				displayText.AppendLine("m");
 
-				displayText.Append(ap.Autopilot.CustomInfo);
+				ap.Autopilot.m_block.AutopilotTerminal.AppendingCustomInfo(displayText);
+
 				displayText.AppendLine();
 
 				count++;
@@ -516,6 +517,7 @@ namespace Rynchodon.AntennaRelay
 
 			public SortableAutopilot(ShipAutopilot autopilot, Vector3D mypos)
 			{
+				this.distance = null;
 				this.Autopilot = autopilot;
 				this.DistanceSquared = (float)Vector3D.DistanceSquared(autopilot.m_block.CubeBlock.GetPosition(), mypos);
 			}

@@ -9,6 +9,8 @@ using VRage.ModAPI;
 namespace Rynchodon.Utility.Network
 {
 
+	// TODO: profile bit rate
+
 	public abstract class EntityValue
 	{
 
@@ -54,6 +56,8 @@ namespace Rynchodon.Utility.Network
 
 				foreach (KeyValuePair<byte, EntityValue> byteValue in entityValues.Value)
 				{
+					if (!byteValue.Value.Save)
+						continue;
 					string value = byteValue.Value.GetValue();
 					if (value != null)
 					{
@@ -138,6 +142,7 @@ namespace Rynchodon.Utility.Network
 				instance.SendValue(recipient);
 		}
 
+		protected abstract bool Save { get; }
 		protected abstract void SendValue(ulong? clientId = null);
 		protected abstract void SetValue(byte[] bytes, ref int pos);
 		protected abstract string GetValue();
@@ -154,12 +159,18 @@ namespace Rynchodon.Utility.Network
 				allEntityValues.Remove(obj.EntityId);
 		}
 
-		protected readonly long m_entityId;
-		protected readonly byte m_valueId;
-		protected readonly Action m_afterValueChanged;
+		private readonly long m_entityId;
+		private readonly byte m_valueId;
+		private readonly bool m_save;
 
+		protected readonly Action m_afterValueChanged;
 		protected T m_value;
 		protected bool m_synced;
+
+		protected override bool Save
+		{
+			get { return m_save; }
+		}
 
 		public virtual T Value
 		{
@@ -184,12 +195,13 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
-		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged = null, T defaultValue = default(T))
+		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged = null, T defaultValue = default(T), bool save = true)
 		{
 			this.m_entityId = entity.EntityId;
 			this.m_valueId = valueId;
 			this.m_value = defaultValue;
 			this.m_afterValueChanged = afterValueChanged;
+			this.m_save = save;
 			this.m_synced = MyAPIGateway.Multiplayer.IsServer;
 
 			using (lock_entityValues.AcquireExclusiveUsing())
@@ -299,10 +311,9 @@ namespace Rynchodon.Utility.Network
 		private byte m_updatesSinceValueChange = byte.MaxValue;
 
 		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
-		public EntityStringBuilder(IMyEntity entity, byte valueId, Action afterValueChanged)
-			: base(entity, valueId, afterValueChanged)
+		public EntityStringBuilder(IMyEntity entity, byte valueId, Action afterValueChanged = null, bool save = true)
+			: base(entity, valueId, afterValueChanged, new StringBuilder(), save: save)
 		{
-			m_value = new StringBuilder();
 			Update.UpdateManager.Register(100, Update100, entity);
 		}
 

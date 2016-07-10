@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Data
 			private EnemyFinder m_enemyFinder;
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
-			private string m_complaint;
+			private InfoString.StringId m_complaint;
 			private BlockNameOrientation m_destBlock;
 			private IMyEntity m_destEntity;
 
@@ -143,16 +143,15 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>
-			/// <para>May be null</para>
-			/// <para>The active complaint.</para>
+			/// <para>Active complaints.</para>
 			/// </summary>
-			public string Complaint
+			public InfoString.StringId Complaint
 			{
 				get
 				{
-					if (parent == null)
+					if (parent == null || m_complaint != InfoString.StringId.None)
 						return m_complaint;
-					return m_complaint ?? parent.Complaint;
+					return parent.Complaint;
 				}
 				set { m_complaint = value; }
 			}
@@ -347,6 +346,8 @@ namespace Rynchodon.Autopilot.Data
 		public PseudoBlock LastLandingBlock { get; set; }
 
 		public Shopper Shopper { get; set; }
+
+		public int WelderUnfinishedBlocks { get; set; }
 
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{

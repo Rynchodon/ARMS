@@ -112,6 +112,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					continue;
 				foreach (IMyTextPanel panel in panels)
 				{
+					if (!((IMyCubeBlock)autopilot).canControlBlock((IMyCubeBlock)panel))
+						continue;
+
 					string name = panel.DisplayNameText;
 					if (name.Length < bestMatchLength && name.Contains(panelName))
 					{

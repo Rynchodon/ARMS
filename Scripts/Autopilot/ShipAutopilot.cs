@@ -78,7 +78,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		public const uint UpdateFrequency = 3u;
-		public const ushort ModId_CustomInfo = 54311;
+		//public const ushort ModId_CustomInfo = 54311;
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		/// <param name="block">The block to check</param>
 		/// <returns>True iff the given block is an autopilot block.</returns>
-		public static bool IsAutopilotBlock(IMyCubeBlock block)
+		public static bool IsAutopilotBlock(VRage.Game.ModAPI.Ingame.IMyCubeBlock block)
 		{
 			if (block is MyCockpit)
 				return block.BlockDefinition.SubtypeId.Contains(subtype_autopilotBlock);
@@ -139,7 +139,7 @@ namespace Rynchodon.Autopilot
 			return false;
 		}
 
-		private enum State : byte { Disabled, Player, Enabled, Halted, Closed }
+		public enum State : byte { Disabled, Player, Enabled, Halted, Closed }
 
 		public readonly ShipControllerBlock m_block;
 		private readonly Logger m_logger;
@@ -152,7 +152,7 @@ namespace Rynchodon.Autopilot
 		private TimeSpan m_nextAllowedInstructions = TimeSpan.MinValue;
 		private TimeSpan m_endOfHalt;
 
-		private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
+		//private StringBuilder m_customInfo_build = new StringBuilder(), m_customInfo_send = new StringBuilder();
 		private List<byte> m_customInfo_message = new List<byte>();
 		private ulong m_nextCustomInfo;
 
@@ -164,7 +164,7 @@ namespace Rynchodon.Autopilot
 		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
 		// TODO: these two might cause confusion, get from AutopilotTerminal as it is always available
-		public StringBuilder CustomInfo { get { return m_customInfo_send; } }
+		public StringBuilder CustomInfo { get { return new StringBuilder(); } }
 		public bool Enabled { get { return value_state == State.Enabled; } }
 
 		private State m_state
@@ -507,159 +507,195 @@ namespace Rynchodon.Autopilot
 
 		private void UpdateCustomInfo()
 		{
-			if (m_state == State.Halted)
-				m_customInfo_build.AppendLine("Autopilot crashed, see log for details");
-			else
-				BuildCustomInfo();
+			AutopilotTerminal ApTerm = m_block.AutopilotTerminal;
+			AllNavigationSettings.SettingsLevel Settings_Current = m_navSet.Settings_Current;
 
-			if (!m_customInfo_build.EqualsIgnoreCapacity( m_customInfo_send))
+			AutopilotTerminal.AutopilotFlags flags = AutopilotTerminal.AutopilotFlags.None;
+			if (m_controlledGrid != null)
+				flags |= AutopilotTerminal.AutopilotFlags.HasControl;
+			if (m_mover.Pathfinder != null)
 			{
-				StringBuilder temp = m_customInfo_send;
-				m_customInfo_send = m_customInfo_build;
-				m_customInfo_build = temp;
-				SendCustomInfo();
+				if (!m_mover.Pathfinder.ReportCanMove)
+				{
+					flags |= AutopilotTerminal.AutopilotFlags.MovementBlocked;
+					ApTerm.m_blockedBy.Value = m_mover.Pathfinder.MoveObstruction != null ? m_mover.Pathfinder.MoveObstruction.EntityId : 0L;
+					if (!m_mover.Pathfinder.ReportCanRotate)
+						flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
+				}
+				else if (!m_mover.Pathfinder.ReportCanRotate)
+				{
+					flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
+					ApTerm.m_blockedBy.Value = m_mover.Pathfinder.RotateObstruction != null ? m_mover.Pathfinder.RotateObstruction.EntityId : 0L;
+				}
 			}
+			EnemyFinder ef = Settings_Current.EnemyFinder;
+			if (ef != null && ef.Grid == null)
+			{
+				flags |= AutopilotTerminal.AutopilotFlags.EnemyFinderIssue;
+				ApTerm.m_reasonCannotTarget.Value = ef.m_reason;
+				ApTerm.m_enemyFinderBestTarget.Value = ef.m_bestGrid.Entity.EntityId;
+			}
+			ApTerm.m_autopilotFlags.Value = flags;
+
+			ApTerm.m_autopilotStatus.Value = m_state;
+			ApTerm.m_waitUntil.Value = (DateTime.UtcNow + Settings_Current.WaitUntil - Globals.ElapsedTime).Ticks;
+			ApTerm.SetDistance(Settings_Current.Distance, Settings_Current.DistanceAngle);
+			ApTerm.m_welderUnfinishedBlocks.Value = m_navSet.WelderUnfinishedBlocks;
+			ApTerm.m_complaint.Value = Settings_Current.Complaint;
+
+			//if (m_state == State.Halted)
+			//	m_customInfo_build.AppendLine("Autopilot crashed, see log for details");
+			//else
+			//	BuildCustomInfo();
+
+			//if (!m_customInfo_build.EqualsIgnoreCapacity( m_customInfo_send))
+			//{
+			//	StringBuilder temp = m_customInfo_send;
+			//	m_customInfo_send = m_customInfo_build;
+			//	m_customInfo_build = temp;
+			//	SendCustomInfo();
+			//}
 			//else
 			//	m_logger.debugLog("no change in custom info", "UpdateCustomInfo()");
 
-			m_customInfo_build.Clear();
+			//m_customInfo_build.Clear();
 		}
 
-		private void BuildCustomInfo()
-		{
-			if (m_controlledGrid == null)
-			{
-				if (!m_block.AutopilotControl)
-					m_customInfo_build.AppendLine("Disabled");
-				else if (m_block.CubeGrid.IsStatic)
-					m_customInfo_build.AppendLine("Grid is a station");
-				//else if (m_block.CubeGrid.BigOwners.Count == 0)
-				//	m_customInfo_build.AppendLine("Grid is unowned");
-				else if (!m_block.Controller.IsWorking)
-					m_customInfo_build.AppendLine("Not working");
-				//else if (!m_block.CubeGrid.BigOwners.Contains(m_block.Controller.OwnerId))
-				//	m_customInfo_build.AppendLine("Block cannot control grid");
-				else
-				{
-					MyCubeGrid mcg = m_block.CubeGrid as MyCubeGrid;
-					if (mcg.HasMainCockpit() && !m_block.Controller.IsMainCockpit)
-						m_customInfo_build.AppendLine("Not main cockpit");
-					else
-						m_customInfo_build.AppendLine("Another autpilot controlling ship");
-				}
-				return;
-			}
+		//private void BuildCustomInfo()
+		//{
+		//	if (m_controlledGrid == null)
+		//	{
+		//		if (!m_block.AutopilotControl)
+		//			m_customInfo_build.AppendLine("Disabled");
+		//		else if (m_block.CubeGrid.IsStatic)
+		//			m_customInfo_build.AppendLine("Grid is a station");
+		//		//else if (m_block.CubeGrid.BigOwners.Count == 0)
+		//		//	m_customInfo_build.AppendLine("Grid is unowned");
+		//		else if (!m_block.Controller.IsWorking)
+		//			m_customInfo_build.AppendLine("Not working");
+		//		//else if (!m_block.CubeGrid.BigOwners.Contains(m_block.Controller.OwnerId))
+		//		//	m_customInfo_build.AppendLine("Block cannot control grid");
+		//		else
+		//		{
+		//			MyCubeGrid mcg = m_block.CubeGrid as MyCubeGrid;
+		//			if (mcg.HasMainCockpit() && !m_block.Controller.IsMainCockpit)
+		//				m_customInfo_build.AppendLine("Not main cockpit");
+		//			else
+		//				m_customInfo_build.AppendLine("Another autpilot controlling ship");
+		//		}
+		//		return;
+		//	}
 
-			bool moving = true;
+		//	bool moving = true;
 
-			TimeSpan waitUntil = m_navSet.Settings_Current.WaitUntil;
-			if (waitUntil > Globals.ElapsedTime)
-			{
-				moving = false;
-				m_customInfo_build.Append("Waiting for ");
-				m_customInfo_build.AppendLine(PrettySI.makePretty(waitUntil - Globals.ElapsedTime));
-			}
+		//	TimeSpan waitUntil = m_navSet.Settings_Current.WaitUntil;
+		//	if (waitUntil > Globals.ElapsedTime)
+		//	{
+		//		moving = false;
+		//		m_customInfo_build.Append("Waiting for ");
+		//		m_customInfo_build.AppendLine(PrettySI.makePretty(waitUntil - Globals.ElapsedTime));
+		//	}
 
-			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid);
-			if (controlling != null)
-			{
-				moving = false;
-				m_customInfo_build.Append("Player controlling: ");
-				m_customInfo_build.AppendLine(controlling.DisplayName);
-			}
+		//	IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_controlledGrid);
+		//	if (controlling != null)
+		//	{
+		//		moving = false;
+		//		m_customInfo_build.Append("Player controlling: ");
+		//		m_customInfo_build.AppendLine(controlling.DisplayName);
+		//	}
 
-			if (moving)
-			{
+		//	if (moving)
+		//	{
 
-				Pathfinder.Pathfinder path = m_mover.Pathfinder;
-				if (path != null)
-				{
-					if (!path.ReportCanMove || !path.ReportCanRotate)
-					{
-						m_customInfo_build.AppendLine("Pathfinder:");
-						if (!path.ReportCanMove)
-						{
-							if (path.MoveObstruction != null)
-							{
-								m_customInfo_build.Append("Movement blocked by ");
-								m_customInfo_build.AppendLine(path.MoveObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
-							}
-							else
-								m_customInfo_build.AppendLine("Cannot move");
-						}
-						else if (!path.ReportCanRotate)
-						{
-							if (path.RotateObstruction != null)
-							{
-								m_customInfo_build.Append("Rotation blocked by ");
-								m_customInfo_build.AppendLine(path.RotateObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
-							}
-							else
-								m_customInfo_build.AppendLine("Cannot rotate safely");
-						}
-						m_customInfo_build.AppendLine();
-					}
-				}
+		//		Pathfinder.Pathfinder path = m_mover.Pathfinder;
+		//		if (path != null)
+		//		{
+		//			if (!path.ReportCanMove || !path.ReportCanRotate)
+		//			{
+		//				m_customInfo_build.AppendLine("Pathfinder:");
+		//				if (!path.ReportCanMove)
+		//				{
+		//					if (path.MoveObstruction != null)
+		//					{
+		//						m_customInfo_build.Append("Movement blocked by ");
+		//						m_customInfo_build.AppendLine(path.MoveObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+		//					}
+		//					else
+		//						m_customInfo_build.AppendLine("Cannot move");
+		//				}
+		//				else if (!path.ReportCanRotate)
+		//				{
+		//					if (path.RotateObstruction != null)
+		//					{
+		//						m_customInfo_build.Append("Rotation blocked by ");
+		//						m_customInfo_build.AppendLine(path.RotateObstruction.GetNameForDisplay(m_block.CubeBlock.OwnerId));
+		//					}
+		//					else
+		//						m_customInfo_build.AppendLine("Cannot rotate safely");
+		//				}
+		//				m_customInfo_build.AppendLine();
+		//			}
+		//		}
 
-				INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
-				if (navM != null)
-				{
-					navM.AppendCustomInfo(m_customInfo_build);
-					if (!float.IsNaN(m_navSet.Settings_Current.Distance))
-					{
-						m_customInfo_build.Append("Distance: ");
-						m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
-					}
-				}
+		//		INavigatorMover navM = m_navSet.Settings_Current.NavigatorMover;
+		//		if (navM != null)
+		//		{
+		//			navM.AppendCustomInfo(m_customInfo_build);
+		//			if (!float.IsNaN(m_navSet.Settings_Current.Distance))
+		//			{
+		//				m_customInfo_build.Append("Distance: ");
+		//				m_customInfo_build.AppendLine(m_navSet.PrettyDistance());
+		//			}
+		//		}
 
-				INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
-				if (navR != null && navR != navM)
-					navR.AppendCustomInfo(m_customInfo_build);
-			}
+		//		INavigatorRotator navR = m_navSet.Settings_Current.NavigatorRotator;
+		//		if (navR != null && navR != navM)
+		//			navR.AppendCustomInfo(m_customInfo_build);
+		//	}
 
-			EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
-			if (ef != null && ef.Grid == null)
-			{
-				m_customInfo_build.Append("Enemy finder: ");
-				switch (ef.m_reason)
-				{
-					case GridFinder.ReasonCannotTarget.None:
-						m_customInfo_build.AppendLine("No enemy detected");
-						break;
-					case GridFinder.ReasonCannotTarget.Too_Far:
-						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
-						m_customInfo_build.AppendLine(" is too far");
-						break;
-					case GridFinder.ReasonCannotTarget.Too_Fast:
-						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
-						m_customInfo_build.AppendLine(" is too fast");
-						break;
-					case GridFinder.ReasonCannotTarget.Grid_Condition:
-						m_customInfo_build.Append(ef.m_bestGrid.HostileName());
-						m_customInfo_build.AppendLine(" cannot be targeted");
-						break;
-				}
-			}
+		//	EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
+		//	if (ef != null && ef.Grid == null)
+		//	{
+		//		m_customInfo_build.Append("Enemy finder: ");
+		//		switch (ef.m_reason)
+		//		{
+		//			case GridFinder.ReasonCannotTarget.None:
+		//				m_customInfo_build.AppendLine("No enemy detected");
+		//				break;
+		//			case GridFinder.ReasonCannotTarget.Too_Far:
+		//				m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+		//				m_customInfo_build.AppendLine(" is too far");
+		//				break;
+		//			case GridFinder.ReasonCannotTarget.Too_Fast:
+		//				m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+		//				m_customInfo_build.AppendLine(" is too fast");
+		//				break;
+		//			case GridFinder.ReasonCannotTarget.Grid_Condition:
+		//				m_customInfo_build.Append(ef.m_bestGrid.HostileName());
+		//				m_customInfo_build.AppendLine(" cannot be targeted");
+		//				break;
+		//		}
+		//	}
 
-			string complaint = m_navSet.Settings_Current.Complaint;
-			if (complaint != null)
-				m_customInfo_build.AppendLine(complaint);
-		}
+		//	string complaint = m_navSet.Settings_Current.Complaint;
+		//	if (complaint != null)
+		//		m_customInfo_build.AppendLine(complaint);
+		//}
 
-		private void SendCustomInfo()
-		{
-			ByteConverter.AppendBytes(m_customInfo_message, m_block.CubeBlock.EntityId);
-			ByteConverter.AppendBytes(m_customInfo_message, m_customInfo_send.ToString());
+		//private void SendCustomInfo()
+		//{
+		//	ByteConverter.AppendBytes(m_customInfo_message, m_block.CubeBlock.EntityId);
+		//	ByteConverter.AppendBytes(m_customInfo_message, m_customInfo_send.ToString());
 
-			m_logger.debugLog("sending message, length: " + m_customInfo_message.Count);
-			m_logger.debugLog("Message:\n" + m_customInfo_send);
-			byte[] asByteArray = m_customInfo_message.ToArray();
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
-			});
+		//	m_logger.debugLog("sending message, length: " + m_customInfo_message.Count);
+		//	m_logger.debugLog("Message:\n" + m_customInfo_send);
+		//	byte[] asByteArray = m_customInfo_message.ToArray();
+		//	MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+		//		MyAPIGateway.Multiplayer.SendMessageToOthers(ModId_CustomInfo, asByteArray);
+		//	});
 
-			m_customInfo_message.Clear();
-		}
+		//	m_customInfo_message.Clear();
+		//}
 
 		#endregion Custom Info
 

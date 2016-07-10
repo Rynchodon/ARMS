@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Navigator
 				Arm();
 				if (!m_weaponArmed)
 				{
-					m_navSet.Settings_Commands.Complaint = "Fighter is unarmed";
+					m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterUnarmed;
 					return false;
 				}
 			}
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Navigator
 			GetPrimaryWeapon();
 			if (m_weapon_primary == null)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter has no weapon to target with";
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterNoPrimary;
 				return false;
 			}
 
@@ -84,7 +84,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_weapons_all.Count == 0)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter has no usable weapons";
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterNoWeapons;
 				return false;
 			}
 

@@ -98,7 +98,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_shopAfter)
 					CreateShopper();
 				m_navSet.OnTaskComplete_NavMove();
-				m_navSet.Settings_Commands.Complaint = m_damagedBlocks.Count + m_projectedBlocks.Count + " blocks still need to be welded";
+				m_navSet.WelderUnfinishedBlocks = m_damagedBlocks.Count + m_projectedBlocks.Count;
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.WelderNotFinished;
 				return;
 			}
 
