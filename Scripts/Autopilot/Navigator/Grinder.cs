@@ -55,6 +55,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private IMyCubeGrid value_enemy;
 		private Stage value_stage;
 
+		private Vector3I m_previousCell;
+
 		private Stage m_stage
 		{
 			get { return value_stage; }
@@ -217,7 +219,9 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Vector3D grindPosition = m_navGrind.WorldPosition;
-			Vector3I cellPosition = m_enemyCells.GetClosestOccupiedCell(m_controlBlock.CubeGrid.GetCentre());
+			Vector3I cellPosition;
+			Vector3D gridCentre = m_controlBlock.CubeGrid.GetCentre();
+			m_enemyCells.GetClosestOccupiedCell(ref gridCentre, ref m_previousCell, out cellPosition);
 			IMySlimBlock block = m_enemy.GetCubeBlock(cellPosition);
 			if (block == null)
 			{

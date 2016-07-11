@@ -308,7 +308,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (m_landGearWithoutTargetBlock)
 				{
-					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_gridFinder.Grid.Entity.GetCentre() - m_navBlock.WorldPosition));
+					m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_navBlock.Grid, m_targetPosition));
 					return;
 				}
 

@@ -121,42 +121,53 @@ namespace Rynchodon
 			}
 		}
 
+		public IEnumerable<Vector3I> EachCell()
+		{
+			using (lock_cellPositions.AcquireSharedUsing())
+			{
+				foreach (Vector3I cell in CellPositions)
+					yield return cell;
+
+				foreach (MyCubeBlock door in LargeDoors)
+				{
+					if (door.Closed)
+						continue;
+
+					foreach (var part in door.Subparts)
+						yield return m_grid.WorldToGridInteger(part.Value.PositionComp.GetPosition());
+				}
+			}
+		}
+
 		/// <summary>
 		/// Gets the closest occupied cell.
 		/// </summary>
-		public Vector3I GetClosestOccupiedCell(Vector3I startPoint)
+		public void GetClosestOccupiedCell(ref Vector3I startCell, ref Vector3I previousCell, out Vector3I closestCell)
 		{
-			int closestDistance = int.MaxValue;
-			Vector3I closest = startPoint;
-			ForEach(cell => {
-				int dist = cell.DistanceSquared(startPoint);
+			closestCell = previousCell;
+			int closestDistance;
+			using (lock_cellPositions.AcquireSharedUsing())
+				// bias against switching
+				closestDistance = CellPositions.Contains(previousCell) ? previousCell.DistanceSquared(startCell) - 2 : int.MaxValue;
+
+			foreach (Vector3I cell in EachCell())
+			{
+				int dist = cell.DistanceSquared(startCell);
 				if (dist < closestDistance)
 				{
-					closest = cell;
+					closestCell = cell;
 					closestDistance = dist;
 				}
-			});
-
-			return closest;
+			}
 		}
 
 		/// <summary>
 		/// Gets the closest occupied cell.
 		/// </summary>
-		public Vector3I GetClosestOccupiedCell(Vector3D startWorld)
+		public void GetClosestOccupiedCell(ref Vector3D startWorld, ref Vector3I previousCell, out Vector3I closestCell)
 		{
 			Vector3I startPoint = m_grid.WorldToGridInteger(startWorld);
-			return GetClosestOccupiedCell(startPoint);
-		}
-
-		/// <summary>
-		/// Gets the position of the closest occupied cell.
-		/// </summary>
-		public Vector3D GetClosestOccupiedCellPosition(Vector3D startWorld)
-		{
-			Vector3I startPoint = m_grid.WorldToGridInteger(startWorld);
-			Vector3I closestCell = GetClosestOccupiedCell(startPoint);
-			return m_grid.GridIntegerToWorld(closestCell);
+			GetClosestOccupiedCell(ref startPoint, ref previousCell, out closestCell);
 		}
 
 		private void grid_OnClosing(IMyEntity obj)
