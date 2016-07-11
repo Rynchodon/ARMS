@@ -4,10 +4,6 @@ using VRageMath;
 namespace Rynchodon.Utility.Vectors
 {
 
-	/*
-	 * Trying something new: multiple structs to replace RelativeDirection3
-	 */
-
 	/// <summary>
 	/// Directional vector in block space.
 	/// </summary>
