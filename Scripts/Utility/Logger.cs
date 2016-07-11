@@ -52,6 +52,8 @@ namespace Rynchodon
 
 			public int maxNumLines = 1000000;
 			public int numLines = 0;
+
+			public LockedDictionary<string, string> m_fileMap = new LockedDictionary<string, string>();
 		}
 
 		private static StaticVariables Static = new StaticVariables();
@@ -173,7 +175,7 @@ namespace Rynchodon
 		{
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(filename, typeof(Logger)))
 				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(filename, typeof(Logger)); }
-				catch { alwaysLog("Logger", "failed to delete file: " + filename, severity.INFO); }
+				catch { AlwaysLog("Logger", "failed to delete file: " + filename, severity.INFO); }
 		}
 
 		private static bool createLog()
@@ -191,7 +193,7 @@ namespace Rynchodon
 					if (Static.logWriter == null)
 						try
 						{ Static.logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
-						catch { alwaysLog("Logger", "failed to start writer for file: log-" + i + ".txt", severity.INFO); }
+						catch { AlwaysLog("Logger", "failed to start writer for file: log-" + i + ".txt", severity.INFO); }
 					else
 						deleteIfExists("log-" + i + ".txt");
 			}
@@ -257,16 +259,31 @@ namespace Rynchodon
 		}
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public static void debugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
+		public static void DebugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		public static void DebugLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				log(context, TryGetActualName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
+		public static void AlwaysLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
 			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
-		public static void alwaysLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
-			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+			log(context, TryGetActualName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -286,7 +303,7 @@ namespace Rynchodon
 				return;
 
 			if (level <= severity.WARNING)
-				debugNotify("Logger: " + level, 2000, level);
+				DebugNotify("Logger: " + level, 2000, level);
 			else if (level > MinimumLevel)
 				return;
 
@@ -317,7 +334,7 @@ namespace Rynchodon
 				return;
 
 			if (level <= severity.WARNING)
-				debugNotify("Logger: " + level, 2000, level);
+				DebugNotify("Logger: " + level, 2000, level);
 
 			Static.m_logItems.Enqueue(new LogItem()
 			{
@@ -453,8 +470,8 @@ namespace Rynchodon
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public static void debugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
-		{ notify(message, disappearTimeMs, level); }
+		public static void DebugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		{ Notify(message, disappearTimeMs, level); }
 
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional.
@@ -463,7 +480,7 @@ namespace Rynchodon
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
-		public static void notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
+		public static void Notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{
 			if (Static == null)
 				return;
@@ -496,6 +513,20 @@ namespace Rynchodon
 				default:
 					return MyFontEnum.White;
 			}
+		}
+
+		public static void SetFileName(string actualName, [CallerFilePath] string tmpName = null)
+		{
+			if (Static != null)
+				Static.m_fileMap[tmpName] = actualName;
+		}
+
+		private static string TryGetActualName(string tmpName)
+		{
+			string result;
+			if (Static != null && Static.m_fileMap.TryGetValue(tmpName,out result))
+				return result;
+			return tmpName;
 		}
 
 	}

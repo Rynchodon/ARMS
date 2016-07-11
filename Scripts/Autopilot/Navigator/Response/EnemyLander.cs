@@ -11,14 +11,16 @@ namespace Rynchodon.Autopilot.Navigator.Response
 	{
 
 		private readonly Logger m_logger;
-		private readonly AllNavigationSettings m_navSet;
+		private readonly Mover m_mover;
 		private readonly FlyToGrid m_flyToGrid;
 		private readonly bool m_hasLandingGear;
 
-		public EnemyLander(Mover mover, AllNavigationSettings navSet, PseudoBlock landingGear)
+		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
+
+		public EnemyLander(Mover mover, PseudoBlock landingGear)
 		{
 			this.m_logger = new Logger(GetType().Name);
-			this.m_navSet = navSet;
+			this.m_mover = mover;
 
 			if (landingGear == null)
 			{
@@ -28,15 +30,15 @@ namespace Rynchodon.Autopilot.Navigator.Response
 			this.m_hasLandingGear = landingGear.Block is IMyLandingGear;
 			if (!this.m_hasLandingGear)
 			{
-				m_logger.debugLog("landingGear param is not landing geat: " + landingGear.Block.getBestName() + ", not going to land");
+				m_logger.debugLog("landingGear param is not landing gear: " + landingGear.Block.getBestName() + ", not going to land");
 				return;
 			}
-			this.m_flyToGrid = new FlyToGrid(mover, navSet, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);
+			this.m_flyToGrid = new FlyToGrid(mover, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);
 		}
 
 		public bool CanRespond()
 		{
-			return m_hasLandingGear;
+			return m_hasLandingGear && m_mover.Thrust.CanMoveAnyDirection();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)

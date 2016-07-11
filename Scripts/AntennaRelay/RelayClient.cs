@@ -28,6 +28,24 @@ namespace Rynchodon.AntennaRelay
 			return new RelayClient(block);
 		}
 
+		public static bool TryGetRelayPart(IMyCubeBlock block, out IRelayPart relayPart)
+		{
+			RelayNode node;
+			if (Registrar.TryGetValue(block, out node))
+			{
+				relayPart = node;
+				return true;
+			}
+			RelayClient client;
+			if (Registrar.TryGetValue(block, out client))
+			{
+				relayPart = client;
+				return true;
+			}
+			relayPart = null;
+			return false;
+		}
+
 		private readonly IMyCubeBlock m_block;
 		private readonly Logger m_logger;
 

@@ -42,7 +42,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_weaponDataDirty = true;
 
 		public Fighter(Mover mover, AllNavigationSettings navSet)
-			: base(mover, navSet)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
 			Arm();
@@ -62,14 +62,18 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (!m_weaponArmed)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter is unarmed";
-				return false;
+				Arm();
+				if (!m_weaponArmed)
+				{
+					m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterUnarmed;
+					return false;
+				}
 			}
 
 			GetPrimaryWeapon();
 			if (m_weapon_primary == null)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter has no weapon to target with";
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterNoPrimary;
 				return false;
 			}
 
@@ -80,7 +84,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_weapons_all.Count == 0)
 			{
-				m_navSet.Settings_Commands.Complaint = "Fighter has no usable weapons";
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterNoWeapons;
 				return false;
 			}
 

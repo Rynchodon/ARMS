@@ -332,6 +332,9 @@ namespace Rynchodon
 		public static bool IsValid(this float number)
 		{ return !float.IsNaN(number) && !float.IsInfinity(number); }
 
+		public static bool IsValid(this double number)
+		{ return !double.IsNaN(number) && !double.IsInfinity(number); }
+
 		public static bool NullOrClosed(this IMyEntity entity)
 		{ return entity == null || entity.MarkedForClose || entity.Closed; }
 
@@ -344,13 +347,16 @@ namespace Rynchodon
 				try { invoke.Invoke(); }
 				catch (Exception ex)
 				{
-					Logger.alwaysLog(System.IO.Path.GetFileName(callerFile), "Exception: " + ex, Logger.severity.ERROR, member: callerMember, lineNumber: callerLineNumber);
+					Logger.AlwaysLog("Exception: " + ex, Logger.severity.ERROR, filePath: callerFile, member: callerMember, lineNumber: callerLineNumber);
 				}
 			});
 		}
 
 		public static bool EqualsIgnoreCapacity(this StringBuilder first, StringBuilder second)
 		{
+			if (object.ReferenceEquals(first, second))
+				return true;
+
 			if (first.Length != second.Length)
 				return false;
 

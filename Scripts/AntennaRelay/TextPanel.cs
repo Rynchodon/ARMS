@@ -342,15 +342,10 @@ namespace Rynchodon.AntennaRelay
 			List<SortableAutopilot> autopilots = ResourcePool<List<SortableAutopilot>>.Get();
 			Vector3D mypos = m_block.GetPosition();
 
-			Registrar.ForEach<ShipAutopilot>(ap => {
-				RelayStorage apStore = ap.m_block.NetworkStorage;
-				if (apStore != null && apStore == store && m_block.canControlBlock(ap.m_block.CubeBlock))
-				{
-					//myLogger.debugLog("adding: " + ap.m_block.CubeBlock.DisplayNameText, "DisplyAutopilotStatus()");
+			Registrar.ForEach<AutopilotTerminal>(ap => {
+				IRelayPart relayPart;
+				if (RelayClient.TryGetRelayPart((IMyCubeBlock)ap.m_block, out relayPart) && relayPart.GetStorage() == store && m_block.canControlBlock(ap.m_block))
 					autopilots.Add(new SortableAutopilot(ap, mypos));
-				}
-				//else
-				//	myLogger.debugLog("not adding: " + ap.m_block.CubeBlock.DisplayNameText + ", " + (apStore != null) + ", " + (apStore == store) + ", " + (m_block.canConsiderFriendly(ap.m_block.CubeBlock)), "DisplyAutopilotStatus()");
 			});
 
 			autopilots.Sort();
@@ -368,7 +363,8 @@ namespace Rynchodon.AntennaRelay
 				displayText.Append(PrettySI.makePretty(ap.Distance));
 				displayText.AppendLine("m");
 
-				displayText.Append(ap.Autopilot.CustomInfo);
+				ap.Autopilot.AppendingCustomInfo(displayText);
+
 				displayText.AppendLine();
 
 				count++;
@@ -501,7 +497,7 @@ namespace Rynchodon.AntennaRelay
 
 			private float? distance;
 
-			public readonly ShipAutopilot Autopilot;
+			public readonly AutopilotTerminal Autopilot;
 			public readonly float DistanceSquared;
 
 			public float Distance
@@ -514,21 +510,23 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 
-			public SortableAutopilot(ShipAutopilot autopilot, Vector3D mypos)
+			public SortableAutopilot(AutopilotTerminal autopilot, Vector3D mypos)
 			{
+				this.distance = null;
 				this.Autopilot = autopilot;
-				this.DistanceSquared = (float)Vector3D.DistanceSquared(autopilot.m_block.CubeBlock.GetPosition(), mypos);
+				this.DistanceSquared = (float)Vector3D.DistanceSquared(autopilot.m_block.GetPosition(), mypos);
 			}
 
 			public int CompareTo(SortableAutopilot other)
 			{
-				if (this.Autopilot.Enabled == other.Autopilot.Enabled)
+				if (this.Autopilot.m_autopilotStatus.Value == other.Autopilot.m_autopilotStatus.Value)
+				{
+					Static.s_logger.debugLog("same status: " + this.Autopilot.m_autopilotStatus.Value);
 					return this.DistanceSquared.CompareTo(other.DistanceSquared);
+				}
 
-				if (this.Autopilot.Enabled)
-					return -1;
-				else
-					return 1;
+				Static.s_logger.debugLog("diff status: " + this.Autopilot.m_autopilotStatus.Value + " vs " + other.Autopilot.m_autopilotStatus.Value + ", diff: " + ((int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value));
+				return (int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value;
 			}
 
 		}

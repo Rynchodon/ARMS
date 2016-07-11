@@ -311,7 +311,7 @@ namespace Rynchodon.AntennaRelay
 				proj.m_options.Value &= ~opt;
 
 			if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
-				MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
+				block.SwitchTerminalTo();
 		}
 
 		private static float GetRangeDetection(IMyTerminalBlock block)

@@ -400,9 +400,15 @@ namespace Rynchodon.Weapons
 			{
 				instance.m_termControl_weaponFlags_ev.Value |= flag;
 				if (flag == WeaponFlags.EntityId)
+				{
 					instance.m_termControl_weaponFlags_ev.Value &= ~WeaponFlags.Golis;
+					block.SwitchTerminalTo();
+				}
 				else if (flag == WeaponFlags.Golis)
+				{
 					instance.m_termControl_weaponFlags_ev.Value &= ~WeaponFlags.EntityId;
+					block.SwitchTerminalTo();
+				}
 			}
 			else
 				instance.m_termControl_weaponFlags_ev.Value &= ~flag;

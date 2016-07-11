@@ -22,8 +22,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_character;
 		private TimeSpan m_timeoutAt;
 
-		public FlyToCharacter(Mover mover, AllNavigationSettings navSet, string charName)
-			: base(mover, navSet)
+		public FlyToCharacter(Mover mover, string charName)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => charName);
 			this.m_charName = charName.LowerRemoveWhitespace();

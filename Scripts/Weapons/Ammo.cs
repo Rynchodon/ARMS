@@ -31,7 +31,7 @@ namespace Rynchodon.Weapons
 				}
 				catch (Exception ex)
 				{
-					Logger.debugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
+					Logger.DebugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
 					Logger log = new Logger(ammo.Id.SubtypeName);
 					log.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
 					log.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
@@ -194,7 +194,7 @@ namespace Rynchodon.Weapons
 				}
 				catch (Exception ex)
 				{
-					Logger.debugNotify("Failed to load radar description for an ammo", 10000, Logger.severity.ERROR);
+					Logger.DebugNotify("Failed to load radar description for an ammo", 10000, Logger.severity.ERROR);
 					myLogger.alwaysLog("Failed to load radar description for an ammo", Logger.severity.ERROR);
 					myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					RadarDefinition = null;

@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Data
 			private EnemyFinder m_enemyFinder;
 			private INavigatorMover m_navigatorMover;
 			private INavigatorRotator m_navigatorRotator;
-			private string m_complaint;
+			private InfoString.StringId m_complaint;
 			private BlockNameOrientation m_destBlock;
 			private IMyEntity m_destEntity;
 
@@ -50,10 +50,10 @@ namespace Rynchodon.Autopilot.Data
 
 				m_destinationOffset = new PositionBlock() { vector = Vector3D.Zero };
 
-				m_destRadius = 100f;
+				m_destRadius = DefaultRadius;
 				m_distance = float.NaN;
 				m_distanceAngle = float.NaN;
-				m_speedTarget = ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed);
+				m_speedTarget = DefaultSpeed;
 				m_speedMaxRelative = float.MaxValue;
 
 				m_ignoreAsteroid = false;
@@ -143,16 +143,15 @@ namespace Rynchodon.Autopilot.Data
 			}
 
 			/// <summary>
-			/// <para>May be null</para>
-			/// <para>The active complaint.</para>
+			/// <para>Active complaints.</para>
 			/// </summary>
-			public string Complaint
+			public InfoString.StringId Complaint
 			{
 				get
 				{
-					if (parent == null)
+					if (parent == null || m_complaint != InfoString.StringId.None)
 						return m_complaint;
-					return m_complaint ?? parent.Complaint;
+					return parent.Complaint;
 				}
 				set { m_complaint = value; }
 			}
@@ -301,6 +300,10 @@ namespace Rynchodon.Autopilot.Data
 
 		}
 
+		public static float DefaultRadius { get { return 100f; } }
+
+		public static float DefaultSpeed { get { return ServerSettings.GetSetting<float>(ServerSettings.SettingName.fDefaultSpeed); } }
+
 		private readonly IMyCubeBlock defaultNavBlock;
 
 		/// <summary>Settings that are reset at the start of commands. Settings should be written here but not read.</summary>
@@ -343,6 +346,8 @@ namespace Rynchodon.Autopilot.Data
 		public PseudoBlock LastLandingBlock { get; set; }
 
 		public Shopper Shopper { get; set; }
+
+		public int WelderUnfinishedBlocks { get; set; }
 
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{

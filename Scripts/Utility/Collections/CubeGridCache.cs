@@ -11,8 +11,107 @@ namespace Rynchodon
 	/// <summary>
 	/// A better way to get cube blocks of type from a grid.
 	/// </summary>
+	/// TODO: re-write to separate blocks by subtype id
 	public class CubeGridCache
 	{
+
+		private class AllBlocksEnumerator : IEnumerator<IMyCubeBlock> 
+		{
+			private Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> m_dictionary;
+			private FastResourceLock m_fastLock;
+
+			private IEnumerator<ListSnapshots<IMyCubeBlock>> m_dictEnumerator;
+			private IEnumerator<IMyCubeBlock> value_snapshotEnumerator;
+
+			private IEnumerator<IMyCubeBlock> m_snapshotEnumerator
+			{
+				get { return value_snapshotEnumerator; }
+				set
+				{
+					if (value_snapshotEnumerator == value)
+						return;
+					if (value_snapshotEnumerator != null)
+						value_snapshotEnumerator.Dispose();
+					value_snapshotEnumerator = value;
+				}
+			}
+
+			public AllBlocksEnumerator(Dictionary<MyObjectBuilderType, ListSnapshots<IMyCubeBlock>> dict, FastResourceLock fastLock)
+			{
+				this.m_fastLock = fastLock;
+				this.m_dictionary = dict;
+				fastLock.AcquireSharedUsing();
+				m_dictEnumerator = m_dictionary.Values.GetEnumerator();
+			}
+
+			~AllBlocksEnumerator()
+			{
+				Dispose();
+			}
+
+			#region IEnumerator<IMyCubeBlock> Members
+
+			public IMyCubeBlock Current
+			{
+				get { return m_snapshotEnumerator == null ? null : m_snapshotEnumerator.Current; }
+			}
+
+			#endregion
+
+			#region IDisposable Members
+
+			public void Dispose()
+			{
+				if (m_fastLock == null)
+					return;
+				FastResourceLock fastLock = m_fastLock;
+				m_fastLock = null;
+				m_dictionary = null;
+				m_dictEnumerator.Dispose();
+				m_dictEnumerator = null;
+				m_snapshotEnumerator = null;
+				fastLock.ReleaseShared();
+			}
+
+			#endregion
+
+			#region IEnumerator Members
+
+			object System.Collections.IEnumerator.Current
+			{
+				get { return Current; }
+			}
+
+			public bool MoveNext()
+			{
+				if (m_snapshotEnumerator != null && m_snapshotEnumerator.MoveNext())
+					return true;
+
+				if (m_dictEnumerator.MoveNext())
+				{
+					m_snapshotEnumerator = m_dictEnumerator.Current.myList.GetEnumerator();
+					if (m_snapshotEnumerator.MoveNext())
+						return true;
+					return MoveNext();
+				}
+				else
+					return false;
+			}
+
+			public void Reset()
+			{
+				m_dictEnumerator.Reset();
+				m_snapshotEnumerator = null;
+			}
+
+			#endregion
+
+			public IEnumerator<IMyCubeBlock> GetEnumerator()
+			{
+				return this;
+			}
+		}
+
 		private static FastResourceLock lock_constructing = new FastResourceLock();
 		public static LockedDictionary<string, MyObjectBuilderType> DefinitionType = new LockedDictionary<string, MyObjectBuilderType>();
 
@@ -215,6 +314,39 @@ namespace Rynchodon
 				return count;
 			}
 			finally { lock_CubeBlocks.ReleaseShared(); }
+		}
+
+		public IEnumerable<IMyCubeBlock> AllCubeBlocks()
+		{
+			foreach (IMyCubeBlock block in new AllBlocksEnumerator(CubeBlocks_Type, lock_CubeBlocks))
+				yield return block;
+		}
+
+		public static IEnumerable<IMyCubeBlock> AllCubeBlocks(IMyCubeGrid grid)
+		{
+			CubeGridCache cache = GetFor(grid);
+			if (cache == null)
+				return new IMyCubeBlock[] { }; // fail silently
+
+			return cache.AllCubeBlocks();
+		}
+
+		public IEnumerable<IMyCubeBlock> OneOfEachCubeBlock()
+		{
+			using (lock_CubeBlocks.AcquireSharedUsing())
+				foreach (var list in CubeBlocks_Type.Values)
+					if (list.Count != 0)
+						yield return list.myList[0];
+		}
+
+		public static IEnumerable<IMyCubeBlock> OneOfEachCubeBlock(IMyCubeGrid grid)
+		{
+			CubeGridCache cache = GetFor(grid);
+			if (cache == null)
+				yield break;
+
+			foreach (IMyCubeBlock block in cache.OneOfEachCubeBlock())
+				yield return block;
 		}
 
 		/// <summary>

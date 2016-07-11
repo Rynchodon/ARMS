@@ -28,8 +28,7 @@ namespace Rynchodon
 		{
 			get
 			{
-				using (lock_Dictionary.AcquireSharedUsing())
-					return Dictionary.Count;
+				return Dictionary.Count;
 			}
 		}
 
@@ -83,6 +82,9 @@ namespace Rynchodon
 				return Dictionary.TryGetValue(key, out value);
 		}
 
+		/// <summary>
+		/// For setting a value unreliably, if the dictionary does not already contain the specified key.
+		/// </summary>
 		public bool TrySet(TKey key, TValue value)
 		{
 			bool contains;
@@ -119,6 +121,27 @@ namespace Rynchodon
 				foreach (KeyValuePair<TKey, TValue> pair in Dictionary)
 					if (function(pair))
 						return;
+		}
+
+		public IEnumerable<TKey> KeysEnumerator()
+		{
+			using (lock_Dictionary.AcquireSharedUsing())
+				foreach (TKey key in Dictionary.Keys)
+					yield return key;
+		}
+
+		public IEnumerable<TValue> ValueEnumerator()
+		{
+			using (lock_Dictionary.AcquireSharedUsing())
+				foreach (TValue value in Dictionary.Values)
+					yield return value;
+		}
+
+		public IEnumerable<KeyValuePair<TKey, TValue>> GetEnumerator()
+		{
+			using (lock_Dictionary.AcquireSharedUsing())
+				foreach (KeyValuePair<TKey, TValue> pair in Dictionary)
+					yield return pair;
 		}
 
 	}

@@ -6,22 +6,6 @@ namespace Rynchodon
 	public static class StringExtensions
 	{
 
-		private static readonly Regex GPS_tag = new Regex(@"GPS:.*?:(-?\d+\.?\d*):(-?\d+\.?\d*):(-?\d+\.?\d*):");
-		private static readonly string GPS_replaceWith = @"$1, $2, $3";
-
-		[Obsolete("Use BlockInstruction")]
-		public static string getInstructions(this string displayName)
-		{
-			int start = displayName.IndexOf('[') + 1;
-			int end = displayName.IndexOf(']');
-			if (start > 0 && end > start) // has appropriate brackets
-			{
-				int length = end - start;
-				return displayName.Substring(start, length);
-			}
-			return null;
-		}
-
 		public static bool looseContains(this string bigString, string smallString)
 		{
 			VRage.Exceptions.ThrowIf<ArgumentNullException>(bigString == null, "bigString");
@@ -51,6 +35,8 @@ namespace Rynchodon
 				}
 			}
 
+			if (j == inputlen)
+				return input;
 			return new String(newarr, 0, j);
 		}
 
@@ -76,14 +62,9 @@ namespace Rynchodon
 			return new String(output, 0, outIndex);
 		}
 
-		public static int GpsToCSV(this string gpsString, out string csv)
+		public static bool Contains(this string bigString, string littleString, StringComparison compare = StringComparison.InvariantCultureIgnoreCase)
 		{
-			int count = 0;
-			csv = GPS_tag.Replace(gpsString, match => {
-				count++;
-				return match.Result(GPS_replaceWith);
-			});
-			return count;
+			return bigString.IndexOf(littleString, compare) != -1;
 		}
 
 	}

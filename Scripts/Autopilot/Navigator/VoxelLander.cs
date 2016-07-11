@@ -26,8 +26,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3D m_targetPostion;
 		private Stage m_stage;
 
-		public VoxelLander(Mover mover, AllNavigationSettings navSet, bool planet, PseudoBlock landBlock = null)
-			: base(mover, navSet)
+		public VoxelLander(Mover mover, bool planet, PseudoBlock landBlock = null)
+			: base(mover)
 		{
 			this.m_landBlock = landBlock ?? m_navSet.Settings_Current.LandingBlock;
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_landBlock.Block.getBestName());

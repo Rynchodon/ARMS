@@ -51,7 +51,7 @@ namespace Rynchodon.Attached
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				Logger.debugNotify("LandingGear encountered an exception", 10000, Logger.severity.ERROR);
+				Logger.DebugNotify("LandingGear encountered an exception", 10000, Logger.severity.ERROR);
 			}
 		}
 	}

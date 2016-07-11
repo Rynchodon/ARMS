@@ -33,11 +33,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Dictionary<string, int> m_components_inventory = new Dictionary<string, int>();
 		private List<IMySlimBlock> m_blocksWithInventory;
 
-		public WeldGrid(Mover mover, AllNavigationSettings navSet, string gridName, bool shopAfter)
-			: base(mover, navSet)
+		public WeldGrid(Mover mover, string gridName, bool shopAfter)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock);
-			this.m_finder = new GridFinder(navSet, m_controlBlock, gridName);
+			this.m_finder = new GridFinder(mover.NavSet, m_controlBlock, gridName);
 			this.m_shopAfter = shopAfter;
 
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -98,7 +98,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_shopAfter)
 					CreateShopper();
 				m_navSet.OnTaskComplete_NavMove();
-				m_navSet.Settings_Commands.Complaint = m_damagedBlocks.Count + m_projectedBlocks.Count + " blocks still need to be welded";
+				m_navSet.WelderUnfinishedBlocks = m_damagedBlocks.Count + m_projectedBlocks.Count;
+				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.WelderNotFinished;
 				return;
 			}
 

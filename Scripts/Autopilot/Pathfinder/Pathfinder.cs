@@ -651,7 +651,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (top.Physics != null)
 				new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, top, m_altPath_Waypoint - top.GetPosition());
 			else
-				new GOLIS(m_mover, m_navSet, m_altPath_Waypoint, AllNavigationSettings.SettingsLevelName.NavWay);
+				new GOLIS(m_mover, m_altPath_Waypoint, AllNavigationSettings.SettingsLevelName.NavWay);
 			m_navSet.Settings_Current.DestinationRadius = (float)Math.Max(Vector3D.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2d, 1d);
 			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, Logger.severity.DEBUG);
 		}

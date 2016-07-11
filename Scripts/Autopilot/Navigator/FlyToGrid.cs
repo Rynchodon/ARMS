@@ -93,9 +93,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public FlyToGrid(Mover mover, AllNavigationSettings navSet, string targetGrid = null,
-			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, GridFinder finder = null, PseudoBlock landingBlock = null)
-			: base(mover, navSet)
+		public FlyToGrid(Mover mover, string targetGrid = null, AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, GridFinder finder = null, PseudoBlock landingBlock = null)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_landingState.ToString());
 			this.m_targetBlock = m_navSet.Settings_Current.DestinationBlock;
@@ -165,7 +164,7 @@ namespace Rynchodon.Autopilot.Navigator
 					//	m_navSet.Settings_Task_NavRot.DestinationRadius = minDestRadius;
 					//}
 
-					new UnLander(mover, navSet, landingBlock);
+					new UnLander(mover, landingBlock);
 
 					m_landingHalfSize = landingBlock.Block.GetLengthInDirection(landingBlock.Block.LocalMatrix.GetClosestDirection(landingBlock.LocalMatrix.Forward)) * 0.5f;
 					m_logger.debugLog("m_landing direction: " + m_landingDirection + ", m_landingBlockSize: " + m_landingHalfSize);

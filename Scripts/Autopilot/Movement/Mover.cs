@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Movement
 		private const ulong WriggleAfter = 500ul, StuckAfter = WriggleAfter + 2000ul, MoveAwayAfter = StuckAfter + 100ul;
 
 		private readonly Logger m_logger;
-		private readonly AllNavigationSettings m_navSet;
+		public readonly AllNavigationSettings NavSet;
 
 		private IMyCubeGrid m_grid;
 		private GyroProfiler m_gyro;
@@ -96,11 +96,11 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		/// <param name="block">Controlling block for the grid</param>
 		/// <param name="NavSet">Navigation settings to use.</param>
-		public Mover(ShipControllerBlock block, AllNavigationSettings NavSet)
+		public Mover(ShipControllerBlock block)
 		{
 			this.m_logger = new Logger("Mover", block.Controller);
 			this.Block = block;
-			this.m_navSet = NavSet;
+			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 
 			CheckGrid();
 		}
@@ -246,7 +246,7 @@ namespace Rynchodon.Autopilot.Movement
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
 
-				if (distance + (landing ? landingSpeedFactor : 1f) < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(m_navSet.Settings_Current.Distance))
+				if (distance + (landing ? landingSpeedFactor : 1f) < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
 				{
 					m_bestDistance = distance;
 					m_lastMove = Globals.UpdateCount;
@@ -287,7 +287,7 @@ namespace Rynchodon.Autopilot.Movement
 				targetVelocity = Vector3.Dot(targetVelocity, destDir) * destDir;
 
 				// apply relative speed limit
-				float relSpeedLimit = m_navSet.Settings_Current.SpeedMaxRelative;
+				float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
 				if (landing)
 				{
 					float landingSpeed = Math.Max(distance * landingSpeedFactor, landingSpeedFactor);
@@ -311,12 +311,12 @@ namespace Rynchodon.Autopilot.Movement
 				m_lastMove = Globals.UpdateCount;
 			}
 
-			m_navSet.Settings_Task_NavWay.Distance = distance;
+			NavSet.Settings_Task_NavWay.Distance = distance;
 			targetVelocity += destVelocity;
 
 			// apply speed limit
 			float tarSpeedSq = targetVelocity.LengthSquared();
-			float speedRequest = m_navSet.Settings_Current.SpeedTarget;
+			float speedRequest = NavSet.Settings_Current.SpeedTarget;
 			if (tarSpeedSq > speedRequest * speedRequest)
 			{
 				targetVelocity *= speedRequest / (float)Math.Sqrt(tarSpeedSq);
@@ -326,7 +326,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				float velocityTowardsDest = velocity.Dot(Vector3.Normalize(destDisp));
 				if (velocityTowardsDest * velocityTowardsDest > tarSpeedSq)
-					m_navSet.Settings_Task_NavWay.NearingDestination = true;
+					NavSet.Settings_Task_NavWay.NearingDestination = true;
 			}
 
 			m_moveAccel = targetVelocity - velocity;
@@ -508,7 +508,7 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			if (m_navSet.Settings_Current.NearingDestination)
+			if (NavSet.Settings_Current.NearingDestination)
 			{
 				CalcRotate_Stop();
 				return;
@@ -777,12 +777,12 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			float distanceAngle = displacement.Length();
-			if (distanceAngle < m_bestAngle || float.IsNaN(m_navSet.Settings_Current.DistanceAngle))
+			if (distanceAngle < m_bestAngle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
 			{
 				m_bestAngle = distanceAngle;
 				m_lastMove = Globals.UpdateCount;
 			}
-			m_navSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
+			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
 			//myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "in_CalcRotate()");
 
@@ -903,7 +903,7 @@ namespace Rynchodon.Autopilot.Movement
 					Vector3 away;
 					Vector3.Normalize(ref displacement, out away);
 					m_logger.debugLog("Stuck, creating Waypoint to move away from obstruction", Logger.severity.INFO);
-					new Waypoint(this, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + m_navSet.Settings_Current.DestinationRadius));
+					new Waypoint(this, NavSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + NavSet.Settings_Current.DestinationRadius));
 					return;
 				}
 
@@ -971,7 +971,7 @@ namespace Rynchodon.Autopilot.Movement
 				m_grid = Block.CubeGrid;
 				this.Thrust = new ThrustProfiler(Block.CubeBlock);
 				this.m_gyro = new GyroProfiler(m_grid);
-				this.Pathfinder = new Pathfinder.Pathfinder(m_grid, m_navSet, this);
+				this.Pathfinder = new Pathfinder.Pathfinder(m_grid, NavSet, this);
 			}
 		}
 

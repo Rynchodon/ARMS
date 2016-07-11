@@ -720,8 +720,8 @@ namespace Rynchodon.AntennaRelay
 					return;
 				}
 			}
-			else
-				myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
+			//else
+			//	myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
 
 			GetNearby(PowerLevel_RadarEffective);
 
@@ -769,8 +769,8 @@ namespace Rynchodon.AntennaRelay
 				int decoys = WorkingDecoys(entity);
 				radarSignature += decoySignal * decoys;
 
-				myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-					+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
+				//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
+				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
 
 				if (radarSignature > 0)
 				{

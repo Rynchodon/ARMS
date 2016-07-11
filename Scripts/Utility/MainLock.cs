@@ -60,6 +60,8 @@ namespace Rynchodon
 		/// <param name="safeAction">Action to perform</param>
 		public static void UsingShared(Action unsafeAction)
 		{
+			if (Lock_MainThread == null)
+				return;
 			if (ThreadTracker.IsGameThread)
 				unsafeAction.Invoke();
 			else

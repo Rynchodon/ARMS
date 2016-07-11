@@ -130,7 +130,7 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			pb.m_handleDetectedTerminal = value;
-			MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)block);
+			block.SwitchTerminalTo();
 		}
 
 		private static StringBuilder GetBlockCountList(IMyTerminalBlock block)

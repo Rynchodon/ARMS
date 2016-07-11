@@ -26,10 +26,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private const float FullAmount_Abort = 0.9f, FullAmount_Return = 0.1f;
 		private const float MinAccel_Abort = 0.75f, MinAccel_Return = 1f;
-		private const string
-			ReturnCause_Full = "Drills are full, need to unload",
-			ReturnCause_Heavy = "Ship mass is too great for thrusters",
-			ReturnCause_OverWorked = "Thrusters overworked, need to unload";
 
 		private enum State : byte { GetTarget, Approaching, Rotating, MoveTo, Mining, Mining_Escape, Mining_Tunnel, Move_Away }
 
@@ -83,29 +79,29 @@ namespace Rynchodon.Autopilot.Navigator
 							EnableDrills(false);
 							if (DrillFullness() >= FullAmount_Return)
 							{
-								m_logger.debugLog(ReturnCause_Full);
+								m_logger.debugLog(InfoString.GetString(InfoString.StringId.ReturnCause_Full));
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								m_navSet.Settings_Commands.Complaint = ReturnCause_Full;
+								m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_Full;
 								return;
 							}
 							if (!SufficientAcceleration(MinAccel_Return))
 							{
-								m_logger.debugLog(ReturnCause_Heavy);
+								m_logger.debugLog(InfoString.GetString(InfoString.StringId.ReturnCause_Heavy));
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								m_navSet.Settings_Commands.Complaint = ReturnCause_Heavy;
+								m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_Heavy;
 								return;
 							}
 							if (m_mover.ThrustersOverWorked(Mover.OverworkedThreshold - 0.1f))
 							{
-								m_logger.debugLog(ReturnCause_OverWorked);
+								m_logger.debugLog(InfoString.GetString(InfoString.StringId.ReturnCause_OverWorked));
 								m_navSet.OnTaskComplete_NavRot();
 								m_mover.StopMove();
 								m_mover.StopRotate();
-								m_navSet.Settings_Commands.Complaint = ReturnCause_OverWorked;
+								m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_OverWorked;
 								return;
 							}
 							// request ore detector update
@@ -167,8 +163,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public MinerVoxel(Mover mover, AllNavigationSettings navSet, byte[] OreTargets)
-			: base(mover, navSet)
+		public MinerVoxel(Mover mover, byte[] OreTargets)
+			: base(mover)
 		{
 			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_state.ToString());
 			this.OreTargets = OreTargets;
@@ -608,7 +604,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				m_logger.debugLog("No ore target found", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
-				m_navSet.Settings_Commands.Complaint = "No ore found";
+				m_navSet.Settings_Commands.Complaint = InfoString.StringId.NoOreFound;
 				return;
 			}
 

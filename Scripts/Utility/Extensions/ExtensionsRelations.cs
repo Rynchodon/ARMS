@@ -151,7 +151,7 @@ namespace Rynchodon
 				if (player != null)
 					return getRelationsTo(identityId, player.IdentityId);
 
-				Logger.debugLog("ExtensionRelations", "character not found, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
+				Logger.DebugLog("ExtensionRelations", "character not found, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
 				return Relations.Enemy;
 			}
 
@@ -166,7 +166,7 @@ namespace Rynchodon
 				return Relations.Enemy;
 			}
 
-			Logger.debugLog("ExtensionRelations", "unknown entity, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
+			Logger.DebugLog("ExtensionRelations", "unknown entity, treating as enemy: " + target.getBestName(), Logger.severity.WARNING);
 			return Relations.Enemy;
 		}
 
@@ -254,7 +254,7 @@ namespace Rynchodon
 		/// <remarks>
 		/// Different from the others because share mode matters.
 		/// </remarks>
-		public static bool canControlBlock(this long ownerId, IMyCubeBlock target)
+		public static bool canControlBlock(this long ownerId, VRage.Game.ModAPI.Ingame.IMyCubeBlock target)
 		{
 			switch (target.GetUserRelationToOwner(ownerId))
 			{
@@ -273,7 +273,7 @@ namespace Rynchodon
 		/// <remarks>
 		/// Different from the others because share mode matters.
 		/// </remarks>
-		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
+		public static bool canControlBlock(this VRage.Game.ModAPI.Ingame.IMyCubeBlock block, VRage.Game.ModAPI.Ingame.IMyCubeBlock target)
 		{
 			return canControlBlock(block.OwnerId, target);
 		}
