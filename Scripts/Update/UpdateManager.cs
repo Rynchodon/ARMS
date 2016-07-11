@@ -344,6 +344,7 @@ namespace Rynchodon.Update
 
 		private static UpdateManager Instance;
 
+		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
 		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
 			Instance.ExternalRegistrations.Enqueue(() => {

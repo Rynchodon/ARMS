@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Xml.Serialization;
+using Rynchodon.Update;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Collections;
 using VRage.ModAPI;
 
 namespace Rynchodon.Utility.Network
 {
-
-	// TODO: profile bit rate
 
 	public abstract class EntityValue
 	{
@@ -23,9 +24,16 @@ namespace Rynchodon.Utility.Network
 			public string[] values;
 		}
 
-		protected static Dictionary<long, Dictionary<byte, EntityValue>> allEntityValues = new Dictionary<long, Dictionary<byte, EntityValue>>();
-		protected static FastResourceLock lock_entityValues = new FastResourceLock();
-		protected static Logger logger = new Logger("SyncEntityValue");
+		protected class StaticVariables
+		{
+			public Dictionary<long, Dictionary<byte, EntityValue>> allEntityValues = new Dictionary<long, Dictionary<byte, EntityValue>>();
+			public FastResourceLock lock_entityValues = new FastResourceLock();
+			public Logger logger = new Logger("EntityValue");
+			public MyConcurrentPool<StringBuilder> updateSB = new MyConcurrentPool<StringBuilder>();
+			public int bytesSent, messagesSent;
+		}
+
+		protected static StaticVariables Static = new StaticVariables();
 
 		static EntityValue()
 		{
@@ -37,19 +45,21 @@ namespace Rynchodon.Utility.Network
 
 		private static void Entities_OnCloseAll()
 		{
+			Static.logger.debugLog("bytes sent: " + Static.bytesSent + ", messages sent: " + Static.messagesSent, Logger.severity.INFO);
 			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			allEntityValues = null;
-			lock_entityValues = null;
-			logger = null;
+			Static = null;
 		}
 
 		public static Builder_EntityValues[] GetBuilders()
 		{
-			List<Builder_EntityValues> all = new List<Builder_EntityValues>(allEntityValues.Count);
+			if (Static == null)
+				return null;
+
+			List<Builder_EntityValues> all = new List<Builder_EntityValues>(Static.allEntityValues.Count);
 			List<byte> valueIds = new List<byte>();
 			List<string> values = new List<string>();
 
-			foreach (KeyValuePair<long, Dictionary<byte, EntityValue>> entityValues in allEntityValues)
+			foreach (KeyValuePair<long, Dictionary<byte, EntityValue>> entityValues in Static.allEntityValues)
 			{
 				valueIds.Clear();
 				values.Clear();
@@ -82,12 +92,15 @@ namespace Rynchodon.Utility.Network
 
 		public static void ResumeFromSave(Builder_EntityValues[] savedValues)
 		{
+			if (Static == null)
+				return;
+
 			foreach (Builder_EntityValues builder in savedValues)
 			{
 				Dictionary<byte, EntityValue> entityValues;
-				if (!allEntityValues.TryGetValue(builder.entityId, out entityValues))
+				if (!Static.allEntityValues.TryGetValue(builder.entityId, out entityValues))
 				{
-					logger.alwaysLog("Entity not found in world: " + builder.entityId, Logger.severity.WARNING);
+					Static.logger.alwaysLog("Entity not found in world: " + builder.entityId, Logger.severity.WARNING);
 					continue;
 				}
 				for (int index = 0; index < builder.valueIds.Length; index++)
@@ -95,7 +108,7 @@ namespace Rynchodon.Utility.Network
 					EntityValue value;
 					if (!entityValues.TryGetValue(builder.valueIds[index], out value))
 					{
-						logger.alwaysLog("Entity value: " + builder.valueIds[index] + " is missing for " + builder.entityId, Logger.severity.WARNING);
+						Static.logger.alwaysLog("Entity value: " + builder.valueIds[index] + " is missing for " + builder.entityId, Logger.severity.WARNING);
 						continue;
 					}
 					if (!string.IsNullOrEmpty(builder.values[index]))
@@ -106,20 +119,23 @@ namespace Rynchodon.Utility.Network
 
 		private static void Handle_SyncEntityValue(byte[] bytes, int pos)
 		{
+			if (Static == null)
+				return;
+
 			long entityId = ByteConverter.GetLong(bytes, ref pos);
 			byte valueId = ByteConverter.GetByte(bytes, ref pos);
 
 			Dictionary<byte, EntityValue> entityValues;
-			if (!allEntityValues.TryGetValue(entityId, out entityValues))
+			if (!Static.allEntityValues.TryGetValue(entityId, out entityValues))
 			{
-				logger.alwaysLog("Failed lookup of entity id: " + entityId, Logger.severity.WARNING);
+				Static.logger.alwaysLog("Failed lookup of entity id: " + entityId, Logger.severity.WARNING);
 				return;
 			}
 
 			EntityValue instance;
 			if (!entityValues.TryGetValue(valueId, out instance))
 			{
-				logger.alwaysLog("Failed lookup of value id: " + valueId + ", entityId: " + entityId, Logger.severity.ERROR);
+				Static.logger.alwaysLog("Failed lookup of value id: " + valueId + ", entityId: " + entityId, Logger.severity.ERROR);
 				return;
 			}
 
@@ -128,18 +144,29 @@ namespace Rynchodon.Utility.Network
 
 		private static void Handle_RequestEntityValue(byte[] bytes, int pos)
 		{
+			if (Static == null)
+				return;
+
 			long entityId = ByteConverter.GetLong(bytes, ref pos);
 			ulong recipient = ByteConverter.GetUlong(bytes, ref pos);
 
 			Dictionary<byte, EntityValue> entityValues;
-			if (!allEntityValues.TryGetValue(entityId, out entityValues))
+			if (!Static.allEntityValues.TryGetValue(entityId, out entityValues))
 			{
-				logger.alwaysLog("Failed lookup of entity id: " + entityId, Logger.severity.WARNING);
+				Static.logger.alwaysLog("Failed lookup of entity id: " + entityId, Logger.severity.WARNING);
 				return;
 			}
 
 			foreach (EntityValue instance in entityValues.Values)
 				instance.SendValue(recipient);
+		}
+
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		protected static void RecordBytesSent<T>(EntityValue<T> sender, ICollection<byte> bytes)
+		{
+			Static.logger.debugLog("entity: " + sender.m_entityId + ", valueID: " + sender.m_valueId + ", value: " + sender.Value + ", bytes: " + bytes.Count);
+			Static.bytesSent += bytes.Count;
+			Static.messagesSent++;
 		}
 
 		protected abstract bool Save { get; }
@@ -155,13 +182,13 @@ namespace Rynchodon.Utility.Network
 
 		private static void entity_OnClose(IMyEntity obj)
 		{
-			if (allEntityValues != null)
-				allEntityValues.Remove(obj.EntityId);
+			if (Static != null)
+				Static.allEntityValues.Remove(obj.EntityId);
 		}
 
-		private readonly long m_entityId;
-		private readonly byte m_valueId;
-		private readonly bool m_save;
+		public readonly long m_entityId;
+		public readonly byte m_valueId;
+		public readonly bool m_save;
 
 		protected readonly Action m_afterValueChanged;
 		protected T m_value;
@@ -204,13 +231,13 @@ namespace Rynchodon.Utility.Network
 			this.m_save = save;
 			this.m_synced = MyAPIGateway.Multiplayer.IsServer;
 
-			using (lock_entityValues.AcquireExclusiveUsing())
+			using (Static.lock_entityValues.AcquireExclusiveUsing())
 			{
 				Dictionary<byte, EntityValue> entityValues;
-				if (!allEntityValues.TryGetValue(m_entityId, out entityValues))
+				if (!Static.allEntityValues.TryGetValue(m_entityId, out entityValues))
 				{
 					entityValues = new Dictionary<byte, EntityValue>();
-					allEntityValues.Add(m_entityId, entityValues);
+					Static.allEntityValues.Add(m_entityId, entityValues);
 					entity.OnClose += entity_OnClose;
 				}
 
@@ -231,7 +258,8 @@ namespace Rynchodon.Utility.Network
 					MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), clientId.Value) :
 					MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 				if (!result)
-					logger.alwaysLog("Failed to send message, length: " + bytes.Count + ", value: " + m_value, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
+					Static.logger.alwaysLog("Failed to send message, length: " + bytes.Count + ", value: " + m_value, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
+				RecordBytesSent(this, bytes);
 			}
 			finally
 			{
@@ -272,7 +300,7 @@ namespace Rynchodon.Utility.Network
 
 		private void RequestEntityValueFromServer()
 		{
-			logger.debugLog(MyAPIGateway.Multiplayer.IsServer, "This is the server!", Logger.severity.ERROR);
+			Static.logger.debugLog(MyAPIGateway.Multiplayer.IsServer, "This is the server!", Logger.severity.ERROR);
 			List<byte> bytes = ResourcePool<List<byte>>.Get();
 			try
 			{
@@ -280,7 +308,8 @@ namespace Rynchodon.Utility.Network
 				ByteConverter.AppendBytes(bytes, m_entityId);
 				ByteConverter.AppendBytes(bytes, MyAPIGateway.Multiplayer.MyId);
 				if (!MyAPIGateway.Multiplayer.SendMessageToServer(bytes.ToArray()))
-					logger.alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
+					Static.logger.alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
+				RecordBytesSent(this, bytes);
 			}
 			finally
 			{
@@ -294,6 +323,9 @@ namespace Rynchodon.Utility.Network
 	public class EntityStringBuilder : EntityValue<StringBuilder>
 	{
 
+		/// <summary>
+		/// set always generates network data, so use Update if the content may not have changed.
+		/// </summary>
 		public override StringBuilder Value
 		{
 			get
@@ -308,13 +340,37 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		/// <summary>
+		/// Update a new StringBuilder with the specified method. If the result is not equal to Value, replace Value with the new StringBuilder.
+		/// </summary>
+		/// <param name="updateMethod">Method to update Value from.</param>
+		public void Update(Action<StringBuilder> updateMethod)
+		{
+			StringBuilder temp = Static.updateSB.Get(), current = Value;
+
+			updateMethod.Invoke(temp);
+			if (temp.EqualsIgnoreCapacity(current))
+			{
+				Static.logger.debugLog("equals, no send");
+				temp.Clear();
+				Static.updateSB.Return(temp);
+			}
+			else
+			{
+				Static.logger.debugLog("not equal, send data");
+				Value = temp;
+				current.Clear();
+				Static.updateSB.Return(current);
+			}
+		}
+
 		private byte m_updatesSinceValueChange = byte.MaxValue;
 
 		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
 		public EntityStringBuilder(IMyEntity entity, byte valueId, Action afterValueChanged = null, bool save = true)
 			: base(entity, valueId, afterValueChanged, new StringBuilder(), save: save)
 		{
-			Update.UpdateManager.Register(100, Update100, entity);
+			UpdateManager.Register(100, Update100, entity);
 		}
 
 		protected override void SetValue(byte[] bytes, ref int pos)

@@ -66,19 +66,22 @@ namespace Rynchodon.Autopilot
 			gooeyProgram.Enabled = ShipAutopilot.IsAutopilotBlock;
 			AddControl(gooeyProgram);
 
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<Enum, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_Status"), autopilot => autopilot.m_autopilotStatus.Value);
-			AddProperty(AutopilotFlags.HasControl);
-			AddProperty(AutopilotFlags.MovementBlocked);
-			AddProperty(AutopilotFlags.RotationBlocked);
-			AddProperty(AutopilotFlags.EnemyFinderIssue);
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<DateTime, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_WaitUntil"), autopilot => new DateTime(autopilot.m_waitUntil.Value));
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<string, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_BlockedBy"), autopilot => GetNameForDisplay(autopilot, autopilot.m_blockedBy.Value));
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<float, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_LinearDistance"), autopilot => autopilot.LinearDistance);
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<float, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_AngularDistance"), autopilot => autopilot.AngularDistance);
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<Enum, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_ReasonCannotTarget"), autopilot => autopilot.m_reasonCannotTarget.Value);
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<string, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_EnemyFinderBestTarget"), autopilot => GetNameForDisplay(autopilot, autopilot.m_enemyFinderBestTarget.Value));
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<int, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_WelderUnfinishedBlocks"), autopilot => autopilot.m_welderUnfinishedBlocks.Value);
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<InfoString.StringId, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_Complaint"), autopilot => autopilot.m_complaint.Value);
+			AddProperty<Enum>("ArmsAp_Status", autopilot => autopilot.m_autopilotStatus.Value);
+			foreach (AutopilotFlags flag in Enum.GetValues(typeof(AutopilotFlags)))
+				if (flag != 0)
+					AddProperty(flag);
+			AddProperty<Enum>("ArmsAp_ReasonCannotTarget", autopilot => autopilot.m_reasonCannotTarget.Value);
+			AddProperty<Enum>("ArmsAp_Complaint", autopilot => autopilot.m_complaint.Value);
+			AddProperty("ArmsAp_WaitUntil", autopilot => new DateTime(autopilot.m_waitUntil.Value));
+			AddProperty("ArmsAp_BlockedBy", autopilot => GetNameForDisplay(autopilot, autopilot.m_blockedBy.Value));
+			AddProperty("ArmsAp_LinearDistance", autopilot => autopilot.LinearDistance);
+			AddProperty("ArmsAp_AngularDistance", autopilot => autopilot.AngularDistance);
+			AddProperty("ArmsAp_EnemyFinderBestTarget", autopilot => GetNameForDisplay(autopilot, autopilot.m_enemyFinderBestTarget.Value));
+			AddProperty("ArmsAp_WelderUnfinishedBlocks", autopilot => autopilot.m_welderUnfinishedBlocks.Value);
+			AddProperty("ArmsAp_NavigatorMover", autopilot => autopilot.m_prevNavMover.Value);
+			AddProperty("ArmsAp_NavigatorRotator", autopilot => autopilot.m_prevNavRotator.Value);
+			AddProperty("ArmsAp_NavigatorMoverInfo", autopilot => autopilot.m_prevNavMoverInfo.Value);
+			AddProperty("ArmsAp_NavigatorRotatorInfo", autopilot => autopilot.m_prevNavRotatorInfo.Value);
 		}
 
 		private static void AddControl(MyTerminalControl<MyShipController> control)
@@ -98,10 +101,9 @@ namespace Rynchodon.Autopilot
 				MyTerminalControlFactory.AddAction<MyShipController, MyRemoteControl>(action);
 		}
 
-		private static void AddProperty<T>(IMyTerminalControlProperty<T> property, Func<AutopilotTerminal, T> function)
+		private static void AddProperty<T>(string id, Func<AutopilotTerminal, T> function)
 		{
-			Static.s_logger.debugLog("entered");
-			Static.s_logger.debugLog("property: " + property);
+			IMyTerminalControlProperty<T> property = MyAPIGateway.TerminalControls.CreateProperty<T, Sandbox.ModAPI.Ingame.IMyShipController>(id);
 			property.Enabled = ShipAutopilot.IsAutopilotBlock;
 			property.Visible = block => false;
 
@@ -116,7 +118,6 @@ namespace Rynchodon.Autopilot
 				return function.Invoke(autopilot);
 			};
 
-			Static.s_logger.debugLog("adding property");
 			MyTerminalControlFactory.AddControl<MyShipController, MyCockpit>((MyTerminalControl<MyShipController>)property);
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				MyTerminalControlFactory.AddControl<MyShipController, MyRemoteControl>((MyTerminalControl<MyShipController>)property);
@@ -124,7 +125,7 @@ namespace Rynchodon.Autopilot
 
 		private static void AddProperty(AutopilotFlags flag)
 		{
-			AddProperty(MyAPIGateway.TerminalControls.CreateProperty<bool, Sandbox.ModAPI.Ingame.IMyShipController>("ArmsAp_" + flag), autopilot => (autopilot.m_autopilotFlags.Value & flag) != 0);
+			AddProperty("ArmsAp_" + flag, autopilot => (autopilot.m_autopilotFlags.Value & flag) != 0);
 		}
 
 		private static void Entities_OnCloseAll()
@@ -214,7 +215,24 @@ namespace Rynchodon.Autopilot
 		}
 
 		private readonly Logger m_logger;
-		private readonly IMyTerminalBlock m_block;
+		public readonly IMyTerminalBlock m_block;
+
+		private bool m_waitUpdate;
+
+		private bool WaitingNeedsUpdate
+		{
+			get { return m_waitUpdate; }
+			set
+			{
+				if (value == m_waitUpdate)
+					return;
+				m_waitUpdate = value;
+				if (m_waitUpdate)
+					UpdateManager.Register(10u, RefreshWhileWaiting);
+				else
+					UpdateManager.Unregister(10u, RefreshWhileWaiting);
+			}
+		}
 
 		#region Terminal Controls
 
@@ -245,18 +263,23 @@ namespace Rynchodon.Autopilot
 			MovementBlocked = 2,
 			RotationBlocked = 4,
 			EnemyFinderIssue = 8,
+			HasNavigatorMover = 16,
+			HasNavigatorRotator = 32,
 		}
 
 		public EntityValue<ShipAutopilot.State> m_autopilotStatus;
 		public EntityValue<AutopilotFlags> m_autopilotFlags;
-		/// <summary>Use DateTime as ElapsedTime is not network friendly</summary>
-		public EntityValue<long> m_waitUntil;
-		public EntityValue<long> m_blockedBy;
-		public EntityValue<long> m_distance;
 		public EntityValue<GridFinder.ReasonCannotTarget> m_reasonCannotTarget;
+		public EntityValue<InfoString.StringId> m_complaint;
+		public EntityValue<long> m_blockedBy;
 		public EntityValue<long> m_enemyFinderBestTarget;
 		public EntityValue<int> m_welderUnfinishedBlocks;
-		public EntityValue<InfoString.StringId> m_complaint;
+		public EntityValue<string> m_prevNavMover, m_prevNavRotator;
+		public EntityStringBuilder m_prevNavMoverInfo, m_prevNavRotatorInfo;
+
+		/// <summary>Use DateTime as ElapsedTime is not network friendly</summary>
+		private EntityValue<long> m_waitUntil;
+		private EntityValue<long> m_distance;
 
 		public float LinearDistance { get { return new DistanceValues() { PackedValue = m_distance.Value }.LinearDistance; } }
 
@@ -264,7 +287,18 @@ namespace Rynchodon.Autopilot
 
 		public void SetDistance(float linear, float angular)
 		{
-			m_distance.Value = new DistanceValues() { LinearDistance = linear, AngularDistance = angular }.PackedValue;
+			DistanceValues dv = new DistanceValues() { PackedValue = m_distance.Value };
+			if (Math.Abs(linear - dv.LinearDistance) > 0.1f || Math.Abs(angular - dv.AngularDistance) > 0.01f)
+				m_distance.Value = new DistanceValues() { LinearDistance = linear, AngularDistance = angular }.PackedValue;
+		}
+
+		public void SetWaitUntil(TimeSpan waitUntil)
+		{
+			TimeSpan elapsed = Globals.ElapsedTime;
+			long newValue = (DateTime.UtcNow + waitUntil - elapsed).Ticks;
+			long difference = Math.Abs( (new DateTime(m_waitUntil.Value) - new DateTime(newValue)).Ticks);
+			if (difference > TimeSpan.TicksPerSecond)
+				m_waitUntil.Value = newValue;
 		}
 
 		#endregion Terminal Properties
@@ -285,13 +319,17 @@ namespace Rynchodon.Autopilot
 
 			this.m_autopilotStatus = new EntityValue<ShipAutopilot.State>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_autopilotFlags = new EntityValue<AutopilotFlags>(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_reasonCannotTarget = new EntityValue<GridFinder.ReasonCannotTarget>(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_complaint = new EntityValue<InfoString.StringId>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_waitUntil = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_blockedBy = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_distance = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
-			this.m_reasonCannotTarget = new EntityValue<GridFinder.ReasonCannotTarget>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_enemyFinderBestTarget = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_welderUnfinishedBlocks = new EntityValue<int>(block, index++, m_block.RefreshCustomInfo, save: false);
-			this.m_complaint = new EntityValue<InfoString.StringId>(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_prevNavMover = new EntityValue<string>(block, index++, m_block.RefreshCustomInfo, string.Empty, save: false);
+			this.m_prevNavRotator = new EntityValue<string>(block, index++, m_block.RefreshCustomInfo, string.Empty, save: false);
+			this.m_prevNavMoverInfo = new EntityStringBuilder(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_prevNavRotatorInfo = new EntityStringBuilder(block, index++, m_block.RefreshCustomInfo, save: false);
 
 			m_block.AppendingCustomInfo += AppendingCustomInfo;
 
@@ -307,7 +345,10 @@ namespace Rynchodon.Autopilot
 		public void AppendingCustomInfo(StringBuilder customInfo)
 		{
 			if (m_autopilotStatus.Value == ShipAutopilot.State.Halted)
-				customInfo.AppendLine("Autopilot crashed, see log for details");
+				if (MyAPIGateway.Multiplayer.IsServer)
+					customInfo.AppendLine("Autopilot crashed, see log for details");
+				else
+					customInfo.AppendLine("Autopilot crashed, see server's log for details");
 			if (!HasFlag(AutopilotFlags.HasControl))
 			{
 				if (m_autopilotStatus.Value == ShipAutopilot.State.Disabled)
@@ -322,7 +363,7 @@ namespace Rynchodon.Autopilot
 					if (mcg.HasMainCockpit() && !((MyShipController)m_block).IsMainCockpit)
 						customInfo.AppendLine("Not main cockpit");
 					else
-						customInfo.AppendLine("Another autopilot controlling ship");
+						customInfo.AppendLine("Does not have control of ship");
 				}
 			}
 
@@ -332,9 +373,12 @@ namespace Rynchodon.Autopilot
 			if (waitUntil > DateTime.UtcNow)
 			{
 				waiting = true;
+				WaitingNeedsUpdate = true;
 				customInfo.Append("Waiting for ");
 				customInfo.AppendLine(PrettySI.makePretty(waitUntil - DateTime.UtcNow));
 			}
+			else
+				WaitingNeedsUpdate = false;
 
 			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_block.CubeGrid);
 			if (controlling != null)
@@ -345,7 +389,10 @@ namespace Rynchodon.Autopilot
 			}
 
 			if (waiting)
+			{
+				AppendingCustomInfo_EnemyFinder(customInfo);
 				return;
+			}
 
 			// pathfinder
 			if (HasFlag(AutopilotFlags.MovementBlocked | AutopilotFlags.RotationBlocked))
@@ -375,14 +422,36 @@ namespace Rynchodon.Autopilot
 			}
 
 			// nav mover info
-			// if has mover
-			customInfo.Append("Distance: ");
-			customInfo.Append(PrettySI.makePretty(LinearDistance));
-			customInfo.AppendLine("m");
+			if (HasFlag(AutopilotFlags.HasNavigatorMover))
+			{
+				customInfo.Append(m_prevNavMoverInfo.Value);
+				customInfo.Append("Distance: ");
+				customInfo.Append(PrettySI.makePretty(LinearDistance));
+				customInfo.AppendLine("m");
+			}
 
 			// nav rotator info
+			if (HasFlag(AutopilotFlags.HasNavigatorRotator))
+			{
+				customInfo.Append(m_prevNavRotatorInfo.Value);
+				customInfo.Append("Angle: ");
+				customInfo.Append(PrettySI.toSigFigs(LinearDistance));
+				customInfo.AppendLine(" rad");
+			}
 
 			// enemy finder
+			AppendingCustomInfo_EnemyFinder(customInfo);
+
+			// complaint
+			InfoString.StringId ids  = m_complaint.Value;
+			if (ids != InfoString.StringId.None)
+				foreach (InfoString.StringId flag in InfoString.AllStringIds())
+					if ((ids & flag) != 0)
+						customInfo.AppendLine(InfoString.GetString(flag));
+		}
+
+		private void AppendingCustomInfo_EnemyFinder(StringBuilder customInfo)
+		{
 			if (HasFlag(AutopilotFlags.EnemyFinderIssue))
 			{
 				switch (m_reasonCannotTarget.Value)
@@ -404,18 +473,21 @@ namespace Rynchodon.Autopilot
 						break;
 				}
 			}
-
-			// complaint
-			InfoString.StringId ids  = m_complaint.Value;
-			if (ids != InfoString.StringId.None)
-				foreach (InfoString.StringId flag in InfoString.AllStringIds())
-					if ((ids & flag) != 0)
-						customInfo.AppendLine(InfoString.GetString(flag));
 		}
 
 		private bool HasFlag(AutopilotFlags flag)
 		{
 			return (m_autopilotFlags.Value & flag) != 0;
+		}
+
+		private void RefreshWhileWaiting()
+		{
+			if (m_block.Closed)
+			{
+				WaitingNeedsUpdate = false;
+				return;
+			}
+			m_block.RefreshCustomInfo();
 		}
 
 	}

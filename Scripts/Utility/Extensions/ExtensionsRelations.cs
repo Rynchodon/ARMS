@@ -254,7 +254,7 @@ namespace Rynchodon
 		/// <remarks>
 		/// Different from the others because share mode matters.
 		/// </remarks>
-		public static bool canControlBlock(this long ownerId, IMyCubeBlock target)
+		public static bool canControlBlock(this long ownerId, VRage.Game.ModAPI.Ingame.IMyCubeBlock target)
 		{
 			switch (target.GetUserRelationToOwner(ownerId))
 			{
@@ -273,7 +273,7 @@ namespace Rynchodon
 		/// <remarks>
 		/// Different from the others because share mode matters.
 		/// </remarks>
-		public static bool canControlBlock(this IMyCubeBlock block, IMyCubeBlock target)
+		public static bool canControlBlock(this VRage.Game.ModAPI.Ingame.IMyCubeBlock block, VRage.Game.ModAPI.Ingame.IMyCubeBlock target)
 		{
 			return canControlBlock(block.OwnerId, target);
 		}
