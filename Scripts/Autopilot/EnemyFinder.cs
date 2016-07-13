@@ -153,7 +153,7 @@ namespace Rynchodon.Autopilot
 				CurrentResponse = m_allResponses[0];
 		}
 
-		public void Update()
+		public new void Update()
 		{
 			if (CurrentResponse.Response == Response.None)
 				return;

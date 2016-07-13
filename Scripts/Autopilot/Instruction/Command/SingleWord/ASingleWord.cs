@@ -5,7 +5,7 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public abstract class SingleWord : ACommand
+	public abstract class ASingleWord : ACommand
 	{
 
 		public override string AddName
@@ -33,7 +33,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			if (string.IsNullOrWhiteSpace(command))
 			{
 				message = null;
-				return Action;
+				return ActionMethod;
 			}
 			message = "extraneous: " + command;
 			return null;
@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return Identifier;
 		}
 
-		protected abstract void Action(Mover mover);
+		protected abstract void ActionMethod(Mover mover);
 
 	}
 }

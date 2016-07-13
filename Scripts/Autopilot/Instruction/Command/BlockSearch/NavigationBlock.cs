@@ -5,7 +5,7 @@ using Sandbox.ModAPI;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class NavigationBlock : LocalBlock
+	public class NavigationBlock : ALocalBlock
 	{
 		public override ACommand Clone()
 		{
@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
 			if (m_block is IMyLaserAntenna || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)

@@ -4,27 +4,27 @@ using Rynchodon.Autopilot.Navigator;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Exit : SingleWord
+	public class Stop : ASingleWord
 	{
 
 		public override ACommand Clone()
 		{
-			return new Exit();
+			return new Stop();
 		}
 
 		public override string Identifier
 		{
-			get { return "exit"; }
+			get { return "stop"; }
 		}
 
 		public override string AddDescription
 		{
-			get { return "Stop the ship and disable autopilot"; }
+			get { return "Stop the ship before continuing"; }
 		}
 
-		protected override void Action(Mover mover)
+		protected override void ActionMethod(Mover mover)
 		{
-			new Stopper(mover, true);
+			new Stopper(mover);
 		}
 
 	}

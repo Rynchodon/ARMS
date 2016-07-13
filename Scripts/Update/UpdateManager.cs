@@ -6,7 +6,6 @@ using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
-using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Weapons;
@@ -15,12 +14,11 @@ using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
-using Rynchodon.Utility.Network;
-using VRage.Game;
 
 namespace Rynchodon.Update
 {

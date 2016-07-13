@@ -5,7 +5,7 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Disable : SingleWord
+	public class Disable : ASingleWord
 	{
 
 		public override ACommand Clone()
@@ -23,7 +23,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Disable autopilot without stopping"; }
 		}
 
-		protected override void Action(Mover mover)
+		protected override void ActionMethod(Mover mover)
 		{
 			mover.SetControl(false);
 		}

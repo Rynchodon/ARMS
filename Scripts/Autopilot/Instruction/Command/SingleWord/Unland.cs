@@ -2,9 +2,9 @@
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Unland : SingleWord
+	public class Unland : ASingleWord
 	{
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			new UnLander(mover);
 		}

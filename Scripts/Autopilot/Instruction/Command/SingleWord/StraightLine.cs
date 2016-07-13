@@ -2,9 +2,9 @@
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class StraightLine : SingleWord
+	public class StraightLine : ASingleWord
 	{
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			mover.NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
 			mover.NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();

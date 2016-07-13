@@ -4,7 +4,7 @@ using Rynchodon.Autopilot.Navigator;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class UnlandBlock : LocalBlock
+	public class UnlandBlock : ALocalBlock
 	{
 
 		public override ACommand Clone()
@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			new UnLander(mover, new Data.PseudoBlock(m_block, m_forward, m_upward));
 		}

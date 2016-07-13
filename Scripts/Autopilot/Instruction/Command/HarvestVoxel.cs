@@ -117,6 +117,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
+		public override void AppendCustomInfo(StringBuilder sb)
+		{
+			base.AppendCustomInfo(sb);
+			sb.AppendLine("All ores are treated the same; if you wish to prioritize, use multiple commands.");
+			sb.AppendLine("Ore detectors must have a two-way connection to the Autopilot block.");
+		}
+
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
 			if (m_oreListbox == null)

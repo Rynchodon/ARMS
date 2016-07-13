@@ -106,7 +106,7 @@ namespace Rynchodon.Update
 		{
 			try
 			{
-				LoadData();
+				LoadSaveData();
 			}
 			catch (Exception ex)
 			{
@@ -168,7 +168,7 @@ namespace Rynchodon.Update
 			return saveId;
 		}
 
-		private void LoadData()
+		private void LoadSaveData()
 		{
 			if (m_data == null)
 			{

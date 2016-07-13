@@ -33,6 +33,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				if (value_allResponses == null)
 				{
 					value_allResponses = new MyTerminalControlListBoxItem[] {
+						new	MyTerminalControlListBoxItem(MyStringId.GetOrCompute("Off"), MyStringId.GetOrCompute("Not a response, used to stop searching for enemies"), EnemyFinder.Response.None),
 						new MyTerminalControlListBoxItem(MyStringId.GetOrCompute("Flee"), MyStringId.GetOrCompute("Flee from enemy, requires working thrusters."), EnemyFinder.Response.Flee),
 						new MyTerminalControlListBoxItem(MyStringId.GetOrCompute("Land"), MyStringId.GetOrCompute("Land on enemy, requires working thrusters and landing gear."), EnemyFinder.Response.Land),
 						new MyTerminalControlListBoxItem(MyStringId.GetOrCompute("Fight"), MyStringId.GetOrCompute("Attack enemy with weapons, requires working weapons."), EnemyFinder.Response.Fight),
@@ -67,6 +68,8 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			get
 			{
+				if (m_activeResponses.Contains(EnemyFinder.Response.None))
+					return "Stop searching for enemies";
 				string descr;
 				if (m_range == 0)
 					descr = "When any enemy is detected ";
@@ -80,11 +83,18 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
+		public override void AppendCustomInfo(StringBuilder sb)
+		{
+			sb.AppendLine("Autopilot starts searching for enemies when it encounters the Enemy command and keeps searching until the end of commands is reached or E Off is encountered.");
+			sb.AppendLine("If a response's requirement is not met, autopilot moves to the next response.");
+		}
+
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
 			if (!m_addingResponse)
 			{
-				MyTerminalControlSlider<MyShipController> range = new MyTerminalControlSlider<MyShipController>("RangeSlider", MyStringId.GetOrCompute("Range"), MyStringId.GetOrCompute("How close enemy needs to be for autopilot to respond to it."));
+				MyTerminalControlSlider<MyShipController> range = new MyTerminalControlSlider<MyShipController>("RangeSlider", MyStringId.GetOrCompute("Range"), 
+					MyStringId.GetOrCompute("How close enemy needs to be for autopilot to respond to it. Zero indicates infinite range."));
 				range.Normalizer = Normalizer;
 				range.Denormalizer = Denormalizer;
 				range.Writer = (block, sb) => {
@@ -139,6 +149,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			{
 				if (s.Equals("off", StringComparison.InvariantCultureIgnoreCase))
 				{
+					m_activeResponses.Add(EnemyFinder.Response.None);
 					message = null;
 					return mover => mover.NavSet.Settings_Commands.EnemyFinder = null;
 				}
@@ -198,6 +209,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		protected override string TermToString()
 		{
+			if (m_activeResponses.Contains(EnemyFinder.Response.None))
+				return Identifier + " Off";
+
 			string result = Identifier + ' ';
 			if (m_range > 0f)
 				result += PrettySI.makePretty(m_range) + ',';
@@ -253,25 +267,18 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		private void RemoveResponse(IMyTerminalBlock block)
 		{
-			if (m_selected == EnemyFinder.Response.None)
-			{
-				Logger.DebugLog("nothing selected");
-				return;
-			}
-
 			m_activeResponses.Remove(m_selected);
 			m_responseListbox.UpdateVisual();
 		}
 
 		private void MoveResponseUp(IMyTerminalBlock block)
 		{
-			if (m_selected == null)
+			int index = GetSelectedIndex();
+			if (index == -1)
 			{
 				Logger.DebugLog("nothing selected");
 				return;
 			}
-
-			int index = GetSelectedIndex();
 			if (index == 0)
 			{
 				Logger.DebugLog("already first element: " + m_selected);
@@ -285,13 +292,12 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		private void MoveResponseDown(IMyTerminalBlock block)
 		{
-			if (m_selected == null)
+			int index = GetSelectedIndex();
+			if (index == -1)
 			{
 				Logger.DebugLog("nothing selected");
 				return;
 			}
-
-			int index = GetSelectedIndex();
 			if (index == m_activeResponses.Count - 1)
 			{
 				Logger.DebugLog("already last element: " + m_selected);

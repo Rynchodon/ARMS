@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			commands.Clear();
 
-			AddDummy(new BlockSearch(), commands);
+			AddDummy(new TargetBlockSearch(), commands);
 			AddDummy(new LandingBlock(), commands);
 			AddDummy(new Offset(), commands);
 			AddDummy(new Form(), commands);
@@ -697,19 +697,19 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			m_logger.debugLog("entered");
 
+			if (!string.IsNullOrWhiteSpace(m_infoMessage))
+			{
+				m_logger.debugLog("appending info message: " + m_infoMessage);
+				arg2.AppendLine();
+				arg2.AppendLine(m_infoMessage);
+			}
+
 			if (!m_listCommands && m_currentCommand != null)
 			{
 				m_logger.debugLog("appending command info");
 				arg2.AppendLine();
 				m_currentCommand.AppendCustomInfo(arg2);
 				arg2.AppendLine();
-			}
-
-			if (!string.IsNullOrWhiteSpace(m_infoMessage))
-			{
-				m_logger.debugLog("appending info message: " + m_infoMessage);
-				arg2.AppendLine();
-				arg2.AppendLine(m_infoMessage);
 			}
 		}
 

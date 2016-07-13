@@ -44,6 +44,12 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
+		public override void AppendCustomInfo(System.Text.StringBuilder sb)
+		{
+			base.AppendCustomInfo(sb);
+			sb.AppendLine("A value of zero restores the default.");
+		} 
+
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
 			MyTerminalControlSlider<MyShipController> speed = new MyTerminalControlSlider<MyShipController>("Speed", MyStringId.GetOrCompute("Speed"), MyStringId.GetOrCompute(AddDescription));

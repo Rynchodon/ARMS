@@ -1,9 +1,9 @@
 ﻿
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Form : SingleWord
+	public class Form : ASingleWord
 	{
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			mover.NavSet.Settings_Task_NavMove.Stay_In_Formation = true;
 		}

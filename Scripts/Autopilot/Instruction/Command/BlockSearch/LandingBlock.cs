@@ -5,7 +5,7 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class LandingBlock : LocalBlock
+	public class LandingBlock : ALocalBlock
 	{
 
 		public override ACommand Clone()
@@ -38,7 +38,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
 			mover.NavSet.Settings_Task_NavRot.LandingBlock = pseudo;

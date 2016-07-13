@@ -1,7 +1,7 @@
 ﻿
 namespace Rynchodon.Autopilot.Instruction.Command
 {
-	public class Asteroid : SingleWord
+	public class Asteroid : ASingleWord
 	{
 
 		public override ACommand Clone()
@@ -19,7 +19,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Ignore asteroids until next destination."; }
 		}
 
-		protected override void Action(Movement.Mover mover)
+		protected override void ActionMethod(Movement.Mover mover)
 		{
 			mover.NavSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 		}
