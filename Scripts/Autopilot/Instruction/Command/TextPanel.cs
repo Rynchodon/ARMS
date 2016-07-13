@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			{
 				case 1:
 					m_panelName = new StringBuilder(split[0]);
-					m_identifier = null;
+					m_identifier = new StringBuilder();
 					break;
 				case 2:
 					m_panelName = new StringBuilder(split[0]);

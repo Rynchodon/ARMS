@@ -18,37 +18,67 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class HarvestVoxel : ACommand
 	{
 
-		private string[] value_allOres;
+		private class Ore
+		{
+			public readonly string SubtypeName, MinedOre, Symbol;
 
-		private List<string> m_activeOres = new List<string>();
+			public Ore(string subtypeName, MyVoxelMaterialDefinition def)
+			{
+				SubtypeName = def.Id.SubtypeName;
+				int index = SubtypeName.IndexOf('_');
+				if (index >= 0)
+					SubtypeName = SubtypeName.Substring(0, index);
+				SubtypeName = SubtypeName.Trim();
+
+				MinedOre = def.MinedOre.Trim();
+
+				if (SubtypeName == MinedOre)
+					MinedOre = null;
+
+				if (OreDetector.GetChemicalSymbol(SubtypeName.ToLower(), out Symbol))
+					Symbol = char.ToUpper(Symbol[0]) + Symbol.Substring(1);
+			}
+
+			public string LongName { get { return MinedOre != null ? SubtypeName + " (" + MinedOre + ')' : SubtypeName; } }
+			public string ShortName { get { return Symbol ?? SubtypeName; } }
+		}
+
+		static HarvestVoxel()
+		{
+			Logger.SetFileName("HarvestVoxel");
+		}
+
+		private Ore[] value_allOres;
+
+		private List<Ore> m_activeOres = new List<Ore>();
 
 		private IMyTerminalControlListbox m_oreListbox;
-		private string m_selected;
+		private Ore m_selected;
 		private bool m_addingOres;
 
-		private string[] m_allOres
+		private Ore[] m_allOres
 		{
 			get
 			{
 				if (value_allOres == null)
 				{
-					Dictionary<string, string> materials = new Dictionary<string, string>();
+					Dictionary<string, Ore> materials = new Dictionary<string, Ore>();
 					foreach (MyVoxelMaterialDefinition def in  MyDefinitionManager.Static.GetVoxelMaterialDefinitions())
 					{
 						if (!def.IsRare)
 							continue;
 
-						string subtype = def.Id.SubtypeName.Split('_')[0].Trim();
+						string subtypeName = def.Id.SubtypeName;
+						int index = subtypeName.IndexOf('_');
+						if (index >= 0)
+							subtypeName = subtypeName.Substring(0, index);
+						subtypeName = subtypeName.Trim();
 
-						if (materials.ContainsKey(subtype))
+						if (materials.ContainsKey(subtypeName))
 							continue;
 
-						string minedOre = def.MinedOre.Trim();
-
-						if (subtype.Equals(minedOre))
-							materials.Add(subtype, subtype);
-						else
-							materials.Add(subtype, subtype + " (" + minedOre + ')');
+						Ore o = new Ore(subtypeName, def);
+						materials.Add(subtypeName, o);
 					}
 
 					value_allOres = materials.Values.ToArray();
@@ -59,7 +89,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public override ACommand Clone()
 		{
-			return new HarvestVoxel() { m_activeOres = new List<string>(m_activeOres) };
+			return new HarvestVoxel() { m_activeOres = new List<Ore>(m_activeOres), value_allOres = value_allOres };
 		}
 
 		public override string Identifier
@@ -83,7 +113,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			{
 				if (m_activeOres.Count == 0)
 					return "Harvest any detected ore";
-				return "Harvest " + string.Join(",", m_activeOres);
+				return "Harvest " + string.Join(", ", m_activeOres.Select(o => o.LongName));
 			}
 		}
 
@@ -114,23 +144,34 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				oreType = null;
 			else
 			{
+				if (string.IsNullOrWhiteSpace(command))
+				{
+					message = "no ores specified";
+					return null;
+				}
+
 				string[] splitComma = command.Split(',');
 				List<byte> oreTypeList = new List<byte>();
+				m_activeOres.Clear();
 
-				for (int i = 0; i < splitComma.Length; i++)
+				foreach (string name in splitComma)
 				{
-					string oreName = splitComma[i];
-
-					byte[] oreIds;
-					if (!OreDetector.TryGetMaterial(splitComma[i], out oreIds))
+					Ore ore;
+					if (!TryGetOre(name, out ore))
 					{
-						message = "Not ore: " + oreName;
+						message = "Not ore: " + name;
+						return null;
+					}
+					byte[] oreIds;
+					if (!OreDetector.TryGetMaterial(name, out oreIds))
+					{
+						message = "Failed to get material index: " + name;
 						return null;
 					}
 
+					m_activeOres.Add(ore);
 					oreTypeList.AddArray(oreIds);
 				}
-
 				oreType = oreTypeList.ToArray();
 			}
 
@@ -142,19 +183,19 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			if (m_activeOres.Count == 0)
 				return "harvest";
-			return Identifier + ' ' + string.Join(",", m_activeOres);
+			return Identifier + ' ' + string.Join(",", m_activeOres.Select(o => o.ShortName));
 		}
 
 		private void ListContent(IMyTerminalBlock autopilot, List<MyTerminalControlListBoxItem> items, List<MyTerminalControlListBoxItem> selected)
 		{
 			if (m_addingOres)
 			{
-				foreach (string ore in m_allOres.Except(m_activeOres))
+				foreach (Ore ore in m_allOres.Except(m_activeOres))
 					items.Add(GetItem(ore));
 				return;
 			}
 
-			foreach (string ore in m_activeOres)
+			foreach (Ore ore in m_activeOres)
 			{
 				MyTerminalControlListBoxItem item = GetItem(ore);
 				if (m_selected == ore)
@@ -169,7 +210,10 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			{
 				if (selected.Count == 0)
 					return;
-				m_activeOres.Add(selected[0].Text.ToString());
+				Ore ore;
+				if (!TryGetOre(selected[0], out ore))
+					throw new Exception("Selected item not found in all ores. Selected item: " + selected[0].Text.ToString());
+				m_activeOres.Add(ore);
 				m_addingOres = false;
 				autopilot.SwitchTerminalTo();
 				return;
@@ -178,7 +222,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			if (selected.Count == 0)
 				m_selected = null;
 			else
-				m_selected = selected[0].Text.ToString();
+				TryGetOre(selected[0], out m_selected);
 		}
 
 		#region Button Actions
@@ -243,9 +287,34 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		#endregion Button Actions
 
-		private MyTerminalControlListBoxItem GetItem(string ore)
+		private MyTerminalControlListBoxItem GetItem(Ore ore)
 		{
-			return new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore), MyStringId.NullOrEmpty, null);
+			return new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore.LongName), MyStringId.NullOrEmpty, null);
+		}
+
+		private bool TryGetOre(MyTerminalControlListBoxItem item, out Ore ore)
+		{
+			string longName = item.Text.ToString();
+			foreach (Ore o in m_allOres)
+				if (o.LongName == longName)
+				{
+					ore = o;
+					return true;
+				}
+			ore = null;
+			return false;
+		}
+
+		private bool TryGetOre(string name, out Ore ore)
+		{
+			foreach (Ore o in m_allOres)
+				if (o.SubtypeName == name || o.MinedOre == name || o.Symbol == name)
+				{
+					ore = o;
+					return true;
+				}
+			ore = null;
+			return false;
 		}
 
 		private int GetSelectedIndex()

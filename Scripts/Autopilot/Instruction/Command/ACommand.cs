@@ -66,7 +66,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				if (termString == null)
 				{
 					if (message == null)
-						Logger.AlwaysLog("TermToString is not correctly implemented by command: " + Identifier, Logger.severity.ERROR);
+						Logger.AlwaysLog("TermToString is not correctly implemented by command: " + Identifier + '/' + GetType().Name, Logger.severity.ERROR);
 					Action = null;
 					return false;
 				}

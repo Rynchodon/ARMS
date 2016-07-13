@@ -264,7 +264,7 @@ Finished_Deposit:
 		{ return MaterialGroup.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
 
 		/// <param name="subtypeName">SubtypeId without the _##</param>
-		private static bool GetChemicalSymbol(string subtypeName, out string symbol)
+		public static bool GetChemicalSymbol(string subtypeName, out string symbol)
 		{
 			switch (subtypeName)
 			{

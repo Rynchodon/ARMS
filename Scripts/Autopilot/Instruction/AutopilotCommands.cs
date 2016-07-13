@@ -507,7 +507,7 @@ namespace Rynchodon.Autopilot.Instruction
 			m_logger.debugLog(m_currentCommand == null, "m_currentCommand == null", Logger.severity.FATAL);
 
 			string msg;
-			if (!m_currentCommand.ValidateControls((IMyCubeBlock)m_block, out msg))
+			if (m_currentCommand.ValidateControls((IMyCubeBlock)m_block, out msg))
 			{
 				if (m_commandList.Contains(m_currentCommand))
 				{
