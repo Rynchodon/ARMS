@@ -66,7 +66,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				m_fetch = false;
 			else if (split.Length == 2)
 			{
-				if (split[1].Trim().Equals("fetch", StringComparison.InvariantCultureIgnoreCase))
+				if (split[1].TrimStart().StartsWith("f", StringComparison.InvariantCultureIgnoreCase))
 					m_fetch = true;
 				else
 				{
@@ -79,14 +79,14 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				message = "Too many arguments: " + split.Length;
 				return null;
 			}
-			m_target = new StringBuilder(split[1]);
+			m_target = new StringBuilder(split[0]);
 			message = null;
-			return mover => new WeldGrid(mover, split[1], m_fetch);
+			return mover => new WeldGrid(mover, split[0], m_fetch);
 		}
 
 		protected override string TermToString()
 		{
-			return Identifier + ' ' + m_target + (m_fetch ? ", fetch" : string.Empty);
+			return Identifier + ' ' + m_target + (m_fetch ? ",f" : string.Empty);
 		}
 	}
 }
