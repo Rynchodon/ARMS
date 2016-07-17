@@ -54,10 +54,11 @@ namespace Rynchodon.Weapons
 				weapon.EngagerReleaseControl();
 		}
 
-		private MotorTurret MyMotorTurret = null;
 
 		private readonly Logger myLogger;
 		private readonly bool AllowFighterControl;
+
+		private MotorTurret MyMotorTurret = null;
 
 		public FixedWeapon(IMyCubeBlock block)
 			: base(block)
@@ -93,6 +94,16 @@ namespace Rynchodon.Weapons
 			CurrentControl = Control.Off;
 			if (MyAPIGateway.Multiplayer != null && MyAPIGateway.Multiplayer.IsServer)
 				SendToClient_EngagerControl(CubeBlock.OwnerId, false);
+		}
+
+		public IMyCubeGrid MotorTurretBaseGrid()
+		{
+			return MyMotorTurret == null || MyMotorTurret.StatorAz == null || MyMotorTurret.StatorAz.Closed ? null : (IMyCubeGrid)MyMotorTurret.StatorAz.CubeGrid;
+		}
+
+		public IMyCubeBlock MotorTurretFaceBlock()
+		{
+			return MyMotorTurret == null || MyMotorTurret.StatorAz == null || MyMotorTurret.StatorAz.Closed ? null : (IMyCubeBlock)MyMotorTurret.StatorAz;
 		}
 
 		/// <summary>

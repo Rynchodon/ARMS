@@ -12,8 +12,7 @@ In order to engage a target, a ship must have weapons with commands. Targets wil
 [*]Vanilla means Space Engineers without any mods.[/list]
 
 [b][u]Known Issues[/u][/b]
-[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.
-[*]Engage command is not aware of rotor-turrets.[/list]
+[list][*]It is not possible for a mod to control the targeting lasers or cursors. The cursors will often be placed on the wrong target and the lasers may point in a different direction from the turret.[/list]
 
 [b][u]Controls[/u][/b]
 [list][*]ARMS Targeting - enable ARMS's weapon control for the turret

@@ -22,7 +22,6 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Fighter : NavigatorMover, IEnemyResponse, IDisposable
 	{
 
-		private static readonly MyObjectBuilderType[] FixedWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
 		private static readonly MyObjectBuilderType[] TurretWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_LargeGatlingTurret), typeof(MyObjectBuilder_LargeMissileTurret), typeof(MyObjectBuilder_InteriorTurret) };
 		private static readonly TargetType[] CumulativeTypes = new TargetType[] { TargetType.SmallGrid, TargetType.LargeGrid, TargetType.Station };
 
@@ -266,26 +265,30 @@ namespace Rynchodon.Autopilot.Navigator
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 
-			foreach (MyObjectBuilderType weaponType in FixedWeaponTypes)
+			foreach (FixedWeapon weapon in Registrar.Scripts<FixedWeapon>())
 			{
-				ReadOnlyList<IMyCubeBlock> weaponBlocks = cache.GetBlocksOfType(weaponType);
-				if (weaponBlocks != null)
-					foreach (IMyCubeBlock block in weaponBlocks)
+				if (weapon.CubeBlock.CubeGrid == m_controlBlock.CubeGrid)
+				{
+					if (weapon.EngagerTakeControl())
 					{
-						FixedWeapon weapon;
-						Registrar.TryGetValue(block.EntityId, out weapon);
-						if (weapon.EngagerTakeControl())
-						{
-							m_logger.debugLog("Took control of " + weapon.CubeBlock.DisplayNameText);
-							m_weapons_fixed.Add(weapon);
-							m_weapons_all.Add(weapon);
+						m_logger.debugLog("Took control of " + weapon.CubeBlock.DisplayNameText);
+						m_weapons_fixed.Add(weapon);
+						m_weapons_all.Add(weapon);
 
-							weapon.CubeBlock.OnClosing += Weapon_OnClosing;
-						}
-						else
-							m_logger.debugLog("failed to get control of: " + weapon.CubeBlock.DisplayNameText);
+						weapon.CubeBlock.OnClosing += Weapon_OnClosing;
 					}
+					else
+						m_logger.debugLog("failed to get control of: " + weapon.CubeBlock.DisplayNameText);
+				}
+				if (weapon.MotorTurretBaseGrid() == m_controlBlock.CubeGrid)
+				{
+					m_logger.debugLog("Active motor turret: " + weapon.CubeBlock.DisplayNameText);
+					m_weapons_all.Add(weapon);
+
+					weapon.CubeBlock.OnClosing += Weapon_OnClosing;
+				}
 			}
+
 			foreach (MyObjectBuilderType weaponType in TurretWeaponTypes)
 			{
 				ReadOnlyList<IMyCubeBlock> weaponBlocks = cache.GetBlocksOfType(weaponType);
@@ -412,28 +415,38 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_weapon_primary != weapon_primary)
 			{
 				m_weapon_primary = weapon_primary;
+				IMyCubeBlock faceBlock;
+				FixedWeapon fixedWeapon = weapon_primary as FixedWeapon;
+				if (fixedWeapon != null && fixedWeapon.CubeBlock.CubeGrid != m_controlBlock.CubeGrid)
+				{
+					faceBlock = fixedWeapon.MotorTurretFaceBlock();
+					m_logger.debugLog(faceBlock == null, "MotorTurretFaceBlock == null", Logger.severity.FATAL);
+				}
+				else
+					faceBlock = weapon_primary.CubeBlock;
+
 				if (m_mover.SignificantGravity())
 				{
-					if (m_mover.Thrust.Standard.LocalMatrix.Forward == weapon_primary.CubeBlock.LocalMatrix.Forward)
+					if (m_mover.Thrust.Standard.LocalMatrix.Forward == faceBlock.LocalMatrix.Forward)
 					{
 						m_logger.debugLog("primary forward matches Standard forward");
 						Matrix localMatrix = m_mover.Thrust.Standard.LocalMatrix;
-						localMatrix.Translation = weapon_primary.CubeBlock.LocalMatrix.Translation;
-						m_weapon_primary_pseudo = new PseudoBlock(() => weapon_primary.CubeBlock.CubeGrid, localMatrix);
+						localMatrix.Translation = faceBlock.LocalMatrix.Translation;
+						m_weapon_primary_pseudo = new PseudoBlock(() => faceBlock.CubeGrid, localMatrix);
 						return;
 					}
-					if (m_mover.Thrust.Gravity.LocalMatrix.Forward == weapon_primary.CubeBlock.LocalMatrix.Forward)
+					if (m_mover.Thrust.Gravity.LocalMatrix.Forward == faceBlock.LocalMatrix.Forward)
 					{
 						m_logger.debugLog("primary forward matches Gravity forward");
 						Matrix localMatrix = m_mover.Thrust.Gravity.LocalMatrix;
-						localMatrix.Translation = weapon_primary.CubeBlock.LocalMatrix.Translation;
-						m_weapon_primary_pseudo = new PseudoBlock(() => weapon_primary.CubeBlock.CubeGrid, localMatrix);
+						localMatrix.Translation = faceBlock.LocalMatrix.Translation;
+						m_weapon_primary_pseudo = new PseudoBlock(() => faceBlock.CubeGrid, localMatrix);
 						return;
 					}
-					m_logger.debugLog("cannot match primary forward to a standard flight matrix. primary forward: " + weapon_primary.CubeBlock.LocalMatrix.Forward +
+					m_logger.debugLog("cannot match primary forward to a standard flight matrix. primary forward: " + faceBlock.LocalMatrix.Forward +
 						", Standard forward: " + m_mover.Thrust.Standard.LocalMatrix.Forward + ", gravity forward: " + m_mover.Thrust.Gravity.LocalMatrix.Forward);
 				}
-				m_weapon_primary_pseudo = new PseudoBlock(weapon_primary.CubeBlock);
+				m_weapon_primary_pseudo = new PseudoBlock(faceBlock);
 			}
 		}
 
