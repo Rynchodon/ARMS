@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
@@ -17,39 +18,101 @@ namespace Rynchodon
 	/// <para>To limit confusion, motor shall refer to the rotor and stator,  rotor shall only refer to the part that rotates.</para>
 	/// <para>Will only change motor velocity, other parameters need to be set by the player.</para>
 	/// </remarks>
-	public class MotorTurret
+	public class MotorTurret : IDisposable
 	{
-		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
+		private class StaticVariables
+		{
+			public readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
+			public readonly HashSet<IMyMotorStator> claimedStators = new HashSet<IMyMotorStator>();
+			public ITerminalProperty<float> statorVelocity;
+		}
 
+		private static StaticVariables Static = new StaticVariables();
+		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 		private const float def_RotationSpeedMultiplier = 100;
-		private static readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
+
+		static MotorTurret()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Static = null;
+		}
 
 		private readonly IMyCubeBlock FaceBlock;
 		private readonly Logger myLogger;
 		private readonly StatorChangeHandler OnStatorChange;
 
-		/// <summary>Shall be the stator that is closer to the FaceBlock (by grids).</summary>
-		public IMyMotorStator StatorEl { get; private set; }
-		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
-		public IMyMotorStator StatorAz { get; private set; }
-
-		private float previousSpeed_StatorEl;
-		private float previousSpeed_StatorAz;
-
-		public MotorTurret(IMyCubeBlock block) : this(block, delegate { }) { }
-
 		private float my_RotationSpeedMulitplier = def_RotationSpeedMultiplier;
-
 		private float mySpeedLimit = 30f;
 
-		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler)
+		private bool m_claimedElevation, m_claimedAzimuth;
+		private IMyMotorStator value_statorEl, value_statorAz;
+
+		/// <summary>Shall be the stator that is closer to the FaceBlock (by grids).</summary>
+		public IMyMotorStator StatorEl
+		{
+			get { return value_statorEl; }
+			private set
+			{
+				if (value_statorEl == value)
+					return;
+				if (m_claimedElevation)
+				{
+					m_claimedElevation = false;
+					if (Static.claimedStators.Remove(value_statorEl))
+						myLogger.debugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
+					else
+						myLogger.alwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
+				}
+				value_statorEl = value;
+			}
+		}
+
+		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
+		public IMyMotorStator StatorAz
+		{
+			get { return value_statorAz; }
+			private set
+			{
+				if (value_statorAz == value)
+					return;
+				if (m_claimedAzimuth)
+				{
+					m_claimedAzimuth = false;
+					if (Static.claimedStators.Remove(value_statorAz))
+						myLogger.debugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
+					else
+						myLogger.alwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
+				}
+				value_statorAz = value;
+			}
+		}
+
+		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null)
 		{
 			this.FaceBlock = block;
 			this.myLogger = new Logger("MotorTurret", block);
 			this.OnStatorChange = handler;
 			this.SetupStators();
+		}
 
-			Stop();
+		~MotorTurret()
+		{
+			Dispose();
+		}
+
+		public void Dispose()
+		{
+			if (Static != null)
+			{
+				Stop();
+				StatorEl = null;
+				StatorAz = null;
+			}
 		}
 
 		public float RotationSpeedMultiplier
@@ -75,15 +138,13 @@ namespace Rynchodon
 			DirectionBlock blockCurrent = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(FaceBlock.GetFaceDirection(target)) }.ToBlock((IMyCubeBlock)StatorAz);
 
 			//myLogger.debugLog("block target: " + blockTarget.vector + ", block current: " + blockCurrent.vector);
-			
+
 			float targetElevation, targetAzimuth, currentElevation, currentAzimuth;
 			GetElevationAndAzimuth(blockTarget.vector, out targetElevation, out targetAzimuth);
 			GetElevationAndAzimuth(blockCurrent.vector, out currentElevation, out currentAzimuth);
 
 			// essentially we have done a pseudo calculation of target/current elevation/azimuth but they are either correct or "opposite" of the actual values
 			// we can determine which with a simple calculation
-
-			float deltaElevation;
 
 			PositionBlock faceBlockPosition = new PositionWorld() { vector = FaceBlock.GetPosition() }.ToBlock((IMyCubeBlock)StatorAz);
 			if (blockTarget.vector.Z * faceBlockPosition.vector.X - blockTarget.vector.X * faceBlockPosition.vector.Z > 0f) // Y component of cross product > 0
@@ -106,13 +167,17 @@ namespace Rynchodon
 				deltaAzimuth = MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi);
 			}
 
-			deltaElevation = MathHelper.WrapAngle(currentElevation - targetElevation);
-
-			//myLogger.debugLog("target elevation: " + targetElevation + ", current: " + currentElevation + ", rotor: " + MathHelper.WrapAngle(StatorEl.Angle) + ", delta: " + deltaElevation);
-			//myLogger.debugLog("target azimuth: " + targetAzimuth + ", current: " + currentAzimuth + ", rotor: " + MathHelper.WrapAngle(StatorAz.Angle) + ", delta: " + deltaAzimuth);
-
-			SetVelocity(StatorEl, deltaElevation);
-			SetVelocity(StatorAz, deltaAzimuth);
+			if (m_claimedElevation)
+			{
+				float deltaElevation = MathHelper.WrapAngle(currentElevation - targetElevation);
+				//myLogger.debugLog("target elevation: " + targetElevation + ", current: " + currentElevation + ", rotor: " + MathHelper.WrapAngle(StatorEl.Angle) + ", delta: " + deltaElevation);
+				SetVelocity(StatorEl, deltaElevation);
+			}
+			if (m_claimedAzimuth)
+			{
+				//myLogger.debugLog("target azimuth: " + targetAzimuth + ", current: " + currentAzimuth + ", rotor: " + MathHelper.WrapAngle(StatorAz.Angle) + ", delta: " + deltaAzimuth);
+				SetVelocity(StatorAz, deltaAzimuth);
+			}
 		}
 
 		private void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
@@ -133,19 +198,36 @@ namespace Rynchodon
 			if (!StatorOK())
 				return;
 
-			SetVelocity(StatorEl, 0);
-			SetVelocity(StatorAz, 0);
+			if (m_claimedElevation)
+				SetVelocity(StatorEl, 0);
+			if (m_claimedAzimuth)
+				SetVelocity(StatorAz, 0);
 		}
 
 		private bool StatorOK()
 		{ return StatorEl != null && !StatorEl.Closed && StatorEl.IsAttached && StatorAz != null && !StatorAz.Closed && StatorAz.IsAttached; }
+
+		private bool ClaimStators()
+		{
+			if (!m_claimedElevation)
+			{
+				m_claimedElevation = Static.claimedStators.Add(StatorEl);
+				myLogger.debugLog(m_claimedElevation, "claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG);
+			}
+			if (!m_claimedAzimuth)
+			{
+				m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
+				myLogger.debugLog(m_claimedAzimuth, "claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG);
+			}
+			return m_claimedElevation || m_claimedAzimuth;
+		}
 
 		private bool SetupStators()
 		{
 			if (StatorOK())
 			{
 				//myLogger.debugLog("Stators are already set up", "SetupStators()");
-				return true;
+				return ClaimStators();
 			}
 
 			// get StatorEl from FaceBlock's grid
@@ -155,7 +237,8 @@ namespace Rynchodon
 			{
 				myLogger.debugLog("Failed to get StatorEl");
 				StatorEl = null;
-				OnStatorChange(StatorEl, StatorAz);
+				if (OnStatorChange != null)
+					OnStatorChange(StatorEl, StatorAz);
 				return false;
 			}
 			StatorEl = tempStator;
@@ -172,22 +255,24 @@ namespace Rynchodon
 			{
 				myLogger.debugLog("Failed to get StatorAz");
 				StatorAz = null;
-				OnStatorChange(StatorEl, StatorAz);
+				if (OnStatorChange != null)
+					OnStatorChange(StatorEl, StatorAz);
 				return false;
 			}
 			StatorAz = tempStator;
 
 			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText);
-			OnStatorChange(StatorEl, StatorAz);
+			if (OnStatorChange != null)
+				OnStatorChange(StatorEl, StatorAz);
 			Stop();
-			return true;
+			return ClaimStators();
 		}
 
 		private bool GetStatorRotor(IMyCubeGrid grid, out IMyMotorStator Stator, out IMyCubeBlock Rotor, IMyMotorStator IgnoreStator = null, IMyCubeBlock IgnoreRotor = null)
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
-			foreach (MyObjectBuilderType type in types_Rotor)
+			foreach (MyObjectBuilderType type in Static.types_Rotor)
 			{
 				var blocksOfType = cache.GetBlocksOfType(type);
 				if (blocksOfType == null || blocksOfType.Count == 0)
@@ -226,38 +311,14 @@ namespace Rynchodon
 		{
 			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
-			float speed = angle * RotationSpeedMultiplier;
+			// keep in mind, azimuth is undefined if elevation is straight up or straight down
+			float speed = angle.IsValid() ? MathHelper.Clamp(angle * RotationSpeedMultiplier, -mySpeedLimit, mySpeedLimit) : 0f;
 
-			if (!speed.IsValid())
-			{
-				// keep in mind, azimuth is undefined if elevation is straight up or straight down
-				myLogger.debugLog("invalid speed: " + speed);
-				speed = 0;
-			}
-			else
-				speed = MathHelper.Clamp(speed, -mySpeedLimit, mySpeedLimit);
-
-			float prevSpeed;
-			if (Stator == StatorEl)
-				prevSpeed = previousSpeed_StatorEl;
-			else
-				prevSpeed = previousSpeed_StatorAz;
-
-			if (Math.Abs(speed - prevSpeed) < 0.1)
-			{
-				//myLogger.debugLog(Stator.DisplayNameText + ", no change in speed: " + speed, "SetVelocity()");
-				return;
-			}
-
-			//myLogger.debugLog(Stator.DisplayNameText + ", speed changed to " + speed, "SetVelocity()");
-			var prop = Stator.GetProperty("Velocity").AsFloat();
-
-			if (Stator == StatorEl)
-				previousSpeed_StatorEl = speed;
-			else
-				previousSpeed_StatorAz = speed;
-
-			prop.SetValue(Stator, speed);
+			if (Static.statorVelocity == null)
+				Static.statorVelocity = Stator.GetProperty("Velocity") as ITerminalProperty<float>;
+			float currentSpeed = Static.statorVelocity.GetValue(Stator);
+			if ((speed == 0f && currentSpeed != 0f) || Math.Abs(speed - currentSpeed) > 0.1f)
+				Static.statorVelocity.SetValue(Stator, speed);
 		}
 	}
 }

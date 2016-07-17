@@ -138,6 +138,7 @@ namespace Rynchodon.Weapons
 				if (MyMotorTurret != null)
 				{
 					//myLogger.debugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
+					MyMotorTurret.Dispose();
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
 				}
 			}
