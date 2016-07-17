@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Rynchodon.Attached;
+using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using VRage.ObjectBuilders;
-using VRageMath;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Game.ModAPI;
+using VRage.ObjectBuilders;
+using VRageMath;
 
 namespace Rynchodon
 {
@@ -50,6 +48,8 @@ namespace Rynchodon
 			this.myLogger = new Logger("MotorTurret", block);
 			this.OnStatorChange = handler;
 			this.SetupStators();
+
+			Stop();
 		}
 
 		public float RotationSpeedMultiplier
@@ -58,43 +58,72 @@ namespace Rynchodon
 			set { my_RotationSpeedMulitplier = Math.Abs(value); }
 		}
 
-		public float SpeedLimt
+		public float SpeedLimit
 		{
 			get { return mySpeedLimit; }
 			set { mySpeedLimit = Math.Abs(value); }
 		}
 
-		/// <summary>
-		/// Rotate to face FaceBlock towards a particular direction.
-		/// </summary>
-		public void FaceTowards(RelativeDirection3F direction)
+		public void FaceTowards(DirectionWorld target)
 		{
-			//myLogger.debugLog("entered FaceTowards()", "FaceTowards()");
-
 			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
 
 			if (!SetupStators())
 				return;
 
-			// get the direction FaceBlock is currently facing
-			Base6Directions.Direction closestDirection = FaceBlock.GetFaceDirection(direction.ToWorld());
-			//myLogger.debugLog("closest direction: " + closestDirection, "FaceTowards()");
-			RelativeDirection3F currentDir = RelativeDirection3F.FromWorld(FaceBlock.CubeGrid, FaceBlock.WorldMatrix.GetDirectionVector(closestDirection));
-			// get the elevation and azimuth from currentDir
-			float currentFaceEl, currentFaceAz;
-			Vector3.GetAzimuthAndElevation(currentDir.ToBlockNormalized(StatorAz as IMyCubeBlock), out currentFaceAz, out currentFaceEl);
+			DirectionBlock blockTarget = target.ToBlock((IMyCubeBlock)StatorAz);
+			DirectionBlock blockCurrent = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(FaceBlock.GetFaceDirection(target)) }.ToBlock((IMyCubeBlock)StatorAz);
 
-			Vector3 targetDir_block = direction.ToBlockNormalized(StatorAz as IMyCubeBlock);
-			float targetEl, targetAz;
-			Vector3.GetAzimuthAndElevation(targetDir_block, out targetAz, out targetEl);
-			// target elevation and azimuth will change as weapon moves
+			//myLogger.debugLog("block target: " + blockTarget.vector + ", block current: " + blockCurrent.vector);
+			
+			float targetElevation, targetAzimuth, currentElevation, currentAzimuth;
+			GetElevationAndAzimuth(blockTarget.vector, out targetElevation, out targetAzimuth);
+			GetElevationAndAzimuth(blockCurrent.vector, out currentElevation, out currentAzimuth);
 
-			// elevation and azimuth are between -Pi and +Pi, stator angles are all over the place
-			float elevationChange = MathHelper.WrapAngle(currentFaceEl - targetEl);
-			float azimuthChange = MathHelper.WrapAngle(currentFaceAz - targetAz);
+			// essentially we have done a pseudo calculation of target/current elevation/azimuth but they are either correct or "opposite" of the actual values
+			// we can determine which with a simple calculation
 
-			SetVelocity(StatorEl, elevationChange);
-			SetVelocity(StatorAz, azimuthChange);
+			float deltaElevation;
+
+			PositionBlock faceBlockPosition = new PositionWorld() { vector = FaceBlock.GetPosition() }.ToBlock((IMyCubeBlock)StatorAz);
+			if (blockTarget.vector.Z * faceBlockPosition.vector.X - blockTarget.vector.X * faceBlockPosition.vector.Z > 0f) // Y component of cross product > 0
+			{
+				//myLogger.debugLog("alternate side, target elevation: " + targetElevation + " => " + (MathHelper.Pi - targetElevation));
+				targetElevation = MathHelper.Pi - targetElevation;
+
+				//myLogger.debugLog("alternate side, target azimuth: " + targetAzimuth + " => " + (targetAzimuth + MathHelper.Pi));
+				targetAzimuth += MathHelper.Pi;
+			}
+
+			float deltaAzimuth = MathHelper.WrapAngle(currentAzimuth - targetAzimuth);
+			if (Math.Abs(deltaAzimuth) > MathHelper.PiOver2)
+			{
+				//myLogger.debugLog("flipping current elevation: " + currentElevation + " => " + (MathHelper.Pi - currentElevation));
+
+				currentElevation = MathHelper.Pi - currentElevation;
+
+				//myLogger.debugLog("flipping delta azimuth: " + deltaAzimuth + " => " + MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi));
+				deltaAzimuth = MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi);
+			}
+
+			deltaElevation = MathHelper.WrapAngle(currentElevation - targetElevation);
+
+			//myLogger.debugLog("target elevation: " + targetElevation + ", current: " + currentElevation + ", rotor: " + MathHelper.WrapAngle(StatorEl.Angle) + ", delta: " + deltaElevation);
+			//myLogger.debugLog("target azimuth: " + targetAzimuth + ", current: " + currentAzimuth + ", rotor: " + MathHelper.WrapAngle(StatorAz.Angle) + ", delta: " + deltaAzimuth);
+
+			SetVelocity(StatorEl, deltaElevation);
+			SetVelocity(StatorAz, deltaAzimuth);
+		}
+
+		private void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
+		{
+			elevation = (float)Math.Asin(vector.Y);
+
+			// azimuth is arbitrary when elevation is +/- 1
+			if (Math.Abs(vector.Y) > 0.9999f)
+				azimuth = float.NaN;
+			else
+				azimuth = (float)Math.Atan2(vector.X, vector.Z);
 		}
 
 		public void Stop()
@@ -201,6 +230,7 @@ namespace Rynchodon
 
 			if (!speed.IsValid())
 			{
+				// keep in mind, azimuth is undefined if elevation is straight up or straight down
 				myLogger.debugLog("invalid speed: " + speed);
 				speed = 0;
 			}

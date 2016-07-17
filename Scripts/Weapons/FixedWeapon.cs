@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Rynchodon.Attached;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -117,10 +116,7 @@ namespace Rynchodon.Weapons
 				return;
 
 			if (MyMotorTurret != null)
-			{
-				RelativeDirection3F FiringDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value);
-				MyMotorTurret.FaceTowards(FiringDirection);
-			}
+				MyMotorTurret.FaceTowards(GotTarget.FiringDirection.Value);
 		}
 
 		protected override void Update100_Options_TargetingThread(TargetingOptions current)
