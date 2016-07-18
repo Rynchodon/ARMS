@@ -50,6 +50,9 @@ namespace Rynchodon.AntennaRelay
 				ValidForGroups = false,
 				ActionWithParameters = ProgrammableBlock_SendMessage
 			};
+			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
+			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
+			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
 			MyTerminalControlFactory.AddAction(programmable_sendMessage);
 
 			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());

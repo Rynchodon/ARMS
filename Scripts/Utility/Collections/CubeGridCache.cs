@@ -354,7 +354,7 @@ namespace Rynchodon
 		/// </summary>
 		public static CubeGridCache GetFor(IMyCubeGrid grid)
 		{
-			if (grid.Closed || grid.MarkedForClose)
+			if (grid.Closed || grid.MarkedForClose || Globals.WorldClosed)
 				return null;
 
 			CubeGridCache value;
