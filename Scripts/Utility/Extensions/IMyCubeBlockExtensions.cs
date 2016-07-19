@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -56,57 +57,14 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Get all the face directions for a block.
-		/// </summary>
-		/// <remarks>
-		/// <para>Ship Controllers: forward</para>
-		/// <para>Weapons: forward</para>
-		/// <para>Connector: forward</para>
-		/// <para>Solar Panel: forward, backward</para>
-		/// <para>Solar Farm: forward, backward</para>
-		/// <para>Directional Antenna: upward, forward, rightward, backward, leftward</para>
-		/// <para>Landing Gear: downward</para>
-		/// <para>Merge Block: rightward</para>
-		/// </remarks>
-		public static List<Base6Directions.Direction> GetFaceDirection(this IMyCubeBlock block)
-		{
-			List<Base6Directions.Direction> result = new List<Base6Directions.Direction>();
-			if (block is SE_Ingame.IMySolarPanel || block is SE_Ingame.IMyOxygenFarm)
-			{
-				result.Add(Base6Directions.Direction.Forward);
-				result.Add(Base6Directions.Direction.Backward);
-			}
-			else if (block is Ingame.IMyLaserAntenna)
-			{
-				//result.Add(Base6Directions.Direction.Up); // up is really bad for laser antenna, it can't pick an azimuth and spins constantly
-				result.Add(Base6Directions.Direction.Forward);
-				result.Add(Base6Directions.Direction.Right);
-				result.Add(Base6Directions.Direction.Backward);
-				result.Add(Base6Directions.Direction.Left);
-			}
-			else if (block is SE_Ingame.IMyLandingGear)
-				result.Add(Base6Directions.Direction.Down);
-			else if (block is SE_Ingame.IMyShipMergeBlock)
-				result.Add(Base6Directions.Direction.Right);
-			else
-				result.Add(Base6Directions.Direction.Forward);
-
-			return result;
-		}
-
-		/// <summary>
 		/// Gets the closest face direction to worldDirection.
 		/// </summary>
-		public static Base6Directions.Direction GetFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
+		public static Base6Directions.Direction ClosestFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)
 		{
-			List<Base6Directions.Direction> faceDirections = GetFaceDirection(block);
-			if (faceDirections.Count == 1)
-				return faceDirections[0];
-			if (faceDirections.Count == 0)
-				throw new InvalidOperationException("faceDirections.Count == 0");
+			IEnumerable<Base6Directions.Direction> faceDirections = FaceDirections(block);
 
 			worldDirection.Normalize();
-			Base6Directions.Direction? bestDirection = null;
+			Base6Directions.Direction bestDirection = (Base6Directions.Direction)255;
 			double bestDirectionAngle = double.MinValue;
 
 			foreach (Base6Directions.Direction direction in faceDirections)
@@ -125,10 +83,63 @@ namespace Rynchodon
 				}
 			}
 
-			if (bestDirection == null)
+			if (bestDirectionAngle == double.MinValue)
 				throw new NullReferenceException("bestDirection");
 
-			return bestDirection.Value;
+			return bestDirection;
+		}
+
+		/// <summary>
+		/// Enumerable for all the face directions for a block.
+		/// </summary>
+		/// <remarks>
+		/// <para>Ship Controllers: forward</para>
+		/// <para>Weapons: forward</para>
+		/// <para>Connector: forward</para>
+		/// <para>Solar Panel: forward, backward</para>
+		/// <para>Solar Farm: forward, backward</para>
+		/// <para>Directional Antenna: upward, forward, rightward, backward, leftward</para>
+		/// <para>Landing Gear: downward</para>
+		/// <para>Merge Block: rightward</para>
+		/// </remarks>
+		public static IEnumerable<Base6Directions.Direction> FaceDirections(this IMyCubeBlock block)
+		{
+			if (block is SE_Ingame.IMySolarPanel || block is SE_Ingame.IMyOxygenFarm)
+			{
+				yield return Base6Directions.Direction.Forward;
+				yield return Base6Directions.Direction.Backward;
+			}
+			else if (block is Ingame.IMyLaserAntenna)
+			{
+				// up is really bad for laser antenna, it can't pick an azimuth and spins constantly
+				yield return Base6Directions.Direction.Forward;
+				yield return Base6Directions.Direction.Right;
+				yield return Base6Directions.Direction.Backward;
+				yield return Base6Directions.Direction.Left;
+			}
+			else if (block is SE_Ingame.IMyLandingGear)
+				yield return Base6Directions.Direction.Down;
+			else if (block is SE_Ingame.IMyShipMergeBlock)
+				yield return Base6Directions.Direction.Right;
+			else
+				yield return Base6Directions.Direction.Forward;
+		}
+
+		/// <summary>
+		/// As FaceDirections(this IMyCubeBlock block) but starts with the closest direction to worldDirection.
+		/// </summary>
+		public static IEnumerable<Base6Directions.Direction> FaceDirections(this IMyCubeBlock block, Vector3 worldDirection)
+		{
+			Base6Directions.Direction closest = ClosestFaceDirection(block, worldDirection);
+			yield return closest;
+			foreach (Base6Directions.Direction direction in FaceDirections(block))
+				if (direction != closest)
+					yield return direction;
+		}
+
+		public static Base6Directions.Direction FirstFaceDirection(this IMyCubeBlock block)
+		{
+			return FaceDirections(block).First();
 		}
 
 		public static float GetLengthInDirection(this IMyCubeBlock block, Base6Directions.Direction direction)

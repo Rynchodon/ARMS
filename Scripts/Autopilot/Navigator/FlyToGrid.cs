@@ -139,12 +139,12 @@ namespace Rynchodon.Autopilot.Navigator
 						Ingame.IMyShipConnector connector = block as Ingame.IMyShipConnector;
 						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block) && ReserveTarget(connector.EntityId);
 					};
-					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
+					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.FirstFaceDirection());
 				}
 				else if (landingBlock.Block is IMyShipMergeBlock)
 				{
 					m_gridFinder.BlockCondition = block => block is IMyShipMergeBlock && ReserveTarget(block.EntityId);
-					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.GetFaceDirection()[0]);
+					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.FirstFaceDirection());
 					(landingBlock.Block as IMyShipMergeBlock).BeforeMerge += MergeBlock_BeforeMerge;
 				}
 				else if (m_targetBlock.Forward.HasValue)

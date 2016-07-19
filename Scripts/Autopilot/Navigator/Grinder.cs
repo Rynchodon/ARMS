@@ -124,7 +124,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
-			m_grinderOffset = m_navGrind.Block.GetLengthInDirection(m_navGrind.Block.GetFaceDirection()[0]) * 0.5f + 2.5f;
+			m_grinderOffset = m_navGrind.Block.GetLengthInDirection(m_navGrind.Block.FirstFaceDirection()) * 0.5f + 2.5f;
 			if (m_navSet.Settings_Current.DestinationRadius > m_longestDimension)
 			{
 				m_logger.debugLog("Reducing DestinationRadius from " + m_navSet.Settings_Current.DestinationRadius + " to " + m_longestDimension, Logger.severity.DEBUG);

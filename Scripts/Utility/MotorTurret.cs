@@ -42,6 +42,30 @@ namespace Rynchodon
 			Static = null;
 		}
 
+		private static void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
+		{
+			elevation = (float)Math.Asin(vector.Y);
+
+			// azimuth is arbitrary when elevation is +/- 1
+			if (Math.Abs(vector.Y) > 0.9999f)
+				azimuth = float.NaN;
+			else
+				azimuth = (float)Math.Atan2(vector.X, vector.Z);
+		}
+
+		/// <summary>
+		/// Determines if a stator can rotate a specific amount.
+		/// </summary>
+		/// <returns>True iff the stator can rotate the specified amount.</returns>
+		private static bool CanRotate(IMyMotorStator stator, float amount)
+		{
+			// NaN is treated as zero
+			if (float.IsNaN(amount) || stator.UpperLimit - stator.LowerLimit > MathHelper.TwoPi)
+				return true;
+
+			return amount > 0f ? amount <= stator.UpperLimit - stator.Angle : amount >= stator.LowerLimit - stator.Angle;
+		}
+
 		private readonly IMyCubeBlock FaceBlock;
 		private readonly Logger myLogger;
 		private readonly StatorChangeHandler OnStatorChange;
@@ -127,6 +151,9 @@ namespace Rynchodon
 			set { mySpeedLimit = Math.Abs(value); }
 		}
 
+		/// <summary>
+		/// Try to face in the target direction.
+		/// </summary>
 		public void FaceTowards(DirectionWorld target)
 		{
 			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
@@ -134,61 +161,96 @@ namespace Rynchodon
 			if (!SetupStators())
 				return;
 
-			DirectionBlock blockTarget = target.ToBlock((IMyCubeBlock)StatorAz);
-			DirectionBlock blockCurrent = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(FaceBlock.GetFaceDirection(target)) }.ToBlock((IMyCubeBlock)StatorAz);
-
-			//myLogger.debugLog("block target: " + blockTarget.vector + ", block current: " + blockCurrent.vector);
-
-			float targetElevation, targetAzimuth, currentElevation, currentAzimuth;
-			GetElevationAndAzimuth(blockTarget.vector, out targetElevation, out targetAzimuth);
-			GetElevationAndAzimuth(blockCurrent.vector, out currentElevation, out currentAzimuth);
-
-			// essentially we have done a pseudo calculation of target/current elevation/azimuth but they are either correct or "opposite" of the actual values
-			// we can determine which with a simple calculation
-
-			PositionBlock faceBlockPosition = new PositionWorld() { vector = FaceBlock.GetPosition() }.ToBlock((IMyCubeBlock)StatorAz);
-			if (blockTarget.vector.Z * faceBlockPosition.vector.X - blockTarget.vector.X * faceBlockPosition.vector.Z > 0f) // Y component of cross product > 0
-			{
-				//myLogger.debugLog("alternate side, target elevation: " + targetElevation + " => " + (MathHelper.Pi - targetElevation));
-				targetElevation = MathHelper.Pi - targetElevation;
-
-				//myLogger.debugLog("alternate side, target azimuth: " + targetAzimuth + " => " + (targetAzimuth + MathHelper.Pi));
-				targetAzimuth += MathHelper.Pi;
-			}
-
-			float deltaAzimuth = MathHelper.WrapAngle(currentAzimuth - targetAzimuth);
-			if (Math.Abs(deltaAzimuth) > MathHelper.PiOver2)
-			{
-				//myLogger.debugLog("flipping current elevation: " + currentElevation + " => " + (MathHelper.Pi - currentElevation));
-
-				currentElevation = MathHelper.Pi - currentElevation;
-
-				//myLogger.debugLog("flipping delta azimuth: " + deltaAzimuth + " => " + MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi));
-				deltaAzimuth = MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi);
-			}
+			float bestDeltaElevation;
+			float bestDeltaAzimuth;
+			CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
 
 			if (m_claimedElevation)
-			{
-				float deltaElevation = MathHelper.WrapAngle(currentElevation - targetElevation);
-				//myLogger.debugLog("target elevation: " + targetElevation + ", current: " + currentElevation + ", rotor: " + MathHelper.WrapAngle(StatorEl.Angle) + ", delta: " + deltaElevation);
-				SetVelocity(StatorEl, deltaElevation);
-			}
+				SetVelocity(StatorEl, bestDeltaElevation);
 			if (m_claimedAzimuth)
-			{
-				//myLogger.debugLog("target azimuth: " + targetAzimuth + ", current: " + currentAzimuth + ", rotor: " + MathHelper.WrapAngle(StatorAz.Angle) + ", delta: " + deltaAzimuth);
-				SetVelocity(StatorAz, deltaAzimuth);
-			}
+				SetVelocity(StatorAz, bestDeltaAzimuth);
 		}
 
-		private void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
+		public bool CanFaceTowards(DirectionWorld target)
 		{
-			elevation = (float)Math.Asin(vector.Y);
+			if (!StatorOK())
+				return false;
 
-			// azimuth is arbitrary when elevation is +/- 1
-			if (Math.Abs(vector.Y) > 0.9999f)
-				azimuth = float.NaN;
-			else
-				azimuth = (float)Math.Atan2(vector.X, vector.Z);
+			float bestDeltaElevation;
+			float bestDeltaAzimuth;
+			return CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
+		}
+
+		private bool CalcFaceTowards(DirectionWorld target, out float bestDeltaElevation, out float bestDeltaAzimuth)
+		{
+			DirectionBlock blockTarget = target.ToBlock((IMyCubeBlock)StatorAz);
+			float targetElevation, targetAzimuth;
+			GetElevationAndAzimuth(blockTarget.vector, out targetElevation, out targetAzimuth);
+			PositionBlock faceBlockPosition = new PositionWorld() { vector = FaceBlock.GetPosition() }.ToBlock((IMyCubeBlock)StatorAz);
+			bool alternate = blockTarget.vector.Z * faceBlockPosition.vector.X - blockTarget.vector.X * faceBlockPosition.vector.Z > 0f; // Y component of cross product > 0
+
+			bestDeltaElevation = 0f;
+			bestDeltaAzimuth = 0f;
+
+			bool first = true;
+			bool canFace = false;
+			foreach (Base6Directions.Direction direction in FaceBlock.FaceDirections(target))
+			{
+				DirectionBlock blockCurrent = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(direction) }.ToBlock((IMyCubeBlock)StatorAz);
+
+				float currentElevation, currentAzimuth;
+				GetElevationAndAzimuth(blockCurrent.vector, out currentElevation, out currentAzimuth);
+
+				// essentially we have done a pseudo calculation of target/current elevation/azimuth but they are either correct or "opposite" of the actual values
+				// we can determine which with a simple calculation
+
+				float deltaElevation, deltaAzimuth;
+				CalcFaceTowards(currentElevation, currentAzimuth, targetElevation, targetAzimuth, out deltaElevation, out deltaAzimuth, alternate);
+				canFace = CanRotate(StatorEl, deltaElevation) && CanRotate(StatorAz, deltaAzimuth);
+
+				if (first)
+				{
+					first = false;
+					bestDeltaElevation = deltaElevation;
+					bestDeltaAzimuth = deltaAzimuth;
+					if (canFace)
+						break;
+				}
+				else if (canFace)
+				{
+					bestDeltaElevation = deltaElevation;
+					bestDeltaAzimuth = deltaAzimuth;
+					break;
+				}
+
+				CalcFaceTowards(currentElevation, currentAzimuth, targetElevation, targetAzimuth, out deltaElevation, out deltaAzimuth, !alternate, false);
+				canFace = CanRotate(StatorEl, deltaElevation) && CanRotate(StatorAz, deltaAzimuth);
+
+				if (canFace)
+				{
+					bestDeltaElevation = deltaElevation;
+					bestDeltaAzimuth = deltaAzimuth;
+					break;
+				}
+			}
+
+			return canFace;
+		}
+
+		private void CalcFaceTowards(float currentElevation, float currentAzimuth, float targetElevation, float targetAzimuth, out float deltaElevation, out float deltaAzimuth, bool alternate = false, bool allowFlip = true)
+		{
+			if (alternate)
+			{
+				targetElevation = MathHelper.Pi - targetElevation;
+				targetAzimuth += MathHelper.Pi;
+			}
+			deltaAzimuth = MathHelper.WrapAngle(currentAzimuth - targetAzimuth);
+			if (allowFlip && Math.Abs(deltaAzimuth) > MathHelper.PiOver2)
+			{
+				currentElevation = MathHelper.Pi - currentElevation;
+				deltaAzimuth = MathHelper.WrapAngle(deltaAzimuth + MathHelper.Pi);
+			}
+			deltaElevation = MathHelper.WrapAngle(currentElevation - targetElevation);
 		}
 
 		public void Stop()

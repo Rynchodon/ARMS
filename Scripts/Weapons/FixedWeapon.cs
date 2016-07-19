@@ -157,14 +157,12 @@ namespace Rynchodon.Weapons
 
 		protected override bool CanRotateTo(VRageMath.Vector3D targetPoint)
 		{
-			return true;
-			
-			//// if controlled by an engager, can always rotate
-			//if (ControllingEngager)
-			//	return true;
+			if (MyMotorTurret == null)
+				return true;
 
-			//// if controlled by a turret (not implemented)
-			//return true;
+			Vector3 direction = targetPoint - ProjectilePosition();
+			direction.Normalize();
+			return MyMotorTurret.CanFaceTowards(direction);
 		}
 
 		protected override Vector3 Facing()

@@ -97,7 +97,7 @@ namespace Rynchodon.Autopilot.Data
 		public PseudoBlock(IMyCubeBlock block, Base6Directions.Direction? forward, Base6Directions.Direction? up)
 			: this(block)
 		{
-			Base6Directions.Direction for2 = forward ?? block.GetFaceDirection()[0];
+			Base6Directions.Direction for2 = forward ?? block.FirstFaceDirection();
 			Base6Directions.Direction up2 = up ??
 				(for2 == Base6Directions.Direction.Forward ? Base6Directions.Direction.Up : Base6Directions.GetPerpendicular(for2));
 
