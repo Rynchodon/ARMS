@@ -171,17 +171,17 @@ namespace Rynchodon
 				SetVelocity(StatorAz, bestDeltaAzimuth);
 		}
 
-		public bool CanFaceTowards(DirectionWorld target)
+		public bool CanFaceTowards(DirectionWorld target, float CanRotateMulti = 1f)
 		{
 			if (!StatorOK())
 				return false;
 
 			float bestDeltaElevation;
 			float bestDeltaAzimuth;
-			return CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
+			return CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth, CanRotateMulti);
 		}
 
-		private bool CalcFaceTowards(DirectionWorld target, out float bestDeltaElevation, out float bestDeltaAzimuth)
+		private bool CalcFaceTowards(DirectionWorld target, out float bestDeltaElevation, out float bestDeltaAzimuth, float CanRotateMulti = 1f)
 		{
 			DirectionBlock blockTarget = target.ToBlock((IMyCubeBlock)StatorAz);
 			float targetElevation, targetAzimuth;
@@ -206,7 +206,7 @@ namespace Rynchodon
 
 				float deltaElevation, deltaAzimuth;
 				CalcFaceTowards(currentElevation, currentAzimuth, targetElevation, targetAzimuth, out deltaElevation, out deltaAzimuth, alternate);
-				canFace = CanRotate(StatorEl, deltaElevation) && CanRotate(StatorAz, deltaAzimuth);
+				canFace = CanRotate(StatorEl, deltaElevation * CanRotateMulti) && CanRotate(StatorAz, deltaAzimuth * CanRotateMulti);
 
 				if (first)
 				{
@@ -224,7 +224,7 @@ namespace Rynchodon
 				}
 
 				CalcFaceTowards(currentElevation, currentAzimuth, targetElevation, targetAzimuth, out deltaElevation, out deltaAzimuth, !alternate, false);
-				canFace = CanRotate(StatorEl, deltaElevation) && CanRotate(StatorAz, deltaAzimuth);
+				canFace = CanRotate(StatorEl, deltaElevation * CanRotateMulti) && CanRotate(StatorAz, deltaAzimuth * CanRotateMulti);
 
 				if (canFace)
 				{

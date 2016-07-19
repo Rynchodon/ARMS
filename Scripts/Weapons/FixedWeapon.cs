@@ -162,7 +162,7 @@ namespace Rynchodon.Weapons
 
 			Vector3 direction = targetPoint - ProjectilePosition();
 			direction.Normalize();
-			return MyMotorTurret.CanFaceTowards(direction);
+			return MyMotorTurret.CanFaceTowards(direction, 1.5f);
 		}
 
 		protected override Vector3 Facing()
