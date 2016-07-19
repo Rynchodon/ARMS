@@ -297,7 +297,7 @@ namespace Rynchodon.AntennaRelay
 				parameter.Append(Math.Round(seen.LastKnownVelocity.Y, 1)); parameter.Append(fieldSeparator);
 				parameter.Append(Math.Round(seen.LastKnownVelocity.Z, 1)); parameter.Append(fieldSeparator);
 
-				if (seen.Info != null)
+				if (seen.RadarInfoIsRecent())
 					parameter.Append(seen.Info.Volume);
 				else
 					parameter.Append(0f);

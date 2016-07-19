@@ -440,7 +440,7 @@ namespace Rynchodon.AntennaRelay
 				builder.Append('m');
 				builder.Append(tab);
 				builder.Append(time);
-				if (seen.Info != null)
+				if (seen.RadarInfoIsRecent())
 				{
 					builder.Append(tab);
 					builder.Append(seen.Info.Pretty_Volume());

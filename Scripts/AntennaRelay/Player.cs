@@ -325,7 +325,7 @@ namespace Rynchodon.AntennaRelay
 			m_descrParts.Append(seen.Entity.EntityId);
 			m_descrParts.Append(", ");
 
-			if (seen.Info != null)
+			if (seen.RadarInfoIsRecent())
 			{
 				m_descrParts.Append(seen.Info.Pretty_Volume());
 				m_descrParts.Append(", ");

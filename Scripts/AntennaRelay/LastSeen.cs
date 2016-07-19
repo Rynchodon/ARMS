@@ -21,7 +21,14 @@ namespace Rynchodon.AntennaRelay
 			public Vector3D LastKnownPosition;
 			public Vector3 LastKnownVelocity;
 			public SerializableGameTime LastSeenAt, LastBroadcast, LastRadar, LastJam;
-			public RadarInfo.Builder_RadarInfo Info;
+			public Builder_RadarInfo Info;
+		}
+
+		[Serializable]
+		public class Builder_RadarInfo
+		{
+			public SerializableGameTime DetectedAt;
+			public float Volume;
 		}
 
 		[Flags]
@@ -35,7 +42,86 @@ namespace Rynchodon.AntennaRelay
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
-		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), Recent = new TimeSpan(0, 0, 10);
+		public const long TicksPerTenthSecond = TimeSpan.TicksPerSecond / 10, RecentTicks = TimeSpan.TicksPerSecond * 10;
+
+		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), RecentSpan = new TimeSpan(RecentTicks);
+
+		static LastSeen()
+		{
+			Logger.SetFileName("LastSeen");
+		}
+
+		public struct OlderBy
+		{
+			public static readonly OlderBy MinAge = new OlderBy() { RawValue = 255 },
+				MaxAge = new OlderBy() { RawValue = 0 };
+
+			public byte RawValue;
+
+			public OlderBy(long baseTicks, long myTicks)
+			{
+				this.RawValue = (byte)(255 - Math.Min((baseTicks - myTicks) / TicksPerTenthSecond, 255));
+			}
+
+			public long SpanTicks(long baseTicks)
+			{
+				return baseTicks - (255 - RawValue) * TicksPerTenthSecond;
+			}
+
+			public bool IsRecent(long baseTicks)
+			{
+				return Globals.ElapsedTimeTicks - SpanTicks(baseTicks) < RecentTicks;
+			}
+		}
+
+		/// <summary>
+		/// Information available when an entity has been scanned by radar or is sending data.
+		/// </summary>
+		public struct RadarInfo
+		{
+			public static float GetVolume(IMyEntity entity)
+			{
+				IMyCubeGrid grid = entity as IMyCubeGrid;
+				if (grid != null)
+					return GridCellCache.GetCellCache(grid).CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
+				return entity.LocalAABB.Volume();
+			}
+
+			public readonly LastSeen.OlderBy DetectedAt;
+			public readonly float Volume;
+
+			public string Pretty_Volume()
+			{ return PrettySI.makePrettyCubic(Volume) + "m³"; }
+
+			public RadarInfo(float volume)
+			{
+				this.DetectedAt = OlderBy.MinAge;
+				this.Volume = volume;
+			}
+
+			public RadarInfo(IMyEntity grid) :
+				this(GetVolume(grid)) { }
+
+			public RadarInfo(TimeSpan lastSeen, Builder_RadarInfo builder)
+			{
+				this.DetectedAt = new LastSeen.OlderBy(lastSeen.Ticks, builder.DetectedAt.ToTicks());
+				this.Volume = builder.Volume;
+			}
+
+			public bool IsRecent(long baseTicks)
+			{
+				return DetectedAt.IsRecent(baseTicks);
+			}
+
+			public Builder_RadarInfo GetBuilder(long baseTicks)
+			{
+				return new Builder_RadarInfo()
+				{
+					DetectedAt = new SerializableGameTime(DetectedAt.SpanTicks(baseTicks)),
+					Volume = Volume
+				};
+			}
+		}
 
 		private EntityType m_type;
 
@@ -45,14 +131,16 @@ namespace Rynchodon.AntennaRelay
 		public readonly RadarInfo Info;
 		public readonly Vector3 LastKnownVelocity;
 
-		// TODO? replace these times with flags
+		private long LastBroadcast
+		{ get { return m_lastBroadcast.SpanTicks(LastSeenAt.Ticks); } }
 
-		/// <summary>The last time Entity was broadcasting</summary>
-		private readonly TimeSpan LastBroadcast = new TimeSpan(long.MinValue / 2);
-		/// <summary>The last time Entity was using a radar</summary>
-		private readonly TimeSpan LastRadar = new TimeSpan(long.MinValue / 2);
-		/// <summary>The last time Entity was using a jammer</summary>
-		private readonly TimeSpan LastJam = new TimeSpan(long.MinValue / 2);
+		private long LastJam
+		{ get { return m_lastJam.SpanTicks(LastSeenAt.Ticks); } }
+
+		private long LastRadar
+		{ get { return m_lastRadar.SpanTicks(LastSeenAt.Ticks); } }
+
+		private OlderBy m_lastBroadcast, m_lastJam, m_lastRadar;
 
 		public EntityType Type
 		{
@@ -88,18 +176,28 @@ namespace Rynchodon.AntennaRelay
 
 		private LastSeen(LastSeen first, LastSeen second)
 		{
-			this.Info = RadarInfo.getNewer(first.Info, second.Info);
+			this.Info = first.RadarInfoTicks() > second.RadarInfoTicks() ? first.Info : second.Info;
 
-			LastSeen newer = first.isNewerThan(second) ? first : second;
+			LastSeen newer, older;
+			if (first.LastSeenAt > second.LastSeenAt)
+			{
+				newer = first;
+				older = second;
+			}
+			else
+			{
+				newer = second;
+				older = first;
+			}
 
 			this.Entity = newer.Entity;
 			this.LastSeenAt = newer.LastSeenAt;
 			this.LastKnownPosition = newer.LastKnownPosition;
 			this.LastKnownVelocity = newer.LastKnownVelocity;
 
-			this.LastBroadcast = first.LastBroadcast.CompareTo(second.LastBroadcast) > 0 ? first.LastBroadcast : second.LastBroadcast;
-			this.LastRadar = first.LastRadar.CompareTo(second.LastBroadcast) > 0 ? first.LastRadar : second.LastRadar;
-			this.LastJam = first.LastJam.CompareTo(second.LastBroadcast) > 0 ? first.LastJam : second.LastJam;
+			this.m_lastBroadcast = new OlderBy(this.LastSeenAt.Ticks, Math.Max(first.LastBroadcast, second.LastBroadcast));
+			this.m_lastJam = new OlderBy(this.LastSeenAt.Ticks, Math.Max(first.LastJam, second.LastJam));
+			this.m_lastRadar = new OlderBy(this.LastSeenAt.Ticks, Math.Max(first.LastRadar, second.LastRadar));
 
 			if (first.m_type == EntityType.None)
 				this.m_type = second.m_type;
@@ -113,11 +211,11 @@ namespace Rynchodon.AntennaRelay
 			: this(entity)
 		{
 			if ((times & UpdateTime.Broadcasting) != 0)
-				this.LastBroadcast = Globals.ElapsedTime;
+				this.m_lastBroadcast = OlderBy.MinAge;
 			if ((times & UpdateTime.HasJammer) != 0)
-				this.LastJam = Globals.ElapsedTime;
+				this.m_lastRadar = OlderBy.MinAge;
 			if ((times & UpdateTime.HasRadar) != 0)
-				this.LastRadar = Globals.ElapsedTime;
+				this.m_lastJam = OlderBy.MinAge;
 		}
 
 		/// <summary>
@@ -133,29 +231,18 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.EntityId, out this.Entity))
 			{
-				(new Logger(GetType().Name)).alwaysLog("Entity does not exist in world: " + builder.EntityId, Logger.severity.WARNING);
+				Logger.AlwaysLog("Entity does not exist in world: " + builder.EntityId, Logger.severity.WARNING);
 				return;
 			}
 			this.LastSeenAt = builder.LastSeenAt.ToTimeSpan();
 			this.LastKnownPosition = builder.LastKnownPosition;
 			this.LastKnownVelocity = builder.LastKnownVelocity;
-			this.LastBroadcast = builder.LastBroadcast.ToTimeSpan();
-			this.LastRadar = builder.LastRadar.ToTimeSpan();
-			this.LastJam = builder.LastJam.ToTimeSpan();
+			this.m_lastBroadcast = new OlderBy(this.LastSeenAt.Ticks, builder.LastBroadcast.ToTicks());
+			this.m_lastJam = new OlderBy(this.LastSeenAt.Ticks, builder.LastJam.ToTicks());
+			this.m_lastRadar = new OlderBy(this.LastSeenAt.Ticks, builder.LastRadar.ToTicks());
 			if (builder.Info != null)
-				this.Info = new RadarInfo(builder.Info);
+				this.Info = new RadarInfo(this.LastSeenAt, builder.Info);
 			this.value_isValid = true;
-		}
-
-		private bool isNewerThan(LastSeen other)
-		{ return this.LastSeenAt.CompareTo(other.LastSeenAt) > 0; }
-
-		private bool anyNewer(LastSeen other)
-		{
-			return this.LastSeenAt.CompareTo(other.LastSeenAt) > 0
-				|| this.LastBroadcast.CompareTo(other.LastBroadcast) > 0
-				|| this.LastJam.CompareTo(other.LastJam) > 0
-				|| this.LastRadar.CompareTo(other.LastRadar) > 0;
 		}
 
 		/// <summary>
@@ -165,8 +252,11 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>true iff an update was performed</returns>
 		public bool update(ref LastSeen toUpdate)
 		{
-			if (this.anyNewer(toUpdate)
-				|| (this.Info != null && (toUpdate.Info == null || this.Info.IsNewerThan(toUpdate.Info))))
+			if (this.LastSeenAt > toUpdate.LastSeenAt ||
+				this.LastBroadcast > toUpdate.LastBroadcast ||
+				this.LastJam > toUpdate.LastJam ||
+				this.LastRadar > toUpdate.LastRadar ||
+				this.RadarInfoTicks() > toUpdate.RadarInfoTicks())
 			{
 				toUpdate = new LastSeen(this, toUpdate);
 				return true;
@@ -196,19 +286,19 @@ namespace Rynchodon.AntennaRelay
 
 		/// <summary>True if the entity was detected recently</summary>
 		public bool isRecent()
-		{ return GetTimeSinceLastSeen() < Recent; }
+		{ return GetTimeSinceLastSeen() < RecentSpan; }
 
 		/// <summary>True if the entity was seen broadcasting recently.</summary>
 		public bool isRecent_Broadcast()
-		{ return (Globals.ElapsedTime - LastBroadcast) < Recent; }
+		{ return m_lastBroadcast.IsRecent(LastSeenAt.Ticks); }
 
 		/// <summary>True if a radar jammer was seen on the entity recently.</summary>
 		public bool isRecent_Jam()
-		{ return (Globals.ElapsedTime - LastJam) < Recent; }
+		{ return m_lastJam.IsRecent(LastSeenAt.Ticks); }
 
 		/// <summary>True if a radar was seen on the entity recently.</summary>
 		public bool isRecent_Radar()
-		{ return (Globals.ElapsedTime - LastRadar) < Recent; }
+		{ return m_lastRadar.IsRecent(LastSeenAt.Ticks); }
 
 		/// <summary>A time span object representing the difference between the current time and the last time this LastSeen was updated</summary>
 		public TimeSpan GetTimeSinceLastSeen()
@@ -221,7 +311,7 @@ namespace Rynchodon.AntennaRelay
 		public Vector3D GetPosition()
 		{
 			TimeSpan sinceLastSeen = GetTimeSinceLastSeen();
-			return !Entity.MarkedForClose && sinceLastSeen < Recent ? Entity.GetCentre()
+			return !Entity.MarkedForClose && sinceLastSeen < RecentSpan ? Entity.GetCentre()
 				: LastKnownPosition + LastKnownVelocity * (float)sinceLastSeen.TotalSeconds;
 		}
 
@@ -296,85 +386,25 @@ namespace Rynchodon.AntennaRelay
 				 LastKnownVelocity = LastKnownVelocity,
 				 LastBroadcast = new SerializableGameTime(LastBroadcast),
 				 LastRadar = new SerializableGameTime(LastRadar),
-				 LastJam = new SerializableGameTime(LastJam)
+				 LastJam = new SerializableGameTime(LastJam),
+				 Info = Info.GetBuilder(LastSeenAt.Ticks)
 			 };
-			if (Info != null)
-				result.Info = Info.GetBuilder();
 			return result;
 		}
 
-	}
-
-	/// <summary>
-	/// Information available when an entity has been scanned by radar or is sending data.
-	/// </summary>
-	public class RadarInfo
-	{
-
-		[Serializable]
-		public class Builder_RadarInfo
+		public bool RadarInfoIsRecent()
 		{
-			public SerializableGameTime DetectedAt;
-			public float Volume;
+			return Info.IsRecent(LastSeenAt.Ticks);
 		}
 
-		public static float GetVolume(IMyEntity entity)
+		public TimeSpan RadarInfoTime()
 		{
-			IMyCubeGrid grid = entity as IMyCubeGrid;
-			if (grid != null)
-				return GridCellCache.GetCellCache(grid).CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
-			return entity.LocalAABB.Volume();
+			return new TimeSpan(Info.DetectedAt.SpanTicks(LastSeenAt.Ticks));
 		}
 
-		/// <summary>
-		/// When the RadarInfo was last updated.
-		/// </summary>
-		public readonly TimeSpan DetectedAt;
-		public readonly float Volume;
-
-		public string Pretty_Volume()
-		{ return PrettySI.makePrettyCubic(Volume) + "m³"; }
-
-		public RadarInfo(float volume)
+		public long RadarInfoTicks()
 		{
-			this.DetectedAt = Globals.ElapsedTime;
-			this.Volume = volume;
-		}
-
-		public RadarInfo(IMyEntity grid) : this(GetVolume(grid)) { }
-
-		public RadarInfo(Builder_RadarInfo builder)
-		{
-			this.DetectedAt = builder.DetectedAt.ToTimeSpan();
-			this.Volume = builder.Volume;
-		}
-
-		public bool IsNewerThan(RadarInfo other)
-		{ return this.DetectedAt.CompareTo(other.DetectedAt) > 0; }
-
-		public static RadarInfo getNewer(RadarInfo first, RadarInfo second)
-		{
-			if (first == null)
-				return second;
-			if (second == null)
-				return first;
-			if (first.IsNewerThan(second))
-				return first;
-			return second;
-		}
-
-		public bool IsRecent()
-		{
-			return (Globals.ElapsedTime - DetectedAt) < LastSeen.Recent;
-		}
-
-		public Builder_RadarInfo GetBuilder()
-		{
-			return new Builder_RadarInfo()
-			{
-				DetectedAt = new SerializableGameTime(DetectedAt),
-				Volume = Volume
-			};
+			return Info.DetectedAt.SpanTicks(LastSeenAt.Ticks);
 		}
 
 	}

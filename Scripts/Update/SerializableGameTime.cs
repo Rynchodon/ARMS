@@ -25,6 +25,14 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// For saving TimeSpan to file.
 		/// </summary>
+		public SerializableGameTime(long spanTicks)
+		{
+			Value = spanTicks;
+		}
+
+		/// <summary>
+		/// For saving TimeSpan to file.
+		/// </summary>
 		public SerializableGameTime(TimeSpan span)
 		{
 			Value = span.Ticks;
@@ -38,6 +46,16 @@ namespace Rynchodon.Update
 			if (!fromFile)
 				throw new InvalidOperationException("Cannot call ToTimeSpan() on a SerializableGameTime created from a TimeSpan. Also, why would you?");
 			return new TimeSpan(Value) - Adjust.Value;
+		}
+
+		/// <summary>
+		/// For TimeSpan from file.
+		/// </summary>
+		public long ToTicks()
+		{
+			if (!fromFile)
+				throw new InvalidOperationException("Cannot call ToTimeSpan() on a SerializableGameTime created from a TimeSpan. Also, why would you?");
+			return Value - Adjust.Value.Ticks;
 		}
 
 	}

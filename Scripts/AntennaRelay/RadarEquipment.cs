@@ -147,7 +147,7 @@ namespace Rynchodon.AntennaRelay
 			public readonly ExtensionsRelations.Relations Relate;
 			private readonly byte relateOrder;
 
-			public RadarInfo Info { get; private set; }
+			public LastSeen.RadarInfo Info { get; private set; }
 
 			public float RadarSignature { get; private set; }
 			public float RadarSignal { get; set; }
@@ -175,7 +175,7 @@ namespace Rynchodon.AntennaRelay
 				this.relateOrder = Relate.PriorityOrder();
 			}
 
-			public void SetRadar(float radarSignature, RadarInfo info)
+			public void SetRadar(float radarSignature, LastSeen.RadarInfo info)
 			{
 				this.Info = info;
 				this.RadarSignature = radarSignature;
@@ -741,7 +741,7 @@ namespace Rynchodon.AntennaRelay
 						continue;
 					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
-					volume = RadarInfo.GetVolume(entity);
+					volume = LastSeen.RadarInfo.GetVolume(entity);
 					reflectivity = guided.RadarReflectivity;
 					myLogger.debugLog("missile volume: " + volume + ", reflectivity: " + reflectivity);
 				}
@@ -751,14 +751,14 @@ namespace Rynchodon.AntennaRelay
 						continue; 
 					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
-					volume = RadarInfo.GetVolume(entity);
+					volume = LastSeen.RadarInfo.GetVolume(entity);
 					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				}
 				else if (entity is IMyCharacter)
 				{
 					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
 						continue;
-					volume = RadarInfo.GetVolume(entity);
+					volume = LastSeen.RadarInfo.GetVolume(entity);
 					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
 				}
 				else
@@ -775,7 +775,7 @@ namespace Rynchodon.AntennaRelay
 				if (radarSignature > 0)
 				{
 					DetectedInfo detFo = new DetectedInfo(entity, RelationsBlock.getRelationsTo(entity));
-					detFo.SetRadar(radarSignature, new RadarInfo(volume + decoyVolume * decoys));
+					detFo.SetRadar(radarSignature, new LastSeen.RadarInfo(volume + decoyVolume * decoys));
 					detectedObjects_list.Add(detFo);
 					if (detectedObjects_hash != null)
 						detectedObjects_hash.Add(entity, detFo);

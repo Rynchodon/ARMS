@@ -786,10 +786,7 @@ namespace Rynchodon.AntennaRelay
 			if (!CheckRelations(seen.Entity))
 				return false;
 
-			if (seen.Info == null)
-				return false;
-
-			TimeSpan time = Globals.ElapsedTime - seen.Info.DetectedAt;
+			TimeSpan time = Globals.ElapsedTime - seen.RadarInfoTime();
 			if (time > Static.displayAllowed)
 			{
 				if (time > Static.keepInCache)

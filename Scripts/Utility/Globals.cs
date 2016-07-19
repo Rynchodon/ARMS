@@ -34,6 +34,11 @@ namespace Rynchodon
 			get { return new TimeSpan((long)(UpdateCount * UpdatesToTicks)); }
 		}
 
+		public static long ElapsedTimeTicks
+		{
+			get { return (long)(UpdateCount * UpdatesToTicks); }
+		}
+
 		//public static readonly Vector3I[] CellNeighbours = 
 		//{
 		//	new	Vector3I(-1, -1, -1),

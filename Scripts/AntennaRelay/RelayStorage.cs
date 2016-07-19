@@ -537,6 +537,12 @@ namespace Rynchodon.AntennaRelay
 				return;
 			}
 
+			if (m_messages.Count >= 100)
+			{
+				m_logger.alwaysLog("Cannot receive more messages, at limit: " + m_messages.Count, Logger.severity.INFO);
+				return;
+			}
+
 			if (m_messages.Add(msg))
 				m_logger.debugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
 			else
@@ -579,7 +585,7 @@ namespace Rynchodon.AntennaRelay
 		public bool VeryRecentRadarInfo(long entityId)
 		{
 			LastSeen seen;
-			return TryGetLastSeen(entityId, out seen) && seen.Info != null && (Globals.ElapsedTime - seen.Info.DetectedAt) < VeryRecentTime;
+			return TryGetLastSeen(entityId, out seen) && (Globals.ElapsedTime - seen.RadarInfoTime()) < VeryRecentTime;
 		}
 
 	}
