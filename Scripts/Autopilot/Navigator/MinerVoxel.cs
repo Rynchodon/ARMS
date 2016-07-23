@@ -43,7 +43,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private string m_depositOre;
 		private ulong m_nextCheck_drillFull;
 		private float m_current_drillFull;
-		private float m_closestDistToTarget;
 
 		private IMyVoxelBase value_targetVoxel;
 		private IMyVoxelBase m_targetVoxel

@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			Logger.SetFileName("ACommand");
 		}
 
-		private string m_displayString, m_error;
+		private string m_displayString;
 
 		/// <summary>The full string that reflects this command, including Identifier.</summary>
 		public string DisplayString { get { return m_displayString; } }

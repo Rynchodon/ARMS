@@ -403,8 +403,6 @@ namespace Rynchodon.Update
 
 		private readonly Logger myLogger;
 
-		private bool player_wait_message = false;
-
 		private DateTime m_lastUpdate;
 
 		public UpdateManager()

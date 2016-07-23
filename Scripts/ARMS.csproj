@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{76D2857A-6AAB-4DAD-8BCA-498984875AED}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Rynchodon</RootNamespace>
+    <NoStandardLibraries>false</NoStandardLibraries>
+    <AssemblyName>ARMS</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>
+    </DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Sandbox.Common">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\Sandbox.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Sandbox.Game">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\Sandbox.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Sandbox.Graphics">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\Sandbox.Graphics.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SpaceEngineers.Game">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\SpaceEngineers.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SpaceEngineers.ObjectBuilders">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SpaceEngineers.ObjectBuilders.XmlSerializers">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\SpaceEngineers.ObjectBuilders.XmlSerializers.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.XML" />
+    <Reference Include="VRage">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Game">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Game.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Game.XmlSerializers">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Game.XmlSerializers.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Input">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Input.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Library">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Library.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Math">
+      <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Math.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AntennaRelay\ComponentLaser.cs" />
+    <Compile Include="AntennaRelay\ComponentRadio.cs" />
+    <Compile Include="AntennaRelay\IRelayPart.cs" />
+    <Compile Include="AntennaRelay\LastSeen.cs" />
+    <Compile Include="AntennaRelay\Message.cs" />
+    <Compile Include="AntennaRelay\RelayClient.cs" />
+    <Compile Include="AntennaRelay\Player.cs" />
+    <Compile Include="AntennaRelay\ProgrammableBlock.cs" />
+    <Compile Include="AntennaRelay\Projector.cs" />
+    <Compile Include="AntennaRelay\RadarEquipment.cs" />
+    <Compile Include="AntennaRelay\RelayNode.cs" />
+    <Compile Include="AntennaRelay\TextPanel.cs" />
+    <Compile Include="Autopilot\AutopilotTerminal.cs" />
+    <Compile Include="Autopilot\Data\AllNavigationSettings.cs" />
+    <Compile Include="Autopilot\Data\InfoString.cs" />
+    <Compile Include="Autopilot\Harvest\DamageHandler.cs" />
+    <Compile Include="Autopilot\Instruction\Command\ACommand.cs" />
+    <Compile Include="Autopilot\Instruction\AddCommandTreeNode.cs" />
+    <Compile Include="Autopilot\Instruction\AutopilotCommands.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Asteroid.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\ABlockSearch.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\TargetBlockSearch.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Character.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\DirectionSelection.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Disable.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Enemy.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Exit.cs" />
+    <Compile Include="Autopilot\Instruction\Command\FlyRelative.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Form.cs" />
+    <Compile Include="Autopilot\Instruction\Command\GolisGps.cs" />
+    <Compile Include="Autopilot\Instruction\Command\GolisCoordinate.cs" />
+    <Compile Include="Autopilot\Instruction\Command\GridDestination.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Grind.cs" />
+    <Compile Include="Autopilot\Instruction\Command\HarvestVoxel.cs" />
+    <Compile Include="Autopilot\Instruction\Command\LandVoxel.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\LandingBlock.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\StraightLine.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\ALocalBlock.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\NavigationBlock.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Offset.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Orbit.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Proximity.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\ASingleWord.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SpeedLimit.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Stop.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Terminal\TerminalAction.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Terminal\TerminalPropertyColour.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Terminal\TerminalPropertyFloat.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Terminal\TerminalProperty.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Terminal\TerminalPropertyBool.cs" />
+    <Compile Include="Autopilot\Instruction\Command\TextPanel.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\Unland.cs" />
+    <Compile Include="Autopilot\Instruction\Command\BlockSearch\UnlandBlock.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Wait.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
+    <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
+    <Compile Include="Autopilot\Data\PseudoBlock.cs" />
+    <Compile Include="Autopilot\Movement\ThrustProfiler.cs" />
+    <Compile Include="Autopilot\EnemyFinder.cs" />
+    <Compile Include="Autopilot\GridFinder.cs" />
+    <Compile Include="Autopilot\Harvest\OreDetector.cs" />
+    <Compile Include="Autopilot\Help.cs" />
+    <Compile Include="Autopilot\Movement\Mover.cs" />
+    <Compile Include="Autopilot\Navigator\ANavigator.cs" />
+    <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
+    <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
+    <Compile Include="Autopilot\Navigator\Waypoint.cs" />
+    <Compile Include="Autopilot\Navigator\WeldBlock.cs" />
+    <Compile Include="Autopilot\Navigator\WeldGrid.cs" />
+    <Compile Include="Autopilot\Navigator\FlyToCharacter.cs" />
+    <Compile Include="Autopilot\Navigator\Response\Coward.cs" />
+    <Compile Include="Autopilot\Navigator\DoNothing.cs" />
+    <Compile Include="Autopilot\Navigator\Facer.cs" />
+    <Compile Include="Autopilot\Navigator\Response\Fighter.cs" />
+    <Compile Include="Autopilot\Navigator\FlyToGrid.cs" />
+    <Compile Include="Autopilot\Navigator\GOLIS.cs" />
+    <Compile Include="Autopilot\Navigator\Grinder.cs" />
+    <Compile Include="Autopilot\Navigator\Response\Kamikaze.cs" />
+    <Compile Include="Autopilot\Navigator\MinerVoxel.cs" />
+    <Compile Include="Autopilot\Navigator\Orbiter.cs" />
+    <Compile Include="Autopilot\Navigator\Response\Self_Destruct.cs" />
+    <Compile Include="Autopilot\Navigator\Shopper.cs" />
+    <Compile Include="Autopilot\Navigator\Stopper.cs" />
+    <Compile Include="Autopilot\Navigator\UnLander.cs" />
+    <Compile Include="Autopilot\Pathfinder\PathChecker.cs" />
+    <Compile Include="Autopilot\Pathfinder\Pathfinder.cs" />
+    <Compile Include="Autopilot\Pathfinder\PlanetChecker.cs" />
+    <Compile Include="Autopilot\Pathfinder\RotateChecker.cs" />
+    <Compile Include="Autopilot\ShipAutopilot.cs" />
+    <Compile Include="Autopilot\Solar.cs" />
+    <Compile Include="AntennaRelay\RelayStorage.cs" />
+    <Compile Include="Programmable\Control Autopilot.cs" />
+    <Compile Include="Programmable\HandleDetectedEntities.cs" />
+    <Compile Include="Programmable\ProgrammableBlockCommunication.cs" />
+    <Compile Include="AntennaRelay\ManualMessage.cs" />
+    <Compile Include="Update\Saver.cs" />
+    <Compile Include="Update\SerializableGameTime.cs" />
+    <Compile Include="Update\UpdateManager.cs" />
+    <Compile Include="Utility\Attached\AttachableBlockBase.cs" />
+    <Compile Include="Utility\Attached\AttachableBlockUpdate.cs" />
+    <Compile Include="Utility\Attached\AttachedGrid.cs" />
+    <Compile Include="Utility\Attached\Connector.cs" />
+    <Compile Include="Utility\Attached\LandingGear.cs" />
+    <Compile Include="Utility\Attached\Piston.cs" />
+    <Compile Include="Utility\Attached\StatorRotor.cs" />
+    <Compile Include="Utility\ChatHandler.cs" />
+    <Compile Include="Utility\Collections\BlockTypeList.cs" />
+    <Compile Include="Utility\Collections\LockedDictionary.cs" />
+    <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
+    <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />
+    <Compile Include="Utility\Extensions\IMyCubeGridExtensions.cs" />
+    <Compile Include="Utility\Extensions\IMyEntityExtensions.cs" />
+    <Compile Include="Utility\Extensions\IMyMultiplayerExtensions.cs" />
+    <Compile Include="Utility\Extensions\IMyTerminalBlockExtensions.cs" />
+    <Compile Include="Utility\Extensions\ObjectExtensions.cs" />
+    <Compile Include="Utility\Extensions\StringBuilderExtensions.cs" />
+    <Compile Include="Utility\FileMaster.cs" />
+    <Compile Include="Utility\Instructions\BlockInstructions.cs" />
+    <Compile Include="Utility\ByteConverter.cs" />
+    <Compile Include="Utility\Collections\CubeGridCache.cs" />
+    <Compile Include="Utility\Collections\GridShapeProfiler.cs" />
+    <Compile Include="Utility\Collections\ListSnapshots.cs" />
+    <Compile Include="Utility\Collections\LockedQueue.cs" />
+    <Compile Include="Utility\Collections\ReadOnlyList.cs" />
+    <Compile Include="Utility\Collections\Registrar.cs" />
+    <Compile Include="Utility\Extensions\CapsuleExtensions.cs" />
+    <Compile Include="Utility\Extensions\DictionaryExtensions.cs" />
+    <Compile Include="Utility\Extensions\ExtensionsRelations.cs" />
+    <Compile Include="Utility\Extensions\IMyCubeBlockExtensions.cs" />
+    <Compile Include="Utility\Extensions\IMySlimBlockExtensions.cs" />
+    <Compile Include="Utility\Extensions\MiscExtensions.cs" />
+    <Compile Include="Utility\Extensions\MyPlanetExtensions.cs" />
+    <Compile Include="Utility\Extensions\StringExtensions.cs" />
+    <Compile Include="Utility\Extensions\VectorExtensions.cs" />
+    <Compile Include="Utility\FastResourceLock.cs" />
+    <Compile Include="Utility\Globals.cs" />
+    <Compile Include="Utility\Lazy.cs" />
+    <Compile Include="Utility\LineSegment.cs" />
+    <Compile Include="Utility\LineSegmentD.cs" />
+    <Compile Include="Utility\Logger.cs" />
+    <Compile Include="Utility\MainLock.cs" />
+    <Compile Include="Utility\MotorTurret.cs" />
+    <Compile Include="Utility\Network\MessageHandler.cs" />
+    <Compile Include="Utility\Network\EntityValue.cs" />
+    <Compile Include="Utility\PrettySI.cs" />
+    <Compile Include="Utility\Profiler.cs" />
+    <Compile Include="Utility\RayCast.cs" />
+    <Compile Include="Utility\RelativeDirection3F.cs" />
+    <Compile Include="Utility\RelativePosition3F.cs" />
+    <Compile Include="Utility\Collections\ResourcePool.cs" />
+    <Compile Include="Utility\Settings\ServerSettings.cs" />
+    <Compile Include="Utility\Settings\Setting.cs" />
+    <Compile Include="Utility\Settings\UserSettings.cs" />
+    <Compile Include="Utility\SunProperties.cs" />
+    <Compile Include="Utility\Threading\ThreadManager.cs" />
+    <Compile Include="Utility\Threading\ThreadTracker.cs" />
+    <Compile Include="Utility\TimeAction.cs" />
+    <Compile Include="Utility\Vectors\Direction.cs" />
+    <Compile Include="Utility\Vectors\Position.cs" />
+    <Compile Include="Utility\XML_Amendments.cs" />
+    <Compile Include="Weapons\Ammo.cs" />
+    <Compile Include="Weapons\CharacterStateTracker.cs" />
+    <Compile Include="Weapons\Cluster.cs" />
+    <Compile Include="Weapons\FixedWeapon.cs" />
+    <Compile Include="Weapons\Guided\GuidedMissile.cs" />
+    <Compile Include="Weapons\Guided\GuidedMissileLauncher.cs" />
+    <Compile Include="Weapons\InterpreterWeapon.cs" />
+    <Compile Include="Weapons\SystemDisruption\AirVentDepressurize.cs" />
+    <Compile Include="Weapons\SystemDisruption\CryoChamberMurder.cs" />
+    <Compile Include="Weapons\SystemDisruption\DisableTurret.cs" />
+    <Compile Include="Weapons\SystemDisruption\Disruption.cs" />
+    <Compile Include="Weapons\SystemDisruption\DoorLock.cs" />
+    <Compile Include="Weapons\SystemDisruption\EMP.cs" />
+    <Compile Include="Weapons\SystemDisruption\GravityReverse.cs" />
+    <Compile Include="Weapons\SystemDisruption\Hacker.cs" />
+    <Compile Include="Weapons\SystemDisruption\JumpDriveDrain.cs" />
+    <Compile Include="Weapons\SystemDisruption\MedicalRoom.cs" />
+    <Compile Include="Weapons\SystemDisruption\TraitorTurret.cs" />
+    <Compile Include="Weapons\Target.cs" />
+    <Compile Include="Weapons\TargetingBase.cs" />
+    <Compile Include="Weapons\TargetingTypeOptions.cs" />
+    <Compile Include="Weapons\Turret.cs" />
+    <Compile Include="Weapons\WeaponDefinitionExpanded.cs" />
+    <Compile Include="Weapons\WeaponDescription.cs" />
+    <Compile Include="Weapons\WeaponTargeting.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Programmable\.editorconfig" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSHARP.Targets" />
+  <ProjectExtensions>
+    <VisualStudio AllowExistingFolder="true" />
+  </ProjectExtensions>
+  <PropertyGroup>
+    <PostBuildEvent>python "$(SolutionDir)\..\.build\build.py"</PostBuildEvent>
+  </PropertyGroup>
+</Project>

@@ -44,8 +44,8 @@ def createDir(l_dir):
 
 
 def eraseDir(l_dir):
-	if os.path.exists(l_dir):
-		#print ("deleting: "+l_dir)
+	if os.path.isdir(l_dir):
+		print ("deleting: "+l_dir)
 		shutil.rmtree(l_dir)
 
 
@@ -213,7 +213,6 @@ print ('\n\n')
 
 if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
-	sys.exit(0)
 
 exec(open(buildIni).read())
 
@@ -221,15 +220,9 @@ createDir(finalDir)
 createDir(finalDirDev)
 
 # erase old data
-path = finalDir + '\\Data'
-if (os.path.isdir(path)):
-	eraseDir(path)
-path = finalDirDev + '\\Data'
-if (os.path.isdir(path)):
-	eraseDir(path)
-path = finalDirModel + '\\Data'
-if (os.path.isdir(path)):
-	eraseDir(path)
+eraseDir(finalDir + '\\Data')
+eraseDir(finalDirDev + '\\Data')
+eraseDir(finalDirModel + '\\Data')
 
 # get modules
 os.chdir(startDir + '/Scripts/')

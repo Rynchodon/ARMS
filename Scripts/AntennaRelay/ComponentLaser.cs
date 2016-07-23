@@ -18,7 +18,6 @@ namespace Rynchodon.AntennaRelay
 		private long? m_targetEntityId;
 		/// <summary>state 5 is the final state. It is possible for one to be in state 5, while the other is not</summary>
 		private byte m_state;
-		private long m_lastUpdate;
 
 		/// <summary>
 		/// Creates the laser component from a laser antenna block.

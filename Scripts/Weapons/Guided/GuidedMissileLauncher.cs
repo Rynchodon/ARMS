@@ -61,9 +61,6 @@ namespace Rynchodon.Weapons.Guided
 		private readonly MyInventoryBase myInventory;
 		public readonly IRelayPart m_relayPart;
 
-		private ulong nextCheckInventory;
-		private MyFixedPoint prev_mass;
-		private MyFixedPoint prev_volume;
 		private List<IMyEntity> m_cluster = new List<IMyEntity>();
 
 		private bool m_onCooldown, m_onGameCooldown;

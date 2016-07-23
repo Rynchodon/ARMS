@@ -15,12 +15,6 @@ namespace Rynchodon.Autopilot.Navigator
 	public class WeldBlock : NavigatorMover, INavigatorRotator
 	{
 
-		private struct ComponentIndex
-		{
-			public MyPhysicalInventoryItem Component;
-			public int Index;
-		}
-
 		private const float OffsetAdd = 5f;
 		private const ulong TimeoutStart = 1200ul;
 
