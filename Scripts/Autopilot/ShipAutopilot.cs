@@ -363,6 +363,7 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception ex)
 			{
+				m_logger.alwaysLog("Commands: " + m_commands.Commands, Logger.severity.DEBUG);
 				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				m_state = State.Halted;
 			}
