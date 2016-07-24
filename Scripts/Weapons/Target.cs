@@ -190,4 +190,38 @@ namespace Rynchodon.Weapons
 
 	}
 
+	public class GolisTarget : Target
+	{
+
+		private readonly IMyEntity m_entity;
+		private readonly Vector3D m_position;
+
+		public GolisTarget(IMyEntity entity, Vector3D position)
+		{
+			this.m_entity = entity;
+			this.m_position = position;
+		}
+
+		public override IMyEntity Entity
+		{
+			get { return m_entity; }
+		}
+
+		public override TargetType TType
+		{
+			get { return TargetType.AllGrid; }
+		}
+
+		public override Vector3D GetPosition()
+		{
+			return m_position;
+		}
+
+		public override Vector3 GetLinearVelocity()
+		{
+			return Vector3.Zero;
+		}
+
+	}
+
 }

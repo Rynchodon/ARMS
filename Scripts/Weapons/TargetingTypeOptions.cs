@@ -120,10 +120,10 @@ namespace Rynchodon.Weapons
 		{ return (Flags & flag) != 0; }
 
 		/// <summary>If set, target coordinates. Overrides TargetEntityId.</summary>
-		public Vector3D? TargetGolis;
+		public Vector3D TargetGolis = Vector3.Invalid;
 
 		/// <summary>If set, only target a top most entity with this id. Defers to TargetGolis.</summary>
-		public long? TargetEntityId;
+		public long TargetEntityId;
 
 		public TargetingOptions() { }
 
@@ -140,13 +140,13 @@ namespace Rynchodon.Weapons
 			};
 		}
 
-		public void Assimilate(TargetingOptions fallback, TargetType typeFlags, TargetingFlags optFlags, float range, Vector3D? targetGolis, long? targetEntityId, string[] blocksToTarget)
+		public void Assimilate(TargetingOptions fallback, TargetType typeFlags, TargetingFlags optFlags, float range, Vector3D targetGolis, long targetEntityId, string[] blocksToTarget)
 		{
 			this.CanTarget = typeFlags | fallback.CanTarget;
 			this.Flags = optFlags | fallback.Flags;
 			this.TargetingRange = Math.Max(range, fallback.TargetingRange);
-			this.TargetGolis = targetGolis ?? fallback.TargetGolis;
-			this.TargetEntityId = targetEntityId ?? fallback.TargetEntityId;
+			this.TargetGolis = targetGolis.IsValid() ? targetGolis : fallback.TargetGolis;
+			this.TargetEntityId = targetEntityId > 0L ? targetEntityId : fallback.TargetEntityId;
 			this.blocksToTarget = blocksToTarget ?? fallback.blocksToTarget;
 		}
 

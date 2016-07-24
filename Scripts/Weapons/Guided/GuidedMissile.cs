@@ -63,7 +63,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		public enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Guided, Ballistic, Terminated, Exploded }
+		public enum Stage : byte { Rail, Boost, MidCourse, SemiActive, Golis, Guided, Ballistic, Terminated, Exploded }
 
 		private class StaticVariables
 		{
@@ -155,7 +155,7 @@ namespace Rynchodon.Weapons.Guided
 							return;
 						if (missile.m_stage == Stage.SemiActive)
 							missile.TargetSemiActive();
-						else
+						else if (missile.m_stage != Stage.Golis)
 						{
 							if (missile.m_stage == Stage.Guided && missile.myDescr.TargetRange > 1f)
 								missile.UpdateTarget();
@@ -360,6 +360,7 @@ namespace Rynchodon.Weapons.Guided
 				}
 				initialTarget = CurrentTarget;
 			}
+			myTarget = CurrentTarget;
 
 			if (myAmmo.RadarDefinition != null)
 			{
@@ -539,6 +540,7 @@ namespace Rynchodon.Weapons.Guided
 					targetDirection = Vector3.Normalize(Vector3.Reject(toTarget, m_gravData.Normal));
 					break;
 				case Stage.SemiActive:
+				case Stage.Golis:
 				case Stage.Guided:
 					targetDirection = cached.FiringDirection.Value;
 					break;
@@ -783,12 +785,19 @@ namespace Rynchodon.Weapons.Guided
 
 					if (CubeBlock.WorldAABB.DistanceSquared(MyEntity.GetPosition()) >= minDist * minDist)
 					{
+						myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 						m_rail = null;
 						if (myDescr.SemiActiveLaser)
 						{
-							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 							myLogger.debugLog("past arming range, semi-active.", Logger.severity.INFO);
 							m_stage = Stage.SemiActive;
+							return;
+						}
+
+						if (CurrentTarget is GolisTarget)
+						{
+							myLogger.debugLog("past arming range, golis active", Logger.severity.INFO);
+							m_stage = Stage.Golis;
 							return;
 						}
 
@@ -805,7 +814,6 @@ namespace Rynchodon.Weapons.Guided
 						}
 						else
 						{
-							myGuidanceEnds = Globals.ElapsedTime.Add(TimeSpan.FromSeconds(myDescr.GuidanceSeconds));
 							myLogger.debugLog("past arming range, starting guidance.", Logger.severity.INFO);
 							m_stage = Stage.Guided;
 						}
@@ -835,6 +843,7 @@ namespace Rynchodon.Weapons.Guided
 					}
 					return;
 				case Stage.SemiActive:
+				case Stage.Golis:
 				case Stage.Guided:
 					if (Globals.ElapsedTime >= myGuidanceEnds)
 					{

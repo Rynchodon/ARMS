@@ -280,7 +280,7 @@ namespace Rynchodon.Weapons
 			CollectTargets();
 			PickATarget();
 
-			//myLogger.debugLog(CurrentTarget != myTarget && CurrentTarget != null && myTarget != null, () => "current target: " + CurrentTarget.Entity.getBestName() + ", new target: " + myTarget.Entity.getBestName());
+			myLogger.debugLog(CurrentTarget != myTarget && CurrentTarget != null && myTarget != null, () => "current target: " + CurrentTarget.Entity.getBestName() + ", new target: " + myTarget.Entity.getBestName());
 
 			CurrentTarget = myTarget;
 		}
@@ -328,9 +328,9 @@ namespace Rynchodon.Weapons
 				}
 			}
 
-			if (Options.TargetEntityId.HasValue)
+			if (Options.TargetEntityId > 0L)
 			{
-				if (storage.TryGetLastSeen(Options.TargetEntityId.Value, out processing))
+				if (storage.TryGetLastSeen(Options.TargetEntityId, out processing))
 				{
 					ChooseBlock(processing, out targetBlock);
 					myTarget = new LastSeenTarget(processing, targetBlock);
@@ -452,7 +452,7 @@ namespace Rynchodon.Weapons
 
 			foreach (IMyEntity entity in nearbyEntities)
 			{
-				if (Options.TargetEntityId.HasValue && entity.EntityId != Options.TargetEntityId.Value)
+				if (Options.TargetEntityId > 0L && entity.EntityId != Options.TargetEntityId)
 					continue;
 
 				if (Blacklist.Contains(entity))

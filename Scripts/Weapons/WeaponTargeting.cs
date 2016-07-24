@@ -47,6 +47,8 @@ namespace Rynchodon.Weapons
 
 		private enum WeaponFlags : byte { None = 0, EntityId = 1, Golis = 2, Laser = 4 }
 
+		private const byte valueId_entityId = 4;
+
 		#region Static
 
 		private class StaticVariables
@@ -146,16 +148,23 @@ namespace Rynchodon.Weapons
 				MyStringId.GetOrCompute("ID of entity to target"));
 			textBox.Visible = block => GetEnum(block, WeaponFlags.EntityId);
 			valueControl = textBox;
-			valueControl.Getter = GetTargetEntity;
-			valueControl.Setter = SetTargetEntity;
+			TerminalTextBox<long> ttb = new TerminalTextBox<long>(textBox, valueId_entityId, SetTargetEntity);
 			Static.sharedControls.Add(textBox);
 
-			//MyTerminalControlCheckbox<MyUserControllableGun> targetGolis = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByGps", MyStringId.GetOrCompute("Target by GPS"),
-			//MyStringId.GetOrCompute("Use GPS for targeting"));
-			//AddGetSet(targetGolis, SpecialTarget.Golis);
-			//Static.sharedControls.Add(targetGolis);
+			MyTerminalControlCheckbox<MyUserControllableGun> targetGolis = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByGps", MyStringId.GetOrCompute("Target by GPS"),
+			MyStringId.GetOrCompute("Use GPS for targeting"));
+			AddGetSet(targetGolis, WeaponFlags.Golis);
+			targetGolis.Visible = Guided.GuidedMissileLauncher.IsGuidedMissileLauncher;
+			Static.sharedControls.Add(targetGolis);
 
-			// GPS list
+			IMyTerminalControlListbox gpsList = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, Sandbox.ModAPI.Ingame.IMyUserControllableGun>("GpsList");
+			gpsList.Title = MyStringId.GetOrCompute("GPS List");
+			gpsList.Tooltip = MyStringId.NullOrEmpty;
+			gpsList.VisibleRowsCount = 8;
+			gpsList.Visible = block => GetEnum(block, WeaponFlags.Golis) && Guided.GuidedMissileLauncher.IsGuidedMissileLauncher((IMyCubeBlock)block);
+			gpsList.ListContent = FillGpsList;
+			gpsList.ItemSelected = OnGpsListItemSelected;
+			Static.sharedControls.Add((MyTerminalControl<MyUserControllableGun>)gpsList);
 
 			Static.fixedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
 
@@ -432,22 +441,13 @@ namespace Rynchodon.Weapons
 			instance.m_termControl_blockList_ev.Value = value;
 		}
 
-		private static StringBuilder GetTargetEntity(IMyTerminalBlock block)
+		private static void SetTargetEntity(EntityValue<long> value)
 		{
 			WeaponTargeting instance;
-			if (!TryGetWeaponTargeting(block, out instance))
-				return new StringBuilder();
-
-			return instance.m_termControl_targetEntity_ev.Value;
-		}
-
-		private static void SetTargetEntity(IMyTerminalBlock block, StringBuilder value)
-		{
-			WeaponTargeting instance;
-			if (!TryGetWeaponTargeting(block, out instance))
+			if (!TryGetWeaponTargeting(value.m_entityId, out instance))
 				return;
 
-			instance.m_termControl_targetEntity_ev.Value = value;
+			instance.m_termControl_targetEntityId = value.Value;
 		}
 
 		private static bool RangeSliderVisible(IMyTerminalBlock block)
@@ -467,6 +467,40 @@ namespace Rynchodon.Weapons
 				control.UpdateVisual();
 			foreach (var control in Static.fixedControls)
 				control.UpdateVisual();
+		}
+
+		private static void FillGpsList(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> allItems, List<MyTerminalControlListBoxItem> selected)
+		{
+			WeaponTargeting targeting;
+			if (!TryGetWeaponTargeting(block, out targeting))
+				return;
+
+			List<IMyGps> gpsList = MyAPIGateway.Session.GPS.GetGpsList(MyAPIGateway.Session.Player.IdentityId);
+			Vector3D target = targeting.m_termControl_targetGolis_ev.Value;
+			bool select = target.IsValid();
+			foreach (IMyGps gps in gpsList)
+			{
+				// this will leak memory, as MyTerminalControlListBoxItem uses MyStringId for some stupid reason
+				MyTerminalControlListBoxItem item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(gps.Name), MyStringId.GetOrCompute(gps.Description), gps);
+				allItems.Add(item);
+
+				if (select && selected.Count == 0 && gps.Coords == target)
+					selected.Add(item);
+			}
+		}
+
+		private static void OnGpsListItemSelected(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> selected)
+		{
+			WeaponTargeting targeting;
+			if (!TryGetWeaponTargeting(block, out targeting))
+				return; 
+			
+			Logger.DebugLog("CommandGolisGps", "selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
+
+			if (selected.Count == 0)
+				targeting.m_termControl_targetGolis_ev.Value = Vector3.Invalid;
+			else
+				targeting.m_termControl_targetGolis_ev.Value = ((IMyGps)selected[0].UserData).Coords;
 		}
 
 		#endregion Static
@@ -497,14 +531,17 @@ namespace Rynchodon.Weapons
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
 
 		private string[] m_termControl_blockList;
-		private Vector3D? m_termControl_targetGolis;
-		private long? m_termControl_targetEntityId;
+		/// <summary>Check weapon flag before using.</summary>
+		private long m_termControl_targetEntityId;
 
 		private EntityValue<TargetType> m_termControl_targetType_ev;
 		private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
 		private EntityValue<WeaponFlags> m_termControl_weaponFlags_ev;
 		private EntityValue<float> m_termControl_range_ev;
-		private EntityStringBuilder m_termControl_blockList_ev, m_termControl_targetEntity_ev;
+		private EntityStringBuilder m_termControl_blockList_ev;
+
+		/// <summary>Check weapon flag before using.</summary>
+		private EntityValue<Vector3D> m_termControl_targetGolis_ev;
 
 		private bool value_suppressTargeting;
 
@@ -566,6 +603,12 @@ namespace Rynchodon.Weapons
 			get { return LoadedAmmo == null ? 800f : LoadedAmmo.AmmoDefinition.MaxTrajectory; }
 		}
 
+		private long TermControl_TargetEntityId
+		{ get { return (m_termControl_weaponFlags_ev.Value & WeaponFlags.EntityId) == 0 ? 0L : m_termControl_targetEntityId; } }
+
+		private Vector3D TermControl_TargetGolis
+		{ get { return (m_termControl_weaponFlags_ev.Value & WeaponFlags.Golis) == 0 ? (Vector3D)Vector3.Invalid : m_termControl_targetGolis_ev.Value; } }
+
 		public WeaponTargeting(IMyCubeBlock weapon)
 			: base(weapon)
 		{
@@ -591,16 +634,9 @@ namespace Rynchodon.Weapons
 				UpdateVisual();
 				m_termControl_blockList = m_termControl_blockList_ev.Value.ToString().LowerRemoveWhitespace().Split(',');
 			});
-			this.m_termControl_targetEntity_ev = new EntityStringBuilder(weapon, index++, () => {
-				UpdateVisual();
-				long entityId;
-				if (long.TryParse(m_termControl_targetEntity_ev.Value.ToString().RemoveWhitespace(), out entityId))
-					m_termControl_targetEntityId = entityId;
-				else
-					m_termControl_targetEntityId = null;
-				myLogger.debugLog("target entity id: " + m_termControl_targetEntityId + ", string value: " + m_termControl_targetEntity_ev.Value.ToString());
-			});
+			index++; // used for entity id
 			this.m_termControl_weaponFlags_ev = new EntityValue<WeaponFlags>(weapon, index++, UpdateVisual, WeaponFlags.EntityId);
+			this.m_termControl_targetGolis_ev = new EntityValue<Vector3D>(weapon, index++, UpdateVisual, Vector3.Invalid);
 
 			if (Static.TPro_Shoot == null)
 				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
@@ -626,19 +662,6 @@ namespace Rynchodon.Weapons
 			//myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
-		public Builder_WeaponTargeting GetBuilder()
-		{
-			return new Builder_WeaponTargeting()
-			{
-				WeaponId = CubeBlock.EntityId,
-				TargetTypeFlags = m_termControl_targetType_ev.Value,
-				TargetOptFlags = m_termControl_targetFlag_ev.Value,
-				Range = m_termControl_range_ev.Value,
-				TargetBlockList = m_termControl_blockList_ev.Value.ToString(),
-				TargetEntityId = m_termControl_targetEntity_ev.Value.ToString()
-			};
-		}
-
 		public void ResumeFromSave(Builder_WeaponTargeting builder)
 		{
 			GameThreadActions.Enqueue(() => {
@@ -646,7 +669,6 @@ namespace Rynchodon.Weapons
 				m_termControl_targetFlag_ev.Value = builder.TargetOptFlags;
 				m_termControl_range_ev.Value = builder.Range;
 				m_termControl_blockList_ev.Value = new StringBuilder(builder.TargetBlockList);
-				m_termControl_targetEntity_ev.Value = new StringBuilder(builder.TargetEntityId);
 			});
 		}
 
@@ -843,7 +865,7 @@ namespace Rynchodon.Weapons
 			ClearBlacklist();
 
 			Interpreter.UpdateInstruction();
-			Options.Assimilate(Interpreter.Options, m_termControl_targetType_ev.Value, m_termControl_targetFlag_ev.Value, m_termControl_range_ev.Value, m_termControl_targetGolis, m_termControl_targetEntityId, m_termControl_blockList);
+			Options.Assimilate(Interpreter.Options, m_termControl_targetType_ev.Value, m_termControl_targetFlag_ev.Value, m_termControl_range_ev.Value, TermControl_TargetGolis, TermControl_TargetEntityId, m_termControl_blockList);
 			Update100_Options_TargetingThread(Options);
 
 			if (CurrentControl == Control.Engager)

@@ -174,7 +174,13 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 				//myLogger.debugLog("creating new guided missile", "MissileBelongsTo()");
-				Target initialTarget = m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off ? null : m_weaponTarget.CurrentTarget;
+				Target initialTarget;
+				if (m_weaponTarget.Options.TargetGolis.IsValid())
+					initialTarget = new GolisTarget(CubeBlock, m_weaponTarget.Options.TargetGolis);
+				else if (m_weaponTarget.CurrentControl == WeaponTargeting.Control.Off)
+					initialTarget = null;
+				else
+					initialTarget = m_weaponTarget.CurrentTarget;
 				if (m_cluster.Count != 0)
 				{
 					Cluster cluster = new Cluster(m_cluster, CubeBlock);

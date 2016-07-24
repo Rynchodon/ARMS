@@ -116,6 +116,22 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		public static EntityValue TryGetEntityValue(long entityId, byte valueId)
+		{
+			if (Static == null)
+				return null;
+
+			Dictionary<byte, EntityValue> entityValues;
+			if (!Static.allEntityValues.TryGetValue(entityId, out entityValues))
+				return null;
+
+			EntityValue value;
+			if (!entityValues.TryGetValue(valueId, out value))
+				return null;
+
+			return value;
+		}
+
 		private static void Handle_SyncEntityValue(byte[] bytes, int pos)
 		{
 			if (Static == null)
@@ -190,7 +206,7 @@ namespace Rynchodon.Utility.Network
 		public readonly byte m_valueId;
 		public readonly bool m_save;
 
-		protected readonly Action m_afterValueChanged;
+		protected readonly Action<EntityValue<T>> m_afterValueChanged;
 		protected T m_value;
 		protected bool m_synced;
 
@@ -222,7 +238,7 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
-		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged = null, T defaultValue = default(T), bool save = true)
+		public EntityValue(IMyEntity entity, byte valueId, Action<EntityValue<T>> afterValueChanged = null, T defaultValue = default(T), bool save = true)
 		{
 			this.m_entityId = entity.EntityId;
 			this.m_valueId = valueId;
@@ -255,6 +271,10 @@ namespace Rynchodon.Utility.Network
 			entityValues.Add(valueId, this);
 		}
 
+		/// <param name="valueId">Each value for a block must have a unique ID, these are saved to disk.</param>
+		public EntityValue(IMyEntity entity, byte valueId, Action afterValueChanged, T defaultValue = default(T), bool save = true)
+			: this(entity, valueId, ev => afterValueChanged(), defaultValue, save) { }
+
 		protected override void SendValue(ulong? clientId = null)
 		{
 			List<byte> bytes = ResourcePool<List<byte>>.Get();
@@ -282,7 +302,7 @@ namespace Rynchodon.Utility.Network
 		{
 			m_synced = true;
 			ByteConverter.GetOfType(bytes, ref pos, ref m_value);
-			m_afterValueChanged.InvokeIfExists();
+			m_afterValueChanged.InvokeIfExists(this);
 		}
 
 		protected override string GetValue()
@@ -305,7 +325,7 @@ namespace Rynchodon.Utility.Network
 				m_value = MyAPIGateway.Utilities.SerializeFromXML<T>(value);
 			else
 				m_value = (T)Convert.ChangeType(value, code);
-			m_afterValueChanged.InvokeIfExists();
+			m_afterValueChanged.InvokeIfExists(this);
 		}
 
 		private void RequestEntityValueFromServer()
@@ -392,7 +412,7 @@ namespace Rynchodon.Utility.Network
 		{
 			m_synced = true;
 			m_value = new StringBuilder(ByteConverter.GetString(bytes, ref pos));
-			m_afterValueChanged.InvokeIfExists();
+			m_afterValueChanged.InvokeIfExists(this);
 		}
 
 		protected override string GetValue()
@@ -405,7 +425,7 @@ namespace Rynchodon.Utility.Network
 		protected override void SetValue(string value)
 		{
 			m_value = new StringBuilder(value);
-			m_afterValueChanged.InvokeIfExists();
+			m_afterValueChanged.InvokeIfExists(this);
 		}
 
 		private void Update100()
@@ -415,7 +435,7 @@ namespace Rynchodon.Utility.Network
 
 			if (m_updatesSinceValueChange == 2)
 			{
-				m_afterValueChanged.InvokeIfExists();
+				m_afterValueChanged.InvokeIfExists(this);
 				SendValue();
 			}
 			m_updatesSinceValueChange++;
