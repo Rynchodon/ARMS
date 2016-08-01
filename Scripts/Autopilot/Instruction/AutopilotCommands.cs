@@ -301,12 +301,20 @@ namespace Rynchodon.Autopilot.Instruction
 		private int m_insertIndex;
 		private ACommand m_currentCommand;
 		private Stack<AddCommandInternalNode> m_currentAddNode = new Stack<AddCommandInternalNode>();
-		private string m_infoMessage;
+		private string m_infoMessage, m_commands;
 
 		/// <summary>
 		/// The most recent commands from either terminal or a message.
 		/// </summary>
-		public string Commands { get; private set; }
+		public string Commands
+		{
+			get { return m_commands; }
+			private set
+			{
+				m_commands = value;
+				m_logger.alwaysLog("Commands: " + m_commands); // for bug reports
+			}
+		}
 
 		public bool HasSyntaxErrors { get { return m_syntaxErrors.Length != 0; } }
 
