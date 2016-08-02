@@ -107,7 +107,11 @@ namespace Rynchodon.Utility.Network
 					EntityValue value;
 					if (!entityValues.TryGetValue(builder.valueIds[index], out value))
 					{
-						Static.logger.alwaysLog("Entity value: " + builder.valueIds[index] + " is missing for " + builder.entityId, Logger.severity.WARNING);
+						IMyEntity entity;
+						if (MyAPIGateway.Entities.TryGetEntityById(builder.entityId, out entity))
+							Static.logger.alwaysLog("Entity value: " + builder.valueIds[index] + " is missing for " + entity.nameWithId(), Logger.severity.WARNING);
+						else
+							Static.logger.alwaysLog("Entity value: " + builder.valueIds[index] + " is missing for " + builder.entityId, Logger.severity.WARNING);
 						continue;
 					}
 					if (!string.IsNullOrEmpty(builder.values[index]))
