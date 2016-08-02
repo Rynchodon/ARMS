@@ -5,6 +5,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
 {
+	/// <summary>
+	/// Groups repulsion spheres together to avoid creating valleys between them.
+	/// </summary>
 	public class SphereClusters
 	{
 		private static MyConcurrentPool<List<BoundingSphereD>> m_sphereLists = new MyConcurrentPool<List<BoundingSphereD>>();
