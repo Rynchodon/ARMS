@@ -40,7 +40,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private MyCubeGrid m_grid;
 		private SphereClusters m_clusters = new SphereClusters();
 		private List<MyEntity> m_entities = new List<MyEntity>(), m_allEntities = new List<MyEntity>();
-		private HashSet<Vector3> m_rejections = new HashSet<Vector3>();
+		[System.Obsolete("To be replaced by a list of lists since we need to test integers anyway")]
+		private HashSet<Vector2> m_rejections = new HashSet<Vector2>();
 
 		/// <summary>
 		/// 
@@ -209,40 +210,105 @@ namespace Rynchodon.Autopilot.Pathfinder
 			repulsion = result2;
 		}
 
-		private bool RejectionIntersects(MyCubeGrid oGrid)
+		// test AABB or Volume first
+		private bool RejectionIntersects(MyCubeGrid oGrid, Vector3 rejectionVector, out Vector3I oGridCell)
 		{
-			GridCellCache myCache = GridCellCache.GetCellCache(m_grid);
+			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
+
+			CubeGridCache myCache = CubeGridCache.GetFor(m_grid);
 			if (myCache == null)
+			{
+				oGridCell = Vector3I.Zero;
 				return false;
-			GridCellCache oCache = GridCellCache.GetCellCache(oGrid);
+			}
+			CubeGridCache oCache = CubeGridCache.GetFor(oGrid);
 			if (oCache == null)
+			{
+				oGridCell = Vector3I.Zero;
 				return false;
+			}
 
-			Vector3 mGridVel = m_grid.Physics != null ? m_grid.Physics.LinearVelocity : Vector3.Zero,
-				oGridVel = oGrid.Physics != null ? oGrid.Physics.LinearVelocity : Vector3.Zero;
+			Vector3D origin = m_path.CurrentPosition;
+			Vector3 v; rejectionVector.CalculatePerpendicularVector(out v);
+			Vector3 w; Vector3.Cross(ref rejectionVector, ref v, out w);
+			Matrix to3D = new Matrix(v.X, v.Y, v.Z, 0f,
+				w.X, w.Y, w.Z, 0f,
+				rejectionVector.X, rejectionVector.Y, rejectionVector.Z, 0f,
+				0f, 0f, 0f, 1f);
+			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
 
-			Vector3 relVel; Vector3.Subtract(ref mGridVel, ref oGridVel, out relVel);
-			float relSpeed = relVel.Normalize();
-
-			Vector3 xVec; relVel.CalculatePerpendicularVector(out xVec);
-			Vector3 yVec; Vector3.Cross(ref relVel, ref xVec, out yVec);
-
-			Vector3D origin = m_grid.PositionComp.GetPosition();
+			float roundTo;
+			float stepSize;
+			if (m_grid.GridSizeEnum == oGrid.GridSizeEnum)
+			{
+				roundTo = m_grid.GridSize;
+				stepSize = roundTo;
+			}
+			else
+			{
+				roundTo = Math.Min(m_grid.GridSize, oGrid.GridSize);
+				stepSize = ((float)Math.Ceiling(Math.Max(m_grid.GridSize, oGrid.GridSize) / roundTo) + 1f) * roundTo;
+			}
 
 			m_rejections.Clear();
 			MatrixD worldMatrix = m_grid.WorldMatrix;
-			foreach (Vector3I cell in myCache.EachCell())
+			float gridSize = m_grid.GridSize;
+			foreach (Vector3I cell in myCache.OccupiedCells())
 			{
-				Vector3 local = cell * m_grid.GridSize;
+				Vector3 local = cell * gridSize;
 				Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-
-				float x = Math.Round( world.X - origin.X, m_grid.GridSize);
-
-
-				Vector3D relPos; Vector3D.Subtract(ref world, ref origin, out relPos);
-				relPos.ApplyOperation
-				m_rejections.Add(world);
+				Vector3D relative; Vector3D.Subtract(ref world, ref origin, out relative);
+				Vector3 relativeF = relative;
+				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
+				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
+				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z != 0f);
+				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
+				Round(ref pc2, roundTo);
+				m_rejections.Add(pc2);
 			}
+
+			worldMatrix = oGrid.WorldMatrix;
+			gridSize = oGrid.GridSize;
+			foreach (Vector3I cell in oCache.OccupiedCells())
+			{
+				Vector3 local = cell * gridSize;
+				Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
+				Vector3D relative; Vector3D.Subtract(ref world, ref origin, out relative);
+				Vector3 relativeF = relative;
+				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
+				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
+				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z != 0f);
+				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
+				Round(ref pc2, roundTo);
+
+				Vector2 test;
+				for (test.X = pc2.X - stepSize; test.X <= pc2.X + stepSize + 0.001f; pc2.X += roundTo)
+					for (test.Y = pc2.Y - stepSize; test.Y <= pc2.Y + stepSize + 0.001f; pc2.Y += roundTo)
+						if (m_rejections.Contains(test)) // NOTE: this will not work, integer vectors are needed to guarantee collisions
+						{
+							oGridCell = cell;
+							return true;
+						}
+			}
+			oGridCell = Vector3I.Zero;
+			return false;
+		}
+
+		private void Round(ref Vector2 vector, float value)
+		{
+			float halfValue = value * 0.5f;
+
+			float mod = vector.X % value;
+			if (mod >= halfValue)
+				vector.X = vector.X - mod + value;
+			else
+				vector.X = vector.X - mod;
+
+			mod = vector.Y % value;
+			if (mod >= halfValue)
+				vector.Y = vector.Y - mod + value;
+			else
+				vector.Y = vector.Y - mod;
 		}
 
 	}

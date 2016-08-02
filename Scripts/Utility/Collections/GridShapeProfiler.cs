@@ -17,6 +17,7 @@ namespace Rynchodon
 	/// <para>This class only ever uses local positions.</para>
 	/// </summary>
 	/// TODO: Contains() based comparison of rejected cells
+	[System.Obsolete]
 	public class GridShapeProfiler
 	{
 

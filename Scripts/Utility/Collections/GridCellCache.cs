@@ -5,6 +5,7 @@ using Sandbox.ModAPI;
 using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -13,6 +14,7 @@ namespace Rynchodon
 	/// <summary>
 	/// Keeps a HashSet of all the occupied cells in a grid.
 	/// </summary>
+	[System.Obsolete]
 	public class GridCellCache
 	{
 
@@ -60,9 +62,18 @@ namespace Rynchodon
 
 				grid.OnBlockAdded += grid_OnBlockAdded;
 				grid.OnBlockRemoved += grid_OnBlockRemoved;
+				grid.OnClosing += grid_OnClosing;
 			});
 
 			m_logger.debugLog("Initialized");
+		}
+
+		private void grid_OnClosing(IMyEntity obj)
+		{
+			IMyCubeGrid grid = obj as IMyCubeGrid;
+			grid.OnBlockAdded -= grid_OnBlockAdded;
+			grid.OnBlockRemoved -= grid_OnBlockRemoved;
+			grid.OnClosing -= grid_OnClosing;
 		}
 
 		public void ForEach(Action<Vector3I> action)
