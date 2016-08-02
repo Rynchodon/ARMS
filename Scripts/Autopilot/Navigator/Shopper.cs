@@ -124,23 +124,14 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			m_logger.debugLog("looking for attached blocks");
 
-			Attached.AttachedGrid.RunOnAttachedBlock(this.m_grid, Attached.AttachedGrid.AttachmentKind.Terminal, slim => {
-				MyEntity entity = slim.FatBlock as MyEntity;
-				if (entity == null)
-					return false;
-
-				if (entity.HasInventory)
+			foreach (MyEntity entity in Attached.AttachedGrid.AttachedCubeBlocks(this.m_grid, Attached.AttachedGrid.AttachmentKind.Terminal, false))
+				if (entity.HasInventory && (entity.GetInventory(0) as IMyInventory).IsConnectedTo(m_destInventory[0]))
 				{
-					if ((entity.GetInventory(0) as IMyInventory).IsConnectedTo(m_destInventory[0]))
-					{
-						m_logger.debugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
-						int count = entity.InventoryCount;
-						for (int i = 0; i < count; i++)
-							m_sourceInventory.Add(entity.GetInventory(i));
-					}
+					m_logger.debugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
+					int count = entity.InventoryCount;
+					for (int i = 0; i < count; i++)
+						m_sourceInventory.Add(entity.GetInventory(i));
 				}
-				return false;
-			});
 		}
 
 		/// <summary>

@@ -85,41 +85,35 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_effectOwner = effectOwner;
 			foreach (MyObjectBuilderType type in BlocksAffected)
 			{
-				var blockGroup = cache.GetBlocksOfType(type);
-				if (blockGroup != null && blockGroup.Count != 0)
+				foreach (IMyCubeBlock block in cache.BlocksOfType(type).OrderBy(OrderBy))
 				{
-					foreach (IMyCubeBlock block in blockGroup.OrderBy(OrderBy))
+					if (!block.IsWorking || m_allAffected.Contains(block))
 					{
-						if (!block.IsWorking || m_allAffected.Contains(block))
-						{
-							m_logger.debugLog("cannot disrupt: " + block);
-							continue;
-						}
-						float cost = BlockCost(block);
-						if (cost > strength)
-						{
-							m_logger.debugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength);
-							continue;
-						}
-
-						StartEffect(block);
-						m_logger.debugLog("disrupting: " + block + ", cost: " + cost + ", remaining strength: " + strength);
-						strength -= cost;
-						applied += cost;
-						MyCubeBlock cubeBlock = block as MyCubeBlock;
-						MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
-						m_affected.Add(block, idMod);
-						m_allAffected.Add(block);
-
-						block.SetDamageEffect(true);
-						cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
-
-						if (strength < MinCost)
-							goto FinishedBlocks;
+						m_logger.debugLog("cannot disrupt: " + block);
+						continue;
 					}
+					float cost = BlockCost(block);
+					if (cost > strength)
+					{
+						m_logger.debugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength);
+						continue;
+					}
+
+					StartEffect(block);
+					m_logger.debugLog("disrupting: " + block + ", cost: " + cost + ", remaining strength: " + strength);
+					strength -= cost;
+					applied += cost;
+					MyCubeBlock cubeBlock = block as MyCubeBlock;
+					MyIDModule idMod = new MyIDModule() { Owner = cubeBlock.IDModule.Owner, ShareMode = cubeBlock.IDModule.ShareMode };
+					m_affected.Add(block, idMod);
+					m_allAffected.Add(block);
+
+					block.SetDamageEffect(true);
+					cubeBlock.ChangeOwner(effectOwner, MyOwnershipShareModeEnum.Faction);
+
+					if (strength < MinCost)
+						goto FinishedBlocks;
 				}
-				else
-					m_logger.debugLog("no blocks of type: " + type);
 			}
 FinishedBlocks:
 			if (m_affected.Count != 0)

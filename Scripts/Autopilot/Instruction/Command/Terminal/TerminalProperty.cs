@@ -153,23 +153,22 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			blockName = blockName.LowerRemoveWhitespace();
 			propName = propName.Trim(); // leave spaces in propName
 
-			AttachedGrid.RunOnAttachedBlock(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, block => {
-				IMyCubeBlock fatblock = block.FatBlock;
-				if (fatblock == null || !(fatblock is IMyTerminalBlock))
-					return false;
+			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			{
+				if (!(fatblock is IMyTerminalBlock))
+					continue;
 
 				if (!mover.Block.Controller.canControlBlock(fatblock))
-					return false;
+					continue;
 
 				if (!fatblock.DisplayNameText.LowerRemoveWhitespace().Contains(blockName))
-					return false;
+					continue;
 
 				IMyTerminalBlock terminalBlock = fatblock as IMyTerminalBlock;
 				ITerminalProperty<T> property = terminalBlock.GetProperty(propName) as ITerminalProperty<T>;
 				if (property != null)
 					property.SetValue(fatblock, propValue);
-				return false;
-			}, true);
+			}
 		}
 
 	}

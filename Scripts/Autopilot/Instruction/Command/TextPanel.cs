@@ -99,10 +99,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			foreach (IMyCubeGrid grid in Attached.AttachedGrid.AttachedGrids((IMyCubeGrid)autopilot.CubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, true))
 			{
 				CubeGridCache cache = CubeGridCache.GetFor(grid);
-				var panels = cache.GetBlocksOfType(typeof(MyObjectBuilder_TextPanel));
-				if (panels == null)
+				if (cache == null)
 					continue;
-				foreach (IMyTextPanel panel in panels)
+				foreach (IMyTextPanel panel in cache.BlocksOfType(typeof(MyObjectBuilder_TextPanel)))
 				{
 					if (!((IMyCubeBlock)autopilot).canControlBlock((IMyCubeBlock)panel))
 						continue;

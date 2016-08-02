@@ -120,19 +120,15 @@ namespace Rynchodon.Autopilot
 				return false;
 
 			var cache = CubeGridCache.GetFor(grid);
-			var cockpits = cache.GetBlocksOfType(typeof(MyObjectBuilder_Cockpit));
-			if (cockpits != null)
-				foreach (IMyCubeBlock cockpit in cockpits)
-					if (IsAutopilotBlock(cockpit))
-						return true;
+			foreach (IMyCubeBlock cockpit in cache.BlocksOfType(typeof(MyObjectBuilder_Cockpit)))
+				if (IsAutopilotBlock(cockpit))
+					return true;
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 			{
-				var remotes = cache.GetBlocksOfType(typeof(MyObjectBuilder_RemoteControl));
-				if (remotes != null)
-					foreach (IMyCubeBlock remote in remotes)
-						if (IsAutopilotBlock(remote))
-							return true;
+				foreach (IMyCubeBlock remote in cache.BlocksOfType(typeof(MyObjectBuilder_RemoteControl)))
+					if (IsAutopilotBlock(remote))
+						return true;
 			}
 
 			return false;

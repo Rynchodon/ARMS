@@ -29,16 +29,16 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			blockName = blockName.Trim();
 			actionString = actionString.Trim(); // leave spaces in actionString
 
-			AttachedGrid.RunOnAttachedBlock(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, block => {
-				IMyCubeBlock fatblock = block.FatBlock;
-				if (fatblock == null || !(fatblock is IMyTerminalBlock))
-					return false;
+			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			{
+				if (!(fatblock is IMyTerminalBlock))
+					continue;
 
 				if (!mover.Block.Controller.canControlBlock(fatblock))
-					return false;
+					continue;
 
 				if (!fatblock.DisplayNameText.Contains(blockName, StringComparison.InvariantCultureIgnoreCase))
-					return false;
+					continue;
 
 				IMyTerminalBlock terminalBlock = fatblock as IMyTerminalBlock;
 				Sandbox.ModAPI.Interfaces.ITerminalAction actionToRun = terminalBlock.GetActionWithName(actionString); // get actionToRun on every iteration so invalid blocks can be ignored
@@ -49,9 +49,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					else
 						actionToRun.Apply(fatblock);
 				}
-
-				return false;
-			}, true);
+			}
 		}
 
 		private static bool CheckParams(VRage.Game.ModAPI.IMyCubeBlock autopilot, string blockName, string actionName, string[] parameters, out string message, out List<Ingame.TerminalActionParameter> termParams)

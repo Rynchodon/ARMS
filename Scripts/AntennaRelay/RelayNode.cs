@@ -285,12 +285,8 @@ namespace Rynchodon.AntennaRelay
 			if (Block == null)
 				Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new LastSeen.RadarInfo(topEntity)));
 			else
-			{
-				AttachedGrid.RunOnAttached(Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
+				foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, true))
 					Storage.Receive(new LastSeen(grid, LastSeen.UpdateTime.Broadcasting, new LastSeen.RadarInfo(grid)));
-					return false;
-				}, true);
-			}
 		}
 
 		/// <summary>

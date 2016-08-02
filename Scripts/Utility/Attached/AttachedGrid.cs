@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game.ModAPI;
@@ -120,51 +121,12 @@ namespace Rynchodon.Attached
 		}
 
 		/// <summary>
-		/// Runs a function on all the attached grids.
+		/// Yields attached grids.
 		/// </summary>
-		/// <param name="startGrid">The starting grid/</param>
+		/// <param name="startGrid">Grid to start search from.</param>
 		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
-		/// <param name="runFunc">Func that runs on attached grids, if it returns true, short-circuit</param>
-		/// <param name="runOnStartGrid">Iff true, action will be run on startGrid.</param>
-		public static void RunOnAttached(IMyCubeGrid startGrid, AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, bool runOnStartGrid = false)
-		{
-			if (runOnStartGrid && runFunc(startGrid))
-				return;
-
-			AttachedGrid attached = GetFor(startGrid);
-			if (attached == null)
-				return;
-
-			HashSet<AttachedGrid> search = Static.searchSet.Get();
-			attached.RunOnAttached(allowedConnections, runFunc, search);
-			search.Clear();
-			Static.searchSet.Return(search);
-		}
-
-		/// <summary>
-		/// Runs a function on all the blocks in all the attached grids.
-		/// </summary>
-		/// <param name="startGrid">Grid to start at.</param>
-		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
-		/// <param name="runFunc">Func that runs on blocks of attached grids, if it returns true, short-circuit</param>
-		/// <param name="runOnStartGrid">Iff true, action will be run on blocks of startGrid.</param>
-		public static void RunOnAttachedBlock(IMyCubeGrid startGrid, AttachmentKind allowedConnections, Func<IMySlimBlock, bool> runFunc, bool runOnStartGrid = false)
-		{
-			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
-			bool terminated = false;
-
-			Func<IMyCubeGrid, bool> runOnGrid = grid => {
-				grid.GetBlocks_Safe(dummy, slim => {
-					if (!terminated)
-						terminated = runFunc(slim);
-					return false;
-				});
-				return terminated;
-			};
-
-			RunOnAttached(startGrid, allowedConnections, runOnGrid, runOnStartGrid);
-		}
-
+		/// <param name="runOnStartGrid">If true, yields the startGrid.</param>
+		/// <returns>Each attached grid.</returns>
 		public static IEnumerable<IMyCubeGrid> AttachedGrids(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
 		{
 			if (runOnStartGrid)
@@ -187,11 +149,21 @@ namespace Rynchodon.Attached
 			}
 		}
 
-		public static IEnumerable<IMyCubeBlock> AttachedCubeBlocks(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		/// <summary>
+		/// Yields CubeGridCache for each attached grid, if the grid is closed it is skipped.
+		/// </summary>
+		/// <param name="startGrid">Grid to start search from.</param>
+		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
+		/// <param name="runOnStartGrid">If true, yields the startGrid.</param>
+		/// <returns>CubeGridCache for each attached grid.</returns>
+		public static IEnumerable<CubeGridCache> AttachedGridCache(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
 		{
 			if (runOnStartGrid)
-				foreach (IMyCubeBlock block in CubeGridCache.AllCubeBlocks(startGrid))
-					yield return block;
+			{
+				CubeGridCache cache = CubeGridCache.GetFor(startGrid);
+				if (cache != null)
+					yield return cache;
+			}
 
 			AttachedGrid attached = GetFor(startGrid);
 			if (attached == null)
@@ -201,8 +173,11 @@ namespace Rynchodon.Attached
 			try
 			{
 				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
-					foreach (IMyCubeBlock block in CubeGridCache.AllCubeBlocks(grid))
-						yield return block;
+				{
+					CubeGridCache cache = CubeGridCache.GetFor(grid);
+					if (cache != null)
+						yield return cache;
+				}
 			}
 			finally
 			{
@@ -211,33 +186,32 @@ namespace Rynchodon.Attached
 			}
 		}
 
-		public static IEnumerable<IMyCubeBlock> OneOfEachAttachedCubeBlock(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		/// <summary>
+		/// Yields each cube block on each attached grid. If a grid is closed, it is skipped.
+		/// </summary>
+		/// <param name="startGrid">Grid to start search from.</param>
+		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
+		/// <param name="runOnStartGrid">If true, yields the startGrid.</param>
+		/// <returns>Each block on each attached grid</returns>
+		public static IEnumerable<MyCubeBlock> AttachedCubeBlocks(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
 		{
-			HashSet<SerializableDefinitionId> foundTypes = Static.foundBlockIds.Get();
-			HashSet<AttachedGrid> search = Static.searchSet.Get();
-			try
-			{
-				if (runOnStartGrid)
-					foreach (IMyCubeBlock block in CubeGridCache.OneOfEachCubeBlock(startGrid))
-						if (foundTypes.Add(block.BlockDefinition))
-							yield return block;
+			foreach (CubeGridCache cache in AttachedGridCache(startGrid, allowedConnections, runOnStartGrid))
+				foreach (MyCubeBlock block in cache.AllCubeBlocks())
+					yield return block;
+		}
 
-				AttachedGrid attached = GetFor(startGrid);
-				if (attached == null)
-					yield break;
-
-				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
-					foreach (IMyCubeBlock block in CubeGridCache.OneOfEachCubeBlock(grid))
-						if (foundTypes.Add(block.BlockDefinition))
-							yield return block;
-			}
-			finally
-			{
-				foundTypes.Clear();
-				Static.foundBlockIds.Return(foundTypes);
-				search.Clear();
-				Static.searchSet.Return(search);
-			}
+		/// <summary>
+		/// Yields each slim block on each attached grid. If a grid is closed, it is skipped.
+		/// </summary>
+		/// <param name="startGrid">Grid to start search from.</param>
+		/// <param name="allowedConnections">The types of connections allowed between grids.</param>
+		/// <param name="runOnStartGrid">If true, yields the startGrid.</param>
+		/// <returns>Each block on each attached grid</returns>
+		public static IEnumerable<IMySlimBlock> AttachedSlimBlocks(IMyCubeGrid startGrid, AttachmentKind allowedConnections, bool runOnStartGrid)
+		{
+			foreach (CubeGridCache cache in AttachedGridCache(startGrid, allowedConnections, runOnStartGrid))
+				foreach (IMySlimBlock block in cache.AllSlimBlocks())
+					yield return block;
 		}
 
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, Ingame.IMyCubeGrid grid2, bool add)
@@ -327,23 +301,6 @@ namespace Rynchodon.Attached
 					continue;
 
 				if (gridAttach.Key == target || gridAttach.Key.IsGridAttached(target, allowedConnections, searched))
-					return true;
-			}
-
-			return false;
-		}
-
-		private bool RunOnAttached(AttachmentKind allowedConnections, Func<IMyCubeGrid, bool> runFunc, HashSet<AttachedGrid> searched)
-		{
-			if (!searched.Add(this))
-				throw new Exception("AttachedGrid already searched");
-
-			foreach (var gridAttach in Connections.GetEnumerator())
-			{
-				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
-					continue;
-
-				if (runFunc(gridAttach.Key.myGrid) || gridAttach.Key.RunOnAttached(allowedConnections, runFunc, searched))
 					return true;
 			}
 

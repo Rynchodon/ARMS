@@ -83,7 +83,11 @@ namespace Rynchodon.AntennaRelay
 			{
 				IMyCubeGrid grid = entity as IMyCubeGrid;
 				if (grid != null)
-					return GridCellCache.GetCellCache(grid).CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
+				{
+					CubeGridCache cache = CubeGridCache.GetFor(grid);
+					if (cache != null)
+						return cache.CellCount * grid.GridSize * grid.GridSize * grid.GridSize;
+				}
 				return entity.LocalAABB.Volume();
 			}
 
@@ -347,31 +351,27 @@ namespace Rynchodon.AntennaRelay
 
 			float longestRange = float.MinValue;
 			string name = null;
-			var blocks = cache.GetBlocksOfType(typeof(MyObjectBuilder_Beacon));
-			if (blocks != null)
-				foreach (var b in blocks)
-					if (b.IsWorking)
+			foreach (IMyCubeBlock b in cache.BlocksOfType(typeof(MyObjectBuilder_Beacon)))
+				if (b.IsWorking)
+				{
+					float radius = ((Sandbox.ModAPI.Ingame.IMyBeacon)b).Radius;
+					if (radius > longestRange)
 					{
-						float radius = ((Sandbox.ModAPI.Ingame.IMyBeacon)b).Radius;
-						if (radius > longestRange)
-						{
-							longestRange = radius;
-							name = b.DisplayNameText;
-						}
+						longestRange = radius;
+						name = b.DisplayNameText;
 					}
+				}
 
-			blocks = cache.GetBlocksOfType(typeof(MyObjectBuilder_RadioAntenna));
-			if (blocks != null)
-				foreach (var ra in blocks)
-					if (ra.IsWorking)
+			foreach (IMyCubeBlock ra in cache.BlocksOfType(typeof(MyObjectBuilder_RadioAntenna)))
+				if (ra.IsWorking)
+				{
+					Sandbox.ModAPI.Ingame.IMyRadioAntenna asRA = (Sandbox.ModAPI.Ingame.IMyRadioAntenna)ra;
+					if (asRA.IsBroadcasting && asRA.Radius > longestRange)
 					{
-						Sandbox.ModAPI.Ingame.IMyRadioAntenna asRA = (Sandbox.ModAPI.Ingame.IMyRadioAntenna)ra;
-						if (asRA.IsBroadcasting && asRA.Radius > longestRange)
-						{
-							longestRange = asRA.Radius;
-							name = ra.DisplayNameText;
-						}
+						longestRange = asRA.Radius;
+						name = ra.DisplayNameText;
 					}
+				}
 
 			return name ?? ((IMyCubeGrid)Entity).SimpleName();
 		}

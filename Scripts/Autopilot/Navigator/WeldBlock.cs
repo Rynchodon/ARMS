@@ -320,15 +320,9 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return;
 			}
-			var allWelders = cache.GetBlocksOfType(typeof(MyObjectBuilder_ShipWelder));
-			if (allWelders == null)
-			{
-				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
-				return;
-			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				foreach (IMyShipWelder welder in allWelders)
+				foreach (IMyShipWelder welder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipWelder)))
 					if (!welder.Closed)
 						welder.RequestEnable(enable);
 			});

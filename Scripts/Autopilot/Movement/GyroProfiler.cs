@@ -68,14 +68,8 @@ namespace Rynchodon.Autopilot.Movement
 
 		private void CalcGyroForce()
 		{
-			ReadOnlyList<IMyCubeBlock> gyros = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
-			if (gyros == null)
-			{
-				GyroForce = 0f;
-			}
-
 			float force = 0f;
-			foreach (MyGyro g in gyros)
+			foreach (MyGyro g in CubeGridCache.GetFor(myGrid).BlocksOfType(typeof(MyObjectBuilder_Gyro)))
 				if (g.IsWorking)
 					force += g.MaxGyroForce; // MaxGyroForce accounts for power ratio and modules
 
@@ -110,19 +104,10 @@ namespace Rynchodon.Autopilot.Movement
 		private void CalculateInertiaMoment()
 		{
 			m_logger.debugLog("recalculating inertia moment", Logger.severity.INFO);
-			MyGameTimer timer = new MyGameTimer();
 
-			List<IMySlimBlock> blocks = ResourcePool<List<IMySlimBlock>>.Get();
 			m_calcInertiaMoment = Vector3.Zero;
-			AttachedGrid.RunOnAttachedBlock(myGrid, AttachedGrid.AttachmentKind.Physics, block => {
-				blocks.Add(block);
-				return false;
-			}, true);
-
-			foreach (var block in blocks)
-				AddToInertiaMoment(block);
-			blocks.Clear();
-			ResourcePool<List<IMySlimBlock>>.Return(blocks);
+			foreach (IMySlimBlock slim in (AttachedGrid.AttachedSlimBlocks(myGrid, AttachedGrid.AttachmentKind.Physics, true)))
+				AddToInertiaMoment(slim);
 
 			using (m_lock.AcquireExclusiveUsing())
 			{
@@ -130,7 +115,6 @@ namespace Rynchodon.Autopilot.Movement
 				m_invertedInertiaMoment = 1f / m_inertiaMoment;
 			}
 
-			m_logger.debugLog("Calculated in " + timer.Elapsed.ToPrettySeconds());
 			m_logger.debugLog("Inertia moment: " + m_inertiaMoment, Logger.severity.DEBUG);
 			m_logger.debugLog("Inverted inertia moment: " + m_invertedInertiaMoment, Logger.severity.DEBUG);
 
@@ -195,11 +179,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void ClearOverrides()
 		{
-			ReadOnlyList<IMyCubeBlock> gyros = CubeGridCache.GetFor(myGrid).GetBlocksOfType(typeof(MyObjectBuilder_Gyro));
-			if (gyros == null)
-				return;
-
-			foreach (MyGyro gyro in gyros)
+			foreach (MyGyro gyro in CubeGridCache.GetFor(myGrid).BlocksOfType(typeof(MyObjectBuilder_Gyro)))
 				if (gyro.GyroOverride)
 				{
 					SetOverride(gyro, false);

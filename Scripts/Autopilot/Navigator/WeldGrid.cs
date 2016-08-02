@@ -137,18 +137,17 @@ namespace Rynchodon.Autopilot.Navigator
 
 			// get physical blocks
 
-			Attached.AttachedGrid.RunOnAttachedBlock(m_currentGrid.Entity as IMyCubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, slim => {
+			foreach (IMySlimBlock slim in Attached.AttachedGrid.AttachedSlimBlocks((IMyCubeGrid)m_currentGrid.Entity, Attached.AttachedGrid.AttachmentKind.Permanent, true))
 				if (slim.CurrentDamage > 0f || slim.BuildLevelRatio < 1f)
 					m_damagedBlocks.Add(slim);
-				return false;
-			}, true);
 
 			// get projections
 
 			HashSet<IMyEntity> projections = null;
-			Attached.AttachedGrid.RunOnAttached(m_currentGrid.Entity as IMyCubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, grid => {
+			foreach (IMyCubeGrid grid in Attached.AttachedGrid.AttachedGrids((IMyCubeGrid)m_currentGrid.Entity, Attached.AttachedGrid.AttachmentKind.Permanent, true))
+			{
 				if (CubeGridCache.GetFor(grid).CountByType(typeof(MyObjectBuilder_Projector)) == 0)
-					return false;
+					continue;
 
 				using (MainLock.AcquireSharedUsing())
 				{
@@ -158,7 +157,7 @@ namespace Rynchodon.Autopilot.Navigator
 						MyAPIGateway.Entities.GetEntities(projections, entity => entity is MyCubeGrid && ((MyCubeGrid)entity).Projector != null);
 
 						if (projections.Count == 0)
-							return true;
+							break;
 					}
 
 					foreach (MyCubeGrid proj in projections)
@@ -167,8 +166,9 @@ namespace Rynchodon.Autopilot.Navigator
 								m_projectedBlocks.Add(block);
 				}
 
-				return false;
-			}, true);
+				continue;
+			}
+
 			m_projectedBlocks.ApplyAdditions();
 
 			m_logger.debugLog("damaged blocks: " + m_damagedBlocks.Count + ", projected blocks: " + m_projectedBlocks.Count);

@@ -335,12 +335,7 @@ namespace Rynchodon
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
 			foreach (MyObjectBuilderType type in Static.types_Rotor)
-			{
-				var blocksOfType = cache.GetBlocksOfType(type);
-				if (blocksOfType == null || blocksOfType.Count == 0)
-					continue;
-
-				foreach (IMyCubeBlock motorPart in blocksOfType)
+				foreach (IMyCubeBlock motorPart in cache.BlocksOfType(type))
 				{
 					if (!FaceBlock.canControlBlock(motorPart))
 						continue;
@@ -362,7 +357,6 @@ namespace Rynchodon
 							return true;
 					}
 				}
-			}
 
 			Stator = null;
 			Rotor = null;

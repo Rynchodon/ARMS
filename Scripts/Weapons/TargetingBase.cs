@@ -700,23 +700,21 @@ namespace Rynchodon.Weapons
 
 			// get decoy block
 			{
-				var decoyBlockList = cache.GetBlocksOfType(typeof(MyObjectBuilder_Decoy));
-				if (decoyBlockList != null)
-					foreach (IMyCubeBlock block in decoyBlockList)
+				foreach (IMyCubeBlock block in cache.BlocksOfType(typeof(MyObjectBuilder_Decoy)))
+				{
+					if (!TargetableBlock(block, true))
+						continue;
+
+					double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+					if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
+						continue;
+
+					if (distanceSq < distanceValue && CanConsiderHostile(block))
 					{
-						if (!TargetableBlock(block, true))
-							continue;
-
-						double distanceSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
-							continue;
-
-						if (distanceSq < distanceValue && CanConsiderHostile(block))
-						{
-							target = block;
-							distanceValue = distanceSq;
-						}
+						target = block;
+						distanceValue = distanceSq;
 					}
+				}
 				if (target != null)
 				{
 					//myLogger.debugLog("for type = " + tType + " and grid = " + grid.DisplayName + ", found a decoy block: " + target.DisplayNameText + ", distanceValue: " + distanceValue);
@@ -731,23 +729,31 @@ namespace Rynchodon.Weapons
 				IMyCubeBlock in_target = target;
 				double in_distValue = distanceValue;
 
-				Options.listOfBlocks.ForEach(cache, ref index, block => {
-					if (!TargetableBlock(block, true))
-						return;
-
-					double distSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
-					if (doRangeTest && distSq > Options.TargetingRangeSquared)
-						return;
-
-					int multiplier = index + 1;
-					distSq *= multiplier * multiplier * multiplier;
-
-					if (distSq < in_distValue && CanConsiderHostile(block))
+				foreach (MyDefinitionId[] ids in Options.listOfBlocks.IdGroups())
+				{
+					index++;
+					foreach (MyDefinitionId id in ids)
 					{
-						in_target = block;
-						in_distValue = distSq;
+						foreach (IMyCubeBlock block in cache.BlocksOfType(id))
+						{
+							if (!TargetableBlock(block, true))
+								continue;
+
+							double distSq = Vector3D.DistanceSquared(myPosition, block.GetPosition());
+							if (doRangeTest && distSq > Options.TargetingRangeSquared)
+								continue;
+
+							int multiplier = index;
+							distSq *= multiplier * multiplier * multiplier;
+
+							if (distSq < in_distValue && CanConsiderHostile(block))
+							{
+								in_target = block;
+								in_distValue = distSq;
+							}
+						}
 					}
-				});
+				}
 
 				target = in_target;
 				distanceValue = in_distValue;

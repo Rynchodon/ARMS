@@ -171,8 +171,7 @@ namespace Rynchodon.Autopilot.Navigator
 			// get blocks
 			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 
-			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			if (allDrills == null || allDrills.Count == 0)
+			if (cache.CountByType(typeof(MyObjectBuilder_Drill), null, 1) == 0)
 			{
 				m_logger.debugLog("No Drills!", Logger.severity.INFO);
 				return;
@@ -537,14 +536,8 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return float.MaxValue;
 			}
-			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			if (allDrills == null)
-			{
-				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
-				return float.MaxValue;
-			}
 
-			foreach (Ingame.IMyShipDrill drill in allDrills)
+			foreach (Ingame.IMyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
 			{
 				MyInventoryBase drillInventory = ((MyEntity)drill).GetInventoryBase(0);
 
@@ -553,7 +546,9 @@ namespace Rynchodon.Autopilot.Navigator
 				drillCount++;
 			}
 
-			if (MyAPIGateway.Session.CreativeMode)
+			if (drillCount == 0)
+				m_current_drillFull = float.MaxValue;
+			else if (MyAPIGateway.Session.CreativeMode)
 				m_current_drillFull = (float)content * 0.01f / drillCount;
 			else
 				m_current_drillFull = (float)content / (float)capacity;
@@ -583,15 +578,9 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
 				return;
 			}
-			var allDrills = cache.GetBlocksOfType(typeof(MyObjectBuilder_Drill));
-			if (allDrills == null)
-			{
-				m_logger.debugLog("Failed to get block list", Logger.severity.INFO);
-				return;
-			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				foreach (IMyShipDrill drill in allDrills)
+				foreach (IMyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
 					if (!drill.Closed)
 						drill.RequestEnable(enable);
 			});

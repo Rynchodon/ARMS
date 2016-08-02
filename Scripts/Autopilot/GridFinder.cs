@@ -119,10 +119,12 @@ namespace Rynchodon.Autopilot
 				return blockOffset.ToWorld(Block);
 			
 			IMyCubeGrid grid = (IMyCubeGrid)Grid.Entity;
-			Vector3I closestCell;
-			GridCellCache.GetCellCache(grid).GetClosestOccupiedCell(ref NavPos, ref m_previousCell, out closestCell);
-			m_previousCell = closestCell;
-			return grid.GridIntegerToWorld(closestCell);
+			CubeGridCache cache = CubeGridCache.GetFor(grid);
+			if (cache == null)
+				return Vector3.Invalid;
+
+			m_previousCell = cache.GetClosestOccupiedCell(NavPos, m_previousCell);
+			return grid.GridIntegerToWorld(m_previousCell);
 		}
 
 		/// <summary>
@@ -287,27 +289,15 @@ namespace Rynchodon.Autopilot
 			IMyCubeGrid asGrid = Grid.Entity as IMyCubeGrid;
 			m_logger.debugLog(asGrid == null, "asGrid == null", Logger.severity.FATAL);
 
-			AttachedGrid.RunOnAttachedBlock(asGrid, m_allowedAttachment, slim => {
-				IMyCubeBlock Fatblock = slim.FatBlock;
-				if (Fatblock == null || !m_controlBlock.CubeBlock.canControlBlock(Fatblock))
-					return false;
+			foreach (IMyCubeBlock Fatblock in AttachedGrid.AttachedCubeBlocks(asGrid, m_allowedAttachment, true))
+			{
+				if (!m_controlBlock.CubeBlock.canControlBlock(Fatblock))
+					continue;
 
-				string blockName;
-				try
-				{
-					blockName = ShipAutopilot.IsAutopilotBlock(Fatblock)
-							? Fatblock.getNameOnly().LowerRemoveWhitespace()
-							: Fatblock.DisplayNameText.LowerRemoveWhitespace();
-				}
-				catch (NullReferenceException nre)
-				{
-					m_logger.alwaysLog("Exception: " + nre, Logger.severity.ERROR);
-					m_logger.alwaysLog("Fatblock: " + Fatblock + ", DefinitionDisplayNameText: " + Fatblock.DefinitionDisplayNameText + ", DisplayNameText: " + Fatblock.DisplayNameText + ", Name only: " + Fatblock.getNameOnly(), Logger.severity.ERROR);
-					throw nre;
-				}
+				string blockName = Fatblock.DisplayNameText.LowerRemoveWhitespace();
 
 				if (BlockCondition != null && !BlockCondition(Fatblock))
-					return false;
+					continue;
 
 				//m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
 				if (blockName.Length < bestNameLength && blockName.Contains(m_targetBlockName))
@@ -316,11 +306,9 @@ namespace Rynchodon.Autopilot
 					Block = Fatblock;
 					bestNameLength = blockName.Length;
 					if (m_targetBlockName.Length == bestNameLength)
-						return true;
+						return;
 				}
-				return false;
-
-			}, true);
+			}
 		}
 
 		private void BlockCheck()

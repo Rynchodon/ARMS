@@ -11,60 +11,63 @@ namespace Rynchodon
 	/// <remarks>
 	/// A ReadOnlyList may be writable, until it is made read-only.
 	/// </remarks>
-	public class ReadOnlyList<T> : IList<T>,
-	ICollection<T>, IEnumerable<T>
+	public class ReadOnlyList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 	{
+		private bool value_IsReadOnly;
+		private readonly List<T> myList;
+
 		public int Count { get { return myList.Count; } }
-		public T this[int index] { get { return myList[index]; } set { Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly"); } }
 
-		private List<T> myList;
-
-		/// <summary>
-		/// Creates an initially writable ReadOnlyList, use set_ReadOnly to make it read only.
-		/// </summary>
-		/// <returns>A writable ReadOnlyList!</returns>
-		public static ReadOnlyList<T> create_Writable()
+		public T this[int index]
 		{
-			ReadOnlyList<T> newList = new ReadOnlyList<T>();
-			newList.value_IsReadOnly = false;
-			return newList;
+			get { return myList[index]; }
+			set
+			{
+				Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
+				myList[index] = value;
+			}
 		}
 
-		/// <summary>
-		/// Creates an initially writable ReadOnlyList, use set_ReadOnly to make it read only.
-		/// </summary>
-		/// <param name="initialCapacity">Initial capacity of the list.</param>
-		/// <returns>A writable ReadOnlyList!</returns>
-		public static ReadOnlyList<T> create_Writable(int initialCapacity)
+		public bool IsReadOnly
 		{
-			ReadOnlyList<T> newList = new ReadOnlyList<T>(initialCapacity);
-			newList.value_IsReadOnly = false;
-			return newList;
+			get { return value_IsReadOnly; }
+			set
+			{
+				Exceptions.ThrowIf<NotSupportedException>(!value, "cannot make object writable");
+				value_IsReadOnly = true;
+			}
 		}
 
-		/// <summary>
-		/// Creates an initially writable ReadOnlyList, use set_ReadOnly to make it read only.
-		/// </summary>
-		/// <param name="copyFrom">Copy all the elements from</param>
-		/// <returns>A writable ReadOnlyList!</returns>
-		public static ReadOnlyList<T> create_Writable(IEnumerable<T> copyFrom)
+		public ReadOnlyList(bool readOnly = true)
 		{
-			ReadOnlyList<T> newList = new ReadOnlyList<T>(copyFrom);
-			newList.value_IsReadOnly = false;
-			return newList;
+			myList = new List<T>();
+			value_IsReadOnly = readOnly;
 		}
 
-		public ReadOnlyList() 
-		{ myList = new List<T>(); }
+		public ReadOnlyList(int initialCapacity, bool readOnly = true)
+		{
+			myList = new List<T>(initialCapacity);
+			value_IsReadOnly = readOnly;
+		}
 
-		public ReadOnlyList(int initialCapacity) 
-		{ myList = new List<T>(initialCapacity); }
+		public ReadOnlyList(IEnumerable<T> copyFrom, bool readOnly = true)
+		{
+			myList = new List<T>(copyFrom);
+			value_IsReadOnly = readOnly;
+		}
 
-		public ReadOnlyList(IEnumerable<T> copyFrom)
-		{ myList = new List<T>(copyFrom); }
+		public ReadOnlyList<T> Mutable()
+		{
+			if (value_IsReadOnly)
+				return new ReadOnlyList<T>(this, false);
+			return this;
+		}
 
-		//public ReadOnlyList(List<T> toWrap)
-		//{ myList = toWrap; }
+		public ReadOnlyList<T> Immutable()
+		{
+			value_IsReadOnly = true;
+			return this;
+		}
 
 		public bool Contains(T value)
 		{ return myList.Contains(value); }
@@ -80,15 +83,6 @@ namespace Rynchodon
 
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{ return myList.GetEnumerator(); }
-
-		private bool value_IsReadOnly = true;
-		public bool IsReadOnly { get { return value_IsReadOnly; } }
-
-		/// <summary>
-		/// Irreversible. If this is writable, make it read-only.
-		/// </summary>
-		public void set_ReadOnly()
-		{ value_IsReadOnly = true; }
 
 		#region Write Operations
 
@@ -113,7 +107,7 @@ namespace Rynchodon
 		public void Clear()
 		{
 			Exceptions.ThrowIf<NotSupportedException>(IsReadOnly, "object is readonly");
-			myList = new List<T>(myList.Count);
+			myList.Clear();
 		}
 
 		public bool Remove(T item)

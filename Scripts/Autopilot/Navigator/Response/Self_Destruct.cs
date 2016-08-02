@@ -33,18 +33,18 @@ namespace Rynchodon.Autopilot.Navigator
 			if (enemy == null)
 				return;
 
-			AttachedGrid.RunOnAttached(m_block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, grid => {
-				var warheads = CubeGridCache.GetFor(grid).GetBlocksOfType(typeof(MyObjectBuilder_Warhead));
-				if (warheads != null)
-					foreach (var war in warheads)
-						if (m_block.canControlBlock(war))
-						{
-							m_logger.debugLog("Starting countdown for " + war.getBestName(), Logger.severity.DEBUG);
-							war.ApplyAction("StartCountdown");
-						}
-				return false;
-			}, true);
-
+			foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(m_block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, true))
+			{
+				CubeGridCache cache = CubeGridCache.GetFor(grid);
+				if (cache == null)
+					continue;
+				foreach (IMyCubeBlock warhead in cache.BlocksOfType(typeof(MyObjectBuilder_Warhead)))
+					if (m_block.canControlBlock(warhead))
+					{
+						m_logger.debugLog("Starting countdown for " + warhead.getBestName(), Logger.severity.DEBUG);
+						warhead.ApplyAction("StartCountdown");
+					}
+			}
 			m_countingDown = true;
 		}
 

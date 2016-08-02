@@ -134,7 +134,7 @@ namespace Rynchodon.Weapons
 		/// <param name="Options">to add blocks to</param>
 		private void ParseBlockList(string blockList)
 		{
-			string[] splitList = blockList.Split(new char[]{','}, StringSplitOptions.RemoveEmptyEntries);
+			string[] splitList = blockList.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 			Options.blocksToTarget = splitList;
 			return;
 		}
@@ -325,9 +325,8 @@ namespace Rynchodon.Weapons
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
 
-			AttachedGrid.RunOnAttachedBlock(Grid, AttachedGrid.AttachmentKind.Permanent, block => {
-				IMyCubeBlock Fatblock = block.FatBlock;
-				if (Fatblock != null && Block.canControlBlock(Fatblock))
+			foreach (IMyCubeBlock Fatblock in AttachedGrid.AttachedCubeBlocks(Grid, AttachedGrid.AttachmentKind.Permanent, true))
+				if (Block.canControlBlock(Fatblock))
 				{
 					string blockName = Fatblock.DisplayNameText.LowerRemoveWhitespace();
 
@@ -336,11 +335,9 @@ namespace Rynchodon.Weapons
 						foundBlock = Fatblock;
 						bestNameLength = blockName.Length;
 						if (name.Length == bestNameLength)
-							return true;
+							break;
 					}
 				}
-				return false;
-			}, true);
 
 			panel = foundBlock as Ingame.IMyTextPanel;
 			return panel != null;

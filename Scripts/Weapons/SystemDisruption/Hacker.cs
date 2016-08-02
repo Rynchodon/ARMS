@@ -121,10 +121,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 						m_logger.alwaysLog("Case not implemented: " + i, Logger.severity.FATAL);
 						continue;
 				}
-				AttachedGrid.RunOnAttached(attached, AttachedGrid.AttachmentKind.Terminal, grid => {
+				foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(attached, AttachedGrid.AttachmentKind.Terminal, true))
 					disrupt.Start(grid, s_hackLength, ref m_strengthLeft, m_hackBlock.OwnerId);
-					return false;
-				}, true);
 			}
 		}
 

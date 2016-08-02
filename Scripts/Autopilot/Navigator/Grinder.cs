@@ -43,7 +43,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly float m_longestDimension;
 		private readonly GridFinder m_finder;
 
-		private GridCellCache m_enemyCells;
 		private Vector3D m_targetPosition;
 		private TimeSpan m_timeoutAt = Globals.ElapsedTime + SearchTimeout;
 		private LineSegmentD m_approach = new LineSegmentD();
@@ -97,8 +96,6 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 					GridsClaimed.Add(value.EntityId, m_controlBlock.CubeGrid);
-				
-				m_enemyCells = GridCellCache.GetCellCache(value as IMyCubeGrid);
 			}
 
 			m_stage = Stage.None;
@@ -218,19 +215,19 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navSet.Settings_Task_NavMove.DestinationEntity = m_enemy;
 			}
 
-			Vector3D grindPosition = m_navGrind.WorldPosition;
-			Vector3I cellPosition;
-			Vector3D gridCentre = m_controlBlock.CubeGrid.GetCentre();
-			m_enemyCells.GetClosestOccupiedCell(ref gridCentre, ref m_previousCell, out cellPosition);
-			IMySlimBlock block = m_enemy.GetCubeBlock(cellPosition);
+			CubeGridCache cache = CubeGridCache.GetFor(m_enemy);
+			if (cache == null)
+				return;
+			m_previousCell = cache.GetClosestOccupiedCell(m_controlBlock.CubeGrid.GetCentre(), m_previousCell);
+			IMySlimBlock block = m_enemy.GetCubeBlock(m_previousCell);
 			if (block == null)
 			{
-				m_logger.debugLog("No block found at cell position: " + cellPosition, Logger.severity.INFO);
+				m_logger.debugLog("No block found at cell position: " + m_previousCell, Logger.severity.INFO);
 				return;
 			}
 			m_logger.debugLog("block: " + block);
-			m_targetPosition = m_enemy.GridIntegerToWorld(m_enemy.GetCubeBlock(cellPosition).Position);
-			m_logger.debugLog("cellPosition: " + cellPosition + ", block: " + m_enemy.GetCubeBlock(cellPosition) + ", world: " + m_targetPosition);
+			m_targetPosition = m_enemy.GridIntegerToWorld(m_enemy.GetCubeBlock(m_previousCell).Position);
+			m_logger.debugLog("cellPosition: " + m_previousCell + ", block: " + m_enemy.GetCubeBlock(m_previousCell) + ", world: " + m_targetPosition);
 
 			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
@@ -248,6 +245,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
+			Vector3D grindPosition = m_navGrind.WorldPosition;
 			float distSq = (float)Vector3D.DistanceSquared(m_targetPosition, grindPosition);
 			float offset = m_grinderOffset + m_enemy.GridSize;
 			float offsetEpsilon = offset + 5f;
@@ -361,9 +359,8 @@ namespace Rynchodon.Autopilot.Navigator
 			//else
 			//	m_logger.debugLog("disabling grinders", "EnableGrinders()", Logger.severity.DEBUG);
 
-			var allGrinders = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_ShipGrinder));
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				foreach (Ingame.IMyShipGrinder grinder in allGrinders)
+				foreach (Ingame.IMyShipGrinder grinder in CubeGridCache.GetFor(m_controlBlock.CubeGrid).BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
 					if (!grinder.Closed)
 						grinder.RequestEnable(enable);
 			});
@@ -380,11 +377,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 			MyFixedPoint content = 0, capacity = 0;
 			int grinderCount = 0;
-			var allGrinders = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_ShipGrinder));
-			if (allGrinders == null)
-				return true;
 
-			foreach (Ingame.IMyShipGrinder grinder in allGrinders)
+			foreach (Ingame.IMyShipGrinder grinder in CubeGridCache.GetFor(m_controlBlock.CubeGrid).BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
 			{
 				MyInventoryBase grinderInventory = ((MyEntity)grinder).GetInventoryBase(0);
 
@@ -393,7 +387,7 @@ namespace Rynchodon.Autopilot.Navigator
 				grinderCount++;
 			}
 
-			m_grinderFull = (float)content / (float)capacity >= 0.9f;
+			m_grinderFull = capacity <= 0 || (float)content / (float)capacity >= 0.9f;
 			return m_grinderFull;
 		}
 

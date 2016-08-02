@@ -135,7 +135,8 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				if (cache == null)
 					cache = CubeGridCache.GetFor(grid);
-				return targetBlocks.HasAny(cache, block => block.IsWorking);
+				foreach (IMyCubeBlock block in targetBlocks.Blocks(cache))
+					return true;
 			}
 			else
 				m_logger.debugLog("no targeting at all for grid type of: " + grid.DisplayName);
@@ -291,20 +292,18 @@ namespace Rynchodon.Autopilot.Navigator
 
 			foreach (MyObjectBuilderType weaponType in TurretWeaponTypes)
 			{
-				ReadOnlyList<IMyCubeBlock> weaponBlocks = cache.GetBlocksOfType(weaponType);
-				if (weaponBlocks != null)
-					foreach (IMyCubeBlock block in weaponBlocks)
+				foreach (IMyCubeBlock block in cache.BlocksOfType(weaponType))
+				{
+					Turret weapon;
+					Registrar.TryGetValue(block.EntityId, out weapon);
+					if (weapon.CurrentControl != WeaponTargeting.Control.Off)
 					{
-						Turret weapon;
-						Registrar.TryGetValue(block.EntityId, out weapon);
-						if (weapon.CurrentControl != WeaponTargeting.Control.Off)
-						{
-							m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText);
-							m_weapons_all.Add(weapon);
+						m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText);
+						m_weapons_all.Add(weapon);
 
-							weapon.CubeBlock.OnClosing += Weapon_OnClosing;
-						}
+						weapon.CubeBlock.OnClosing += Weapon_OnClosing;
 					}
+				}
 			}
 
 			m_weapons_fixed.ApplyAdditions();

@@ -196,13 +196,15 @@ namespace Rynchodon.Autopilot.Data
 			if (Grid.MarkedForClose)
 				return;
 
-			var blocksOfT = CubeGridCache.GetFor(Grid).GetBlocksOfType(typeof(T));
+			CubeGridCache cache = CubeGridCache.GetFor(Grid);
+			if (cache == null)
+				return;
 			Block = null;
 
 			FunctionalBlocks = 0;
 			Matrix LocalMatrix = Matrix.Zero;
 			Vector3 Translation = Vector3.Zero;
-			foreach (IMyCubeBlock block in blocksOfT)
+			foreach (IMyCubeBlock block in  cache.BlocksOfType(typeof(T)))
 			{
 				if (Block == null)
 				{
