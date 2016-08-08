@@ -293,7 +293,7 @@ namespace Rynchodon.Update
 				{
 					ShipAutopilot autopilot;
 					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
-						autopilot.Resume = ba;
+						autopilot.ResumeFromSave(ba);
 					else
 						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 				}

@@ -48,12 +48,12 @@ namespace Rynchodon.Autopilot
 			set { AutopilotTerminal.AutopilotControlSwitch = value; }
 		}
 
-		public ShipControllerBlock(IMyCubeBlock block)
+		public ShipControllerBlock(IMyCubeBlock block, Action<Message> messageHandler)
 		{
 			m_logger = new Logger(GetType().Name, block);
 			CubeBlock = block;
 			Pseudo = new PseudoBlock(block);
-			NetworkNode = new RelayNode(block);
+			NetworkNode = new RelayNode(block) { MessageHandler = messageHandler };
 			AutopilotTerminal = new AutopilotTerminal(block);
 		}
 
@@ -153,10 +153,7 @@ namespace Rynchodon.Autopilot
 
 		private ulong m_nextCustomInfo;
 
-		private List<Action<Mover>> m_autopilotActions;
-		private int m_currentAction;
-		private Message m_message;
-		public Builder_Autopilot Resume;
+		private AutopilotActionList m_autopilotActions;
 
 		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
@@ -208,7 +205,7 @@ namespace Rynchodon.Autopilot
 		/// <param name="block">The ship controller to use</param>
 		public ShipAutopilot(IMyCubeBlock block)
 		{
-			this.m_block = new ShipControllerBlock(block);
+			this.m_block = new ShipControllerBlock(block, HandleMessage);
 			this.m_logger = new Logger(GetType().Name, block);
 			this.m_mover = new Mover(m_block);
 			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
@@ -294,18 +291,6 @@ namespace Rynchodon.Autopilot
 					return;
 				}
 
-				if (m_message != null)
-				{
-					m_autopilotActions = m_commands.GetActions(m_message.Content);
-					m_currentAction = -1;
-					m_message = null;
-					m_navSet.OnStartOfCommands();
-					m_mover.MoveAndRotateStop(false);
-				}
-
-				if (this.Resume != null)
-					ResumeFromSave();
-
 				EnemyFinder ef = m_navSet.Settings_Current.EnemyFinder;
 				if (ef != null)
 					ef.Update();
@@ -316,31 +301,33 @@ namespace Rynchodon.Autopilot
 				if (MoveAndRotate())
 					return;
 
-				if (m_autopilotActions != null && m_currentAction < m_autopilotActions.Count - 1)
-				{
-					while (m_currentAction < m_autopilotActions.Count - 1 && m_navSet.Settings_Current.NavigatorMover == null)
+				if (m_autopilotActions != null)
+					while (true)
 					{
-						m_logger.debugLog("getting command: " + (m_currentAction + 1) + " of " + m_autopilotActions.Count);
-						m_autopilotActions[++m_currentAction].Invoke(m_mover);
+						if (!m_autopilotActions.MoveNext())
+						{
+							m_logger.debugLog("finder: " + m_navSet.Settings_Current.EnemyFinder);
+							m_autopilotActions = null;
+							return;
+						}
+						m_autopilotActions.Current.Invoke(m_mover);
 						if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 						{
 							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
 							return;
 						}
+						if (m_navSet.Settings_Current.NavigatorMover != null)
+						{
+							m_logger.debugLog("now have a navigator mover: " + m_navSet.Settings_Current.NavigatorMover);
+							return;
+						}
 					}
-
-					if (m_navSet.Settings_Current.NavigatorMover == null)
-					{
-						m_logger.debugLog("commands did not yield a navigator", Logger.severity.INFO);
-						ReleaseControlledGrid();
-					}
-					return;
-				}
 
 				if (RotateOnly())
 					return;
 
 				TimeSpan nextInstructions = m_previousInstructions + TimeSpan.FromSeconds(ef != null ? 10d : 1d);
+				m_logger.debugLog("ef: " + ef + ", next: " + nextInstructions);
 				if (nextInstructions > Globals.ElapsedTime)
 				{
 					m_logger.debugLog("Delaying instructions", Logger.severity.INFO);
@@ -351,9 +338,8 @@ namespace Rynchodon.Autopilot
 				m_previousInstructions = Globals.ElapsedTime;
 
 				m_autopilotActions = m_commands.GetActions();
-				m_currentAction = -1;
 
-				if (m_autopilotActions == null || m_autopilotActions.Count == 0)
+				if (m_autopilotActions == null || m_autopilotActions.IsEmpty)
 					ReleaseControlledGrid();
 				m_navSet.OnStartOfCommands();
 				m_mover.MoveAndRotateStop(false);
@@ -567,8 +553,13 @@ namespace Rynchodon.Autopilot
 
 		private void HandleMessage(Message msg)
 		{
-			m_message = msg;
-			m_mover.SetControl(true);
+			using (lock_execution.AcquireExclusiveUsing())
+			{
+				m_autopilotActions = m_commands.GetActions(msg.Content);
+				m_navSet.OnStartOfCommands();
+				m_mover.MoveAndRotateStop(false);
+				m_mover.SetControl(true);
+			}
 		}
 
 		private float PowerRequired()
@@ -583,10 +574,10 @@ namespace Rynchodon.Autopilot
 
 			Builder_Autopilot result = new Builder_Autopilot() { AutopilotBlock = m_block.CubeBlock.EntityId };
 
-			if (m_autopilotActions == null || m_currentAction <= 0 || m_currentAction >= m_autopilotActions.Count)
+			if (m_autopilotActions == null || m_autopilotActions.CurrentIndex <= 0 || m_autopilotActions.Current == null)
 				return null;
 
-			result.CurrentCommand = m_currentAction;
+			result.CurrentCommand = m_autopilotActions.CurrentIndex;
 			m_logger.debugLog("current command: " + result.CurrentCommand);
 
 			result.Commands = m_commands.Commands;
@@ -603,53 +594,53 @@ namespace Rynchodon.Autopilot
 			return result;
 		}
 
-		private void ResumeFromSave()
+		public void ResumeFromSave(Builder_Autopilot builder)
 		{
-			Builder_Autopilot builder = this.Resume;
-			this.Resume = null;
-			m_navSet.OnStartOfCommands();
-			m_logger.debugLog("resume: " + builder.Commands, Logger.severity.DEBUG);
-			m_autopilotActions = m_commands.GetActions(builder.Commands);
-			m_logger.debugLog("from builder, added " + m_autopilotActions.Count + " commands");
-
-			for (m_currentAction = 0; m_currentAction < builder.CurrentCommand; m_currentAction++)
+			using (lock_execution.AcquireExclusiveUsing())
 			{
-				m_logger.debugLog("fast forward: " + m_currentAction);
-				m_autopilotActions[m_currentAction].Invoke(m_mover);
+				m_navSet.OnStartOfCommands();
+				m_logger.debugLog("resume: " + builder.Commands, Logger.severity.DEBUG);
+				m_autopilotActions = m_commands.GetActions(builder.Commands);
 
-				// clear navigators' levels
-				for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
+				while (m_autopilotActions.CurrentIndex < builder.CurrentCommand && m_autopilotActions.MoveNext())
 				{
-					AllNavigationSettings.SettingsLevel settingsAtLevel = m_navSet.GetSettingsLevel(levelName);
-					if (settingsAtLevel.NavigatorMover != null || settingsAtLevel.NavigatorRotator != null)
+					m_logger.debugLog("fast forward: " + m_autopilotActions.Current);
+					m_autopilotActions.Current.Invoke(m_mover);
+
+					// clear navigators' levels
+					for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
 					{
-						m_logger.debugLog("clear " + levelName);
-						m_navSet.OnTaskComplete(levelName);
+						AllNavigationSettings.SettingsLevel settingsAtLevel = m_navSet.GetSettingsLevel(levelName);
+						if (settingsAtLevel.NavigatorMover != null || settingsAtLevel.NavigatorRotator != null)
+						{
+							m_logger.debugLog("clear " + levelName);
+							m_navSet.OnTaskComplete(levelName);
+						}
 					}
 				}
-			}
-			m_currentAction--;
+				m_autopilotActions.MoveNext();
 
-			// clear wait
-			m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavWay);
+				// clear wait
+				m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavWay);
 
-			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
-			if (finder != null)
-			{
-				if (builder.EngagerOriginalEntity != 0L)
+				EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
+				if (finder != null)
 				{
-					if (!MyAPIGateway.Entities.TryGetEntityById(builder.EngagerOriginalEntity, out finder.m_originalDestEntity))
+					if (builder.EngagerOriginalEntity != 0L)
 					{
-						m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, Logger.severity.WARNING);
-						finder.m_originalDestEntity = null;
+						if (!MyAPIGateway.Entities.TryGetEntityById(builder.EngagerOriginalEntity, out finder.m_originalDestEntity))
+						{
+							m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, Logger.severity.WARNING);
+							finder.m_originalDestEntity = null;
+						}
+						else
+							m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName());
 					}
-					else
-						m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName());
-				}
-				if (builder.EngagerOriginalPosition.IsValid())
-				{
-					finder.m_originalPosition = builder.EngagerOriginalPosition;
-					m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
+					if (builder.EngagerOriginalPosition.IsValid())
+					{
+						finder.m_originalPosition = builder.EngagerOriginalPosition;
+						m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
+					}
 				}
 			}
 		}

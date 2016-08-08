@@ -42,6 +42,11 @@ namespace Rynchodon
 			Update.UpdateManager.Register(100, Update100);
 		}
 
+		public void AllocateFor(IMyTerminalBlock block)
+		{
+			TryGetEntityValue(block, true);
+		}
+
 		private StringBuilder TC_Getter(IMyTerminalBlock block)
 		{
 			EntityVariables vars;

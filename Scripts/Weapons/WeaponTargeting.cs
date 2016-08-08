@@ -67,6 +67,7 @@ namespace Rynchodon.Weapons
 			public MyTerminalControlOnOffSwitch<MyUserControllableGun> motorTurret;
 			public List<MyTerminalControl<MyUserControllableGun>> sharedControls = new List<MyTerminalControl<MyUserControllableGun>>();
 			public List<MyTerminalControl<MyUserControllableGun>> fixedControls = new List<MyTerminalControl<MyUserControllableGun>>();
+			public TerminalTextBox<long> termControlEntityId;
 		}
 
 		private static StaticVariables Static = new StaticVariables();
@@ -148,7 +149,7 @@ namespace Rynchodon.Weapons
 				MyStringId.GetOrCompute("ID of entity to target"));
 			textBox.Visible = block => GetEnum(block, WeaponFlags.EntityId);
 			valueControl = textBox;
-			TerminalTextBox<long> ttb = new TerminalTextBox<long>(textBox, valueId_entityId, SetTargetEntity);
+			Static.termControlEntityId = new TerminalTextBox<long>(textBox, valueId_entityId, SetTargetEntity);
 			Static.sharedControls.Add(textBox);
 
 			MyTerminalControlCheckbox<MyUserControllableGun> targetGolis = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByGps", MyStringId.GetOrCompute("Target by GPS"),
@@ -634,6 +635,7 @@ namespace Rynchodon.Weapons
 				UpdateVisual();
 				m_termControl_blockList = m_termControl_blockList_ev.Value.ToString().LowerRemoveWhitespace().Split(',');
 			});
+			Static.termControlEntityId.AllocateFor((IMyTerminalBlock)weapon);
 			index++; // used for entity id
 			this.m_termControl_weaponFlags_ev = new EntityValue<WeaponFlags>(weapon, index++, UpdateVisual, WeaponFlags.EntityId);
 			this.m_termControl_targetGolis_ev = new EntityValue<Vector3D>(weapon, index++, UpdateVisual, Vector3.Invalid);

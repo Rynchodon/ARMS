@@ -98,6 +98,7 @@
     <Compile Include="Autopilot\Data\AllNavigationSettings.cs" />
     <Compile Include="Autopilot\Data\InfoString.cs" />
     <Compile Include="Autopilot\Harvest\DamageHandler.cs" />
+    <Compile Include="Autopilot\Instruction\AutopilotActionList.cs" />
     <Compile Include="Autopilot\Instruction\Command\ACommand.cs" />
     <Compile Include="Autopilot\Instruction\AddCommandTreeNode.cs" />
     <Compile Include="Autopilot\Instruction\AutopilotCommands.cs" />
@@ -137,6 +138,7 @@
     <Compile Include="Autopilot\Instruction\Command\BlockSearch\UnlandBlock.cs" />
     <Compile Include="Autopilot\Instruction\Command\Wait.cs" />
     <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
+    <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
     <Compile Include="Autopilot\Movement\ThrustProfiler.cs" />

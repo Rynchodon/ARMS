@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
@@ -50,7 +47,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		public string SearchPanelName
 		{
-			get { return m_panelName.ToString(); } 
+			get { return m_panelName.ToString(); }
 		}
 
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
@@ -93,16 +90,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return Identifier + ' ' + m_panelName + (m_identifier == null || m_identifier.Length == 0 ? string.Empty : "," + m_identifier);
 		}
 
-		/// <summary>
-		/// Retreive actions from text panel block.
-		/// </summary>
-		public void GetCommandsFromPanel(IMyTerminalBlock autopilot, out IMyTextPanel textPanel, out string commands)
+		public TextPanelMonitor GetTextPanelMonitor(IMyTerminalBlock autopilot, AutopilotCommands autoCmds)
 		{
-			// AutopilotCommands will be caching the actions, unless the commands came from a Message, so this does not have to be super efficient
-
 			string panelName = m_panelName.ToString();
 
-			textPanel = null;
+			IMyTextPanel textPanel = null;
 			int bestMatchLength = int.MaxValue;
 			foreach (IMyCubeGrid grid in Attached.AttachedGrid.AttachedGrids((IMyCubeGrid)autopilot.CubeGrid, Attached.AttachedGrid.AttachmentKind.Permanent, true))
 			{
@@ -121,34 +113,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 						textPanel = panel;
 						bestMatchLength = name.Length;
 						if (name.Length == panelName.Length)
-							goto FinishedGrids;
+							return new TextPanelMonitor(textPanel, autoCmds, m_identifier.ToString());
 					}
 				}
 			}
-			FinishedGrids:
 
 			if (textPanel == null)
-			{
-				commands = null;
-				return;
-			}
+				return null;
 
-			commands = GetCommands(textPanel.GetPrivateText(), m_identifier);
-			//Logger.DebugLog("Private commands: " + commands);
-			if (commands == null)
-			{
-				commands = GetCommands(textPanel.GetPublicText(), m_identifier);
-				//Logger.DebugLog("Public commands: " + commands);
-			}
-			return;
-		}
-
-		private string GetCommands(string text, StringBuilder identifier)
-		{
-			Match m = Regex.Match(text, identifier == null || identifier.Length == 0 ? @"\[(.*?)\]" : identifier + @".*?\[(.*?)\]", RegexOptions.Singleline);
-			if (m.Success)
-				return m.Groups[1].Value;
-			return null;
+			return new TextPanelMonitor(textPanel, autoCmds, m_identifier.ToString());
 		}
 
 	}

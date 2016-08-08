@@ -791,7 +791,7 @@ namespace Rynchodon.Autopilot.Movement
 			// adjustment to face a moving entity
 			if (targetEntity != null)
 			{
-				Vector3 relativeLinearVelocity = targetEntity.GetLinearVelocity() - LinearVelocity;
+				Vector3 relativeLinearVelocity = (targetEntity.GetLinearVelocity() - LinearVelocity) * 1.1f;
 				float distance = Vector3.Distance(targetEntity.GetCentre(), Block.CubeBlock.GetPosition());
 
 				//myLogger.debugLog("relativeLinearVelocity: " + relativeLinearVelocity + ", tangentialVelocity: " + tangentialVelocity + ", localTangVel: " + localTangVel, "in_CalcRotate()");

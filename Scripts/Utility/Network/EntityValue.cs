@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using System.Xml.Serialization;
 using Rynchodon.Update;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Collections;
 using VRage.ModAPI;
 

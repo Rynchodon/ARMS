@@ -204,7 +204,7 @@ namespace Rynchodon.Weapons
 
 		public float MissileSpeed(float distance)
 		{
-			myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed);
+			//myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed);
 			if (distance < DistanceToMaxSpeed)
 			{
 				float finalSpeed = (float)Math.Sqrt(MissileDefinition.MissileInitialSpeed * MissileDefinition.MissileInitialSpeed + 2 * MissileDefinition.MissileAcceleration * distance);
@@ -217,8 +217,8 @@ namespace Rynchodon.Weapons
 				float distanceAfterMaxVel = distance - DistanceToMaxSpeed;
 				float timeAfterMaxVel = distanceAfterMaxVel / MissileDefinition.DesiredSpeed;
 
-				myLogger.debugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
-					+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)));
+				//myLogger.debugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
+				//	+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)));
 				//myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
 				return distance / (TimeToMaxSpeed + timeAfterMaxVel);
 			}
