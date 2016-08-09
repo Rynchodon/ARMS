@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Utility.Collections;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
+using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -20,7 +22,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			public Path(ref Vector3 relativeDestination, MyCubeGrid autopilotGrid)
 			{
-				this.CurrentPosition = autopilotGrid.PositionComp.LocalVolume.Center;
+				this.CurrentPosition = autopilotGrid.GetCentre();
 				this.Destination = this.CurrentPosition + relativeDestination;
 				this.AutopilotVelocity = autopilotGrid.Physics.LinearVelocity;
 				this.AutopilotShipBoundingRadius = autopilotGrid.PositionComp.LocalVolume.Radius;
@@ -35,22 +37,36 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Logger.SetFileName("PathThing");
 		}
 
-		private const float SpeedFactor = 10f;
+		private const float SpeedFactor = 8f, RepulsionFactor = 1f;
+		
 		private Path m_path;
+		private Vector3 m_targetDirection;
+
 		private MyCubeGrid m_grid;
 		private SphereClusters m_clusters = new SphereClusters();
 		private List<MyEntity> m_entities = new List<MyEntity>(), m_allEntities = new List<MyEntity>();
-		[System.Obsolete("To be replaced by a list of lists since we need to test integers anyway")]
-		private HashSet<Vector2> m_rejections = new HashSet<Vector2>();
+		private Vector2IMatrix<bool> m_rejections = new Vector2IMatrix<bool>(), m_rejectTests = new Vector2IMatrix<bool>();
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="grid"></param>
+		// results
+		private readonly FastResourceLock m_resultsLock = new FastResourceLock();
+		private Vector3 m_resultDirection = Vector3.Invalid;
+
+		public Vector3 ResultDirection
+		{
+			get
+			{
+				using (m_resultsLock.AcquireSharedUsing())
+					return m_resultDirection;
+			}
+			private set
+			{
+				using (m_resultsLock.AcquireExclusiveUsing())
+					m_resultDirection = value;
+			}
+		}
+
 		/// <param name="relativeDestination">Destination - navigation block position</param>
-		/// <param name="ignoreEntity"></param>
-		/// <param name="ignoreVoxel"></param>
-		public void Test(MyCubeGrid myGrid, Vector3 relativeDestination, MyEntity ignoreEntity, bool ignoreVoxel)
+		public void Test(MyCubeGrid myGrid, Vector3 relativeDestination, MyEntity ignoreEntity, bool isAtmospheric, bool ignoreVoxel)
 		{
 			m_path = new Path(ref relativeDestination, myGrid);
 			m_grid = myGrid;
@@ -96,13 +112,31 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3 repulsion;
 			CalcRepulsion(out repulsion);
 
+			Vector3 dir0, dir1, rep1;
+			Vector3.Normalize(ref relativeDestination, out dir0);
+			Vector3.Multiply(ref repulsion, RepulsionFactor, out rep1);
+			Vector3.Add(ref dir0, ref rep1, out dir1);
+			Vector3.Normalize(ref dir1, out m_targetDirection);
+
+			Logger.DebugLog("Relative direction: " + dir0 + ", repulsion: " + repulsion + ", target direction: " + m_targetDirection);
+
 			if (m_entities.Count != 0)
-			{
-				// TODO: avoidance
-			}
+				for (int i = m_entities.Count - 1; i >= 0; i--)
+				{
+					object obstruction;
+					//if (ObstructedBy(m_entities[i], out obstruction))
+					{
+						//Logger.DebugLog("Obstructed by " + obstruction);
+						Logger.DebugLog("Obstructed by " + m_entities[i]);
+						m_resultDirection = Vector3.Invalid;
+						m_entities.Clear();
+						m_allEntities.Clear();
+						return;
+					}
+				}
 
-			// TODO: return something useful
-
+			Logger.DebugLog("No obstruction");
+			m_resultDirection = m_targetDirection;
 			m_entities.Clear();
 			m_allEntities.Clear();
 		}
@@ -172,7 +206,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		/// <param name="sphere">The sphere which is repulsing the autopilot.</param>
 		/// <param name="repulsion">A directional vector with length between 0 and 1, indicating the repulsive force.</param>
-		public void CalcRepulsion(ref BoundingSphereD sphere, ref Vector3 repulsion)
+		private void CalcRepulsion(ref BoundingSphereD sphere, ref Vector3 repulsion)
 		{
 			Vector3D toCurrentD;
 			Vector3D.Subtract(ref m_path.CurrentPosition, ref sphere.Center, out toCurrentD);
@@ -181,6 +215,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			float maxRepulseDist = (float)(sphere.Radius + sphere.Radius); // Adjustable, might need to be different for planets than other entities.
 			float maxRepulseDistSq = maxRepulseDist * maxRepulseDist;
+
+			Logger.DebugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
 
 			if (toCurrentLenSq > maxRepulseDistSq)
 			{
@@ -202,18 +238,51 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (toDestLenSq < maxRepulseDistSq)
 				maxRepulseDist = (float)Math.Sqrt(toDestLenSq);
 
-			// maxRepulseDist / toCurrentLenSq can be adjusted
+			float toCurrentLen = (float)Math.Sqrt(toCurrentLenSq);
+			// maxRepulseDist / toCurrentLen can be adjusted
 			Vector3 result;
-			Vector3.Multiply(ref toCurrent, maxRepulseDist / toCurrentLenSq - 1f, out result);
+			Vector3.Multiply(ref toCurrent, (maxRepulseDist / toCurrentLen - 1f) / toCurrentLen, out result);
+			Logger.DebugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", result: " + result);
 			Vector3 result2;
 			Vector3.Add(ref repulsion, ref result, out result2);
+			Logger.DebugLog("repulsion: " + result2);
 			repulsion = result2;
 		}
 
+		private bool ObstructedBy(MyEntity entityTopMost, out object obstructing)
+		{
+			Vector3 rejectionVector;
+			Vector3 relativeVelocity = entityTopMost.Physics == null ? m_grid.Physics.LinearVelocity : m_grid.Physics.LinearVelocity - entityTopMost.Physics.LinearVelocity;
+			Vector3 temp;
+			Vector3.Add(ref relativeVelocity, ref m_targetDirection, out temp);
+			Vector3.Normalize(ref temp, out rejectionVector);
+
+			// TODO AABB / volume test
+
+
+			MyCubeGrid grid = entityTopMost as MyCubeGrid;
+			if (grid != null)
+			{
+				Vector3I hitCell;
+				if (RejectionIntersects(grid, ref rejectionVector, out hitCell))
+				{
+					Logger.DebugLog("rejection intersects");
+					obstructing = (object)grid.GetCubeBlock(hitCell) ?? (object)grid;
+					return true;
+				}
+				else
+					Logger.DebugLog("rejection does not intersect");
+			}
+
+			obstructing = entityTopMost;
+			return true;
+		}
+
 		// test AABB or Volume first
-		private bool RejectionIntersects(MyCubeGrid oGrid, Vector3 rejectionVector, out Vector3I oGridCell)
+		private bool RejectionIntersects(MyCubeGrid oGrid, ref Vector3 rejectionVector, out Vector3I oGridCell)
 		{
 			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
+			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId());
 
 			CubeGridCache myCache = CubeGridCache.GetFor(m_grid);
 			if (myCache == null)
@@ -238,17 +307,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
 
 			float roundTo;
-			float stepSize;
+			int steps;
 			if (m_grid.GridSizeEnum == oGrid.GridSizeEnum)
 			{
 				roundTo = m_grid.GridSize;
-				stepSize = roundTo;
+				steps = 1;
 			}
 			else
 			{
 				roundTo = Math.Min(m_grid.GridSize, oGrid.GridSize);
-				stepSize = ((float)Math.Ceiling(Math.Max(m_grid.GridSize, oGrid.GridSize) / roundTo) + 1f) * roundTo;
+				steps = (int)Math.Ceiling(Math.Max(m_grid.GridSize, oGrid.GridSize) / roundTo) + 1;
 			}
+
+			Logger.DebugLog("building mycache");
 
 			m_rejections.Clear();
 			MatrixD worldMatrix = m_grid.WorldMatrix;
@@ -261,12 +332,14 @@ namespace Rynchodon.Autopilot.Pathfinder
 				Vector3 relativeF = relative;
 				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
 				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z != 0f);
+				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
 				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-				Round(ref pc2, roundTo);
-				m_rejections.Add(pc2);
+				m_rejections[Round(pc2, roundTo)] = true;
 			}
 
+			Logger.DebugLog("checking other grid cells");
+
+			m_rejectTests.Clear();
 			worldMatrix = oGrid.WorldMatrix;
 			gridSize = oGrid.GridSize;
 			foreach (Vector3I cell in oCache.OccupiedCells())
@@ -277,14 +350,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 				Vector3 relativeF = relative;
 				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
 				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z != 0f);
+				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
 				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-				Round(ref pc2, roundTo);
+				Vector2I rounded = Round(pc2, roundTo);
 
-				Vector2 test;
-				for (test.X = pc2.X - stepSize; test.X <= pc2.X + stepSize + 0.001f; pc2.X += roundTo)
-					for (test.Y = pc2.Y - stepSize; test.Y <= pc2.Y + stepSize + 0.001f; pc2.Y += roundTo)
-						if (m_rejections.Contains(test)) // NOTE: this will not work, integer vectors are needed to guarantee collisions
+				if (!m_rejectTests.Add(rounded, true))
+					continue;
+
+				//Logger.DebugLog("testing range. x: " + rounded.X + " - " + pc2.X);
+
+				Vector2I test;
+				for (test.X = rounded.X - steps; test.X <= pc2.X + steps; test.X++)
+					for (test.Y = rounded.Y - steps; test.Y <= pc2.Y + steps; test.Y++)
+						if (m_rejections.Contains(test))
 						{
 							oGridCell = cell;
 							return true;
@@ -294,21 +372,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return false;
 		}
 
-		private void Round(ref Vector2 vector, float value)
+		private Vector2I Round(Vector2 vector, float value)
 		{
-			float halfValue = value * 0.5f;
-
-			float mod = vector.X % value;
-			if (mod >= halfValue)
-				vector.X = vector.X - mod + value;
-			else
-				vector.X = vector.X - mod;
-
-			mod = vector.Y % value;
-			if (mod >= halfValue)
-				vector.Y = vector.Y - mod + value;
-			else
-				vector.Y = vector.Y - mod;
+			return new Vector2I((int)Math.Round(vector.X / value), (int)Math.Round(vector.Y / value));
 		}
 
 	}

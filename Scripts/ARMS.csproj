@@ -195,6 +195,8 @@
     <Compile Include="Utility\Collections\BlockTypeList.cs" />
     <Compile Include="Utility\Collections\GridCellCache.cs" />
     <Compile Include="Utility\Collections\LockedDictionary.cs" />
+    <Compile Include="Utility\Collections\OffsetList.cs" />
+    <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
     <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
     <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />

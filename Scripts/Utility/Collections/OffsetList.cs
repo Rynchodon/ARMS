@@ -89,6 +89,11 @@ namespace Rynchodon.Utility.Collections
 				yield return new KeyValuePair<int, T>(ii + m_offset, m_array[ii]);
 		}
 
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
+		}
+
 		/// <summary>
 		/// Set m_offset to offset and create a new array of DefaultCapacity.
 		/// </summary>

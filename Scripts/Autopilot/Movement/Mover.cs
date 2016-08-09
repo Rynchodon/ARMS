@@ -1,6 +1,7 @@
 using System;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Pathfinder;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -59,6 +60,8 @@ namespace Rynchodon.Autopilot.Movement
 		public readonly ShipControllerBlock Block;
 		public ThrustProfiler Thrust { get; private set; }
 		public Pathfinder.Pathfinder Pathfinder { get; private set; }
+
+		private PathThing m_pathThing = new PathThing();
 
 		private bool CheckStuck(ulong duration)
 		{
@@ -211,24 +214,36 @@ namespace Rynchodon.Autopilot.Movement
 			// using world vectors
 
 			m_lastMoveAttempt = Globals.UpdateCount;
-			Pathfinder.TestPath(destPoint, landing);
+			//Pathfinder.TestPath(destPoint, landing);
 
-			switch (Pathfinder.m_pathState)
+			//switch (Pathfinder.m_pathState)
+			//{
+			//	case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+			//		m_logger.debugLog("Pathfinder not run yet");
+			//		m_lastMove = Globals.UpdateCount;
+			//		return;
+			//	case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+			//		break;
+			//	default:
+			//		m_logger.debugLog("Pathfinder not allowing movement: " + Pathfinder.m_pathState);
+			//		return;
+			//}
+
+			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
+			float length = destDisp.Length();
+
+			m_pathThing.Test((MyCubeGrid)m_grid, destDisp, null, false, false);
+			Vector3	pathDirection = m_pathThing.ResultDirection;
+
+			if (!pathDirection.IsValid())
 			{
-				case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
-					m_logger.debugLog("Pathfinder not run yet");
-					m_lastMove = Globals.UpdateCount;
-					return;
-				case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
-					break;
-				default:
-					m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
-					return;
+				m_logger.debugLog("Pathfinder not allowing movement");
+				return;
 			}
+			Vector3.Multiply(ref pathDirection, length, out destDisp);
 
 			Thrust.Update();
 
-			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
 			Vector3 velocity = LinearVelocity;
 
 			// switch to using local vectors
@@ -715,6 +730,8 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			m_logger.debugLog(Direction == null, "Direction == null", Logger.severity.ERROR);
 
+			return;
+
 			m_gyro.Update();
 			float minimumMoment = Math.Min(m_gyro.InvertedInertiaMoment.Min(), MaxInverseTensor);
 			if (minimumMoment <= 0f)
@@ -879,9 +896,11 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			if (!Pathfinder.CanMove)
+			Vector3 pathMoveResult = m_pathThing.ResultDirection;
+
+			if (!pathMoveResult.IsValid())
 			{
-				//myLogger.debugLog("Pathfinder not allowing movement", "MoveAndRotate()");
+				m_logger.debugLog("Pathfinder not allowing movement");
 				StopMove();
 			}
 			if (!Pathfinder.CanRotate)
