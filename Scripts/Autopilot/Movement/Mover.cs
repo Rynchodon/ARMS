@@ -509,7 +509,9 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate()", "CalcRotate()");
 
-			if (!Pathfinder.CanMove)
+			Vector3 pathMoveResult = m_pathThing.ResultDirection;
+
+			if (!pathMoveResult.IsValid())
 			{
 				CalcRotate_Stop();
 				return;
@@ -729,8 +731,6 @@ namespace Rynchodon.Autopilot.Movement
 		private void in_CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, IMyEntity targetEntity)
 		{
 			m_logger.debugLog(Direction == null, "Direction == null", Logger.severity.ERROR);
-
-			return;
 
 			m_gyro.Update();
 			float minimumMoment = Math.Min(m_gyro.InvertedInertiaMoment.Min(), MaxInverseTensor);

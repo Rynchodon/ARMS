@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Rynchodon.Autopilot.Data;
 using Rynchodon.Utility.Collections;
-using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using VRage;
 using VRage.Game.Entity;
-using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinder
@@ -37,7 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Logger.SetFileName("PathThing");
 		}
 
-		private const float SpeedFactor = 8f, RepulsionFactor = 1f;
+		private const float SpeedFactor = 2f, RepulsionFactor = 4f;
 		
 		private Path m_path;
 		private Vector3 m_targetDirection;
@@ -75,13 +72,19 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_entities.Clear();
 			m_allEntities.Clear();
 
-			BoundingBoxD box = new BoundingBoxD(m_path.CurrentPosition, m_path.Destination);
+			Vector3D min, max;
+			Vector3D.Min(ref m_path.CurrentPosition, ref m_path.Destination, out min);
+			Vector3D.Max(ref m_path.CurrentPosition, ref m_path.Destination, out max);
+			BoundingBoxD box = new BoundingBoxD(min, max);
 			box.Inflate(m_path.AutopilotShipBoundingRadius + m_path.AutopilotSpeed * SpeedFactor);
+
+			//Logger.DebugLog("box: " + box);
 
 			MyGamePruningStructure.GetTopMostEntitiesInBox(ref box, m_entities);
 			for (int i = m_entities.Count - 1; i >= 0; i--)
 			{
 				MyEntity entity = m_entities[i];
+				//Logger.DebugLog("checking entity: " + entity.nameWithId());
 				if (ignoreEntity != null && ignoreEntity == entity)
 					continue;
 				if (entity is MyCubeGrid)
@@ -105,6 +108,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (entity.Physics != null && entity.Physics.Mass > 0f && entity.Physics.Mass < 1000f)
 					continue;
 
+				//Logger.DebugLog("approved entity: " + entity.nameWithId());
 				m_allEntities.Add(entity);
 			}
 
@@ -112,30 +116,31 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3 repulsion;
 			CalcRepulsion(out repulsion);
 
-			Vector3 dir0, dir1, rep1;
-			Vector3.Normalize(ref relativeDestination, out dir0);
-			Vector3.Multiply(ref repulsion, RepulsionFactor, out rep1);
-			Vector3.Add(ref dir0, ref rep1, out dir1);
-			Vector3.Normalize(ref dir1, out m_targetDirection);
+			relativeDestination.Normalize();
+			Vector3.Add(ref relativeDestination, ref repulsion, out m_targetDirection);
+			m_targetDirection.Normalize();
 
-			Logger.DebugLog("Relative direction: " + dir0 + ", repulsion: " + repulsion + ", target direction: " + m_targetDirection);
+			//Logger.DebugLog("Relative direction: " + relativeDestination + ", repulsion: " + repulsion + ", target direction: " + m_targetDirection);
 
 			if (m_entities.Count != 0)
+			{
 				for (int i = m_entities.Count - 1; i >= 0; i--)
 				{
 					object obstruction;
-					//if (ObstructedBy(m_entities[i], out obstruction))
+					if (ObstructedBy(m_entities[i], out obstruction))
 					{
-						//Logger.DebugLog("Obstructed by " + obstruction);
-						Logger.DebugLog("Obstructed by " + m_entities[i]);
+						Logger.DebugLog("Obstructed by " + obstruction);
 						m_resultDirection = Vector3.Invalid;
 						m_entities.Clear();
 						m_allEntities.Clear();
 						return;
 					}
 				}
+				Logger.DebugLog("No obstruction");
+			}
+			else
+				Logger.DebugLog("No obstruction tests performed");
 
-			Logger.DebugLog("No obstruction");
 			m_resultDirection = m_targetDirection;
 			m_entities.Clear();
 			m_allEntities.Clear();
@@ -154,6 +159,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 				Logger.DebugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy.Parent != null);
 
 				Vector3D centre = entity.GetCentre();
+				Vector3D toCentreD;
+				Vector3D.Subtract(ref centre, ref m_path.CurrentPosition, out toCentreD);
+				toCentreD.Normalize();
+				Vector3 toCentre = toCentreD;
 				float boundingRadius;
 				float linearSpeed;
 
@@ -161,17 +170,31 @@ namespace Rynchodon.Autopilot.Pathfinder
 				if (planet != null)
 				{
 					boundingRadius = planet.MaximumRadius;
-					linearSpeed = m_path.AutopilotSpeed;
+					//linearSpeed = m_path.AutopilotSpeed;
+					Vector3.Dot(ref m_path.AutopilotVelocity, ref toCentre, out linearSpeed);
 				}
 				else
 				{
 					boundingRadius = entity.PositionComp.LocalVolume.Radius;
 					if (entity.Physics == null)
-						linearSpeed = m_path.AutopilotSpeed;
+						//linearSpeed = m_path.AutopilotSpeed;
+						Vector3.Dot(ref m_path.AutopilotVelocity, ref toCentre, out linearSpeed);
 					else
-						linearSpeed = Vector3.Distance(entity.Physics.LinearVelocity, m_path.AutopilotVelocity);
+					{
+						//linearSpeed = Vector3.Distance(entity.Physics.LinearVelocity, m_path.AutopilotVelocity);
+						Vector3 obVel = entity.Physics.LinearVelocity;
+						Vector3 relVel;
+						Vector3.Subtract(ref m_path.AutopilotVelocity, ref  obVel, out relVel);
+						Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
+					}
 				}
-				boundingRadius += m_path.AutopilotShipBoundingRadius + linearSpeed * SpeedFactor;
+				//Logger.DebugLog("For entity: " + entity.nameWithId() + ", bounding radius: " + boundingRadius + ", autopilot ship radius: " + m_path.AutopilotShipBoundingRadius + ", linear speed: " + linearSpeed + ", sphere radius: " +
+				//	(boundingRadius + m_path.AutopilotShipBoundingRadius + linearSpeed * SpeedFactor));
+				if (linearSpeed < 0f)
+					linearSpeed = 0f;
+				else
+					linearSpeed *= SpeedFactor;
+				boundingRadius += m_path.AutopilotShipBoundingRadius + linearSpeed;
 
 				Vector3D toCurrent;
 				Vector3D.Subtract(ref m_path.CurrentPosition, ref centre, out toCurrent);
@@ -213,10 +236,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3 toCurrent = toCurrentD;
 			float toCurrentLenSq = toCurrent.LengthSquared();
 
-			float maxRepulseDist = (float)(sphere.Radius + sphere.Radius); // Adjustable, might need to be different for planets than other entities.
+			float maxRepulseDist =(float) sphere.Radius * RepulsionFactor; // Might need to be different for planets than other entities.
 			float maxRepulseDistSq = maxRepulseDist * maxRepulseDist;
 
-			Logger.DebugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
+			//Logger.DebugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
 
 			if (toCurrentLenSq > maxRepulseDistSq)
 			{
@@ -242,10 +265,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			// maxRepulseDist / toCurrentLen can be adjusted
 			Vector3 result;
 			Vector3.Multiply(ref toCurrent, (maxRepulseDist / toCurrentLen - 1f) / toCurrentLen, out result);
-			Logger.DebugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", result: " + result);
+			//Logger.DebugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", ratio: " + (maxRepulseDist / toCurrentLen) + ", result: " + result);
 			Vector3 result2;
 			Vector3.Add(ref repulsion, ref result, out result2);
-			Logger.DebugLog("repulsion: " + result2);
+			//Logger.DebugLog("repulsion: " + result2);
 			repulsion = result2;
 		}
 
@@ -257,8 +280,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3.Add(ref relativeVelocity, ref m_targetDirection, out temp);
 			Vector3.Normalize(ref temp, out rejectionVector);
 
-			// TODO AABB / volume test
-
+			// capsule intersection test is done implicitly by the sphere adjustment for speed
 
 			MyCubeGrid grid = entityTopMost as MyCubeGrid;
 			if (grid != null)
@@ -278,11 +300,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			return true;
 		}
 
-		// test AABB or Volume first
 		private bool RejectionIntersects(MyCubeGrid oGrid, ref Vector3 rejectionVector, out Vector3I oGridCell)
 		{
 			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
-			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId());
+			//Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId());
 
 			CubeGridCache myCache = CubeGridCache.GetFor(m_grid);
 			if (myCache == null)
@@ -319,7 +340,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				steps = (int)Math.Ceiling(Math.Max(m_grid.GridSize, oGrid.GridSize) / roundTo) + 1;
 			}
 
-			Logger.DebugLog("building mycache");
+			//Logger.DebugLog("building mycache");
 
 			m_rejections.Clear();
 			MatrixD worldMatrix = m_grid.WorldMatrix;
@@ -337,7 +358,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				m_rejections[Round(pc2, roundTo)] = true;
 			}
 
-			Logger.DebugLog("checking other grid cells");
+			//Logger.DebugLog("checking other grid cells");
 
 			m_rejectTests.Clear();
 			worldMatrix = oGrid.WorldMatrix;
