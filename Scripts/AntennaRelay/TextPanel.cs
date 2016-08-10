@@ -156,7 +156,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private readonly Ingame.IMyTextPanel m_textPanel;
-		private readonly Logger myLogger = new Logger(null, "TextPanel");
+		private readonly Logger myLogger;
 
 		private readonly EntityValue<Option> m_optionsTerminal_ev;
 

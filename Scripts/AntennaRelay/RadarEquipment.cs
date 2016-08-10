@@ -202,7 +202,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Ammount each decoy adds to reported volume of ship.</summary>
 		private const float decoyVolume = 10000f;
 
-		private static Logger staticLogger = new Logger("N/A", "RadarEquipment");
+		private static Logger staticLogger = new Logger("RadarEquipment");
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
 
