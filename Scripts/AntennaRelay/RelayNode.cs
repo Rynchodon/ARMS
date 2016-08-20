@@ -4,7 +4,6 @@ using Rynchodon.Attached;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -129,7 +128,7 @@ namespace Rynchodon.AntennaRelay
 			this.m_comp_blockAttach = block;
 			this.m_comp_radio = ComponentRadio.TryCreateRadio(block);
 
-			Ingame.IMyLaserAntenna lAnt = block as Ingame.IMyLaserAntenna;
+			IMyLaserAntenna lAnt = block as IMyLaserAntenna;
 			if (lAnt != null)
 				this.m_comp_laser = new ComponentLaser(lAnt);
 

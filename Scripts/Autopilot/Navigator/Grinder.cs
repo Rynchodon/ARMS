@@ -9,7 +9,6 @@ using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -114,7 +113,7 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_longestDimension = m_controlBlock.CubeGrid.GetLongestDim();
 
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
-			m_navGrind = navBlock.Block is Ingame.IMyShipGrinder
+			m_navGrind = navBlock.Block is IMyShipGrinder
 				? new MultiBlock<MyObjectBuilder_ShipGrinder>(navBlock.Block)
 				: new MultiBlock<MyObjectBuilder_ShipGrinder>(() => m_mover.Block.CubeGrid);
 
@@ -363,7 +362,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			var allGrinders = CubeGridCache.GetFor(m_controlBlock.CubeGrid).GetBlocksOfType(typeof(MyObjectBuilder_ShipGrinder));
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				foreach (Ingame.IMyShipGrinder grinder in allGrinders)
+				foreach (IMyShipGrinder grinder in allGrinders)
 					if (!grinder.Closed)
 						grinder.RequestEnable(enable);
 			});
@@ -384,7 +383,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (allGrinders == null)
 				return true;
 
-			foreach (Ingame.IMyShipGrinder grinder in allGrinders)
+			foreach (IMyShipGrinder grinder in allGrinders)
 			{
 				MyInventoryBase grinderInventory = ((MyEntity)grinder).GetInventoryBase(0);
 

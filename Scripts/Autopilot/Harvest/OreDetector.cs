@@ -11,7 +11,6 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Voxels;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Harvest
 {
@@ -43,7 +42,7 @@ namespace Rynchodon.Autopilot.Harvest
 			}
 
 			private readonly Logger m_logger;
-			private readonly Ingame.IMyOreDetector m_oreDetector;
+			private readonly IMyOreDetector m_oreDetector;
 			private readonly IMyVoxelBase m_voxel;
 			private readonly float m_maxRange;
 
@@ -55,7 +54,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			public bool NeedsUpdate { get; private set; }
 
-			public VoxelData(Ingame.IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
+			public VoxelData(IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
 			{
 				this.m_logger = new Logger(GetType().Name, () => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
@@ -337,7 +336,7 @@ Finished_Deposit:
 		private readonly List<MyVoxelBase> m_nearbyVoxel = new List<MyVoxelBase>();
 
 		private readonly Logger m_logger;
-		private readonly Ingame.IMyOreDetector m_oreDetector;
+		private readonly IMyOreDetector m_oreDetector;
 		private readonly float m_maxRange;
 		private readonly RelayClient m_netClient;
 
@@ -354,7 +353,7 @@ Finished_Deposit:
 		{
 			this.m_logger = new Logger("OreDetector", oreDetector);
 			this.Block = oreDetector;
-			this.m_oreDetector = oreDetector as Ingame.IMyOreDetector;
+			this.m_oreDetector = oreDetector as IMyOreDetector;
 			this.m_netClient = new RelayClient(oreDetector);
 
 			float maxrange = 0f;
