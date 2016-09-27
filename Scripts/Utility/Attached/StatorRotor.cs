@@ -82,7 +82,9 @@ namespace Rynchodon.Attached
 					if (myStator.IsAttached)
 					{
 						MyObjectBuilder_MotorStator statorBuilder = (myStator as IMyCubeBlock).GetObjectBuilder_Safe() as MyObjectBuilder_MotorStator;
-						if (Registrar.TryGetValue(statorBuilder.RotorEntityId.Value, out partner))
+						if (!statorBuilder.TopBlockId.HasValue)
+							myLogger.alwaysLog("Failed to set partner, TopBlockId does not have value", Logger.severity.WARNING);
+						else if (Registrar.TryGetValue(statorBuilder.TopBlockId.Value, out partner))
 						{
 							myLogger.debugLog("Set partner to " + partner.myRotor.DisplayNameText, Logger.severity.INFO);
 							Attach(partner.myRotor);
