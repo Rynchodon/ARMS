@@ -296,7 +296,7 @@ namespace Rynchodon
 		/// <returns>True iff there is a collision</returns>
 		public bool rejectionIntersects(IMyCubeGrid grid, IMyCubeBlock ignore, out MyEntity entity, out Vector3? pointOfObstruction)
 		{
-			m_logger.debugLog(m_grid == null, "m_grid == null", Logger.severity.FATAL);
+			m_logger.debugLog("m_grid == null", Logger.severity.FATAL, condition: m_grid == null);
 
 			//m_logger.debugLog("testing grid: " + grid.getBestName(), "rejectionIntersects()");
 

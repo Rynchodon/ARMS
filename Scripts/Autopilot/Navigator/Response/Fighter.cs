@@ -94,7 +94,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (enemy == null)
 			{
-				m_logger.debugLog(m_currentTarget != null, "lost target", Logger.severity.DEBUG);
+				m_logger.debugLog("lost target", Logger.severity.DEBUG, condition: m_currentTarget != null);
 				m_currentTarget = null;
 				m_orbiter = null;
 				return;
@@ -258,8 +258,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_logger.debugLog("Arming", Logger.severity.DEBUG);
 
-			m_logger.debugLog(m_weapons_fixed.Count != 0, "Fixed weapons has not been cleared", Logger.severity.FATAL);
-			m_logger.debugLog(m_weapons_all.Count != 0, "All weapons has not been cleared", Logger.severity.FATAL);
+			m_logger.debugLog("Fixed weapons has not been cleared", Logger.severity.FATAL, condition: m_weapons_fixed.Count != 0);
+			m_logger.debugLog("All weapons has not been cleared", Logger.severity.FATAL, condition: m_weapons_all.Count != 0);
 
 			m_weaponRange_min = float.MaxValue;
 
@@ -420,7 +420,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (fixedWeapon != null && fixedWeapon.CubeBlock.CubeGrid != m_controlBlock.CubeGrid)
 				{
 					faceBlock = fixedWeapon.MotorTurretFaceBlock();
-					m_logger.debugLog(faceBlock == null, "MotorTurretFaceBlock == null", Logger.severity.FATAL);
+					m_logger.debugLog("MotorTurretFaceBlock == null", Logger.severity.FATAL, condition: faceBlock == null);
 				}
 				else
 					faceBlock = weapon_primary.CubeBlock;

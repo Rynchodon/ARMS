@@ -169,7 +169,7 @@ namespace Rynchodon.Autopilot.Navigator
 								int allowedAmount = (int)(allowedVolume / oneVol);
 								if (allowedAmount <= 0)
 								{
-									m_logger.debugLog(allowedAmount < 0, "allowedAmount < 0", Logger.severity.FATAL);
+									m_logger.debugLog("allowedAmount < 0", Logger.severity.FATAL, condition: allowedAmount < 0);
 									m_logger.debugLog("reached max transfer for this update", Logger.severity.DEBUG);
 									return;
 								}

@@ -229,7 +229,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			Match m = Regex.Match(vectorString, @"(.*)\s+(\w*)");
 
-			Logger.DebugLog("ACommand", "vectorString: " + vectorString + ", group count: " + m.Groups.Count);
+			Logger.DebugLog("vectorString: " + vectorString + ", group count: " + m.Groups.Count);
 
 			if (m.Groups.Count != 3)
 			{

@@ -111,7 +111,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return false;
 			});
 
-			m_logger.debugLog(m_character == null, "failed to find a character from last seen");
+			m_logger.debugLog("failed to find a character from last seen", condition: m_character == null);
 		}
 
 	}

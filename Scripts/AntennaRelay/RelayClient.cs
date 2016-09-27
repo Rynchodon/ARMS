@@ -108,7 +108,7 @@ namespace Rynchodon.AntennaRelay
 			RelayNode node = GetNode();
 			RelayStorage store = node != null ? node.Storage : null;
 
-			m_logger.debugLog(m_storage != store, "current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store));
+			m_logger.debugLog("current storage: " + StorageName(m_storage) + ", new storage: " + StorageName(store), condition: m_storage != store);
 			if (store != m_storage && m_messageHandler != null)
 			{
 				if (m_storage != null)

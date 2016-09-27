@@ -215,10 +215,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			m_logger.debugLog(m_gridFinder == null, "m_gridFinder == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_navSet == null, "m_navSet == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_mover == null, "m_mover == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", Logger.severity.FATAL);
+			m_logger.debugLog("m_gridFinder == null", Logger.severity.FATAL, condition: m_gridFinder == null);
+			m_logger.debugLog("m_navSet == null", Logger.severity.FATAL, condition: m_navSet == null);
+			m_logger.debugLog("m_mover == null", Logger.severity.FATAL, condition: m_mover == null);
+			m_logger.debugLog("m_navBlock == null", Logger.severity.FATAL, condition: m_navBlock == null);
 
 			m_gridFinder.Update();
 

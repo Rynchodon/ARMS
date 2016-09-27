@@ -271,7 +271,7 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			// connections don't update immediately, so don't worry about a single message (per block)
-			m_logger.debugLog(!IsConnectedTo(Storage.PrimaryNode), "Not connected to primary node", Logger.severity.INFO);
+			m_logger.debugLog("Not connected to primary node", Logger.severity.INFO, condition: !IsConnectedTo(Storage.PrimaryNode));
 
 			IMyEntity topEntity = m_entity.GetTopMostParent();
 

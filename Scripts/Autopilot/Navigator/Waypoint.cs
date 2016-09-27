@@ -37,7 +37,7 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_targetEntity = targetEntity;
 			this.m_targetOffset = worldOffset;
 
-			m_logger.debugLog(targetEntity != targetEntity.GetTopMostParent(), "targetEntity is not top-most", Logger.severity.FATAL);
+			m_logger.debugLog("targetEntity is not top-most", Logger.severity.FATAL, condition: targetEntity != targetEntity.GetTopMostParent());
 
 			IMyCubeGrid asGrid = targetEntity as IMyCubeGrid;
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
@@ -64,8 +64,8 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (m_navSet.DistanceLessThanDestRadius() || m_targetEntity.MarkedForClose)
 			{
-				m_logger.debugLog(!m_targetEntity.Closed, () => "Reached destination: " + TargetPosition, Logger.severity.INFO);
-				m_logger.debugLog(m_targetEntity.Closed, "Target entity closed", Logger.severity.INFO);
+				m_logger.debugLog(() => "Reached destination: " + TargetPosition, Logger.severity.INFO, condition: !m_targetEntity.Closed);
+				m_logger.debugLog("Target entity closed", Logger.severity.INFO, condition: m_targetEntity.Closed);
 
 				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();

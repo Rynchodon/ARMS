@@ -52,7 +52,7 @@ namespace Rynchodon
 				return;
 
 			//Logger.debugLog("IMyTerminalBlockExtensions", "block: " + block.getBestName());
-			Logger.DebugLog("IMyTerminalBlockExtensions", "null block from " + caller, Logger.severity.FATAL, condition: block == null);
+			Logger.DebugLog("null block from " + caller, Logger.severity.FATAL, condition: block == null);
 			UpdateManager.Unregister(1, SwitchTerminalWhenNoInput);
 			UpdateManager.Register(1, SwitchTerminalWhenNoInput);
 			Static.switchTo = block;
@@ -67,8 +67,8 @@ namespace Rynchodon
 			if (Static == null)
 				return;
 
-			Logger.DebugLog("IMyTerminalBlockExtensions", "MyAPIGateway.Input == null", Logger.severity.FATAL, condition: MyAPIGateway.Input == null);
-			Logger.DebugLog("IMyTerminalBlockExtensions", "switchTo == null", Logger.severity.FATAL, condition: Static.switchTo == null);
+			Logger.DebugLog("MyAPIGateway.Input == null", Logger.severity.FATAL, condition: MyAPIGateway.Input == null);
+			Logger.DebugLog("switchTo == null", Logger.severity.FATAL, condition: Static.switchTo == null);
 
 			if (MyAPIGateway.Input.IsAnyMouseOrJoystickPressed())
 				return;

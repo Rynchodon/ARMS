@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Data
 		{
 			get
 			{
-				m_logger.debugLog(Grid == null, "Grid == null", Logger.severity.FATAL);
+				m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
 
 				if (m_lastCalc_worldMatrix != Globals.UpdateCount)
 				{

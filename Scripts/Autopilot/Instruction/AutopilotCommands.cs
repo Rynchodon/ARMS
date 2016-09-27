@@ -458,7 +458,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void ListCommands(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> allItems, List<MyTerminalControlListBoxItem> selected)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			foreach (ACommand command in m_commandList)
 			{
@@ -472,8 +472,8 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CommandSelected(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> selected)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			m_logger.debugLog(selected.Count > 1, "selected.Count: " + selected.Count, Logger.severity.ERROR);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			m_logger.debugLog("selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
 
 			if (selected.Count == 0)
 			{
@@ -493,8 +493,8 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			m_logger.debugLog("entered");
 
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			m_logger.debugLog(m_currentCommand == null, "m_currentCommand == null", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			m_logger.debugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
 
 			m_currentCommand = null;
 			m_listCommands = true;
@@ -504,8 +504,8 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CheckAndSave(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
-			m_logger.debugLog(m_currentCommand == null, "m_currentCommand == null", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			m_logger.debugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
 
 			string msg;
 			if (m_currentCommand.ValidateControls((IMyCubeBlock)m_block, out msg))
@@ -546,7 +546,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void AddCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			m_insertIndex = -1;
 			m_replace = false;
@@ -558,7 +558,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void InsertCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -578,7 +578,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			m_logger.debugLog("entered");
 
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -593,7 +593,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void EditCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -618,7 +618,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void MoveCommandUp(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -639,7 +639,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void MoveCommandDown(IMyTerminalBlock block)
 		{
-			m_logger.debugLog(block != m_block, "block != m_block", Logger.severity.FATAL);
+			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{

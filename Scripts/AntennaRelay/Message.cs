@@ -92,7 +92,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static void FromClient(byte[] bytes, int pos)
 		{
-			Static.logger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not the server!", Logger.severity.ERROR);
+			Static.logger.debugLog("Not the server!", Logger.severity.ERROR, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			long sender = ByteConverter.GetLong(bytes, ref pos);
 			string recipientGrid = ByteConverter.GetString(bytes, ref pos);

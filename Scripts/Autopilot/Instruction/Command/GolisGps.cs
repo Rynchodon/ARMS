@@ -61,7 +61,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		private void OnItemSelected(IMyTerminalBlock dontCare, List<MyTerminalControlListBoxItem> selected)
 		{
-			Logger.DebugLog("CommandGolisGps", "selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
+			Logger.DebugLog("selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
 
 			if (selected.Count == 0)
 				destination = new Vector3D(double.NaN, double.NaN, double.NaN);
