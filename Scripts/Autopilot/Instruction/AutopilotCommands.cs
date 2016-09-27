@@ -247,7 +247,8 @@ namespace Rynchodon.Autopilot.Instruction
 				m_block.AppendingCustomInfo += m_block_AppendingCustomInfo;
 
 				Commands = AutopilotTerminal.GetAutopilotCommands(m_block).ToString();
-				ParseCommands(Commands);
+				foreach (ACommand comm in ParseCommands(Commands))
+					m_commandList.Add(comm);
 				if (m_syntaxErrors.Length != 0)
 					m_block.RefreshCustomInfo();
 				m_block.SwitchTerminalTo();
