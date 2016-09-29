@@ -730,7 +730,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="Direction">The direction to face the localMatrix in.</param>
 		private void in_CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect, IMyEntity targetEntity)
 		{
-			m_logger.debugLog(Direction == null, "Direction == null", Logger.severity.ERROR);
+			m_logger.debugLog("Direction == null", Logger.severity.ERROR, condition: Direction == null);
 
 			m_gyro.Update();
 			float minimumMoment = Math.Min(m_gyro.InvertedInertiaMoment.Min(), MaxInverseTensor);
@@ -738,7 +738,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				// == 0f, not calculated yet. < 0f, we have math failure
 				StopRotate();
-				m_logger.debugLog(minimumMoment < 0f, "minimumMoment < 0f", Logger.severity.FATAL);
+				m_logger.debugLog("minimumMoment < 0f", Logger.severity.FATAL, condition: minimumMoment < 0f);
 				return;
 			}
 
@@ -986,7 +986,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			if (m_grid != Block.CubeGrid)
 			{
-				m_logger.debugLog(m_grid != null, "Grid Changed! from " + m_grid.getBestName() + " to " + Block.CubeGrid.getBestName(), Logger.severity.INFO);
+				m_logger.debugLog("Grid Changed! from " + m_grid.getBestName() + " to " + Block.CubeGrid.getBestName(), Logger.severity.INFO, condition: m_grid != null);
 				m_grid = Block.CubeGrid;
 				this.Thrust = new ThrustProfiler(Block.CubeBlock);
 				this.m_gyro = new GyroProfiler(m_grid);
@@ -999,7 +999,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public bool ThrustersOverWorked(float threshold = OverworkedThreshold)
 		{
-			m_logger.debugLog(Thrust == null, "myThrust == null", Logger.severity.FATAL);
+			m_logger.debugLog("myThrust == null", Logger.severity.FATAL, condition: Thrust == null);
 			return Thrust.GravityReactRatio.vector.AbsMax() >= threshold;
 		}
 

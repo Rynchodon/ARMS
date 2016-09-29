@@ -168,7 +168,7 @@ namespace Rynchodon
 
 			Match match = Regex.Match(pretty, @"(-?\d*\.?\d*)\s*(\w*)");
 
-			Logger.DebugLog("PrettySI", "pretty: " + pretty + ", group count: " + match.Groups.Count);
+			Logger.DebugLog("pretty: " + pretty + ", group count: " + match.Groups.Count);
 
 			if (match.Groups.Count == 0)
 			{
@@ -210,7 +210,7 @@ namespace Rynchodon
 			double number;
 			if (!double.TryParse(match.Groups[1].Value, out number))
 			{
-				Logger.DebugLog("PrettySI", "failed to parse as double: " + match.Groups[1].Value);
+				Logger.DebugLog("failed to parse as double: " + match.Groups[1].Value);
 				span = default(TimeSpan);
 				return false;
 			}
@@ -240,7 +240,7 @@ namespace Rynchodon
 					double multi = getMultiplier(SI_1000_multiples, SI_1000_subMulti, match.Groups[2].Value);
 					if (multi == 0d)
 					{
-						Logger.DebugLog("PrettySI", "failed to get multiple: " + match.Groups[2].Value);
+						Logger.DebugLog("failed to get multiple: " + match.Groups[2].Value);
 						span = default(TimeSpan);
 						return false;
 					}

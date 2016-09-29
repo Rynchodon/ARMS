@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGear != null)
 			{
 				ITerminalProperty<bool> autolock = asGear.GetProperty("Autolock") as ITerminalProperty<bool>;
-				m_logger.debugLog(autolock == null, "autolock == null", Logger.severity.FATAL);
+				m_logger.debugLog("autolock == null", Logger.severity.FATAL, condition: autolock == null);
 				if (!autolock.GetValue(asGear))
 					autolock.SetValue(asGear, true);
 			}

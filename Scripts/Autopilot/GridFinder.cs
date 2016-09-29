@@ -55,10 +55,10 @@ namespace Rynchodon.Autopilot
 		{
 			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
-			m_logger.debugLog(navSet == null, "navSet == null", Logger.severity.FATAL);
-			m_logger.debugLog(controller == null, "controller == null", Logger.severity.FATAL);
-			m_logger.debugLog(controller.CubeBlock == null, "controller.CubeBlock == null", Logger.severity.FATAL);
-			m_logger.debugLog(targetGrid == null, "targetGrid == null", Logger.severity.FATAL);
+			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
+			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
+			m_logger.debugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
+			m_logger.debugLog("targetGrid == null", Logger.severity.FATAL, condition: targetGrid == null);
 
 			this.m_targetGridName = targetGrid.LowerRemoveWhitespace();
 			if (targetBlock != null)
@@ -77,9 +77,9 @@ namespace Rynchodon.Autopilot
 		{
 			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
 
-			m_logger.debugLog(navSet == null, "navSet == null", Logger.severity.FATAL);
-			m_logger.debugLog(controller == null, "controller == null", Logger.severity.FATAL);
-			m_logger.debugLog(controller.CubeBlock == null, "controller.CubeBlock == null", Logger.severity.FATAL);
+			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
+			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
+			m_logger.debugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
 
 			this.m_controlBlock = controller;
 			//this.m_enemies = new List<LastSeen>();
@@ -231,7 +231,7 @@ namespace Rynchodon.Autopilot
 
 		private void GridUpdate()
 		{
-			m_logger.debugLog(Grid == null, "Grid == null", Logger.severity.FATAL);
+			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
 
 			if (!Grid.IsValid)
 			{
@@ -279,15 +279,15 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void BlockSearch()
 		{
-			m_logger.debugLog(Grid == null, "Grid == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_targetBlockName == null, "m_targetBlockName == null", Logger.severity.FATAL);
+			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+			m_logger.debugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
 
 			NextSearch_Block = Globals.UpdateCount + SearchInterval_Block;
 			Block = null;
 
 			int bestNameLength = int.MaxValue;
 			IMyCubeGrid asGrid = Grid.Entity as IMyCubeGrid;
-			m_logger.debugLog(asGrid == null, "asGrid == null", Logger.severity.FATAL);
+			m_logger.debugLog("asGrid == null", Logger.severity.FATAL, condition: asGrid == null);
 
 			foreach (IMyCubeBlock Fatblock in AttachedGrid.AttachedCubeBlocks(asGrid, m_allowedAttachment, true))
 			{
@@ -313,9 +313,9 @@ namespace Rynchodon.Autopilot
 
 		private void BlockCheck()
 		{
-			m_logger.debugLog(Grid == null, "Grid == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_targetBlockName == null, "m_targetBlockName == null", Logger.severity.FATAL);
-			m_logger.debugLog(Block == null, "Block == null", Logger.severity.FATAL);
+			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+			m_logger.debugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
+			m_logger.debugLog("Block == null", Logger.severity.FATAL, condition: Block == null);
 
 			if (!m_controlBlock.CubeBlock.canControlBlock(Block))
 			{

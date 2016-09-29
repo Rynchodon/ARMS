@@ -3,7 +3,6 @@ using Sandbox.ModAPI.Interfaces;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -20,11 +19,11 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>A new radio component for the entity, if it can be created. Null, otherwise.</returns>
 		public static ComponentRadio TryCreateRadio(IMyEntity obj)
 		{
-			Ingame.IMyRadioAntenna radioAnt = obj as Ingame.IMyRadioAntenna;
+			IMyRadioAntenna radioAnt = obj as IMyRadioAntenna;
 			if (radioAnt != null)
 				return new CR_AntennaBlock(radioAnt);
 
-			Ingame.IMyBeacon beacon = obj as Ingame.IMyBeacon;
+			IMyBeacon beacon = obj as IMyBeacon;
 			if (beacon != null)
 				return new CR_BeaconBlock(beacon);
 
@@ -122,7 +121,7 @@ namespace Rynchodon.AntennaRelay
 				s_prop_broadcasting = null;
 			}
 
-			private Ingame.IMyRadioAntenna m_antenna;
+			private IMyRadioAntenna m_antenna;
 
 			public override IMyEntity Entity
 			{
@@ -154,7 +153,7 @@ namespace Rynchodon.AntennaRelay
 				get { return m_antenna.Radius; }
 			}
 
-			public CR_AntennaBlock(Ingame.IMyRadioAntenna antenna)
+			public CR_AntennaBlock(IMyRadioAntenna antenna)
 			{
 				this.m_antenna = antenna;
 
@@ -167,7 +166,7 @@ namespace Rynchodon.AntennaRelay
 		private class CR_BeaconBlock : ComponentRadio
 		{
 
-			private Ingame.IMyBeacon m_beacon;
+			private IMyBeacon m_beacon;
 
 			public override IMyEntity Entity
 			{
@@ -199,7 +198,7 @@ namespace Rynchodon.AntennaRelay
 				get { return m_beacon.Radius; }
 			}
 
-			public CR_BeaconBlock(Ingame.IMyBeacon beacon)
+			public CR_BeaconBlock(IMyBeacon beacon)
 			{
 				this.m_beacon = beacon;
 			}

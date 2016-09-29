@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 				FaceSun();
 			else
 			{
-				myLogger.debugLog(myMotorTurret != null, "no longer facing the sun", Logger.severity.DEBUG);
+				myLogger.debugLog("no longer facing the sun", Logger.severity.DEBUG, condition: myMotorTurret != null);
 				if (myMotorTurret != null)
 				{
 					myMotorTurret.Dispose();

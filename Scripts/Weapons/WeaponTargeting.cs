@@ -494,9 +494,9 @@ namespace Rynchodon.Weapons
 		{
 			WeaponTargeting targeting;
 			if (!TryGetWeaponTargeting(block, out targeting))
-				return; 
-			
-			Logger.DebugLog("CommandGolisGps", "selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
+				return;
+
+			Logger.DebugLog("selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
 
 			if (selected.Count == 0)
 				targeting.m_termControl_targetGolis_ev.Value = Vector3.Invalid;
@@ -954,7 +954,7 @@ namespace Rynchodon.Weapons
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		protected override bool Obstructed(Vector3D contactPosition, IMyEntity target)
 		{
-			myLogger.debugLog(CubeBlock == null, "CubeBlock == null", Logger.severity.FATAL);
+			myLogger.debugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
 			m_ignoreList[0] = target;
 			return RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
 		}

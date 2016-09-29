@@ -108,17 +108,17 @@ namespace Rynchodon.Weapons
 						myLogger.debugLog("counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
 						if (GuidedLauncher)
 						{
-							myLogger.debugLog(counts.GuidedLauncher == 0, "guided launcher count is already at 0", Logger.severity.FATAL);
+							myLogger.debugLog("guided launcher count is already at 0", Logger.severity.FATAL, condition: counts.GuidedLauncher == 0);
 							counts.GuidedLauncher--;
 						}
 						else if (this is Guided.GuidedMissile)
 						{
-							myLogger.debugLog(counts.GuidedMissile == 0, "guided missile count is already at 0", Logger.severity.FATAL);
+							myLogger.debugLog("guided missile count is already at 0", Logger.severity.FATAL, condition: counts.GuidedMissile == 0);
 							counts.GuidedMissile--;
 						}
 						else
 						{
-							myLogger.debugLog(counts.BasicWeapon == 0, "basic weapon count is already at 0", Logger.severity.FATAL);
+							myLogger.debugLog("basic weapon count is already at 0", Logger.severity.FATAL, condition: counts.BasicWeapon == 0);
 							counts.BasicWeapon--;
 						}
 						if (counts.BasicWeapon == 0 && counts.GuidedLauncher == 0 && counts.GuidedMissile == 0)
@@ -190,7 +190,7 @@ namespace Rynchodon.Weapons
 
 		private bool myTarget_PhysicalProblem()
 		{
-			myLogger.debugLog(myTarget == null || myTarget.Entity == null, "No current target", Logger.severity.FATAL);
+			myLogger.debugLog("No current target", Logger.severity.FATAL, condition: myTarget == null || myTarget.Entity == null);
 			Vector3D targetPos = myTarget.GetPosition();
 			return !myTarget_CanRotateTo(targetPos) || Obstructed(targetPos, myTarget.Entity);
 		}
@@ -280,7 +280,7 @@ namespace Rynchodon.Weapons
 			CollectTargets();
 			PickATarget();
 
-			myLogger.debugLog(CurrentTarget != myTarget && CurrentTarget != null && myTarget != null, () => "current target: " + CurrentTarget.Entity.getBestName() + ", new target: " + myTarget.Entity.getBestName());
+			myLogger.debugLog(() => "current target: " + CurrentTarget.Entity.getBestName() + ", new target: " + myTarget.Entity.getBestName(), condition: CurrentTarget != myTarget && CurrentTarget != null && myTarget != null);
 
 			CurrentTarget = myTarget;
 		}
@@ -391,8 +391,8 @@ namespace Rynchodon.Weapons
 					}
 				});
 
-				myLogger.debugLog(processing != null, () => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist);
-				myLogger.debugLog(processing == null, "no last seen target found");
+				myLogger.debugLog(() => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist, condition: processing != null);
+				myLogger.debugLog("no last seen target found", condition: processing == null);
 			}
 
 			if (processing == null)
@@ -919,15 +919,15 @@ namespace Rynchodon.Weapons
 			Vector3 shooterVel = MyEntity.GetLinearVelocity();
 			Vector3D targetOrigin = myTarget.GetPosition();
 
-			myLogger.debugLog(!shotOrigin.IsValid(), () => "shotOrigin is not valid: " + shotOrigin, Logger.severity.FATAL);
-			myLogger.debugLog(!shooterVel.IsValid(), () => "shooterVel is not valid: " + shooterVel, Logger.severity.FATAL);
-			myLogger.debugLog(!targetOrigin.IsValid(), () => "targetOrigin is not valid: " + targetOrigin, Logger.severity.FATAL);
+			myLogger.debugLog(() => "shotOrigin is not valid: " + shotOrigin, Logger.severity.FATAL, condition: !shotOrigin.IsValid());
+			myLogger.debugLog(() => "shooterVel is not valid: " + shooterVel, Logger.severity.FATAL, condition: !shooterVel.IsValid());
+			myLogger.debugLog(() => "targetOrigin is not valid: " + targetOrigin, Logger.severity.FATAL, condition: !targetOrigin.IsValid());
 
 			Vector3 targetVel = myTarget.GetLinearVelocity();
 			Vector3 relativeVel = (targetVel - shooterVel);
 
-			myLogger.debugLog(!targetVel.IsValid(), () => "targetVel is not valid: " + targetVel, Logger.severity.FATAL);
-			myLogger.debugLog(!relativeVel.IsValid(), () => "relativeVel is not valid: " + relativeVel, Logger.severity.FATAL);
+			myLogger.debugLog(() => "targetVel is not valid: " + targetVel, Logger.severity.FATAL, condition: !targetVel.IsValid());
+			myLogger.debugLog(() => "relativeVel is not valid: " + relativeVel, Logger.severity.FATAL, condition: !relativeVel.IsValid());
 
 			targetOrigin += relativeVel * Globals.UpdateDuration;
 			float shotSpeed = ProjectileSpeed(ref targetOrigin);
@@ -970,10 +970,10 @@ namespace Rynchodon.Weapons
 					myTarget.FiringDirection = direction;
 					myTarget.ContactPoint = shotOrigin + direction * distanceToTarget;
 
-					myLogger.debugLog(!myTarget.FiringDirection.IsValid(), () => "invalid FiringDirection: " + myTarget.FiringDirection + ", directionToTarget: " + directionToTarget + 
-						", displacementToTarget: " + displacementToTarget + ", shotVelTang: " + shotVelTang, Logger.severity.FATAL);
-					myLogger.debugLog(!myTarget.ContactPoint.IsValid(), () => "invalid ContactPoint: " + myTarget.ContactPoint + ", shotOrigin: " + shotOrigin + 
-						", direction: " + direction + ", distanceToTarget: " + distanceToTarget, Logger.severity.FATAL);
+					myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", directionToTarget: " + directionToTarget +
+						", displacementToTarget: " + displacementToTarget + ", shotVelTang: " + shotVelTang, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
+					myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", shotOrigin: " + shotOrigin +
+						", direction: " + direction + ", distanceToTarget: " + distanceToTarget, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
 					return;
 				}
 				//myLogger.debugLog("shot too slow, blacklisting");
@@ -1000,10 +1000,10 @@ namespace Rynchodon.Weapons
 				myTarget.FiringDirection = firingDirection;
 				myTarget.ContactPoint = contactPoint;
 
-				myLogger.debugLog(!myTarget.FiringDirection.IsValid(), () => "invalid FiringDirection: " + myTarget.FiringDirection + ", shotSpeedOrth: " + shotSpeedOrth +
-					", directionToTarget: " + directionToTarget + ", firingDirection: " + firingDirection, Logger.severity.FATAL);
-				myLogger.debugLog(!myTarget.ContactPoint.IsValid(), () => "invalid ContactPoint: " + myTarget.ContactPoint + ", timeToCollision: " + timeToCollision +
-					", shotVel: " + shotVel + ", contactPoint: " + contactPoint, Logger.severity.FATAL);
+				myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", shotSpeedOrth: " + shotSpeedOrth +
+					", directionToTarget: " + directionToTarget + ", firingDirection: " + firingDirection, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
+				myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", timeToCollision: " + timeToCollision +
+					", shotVel: " + shotVel + ", contactPoint: " + contactPoint, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
 			}
 		}
 

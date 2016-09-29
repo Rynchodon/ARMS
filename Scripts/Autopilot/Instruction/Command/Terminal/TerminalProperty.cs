@@ -92,7 +92,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 			catch (Exception ex)
 			{
-				Logger.DebugLog("TerminalProperty", "string: " + split2 + ", exception: " + ex);
+				Logger.DebugLog("string: " + split2 + ", exception: " + ex);
 				message = ex.GetType() + ex.Message;
 				m_hasValue = false;
 				return null;

@@ -116,7 +116,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(RelayStorage recipient)
 		{
-			m_logger.debugLog(recipient == this, "recipient == this", Logger.severity.FATAL);
+			m_logger.debugLog("recipient == this", Logger.severity.FATAL, condition: recipient == this);
 			m_logger.debugLog("copying to: " + recipient.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 			using (recipient.lock_lastSeen.AcquireExclusiveUsing())

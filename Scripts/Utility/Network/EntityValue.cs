@@ -332,7 +332,7 @@ namespace Rynchodon.Utility.Network
 
 		private void RequestEntityValueFromServer()
 		{
-			Static.logger.debugLog(MyAPIGateway.Multiplayer.IsServer, "This is the server!", Logger.severity.ERROR);
+			Static.logger.debugLog("This is the server!", Logger.severity.ERROR, condition: MyAPIGateway.Multiplayer.IsServer);
 			List<byte> bytes = ResourcePool<List<byte>>.Get();
 			try
 			{

@@ -12,7 +12,7 @@ namespace Rynchodon.Weapons
 			CharacterStateTracker tracker;
 			if (!Registrar.TryGetValue(character, out tracker))
 			{
-				Logger.AlwaysLog("CharacterStateTracker", "Failed lookup of character: " + character.nameWithId(), Logger.severity.WARNING);
+				Logger.AlwaysLog("Failed lookup of character: " + character.nameWithId(), Logger.severity.WARNING);
 				return MyCharacterMovementEnum.Died; // most likely deleted
 			}
 			return tracker.m_currentState;

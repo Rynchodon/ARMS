@@ -156,7 +156,7 @@ namespace Rynchodon
 		/// </summary>
 		public void FaceTowards(DirectionWorld target)
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
+			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			if (!SetupStators())
 				return;
@@ -255,7 +255,7 @@ namespace Rynchodon
 
 		public void Stop()
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
+			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			if (!StatorOK())
 				return;
@@ -274,12 +274,12 @@ namespace Rynchodon
 			if (!m_claimedElevation)
 			{
 				m_claimedElevation = Static.claimedStators.Add(StatorEl);
-				myLogger.debugLog(m_claimedElevation, "claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG);
+				myLogger.debugLog("claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG, condition: m_claimedElevation);
 			}
 			if (!m_claimedAzimuth)
 			{
 				m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
-				myLogger.debugLog(m_claimedAzimuth, "claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG);
+				myLogger.debugLog("claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG, condition: m_claimedAzimuth);
 			}
 			return m_claimedElevation || m_claimedAzimuth;
 		}
@@ -365,7 +365,7 @@ namespace Rynchodon
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
-			myLogger.debugLog(!MyAPIGateway.Multiplayer.IsServer, "Not server!", Logger.severity.FATAL);
+			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			// keep in mind, azimuth is undefined if elevation is straight up or straight down
 			float speed = angle.IsValid() ? MathHelper.Clamp(angle * RotationSpeedMultiplier, -mySpeedLimit, mySpeedLimit) : 0f;

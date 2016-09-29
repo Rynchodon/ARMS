@@ -479,14 +479,14 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static void ColourBlock(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
 		{
-			Static.logger.debugLog(realBlock == null, "realBlock == null", Logger.severity.FATAL);
+			Static.logger.debugLog("realBlock == null", Logger.severity.FATAL, condition: realBlock == null);
 
 			float integrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
 			float criticalRatio = ((MyCubeBlockDefinition)realBlock.BlockDefinition).CriticalIntegrityRatio;
 
 			float scaledRatio;
 			Color blockColour;
-			Static.logger.debugLog(integrityRatio != 1f, "integrityRatio: " + integrityRatio + ", criticalRatio: " + criticalRatio + ", fatblock: " + realBlock.FatBlock.getBestName() + ", functional: " + (realBlock.FatBlock != null && realBlock.FatBlock.IsFunctional));
+			Static.logger.debugLog("integrityRatio: " + integrityRatio + ", criticalRatio: " + criticalRatio + ", fatblock: " + realBlock.FatBlock.getBestName() + ", functional: " + (realBlock.FatBlock != null && realBlock.FatBlock.IsFunctional), condition: integrityRatio != 1f);
 			if (integrityRatio > criticalRatio && (realBlock.FatBlock == null || realBlock.FatBlock.IsFunctional))
 			{
 				scaledRatio = (integrityRatio - criticalRatio) / (1f - criticalRatio);
@@ -506,7 +506,7 @@ namespace Rynchodon.AntennaRelay
 		private static void UpdateBlockModel(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
 		{
 			IMySlimBlock holoBlock = holoGrid.GetCubeBlock(realBlock.Position);
-			Static.logger.debugLog(holoBlock == null, "holoBlock == null", Logger.severity.FATAL);
+			Static.logger.debugLog("holoBlock == null", Logger.severity.FATAL, condition: holoBlock == null);
 
 			float realIntegrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
 			float holoIntegrityRatio = (holoBlock.BuildIntegrity - holoBlock.CurrentDamage) / holoBlock.MaxIntegrity;

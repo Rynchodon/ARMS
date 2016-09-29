@@ -1,6 +1,6 @@
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -13,7 +13,7 @@ namespace Rynchodon.AntennaRelay
 		private const byte FinalState = 5;
 
 		private readonly Logger m_logger;
-		private readonly Ingame.IMyLaserAntenna m_laser;
+		private readonly IMyLaserAntenna m_laser;
 
 		private long? m_targetEntityId;
 		/// <summary>state 5 is the final state. It is possible for one to be in state 5, while the other is not</summary>
@@ -23,7 +23,7 @@ namespace Rynchodon.AntennaRelay
 		/// Creates the laser component from a laser antenna block.
 		/// </summary>
 		/// <param name="laser">The block to create the laser component for.</param>
-		public ComponentLaser(Ingame.IMyLaserAntenna laser)
+		public ComponentLaser(IMyLaserAntenna laser)
 		{
 			this.m_logger = new Logger(GetType().Name, laser);
 			this.m_laser = laser;

@@ -8,7 +8,6 @@ using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -37,7 +36,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("No unland block", Logger.severity.INFO);
 				return;
 			}
-			m_logger.debugLog(this.m_unlandBlock.Block == null, "Unland block is missing Block property", Logger.severity.FATAL);
+			m_logger.debugLog("Unland block is missing Block property", Logger.severity.FATAL, condition: this.m_unlandBlock.Block == null);
 
 			IMyLandingGear asGear = m_unlandBlock.Block as IMyLandingGear;
 			if (asGear != null)
@@ -53,11 +52,11 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 			{
-				Ingame.IMyShipConnector asConn = m_unlandBlock.Block as Ingame.IMyShipConnector;
+				IMyShipConnector asConn = m_unlandBlock.Block as IMyShipConnector;
 				if (asConn != null)
 				{
 					m_logger.debugLog("connector");
-					Ingame.IMyShipConnector other = asConn.OtherConnector;
+					IMyShipConnector other = asConn.OtherConnector;
 					if (other == null)
 					{
 						m_logger.debugLog("Not connected: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
@@ -118,7 +117,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					Ingame.IMyShipConnector asConn = m_unlandBlock.Block as Ingame.IMyShipConnector;
+					IMyShipConnector asConn = m_unlandBlock.Block as IMyShipConnector;
 					if (asConn != null)
 					{
 						m_attached = asConn.IsConnected;

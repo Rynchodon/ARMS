@@ -26,7 +26,7 @@ namespace Rynchodon
 	///	<para>removed for Dev version:</para>
 	///	<para>    System.Diagnostics.Conditional</para>
 	/// <para> </para>
-	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%Class][%Member][%Line][%PriState][%SecState]%Message</para>
+	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%FileName][%Member][%Line][%PriState][%SecState]%Message</para>
 	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Logger : MySessionComponentBase
@@ -35,7 +35,7 @@ namespace Rynchodon
 		private struct LogItem
 		{
 			public severity level;
-			public string context, className, member, toLog, primaryState, secondaryState, thread;
+			public string context, fileName, member, toLog, primaryState, secondaryState, thread;
 			public int lineNumber;
 			public DateTime time;
 		}
@@ -52,13 +52,11 @@ namespace Rynchodon
 
 			public int maxNumLines = 1000000;
 			public int numLines = 0;
-
-			public LockedDictionary<string, string> m_fileMap = new LockedDictionary<string, string>();
 		}
 
 		private static StaticVariables Static = new StaticVariables();
 
-		private readonly string m_classname;
+		private readonly string m_fileName;
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
 
 		public severity MinimumLevel = severity.ALL;
@@ -70,9 +68,9 @@ namespace Rynchodon
 		/// <param name="context">the context of this logger</param>
 		/// <param name="default_primary">the primary state used when one is not supplied to alwaysLog() or debugLog()</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(string calling_class, Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null)
+		public Logger(string calling_class, Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			this.m_classname = calling_class;
+			this.m_fileName = GetFileName(callerPath);
 			this.f_context = context;
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
@@ -84,9 +82,9 @@ namespace Rynchodon
 		/// <param name="calling_class">the name of the class this Logger belongs to</param>
 		/// <param name="block">The block to get context and states from</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(string calling_class, IMyCubeBlock block, Func<string> default_secondary = null)
+		public Logger(string calling_class, IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			this.m_classname = calling_class;
+			this.m_fileName = GetFileName(callerPath);
 
 			if (block == null)
 			{
@@ -113,9 +111,9 @@ namespace Rynchodon
 			}
 		}
 
-		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null)
+		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			this.m_classname = calling_class;
+			this.m_fileName = GetFileName(callerPath);
 
 			if (grid == null)
 			{
@@ -128,9 +126,9 @@ namespace Rynchodon
 			this.f_state_secondary = default_secondary;
 		}
 
-		public Logger(string calling_class, IMyEntity entity)
+		public Logger(string calling_class, IMyEntity entity, [CallerFilePath] string callerPath = null)
 		{
-			this.m_classname = calling_class;
+			this.m_fileName = GetFileName(callerPath);
 
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
 			if (asBlock != null)
@@ -156,7 +154,7 @@ namespace Rynchodon
 		/// </summary>
 		public Logger()
 		{
-			this.m_classname = GetType().Name;
+			this.m_fileName = GetType().Name;
 		}
 
 		/// <summary>
@@ -168,14 +166,14 @@ namespace Rynchodon
 		public Logger(string gridName, string className)
 		{
 			this.f_context = () => gridName;
-			this.m_classname = className;
+			this.m_fileName = className;
 		}
 
 		private static void deleteIfExists(string filename)
 		{
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(filename, typeof(Logger)))
 				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(filename, typeof(Logger)); }
-				catch { AlwaysLog("Logger", "failed to delete file: " + filename, severity.INFO); }
+				catch { AlwaysLog("failed to delete file: " + filename, severity.INFO); }
 		}
 
 		private static bool createLog()
@@ -193,7 +191,7 @@ namespace Rynchodon
 					if (Static.logWriter == null)
 						try
 						{ Static.logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
-						catch { AlwaysLog("Logger", "failed to start writer for file: log-" + i + ".txt", severity.INFO); }
+						catch { AlwaysLog("failed to start writer for file: log-" + i + ".txt", severity.INFO); }
 					else
 						deleteIfExists("log-" + i + ".txt");
 			}
@@ -201,17 +199,10 @@ namespace Rynchodon
 			return Static.logWriter != null;
 		}
 
-		/// <summary>
-		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
-		/// </summary>
-		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{ log(level, member, lineNumber, toLog, primaryState, secondaryState); }
+		private static string GetFileName(string path)
+		{
+			return path.Substring(path.LastIndexOf('\\') + 1);
+		}
 
 		/// <summary>
 		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
@@ -223,7 +214,7 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(bool condition, string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		public void debugLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
 				log(level, member, lineNumber, toLog, primaryState, secondaryState);
@@ -239,7 +230,7 @@ namespace Rynchodon
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public void debugLog(bool condition, Func<string> toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		public void debugLog(Func<string> toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
 				log(level, member, lineNumber, toLog.Invoke(), primaryState, secondaryState);
@@ -259,31 +250,17 @@ namespace Rynchodon
 		}
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		public static void DebugLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
-			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			if (condition)
-				log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
-		}
-
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public static void DebugLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				log(context, TryGetActualName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
-		}
-
-		public static void AlwaysLog(string className, string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
-			[CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			log(context, className, level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			log(context, TryGetActualName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+			log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -310,7 +287,7 @@ namespace Rynchodon
 			Static.m_logItems.Enqueue(new LogItem()
 			{
 				context = f_context.InvokeIfExists(),
-				className = m_classname,
+				fileName = m_fileName,
 				time = DateTime.Now,
 				level = level,
 				member = member,
@@ -325,7 +302,7 @@ namespace Rynchodon
 				MyAPIGateway.Parallel.StartBackground(logLoop);
 		}
 
-		private static void log(string context, string className, severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
+		private static void log(string context, string fileName, severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
 		{
 			if (Static == null)
 				return;
@@ -339,7 +316,7 @@ namespace Rynchodon
 			Static.m_logItems.Enqueue(new LogItem()
 			{
 				context = context,
-				className = className,
+				fileName = fileName,
 				time = DateTime.Now,
 				level = level,
 				member = member,
@@ -396,7 +373,7 @@ namespace Rynchodon
 			appendWithBrackets(item.level.ToString());
 			appendWithBrackets(item.thread);
 			appendWithBrackets(item.context);
-			appendWithBrackets(item.className);
+			appendWithBrackets(item.fileName);
 			appendWithBrackets(item.member);
 			appendWithBrackets(item.lineNumber.ToString());
 			appendWithBrackets(item.primaryState);
@@ -426,7 +403,7 @@ namespace Rynchodon
 			LogItem closingLog = new LogItem()
 			{
 				context = f_context.InvokeIfExists(),
-				className = m_classname,
+				fileName = m_fileName,
 				time = DateTime.Now,
 				level = severity.INFO,
 				//member = null,
@@ -515,18 +492,10 @@ namespace Rynchodon
 			}
 		}
 
+		[Obsolete("No longer necessary")]
+		[System.Diagnostics.Conditional("NEVER_DEFINED")]
 		public static void SetFileName(string actualName, [CallerFilePath] string tmpName = null)
 		{
-			if (Static != null)
-				Static.m_fileMap[tmpName] = actualName;
-		}
-
-		private static string TryGetActualName(string tmpName)
-		{
-			string result;
-			if (Static != null && Static.m_fileMap.TryGetValue(tmpName,out result))
-				return result;
-			return tmpName;
 		}
 
 	}

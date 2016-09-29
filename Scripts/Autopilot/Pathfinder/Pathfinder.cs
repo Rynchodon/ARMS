@@ -257,7 +257,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// </summary>
 		private void TestPath(Vector3D destination, MyEntity ignoreEntity, byte runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
 		{
-			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", Logger.severity.FATAL);
+			m_logger.debugLog("m_navBlock == null", Logger.severity.FATAL, condition: m_navBlock == null);
 
 			if (runId != m_runId)
 			{
@@ -343,7 +343,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					if (distToWaypointSquared * WaypointDistanceBias * WaypointDistanceBias > m_altPath_PathValue * m_altPath_PathValue)
 					{
 						m_logger.debugLog("no point in checking alternate path, bias is too high", Logger.severity.TRACE);
-						m_logger.debugLog(m_altPath_AlternatesFound == 0, "no alternate, yet path value is set", Logger.severity.ERROR);
+						m_logger.debugLog("no alternate, yet path value is set", Logger.severity.ERROR, condition: m_altPath_AlternatesFound == 0);
 						IncrementAlternatesFound();
 						return;
 					}
@@ -394,7 +394,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					m_pathState = PathState.Searching;
 
 				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", ignoreEntity: " + ignoreEntity.getBestName(), isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
-				m_logger.debugLog(obstructing is IMyCubeBlock, "grid: " + obstructing.GetTopMostParent().DisplayName, isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
+				m_logger.debugLog("grid: " + obstructing.GetTopMostParent().DisplayName, isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG, condition: obstructing is IMyCubeBlock);
 
 				if (isAlternate && m_altPath_AlternatesFound != 0)
 					IncrementAlternatesFound();
@@ -597,7 +597,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					m_navSet.Settings_Task_NavWay.SpeedTarget = float.MaxValue;
 					return;
 				}
-				m_logger.debugLog(m_pathLow.Count != 0, "path clear, throwing out search", Logger.severity.DEBUG);
+				m_logger.debugLog("path clear, throwing out search", Logger.severity.DEBUG, condition: m_pathLow.Count != 0);
 				MoveObstruction = null;
 				m_pathState = PathState.No_Obstruction;
 				m_pathLow.Clear();
@@ -643,8 +643,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void SetWaypoint()
 		{
-			m_logger.debugLog(MoveObstruction == null, "MoveObstruction == null", Logger.severity.FATAL);
-			m_logger.debugLog(m_navBlock == null, "m_navBlock == null", Logger.severity.FATAL);
+			m_logger.debugLog("MoveObstruction == null", Logger.severity.FATAL, condition: MoveObstruction == null);
+			m_logger.debugLog("m_navBlock == null", Logger.severity.FATAL, condition: m_navBlock == null);
 
 			m_pathLow.Clear();
 			IMyEntity top = MoveObstruction.GetTopMostParent();

@@ -33,6 +33,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// <returns>True iff Execute action could be created by parsing value.</returns>
 		public bool SetDisplayString(IMyCubeBlock autopilot, string value, out string message)
 		{
+			value = value.Replace('\n', ' ').Replace('\r', ' ');
 			value = value.Trim();
 			m_displayString = value;
 
@@ -229,7 +230,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		{
 			Match m = Regex.Match(vectorString, @"(.*)\s+(\w*)");
 
-			Logger.DebugLog("ACommand", "vectorString: " + vectorString + ", group count: " + m.Groups.Count);
+			Logger.DebugLog("vectorString: " + vectorString + ", group count: " + m.Groups.Count);
 
 			if (m.Groups.Count != 3)
 			{

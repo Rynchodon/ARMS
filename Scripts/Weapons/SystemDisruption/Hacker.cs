@@ -40,7 +40,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			m_hackBlock = block as IMyLandingGear;
 
 			m_logger.debugLog("created for: " + block.DisplayNameText);
-			m_logger.debugLog(!IsHacker(block), "Not a hacker", Logger.severity.FATAL);
+			m_logger.debugLog("Not a hacker", Logger.severity.FATAL, condition: !IsHacker(block));
 		}
 
 		public void Update10()

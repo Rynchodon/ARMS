@@ -6,8 +6,11 @@ using Rynchodon.Update;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Game.Gui;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -38,16 +41,15 @@ namespace Rynchodon.AntennaRelay
 		{
 			/// <summary>LastSeen sorted by distance squared</summary>
 			public readonly List<DistanceSeen> distanceSeen = new List<DistanceSeen>();
-			/// <summary>GPS entries that are currently being used</summary>
-			public readonly List<IMyGps> activeGPS = new List<IMyGps>();
+			public readonly List<MyEntity> entities = new List<MyEntity>();
 			/// <summary>The maximum GPS entries that are allowed</summary>
 			public byte MaxOnHUD;
 
 			public void Prepare()
 			{
 				distanceSeen.Clear();
-				while (activeGPS.Count < MaxOnHUD)
-					activeGPS.Add(null);
+				while (entities.Count < MaxOnHUD)
+					entities.Add(null);
 			}
 		}
 
@@ -61,6 +63,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly Logger myLogger;
 
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
+		private readonly HashSet<MyEntity> m_updated = new HashSet<MyEntity>();
 
 		private IMyEntity m_controlled;
 		private Func<RelayStorage> m_storage;
@@ -225,86 +228,82 @@ namespace Rynchodon.AntennaRelay
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 			});
 
+			m_updated.Clear(); 
+			
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
+
+			m_updated.Clear();
 		}
 
 		private void UpdateGPS(UserSettings.ByteSettingName setting, GpsData relateData)
 		{
-			//myLogger.debugLog("entered UpdateGPS(" + relate + ", " + relateData + ")", "UpdateGPS()");
-
-			//myLogger.debugLog("relate: " + relate + ", count: " + relateData.distanceSeen.Count, "UpdateGPS()");
-
 			relateData.distanceSeen.Sort();
 
 			int index;
-			for (index = 0; index < relateData.distanceSeen.Count && index < relateData.activeGPS.Count; index++)
+			for (index = 0; index < relateData.distanceSeen.Count && index < relateData.entities.Count; index++)
 			{
-				//myLogger.debugLog("getting seen...", "UpdateGPS()");
-				myLogger.debugLog(index >= relateData.distanceSeen.Count, "index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", Logger.severity.FATAL);
+				myLogger.debugLog("index(" + index + ") >= relateData.distanceSeen.Count(" + relateData.distanceSeen.Count + ")", Logger.severity.FATAL, condition: index >= relateData.distanceSeen.Count);
 				LastSeen seen = relateData.distanceSeen[index].Seen;
-
-				//myLogger.debugLog("relate: " + relate + ", index: " + index + ", entity: " + seen.Entity.getBestName(), "UpdateGPS()");
 
 				// we do not display if it is broadcasting so there is no reason to use LastSeen.HostileName()
 				string name;
+				MyRelationsBetweenPlayerAndBlock seRelate;
 				switch (setting)
 				{
 					case UserSettings.ByteSettingName.FactionOnHUD:
+						name = seen.Entity.DisplayName;
+						seRelate = MyRelationsBetweenPlayerAndBlock.FactionShare;
+						break;
 					case UserSettings.ByteSettingName.OwnerOnHUD:
 						name = seen.Entity.DisplayName;
+						seRelate = MyRelationsBetweenPlayerAndBlock.Owner;
 						break;
 					case UserSettings.ByteSettingName.MissileOnHUD:
 						name = "Missile " + index;
+						seRelate = MyRelationsBetweenPlayerAndBlock.Enemies;
 						break;
 					case UserSettings.ByteSettingName.NeutralOnHUD:
 						name = "Neutral " + index;
+						seRelate = MyRelationsBetweenPlayerAndBlock.Neutral;
 						break;
 					case UserSettings.ByteSettingName.EnemiesOnHUD:
 						name = "Enemy " + index;
+						seRelate = MyRelationsBetweenPlayerAndBlock.Enemies;
 						break;
 					default:
 						myLogger.alwaysLog("case not implemented: " + setting, Logger.severity.ERROR);
 						continue;
 				}
 
-				string description = GetDescription(seen);
-				Vector3D coords = seen.GetPosition();
-
-				// cheat the position a little to avoid clashes
-				double cheat = 0.001 / (double)(index + 1);
-				coords.ApplyOperation((d) => { return d + cheat; }, out coords);
-
-				//myLogger.debugLog("checking gps is null", "UpdateGPS()");
-				//myLogger.debugLog("index >= relateData.activeGPS.Count: " + (index >= relateData.activeGPS.Count), "UpdateGPS()");
-				myLogger.debugLog(index >= relateData.activeGPS.Count, "index(" + index + ") >= relateData.activeGPS.Count(" + relateData.activeGPS.Count + ")", Logger.severity.FATAL);
-				if (relateData.activeGPS[index] == null)
+				MyEntity entity = relateData.entities[index];
+				if (entity != null)
 				{
-					relateData.activeGPS[index] = MyAPIGateway.Session.GPS.Create(name, description, coords, true, true);
-					myLogger.debugLog("adding new GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash);
-					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
+					if (entity != seen.Entity)
+					{
+						if (!m_updated.Contains(entity))
+							MyHud.LocationMarkers.UnregisterMarker(entity);
+					}
+					else
+						continue;
 				}
-				else if (Update(relateData.activeGPS[index], name, description, coords))
-				{
-					//myLogger.debugLog("updating GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
-					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
-					relateData.activeGPS[index].UpdateHash(); // necessary if there are to be further modifications
-					MyAPIGateway.Session.GPS.AddLocalGps(relateData.activeGPS[index]);
-				}
-				//else
-				//	myLogger.debugLog("no need to update GPS " + index + ", entity: " + seen.Entity.getBestName() + ", hash: " + relateData.activeGPS[index].Hash, "UpdateGPS()");
+
+				entity = (MyEntity)seen.Entity;
+				relateData.entities[index] = entity;
+				m_updated.Add(entity);
+				MyHud.LocationMarkers.RegisterMarker(entity, new MyHudEntityParams() { FlagsEnum = MyHudIndicatorFlagsEnum.SHOW_ALL, Text = new StringBuilder(name), OffsetText = true, TargetMode = seRelate });
 			}
 
-			// for remaining GPS, remove
-			while (index < relateData.activeGPS.Count)
+			// remove remaining
+			while (index < relateData.entities.Count)
 			{
-				if (relateData.activeGPS[index] != null)
+				MyEntity entity = relateData.entities[index];
+				if (entity != null)
 				{
-					myLogger.debugLog("removing GPS " + index + ", name: " + relateData.activeGPS[index].Name + ", coords: " + relateData.activeGPS[index].Coords);
-					MyAPIGateway.Session.GPS.RemoveLocalGps(relateData.activeGPS[index]);
-					relateData.activeGPS[index] = null;
+					myLogger.debugLog("detritus: " + entity.nameWithId());
+					MyHud.LocationMarkers.UnregisterMarker(entity);
+					relateData.entities[index] = null;
 				}
-
 				index++;
 			}
 		}
