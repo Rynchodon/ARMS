@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Multiplayer;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -49,10 +50,7 @@ namespace Rynchodon
 		/// </summary>
 		public static bool OwnedNPC(this IMyCubeBlock block)
 		{
-			if (block.OwnerId == 0)
-				return false;
-
-			return MyAPIGateway.Players.GetFirstPlayer_Safe(player => player.PlayerID == block.OwnerId) == null;
+			return block.OwnerId != 0 && Sync.Players.IdentityIsNpc(block.OwnerId);
 		}
 
 		/// <summary>

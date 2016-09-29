@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Instructions;
 using Rynchodon.Settings;
+using Rynchodon.Utility;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
 
@@ -13,6 +15,20 @@ namespace Rynchodon.Weapons
 	/// </summary>
 	public class InterpreterWeapon : BlockInstructions
 	{
+
+		private static string FallbackInstructions;
+
+		static InterpreterWeapon()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			FallbackInstructions = ServerSettings.GetSettingString(ServerSettings.SettingName.sDefaultWeaponCommandsNPC);
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			FallbackInstructions = null;
+		}
 
 		private Logger myLogger;
 
@@ -39,19 +55,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public void UpdateInstruction()
 		{
-			if (Block.OwnedNPC())
-			{
-				if (FallBackInstruct == null)
-				{
-					FallBackInstruct = ServerSettings.GetSettingString(ServerSettings.SettingName.sDefaultWeaponCommandsNPC);
-					if (string.IsNullOrWhiteSpace(FallBackInstruct))
-						FallBackInstruct = null;
-				}
-			}
-			else
-				FallBackInstruct = null;
-
-			base.UpdateInstructions();
+			base.UpdateInstructions(Block.OwnedNPC() ? FallbackInstructions : null);
 			if (!HasInstructions)
 				Options = new TargetingOptions();
 		}
