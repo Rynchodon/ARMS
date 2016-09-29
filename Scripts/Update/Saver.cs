@@ -55,7 +55,7 @@ namespace Rynchodon.Update
 
 		public Saver()
 		{
-			this.m_logger = new Logger(GetType().Name);
+			this.m_logger = new Logger();
 			Instance = this;
 		}
 

@@ -33,7 +33,7 @@ namespace Rynchodon.Weapons
 			ByteConverter.AppendBytes(message, control);
 
 			if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, message.ToArray()))
-				(new Logger("FixedWeapon")).alwaysLog("Failed to send message", Logger.severity.ERROR);
+				(new Logger()).alwaysLog("Failed to send message", Logger.severity.ERROR);
 		}
 
 		private static void Handler_EngagerControl(byte[] message, int pos)
@@ -44,7 +44,7 @@ namespace Rynchodon.Weapons
 			FixedWeapon weapon;
 			if (!Registrar.TryGetValue(entityId, out weapon))
 			{
-				(new Logger("FixedWeapon")).debugLog("Weapon not in registrar: " + entityId, Logger.severity.WARNING);
+				(new Logger()).debugLog("Weapon not in registrar: " + entityId, Logger.severity.WARNING);
 				return;
 			}
 
@@ -63,7 +63,7 @@ namespace Rynchodon.Weapons
 		public FixedWeapon(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger("FixedWeapon", block);
+			myLogger = new Logger(block);
 			Registrar.Add(CubeBlock, this);
 			//myLogger.debugLog("Initialized", "FixedWeapon()");
 

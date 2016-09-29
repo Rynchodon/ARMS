@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		public PseudoBlock(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 			this.LocalMatrix = block.LocalMatrix;
 			this.m_grid = () => block.CubeGrid;
 			this.Block = block;
@@ -74,7 +74,7 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		protected PseudoBlock(Func<IMyCubeGrid> grid)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
+			this.m_logger = new Logger(() => grid.Invoke().DisplayName);
 			this.m_grid = grid;
 		}
 
@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		public PseudoBlock(Func<IMyCubeGrid> grid, Matrix local)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.Invoke().DisplayName);
+			this.m_logger = new Logger(() => grid.Invoke().DisplayName);
 			this.LocalMatrix = local;
 			this.m_grid = grid;
 		}

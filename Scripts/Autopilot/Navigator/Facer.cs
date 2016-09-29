@@ -24,7 +24,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Facer(Mover mover, PseudoBlock rotBlock)
 			: base(mover)
 		{
-			this.m_logger = new Logger("Facer", m_controlBlock.CubeBlock);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 
 			this.m_pseudoBlock = rotBlock;
 			this.m_laser = rotBlock.Block as IMyLaserAntenna;

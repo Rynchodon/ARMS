@@ -7,7 +7,7 @@ namespace Rynchodon.Attached
 	/// Not derived from AttachableBlockPair because testing for attached is fast but getting attached block is slow.
 	public static class StatorRotor
 	{
-		private static readonly Logger myLogger = new Logger("StatorRotor");
+		private static readonly Logger myLogger = new Logger();
 
 		/// <summary>
 		/// Tries to get a rotor attached to a stator.
@@ -69,7 +69,7 @@ namespace Rynchodon.Attached
 			public Stator(IMyCubeBlock block)
 				: base(block, AttachedGrid.AttachmentKind.Motor)
 			{
-				this.myLogger = new Logger("Stator", block);
+				this.myLogger = new Logger(block);
 				this.myStator = block as IMyMotorStator;
 				Registrar.Add(this.myStator, this);
 			}

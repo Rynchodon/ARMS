@@ -49,7 +49,7 @@ namespace Rynchodon.AntennaRelay
 		private class StaticVariables
 		{
 			public char[] OptionsSeparators = { ',', ';', ':' };
-			public Logger s_logger = new Logger("TextPanel");
+			public Logger s_logger = new Logger();
 			public List<long> s_detectedIds = new List<long>();
 			public List<MyTerminalControlCheckbox<MyTextPanel>> checkboxes = new List<MyTerminalControlCheckbox<MyTextPanel>>();
 		}
@@ -175,7 +175,7 @@ namespace Rynchodon.AntennaRelay
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger(GetType().Name, block);
+			myLogger = new Logger(block);
 			m_textPanel = block as Ingame.IMyTextPanel;
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new RelayClient(block);

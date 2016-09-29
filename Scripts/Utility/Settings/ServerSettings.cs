@@ -56,7 +56,7 @@ namespace Rynchodon.Settings
 
 		public static readonly int fileVersion;
 
-		private static Logger myLogger = new Logger("ServerSettings");
+		private static Logger myLogger = new Logger();
 
 		private static bool SettingsLoaded;
 

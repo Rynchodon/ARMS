@@ -32,7 +32,7 @@ namespace Rynchodon.Weapons
 		#region Static
 
 		private static Dictionary<long, WeaponCounts> WeaponsTargeting = new Dictionary<long, WeaponCounts>();
-		private static Logger s_logger = new Logger("TargetingBase");
+		private static Logger s_logger = new Logger();
 		private static FastResourceLock lock_WeaponsTargeting = new FastResourceLock();
 
 		static TargetingBase()
@@ -161,7 +161,7 @@ namespace Rynchodon.Weapons
 			if (controllingBlock == null)
 				throw new ArgumentNullException("controllingBlock");
 
-			myLogger = new Logger("TargetingBase", entity);
+			myLogger = new Logger(entity);
 			MyEntity = entity;
 			CubeBlock = controllingBlock;
 			FuncBlock = controllingBlock as IMyFunctionalBlock;
@@ -180,7 +180,7 @@ namespace Rynchodon.Weapons
 		public TargetingBase(IMyCubeBlock block)
 			: this(block, block)
 		{
-			myLogger = new Logger("TargetingBase", block);
+			myLogger = new Logger(block);
 		}
 
 		private bool PhysicalProblem(Vector3D targetPos, IMyEntity target)

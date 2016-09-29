@@ -25,7 +25,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public FlyToCharacter(Mover mover, string charName)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => charName);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => charName);
 			this.m_charName = charName.LowerRemoveWhitespace();
 			this.m_timeoutAt = Globals.ElapsedTime + timeout;
 

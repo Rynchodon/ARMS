@@ -15,7 +15,7 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
-		private static Logger m_logger = new Logger("RayCast");
+		private static Logger m_logger = new Logger();
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>

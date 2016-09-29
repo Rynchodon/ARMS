@@ -407,7 +407,7 @@ namespace Rynchodon.Update
 
 		public UpdateManager()
 		{
-			myLogger = new Logger("UpdateManager", () => string.Empty, () => { return ManagerStatus.ToString(); });
+			myLogger = new Logger(() => string.Empty, () => { return ManagerStatus.ToString(); });
 			ThreadTracker.SetGameThread();
 			Instance = this;
 		}

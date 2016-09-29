@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			public VoxelData(IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
 			{
-				this.m_logger = new Logger(GetType().Name, () => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
+				this.m_logger = new Logger(() => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
 				this.m_voxel = voxel;
 				this.m_storage.Resize(new Vector3I(QUERY_STEP, QUERY_STEP, QUERY_STEP));
@@ -351,7 +351,7 @@ Finished_Deposit:
 		/// <param name="oreDetector">The ore detector block.</param>
 		public OreDetector(IMyCubeBlock oreDetector)
 		{
-			this.m_logger = new Logger("OreDetector", oreDetector);
+			this.m_logger = new Logger(oreDetector);
 			this.Block = oreDetector;
 			this.m_oreDetector = oreDetector as IMyOreDetector;
 			this.m_netClient = new RelayClient(oreDetector);

@@ -70,7 +70,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		/// <param name="effectOwner">The owner of the disruption.</param>
 		public void Start(IMyCubeGrid grid, TimeSpan duration, ref float strength, long effectOwner)
 		{
-			this.m_logger = new Logger(GetType().Name, () => grid.DisplayName);
+			this.m_logger = new Logger(() => grid.DisplayName);
 
 			if (strength < MinCost)
 			{
@@ -134,7 +134,7 @@ FinishedBlocks:
 
 		public void Start(Builder_Disruption builder)
 		{
-			this.m_logger = new Logger(GetType().Name);
+			this.m_logger = new Logger();
 			this.m_effectOwner = builder.EffectOwner;
 
 			for (int index = 0; index < builder.Affected_Blocks.Length; index++)

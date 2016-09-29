@@ -24,7 +24,7 @@ namespace Rynchodon
 
 		public XML_Amendments(T obj)
 		{
-			myLogger = new Logger(GetType().Name, typeof(T).ToString);
+			myLogger = new Logger(typeof(T).ToString);
 			this._serial = MyAPIGateway.Utilities.SerializeToXML<T>(obj);
 		}
 

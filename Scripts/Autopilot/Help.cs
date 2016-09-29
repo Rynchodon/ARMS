@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot
 
 		private Dictionary<string, LinkedList<Command>> help_messages;
 
-		private Logger myLogger = new Logger("Help") { MinimumLevel = Logger.severity.DEBUG };
+		private Logger myLogger = new Logger() { MinimumLevel = Logger.severity.DEBUG };
 
 		private bool initialized = false;
 

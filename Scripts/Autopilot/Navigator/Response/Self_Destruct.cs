@@ -14,7 +14,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public Self_Destruct(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 			this.m_block = block;
 		}
 

@@ -47,7 +47,7 @@ namespace Rynchodon.Instructions
 
 		protected BlockInstructions(IMyCubeBlock block)
 		{
-			m_logger = new Logger("BlockInstructions", block as IMyCubeBlock);
+			m_logger = new Logger(block as IMyCubeBlock);
 			m_block = block;
 
 			IMyTerminalBlock term = block as IMyTerminalBlock;

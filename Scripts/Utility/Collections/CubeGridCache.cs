@@ -143,7 +143,7 @@ namespace Rynchodon
 
 		private CubeGridCache(IMyCubeGrid grid)
 		{
-			myLogger = new Logger("CubeGridCache", () => grid.DisplayName);
+			myLogger = new Logger(() => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock != null);
@@ -370,7 +370,7 @@ namespace Rynchodon
 				{ return new CubeGridCache(grid); }
 				catch (Exception e)
 				{
-					(new Logger(null, "CubeGridCache")).alwaysLog("Exception on creation: " + e, Logger.severity.WARNING);
+					Logger.AlwaysLog("Exception on creation: " + e, Logger.severity.WARNING);
 					return null;
 				}
 			}

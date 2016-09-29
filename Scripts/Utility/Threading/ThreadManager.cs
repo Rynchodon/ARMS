@@ -10,7 +10,7 @@ namespace Rynchodon.Threading
 
 		private const int QueueOverflow = 1000000;
 
-		private readonly Logger myLogger = new Logger("ThreadManager");
+		private readonly Logger myLogger = new Logger();
 
 		private readonly bool Background;
 		private readonly string ThreadName;
@@ -25,7 +25,7 @@ namespace Rynchodon.Threading
 
 		public ThreadManager(byte AllowedParallel = 1, bool background = false, string threadName = null)
 		{
-			this.myLogger = new Logger("ThreadManager", () => threadName ?? string.Empty, () => ParallelTasks.ToString());
+			this.myLogger = new Logger(() => threadName ?? string.Empty, () => ParallelTasks.ToString());
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
 			this.ThreadName = threadName;

@@ -14,7 +14,6 @@ namespace Rynchodon
 {
 	public static class IMyCubeBlockExtensions
 	{
-		private static Logger myLogger = new Logger("IMyCubeBlockExtensions");
 
 		public static string gridBlockName(this IMyCubeBlock block)
 		{ return block.CubeGrid.DisplayName + "." + block.DisplayNameText; }
@@ -73,7 +72,7 @@ namespace Rynchodon
 				double cosAngle = directionVector.Dot(worldDirection);
 
 				//myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds: " + cosAngle, "GetFaceDirection()", Logger.severity.ERROR); // sometimes values are slightly out of range
-				myLogger.debugLog("cosAngle invalid", Logger.severity.ERROR, condition: double.IsNaN(cosAngle) || double.IsInfinity(cosAngle));
+				Logger.DebugLog("cosAngle invalid", Logger.severity.ERROR, condition: double.IsNaN(cosAngle) || double.IsInfinity(cosAngle));
 
 				if (cosAngle > bestDirectionAngle)
 				{

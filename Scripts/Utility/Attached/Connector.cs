@@ -10,7 +10,7 @@ namespace Rynchodon.Attached
 		public Connector(IMyCubeBlock block)
 			: base(block, AttachedGrid.AttachmentKind.Connector)
 		{
-			myLogger = new Logger("Connector", block);
+			myLogger = new Logger(block);
 		}
 
 		protected override AttachableBlockBase GetPartner()

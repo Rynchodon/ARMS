@@ -24,7 +24,7 @@ namespace Rynchodon.Attached
 
 		protected AttachableBlockBase(IMyCubeBlock block, AttachedGrid.AttachmentKind kind)
 		{
-			myLogger = new Logger("AttachableBlockBase", block);
+			myLogger = new Logger(block);
 			AttachmentKind = kind;
 			myBlock = block;
 

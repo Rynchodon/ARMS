@@ -105,7 +105,7 @@ namespace Rynchodon.Settings
 
 		private UserSettings()
 		{
-			this.myLogger = new Logger(GetType().Name);
+			this.myLogger = new Logger();
 
 			buildSettings();
 			readAll();

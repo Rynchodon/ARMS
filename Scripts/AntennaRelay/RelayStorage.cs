@@ -86,7 +86,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RelayStorage(RelayNode primary)
 		{
-			this.m_logger = new Logger(GetType().Name, () => primary.LoggingName);
+			this.m_logger = new Logger(() => primary.LoggingName);
 			this.PrimaryNode = primary;
 
 			m_logger.debugLog("Created", Logger.severity.DEBUG);

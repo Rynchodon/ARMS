@@ -28,7 +28,7 @@ namespace Rynchodon.Weapons
 
 		public Cluster(List<IMyEntity> missiles, IMyEntity launcher)
 		{
-			m_logger = new Logger(GetType().Name);
+			m_logger = new Logger();
 
 			Vector3 centre = Vector3.Zero;
 			foreach (IMyEntity miss in missiles)
@@ -94,7 +94,7 @@ namespace Rynchodon.Weapons
 
 		public Cluster(IMyEntity master, Builder_Cluster builder)
 		{
-			this.m_logger = new Logger(GetType().Name);
+			this.m_logger = new Logger();
 			this.Master = master;
 			this.MinOffMult = builder.MinOffMult;
 			this.OffsetMulti = builder.OffsetMulti;

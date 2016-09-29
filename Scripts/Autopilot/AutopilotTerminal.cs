@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot
 
 		private class StaticVariables
 		{
-			public Logger s_logger = new Logger("AutopilotTerminal");
+			public Logger s_logger = new Logger();
 			public MyTerminalControlCheckbox<MyShipController> autopilotControl;
 			public MyTerminalControlTextbox<MyShipController> autopilotCommands;
 		}
@@ -305,7 +305,7 @@ namespace Rynchodon.Autopilot
 
 		public AutopilotTerminal(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger("AutopilotTerminal", block);
+			this.m_logger = new Logger(block);
 			this.m_block = block as IMyTerminalBlock;
 
 			byte index = 0;

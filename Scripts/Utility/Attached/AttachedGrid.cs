@@ -21,7 +21,7 @@ namespace Rynchodon.Attached
 
 			public Attachments(IMyCubeGrid grid0, IMyCubeGrid grid1)
 			{
-				myLogger = new Logger("Attachments", () => grid0.DisplayName, () => grid1.DisplayName);
+				myLogger = new Logger(() => grid0.DisplayName, () => grid1.DisplayName);
 			}
 
 			public void Add(AttachmentKind kind)
@@ -75,7 +75,7 @@ namespace Rynchodon.Attached
 
 		private class StaticVariables
 		{
-			public Logger s_logger = new Logger("AttachedGrid");
+			public Logger s_logger = new Logger();
 			public MyConcurrentPool<HashSet<AttachedGrid>> searchSet = new MyConcurrentPool<HashSet<AttachedGrid>>();
 			public MyConcurrentPool<HashSet<SerializableDefinitionId>> foundBlockIds = new MyConcurrentPool<HashSet<SerializableDefinitionId>>();
 		}
@@ -286,7 +286,7 @@ namespace Rynchodon.Attached
 
 		private AttachedGrid(IMyCubeGrid grid)
 		{
-			this.myLogger = new Logger("AttachedGrid", () => grid.DisplayName);
+			this.myLogger = new Logger(() => grid.DisplayName);
 			this.myGrid = grid;
 			Registrar.Add(grid, this);
 

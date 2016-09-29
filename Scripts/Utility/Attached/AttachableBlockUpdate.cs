@@ -11,7 +11,7 @@ namespace Rynchodon.Attached
 		public AttachableBlockUpdate(IMyCubeBlock block, AttachedGrid.AttachmentKind kind)
 			: base(block, kind)
 		{
-			this.myLogger = new Logger("AttachableBlockPair", block);
+			this.myLogger = new Logger(block);
 			//Registrar.Add(this.myBlock, this);
 		}
 

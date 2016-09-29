@@ -53,7 +53,7 @@ namespace Rynchodon.Autopilot
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
 			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, bool mustBeRecent = false)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
+			this.m_logger = new Logger(controller.CubeBlock);
 
 			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
 			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
@@ -75,7 +75,7 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, float maxRange = 0f)
 		{
-			this.m_logger = new Logger(GetType().Name, controller.CubeBlock);
+			this.m_logger = new Logger(controller.CubeBlock);
 
 			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
 			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);

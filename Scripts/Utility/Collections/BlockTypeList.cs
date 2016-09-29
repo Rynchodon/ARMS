@@ -14,7 +14,7 @@ namespace Rynchodon
 	public class BlockTypeList
 	{
 
-		public static readonly Logger m_logger = new Logger("BlockTypeList");
+		public static readonly Logger m_logger = new Logger();
 
 		public static BlockTypeList Union(BlockTypeList first, BlockTypeList second)
 		{

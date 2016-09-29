@@ -62,7 +62,7 @@ namespace Rynchodon
 
 		private GridCellCache(IMyCubeGrid grid)
 		{
-			m_logger = new Logger("GridCellCache", () => grid.DisplayName);
+			m_logger = new Logger(() => grid.DisplayName);
 			m_grid = grid;
 
 			List<IMySlimBlock> dummy = new List<IMySlimBlock>();
@@ -258,7 +258,7 @@ namespace Rynchodon
 		///// <summary>Added to required distance when not landing</summary>
 		//private const float NotLandingBuffer = 5f;
 
-		private Logger m_logger = new Logger(null, "GridShapeProfiler");
+		private Logger m_logger = new Logger();
 		private IMyCubeGrid m_grid;
 		private GridCellCache m_cellCache;
 		private Vector3 m_centreRejection;
@@ -278,7 +278,7 @@ namespace Rynchodon
 			if (grid != m_grid)
 			{
 				this.m_grid = grid;
-				this.m_logger = new Logger("GridShapeProfiler", () => m_grid.DisplayName);
+				this.m_logger = new Logger(() => m_grid.DisplayName);
 				this.m_cellCache = GridCellCache.GetCellCache(grid);
 			}
 

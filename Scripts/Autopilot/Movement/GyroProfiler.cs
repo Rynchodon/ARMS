@@ -60,7 +60,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		public GyroProfiler(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger("GyroProfiler", () => grid.DisplayName);
+			this.m_logger = new Logger(() => grid.DisplayName);
 			this.myGrid = grid;
 
 			ClearOverrides();

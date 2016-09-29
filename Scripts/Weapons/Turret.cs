@@ -40,7 +40,7 @@ namespace Rynchodon.Weapons
 		public Turret(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger("Turret", block);
+			myLogger = new Logger(block);
 			Registrar.Add(CubeBlock, this);
 
 			if (TP_TargetMissiles == null)

@@ -202,7 +202,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Ammount each decoy adds to reported volume of ship.</summary>
 		private const float decoyVolume = 10000f;
 
-		private static Logger staticLogger = new Logger("RadarEquipment");
+		private static Logger staticLogger = new Logger();
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
 
@@ -377,7 +377,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RadarEquipment(IMyCubeBlock block)
 		{
-			this.myLogger = new Logger("RadarEquipment", block);
+			this.myLogger = new Logger(block);
 
 			this.Entity = block;
 			this.RelationsBlock = block;
@@ -414,7 +414,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RadarEquipment(IMyEntity radarEntity, Definition radarDef, IMyCubeBlock relationsBlock)
 		{
-			this.myLogger = new Logger(GetType().Name, () => RelationsBlock.CubeGrid.DisplayName, () => RelationsBlock.DisplayNameText, () => radarEntity.ToString());
+			this.myLogger = new Logger(() => RelationsBlock.CubeGrid.DisplayName, () => RelationsBlock.DisplayNameText, () => radarEntity.ToString());
 
 			this.Entity = radarEntity;
 			this.RelationsBlock = relationsBlock;

@@ -119,7 +119,7 @@ namespace Rynchodon.Autopilot
 		public EnemyFinder(Mover mover, AllNavigationSettings navSet, long entityId)
 			: base(navSet, mover.Block)
 		{
-			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
+			this.m_logger = new Logger(mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
 			this.m_mover = mover;
 			this.m_navSet = navSet;
 			this.m_targetEntityId = entityId;

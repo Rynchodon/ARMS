@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot
 
 		public ShipControllerBlock(IMyCubeBlock block, Action<Message> messageHandler)
 		{
-			m_logger = new Logger(GetType().Name, block);
+			m_logger = new Logger(block);
 			CubeBlock = block;
 			Pseudo = new PseudoBlock(block);
 			NetworkNode = new RelayNode(block) { MessageHandler = messageHandler };
@@ -206,7 +206,7 @@ namespace Rynchodon.Autopilot
 		public ShipAutopilot(IMyCubeBlock block)
 		{
 			this.m_block = new ShipControllerBlock(block, HandleMessage);
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 			this.m_mover = new Mover(m_block);
 			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
 

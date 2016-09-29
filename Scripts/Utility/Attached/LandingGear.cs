@@ -14,7 +14,7 @@ namespace Rynchodon.Attached
 		public LandingGear(IMyCubeBlock block)
 			: base (block, AttachedGrid.AttachmentKind.LandingGear)
 		{
-			this.myLogger = new Logger("LandingGear", block);
+			this.myLogger = new Logger(block);
 			this.myGear.StateChanged += myGear_StateChanged;
 
 			IMyCubeGrid attached = myGear.GetAttachedEntity() as IMyCubeGrid;

@@ -36,7 +36,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		public Hacker(IMyCubeBlock block)
 		{
-			m_logger = new Logger(GetType().Name, block);
+			m_logger = new Logger(block);
 			m_hackBlock = block as IMyLandingGear;
 
 			m_logger.debugLog("created for: " + block.DisplayNameText);

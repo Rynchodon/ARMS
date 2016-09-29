@@ -108,7 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Grinder(Mover mover, float maxRange)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName, () => m_stage.ToString());
+			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName, () => m_stage.ToString());
 			this.m_startPostion = m_controlBlock.CubeBlock.GetPosition();
 			this.m_longestDimension = m_controlBlock.CubeGrid.GetLongestDim();
 

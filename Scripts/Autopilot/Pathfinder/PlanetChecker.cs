@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private static LockedQueue<Action> DoTests = new LockedQueue<Action>();
 		private static LineSegmentD Path = new LineSegmentD();
 		private static MyGameTimer Timer = new MyGameTimer();
-		private static Logger s_logger = new Logger("PlanetChecker");
+		private static Logger s_logger = new Logger();
 
 		static PlanetChecker()
 		{
@@ -69,7 +69,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public PlanetChecker(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger(GetType().Name, grid.getBestName, ClosestPlanet.getBestName, CurrentState.ToString);
+			this.m_logger = new Logger(grid.getBestName, ClosestPlanet.getBestName, CurrentState.ToString);
 			this.m_grid = grid;
 			this.m_cells = new MyQueue<Vector3I>(8);
 			this.m_cellsUnique = new HashSet<Vector3I>();
