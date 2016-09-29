@@ -20,7 +20,7 @@ namespace Rynchodon.Weapons.Guided
 
 		#region Static
 
-		private static Logger staticLogger = new Logger("GuidedMissileLauncher");
+		private static Logger staticLogger = new Logger();
 
 		static GuidedMissileLauncher()
 		{
@@ -72,7 +72,7 @@ namespace Rynchodon.Weapons.Guided
 		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
 			m_weaponTarget = weapon;
-			myLogger = new Logger("GuidedMissileLauncher", CubeBlock);
+			myLogger = new Logger(CubeBlock);
 			m_relayPart = RelayClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
 
 			MyWeaponBlockDefinition defn = (MyWeaponBlockDefinition)CubeBlock.GetCubeBlockDefinition();

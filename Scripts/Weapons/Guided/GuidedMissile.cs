@@ -70,7 +70,7 @@ namespace Rynchodon.Weapons.Guided
 			public readonly float Angle_AccelerateWhen = 0.02f;
 			public readonly float Cos_Angle_Detonate = (float)Math.Cos(0.3f);
 
-			public Logger staticLogger = new Logger("GuidedMissile");
+			public Logger staticLogger = new Logger();
 			public ThreadManager Thread = new ThreadManager();
 			public CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 			public FastResourceLock lock_AllGuidedMissiles = new FastResourceLock();
@@ -320,7 +320,7 @@ namespace Rynchodon.Weapons.Guided
 		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, ref Target initialTarget)
 			: base(missile, launcher.CubeBlock)
 		{
-			myLogger = new Logger("GuidedMissile", () => myAmmo.AmmoDefinition.DisplayNameText, () => missile.getBestName(), () => m_stage.ToString());
+			myLogger = new Logger(() => myAmmo.AmmoDefinition.DisplayNameText, () => missile.getBestName(), () => m_stage.ToString());
 			m_launcher = launcher;
 			myAmmo = launcher.loadedAmmo;
 			m_owner = launcher.CubeBlock.OwnerId;

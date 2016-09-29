@@ -52,11 +52,11 @@ namespace Rynchodon.Settings
 		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		public const int latestVersion = 75; // in sequence of updates on steam
+		public const int latestVersion = 76; // in sequence of updates on steam
 
 		public static readonly int fileVersion;
 
-		private static Logger myLogger = new Logger("ServerSettings");
+		private static Logger myLogger = new Logger();
 
 		private static bool SettingsLoaded;
 

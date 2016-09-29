@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -40,14 +41,11 @@ namespace Rynchodon.Instructions
 
 		public readonly IMyCubeBlock m_block;
 
-		/// <summary>Instructions that will be used iff there are none in the name.</summary>
-		protected string FallBackInstruct;
-
 		public bool HasInstructions { get; private set; }
 
 		protected BlockInstructions(IMyCubeBlock block)
 		{
-			m_logger = new Logger("BlockInstructions", block as IMyCubeBlock);
+			m_logger = new Logger(block as IMyCubeBlock);
 			m_block = block;
 
 			IMyTerminalBlock term = block as IMyTerminalBlock;
@@ -61,7 +59,7 @@ namespace Rynchodon.Instructions
 		/// Update instructions if they have changed.
 		/// </summary>
 		/// <return>true iff instructions were updated and block has instructions</return>
-		protected bool UpdateInstructions()
+		protected bool UpdateInstructions(string fallback = null)
 		{
 			foreach (TextMonitor monitor in m_monitors)
 				if (monitor.Changed())
@@ -70,6 +68,8 @@ namespace Rynchodon.Instructions
 					m_displayNameDirty = false;
 					m_displayName = m_block.DisplayNameText;
 					GetInstructions();
+					if (!HasInstructions && fallback != null)
+						GetFallbackInstructions(fallback);
 					return HasInstructions;
 				}
 
@@ -82,9 +82,12 @@ namespace Rynchodon.Instructions
 				m_logger.debugLog("no name change");
 				return false;
 			}
+
 			m_logger.debugLog("name changed to " + m_block.DisplayNameText);
 			m_displayName = m_block.DisplayNameText;
 			GetInstructions();
+			if (!HasInstructions && fallback != null)
+				GetFallbackInstructions(fallback);
 			return HasInstructions;
 		}
 
@@ -142,19 +145,6 @@ namespace Rynchodon.Instructions
 					return;
 				}
 			}
-
-			if (FallBackInstruct != null)
-			{
-				if (FallBackInstruct.StartsWith("["))
-					FallBackInstruct = FallBackInstruct.Substring(1, FallBackInstruct.Length - 2);
-				if (ParseAll(FallBackInstruct))
-				{
-					//m_logger.debugLog("Setting instructions to fallback: " + FallBackInstruct, "GetInstrucions()");
-					HasInstructions = true;
-					m_instructions = FallBackInstruct;
-					return;
-				}
-			}
 		}
 
 		private bool GetInstructions(string source)
@@ -174,6 +164,17 @@ namespace Rynchodon.Instructions
 			}
 
 			return false;
+		}
+
+		private void GetFallbackInstructions(string fallback)
+		{
+			if (fallback.StartsWith("["))
+				fallback = fallback.Substring(1, fallback.Length - 2);
+			if (ParseAll(fallback))
+			{
+				HasInstructions = true;
+				m_instructions = fallback;
+			}
 		}
 
 	}

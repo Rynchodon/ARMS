@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot
 			Solar instance;
 			if (!Registrar.TryGetValue(block, out instance))
 			{
-				(new Logger("Solar")).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
+				(new Logger()).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
 				return false;
 			}
 
@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot
 			Solar instance;
 			if (!Registrar.TryGetValue(block, out instance))
 			{
-				(new Logger("Solar")).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
+				(new Logger()).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
 				return;
 			}
 
@@ -76,7 +76,7 @@ namespace Rynchodon.Autopilot
 		public Solar(IMyCubeBlock block)
 		{
 			myBlock = block;
-			myLogger = new Logger("Solar", block);
+			myLogger = new Logger(block);
 			(myBlock as IMyTerminalBlock).CustomNameChanged += Solar_CustomNameChanged;
 			myBlock.OnClose += myBlock_OnClose;
 			m_termControl_faceSun = new EntityValue<bool>(block, 0, () => s_termControl_faceSun.UpdateVisual());

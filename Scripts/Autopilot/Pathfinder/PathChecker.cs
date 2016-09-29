@@ -19,7 +19,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		//public bool Interrupt = false;
 
-		private readonly Logger m_logger = new Logger(null, "PathChecker");
+		private readonly Logger m_logger = new Logger();
 		private readonly IMyCubeGrid m_grid;
 
 		private MyEntity m_ignoreEntity;
@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public PathChecker(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger("PathChecker", () => m_grid.DisplayName);
+			this.m_logger = new Logger(() => m_grid.DisplayName);
 			this.m_grid = grid;
 			this.m_profiler = new GridShapeProfiler();
 		}

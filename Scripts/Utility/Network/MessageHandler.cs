@@ -15,7 +15,7 @@ namespace Rynchodon.Utility.Network
 
 		public static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();
 
-		private static Logger s_logger = new Logger("NetworkClient");
+		private static Logger s_logger = new Logger();
 
 		static MessageHandler()
 		{

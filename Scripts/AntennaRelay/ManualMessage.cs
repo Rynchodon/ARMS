@@ -18,7 +18,7 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
-			public Logger logger = new Logger("ManualMessage");
+			public Logger logger = new Logger();
 
 			public MyTerminalControlButton<MyFunctionalBlock>
 				SendMessageButton = new MyTerminalControlButton<MyFunctionalBlock>("ManualMessageId", MyStringId.GetOrCompute("Send Message"),
@@ -183,7 +183,7 @@ namespace Rynchodon.AntennaRelay
 
 		public ManualMessage(IMyCubeBlock block)
 		{
-			m_logger = new Logger(GetType().Name, block);
+			m_logger = new Logger(block);
 			m_block = block;
 
 			Registrar.Add(block, this);

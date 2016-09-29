@@ -4,7 +4,6 @@ using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
-using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -15,7 +14,9 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
-		private static Logger m_logger = new Logger("RayCast");
+		public const int CollisionLayerVoxel = 28;
+
+		private static Logger m_logger = new Logger();
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
@@ -41,7 +42,7 @@ namespace Rynchodon
 			where Tobstruct : IMyEntity
 			where Tignore : IMyEntity
 		{
-			Profiler.StartProfileBlock("RayCast", "Obstructed");
+			Profiler.StartProfileBlock();
 			try
 			{
 				// Test each entity
@@ -162,11 +163,9 @@ namespace Rynchodon
 		/// <param name="voxel">The voxel to ray cast</param>
 		/// <param name="line">The line to check</param>
 		/// <param name="contact">First intersection of line and voxel</param>
-		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
-		/// <param name="flags">Due to bug in SE, not used ATM</param>
 		/// <param name="shortTest">Shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff the voxel intersects the line</returns>
-		public static bool RayCastVoxel(MyVoxelBase voxel, LineD line, out Vector3D? contact, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES, bool shortTest = false)
+		public static bool RayCastVoxel(MyVoxelBase voxel, LineD line, out Vector3D? contact, bool shortTest = false)
 		{
 			if (shortTest)
 			{
@@ -179,26 +178,21 @@ namespace Rynchodon
 				line.To -= line.Direction;
 			}
 
-			using (MainLock.AcquireSharedUsing())
-			{
-				using (lock_rayCastVoxel.AcquireExclusiveUsing())
-				{
-					return voxel.GetIntersectionWithLine(ref line, out contact, useCollisionModel, flags);
-				}
-			}
+			IHitInfo hitInfo;
+			bool result = MyAPIGateway.Physics.CastRay(line.From, line.To, out hitInfo, CollisionLayerVoxel);
+			contact = hitInfo.Position;
+			return result;
 		}
 
 		/// <summary>
-		/// Ray cast all the voxels in the world to check for intersection. Iterates voxels in no particular order and breaks on first contact.
+		/// Ray cast all the voxels in the world to check for intersection.
 		/// </summary>
 		/// <param name="line">The line to check</param>
 		/// <param name="contactVoxel">The voxel hit</param>
 		/// <param name="contactPoint">First interesection of line and voxel</param>
-		/// <param name="useCollisionModel">Due to bug in SE, not used ATM</param>
-		/// <param name="flags">Due to bug in SE, not used ATM</param>
 		/// <param name="shortTest">Shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff any voxel intersects the line</returns>
-		public static bool RayCastVoxels(LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool useCollisionModel = true, IntersectionFlags flags = IntersectionFlags.ALL_TRIANGLES, bool shortTest = false)
+		public static bool RayCastVoxels(LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool shortTest = false)
 		{
 			if (shortTest)
 			{
@@ -212,32 +206,11 @@ namespace Rynchodon
 				line.To -= line.Direction;
 			}
 
-			List<MyLineSegmentOverlapResult<MyVoxelBase>> list = ResourcePool<List<MyLineSegmentOverlapResult<MyVoxelBase>>>.Get();
-			try
-			{
-				MyGamePruningStructure.GetVoxelMapsOverlappingRay(ref line, list);
-				list.OrderBy(item => item.Distance);
-
-				using (MainLock.AcquireSharedUsing())
-				{
-					using (lock_rayCastVoxel.AcquireExclusiveUsing())
-						foreach (var voxel in list)
-							if (voxel.Element.GetIntersectionWithLine(ref line, out contactPoint, useCollisionModel, flags))
-							{
-								contactVoxel = voxel.Element;
-								return true;
-							}
-				}
-
-				contactVoxel = null;
-				contactPoint = null;
-				return false;
-			}
-			finally
-			{
-				list.Clear();
-				ResourcePool<List<MyLineSegmentOverlapResult<MyVoxelBase>>>.Return(list);
-			}
+			IHitInfo hitInfo;
+			bool result = MyAPIGateway.Physics.CastRay(line.From, line.To, out hitInfo, CollisionLayerVoxel);
+			contactPoint = hitInfo.Position;
+			contactVoxel = (MyVoxelBase)hitInfo.HitEntity;
+			return result;
 		}
 
 	}

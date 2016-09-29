@@ -25,7 +25,7 @@ namespace Rynchodon.Utility.Network
 		protected class StaticVariables
 		{
 			public Dictionary<long, Dictionary<byte, EntityValue>> allEntityValues = new Dictionary<long, Dictionary<byte, EntityValue>>();
-			public Logger logger = new Logger("EntityValue");
+			public Logger logger = new Logger();
 			public MyConcurrentPool<StringBuilder> updateSB = new MyConcurrentPool<StringBuilder>();
 			public int bytesSent, messagesSent;
 		}

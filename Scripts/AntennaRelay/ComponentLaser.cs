@@ -25,7 +25,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="laser">The block to create the laser component for.</param>
 		public ComponentLaser(IMyLaserAntenna laser)
 		{
-			this.m_logger = new Logger(GetType().Name, laser);
+			this.m_logger = new Logger(laser);
 			this.m_laser = laser;
 		}
 

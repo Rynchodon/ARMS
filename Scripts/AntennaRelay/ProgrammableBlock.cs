@@ -36,7 +36,7 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
-			public Logger s_logger = new Logger("ProgrammableBlock");
+			public Logger s_logger = new Logger();
 			public MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetected;
 			public MyTerminalControlTextbox<MyProgrammableBlock> blockCountList;
 		}
@@ -194,7 +194,7 @@ namespace Rynchodon.AntennaRelay
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
-			m_logger = new Logger(GetType().Name, block);
+			m_logger = new Logger(block);
 			m_progBlock = block as Ingame.IMyProgrammableBlock;
 			m_networkClient = new RelayClient(block, HandleMessage);
 

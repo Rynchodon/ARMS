@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (autopilot == null)
 				throw new NullReferenceException("autopilot");
 
-			myLogger = new Logger(GetType().Name, autopilot);
+			myLogger = new Logger(autopilot);
 			myGrid = autopilot.CubeGrid;
 			Standard = new StandardFlight(autopilot, Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
 			Gravity = new StandardFlight(autopilot, Base6Directions.Direction.Up, Base6Directions.Direction.Forward);

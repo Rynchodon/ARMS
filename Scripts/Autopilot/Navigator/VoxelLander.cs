@@ -30,7 +30,7 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(mover)
 		{
 			this.m_landBlock = landBlock ?? m_navSet.Settings_Current.LandingBlock;
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock, () => m_landBlock.Block.getBestName());
+			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_landBlock.Block.getBestName());
 			this.m_targetType = planet ? "Planet" : "Asteroid";
 
 			if (this.m_landBlock == null)

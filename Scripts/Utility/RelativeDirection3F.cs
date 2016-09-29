@@ -26,7 +26,7 @@ namespace Rynchodon
 		private RelativeDirection3F(IMyCubeGrid grid)
 		{
 			this.CubeGrid = grid;
-			myLogger = new Logger("RelativeDirection3F", () => grid.DisplayName);
+			myLogger = new Logger(() => grid.DisplayName);
 		}
 
 

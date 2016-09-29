@@ -90,7 +90,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Orbiter(Mover mover, string entity)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_navBlock = m_navSet.Settings_Current.NavigationBlock;
 
 			switch (entity.LowerRemoveWhitespace())
@@ -127,7 +127,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_navBlock = faceBlock;
 			this.m_orbitEntity_name = name;
 

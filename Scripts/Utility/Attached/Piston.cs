@@ -13,7 +13,7 @@ namespace Rynchodon.Attached
 			public PistonBase(IMyCubeBlock block)
 				: base(block, AttachedGrid.AttachmentKind.Piston)
 			{
-				myLogger = new Logger("PistonBase", block);
+				myLogger = new Logger(block);
 			}
 
 			protected override AttachableBlockBase GetPartner()
@@ -34,7 +34,7 @@ namespace Rynchodon.Attached
 			public PistonTop(IMyCubeBlock block)
 				: base(block, AttachedGrid.AttachmentKind.Piston)
 			{
-				myLogger = new Logger("PistonTop", block);
+				myLogger = new Logger(block);
 			}
 
 			//protected override AttachableBlockPair GetPartner()

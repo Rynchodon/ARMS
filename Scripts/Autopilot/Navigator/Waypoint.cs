@@ -32,7 +32,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Waypoint(Mover mover, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_level = level;
 			this.m_targetEntity = targetEntity;
 			this.m_targetOffset = worldOffset;

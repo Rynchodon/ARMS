@@ -36,7 +36,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public WeldGrid(Mover mover, string gridName, bool shopAfter)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, mover.Block.CubeBlock);
+			this.m_logger = new Logger(mover.Block.CubeBlock);
 			this.m_finder = new GridFinder(mover.NavSet, m_controlBlock, gridName);
 			this.m_shopAfter = shopAfter;
 

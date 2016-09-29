@@ -63,7 +63,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			this.m_block = block;
 			this.m_messageHandler = messageHandler;
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 
 			Registrar.Add(block, this);
 		}

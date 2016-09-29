@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public RotateChecker(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger("RotateChecker", () => m_grid.DisplayName);
+			this.m_logger = new Logger(() => m_grid.DisplayName);
 			this.m_grid = grid;
 			this.m_cells = GridCellCache.GetCellCache(grid);
 		}

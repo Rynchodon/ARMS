@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Multiplayer;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -14,7 +15,6 @@ namespace Rynchodon
 {
 	public static class IMyCubeBlockExtensions
 	{
-		private static Logger myLogger = new Logger("IMyCubeBlockExtensions");
 
 		public static string gridBlockName(this IMyCubeBlock block)
 		{ return block.CubeGrid.DisplayName + "." + block.DisplayNameText; }
@@ -50,10 +50,7 @@ namespace Rynchodon
 		/// </summary>
 		public static bool OwnedNPC(this IMyCubeBlock block)
 		{
-			if (block.OwnerId == 0)
-				return false;
-
-			return MyAPIGateway.Players.GetFirstPlayer_Safe(player => player.PlayerID == block.OwnerId) == null;
+			return block.OwnerId != 0 && Sync.Players.IdentityIsNpc(block.OwnerId);
 		}
 
 		/// <summary>
@@ -73,7 +70,7 @@ namespace Rynchodon
 				double cosAngle = directionVector.Dot(worldDirection);
 
 				//myLogger.debugLog(cosAngle < -1 || cosAngle > 1, "cosAngle out of bounds: " + cosAngle, "GetFaceDirection()", Logger.severity.ERROR); // sometimes values are slightly out of range
-				myLogger.debugLog("cosAngle invalid", Logger.severity.ERROR, condition: double.IsNaN(cosAngle) || double.IsInfinity(cosAngle));
+				Logger.DebugLog("cosAngle invalid", Logger.severity.ERROR, condition: double.IsNaN(cosAngle) || double.IsInfinity(cosAngle));
 
 				if (cosAngle > bestDirectionAngle)
 				{

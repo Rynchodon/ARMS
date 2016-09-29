@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public UnLander(Mover mover, PseudoBlock unlandBlock = null)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, m_controlBlock.CubeBlock);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_unlandBlock = unlandBlock ?? m_navSet.Settings_Current.LandingBlock ?? m_navSet.LastLandingBlock;
 
 			if (this.m_unlandBlock == null)

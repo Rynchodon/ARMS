@@ -19,7 +19,7 @@ namespace Rynchodon.Utility
 
 		public FileMaster(string masterName, string slaveName, int limit = 100)
 		{
-			this.m_logger = new Logger(GetType().Name, () => m_masterName);
+			this.m_logger = new Logger(() => m_masterName);
 			this.m_masterName = masterName;
 			this.m_slaveName = slaveName;
 			this.m_limit = limit;

@@ -32,7 +32,7 @@ namespace Rynchodon.Weapons
 				catch (Exception ex)
 				{
 					Logger.DebugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
-					Logger log = new Logger(ammo.Id.SubtypeName);
+					Logger log = new Logger(() => ammo.Id.SubtypeName);
 					log.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
 					log.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					return null;
@@ -154,7 +154,7 @@ namespace Rynchodon.Weapons
 		private Ammo(MyAmmoMagazineDefinition ammoMagDef)
 		{
 			MyAmmoDefinition ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoMagDef.AmmoDefinitionId);
-			this.myLogger = new Logger("Ammo", () => ammoMagDef.Id.ToString(), () => ammoDef.Id.ToString());
+			this.myLogger = new Logger(() => ammoMagDef.Id.ToString(), () => ammoDef.Id.ToString());
 
 			this.AmmoDefinition = ammoDef;
 			this.MissileDefinition = AmmoDefinition as MyMissileAmmoDefinition;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Rynchodon.Threading;
@@ -64,11 +65,10 @@ namespace Rynchodon
 		/// <summary>
 		/// Creates a Logger that gets the context and states from supplied functions.
 		/// </summary>
-		/// <param name="calling_class">the name of the class this Logger belongs to</param>
 		/// <param name="context">the context of this logger</param>
 		/// <param name="default_primary">the primary state used when one is not supplied to alwaysLog() or debugLog()</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(string calling_class, Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		public Logger(Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			this.m_fileName = GetFileName(callerPath);
 			this.f_context = context;
@@ -79,10 +79,9 @@ namespace Rynchodon
 		/// <summary>
 		/// Creates a Logger that gets the context and states from block and supplied function.
 		/// </summary>
-		/// <param name="calling_class">the name of the class this Logger belongs to</param>
 		/// <param name="block">The block to get context and states from</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(string calling_class, IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		public Logger(IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			this.m_fileName = GetFileName(callerPath);
 
@@ -111,7 +110,7 @@ namespace Rynchodon
 			}
 		}
 
-		public Logger(string calling_class, IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			this.m_fileName = GetFileName(callerPath);
 
@@ -126,7 +125,7 @@ namespace Rynchodon
 			this.f_state_secondary = default_secondary;
 		}
 
-		public Logger(string calling_class, IMyEntity entity, [CallerFilePath] string callerPath = null)
+		public Logger(IMyEntity entity, [CallerFilePath] string callerPath = null)
 		{
 			this.m_fileName = GetFileName(callerPath);
 
@@ -155,18 +154,6 @@ namespace Rynchodon
 		public Logger()
 		{
 			this.m_fileName = GetType().Name;
-		}
-
-		/// <summary>
-		/// Deprecated. Creates a Logger without default states.
-		/// </summary>
-		/// <param name="gridName">the name of the grid this Logger belongs to, may be null</param>
-		/// <param name="className">the name of the class this Logger belongs to</param>
-		[Obsolete]
-		public Logger(string gridName, string className)
-		{
-			this.f_context = () => gridName;
-			this.m_fileName = className;
 		}
 
 		private static void deleteIfExists(string filename)
@@ -201,7 +188,7 @@ namespace Rynchodon
 
 		private static string GetFileName(string path)
 		{
-			return path.Substring(path.LastIndexOf('\\') + 1);
+			return Path.GetFileName(path);
 		}
 
 		/// <summary>

@@ -135,7 +135,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		{
 			grid.throwIfNull_argument("grid");
 			m_grid = grid;
-			m_logger = new Logger("Pathfinder", () => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
+			m_logger = new Logger(() => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
 			m_pathChecker = new PathChecker(grid);
 			m_rotateChecker = new RotateChecker(grid);
 			m_navSet = navSet;

@@ -49,7 +49,7 @@ namespace Rynchodon
 
 		private GridCellCache(IMyCubeGrid grid)
 		{
-			m_logger = new Logger("GridCellCache", () => grid.DisplayName);
+			m_logger = new Logger(() => grid.DisplayName);
 			m_grid = grid;
 
 			List<IMySlimBlock> dummy = new List<IMySlimBlock>();

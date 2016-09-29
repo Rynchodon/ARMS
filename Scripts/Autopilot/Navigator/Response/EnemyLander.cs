@@ -19,7 +19,7 @@ namespace Rynchodon.Autopilot.Navigator.Response
 
 		public EnemyLander(Mover mover, PseudoBlock landingGear)
 		{
-			this.m_logger = new Logger(GetType().Name);
+			this.m_logger = new Logger();
 			this.m_mover = mover;
 
 			if (landingGear == null)

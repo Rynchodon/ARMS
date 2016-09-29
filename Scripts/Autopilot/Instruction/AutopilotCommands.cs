@@ -217,7 +217,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private AutopilotCommands(IMyTerminalBlock block)
 		{
 			this.m_block = block;
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 
 			m_block.AppendingCustomInfo += m_block_AppendSyntaxErrors;
 

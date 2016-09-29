@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public Fighter(Mover mover, AllNavigationSettings navSet)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, () => m_controlBlock.CubeGrid.DisplayName);
+			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
 			Arm();
 		}
 

@@ -32,7 +32,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public Shopper(AllNavigationSettings navSet, IMyCubeGrid grid, Dictionary<string, int> shopList)
 		{
-			this.m_logger = new Logger(GetType().Name, grid);
+			this.m_logger = new Logger(grid);
 			this.m_navSet = navSet;
 			this.m_shoppingList = shopList;
 			this.m_grid = grid;

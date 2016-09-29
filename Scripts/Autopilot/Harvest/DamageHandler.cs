@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		public DamageHandler()
 		{
-			m_logger = new Logger(GetType().Name);
+			m_logger = new Logger();
 			MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler((int)MyDamageSystemPriority.Low, BeforeDamageApplied);
 			Instance = this;
 		}

@@ -52,7 +52,7 @@ namespace Rynchodon.AntennaRelay
 			/// <summary>Maximum time since detection for entity to be kept in cache.</summary>
 			public readonly TimeSpan keepInCache = new TimeSpan(0, 1, 0);
 
-			public readonly Logger logger = new Logger("Projector");
+			public readonly Logger logger = new Logger();
 			public readonly List<IMyTerminalControl> TermControls = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Colours = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Offset = new List<IMyTerminalControl>();
@@ -572,7 +572,7 @@ namespace Rynchodon.AntennaRelay
 
 		public Projector(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(GetType().Name, block);
+			this.m_logger = new Logger(block);
 			this.m_block = block;
 			this.m_netClient = new RelayClient(block);
 
@@ -818,7 +818,7 @@ namespace Rynchodon.AntennaRelay
 			if (!CanDisplay(seen))
 				return;
 
-			Profiler.StartProfileBlock(GetType().Name, "CreateHolo.GetObjectBuilder");
+			Profiler.StartProfileBlock("CreateHolo.GetObjectBuilder");
 			MyObjectBuilder_CubeGrid builder = (MyObjectBuilder_CubeGrid)seen.Entity.GetObjectBuilder();
 			Profiler.EndProfileBlock();
 
@@ -828,15 +828,15 @@ namespace Rynchodon.AntennaRelay
 			builder.CreatePhysics = false;
 			builder.EnableSmallToLargeConnections = false;
 
-			Profiler.StartProfileBlock(GetType().Name, "CreateHolo.CreateFromObjectBuilder");
+			Profiler.StartProfileBlock("CreateHolo.CreateFromObjectBuilder");
 			MyCubeGrid holo = (MyCubeGrid)MyEntities.CreateFromObjectBuilder(builder);
 			Profiler.EndProfileBlock();
 
-			Profiler.StartProfileBlock(GetType().Name, "CreateHolo.SetupProjection");
+			Profiler.StartProfileBlock("CreateHolo.SetupProjection");
 			SetupProjection(holo);
 			Profiler.EndProfileBlock();
 
-			Profiler.StartProfileBlock(GetType().Name, "CreateHolo.AddEntity");
+			Profiler.StartProfileBlock("CreateHolo.AddEntity");
 			MyAPIGateway.Entities.AddEntity(holo);
 			Profiler.EndProfileBlock();
 

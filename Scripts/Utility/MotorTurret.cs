@@ -119,7 +119,7 @@ namespace Rynchodon
 		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null)
 		{
 			this.FaceBlock = block;
-			this.myLogger = new Logger("MotorTurret", block);
+			this.myLogger = new Logger(block);
 			this.OnStatorChange = handler;
 			this.SetupStators();
 		}

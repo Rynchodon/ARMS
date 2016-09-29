@@ -77,7 +77,7 @@ namespace Rynchodon
 
 		private CubeGridCache(IMyCubeGrid grid)
 		{
-			myLogger = new Logger("CubeGridCache", () => grid.DisplayName);
+			myLogger = new Logger(() => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock != null);

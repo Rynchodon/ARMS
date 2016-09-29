@@ -71,7 +71,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public WeldBlock(Mover mover, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
 			: base(mover)
 		{
-			this.m_logger = new Logger(GetType().Name, () => mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());
+			this.m_logger = new Logger(() => mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());
 			this.m_offset = welder.Block.LocalAABB.GetLongestDim() * 0.5f; // this works for default welders, may not work if mod has an exotic design
 			this.m_welder = welder;
 			this.m_targetSlim = block;

@@ -1,9 +1,9 @@
 using System; // partial
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Timers;
-
 using Sandbox.ModAPI;
-
 using VRage;
 using VRage.Library.Utils;
 
@@ -54,9 +54,9 @@ namespace Rynchodon.Utility
 		/// <param name="action">Action to be timed.</param>
 		public static void Profile(Action action)
 		{
-			StartProfileBlock(action.Target == null ? "N/A" : action.Target.GetType().Name, action.Method.Name);
-			try { action.Invoke(); }
-			finally { EndProfileBlock(); }
+			StartProfileBlock(action.Method.Name, action.Target == null ? "N/A" : action.Target.GetType().Name);
+			action.Invoke();
+			EndProfileBlock();
 		}
 
 		/// <summary>
@@ -85,11 +85,15 @@ namespace Rynchodon.Utility
 		/// </summary>
 		/// <param name="name">The name of the block.</param>
 		[System.Diagnostics.Conditional("PROFILE")]
-		public static void StartProfileBlock(string className, string methodName)
+		public static void StartProfileBlock([CallerMemberName] string memberName = null, [CallerFilePath] string fileName = null)
 		{
 			if (ProfileValues.m_block == null)
 				ProfileValues.m_block = new Stack<Block>();
-			ProfileValues.m_block.Push(new Block() { Name = className + ',' + methodName, Started = ProfileValues.m_timer.ElapsedTicks });
+			if (fileName.Contains("\\"))
+				fileName = Path.GetFileName(fileName);
+			if (ProfileValues.m_block.Count > 1000)
+				throw new OverflowException("Profile stack is too large: " + ProfileValues.m_block.Count);
+			ProfileValues.m_block.Push(new Block() { Name = fileName + ',' + memberName, Started = ProfileValues.m_timer.ElapsedTicks });
 		}
 
 		/// <summary>

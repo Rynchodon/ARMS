@@ -10,7 +10,7 @@ namespace Rynchodon
 {
 	public static class CapsuleExtensions
 	{
-		private static Logger myLogger = new Logger(null, "CapsuleExtensions");
+		private static Logger myLogger = new Logger();
 
 		public static Vector3 get_Middle(this Capsule cap)
 		{ return (cap.P0 + cap.P1) / 2f; }

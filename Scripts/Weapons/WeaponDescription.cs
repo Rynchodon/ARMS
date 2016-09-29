@@ -49,7 +49,7 @@ namespace Rynchodon.Weapons
 			catch (Exception ex)
 			{
 				Logger.DebugNotify("Failed to load description for a weapon", 10000, Logger.severity.ERROR);
-				Logger log = new Logger("WeaponDescription", () => definition.Id.ToString());
+				Logger log = new Logger(() => definition.Id.ToString());
 				log.alwaysLog("Failed to load description for a weapon", Logger.severity.ERROR);
 				log.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				return new WeaponDescription();
