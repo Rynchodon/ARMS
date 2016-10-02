@@ -458,12 +458,14 @@ namespace Rynchodon.Update
 					myLogger.alwaysLog("Client, running client scripts only", Logger.severity.INFO);
 				}
 
+#pragma warning disable 162
 				if (!MyFinalBuildConstants.IS_STABLE)
 					myLogger.alwaysLog("Space Engineers build is UNSTABLE");
 				if (!MyFinalBuildConstants.IS_OFFICIAL)
 					myLogger.alwaysLog("Space Engineers build is UNOFFICIAL");
 				if (MyFinalBuildConstants.IS_DEBUG)
 					myLogger.alwaysLog("Space Engineers build is DEBUG");
+#pragma warning restore 162
 
 				Logger.DebugNotify("ARMS dev version loaded", 10000);
 

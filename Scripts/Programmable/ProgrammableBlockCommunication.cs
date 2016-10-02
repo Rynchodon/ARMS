@@ -47,7 +47,7 @@ namespace Rynchodon.Programmable
     /// </summary>
     List<TerminalActionParameter> arguments = new List<TerminalActionParameter>();
 
-    public void Main(string args)
+    public new void Main(string args)
     {
       if (!string.IsNullOrWhiteSpace(args))
       {

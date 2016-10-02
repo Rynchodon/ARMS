@@ -60,7 +60,7 @@ namespace Rynchodon.Programmable
     /// <summary>List of owner entities IDs contact has been lost with</summary>
     List<TerminalActionParameter> lostContact = new List<TerminalActionParameter>();
 
-    public void Main(string arguments)
+    public new void Main(string arguments)
     {
       enemies.Clear();
       lostContact.Clear();
