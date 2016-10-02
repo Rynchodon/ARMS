@@ -328,10 +328,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 
 					if (m_navSet.Settings_Current.Distance < 1f)
-					{
-						Vector3 pos = m_navDrill.WorldPosition;
 						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Backward * 100d;
-					}
 
 					break;
 				case State.Mining_Tunnel:
@@ -350,10 +347,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 
 					if (m_navSet.Settings_Current.Distance < 1f)
-					{
-						Vector3 pos = m_navDrill.WorldPosition;
 						m_currentTarget = m_navDrill.WorldPosition + m_navDrill.WorldMatrix.Forward * 100d;
-					}
 
 					break;
 				case State.Move_Away:
@@ -377,10 +371,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 
 					if (m_navSet.Settings_Current.Distance < 1f)
-					{
-						Vector3 pos = m_navDrill.WorldPosition;
-						m_currentTarget = pos + Vector3.Normalize(pos - m_targetVoxel.GetCentre()) * 100f;
-					}
+						m_currentTarget = m_navDrill.WorldPosition + Vector3.Normalize(m_navDrill.WorldPosition - m_targetVoxel.GetCentre()) * 100f;
 
 					break;
 				default:
@@ -632,10 +623,10 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Vector3 v = direction * m_targetVoxel.LocalAABB.GetLongestDim();
-			Capsule surfaceFinder = new Capsule(startPoint - v, startPoint + v, buffer);
-			Vector3? obstruction;
+			CapsuleD surfaceFinder = new CapsuleD(startPoint - v, startPoint + v, buffer);
+			Vector3D obstruction;
 			if (surfaceFinder.Intersects(voxel, out obstruction))
-				return obstruction.Value;
+				return obstruction;
 			else
 			{
 				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0", Logger.severity.WARNING);

@@ -198,6 +198,7 @@
     <Compile Include="Utility\Collections\OffsetList.cs" />
     <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
     <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
     <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />
     <Compile Include="Utility\Extensions\IMyCubeGridExtensions.cs" />

@@ -8,11 +8,6 @@ namespace Rynchodon.Utility.Collections
 	public class Vector2IMatrix<T>
 	{
 
-		static Vector2IMatrix()
-		{
-			Logger.SetFileName("Vector2IMatrix<T>");
-		}
-
 		private static bool EqualsDefault(T value)
 		{
 			return EqualityComparer<T>.Default.Equals(value, default(T));

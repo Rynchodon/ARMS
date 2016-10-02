@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using SpaceEngineers.Game.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
@@ -88,11 +89,11 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			Vector3D? contact;
-			if (!RayCast.RayCastVoxel(closest, new LineD(currentPostion, closest.GetCentre()), out contact))
+			IHitInfo hitInfo;
+			if (!MyAPIGateway.Physics.CastRay(currentPostion, closest.GetCentre(), out hitInfo, RayCast.FilterLayerVoxel))
 				throw new Exception("Failed to intersect voxel");
 
-			m_targetPostion = contact.Value;
+			m_targetPostion = hitInfo.Position;
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.IgnoreAsteroid = true;
 

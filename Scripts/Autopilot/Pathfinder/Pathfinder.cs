@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 	/// <summary>
 	/// Finds alternate paths if the current path is blocked.
 	/// </summary>
-	public class Pathfinder
+	public class OldPathfinder
 	{
 
 		public enum PathState : byte { Not_Running, No_Obstruction, Searching, Path_Blocked }
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
 		private static ThreadManager Thread_Low = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), true, "Path_Low");
 
-		static Pathfinder()
+		static OldPathfinder()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
@@ -131,7 +131,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <summary>Closest surface point found by rotate checker.</summary>
 		public Vector3D ClosestSurfacePoint { get { return m_rotateChecker.ClosestPoint; } }
 
-		public Pathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
+		public OldPathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
 		{
 			grid.throwIfNull_argument("grid");
 			m_grid = grid;

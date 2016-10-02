@@ -68,7 +68,7 @@ namespace Rynchodon
 		/// <param name="context">the context of this logger</param>
 		/// <param name="default_primary">the primary state used when one is not supplied to alwaysLog() or debugLog()</param>
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(Func<string> context = null, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		public Logger(Func<string> context, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			this.m_fileName = GetFileName(callerPath);
 			this.f_context = context;
@@ -148,9 +148,7 @@ namespace Rynchodon
 			this.f_context = entity.getBestName;
 		}
 
-		/// <summary>
-		/// needed for MySessionComponentBase
-		/// </summary>
+		[Obsolete("Only MySessionComponentBase should use this constructor, classes without context should use static methods.")]
 		public Logger()
 		{
 			this.m_fileName = GetType().Name;
@@ -224,6 +222,22 @@ namespace Rynchodon
 		}
 
 		/// <summary>
+		/// For logging while PROFILE is set.
+		/// </summary>
+		/// <param name="condition">only log if true</param>
+		/// <param name="toLog">message to log</param>
+		/// <param name="methodName">calling method</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		[System.Diagnostics.Conditional("PROFILE")]
+		public void profileLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				log(level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
+		/// <summary>
 		/// For logging WARNING and higher severity.
 		/// </summary>
 		/// <param name="toLog">message to log</param>
@@ -238,6 +252,14 @@ namespace Rynchodon
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		public static void DebugLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+		}
+
+		[System.Diagnostics.Conditional("PROFILE")]
+		public static void ProfileLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)

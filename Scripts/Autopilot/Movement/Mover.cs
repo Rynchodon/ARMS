@@ -59,9 +59,9 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Controlling block for the grid.</summary>
 		public readonly ShipControllerBlock Block;
 		public ThrustProfiler Thrust { get; private set; }
-		public Pathfinder.Pathfinder Pathfinder { get; private set; }
+		public Pathfinder.OldPathfinder Pathfinder { get; private set; }
 
-		private PathThing m_pathThing = new PathThing();
+		private NewPathfinder m_newPathfinder = new NewPathfinder();
 
 		private bool CheckStuck(ulong duration)
 		{
@@ -232,8 +232,8 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
 			float length = destDisp.Length();
 
-			m_pathThing.Test((MyCubeGrid)m_grid, destDisp, null, false, false);
-			Vector3	pathDirection = m_pathThing.ResultDirection;
+			m_newPathfinder.Test((MyCubeGrid)m_grid, destDisp, null, false, false);
+			Vector3	pathDirection = m_newPathfinder.ResultDirection;
 
 			if (!pathDirection.IsValid())
 			{
@@ -509,7 +509,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate()", "CalcRotate()");
 
-			Vector3 pathMoveResult = m_pathThing.ResultDirection;
+			Vector3 pathMoveResult = m_newPathfinder.ResultDirection;
 
 			if (!pathMoveResult.IsValid())
 			{
@@ -782,11 +782,11 @@ namespace Rynchodon.Autopilot.Movement
 
 			switch (Pathfinder.m_rotateState)
 			{
-				case Autopilot.Pathfinder.Pathfinder.PathState.Not_Running:
+				case Autopilot.Pathfinder.OldPathfinder.PathState.Not_Running:
 					m_logger.debugLog("Pathfinder not run yet: " + Pathfinder.m_rotateState);
 					m_lastMove = Globals.UpdateCount;
 					return;
-				case Autopilot.Pathfinder.Pathfinder.PathState.No_Obstruction:
+				case Autopilot.Pathfinder.OldPathfinder.PathState.No_Obstruction:
 					break;
 				default:
 					m_logger.debugLog("Pathfinder not allowing rotation: " + Pathfinder.m_rotateState);
@@ -896,7 +896,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			Vector3 pathMoveResult = m_pathThing.ResultDirection;
+			Vector3 pathMoveResult = m_newPathfinder.ResultDirection;
 
 			if (!pathMoveResult.IsValid())
 			{
@@ -990,7 +990,7 @@ namespace Rynchodon.Autopilot.Movement
 				m_grid = Block.CubeGrid;
 				this.Thrust = new ThrustProfiler(Block.CubeBlock);
 				this.m_gyro = new GyroProfiler(m_grid);
-				this.Pathfinder = new Pathfinder.Pathfinder(m_grid, NavSet, this);
+				this.Pathfinder = new Pathfinder.OldPathfinder(m_grid, NavSet, this);
 			}
 		}
 

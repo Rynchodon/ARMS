@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private Vector3D m_closestPoint;
 		private FastResourceLock lock_closestPoint = new FastResourceLock();
 
-		public Pathfinder.PathState PlanetState { get; private set; }
+		public OldPathfinder.PathState PlanetState { get; private set; }
 		public MyPlanet ClosestPlanet { get; private set; }
 		public Vector3D ClosestPoint
 		{
@@ -106,7 +106,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 							continue;
 						}
 
-						if (PlanetState != Pathfinder.PathState.No_Obstruction)
+						if (PlanetState != OldPathfinder.PathState.No_Obstruction)
 						{
 							m_logger.debugLog("planet blocking");
 							obstruction = ClosestPlanet;
@@ -164,7 +164,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
 			{
 				m_logger.debugLog("higher than planet maximum");
-				PlanetState = Pathfinder.PathState.No_Obstruction;
+				PlanetState = OldPathfinder.PathState.No_Obstruction;
 				return;
 			}
 
@@ -174,7 +174,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (distSqToPlanet < Vector3D.DistanceSquared(m_closestPoint, planetCentre))
 			{
 				m_logger.debugLog("below surface");
-				PlanetState = Pathfinder.PathState.Path_Blocked;
+				PlanetState = OldPathfinder.PathState.Path_Blocked;
 				return;
 			}
 
@@ -182,12 +182,12 @@ namespace Rynchodon.Autopilot.Pathfinder
 			if (Vector3D.DistanceSquared(myPos, m_closestPoint) < longest * longest)
 			{
 				m_logger.debugLog("near surface");
-				PlanetState = Pathfinder.PathState.Path_Blocked;
+				PlanetState = OldPathfinder.PathState.Path_Blocked;
 				return;
 			}
 
 			m_logger.debugLog("clear");
-			PlanetState = Pathfinder.PathState.No_Obstruction;
+			PlanetState = OldPathfinder.PathState.No_Obstruction;
 			return;
 		}
 
