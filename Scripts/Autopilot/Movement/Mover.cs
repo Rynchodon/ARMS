@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Pathfinder;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -229,11 +230,13 @@ namespace Rynchodon.Autopilot.Movement
 			//		return;
 			//}
 
-			Vector3 destDisp = destPoint - block.WorldPosition; // this is why we need double for destPoint
+			Vector3 destDisp = destPoint - block.WorldPosition;
 			float length = destDisp.Length();
 
-			m_newPathfinder.Test((MyCubeGrid)m_grid, destDisp, null, false, false);
-			Vector3	pathDirection = m_newPathfinder.ResultDirection;
+			Destination dest = new Destination(destPoint);
+			m_newPathfinder.Run(block, ref dest, (MyEntity)NavSet.Settings_Current.DestinationEntity, NavSet.Settings_Current.IgnoreAsteroid);
+
+			Vector3	pathDirection = m_newPathfinder.m_targetDirection;
 
 			if (!pathDirection.IsValid())
 			{
@@ -509,7 +512,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			//m_logger.debugLog("entered CalcRotate()", "CalcRotate()");
 
-			Vector3 pathMoveResult = m_newPathfinder.ResultDirection;
+			Vector3 pathMoveResult = m_newPathfinder.m_targetDirection;
 
 			if (!pathMoveResult.IsValid())
 			{
@@ -896,7 +899,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			Vector3 pathMoveResult = m_newPathfinder.ResultDirection;
+			Vector3 pathMoveResult = m_newPathfinder.m_targetDirection;
 
 			if (!pathMoveResult.IsValid())
 			{

@@ -89,15 +89,26 @@ def copyScripts(l_source):
 			# compiler will still remove Conditional statements in released version
 			destFile = open(l_destFile, 'w')
 			destFileDev = open(l_destFileDev, 'w')
+			b_removeEndif = False
 			for line in lines:
 				if (not line.lstrip().startswith("//")):
-					if ("#define LOG_ENABLED" in line): # could not make startswith work
-						destFile.write("// pre-processor symbol removed by build.py\n")
-						destFileDev.write("// pre-processor symbol removed by build.py\n")
+					if ("#define" in line):
+						destFile.write("// " + line)
+						destFileDev.write("// " + line)
 						continue
 					if ('[System.Diagnostics.Conditional("' + DevCondition + '")]' in line):
 						destFile.write(line)
-						destFileDev.write("// Conditional removed by build.py\n")
+						destFileDev.write("// " + line)
+						continue
+					if ('#if ' + DevCondition in line):
+						destFile.write(line)
+						destFileDev.write("// " + line)
+						b_removeEndif = True
+						continue
+					if (b_removeEndif and '#endif' in line):
+						destFile.write(line)
+						destFileDev.write("// " + line)
+						b_removeEndif = False
 						continue
 				destFile.write(line)
 				destFileDev.write(line)

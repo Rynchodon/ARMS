@@ -1,11 +1,9 @@
-﻿using System;
+﻿#define PROFILE
+
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using Rynchodon.Attached;
-using Rynchodon.Utility;
-using Rynchodon.Utility.Collections;
+using Rynchodon.Autopilot.Data;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
 using VRage.Game.Entity;
@@ -23,13 +21,24 @@ namespace Rynchodon.Autopilot.Pathfinder
 			public Vector3 DirectionFromParent;
 		}
 
-		private const float SpeedFactor = 2f, RepulsionFactor = 4f;
+		private const float SpeedFactor = 2f, RepulsionFactor = 4f, VoxelFactor = 10f;
+
+		///// <summary>
+		///// Shared will be held while setting interupt or running. Exclusive will be held while starting a run or checking for an interrupt.
+		///// </summary>
+		//private FastResourceLock m_runningLock;
+		//private bool m_runInterrupt;
+
+		private readonly Logger m_logger;
 
 		// Inputs: rarely change
 
-		private MyCubeGrid m_autopilotGrid;
-		private MyCubeBlock m_navBlock;
-		private Destination m_destination; // never just match speed with dest, if it is obstructing it will be m_obstructingEntity
+		private PathTester m_tester = new PathTester();
+		private MyCubeGrid m_autopilotGrid { get { return m_tester.AutopilotGrid; } set { m_tester.AutopilotGrid = value; } }
+		private PseudoBlock m_navBlock;
+		private Destination m_destination; // only match speed with entity if there is no obstruction
+		private MyEntity m_ignoreEntity;
+		private bool m_ignoreVoxel;
 
 		// Inputs: always updated
 
@@ -45,32 +54,48 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private List<MyEntity> m_entitiesPruneAvoid = new List<MyEntity>();
 		/// <summary>List of entities that will repulse the autopilot.</summary>
 		private List<MyEntity> m_entitiesRepulse = new List<MyEntity>();
-		/// <summary>Rejections of this grid</summary>
-		private Vector2IMatrix<bool> m_rejections = new Vector2IMatrix<bool>();
-		/// <summary>Rejections of the other grid.</summary>
-		private Vector2IMatrix<bool> m_rejectTests = new Vector2IMatrix<bool>();
 
 		// Low Level
 
 		private MyBinaryStructHeap<float, PathNode> m_openNodes = new MyBinaryStructHeap<float, PathNode>();
 		private Dictionary<float, PathNode> m_reachedNodes = new Dictionary<float, PathNode>();
 		private float m_nodeDistance;
-
+		private Stack<Vector3D> m_path = new Stack<Vector3D>();
+#if PROFILE
+		private int m_nodesRejected = 0;
+#endif
 		// Results
 
-		private Vector3 m_targetDirection = Vector3.Invalid;
+		public Vector3 m_targetDirection = Vector3.Invalid; // temp public, for testing
 		private MyEntity m_obstructingEntity;
+		/// <summary>Obstruction to give to players, it may be a block, hence, object.</summary>
+		private object m_obstructionReport;
+		// TODO: need to give mover a distance, since we may be moving away from the final destination
 
-		public void Setup(MyCubeBlock navBlock, ref Destination destination)
+		public NewPathfinder()
 		{
-			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.CubeGrid && m_destination.Equals(ref destination))
-				return;
+			m_logger = new Logger(() => m_autopilotGrid.DisplayNameText, () => m_navBlock.DisplayName);
+		}
 
-			// TODO: if running, interrupt
+		// Methods
+
+		public void Run(PseudoBlock navBlock, ref Destination destination, MyEntity ignoreEntity, bool ignoreVoxel)
+		{
+			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid && m_destination.Equals(ref destination) && m_ignoreEntity == ignoreEntity && m_ignoreVoxel == ignoreVoxel)
+			{
+				UpdateInputs();
+				TestCurrentPath();
+				return;
+			}
+			m_logger.debugLog("something has changed");
+
 			m_navBlock = navBlock;
-			m_autopilotGrid = m_navBlock.CubeGrid;
+			m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
 			UpdateInputs();
 			m_destination = new Destination(destination.Entity, destination.Position - m_centreToNavBlock);
+			m_ignoreEntity = ignoreEntity;
+			m_ignoreVoxel = ignoreVoxel;
+			TestCurrentPath();
 		}
 
 		private void UpdateInputs()
@@ -78,53 +103,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 			m_currentPosition = m_autopilotGrid.GetCentre();
 			m_destWorld = m_destination.WorldPosition();
 			m_autopilotVelocity = m_autopilotGrid.Physics.LinearVelocity;
-			m_centreToNavBlock = m_currentPosition - m_navBlock.PositionComp.GetPosition();
+			m_centreToNavBlock = m_currentPosition - m_navBlock.WorldPosition;
 			m_distSqToDest = (float)Vector3D.DistanceSquared(m_currentPosition, m_destWorld);
 			m_autopilotSpeed = m_autopilotVelocity.Length();
 			m_autopilotShipBoundingRadius = m_autopilotGrid.PositionComp.LocalVolume.Radius;
 		}
 
-		public void Test(MyEntity ignoreEntity, bool ignoreVoxel)
+		private void TestCurrentPath()
 		{
-			UpdateInputs();
-
-			// Collect entities
 			m_entitiesPruneAvoid.Clear();
 			m_entitiesRepulse.Clear();
 
 			BoundingBoxD box = BoundingBoxD.CreateInvalid();
 			box.Include(ref m_currentPosition);
-			box.Include(m_destWorld);
+			box.Include(ref m_destWorld);
 			box.Inflate(m_autopilotShipBoundingRadius + m_autopilotSpeed * SpeedFactor);
 
 			MyGamePruningStructure.GetTopMostEntitiesInBox(ref box, m_entitiesPruneAvoid);
-			for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
-			{
-				MyEntity entity = m_entitiesPruneAvoid[i];
-				//Logger.DebugLog("checking entity: " + entity.nameWithId());
-				if (ignoreEntity != null && ignoreEntity == entity)
-					continue;
-				if (entity is MyCubeGrid)
-				{
-					MyCubeGrid grid = (MyCubeGrid)entity;
-					if (grid == m_autopilotGrid)
-						continue;
-					if (!grid.Save)
-						continue;
-					if (Attached.AttachedGrid.IsGridAttached(m_autopilotGrid, grid, Attached.AttachedGrid.AttachmentKind.Physics))
-						continue;
-				}
-				else if (entity is MyVoxelBase && ignoreVoxel)
-					continue;
-				else if (!(entity is MyFloatingObject))
-					continue;
 
-				if (entity.Physics != null && entity.Physics.Mass > 0f && entity.Physics.Mass < 1000f)
-					continue;
-
-				//Logger.DebugLog("approved entity: " + entity.nameWithId());
-				m_entitiesRepulse.Add(entity);
-			}
+			FillRepulseList();
 
 			m_entitiesPruneAvoid.Clear();
 			Vector3 repulsion;
@@ -136,61 +133,53 @@ namespace Rynchodon.Autopilot.Pathfinder
 			Vector3.Add(ref directF, ref repulsion, out m_targetDirection);
 			m_targetDirection.Normalize();
 
-			// if destination is obstructing it needs to be checked first, so we would match speed with destination
-
-			MyCubeBlock ignoreBlock = ignoreEntity as MyCubeBlock;
-			
-			if (m_destination.Entity != null && m_entitiesPruneAvoid.Contains(m_destination.Entity))
+			Vector3D pointOfObstruction;
+			if (CurrentObstructed(out m_obstructingEntity, out pointOfObstruction))
 			{
-				object obstruction;
-				if (ObstructedBy(m_destination.Entity, ignoreBlock, out obstruction))
-				{
-					HandleObstruction(obstruction);
-					return;
-				}
+				m_entitiesPruneAvoid.Clear();
+				m_entitiesRepulse.Clear();
+				m_targetDirection = Vector3.Invalid;
+				FindAPath(ref pointOfObstruction);
+				return;
 			}
-
-			// check voxel next so that the ship will not match an obstruction that is on a collision course
-
-			if (!ignoreVoxel)
-			{
-				Vector3 rayDirection; Vector3.Add(ref m_autopilotVelocity, ref m_targetDirection, out rayDirection);
-				IHitInfo hit;
-				if (RayCastIntersectsVoxel(ref rayDirection, out hit))
-				{
-					Logger.DebugLog("Obstructed by voxel at " + hit);
-					m_targetDirection = Vector3.Invalid;
-					m_obstructingEntity = (MyEntity)hit.HitEntity;
-					m_entitiesPruneAvoid.Clear();
-					m_entitiesRepulse.Clear();
-					FindAPath(hit.Position);
-					return;
-				}
-			}
-
-			// check remaining entities
-
-			if (m_entitiesPruneAvoid.Count != 0)
-			{
-				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
-				{
-					MyEntity entity = m_entitiesPruneAvoid[i];
-					if (entity == m_destination.Entity || entity is MyVoxelBase)
-						// already checked
-						continue;
-					object obstruction;
-					if (ObstructedBy(entity, ignoreBlock, out obstruction))
-					{
-						HandleObstruction(obstruction);
-						return;
-					}
-				}
-				Logger.DebugLog("No obstruction");
-			}
-
+				
 			m_obstructingEntity = null;
 			m_entitiesPruneAvoid.Clear();
 			m_entitiesRepulse.Clear();
+		}
+
+		/// <summary>
+		/// Fill m_entitiesRepulse from m_entitiesPruneAvoid, ignoring some entitites.
+		/// </summary>
+		private void FillRepulseList()
+		{
+			for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
+			{
+				MyEntity entity = m_entitiesPruneAvoid[i];
+				//m_logger.debugLog("checking entity: " + entity.nameWithId());
+				if (m_ignoreEntity != null && m_ignoreEntity == entity)
+					continue;
+				if (entity is MyCubeGrid)
+				{
+					MyCubeGrid grid = (MyCubeGrid)entity;
+					if (grid == m_autopilotGrid)
+						continue;
+					if (!grid.Save)
+						continue;
+					if (Attached.AttachedGrid.IsGridAttached(m_autopilotGrid, grid, Attached.AttachedGrid.AttachmentKind.Physics))
+						continue;
+				}
+				else if (entity is MyVoxelBase && m_ignoreVoxel)
+					continue;
+				else if (!(entity is MyFloatingObject))
+					continue;
+
+				if (entity.Physics != null && entity.Physics.Mass > 0f && entity.Physics.Mass < 1000f)
+					continue;
+
+				//m_logger.debugLog("approved entity: " + entity.nameWithId());
+				m_entitiesRepulse.Add(entity);
+			}
 		}
 
 		private void CalcRepulsion(out Vector3 repulsion)
@@ -202,8 +191,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			{
 				MyEntity entity = m_entitiesRepulse[index];
 
-				Logger.DebugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
-				Logger.DebugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy.Parent != null);
+				m_logger.debugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
+				m_logger.debugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy.Parent != null);
 
 				Vector3D centre = entity.GetCentre();
 				Vector3D toCentreD;
@@ -232,7 +221,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
 					}
 				}
-				//Logger.DebugLog("For entity: " + entity.nameWithId() + ", bounding radius: " + boundingRadius + ", autopilot ship radius: " + m_autopilotShipBoundingRadius + ", linear speed: " + linearSpeed + ", sphere radius: " +
+				//m_logger.debugLog("For entity: " + entity.nameWithId() + ", bounding radius: " + boundingRadius + ", autopilot ship radius: " + m_autopilotShipBoundingRadius + ", linear speed: " + linearSpeed + ", sphere radius: " +
 				//	(boundingRadius + m_autopilotShipBoundingRadius + linearSpeed * SpeedFactor));
 				if (linearSpeed < 0f)
 					linearSpeed = 0f;
@@ -284,7 +273,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 			float maxRepulseDist = (float)sphere.Radius * RepulsionFactor; // Might need to be different for planets than other entities.
 			float maxRepulseDistSq = maxRepulseDist * maxRepulseDist;
 
-			//Logger.DebugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
+			//m_logger.debugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
 
 			if (toCurrentLenSq > maxRepulseDistSq)
 			{
@@ -310,258 +299,123 @@ namespace Rynchodon.Autopilot.Pathfinder
 			// maxRepulseDist / toCurrentLen can be adjusted
 			Vector3 result;
 			Vector3.Multiply(ref toCurrent, (maxRepulseDist / toCurrentLen - 1f) / toCurrentLen, out result);
-			//Logger.DebugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", ratio: " + (maxRepulseDist / toCurrentLen) + ", result: " + result);
+			//m_logger.debugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", ratio: " + (maxRepulseDist / toCurrentLen) + ", result: " + result);
 			Vector3 result2;
 			Vector3.Add(ref repulsion, ref result, out result2);
-			//Logger.DebugLog("repulsion: " + result2);
+			//m_logger.debugLog("repulsion: " + result2);
 			repulsion = result2;
 		}
 
-		private bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, out object obstructing)
+		/// <summary>
+		/// For testing if the current path is obstructed by any entity in m_entitiesPruneAvoid.
+		/// </summary>
+		private bool CurrentObstructed(out MyEntity obstructingEntity, out Vector3D pointOfObstruction)
 		{
-			// capsule intersection test is done implicitly by the sphere adjustment for speed
+			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
 
-			MyCubeGrid grid = entityTopMost as MyCubeGrid;
-			if (grid != null)
+			// if destination is obstructing it needs to be checked first, so we would match speed with destination
+
+			MyEntity destTop;
+			if (m_destination.Entity != null)
 			{
-				Profiler.StartProfileBlock("RejectionIntersects");
-
-				Vector3 relativeVelocity; GetRelativeVelocity(entityTopMost, out relativeVelocity);
-				Vector3 rejectionVector;
-				Vector3.Add(ref relativeVelocity, ref m_targetDirection, out rejectionVector);
-				rejectionVector.Normalize();
-
-				Vector3I hitCell;
-				if (RejectionIntersects(grid, ignoreBlock, ref rejectionVector, out hitCell))
+				destTop = m_destination.Entity.GetTopMostParent();
+				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
-					Logger.DebugLog("rejection intersects");
-					obstructing = (object)grid.GetCubeBlock(hitCell) ?? (object)grid;
-					Profiler.EndProfileBlock();
+					object partHit;
+					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_targetDirection, out partHit, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + destTop.getBestName() + "." + partHit);
+						obstructingEntity = destTop;
+						return true;
+					}
+				}
+			}
+			else
+				destTop = null;
+
+			// check voxel next so that the ship will not match an obstruction that is on a collision course
+
+			if (!m_ignoreVoxel)
+			{
+				Vector3 rayDirection; Vector3.Add(ref m_autopilotVelocity, ref m_targetDirection, out rayDirection);
+				Vector3 rayMultied; Vector3.Multiply(ref rayDirection, VoxelFactor, out rayMultied);
+				IHitInfo hit;
+				if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayMultied, out hit))
+				{
+					m_logger.debugLog("Obstructed by voxel at " + hit.Position);
+					obstructingEntity = (MyEntity)hit.HitEntity;
+					pointOfObstruction = hit.Position;
 					return true;
 				}
-				else
-					Logger.DebugLog("rejection does not intersect");
-				Profiler.EndProfileBlock();
 			}
 
-			obstructing = entityTopMost;
-			return true;
-		}
+			// check remaining entities
 
-		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref Vector3 rejectionVector, out Vector3I oGridCell)
-		{
-			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
-			//Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId());
-
-			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(m_autopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
-
-			CubeGridCache oCache = CubeGridCache.GetFor(oGrid);
-			if (oCache == null)
-			{
-				Logger.DebugLog("Failed to get cache for other grid", Logger.severity.DEBUG);
-				oGridCell = Vector3I.Zero;
-				return false;
-			}
-
-			bool checkBlock = ignoreBlock != null && oGrid == ignoreBlock.CubeGrid;
-
-			Vector3 v; rejectionVector.CalculatePerpendicularVector(out v);
-			Vector3 w; Vector3.Cross(ref rejectionVector, ref v, out w);
-			Matrix to3D = new Matrix(v.X, v.Y, v.Z, 0f,
-				w.X, w.Y, w.Z, 0f,
-				rejectionVector.X, rejectionVector.Y, rejectionVector.Z, 0f,
-				0f, 0f, 0f, 1f);
-			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
-
-			float roundTo;
-			int steps;
-			if (m_autopilotGrid.GridSizeEnum == oGrid.GridSizeEnum)
-			{
-				roundTo = m_autopilotGrid.GridSize;
-				steps = 1;
-			}
-			else
-			{
-				roundTo = Math.Min(m_autopilotGrid.GridSize, oGrid.GridSize);
-				steps = (int)Math.Ceiling(Math.Max(m_autopilotGrid.GridSize, oGrid.GridSize) / roundTo) + 1;
-			}
-
-			//Logger.DebugLog("building m_rejections");
-
-			m_rejections.Clear();
-			MatrixD worldMatrix = m_autopilotGrid.WorldMatrix;
-			float gridSize = m_autopilotGrid.GridSize;
-			foreach (CubeGridCache cache in myCaches)
-			{
-				if (cache == null)
+			if (m_entitiesPruneAvoid.Count != 0)
+				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
 				{
-					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					oGridCell = Vector3I.Zero;
-					return false;
-				}
-				foreach (Vector3I cell in cache.OccupiedCells())
-				{
-					Vector3 local = cell * gridSize;
-					Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-					Vector3D relative; Vector3D.Subtract(ref world, ref m_currentPosition, out relative);
-					Vector3 relativeF = relative;
-					Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
-					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-					Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
-					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-					m_rejections[Round(pc2, roundTo)] = true;
-				}
-			}
-
-			//Logger.DebugLog("checking other grid cells");
-
-			m_rejectTests.Clear();
-			worldMatrix = oGrid.WorldMatrix;
-			gridSize = oGrid.GridSize;
-			foreach (Vector3I cell in oCache.OccupiedCells())
-			{
-				Vector3 local = cell * gridSize;
-				Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-				Vector3D relative; Vector3D.Subtract(ref world, ref m_currentPosition, out relative);
-				Vector3 relativeF = relative;
-				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
-				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-				Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
-				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-				Vector2I rounded = Round(pc2, roundTo);
-
-				if (!m_rejectTests.Add(rounded, true))
-					continue;
-
-				//Logger.DebugLog("testing range. x: " + rounded.X + " - " + pc2.X);
-
-				Vector2I test;
-				for (test.X = rounded.X - steps; test.X <= pc2.X + steps; test.X++)
-					for (test.Y = rounded.Y - steps; test.Y <= pc2.Y + steps; test.Y++)
-						if (m_rejections.Contains(test))
-						{
-							if (checkBlock)
-							{
-								IMySlimBlock slim = oGrid.GetCubeBlock(cell);
-								if (slim.FatBlock == ignoreBlock)
-									continue;
-							}
-							oGridCell = cell;
-							return true;
-						}
-			}
-			oGridCell = Vector3I.Zero;
-			return false;
-		}
-
-		private void HandleObstruction(object obstruction)
-		{
-			Logger.DebugLog("Obstructed by " + obstruction);
-
-			m_targetDirection = Vector3.Invalid;
-			m_obstructingEntity = obstruction as MyEntity;
-
-			Vector3D obstructionPoint;
-			if (m_obstructingEntity != null)
-				obstructionPoint = m_obstructingEntity.PositionComp.GetPosition();
-			else
-			{
-				IMySlimBlock slimBlock = obstruction as IMySlimBlock;
-				if (slimBlock != null)
-				{
-					m_obstructingEntity = (MyEntity)slimBlock.CubeGrid;
-					obstructionPoint = slimBlock.CubeGrid.GridIntegerToWorld(slimBlock.Position);
-				}
-				else
-					throw new Exception("Unknown obstruction: " + obstruction);
-			}
-
-			m_entitiesPruneAvoid.Clear();
-			m_entitiesRepulse.Clear();
-			FindAPath(obstructionPoint);
-		}
-
-		private bool RayCastIntersectsVoxel(ref Vector3 rayDirection, out IHitInfo hit)
-		{
-			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(m_autopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
-			Vector3 testDisp; Vector3.Multiply(ref rayDirection, 10f, out testDisp);
-
-			Vector3 v; rayDirection.CalculatePerpendicularVector(out v);
-			Vector3 w; Vector3.Cross(ref rayDirection, ref v, out w);
-			Matrix to3D = new Matrix(v.X, v.Y, v.Z, 0f,
-				w.X, w.Y, w.Z, 0f,
-				rayDirection.X, rayDirection.Y, rayDirection.Z, 0f,
-				0f, 0f, 0f, 1f);
-			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
-
-			m_rejections.Clear();
-			MatrixD worldMatrix = m_autopilotGrid.WorldMatrix;
-			float gridSize = m_autopilotGrid.GridSize;
-			foreach (CubeGridCache cache in myCaches)
-			{
-				if (cache == null)
-				{
-					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					hit = default(IHitInfo);
-					return false;
-				}
-				foreach (Vector3I cell in cache.OccupiedCells())
-				{
-					Vector3 local = cell * gridSize;
-					Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-					Vector3D relative; Vector3D.Subtract(ref world, ref m_currentPosition, out relative);
-					Vector3 relativeF = relative;
-					Vector3 rejection; Vector3.Reject(ref relativeF, ref rayDirection, out rejection);
-					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-					Logger.DebugLog("Math fail: " + planarComponents, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
-					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-					if (!m_rejections.Add(Round(pc2, gridSize), true))
+					obstructingEntity = m_entitiesPruneAvoid[i];
+					if (obstructingEntity == destTop || obstructingEntity is MyVoxelBase)
+						// already checked
 						continue;
-
-					if (MyAPIGateway.Physics.CastRay(world, world + testDisp, out hit, RayCast.FilterLayerVoxel))
+					object partHit;
+					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_targetDirection, out partHit, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + obstructingEntity.getBestName() + "." + partHit);
 						return true;
+					}
 				}
-			}
 
-			hit = default(IHitInfo);
+			m_logger.debugLog("No obstruction");
+			obstructingEntity = null;
+			pointOfObstruction = Vector3.Invalid;
 			return false;
 		}
 
-		private void FindAPath(Vector3D obstructionPoint)
+		/// <summary>
+		/// Starts the pathfinding.
+		/// </summary>
+		private void FindAPath(ref Vector3D obstructionPoint)
 		{
 			m_openNodes.Clear();
 			m_reachedNodes.Clear();
-
+#if PROFILE
+			m_nodesRejected = 0;
+#endif
 			double distCurObs, distObsDest;
 			Vector3D.Distance(ref m_currentPosition, ref obstructionPoint, out distCurObs);
 			Vector3D.Distance(ref obstructionPoint, ref m_destWorld, out distObsDest);
 			m_nodeDistance = (float)MathHelper.Max(distCurObs * 0.25d, distObsDest * 0.1d, 10f);
 
-			Vector3D relativePosition;
-			Vector3 relativeVelocity;
-			if (m_destination.Entity != null)
-			{
-				Vector3D destEntityPosition = m_destination.Entity.PositionComp.GetPosition();
-				Vector3D.Subtract(ref m_currentPosition, ref destEntityPosition, out relativePosition);
-				GetRelativeVelocity(m_destination.Entity, out relativeVelocity);
-			}
-			else
-			{
-				relativePosition = m_currentPosition;
-				relativeVelocity = m_autopilotVelocity;
-			}
-			relativeVelocity.Normalize();
+			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null);
 
-			PathNode rootNode = new PathNode() { Position = m_currentPosition, DirectionFromParent = relativeVelocity };
+			Vector3D relativePosition;
+			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
+			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out relativePosition);
+
+			//Vector3 relativeVelocity;
+			//if (m_obstructingEntity.Physics != null && !m_obstructingEntity.Physics.IsStatic)
+			//{
+			//	Vector3 obstructVelocity = m_obstructingEntity.Physics.LinearVelocity;
+			//	Vector3.Subtract(ref m_autopilotVelocity, ref obstructVelocity, out relativeVelocity);
+			//}
+			//else
+			//	relativeVelocity = m_autopilotVelocity;
+			//relativeVelocity.Normalize();
+
+			PathNode rootNode = new PathNode() { Position = relativePosition };
 			m_openNodes.Insert(rootNode, 0f);
 			FindAPath();
 		}
 
+		/// <summary>
+		/// Continues pathfinding.
+		/// </summary>
 		private void FindAPath()
 		{
 			if (m_openNodes.Count == 0)
 			{
-				Logger.AlwaysLog("Pathfinding failed", Logger.severity.INFO);
+				m_logger.alwaysLog("Pathfinding failed", Logger.severity.INFO);
 				return;
 			}
 
@@ -569,21 +423,44 @@ namespace Rynchodon.Autopilot.Pathfinder
 			PathNode currentNode = m_openNodes.RemoveMin();
 
 			// check if current is reachable from parent
-			// remember node position is not real position!
 
-			if (false)
+			if (!CanReachFromParent(ref currentNode))
 			{
 				FindAPath();
+#if PROFILE
+				m_nodesRejected++;
+#endif
 				return;
 			}
+			m_logger.debugLog("Reached node: " + currentNode.Position);
 			m_reachedNodes.Add(currentKey, currentNode);
-
-			// if current is at dest, we have a path
-
-			// if current is near dest, need to try for destination directly
 
 			// need to keep checking if the destination can be reached from every node
 			// this doesn't indicate a clear path but allows repulsion to resume
+
+			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
+			Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
+			Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
+			Vector3D finalDest = m_destination.WorldPosition();
+			Vector3D toFinalDest; Vector3D.Subtract(ref finalDest, ref worldPosition, out toFinalDest);
+			Vector3 disp = toFinalDest;
+
+			if (CanTravelSegment(ref offset, ref disp))
+			{
+				m_logger.debugLog("Can reach final destination from a node, finished pathfinding. Final node: " + currentNode.Position, Logger.severity.DEBUG);
+				m_path.Clear();
+				PathNode node = currentNode;
+				while (node.ParentKey != 0f)
+				{
+					m_path.Push(node.Position);
+					node = m_reachedNodes[node.ParentKey];
+				}
+
+				LogStats();
+
+				// TODO: follow the path
+				return;
+			}
 
 			// open nodes
 
@@ -595,6 +472,70 @@ namespace Rynchodon.Autopilot.Pathfinder
 				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt3);
 
 			FindAPath();
+		}
+
+		private bool CanReachFromParent(ref PathNode node)
+		{
+			m_entitiesPruneAvoid.Clear();
+			m_entitiesRepulse.Clear();
+
+			// only checking entities near autopilot so the ship can get back to repulsion once it is clear
+
+			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + m_autopilotSpeed * SpeedFactor };
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
+
+			FillRepulseList();
+
+			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
+
+			PathNode parent = m_reachedNodes[node.ParentKey];
+			Vector3D worldParent;
+			Vector3D.Add(ref obstructPosition, ref parent.Position, out worldParent);
+
+			Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
+			Vector3D parentToNode; Vector3D.Subtract(ref node.Position, ref parent.Position, out parentToNode);
+			Vector3 parentToNodeF = parentToNode;
+
+			return CanTravelSegment(ref offset, ref parentToNodeF, node.DirectionFromParent);
+		}
+
+		private bool CanTravelSegment(ref Vector3D offset, ref Vector3 disp, Vector3 direction = default(Vector3))
+		{
+			if (direction == default(Vector3D))
+				Vector3.Normalize(ref disp, out direction);
+
+			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
+
+			if (!m_ignoreVoxel)
+			{
+				Vector3 adjustment; Vector3.Multiply(ref direction, VoxelFactor, out adjustment);
+				Vector3 rayTest; Vector3.Add(ref disp, ref adjustment, out rayTest);
+				IHitInfo hit;
+				if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hit))
+				{
+					m_logger.debugLog("Obstructed by voxel at " + hit);
+					return false;
+				}
+			}
+
+			if (m_entitiesRepulse.Count != 0)
+				for (int i = m_entitiesRepulse.Count - 1; i >= 0; i--)
+				{
+					MyEntity entity = m_entitiesRepulse[i];
+					if (entity is MyVoxelBase)
+						// already checked
+						continue;
+					object partHit;
+					Vector3D pointOfObstruction;
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref disp, out partHit, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + entity.getBestName() + "." + partHit);
+						return false;
+					}
+				}
+
+			m_logger.debugLog("No obstruction");
+			return true;
 		}
 
 		private void CreatePathNode(float parentKey, ref PathNode parent, Vector3I neighbour, float distMulti)
@@ -623,28 +564,22 @@ namespace Rynchodon.Autopilot.Pathfinder
 				result.ParentKey = parent.ParentKey;
 			else
 			{
-				Logger.DebugLog("Pathfinder node backtracks to parent", Logger.severity.FATAL, condition: turn < -0.9f);
+				m_logger.debugLog("Pathfinder node backtracks to parent", Logger.severity.FATAL, condition: turn < -0.9f);
 				resultKey += m_nodeDistance * (1f - turn);
 			}
 
-			Logger.DebugLog("resultKey < 0", Logger.severity.ERROR, condition: resultKey < 0f);
+			m_logger.debugLog("resultKey < 0", Logger.severity.ERROR, condition: resultKey < 0f);
 			m_openNodes.Insert(result, resultKey);
 		}
 
-		private void GetRelativeVelocity(MyEntity targetEntity, out Vector3 relativeVelocity)
+		[System.Diagnostics.Conditional("PROFILE")]
+		private void LogStats()
 		{
-			relativeVelocity = targetEntity.Physics == null || targetEntity.Physics.IsStatic ? m_autopilotVelocity : m_autopilotVelocity - targetEntity.Physics.LinearVelocity;
-		}
-
-		private Vector2I Round(Vector2 vector, float value)
-		{
-			return new Vector2I((int)Math.Round(vector.X / value), (int)Math.Round(vector.Y / value));
-		}
-
-		private void ToWorldPosition(ref Vector3D position)
-		{
-			if (m_destination.Entity != null)
-				position += m_destination.Entity.PositionComp.GetPosition();
+			foreach (Vector3D position in m_path)
+				m_logger.profileLog("Waypoint: " + position + " => " + position + m_obstructingEntity.PositionComp.GetPosition());
+#if PROFILE
+			m_logger.profileLog("Nodes reached: " + m_reachedNodes.Count + ", rejected: " + m_nodesRejected + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
+#endif
 		}
 
 	}
