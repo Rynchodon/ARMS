@@ -2,7 +2,11 @@ ARMS provides Electronic Navigation, Communication, and Targeting Systems
 
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
-[h1]Mod Features[/h1]
+[h1]Read This[/h1]
+[url=https://github.com/Rynchodon/ExtendWhitelist/releases]ARMS requires Extend Whitelist to function, get the latest release here.[/url]
+I will not be responding to comments posted below. Use "Request a Feature", "Report a Bug", or "Ask a Question" links below or start a new discussion.
+
+[b][u]Mod Features[/u][/b]
 [list][*]Autopilot:
 [list][*]Collision Avoidance
 [*]Automatic docking and landing
@@ -18,30 +22,27 @@ ARMS provides Electronic Navigation, Communication, and Targeting Systems
 [list][*]Guided Missiles
 [*]Advanced Weapon Targeting[/list][/list]
 
-[h1]Contribute[/h1]
-I am looking for assistance with models, code, tutorials, and translations.
-If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
-
-[h1]Autopilot Navigation[/h1]
-[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation [/url]
+[b][u]Autopilot Navigation[/u][/b]
+The "Program Autopilot" button on the autopilot block is used to program the autopilot and contains information about the commands available.
+[url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911195853/] Autopilot Navigation commands[/url]
 [u]In Game Help[/u]
 type "/autopilot help" in game for a list of help topics
 type "/autopilot help <topic>" for information about a specific topic
 
-[h1]Antenna Relay and Radar[/h1]
+[b][u]Antenna Relay and Radar[/u][/b]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/523897653315556053/] Antenna Relay and Radar[/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=625196196]Handle Detected Entities In-Game Script[/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=629700748]Block Communication In-Game Script[/url]
 
-[h1]Weapon Systems[/h1]
+[b][u]Weapon Systems[/u][/b]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/496880503080018832/] Guided Missiles [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/412448792358163846/] Hacker Block [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/598198356197584040/] Weapon Control [/url]
 
-[h1]Misc[/h1]
+[b][u]Misc[/u][/b]
 A solar array of panels or oxygen farms can be instructed to face the sun by adding [ Face Sun ] to the name of any solar panel or oxygen farm. See [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url].
 
-[h1]Settings[/h1]
+[b][u]Settings[/u][/b]
 The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
 type "/arms settings" in game to see the current settings. Not all server settings will be displayed.
@@ -56,36 +57,29 @@ yParallelPathfinder - Number of pathfinding tasks that can run in parallel
 fDefaultSpeed - the desired speed, when not using V
 fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
-sWeaponCommandsNPC - commands that N.P.C. weapons will use
 
-[h1]FAQ[/h1]
+[b][u]FAQ[/u][/b]
 Can you add jump drive support?
 [i]It is not possible at this time.[/i]
 
 Can you make it possible to save ore locations for later use?
 [i]It would be an enormous amount of work and there are more important things for me to be working on.[/i]
 
-Can you add a GUI to programming the autopilot?
-[i]Working on it. It's going to take some time.[/i]
-
 Can you make X feature available as a stand-alone mod?
 [i]No, most features can be disabled via the settings file.[/i]
 
-[h1]Known Issues[/h1]
-These are all the known issues with ARMS. If an issue is not listed here, I do not know about it.
+[b][u]Contribute[/u][/b]
+I am looking for assistance with models, code, and translations.
+If you would like to contribute, [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/617330406650232961/] leave a message here [/url].
 
-The Phased array Radar model has a small texture issue on DX9.
-
-Due to mod API limitations, Weapon Control will not target hounds or spiders.
-
-[h1]Credits[/h1]
+[b][u]Credits[/u][/b]
 Marketing Coordinator - Souper07
 GitMaster Extraordinaire - [uRxP]DrChocolate
 Boeing Liaison - Jump'n Shootman
 Master Electrician - [FOX]FoxTech
 Multiplayer Testing - Degalus
 
-[h1]Links[/h1]
+[b][u]Links[/u][/b]
 [url=https://www.surveymonkey.com/r/LMNX5LZ] Guided Missile Survey [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=632399714] Programmatic Control Example [/url]
@@ -94,7 +88,6 @@ Multiplayer Testing - Degalus
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
 [url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
 
-[u]I will not be responding to comments posted below, use one of these links or start a new discussion.[/u]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927925580310/] Ask a Question [/url]
