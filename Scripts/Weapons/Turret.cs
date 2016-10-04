@@ -14,13 +14,6 @@ namespace Rynchodon.Weapons
 	public class Turret : WeaponTargeting
 	{
 
-		private static bool s_npcHasOpts;
-
-		static Turret()
-		{
-			s_npcHasOpts = !string.IsNullOrWhiteSpace(Settings.ServerSettings.GetSettingString(Settings.ServerSettings.SettingName.sDefaultWeaponCommandsNPC));
-		}
-
 		/// <summary>vanilla property</summary>
 		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations, TP_TargetNeutrals;
 

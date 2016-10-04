@@ -46,14 +46,6 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Determines if a block is owned by "hostile NPC"
-		/// </summary>
-		public static bool OwnedNPC(this IMyCubeBlock block)
-		{
-			return block.OwnerId != 0 && Sync.Players.IdentityIsNpc(block.OwnerId);
-		}
-
-		/// <summary>
 		/// Gets the closest face direction to worldDirection.
 		/// </summary>
 		public static Base6Directions.Direction ClosestFaceDirection(this IMyCubeBlock block, Vector3 worldDirection)

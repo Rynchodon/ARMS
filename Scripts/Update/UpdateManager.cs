@@ -385,11 +385,6 @@ namespace Rynchodon.Update
 		private List<Action<IMyCharacter>> CharacterScriptConstructors;
 		private List<Action<IMyCubeGrid>> GridScriptConstructors;
 
-		/// <summary>For scripts that run on IMyPlayer.</summary>
-		private List<Action<IMyPlayer>> PlayerScriptConstructors;
-		private List<Action<IMyPlayer>> AnyPlayerLeaves;
-		private Dictionary<IMyPlayer, Action> PlayerLeaves;
-
 		private enum Status : byte { Not_Initialized, Initialized, Started, Terminated }
 		private Status ManagerStatus = Status.Not_Initialized;
 
@@ -432,11 +427,8 @@ namespace Rynchodon.Update
 				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
 				EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
 				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
-				PlayerScriptConstructors = new List<Action<IMyPlayer>>();
 				GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
-				PlayerLeaves = new Dictionary<IMyPlayer, Action>();
-				AnyPlayerLeaves = new List<Action<IMyPlayer>>();
 				playersAPI = new List<IMyPlayer>();
 				playersCached = new List<IMyPlayer>();
 
@@ -479,20 +471,6 @@ namespace Rynchodon.Update
 		private void Start()
 		{
 			RegisterScripts_ClientAndServer();
-
-			//if (AllBlockScriptConstructors.Count == 0
-			//	&& EveryBlockScriptConstructors.Count == 0
-			//	&& CharacterScriptConstructors.Count == 0
-			//	&& PlayerScriptConstructors.Count == 0
-			//	&& GridScriptConstructors.Count == 0)
-			//{
-			//	myLogger.alwaysLog("No scripts registered, terminating manager", "Start()", Logger.severity.INFO);
-			//	ManagerStatus = Status.Terminated;
-			//	return;
-			//}
-
-			if (PlayerScriptConstructors.Count != 0)
-				RegisterForUpdates(CheckPlayerJoinLeaveFrequency, CheckPlayerJoinLeave);
 
 			// create script for each entity
 			HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
@@ -647,25 +625,6 @@ namespace Rynchodon.Update
 				unregisterOnClosing.OnClosing += (entity) => UnRegisterForUpdates(frequency, toInvoke);
 		}
 
-		private void RegisterForUpdates(uint frequency, Action toInvoke, IMyPlayer unregisterOnLeaving, Action<IMyPlayer> onLeaving = null)
-		{
-			UpdateList(frequency).Add(toInvoke);
-
-			PlayerLeaves.Add(unregisterOnLeaving, () => {
-				UnRegisterForUpdates(frequency, toInvoke);
-				try
-				{
-					if (onLeaving != null)
-						onLeaving.Invoke(unregisterOnLeaving);
-				}
-				catch (Exception ex)
-				{
-					myLogger.debugLog("Exception in onLeaving: " + ex, Logger.severity.ERROR);
-					Logger.DebugNotify("Exception on player leaving", 10000, Logger.severity.ERROR);
-				}
-			});
-		}
-
 		/// <summary>
 		/// Unregister an Action from updates
 		/// </summary>
@@ -727,16 +686,6 @@ namespace Rynchodon.Update
 		{
 			//myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
 			GridScriptConstructors.Add(constructor);
-		}
-
-		private void RegisterForPlayer(Action<IMyPlayer> constructor)
-		{
-			PlayerScriptConstructors.Add(constructor);
-		}
-
-		private void RegisterForPlayerLeaves(Action<IMyPlayer> onLeave)
-		{
-			AnyPlayerLeaves.Add(onLeave);
 		}
 
 		#endregion
@@ -861,40 +810,6 @@ namespace Rynchodon.Update
 			myLogger.debugLog("leaving Grid_OnClosing(): " + gridAsEntity.getBestName());
 		}
 
-		private void CheckPlayerJoinLeave()
-		{
-			playersAPI.Clear();
-			MyAPIGateway.Players.GetPlayers(playersAPI);
-
-			foreach (IMyPlayer player in playersAPI.Except(playersCached))
-				AddRemoveActions.Enqueue(() => {
-					myLogger.debugLog("player joined: " + player.DisplayName, Logger.severity.INFO);
-					playersCached.Add(player);
-
-					foreach (var constructor in PlayerScriptConstructors)
-						try { constructor.Invoke(player); }
-						catch (Exception ex)
-						{
-							myLogger.alwaysLog("Exception in player constructor: " + ex, Logger.severity.ERROR);
-							Logger.DebugNotify("Exception in player constructor", 10000, Logger.severity.ERROR);
-						}
-				});
-
-			foreach (IMyPlayer player in playersCached.Except(playersAPI))
-				AddRemoveActions.Enqueue(() => {
-					myLogger.debugLog("player left: " + player, Logger.severity.INFO);
-					playersCached.Remove(player);
-					Action onPlayerLeave;
-					if (PlayerLeaves.TryGetValue(player, out onPlayerLeave))
-					{
-						onPlayerLeave.Invoke();
-						PlayerLeaves.Remove(player);
-					}
-					foreach (var onLeave in AnyPlayerLeaves)
-						onLeave.Invoke(player);
-				});
-		}
-
 		#endregion
 
 		protected override void UnloadData()
@@ -909,11 +824,8 @@ namespace Rynchodon.Update
 			AllBlockScriptConstructors = null;
 			EveryBlockScriptConstructors = null;
 			CharacterScriptConstructors = null;
-			PlayerScriptConstructors = null;
 			GridScriptConstructors = null;
 
-			PlayerLeaves = null;
-			AnyPlayerLeaves = null;
 			playersAPI = null;
 			playersCached = null;
 

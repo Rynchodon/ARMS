@@ -16,20 +16,6 @@ namespace Rynchodon.Weapons
 	public class InterpreterWeapon : BlockInstructions
 	{
 
-		private static string FallbackInstructions;
-
-		static InterpreterWeapon()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			FallbackInstructions = ServerSettings.GetSettingString(ServerSettings.SettingName.sDefaultWeaponCommandsNPC);
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			FallbackInstructions = null;
-		}
-
 		private Logger myLogger;
 
 		private IMyCubeBlock Block;
@@ -55,7 +41,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		public void UpdateInstruction()
 		{
-			base.UpdateInstructions(Block.OwnedNPC() ? FallbackInstructions : null);
+			base.UpdateInstructions(null);
 			if (!HasInstructions)
 				Options = new TargetingOptions();
 		}
