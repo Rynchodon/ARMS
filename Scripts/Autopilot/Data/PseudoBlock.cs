@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Data
 		public IMyCubeGrid Grid { get { return m_grid.Invoke(); } }
 
 		public virtual string DisplayName
-		{ get { return Block != null ? Block.DisplayName : "Pseudo: " + LocalPosition.ToString(); } }
+		{ get { return Block != null ? Block.getBestName() : "Pseudo: " + LocalPosition.ToString(); } }
 
 		public MatrixD WorldMatrix
 		{

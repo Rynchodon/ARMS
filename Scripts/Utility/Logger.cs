@@ -62,6 +62,11 @@ namespace Rynchodon
 
 		public severity MinimumLevel = severity.ALL;
 
+		public Logger([CallerFilePath] string callerPath = null)
+		{
+			this.m_fileName = GetFileName(callerPath);
+		}
+
 		/// <summary>
 		/// Creates a Logger that gets the context and states from supplied functions.
 		/// </summary>
@@ -146,12 +151,6 @@ namespace Rynchodon
 			}
 
 			this.f_context = entity.getBestName;
-		}
-
-		[Obsolete("Only MySessionComponentBase should use this constructor, classes without context should use static methods.")]
-		public Logger()
-		{
-			this.m_fileName = GetType().Name;
 		}
 
 		private static void deleteIfExists(string filename)

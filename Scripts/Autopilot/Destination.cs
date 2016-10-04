@@ -6,8 +6,8 @@ namespace Rynchodon.Autopilot
 	public struct Destination
 	{
 
-		public readonly MyEntity Entity;
-		public readonly Vector3D Position;
+		public MyEntity Entity;
+		public Vector3D Position;
 
 		public Destination(Vector3D worldPosition)
 		{
@@ -36,6 +36,13 @@ namespace Rynchodon.Autopilot
 		public bool Equals(ref Destination other)
 		{
 			return this.Entity == other.Entity && this.Position == other.Position;
+		}
+
+		public override string ToString()
+		{
+			if (Entity != null)
+				return base.ToString() + ": " + Entity.getBestName() + " + " + Position;
+			return base.ToString() + ": " + Position;
 		}
 
 	}

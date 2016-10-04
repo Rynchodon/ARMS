@@ -74,7 +74,11 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		public NewPathfinder()
 		{
-			m_logger = new Logger(() => m_autopilotGrid.DisplayNameText, () => m_navBlock.DisplayName);
+			m_logger = new Logger(() => m_autopilotGrid.getBestName(), () => {
+				if (m_navBlock != null)
+					return m_navBlock.DisplayName;
+				return "N/A";
+			});
 		}
 
 		// Methods
@@ -87,12 +91,17 @@ namespace Rynchodon.Autopilot.Pathfinder
 				TestCurrentPath();
 				return;
 			}
-			m_logger.debugLog("something has changed");
+
+			m_logger.debugLog("nav block changed from " + (m_navBlock == null ? "N/A" : m_navBlock.DisplayName) + " to " + navBlock.DisplayName, condition: m_navBlock != navBlock);
+			m_logger.debugLog("grid changed from " + m_autopilotGrid.getBestName() + " to " + navBlock.Grid.getBestName(), condition: m_autopilotGrid != navBlock.Grid);
+			m_logger.debugLog("destination changed from " + m_destination + " to " + destination, condition: !m_destination.Equals(ref destination));
+			m_logger.debugLog("ignore entity changed from " + m_ignoreEntity.getBestName() + " to " + ignoreEntity.getBestName(), condition: m_ignoreEntity != ignoreEntity);
+			m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
 
 			m_navBlock = navBlock;
 			m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
 			UpdateInputs();
-			m_destination = new Destination(destination.Entity, destination.Position - m_centreToNavBlock);
+			m_destination = destination;
 			m_ignoreEntity = ignoreEntity;
 			m_ignoreVoxel = ignoreVoxel;
 			TestCurrentPath();
@@ -101,7 +110,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private void UpdateInputs()
 		{
 			m_currentPosition = m_autopilotGrid.GetCentre();
-			m_destWorld = m_destination.WorldPosition();
+			m_destWorld = m_destination.WorldPosition() - m_centreToNavBlock;
 			m_autopilotVelocity = m_autopilotGrid.Physics.LinearVelocity;
 			m_centreToNavBlock = m_currentPosition - m_navBlock.WorldPosition;
 			m_distSqToDest = (float)Vector3D.DistanceSquared(m_currentPosition, m_destWorld);
@@ -111,17 +120,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private void TestCurrentPath()
 		{
-			m_entitiesPruneAvoid.Clear();
-			m_entitiesRepulse.Clear();
-
-			BoundingBoxD box = BoundingBoxD.CreateInvalid();
-			box.Include(ref m_currentPosition);
-			box.Include(ref m_destWorld);
-			box.Inflate(m_autopilotShipBoundingRadius + m_autopilotSpeed * SpeedFactor);
-
-			MyGamePruningStructure.GetTopMostEntitiesInBox(ref box, m_entitiesPruneAvoid);
-
-			FillRepulseList();
+			FillEntitiesLists();
 
 			m_entitiesPruneAvoid.Clear();
 			Vector3 repulsion;
@@ -142,17 +141,24 @@ namespace Rynchodon.Autopilot.Pathfinder
 				FindAPath(ref pointOfObstruction);
 				return;
 			}
-				
+
 			m_obstructingEntity = null;
 			m_entitiesPruneAvoid.Clear();
 			m_entitiesRepulse.Clear();
 		}
 
 		/// <summary>
+		/// Fill m_entitiesPruneAvoid with nearby entities.
 		/// Fill m_entitiesRepulse from m_entitiesPruneAvoid, ignoring some entitites.
 		/// </summary>
-		private void FillRepulseList()
+		private void FillEntitiesLists()
 		{
+			m_entitiesPruneAvoid.Clear();
+			m_entitiesRepulse.Clear();
+
+			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + m_autopilotSpeed * SpeedFactor };
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
+
 			for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
 			{
 				MyEntity entity = m_entitiesPruneAvoid[i];
@@ -180,6 +186,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				//m_logger.debugLog("approved entity: " + entity.nameWithId());
 				m_entitiesRepulse.Add(entity);
 			}
+
+			//m_logger.debugLog("nearby: " + m_entitiesPruneAvoid.Count + ", accepted: " + m_entitiesRepulse.Count);
 		}
 
 		private void CalcRepulsion(out Vector3 repulsion)
@@ -318,6 +326,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			MyEntity destTop;
 			if (m_destination.Entity != null)
 			{
+				//m_logger.debugLog("checking destination entity");
+
 				destTop = m_destination.Entity.GetTopMostParent();
 				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
@@ -337,6 +347,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (!m_ignoreVoxel)
 			{
+				//m_logger.debugLog("raycasting voxels");
+
 				Vector3 rayDirection; Vector3.Add(ref m_autopilotVelocity, ref m_targetDirection, out rayDirection);
 				Vector3 rayMultied; Vector3.Multiply(ref rayDirection, VoxelFactor, out rayMultied);
 				IHitInfo hit;
@@ -350,6 +362,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 			}
 
 			// check remaining entities
+
+			//m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
 
 			if (m_entitiesPruneAvoid.Count != 0)
 				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
@@ -403,8 +417,9 @@ namespace Rynchodon.Autopilot.Pathfinder
 			//	relativeVelocity = m_autopilotVelocity;
 			//relativeVelocity.Normalize();
 
-			PathNode rootNode = new PathNode() { Position = relativePosition };
+			PathNode rootNode = new PathNode() { Position = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z)) };
 			m_openNodes.Insert(rootNode, 0f);
+			m_reachedNodes.Add(0f, rootNode);
 			FindAPath();
 		}
 
@@ -424,43 +439,57 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			// check if current is reachable from parent
 
-			if (!CanReachFromParent(ref currentNode))
+			if (currentNode.DistToCur != 0f)
 			{
-				FindAPath();
-#if PROFILE
-				m_nodesRejected++;
-#endif
-				return;
-			}
-			m_logger.debugLog("Reached node: " + currentNode.Position);
-			m_reachedNodes.Add(currentKey, currentNode);
+				FillEntitiesLists();
 
-			// need to keep checking if the destination can be reached from every node
-			// this doesn't indicate a clear path but allows repulsion to resume
-
-			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-			Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
-			Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
-			Vector3D finalDest = m_destination.WorldPosition();
-			Vector3D toFinalDest; Vector3D.Subtract(ref finalDest, ref worldPosition, out toFinalDest);
-			Vector3 disp = toFinalDest;
-
-			if (CanTravelSegment(ref offset, ref disp))
-			{
-				m_logger.debugLog("Can reach final destination from a node, finished pathfinding. Final node: " + currentNode.Position, Logger.severity.DEBUG);
-				m_path.Clear();
-				PathNode node = currentNode;
-				while (node.ParentKey != 0f)
+				if (!CanReachFromParent(ref currentNode))
 				{
-					m_path.Push(node.Position);
-					node = m_reachedNodes[node.ParentKey];
+#if PROFILE
+					m_nodesRejected++;
+#endif
+					FindAPath();
+					return;
 				}
+				m_logger.debugLog("Reached node: " + currentNode.Position);
+				m_reachedNodes.Add(currentKey, currentNode);
 
-				LogStats();
+				// need to keep checking if the destination can be reached from every node
+				// this doesn't indicate a clear path but allows repulsion to resume
 
-				// TODO: follow the path
-				return;
+				Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
+				Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
+				Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
+				Vector3D toFinalDest; Vector3D.Subtract(ref m_destWorld, ref worldPosition, out toFinalDest);
+				Vector3 disp = toFinalDest;
+
+				if (CanTravelSegment(ref offset, ref disp))
+				{
+					m_logger.debugLog("Can reach final destination from a node, finished pathfinding. Final node: " + currentNode.Position, Logger.severity.DEBUG);
+					m_path.Clear();
+					PathNode node = currentNode;
+					while (node.DistToCur != 0f)
+					{
+						m_path.Push(node.Position);
+						node = m_reachedNodes[node.ParentKey];
+					}
+
+#if PROFILE
+					LogStats();
+#endif
+#if LOG_ENABLED
+					LogStats();
+#endif
+
+					// TODO: follow the path
+
+					m_logger.alwaysLog("Follow the path not implemented", Logger.severity.INFO);
+
+					return;
+				}
 			}
+			else
+				m_logger.debugLog("first node: " + currentNode.Position);
 
 			// open nodes
 
@@ -476,16 +505,6 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 		private bool CanReachFromParent(ref PathNode node)
 		{
-			m_entitiesPruneAvoid.Clear();
-			m_entitiesRepulse.Clear();
-
-			// only checking entities near autopilot so the ship can get back to repulsion once it is clear
-
-			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + m_autopilotSpeed * SpeedFactor };
-			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
-
-			FillRepulseList();
-
 			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
 
 			PathNode parent = m_reachedNodes[node.ParentKey];
@@ -508,6 +527,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			if (!m_ignoreVoxel)
 			{
+				//m_logger.debugLog("raycasting voxels");
+
 				Vector3 adjustment; Vector3.Multiply(ref direction, VoxelFactor, out adjustment);
 				Vector3 rayTest; Vector3.Add(ref disp, ref adjustment, out rayTest);
 				IHitInfo hit;
@@ -518,6 +539,8 @@ namespace Rynchodon.Autopilot.Pathfinder
 				}
 			}
 
+			//m_logger.debugLog("checking " + m_entitiesRepulse.Count + " entites - voxels");
+
 			if (m_entitiesRepulse.Count != 0)
 				for (int i = m_entitiesRepulse.Count - 1; i >= 0; i--)
 				{
@@ -527,7 +550,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 						continue;
 					object partHit;
 					Vector3D pointOfObstruction;
-					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref disp, out partHit, out pointOfObstruction))
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref direction, out partHit, out pointOfObstruction))
 					{
 						m_logger.debugLog("Obstructed by " + entity.getBestName() + "." + partHit);
 						return false;
@@ -544,7 +567,10 @@ namespace Rynchodon.Autopilot.Pathfinder
 			position = new Vector3D(Math.Round(position.X), Math.Round(position.Y), Math.Round(position.Z));
 
 			float distToDest = (float)Vector3D.Distance(position, m_destWorld);
-			Vector3 direction = (position - parent.Position) / (float)distToDest;
+
+			Vector3D disp; Vector3D.Subtract(ref position, ref parent.Position, out disp);
+			Vector3D directionD; Vector3D.Normalize(ref disp, out directionD);
+			Vector3 direction = directionD;
 
 			PathNode result = new PathNode()
 			{
@@ -564,21 +590,25 @@ namespace Rynchodon.Autopilot.Pathfinder
 				result.ParentKey = parent.ParentKey;
 			else
 			{
-				m_logger.debugLog("Pathfinder node backtracks to parent", Logger.severity.FATAL, condition: turn < -0.9f);
+				m_logger.debugLog("Pathfinder node backtracks to parent. Position: " + result.Position + ", parent position: " + parent.Position + ", grandparent position: " + m_reachedNodes[parent.ParentKey].Position +
+					"\ndirection: " + result.DirectionFromParent + ", parent direction: " + parent.DirectionFromParent, Logger.severity.FATAL, condition: turn < -0.9f);
 				resultKey += m_nodeDistance * (1f - turn);
 			}
 
-			m_logger.debugLog("resultKey < 0", Logger.severity.ERROR, condition: resultKey < 0f);
+			m_logger.debugLog("resultKey <= 0", Logger.severity.ERROR, condition: resultKey <= 0f);
+			//m_logger.debugLog("path node: " + result.ParentKey + ", " + result.DistToCur + ", " + result.Position + ", " + result.DirectionFromParent);
 			m_openNodes.Insert(result, resultKey);
 		}
 
-		[System.Diagnostics.Conditional("PROFILE")]
 		private void LogStats()
 		{
 			foreach (Vector3D position in m_path)
-				m_logger.profileLog("Waypoint: " + position + " => " + position + m_obstructingEntity.PositionComp.GetPosition());
+				m_logger.alwaysLog("Waypoint: " + position + " => " + (position + m_obstructingEntity.PositionComp.GetPosition()));
 #if PROFILE
-			m_logger.profileLog("Nodes reached: " + m_reachedNodes.Count + ", rejected: " + m_nodesRejected + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
+			m_logger.alwaysLog("Nodes reached: " + m_reachedNodes.Count + ", rejected: " + m_nodesRejected + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
+#endif
+#if LOG_ENABLED
+			m_logger.debugLog("Nodes reached: " + m_reachedNodes.Count + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
 #endif
 		}
 
