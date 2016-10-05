@@ -90,6 +90,7 @@ def copyScripts(l_source):
 			destFile = open(l_destFile, 'w')
 			destFileDev = open(l_destFileDev, 'w')
 			b_removeEndif = False
+			b_removingElse = False
 			for line in lines:
 				if (not line.lstrip().startswith("//")):
 					if ("#define" in line):
@@ -105,11 +106,22 @@ def copyScripts(l_source):
 						destFileDev.write("// " + line)
 						b_removeEndif = True
 						continue
-					if (b_removeEndif and '#endif' in line):
-						destFile.write(line)
-						destFileDev.write("// " + line)
-						b_removeEndif = False
-						continue
+					if (b_removeEndif):
+						if ('#endif' in line):
+							destFile.write(line)
+							destFileDev.write("// " + line)
+							b_removeEndif = False
+							b_removingElse = False
+							continue
+						elif ('#else' in line):
+							destFile.write(line)
+							destFileDev.write("// " + line)
+							b_removingElse = True
+							continue
+						elif (b_removingElse):
+							destFile.write(line)
+							destFileDev.write("// " + line)
+							continue
 				destFile.write(line)
 				destFileDev.write(line)
 
