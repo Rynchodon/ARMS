@@ -120,6 +120,8 @@ namespace Rynchodon.Utility.Collections
 				return;
 			}
 
+			Logger.DebugLog("index: " + index + ", m_offset: " + m_offset + ", iIndex: " + iIndex + ", m_array.Length: " + m_array.Length);
+
 			int iFirst, iLast;
 			GetFirstAndLast(out iFirst, out iLast);
 

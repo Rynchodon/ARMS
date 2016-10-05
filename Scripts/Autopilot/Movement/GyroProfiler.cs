@@ -69,7 +69,10 @@ namespace Rynchodon.Autopilot.Movement
 		private void CalcGyroForce()
 		{
 			float force = 0f;
-			foreach (MyGyro g in CubeGridCache.GetFor(myGrid).BlocksOfType(typeof(MyObjectBuilder_Gyro)))
+			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
+			if (cache == null)
+				return;
+			foreach (MyGyro g in cache.BlocksOfType(typeof(MyObjectBuilder_Gyro)))
 				if (g.IsWorking)
 					force += g.MaxGyroForce; // MaxGyroForce accounts for power ratio and modules
 

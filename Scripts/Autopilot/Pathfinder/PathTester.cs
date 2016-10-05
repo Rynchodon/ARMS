@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref Vector3 rejectionVector, ref Vector3D offset, out Vector3I oGridCell)
 		{
 			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
-			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", rejection vector: " + rejectionVector);
+			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector);
 
 			// TODO: need a cyclinder test, currently method is only testing rejection
 
@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 					Vector3 relativeF = relative;
 					Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
+					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 					m_rejections[Round(pc2, roundTo)] = true;
 				}
@@ -168,7 +168,7 @@ namespace Rynchodon.Autopilot.Pathfinder
 				Vector3 relativeF = relative;
 				Vector3 rejection; Vector3.Reject(ref relativeF, ref rejectionVector, out rejection);
 				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-				Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.0001f || planarComponents.Z < -0.0001f);
+				Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 				Vector2I rounded = Round(pc2, roundTo);
 

@@ -230,8 +230,8 @@ namespace Rynchodon.Autopilot.Movement
 			//		return;
 			//}
 
-			Vector3 destDisp = destPoint - block.WorldPosition;
-			float length = destDisp.Length();
+			//Vector3 destDisp = destPoint - block.WorldPosition;
+			//float length = destDisp.Length();
 
 			Destination dest = new Destination(destPoint);
 			m_newPathfinder.Run(block, ref dest, (MyEntity)NavSet.Settings_Current.DestinationEntity, NavSet.Settings_Current.IgnoreAsteroid);
@@ -243,7 +243,7 @@ namespace Rynchodon.Autopilot.Movement
 				m_logger.debugLog("Pathfinder not allowing movement");
 				return;
 			}
-			Vector3.Multiply(ref pathDirection, length, out destDisp);
+			Vector3 destDisp; Vector3.Multiply(ref pathDirection, m_newPathfinder.m_targetDistance, out destDisp);
 
 			Thrust.Update();
 
@@ -329,7 +329,7 @@ namespace Rynchodon.Autopilot.Movement
 				m_lastMove = Globals.UpdateCount;
 			}
 
-			NavSet.Settings_Task_NavWay.Distance = distance;
+			NavSet.Settings_Task_NavWay.Distance = (float)(destPoint - block.WorldPosition).Length();
 			targetVelocity += destVelocity;
 
 			// apply speed limit

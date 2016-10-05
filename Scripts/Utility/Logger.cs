@@ -381,7 +381,7 @@ namespace Rynchodon
 			appendWithBrackets(item.level.ToString());
 			appendWithBrackets(item.thread);
 			appendWithBrackets(item.context);
-			appendWithBrackets(item.fileName);
+			appendWithBrackets(item.fileName.Substring(0, item.fileName.Length - 3));
 			appendWithBrackets(item.member);
 			appendWithBrackets(item.lineNumber.ToString());
 			appendWithBrackets(item.primaryState);
