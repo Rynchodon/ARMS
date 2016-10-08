@@ -80,7 +80,7 @@ namespace Rynchodon
 			myLogger = new Logger(() => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-			CubeGrid.GetBlocks_Safe(allSlims, slim => slim.FatBlock != null);
+			CubeGrid.GetBlocks_Safe(allSlims);
 
 			using (lock_blocks.AcquireExclusiveUsing())
 				foreach (IMySlimBlock slim in allSlims)
@@ -254,12 +254,16 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
+				Logger.DebugLog("slim blocks: " + SlimOnly.Count);
 				for (int i = SlimOnly.Count - 1; i >= 0; i--)
-					yield return SlimOnly[i].Position;
+					if (!SlimOnly[i].Closed())
+						yield return SlimOnly[i].Position;
 
 				Matrix invLocal = new Matrix();
 
 				foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
+				{
+					myLogger.debugLog(blockList.Count + " blocks");
 					for (int i = blockList.Count - 1; i >= 0; i--)
 					{
 						MyCubeBlock block = blockList[i];
@@ -297,84 +301,13 @@ namespace Rynchodon
 									yield return cell;
 								}
 					}
+				}
 			}
 			finally
 			{
 				lock_blocks.ReleaseShared();
 			}
 		}
-
-		///// <summary>
-		///// Yields every occupied cell and all of its neighbours, expect some cells to be yielded more than once.
-		///// </summary>
-		//public IEnumerable<Vector3I> OccupiedCellsAndNeighbours()
-		//{
-		//	lock_blocks.AcquireShared();
-		//	try
-		//	{
-		//		for (int i = SlimOnly.Count - 1; i >= 0; i--)
-		//		{
-		//			Vector3I blockPosition = SlimOnly[i].Position;
-		//			Vector3I blockCell;
-		//			for (blockCell.X = blockPosition.X - 1; blockCell.X <= blockPosition.X + 1; blockCell.X++)
-		//				for (blockCell.Y = blockPosition.Y - 1; blockCell.Y <= blockPosition.Y + 1; blockCell.Y++)
-		//					for (blockCell.Z = blockPosition.Z - 1; blockCell.Z <= blockPosition.Z + 1; blockCell.Z++)
-		//						yield return blockCell;
-		//		}
-
-		//		Matrix invLocal = new Matrix();
-
-		//		foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
-		//			for (int i = blockList.Count - 1; i >= 0; i--)
-		//			{
-		//				MyCubeBlock block = blockList[i];
-		//				if (block.Closed)
-		//					continue;
-
-		//				if (block is IMyDoor && block.Subparts.Count != 0)
-		//				{
-		//					foreach (MyEntitySubpart part in block.Subparts.Values)
-		//					{
-		//						Vector3I partPosition = block.CubeGrid.WorldToGridInteger(part.PositionComp.GetPosition());
-		//						Vector3I partCell;
-		//						for (partCell.X = partPosition.X - 1; partCell.X <= partPosition.X + 1; partCell.X++)
-		//							for (partCell.Y = partPosition.Y - 1; partCell.Y <= partPosition.Y + 1; partCell.Y++)
-		//								for (partCell.Z = partPosition.Z - 1; partCell.Z <= partPosition.Z + 1; partCell.Z++)
-		//									yield return partCell;
-		//					}
-		//					continue;
-		//				}
-
-		//				// for piston base and stator, cell may not actually be inside local AABB
-		//				// if this is done for doors, they would always be treated as open
-		//				// other blocks have not been tested
-		//				bool checkLocal = block is IMyMotorStator || block is IMyPistonBase;
-
-		//				if (checkLocal)
-		//					invLocal = Matrix.Invert(block.PositionComp.LocalMatrix);
-
-		//				Vector3I blockCell;
-		//				for (blockCell.X = block.Min.X - 1; blockCell.X <= block.Max.X + 1; blockCell.X++)
-		//					for (blockCell.Y = block.Min.Y - 1; blockCell.Y <= block.Max.Y + 1; blockCell.Y++)
-		//						for (blockCell.Z = block.Min.Z - 1; blockCell.Z <= block.Max.Z + 1; blockCell.Z++)
-		//						{
-		//							if (checkLocal)
-		//							{
-		//								Vector3 posGrid = blockCell * block.CubeGrid.GridSize;
-		//								Vector3 posBlock;
-		//								Vector3.Transform(ref posGrid, ref invLocal, out posBlock);
-		//								if (block.PositionComp.LocalAABB.Contains(posBlock) == ContainmentType.Disjoint)
-		//									continue;
-		//							}
-		//							yield return blockCell;
-		//						}
-		//			}
-		//	}
-		//	finally
-		//	{
-		//		lock_blocks.ReleaseShared();
-		//	}
-		//}
 
 		public int CountByType(MyObjectBuilderType typeId)
 		{

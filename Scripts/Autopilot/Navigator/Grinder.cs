@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage;
@@ -102,8 +102,8 @@ namespace Rynchodon.Autopilot.Navigator
 			return true;
 		}
 
-		public Grinder(Mover mover, float maxRange)
-			: base(mover)
+		public Grinder(NewPathfinder pathfinder, float maxRange)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName, () => m_stage.ToString());
 			this.m_startPostion = m_controlBlock.CubeBlock.GetPosition();
@@ -127,7 +127,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navSet.Settings_Task_NavRot.DestinationRadius = m_longestDimension;
 			}
 
-			this.m_finder = new GridFinder(m_navSet, mover.Block, maxRange);
+			this.m_finder = new GridFinder(m_navSet, m_controlBlock, maxRange);
 			this.m_finder.GridCondition = GridCondition;
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
@@ -230,16 +230,17 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navSet.Settings_Current.DistanceAngle > MaxAngleRotate)
 			{
-				if (!m_mover.Pathfinder.CanRotate)
+				if ( m_pathfinder.RotateCheck.ObstructingEntity != null)
 				{
 					m_logger.debugLog("Extricating ship from target");
 					m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
-					m_mover.CalcMove(m_navGrind, m_targetPosition + m_navGrind.WorldMatrix.Backward * 100f, m_enemy.GetLinearVelocity(), false);
+					Destination dest = Destination.FromWorld(m_enemy, m_targetPosition+ m_navGrind.WorldMatrix.Backward * 100f);
+					m_pathfinder.MoveTo(m_navGrind, ref dest);
 				}
 				else
 				{
 					m_logger.debugLog("Waiting for angle to match");
-					m_mover.CalcMove(m_navGrind, m_navGrind.WorldPosition, m_enemy.GetLinearVelocity(), false);
+					m_pathfinder.HoldPosition(m_enemy.GetLinearVelocity());
 				}
 				return;
 			}
@@ -255,13 +256,15 @@ namespace Rynchodon.Autopilot.Navigator
 
 				m_logger.debugLog("far away(" + distSq + "), moving to " + (m_targetPosition + targetToGrinder * offset));
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
-				m_mover.CalcMove(m_navGrind, m_targetPosition + targetToGrinder * offset, m_enemy.GetLinearVelocity(), true);
+				Destination dest = Destination.FromWorld(m_enemy, m_targetPosition + targetToGrinder * offset);
+				m_pathfinder.MoveTo(m_navGrind, ref dest, isLanding: true);
 			}
 			else
 			{
 				m_logger.debugLog("close(" + distSq + "), moving to " + m_targetPosition);
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = 1f;
-				m_mover.CalcMove(m_navGrind, m_targetPosition, m_enemy.GetLinearVelocity(), true);
+				Destination dest = Destination.FromWorld(m_enemy, m_targetPosition);
+				m_pathfinder.MoveTo(m_navGrind, ref dest, isLanding: true);
 			}
 		}
 
@@ -277,7 +280,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_logger.debugLog("Moving to " + position);
-			m_mover.CalcMove(m_navGrind, position, m_enemy.GetLinearVelocity());
+			Destination dest = Destination.FromWorld(m_enemy, position);
+			m_pathfinder.MoveTo(m_navGrind, ref dest);
 		}
 
 		public void Rotate()

@@ -13,6 +13,7 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
+		/// <summary>This also hits static grids and astronauts, so fuck you very much Keen.</summary>
 		public const int FilterLayerVoxel = 28;
 
 		private static Logger m_logger = new Logger();

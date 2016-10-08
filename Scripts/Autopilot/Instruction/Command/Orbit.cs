@@ -83,7 +83,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(gridName);
 		}
 
-		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{

@@ -41,13 +41,13 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(Rynchodon.Autopilot.Pathfinding.NewPathfinder pathfinder)
 		{
 			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
 			if (m_block is IMyLaserAntenna || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)
-				new Facer(mover, pseudo);
+				new Facer(pathfinder, pseudo);
 			else
-				mover.NavSet.Settings_Task_NavRot.NavigationBlock = pseudo;
+				pathfinder.NavSet.Settings_Task_NavRot.NavigationBlock = pseudo;
 		}
 	}
 }

@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using SpaceEngineers.Game.ModAPI;
@@ -25,8 +25,8 @@ namespace Rynchodon.Autopilot.Navigator
 		//private Vector3D m_destination;
 		private bool m_attached = true;
 
-		public UnLander(Mover mover, PseudoBlock unlandBlock = null)
-			: base(mover)
+		public UnLander(NewPathfinder pathfinder, PseudoBlock unlandBlock = null)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_unlandBlock = unlandBlock ?? m_navSet.Settings_Current.LandingBlock ?? m_navSet.LastLandingBlock;
@@ -145,7 +145,9 @@ namespace Rynchodon.Autopilot.Navigator
 				});
 			}
 
-			if (m_navSet.DistanceLessThanDestRadius())
+			double distanceMoved = Vector3D.Distance(m_attachedEntity.GetPosition() + m_detachOffset, m_unlandBlock.WorldPosition);
+			//m_navSet.Settings_Task_NavMove.Distance = (float)distanceMoved;
+			if (distanceMoved > m_navSet.Settings_Current.DestinationRadius)
 			{
 				if (m_detachLength >= Math.Min(m_controlBlock.CubeGrid.GetLongestDim(), m_navSet.Settings_Task_NavEngage.DestinationRadius))
 				{
@@ -165,8 +167,8 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
-			Vector3D destination = m_attachedEntity.GetPosition() + m_detachOffset + m_detachDirection * m_detachLength;
-			m_mover.CalcMove(m_unlandBlock, destination, m_attachedEntity.GetLinearVelocity());
+			Destination dest = new Destination(m_attachedEntity, m_detachOffset + m_detachDirection * m_detachLength);
+			m_pathfinder.MoveTo(m_unlandBlock, ref dest);
 		}
 
 		public void Rotate()

@@ -1,4 +1,5 @@
-﻿
+﻿using Rynchodon.Autopilot.Pathfinding;
+
 namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class Asteroid : ASingleWord
@@ -19,9 +20,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Ignore asteroids until next destination."; }
 		}
 
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			mover.NavSet.Settings_Task_NavMove.IgnoreAsteroid = true;
+			pathfinder.Mover.NavSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 		}
 
 	}

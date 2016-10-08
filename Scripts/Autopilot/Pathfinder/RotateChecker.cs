@@ -1,42 +1,57 @@
 using System;
 using System.Collections.Generic;
+using Rynchodon.Attached;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Pathfinder
+namespace Rynchodon.Autopilot.Pathfinding
 {
 	public class RotateChecker
 	{
 
-		private readonly Logger m_logger;
-		private readonly IMyCubeGrid m_grid;
-		private readonly GridCellCache m_cells;
+		private static Threading.ThreadManager Thread = new Threading.ThreadManager(threadName: "RotateChecker");
 
-		private List<MyEntity> m_obstructions = new List<MyEntity>();
-		private Vector3D m_closestPoint;
-		private FastResourceLock lock_closestPoint = new FastResourceLock();
-
-		public OldPathfinder.PathState PlanetState { get; private set; }
-		public MyPlanet ClosestPlanet { get; private set; }
-		public Vector3D ClosestPoint
+		static RotateChecker()
 		{
-			get
-			{
-				using (lock_closestPoint.AcquireSharedUsing())
-					return m_closestPoint;
-			}
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		public RotateChecker(IMyCubeGrid grid)
+		private static void Entities_OnCloseAll()
 		{
-			this.m_logger = new Logger(() => m_grid.DisplayName);
-			this.m_grid = grid;
-			this.m_cells = GridCellCache.GetCellCache(grid);
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			Thread = null;
+		}
+
+		private readonly Logger m_logger;
+		private readonly IMyCubeBlock m_block;
+		private readonly Func<List<MyEntity>, IEnumerable<MyEntity>> m_collector;
+		private readonly List<MyEntity> m_obstructions = new List<MyEntity>();
+
+		private ulong m_nextRunRotate;
+		private MyPlanet m_closestPlanet;
+		private bool m_planetObstruction;
+
+		public IMyEntity ObstructingEntity { get; private set; }
+
+		public RotateChecker(IMyCubeBlock block, Func<List<MyEntity>, IEnumerable<MyEntity>> collector)
+		{
+			this.m_logger = new Logger(m_block);
+			this.m_block = block;
+			this.m_collector = collector;
+		}
+
+		public void TestRotate(Vector3 displacement)
+		{
+			if (Globals.UpdateCount < m_nextRunRotate)
+				return;
+			m_nextRunRotate = Globals.UpdateCount + 10ul;
+
+			displacement.Normalize();
+			Thread.EnqueueAction(() => in_TestRotate(displacement));
 		}
 
 		/// <summary>
@@ -45,35 +60,41 @@ namespace Rynchodon.Autopilot.Pathfinder
 		/// <param name="axis">Normalized axis of rotation in world space.</param>
 		/// <param name="ignoreAsteroids"></param>
 		/// <returns>True iff the path is clear.</returns>
-		public bool TestRotate(Vector3 axis, bool ignoreAsteroids, out IMyEntity obstruction)
+		private bool in_TestRotate(Vector3 axis)
 		{
-			Vector3 centreOfMass = m_grid.Physics.CenterOfMassWorld;
-			float longestDim = m_grid.GetLongestDim();
+			IMyCubeGrid myGrid = m_block.CubeGrid;
+			Vector3 centreOfMass = myGrid.Physics.CenterOfMassWorld;
+			float longestDim = myGrid.GetLongestDim();
 
 			// calculate height
-			Matrix toMyLocal = m_grid.WorldMatrixNormalizedInv;
+			Matrix toMyLocal = myGrid.WorldMatrixNormalizedInv;
 			Vector3 myLocalCoM = Vector3.Transform(centreOfMass, toMyLocal);
 			Vector3 myLocalAxis = Vector3.Transform(axis, toMyLocal.GetOrientation());
-			Vector3 myLocalCentre = m_grid.LocalAABB.Center; // CoM may not be on ship (it now considers mass from attached grids)
+			Vector3 myLocalCentre = myGrid.LocalAABB.Center; // CoM may not be on ship (it now considers mass from attached grids)
 			Ray upper = new Ray(myLocalCentre + myLocalAxis * longestDim * 2f, -myLocalAxis);
-			float? upperBound = m_grid.LocalAABB.Intersects(upper);
+			float? upperBound = myGrid.LocalAABB.Intersects(upper);
 			if (!upperBound.HasValue)
 				m_logger.alwaysLog("Math fail, upperBound does not have a value", Logger.severity.FATAL);
 			Ray lower = new Ray(myLocalCentre - myLocalAxis * longestDim * 2f, myLocalAxis);
-			float? lowerBound = m_grid.LocalAABB.Intersects(lower);
+			float? lowerBound = myGrid.LocalAABB.Intersects(lower);
 			if (!lowerBound.HasValue)
 				m_logger.alwaysLog("Math fail, lowerBound does not have a value", Logger.severity.FATAL);
-			m_logger.debugLog("LocalAABB: " + m_grid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
+			m_logger.debugLog("LocalAABB: " + myGrid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
 			float height = longestDim * 4f - upperBound.Value - lowerBound.Value;
 
 			float furthest = 0f;
-			m_cells.ForEach(cell => {
-				Vector3 rejection = Vector3.Reject(cell * m_grid.GridSize, myLocalAxis);
-				float cellDistSquared = Vector3.DistanceSquared(myLocalCoM, rejection);
-				if (cellDistSquared > furthest)
-					furthest = cellDistSquared;
-			});
-			float length = (float)Math.Sqrt(furthest) + m_grid.GridSize * 0.5f;
+			foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(myGrid, Attached.AttachedGrid.AttachmentKind.Physics, true))
+			{
+				CubeGridCache cache = CubeGridCache.GetFor(grid);
+				foreach (Vector3I cell in cache.OccupiedCells())
+				{
+					Vector3 rejection = Vector3.Reject(cell * myGrid.GridSize, myLocalAxis);
+					float cellDistSquared = Vector3.DistanceSquared(myLocalCoM, rejection);
+					if (cellDistSquared > furthest)
+						furthest = cellDistSquared;
+				}
+			}
+			float length = (float)Math.Sqrt(furthest) + myGrid.GridSize * 0.5f;
 
 			m_logger.debugLog("height: " + height + ", length: " + length);
 
@@ -83,111 +104,120 @@ namespace Rynchodon.Autopilot.Pathfinder
 
 			LineSegment axisSegment = new LineSegment();
 
-			ClosestPlanet = MyPlanetExtensions.GetClosestPlanet(centreOfMass);
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet);
+			m_closestPlanet = null;
 
-			foreach (MyEntity entity in m_obstructions)
-				if (PathChecker.collect_Entity(m_grid, entity))
+			foreach (MyEntity entity in m_collector.Invoke(m_obstructions))
+			{
+				if (entity is IMyVoxelBase)
 				{
-					if (entity is IMyVoxelBase)
+					IMyVoxelMap voxel = entity as IMyVoxelMap;
+					if (voxel != null)
 					{
-						if (ignoreAsteroids)
-							continue;
-
-						IMyVoxelMap voxel = entity as IMyVoxelMap;
-						if (voxel != null)
+						if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
 						{
-							if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
+							m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
+							ObstructingEntity = voxel;
+							return false;
+						}
+						continue;
+					}
+
+					if (m_closestPlanet == null)
+					{
+						MyPlanet planet = entity as MyPlanet;
+						if (planet == null)
+							throw new Exception("Unknown voxel type: " + entity);
+
+						double distToPlanetSq = Vector3D.DistanceSquared(centreOfMass, planet.PositionComp.GetPosition());
+						if (distToPlanetSq < planet.MaximumRadius * planet.MaximumRadius)
+						{
+							m_closestPlanet = planet;
+
+							if (m_planetObstruction)
 							{
-								m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
-								obstruction = voxel;
+								m_logger.debugLog("planet blocking");
+								ObstructingEntity = m_closestPlanet;
 								return false;
 							}
-							continue;
 						}
-
-						if (PlanetState != OldPathfinder.PathState.No_Obstruction)
-						{
-							m_logger.debugLog("planet blocking");
-							obstruction = ClosestPlanet;
-							return false;
-						}
-						continue;
 					}
-
-					IMyCubeGrid grid = entity as IMyCubeGrid;
-					if (grid != null)
-					{
-						Matrix toLocal = grid.WorldMatrixNormalizedInv;
-						Vector3 localAxis = Vector3.Transform(axis, toLocal.GetOrientation());
-						Vector3 localCentre = Vector3.Transform(centreOfMass, toLocal);
-						axisSegment.From = localCentre - localAxis * height;
-						axisSegment.To = localCentre + localAxis * height;
-
-						bool found = false;
-						GridCellCache.GetCellCache(grid).ForEach(cell => {
-							if (axisSegment.PointInCylinder(length, cell * grid.GridSize))
-							{
-								found = true;
-								return true;
-							}
-							return false;
-						});
-
-						if (found)
-						{
-							obstruction = grid;
-							return false;
-						}
-						continue;
-					}
-
-					m_logger.debugLog("No tests for object: " + entity.getBestName(), Logger.severity.INFO);
-					obstruction = entity;
-					return false;
+					continue;
 				}
 
-			obstruction = null;
+				IMyCubeGrid grid = entity as IMyCubeGrid;
+				if (grid != null)
+				{
+					Matrix toLocal = grid.WorldMatrixNormalizedInv;
+					Vector3 localAxis = Vector3.Transform(axis, toLocal.GetOrientation());
+					Vector3 localCentre = Vector3.Transform(centreOfMass, toLocal);
+					axisSegment.From = localCentre - localAxis * height;
+					axisSegment.To = localCentre + localAxis * height;
+
+					bool found = false;
+					GridCellCache.GetCellCache(grid).ForEach(cell => {
+						if (axisSegment.PointInCylinder(length, cell * grid.GridSize))
+						{
+							found = true;
+							return true;
+						}
+						return false;
+					});
+
+					if (found)
+					{
+						ObstructingEntity = grid;
+						return false;
+					}
+					continue;
+				}
+
+				m_logger.debugLog("No tests for object: " + entity.getBestName(), Logger.severity.INFO);
+				ObstructingEntity = entity;
+				return false;
+			}
+
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet);
+			ObstructingEntity = null;
 			return true;
 		}
 
 		private void TestPlanet()
 		{
-			MyPlanet planet = ClosestPlanet;
+			MyPlanet planet = m_closestPlanet;
 			if (planet == null)
 				return;
 
-			Vector3D myPos = m_grid.GetCentre();
+			IMyCubeGrid grid = m_block.CubeGrid;
+
+			Vector3D myPos = grid.GetCentre();
 			Vector3D planetCentre = planet.GetCentre();
 
 			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
 			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
 			{
 				m_logger.debugLog("higher than planet maximum");
-				PlanetState = OldPathfinder.PathState.No_Obstruction;
+				m_planetObstruction = false;
 				return;
 			}
 
-			using (lock_closestPoint.AcquireExclusiveUsing())
-				m_closestPoint = planet.GetClosestSurfacePointGlobal(ref myPos);
+			Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref myPos);
 
-			if (distSqToPlanet < Vector3D.DistanceSquared(m_closestPoint, planetCentre))
+			if (distSqToPlanet < Vector3D.DistanceSquared(closestPoint, planetCentre))
 			{
 				m_logger.debugLog("below surface");
-				PlanetState = OldPathfinder.PathState.Path_Blocked;
 				return;
 			}
 
-			float longest = m_grid.GetLongestDim();
-			if (Vector3D.DistanceSquared(myPos, m_closestPoint) < longest * longest)
+			float longest = grid.GetLongestDim();
+			if (Vector3D.DistanceSquared(myPos, closestPoint) < longest * longest)
 			{
 				m_logger.debugLog("near surface");
-				PlanetState = OldPathfinder.PathState.Path_Blocked;
+				m_planetObstruction = true;
 				return;
 			}
 
 			m_logger.debugLog("clear");
-			PlanetState = OldPathfinder.PathState.No_Obstruction;
+			m_planetObstruction = false;
 			return;
 		}
 

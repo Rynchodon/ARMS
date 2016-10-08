@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Attached;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -10,7 +11,6 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
-using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		protected abstract void AddValueControl(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls);
 
-		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string[] split = command.Split(',');
 			if (split.Length != 3)
@@ -148,17 +148,17 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				m_termProp = ((ITerminalProperty<T>)selected[0].UserData).Id;
 		}
 
-		protected void SetPropertyOfBlock(Movement.Mover mover, string blockName, string propName, T propValue)
+		protected void SetPropertyOfBlock(NewPathfinder pathfinder, string blockName, string propName, T propValue)
 		{
 			blockName = blockName.LowerRemoveWhitespace();
 			propName = propName.Trim(); // leave spaces in propName
 
-			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(pathfinder.Mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
 			{
 				if (!(fatblock is IMyTerminalBlock))
 					continue;
 
-				if (!mover.Block.Controller.canControlBlock(fatblock))
+				if (!pathfinder.Mover.Block.Controller.canControlBlock(fatblock))
 					continue;
 
 				if (!fatblock.DisplayNameText.LowerRemoveWhitespace().Contains(blockName))

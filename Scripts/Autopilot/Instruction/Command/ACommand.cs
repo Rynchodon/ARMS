@@ -23,7 +23,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// <summary>The full string that reflects this command, including Identifier.</summary>
 		public string DisplayString { get { return m_displayString; } }
 
-		public Action<Mover> Action { get; private set; }
+		public AutopilotActionList.AutopilotAction Action { get; private set; }
 
 		/// <summary>
 		/// Sets DisplayString and parses to get Execute action.
@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		/// <param name="command">The command, without Identifier, leading comma or trailing or leading whitespace.</param>
 		/// <param name="message">If parsing was successful, null. Otherwise, an error message for the player.</param>
 		/// <returns>If parsing was successful, the action to execute, otherwise null.</returns>
-		protected abstract Action<Mover> Parse(IMyCubeBlock autopilot, string command, out string message);
+		protected abstract AutopilotActionList.AutopilotAction Parse(IMyCubeBlock autopilot, string command, out string message);
 
 		/// <summary>
 		/// Convert the terminal input to a string, which is then parsed. The string shall include the identifier.

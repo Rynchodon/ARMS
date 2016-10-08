@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;
@@ -40,8 +41,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_destroySet = false;
 		private bool m_weaponDataDirty = true;
 
-		public Fighter(Mover mover, AllNavigationSettings navSet)
-			: base(mover)
+		public Fighter(NewPathfinder pathfinder, AllNavigationSettings navSet)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
 			Arm();
@@ -170,7 +171,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_navSet.DistanceLessThan(m_weaponRange_min * 2f))
 				{
 					// we give orbiter a lower distance, so it will calculate orbital speed from that
-					m_orbiter = new Orbiter(m_mover, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
+					m_orbiter = new Orbiter(m_pathfinder, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
 					// start further out so we can spiral inwards
 					m_finalOrbitAltitude = m_orbiter.Altitude;
 					m_orbiter.Altitude = m_finalOrbitAltitude + 250f;
@@ -178,11 +179,10 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					Vector3D targetPosition = m_currentTarget.GetPosition();
-					Vector3D direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - targetPosition);
-					targetPosition += direction * m_weaponRange_min * 1.9f;
+					Vector3D direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition());
+					Vector3D offset = direction * m_weaponRange_min * 1.9f;
 
-					m_mover.CalcMove(m_weapon_primary_pseudo, targetPosition, m_currentTarget.Entity.Physics.LinearVelocity);
+					m_pathfinder.MoveTo(m_weapon_primary_pseudo, m_currentTarget, offset);
 					return;
 				}
 			}

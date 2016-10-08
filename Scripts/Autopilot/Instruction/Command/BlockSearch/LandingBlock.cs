@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-using Rynchodon.Autopilot.Data;
-using VRageMath;
+﻿using Rynchodon.Autopilot.Data;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -38,11 +35,11 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(Pathfinding.NewPathfinder pathfinder)
 		{
 			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
-			mover.NavSet.Settings_Task_NavRot.LandingBlock = pseudo;
-			mover.NavSet.LastLandingBlock = pseudo;
+			pathfinder.NavSet.Settings_Task_NavRot.LandingBlock = pseudo;
+			pathfinder.NavSet.LastLandingBlock = pseudo;
 		}
 	}
 }

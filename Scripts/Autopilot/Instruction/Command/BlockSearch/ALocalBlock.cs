@@ -12,7 +12,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	{
 		protected IMyCubeBlock m_block;
 
-		protected override sealed System.Action<Mover> Parse(IMyCubeBlock autopilot, string command, out string message)
+		protected override sealed AutopilotActionList.AutopilotAction Parse(IMyCubeBlock autopilot, string command, out string message)
 		{
 			string blockName;
 			Base6Directions.Direction? forward, upward;

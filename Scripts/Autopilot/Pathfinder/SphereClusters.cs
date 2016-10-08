@@ -3,7 +3,7 @@ using Sandbox.ModAPI;
 using VRage.Collections;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Pathfinder
+namespace Rynchodon.Autopilot.Pathfinding
 {
 	/// <summary>
 	/// Groups repulsion spheres together to avoid creating valleys between them.

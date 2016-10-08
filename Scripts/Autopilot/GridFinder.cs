@@ -43,7 +43,7 @@ namespace Rynchodon.Autopilot
 		protected float MaximumRange;
 		protected long m_targetEntityId;
 
-		private Vector3I m_previousCell;
+		//private Vector3I m_previousCell;
 
 		private RelayStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
 
@@ -109,22 +109,6 @@ namespace Rynchodon.Autopilot
 				else
 					BlockCheck();
 			}
-		}
-
-		public Vector3D GetPosition(Vector3D NavPos, PositionBlock blockOffset)
-		{
-			if (!Grid.isRecent())
-				return Grid.predictPosition();
-			if (Block != null)
-				return blockOffset.ToWorld(Block);
-			
-			IMyCubeGrid grid = (IMyCubeGrid)Grid.Entity;
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			if (cache == null)
-				return Vector3.Invalid;
-
-			m_previousCell = cache.GetClosestOccupiedCell(NavPos, m_previousCell);
-			return grid.GridIntegerToWorld(m_previousCell);
 		}
 
 		/// <summary>

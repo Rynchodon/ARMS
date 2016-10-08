@@ -143,6 +143,7 @@
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
+    <Compile Include="Autopilot\Movement\IMover.cs" />
     <Compile Include="Autopilot\Movement\ThrustProfiler.cs" />
     <Compile Include="Autopilot\EnemyFinder.cs" />
     <Compile Include="Autopilot\GridFinder.cs" />
@@ -170,11 +171,8 @@
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
-    <Compile Include="Autopilot\Pathfinder\Path.cs" />
-    <Compile Include="Autopilot\Pathfinder\PathChecker.cs" />
     <Compile Include="Autopilot\Pathfinder\Pathfinder.cs" />
     <Compile Include="Autopilot\Pathfinder\PathTester.cs" />
-    <Compile Include="Autopilot\Pathfinder\PlanetChecker.cs" />
     <Compile Include="Autopilot\Pathfinder\RotateChecker.cs" />
     <Compile Include="Autopilot\Pathfinder\SphereClusters.cs" />
     <Compile Include="Autopilot\ShipAutopilot.cs" />

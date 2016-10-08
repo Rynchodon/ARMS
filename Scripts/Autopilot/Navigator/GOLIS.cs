@@ -1,6 +1,6 @@
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
@@ -19,11 +19,11 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>
 		/// Creates a GOLIS
 		/// </summary>
-		/// <param name="mover">The mover to use</param>
+		/// <param name="pathfinder">The mover to use</param>
 		/// <param name="navSet">The settings to use</param>
 		/// <param name="location">The location to fly to</param>
-		public GOLIS(Mover mover, Vector3D location, AllNavigationSettings.SettingsLevelName level = AllNavigationSettings.SettingsLevelName.NavMove)
-			: base(mover)
+		public GOLIS(NewPathfinder pathfinder, Vector3D location, AllNavigationSettings.SettingsLevelName level = AllNavigationSettings.SettingsLevelName.NavMove)
+			: base(pathfinder)
 		{
 			this.myLogger = new Logger(m_controlBlock.CubeBlock);
 			this.NavigationBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -50,7 +50,10 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 			}
 			else
-				m_mover.CalcMove(NavigationBlock, location, Vector3.Zero);
+			{
+				Destination destination = new Destination(location);
+				m_pathfinder.MoveTo(NavigationBlock, ref destination);
+			}
 		}
 
 		/// <summary>

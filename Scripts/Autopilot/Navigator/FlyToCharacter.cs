@@ -1,10 +1,9 @@
-using System; // (partial) from mscorlib.dll
-using System.Text; // from mscorlib.dll
+using System;
+using System.Text;
 using Rynchodon.AntennaRelay;
-using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
-using Sandbox.ModAPI; // from Sandbox.Common.dll
+using Rynchodon.Autopilot.Pathfinding;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -22,7 +21,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_character;
 		private TimeSpan m_timeoutAt;
 
-		public FlyToCharacter(Mover mover, string charName)
+		public FlyToCharacter(NewPathfinder mover, string charName)
 			: base(mover)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => charName);
@@ -57,7 +56,10 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navSet.OnTaskComplete_NavMove();
 			}
 			else
-				m_mover.CalcMove(m_navSet.Settings_Current.NavigationBlock, m_character.Entity.GetPosition(), m_character.Entity.Physics.LinearVelocity, true);
+			{
+				Destination destination = new Destination(m_character.Entity, Vector3D.Zero);
+				m_pathfinder.MoveTo(m_navSet.Settings_Current.NavigationBlock, ref destination, isLanding: true);
+			}
 		}
 
 		public void Rotate()

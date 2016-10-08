@@ -2,6 +2,7 @@
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator
@@ -48,22 +49,23 @@ namespace Rynchodon.Autopilot.Navigator
 
 	public abstract class ANavigator
 	{
-		/// <summary>The Mover this navigator is using.</summary>
-		protected readonly Mover m_mover;
+		/// <summary>The Pathfinder this navigator is using.</summary>
+		protected readonly NewPathfinder m_pathfinder;
+		/// <summary>The Mover this navigator is using</summary>
+		protected Mover m_mover { get { return m_pathfinder.Mover; } }
 		/// <summary>The settings this navigator is using.</summary>
-		protected AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
+		protected AllNavigationSettings m_navSet { get { return m_pathfinder.Mover.NavSet; } }
 
 		/// <summary>The ship controller the mover is using.</summary>
-		protected ShipControllerBlock m_controlBlock { get { return m_mover.Block; } }
+		protected ShipControllerBlock m_controlBlock { get { return m_pathfinder.Mover.Block; } }
 
 		/// <summary>
-		/// Sets m_mover and m_navSet for the navigator.
+		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
-		/// <param name="mover">The Mover to use</param>
-		/// 
-		protected ANavigator(Mover mover)
+		/// <param name="pathfinder">The Pathfinder to use</param>
+		protected ANavigator(NewPathfinder pathfinder)
 		{
-			this.m_mover = mover;
+			this.m_pathfinder = pathfinder;
 		}
 
 	}
@@ -71,12 +73,11 @@ namespace Rynchodon.Autopilot.Navigator
 	public abstract class NavigatorMover : ANavigator, INavigatorMover
 	{
 		/// <summary>
-		/// Sets m_mover and m_navSet for the navigator.
+		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
-		/// <param name="mover">The Mover to use</param>
-		/// 
-		protected NavigatorMover(Mover mover)
-			: base(mover) { }
+		/// <param name="pathfinder">The Pathfinder to use</param>
+		protected NavigatorMover(NewPathfinder pathfinder)
+			: base(pathfinder) { }
 
 		/// <summary>
 		/// Calculate the movement force necessary to reach the target.
@@ -92,12 +93,11 @@ namespace Rynchodon.Autopilot.Navigator
 	public abstract class NavigatorRotator : ANavigator, INavigatorRotator
 	{
 		/// <summary>
-		/// Sets m_mover and m_navSet for the navigator.
+		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
-		/// <param name="mover">The Mover to use</param>
-		/// 
-		protected NavigatorRotator(Mover mover)
-			: base(mover) { }
+		/// <param name="pathfinder">The Pathfinder to use</param>
+		protected NavigatorRotator(NewPathfinder pathfinder)
+			: base(pathfinder) { }
 
 		/// <summary>
 		/// Calculate the angular force necessary to reach the target direction.

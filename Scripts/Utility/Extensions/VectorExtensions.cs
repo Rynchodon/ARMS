@@ -158,5 +158,20 @@ namespace Rynchodon
 			return result;
 		}
 
+		/// <summary>
+		/// Perform a vector rejection and additionally return the magnitude of the vector projection.
+		/// </summary>
+		/// <param name="vector">The vector to reject.</param>
+		/// <param name="direction">The normalized direction vector to reject from.</param>
+		/// <param name="projectionDistance">The length of the projection. i.e. Dot(vector, direction)</param>
+		/// <param name="rejection">The rejection of vector from direction.</param>
+		public static void RejectNormalized(ref Vector3 vector, ref Vector3 direction, out float projectionDistance, out Vector3 rejection)
+		{
+			projectionDistance = vector.X * direction.X + vector.Y * direction.Y + vector.Z * direction.Z;
+			rejection.X = vector.X - direction.X * projectionDistance;
+			rejection.Y = vector.Y - direction.Y * projectionDistance;
+			rejection.Z = vector.Z - direction.Z * projectionDistance;
+		}
+
 	}
 }

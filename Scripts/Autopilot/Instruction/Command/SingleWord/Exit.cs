@@ -1,6 +1,5 @@
-﻿using System;
-using Rynchodon.Autopilot.Movement;
-using Rynchodon.Autopilot.Navigator;
+﻿using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -22,9 +21,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Stop the ship and disable autopilot"; }
 		}
 
-		protected override void ActionMethod(Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			new Stopper(mover, true);
+			new Stopper(pathfinder, true);
 		}
 
 	}

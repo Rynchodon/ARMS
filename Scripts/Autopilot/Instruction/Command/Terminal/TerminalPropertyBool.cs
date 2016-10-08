@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI.Interfaces.Terminal;

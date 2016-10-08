@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Autopilot.Instruction.Command
@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			throw new InvalidOperationException("No controls to add");
 		}
 
-		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			if (string.IsNullOrWhiteSpace(command))
 			{
@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return Identifier;
 		}
 
-		protected abstract void ActionMethod(Mover mover);
+		protected abstract void ActionMethod(NewPathfinder mover);
 
 	}
 }

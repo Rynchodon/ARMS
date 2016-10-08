@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Utility.Vectors;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -39,12 +40,11 @@ namespace Rynchodon.Autopilot.Movement
 		private float m_airDensity;
 		private float? m_gravStrength;
 		private ulong m_nextUpdate;
-		private bool m_primaryDirty = true;
 
-		private Dictionary<Base6Directions.Direction, List<MyThrust>> thrustersInDirection = new Dictionary<Base6Directions.Direction, List<MyThrust>>();
-		/// <summary>Lock for lists of thrustersInDirection, dictionary does not need a lock.</summary>
 		private FastResourceLock lock_thrustersInDirection = new FastResourceLock();
-		private Dictionary<Base6Directions.Direction, float> m_totalThrustForce = new Dictionary<Base6Directions.Direction, float>();
+
+		private List<MyThrust>[] m_thrustersInDirection = new List<MyThrust>[6];
+		private float[] m_totalThrustForce = new float[6];
 
 		/// <summary>Direction with strongest thrusters.</summary>
 		private ForceInDirection m_primaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Forward };
@@ -74,6 +74,12 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Thrust ratio to conteract gravity.</summary>
 		public DirectionGrid GravityReactRatio { get; private set; }
 
+		/// <summary>The ship has thrusters that can operate effectively in atmosphere.</summary>
+		public bool CapableAtmo { get; private set; }
+
+		/// <summary>The ship has thrusters that can operate effectively in space.</summary>
+		public bool CapableSpace { get; private set; }
+
 		public float GravityStrength
 		{
 			get
@@ -94,12 +100,14 @@ namespace Rynchodon.Autopilot.Movement
 			Standard = new StandardFlight(autopilot, Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
 			Gravity = new StandardFlight(autopilot, Base6Directions.Direction.Up, Base6Directions.Direction.Forward);
 
-			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
-				thrustersInDirection.Add(direction, new List<MyThrust>());
+			for (int i = 0; i < 6; i++)
+				m_thrustersInDirection[i] = new List<MyThrust>();
 
-			List<IMySlimBlock> thrusters = new List<IMySlimBlock>();
-			myGrid.GetBlocks(thrusters, block => block.FatBlock != null && block.FatBlock is IMyThrust);
-			foreach (IMySlimBlock thrust in thrusters)
+			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
+			if (cache == null)
+				return;
+
+			foreach (MyThrust thrust in cache.BlocksOfType(typeof(MyObjectBuilder_Thrust)))
 				newThruster(thrust);
 
 			myGrid.OnBlockAdded += grid_OnBlockAdded;
@@ -112,15 +120,17 @@ namespace Rynchodon.Autopilot.Movement
 		/// Adds thruster to thrustersInDirection
 		/// </summary>
 		/// <param name="thruster">The new thruster</param>
-		private void newThruster(IMySlimBlock thruster)
+		private void newThruster(MyThrust thruster)
 		{
+			myLogger.debugLog("thruster == null", Logger.severity.ERROR, condition: thruster == null);
+
 			if (TP_ThrustOverride == null)
-				TP_ThrustOverride = ((IMyTerminalBlock)thruster.FatBlock).GetProperty("Override") as ITerminalProperty<float>;
+				TP_ThrustOverride = thruster.GetProperty("Override") as ITerminalProperty<float>;
 
 			using (lock_thrustersInDirection.AcquireExclusiveUsing())
-			thrustersInDirection[Base6Directions.GetFlippedDirection(thruster.FatBlock.Orientation.Forward)].Add(thruster.FatBlock as MyThrust);
-			if (TP_ThrustOverride.GetValue(thruster.FatBlock) != 0f)
-				TP_ThrustOverride.SetValue(thruster.FatBlock, 0f);
+				m_thrustersInDirection[(int)Base6Directions.GetFlippedDirection(thruster.Orientation.Forward)].Add(thruster);
+			if (TP_ThrustOverride.GetValue(thruster) != 0f)
+				TP_ThrustOverride.SetValue(thruster, 0f);
 		}
 
 		/// <summary>
@@ -129,18 +139,13 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="added">block that was added</param>
 		private void grid_OnBlockAdded(IMySlimBlock added)
 		{
-			MainLock.MainThread_ReleaseExclusive();
-			try
-			{
-				if (added.FatBlock == null)
-					return;
+			MyThrust thrust = added.FatBlock as MyThrust;
 
-				if (added.FatBlock is IMyThrust)
-				{
-					newThruster(added);
-					m_primaryDirty = true;
-				}
-			}
+			if (thrust == null)
+				return;
+
+			MainLock.MainThread_ReleaseExclusive();
+			try { newThruster(thrust); }
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally
@@ -166,9 +171,8 @@ namespace Rynchodon.Autopilot.Movement
 					return;
 
 				using (lock_thrustersInDirection.AcquireExclusiveUsing())
-					thrustersInDirection[Base6Directions.GetFlippedDirection(asThrust.Orientation.Forward)].Remove(asThrust);
+					m_thrustersInDirection[(int)Base6Directions.GetFlippedDirection(asThrust.Orientation.Forward)].Remove(asThrust);
 				myLogger.debugLog("removed thruster = " + removed.FatBlock.DefinitionDisplayNameText + "/" + asThrust.DisplayNameText, Logger.severity.DEBUG);
-				m_primaryDirty = true; 
 				return;
 			}
 			catch (Exception e)
@@ -181,9 +185,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="direction">the direction of force / acceleration</param>
 		public float GetForceInDirection(Base6Directions.Direction direction, bool adjustForGravity = false)
 		{
-			float force;
-			if (!m_totalThrustForce.TryGetValue(direction, out force))
-				force = CalcForceInDirection(direction);
+			float force = m_totalThrustForce[(int)direction];
 
 			if (adjustForGravity)
 			{
@@ -203,7 +205,10 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			m_nextUpdate = Globals.UpdateCount + ShipAutopilot.UpdateFrequency;
 
-			m_totalThrustForce.Clear();
+			for (int i = m_totalThrustForce.Length - 1; i >= 0; i--)
+				m_totalThrustForce[i] = 0f;
+
+			CapableAtmo = false; CapableSpace = false;
 
 			Vector3D position = myGrid.GetPosition();
 			bool first = true;
@@ -238,20 +243,12 @@ namespace Rynchodon.Autopilot.Movement
 			allPlanets.Clear();
 			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
 
-			if (m_primaryDirty)
-			{
-				m_primaryDirty = false;
-
-				CalcForceInDirection(Base6Directions.Direction.Forward);
-				CalcForceInDirection(Base6Directions.Direction.Backward);
-				CalcForceInDirection(Base6Directions.Direction.Up);
-				CalcForceInDirection(Base6Directions.Direction.Down);
-				CalcForceInDirection(Base6Directions.Direction.Left);
-				CalcForceInDirection(Base6Directions.Direction.Right);
-
-				if (m_primaryForce.Force < 1f)
-					throw new Exception("Ship has no thrusters");
-			}
+			CalcForceInDirection(Base6Directions.Direction.Forward);
+			CalcForceInDirection(Base6Directions.Direction.Backward);
+			CalcForceInDirection(Base6Directions.Direction.Up);
+			CalcForceInDirection(Base6Directions.Direction.Down);
+			CalcForceInDirection(Base6Directions.Direction.Left);
+			CalcForceInDirection(Base6Directions.Direction.Right);
 
 			if (worldGravity.LengthSquared() < 0.01f)
 			{
@@ -285,7 +282,14 @@ namespace Rynchodon.Autopilot.Movement
 		private float GetThrusterMaxForce(MyThrust thruster)
 		{
 			float thrusterForce = thruster.BlockDefinition.ForceMagnitude * (thruster as IMyThrust).ThrustMultiplier;
-			if (thruster.BlockDefinition.NeedsAtmosphereForInfluence)
+			if (thruster.BlockDefinition.EffectivenessAtMaxInfluence != 1f || thruster.BlockDefinition.EffectivenessAtMinInfluence != 1f)
+			{
+				if (!CapableAtmo && thruster.BlockDefinition.EffectivenessAtMaxInfluence > thruster.BlockDefinition.EffectivenessAtMinInfluence)
+					CapableAtmo = true;
+
+				if (!CapableSpace && thruster.BlockDefinition.EffectivenessAtMinInfluence > thruster.BlockDefinition.EffectivenessAtMaxInfluence)
+					CapableSpace = true;
+
 				if (m_airDensity <= thruster.BlockDefinition.MinPlanetaryInfluence)
 					thrusterForce *= thruster.BlockDefinition.EffectivenessAtMinInfluence;
 				else if (m_airDensity >= thruster.BlockDefinition.MaxPlanetaryInfluence)
@@ -298,6 +302,12 @@ namespace Rynchodon.Autopilot.Movement
 					//myLogger.debugLog("for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "CalcForceInDirection()");
 					thrusterForce *= effectiveness;
 				}
+			}
+			else
+			{
+				CapableAtmo = true;
+				CapableSpace = true;
+			}
 			return thrusterForce;
 		}
 
@@ -305,11 +315,11 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			float force = 0;
 			using (lock_thrustersInDirection.AcquireSharedUsing())
-				foreach (MyThrust thruster in thrustersInDirection[direction])
-				if (!thruster.Closed && thruster.IsWorking)
-					force += GetThrusterMaxForce(thruster);
+				foreach (MyThrust thruster in m_thrustersInDirection[(int)direction])
+					if (!thruster.Closed && thruster.IsWorking)
+						force += GetThrusterMaxForce(thruster);
 
-			m_totalThrustForce[direction] = force;
+			m_totalThrustForce[(int)direction] = force;
 
 			if (direction == m_primaryForce.Direction)
 			{
@@ -347,6 +357,8 @@ namespace Rynchodon.Autopilot.Movement
 
 			return force;
 		}
+
+		#region Override
 
 		/// <summary>
 		/// Set the overrides of thrusters to match MoveForceRatio. Should be called on game thread.
@@ -408,7 +420,7 @@ namespace Rynchodon.Autopilot.Movement
 			float force = GetForceInDirection(direction) * ratio;
 
 			// no need to lock thrustersInDirection, it is updated on game thread
-			foreach (MyThrust thruster in thrustersInDirection[direction])
+			foreach (MyThrust thruster in m_thrustersInDirection[(int)direction])
 				if (!thruster.Closed && thruster.IsWorking)
 				{
 					if (force <= 0f)
@@ -443,10 +455,12 @@ namespace Rynchodon.Autopilot.Movement
 		private void ClearOverrides(Base6Directions.Direction direction)
 		{
 			// no need to lock thrustersInDirection, it is updated on game thread
-			foreach (MyThrust thruster in thrustersInDirection[direction])
+			foreach (MyThrust thruster in m_thrustersInDirection[(int)direction])
 				if (!thruster.Closed && thruster.IsWorking && TP_ThrustOverride.GetValue(thruster) != 0f)
 					TP_ThrustOverride.SetValue(thruster, 0f);
 		}
+
+		#endregion Override
 
 		/// <summary>
 		/// Determines if the ship has enough force to accelerate in the specified direction. Checks against gravity.

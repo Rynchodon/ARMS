@@ -3,6 +3,7 @@ using System.Text; // from mscorlib.dll
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities; // from Sandbox.Game.dll
@@ -33,11 +34,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Dictionary<string, int> m_components_inventory = new Dictionary<string, int>();
 		private List<IMySlimBlock> m_blocksWithInventory;
 
-		public WeldGrid(Mover mover, string gridName, bool shopAfter)
-			: base(mover)
+		public WeldGrid(NewPathfinder pathfinder, string gridName, bool shopAfter)
+			: base(pathfinder)
 		{
-			this.m_logger = new Logger(mover.Block.CubeBlock);
-			this.m_finder = new GridFinder(mover.NavSet, m_controlBlock, gridName);
+			this.m_logger = new Logger(m_controlBlock.CubeBlock);
+			this.m_finder = new GridFinder(pathfinder.NavSet, m_controlBlock, gridName);
 			this.m_shopAfter = shopAfter;
 
 			PseudoBlock navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -104,7 +105,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			m_damagedBlocks.Remove(repairable);
-			new WeldBlock(m_mover, m_navSet, m_navWeld, repairable);
+			new WeldBlock(m_pathfinder, m_navSet, m_navWeld, repairable);
 		}
 
 		public void Rotate()

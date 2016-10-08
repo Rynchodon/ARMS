@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -60,7 +59,7 @@ namespace Rynchodon
 			entity = entity.GetTopMostParent();
 			if (entity.Physics == null)
 				return Vector3.Zero;
-			return entity.Physics.LinearVelocity * Globals.SimSpeed;
+			return entity.Physics.LinearVelocity;
 		}
 
 		public static Vector3D GetCentre(this IMyCubeBlock block)

@@ -1,7 +1,7 @@
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Utility.Vectors;
 using Rynchodon.Weapons;
 using VRage.Game.ModAPI;
@@ -17,8 +17,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_enemy;
 		private bool m_approaching;
 
-		public Kamikaze(Mover mover, AllNavigationSettings navSet)
-			: base(mover)
+		public Kamikaze(NewPathfinder pathfinder, AllNavigationSettings navSet)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
 
@@ -59,7 +59,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_approaching = m_mover.SignificantGravity() && !m_navSet.DistanceLessThan(3000f);
 			if (m_approaching)
 			{
-				m_mover.CalcMove(m_mover.Block.Pseudo, m_enemy.GetPosition(), m_enemy.GetLinearVelocity());
+				m_pathfinder.MoveTo(m_mover.Block.Pseudo, m_enemy);
 				return;
 			}
 
@@ -69,7 +69,9 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3D contactPoint;
 			TargetingBase.FindInterceptVector(m_controlBlock.Pseudo.WorldPosition, m_controlBlock.Physics.LinearVelocity, enemyPosition, m_enemy.GetLinearVelocity(), myAccel, true, out aimDirection, out contactPoint);
 
-			m_mover.SetMove(m_controlBlock.Pseudo, contactPoint, ((DirectionWorld)(aimDirection * myAccel)).ToBlock(m_mover.Block.CubeBlock));
+			//m_mover.SetMove(m_controlBlock.Pseudo, contactPoint, ((DirectionWorld)(aimDirection * myAccel)).ToBlock(m_mover.Block.CubeBlock));
+
+			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: aimDirection * myAccel);
 		}
 
 		public void Rotate()

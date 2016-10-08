@@ -2,7 +2,7 @@ using System; // partial
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
@@ -24,11 +24,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly PseudoBlock m_landBlock;
 		private readonly string m_targetType;
 
-		private Vector3D m_targetPostion;
+		private Destination m_targetPostion;
 		private Stage m_stage;
 
-		public VoxelLander(Mover mover, bool planet, PseudoBlock landBlock = null)
-			: base(mover)
+		public VoxelLander(NewPathfinder pathfinder, bool planet, PseudoBlock landBlock = null)
+			: base(pathfinder)
 		{
 			this.m_landBlock = landBlock ?? m_navSet.Settings_Current.LandingBlock;
 			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_landBlock.Block.getBestName());
@@ -93,7 +93,7 @@ namespace Rynchodon.Autopilot.Navigator
 			if (!MyAPIGateway.Physics.CastRay(currentPostion, closest.GetCentre(), out hitInfo, RayCast.FilterLayerVoxel))
 				throw new Exception("Failed to intersect voxel");
 
-			m_targetPostion = hitInfo.Position;
+			m_targetPostion = new Destination(ref hitInfo);
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.IgnoreAsteroid = true;
 
@@ -112,7 +112,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_mover.StopMove();
 					}
 					else
-						m_mover.CalcMove(m_landBlock, m_targetPostion, Vector3.Zero);
+						m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion);
 					return;
 				case Stage.Rotate:
 					if (m_navSet.DirectionMatched(0.01f))
@@ -141,7 +141,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					m_mover.CalcMove(m_landBlock, m_targetPostion, Vector3.Zero, true);
+					m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion, isLanding: true);
 					return;
 			}
 		}
@@ -155,7 +155,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				case Stage.Rotate:
 				case Stage.Land:
-					m_mover.CalcRotate(m_landBlock, RelativeDirection3F.FromWorld(m_landBlock.Grid, m_targetPostion - m_landBlock.WorldPosition));
+					m_mover.CalcRotate(m_landBlock, RelativeDirection3F.FromWorld(m_landBlock.Grid, m_targetPostion.WorldPosition() - m_landBlock.WorldPosition));
 					return;
 			}
 		}

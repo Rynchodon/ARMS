@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using Rynchodon.Autopilot.Movement;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using VRage.Utils;
@@ -68,7 +67,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(m_upwardSelector.m_listBox);
 		}
 
-		protected override System.Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string blockName;
 			Base6Directions.Direction? forward, upward;
@@ -104,7 +103,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return result;
 		}
 
-		protected abstract void ActionMethod(Mover mover);
+		protected abstract void ActionMethod(Pathfinding.NewPathfinder pathfinder);
 
 	}
 }

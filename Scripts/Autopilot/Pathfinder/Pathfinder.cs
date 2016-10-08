@@ -1,659 +1,828 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using Rynchodon.Autopilot.Navigator;
-using Rynchodon.Settings;
-using Rynchodon.Threading;
-using Sandbox.ModAPI;
+using Rynchodon.Utility;
+using Sandbox.Game.Entities;
 using VRage;
+using VRage.Collections;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Pathfinder
+namespace Rynchodon.Autopilot.Pathfinding
 {
-	/// <summary>
-	/// Finds alternate paths if the current path is blocked.
-	/// </summary>
-	public class OldPathfinder
+	public class NewPathfinder
 	{
+		// TODO: repulse from incoming missiles
 
-		public enum PathState : byte { Not_Running, No_Obstruction, Searching, Path_Blocked }
-
-		private const float SqRtHalf = 0.70710678f;
-		private const float SqRtThird = 0.57735026f;
-		private const float LookAheadSpeed_Seconds = 10f;
-		/// <summary>Pathfinder is biased against a waypoint by distance to waypoint * WaypointDistanceBias</summary>
-		private const float WaypointDistanceBias = 0.01f;
-		/// <summary>Maximum number of alternate paths to check before choosing one, count starts after a viable path is found.</summary>
-		private const int AlternatesToCheck = 25;
-
-		#region Base25Directions
-		/// <remarks>
-		/// <para>Why not use Base27Directions? Because it contains 64 directions...</para>
-		/// <para>Does not contain zero or forward.</para>
-		/// </remarks>
-		private static Vector3[] Base25Directions = new Vector3[]{
-			#region Forward
-			new Vector3(0f, SqRtHalf, -SqRtHalf),
-			new Vector3(SqRtThird, SqRtThird, -SqRtThird),
-			new Vector3(SqRtHalf, 0f, -SqRtHalf),
-			new Vector3(SqRtThird, -SqRtThird, -SqRtThird),
-			new Vector3(0f, -SqRtHalf, -SqRtHalf),
-			new Vector3(-SqRtThird, -SqRtThird, -SqRtThird),
-			new Vector3(-SqRtHalf, 0f, -SqRtHalf),
-			new Vector3(-SqRtThird, SqRtThird, -SqRtThird),
-			#endregion
-
-			new Vector3(0f, 1f, 0f),
-			new Vector3(SqRtHalf, SqRtHalf, 0f),
-			new Vector3(1f, 0f, 0f),
-			new Vector3(SqRtHalf, -SqRtHalf, 0f),
-			new Vector3(0f, -1f, 0f),
-			new Vector3(-SqRtHalf, -SqRtHalf, 0f),
-			new Vector3(-1f, 0f, 0f),
-			new Vector3(-SqRtHalf, SqRtHalf, 0f),
-
-			#region Backward
-			new Vector3(0f, SqRtHalf, SqRtHalf),
-			new Vector3(SqRtThird, SqRtThird, SqRtThird),
-			new Vector3(SqRtHalf, 0f, SqRtHalf),
-			new Vector3(SqRtThird, -SqRtThird, SqRtThird),
-			new Vector3(0f, -SqRtHalf, SqRtHalf),
-			new Vector3(-SqRtThird, -SqRtThird, SqRtThird),
-			new Vector3(-SqRtHalf, 0f, SqRtHalf),
-			new Vector3(-SqRtThird, SqRtThird, SqRtThird),
-			new Vector3(0f, 0f, 1f)
-			#endregion
-		};
-		#endregion
-
-		private static ThreadManager Thread_High = new ThreadManager(1, false, "Path_High");
-		private static ThreadManager Thread_Low = new ThreadManager(ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder), true, "Path_Low");
-
-		static OldPathfinder()
+		private struct PathNode
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			public long ParentKey;
+			public float DistToCur;
+			public Vector3D Position;
+			public Vector3 DirectionFromParent;
 		}
 
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Thread_High = null;
-			Thread_Low = null;
-			Base25Directions = null;
-		}
+		public const float SpeedFactor = 2f, VoxelAdd = 10f;
+		/// <summary>of m_nodeDistance</summary>
+		private const float DestinationRadius = 0.1f;
+
+		///// <summary>
+		///// Shared will be held while setting interupt or running. Exclusive will be held while starting a run or checking for an interrupt.
+		///// </summary>
+		//private FastResourceLock m_runningLock;
+		//private bool m_runInterrupt;
 
 		private readonly Logger m_logger;
-		private readonly IMyCubeGrid m_grid;
-		private readonly PathChecker m_pathChecker;
-		private readonly RotateChecker m_rotateChecker;
-		private readonly AllNavigationSettings m_navSet;
-		private readonly Mover m_mover;
-		private readonly FastResourceLock lock_testPath = new FastResourceLock();
-		//private readonly FastResourceLock lock_testRotate = new FastResourceLock("Path_lock_rotate");
-		private readonly PlanetChecker m_planetCheckDest, m_planetCheckSpeed;
+		private readonly PathTester m_tester = new PathTester();
 
-		private readonly LockedQueue<Action> m_pathHigh = new LockedQueue<Action>();
-		private readonly LockedQueue<Action> m_pathLow = new LockedQueue<Action>();
+		// Inputs: rarely change
 
+		private MyCubeGrid m_autopilotGrid { get { return m_tester.AutopilotGrid; } set { m_tester.AutopilotGrid = value; } }
 		private PseudoBlock m_navBlock;
-		private Vector3D m_destination;
-		private bool m_ignoreAsteroid, m_landing, m_canChangeCourse;
+		private Destination m_destination; // only match speed with entity if there is no obstruction
+		private MyEntity m_ignoreEntity;
+		private bool m_ignoreVoxel, m_canChangeCourse, m_isLanding;
 
-		public PathState m_pathState { get; private set; }
-		public PathState m_rotateState { get; private set; }
+		// Inputs: always updated
 
-		private ulong m_nextRunPath;
-		private ulong m_nextRunRotate;
-		private byte m_runId;
-		private INavigatorMover m_prevMover;
+		private Vector3 m_addToVelocity;
+		private Vector3D m_currentPosition, m_destWorld;
+		private Vector3 m_autopilotVelocity;
+		private float m_autopilotSpeed, m_autopilotShipBoundingRadius;
 
-		/// <summary>Number of alternates tried, count starts after the first alternate is found that is better than base.</summary>
-		private int m_altPath_AlternatesFound;
-		/// <summary>A value used to compare waypoints to determine the best one.</summary>
-		private float m_altPath_PathValue;
-		/// <summary>The best waypoint found so far.</summary>
-		private Vector3D m_altPath_Waypoint;
+		// High Level
 
-		public bool CanMove { get { return m_pathState == PathState.No_Obstruction; } }
-		public bool CanRotate { get { return m_rotateState == PathState.No_Obstruction; } }
-		
-		// players were getting confused by not running, so we won't report it anymore
-		public bool ReportCanMove { get { return m_pathState == PathState.Not_Running || CanMove; } }
-		public bool ReportCanRotate { get { return m_rotateState == PathState.Not_Running || CanRotate; } }
+		private SphereClusters m_clusters = new SphereClusters();
+		/// <summary>First this list is populated by pruning structure, when calculating repulsion it is populated with entities to be avoided.</summary>
+		private List<MyEntity> m_entitiesPruneAvoid = new List<MyEntity>();
+		/// <summary>List of entities that will repulse the autopilot.</summary>
+		private List<MyEntity> m_entitiesRepulse = new List<MyEntity>();
 
-		public IMyEntity RotateObstruction { get; private set; }
-		public IMyEntity MoveObstruction { get; private set; }
+		// Low Level
 
-		/// <summary>Closest surface point found by rotate checker.</summary>
-		public Vector3D ClosestSurfacePoint { get { return m_rotateChecker.ClosestPoint; } }
+		private MyBinaryStructHeap<float, PathNode> m_openNodes = new MyBinaryStructHeap<float, PathNode>();
+		private Dictionary<long, PathNode> m_reachedNodes = new Dictionary<long, PathNode>();
+		private float m_nodeDistance;
+		private Stack<Vector3D> m_path = new Stack<Vector3D>();
+#if PROFILE
+		private int m_unreachableNodes = 0;
+#endif
 
-		public OldPathfinder(IMyCubeGrid grid, AllNavigationSettings navSet, Mover mover)
+		// Results
+
+		private Vector3 m_targetDirection = Vector3.Invalid;
+		private float m_targetDistance;
+
+		public MyEntity ObstructingEntity { get; private set; }
+		public Mover Mover { get; private set; }
+		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }
+		public RotateChecker RotateCheck { get { return Mover.RotateCheck; } }
+
+		public NewPathfinder(ShipControllerBlock block)
 		{
-			grid.throwIfNull_argument("grid");
-			m_grid = grid;
-			m_logger = new Logger(() => grid.DisplayName, () => m_pathState.ToString(), () => m_rotateState.ToString());
-			m_pathChecker = new PathChecker(grid);
-			m_rotateChecker = new RotateChecker(grid);
-			m_navSet = navSet;
-			m_mover = mover;
-			m_planetCheckDest = new PlanetChecker(grid);
-			m_planetCheckSpeed = new PlanetChecker(grid);
-			m_logger.debugLog("Initialized, grid: " + grid.DisplayName);
+			m_logger = new Logger(() => m_autopilotGrid.getBestName(), () => {
+				if (m_navBlock != null)
+					return m_navBlock.DisplayName;
+				return "N/A";
+			});
+			Mover = new Mover(block, new RotateChecker(block.CubeBlock, CollectEntities));
 		}
 
-		public void TestPath(Vector3D destination, bool landing)
+		// Methods
+
+		public void HoldPosition(Vector3 velocity)
 		{
-			if (m_navSet.Settings_Current.DestinationChanged || m_prevMover != m_navSet.Settings_Current.NavigatorMover)
+			Mover.CalcMove(NavSet.Settings_Current.NavigationBlock, ref Vector3.Zero, 0f, ref velocity);
+		}
+
+		public void MoveTo(PseudoBlock navBlock, LastSeen targetEntity, Vector3D offset = default(Vector3D), Vector3 addToVelocity = default(Vector3), bool isLanding = false)
+		{
+			Destination dest;
+			if (targetEntity.isRecent())
 			{
-				m_logger.debugLog("new destination: " + destination, Logger.severity.INFO);
-				m_navSet.Settings_Task_NavWay.DestinationChanged = false;
-				m_prevMover = m_navSet.Settings_Current.NavigatorMover;
-				m_runId++;
-				m_pathLow.Clear();
-				ClearAltPath();
-				m_pathState = PathState.Not_Running;
-				m_planetCheckDest.Stop();
-				m_planetCheckSpeed.Stop();
+				dest = new Destination(targetEntity.Entity, offset);
 			}
-			//else
-			//	m_logger.debugLog("destination unchanged", "TestPath()");
-
-			if (Globals.UpdateCount < m_nextRunPath)
-				return;
-			m_nextRunPath = Globals.UpdateCount + 10ul;
-
-			if (m_pathLow.Count != 0)
+			else
 			{
-				m_logger.debugLog("path low is running");
+				dest = new Destination(targetEntity.LastKnownPosition);
+				addToVelocity += targetEntity.LastKnownVelocity;
+			}
+			MoveTo(navBlock, ref dest, addToVelocity, isLanding);
+		}
+
+		public void MoveTo(PseudoBlock navBlock, ref Destination destination, Vector3 addToVelocity = default(Vector3), bool isLanding = false)
+		{
+			AllNavigationSettings.SettingsLevel level = Mover.NavSet.Settings_Current;
+			MyEntity ignoreEntity = (MyEntity)level.DestinationEntity;
+			bool ignoreVoxel = level.IgnoreAsteroid;
+			bool canChangeCourse = level.PathfinderCanChangeCourse;
+
+			m_addToVelocity = addToVelocity;
+
+			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid && m_destination.Equals(ref destination) && m_ignoreEntity == ignoreEntity && m_ignoreVoxel == ignoreVoxel && m_canChangeCourse == canChangeCourse && m_isLanding == isLanding)
+			{
+				UpdateInputs();
+				TestCurrentPath();
+				OnComplete();
 				return;
 			}
 
-			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
+			m_logger.debugLog("nav block changed from " + (m_navBlock == null ? "N/A" : m_navBlock.DisplayName) + " to " + navBlock.DisplayName, condition: m_navBlock != navBlock);
+			m_logger.debugLog("grid changed from " + m_autopilotGrid.getBestName() + " to " + navBlock.Grid.getBestName(), condition: m_autopilotGrid != navBlock.Grid);
+			m_logger.debugLog("destination changed from " + m_destination + " to " + destination, condition: !m_destination.Equals(ref destination));
+			m_logger.debugLog("ignore entity changed from " + m_ignoreEntity.getBestName() + " to " + ignoreEntity.getBestName(), condition: m_ignoreEntity != ignoreEntity);
+			m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
+			m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
+			m_logger.debugLog("is landing changed from " + m_isLanding + " to " + isLanding, condition: m_isLanding != isLanding);
+
+			m_navBlock = navBlock;
+			m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
 			m_destination = destination;
-			m_ignoreAsteroid = m_navSet.Settings_Current.IgnoreAsteroid;
-			m_landing = landing;
-			m_canChangeCourse = m_navSet.Settings_Current.PathfinderCanChangeCourse;
-			MyEntity destEntity = m_navSet.Settings_Current.DestinationEntity as MyEntity;
-			m_logger.debugLog("DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName());
-			byte runId = m_runId;
+			m_ignoreEntity = ignoreEntity;
+			m_ignoreVoxel = ignoreVoxel;
+			m_canChangeCourse = canChangeCourse;
+			m_isLanding = isLanding;
+			m_path.Clear();
+			UpdateInputs();
 
-			const float minimumDistance = 100f;
-			const float minDistSquared = minimumDistance * minimumDistance;
-			const float seconds = 10f;
-			const float distOverSeconds = minimumDistance / seconds;
-
-			Vector3 displacement = destination - m_navBlock.WorldPosition;
-			float distanceSquared = displacement.LengthSquared();
-			float testDistance;
-			Vector3 move_direction = m_grid.Physics.LinearVelocity;
-			float speedSquared = move_direction.LengthSquared();
-			if (distanceSquared > minDistSquared)
-			{
-				// only look ahead 10 s / 100 m
-				testDistance = speedSquared < distOverSeconds ? minimumDistance : (float)Math.Sqrt(speedSquared) * seconds;
-				if (testDistance * testDistance < distanceSquared)
-				{
-					Vector3 direction = displacement / (float)Math.Sqrt(distanceSquared);
-					destination = m_navBlock.WorldPosition + testDistance * direction;
-					m_logger.debugLog("moved destination: " + destination + ", distance: " + testDistance + ", direction: " + direction);
-				}
-			}
-			else
-				m_logger.debugLog("using actual destination: " + destination);
-
-			m_pathHigh.Enqueue(() => TestPath(destination, destEntity, runId, isAlternate: false, tryAlternates: true));
-			if (m_ignoreAsteroid)
-				m_planetCheckDest.Stop();
-			else
-				m_planetCheckDest.Start(destination - m_navBlock.WorldPosition);
-
-			// given velocity and distance, calculate destination
-			if (speedSquared > 1f)
-			{
-				Vector3D moveDest = m_navBlock.WorldPosition + move_direction * LookAheadSpeed_Seconds;
-				m_pathHigh.Enqueue(() => TestPath(moveDest, null, runId, isAlternate: false, tryAlternates: false, slowDown: true));
-				if (m_ignoreAsteroid)
-					m_planetCheckSpeed.Stop();
-				else
-					m_planetCheckSpeed.Start(moveDest - m_navBlock.WorldPosition);
-			}
-			else
-			{
-				m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
-				m_navSet.Settings_Task_NavWay.SpeedTarget = float.MaxValue;
-			}
-
-			RunItem();
+			TestCurrentPath();
+			OnComplete();
 		}
 
-		public void TestRotate(Vector3 displacement)
+		private void UpdateInputs()
 		{
-			if (Globals.UpdateCount < m_nextRunRotate)
+			m_currentPosition = m_autopilotGrid.GetCentre();
+			FillDestWorld();
+			m_autopilotVelocity = m_autopilotGrid.Physics.LinearVelocity;
+			m_autopilotSpeed = m_autopilotVelocity.Length();
+			m_autopilotShipBoundingRadius = m_autopilotGrid.PositionComp.LocalVolume.Radius;
+		}
+
+		private void FillDestWorld()
+		{
+			Vector3D finalDestWorld = m_destination.WorldPosition() + m_currentPosition - m_navBlock.WorldPosition;
+			double distance; Vector3D.Distance(ref finalDestWorld, ref m_currentPosition, out distance);
+			NavSet.Settings_Current.Distance = (float)distance;
+
+			m_logger.debugLog("Missing obstruction", Logger.severity.ERROR, condition: m_path.Count != 0 && ObstructingEntity == null);
+
+			m_destWorld = m_path.Count == 0 ? finalDestWorld : m_path.Peek() + ObstructingEntity.PositionComp.GetPosition();
+
+			//m_logger.debugLog("final dest world: " + finalDestWorld + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
+		}
+
+		private void OnComplete()
+		{
+			MyEntity relativeEntity = ObstructingEntity ?? (MyEntity)m_destination.Entity;
+			Vector3 targetVelocity = relativeEntity != null && relativeEntity.Physics != null && !relativeEntity.Physics.IsStatic ? relativeEntity.Physics.LinearVelocity  : Vector3.Zero;
+			if (m_path.Count == 0)
+			{
+				Vector3 temp; Vector3.Add(ref targetVelocity, ref m_addToVelocity, out temp);
+				targetVelocity = temp;
+			}
+
+			if (!m_targetDirection.IsValid())
+				// maintain postion to obstruction / destination
+				Mover.CalcMove(m_navBlock, ref Vector3.Zero, 0f, ref targetVelocity, m_isLanding);
+			else
+				Mover.CalcMove(m_navBlock, ref m_targetDirection, m_targetDistance, ref targetVelocity, m_isLanding);
+		}
+
+		private void TestCurrentPath()
+		{
+			if (m_path.Count != 0)
+			{
+				// don't chase an obstructing entity unless it is the destination
+				if (ObstructingEntity != m_destination.Entity && ObstructionMovingAway())
+				{
+					m_logger.debugLog("Obstruction is moving away, I'll just wait here");
+					m_path.Clear();
+					ObstructingEntity = null;
+					m_targetDirection = Vector3.Invalid;
+					return;
+				}
+
+				// if near waypoint, pop it
+				float destRadius = DestinationRadius * m_nodeDistance;
+				double distanceToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distanceToDest);
+				if (distanceToDest < destRadius * destRadius)
+				{
+					m_logger.debugLog("Reached waypoint: " + m_path.Peek() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
+					m_path.Pop();
+					FillDestWorld();
+				}
+			}
+
+			m_logger.debugLog("Current position: " + m_currentPosition + ", destination: " + m_destWorld);
+
+			FillEntitiesLists();
+
+			m_entitiesPruneAvoid.Clear();
+			Vector3 repulsion;
+			CalcRepulsion(out repulsion);
+
+			Vector3D disp; Vector3D.Subtract(ref m_destWorld, ref m_currentPosition, out disp);
+			double  targetDistance = disp.Length();
+			Vector3D direct; Vector3D.Divide(ref disp, targetDistance, out direct);
+			Vector3 directF = direct;
+			Vector3.Add(ref directF, ref repulsion, out m_targetDirection);
+			m_targetDirection.Normalize();
+			m_targetDistance = (float)targetDistance;
+
+			MyEntity obstructing;
+			Vector3D pointOfObstruction;
+			object subtObstruct;
+			if (CurrentObstructed((float)targetDistance, out obstructing, out pointOfObstruction, out subtObstruct))
+			{
+				ObstructingEntity = obstructing;
+				//ObstructionReport = subtObstruct ?? obstructing;
+
+				m_entitiesPruneAvoid.Clear();
+				m_entitiesRepulse.Clear();
+				m_targetDirection = Vector3.Invalid;
+				if (ObstructionMovingAway())
+					return;
+				FindAPath(ref pointOfObstruction);
 				return;
-			m_nextRunRotate = Globals.UpdateCount + 10ul;
+			}
 
-			m_navBlock = m_navSet.Settings_Current.NavigationBlock;
-			m_pathHigh.Enqueue(() => {
-				Vector3 axis; Vector3.Normalize(ref displacement, out axis);
-				IMyEntity obstruction;
-				if (m_rotateChecker.TestRotate(axis, m_ignoreAsteroid, out obstruction))
-					m_rotateState = PathState.No_Obstruction;
-				else
-					m_rotateState = PathState.Path_Blocked;
-				RotateObstruction = obstruction;
-
-				RunItem();
-			});
-
-			RunItem();
+			m_logger.debugLog("Target direction: " + m_targetDirection + ", target distance: " + m_targetDistance);
+			if (m_path.Count == 0)
+			{
+				ObstructingEntity = null;
+				//ObstructionReport = null;
+			}
+			m_entitiesPruneAvoid.Clear();
+			m_entitiesRepulse.Clear();
 		}
 
 		/// <summary>
-		/// Test a path between current position and destination.
+		/// Fill m_entitiesPruneAvoid with nearby entities.
+		/// Fill m_entitiesRepulse from m_entitiesPruneAvoid, ignoring some entitites.
 		/// </summary>
-		private void TestPath(Vector3D destination, MyEntity ignoreEntity, byte runId, bool isAlternate, bool tryAlternates, bool slowDown = false)
+		private void FillEntitiesLists()
 		{
-			m_logger.debugLog("m_navBlock == null", Logger.severity.FATAL, condition: m_navBlock == null);
+			Profiler.StartProfileBlock();
 
-			if (runId != m_runId)
-			{
-				m_logger.debugLog("destination changed, abort", Logger.severity.DEBUG);
-				return;
-			}
+			m_entitiesPruneAvoid.Clear();
+			m_entitiesRepulse.Clear();
 
-			if (!lock_testPath.TryAcquireExclusive())
+			// TODO: this might need to be larger to accomodate moving objects, it's possible that a box would be better
+			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + (m_autopilotSpeed + 1000f) * SpeedFactor };
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
+
+			foreach (MyEntity entity in CollectEntities(m_entitiesPruneAvoid))
+				m_entitiesRepulse.Add(entity);
+
+			Profiler.EndProfileBlock();
+		}
+
+		private IEnumerable<MyEntity> CollectEntities(List<MyEntity> fromPruning)
+		{
+			for (int i = fromPruning.Count - 1; i >= 0; i--)
 			{
-				m_logger.debugLog("Already running, requeue (destination:" + destination + ", ignoreEntity: " + ignoreEntity.getBestName() + ", runId :" + runId
-					+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")");
-				LockedQueue<Action> queue = isAlternate ? m_pathLow : m_pathHigh;
-				queue.Enqueue(() => TestPath(destination, ignoreEntity, runId, isAlternate, tryAlternates));
-				return;
-			}
-			try
-			{
-				if (m_grid != m_navBlock.Grid)
+				MyEntity entity = fromPruning[i];
+				if (m_ignoreEntity != null && m_ignoreEntity == entity)
+					continue;
+				if (entity is MyCubeGrid)
 				{
-					m_logger.debugLog("Grid has changed, from " + m_grid.getBestName() + " to " + m_navBlock.Grid.getBestName() + ", nav block: " + m_navBlock.Block.getBestName(), Logger.severity.WARNING);
-					return;
+					MyCubeGrid grid = (MyCubeGrid)entity;
+					if (grid == m_autopilotGrid)
+						continue;
+					if (!grid.Save)
+						continue;
+					if (Attached.AttachedGrid.IsGridAttached(m_autopilotGrid, grid, Attached.AttachedGrid.AttachmentKind.Physics))
+						continue;
 				}
-				m_logger.debugLog("Running, (destination:" + destination + ", ignoreEntity: " + ignoreEntity.getBestName() + ", runId :" + runId
-						+ ", isAlternate: " + isAlternate + ", tryAlternates: " + tryAlternates + ", slowDown: " + slowDown + ")");
+				else if (entity is MyVoxelBase && m_ignoreVoxel)
+					continue;
+				else if (!(entity is MyFloatingObject))
+					continue;
 
-				MyEntity obstructing;
-				Vector3? pointOfObstruction;
+				if (entity.Physics != null && entity.Physics.Mass > 0f && entity.Physics.Mass < 1000f)
+					continue;
 
-				if (!isAlternate && !m_ignoreAsteroid)
+				yield return entity;
+			}
+		}
+
+		private void CalcRepulsion(out Vector3 repulsion)
+		{
+			Profiler.StartProfileBlock();
+
+			if (m_clusters.Clusters.Count != 0)
+				m_clusters.Clear();
+
+			for (int index = m_entitiesRepulse.Count - 1; index >= 0; index--)
+			{
+				MyEntity entity = m_entitiesRepulse[index];
+
+				m_logger.debugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
+				m_logger.debugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy.Parent != null);
+
+				Vector3D centre = entity.GetCentre();
+				Vector3D toCentreD;
+				Vector3D.Subtract(ref centre, ref m_currentPosition, out toCentreD);
+				toCentreD.Normalize();
+				Vector3 toCentre = toCentreD;
+				float boundingRadius;
+				float linearSpeed;
+
+				MyPlanet planet = entity as MyPlanet;
+				if (planet != null)
 				{
-					if (slowDown)
-					{
-						if ((m_planetCheckSpeed.CurrentState & PlanetChecker.State.Blocked) != 0)
-						{
-							float speed = Vector3.Distance(m_planetCheckSpeed.ObstructionPoint, m_navBlock.WorldPosition) * 0.1f;
-							if (speed < 1f)
-								speed = 1f;
-							m_navSet.Settings_Task_NavWay.SpeedTarget = speed;
-							m_logger.debugLog("Path blocked by planet, set SpeedTarget to " + speed + ", obstructed by planet", Logger.severity.TRACE);
-							return;
-						}
-					}
+					boundingRadius = planet.MaximumRadius;
+					Vector3.Dot(ref m_autopilotVelocity, ref toCentre, out linearSpeed);
+				}
+				else
+				{
+					boundingRadius = entity.PositionComp.LocalVolume.Radius;
+					if (entity.Physics == null)
+						Vector3.Dot(ref m_autopilotVelocity, ref toCentre, out linearSpeed);
 					else
 					{
-						if ((m_planetCheckDest.CurrentState & PlanetChecker.State.Blocked) != 0 &&
-							// planet checker is using an older displacement so verify that obstruction is closer than destination
-								Vector3D.DistanceSquared(m_navBlock.WorldPosition, m_planetCheckDest.ObstructionPoint) < Vector3D.DistanceSquared(m_navBlock.WorldPosition, destination))
-						{
-							m_logger.debugLog("path blocked by planet, to destination: " + (destination - m_navBlock.WorldPosition) + ", to obstruction: " + (m_planetCheckDest.ObstructionPoint - m_navBlock.WorldPosition));
-
-							if (m_pathState < PathState.Searching)
-								m_pathState = PathState.Searching;
-							obstructing = m_planetCheckDest.ClosestPlanet;
-
-							Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - obstructing.GetCentre());
-							pointOfObstruction = m_planetCheckDest.ObstructionPoint + direction * 1e3f;
-
-							float distance = Vector3.Distance(m_navBlock.WorldPosition, pointOfObstruction.Value);
-
-							MoveObstruction = obstructing;
-							m_pathHigh.Clear();
-							ClearAltPath();
-							if ((m_planetCheckDest.CurrentState & PlanetChecker.State.BlockedPath) != 0)
-								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e4f, runId);
-							else // blocked by gravity
-								FindAlternate_AroundObstruction(pointOfObstruction.Value - m_navBlock.WorldPosition, new Vector3[] { direction }, 1e6f, runId);
-							m_pathLow.Enqueue(() => {
-								if (m_altPath_AlternatesFound != 0)
-									SetWaypoint();
-								RunItem();
-							});
-							m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
-
-							return;
-						}
+						Vector3 obVel = entity.Physics.LinearVelocity;
+						Vector3 relVel;
+						Vector3.Subtract(ref m_autopilotVelocity, ref  obVel, out relVel);
+						Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
 					}
 				}
+				//m_logger.debugLog("For entity: " + entity.nameWithId() + ", bounding radius: " + boundingRadius + ", autopilot ship radius: " + m_autopilotShipBoundingRadius + ", linear speed: " + linearSpeed + ", sphere radius: " +
+				//	(boundingRadius + m_autopilotShipBoundingRadius + linearSpeed * SpeedFactor));
+				if (linearSpeed < 0f)
+					linearSpeed = 0f;
+				else
+					linearSpeed *= SpeedFactor;
+				boundingRadius += m_autopilotShipBoundingRadius + linearSpeed;
 
-				// for alternates, check that it can be better than current value
-				if (isAlternate)
+				Vector3D toCurrent;
+				Vector3D.Subtract(ref m_currentPosition, ref centre, out toCurrent);
+				double toCurrLenSq = toCurrent.LengthSquared();
+				if (toCurrLenSq < boundingRadius * boundingRadius)
 				{
-					float distToWaypointSquared = (float)Vector3D.DistanceSquared(m_navBlock.WorldPosition, destination);
-					if (distToWaypointSquared * WaypointDistanceBias * WaypointDistanceBias > m_altPath_PathValue * m_altPath_PathValue)
-					{
-						m_logger.debugLog("no point in checking alternate path, bias is too high", Logger.severity.TRACE);
-						m_logger.debugLog("no alternate, yet path value is set", Logger.severity.ERROR, condition: m_altPath_AlternatesFound == 0);
-						IncrementAlternatesFound();
-						return;
-					}
+					// Entity is too close for repulsion.
+					m_entitiesPruneAvoid.Add(entity);
+					continue;
 				}
 
-				if (m_pathChecker.TestFast(m_navBlock, destination, m_ignoreAsteroid, ignoreEntity, m_landing))
-				{
-					m_logger.debugLog("path is clear (fast)", Logger.severity.TRACE);
-					PathClear(ref destination, runId, isAlternate, slowDown);
-					return;
-				}
-
-				if (m_pathChecker.TestSlow(out obstructing, out pointOfObstruction))
-				{
-					m_logger.debugLog("path is clear (slow)", Logger.severity.TRACE);
-					PathClear(ref destination, runId, isAlternate, slowDown);
-					return;
-				}
-
-				if (runId != m_runId)
-				{
-					m_logger.debugLog("destination changed, abort", Logger.severity.DEBUG);
-					return;
-				}
-
-				if (slowDown)
-				{
-					float speed = Vector3.Distance(pointOfObstruction.Value, m_navBlock.WorldPosition) * 0.1f;
-					if (speed < 1f)
-						speed = 1f;
-					IMyEntity destEntity = m_navSet.Settings_Current.DestinationEntity;
-					if (destEntity != null)
-						destEntity = destEntity.GetTopMostParent();
-					if (obstructing.GetTopMostParent() == destEntity)
-					{
-						m_navSet.Settings_Task_NavWay.SpeedMaxRelative = speed;
-						m_logger.debugLog("Set SpeedMaxRelative to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), Logger.severity.TRACE);
-					}
-					else
-					{
-						m_navSet.Settings_Task_NavWay.SpeedTarget = speed;
-						m_logger.debugLog("Set SpeedTarget to " + speed + ", obstructing: " + obstructing.getBestName() + ", DestinationEntity: " + m_navSet.Settings_Current.DestinationEntity.getBestName(), Logger.severity.TRACE);
-					}
-					return;
-				}
-
-				if (m_pathState < PathState.Searching)
-					m_pathState = PathState.Searching;
-
-				m_logger.debugLog("path is blocked by " + obstructing.getBestName() + " at " + pointOfObstruction + ", ignoreEntity: " + ignoreEntity.getBestName(), isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG);
-				m_logger.debugLog("grid: " + obstructing.GetTopMostParent().DisplayName, isAlternate ? Logger.severity.TRACE : Logger.severity.DEBUG, condition: obstructing is IMyCubeBlock);
-
-				if (isAlternate && m_altPath_AlternatesFound != 0)
-					IncrementAlternatesFound();
-
-				if (tryAlternates)
-				{
-					//float angle = m_navSet.Settings_Current.DistanceAngle;
-					//if (angle > 0.1f && CanRotate)
-					//{
-					//	m_logger.debugLog("wait for rotation", "TestPath()");
-					//	return;
-					//}
-
-					if (m_navSet.Settings_Task_NavEngage.NavigatorMover != m_navSet.Settings_Current.NavigatorMover)
-					{
-						m_logger.debugLog("obstructed while flying to a waypoint, throwing it out and starting over", Logger.severity.DEBUG);
-						m_navSet.OnTaskComplete_NavWay();
-						return;
-					}
-
-					ClearAltPath();
-					MoveObstruction = obstructing;
-					TryAlternates(runId, pointOfObstruction.Value, obstructing);
-				}
+				BoundingSphereD entitySphere = new BoundingSphereD(centre, boundingRadius);
+				m_clusters.Add(ref entitySphere);
 			}
-			finally
+
+			m_clusters.AddMiddleSpheres();
+
+			repulsion = Vector3D.Zero;
+			for (int indexO = m_clusters.Clusters.Count - 1; indexO >= 0; indexO--)
 			{
-				lock_testPath.ReleaseExclusive();
-				RunItem();
+				List<BoundingSphereD> cluster = m_clusters.Clusters[indexO];
+				for (int indexI = cluster.Count - 1; indexI >= 0; indexI--)
+				{
+					BoundingSphereD sphere = cluster[indexI];
+					CalcRepulsion(ref sphere, ref repulsion);
+				}
 			}
+
+			Profiler.EndProfileBlock();
 		}
 
+		// TODO: Atmospheric ship might want to consider space as repulsor???
 		/// <summary>
-		/// Enqueue searches for alternate paths.
-		/// </summary>
-		/// <param name="runId">Id of search</param>
-		/// <param name="pointOfObstruction">The point on the path where an obstruction was encountered.</param>
-		/// <param name="obstructing">The entity that is obstructing the path.</param>
-		private void TryAlternates(byte runId, Vector3 pointOfObstruction, IMyEntity obstructing)
-		{
-			//try
-			//{
-			m_pathHigh.Clear();
-			//}
-			//catch (IndexOutOfRangeException ioore)
-			//{
-			//	m_logger.debugLog("Caught IndexOutOfRangeException", "TryAlternates()", Logger.severity.ERROR);
-			//	m_logger.debugLog("Count: " + m_pathHigh.Count, "TryAlternates()", Logger.severity.ERROR);
-			//	m_logger.debugLog("Exception: " + ioore, "TryAlternates()", Logger.severity.ERROR);
-
-			//	throw ioore;
-			//}
-
-			Vector3 displacement = pointOfObstruction - m_navBlock.WorldPosition;
-
-			FindAlternate_HalfwayObstruction(displacement, runId);
-			if (m_canChangeCourse)
-			{
-				// using a halfway point works much better when the obstuction is near the destination
-				FindAlternate_AroundObstruction(displacement * 0.5f, obstructing.GetLinearVelocity(), runId);
-				//FindAlternate_AroundObstruction(displacement, pointOfObstruction, obstructing.GetLinearVelocity(), runId);
-				FindAlternate_JustMove(runId);
-			}
-			m_pathLow.Enqueue(() => {
-				if (m_altPath_AlternatesFound != 0)
-					SetWaypoint();
-				RunItem();
-			});
-			m_pathLow.Enqueue(() => m_pathState = PathState.Path_Blocked);
-		}
-
-		/// <summary>
-		/// Enqueues search for alternate paths around an obstruction.
-		/// </summary>
-		/// <param name="displacement">Displacement from autopilot block to obstruction.</param>
-		/// <param name="obstructionSpeed">The speed of the obstruction, used to limit number of directions tested.</param>
-		/// <param name="runId">Id of search</param>
-		private void FindAlternate_AroundObstruction(Vector3 displacement, Vector3 obstructionSpeed, byte runId)
-		{
-			float distance = displacement.Length();
-			Vector3 direction; direction = displacement / distance;
-			Vector3 newPath_v1, newPath_v2;
-			direction.CalculatePerpendicularVector(out newPath_v1);
-			newPath_v2 = direction.Cross(newPath_v1);
-
-			Vector3[] NewPathVectors = { newPath_v1, newPath_v2, Vector3.Negate(newPath_v1), Vector3.Negate(newPath_v2) };
-			ICollection<Vector3> AcceptableDirections;
-			if (obstructionSpeed == Vector3.Zero)
-				AcceptableDirections = NewPathVectors;
-			else
-			{
-				AcceptableDirections = new List<Vector3>();
-				Vector3 SpeedRejection = Vector3.Reject(obstructionSpeed, direction);
-				float zeroDistSquared = Vector3.DistanceSquared(Vector3.Zero, SpeedRejection);
-				foreach (Vector3 vector in NewPathVectors)
-				{
-					float distSquared = Vector3.DistanceSquared(vector, SpeedRejection);
-					if (distSquared <= zeroDistSquared)
-						AcceptableDirections.Add(vector);
-				}
-			}
-
-			float destRadius = m_navSet.Settings_Current.DestinationRadius;
-			destRadius = destRadius < 20f ? destRadius + 10f : destRadius * 1.5f;
-			destRadius *= destRadius;
-
-			FindAlternate_AroundObstruction(displacement, AcceptableDirections, destRadius, runId);
-		}
-
-		/// <summary>
-		/// Enqueue searches for alternate paths around an obstruction.
-		/// </summary>
-		/// <param name="displacement">Displacement from autopilot block to destination.</param>
-		/// <param name="directions">Directions to search for alternate paths in.</param>
-		/// <param name="minDistSq">Square of minimum distance between autopilot and waypoint.</param>
 		/// 
-		/// <param name="runId">Id of this search.</param>
-		private void FindAlternate_AroundObstruction(Vector3 displacement, IEnumerable<Vector3> directions, float minDistSq, byte runId)
+		/// </summary>
+		/// <param name="sphere">The sphere which is repulsing the autopilot.</param>
+		/// <param name="repulsion">A directional vector with length between 0 and 1, indicating the repulsive force.</param>
+		private void CalcRepulsion(ref BoundingSphereD sphere, ref Vector3 repulsion)
 		{
-			//m_logger.debugLog("point: " + pointOfObstruction + ", direction: " + direction + ", distance: " + distance + ", dest radius: " + minDistSq, "FindAlternate_AroundObstruction()");
-			for (int newPathDistance = 8; newPathDistance < 1000000; newPathDistance *= 2)
+			Vector3D toCurrentD;
+			Vector3D.Subtract(ref m_currentPosition, ref sphere.Center, out toCurrentD);
+			Vector3 toCurrent = toCurrentD;
+			float toCurrentLenSq = toCurrent.LengthSquared();
+
+			float maxRepulseDist = (float)sphere.Radius * 4f; // Might need to be different for planets than other entities.
+			float maxRepulseDistSq = maxRepulseDist * maxRepulseDist;
+
+			//m_logger.debugLog("current position: " + m_path.CurrentPosition + ", sphere centre: " + sphere.Center + ", to current: " + toCurrent + ", sphere radius: " + sphere.Radius);
+
+			if (toCurrentLenSq > maxRepulseDistSq)
 			{
-				Vector3 basePosition = m_navBlock.WorldPosition + displacement;
-				foreach (Vector3 direction in directions)
-				{
-					Vector3 tryDest = basePosition + newPathDistance * direction;
-					float distSq = Vector3.DistanceSquared(m_navBlock.WorldPosition, tryDest);
-					if (distSq > minDistSq)
-						m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
-				}
-				displacement *= 1.05f;
+				// Autopilot is outside the maximum bounds of repulsion.
+				return;
 			}
+
+			// If both entity and autopilot are near the destination, the repulsion radius must be reduced or we would never reach the destination.
+			double toDestLenSq;
+			Vector3D.DistanceSquared(ref sphere.Center, ref  m_destWorld, out toDestLenSq);
+			toDestLenSq += m_targetDistance * m_targetDistance; // Adjustable
+
+			if (toCurrentLenSq > toDestLenSq)
+			{
+				// Autopilot is outside the boundaries of repulsion.
+				return;
+			}
+
+			if (toDestLenSq < maxRepulseDistSq)
+				maxRepulseDist = (float)Math.Sqrt(toDestLenSq);
+
+			float toCurrentLen = (float)Math.Sqrt(toCurrentLenSq);
+			// maxRepulseDist / toCurrentLen can be adjusted
+			Vector3 result;
+			Vector3.Multiply(ref toCurrent, (maxRepulseDist / toCurrentLen - 1f) / toCurrentLen, out result);
+			m_logger.debugLog("toCurrent: " + toCurrent + ", maxRepulseDist: " + maxRepulseDist + ", toCurrentLen: " + toCurrentLen + ", ratio: " + (maxRepulseDist / toCurrentLen) + ", result: " + result);
+			Vector3 result2;
+			Vector3.Add(ref repulsion, ref result, out result2);
+			m_logger.debugLog("repulsion: " + result2);
+			repulsion = result2;
 		}
 
 		/// <summary>
-		/// Enqueue searches for alternate paths halfway and quarterway between the autopilot and the obstruction.
+		/// For testing if the current path is obstructed by any entity in m_entitiesPruneAvoid.
 		/// </summary>
-		/// <param name="displacement">Displacement from autopilot block to obstruction.</param>
-		/// <param name="runId">Id of this search</param>
-		private void FindAlternate_HalfwayObstruction(Vector3 displacement, byte runId)
+		private bool CurrentObstructed(float targetDistance, out MyEntity obstructingEntity, out Vector3D pointOfObstruction, out object obstructSubEntity)
 		{
-			Vector3 halfway = displacement * 0.5f + m_navBlock.WorldPosition;
-			m_pathLow.Enqueue(() => TestPath(halfway, null, runId, isAlternate: true, tryAlternates: false));
-			halfway -= displacement * 0.25f;
-			m_pathLow.Enqueue(() => TestPath(halfway, null, runId, isAlternate: true, tryAlternates: false));
-		}
+			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
 
-		/// <summary>
-		/// Enqueues searches for alternate paths by moving the ship a short distance in any base direction.
-		/// </summary>
-		/// <param name="runId">Id of this search.</param>
-		private void FindAlternate_JustMove(byte runId)
-		{
-			Vector3D worldPosition = m_navBlock.WorldPosition;
-			float distance = m_navSet.Settings_Current.DestinationRadius * 2f;
-			for (int i = 0; i < Base25Directions.Length; i++)
-			{
-				Vector3 tryDest = worldPosition + Base25Directions[i] * (distance + i);
-				m_pathLow.Enqueue(() => TestPath(tryDest, null, runId, isAlternate: true, tryAlternates: false));
-			}
-		}
+			// if destination is obstructing it needs to be checked first, so we would match speed with destination
 
-		private void RunItem()
-		{
-			m_logger.debugLog("entered, high count: " + m_pathHigh.Count + ", low count: " + m_pathLow.Count + ", high parallel: " + Thread_High.ParallelTasks + ", low parallel: " + Thread_Low.ParallelTasks);
+			MyEntity destTop;
+			if (m_destination.Entity != null)
+			{
+				m_logger.debugLog("checking destination entity");
 
-			Action act;
-			if (m_pathHigh.TryDequeue(out act))
-			{
-				m_logger.debugLog("Adding item to Thread_High, count: " + (Thread_High.ParallelTasks + 1));
-				Thread_High.EnqueueAction(act);
-			}
-			else if (m_pathLow.TryDequeue(out act))
-			{
-				m_logger.debugLog("Adding item to Thread_Low, count: " + (Thread_Low.ParallelTasks + 1));
-				Thread_Low.EnqueueAction(act);
-			}
-		}
-
-		private void PathClear(ref Vector3D destination, byte runId, bool isAlternate, bool slowDown)
-		{
-			if (runId == m_runId)
-			{
-				if (isAlternate)
+				destTop = (MyEntity)m_destination.Entity.GetTopMostParent();
+				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
-					LineSegment line = new LineSegment() { From = destination, To = m_destination };
-					float distToWaypoint = (float)Vector3D.Distance(m_navBlock.WorldPosition, destination);
-					float pathValue = m_pathChecker.distanceCanTravel(line) + distToWaypoint * WaypointDistanceBias;
-					m_logger.debugLog("for point: " + line.From + ", waypoint distance: " + (float)Vector3D.Distance(m_navBlock.WorldPosition, destination) + ", path value: " + pathValue + ", required: " + m_altPath_PathValue, Logger.severity.TRACE);
-
-					if (!AddAlternatePath(pathValue, ref destination))
-						m_logger.debugLog("throwing out: " + line.From + ", path value: " + pathValue + ", required: " + m_altPath_PathValue, Logger.severity.TRACE);
-
-					return;
+					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_targetDirection, targetDistance, out obstructSubEntity, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + destTop.getBestName() + "." + obstructSubEntity);
+						obstructingEntity = destTop;
+						return true;
+					}
 				}
-				if (slowDown)
-				{
-					//m_logger.debugLog("Removing speed limit", "PathClear()");
-					m_navSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
-					m_navSet.Settings_Task_NavWay.SpeedTarget = float.MaxValue;
-					return;
-				}
-				m_logger.debugLog("path clear, throwing out search", Logger.severity.DEBUG, condition: m_pathLow.Count != 0);
-				MoveObstruction = null;
-				m_pathState = PathState.No_Obstruction;
-				m_pathLow.Clear();
 			}
 			else
-				m_logger.debugLog("destination changed, abort", Logger.severity.DEBUG);
-			return;
-		}
+				destTop = null;
 
-		private void ClearAltPath()
-		{
-			this.m_altPath_AlternatesFound = 0;
-			this.m_altPath_PathValue = float.MaxValue;
-		}
+			//// check voxel next so that the ship will not match an obstruction that is on a collision course
 
-		private bool AddAlternatePath(float pathValue, ref Vector3D waypoint)
-		{
-			if (pathValue < this.m_altPath_PathValue)
-			{
-				this.m_altPath_PathValue = pathValue;
-				this.m_altPath_Waypoint = waypoint;
-				IncrementAlternatesFound();
-				return true;
-			}
-			else if (this.m_altPath_AlternatesFound != 0)
-				IncrementAlternatesFound();
+			//if (!m_ignoreVoxel)
+			//{
+			//	m_logger.debugLog("raycasting voxels");
+
+			//	Vector3 velocityMulti; Vector3.Multiply(ref m_autopilotVelocity, SpeedFactor, out velocityMulti);
+			//	Vector3 directionMulti; Vector3.Multiply(ref m_targetDirection, VoxelAdd, out directionMulti);
+			//	Vector3 rayDirection; Vector3.Add(ref velocityMulti, ref directionMulti, out rayDirection);
+			//	IHitInfo hit;
+			//	if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayDirection, out hit))
+			//	{
+			//		m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position);
+			//		obstructingEntity = (MyEntity)hit.HitEntity;
+			//		pointOfObstruction = hit.Position;
+			//		obstructSubEntity = null;
+			//		return true;
+			//	}
+			//}
+
+			// check remaining entities
+
+			m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
+
+			if (m_entitiesPruneAvoid.Count != 0)
+				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
+				{
+					m_logger.debugLog("entity: " + m_entitiesPruneAvoid[i]);
+					obstructingEntity = m_entitiesPruneAvoid[i];
+					if (obstructingEntity == destTop || obstructingEntity is MyVoxelBase)
+						// already checked
+						continue;
+					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_targetDirection, targetDistance, out obstructSubEntity, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + obstructingEntity.getBestName() + "." + obstructSubEntity);
+						return true;
+					}
+				}
+
+			m_logger.debugLog("No obstruction");
+			obstructingEntity = null;
+			pointOfObstruction = Vector3.Invalid;
+			obstructSubEntity = null;
 			return false;
 		}
 
-		private void IncrementAlternatesFound()
+		private bool ObstructionMovingAway()
 		{
-			this.m_altPath_AlternatesFound++;
-			m_logger.debugLog("alts found: " + m_altPath_AlternatesFound);
-			if (this.m_altPath_AlternatesFound == AlternatesToCheck || m_altPath_PathValue == 0f)
-				SetWaypoint();
+			Vector3D velocity = ObstructingEntity.Physics.LinearVelocity;
+			if (velocity.LengthSquared() < 10f)
+				return false;
+			Vector3D position = ObstructingEntity.GetCentre();
+			Vector3D nextPosition; Vector3D.Add(ref position, ref velocity, out nextPosition);
+			double current; Vector3D.DistanceSquared(ref m_currentPosition, ref position, out current);
+			double next; Vector3D.DistanceSquared(ref m_currentPosition, ref nextPosition, out next);
+			m_logger.debugLog("Obstruction is moving away", condition: current < next);
+			return current < next;
 		}
 
-		private void SetAlternateBase(float closeness)
+		/// <summary>
+		/// Starts the pathfinding.
+		/// </summary>
+		private void FindAPath(ref Vector3D obstructionPoint)
 		{
-			this.m_altPath_AlternatesFound = 0;
-			this.m_altPath_PathValue = float.MaxValue;
+			m_openNodes.Clear();
+			m_reachedNodes.Clear();
+			m_path.Clear();
+			FillDestWorld();
+#if PROFILE
+			m_unreachableNodes = 0;
+#endif
+			double distCurObs, distObsDest;
+			Vector3D.Distance(ref m_currentPosition, ref obstructionPoint, out distCurObs);
+			Vector3D.Distance(ref obstructionPoint, ref m_destWorld, out distObsDest);
+			m_nodeDistance = (float)MathHelper.Max(distCurObs * 0.25d, distObsDest * 0.1d, 1f);
+
+			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: ObstructingEntity == null);
+
+			Vector3D relativePosition;
+			Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out relativePosition);
+
+			m_logger.debugLog("current position: " + m_currentPosition + ", obs: " + obstructPosition + ", relative: " + relativePosition);
+
+			PathNode rootNode = new PathNode() { Position = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z)) };
+			m_openNodes.Insert(rootNode, 0f);
+			AddReachedNode(ref rootNode);
+			FindAPath();
 		}
 
-		private void SetWaypoint()
+		private void AddReachedNode(ref PathNode reached)
 		{
-			m_logger.debugLog("MoveObstruction == null", Logger.severity.FATAL, condition: MoveObstruction == null);
-			m_logger.debugLog("m_navBlock == null", Logger.severity.FATAL, condition: m_navBlock == null);
+			m_reachedNodes.Add(reached.Position.GetHash(), reached);
+		}
 
-			m_pathLow.Clear();
-			IMyEntity top = MoveObstruction.GetTopMostParent();
-			if (top.Physics != null)
-				new Waypoint(m_mover, m_navSet, AllNavigationSettings.SettingsLevelName.NavWay, top, m_altPath_Waypoint - top.GetPosition());
+		/// <summary>
+		/// Continues pathfinding.
+		/// </summary>
+		private void FindAPath()
+		{
+			if (m_openNodes.Count == 0)
+			{
+				m_logger.debugLog("Pathfinding failed", Logger.severity.WARNING);
+
+#if PROFILE
+				LogStats();
+#endif
+#if LOG_ENABLED
+				LogStats();
+#endif
+
+				m_openNodes.Clear();
+				m_reachedNodes.Clear();
+				return;
+			}
+
+			PathNode currentNode = m_openNodes.RemoveMin();
+
+			// check if current is reachable from parent
+
+			if (currentNode.DistToCur != 0f)
+			{
+				if (m_reachedNodes.ContainsKey(currentNode.Position.GetHash()))
+				{
+					m_logger.debugLog("Already reached: " + ReportRelativePosition(currentNode.Position));
+					FindAPath();
+					return;
+				}
+
+				FillEntitiesLists();
+
+				// TODO: ignore entities that are far away and slow as in CalcRepulsion
+
+				if (!CanReachFromParent(ref currentNode))
+				{
+#if PROFILE
+					m_unreachableNodes++;
+#endif
+					FindAPath();
+					return;
+				}
+				m_logger.debugLog("Reached node: " + ReportRelativePosition(currentNode.Position));
+				AddReachedNode(ref currentNode);
+
+				// need to keep checking if the destination can be reached from every node
+				// this doesn't indicate a clear path but allows repulsion to resume
+
+				Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+				Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
+				Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
+
+				Line line = new Line(worldPosition, m_destWorld, false);
+				//m_logger.debugLog("line to dest: " + line.From + ", " + line.To + ", " + line.Direction + ", " + line.Length);
+				if (CanTravelSegment(ref offset, ref line))
+				{
+					m_logger.debugLog("Can reach final destination from a node, finished pathfinding. Final node: " + ReportRelativePosition(currentNode.Position), Logger.severity.DEBUG);
+					m_path.Clear();
+					PathNode node = currentNode;
+					while (node.DistToCur != 0f)
+					{
+						m_path.Push(node.Position);
+						node = m_reachedNodes[node.ParentKey];
+					}
+
+#if PROFILE
+					LogStats();
+#endif
+#if LOG_ENABLED
+					LogStats();
+#endif
+
+					m_openNodes.Clear();
+					m_reachedNodes.Clear();
+
+					m_logger.alwaysLog("Following path", Logger.severity.INFO);
+					return;
+				}
+			}
 			else
-				new GOLIS(m_mover, m_altPath_Waypoint, AllNavigationSettings.SettingsLevelName.NavWay);
-			m_navSet.Settings_Current.DestinationRadius = (float)Math.Max(Vector3D.Distance(m_navBlock.WorldPosition, m_altPath_Waypoint) * 0.2d, 1d);
-			m_logger.debugLog("Setting waypoint: " + m_altPath_Waypoint + ", obstruction pos: " + top.GetPosition() + ", reachable distance: " + m_altPath_PathValue + ", destination radius: " + m_navSet.Settings_Current.DestinationRadius, Logger.severity.DEBUG);
+				m_logger.debugLog("first node: " + ReportRelativePosition(currentNode.Position));
+
+			// open nodes
+
+			long currentKey = currentNode.Position.GetHash();
+			foreach (Vector3I neighbour in Globals.NeighboursOne)
+				CreatePathNode(currentKey, ref currentNode, neighbour, 1f);
+			foreach (Vector3I neighbour in Globals.NeighboursTwo)
+				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt2);
+			foreach (Vector3I neighbour in Globals.NeighboursThree)
+				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt3);
+
+			FindAPath();
+		}
+
+		private bool CanReachFromParent(ref PathNode node)
+		{
+			Profiler.StartProfileBlock();
+
+			Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+
+			PathNode parent = m_reachedNodes[node.ParentKey];
+			Vector3D worldParent;
+			Vector3D.Add(ref obstructPosition, ref parent.Position, out worldParent);
+
+			Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
+
+			Profiler.EndProfileBlock();
+			Line line = new Line() { From = parent.Position, To = node.Position, Direction = node.DirectionFromParent, Length = node.DistToCur - parent.DistToCur };
+			return CanTravelSegment(ref offset, ref line);
+		}
+
+		private bool CanTravelSegment(ref Vector3D offset, ref Line line)
+		{
+			Profiler.StartProfileBlock();
+
+			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
+
+			//if (!m_ignoreVoxel)
+			//{
+			//	//m_logger.debugLog("raycasting voxels");
+
+			//	Vector3 adjustment; Vector3.Multiply(ref line.Direction, VoxelAdd, out adjustment);
+			//	Vector3 disp; Vector3.Subtract(ref line.To, ref line.From, out disp);
+			//	Vector3 rayTest; Vector3.Add(ref disp, ref adjustment, out rayTest);
+			//	IHitInfo hit;
+			//	if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hit))
+			//	{
+			//		m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position);
+			//		Profiler.EndProfileBlock();
+			//		return false;
+			//	}
+			//}
+
+			//m_logger.debugLog("checking " + m_entitiesRepulse.Count + " entites - voxels");
+
+			if (m_entitiesRepulse.Count != 0)
+				for (int i = m_entitiesRepulse.Count - 1; i >= 0; i--)
+				{
+					MyEntity entity = m_entitiesRepulse[i];
+					if (entity is MyVoxelBase)
+						// already checked
+						continue;
+					object partHit;
+					Vector3D pointOfObstruction;
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref line.Direction, line.Length, out partHit, out pointOfObstruction))
+					{
+						m_logger.debugLog("Obstructed by " + entity.getBestName() + "." + partHit);
+						Profiler.EndProfileBlock();
+						return false;
+					}
+				}
+
+			m_logger.debugLog("No obstruction");
+			Profiler.EndProfileBlock();
+			return true;
+		}
+
+		private void CreatePathNode(long parentKey, ref PathNode parent, Vector3I neighbour, float distMulti)
+		{
+			Profiler.StartProfileBlock();
+
+			Vector3D position = parent.Position + neighbour * m_nodeDistance;
+			position = new Vector3D(Math.Round(position.X), Math.Round(position.Y), Math.Round(position.Z));
+			long positionHash = position.GetHash();
+
+			if (m_reachedNodes.ContainsKey(positionHash))
+			{
+				Profiler.EndProfileBlock();
+				return;
+			}
+
+			Vector3D disp; Vector3D.Subtract(ref position, ref parent.Position, out disp);
+			Vector3 neighbourF = neighbour;
+			Vector3 direction; Vector3.Divide(ref neighbourF, distMulti, out direction);
+
+			float turn; Vector3.Dot(ref parent.DirectionFromParent, ref direction, out turn);
+
+			if (turn < 0f)
+			{
+				Profiler.EndProfileBlock();
+				return;
+			}
+
+			float distToCur = parent.DistToCur + m_nodeDistance * distMulti;
+			Vector3D dispToDest; Vector3D.Subtract(ref m_destWorld, ref position, out dispToDest);
+			double distToDest = MinPathDistance(ref dispToDest);
+			float resultKey = distToCur + (float)distToDest;
+
+			if (turn > 0.99f && parent.ParentKey != 0f)
+				parentKey = parent.ParentKey;
+			else
+			{
+				if (turn < 0f)
+				{
+					Profiler.EndProfileBlock();
+					return;
+				}
+				//m_logger.debugLog("Pathfinder node backtracks to parent. Position: " + position + ", parent position: " + parent.Position +
+				//	"\ndirection: " + direction + ", parent direction: " + parent.DirectionFromParent, Logger.severity.FATAL, condition: turn < -0.99f);
+				resultKey += m_nodeDistance * (1f - turn);
+			}
+
+			PathNode result = new PathNode()
+			{
+				ParentKey = parentKey,
+				DistToCur = distToCur,
+				Position = position,
+				DirectionFromParent = direction,
+			};
+
+			m_logger.debugLog("resultKey <= 0", Logger.severity.ERROR, condition: resultKey <= 0f);
+			//m_logger.debugLog("path node: " + result.ParentKey + ", " + result.DistToCur + ", " + result.Position + ", " + result.DirectionFromParent);
+			m_openNodes.Insert(result, resultKey);
+			Profiler.EndProfileBlock();
+		}
+
+		private double MinPathDistance(ref Vector3D displacement)
+		{
+			double X = Math.Abs(displacement.X), Y = Math.Abs(displacement.Y), Z = Math.Abs(displacement.Z), temp;
+
+			// sort so that X is min and Z is max
+
+			if (Y < X)
+			{
+				temp = X;
+				X = Y;
+				Y = temp;
+			}
+			if (Z < Y)
+			{
+				temp = Y;
+				Y = Z;
+				Z = temp;
+				if (Y < X)
+				{
+					temp = X;
+					X = Y;
+					Y = temp;
+				}
+			}
+
+			return X * MathHelper.Sqrt3 + (Y - X) * MathHelper.Sqrt2 + Z - Y;
+		}
+
+		private string ReportRelativePosition(Vector3D position)
+		{
+			return position + " => " + (position + ObstructingEntity.PositionComp.GetPosition());
+		}
+
+		private void LogStats()
+		{
+			foreach (Vector3D position in m_path)
+				m_logger.alwaysLog("Waypoint: " + ReportRelativePosition(position));
+#if PROFILE
+			m_logger.alwaysLog("Nodes reached: " + m_reachedNodes.Count + ", unreachable: " + m_unreachableNodes + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
+#else
+			m_logger.debugLog("Nodes reached: " + m_reachedNodes.Count + ", open: " + m_openNodes.Count + ", path length: " + m_path.Count);
+#endif
 		}
 
 	}

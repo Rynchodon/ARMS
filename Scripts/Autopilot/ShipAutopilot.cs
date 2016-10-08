@@ -7,6 +7,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Update;
@@ -139,7 +140,7 @@ namespace Rynchodon.Autopilot
 		public readonly ShipControllerBlock m_block;
 		private readonly Logger m_logger;
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
-		private Mover m_mover;
+		private NewPathfinder m_pathfinder;
 		private AutopilotCommands m_commands;
 
 		private IMyCubeGrid m_controlledGrid;
@@ -151,6 +152,7 @@ namespace Rynchodon.Autopilot
 
 		private AutopilotActionList m_autopilotActions;
 
+		private Mover m_mover { get { return m_pathfinder.Mover; } }
 		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
 		private State m_state
@@ -184,7 +186,7 @@ namespace Rynchodon.Autopilot
 					case State.Closed:
 						if (GridBeingControlled != null)
 							ReleaseControlledGrid();
-						m_mover = null;
+						m_pathfinder = null;
 						m_commands = null;
 						return;
 
@@ -203,7 +205,7 @@ namespace Rynchodon.Autopilot
 		{
 			this.m_block = new ShipControllerBlock(block, HandleMessage);
 			this.m_logger = new Logger(block);
-			this.m_mover = new Mover(m_block);
+			this.m_pathfinder = new NewPathfinder(m_block);
 			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
@@ -306,7 +308,7 @@ namespace Rynchodon.Autopilot
 							m_autopilotActions = null;
 							return;
 						}
-						m_autopilotActions.Current.Invoke(m_mover);
+						m_autopilotActions.Current.Invoke(m_pathfinder);
 						if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 						{
 							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
@@ -500,21 +502,20 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal.AutopilotFlags flags = AutopilotTerminal.AutopilotFlags.None;
 			if (m_controlledGrid != null)
 				flags |= AutopilotTerminal.AutopilotFlags.HasControl;
-			if (m_mover.Pathfinder != null)
+
+			if (m_pathfinder.ObstructingEntity != null)
 			{
-				if (!m_mover.Pathfinder.ReportCanMove)
-				{
-					flags |= AutopilotTerminal.AutopilotFlags.MovementBlocked;
-					ApTerm.m_blockedBy.Value = m_mover.Pathfinder.MoveObstruction != null ? m_mover.Pathfinder.MoveObstruction.EntityId : 0L;
-					if (!m_mover.Pathfinder.ReportCanRotate)
-						flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
-				}
-				else if (!m_mover.Pathfinder.ReportCanRotate)
-				{
+				flags |= AutopilotTerminal.AutopilotFlags.MovementBlocked;
+				ApTerm.m_blockedBy.Value = m_pathfinder.ObstructingEntity.EntityId;
+				if (m_pathfinder.RotateCheck.ObstructingEntity != null)
 					flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
-					ApTerm.m_blockedBy.Value = m_mover.Pathfinder.RotateObstruction != null ? m_mover.Pathfinder.RotateObstruction.EntityId : 0L;
-				}
 			}
+			else if (m_pathfinder.RotateCheck.ObstructingEntity != null)
+			{
+				flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
+				ApTerm.m_blockedBy.Value = m_pathfinder.RotateCheck.ObstructingEntity.EntityId;
+			}
+
 			EnemyFinder ef = Settings_Current.EnemyFinder;
 			if (ef != null && ef.Grid == null)
 			{
@@ -601,7 +602,7 @@ namespace Rynchodon.Autopilot
 				while (m_autopilotActions.CurrentIndex < builder.CurrentCommand && m_autopilotActions.MoveNext())
 				{
 					m_logger.debugLog("fast forward: " + m_autopilotActions.Current);
-					m_autopilotActions.Current.Invoke(m_mover);
+					m_autopilotActions.Current.Invoke(m_pathfinder);
 
 					// clear navigators' levels
 					for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)

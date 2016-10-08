@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Attached;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -24,17 +25,17 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			Logger.SetFileName("TerminalAction");
 		}
 
-		private static void RunActionOnBlock(Movement.Mover mover, string blockName, string actionString, List<Ingame.TerminalActionParameter> termParams)
+		private static void RunActionOnBlock(NewPathfinder pathfinder, string blockName, string actionString, List<Ingame.TerminalActionParameter> termParams)
 		{
 			blockName = blockName.Trim();
 			actionString = actionString.Trim(); // leave spaces in actionString
 
-			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
+			foreach (IMyCubeBlock fatblock in AttachedGrid.AttachedCubeBlocks(pathfinder.Mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Permanent, true))
 			{
 				if (!(fatblock is IMyTerminalBlock))
 					continue;
 
-				if (!mover.Block.Controller.canControlBlock(fatblock))
+				if (!pathfinder.Mover.Block.Controller.canControlBlock(fatblock))
 					continue;
 
 				if (!fatblock.DisplayNameText.Contains(blockName, StringComparison.InvariantCultureIgnoreCase))
@@ -201,7 +202,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(actionParams);
 		}
 
-		protected override Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string[] split = command.Split(new char[] { ',' }, 3);
 

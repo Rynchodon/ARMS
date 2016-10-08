@@ -1,8 +1,7 @@
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using SpaceEngineers.Game.ModAPI;
-
 using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot.Navigator.Response
@@ -11,16 +10,16 @@ namespace Rynchodon.Autopilot.Navigator.Response
 	{
 
 		private readonly Logger m_logger;
-		private readonly Mover m_mover;
+		private readonly NewPathfinder m_pathfinder;
 		private readonly FlyToGrid m_flyToGrid;
 		private readonly bool m_hasLandingGear;
 
-		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
+		private AllNavigationSettings m_navSet { get { return m_pathfinder.NavSet; } }
 
-		public EnemyLander(Mover mover, PseudoBlock landingGear)
+		public EnemyLander(NewPathfinder pathfinder, PseudoBlock landingGear)
 		{
 			this.m_logger = new Logger();
-			this.m_mover = mover;
+			this.m_pathfinder = pathfinder;
 
 			if (landingGear == null)
 			{
@@ -33,12 +32,12 @@ namespace Rynchodon.Autopilot.Navigator.Response
 				m_logger.debugLog("landingGear param is not landing gear: " + landingGear.Block.getBestName() + ", not going to land");
 				return;
 			}
-			this.m_flyToGrid = new FlyToGrid(mover, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);
+			this.m_flyToGrid = new FlyToGrid(pathfinder, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);
 		}
 
 		public bool CanRespond()
 		{
-			return m_hasLandingGear && m_mover.Thrust.CanMoveAnyDirection();
+			return m_hasLandingGear && m_pathfinder.Mover.Thrust.CanMoveAnyDirection();
 		}
 
 		public bool CanTarget(IMyCubeGrid grid)

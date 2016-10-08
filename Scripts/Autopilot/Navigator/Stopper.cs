@@ -1,7 +1,5 @@
 ﻿using System.Text;
-using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
-using VRageMath;
+using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -17,10 +15,10 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>
 		/// Creates a new Stopper
 		/// </summary>
-		/// <param name="mover">The Mover to use</param>
+		/// <param name="pathfinder">The Mover to use</param>
 		/// <param name="navSet">The settings to use</param>
-		public Stopper(Mover mover, bool exitAfter = false)
-			: base(mover)
+		public Stopper(NewPathfinder pathfinder, bool exitAfter = false)
+			: base(pathfinder)
 		{
 			_logger = new Logger(m_controlBlock.Controller);
 			m_exitAfter = exitAfter;

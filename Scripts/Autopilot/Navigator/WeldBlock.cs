@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Text; // from mscorlib.dll
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders; // from MedievalEngineers.ObjectBuilders.dll and SpaceEngineers.ObjectBuilders.dll
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI; // from Sandbox.Common.dll
-using VRage.Game.Entity;
 using VRage.Game.ModAPI; // from VRage.Math.dll
 using VRageMath;
 
@@ -68,10 +67,10 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public WeldBlock(Mover mover, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
-			: base(mover)
+		public WeldBlock(NewPathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
+			: base(pathfinder)
 		{
-			this.m_logger = new Logger(() => mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());
+			this.m_logger = new Logger(() => pathfinder.Mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());
 			this.m_offset = welder.Block.LocalAABB.GetLongestDim() * 0.5f; // this works for default welders, may not work if mod has an exotic design
 			this.m_welder = welder;
 			this.m_targetSlim = block;
@@ -174,7 +173,8 @@ namespace Rynchodon.Autopilot.Navigator
 				if (Vector3.DistanceSquared(m_welder.WorldPosition, closestPoint) > 1f || m_navSet.Settings_Current.DistanceAngle > 0.1f)
 				{
 					m_stage = Stage.Lineup;
-					m_mover.CalcMove(m_welder, m_lineUp.ClosestPoint(m_welder.WorldPosition), m_realGrid.Physics.LinearVelocity, false);
+					Destination dest = Destination.FromWorld(m_realGrid, m_lineUp.ClosestPoint(m_welder.WorldPosition));
+					m_pathfinder.MoveTo(m_welder, ref dest);
 					return;
 				}
 				else // linedup up
@@ -229,8 +229,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			Vector3D direction = m_welder.WorldPosition - m_targetWorld;
 			direction.Normalize();
-			Vector3D destination = m_welder.WorldPosition + direction * 10d;
-			m_mover.CalcMove(m_welder, destination, m_realGrid.Physics.LinearVelocity, true);
+			Destination dest = Destination.FromWorld(m_realGrid, m_welder.WorldPosition + direction * 10d);
+			m_pathfinder.MoveTo(m_welder, ref dest, isLanding: true);
 		}
 
 		private void MoveToTarget()
@@ -284,7 +284,8 @@ namespace Rynchodon.Autopilot.Navigator
 				float offset = m_stage == Stage.Weld ? m_offset : m_offset + OffsetAdd;
 				Vector3D welderFromTarget = m_controlBlock.CubeBlock.GetPosition() - m_targetWorld;
 				welderFromTarget.Normalize();
-				m_mover.CalcMove(m_welder, m_targetWorld + welderFromTarget * offset, m_realGrid.Physics.LinearVelocity, true);
+				Destination dest = Destination.FromWorld(m_realGrid, m_targetWorld + welderFromTarget * offset);
+				m_pathfinder.MoveTo(m_welder, ref dest, isLanding: true);
 			}
 		}
 

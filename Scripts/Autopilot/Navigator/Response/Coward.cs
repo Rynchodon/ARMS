@@ -1,7 +1,7 @@
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -17,8 +17,8 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private LastSeen m_enemy;
 
-		public Coward(Mover mover, AllNavigationSettings navSet)
-			: base(mover)
+		public Coward(NewPathfinder pathfinder, AllNavigationSettings navSet)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
 
@@ -58,8 +58,8 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3D flyDirection = position - m_enemy.GetPosition();
 			flyDirection.Normalize();
 
-			Vector3D destination = position + flyDirection * 1e6;
-			m_mover.CalcMove(m_mover.Block.Pseudo, destination, Vector3.Zero);
+			Destination destination = new Destination(position + flyDirection * 1e6);
+			m_pathfinder.MoveTo(m_mover.Block.Pseudo, ref destination);
 		}
 
 		public void Rotate()

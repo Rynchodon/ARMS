@@ -1,12 +1,13 @@
 ﻿using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class Unland : ASingleWord
 	{
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			new UnLander(mover);
+			new UnLander(pathfinder);
 		}
 
 		public override ACommand Clone()

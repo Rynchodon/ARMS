@@ -104,6 +104,8 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
+		#region Inertia Moment
+
 		private void CalculateInertiaMoment()
 		{
 			m_logger.debugLog("recalculating inertia moment", Logger.severity.INFO);
@@ -160,6 +162,10 @@ namespace Rynchodon.Autopilot.Movement
 			m_calcInertiaMoment += moment;
 		}
 
+		#endregion Inertia Moment
+
+		#region Override
+
 		///// <summary>
 		///// Sets the overrides of gyros to match RotateVelocity. Should be called on game thread.
 		///// </summary>
@@ -196,6 +202,8 @@ namespace Rynchodon.Autopilot.Movement
 				TP_GyroOverrideToggle = gyro.GetProperty("Override") as ITerminalProperty<bool>;
 			TP_GyroOverrideToggle.SetValue(gyro, enable);
 		}
+
+		#endregion Override
 
 	}
 }

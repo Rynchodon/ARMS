@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -57,7 +56,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			controls.Add(alpha);
 		}
 
-		protected override System.Action<Movement.Mover> Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
+		protected override AutopilotActionList.AutopilotAction Parse(VRage.Game.ModAPI.IMyCubeBlock autopilot, string command, out string message)
 		{
 			string[] split = command.Split(',');
 			if (split.Length != 3)

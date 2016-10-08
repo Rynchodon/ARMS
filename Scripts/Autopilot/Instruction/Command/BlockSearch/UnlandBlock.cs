@@ -1,6 +1,4 @@
-﻿using System;
-using System.Text;
-using Rynchodon.Autopilot.Navigator;
+﻿using Rynchodon.Autopilot.Navigator;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -37,9 +35,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(Pathfinding.NewPathfinder pathfinder)
 		{
-			new UnLander(mover, new Data.PseudoBlock(m_block, m_forward, m_upward));
+			new UnLander(pathfinder, new Data.PseudoBlock(m_block, m_forward, m_upward));
 		}
 	}
 }

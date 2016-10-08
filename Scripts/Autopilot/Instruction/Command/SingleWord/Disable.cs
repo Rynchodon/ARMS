@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Rynchodon.Autopilot.Movement;
-using Sandbox.ModAPI.Interfaces.Terminal;
+﻿using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -23,9 +20,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Disable autopilot without stopping"; }
 		}
 
-		protected override void ActionMethod(Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			mover.SetControl(false);
+			pathfinder.Mover.SetControl(false);
 		}
 
 	}

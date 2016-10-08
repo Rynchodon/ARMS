@@ -1,7 +1,6 @@
 using System.Text; // from mscorlib.dll
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
-using VRage.Game.Entity;
+using Rynchodon.Autopilot.Pathfinding;
 using VRage.Game.ModAPI;
 using VRage.ModAPI; // from VRage.Game.dll
 using VRageMath;
@@ -16,26 +15,19 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private readonly Logger m_logger;
 		private readonly AllNavigationSettings.SettingsLevelName m_level;
-		private readonly IMyEntity m_targetEntity;
-		private readonly Vector3D m_targetOffset;
+		private Destination m_destination;
 
 		private PseudoBlock NavBlock
 		{
 			get { return m_navSet.Settings_Current.NavigationBlock; }
 		}
 
-		private Vector3D TargetPosition
-		{
-			get { return m_targetEntity.GetPosition() + m_targetOffset; }
-		}
-
-		public Waypoint(Mover mover, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
-			: base(mover)
+		public Waypoint(NewPathfinder pathfinder, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_level = level;
-			this.m_targetEntity = targetEntity;
-			this.m_targetOffset = worldOffset;
+			this.m_destination = new Destination(targetEntity, worldOffset);
 
 			m_logger.debugLog("targetEntity is not top-most", Logger.severity.FATAL, condition: targetEntity != targetEntity.GetTopMostParent());
 
@@ -43,13 +35,13 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGrid != null && Attached.AttachedGrid.IsGridAttached(asGrid, m_controlBlock.CubeGrid, Attached.AttachedGrid.AttachmentKind.Physics))
 			{
 				m_logger.debugLog("Cannot fly to entity, attached: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
-				new GOLIS(mover, TargetPosition, level);
+				new GOLIS(pathfinder, m_destination.WorldPosition(), level);
 				return;
 			}
 			if (targetEntity.Physics == null)
 			{
 				m_logger.debugLog("Target has no physics: " + targetEntity.getBestName() + ", creating GOLIS", Logger.severity.WARNING);
-				new GOLIS(mover, TargetPosition, level);
+				new GOLIS(pathfinder, m_destination.WorldPosition(), level);
 				return;
 			}
 
@@ -57,22 +49,19 @@ namespace Rynchodon.Autopilot.Navigator
 			setLevel.NavigatorMover = this;
 			//setLevel.DestinationEntity = mover.Block.CubeBlock; // to force avoidance 
 
-			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + TargetPosition, Logger.severity.DEBUG);
+			m_logger.debugLog("created, level: " + level + ", target: " + targetEntity.getBestName() + ", target position: " + targetEntity.GetPosition() + ", offset: " + worldOffset + ", position: " + m_destination.WorldPosition(), Logger.severity.DEBUG);
 		}
 
 		public override void Move()
 		{
-			if (m_navSet.DistanceLessThanDestRadius() || m_targetEntity.MarkedForClose)
+			if (m_navSet.DistanceLessThanDestRadius() || m_destination.Entity.MarkedForClose)
 			{
-				m_logger.debugLog(() => "Reached destination: " + TargetPosition, Logger.severity.INFO, condition: !m_targetEntity.Closed);
-				m_logger.debugLog("Target entity closed", Logger.severity.INFO, condition: m_targetEntity.Closed);
-
 				m_navSet.OnTaskComplete(m_level);
 				m_mover.StopMove();
 				m_mover.StopRotate();
 			}
 			else
-				m_mover.CalcMove(NavBlock, TargetPosition, m_targetEntity.Physics.LinearVelocity);
+				m_pathfinder.MoveTo(NavBlock, ref m_destination);
 		}
 
 		public void Rotate()
@@ -83,7 +72,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
 			customInfo.Append("Flying to waypoint: ");
-			customInfo.AppendLine(TargetPosition.ToPretty());
+			customInfo.AppendLine(m_destination.WorldPosition().ToPretty());
 		}
 
 	}

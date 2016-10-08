@@ -1,11 +1,12 @@
-﻿
+﻿using Rynchodon.Autopilot.Pathfinding;
+
 namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class Form : ASingleWord
 	{
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			mover.NavSet.Settings_Task_NavMove.Stay_In_Formation = true;
+			pathfinder.NavSet.Settings_Task_NavMove.Stay_In_Formation = true;
 		}
 
 		public override ACommand Clone()

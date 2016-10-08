@@ -1,13 +1,14 @@
 ﻿using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class StraightLine : ASingleWord
 	{
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(NewPathfinder pathfinder)
 		{
-			mover.NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
-			mover.NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
+			pathfinder.NavSet.Settings_Task_NavMove.PathfinderCanChangeCourse = false;
+			pathfinder.NavSet.Settings_Task_NavMove.NavigatorRotator = new DoNothing();
 		}
 
 		public override ACommand Clone()

@@ -4,6 +4,7 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -162,7 +163,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public MinerVoxel(Mover mover, byte[] OreTargets)
+		public MinerVoxel(NewPathfinder mover, byte[] OreTargets)
 			: base(mover)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_state.ToString());
@@ -674,7 +675,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private void MoveCurrent()
 		{
 			m_logger.debugLog("current target: " + m_currentTarget);
-			m_mover.CalcMove(m_navDrill, m_currentTarget, Vector3.Zero, m_state == State.MoveTo);
+			Destination dest = Destination.FromWorld(m_targetVoxel, m_currentTarget);
+			m_pathfinder.MoveTo(m_navDrill, ref dest, isLanding: true);
 		}
 
 	}

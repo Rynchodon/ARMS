@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 
 namespace Rynchodon.Autopilot.Instruction.Command
 {
@@ -35,9 +34,9 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			sb.AppendLine("For navigating to a specific block on the target ship, only affects the next use of G");
 		}
 
-		protected override void ActionMethod(Movement.Mover mover)
+		protected override void ActionMethod(Pathfinding.NewPathfinder pathfinder)
 		{
-			mover.NavSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(m_searchBlockName.ToString(), m_forward, m_upward); 
+			pathfinder.NavSet.Settings_Task_NavRot.DestinationBlock = new Data.BlockNameOrientation(m_searchBlockName.ToString(), m_forward, m_upward); 
 		}
 
 	}

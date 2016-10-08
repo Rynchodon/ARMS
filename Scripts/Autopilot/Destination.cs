@@ -1,4 +1,5 @@
-﻿using VRage.Game.Entity;
+﻿using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot
@@ -6,7 +7,12 @@ namespace Rynchodon.Autopilot
 	public struct Destination
 	{
 
-		public MyEntity Entity;
+		public static Destination FromWorld(IMyEntity entity, Vector3D worldPostion)
+		{
+			return new Destination(entity, worldPostion - entity.GetPosition());
+		}
+
+		public IMyEntity Entity;
 		public Vector3D Position;
 
 		public Destination(Vector3D worldPosition)
@@ -15,17 +21,23 @@ namespace Rynchodon.Autopilot
 			Position = worldPosition;
 		}
 
-		public Destination(MyEntity entity, Vector3D offset)
+		public Destination(IMyEntity entity, Vector3D offset)
 		{
 			Entity = entity;
 			Position = offset;
+		}
+
+		public Destination(ref IHitInfo hitInfo)
+		{
+			Entity = hitInfo.HitEntity;
+			Position = hitInfo.Position - Entity.GetPosition();
 		}
 
 		public Vector3D WorldPosition()
 		{
 			if (Entity == null)
 				return Position;
-			return Entity.PositionComp.GetPosition() + Position;
+			return Entity.GetCentre() + Position;
 		}
 
 		public bool Equals(Destination other)

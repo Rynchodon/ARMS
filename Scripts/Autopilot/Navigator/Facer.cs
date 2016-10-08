@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.ModAPI;
 using VRageMath;
 using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
@@ -18,11 +18,11 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly PseudoBlock m_pseudoBlock;
 		private readonly IMyLaserAntenna m_laser;
 
-		/// <param name="mover">The mover to use</param>
+		/// <param name="pathfinder">The mover to use</param>
 		/// 
 		/// <param name="rotBlock">The block to rotate</param>
-		public Facer(Mover mover, PseudoBlock rotBlock)
-			: base(mover)
+		public Facer(NewPathfinder pathfinder, PseudoBlock rotBlock)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 

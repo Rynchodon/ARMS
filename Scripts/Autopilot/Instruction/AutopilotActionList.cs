@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections;
-using Rynchodon.Autopilot.Movement;
+﻿using System.Collections;
+using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction
 {
@@ -8,6 +7,7 @@ namespace Rynchodon.Autopilot.Instruction
 	{
 
 		private const int MaxIndex = 1000, MaxDepth = 10;
+		public delegate void AutopilotAction(NewPathfinder pathfinder);
 
 		static AutopilotActionList()
 		{
@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot.Instruction
 		private int m_mainListIndex;
 		private AutopilotActionList m_sublist;
 
-		public Action<Mover> Current { get; private set; }
+		public AutopilotAction Current { get; private set; }
 		public int CurrentIndex { get; private set; }
 		public bool IsEmpty { get { return m_mainList.Count == 0; } }
 
@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Instruction
 			Reset();
 		}
 
-		public void Add(Action<Mover> item)
+		public void Add(AutopilotAction item)
 		{
 			m_mainList.Add(item);
 		}
@@ -81,7 +81,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			object element = m_mainList[m_mainListIndex];
-			Current = element as Action<Mover>;
+			Current = element as AutopilotAction;
 			if (Current != null)
 			{
 				Logger.DebugLog("CurrentIndex: " + CurrentIndex + ", m_mainListIndex: " + m_mainListIndex);

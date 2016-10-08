@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -87,8 +88,8 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public Orbiter(Mover mover, string entity)
-			: base(mover)
+		public Orbiter(NewPathfinder pathfinder, string entity)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_navBlock = m_navSet.Settings_Current.NavigationBlock;
@@ -108,7 +109,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_logger.debugLog("Orbiting planet: " + OrbitEntity.getBestName(), Logger.severity.INFO);
 					break;
 				default:
-					m_gridFinder = new GridFinder(mover.NavSet, mover.Block, entity, mustBeRecent: true);
+					m_gridFinder = new GridFinder(pathfinder.NavSet, m_mover.Block, entity, mustBeRecent: true);
 					m_logger.debugLog("Searching for a grid: " + entity, Logger.severity.INFO);
 					break;
 			}
@@ -124,8 +125,8 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="entity">The entity to be orbited</param>
 		/// <param name="distance">The distance between the orbiter and the orbited entity</param>
 		/// <param name="name">What to call the orbited entity</param>
-		public Orbiter(Mover mover, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
-			: base(mover)
+		public Orbiter(NewPathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
+			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_navBlock = faceBlock;
@@ -214,12 +215,13 @@ namespace Rynchodon.Autopilot.Navigator
 			m_faceDirection = Vector3.Reject(targetCentre - m_navBlock.WorldPosition, m_orbitAxis);
 			float alt = m_faceDirection.Normalize();
 			Vector3 orbitDirection = m_faceDirection.Cross(m_orbitAxis);
-			Vector3D destination = targetCentre - m_faceDirection * Altitude;
+			Destination dest = new Destination(OrbitEntity, m_targetPositionOffset - m_faceDirection * Altitude);
+
 			float speed = alt > Altitude ?
 				Math.Max(1f, OrbitSpeed - alt + Altitude) : 
 				OrbitSpeed;
 
-			m_mover.CalcMove(m_navBlock, destination, OrbitEntity.GetLinearVelocity() + orbitDirection * speed);
+			m_pathfinder.MoveTo(m_navBlock, ref dest, addToVelocity: orbitDirection * speed);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
