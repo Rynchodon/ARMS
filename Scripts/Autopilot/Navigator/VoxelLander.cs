@@ -89,8 +89,9 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 			}
 
+			Vector3D end = closest.GetCentre();
 			IHitInfo hitInfo;
-			if (!MyAPIGateway.Physics.CastRay(currentPostion, closest.GetCentre(), out hitInfo, RayCast.FilterLayerVoxel))
+			if (!RayCast.RayCastVoxels(ref currentPostion, ref end, out hitInfo))
 				throw new Exception("Failed to intersect voxel");
 
 			m_targetPostion = new Destination(ref hitInfo);

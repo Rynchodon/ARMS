@@ -54,7 +54,7 @@ namespace Rynchodon.Utility
 		/// <param name="action">Action to be timed.</param>
 		public static void Profile(Action action)
 		{
-			StartProfileBlock(action.Method.Name, action.Target == null ? "N/A" : action.Target.GetType().Name);
+			StartProfileBlock(action);
 			action.Invoke();
 			EndProfileBlock();
 		}
@@ -78,6 +78,12 @@ namespace Rynchodon.Utility
 			}
 
 			writer.Close();
+		}
+
+		[System.Diagnostics.Conditional("PROFILE")]
+		public static void StartProfileBlock(Action action)
+		{
+			StartProfileBlock(action.Method.Name, action.Target == null ? "N/A" : action.Target.GetType().Name);
 		}
 
 		/// <summary>

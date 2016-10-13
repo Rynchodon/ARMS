@@ -86,6 +86,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(myGrid, Attached.AttachedGrid.AttachmentKind.Physics, true))
 			{
 				CubeGridCache cache = CubeGridCache.GetFor(grid);
+				if (cache == null)
+					return false;
 				foreach (Vector3I cell in cache.OccupiedCells())
 				{
 					Vector3 rejection = Vector3.Reject(cell * myGrid.GridSize, myLocalAxis);
@@ -153,21 +155,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 					axisSegment.From = localCentre - localAxis * height;
 					axisSegment.To = localCentre + localAxis * height;
 
-					bool found = false;
-					GridCellCache.GetCellCache(grid).ForEach(cell => {
+					CubeGridCache cache = CubeGridCache.GetFor(grid);
+					if (cache == null)
+						return false;
+					foreach (Vector3I cell in cache.OccupiedCells())
 						if (axisSegment.PointInCylinder(length, cell * grid.GridSize))
 						{
-							found = true;
-							return true;
+							ObstructingEntity = grid;
+							return false;
 						}
-						return false;
-					});
 
-					if (found)
-					{
-						ObstructingEntity = grid;
-						return false;
-					}
 					continue;
 				}
 

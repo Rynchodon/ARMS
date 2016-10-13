@@ -5,6 +5,7 @@ using Rynchodon.Attached;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -36,7 +37,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// For testing the current path of autopilot, accounts for current velocity.
 		/// </summary>
 		/// <param name="targetDirection">The direction the autopilot wants to travel in.</param>
-		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3 targetDirection, float targetDistance, out object partHit, out Vector3D hitPosition, bool extraRadius = false)
+		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3 targetDirection, float targetDistance, out MyCubeBlock obstructBlock, out Vector3D hitPosition, bool extraRadius = false)
 		{
 			Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", targetDirection: " + targetDirection);
 
@@ -57,12 +58,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3 rejectionVector; Vector3.Add(ref relativeVelocity, ref targetDirection, out rejectionVector);
 			rejectionVector.Normalize();
 
-			return ObstructedBy(entityTopMost, ignoreBlock, ref Vector3D.Zero, ref rejectionVector, targetDistance, out partHit, out hitPosition, extraRadius);
+			return ObstructedBy(entityTopMost, ignoreBlock, ref Vector3D.Zero, ref rejectionVector, targetDistance, out obstructBlock, out hitPosition, extraRadius);
 		}
 
 		/// <param name="offset">Added to current position of ship's blocks.</param>
 		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
-		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out object partHit, out Vector3D hitPosition, bool extraRadius = true)
+		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out MyCubeBlock obstructBlock, out Vector3D hitPosition, bool extraRadius = true)
 		{
 			Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector);
 
@@ -75,7 +76,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (RejectionIntersects(grid, ignoreBlock, ref rejectionVector, rejectionDistance, ref offset, out hitCell, extraRadius))
 				{
 					Logger.DebugLog("rejection intersects");
-					partHit = grid.GetCubeBlock(hitCell);
+					MySlimBlock slim = grid.GetCubeBlock(hitCell);
+					obstructBlock = slim == null ? null : slim.FatBlock;
 					hitPosition = grid.GridIntegerToWorld(hitCell);
 					Profiler.EndProfileBlock();
 					return true;
@@ -85,7 +87,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Profiler.EndProfileBlock();
 			}
 
-			partHit = null;
+			obstructBlock = null;
 			hitPosition = entityTopMost.GetCentre();
 			return false;
 		}
@@ -272,7 +274,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (!m_rejections.Add(ToCell(pc2, gridSize), true))
 						continue;
 
-					if (MyAPIGateway.Physics.CastRay(offsetWorld, offsetWorld + rayDirectionLength, out hit, RayCast.FilterLayerVoxel))
+					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X,  Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z};
+					if (RayCast.RayCastVoxels(ref offsetWorld, ref end, out hit))
 						return true;
 				}
 			}

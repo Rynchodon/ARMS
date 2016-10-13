@@ -503,10 +503,10 @@ namespace Rynchodon.Autopilot
 			if (m_controlledGrid != null)
 				flags |= AutopilotTerminal.AutopilotFlags.HasControl;
 
-			if (m_pathfinder.ObstructingEntity != null)
+			if (m_pathfinder.ReportedObstruction != null)
 			{
 				flags |= AutopilotTerminal.AutopilotFlags.MovementBlocked;
-				ApTerm.m_blockedBy.Value = m_pathfinder.ObstructingEntity.EntityId;
+				ApTerm.m_blockedBy.Value = m_pathfinder.ReportedObstruction.EntityId;
 				if (m_pathfinder.RotateCheck.ObstructingEntity != null)
 					flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
 			}

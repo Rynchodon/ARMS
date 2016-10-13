@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Utility;
+using Sandbox.Engine.Physics;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Entity;
@@ -13,8 +14,7 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
-		/// <summary>This also hits static grids and astronauts, so fuck you very much Keen.</summary>
-		public const int FilterLayerVoxel = 28;
+		private const int FilterLayerVoxel = 28;
 
 		private static Logger m_logger = new Logger();
 
@@ -140,11 +140,10 @@ namespace Rynchodon
 			if (checkVoxel)
 			{
 				// Voxel Test
-				MyVoxelBase contactVoxel;
-				Vector3D? contactPoint;
-				if (RayCastVoxels(line, out contactVoxel, out contactPoint, shortTest: shortTest))
+				IHitInfo contact;
+				if (RayCastVoxels(line, out contact, shortTest: shortTest))
 				{
-					m_logger.debugLog("obstructed by voxel: " + contactVoxel + " at " + contactPoint);
+					m_logger.debugLog("obstructed by voxel: " + contact.HitEntity + " at " + contact.Position);
 					Profiler.EndProfileBlock();
 					return true;
 				}
@@ -159,29 +158,62 @@ namespace Rynchodon
 		/// Ray cast all the voxels in the world to check for intersection.
 		/// </summary>
 		/// <param name="line">The line to check</param>
-		/// <param name="contactVoxel">The voxel hit</param>
-		/// <param name="contactPoint">First interesection of line and voxel</param>
 		/// <param name="shortTest">Shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff any voxel intersects the line</returns>
-		private static bool RayCastVoxels(LineD line, out MyVoxelBase contactVoxel, out Vector3D? contactPoint, bool shortTest = false)
+		public static bool RayCastVoxels(LineD line, out IHitInfo contact, bool shortTest = false)
 		{
+			Profiler.StartProfileBlock();
 			if (shortTest)
 			{
 				if (line.Length < 1d)
 				{
-					contactVoxel = null;
-					contactPoint = null;
+					contact = default(IHitInfo);
+					Profiler.EndProfileBlock();
 					return false;
 				}
 				line.Length -= 1d;
 				line.To -= line.Direction;
 			}
 
-			IHitInfo hitInfo;
-			bool result = MyAPIGateway.Physics.CastRay(line.From, line.To, out hitInfo, FilterLayerVoxel);
-			contactPoint = hitInfo.Position;
-			contactVoxel = (MyVoxelBase)hitInfo.HitEntity;
-			return result;
+			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
+			MyPhysics.CastRay(line.From, line.To, hitList, FilterLayerVoxel);
+			foreach (IHitInfo hitItem in hitList)
+				if (hitItem.HitEntity is MyVoxelBase)
+				{
+					hitList.Clear();
+					ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
+					contact = hitItem;
+					Profiler.EndProfileBlock();
+					return true;
+				}
+
+			hitList.Clear();
+			ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
+			contact = default(IHitInfo);
+			Profiler.EndProfileBlock();
+			return false;
+		}
+
+		public static bool RayCastVoxels(ref Vector3D start, ref Vector3D end, out IHitInfo contact)
+		{
+			Profiler.StartProfileBlock();
+			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
+			MyPhysics.CastRay(start, end, hitList, FilterLayerVoxel);
+			foreach (IHitInfo hitItem in hitList)
+				if (hitItem.HitEntity is MyVoxelBase)
+				{
+					hitList.Clear();
+					ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
+					contact = hitItem;
+					Profiler.EndProfileBlock();
+					return true;
+				}
+
+			hitList.Clear();
+			ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
+			contact = default(IHitInfo);
+			Profiler.EndProfileBlock();
+			return false;
 		}
 
 	}

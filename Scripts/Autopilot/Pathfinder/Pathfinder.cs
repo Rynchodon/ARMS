@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
+using Rynchodon.Settings;
+using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
 using VRage.Game.Entity;
@@ -29,14 +32,29 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>of m_nodeDistance</summary>
 		private const float DestinationRadius = 0.1f;
 
-		///// <summary>
-		///// Shared will be held while setting interupt or running. Exclusive will be held while starting a run or checking for an interrupt.
-		///// </summary>
-		//private FastResourceLock m_runningLock;
-		//private bool m_runInterrupt;
+		private static ThreadManager ThreadForeground;
+		private static ThreadManager ThreadBackground;
+
+		static NewPathfinder()
+		{
+			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			byte allowedThread = ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder);
+			ThreadForeground = new ThreadManager(allowedThread, false, "PathfinderForeground");
+			ThreadBackground = new ThreadManager(allowedThread, true, "PathfinderBackground");
+		}
+
+		private static void Entities_OnCloseAll()
+		{
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			ThreadForeground = null;
+			ThreadBackground = null;
+		}
 
 		private readonly Logger m_logger;
 		private readonly PathTester m_tester = new PathTester();
+
+		private readonly FastResourceLock m_runningLock = new FastResourceLock();
+		private bool m_runInterrupt;
 
 		// Inputs: rarely change
 
@@ -75,8 +93,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private Vector3 m_targetDirection = Vector3.Invalid;
 		private float m_targetDistance;
+		/// <summary>Top most obstructing entity</summary>
+		private MyEntity m_obstructingEntity;
+		private MyCubeBlock m_obstructingBlock;
 
-		public MyEntity ObstructingEntity { get; private set; }
+		public MyEntity ReportedObstruction { get { return m_obstructingBlock ?? m_obstructingEntity; } }
 		public Mover Mover { get; private set; }
 		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }
 		public RotateChecker RotateCheck { get { return Mover.RotateCheck; } }
@@ -124,9 +145,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid && m_destination.Equals(ref destination) && m_ignoreEntity == ignoreEntity && m_ignoreVoxel == ignoreVoxel && m_canChangeCourse == canChangeCourse && m_isLanding == isLanding)
 			{
-				UpdateInputs();
-				TestCurrentPath();
-				OnComplete();
+				ThreadForeground.EnqueueAction(Run);
 				return;
 			}
 
@@ -138,6 +157,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
 			m_logger.debugLog("is landing changed from " + m_isLanding + " to " + isLanding, condition: m_isLanding != isLanding);
 
+			m_runInterrupt = true;
 			m_navBlock = navBlock;
 			m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
 			m_destination = destination;
@@ -145,11 +165,42 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_ignoreVoxel = ignoreVoxel;
 			m_canChangeCourse = canChangeCourse;
 			m_isLanding = isLanding;
-			m_path.Clear();
-			UpdateInputs();
 
-			TestCurrentPath();
-			OnComplete();
+			ThreadForeground.EnqueueAction(Run);
+		}
+
+		private void Run()
+		{
+			if (!m_runningLock.TryAcquireExclusive())
+				return;
+			try
+			{
+				if (m_runInterrupt)
+				{
+					m_path.Clear();
+					m_openNodes.Clear();
+					m_reachedNodes.Clear();
+				}
+				else if (m_reachedNodes.Count != 0)
+					return;
+
+				m_runInterrupt = false;
+
+				UpdateInputs();
+				TestCurrentPath();
+				OnComplete();
+			}
+			finally { m_runningLock.ReleaseExclusive(); }
+
+			PostRun();
+		}
+
+		private void PostRun()
+		{
+			if (m_runInterrupt)
+				ThreadForeground.EnqueueAction(Run);
+			else if (m_reachedNodes.Count != 0)
+				ThreadBackground.EnqueueAction(ContinuePathfinding);
 		}
 
 		private void UpdateInputs()
@@ -167,16 +218,22 @@ namespace Rynchodon.Autopilot.Pathfinding
 			double distance; Vector3D.Distance(ref finalDestWorld, ref m_currentPosition, out distance);
 			NavSet.Settings_Current.Distance = (float)distance;
 
-			m_logger.debugLog("Missing obstruction", Logger.severity.ERROR, condition: m_path.Count != 0 && ObstructingEntity == null);
+			m_logger.debugLog("Missing obstruction", Logger.severity.ERROR, condition: m_path.Count != 0 && m_obstructingEntity == null);
 
-			m_destWorld = m_path.Count == 0 ? finalDestWorld : m_path.Peek() + ObstructingEntity.PositionComp.GetPosition();
+			m_destWorld = m_path.Count == 0 ? finalDestWorld : m_path.Peek() + m_obstructingEntity.PositionComp.GetPosition();
 
 			//m_logger.debugLog("final dest world: " + finalDestWorld + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
 		}
 
 		private void OnComplete()
 		{
-			MyEntity relativeEntity = ObstructingEntity ?? (MyEntity)m_destination.Entity;
+			if (m_runInterrupt)
+			{
+				m_logger.debugLog("Interrupted", Logger.severity.INFO);
+				return;
+			}
+
+			MyEntity relativeEntity = m_obstructingEntity ?? (MyEntity)m_destination.Entity;
 			Vector3 targetVelocity = relativeEntity != null && relativeEntity.Physics != null && !relativeEntity.Physics.IsStatic ? relativeEntity.Physics.LinearVelocity  : Vector3.Zero;
 			if (m_path.Count == 0)
 			{
@@ -196,11 +253,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (m_path.Count != 0)
 			{
 				// don't chase an obstructing entity unless it is the destination
-				if (ObstructingEntity != m_destination.Entity && ObstructionMovingAway())
+				if (m_obstructingEntity != m_destination.Entity && ObstructionMovingAway())
 				{
 					m_logger.debugLog("Obstruction is moving away, I'll just wait here");
 					m_path.Clear();
-					ObstructingEntity = null;
+					m_obstructingEntity = null;
+					m_obstructingBlock = null;
 					m_targetDirection = Vector3.Invalid;
 					return;
 				}
@@ -233,12 +291,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_targetDistance = (float)targetDistance;
 
 			MyEntity obstructing;
+			MyCubeBlock block;
 			Vector3D pointOfObstruction;
-			object subtObstruct;
-			if (CurrentObstructed((float)targetDistance, out obstructing, out pointOfObstruction, out subtObstruct))
+			if (CurrentObstructed((float)targetDistance, out obstructing, out pointOfObstruction, out block))
 			{
-				ObstructingEntity = obstructing;
-				//ObstructionReport = subtObstruct ?? obstructing;
+				m_obstructingEntity = obstructing;
+				m_obstructingBlock = block;
 
 				m_entitiesPruneAvoid.Clear();
 				m_entitiesRepulse.Clear();
@@ -252,8 +310,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.debugLog("Target direction: " + m_targetDirection + ", target distance: " + m_targetDistance);
 			if (m_path.Count == 0)
 			{
-				ObstructingEntity = null;
-				//ObstructionReport = null;
+				m_obstructingEntity = null;
+				m_obstructingBlock = null;
 			}
 			m_entitiesPruneAvoid.Clear();
 			m_entitiesRepulse.Clear();
@@ -271,7 +329,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_entitiesRepulse.Clear();
 
 			// TODO: this might need to be larger to accomodate moving objects, it's possible that a box would be better
-			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + (m_autopilotSpeed + 1000f) * SpeedFactor };
+			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + (m_autopilotSpeed + 100f) * SpeedFactor };
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
 
 			foreach (MyEntity entity in CollectEntities(m_entitiesPruneAvoid))
@@ -440,7 +498,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// For testing if the current path is obstructed by any entity in m_entitiesPruneAvoid.
 		/// </summary>
-		private bool CurrentObstructed(float targetDistance, out MyEntity obstructingEntity, out Vector3D pointOfObstruction, out object obstructSubEntity)
+		private bool CurrentObstructed(float targetDistance, out MyEntity obstructingEntity, out Vector3D pointOfObstruction, out MyCubeBlock obstructBlock)
 		{
 			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
 
@@ -449,14 +507,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 			MyEntity destTop;
 			if (m_destination.Entity != null)
 			{
-				m_logger.debugLog("checking destination entity");
+				//m_logger.debugLog("checking destination entity");
 
 				destTop = (MyEntity)m_destination.Entity.GetTopMostParent();
 				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
-					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_targetDirection, targetDistance, out obstructSubEntity, out pointOfObstruction))
+					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_targetDirection, targetDistance, out obstructBlock, out pointOfObstruction))
 					{
-						m_logger.debugLog("Obstructed by " + destTop.getBestName() + "." + obstructSubEntity);
+						m_logger.debugLog("Obstructed by " + destTop.getBestName() + "." + obstructBlock, Logger.severity.DEBUG);
 						obstructingEntity = destTop;
 						return true;
 					}
@@ -465,11 +523,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			else
 				destTop = null;
 
-			//// check voxel next so that the ship will not match an obstruction that is on a collision course
+			// check voxel next so that the ship will not match an obstruction that is on a collision course
 
 			//if (!m_ignoreVoxel)
 			//{
-			//	m_logger.debugLog("raycasting voxels");
+			//	//m_logger.debugLog("raycasting voxels");
 
 			//	Vector3 velocityMulti; Vector3.Multiply(ref m_autopilotVelocity, SpeedFactor, out velocityMulti);
 			//	Vector3 directionMulti; Vector3.Multiply(ref m_targetDirection, VoxelAdd, out directionMulti);
@@ -480,26 +538,26 @@ namespace Rynchodon.Autopilot.Pathfinding
 			//		m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position);
 			//		obstructingEntity = (MyEntity)hit.HitEntity;
 			//		pointOfObstruction = hit.Position;
-			//		obstructSubEntity = null;
+			//		obstructBlock = null;
 			//		return true;
 			//	}
 			//}
 
 			// check remaining entities
 
-			m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
+			//m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
 
 			if (m_entitiesPruneAvoid.Count != 0)
 				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
 				{
-					m_logger.debugLog("entity: " + m_entitiesPruneAvoid[i]);
+					//m_logger.debugLog("entity: " + m_entitiesPruneAvoid[i]);
 					obstructingEntity = m_entitiesPruneAvoid[i];
 					if (obstructingEntity == destTop || obstructingEntity is MyVoxelBase)
 						// already checked
 						continue;
-					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_targetDirection, targetDistance, out obstructSubEntity, out pointOfObstruction))
+					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_targetDirection, targetDistance, out obstructBlock, out pointOfObstruction))
 					{
-						m_logger.debugLog("Obstructed by " + obstructingEntity.getBestName() + "." + obstructSubEntity);
+						m_logger.debugLog("Obstructed by " + obstructingEntity.getBestName() + "." + obstructBlock, Logger.severity.DEBUG);
 						return true;
 					}
 				}
@@ -507,16 +565,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.debugLog("No obstruction");
 			obstructingEntity = null;
 			pointOfObstruction = Vector3.Invalid;
-			obstructSubEntity = null;
+			obstructBlock = null;
 			return false;
 		}
 
 		private bool ObstructionMovingAway()
 		{
-			Vector3D velocity = ObstructingEntity.Physics.LinearVelocity;
+			Vector3D velocity = m_obstructingEntity.Physics.LinearVelocity;
 			if (velocity.LengthSquared() < 10f)
 				return false;
-			Vector3D position = ObstructingEntity.GetCentre();
+			Vector3D position = m_obstructingEntity.GetCentre();
 			Vector3D nextPosition; Vector3D.Add(ref position, ref velocity, out nextPosition);
 			double current; Vector3D.DistanceSquared(ref m_currentPosition, ref position, out current);
 			double next; Vector3D.DistanceSquared(ref m_currentPosition, ref nextPosition, out next);
@@ -539,12 +597,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 			double distCurObs, distObsDest;
 			Vector3D.Distance(ref m_currentPosition, ref obstructionPoint, out distCurObs);
 			Vector3D.Distance(ref obstructionPoint, ref m_destWorld, out distObsDest);
-			m_nodeDistance = (float)MathHelper.Max(distCurObs * 0.25d, distObsDest * 0.1d, 1f);
+			//m_nodeDistance = (float)MathHelper.Max(distCurObs * 0.25d, distObsDest * 0.1d, 1f);
+			m_nodeDistance = 1f;
 
-			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: ObstructingEntity == null);
+			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null);
 
 			Vector3D relativePosition;
-			Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
 			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out relativePosition);
 
 			m_logger.debugLog("current position: " + m_currentPosition + ", obs: " + obstructPosition + ", relative: " + relativePosition);
@@ -552,12 +611,25 @@ namespace Rynchodon.Autopilot.Pathfinding
 			PathNode rootNode = new PathNode() { Position = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z)) };
 			m_openNodes.Insert(rootNode, 0f);
 			AddReachedNode(ref rootNode);
-			FindAPath();
+			//FindAPath();
 		}
 
 		private void AddReachedNode(ref PathNode reached)
 		{
 			m_reachedNodes.Add(reached.Position.GetHash(), reached);
+		}
+
+		private void ContinuePathfinding()
+		{
+			if (!m_runningLock.TryAcquireExclusive())
+			{
+				m_logger.debugLog("already running");
+				return;
+			}
+			try { FindAPath(); }
+			finally { m_runningLock.ReleaseExclusive(); }
+
+			PostRun();
 		}
 
 		/// <summary>
@@ -590,7 +662,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (m_reachedNodes.ContainsKey(currentNode.Position.GetHash()))
 				{
 					m_logger.debugLog("Already reached: " + ReportRelativePosition(currentNode.Position));
-					FindAPath();
+					//FindAPath();
 					return;
 				}
 
@@ -603,16 +675,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 #if PROFILE
 					m_unreachableNodes++;
 #endif
-					FindAPath();
+					m_logger.debugLog("Not reachable: " + ReportRelativePosition(currentNode.Position));
+					//FindAPath();
 					return;
 				}
-				m_logger.debugLog("Reached node: " + ReportRelativePosition(currentNode.Position));
+				m_logger.debugLog("Reached node: " + ReportRelativePosition(currentNode.Position) + ", reached: " + m_reachedNodes.Count + ", open: " + m_openNodes.Count);
 				AddReachedNode(ref currentNode);
 
 				// need to keep checking if the destination can be reached from every node
 				// this doesn't indicate a clear path but allows repulsion to resume
 
-				Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+				Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
 				Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
 				Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
 
@@ -656,14 +729,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 			foreach (Vector3I neighbour in Globals.NeighboursThree)
 				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt3);
 
-			FindAPath();
+			//FindAPath();
 		}
 
 		private bool CanReachFromParent(ref PathNode node)
 		{
-			Profiler.StartProfileBlock();
+			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null);
 
-			Vector3D obstructPosition = ObstructingEntity.PositionComp.GetPosition();
+			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
 
 			PathNode parent = m_reachedNodes[node.ParentKey];
 			Vector3D worldParent;
@@ -671,7 +744,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
 
-			Profiler.EndProfileBlock();
 			Line line = new Line() { From = parent.Position, To = node.Position, Direction = node.DirectionFromParent, Length = node.DistToCur - parent.DistToCur };
 			return CanTravelSegment(ref offset, ref line);
 		}
@@ -692,7 +764,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			//	IHitInfo hit;
 			//	if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hit))
 			//	{
-			//		m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position);
+			//		m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position, Logger.severity.DEBUG);
 			//		Profiler.EndProfileBlock();
 			//		return false;
 			//	}
@@ -707,11 +779,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (entity is MyVoxelBase)
 						// already checked
 						continue;
-					object partHit;
+					MyCubeBlock obstructBlock;
 					Vector3D pointOfObstruction;
-					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref line.Direction, line.Length, out partHit, out pointOfObstruction))
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref line.Direction, line.Length, out obstructBlock, out pointOfObstruction))
 					{
-						m_logger.debugLog("Obstructed by " + entity.getBestName() + "." + partHit);
+						m_logger.debugLog("Obstructed by " + entity.getBestName() + "." + obstructBlock, Logger.severity.DEBUG);
 						Profiler.EndProfileBlock();
 						return false;
 					}
@@ -811,7 +883,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private string ReportRelativePosition(Vector3D position)
 		{
-			return position + " => " + (position + ObstructingEntity.PositionComp.GetPosition());
+			return position + " => " + (position + m_obstructingEntity.PositionComp.GetPosition());
 		}
 
 		private void LogStats()

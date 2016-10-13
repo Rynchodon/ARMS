@@ -83,8 +83,11 @@ namespace Rynchodon.Threading
 				while (ActionQueue.TryDequeue(out currentItem))
 				{
 					if (currentItem != null)
-						//currentItem.Invoke();
-						Profiler.Profile(currentItem);
+					{
+						Profiler.StartProfileBlock(currentItem);
+						currentItem.Invoke();
+						Profiler.EndProfileBlock();
+					}
 					else
 						myLogger.debugLog("null action", Logger.severity.WARNING);
 				}
