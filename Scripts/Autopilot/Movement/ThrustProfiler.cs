@@ -194,6 +194,7 @@ namespace Rynchodon.Autopilot.Movement
 				force += change;
 			}
 
+			//myLogger.debugLog("direction: " + direction + "(" + (int)direction + ")" + ", force: " + force);
 			return force;
 
 			//return Math.Max(force, 1f); // a minimum of 1 N prevents dividing by zero
@@ -205,8 +206,8 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			m_nextUpdate = Globals.UpdateCount + ShipAutopilot.UpdateFrequency;
 
-			for (int i = m_totalThrustForce.Length - 1; i >= 0; i--)
-				m_totalThrustForce[i] = 0f;
+			//for (int i = m_totalThrustForce.Length - 1; i >= 0; i--)
+			//	m_totalThrustForce[i] = 0f;
 
 			CapableAtmo = false; CapableSpace = false;
 
@@ -299,7 +300,7 @@ namespace Rynchodon.Autopilot.Movement
 					float effectRange = thruster.BlockDefinition.EffectivenessAtMaxInfluence - thruster.BlockDefinition.EffectivenessAtMinInfluence;
 					float influenceRange = thruster.BlockDefinition.MaxPlanetaryInfluence - thruster.BlockDefinition.MinPlanetaryInfluence;
 					float effectiveness = (m_airDensity - thruster.BlockDefinition.MinPlanetaryInfluence) * effectRange / influenceRange + thruster.BlockDefinition.EffectivenessAtMinInfluence;
-					//myLogger.debugLog("for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange, "CalcForceInDirection()");
+					//myLogger.debugLog("for thruster " + thruster.DisplayNameText + ", effectiveness: " + effectiveness + ", max force: " + thrusterForce + ", effect range: " + effectRange + ", influence range: " + influenceRange);
 					thrusterForce *= effectiveness;
 				}
 			}
@@ -355,6 +356,7 @@ namespace Rynchodon.Autopilot.Movement
 				Gravity.SetMatrixOrientation(m_secondaryForce.Direction, m_primaryForce.Direction);
 			}
 
+			//myLogger.debugLog("direction: " + direction + "(" + (int)direction + ")" + ", force: " + force);
 			return force;
 		}
 

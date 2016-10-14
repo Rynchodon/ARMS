@@ -26,7 +26,6 @@ namespace Rynchodon
 
 		static CubeGridCache()
 		{
-			Logger.SetFileName("CubeGridCache");
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
@@ -254,7 +253,6 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				Logger.DebugLog("slim blocks: " + SlimOnly.Count);
 				for (int i = SlimOnly.Count - 1; i >= 0; i--)
 					if (!SlimOnly[i].Closed())
 						yield return SlimOnly[i].Position;
@@ -263,7 +261,6 @@ namespace Rynchodon
 
 				foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
 				{
-					myLogger.debugLog(blockList.Count + " blocks");
 					for (int i = blockList.Count - 1; i >= 0; i--)
 					{
 						MyCubeBlock block = blockList[i];

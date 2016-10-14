@@ -172,10 +172,11 @@
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
-    <Compile Include="Autopilot\Pathfinder\Pathfinder.cs" />
-    <Compile Include="Autopilot\Pathfinder\PathTester.cs" />
-    <Compile Include="Autopilot\Pathfinder\RotateChecker.cs" />
-    <Compile Include="Autopilot\Pathfinder\SphereClusters.cs" />
+    <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
+    <Compile Include="Autopilot\Pathfinding\Pathfinder_Structs.cs" />
+    <Compile Include="Autopilot\Pathfinding\PathTester.cs" />
+    <Compile Include="Autopilot\Pathfinding\RotateChecker.cs" />
+    <Compile Include="Autopilot\Pathfinding\SphereClusters.cs" />
     <Compile Include="Autopilot\ShipAutopilot.cs" />
     <Compile Include="Autopilot\Solar.cs" />
     <Compile Include="AntennaRelay\RelayStorage.cs" />

@@ -75,11 +75,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3I hitCell;
 				if (RejectionIntersects(grid, ignoreBlock, ref rejectionVector, rejectionDistance, ref offset, out hitCell, extraRadius))
 				{
-					Logger.DebugLog("rejection intersects");
 					MySlimBlock slim = grid.GetCubeBlock(hitCell);
 					obstructBlock = slim == null ? null : slim.FatBlock;
 					hitPosition = grid.GridIntegerToWorld(hitCell);
 					Profiler.EndProfileBlock();
+					Logger.DebugLog("rejection intersects, block: " + (slim != null ? slim.getBestName() : "N/A") + " at " + grid.GridIntegerToWorld(hitCell));
 					return true;
 				}
 				else
@@ -100,10 +100,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
 			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector + ", distance: " + rejectionDistance +
-				", final: " + (AutopilotGrid.GetCentre() + rejectionVector * rejectionDistance));
+				", final: " + (AutopilotGrid.GetCentre() + offset + rejectionVector * rejectionDistance));
 			Logger.DebugLog("rejction distance < 0: " + rejectionDistance, Logger.severity.ERROR, condition: rejectionDistance < 0f);
-
-			// TODO: need a cyclinder test, currently method is only testing rejection
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
@@ -139,7 +137,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				steps = (int)Math.Ceiling(Math.Max(AutopilotGrid.GridSize, oGrid.GridSize) / roundTo);
 			}
 			if (extraRadius)
-				steps *= 2;
+				steps *= 3;
 
 			//Logger.DebugLog("round to: " + roundTo + ", steps: " + steps);
 			//Logger.DebugLog("building m_rejections");
@@ -147,7 +145,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_rejections.Clear();
 			MatrixD worldMatrix = AutopilotGrid.WorldMatrix;
 			float gridSize = AutopilotGrid.GridSize;
-			float minProjection = 0f, maxProjection = 0f; // the permitted range when rejecting the other grids cells
+			float minProjection = float.MaxValue, maxProjection = float.MinValue; // the permitted range when rejecting the other grids cells
 			foreach (CubeGridCache cache in myCaches)
 			{
 				if (cache == null)

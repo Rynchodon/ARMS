@@ -14,7 +14,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		static SphereClusters()
 		{
-			Logger.SetFileName("SphereClusters");
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 

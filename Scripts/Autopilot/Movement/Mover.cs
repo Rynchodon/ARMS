@@ -367,7 +367,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			float accel = -force / Block.Physics.Mass;
 			//myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + " m/s" + ", cap: " + dist * 0.5f + " m/s", "MaximumSpeed()");
-			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.25f); // capped for the sake of autopilot's reaction time
+			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.5f); // capped for the sake of autopilot's reaction time
 		}
 
 		/// <summary>

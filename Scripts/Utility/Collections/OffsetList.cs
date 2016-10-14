@@ -14,11 +14,6 @@ namespace Rynchodon.Utility.Collections
 
 		private const int DefaultCapacity = 4;
 
-		static OffsetList()
-		{
-			Logger.SetFileName("OffsetArray<T>");
-		}
-
 		private static bool EqualsDefault(T value)
 		{
 			return EqualityComparer<T>.Default.Equals(value, default(T));
@@ -101,7 +96,7 @@ namespace Rynchodon.Utility.Collections
 		private void InitializeArray(int offset)
 		{
 			const int padFront = (DefaultCapacity - 1) >> 1;
-			Logger.DebugLog("Initializing array");
+			//Logger.DebugLog("Initializing array");
 			m_offset = offset - padFront;
 			m_array = new T[DefaultCapacity];
 		}
@@ -120,14 +115,12 @@ namespace Rynchodon.Utility.Collections
 				return;
 			}
 
-			Logger.DebugLog("index: " + index + ", m_offset: " + m_offset + ", iIndex: " + iIndex + ", m_array.Length: " + m_array.Length);
-
 			int iFirst, iLast;
 			GetFirstAndLast(out iFirst, out iLast);
 
 			if (iFirst < 0)
 			{
-				Logger.DebugLog("Array is empty, creating one with default capacity");
+				//Logger.DebugLog("Array is empty, creating one with default capacity");
 				InitializeArray(index);
 				return;
 			}
@@ -150,12 +143,26 @@ namespace Rynchodon.Utility.Collections
 			}
 			int shift = m_offset - first;
 
-			Logger.DebugLog("Copying to a new array. Offset: " + m_offset + ", iFirst: " + iFirst + ", iLast: " + iLast + ", index: " + index + ", new offset: " + first + ", new size: " + newSize + ", shift: " + shift);
+			T[] newArray;
 
-			T[] newArray = new T[newSize];
+#if LOG_ENABLED
+			try
+			{
+#endif
 
+			newArray = new T[newSize];
 			for (int ii = iFirst; ii <= iLast; ii++)
 				newArray[ii + shift] = m_array[ii];
+
+#if LOG_ENABLED
+			}
+			catch (Exception)
+			{
+				Logger.DebugLog("index: " + index + ", m_offset: " + m_offset + ", iIndex: " + iIndex + ", m_array.Length: " + m_array.Length, Logger.severity.ERROR);
+				Logger.DebugLog("Copying to a new array. Offset: " + m_offset + ", iFirst: " + iFirst + ", iLast: " + iLast + ", index: " + index + ", new offset: " + first + ", new size: " + newSize + ", shift: " + shift, Logger.severity.ERROR);
+				throw;
+			}
+#endif
 
 			m_offset = first;
 			m_array = newArray;

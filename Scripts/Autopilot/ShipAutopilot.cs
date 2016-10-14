@@ -164,6 +164,7 @@ namespace Rynchodon.Autopilot
 					return;
 				m_logger.debugLog("state change from " + value_state + " to " + value, Logger.severity.DEBUG);
 				value_state = value;
+				m_pathfinder.Halt();
 
 				switch (value_state)
 				{
