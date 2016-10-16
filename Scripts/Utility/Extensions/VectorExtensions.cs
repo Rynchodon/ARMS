@@ -173,5 +173,57 @@ namespace Rynchodon
 			rejection.Z = vector.Z - direction.Z * projectionDistance;
 		}
 
+		public static void RoundTo(ref Vector3 value, float roundTo)
+		{
+			float halfRound = roundTo * 0.5f;
+
+			float v = value.X;
+			float mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.X = v;
+
+			v = value.Y;
+			mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.Y = v;
+
+			v = value.Z;
+			mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.Z = v;
+		}
+
+		public static void RoundTo(ref Vector3D value, double roundTo)
+		{
+			double halfRound = roundTo * 0.5f;
+
+			double v = value.X;
+			double mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.X = v;
+
+			v = value.Y;
+			mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.Y = v;
+
+			v = value.Z;
+			mod = v % roundTo;
+			value -= mod;
+			if (mod >= halfRound)
+				value += roundTo;
+			value.Z = v;
+		}
+
 	}
 }

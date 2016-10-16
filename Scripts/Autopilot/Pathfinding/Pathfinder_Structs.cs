@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using VRage.Collections;
+using VRage.Game.Entity;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
@@ -9,12 +10,38 @@ namespace Rynchodon.Autopilot.Pathfinding
 	public partial class NewPathfinder
 	{
 
+		private struct Obstruction
+		{
+			public MyEntity Entity;
+			public bool MatchPosition;
+
+			public Vector3 LinearVelocity
+			{
+				get
+				{
+					return MatchPosition && Entity.Physics != null ? Entity.Physics.LinearVelocity : Vector3.Zero;
+				}
+			}
+
+			public Vector3D GetPosition()
+			{
+				return MatchPosition ? Entity.PositionComp.GetPosition() : Vector3D.Zero;
+			}
+
+			public Vector3D GetCentre()
+			{
+				return MatchPosition ? Entity.GetCentre() : Vector3D.Zero;
+			}
+		}
+
 		private struct PathNode
 		{
 			public long ParentKey;
 			public float DistToCur;
 			public Vector3D Position;
 			public Vector3 DirectionFromParent;
+
+			public long Key { get { return Position.GetHash(); } }
 
 			public PathNode(ref PathNode parent, ref Vector3D position)
 			{
