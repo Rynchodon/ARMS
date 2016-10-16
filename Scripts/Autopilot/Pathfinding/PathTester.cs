@@ -136,8 +136,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				roundTo = Math.Min(AutopilotGrid.GridSize, oGrid.GridSize);
 				steps = (int)Math.Ceiling(Math.Max(AutopilotGrid.GridSize, oGrid.GridSize) / roundTo);
 			}
-			if (extraRadius)
-				steps *= 3;
+			//if (extraRadius)
+			//	steps *= 2;
 
 			//Logger.DebugLog("round to: " + roundTo + ", steps: " + steps);
 			//Logger.DebugLog("building m_rejections");
@@ -224,6 +224,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 									continue;
 							}
 							oGridCell = cell;
+							Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
 							return true;
 						}
 			}

@@ -1,5 +1,5 @@
-﻿//#define LOG_ENABLED
-//#define PROFILE
+﻿#define LOG_ENABLED
+#define PROFILE
 
 using System;
 using System.Collections;
@@ -25,8 +25,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		// TODO: m_canChangeCourse
 
 		public const float SpeedFactor = 2f, VoxelAdd = 10f;
-		/// <summary>of m_nodeDistance</summary>
-		private const float DestinationRadius = 0.1f;
+		private const float DefaultNodeDistance = 100f;
 
 		private static ThreadManager ThreadForeground;
 		private static ThreadManager ThreadBackground;
@@ -51,6 +50,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
 		private bool m_runInterrupt, m_runHalt;
+		private ulong m_waitUntil;
 
 		// Inputs: rarely change
 
@@ -64,8 +64,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private Vector3 m_addToVelocity;
 		private Vector3D m_currentPosition, m_destWorld;
-		private Vector3 m_autopilotVelocity;
-		private float m_autopilotShipBoundingRadius;
+		private Vector3 m_autopilotVelocity { get { return m_autopilotGrid.Physics.LinearVelocity; } }
+		private float m_autopilotShipBoundingRadius { get { return m_autopilotGrid.PositionComp.LocalVolume.Radius; } }
 
 		// High Level
 
@@ -78,11 +78,35 @@ namespace Rynchodon.Autopilot.Pathfinding
 		// Low Level
 
 		private Path m_path = new Path(false);
-		private float m_nodeDistance;
+		private float m_nodeDistance = DefaultNodeDistance;
+		private double m_destRadiusSq { get { return m_nodeDistance * m_nodeDistance * 0.04f; } }
 		/// <summary>Position of the node that was reached. Move to while pathfinding or while path to next node is blocked.</summary>
-		private Vector3D m_currentPathPosition;
-
+		private Vector3D m_lastReachedPathPosition;
 		private PathNodeSet m_forward = new PathNodeSet(false), m_backward = new PathNodeSet(false);
+#if PROFILE
+		private bool value_pathfinding;
+		private DateTime m_timeStartPathfinding;
+		private bool m_pathfinding
+		{
+			get { return value_pathfinding; }
+			set
+			{
+				if (value_pathfinding == value)
+					return;
+				value_pathfinding = value;
+				if (value)
+					m_timeStartPathfinding = DateTime.UtcNow;
+				else
+				{
+					TimeSpan timeSpentPathfinding = DateTime.UtcNow - m_timeStartPathfinding;
+					m_logger.debugLog("Spent " + PrettySI.makePretty(timeSpentPathfinding) + " pathfinding");
+				}
+			}
+		}
+#else
+		private bool m_pathfinding;
+#endif
+		private LineSegmentD m_lineSegment = new LineSegmentD();
 
 		// Results
 
@@ -175,12 +199,22 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_ignoreVoxel = ignoreVoxel;
 			m_canChangeCourse = canChangeCourse;
 			m_isLanding = isLanding;
+			m_pathfinding = false;
+			m_nodeDistance = DefaultNodeDistance;
+			m_waitUntil = 0uL;
 
 			ThreadForeground.EnqueueAction(Run);
 		}
 
 		private void Run()
 		{
+			if (m_waitUntil > Globals.UpdateCount)
+			{
+				m_targetDirection = Vector3.Invalid;
+				OnComplete();
+				return;
+			}
+
 			if (!m_runningLock.TryAcquireExclusive())
 				return;
 			try
@@ -188,12 +222,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (m_runHalt)
 					return;
 				if (m_runInterrupt)
-				{
 					m_path.Clear();
-					m_forward.Clear();
-					m_backward.Clear();
-				}
-				else if (m_forward.m_reachedNodes.Count != 0)
+				else if (m_pathfinding)
 					return;
 
 				m_runInterrupt = false;
@@ -217,7 +247,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_runInterrupt)
 				ThreadForeground.EnqueueAction(Run);
-			else if (m_forward.m_reachedNodes.Count != 0)
+			else if (m_pathfinding)
 				ThreadBackground.EnqueueAction(ContinuePathfinding);
 		}
 
@@ -225,8 +255,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			m_currentPosition = m_autopilotGrid.GetCentre();
 			FillDestWorld();
-			m_autopilotVelocity = m_autopilotGrid.Physics.LinearVelocity;
-			m_autopilotShipBoundingRadius = m_autopilotGrid.PositionComp.LocalVolume.Radius;
 		}
 
 		private void FillDestWorld()
@@ -247,6 +275,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// </summary>
 		private void OnComplete()
 		{
+			m_entitiesPruneAvoid.Clear();
+			m_entitiesRepulse.Clear();
+
 			if (m_runInterrupt || m_runHalt)
 				return;
 
@@ -261,10 +292,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (!m_targetDirection.IsValid())
 			{
 				// while pathfinding, move to start node
-				if (m_forward.m_reachedNodes.Count != 0)
+				if (m_pathfinding)
 				{
 					Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-					Vector3D firstNodeWorld; Vector3D.Add(ref m_currentPathPosition, ref obstructPosition, out firstNodeWorld);
+					Vector3D firstNodeWorld; Vector3D.Add(ref m_lastReachedPathPosition, ref obstructPosition, out firstNodeWorld);
 					Vector3D toFirst; Vector3D.Subtract(ref firstNodeWorld, ref m_currentPosition, out toFirst);
 					double distance = toFirst.Normalize();
 					Vector3 direction = toFirst;
@@ -301,12 +332,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 
 				// if near waypoint, pop it
-				float destRadius = DestinationRadius * m_nodeDistance;
 				double distanceToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distanceToDest);
-				if (distanceToDest < destRadius * destRadius)
+				if (distanceToDest < m_destRadiusSq)
 				{
 					m_logger.debugLog("Reached waypoint: " + m_path.Peek() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
-					m_path.Pop(out m_currentPathPosition);
+					m_path.Pop(out m_lastReachedPathPosition);
 					FillDestWorld();
 					if (m_path.Count == 0)
 						Logger.DebugNotify("Completed path", level: Logger.severity.INFO);
@@ -334,39 +364,50 @@ namespace Rynchodon.Autopilot.Pathfinding
 			{
 				if (m_path.Count != 0)
 				{
-					// if 1 m < autopilot to m_currentNodePosition < destination radius, retry CurrentObstructed for moving to m_currentNodePosition
+					// if autopilot is off course, try to move back towards the line from last reached to current node
 
 					Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-					Vector3D currentNodeWorldPos; Vector3D.Add(ref m_currentPathPosition, ref obstructPosition, out currentNodeWorldPos);
-					Vector3D.Subtract(ref currentNodeWorldPos, ref m_currentPosition, out disp);
-					double distanceSq = disp.LengthSquared();
-					float destRadius = Math.Max(DestinationRadius * m_nodeDistance, 10f);
-					if (distanceSq > 1d && distanceSq < destRadius * destRadius)
+					Vector3D lastReachedWorldPos; Vector3D.Add(ref m_lastReachedPathPosition, ref obstructPosition, out lastReachedWorldPos);
+
+					m_lineSegment.From = lastReachedWorldPos;
+					m_lineSegment.To = m_destWorld;
+
+					Vector3D moveToPoint; m_lineSegment.ClosestPoint(ref m_currentPosition, out moveToPoint);
+					double distSquared; Vector3D.DistanceSquared(ref m_currentPosition, ref moveToPoint, out distSquared);
+
+					if (distSquared > 0.01d)
 					{
-						targetDistance = Math.Sqrt(distanceSq);
-						Vector3D.Divide(ref disp, targetDistance, out direct);
-						m_logger.debugLog("Trying to move to current node position, m_targetDirection: " + m_targetDirection + ", m_targetDistance: " + m_targetDistance + ", new m_targetDirection: " + direct + ", new m_targetDistance: " + targetDistance);
-						m_targetDirection = direct;
-						m_targetDistance = (float)targetDistance;
-						if (!CurrentObstructed(out obstructing, out pointOfObstruction, out block))
+						m_logger.debugLog("Moving to point(" + moveToPoint + ") on line between last reached(" + m_lineSegment.From + ") and current node(" + m_lineSegment.To + ") that is closest to current position(" + m_currentPosition + ").");
+						
+						Line moveLine = new Line(m_currentPosition, moveToPoint);
+						if (!CanTravelSegment(ref Vector3D.Zero, ref moveLine))
+							m_logger.debugLog("Cannot reach point on line");
+						else
 						{
+							targetDistance = Math.Sqrt(distSquared);
+							m_targetDistance = (float)targetDistance;
+
+							Vector3D.Subtract(ref moveToPoint, ref m_currentPosition, out disp);
+							Vector3D.Divide(ref disp, targetDistance, out direct);
+							m_targetDirection = direct;
 							m_logger.debugLog("Target direction: " + m_targetDirection + ", target distance: " + m_targetDistance);
-							m_entitiesPruneAvoid.Clear();
-							m_entitiesRepulse.Clear();
 							return;
 						}
 					}
+					else
+						m_logger.debugLog("Near point on line between current and next node, failed to follow path", Logger.severity.DEBUG);
 				}
 
 				m_obstructingEntity = obstructing;
 				m_obstructingBlock = block;
 
-				m_entitiesPruneAvoid.Clear();
-				m_entitiesRepulse.Clear();
+				m_forward.Clear();
+				m_backward.Clear();
+
 				m_targetDirection = Vector3.Invalid;
 				if (ObstructionMovingAway())
 					return;
-				FindAPath(ref pointOfObstruction);
+				FindAPath();
 				return;
 			}
 
@@ -376,8 +417,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_obstructingEntity = null;
 				m_obstructingBlock = null;
 			}
-			m_entitiesPruneAvoid.Clear();
-			m_entitiesRepulse.Clear();
 		}
 
 		/// <summary>
@@ -445,6 +484,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_clusters.Clear();
 
 			float distAutopilotToFinalDest = NavSet.Settings_Current.Distance;
+			Vector3 autopilotVelocity = m_autopilotVelocity;
 
 			for (int index = m_entitiesRepulse.Count - 1; index >= 0; index--)
 			{
@@ -465,18 +505,18 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (planet != null)
 				{
 					boundingRadius = planet.MaximumRadius;
-					Vector3.Dot(ref m_autopilotVelocity, ref toCentre, out linearSpeed);
+					Vector3.Dot(ref autopilotVelocity, ref toCentre, out linearSpeed);
 				}
 				else
 				{
 					boundingRadius = entity.PositionComp.LocalVolume.Radius;
 					if (entity.Physics == null)
-						Vector3.Dot(ref m_autopilotVelocity, ref toCentre, out linearSpeed);
+						Vector3.Dot(ref autopilotVelocity, ref toCentre, out linearSpeed);
 					else
 					{
 						Vector3 obVel = entity.Physics.LinearVelocity;
 						Vector3 relVel;
-						Vector3.Subtract(ref m_autopilotVelocity, ref  obVel, out relVel);
+						Vector3.Subtract(ref autopilotVelocity, ref  obVel, out relVel);
 						Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
 					}
 				}
@@ -502,8 +542,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 					double distSqCentreToDest; Vector3D.DistanceSquared(ref centre, ref m_destWorld, out distSqCentreToDest);
 					if (distSqCentreToDest < boundingRadius * boundingRadius)
 					{
-						m_logger.debugLog("Entity is too close to dest for repulsion. entity: " + entity.nameWithId() + ", distCentreToCurrent: " + distCentreToCurrent + ", distAutopilotToFinalDest: " +
-							distAutopilotToFinalDest + ", distSqCentreToDest: " + distSqCentreToDest + ", boundingRadius: " + boundingRadius);
+						//m_logger.debugLog("Entity is too close to dest for repulsion. entity: " + entity.nameWithId() + ", distCentreToCurrent: " + distCentreToCurrent + ", distAutopilotToFinalDest: " +
+						//	distAutopilotToFinalDest + ", distSqCentreToDest: " + distSqCentreToDest + ", boundingRadius: " + boundingRadius);
 						// Entity is too close to destination for repulsion.
 						m_entitiesPruneAvoid.Add(entity);
 						continue;
@@ -563,24 +603,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				// Autopilot is outside the maximum bounds of repulsion.
 				return;
 			}
-
-			//// If both entity and autopilot are near the destination, the repulsion radius must be reduced or we would never reach the destination.
-			//double toDestLenSq;
-			//Vector3D.DistanceSquared(ref sphere.Center, ref  m_destWorld, out toDestLenSq);
-
-			//double distAutopiltoToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distAutopiltoToDest);
-			//toDestLenSq += distAutopiltoToDest;
-
-			////toDestLenSq += m_targetDistance * m_targetDistance; // Adjustable
-
-			//if (toCurrentLenSq > toDestLenSq)
-			//{
-			//	// Autopilot is outside the boundaries of repulsion.
-			//	return;
-			//}
-
-			//if (toDestLenSq < maxRepulseDistSq)
-			//	maxRepulseDist = (float)Math.Sqrt(toDestLenSq);
 
 			float toCurrentLen = (float)Math.Sqrt(toCurrentLenSq);
 			// maxRepulseDist / toCurrentLen can be adjusted
@@ -683,47 +705,106 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Starts the pathfinding.
 		/// </summary>
-		private void FindAPath(ref Vector3D obstructionPoint)
+		private void FindAPath()
 		{
 			Logger.DebugNotify("Starting pathfinding", level: Logger.severity.INFO);
 
-			m_forward.Clear();
-			m_backward.Clear();
 			m_path.Clear();
+			PurgeTempGPS();
+			m_pathfinding = true;
+
 			FillDestWorld();
-			double distCurObs, distObsDest;
-			Vector3D.Distance(ref m_currentPosition, ref obstructionPoint, out distCurObs);
-			Vector3D.Distance(ref obstructionPoint, ref m_destWorld, out distObsDest);
-			m_nodeDistance = NavSet.Settings_Current.DestinationRadius;
 
 			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null);
 
+			PathNode startNode;
 			Vector3D relativePosition;
 			Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out relativePosition);
-
-			m_logger.debugLog("current position: " + m_currentPosition + ", obs: " + obstructPosition + ", relative: " + relativePosition);
-
-			PathNode startNode = new PathNode() { Position = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z)) };
-			m_currentPathPosition = startNode.Position;
-			m_forward.m_openNodes.Insert(startNode, 0f);
-			m_forward.m_reachedNodes.Add(startNode.Position.GetHash(), startNode);
 
 			Vector3D.Subtract(ref m_destWorld, ref obstructPosition, out relativePosition);
-			// backwards start node needs to be a discrete number of steps from forward startNode
-			Vector3D startToFinish; Vector3D.Subtract(ref relativePosition, ref startNode.Position, out startToFinish);
-			Vector3D steps; Vector3D.Divide(ref startToFinish, m_nodeDistance, out steps);
-			Vector3D discreteSteps = new Vector3D() { X = Math.Round(steps.X), Y = Math.Round(steps.Y), Z = Math.Round(steps.Z) };
-			Vector3D.Multiply(ref discreteSteps, m_nodeDistance, out startToFinish);
-			Vector3D.Add(ref startNode.Position, ref startToFinish, out relativePosition);
-				
-			startNode = new PathNode() { Position = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z)) };
-			m_backward.m_openNodes.Insert(startNode, 0f);
-			m_backward.m_reachedNodes.Add(startNode.Position.GetHash(), startNode);
+			Vector3D backStart = new Vector3D(Math.Round(relativePosition.X), Math.Round(relativePosition.Y), Math.Round(relativePosition.Z));
+			double diffSquared; Vector3D.DistanceSquared(ref backStart, ref m_backward.m_startPosition, out diffSquared);
+
+			float destRadius = NavSet.Settings_Current.DestinationRadius;
+			destRadius *= destRadius;
+
+			if (diffSquared > destRadius || m_backward.m_reachedNodes.Count == 0)
+			{
+				m_logger.debugLog("Rebuilding backward.. Previous start : " + m_backward.m_startPosition + ", new start: " + backStart +
+					", dest world: " + m_destWorld + ", obstruct: " + obstructPosition + ", relative: " + relativePosition);
+				m_backward.Clear();
+				m_backward.m_startPosition = backStart;
+				startNode = new PathNode() { Position = backStart };
+				m_backward.m_openNodes.Insert(startNode, 0f);
+				m_backward.m_reachedNodes.Add(startNode.Position.GetHash(), startNode);
+			}
+			else
+			{
+				m_logger.debugLog("Reusing backward: " + m_backward.m_reachedNodes.Count + ", " + m_backward.m_openNodes.Count);
+				Logger.DebugNotify("Reusing backward nodes");
+			}
+
+			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out m_lastReachedPathPosition);
+			// forward start node needs to be a discrete number of steps from backward startNode
+			Vector3D finishToStart; Vector3D.Subtract(ref m_lastReachedPathPosition, ref backStart, out finishToStart);
+
+			Vector3D.DistanceSquared(ref m_lastReachedPathPosition, ref m_forward.m_startPosition, out diffSquared);
+			if (diffSquared > destRadius || m_forward.m_reachedNodes.Count == 0)
+			{
+				m_logger.debugLog("Rebuilding forward. Previous start: " + m_forward.m_startPosition + ", new start: " + m_lastReachedPathPosition);
+				m_forward.Clear();
+				m_forward.m_startPosition = m_lastReachedPathPosition;
+
+				PathNode parentNode = new PathNode() { Position = m_lastReachedPathPosition };
+				long parentKey = parentNode.Position.GetHash();
+				m_forward.m_reachedNodes.Add(parentKey, parentNode);
+
+				double parentPathDist = MinPathDistance(ref finishToStart);
+
+				Vector3D steps; Vector3D.Divide(ref finishToStart, m_nodeDistance, out steps);
+				Vector3D stepsFloor = new Vector3D() { X = Math.Floor(steps.X), Y = Math.Floor(steps.Y), Z = Math.Floor(steps.Z) };
+				Vector3D currentStep;
+				for (currentStep.X = stepsFloor.X; currentStep.X <= stepsFloor.X + 1; currentStep.X++)
+					for (currentStep.Y = stepsFloor.Y; currentStep.Y <= stepsFloor.Y + 1; currentStep.Y++)
+						for (currentStep.Z = stepsFloor.Z; currentStep.Z <= stepsFloor.Z + 1; currentStep.Z++)
+						{
+							Vector3D.Multiply(ref currentStep, m_nodeDistance, out finishToStart);
+							Vector3D.Add(ref backStart, ref finishToStart, out relativePosition);
+
+							Vector3D finishToChild; Vector3D.Subtract(ref relativePosition, ref backStart, out finishToChild);
+							double childPathDist = MinPathDistance(ref finishToChild);
+							if (childPathDist > parentPathDist)
+							{
+								//m_logger.debugLog("Skipping child: " + ReportRelativePosition(relativePosition) + ", childPathDist: " + childPathDist + ", parentPathDist: " + parentPathDist);
+								continue;
+							}
+
+							PathNode childNode = new PathNode(ref parentNode, ref relativePosition);
+
+							Vector3D dispToDest; Vector3D.Subtract(ref backStart, ref relativePosition, out dispToDest);
+							double distToDest = MinPathDistance(ref dispToDest);
+							float resultKey = childNode.DistToCur + (float)distToDest;
+
+							//m_logger.debugLog("Initial child: " + ReportRelativePosition(childNode.Position));
+							m_forward.m_openNodes.Insert(childNode, resultKey);
+						}
+			}
+			else
+			{
+				m_logger.debugLog("Reusing forward: " + m_forward.m_reachedNodes.Count + ", " + m_forward.m_openNodes.Count);
+				Logger.DebugNotify("Reusing forward nodes");
+			}
 		}
 
 		private void ContinuePathfinding()
 		{
+			if (m_waitUntil > Globals.UpdateCount)
+			{
+				m_targetDirection = Vector3.Invalid;
+				OnComplete();
+				return;
+			}
+
 			if (!m_runningLock.TryAcquireExclusive())
 				return;
 			try
@@ -731,10 +812,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (m_runHalt || m_runInterrupt)
 					return;
 				UpdateInputs();
-				if (m_forward.m_openNodes.Count <= m_backward.m_openNodes.Count)
-					FindAPath(ref m_forward);
+				if (m_forward.m_blueSkyNodes.Count != m_backward.m_blueSkyNodes.Count)
+				{
+					if (m_forward.m_blueSkyNodes.Count < m_backward.m_blueSkyNodes.Count)
+						FindAPath(true);
+					else
+						FindAPath(false);
+				}
+				else if (m_forward.m_openNodes.Count <= m_backward.m_openNodes.Count)
+					FindAPath(true);
 				else
-					FindAPath(ref m_backward);
+					FindAPath(false);
 				OnComplete();
 			}
 			finally { m_runningLock.ReleaseExclusive(); }
@@ -745,8 +833,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Continues pathfinding.
 		/// </summary>
-		private void FindAPath(ref PathNodeSet pnSet)
+		private void FindAPath(bool isForwardSet)
 		{
+			PathNodeSet pnSet = isForwardSet ? m_forward : m_backward;
+
 			m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null, secondaryState: SetName(pnSet));
 
 			if (pnSet.m_openNodes.Count == 0)
@@ -759,7 +849,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (currentNode.DistToCur == 0f)
 			{
 				m_logger.debugLog("first node: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
-				CreatePathNodes(ref currentNode, ref pnSet);
+				CreatePathNodes(ref currentNode, isForwardSet);
+				return;
 			}
 
 			if (pnSet.m_reachedNodes.ContainsKey(currentNode.Position.GetHash()))
@@ -783,9 +874,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (!CanTravelSegment(ref offset, ref line))
 			{
 #if PROFILE
-				direction.m_unreachableNodes++;
+				pnSet.m_unreachableNodes++;
 #endif
-				m_logger.debugLog("Not reachable: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
+				//m_logger.debugLog("Not reachable: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
 				//ShowPosition(currentNode);
 				return;
 			}
@@ -794,73 +885,66 @@ namespace Rynchodon.Autopilot.Pathfinding
 			pnSet.m_reachedNodes.Add(cNodePosHash, currentNode);
 			ShowPosition(currentNode, SetName(pnSet));
 
-			// TODO: blue sky matching
-
-			PathNodeSet otherDirection = pnSet.m_openNodes == m_forward.m_openNodes ? m_backward : m_forward;
+			PathNodeSet otherDirection = isForwardSet ? m_backward : m_forward;
 			if (otherDirection.m_reachedNodes.ContainsKey(cNodePosHash))
-				BuildPath(cNodePosHash);
-			else
 			{
-				DebugRectClose(ref otherDirection, currentNode.Position); // TODO verify that there is no issue for far from zero worlds, then remove
-				CreatePathNodes(ref currentNode, ref pnSet);
+				BuildPath(cNodePosHash, cNodePosHash);
+				return;
 			}
 
-			//				// need to keep checking if the destination can be reached from every node
-			//				// this doesn't indicate a clear path but allows repulsion to resume
+			// blue sky test
 
-			//				Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-			//				Vector3D worldPosition; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out worldPosition);
-			//				Vector3D offset; Vector3D.Subtract(ref worldPosition, ref m_currentPosition, out offset);
+			Vector3D currentNodeWorld; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out currentNodeWorld);
+			BoundingSphereD sphere = new BoundingSphereD() { Center = currentNodeWorld, Radius = m_autopilotShipBoundingRadius + 100f };
+			m_entitiesRepulse.Clear(); // use repulse list as prune/avoid is needed for CanTravelSegment
+			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesRepulse);
+			if (m_entitiesRepulse.Count == 0)
+			{
+				Logger.DebugNotify(SetName(pnSet) + " Blue Sky");
+				m_logger.debugLog("Blue sky node: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
 
-			//				Line line = new Line(worldPosition, m_destWorld, false);
-			//				//m_logger.debugLog("line to dest: " + line.From + ", " + line.To + ", " + line.Direction + ", " + line.Length);
-			//				if (CanTravelSegment(ref offset, ref line))
-			//				{
-			//					m_logger.debugLog("Can reach final destination from a node, finished pathfinding. Final node: " + ReportRelativePosition(currentNode.Position), Logger.severity.DEBUG);
-			//					Logger.DebugNotify("Finished pathfinding", level: Logger.severity.INFO);
-			//					m_path.Clear();
-			//					PathNode node = currentNode;
-			//					while (node.DistToCur != 0f)
-			//					{
-			//						ShowPosition(node);
-			//						m_path.Push(node.Position);
-			//						node = direction.m_reachedNodes[node.ParentKey];
-			//					}
+				Vector3D.Subtract(ref currentNodeWorld, ref m_currentPosition, out offset);
 
-			//#if PROFILE
-			//					LogStats();
-			//#endif
-			//#if LOG_ENABLED
-			//					LogStats();
-			//#endif
+				line = new Line(currentNode.Position, otherDirection.m_startPosition, false);
+				if (CanTravelSegment(ref offset, ref line))
+				{
+					m_logger.debugLog("Blue sky to opposite start", secondaryState: SetName(pnSet));
+					Logger.DebugNotify("Blue Sky to Opposite", level: Logger.severity.INFO);
+					if (isForwardSet)
+						BuildPath(line.From.GetHash(), line.To.GetHash());
+					else
+						BuildPath(line.To.GetHash(), line.From.GetHash());
+					return;
+				}
 
-			//					m_forward.Clear();
-			//					m_backward.Clear();
+				foreach (Vector3D otherBlueSky in otherDirection.m_blueSkyNodes)
+				{
+					line = new Line(currentNode.Position, otherBlueSky, false);
+					if (CanTravelSegment(ref offset, ref line))
+					{
+						m_logger.debugLog("Blue sky path", secondaryState: SetName(pnSet));
+						Logger.DebugNotify("Blue Sky Path", level: Logger.severity.INFO);
+						BuildPath(pnSet.m_blueSkyNodes == m_forward.m_blueSkyNodes ? currentNode.Position.GetHash() : otherBlueSky.GetHash());
+						return;
+					}
+				}
 
-			//					m_logger.alwaysLog("Following path", Logger.severity.INFO);
-			//					return;
-			//				}
-			//}
-			//else
-			//	m_logger.debugLog("first node: " + ReportRelativePosition(currentNode.Position));
+				pnSet.m_blueSkyNodes.Add(currentNode.Position);
+			}
+
+			DebugRectClose(ref otherDirection, currentNode.Position);
+			CreatePathNodes(ref currentNode, isForwardSet);
+
+			if (pnSet.m_reachedNodes.Count % 10 == 0 && pnSet.m_reachedNodes.Count < otherDirection.m_reachedNodes.Count && m_nodeDistance < DefaultNodeDistance)
+			{
+				m_logger.debugLog("Reached " + pnSet.m_reachedNodes.Count + " nodes, doubling node distance to " + (m_nodeDistance * 2), secondaryState: SetName(pnSet));
+				Logger.DebugNotify("Doubling node distance", level: Logger.severity.INFO);
+				m_nodeDistance *= 2f;
+			}
 		}
 
-		//private bool CanReachFromParent(ref PathNode node)
-		//{
-		//	m_logger.debugLog("m_obstructingEntity == null", Logger.severity.ERROR, condition: m_obstructingEntity == null);
-
-		//	Vector3D obstructPosition = m_obstructingEntity.PositionComp.GetPosition();
-
-		//	PathNode parent = m_reachedNodes[node.ParentKey];
-		//	Vector3D worldParent;
-		//	Vector3D.Add(ref obstructPosition, ref parent.Position, out worldParent);
-
-		//	Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
-
-		//	Line line = new Line() { From = parent.Position, To = node.Position, Direction = node.DirectionFromParent, Length = node.DistToCur - parent.DistToCur };
-		//	return CanTravelSegment(ref offset, ref line);
-		//}
-
+		/// <param name="offset">Difference between start of segment and current position.</param>
+		/// <param name="line">Relative from and relative to</param>
 		private bool CanTravelSegment(ref Vector3D offset, ref Line line)
 		{
 			Profiler.StartProfileBlock();
@@ -883,7 +967,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			//	}
 			//}
 
-			//m_logger.debugLog("checking " + m_entitiesRepulse.Count + " entites - voxels");
+			//m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - voxels");
 
 			if (m_entitiesPruneAvoid.Count != 0)
 				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
@@ -902,25 +986,26 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 				}
 
-			m_logger.debugLog("No obstruction");
+			//m_logger.debugLog("No obstruction. Start: " + (m_currentPosition + offset) + ", finish: " + (m_currentPosition + offset + (line.To - line.From)));
 			Profiler.EndProfileBlock();
 			return true;
 		}
 
-		private void CreatePathNodes(ref PathNode currentNode, ref PathNodeSet pnSet)
+		private void CreatePathNodes(ref PathNode currentNode, bool isForwardSet)
 		{
 			long currentKey = currentNode.Position.GetHash();
 			foreach (Vector3I neighbour in Globals.NeighboursOne)
-				CreatePathNode(currentKey, ref currentNode, neighbour, 1f, ref pnSet);
+				CreatePathNode(currentKey, ref currentNode, neighbour, 1f,  isForwardSet);
 			foreach (Vector3I neighbour in Globals.NeighboursTwo)
-				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt2, ref pnSet);
+				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt2,  isForwardSet);
 			foreach (Vector3I neighbour in Globals.NeighboursThree)
-				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt3, ref pnSet);
+				CreatePathNode(currentKey, ref currentNode, neighbour, MathHelper.Sqrt3, isForwardSet);
 		}
 
-		private void CreatePathNode(long parentKey, ref PathNode parent, Vector3I neighbour, float distMulti, ref PathNodeSet pnSet)
+		private void CreatePathNode(long parentKey, ref PathNode parent, Vector3I neighbour, float distMulti, bool isForwardSet)
 		{
 			Profiler.StartProfileBlock();
+			PathNodeSet pnSet = isForwardSet ? m_forward : m_backward;
 
 			Vector3D position = parent.Position + neighbour * m_nodeDistance;
 			position = new Vector3D(Math.Round(position.X), Math.Round(position.Y), Math.Round(position.Z));
@@ -947,10 +1032,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			float distToCur = parent.DistToCur + m_nodeDistance * distMulti;
 			Vector3D obstructionPosition = m_obstructingEntity.PositionComp.GetPosition();
 			Vector3D currentWorldPosition; Vector3D.Add(ref position, ref obstructionPosition, out currentWorldPosition);
-			Vector3D dest = pnSet.m_openNodes == m_forward.m_openNodes ? m_destWorld : m_currentPosition;
+			Vector3D dest = isForwardSet ? m_destWorld : m_currentPosition;
 			Vector3D dispToDest; Vector3D.Subtract(ref dest, ref currentWorldPosition, out dispToDest);
-			double distToDest = MinPathDistance(ref dispToDest);
-			//double distToDest = dispToDest.Length();
+			double distToDest = Math.Abs(dispToDest.X) + Math.Abs(dispToDest.Y) + Math.Abs(dispToDest.Z);
 			float resultKey = distToCur + (float)distToDest;
 
 			if (turn > 0.99f && parent.ParentKey != 0f)
@@ -964,7 +1048,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 				//m_logger.debugLog("Pathfinder node backtracks to parent. Position: " + position + ", parent position: " + parent.Position +
 				//	"\ndirection: " + direction + ", parent direction: " + parent.DirectionFromParent, Logger.severity.FATAL, condition: turn < -0.99f);
-				resultKey += m_nodeDistance * 10f * (1f - turn);
+				resultKey += 300f * (1f - turn);
 			}
 
 			PathNode result = new PathNode()
@@ -984,32 +1068,34 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private double MinPathDistance(ref Vector3D displacement)
 		{
-			double X = Math.Abs(displacement.X), Y = Math.Abs(displacement.Y), Z = Math.Abs(displacement.Z), temp;
+			return Math.Abs(displacement.X) + Math.Abs(displacement.Y) + Math.Abs(displacement.Z); // going for more of a current-best approach
 
-			// sort so that X is min and Z is max
+			//double X = Math.Abs(displacement.X), Y = Math.Abs(displacement.Y), Z = Math.Abs(displacement.Z), temp;
 
-			if (Y < X)
-			{
-				temp = X;
-				X = Y;
-				Y = temp;
-			}
-			if (Z < Y)
-			{
-				temp = Y;
-				Y = Z;
-				Z = temp;
-				if (Y < X)
-				{
-					temp = X;
-					X = Y;
-					Y = temp;
-				}
-			}
+			//// sort so that X is min and Z is max
 
-			m_logger.debugLog("Sorting failed: " + X + ", " + Y + ", " + Z, Logger.severity.ERROR, condition: X > Y || X > Z || Y > Z);
+			//if (Y < X)
+			//{
+			//	temp = X;
+			//	X = Y;
+			//	Y = temp;
+			//}
+			//if (Z < Y)
+			//{
+			//	temp = Y;
+			//	Y = Z;
+			//	Z = temp;
+			//	if (Y < X)
+			//	{
+			//		temp = X;
+			//		X = Y;
+			//		Y = temp;
+			//	}
+			//}
 
-			return X * MathHelper.Sqrt3 + (Y - X) * MathHelper.Sqrt2 + Z - Y;
+			//m_logger.debugLog("Sorting failed: " + X + ", " + Y + ", " + Z, Logger.severity.ERROR, condition: X > Y || X > Z || Y > Z);
+
+			//return X * MathHelper.Sqrt3 + (Y - X) * MathHelper.Sqrt2 + Z - Y;
 		}
 
 		private void OutOfNodes()
@@ -1020,22 +1106,35 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Logger.DebugNotify("Halving node distance", level: Logger.severity.INFO);
 				m_nodeDistance *= 0.5f;
 
-				PathNode node;
-				IEnumerator<PathNode> enumerator = m_forward.m_reachedNodes.Values.GetEnumerator();
-				while (enumerator.MoveNext())
+				if (m_forward.m_reachedNodes.Count > 1)
 				{
-					node = enumerator.Current;
-					CreatePathNodes(ref node, ref m_forward);
+					PathNode node;
+					IEnumerator<PathNode> enumerator = m_forward.m_reachedNodes.Values.GetEnumerator();
+					while (enumerator.MoveNext())
+					{
+						node = enumerator.Current;
+						CreatePathNodes(ref node, true);
+					}
+					enumerator.Dispose();
 				}
-				enumerator.Dispose();
+				else
+					m_forward.Clear();
 
-				enumerator = m_backward.m_reachedNodes.Values.GetEnumerator();
-				while (enumerator.MoveNext())
+				if (m_backward.m_reachedNodes.Count > 1)
 				{
-					node = enumerator.Current;
-					CreatePathNodes(ref node, ref m_backward);
+					PathNode node;
+					IEnumerator<PathNode> enumerator = m_backward.m_reachedNodes.Values.GetEnumerator();
+					while (enumerator.MoveNext())
+					{
+						node = enumerator.Current;
+						CreatePathNodes(ref node, false);
+					}
+					enumerator.Dispose();
 				}
-				enumerator.Dispose();
+				else
+					m_backward.Clear();
+
+				FindAPath();
 				return;
 			}
 
@@ -1049,29 +1148,80 @@ namespace Rynchodon.Autopilot.Pathfinding
 			LogStats();
 #endif
 
-			m_forward.Clear();
-			m_backward.Clear();
+			PathfindingFailed();
 			return;
 		}
 
-		private void BuildPath(long meetingHash)
+		private void PathfindingFailed()
+		{
+			m_pathfinding = false;
+			m_nodeDistance = DefaultNodeDistance;
+			m_forward.Clear();
+			m_backward.Clear();
+			m_waitUntil = Globals.UpdateCount + 600uL;
+		}
+
+		private void BuildPath(long forwardHash, long backwardHash = 0L)
 		{
 			m_logger.debugLog("m_path.Count != 0", Logger.severity.ERROR, condition: m_path.Count != 0);
+			PurgeTempGPS();
 
-			PathNode node = m_forward.m_reachedNodes[meetingHash];
+			PathNode node;
+			if (!m_forward.m_reachedNodes.TryGetValue(forwardHash, out node))
+			{
+				m_logger.alwaysLog("Parent hash " + forwardHash + " not found in forward set, failed to build path", Logger.severity.ERROR);
+				if (m_backward.m_reachedNodes.ContainsKey(forwardHash))
+					m_logger.alwaysLog("Backward set does contains hash", Logger.severity.DEBUG);
+				PathfindingFailed();
+				return;
+			}
 			while (node.DistToCur != 0f)
 			{
-				ShowPosition(node);
+				ShowPosition(node, "Path");
 				m_path.AddFront(ref node.Position);
-				node = m_forward.m_reachedNodes[node.ParentKey];
+				if (!m_forward.m_reachedNodes.TryGetValue(node.ParentKey, out node))
+				{
+					m_logger.alwaysLog("Child hash " + forwardHash + " not found in forward set, failed to build path", Logger.severity.ERROR);
+					if (m_backward.m_reachedNodes.ContainsKey(forwardHash))
+						m_logger.alwaysLog("Backward set does contains hash", Logger.severity.DEBUG);
+					PathfindingFailed();
+					return;
+				}
 			}
 
-			node = m_backward.m_reachedNodes[m_backward.m_reachedNodes[meetingHash].ParentKey];
-			while (node.DistToCur != 0f)
+			if (backwardHash != 0L)
 			{
-				ShowPosition(node);
-				m_path.AddBack(ref node.Position);
-				node = m_backward.m_reachedNodes[node.ParentKey];
+				if (!m_backward.m_reachedNodes.TryGetValue(backwardHash, out node))
+				{
+					m_logger.alwaysLog("Parent hash " + backwardHash + " not found in backward set, failed to build path", Logger.severity.ERROR);
+					if (m_forward.m_reachedNodes.ContainsKey(forwardHash))
+						m_logger.alwaysLog("Forward set does contains hash", Logger.severity.DEBUG);
+					PathfindingFailed();
+					return;
+				}
+
+				if (forwardHash == backwardHash && node.ParentKey != 0L)
+				{
+					if (!m_backward.m_reachedNodes.TryGetValue(node.ParentKey, out node))
+					{
+						m_logger.alwaysLog("First child hash " + backwardHash + " not found in backward set, failed to build path", Logger.severity.ERROR);
+						if (m_forward.m_reachedNodes.ContainsKey(forwardHash))
+							m_logger.alwaysLog("Forward set does contains hash", Logger.severity.DEBUG);
+						PathfindingFailed();
+					}
+				}
+				while (node.DistToCur != 0f)
+				{
+					ShowPosition(node, "Path");
+					m_path.AddBack(ref node.Position);
+					if (!m_backward.m_reachedNodes.TryGetValue(node.ParentKey, out node))
+					{
+						m_logger.alwaysLog("Child hash " + backwardHash + " not found in backward set, failed to build path", Logger.severity.ERROR);
+						if (m_forward.m_reachedNodes.ContainsKey(forwardHash))
+							m_logger.alwaysLog("Forward set does contains hash", Logger.severity.DEBUG);
+						PathfindingFailed();
+					}
+				}
 			}
 
 #if PROFILE
@@ -1081,10 +1231,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			LogStats();
 #endif
 
-			m_forward.Clear();
-			m_backward.Clear();
-
-			m_logger.alwaysLog("Built path", Logger.severity.INFO);
+			m_pathfinding = false;
+			m_logger.debugLog("Built path", Logger.severity.INFO);
 			Logger.DebugNotify("Finished Pathfinding", level: Logger.severity.INFO);
 		}
 
@@ -1109,7 +1257,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 
 #if LOG_ENABLED
-		private Queue<IMyGps> m_shownPositions = new Queue<IMyGps>(10);
+		private Queue<IMyGps> m_shownPositions = new Queue<IMyGps>(100);
+		private List<IMyGps> m_allGpsList = new List<IMyGps>();
 #endif
 
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
@@ -1117,14 +1266,29 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			IMyGps gps = MyAPIGateway.Session.GPS.Create(name ?? currentNode.Position.ToString(), string.Empty, currentNode.Position + m_obstructingEntity.PositionComp.GetPosition(), true, true);
 			gps.DiscardAt = MyAPIGateway.Session.ElapsedPlayTime;
+			m_logger.debugLog("Showing " + gps.Coords);
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => MyAPIGateway.Session.GPS.AddLocalGps(gps));
-#if LOG_ENABLED			
+#if LOG_ENABLED
 			m_shownPositions.Enqueue(gps);
-			if (m_shownPositions.Count == 10)
+			if (m_shownPositions.Count == 100)
 			{
 				IMyGps remove = m_shownPositions.Dequeue();
+				m_logger.debugLog("Removing " + remove.Coords);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => MyAPIGateway.Session.GPS.RemoveLocalGps(remove));
 			}
+#endif
+		}
+
+		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		private void PurgeTempGPS()
+		{
+#if LOG_ENABLED
+			m_shownPositions.Clear();
+			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				foreach (IMyGps gps in MyAPIGateway.Session.GPS.GetGpsList(MyAPIGateway.Session.Player.IdentityId))
+					if (gps.DiscardAt.HasValue && gps.DiscardAt.Value < MyAPIGateway.Session.ElapsedPlayTime)
+						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
+			});
 #endif
 		}
 
@@ -1137,11 +1301,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private void DebugRectClose(ref PathNodeSet pnSet, Vector3D position)
 		{
 			foreach (PathNode otherNode in pnSet.m_reachedNodes.Values)
-			{
-				double distRect = Vector3D.RectangularDistance(position, otherNode.Position);
-				if (distRect < m_nodeDistance)
-					m_logger.debugLog(ReportRelativePosition(position) + " is less than " + m_nodeDistance + " m from: " + ReportRelativePosition(otherNode.Position), Logger.severity.ERROR);
-			}
+				if (otherNode.Position != m_forward.m_startPosition)
+				{
+					double distRect = Vector3D.RectangularDistance(position, otherNode.Position);
+					if (distRect < m_nodeDistance)
+						// TODO: determine which node is wrong
+						m_logger.debugLog(ReportRelativePosition(position) + " is less than " + m_nodeDistance + " m from: " + ReportRelativePosition(otherNode.Position), Logger.severity.WARNING);
+				}
 		}
 
 	}

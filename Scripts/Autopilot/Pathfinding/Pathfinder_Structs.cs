@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿#define PROFILE
+
+using System.Collections.Generic;
 using VRage.Collections;
 using VRageMath;
 
@@ -13,26 +15,45 @@ namespace Rynchodon.Autopilot.Pathfinding
 			public float DistToCur;
 			public Vector3D Position;
 			public Vector3 DirectionFromParent;
+
+			public PathNode(ref PathNode parent, ref Vector3D position)
+			{
+				this.ParentKey = parent.Position.GetHash();
+				this.Position = position;
+				Vector3D disp; Vector3D.Subtract(ref position, ref parent.Position, out disp);
+				this.DirectionFromParent = disp;
+				this.DistToCur = parent.DistToCur + this.DirectionFromParent.Normalize();
+			}
 		}
 
 		private struct PathNodeSet
 		{
+			public Vector3D m_startPosition;
 			public MyBinaryStructHeap<float, PathNode> m_openNodes;
 			public Dictionary<long, PathNode> m_reachedNodes;
+			/// <summary>Nodes that are not near anything.</summary>
+			public List<Vector3D> m_blueSkyNodes;
 #if PROFILE
-			public int m_unreachableNodes = 0;
+			public int m_unreachableNodes;
 #endif
 
 			public PathNodeSet(bool nothing)
 			{
+				m_startPosition = default(Vector3D);
 				m_openNodes = new MyBinaryStructHeap<float, PathNode>();
 				m_reachedNodes = new Dictionary<long, PathNode>();
+				m_blueSkyNodes = new List<Vector3D>();
+#if PROFILE
+				m_unreachableNodes = 0;
+#endif
 			}
 
 			public void Clear()
 			{
+				m_startPosition = default(Vector3D);
 				m_openNodes.Clear();
 				m_reachedNodes.Clear();
+				m_blueSkyNodes.Clear();
 #if PROFILE
 				m_unreachableNodes = 0;
 #endif
