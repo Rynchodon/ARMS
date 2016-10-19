@@ -244,7 +244,10 @@ namespace Rynchodon.Weapons
 					return;
 				}
 			}
-			throw new ArgumentException("id: " + id + " does not have a control");
+			Logger.AlwaysLog("Failed to get turret control for " + id + ", using default text", Logger.severity.INFO);
+			MyTerminalControlOnOffSwitch<MyUserControllableGun> newControl2 = new MyTerminalControlOnOffSwitch<MyUserControllableGun>(id, MyStringId.GetOrCompute(id), MyStringId.NullOrEmpty);
+			AddGetSet(newControl2, flag);
+			Static.fixedControls.Add(newControl2);
 		}
 
 		private static MyTerminalControlSlider<MyUserControllableGun> CloneTurretControl_Slider(string id)
@@ -255,7 +258,8 @@ namespace Rynchodon.Weapons
 				if (slider != null && slider.Id == id)
 					return new MyTerminalControlSlider<MyUserControllableGun>(id, slider.Title, slider.Tooltip);
 			}
-			throw new ArgumentException("id: " + id + " does not have a control");
+			Logger.AlwaysLog("Failed to get turret control for " + id + ", using default text", Logger.severity.INFO);
+			return new MyTerminalControlSlider<MyUserControllableGun>(id, MyStringId.GetOrCompute(id), MyStringId.NullOrEmpty);
 		}
 
 		private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controlList)

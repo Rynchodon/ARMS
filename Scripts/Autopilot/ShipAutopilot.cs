@@ -506,7 +506,6 @@ namespace Rynchodon.Autopilot
 
 			if (m_pathfinder.ReportedObstruction != null)
 			{
-				flags |= AutopilotTerminal.AutopilotFlags.MovementBlocked;
 				ApTerm.m_blockedBy.Value = m_pathfinder.ReportedObstruction.EntityId;
 				if (m_pathfinder.RotateCheck.ObstructingEntity != null)
 					flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
@@ -540,7 +539,7 @@ namespace Rynchodon.Autopilot
 				ApTerm.m_prevNavRotatorInfo.Update(navR.AppendCustomInfo);
 			}
 			ApTerm.m_autopilotFlags.Value = flags;
-
+			ApTerm.m_pathfinderState.Value = m_pathfinder.CurrentState;
 			ApTerm.SetWaitUntil(Settings_Current.WaitUntil);
 			ApTerm.SetDistance(Settings_Current.Distance, Settings_Current.DistanceAngle);
 			ApTerm.m_welderUnfinishedBlocks.Value = m_navSet.WelderUnfinishedBlocks;

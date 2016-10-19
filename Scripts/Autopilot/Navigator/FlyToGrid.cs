@@ -269,7 +269,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					IMyCubeGrid grid  = (IMyCubeGrid)m_gridFinder.Grid;
+					IMyCubeGrid grid  = (IMyCubeGrid)m_gridFinder.Grid.Entity;
 					CubeGridCache cache = CubeGridCache.GetFor(grid);
 					if (cache == null)
 						return;

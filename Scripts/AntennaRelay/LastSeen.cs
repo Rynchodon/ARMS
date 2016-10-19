@@ -46,11 +46,6 @@ namespace Rynchodon.AntennaRelay
 
 		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), RecentSpan = new TimeSpan(RecentTicks);
 
-		static LastSeen()
-		{
-			Logger.SetFileName("LastSeen");
-		}
-
 		public struct OlderBy
 		{
 			public static readonly OlderBy MinAge = new OlderBy() { RawValue = 255 },

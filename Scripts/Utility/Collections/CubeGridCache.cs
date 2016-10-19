@@ -185,9 +185,12 @@ namespace Rynchodon
 			{
 				List<MyCubeBlock> blockList;
 				if (CubeBlocks.TryGetValue(typeId, out blockList))
-					return blockList;
-				else
-					return null;
+					for (int i = blockList.Count - 1; i >= 0; i--)
+					{
+						MyCubeBlock block = (MyCubeBlock)blockList[i];
+						if (!block.Closed)
+							yield return block;
+					}
 			}
 			finally
 			{

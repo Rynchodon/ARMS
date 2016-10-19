@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Instruction;
+using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Update;
 using Rynchodon.Utility.Network;
@@ -70,6 +71,7 @@ namespace Rynchodon.Autopilot
 			foreach (AutopilotFlags flag in Enum.GetValues(typeof(AutopilotFlags)))
 				if (flag != 0)
 					AddProperty(flag);
+			AddProperty<Enum>("ArmsAp_PathStatus", autopilot => autopilot.m_pathfinderState.Value);
 			AddProperty<Enum>("ArmsAp_ReasonCannotTarget", autopilot => autopilot.m_reasonCannotTarget.Value);
 			AddProperty<Enum>("ArmsAp_Complaint", autopilot => autopilot.m_complaint.Value);
 			AddProperty("ArmsAp_WaitUntil", autopilot => new DateTime(autopilot.m_waitUntil.Value));
@@ -210,7 +212,7 @@ namespace Rynchodon.Autopilot
 		{
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
-				return null;
+				return "Unknown Entity";
 			return entity.GetNameForDisplay(autopilot.m_block.OwnerId);
 		}
 
@@ -260,7 +262,7 @@ namespace Rynchodon.Autopilot
 		{
 			None = 0,
 			HasControl = 1,
-			MovementBlocked = 2,
+			//MovementBlocked = 2,
 			RotationBlocked = 4,
 			EnemyFinderIssue = 8,
 			HasNavigatorMover = 16,
@@ -269,6 +271,7 @@ namespace Rynchodon.Autopilot
 
 		public EntityValue<ShipAutopilot.State> m_autopilotStatus;
 		public EntityValue<AutopilotFlags> m_autopilotFlags;
+		public EntityValue<Pathfinder.State> m_pathfinderState;
 		public EntityValue<GridFinder.ReasonCannotTarget> m_reasonCannotTarget;
 		public EntityValue<InfoString.StringId> m_complaint;
 		public EntityValue<long> m_blockedBy;
@@ -319,6 +322,7 @@ namespace Rynchodon.Autopilot
 
 			this.m_autopilotStatus = new EntityValue<ShipAutopilot.State>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_autopilotFlags = new EntityValue<AutopilotFlags>(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_pathfinderState = new EntityValue<Pathfinder.State>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_reasonCannotTarget = new EntityValue<GridFinder.ReasonCannotTarget>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_complaint = new EntityValue<InfoString.StringId>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_waitUntil = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
@@ -346,9 +350,15 @@ namespace Rynchodon.Autopilot
 		{
 			if (m_autopilotStatus.Value == ShipAutopilot.State.Halted)
 				if (MyAPIGateway.Multiplayer.IsServer)
-					customInfo.AppendLine("Autopilot crashed, see log for details");
+					customInfo.AppendLine("Autopilot crashed, please upload log files and report on steam page");
 				else
-					customInfo.AppendLine("Autopilot crashed, see server's log for details");
+					customInfo.AppendLine("Autopilot crashed, please upload server's log files and report on steam page");
+			if (m_pathfinderState.Value == Pathfinder.State.Crashed)
+				if (MyAPIGateway.Multiplayer.IsServer)
+					customInfo.AppendLine("Pathfinder crashed, please upload log files and report on steam page");
+				else
+					customInfo.AppendLine("Pathfinder crashed, please upload server's log files and report on steam page");
+
 			if (!HasFlag(AutopilotFlags.HasControl))
 			{
 				if (m_autopilotStatus.Value == ShipAutopilot.State.Disabled)
@@ -395,30 +405,27 @@ namespace Rynchodon.Autopilot
 			}
 
 			// pathfinder
-			if (HasFlag(AutopilotFlags.MovementBlocked | AutopilotFlags.RotationBlocked))
+			switch (m_pathfinderState.Value)
 			{
-				string blockedBy = GetNameForDisplay(this, m_blockedBy.Value);
-				customInfo.AppendLine("Pathfinder:");
-				if (HasFlag(AutopilotFlags.MovementBlocked))
-				{
-					if (blockedBy != null)
-					{
-						customInfo.Append("Movement blocked by ");
-						customInfo.AppendLine(blockedBy);
-					}
-					else
-						customInfo.AppendLine("Cannot move");
-				}
-				else
-				{
-					if (blockedBy != null)
+				case Pathfinder.State.SearchingForPath:
+					customInfo.Append("Searching for path around ");
+					customInfo.AppendLine(GetNameForDisplay(this, m_blockedBy.Value));
+					break;
+				case Pathfinder.State.FollowingPath:
+					customInfo.Append("Following path around ");
+					customInfo.AppendLine(GetNameForDisplay(this, m_blockedBy.Value));
+					break;
+				case Pathfinder.State.FailedToFindPath:
+					customInfo.Append("No path around ");
+					customInfo.AppendLine(GetNameForDisplay(this, m_blockedBy.Value));
+					break;
+				default:
+					if (HasFlag(AutopilotFlags.RotationBlocked))
 					{
 						customInfo.Append("Rotation blocked by ");
-						customInfo.AppendLine(blockedBy);
+						customInfo.AppendLine(GetNameForDisplay(this, m_blockedBy.Value));
 					}
-					else
-						customInfo.AppendLine("Cannot rotate");
-				}
+					break;
 			}
 
 			// nav mover info
