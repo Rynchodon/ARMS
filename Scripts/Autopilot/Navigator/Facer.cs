@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="pathfinder">The mover to use</param>
 		/// 
 		/// <param name="rotBlock">The block to rotate</param>
-		public Facer(NewPathfinder pathfinder, PseudoBlock rotBlock)
+		public Facer(Pathfinder pathfinder, PseudoBlock rotBlock)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);

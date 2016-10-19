@@ -4,7 +4,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class Form : ASingleWord
 	{
-		protected override void ActionMethod(NewPathfinder pathfinder)
+		protected override void ActionMethod(Pathfinder pathfinder)
 		{
 			pathfinder.NavSet.Settings_Task_NavMove.Stay_In_Formation = true;
 		}

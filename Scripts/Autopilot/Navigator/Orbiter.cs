@@ -88,7 +88,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public Orbiter(NewPathfinder pathfinder, string entity)
+		public Orbiter(Pathfinder pathfinder, string entity)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
@@ -125,7 +125,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <param name="entity">The entity to be orbited</param>
 		/// <param name="distance">The distance between the orbiter and the orbited entity</param>
 		/// <param name="name">What to call the orbited entity</param>
-		public Orbiter(NewPathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
+		public Orbiter(Pathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);

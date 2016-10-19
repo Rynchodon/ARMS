@@ -67,7 +67,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public WeldBlock(NewPathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
+		public WeldBlock(Pathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => pathfinder.Mover.Block.CubeGrid.DisplayName, () => block.getBestName(), () => m_stage.ToString());

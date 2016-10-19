@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_destroySet = false;
 		private bool m_weaponDataDirty = true;
 
-		public Fighter(NewPathfinder pathfinder, AllNavigationSettings navSet)
+		public Fighter(Pathfinder pathfinder, AllNavigationSettings navSet)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);

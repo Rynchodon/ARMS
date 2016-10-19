@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_enemy;
 		private bool m_approaching;
 
-		public Kamikaze(NewPathfinder pathfinder, AllNavigationSettings navSet)
+		public Kamikaze(Pathfinder pathfinder, AllNavigationSettings navSet)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);

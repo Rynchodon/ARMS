@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private LastSeen m_enemy;
 
-		public Coward(NewPathfinder pathfinder, AllNavigationSettings navSet)
+		public Coward(Pathfinder pathfinder, AllNavigationSettings navSet)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);

@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void ActionMethod(Pathfinding.NewPathfinder pathfinder)
+		protected override void ActionMethod(Pathfinding.Pathfinder pathfinder)
 		{
 			new UnLander(pathfinder, new Data.PseudoBlock(m_block, m_forward, m_upward));
 		}

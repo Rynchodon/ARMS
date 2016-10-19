@@ -152,6 +152,7 @@
     <Compile Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
+    <Compile Include="Autopilot\Navigator\PointFacer.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\Waypoint.cs" />
@@ -196,6 +197,7 @@
     <Compile Include="Utility\Attached\StatorRotor.cs" />
     <Compile Include="Utility\ChatHandler.cs" />
     <Compile Include="Utility\Collections\BlockTypeList.cs" />
+    <Compile Include="Utility\Collections\Deque.cs" />
     <Compile Include="Utility\Collections\GridCellCache.cs" />
     <Compile Include="Utility\Collections\LockedDictionary.cs" />
     <Compile Include="Utility\Collections\OffsetList.cs" />

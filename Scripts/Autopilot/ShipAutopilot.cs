@@ -140,7 +140,7 @@ namespace Rynchodon.Autopilot
 		public readonly ShipControllerBlock m_block;
 		private readonly Logger m_logger;
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
-		private NewPathfinder m_pathfinder;
+		private Pathfinder m_pathfinder;
 		private AutopilotCommands m_commands;
 
 		private IMyCubeGrid m_controlledGrid;
@@ -206,7 +206,7 @@ namespace Rynchodon.Autopilot
 		{
 			this.m_block = new ShipControllerBlock(block, HandleMessage);
 			this.m_logger = new Logger(block);
-			this.m_pathfinder = new NewPathfinder(m_block);
+			this.m_pathfinder = new Pathfinder(m_block);
 			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
 
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;

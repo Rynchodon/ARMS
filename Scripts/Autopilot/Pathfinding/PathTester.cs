@@ -66,6 +66,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out MyCubeBlock obstructBlock, out Vector3D hitPosition, bool extraRadius = true)
 		{
 			Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector);
+			Logger.DebugLog("rejection vector is invalid", Logger.severity.FATAL, condition: !rejectionVector.IsValid());
 
 			MyCubeGrid grid = entityTopMost as MyCubeGrid;
 			if (grid != null)
@@ -176,6 +177,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					//Logger.DebugLog("My rejection: " + rejection + ", planar: " + ToCell(pc2, roundTo));
 				}
 			}
+
 			//Logger.DebugLog("projection min: " + minProjection + ", max: " + maxProjection + ", max for other: " + (maxProjection + rejectionDistance));
 			maxProjection += rejectionDistance;
 

@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_character;
 		private TimeSpan m_timeoutAt;
 
-		public FlyToCharacter(NewPathfinder mover, string charName)
+		public FlyToCharacter(Pathfinder mover, string charName)
 			: base(mover)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => charName);

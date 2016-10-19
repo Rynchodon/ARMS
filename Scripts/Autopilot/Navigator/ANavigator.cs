@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot.Navigator
 	public abstract class ANavigator
 	{
 		/// <summary>The Pathfinder this navigator is using.</summary>
-		protected readonly NewPathfinder m_pathfinder;
+		protected readonly Pathfinder m_pathfinder;
 		/// <summary>The Mover this navigator is using</summary>
 		protected Mover m_mover { get { return m_pathfinder.Mover; } }
 		/// <summary>The settings this navigator is using.</summary>
@@ -63,7 +63,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="pathfinder">The Pathfinder to use</param>
-		protected ANavigator(NewPathfinder pathfinder)
+		protected ANavigator(Pathfinder pathfinder)
 		{
 			this.m_pathfinder = pathfinder;
 		}
@@ -76,7 +76,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="pathfinder">The Pathfinder to use</param>
-		protected NavigatorMover(NewPathfinder pathfinder)
+		protected NavigatorMover(Pathfinder pathfinder)
 			: base(pathfinder) { }
 
 		/// <summary>
@@ -96,7 +96,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Sets m_pathfinder and m_navSet for the navigator.
 		/// </summary>
 		/// <param name="pathfinder">The Pathfinder to use</param>
-		protected NavigatorRotator(NewPathfinder pathfinder)
+		protected NavigatorRotator(Pathfinder pathfinder)
 			: base(pathfinder) { }
 
 		/// <summary>

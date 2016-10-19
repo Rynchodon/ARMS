@@ -103,7 +103,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return result;
 		}
 
-		protected abstract void ActionMethod(Pathfinding.NewPathfinder pathfinder);
+		protected abstract void ActionMethod(Pathfinding.Pathfinder pathfinder);
 
 	}
 }

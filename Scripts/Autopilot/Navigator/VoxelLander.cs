@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Destination m_targetPostion;
 		private Stage m_stage;
 
-		public VoxelLander(NewPathfinder pathfinder, bool planet, PseudoBlock landBlock = null)
+		public VoxelLander(Pathfinder pathfinder, bool planet, PseudoBlock landBlock = null)
 			: base(pathfinder)
 		{
 			this.m_landBlock = landBlock ?? m_navSet.Settings_Current.LandingBlock;

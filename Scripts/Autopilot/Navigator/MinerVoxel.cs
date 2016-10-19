@@ -163,7 +163,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 		}
 
-		public MinerVoxel(NewPathfinder mover, byte[] OreTargets)
+		public MinerVoxel(Pathfinder mover, byte[] OreTargets)
 			: base(mover)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_state.ToString());

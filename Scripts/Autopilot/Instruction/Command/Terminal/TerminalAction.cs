@@ -25,7 +25,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			Logger.SetFileName("TerminalAction");
 		}
 
-		private static void RunActionOnBlock(NewPathfinder pathfinder, string blockName, string actionString, List<Ingame.TerminalActionParameter> termParams)
+		private static void RunActionOnBlock(Pathfinder pathfinder, string blockName, string actionString, List<Ingame.TerminalActionParameter> termParams)
 		{
 			blockName = blockName.Trim();
 			actionString = actionString.Trim(); // leave spaces in actionString

@@ -29,7 +29,7 @@ namespace Rynchodon.Autopilot
 		}
 
 		private readonly Logger m_logger;
-		private readonly NewPathfinder m_pathfinder;
+		private readonly Pathfinder m_pathfinder;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
 		/// <summary>The landing block at the time enemy finder is created, it will be vetted by EnemyLander</summary>
@@ -117,7 +117,7 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		public EnemyFinder(NewPathfinder pathfinder, AllNavigationSettings navSet, long entityId)
+		public EnemyFinder(Pathfinder pathfinder, AllNavigationSettings navSet, long entityId)
 			: base(navSet, pathfinder.Mover.Block)
 		{
 			this.m_logger = new Logger(pathfinder.Mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());

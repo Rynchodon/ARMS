@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 		}
 
-		protected override void ActionMethod(Rynchodon.Autopilot.Pathfinding.NewPathfinder pathfinder)
+		protected override void ActionMethod(Rynchodon.Autopilot.Pathfinding.Pathfinder pathfinder)
 		{
 			PseudoBlock pseudo = new PseudoBlock(m_block, m_forward, m_upward);
 			if (m_block is IMyLaserAntenna || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMySolarPanel || m_block is SpaceEngineers.Game.ModAPI.Ingame.IMyOxygenFarm)

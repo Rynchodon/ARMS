@@ -8,7 +8,7 @@ namespace Rynchodon.Utility
 		{
 			float mod = value % roundTo;
 			value -= mod;
-			if (mod >= roundTo * 0.5f)
+			if (value>= 0f? mod >= roundTo * 0.5f : mod < roundTo * -0.5f)
 				value += roundTo;
 			return value;
 		}
@@ -17,7 +17,7 @@ namespace Rynchodon.Utility
 		{
 			double mod = value % roundTo;
 			value -= mod;
-			if (mod >= roundTo * 0.5d)
+			if (value >= 0d ? mod >= roundTo * 0.5d : mod < roundTo * -0.5d)
 				value += roundTo;
 			return value;
 		}
@@ -26,7 +26,7 @@ namespace Rynchodon.Utility
 		{
 			decimal mod = value % roundTo;
 			value -= mod;
-			if (mod >= roundTo * 0.5m)
+			if (value >= 0m ? mod >= roundTo * 0.5m : mod < roundTo * -0.5m)
 				value += roundTo;
 			return value;
 		}

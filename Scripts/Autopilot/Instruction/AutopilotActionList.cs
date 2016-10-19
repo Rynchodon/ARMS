@@ -7,7 +7,7 @@ namespace Rynchodon.Autopilot.Instruction
 	{
 
 		private const int MaxIndex = 1000, MaxDepth = 10;
-		public delegate void AutopilotAction(NewPathfinder pathfinder);
+		public delegate void AutopilotAction(Pathfinder pathfinder);
 
 		static AutopilotActionList()
 		{

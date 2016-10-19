@@ -10,13 +10,13 @@ namespace Rynchodon.Autopilot.Navigator.Response
 	{
 
 		private readonly Logger m_logger;
-		private readonly NewPathfinder m_pathfinder;
+		private readonly Pathfinder m_pathfinder;
 		private readonly FlyToGrid m_flyToGrid;
 		private readonly bool m_hasLandingGear;
 
 		private AllNavigationSettings m_navSet { get { return m_pathfinder.NavSet; } }
 
-		public EnemyLander(NewPathfinder pathfinder, PseudoBlock landingGear)
+		public EnemyLander(Pathfinder pathfinder, PseudoBlock landingGear)
 		{
 			this.m_logger = new Logger();
 			this.m_pathfinder = pathfinder;

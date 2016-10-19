@@ -20,7 +20,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Ignore asteroids until next destination."; }
 		}
 
-		protected override void ActionMethod(NewPathfinder pathfinder)
+		protected override void ActionMethod(Pathfinder pathfinder)
 		{
 			pathfinder.Mover.NavSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 		}

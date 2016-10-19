@@ -1,13 +1,16 @@
 ﻿#define PROFILE
 
+using System;
 using System.Collections.Generic;
+using Rynchodon.Utility;
+using Rynchodon.Utility.Collections;
 using VRage.Collections;
 using VRage.Game.Entity;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
 {
-	public partial class NewPathfinder
+	public partial class Pathfinder
 	{
 
 		private struct Obstruction
@@ -45,11 +48,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			public PathNode(ref PathNode parent, ref Vector3D position)
 			{
+				Profiler.StartProfileBlock();
 				this.ParentKey = parent.Position.GetHash();
 				this.Position = position;
 				Vector3D disp; Vector3D.Subtract(ref position, ref parent.Position, out disp);
 				this.DirectionFromParent = disp;
 				this.DistToCur = parent.DistToCur + this.DirectionFromParent.Normalize();
+				Profiler.EndProfileBlock();
 			}
 		}
 
@@ -89,64 +94,82 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private struct Path
 		{
-			public Stack<Vector3D> m_forward;
-			public Queue<Vector3D> m_backward;
+			/// <summary>Head will be at the last reached position and tail will be at the final destination.</summary>
+			public Deque<Vector3D> m_postions;
+			/// <summary>The index of the position autopilot is trying to reach.</summary>
+			public int m_target;
 
-			public int Count { get { return m_forward.Count + m_backward.Count; } }
+			public int Count { get { return m_postions.Count; } }
+
+			public bool HasReached { get { return m_postions.Count != 0; } }
+
+			public bool HasTarget
+			{
+				get
+				{
+					Logger.DebugLog("Target should have been set", Logger.severity.ERROR, condition: m_target == 0 && m_postions.Count > 1 );
+					return m_target != 0;
+				}
+			}
+
+			public bool IsFinished { get { return m_postions.Count == 1; } }
 
 			public Path(bool nothing)
 			{
-				m_forward = new Stack<Vector3D>();
-				m_backward = new Queue<Vector3D>();
+				m_postions = new Deque<Vector3D>();
+				m_target = 0;
 			}
 
 			public void AddFront(ref Vector3D position)
 			{
-				m_forward.Push(position);
+				m_postions.AddHead(ref position);
+				Logger.DebugLog("Added front, count: " + m_postions.Count);
 			}
 
 			public void AddBack(ref Vector3D position)
 			{
-				m_backward.Enqueue(position);
+				m_postions.AddTail(ref position);
+				Logger.DebugLog("Added back, count: " + m_postions.Count);
 			}
 
 			public void Clear()
 			{
-				m_forward.Clear();
-				m_backward.Clear();
+				m_postions.Clear();
+				m_target = 0;
+				Logger.DebugLog("Cleared");
 			}
 
-			public void Peek(out Vector3D position)
+			public void GetReached(out Vector3D position)
 			{
-				if (m_forward.Count != 0)
-					position = m_forward.Peek();
-				else
-					position = m_backward.Peek();
+				m_postions.PeekHead(out position);
 			}
 
-			public Vector3D Peek()
+			public Vector3D GetReached()
 			{
-				if (m_forward.Count != 0)
-					return m_forward.Peek();
-				else
-					return m_backward.Peek();
+				return m_postions.PeekHead();
 			}
 
-			public void Pop(out Vector3D position)
+			public void GetTarget(out Vector3D position)
 			{
-				if (m_forward.Count != 0)
-					position = m_forward.Pop();
-				else
-					position = m_backward.Dequeue();
+				Logger.DebugLog("m_target has not been set", Logger.severity.ERROR, condition: m_target == 0);
+				position = m_postions[m_target];
 			}
 
-			public void Pop()
+			public Vector3D GetTarget()
 			{
-				if (m_forward.Count != 0)
-					m_forward.Pop();
-				else
-					m_backward.Dequeue();
+				Logger.DebugLog("m_target has not been set", Logger.severity.ERROR, condition: m_target == 0);
+				return m_postions[m_target];
 			}
+
+			public void ReachedTarget()
+			{
+				Logger.DebugLog("m_target has not been set", Logger.severity.ERROR, condition: m_target == 0);
+				for (int i = 0; i < m_target; i++)
+					m_postions.RemoveHead();
+				Logger.DebugLog("remove " + (m_target) + ", positions");
+				m_target = 0;
+			}
+
 		}
 
 	}

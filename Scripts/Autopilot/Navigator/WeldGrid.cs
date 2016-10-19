@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Dictionary<string, int> m_components_inventory = new Dictionary<string, int>();
 		private List<IMySlimBlock> m_blocksWithInventory;
 
-		public WeldGrid(NewPathfinder pathfinder, string gridName, bool shopAfter)
+		public WeldGrid(Pathfinder pathfinder, string gridName, bool shopAfter)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);

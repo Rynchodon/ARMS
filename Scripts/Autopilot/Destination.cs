@@ -15,10 +15,22 @@ namespace Rynchodon.Autopilot
 		public IMyEntity Entity;
 		public Vector3D Position;
 
+		public Destination(ref Vector3D worldPosition)
+		{
+			Entity = null;
+			Position = worldPosition;
+		}
+
 		public Destination(Vector3D worldPosition)
 		{
 			Entity = null;
 			Position = worldPosition;
+		}
+
+		public Destination(IMyEntity entity, ref Vector3D offset)
+		{
+			Entity = entity;
+			Position = offset;
 		}
 
 		public Destination(IMyEntity entity, Vector3D offset)
@@ -40,12 +52,12 @@ namespace Rynchodon.Autopilot
 			return Entity.GetCentre() + Position;
 		}
 
-		public bool Equals(Destination other)
+		public bool Equals(ref Destination other)
 		{
 			return this.Entity == other.Entity && this.Position == other.Position;
 		}
 
-		public bool Equals(ref Destination other)
+		public bool Equals(Destination other)
 		{
 			return this.Entity == other.Entity && this.Position == other.Position;
 		}

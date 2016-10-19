@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot.Navigator
 			return true;
 		}
 
-		public Grinder(NewPathfinder pathfinder, float maxRange)
+		public Grinder(Pathfinder pathfinder, float maxRange)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName, () => m_stage.ToString());

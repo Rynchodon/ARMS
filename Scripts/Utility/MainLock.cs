@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game;
@@ -60,13 +61,8 @@ namespace Rynchodon
 		/// <param name="safeAction">Action to perform</param>
 		public static void UsingShared(Action unsafeAction)
 		{
-			if (Lock_MainThread == null)
-				return;
-			if (ThreadTracker.IsGameThread)
+			using (AcquireSharedUsing())
 				unsafeAction.Invoke();
-			else
-				using (Lock_MainThread.AcquireSharedUsing())
-					unsafeAction.Invoke();
 		}
 
 		/// <summary>
@@ -77,7 +73,11 @@ namespace Rynchodon
 		{
 			if (ThreadTracker.IsGameThread)
 				return lock_dummy.AcquireSharedUsing();
-			return Lock_MainThread.AcquireSharedUsing();
+
+			Profiler.StartProfileBlock("Waiting for shared lock");
+			IDisposable result = Lock_MainThread.AcquireSharedUsing();
+			Profiler.EndProfileBlock();
+			return result;
 		}
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)

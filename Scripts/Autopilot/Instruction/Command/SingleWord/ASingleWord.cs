@@ -44,7 +44,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			return Identifier;
 		}
 
-		protected abstract void ActionMethod(NewPathfinder mover);
+		protected abstract void ActionMethod(Pathfinder mover);
 
 	}
 }

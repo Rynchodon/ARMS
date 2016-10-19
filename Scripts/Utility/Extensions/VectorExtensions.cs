@@ -173,56 +173,56 @@ namespace Rynchodon
 			rejection.Z = vector.Z - direction.Z * projectionDistance;
 		}
 
-		public static void RoundTo(ref Vector3 value, float roundTo)
+		public static void RoundTo(ref Vector3 vector, float roundTo)
 		{
 			float halfRound = roundTo * 0.5f;
 
-			float v = value.X;
-			float mod = v % roundTo;
+			float value = vector.X;
+			float mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0f ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.X = v;
+			vector.X = value;
 
-			v = value.Y;
-			mod = v % roundTo;
+			value = vector.Y;
+			mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0f ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.Y = v;
+			vector.Y = value;
 
-			v = value.Z;
-			mod = v % roundTo;
+			value = vector.Z;
+			mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0f ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.Z = v;
+			vector.Z = value;
 		}
 
-		public static void RoundTo(ref Vector3D value, double roundTo)
+		public static void RoundTo(ref Vector3D vector, double roundTo)
 		{
-			double halfRound = roundTo * 0.5f;
+			double halfRound = roundTo * 0.5d;
 
-			double v = value.X;
-			double mod = v % roundTo;
+			double value = vector.X;
+			double mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0d ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.X = v;
+			vector.X = value;
 
-			v = value.Y;
-			mod = v % roundTo;
+			value = vector.Y;
+			mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0d ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.Y = v;
+			vector.Y = value;
 
-			v = value.Z;
-			mod = v % roundTo;
+			value = vector.Z;
+			mod = value % roundTo;
 			value -= mod;
-			if (mod >= halfRound)
+			if (value >= 0d ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
-			value.Z = v;
+			vector.Z = value;
 		}
 
 	}

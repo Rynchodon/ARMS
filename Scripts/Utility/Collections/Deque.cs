@@ -33,8 +33,9 @@ namespace Rynchodon.Utility.Collections
 			if (_array.Length < Count + 1)
 				Resize();
 
-			_head = (_head - 1) % _array.Length;
+			_head = (_head - 1 + _array.Length) % _array.Length;
 			_array[_head] = item;
+			Count++;
 		}
 
 		public void AddHead(ref T item)
@@ -42,8 +43,9 @@ namespace Rynchodon.Utility.Collections
 			if (_array.Length < Count + 1)
 				Resize();
 
-			_head = (_head - 1) % _array.Length;
+			_head = (_head - 1 + _array.Length) % _array.Length;
 			_array[_head] = item;
+			Count++;
 		}
 
 		public void AddTail(T item)
@@ -53,6 +55,7 @@ namespace Rynchodon.Utility.Collections
 
 			_array[_tail] = item;
 			_tail = (_tail + 1) % _array.Length;
+			Count++;
 		}
 
 		public void AddTail(ref T item)
@@ -62,6 +65,7 @@ namespace Rynchodon.Utility.Collections
 
 			_array[_tail] = item;
 			_tail = (_tail + 1) % _array.Length;
+			Count++;
 		}
 
 		public T PeekHead()
@@ -79,13 +83,13 @@ namespace Rynchodon.Utility.Collections
 		public T PeekTail()
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
-			return _array[(_tail - 1) % _array.Length];
+			return _array[(_tail - 1 + _array.Length) % _array.Length];
 		}
 
 		public void PeekTail(out T item)
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
-			item = _array[(_tail - 1) % _array.Length];
+			item = _array[(_tail - 1 + _array.Length) % _array.Length];
 		}
 
 		public T PopHead()
@@ -95,6 +99,7 @@ namespace Rynchodon.Utility.Collections
 			T result = _array[_head];
 			_array[_head] = default(T);
 			_head = (_head + 1) % _array.Length;
+			Count--;
 			return result;
 		}
 
@@ -105,15 +110,17 @@ namespace Rynchodon.Utility.Collections
 			item = _array[_head];
 			_array[_head] = default(T);
 			_head = (_head + 1) % _array.Length;
+			Count--;
 		}
 
 		public T PopTail()
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
 
-			_tail = (_tail - 1) % _array.Length;
+			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			T result = _array[_tail];
 			_array[_tail] = default(T);
+			Count--;
 			return result;
 		}
 
@@ -121,9 +128,10 @@ namespace Rynchodon.Utility.Collections
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
 
-			_tail = (_tail - 1) % _array.Length;
+			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			item = _array[_tail];
 			_array[_tail] = default(T);
+			Count--;
 		}
 
 		public void RemoveHead()
@@ -132,14 +140,16 @@ namespace Rynchodon.Utility.Collections
 
 			_array[_head] = default(T);
 			_head = (_head + 1) % _array.Length;
+			Count--;
 		}
 
 		public void RemoveTail()
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
 
-			_tail = (_tail - 1) % _array.Length;
+			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			_array[_tail] = default(T);
+			Count--;
 		}
 
 		public void TrimExcess()
@@ -154,26 +164,29 @@ namespace Rynchodon.Utility.Collections
 		/// </summary>
 		private void Resize(int capacity = -1)
 		{
+			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+
 			if (capacity == -1)
 				capacity = _array.Length << 1;
 			T[] newArray = new T[capacity];
 
 			int newArrayIndex = 0;
-			if (_head > _tail)
+			if (_head < _tail)
+			{
+				for (int index = _head; index < _tail; index++)
+					newArray[newArrayIndex++] = _array[index];
+			}
+			else
 			{
 				for (int index = _head; index < _array.Length; index++)
 					newArray[newArrayIndex++] = _array[index];
 				for (int index = 0; index < _tail; index++)
 					newArray[newArrayIndex++] = _array[index];
 			}
-			else
-			{
-				for (int index = _head; index < _tail; index++)
-					newArray[newArrayIndex++] = _array[index];
-			}
 
 			_array = newArray;
-			_head = _tail = Count = 0;
+			_head = 0;
+			_tail = Count % _array.Length;
 		}
 
 		/// <summary>
@@ -183,7 +196,13 @@ namespace Rynchodon.Utility.Collections
 		{
 			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
 
-			if (_head > _tail)
+			if (_head < _tail)
+			{
+				_tail--;
+				for (int index = inIndex; index < _tail; index++)
+					_array[index] = _array[index + 1];
+			}
+			else
 			{
 				for (int index = inIndex; index < _array.Length - 1; index++)
 					_array[index] = _array[index + 1];
@@ -191,20 +210,17 @@ namespace Rynchodon.Utility.Collections
 				{
 					_tail = _array.Length - 1;
 					_array[_tail] = default(T);
-					return;
 				}
-				_tail--;
-				_array[_array.Length - 1] = _array[0];
-				for (int index = 0; index < _tail; index++)
-					_array[index] = _array[index + 1];
-				_array[_tail] = default(T);
+				else
+				{
+					_tail--;
+					_array[_array.Length - 1] = _array[0];
+					for (int index = 0; index < _tail; index++)
+						_array[index] = _array[index + 1];
+					_array[_tail] = default(T);
+				}
 			}
-			else
-			{
-				_tail--;
-				for (int index = inIndex; index < _tail; index++)
-					_array[index] = _array[index + 1];
-			}
+			Count--;
 		}
 
 		/// <summary>
@@ -219,10 +235,21 @@ namespace Rynchodon.Utility.Collections
 
 		public int IndexOf(T item)
 		{
+			if (Count == 0)
+				return -1;
 			EqualityComparer<T> comparer = EqualityComparer<T>.Default;
 
 			int extIndex = 0;
-			if (_head > _tail)
+			if (_head < _tail)
+			{
+				for (int index = _head; index < _tail; index++)
+				{
+					if (comparer.Equals(_array[index], item))
+						return extIndex;
+					extIndex++;
+				}
+			}
+			else
 			{
 				for (int index = _head; index < _array.Length; index++)
 				{
@@ -237,15 +264,6 @@ namespace Rynchodon.Utility.Collections
 					extIndex++;
 				}
 			}
-			else
-			{
-				for (int index = _head; index < _tail; index++)
-				{
-					if (comparer.Equals(_array[index], item))
-						return extIndex;
-					extIndex++;
-				}
-			}
 			return -1;
 		}
 
@@ -254,10 +272,20 @@ namespace Rynchodon.Utility.Collections
 			int insertIndex = (index + _head) % _array.Length;
 			if (!IsInRange(insertIndex))
 				throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
+			if (Count == 0)
+			{
+				AddTail(ref item);
+				return;
+			}
 			if (_array.Length < Count + 1)
 				Resize();
 
-			if (_head > _tail)
+			if (_head < _tail)
+			{
+				for (index = insertIndex; index < _tail; index++)
+					_array[index + 1] = _array[index];
+			}
+			else
 			{
 				for (index = insertIndex; index < _array.Length - 1; index++)
 					_array[index + 1] = _array[index];
@@ -265,14 +293,10 @@ namespace Rynchodon.Utility.Collections
 				for (index = 0; index < _tail; index++)
 					_array[index + 1] = _array[index];
 			}
-			else
-			{
-				for (index = insertIndex; index < _tail; index++)
-					_array[index + 1] = _array[index];
-			}
 
 			_tail = (_tail + 1) % _array.Length;
 			_array[insertIndex] = item;
+			Count++;
 		}
 
 		public void RemoveAt(int index)
@@ -291,34 +315,38 @@ namespace Rynchodon.Utility.Collections
 				int inIndex = (index + _head) % _array.Length;
 				if (!IsInRange(inIndex))
 					throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
-				return _array[index];
+				Logger.DebugLog("item: " + _array[inIndex] + ", internal index: " + inIndex + ", from index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
+				return _array[inIndex];
 			}
 			set
 			{
 				int inIndex = (index + _head) % _array.Length;
 				if (!IsInRange(inIndex))
 					throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
-				_array[index] = value;
+				_array[inIndex] = value;
 			}
 		}
 
-		public void IList<T>.Add(T item)
+		void ICollection<T>.Add(T item)
 		{
-			AddTail(item);
+			AddTail(ref item);
 		}
 
 		public void Clear()
 		{
-			if (_head > _tail)
+			if (Count == 0)
+				return;
+
+			if (_head < _tail)
 			{
-				for (int index = _head; index < _array.Length; index++)
-					_array[index] = default(T);
-				for (int index = 0; index < _tail; index++)
+				for (int index = _head; index < _tail; index++)
 					_array[index] = default(T);
 			}
 			else
 			{
-				for (int index = _head; index < _tail; index++)
+				for (int index = _head; index < _array.Length; index++)
+					_array[index] = default(T);
+				for (int index = 0; index < _tail; index++)
 					_array[index] = default(T);
 			}
 			_head = _tail = Count = 0;
@@ -331,17 +359,20 @@ namespace Rynchodon.Utility.Collections
 
 		public void CopyTo(T[] array, int arrayIndex)
 		{
+			if (Count == 0)
+				return;
+
 			int otherArrayIndex = 0;
-			if (_head > _tail)
+			if (_head < _tail)
 			{
-				for (int index = _head; index < _array.Length; index++)
-					array[otherArrayIndex++] = _array[index];
-				for (int index = 0; index < _tail; index++)
+				for (int index = _head; index < _tail; index++)
 					array[otherArrayIndex++] = _array[index];
 			}
 			else
 			{
-				for (int index = _head; index < _tail; index++)
+				for (int index = _head; index < _array.Length; index++)
+					array[otherArrayIndex++] = _array[index];
+				for (int index = 0; index < _tail; index++)
 					array[otherArrayIndex++] = _array[index];
 			}
 		}
@@ -355,9 +386,21 @@ namespace Rynchodon.Utility.Collections
 
 		public bool Remove(T item)
 		{
+			if (Count == 0)
+				return false;
+
 			EqualityComparer<T> comparer = EqualityComparer<T>.Default;
 
-			if (_head > _tail)
+			if (_head < _tail)
+			{
+				for (int index = _head; index < _tail; index++)
+					if (comparer.Equals(_array[index], item))
+					{
+						Remove(index);
+						return true;
+					}
+			}
+			else
 			{
 				for (int index = _head; index < _array.Length; index++)
 					if (comparer.Equals(_array[index], item))
@@ -372,30 +415,36 @@ namespace Rynchodon.Utility.Collections
 						return true;
 					}
 			}
-			else
-				for (int index = _head; index < _tail; index++)
-					if (comparer.Equals(_array[index], item))
-					{
-						Remove(index);
-						return true;
-					}
+				
 
 			return false;
 		}
 
 		public IEnumerator<T> GetEnumerator()
 		{
-			if (_head > _tail)
+			if (Count == 0)
+				yield break;
+
+			if (_head < _tail)
 			{
-				for (int index = _head; index < _array.Length; index++)
+				for (int index = _head; index < _tail; index++)
+				{
+					Logger.DebugLog("Simple, index: " + index + ", item: " + _array[index]);
 					yield return _array[index];
-				for (int index = 0; index < _tail; index++)
-					yield return _array[index];
+				}
 			}
 			else
 			{
-				for (int index = _head; index < _tail; index++)
+				for (int index = _head; index < _array.Length; index++)
+				{
+					Logger.DebugLog("Going to end, index: " + index + ", item: " + _array[index]);
 					yield return _array[index];
+				}
+				for (int index = 0; index < _tail; index++)
+				{
+					Logger.DebugLog("From start, index: " + index + ", item: " + _array[index]);
+					yield return _array[index];
+				}
 			}
 		}
 

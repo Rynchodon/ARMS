@@ -25,7 +25,7 @@ namespace Rynchodon.Autopilot.Navigator
 		//private Vector3D m_destination;
 		private bool m_attached = true;
 
-		public UnLander(NewPathfinder pathfinder, PseudoBlock unlandBlock = null)
+		public UnLander(Pathfinder pathfinder, PseudoBlock unlandBlock = null)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);

@@ -148,7 +148,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 				m_termProp = ((ITerminalProperty<T>)selected[0].UserData).Id;
 		}
 
-		protected void SetPropertyOfBlock(NewPathfinder pathfinder, string blockName, string propName, T propValue)
+		protected void SetPropertyOfBlock(Pathfinder pathfinder, string blockName, string propName, T propValue)
 		{
 			blockName = blockName.LowerRemoveWhitespace();
 			propName = propName.Trim(); // leave spaces in propName

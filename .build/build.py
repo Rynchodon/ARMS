@@ -239,6 +239,8 @@ if not os.path.exists(buildIni):
 
 exec(open(buildIni).read())
 
+print("Dev Condition: " + DevCondition)
+
 createDir(finalDir)
 createDir(finalDirDev)
 

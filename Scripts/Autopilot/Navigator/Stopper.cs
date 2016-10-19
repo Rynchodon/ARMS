@@ -17,7 +17,7 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		/// <param name="pathfinder">The Mover to use</param>
 		/// <param name="navSet">The settings to use</param>
-		public Stopper(NewPathfinder pathfinder, bool exitAfter = false)
+		public Stopper(Pathfinder pathfinder, bool exitAfter = false)
 			: base(pathfinder)
 		{
 			_logger = new Logger(m_controlBlock.Controller);

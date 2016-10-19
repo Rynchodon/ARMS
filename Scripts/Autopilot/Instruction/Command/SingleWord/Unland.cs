@@ -5,7 +5,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 {
 	public class Unland : ASingleWord
 	{
-		protected override void ActionMethod(NewPathfinder pathfinder)
+		protected override void ActionMethod(Pathfinder pathfinder)
 		{
 			new UnLander(pathfinder);
 		}

@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 			get { return m_navSet.Settings_Current.NavigationBlock; }
 		}
 
-		public Waypoint(NewPathfinder pathfinder, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
+		public Waypoint(Pathfinder pathfinder, AllNavigationSettings navSet, AllNavigationSettings.SettingsLevelName level, IMyEntity targetEntity, Vector3D worldOffset)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);

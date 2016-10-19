@@ -21,7 +21,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			get { return "Stop the ship before continuing"; }
 		}
 
-		protected override void ActionMethod(NewPathfinder pathfinder)
+		protected override void ActionMethod(Pathfinder pathfinder)
 		{
 			new Stopper(pathfinder);
 		}
