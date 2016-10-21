@@ -14,11 +14,11 @@ namespace Rynchodon
 		{
 			if (capsuleLength < 0)
 				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
-			double halfLength = capsuleLength / 2d;
+			double halfLength = capsuleLength * 0.5d;
 			Vector3D temp; Vector3D.Add(ref capsule.P0, ref capsule.P1, out temp);
-			Vector3D middle; Vector3D.Divide(ref temp, 2d, out middle);
+			Vector3D middle; Vector3D.Multiply(ref temp, 0.5d, out middle);
 
-			BoundingSphereD containingSphere = new BoundingSphereD(temp, halfLength + capsule.Radius);
+			BoundingSphereD containingSphere = new BoundingSphereD(middle, halfLength + capsule.Radius);
 			if (!asteroid.GetIntersectionWithSphere(ref containingSphere))
 			{
 				pointOfObstruction = Vector3.Invalid;
@@ -31,8 +31,8 @@ namespace Rynchodon
 				return true;
 			}
 
-			return Intersects(new CapsuleD(capsule.P0, temp, capsule.Radius), asteroid, out pointOfObstruction, halfLength)
-				|| Intersects(new CapsuleD(capsule.P1, temp, capsule.Radius), asteroid, out pointOfObstruction, halfLength);
+			return Intersects(new CapsuleD(capsule.P0, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength)
+				|| Intersects(new CapsuleD(capsule.P1, middle, capsule.Radius), asteroid, out pointOfObstruction, halfLength);
 		}
 
 	}

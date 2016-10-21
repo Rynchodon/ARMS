@@ -119,6 +119,7 @@ namespace Rynchodon.Autopilot.Navigator
 					case State.MoveTo:
 						m_currentTarget = m_approach.To;
 						m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
+						m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
 						break;
 					case State.Mining:
 						{
@@ -160,6 +161,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 				m_mover.IsStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
+				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = value == State.Approaching;
 			}
 		}
 
@@ -265,7 +267,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					return;
 				case State.MoveTo:
-					if (m_navSet.Settings_Current.Distance < m_longestDimension)
+					if (m_navSet.Settings_Current.Distance < m_longestDimension * 2f)
 					{
 						m_logger.debugLog("Reached target voxel", Logger.severity.DEBUG);
 						m_state = State.Mining;
@@ -676,7 +678,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			m_logger.debugLog("current target: " + m_currentTarget);
 			Destination dest = Destination.FromWorld(m_targetVoxel, m_currentTarget);
-			m_pathfinder.MoveTo(m_navDrill, ref dest, isLanding: true);
+			m_pathfinder.MoveTo(m_navDrill, ref dest);
 		}
 
 	}

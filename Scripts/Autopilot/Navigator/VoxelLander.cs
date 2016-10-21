@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(pathfinder)
 		{
 			this.m_landBlock = landBlock ?? m_navSet.Settings_Current.LandingBlock;
-			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_landBlock.Block.getBestName());
+			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => m_landBlock != null ? m_landBlock.Block.getBestName() : string.Empty);
 			this.m_targetType = planet ? "Planet" : "Asteroid";
 
 			if (this.m_landBlock == null)
@@ -95,6 +95,7 @@ namespace Rynchodon.Autopilot.Navigator
 				throw new Exception("Failed to intersect voxel");
 
 			m_targetPostion = new Destination(ref hitInfo);
+
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.IgnoreAsteroid = true;
 
@@ -120,30 +121,44 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						m_logger.debugLog("finished rotating, now landing", Logger.severity.DEBUG);
 						m_stage = Stage.Land;
+
+						IMyLandingGear gear = m_landBlock.Block as IMyLandingGear;
+						if (gear != null)
+						{
+							// move target 10 m towards centre
+							Vector3D targetEntityCentre = m_targetPostion.Entity.GetCentre();
+							Vector3D currentPosition = gear.PositionComp.GetPosition();
+							Vector3D currToCentre; Vector3D.Subtract(ref targetEntityCentre, ref currentPosition, out currToCentre);
+							currToCentre.Normalize();
+							Vector3D moveTargetBy; Vector3D.Multiply(ref currToCentre, 10d, out moveTargetBy);
+							m_targetPostion.Position += moveTargetBy;
+						}
 					}
 					return;
 				case Stage.Land:
-					IMyLandingGear gear = m_landBlock.Block as IMyLandingGear;
-					if (gear != null)
 					{
-						if (gear.IsLocked)
+						IMyLandingGear gear = m_landBlock.Block as IMyLandingGear;
+						if (gear != null)
 						{
-							m_logger.debugLog("locked", Logger.severity.INFO);
+							if (gear.IsLocked)
+							{
+								m_logger.debugLog("locked", Logger.severity.INFO);
+								m_mover.MoveAndRotateStop(false);
+								m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavRot);
+								return;
+							}
+						}
+						else if (m_navSet.DistanceLessThan(1f))
+						{
+							m_logger.debugLog("close enough", Logger.severity.INFO);
 							m_mover.MoveAndRotateStop(false);
 							m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavRot);
 							return;
 						}
-					}
-					else if (m_navSet.DistanceLessThan(1f))
-					{
-						m_logger.debugLog("close enough", Logger.severity.INFO);
-						m_mover.MoveAndRotateStop(false);
-						m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavRot);
+
+						m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion);
 						return;
 					}
-
-					m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion, isLanding: true);
-					return;
 			}
 		}
 

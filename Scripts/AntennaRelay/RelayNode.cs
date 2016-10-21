@@ -34,7 +34,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static void Entities_OnCloseAll()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			s_sendPositionTo = null;
 		}
 

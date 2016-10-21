@@ -57,11 +57,13 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					case Stage.Approach:
 						m_lastWeld = Globals.UpdateCount;
+						m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = false;
 						break;
 					case Stage.Weld:
 						m_lastWeld = Globals.UpdateCount;
 						m_navSet.Settings_Task_NavWay.DestinationEntity = m_realGrid;
 						m_navSet.Settings_Task_NavWay.SpeedMaxRelative = 1f;
+						m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = false;
 						break;
 				}
 			}
@@ -230,7 +232,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3D direction = m_welder.WorldPosition - m_targetWorld;
 			direction.Normalize();
 			Destination dest = Destination.FromWorld(m_realGrid, m_welder.WorldPosition + direction * 10d);
-			m_pathfinder.MoveTo(m_welder, ref dest, isLanding: true);
+			m_pathfinder.MoveTo(m_welder, ref dest);
 		}
 
 		private void MoveToTarget()
@@ -285,7 +287,7 @@ namespace Rynchodon.Autopilot.Navigator
 				Vector3D welderFromTarget = m_controlBlock.CubeBlock.GetPosition() - m_targetWorld;
 				welderFromTarget.Normalize();
 				Destination dest = Destination.FromWorld(m_realGrid, m_targetWorld + welderFromTarget * offset);
-				m_pathfinder.MoveTo(m_welder, ref dest, isLanding: true);
+				m_pathfinder.MoveTo(m_welder, ref dest);
 			}
 		}
 

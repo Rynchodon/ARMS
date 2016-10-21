@@ -167,7 +167,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		public void CalcMove(PseudoBlock block, ref Vector3 destDirection, float destDistance, ref Vector3 destVelocity, bool landing = false)
+		public void CalcMove(PseudoBlock block, ref Vector3 destDirection, float destDistance, ref Vector3 destVelocity)
 		{
 			const float landingSpeedFactor = 0.2f;
 
@@ -195,7 +195,7 @@ namespace Rynchodon.Autopilot.Movement
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
 
-				if (distance + (landing ? landingSpeedFactor : 1f) < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
+				if (distance + landingSpeedFactor < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
 				{
 					m_bestDistance = distance;
 					m_lastMove = Globals.UpdateCount;
@@ -209,12 +209,9 @@ namespace Rynchodon.Autopilot.Movement
 
 				// apply relative speed limit
 				float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
-				if (landing)
-				{
 					float landingSpeed = Math.Max(distance * landingSpeedFactor, landingSpeedFactor);
 					if (relSpeedLimit > landingSpeed)
 						relSpeedLimit = landingSpeed;
-				}
 				if (relSpeedLimit < float.MaxValue)
 				{
 					float tarSpeedSq_1 = targetVelocity.LengthSquared();
@@ -367,7 +364,8 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			float accel = -force / Block.Physics.Mass;
 			//myLogger.debugLog("direction: " + direct + ", dist: " + dist + ", max accel: " + accel + ", mass: " + Block.Physics.Mass + ", max speed: " + PrettySI.makePretty(Math.Sqrt(-2f * accel * dist)) + " m/s" + ", cap: " + dist * 0.5f + " m/s", "MaximumSpeed()");
-			return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.25f); // capped for the sake of autopilot's reaction time
+			//return Math.Min((float)Math.Sqrt(-2f * accel * dist), dist * 0.25f); // capped for the sake of autopilot's reaction time
+			return (float)Math.Sqrt(-2f * accel * dist);
 		}
 
 		/// <summary>

@@ -12,11 +12,6 @@ namespace Rynchodon
 		where T : IConvertible
 	{
 
-		static TerminalTextBox()
-		{
-			Logger.SetFileName("TerminalTextBox<" + typeof(T) + ">");
-		}
-
 		private class EntityVariables
 		{
 			//public StringBuilder Builder;
@@ -123,16 +118,21 @@ namespace Rynchodon
 				EntityValue<T> ev = TryGetEntityValue(pair.Key, true);
 
 				string str = pair.Value.Text;
-				double fromPretty;
-				object toConvert = PrettySI.TryParse(str, out fromPretty) ? (object)fromPretty : (object)str;
 
 				T result;
-				try { result = (T)Convert.ChangeType(toConvert, typeof(T)); }
-				catch (Exception ex)
+				try { result = (T)Convert.ChangeType(str, typeof(T)); }
+				catch
 				{
-					Logger.DebugLog("string: " + str + ", exception: " + ex, Logger.severity.WARNING, context: pair.Key.nameWithId());
-					result = m_invalidValue;
-					continue;
+					double fromPretty;
+					object toConvert = PrettySI.TryParse(str, out fromPretty) ? (object)fromPretty : (object)str;
+
+					try { result = (T)Convert.ChangeType(str, typeof(T)); }
+					catch
+					{
+						Logger.DebugLog("Failed to convert. string: " + str, Logger.severity.WARNING, context: pair.Key.nameWithId());
+						result = m_invalidValue;
+						continue;
+					}
 				}
 
 				Logger.DebugLog("Text:" + pair.Value.Text + ", set value to " + result, context: pair.Key.nameWithId());

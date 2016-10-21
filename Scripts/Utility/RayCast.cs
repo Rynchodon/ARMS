@@ -4,6 +4,7 @@ using Rynchodon.Utility;
 using Sandbox.Engine.Physics;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -17,6 +18,7 @@ namespace Rynchodon
 		private const int FilterLayerVoxel = 28;
 
 		private static Logger m_logger = new Logger();
+		private static FastResourceLock m_rayCastLock = new FastResourceLock();
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
@@ -176,7 +178,11 @@ namespace Rynchodon
 			}
 
 			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
-			MyPhysics.CastRay(line.From, line.To, hitList, FilterLayerVoxel);
+			using (MainLock.AcquireSharedUsing())
+			{
+				using (m_rayCastLock.AcquireExclusiveUsing())
+					MyPhysics.CastRay(line.From, line.To, hitList, FilterLayerVoxel);
+			}
 			foreach (IHitInfo hitItem in hitList)
 				if (hitItem.HitEntity is MyVoxelBase)
 				{
@@ -198,7 +204,11 @@ namespace Rynchodon
 		{
 			Profiler.StartProfileBlock();
 			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
-			MyPhysics.CastRay(start, end, hitList, FilterLayerVoxel);
+			using (MainLock.AcquireSharedUsing())
+			{
+				using (m_rayCastLock.AcquireExclusiveUsing())
+					MyPhysics.CastRay(start, end, hitList, FilterLayerVoxel);
+			}
 			foreach (IHitInfo hitItem in hitList)
 				if (hitItem.HitEntity is MyVoxelBase)
 				{

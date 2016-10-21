@@ -67,9 +67,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (joinedCluster == null)
 			{
-				joinedCluster = emptyCluster != null ? emptyCluster : m_sphereLists.Get();
-				joinedCluster.Add(sphere);
-				Clusters.Add(joinedCluster);
+				if (emptyCluster != null)
+					emptyCluster.Add(sphere);
+				else
+				{
+					joinedCluster = m_sphereLists.Get();
+					joinedCluster.Add(sphere);
+					Clusters.Add(joinedCluster);
+				}
 			}
 		}
 

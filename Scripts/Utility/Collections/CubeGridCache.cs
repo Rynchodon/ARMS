@@ -22,7 +22,7 @@ namespace Rynchodon
 	{
 
 		private static FastResourceLock lock_constructing = new FastResourceLock();
-		public static LockedDictionary<string, MyDefinitionId> DefinitionType = new LockedDictionary<string, MyDefinitionId>();
+		public static LockedDictionary<MyDefinitionId, string> DefinitionType = new LockedDictionary<MyDefinitionId, string>();
 
 		static CubeGridCache()
 		{
@@ -131,7 +131,7 @@ namespace Rynchodon
 			IMyTerminalBlock term = cubeBlock as IMyTerminalBlock;
 			if (term != null)
 			{
-				DefinitionType.TrySet(term.DefinitionDisplayNameText, ((MyCubeBlock)term).BlockDefinition.Id);
+				DefinitionType.TrySet(((MyCubeBlock)term).BlockDefinition.Id, term.DefinitionDisplayNameText);
 				TerminalBlocks++;
 			}
 
@@ -186,11 +186,7 @@ namespace Rynchodon
 				List<MyCubeBlock> blockList;
 				if (CubeBlocks.TryGetValue(typeId, out blockList))
 					for (int i = blockList.Count - 1; i >= 0; i--)
-					{
-						MyCubeBlock block = (MyCubeBlock)blockList[i];
-						if (!block.Closed)
-							yield return block;
-					}
+						yield return (MyCubeBlock)blockList[i];
 			}
 			finally
 			{
@@ -354,7 +350,7 @@ namespace Rynchodon
 		/// <param name="objBuildType">Type to search for</param>
 		/// <param name="condition">Condition that block must match</param>
 		/// <returns>The number of blocks of the given type that match the condition.</returns>
-		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition, int stopCaringAt = int.MaxValue)
+		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition = null, int stopCaringAt = int.MaxValue)
 		{
 			lock_blocks.AcquireShared();
 			try
@@ -364,7 +360,7 @@ namespace Rynchodon
 				{
 					int count = 0;
 					foreach (MyCubeBlock block in blockList)
-						if (condition(block))
+						if (condition == null || condition(block))
 						{
 							count++;
 							if (count >= stopCaringAt)

@@ -450,13 +450,21 @@ namespace Rynchodon.Weapons
 			BoundingSphereD nearbySphere = new BoundingSphereD(ProjectilePosition(), Options.TargetingRange);
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearbySphere, nearbyEntities);
 
+			//myLogger.debugLog("nearby entities: " + nearbyEntities.Count);
+
 			foreach (IMyEntity entity in nearbyEntities)
 			{
 				if (Options.TargetEntityId > 0L && entity.EntityId != Options.TargetEntityId)
+				{
+					//myLogger.debugLog("not allowed by id: " + entity.nameWithId());
 					continue;
+				}
 
 				if (Blacklist.Contains(entity))
+				{
+					//myLogger.debugLog("blacklisted: " + entity.nameWithId());
 					continue;
+				}
 
 				if (entity is IMyFloatingObject)
 				{
@@ -500,6 +508,8 @@ namespace Rynchodon.Weapons
 				IMyCubeGrid asGrid = entity as IMyCubeGrid;
 				if (asGrid != null)
 				{
+					//myLogger.debugLog("grid: "+asGrid.getBestName());
+
 					if (!asGrid.Save)
 						continue;
 
@@ -536,7 +546,11 @@ namespace Rynchodon.Weapons
 		private void AddTarget(TargetType tType, IMyEntity target)
 		{
 			if (!Options.CanTargetType(tType))
+			{
+				//myLogger.debugLog("cannot carget type: " + tType + ", allowed: " + Options.CanTarget);
 				return;
+			}
+			//myLogger.debugLog("adding to target list: " + target.getBestName() + ", " + tType);
 
 			//myLogger.debugLog(target.ToString().StartsWith("MyMissile"), "missile: " + target.getBestName() + ", type = " + tType + ", allowed targets = " + Options.CanTarget, "AddTarget()");
 
@@ -614,13 +628,13 @@ namespace Rynchodon.Weapons
 					distanceValue = Vector3D.DistanceSquared(targetPosition, weaponPosition);
 					if (distanceValue > Options.TargetingRangeSquared)
 					{
-						//myLogger.debugLog("for type: " + tType + ", too far to target: " + target.getBestName(), "SetClosest()");
+						//myLogger.debugLog("for type: " + tType + ", too far to target: " + target.getBestName());
 						continue;
 					}
 
 					if (PhysicalProblem(targetPosition, target))
 					{
-						//myLogger.debugLog("can't target: " + target.getBestName(), "SetClosest()");
+						//myLogger.debugLog("can't target: " + target.getBestName());
 						Blacklist.Add(target);
 						continue;
 					}
@@ -734,6 +748,7 @@ namespace Rynchodon.Weapons
 					index++;
 					foreach (MyDefinitionId id in ids)
 					{
+						//myLogger.debugLog("searching for blocks of type: " + id + ", count: " + cache.BlocksOfType(id).Count());
 						foreach (IMyCubeBlock block in cache.BlocksOfType(id))
 						{
 							if (!TargetableBlock(block, true))
@@ -743,8 +758,7 @@ namespace Rynchodon.Weapons
 							if (doRangeTest && distSq > Options.TargetingRangeSquared)
 								continue;
 
-							int multiplier = index;
-							distSq *= multiplier * multiplier * multiplier;
+							distSq *= index * index * index;
 
 							if (distSq < in_distValue && CanConsiderHostile(block))
 							{

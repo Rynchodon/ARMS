@@ -238,6 +238,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="rayDirectionLength">Not normalized, should reflect the distance autopilot needs to travel.</param>
 		public bool RayCastIntersectsVoxel(ref Vector3D offset, ref Vector3 rayDirectionLength, out IHitInfo hit)
 		{
+			Profiler.StartProfileBlock();
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
 
@@ -259,6 +260,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
 					hit = default(IHitInfo);
+					Profiler.EndProfileBlock();
 					return false;
 				}
 				foreach (Vector3I cell in cache.OccupiedCells())
@@ -277,11 +279,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X,  Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z};
 					if (RayCast.RayCastVoxels(ref offsetWorld, ref end, out hit))
+					{
+						Profiler.EndProfileBlock(); 
 						return true;
+					}
 				}
 			}
 
 			hit = default(IHitInfo);
+			Profiler.EndProfileBlock(); 
 			return false;
 		}
 

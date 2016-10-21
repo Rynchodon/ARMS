@@ -9,11 +9,6 @@ namespace Rynchodon.Autopilot.Instruction
 		private const int MaxIndex = 1000, MaxDepth = 10;
 		public delegate void AutopilotAction(Pathfinder pathfinder);
 
-		static AutopilotActionList()
-		{
-			Logger.SetFileName("AutopilotActionList");
-		}
-
 		private readonly ArrayList m_mainList = new ArrayList();
 		private int m_mainListIndex;
 		private AutopilotActionList m_sublist;

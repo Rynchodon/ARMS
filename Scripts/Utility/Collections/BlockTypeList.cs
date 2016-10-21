@@ -103,8 +103,10 @@ namespace Rynchodon
 
 			using (m_lock.AcquireExclusiveUsing())
 			{
-				if (m_sourceCount == CubeGridCache.DefinitionType.Count)
+				int count = CubeGridCache.DefinitionType.Count;
+				if (m_sourceCount == count)
 					return;
+				m_sourceCount = count;
 
 				m_blocks = new MyDefinitionId[BlockNamesContain.Length][];
 
@@ -116,14 +118,11 @@ namespace Rynchodon
 					for (int i = BlockNamesContain.Length - 1; i >= 0; i--)
 					{
 						idList.Clear();
-
 						foreach (var pair in CubeGridCache.DefinitionType.Dictionary)
-							if (pair.Key.looseContains(BlockNamesContain[i]) && added.Add(pair.Value))
-								idList.Add(pair.Value);
-
+							if (pair.Value.looseContains(BlockNamesContain[i]) && added.Add(pair.Key))
+								idList.Add(pair.Key);
 						m_blocks[i] = idList.ToArray();
 					}
-					m_sourceCount = CubeGridCache.DefinitionType.Dictionary.Count;
 				}
 			}
 		}

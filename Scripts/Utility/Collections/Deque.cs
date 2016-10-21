@@ -223,14 +223,6 @@ namespace Rynchodon.Utility.Collections
 			Count--;
 		}
 
-		/// <summary>
-		/// Check that the specified internal index is valid.
-		/// </summary>
-		private bool IsInRange(int inIndex)
-		{
-			return _head > _tail ^ (_head <= inIndex && inIndex <= _tail);
-		}
-
 		#endregion
 
 		public int IndexOf(T item)
@@ -269,9 +261,10 @@ namespace Rynchodon.Utility.Collections
 
 		public void Insert(int index, T item)
 		{
+			if (index < 0 || Count < index) // can insert at Count
+				throw new ArgumentOutOfRangeException("index", "index: " + index + ", Count: " + Count);
+
 			int insertIndex = (index + _head) % _array.Length;
-			if (!IsInRange(insertIndex))
-				throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
 			if (Count == 0)
 			{
 				AddTail(ref item);
@@ -301,10 +294,10 @@ namespace Rynchodon.Utility.Collections
 
 		public void RemoveAt(int index)
 		{
-			int inIndex = (index + _head) % _array.Length;
-			if (!IsInRange(inIndex))
-				throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
+			if (index < 0 || Count <= index)
+				throw new ArgumentOutOfRangeException("index", "index: " + index + ", Count: " + Count);
 
+			int inIndex = (index + _head) % _array.Length;
 			Remove(inIndex);
 		}
 
@@ -312,17 +305,18 @@ namespace Rynchodon.Utility.Collections
 		{
 			get
 			{
+				if (index < 0 || Count <= index)
+					throw new ArgumentOutOfRangeException("index", "index: " + index + ", Count: " + Count);
+
 				int inIndex = (index + _head) % _array.Length;
-				if (!IsInRange(inIndex))
-					throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
-				Logger.DebugLog("item: " + _array[inIndex] + ", internal index: " + inIndex + ", from index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
 				return _array[inIndex];
 			}
 			set
 			{
+				if (index < 0 || Count <= index)
+					throw new ArgumentOutOfRangeException("index", "index: " + index + ", Count: " + Count);
+
 				int inIndex = (index + _head) % _array.Length;
-				if (!IsInRange(inIndex))
-					throw new ArgumentOutOfRangeException("index: " + index + ", head: " + _head + ", tail: " + _tail + ", array length: " + _array.Length);
 				_array[inIndex] = value;
 			}
 		}

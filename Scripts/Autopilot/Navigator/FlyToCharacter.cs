@@ -58,7 +58,7 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 			{
 				Destination destination = new Destination(m_character.Entity, Vector3D.Zero);
-				m_pathfinder.MoveTo(m_navSet.Settings_Current.NavigationBlock, ref destination, isLanding: true);
+				m_pathfinder.MoveTo(m_navSet.Settings_Current.NavigationBlock, ref destination);
 			}
 		}
 

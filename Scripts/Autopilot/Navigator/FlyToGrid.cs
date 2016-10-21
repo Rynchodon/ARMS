@@ -93,6 +93,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 
 				m_navSet.OnTaskComplete_NavWay();
+				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = value != LandingState.Catch && value != LandingState.Landing;
 			}
 		}
 
@@ -294,7 +295,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					if (m_landingState == LandingState.None)
 					{
-						if (m_targetBlock != null && m_targetBlock.Forward.HasValue ? m_navSet.DirectionMatched() : m_navBlock.Physics.AngularVelocity == Vector3.Zero)
+						if (m_targetBlock != null && m_targetBlock.Forward.HasValue ? m_navSet.DirectionMatched() : m_navBlock.Physics.AngularVelocity.LengthSquared() < 0.01f)
 						{
 							m_logger.debugLog("Arrived at target", Logger.severity.INFO);
 							m_navSet.OnTaskComplete(m_settingLevel);
@@ -540,7 +541,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 
 						m_destination.Position += GetLandingFaceVector() * distanceBetween + m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);
+						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity());
 						return;
 					}
 				case LandingState.Catch:
@@ -560,7 +561,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("target position: " + m_destination.WorldPosition() + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_destination.WorldPosition(), m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
 						}
 						m_destination.Position += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity(), m_landingFriend);
+						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity());
 						return;
 					}
 			}
