@@ -628,7 +628,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3 v = direction * m_targetVoxel.LocalAABB.GetLongestDim();
 			CapsuleD surfaceFinder = new CapsuleD(startPoint - v, startPoint + v, buffer);
 			Vector3D obstruction;
-			if (surfaceFinder.Intersects(voxel, out obstruction))
+			if (CapsuleDExtensions.Intersects(ref surfaceFinder, (MyVoxelBase)voxel, out obstruction))
 				return obstruction;
 			else
 			{

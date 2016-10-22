@@ -4,6 +4,19 @@ using VRage.Collections;
 
 namespace Rynchodon
 {
+	public static class ResourcePool
+	{
+		public static void Get<T>(out T item) where T : new()
+		{
+			item = ResourcePool<T>.Get();
+		}
+
+		public static void Return<T>(T item) where T : new()
+		{
+			ResourcePool<T>.Return(item);
+		}
+	}
+
 	/// <summary>
 	/// Static wrapper for MyConcurrentPool
 	/// </summary>

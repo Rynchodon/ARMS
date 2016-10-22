@@ -82,7 +82,7 @@ namespace Rynchodon.Autopilot
 
 		private const string subtype_autopilotBlock = "Autopilot-Block";
 
-		private static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
+		public static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
 		static ShipAutopilot()

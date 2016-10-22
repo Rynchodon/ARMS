@@ -90,11 +90,12 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Vector3D end = closest.GetCentre();
-			IHitInfo hitInfo;
-			if (!RayCast.RayCastVoxels(ref currentPostion, ref end, out hitInfo))
+			MyVoxelBase hitVoxel;
+			Vector3D hitPosition;
+			if (!RayCast.RayCastVoxels(ref currentPostion, ref end, out hitVoxel, out hitPosition))
 				throw new Exception("Failed to intersect voxel");
 
-			m_targetPostion = new Destination(ref hitInfo);
+			m_targetPostion = Destination.FromWorld(hitVoxel, hitPosition);
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.IgnoreAsteroid = true;

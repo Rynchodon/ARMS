@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Utility;
-using Sandbox.Engine.Physics;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage;
@@ -142,10 +141,11 @@ namespace Rynchodon
 			if (checkVoxel)
 			{
 				// Voxel Test
-				IHitInfo contact;
-				if (RayCastVoxels(line, out contact, shortTest: shortTest))
+				MyVoxelBase hitVoxel;
+				Vector3D hitPosition;
+				if (RayCastVoxels(line, out hitVoxel, out hitPosition, shortTest: shortTest))
 				{
-					m_logger.debugLog("obstructed by voxel: " + contact.HitEntity + " at " + contact.Position);
+					m_logger.debugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
 					Profiler.EndProfileBlock();
 					return true;
 				}
@@ -162,14 +162,15 @@ namespace Rynchodon
 		/// <param name="line">The line to check</param>
 		/// <param name="shortTest">Shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff any voxel intersects the line</returns>
-		public static bool RayCastVoxels(LineD line, out IHitInfo contact, bool shortTest = false)
+		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool shortTest = false)
 		{
 			Profiler.StartProfileBlock();
 			if (shortTest)
 			{
 				if (line.Length < 1d)
 				{
-					contact = default(IHitInfo);
+					hitVoxel = null;
+					hitPosition = Vector3.Invalid;
 					Profiler.EndProfileBlock();
 					return false;
 				}
@@ -177,53 +178,22 @@ namespace Rynchodon
 				line.To -= line.Direction;
 			}
 
-			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
-			using (MainLock.AcquireSharedUsing())
-			{
-				using (m_rayCastLock.AcquireExclusiveUsing())
-					MyPhysics.CastRay(line.From, line.To, hitList, FilterLayerVoxel);
-			}
-			foreach (IHitInfo hitItem in hitList)
-				if (hitItem.HitEntity is MyVoxelBase)
-				{
-					hitList.Clear();
-					ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
-					contact = hitItem;
-					Profiler.EndProfileBlock();
-					return true;
-				}
+			CapsuleD capsule;
+			capsule.P0 = line.From;
+			capsule.P1 = line.To;
+			capsule.Radius = 0f;
 
-			hitList.Clear();
-			ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
-			contact = default(IHitInfo);
-			Profiler.EndProfileBlock();
-			return false;
+			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition);
 		}
 
-		public static bool RayCastVoxels(ref Vector3D start, ref Vector3D end, out IHitInfo contact)
+		public static bool RayCastVoxels(ref Vector3D start, ref Vector3D end, out MyVoxelBase hitVoxel, out Vector3D hitPosition)
 		{
-			Profiler.StartProfileBlock();
-			List<MyPhysics.HitInfo> hitList = ResourcePool<List<MyPhysics.HitInfo>>.Get();
-			using (MainLock.AcquireSharedUsing())
-			{
-				using (m_rayCastLock.AcquireExclusiveUsing())
-					MyPhysics.CastRay(start, end, hitList, FilterLayerVoxel);
-			}
-			foreach (IHitInfo hitItem in hitList)
-				if (hitItem.HitEntity is MyVoxelBase)
-				{
-					hitList.Clear();
-					ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
-					contact = hitItem;
-					Profiler.EndProfileBlock();
-					return true;
-				}
+			CapsuleD capsule;
+			capsule.P0 = start;
+			capsule.P1 = end;
+			capsule.Radius = 0f;
 
-			hitList.Clear();
-			ResourcePool<List<MyPhysics.HitInfo>>.Return(hitList);
-			contact = default(IHitInfo);
-			Profiler.EndProfileBlock();
-			return false;
+			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition);
 		}
 
 	}

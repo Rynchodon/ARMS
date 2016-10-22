@@ -98,7 +98,11 @@ namespace Rynchodon.Utility
 			if (fileName.Contains("\\"))
 				fileName = Path.GetFileName(fileName);
 			if (ProfileValues.m_block.Count > 1000)
+			{
+				foreach (var item in ProfileValues.m_block)
+					Logger.AlwaysLog("Item: " + item.Name, Logger.severity.ERROR);
 				throw new OverflowException("Profile stack is too large: " + ProfileValues.m_block.Count);
+			}
 			ProfileValues.m_block.Push(new Block() { Name = fileName + ',' + memberName, Started = ProfileValues.m_timer.ElapsedTicks });
 		}
 

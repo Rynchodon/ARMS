@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
@@ -202,6 +203,8 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void Update()
 		{
+			myLogger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
+
 			if (Globals.UpdateCount < m_nextUpdate)
 				return;
 			m_nextUpdate = Globals.UpdateCount + ShipAutopilot.UpdateFrequency;

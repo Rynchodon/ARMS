@@ -236,11 +236,25 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 
 		/// <param name="rayDirectionLength">Not normalized, should reflect the distance autopilot needs to travel.</param>
-		public bool RayCastIntersectsVoxel(ref Vector3D offset, ref Vector3 rayDirectionLength, out IHitInfo hit)
+		public bool RayCastIntersectsVoxel(ref Vector3D offset, ref Vector3 rayDirectionLength, out MyVoxelBase hitVoxel, out Vector3D hitPosition)
 		{
 			Profiler.StartProfileBlock();
-			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
+
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
+
+			CapsuleD capsule;
+			Vector3D.Add(ref currentPosition, ref offset, out capsule.P0);
+			Vector3D rayDD = rayDirectionLength;
+			Vector3D.Add(ref capsule.P0, ref rayDD, out capsule.P1);
+			capsule.Radius = AutopilotGrid.PositionComp.LocalVolume.Radius;
+			if (!CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition))
+			{
+				Profiler.EndProfileBlock();
+				return false;
+			}
+			capsule.Radius = AutopilotGrid.GridSize * 2f;
+
+			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 
 			Vector3 rayDirection; Vector3.Normalize(ref rayDirectionLength, out rayDirection);
 			Vector3 v; rayDirection.CalculatePerpendicularVector(out v);
@@ -259,7 +273,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (cache == null)
 				{
 					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					hit = default(IHitInfo);
+					hitVoxel = null;
+					hitPosition = Vector3.Invalid;
 					Profiler.EndProfileBlock();
 					return false;
 				}
@@ -277,17 +292,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (!m_rejections.Add(ToCell(pc2, gridSize), true))
 						continue;
 
-					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X,  Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z};
-					if (RayCast.RayCastVoxels(ref offsetWorld, ref end, out hit))
+					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X, Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z };
+					capsule.P0 = offsetWorld;
+					capsule.P1 = end;
+					if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition))
 					{
-						Profiler.EndProfileBlock(); 
+						Profiler.EndProfileBlock();
 						return true;
 					}
 				}
 			}
 
-			hit = default(IHitInfo);
-			Profiler.EndProfileBlock(); 
+			hitVoxel = null;
+			hitPosition = Vector3.Invalid;
+			Profiler.EndProfileBlock();
 			return false;
 		}
 

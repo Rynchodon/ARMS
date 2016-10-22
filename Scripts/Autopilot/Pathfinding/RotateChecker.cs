@@ -128,7 +128,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					{
 						MyPlanet planet = entity as MyPlanet;
 						if (planet == null)
-							throw new Exception("Unknown voxel type: " + entity);
+							continue;
 
 						double distToPlanetSq = Vector3D.DistanceSquared(centreOfMass, planet.PositionComp.GetPosition());
 						if (distToPlanetSq < planet.MaximumRadius * planet.MaximumRadius)

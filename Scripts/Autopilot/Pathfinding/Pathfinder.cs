@@ -155,12 +155,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		public void HoldPosition(Vector3 velocity)
 		{
+			m_logger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
+
+			m_runInterrupt = true;
 			m_runHalt = false;
-
-			m_logger.debugLog("Not yet threaded", Logger.severity.WARNING);
-
-			// maybe interrupt, wait for exclusive and execute on mover?
-
 			Mover.CalcMove(NavSet.Settings_Current.NavigationBlock, ref Vector3.Zero, 0f, ref velocity);
 		}
 
@@ -314,23 +312,23 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (distance < 1d)
 					{
 						//m_logger.debugLog("maintaining position");
-						Mover.CalcMove(m_navBlock, ref Vector3.Zero, 0f, ref targetVelocity);
+						ShipAutopilot.AutopilotThread.EnqueueAction(() => Mover.CalcMove(m_navBlock, ref Vector3.Zero, 0f, ref targetVelocity));
 						return;
 					}
 					Vector3 direction = toFirst;
-					Mover.CalcMove(m_navBlock, ref direction, (float)distance, ref targetVelocity);
+					ShipAutopilot.AutopilotThread.EnqueueAction(() => Mover.CalcMove(m_navBlock, ref direction, (float)distance, ref targetVelocity));
 				}
 				else
 				{
 					// maintain postion to obstruction / destination
 					//m_logger.debugLog("maintaining position");
-					Mover.CalcMove(m_navBlock, ref Vector3.Zero, 0f, ref targetVelocity);
+					ShipAutopilot.AutopilotThread.EnqueueAction(() => Mover.CalcMove(m_navBlock, ref Vector3.Zero, 0f, ref targetVelocity));
 				}
 			}
 			else
 			{
 				//m_logger.debugLog("move to position: " + (m_navBlock.WorldPosition + m_targetDirection * m_targetDistance));
-				Mover.CalcMove(m_navBlock, ref m_targetDirection, m_targetDistance, ref targetVelocity);
+				ShipAutopilot.AutopilotThread.EnqueueAction(() => Mover.CalcMove(m_navBlock, ref m_targetDirection, m_targetDistance, ref targetVelocity));
 			}
 		}
 
@@ -490,13 +488,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			BoundingSphereD sphere = new BoundingSphereD() { Center = m_currentPosition, Radius = m_autopilotShipBoundingRadius + (m_autopilotVelocity.Length() + 1000f) * SpeedFactor };
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesPruneAvoid);
 
-			m_checkVoxel = false;
 			foreach (MyEntity entity in CollectEntities(m_entitiesPruneAvoid))
-			{
-				if (entity is MyVoxelBase)
-					m_checkVoxel = true;
 				m_entitiesRepulse.Add(entity);
-			}
 
 			Profiler.EndProfileBlock();
 		}
@@ -521,8 +514,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (Attached.AttachedGrid.IsGridAttached(m_autopilotGrid, grid, Attached.AttachedGrid.AttachmentKind.Physics))
 						continue;
 				}
-				else if (entity is MyVoxelBase && m_ignoreVoxel)
+				else if (entity is MyVoxelBase)
+				{
+					if (!m_ignoreVoxel)
+						yield return entity;
 					continue;
+				}
 				else if (entity is MyAmmoBase)
 				{
 					yield return entity;
@@ -552,6 +549,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			float distAutopilotToFinalDest = NavSet.Settings_Current.Distance;
 			Vector3 autopilotVelocity = m_autopilotVelocity;
+			m_checkVoxel = false;
 
 			for (int index = m_entitiesRepulse.Count - 1; index >= 0; index--)
 			{
@@ -567,58 +565,67 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3 toCentre = toCentreD;
 				float boundingRadius;
 				float linearSpeed;
+				double distSqCentreToDest; Vector3D.DistanceSquared(ref centre, ref m_destWorld, out distSqCentreToDest);
 
-				MyPlanet planet = entity as MyPlanet;
-				if (planet != null)
-				{
-					boundingRadius = planet.MaximumRadius;
+				// determine speed of convergence
+				if (entity.Physics == null)
 					Vector3.Dot(ref autopilotVelocity, ref toCentre, out linearSpeed);
-				}
 				else
 				{
-					boundingRadius = entity.PositionComp.LocalVolume.Radius;
-					if (entity.Physics == null)
-						Vector3.Dot(ref autopilotVelocity, ref toCentre, out linearSpeed);
-					else
-					{
-						Vector3 obVel = entity.Physics.LinearVelocity;
-						if (entity is MyAmmoBase)
-							obVel.X *= 10f; obVel.Y *= 10f; obVel.Z *= 10f;
+					Vector3 obVel = entity.Physics.LinearVelocity;
+					if (entity is MyAmmoBase)
+						obVel.X *= 10f; obVel.Y *= 10f; obVel.Z *= 10f;
 
-						Vector3 relVel;
-						Vector3.Subtract(ref autopilotVelocity, ref  obVel, out relVel);
-						Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
-					}
+					Vector3 relVel;
+					Vector3.Subtract(ref autopilotVelocity, ref  obVel, out relVel);
+					Vector3.Dot(ref relVel, ref toCentre, out linearSpeed);
 				}
-				//m_logger.debugLog("For entity: " + entity.nameWithId() + ", bounding radius: " + boundingRadius + ", autopilot ship radius: " + m_autopilotShipBoundingRadius + ", linear speed: " + linearSpeed + ", sphere radius: " +
-				//	(boundingRadius + m_autopilotShipBoundingRadius + linearSpeed * SpeedFactor));
 				if (linearSpeed <= 0f)
 					linearSpeed = 0f;
 				else
 					linearSpeed *= SpeedFactor;
-				boundingRadius += m_autopilotShipBoundingRadius + linearSpeed;
+				boundingRadius = m_autopilotShipBoundingRadius + linearSpeed;
 
-				if (entity is MyAmmoBase || entity is MyFloatingObject)
+				MyPlanet planet = entity as MyPlanet;
+				if (planet != null)
 				{
-					//m_logger.debugLog("bounding radius for " + entity.getBestName() + " is " + boundingRadius);
-				}
-				else
-				{
-					if (distCentreToCurrent < boundingRadius)
+					if (distCentreToCurrent + boundingRadius < planet.MaximumRadius)
+						m_checkVoxel = true;
+					if (calcRepulse)
 					{
-						// Entity is too close to autopilot for repulsion.
-						m_entitiesPruneAvoid.Add(entity);
-						continue;
+						// avoid planet gravity to minimum of current altitude, destination altitude, and gravity limit * 2
+						float gravLimit = ((MySphericalNaturalGravityComponent)planet.Components.Get<MyGravityProviderComponent>()).GravityLimit * 2f;
+						boundingRadius += distCentreToCurrent * distCentreToCurrent < distSqCentreToDest ?
+							Math.Min((float)distCentreToCurrent, gravLimit) :
+							gravLimit * gravLimit < distSqCentreToDest ?
+							gravLimit :
+							(float)Math.Sqrt(distSqCentreToDest);
+
+						m_logger.debugLog("gravity limit: " + gravLimit + ", dist to current: " + distCentreToCurrent + ", dist to dest: " + Math.Sqrt(distSqCentreToDest) + ", bounding radius: " + boundingRadius);
+
+						BoundingSphereD entitySphere = new BoundingSphereD(centre, boundingRadius);
+						m_clusters.Add(ref entitySphere);
 					}
+					continue;
+				}
 
-					boundingRadius *= 4f;
+				boundingRadius += entity.PositionComp.LocalVolume.Radius;
 
-					double distSqCentreToDest; Vector3D.DistanceSquared(ref centre, ref m_destWorld, out distSqCentreToDest);
-					
-					if (distSqCentreToDest < boundingRadius * boundingRadius && distAutopilotToFinalDest < distCentreToCurrent)
+				if (distCentreToCurrent < boundingRadius)
+				{
+					// Entity is too close to autopilot for repulsion.
+					AvoidEntity(entity);
+					continue;
+				}
+
+				boundingRadius = Math.Min(boundingRadius * 4f, boundingRadius + 1000f);
+
+				if (distSqCentreToDest < boundingRadius * boundingRadius)
+				{
+					if (distAutopilotToFinalDest < distCentreToCurrent)
 					{
 						// Entity is near destination and autopilot is nearing destination
-						m_entitiesPruneAvoid.Add(entity);
+						AvoidEntity(entity);
 						continue;
 					}
 
@@ -631,7 +638,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (distSqCentreToDest < minGain * minGain)
 					{
 						// Entity is too close to destination for cicling it to be much use
-						m_entitiesPruneAvoid.Add(entity);
+						AvoidEntity(entity);
 						continue;
 					}
 				}
@@ -667,6 +674,18 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 
 			Profiler.EndProfileBlock();
+		}
+
+		/// <summary>
+		/// For most entities add it to m_entitiesPruneAvoid. For voxel set m_checkVoxel.
+		/// </summary>
+		/// <param name="entity"></param>
+		private void AvoidEntity(MyEntity entity)
+		{
+			if (entity is MyVoxelBase)
+				m_checkVoxel = true;
+			else
+				m_entitiesPruneAvoid.Add(entity);
 		}
 
 		/// <param name="sphere">The sphere which is repulsing the autopilot.</param>
@@ -739,12 +758,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3 velocityMulti; Vector3.Multiply(ref autopilotVelocity, SpeedFactor, out velocityMulti);
 				Vector3 directionMulti; Vector3.Multiply(ref m_targetDirection, VoxelAdd, out directionMulti);
 				Vector3 rayDirection; Vector3.Add(ref velocityMulti, ref directionMulti, out rayDirection);
-				IHitInfo hit;
-				if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayDirection, out hit))
+				MyVoxelBase hitVoxel;
+				Vector3D hitPosition;
+				if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayDirection, out hitVoxel, out hitPosition))
 				{
-					m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position);
-					obstructingEntity = (MyEntity)hit.HitEntity;
-					pointOfObstruction = hit.Position;
+					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition);
+					obstructingEntity = hitVoxel;
+					pointOfObstruction = hitPosition;
 					obstructBlock = null;
 					return true;
 				}
@@ -1083,10 +1103,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3 adjustment; Vector3.Multiply(ref line.Direction, VoxelAdd, out adjustment);
 				Vector3 disp; Vector3.Subtract(ref line.To, ref line.From, out disp);
 				Vector3 rayTest; Vector3.Add(ref disp, ref adjustment, out rayTest);
-				IHitInfo hit;
-				if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hit))
+				MyVoxelBase hitVoxel;
+				Vector3D hitPosition;
+				if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hitVoxel, out hitPosition))
 				{
-					m_logger.debugLog("Obstructed by voxel " + hit.HitEntity + " at " + hit.Position, Logger.severity.DEBUG);
+					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition, Logger.severity.DEBUG);
 					Profiler.EndProfileBlock();
 					return false;
 				}

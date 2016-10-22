@@ -1,7 +1,9 @@
 using System;
+using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -169,6 +171,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
 		public void CalcMove(PseudoBlock block, ref Vector3 destDirection, float destDistance, ref Vector3 destVelocity)
 		{
+			m_logger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
 			const float landingSpeedFactor = 0.2f;
 
 			CheckGrid();
@@ -297,7 +300,8 @@ namespace Rynchodon.Autopilot.Movement
 					continue;
 				}
 
-				m_thrustHigh = true;
+				if (forceRatio < -10f || 10f < forceRatio)
+					m_thrustHigh = true;
 
 				// force ratio is > 1 || < -1. If it is useful, use dampeners
 
@@ -309,6 +313,7 @@ namespace Rynchodon.Autopilot.Movement
 					m_logger.debugLog("damping, i: " + index + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim));
 					m_moveForceRatio.SetDim(index, 0);
 					enableDampeners = true;
+					m_thrustHigh = true;
 				}
 				//else
 				//	myLogger.debugLog("not damping, i: " + i + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim), "CalcMove()");
@@ -788,24 +793,12 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			CheckGrid();
 
-			//Vector3 pathMoveResult = m_newPathfinder.m_targetDirection;
-
-			//if (!pathMoveResult.IsValid())
-			//{
-			//	m_logger.debugLog("Pathfinder not allowing movement");
-			//	StopMove();
-			//}
-			//if (!Pathfinding.CanRotate)
-			//{
-			//	//myLogger.debugLog("Pathfinder not allowing rotation", "MoveAndRotate()");
-			//	StopRotate();
-			//}
-
 			//myLogger.debugLog("moveForceRatio: " + moveForceRatio + ", rotateForceRatio: " + rotateForceRatio + ", move length: " + moveForceRatio.Length(), "MoveAndRotate()");
 
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (m_moveForceRatio == Vector3.Zero && m_rotateTargetVelocity == Vector3.Zero)
 			{
+				// TODO: pathfinder will have to handle this
 				//IMyEntity obstruction = Pathfinding.MoveObstruction ?? Pathfinding.RotateObstruction;
 				//if (obstruction != null && CheckStuck(MoveAwayAfter))
 				//{
@@ -824,25 +817,25 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			//if (Pathfinding.MoveObstruction == null && CheckStuck(WriggleAfter))
-			//{
-			//	ulong upWoMove = Globals.UpdateCount - m_lastMove;
+			if (m_moveForceRatio != Vector3.Zero && CheckStuck(WriggleAfter))
+			{
+				ulong upWoMove = Globals.UpdateCount - m_lastMove;
 
-			//	if (Pathfinding.RotateObstruction == null)
-			//	{
-			//		// wriggle
-			//		float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
+				if (m_rotateForceRatio != Vector3.Zero)
+				{
+					// wriggle
+					float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 
-			//		m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
+					m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
 
-			//		m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-			//		m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-			//		m_rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
-			//	}
+					m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+					m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+					m_rotateForceRatio.Z += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
+				}
 
-			//	// increase force
-			//	m_moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.1f;
-			//}
+				// increase force
+				m_moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.1f;
+			}
 
 			//// clamp values and invert operations MoveAndRotate will perform
 			Vector3 moveControl; m_moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
