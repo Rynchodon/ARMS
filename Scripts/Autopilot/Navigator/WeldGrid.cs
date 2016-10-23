@@ -2,11 +2,11 @@ using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.
 using System.Text; // from mscorlib.dll
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities; // from Sandbox.Game.dll
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI; // from Sandbox.Common.dll
 using VRage.Collections;
 using VRage.Game; // from VRage.Math.dll
@@ -407,15 +407,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			using (MainLock.AcquireSharedUsing())
 			{
-				MyCubeBlockDefinition definition;
-
-				IMyCubeBlock fat = slim.FatBlock;
-				if (fat != null)
-					definition = fat.GetCubeBlockDefinition();
-				else
-					definition = MyDefinitionManager.Static.GetCubeBlockDefinition(slim.GetObjectBuilder());
-
-				foreach (var component in definition.Components)
+				foreach (MyCubeBlockDefinition.Component component in ((MySlimBlock)slim).BlockDefinition.Components)
 				{
 					int currentCount;
 					if (!m_components_missing.TryGetValue(component.Definition.Id.SubtypeName, out currentCount))

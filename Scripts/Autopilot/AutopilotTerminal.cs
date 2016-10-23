@@ -442,7 +442,7 @@ namespace Rynchodon.Autopilot
 			{
 				customInfo.Append(m_prevNavRotatorInfo.Value);
 				customInfo.Append("Angle: ");
-				customInfo.Append(PrettySI.toSigFigs(LinearDistance));
+				customInfo.Append(PrettySI.toSigFigs(AngularDistance));
 				customInfo.AppendLine(" rad");
 			}
 
@@ -450,11 +450,16 @@ namespace Rynchodon.Autopilot
 			AppendingCustomInfo_EnemyFinder(customInfo);
 
 			// complaint
-			InfoString.StringId ids  = m_complaint.Value;
+			InfoString.StringId ids = m_complaint.Value;
 			if (ids != InfoString.StringId.None)
 				foreach (InfoString.StringId flag in InfoString.AllStringIds())
 					if ((ids & flag) != 0)
 						customInfo.AppendLine(InfoString.GetString(flag));
+
+			// power
+			customInfo.Append("Current Input: ");
+			customInfo.Append(PrettySI.makePretty(((MyCubeBlock)m_block).ResourceSink.RequiredInput * 1e6f));
+			customInfo.AppendLine("W");
 		}
 
 		private void AppendingCustomInfo_EnemyFinder(StringBuilder customInfo)

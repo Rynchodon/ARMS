@@ -339,7 +339,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				// don't chase an obstructing entity unless it is the destination
 				if (m_obstructingEntity.Entity != m_destination.Entity && ObstructionMovingAway())
 				{
-					m_logger.debugLog("Obstruction is moving away, I'll just wait here");
+					m_logger.debugLog("Obstruction is moving away, I'll just wait here", Logger.severity.DEBUG);
 					m_path.Clear();
 					m_obstructingEntity = new Obstruction();
 					m_obstructingBlock = null;
@@ -366,7 +366,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 			}
 
-			m_logger.debugLog("Current position: " + m_currentPosition + ", destination: " + m_destWorld);
+			//m_logger.debugLog("Current position: " + m_currentPosition + ", destination: " + m_destWorld);
 
 			FillEntitiesLists();
 
@@ -420,7 +420,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			m_logger.debugLog("Target direction: " + m_targetDirection + ", target distance: " + m_targetDistance);
+			//m_logger.debugLog("Target direction: " + m_targetDirection + ", target distance: " + m_targetDistance);
 			if (!m_path.HasTarget)
 			{
 				CurrentState = State.Unobstructed;
@@ -789,7 +789,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 				}
 
-			m_logger.debugLog("No obstruction");
+			//m_logger.debugLog("No obstruction");
 			obstructingEntity = null;
 			pointOfObstruction = Vector3.Invalid;
 			obstructBlock = null;

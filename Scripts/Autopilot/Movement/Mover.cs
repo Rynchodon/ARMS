@@ -54,8 +54,9 @@ namespace Rynchodon.Autopilot.Movement
 		//private Vector2 m_prevRotateControl = Vector2.Zero;
 		//private float m_prevRollControl = 0f;
 
-		private float m_bestDistance = float.MaxValue, m_bestAngle = float.MaxValue;
-		private ulong m_lastMoveAttempt = ulong.MaxValue, m_lastMove = ulong.MaxValue;
+		private Vector3 m_lastMoveAccel = Vector3.Zero;
+		private float m_bestAngle = float.MaxValue;
+		private ulong m_lastMoveAttempt = ulong.MaxValue, m_lastAccel = ulong.MaxValue;
 
 		private bool m_stopped, m_thrustHigh;
 
@@ -67,7 +68,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		private bool CheckStuck(ulong duration)
 		{
-			return (Globals.UpdateCount - m_lastMoveAttempt) < 100ul && (Globals.UpdateCount - m_lastMove) > duration;
+			return (Globals.UpdateCount - m_lastMoveAttempt) < 100ul && (Globals.UpdateCount - m_lastAccel) > duration;
 		}
 
 		/// <summary>Value is false iff this Mover is making progress.</summary>
@@ -80,9 +81,9 @@ namespace Rynchodon.Autopilot.Movement
 			set
 			{
 				if (value)
-					m_lastMove = ulong.MinValue;
+					m_lastAccel = ulong.MinValue;
 				else
-					m_lastMove = Globals.UpdateCount;
+					m_lastAccel = Globals.UpdateCount;
 			}
 		}
 
@@ -198,11 +199,11 @@ namespace Rynchodon.Autopilot.Movement
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
 
-				if (distance + landingSpeedFactor < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
-				{
-					m_bestDistance = distance;
-					m_lastMove = Globals.UpdateCount;
-				}
+				//if (distance + landingSpeedFactor < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
+				//{
+				//	m_bestDistance = distance;
+				//	m_lastAccel = Globals.UpdateCount;
+				//}
 
 				targetVelocity = MaximumVelocity(destDisp);
 
@@ -229,7 +230,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				targetVelocity = Vector3.Zero;
 				//distance = 0f;
-				m_lastMove = Globals.UpdateCount;
+				m_lastAccel = Globals.UpdateCount;
 			}
 
 			targetVelocity += destVelocity;
@@ -244,6 +245,23 @@ namespace Rynchodon.Autopilot.Movement
 			}
 
 			m_moveAccel = targetVelocity - velocity;
+
+			if (m_moveAccel.LengthSquared() < 0.01f)
+			{
+				m_logger.debugLog("Wriggle unstuck autopilot. Near target velocity, move accel: " + m_moveAccel + ". m_lastMoveAccel set to now", condition: (Globals.UpdateCount - m_lastAccel) > WriggleAfter);
+				m_lastMoveAccel = m_moveAccel;
+				m_lastAccel = Globals.UpdateCount;
+			}
+			else
+			{
+				float diffSq; Vector3.DistanceSquared(ref m_moveAccel, ref m_lastMoveAccel, out diffSq);
+				if (diffSq > 1f)
+				{
+					m_logger.debugLog("Wriggle unstuck autopilot. Change in move accel from " + m_lastMoveAccel + " to " + m_moveAccel + ". m_lastMoveAccel set to now", condition: (Globals.UpdateCount - m_lastAccel) > WriggleAfter);
+					m_lastMoveAccel = m_moveAccel;
+					m_lastAccel = Globals.UpdateCount;
+				}
+			}
 
 			CalcMove(ref velocity);
 
@@ -282,7 +300,7 @@ namespace Rynchodon.Autopilot.Movement
 
 					if (targetVelDim < 0.01f && targetVelDim > -0.01f)
 					{
-						m_logger.debugLog("for dim: " + index + ", target velocity near zero: " + targetVelDim);
+						//m_logger.debugLog("for dim: " + index + ", target velocity near zero: " + targetVelDim);
 						m_moveForceRatio.SetDim(index, 0f);
 						enableDampeners = true;
 						continue;
@@ -310,7 +328,7 @@ namespace Rynchodon.Autopilot.Movement
 
 				if (Math.Sign(forceRatio) * Math.Sign(velDim) < 0)
 				{
-					m_logger.debugLog("damping, i: " + index + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim));
+					//m_logger.debugLog("damping, i: " + index + ", force ratio: " + forceRatio + ", velocity: " + velDim + ", sign of forceRatio: " + Math.Sign(forceRatio) + ", sign of velocity: " + Math.Sign(velDim));
 					m_moveForceRatio.SetDim(index, 0);
 					enableDampeners = true;
 					m_thrustHigh = true;
@@ -694,7 +712,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (distanceAngle < m_bestAngle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
 			{
 				m_bestAngle = distanceAngle;
-				m_lastMove = Globals.UpdateCount;
+				m_lastAccel = Globals.UpdateCount;
 			}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
@@ -819,7 +837,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			if (m_moveForceRatio != Vector3.Zero && CheckStuck(WriggleAfter))
 			{
-				ulong upWoMove = Globals.UpdateCount - m_lastMove;
+				ulong upWoMove = Globals.UpdateCount - m_lastAccel;
 
 				if (m_rotateForceRatio != Vector3.Zero)
 				{

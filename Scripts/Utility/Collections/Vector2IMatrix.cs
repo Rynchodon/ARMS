@@ -90,7 +90,7 @@ namespace Rynchodon.Utility.Collections
 			if (m_data == null)
 			{
 				m_data = new OffsetList<OffsetList<T>>(index.X);
-				Logger.DebugLog("Created matrix");
+				//Logger.DebugLog("Created matrix");
 			}
 
 			OffsetList<T> xList = m_data[index.X];
@@ -98,7 +98,7 @@ namespace Rynchodon.Utility.Collections
 			{
 				xList = new OffsetList<T>(index.Y);
 				m_data[index.X] = xList;
-				Logger.DebugLog("Created x array at " + index.X);
+				//Logger.DebugLog("Created x array at " + index.X);
 			}
 
 			return xList;

@@ -160,22 +160,24 @@ namespace Rynchodon
 		/// Ray cast all the voxels in the world to check for intersection.
 		/// </summary>
 		/// <param name="line">The line to check</param>
-		/// <param name="shortTest">Shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
+		/// <param name="shortTest">Shortens the line by 5 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff any voxel intersects the line</returns>
 		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool shortTest = false)
 		{
+			const double ShortenBy = 5d;
+
 			Profiler.StartProfileBlock();
 			if (shortTest)
 			{
-				if (line.Length < 1d)
+				if (line.Length < ShortenBy)
 				{
 					hitVoxel = null;
 					hitPosition = Vector3.Invalid;
 					Profiler.EndProfileBlock();
 					return false;
 				}
-				line.Length -= 1d;
-				line.To -= line.Direction;
+				line.Length -= ShortenBy;
+				line.To -= line.Direction * ShortenBy;
 			}
 
 			CapsuleD capsule;
@@ -183,6 +185,7 @@ namespace Rynchodon
 			capsule.P1 = line.To;
 			capsule.Radius = 0f;
 
+			Profiler.EndProfileBlock();
 			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition);
 		}
 

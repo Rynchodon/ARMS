@@ -356,11 +356,7 @@ Finished_Deposit:
 			this.m_oreDetector = oreDetector as IMyOreDetector;
 			this.m_netClient = new RelayClient(oreDetector);
 
-			float maxrange = 0f;
-			MainLock.UsingShared(() => {
-				var def = MyDefinitionManager.Static.GetCubeBlockDefinition(m_oreDetector.BlockDefinition) as MyOreDetectorDefinition;
-				maxrange = def.MaximumRange;
-			});
+			float maxrange = ((MyOreDetectorDefinition)((MyCubeBlock)m_oreDetector).BlockDefinition).MaximumRange;
 			m_maxRange = maxrange;
 
 			Registrar.Add(Block, this);

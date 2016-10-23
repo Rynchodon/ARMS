@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="targetDirection">The direction the autopilot wants to travel in.</param>
 		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3 targetDirection, float targetDistance, out MyCubeBlock obstructBlock, out Vector3D hitPosition, bool extraRadius = false)
 		{
-			Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", targetDirection: " + targetDirection);
+			//Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", targetDirection: " + targetDirection);
 
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
 
@@ -80,11 +80,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 					obstructBlock = slim == null ? null : slim.FatBlock;
 					hitPosition = grid.GridIntegerToWorld(hitCell);
 					Profiler.EndProfileBlock();
-					Logger.DebugLog("rejection intersects, block: " + (slim != null ? slim.getBestName() : "N/A") + " at " + grid.GridIntegerToWorld(hitCell));
+					//Logger.DebugLog("rejection intersects, block: " + (slim != null ? slim.getBestName() : "N/A") + " at " + grid.GridIntegerToWorld(hitCell));
 					return true;
 				}
-				else
-					Logger.DebugLog("rejection does not intersect");
+				//else
+				//	Logger.DebugLog("rejection does not intersect");
 				Profiler.EndProfileBlock();
 			}
 
@@ -100,8 +100,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref Vector3 rejectionVector, float rejectionDistance, ref Vector3D offset, out Vector3I oGridCell, bool extraRadius)
 		{
 			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
-			Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector + ", distance: " + rejectionDistance +
-				", final: " + (AutopilotGrid.GetCentre() + offset + rejectionVector * rejectionDistance));
+			//Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector + ", distance: " + rejectionDistance +
+			//	", final: " + (AutopilotGrid.GetCentre() + offset + rejectionVector * rejectionDistance));
 			Logger.DebugLog("rejction distance < 0: " + rejectionDistance, Logger.severity.ERROR, condition: rejectionDistance < 0f);
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
@@ -226,7 +226,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 									continue;
 							}
 							oGridCell = cell;
-							Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
+							//Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
 							return true;
 						}
 			}

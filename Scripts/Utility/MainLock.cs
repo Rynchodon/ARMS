@@ -1,5 +1,9 @@
-﻿using System;
+﻿#define PROFILE
+
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
@@ -55,6 +59,32 @@ namespace Rynchodon
 			Lock_MainThread.ReleaseExclusive();
 		}
 
+#if PROFILE
+		/// <summary>
+		/// perform an Action while using a shared lock on main thread.
+		/// </summary>
+		/// <param name="safeAction">Action to perform</param>
+		public static void UsingShared(Action unsafeAction, [CallerFilePath] string callerFilePath = null, [CallerMemberName] string callerMemberName = null)
+		{
+			using (AcquireSharedUsing(callerFilePath, callerMemberName))
+				unsafeAction.Invoke();
+		}
+
+		/// <summary>
+		/// Acquire shared using lock on main thread.
+		/// </summary>
+		/// <returns>Shared using lock on main thread.</returns>
+		public static IDisposable AcquireSharedUsing([CallerFilePath] string callerFilePath = null, [CallerMemberName] string callerMemberName = null)
+		{
+			if (ThreadTracker.IsGameThread)
+				return lock_dummy.AcquireSharedUsing();
+
+			Profiler.StartProfileBlock("Waiting for shared lock. File: " + Path.GetFileName(callerFilePath) + ", member: " + callerMemberName);
+			IDisposable result = Lock_MainThread.AcquireSharedUsing();
+			Profiler.EndProfileBlock();
+			return result;
+		}
+#else
 		/// <summary>
 		/// perform an Action while using a shared lock on main thread.
 		/// </summary>
@@ -74,11 +104,10 @@ namespace Rynchodon
 			if (ThreadTracker.IsGameThread)
 				return lock_dummy.AcquireSharedUsing();
 
-			Profiler.StartProfileBlock("Waiting for shared lock");
 			IDisposable result = Lock_MainThread.AcquireSharedUsing();
-			Profiler.EndProfileBlock();
 			return result;
 		}
+#endif
 
 		public static void GetBlocks_Safe(this IMyCubeGrid grid, List<IMySlimBlock> blocks, Func<IMySlimBlock, bool> collect = null)
 		{

@@ -122,20 +122,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 			public void AddFront(ref Vector3D position)
 			{
 				m_postions.AddHead(ref position);
-				Logger.DebugLog("Added front, count: " + m_postions.Count);
 			}
 
 			public void AddBack(ref Vector3D position)
 			{
 				m_postions.AddTail(ref position);
-				Logger.DebugLog("Added back, count: " + m_postions.Count);
 			}
 
 			public void Clear()
 			{
 				m_postions.Clear();
 				m_target = 0;
-				Logger.DebugLog("Cleared");
 			}
 
 			public void GetReached(out Vector3D position)
@@ -165,7 +162,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Logger.DebugLog("m_target has not been set", Logger.severity.ERROR, condition: m_target == 0);
 				for (int i = 0; i < m_target; i++)
 					m_postions.RemoveHead();
-				Logger.DebugLog("remove " + (m_target) + ", positions");
 				m_target = 0;
 			}
 
