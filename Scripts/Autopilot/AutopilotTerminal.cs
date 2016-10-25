@@ -312,7 +312,7 @@ namespace Rynchodon.Autopilot
 			this.m_block = block as IMyTerminalBlock;
 
 			byte index = 0;
-			this.m_autopilotControl = new EntityValue<bool>(block, index++, Static.autopilotControl.UpdateVisual, Saver.Instance.LoadOldVersion(69) && ((MyShipController)block).ControlThrusters);
+			this.m_autopilotControl = new EntityValue<bool>(block, index++, Static.autopilotControl.UpdateVisual, false);
 			this.m_autopilotCommands = new EntityStringBuilder(block, index++, () => {
 				Static.autopilotCommands.UpdateVisual();
 				AutopilotCommands cmds = AutopilotCommands.GetOrCreate((IMyTerminalBlock)block);

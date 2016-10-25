@@ -5,6 +5,8 @@ using System.Text;
 using System.Linq;
 using Sandbox.ModAPI;
 using Rynchodon.Utility.Network;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace Rynchodon.Settings
 {
@@ -47,13 +49,13 @@ namespace Rynchodon.Settings
 		}
 
 		private const string modName = "ARMS";
-		private const string settings_file_name = "AutopilotSettings.txt";
+		private const string settings_file_name = "ServerSettings.txt";
 		private const string strVersion = "Version";
 		private static System.IO.TextWriter settingsWriter;
 
-		public const int latestVersion = 76; // in sequence of updates on steam
+		public static readonly Version CurrentVersion;
 
-		public static readonly int fileVersion;
+		public static readonly Version fileVersion;
 
 		private static Logger myLogger = new Logger();
 
@@ -64,6 +66,7 @@ namespace Rynchodon.Settings
 		static ServerSettings()
 		{
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			CurrentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetCallingAssembly().Location));
 			buildSettings();
 
 			if (MyAPIGateway.Multiplayer.IsServer)
@@ -72,9 +75,9 @@ namespace Rynchodon.Settings
 				MessageHandler.Handlers.Add(MessageHandler.SubMod.ServerSettings, Server_ReceiveMessage);
 
 				fileVersion = readAll();
-				if (fileVersion != latestVersion)
-					Logger.DebugNotify(modName + " has been updated to version " + latestVersion, 10000, Logger.severity.INFO);
-				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + latestVersion, Logger.severity.INFO);
+				if (fileVersion.CompareTo(CurrentVersion) < 0)
+					Logger.DebugNotify(modName + " has been updated to version " + CurrentVersion, 10000, Logger.severity.INFO);
+				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + CurrentVersion, Logger.severity.INFO);
 
 				writeAll(); // writing immediately decreases user errors & whining
 			}
@@ -199,10 +202,10 @@ namespace Rynchodon.Settings
 		/// Read all settings from file
 		/// </summary>
 		/// <returns>version of file</returns>
-		private static int readAll()
+		private static Version readAll()
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(ServerSettings)))
-				return -1; // no file
+				return new Version(-1); // no file
 
 			TextReader settingsReader = null;
 			try
@@ -211,10 +214,9 @@ namespace Rynchodon.Settings
 
 				string[] versionLine = settingsReader.ReadLine().Split('=');
 				if (versionLine.Length != 2 || !versionLine[0].Equals(strVersion))
-					return -2; // first line is not version
-				int fileVersion;
-				if (!int.TryParse(versionLine[1], out fileVersion))
-					return -3; // could not parse version
+					return new Version(-2); // first line is not version
+
+				Version fileVersion = new Version(versionLine[1]);
 
 				// read settings
 				while (true)
@@ -230,7 +232,7 @@ namespace Rynchodon.Settings
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, Logger.severity.WARNING);
-				return -4; // exception while reading
+				return new Version(-4); // exception while reading
 			}
 			finally
 			{
@@ -248,7 +250,7 @@ namespace Rynchodon.Settings
 			{
 				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(ServerSettings));
 
-				write(strVersion, latestVersion.ToString()); // must be first line
+				write(strVersion, CurrentVersion.ToString()); // must be first line
 
 				// write settings
 				foreach (KeyValuePair<SettingName, Setting> pair in AllSettings)
