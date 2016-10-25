@@ -214,21 +214,6 @@ namespace Rynchodon.Autopilot
 
 			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity"), PowerRequired);
 
-			if (Saver.Instance.LoadOldVersion(69))
-			{
-				int start = block.DisplayNameText.IndexOf('[') + 1, end = block.DisplayNameText.IndexOf(']');
-				if (start > 0 && end > start)
-				{
-					m_block.AutopilotTerminal.AutopilotCommandsText = new StringBuilder(block.DisplayNameText.Substring(start, end - start).Trim());
-					int lengthBefore = start - 1;
-					string nameBefore = lengthBefore > 0 ? m_block.Terminal.DisplayNameText.Substring(0, lengthBefore) : string.Empty;
-					end++;
-					int lengthAfter = m_block.Terminal.DisplayNameText.Length - end;
-					string nameAfter = lengthAfter > 0 ? m_block.Terminal.DisplayNameText.Substring(end, lengthAfter) : string.Empty;
-					m_block.Terminal.SetCustomName((nameBefore + nameAfter).Trim());
-				}
-			}
-
 			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
 
 			Registrar.Add(block, this);

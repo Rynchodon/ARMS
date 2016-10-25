@@ -25,9 +25,11 @@ namespace Rynchodon.Update
 		public class Builder_ArmsData
 		{
 			[XmlAttribute]
-			public int ModVersion = Settings.ServerSettings.latestVersion;
+			[Obsolete("Needed for backwards compatibility")]
+			public int ModVersion;
 			[XmlAttribute]
-			public long SaveTime = Globals.ElapsedTime.Ticks;
+			public long SaveTime;
+			public Version ArmsVersion;
 			public RelayStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
@@ -42,16 +44,9 @@ namespace Rynchodon.Update
 		public static Saver Instance;
 
 		private readonly Logger m_logger;
-		private int m_loadModVersion;
 		private FileMaster m_fileMaster;
 
 		private Builder_ArmsData m_data;
-
-		/// <summary>Only works on server.</summary>
-		public bool LoadOldVersion(int olderThan)
-		{
-			return m_loadModVersion != 0 && m_loadModVersion < olderThan;
-		}
 
 		public Saver()
 		{
@@ -62,8 +57,6 @@ namespace Rynchodon.Update
 		public void Initialize()
 		{
 			GetData();
-			if (m_data != null)
-				m_loadModVersion = m_data.ModVersion;
 		}
 
 		private void GetData()
@@ -176,7 +169,12 @@ namespace Rynchodon.Update
 				return;
 			}
 
-			m_logger.alwaysLog("Save version: " + m_data.ModVersion, Logger.severity.INFO);
+#pragma warning disable 612, 618
+			if (Comparer<Version>.Default.Compare(m_data.ArmsVersion, default(Version)) == 0)
+				m_data.ArmsVersion = new Version(m_data.ModVersion);
+#pragma warning restore 612, 618
+
+			m_logger.alwaysLog("Save version: " + m_data.ArmsVersion, Logger.severity.INFO);
 
 			// network
 
@@ -355,6 +353,9 @@ namespace Rynchodon.Update
 				// fetching data needs to happen on game thread as not every script has locks
 
 				Builder_ArmsData data = new Builder_ArmsData();
+
+				data.SaveTime = Globals.ElapsedTimeTicks;
+				data.ArmsVersion = Settings.ServerSettings.CurrentVersion;
 
 				// network data
 
