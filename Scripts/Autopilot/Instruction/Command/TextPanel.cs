@@ -13,11 +13,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class TextPanel : ACommand
 	{
 
-		static TextPanel()
-		{
-			Logger.SetFileName("TextPanel");
-		}
-
 		private StringBuilder m_panelName, m_identifier;
 
 		public override ACommand Clone()

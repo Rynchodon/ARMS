@@ -1,7 +1,4 @@
-﻿#define LOG_ENABLED
-#define PROFILE
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;

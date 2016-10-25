@@ -20,11 +20,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 		#region Static
 
-		static TerminalAction()
-		{
-			Logger.SetFileName("TerminalAction");
-		}
-
 		private static void RunActionOnBlock(Pathfinder pathfinder, string blockName, string actionString, List<Ingame.TerminalActionParameter> termParams)
 		{
 			blockName = blockName.Trim();

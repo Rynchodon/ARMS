@@ -17,11 +17,6 @@ namespace Rynchodon
 		private const double k = 1000;
 		private const double m = 0.001f;
 
-		static PrettySI()
-		{
-			Logger.SetFileName("PrettySI");
-		}
-
 		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
 
 		/// <summary>

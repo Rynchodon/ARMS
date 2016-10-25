@@ -16,11 +16,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public class GolisCoordinate : ACommand
 	{
 
-		static GolisCoordinate()
-		{
-			Logger.SetFileName("GolisCoordinate");
-		}
-
 		protected Vector3D destination;
 
 		public override ACommand Clone()

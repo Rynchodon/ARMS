@@ -43,11 +43,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			public string ShortName { get { return Symbol ?? SubtypeName; } }
 		}
 
-		static HarvestVoxel()
-		{
-			Logger.SetFileName("HarvestVoxel");
-		}
-
 		private Ore[] value_allOres;
 
 		private List<Ore> m_activeOres = new List<Ore>();

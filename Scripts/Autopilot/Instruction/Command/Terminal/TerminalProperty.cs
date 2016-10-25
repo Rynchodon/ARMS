@@ -17,11 +17,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public abstract class TerminalProperty<T> : ACommand
 	{
 
-		static TerminalProperty()
-		{
-			Logger.SetFileName("TerminalProperty");
-		}
-
 		protected StringBuilder m_targetBlock;
 		// don't save the actual property, as string is more consistent when commands are sent over network
 		protected string m_termProp;

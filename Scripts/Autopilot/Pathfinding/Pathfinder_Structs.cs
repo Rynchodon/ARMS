@@ -1,6 +1,4 @@
-﻿#define PROFILE
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using VRage.Collections;

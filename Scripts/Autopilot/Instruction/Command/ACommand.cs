@@ -13,11 +13,6 @@ namespace Rynchodon.Autopilot.Instruction.Command
 	public abstract class ACommand
 	{
 
-		static ACommand()
-		{
-			Logger.SetFileName("ACommand");
-		}
-
 		private string m_displayString;
 
 		/// <summary>The full string that reflects this command, including Identifier.</summary>

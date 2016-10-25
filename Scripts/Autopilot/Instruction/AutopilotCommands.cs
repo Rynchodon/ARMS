@@ -35,8 +35,6 @@ namespace Rynchodon.Autopilot.Instruction
 
 		static AutopilotCommands()
 		{
-			Logger.SetFileName("AutopilotCommands");
-
 			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 
 			List<AddCommandInternalNode> rootCommands = new List<AddCommandInternalNode>();

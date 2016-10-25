@@ -171,7 +171,10 @@ namespace Rynchodon.Update
 
 #pragma warning disable 612, 618
 			if (Comparer<Version>.Default.Compare(m_data.ArmsVersion, default(Version)) == 0)
+			{
+				m_logger.debugLog("Old version: " + m_data.ModVersion);
 				m_data.ArmsVersion = new Version(m_data.ModVersion);
+			}
 #pragma warning restore 612, 618
 
 			m_logger.alwaysLog("Save version: " + m_data.ArmsVersion, Logger.severity.INFO);

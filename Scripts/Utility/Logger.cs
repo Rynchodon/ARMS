@@ -17,16 +17,6 @@ namespace Rynchodon
 	/// Generates log files to be read by GamutLogViewer.
 	/// </summary>
 	/// <remarks>
-	/// <para>The prefered way to use Logger is as follows:</para>
-	///	<para>    each class shall have "#define LOG_ENABLED // remove on build" as its first line to enable debug logging</para>
-	///	<para>    each class shall declare a Logger field (usually myLogger)</para>
-	///	<para>    all logging actions shall be performed by calling myLogger.alwaysLog() or myLogger.debugLog()</para>
-	///	<para>    notifications shall use myLogger.notify() or myLogger.debugNotify()</para>
-	///	<para>WARNING: Because Keen has murdered pre-processor symbols, build.py now searches for lines containing any of the following and removes them:</para>
-	///	<para>    #define LOG_ENABLED</para>
-	///	<para>removed for Dev version:</para>
-	///	<para>    System.Diagnostics.Conditional</para>
-	/// <para> </para>
 	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%FileName][%Member][%Line][%PriState][%SecState]%Message</para>
 	/// </remarks>
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
@@ -498,12 +488,6 @@ namespace Rynchodon
 				default:
 					return MyFontEnum.White;
 			}
-		}
-
-		[Obsolete("No longer necessary")]
-		[System.Diagnostics.Conditional("NEVER_DEFINED")]
-		public static void SetFileName(string actualName, [CallerFilePath] string tmpName = null)
-		{
 		}
 
 	}

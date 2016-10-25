@@ -1,6 +1,4 @@
-﻿#define LOG_ENABLED // remove on build
-
-using System;
+﻿using System;
 using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
