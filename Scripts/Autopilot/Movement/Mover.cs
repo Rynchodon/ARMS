@@ -1,13 +1,10 @@
 using System;
-using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;

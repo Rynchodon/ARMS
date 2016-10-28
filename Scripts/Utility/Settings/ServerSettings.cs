@@ -1,20 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Linq;
-using Sandbox.ModAPI;
-using Rynchodon.Utility.Network;
-using System.Reflection;
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Text;
+using Rynchodon.Utility.Network;
+using Sandbox.ModAPI;
 
 namespace Rynchodon.Settings
 {
 	/// <summary>
 	/// Some of the settings will be made available to clients.
-	/// Clients should still not be able to affect balance in any way, only to update hud, GPS, etc.
 	/// </summary>
-	public static class ServerSettings
+	public class ServerSettings
 	{
 		public enum SettingName : byte
 		{
@@ -24,78 +22,91 @@ namespace Rynchodon.Settings
 		}
 
 		private static ushort ModID { get { return MessageHandler.ModId; } }
+		private static ServerSettings value_Instance;
 
-		private static Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
+		private static ServerSettings Instance
+		{
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_Instance == null)
+					value_Instance = new ServerSettings();
+				return value_Instance;
+			}
+			set { value_Instance = value; }
+		}
+
+		public static Version CurrentVersion { get { return Instance.m_currentVersion; } }
+		public static bool ServerSettingsLoaded { get { return Instance.m_settingsLoaded; } }
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
 		public static T GetSetting<T>(SettingName name) where T : struct
 		{
-			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
+			ServerSettings instance = Instance;
+			SettingSimple<T> set = instance.AllSettings[name] as SettingSimple<T>;
 			return set.Value;
 		}
 
 		private static void SetSetting<T>(SettingName name, T value) where T : struct
 		{
-			SettingSimple<T> set = AllSettings[name] as SettingSimple<T>;
+			ServerSettings instance = Instance;
+			SettingSimple<T> set = instance.AllSettings[name] as SettingSimple<T>;
 			set.Value = value;
-			myLogger.alwaysLog("Setting " + name + " = " + value, Logger.severity.INFO);
+			instance.myLogger.alwaysLog("Setting " + name + " = " + value, Logger.severity.INFO);
 		}
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
 		public static string GetSettingString(SettingName name)
 		{
-			SettingString set = AllSettings[name] as SettingString;
+			ServerSettings instance = Instance;
+			SettingString set = instance.AllSettings[name] as SettingString;
 			return set.Value;
 		}
 
 		private const string modName = "ARMS";
 		private const string settings_file_name = "ServerSettings.txt";
 		private const string strVersion = "Version";
-		private static System.IO.TextWriter settingsWriter;
 
-		public static readonly Version CurrentVersion;
+		private Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
+		private System.IO.TextWriter settingsWriter;
+		private Logger myLogger = new Logger();
+		private Version fileVersion;
+		private Version m_currentVersion;
+		private bool m_settingsLoaded;
 
-		public static readonly Version fileVersion;
-
-		private static Logger myLogger = new Logger();
-
-		private static bool SettingsLoaded;
-
-		public static bool ServerSettingsLoaded { get { return SettingsLoaded; } }
-
-		static ServerSettings()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			CurrentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetCallingAssembly().Location));
+			Instance = null;
+		}
+
+		private ServerSettings()
+		{
+			m_currentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetCallingAssembly().Location));
 			buildSettings();
+			m_settingsLoaded = false;
 
 			if (MyAPIGateway.Multiplayer.IsServer)
 			{
-				SettingsLoaded = true;
-				MessageHandler.Handlers.Add(MessageHandler.SubMod.ServerSettings, Server_ReceiveMessage);
+				m_settingsLoaded = true;
+				MessageHandler.SetHandler(MessageHandler.SubMod.ServerSettings, Server_ReceiveMessage);
 
 				fileVersion = readAll();
-				if (fileVersion.CompareTo(CurrentVersion) < 0)
-					Logger.DebugNotify(modName + " has been updated to version " + CurrentVersion, 10000, Logger.severity.INFO);
-				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + CurrentVersion, Logger.severity.INFO);
+				if (fileVersion.CompareTo(m_currentVersion) < 0)
+					Logger.DebugNotify(modName + " has been updated to version " + m_currentVersion, 10000, Logger.severity.INFO);
+				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + m_currentVersion, Logger.severity.INFO);
 
 				writeAll(); // writing immediately decreases user errors & whining
 			}
 			else
 			{
-				MessageHandler.Handlers.Add(MessageHandler.SubMod.ServerSettings, Client_ReceiveMessage);
+				MessageHandler.SetHandler(MessageHandler.SubMod.ServerSettings, Client_ReceiveMessage);
 				RequestSettingsFromServer();
 			}
 		}
 
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			AllSettings = null;
-			myLogger = null;
-		}
-
-		private static void Server_ReceiveMessage(byte[] message, int pos)
+		private void Server_ReceiveMessage(byte[] message, int pos)
 		{
 			try
 			{
@@ -136,7 +147,7 @@ namespace Rynchodon.Settings
 			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
-		private static void Client_ReceiveMessage(byte[] message, int pos)
+		private void Client_ReceiveMessage(byte[] message, int pos)
 		{
 			try
 			{
@@ -153,18 +164,18 @@ namespace Rynchodon.Settings
 				SetSetting<float>(SettingName.fMaxSpeed, ByteConverter.GetFloat(message, ref pos));
 				SetSetting<float>(SettingName.fMaxWeaponRange, ByteConverter.GetFloat(message, ref pos));
 
-				SettingsLoaded = true;
+				m_settingsLoaded = true;
 			}
 			catch (Exception ex)
 			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
-		private static void RequestSettingsFromServer()
+		private void RequestSettingsFromServer()
 		{
 			if (MyAPIGateway.Session.Player == null)
 			{
 				myLogger.alwaysLog("Could not get player, not requesting server settings.", Logger.severity.WARNING);
-				SettingsLoaded = true;
+				m_settingsLoaded = true;
 				return;
 			}
 
@@ -181,7 +192,7 @@ namespace Rynchodon.Settings
 		/// <summary>
 		/// put each setting into AllSettings with its default value
 		/// </summary>
-		private static void buildSettings()
+		private void buildSettings()
 		{
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowGuidedMissile, new SettingSimple<bool>(true));
@@ -202,7 +213,7 @@ namespace Rynchodon.Settings
 		/// Read all settings from file
 		/// </summary>
 		/// <returns>version of file</returns>
-		private static Version readAll()
+		private Version readAll()
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(settings_file_name, typeof(ServerSettings)))
 				return new Version(-1); // no file
@@ -244,13 +255,13 @@ namespace Rynchodon.Settings
 		/// <summary>
 		/// Write all settings to file. Only server should call this!
 		/// </summary>
-		private static void writeAll()
+		private void writeAll()
 		{
 			try
 			{
 				settingsWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage(settings_file_name, typeof(ServerSettings));
 
-				write(strVersion, CurrentVersion.ToString()); // must be first line
+				write(strVersion, m_currentVersion.ToString()); // must be first line
 
 				// write settings
 				foreach (KeyValuePair<SettingName, Setting> pair in AllSettings)
@@ -275,7 +286,7 @@ namespace Rynchodon.Settings
 		/// </summary>
 		/// <param name="name">name of setting</param>
 		/// <param name="value">value of setting</param>
-		private static void write(string name, string value)
+		private void write(string name, string value)
 		{
 			StringBuilder toWrite = new StringBuilder();
 			toWrite.Append(name);
@@ -287,7 +298,7 @@ namespace Rynchodon.Settings
 		/// <summary>
 		/// convert a line of format name=value into a setting and apply it
 		/// </summary>
-		private static void parse(string line)
+		private void parse(string line)
 		{
 			string[] split = line.Split('=');
 

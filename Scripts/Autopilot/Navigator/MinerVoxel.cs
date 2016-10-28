@@ -52,9 +52,9 @@ namespace Rynchodon.Autopilot.Navigator
 			set
 			{
 				if (value_targetVoxel != null)
-					DamageHandler.UnregisterMiner(m_controlBlock.CubeGrid);
+					ImmortalMiner.UnregisterMiner(m_controlBlock.CubeGrid);
 				if (value != null)
-					DamageHandler.RegisterMiner(m_controlBlock.CubeGrid, value);
+					ImmortalMiner.RegisterMiner(m_controlBlock.CubeGrid, value);
 				value_targetVoxel = value;
 			}
 		}

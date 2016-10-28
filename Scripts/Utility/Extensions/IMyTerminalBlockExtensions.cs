@@ -22,17 +22,6 @@ namespace Rynchodon
 
 		private static StaticVariables Static = new StaticVariables();
 
-		static IMyTerminalBlockExtensions()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
-		}
-
 		public static void AppendCustomInfo(this IMyTerminalBlock block, string message)
 		{
 			Action<IMyTerminalBlock, StringBuilder> action = (termBlock, builder) => builder.Append(message);
@@ -48,7 +37,7 @@ namespace Rynchodon
 		/// <param name="block">The block to switch to.</param>
 		public static void SwitchTerminalTo(this IMyTerminalBlock block, [CallerMemberName] string caller = null)
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
 
 			//Logger.debugLog("IMyTerminalBlockExtensions", "block: " + block.getBestName());
@@ -64,7 +53,7 @@ namespace Rynchodon
 
 		private static void SwitchTerminalWhenNoInput()
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
 
 			Logger.DebugLog("MyAPIGateway.Input == null", Logger.severity.FATAL, condition: MyAPIGateway.Input == null);

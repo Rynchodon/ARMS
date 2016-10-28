@@ -24,18 +24,6 @@ namespace Rynchodon
 		private static FastResourceLock lock_constructing = new FastResourceLock();
 		public static LockedDictionary<MyDefinitionId, string> DefinitionType = new LockedDictionary<MyDefinitionId, string>();
 
-		static CubeGridCache()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			lock_constructing = null;
-			DefinitionType = null;
-		}
-
 		/// <summary>
 		/// will return null if grid is closed or CubeGridCache cannot be created
 		/// </summary>

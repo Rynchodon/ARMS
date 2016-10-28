@@ -39,43 +39,54 @@ namespace Rynchodon.AntennaRelay
 			public Logger s_logger = new Logger();
 			public MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetected;
 			public MyTerminalControlTextbox<MyProgrammableBlock> blockCountList;
-		}
 
-		private static StaticVariables Static = new StaticVariables();
-
-		static ProgrammableBlock()
-		{
-			MyTerminalAction<MyProgrammableBlock> programmable_sendMessage = new MyTerminalAction<MyProgrammableBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			public StaticVariables()
 			{
-				ValidForGroups = false,
-				ActionWithParameters = ProgrammableBlock_SendMessage
-			};
-			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
-			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
-			programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
-			MyTerminalControlFactory.AddAction(programmable_sendMessage);
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				MyTerminalAction<MyProgrammableBlock> programmable_sendMessage = new MyTerminalAction<MyProgrammableBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+				{
+					ValidForGroups = false,
+					ActionWithParameters = ProgrammableBlock_SendMessage
+				};
+				programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
+				programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
+				programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
+				MyTerminalControlFactory.AddAction(programmable_sendMessage);
 
-			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
+				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
 
-			Static.handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
-			IMyTerminalValueControl<bool> valueControl = Static.handleDetected as IMyTerminalValueControl<bool>;
-			valueControl.Getter = GetHandleDetectedTerminal;
-			valueControl.Setter = SetHandleDetectedTerminal;
-			MyTerminalControlFactory.AddControl(Static.handleDetected);
+				handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
+				IMyTerminalValueControl<bool> valueControl = handleDetected as IMyTerminalValueControl<bool>;
+				valueControl.Getter = GetHandleDetectedTerminal;
+				valueControl.Setter = SetHandleDetectedTerminal;
+				MyTerminalControlFactory.AddControl(handleDetected);
 
-			Static.blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separate list of blocks to count"));
-			Static.blockCountList.Visible = block => ((ITerminalProperty<bool>)((IMyTerminalBlock)block).GetProperty("HandleDetected")).GetValue(block);
-			IMyTerminalControlTextbox asInterface = Static.blockCountList as IMyTerminalControlTextbox;
-			asInterface.Getter = GetBlockCountList;
-			asInterface.Setter = SetBlockCountList;
-			MyTerminalControlFactory.AddControl(Static.blockCountList);
-
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separate list of blocks to count"));
+				blockCountList.Visible = block => ((ITerminalProperty<bool>)((IMyTerminalBlock)block).GetProperty("HandleDetected")).GetValue(block);
+				IMyTerminalControlTextbox asInterface = blockCountList as IMyTerminalControlTextbox;
+				asInterface.Getter = GetBlockCountList;
+				asInterface.Setter = SetBlockCountList;
+				MyTerminalControlFactory.AddControl(blockCountList);
+			}
 		}
 
-		private static void Entities_OnCloseAll()
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
 			Static = null;
 		}
 

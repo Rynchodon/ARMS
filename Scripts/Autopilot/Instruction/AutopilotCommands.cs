@@ -35,8 +35,6 @@ namespace Rynchodon.Autopilot.Instruction
 
 		static AutopilotCommands()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-
 			List<AddCommandInternalNode> rootCommands = new List<AddCommandInternalNode>();
 
 			// fly somewhere
@@ -113,12 +111,6 @@ namespace Rynchodon.Autopilot.Instruction
 			rootCommands.Add(new AddCommandInternalNode("Terminal", commands.ToArray()));
 
 			Static.addCommandRoot = new AddCommandInternalNode("root", rootCommands.ToArray());
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
 		}
 
 		private static void AddDummy(ACommand command, string idOrAlias)

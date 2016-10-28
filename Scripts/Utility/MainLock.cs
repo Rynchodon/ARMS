@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -24,26 +23,9 @@ namespace Rynchodon
 		/// <summary>Dummy lock, exclusive is never held</summary>
 		private static FastResourceLock lock_dummy = new FastResourceLock();
 
-		static MainLock()
-		{
-			MainThread_AcquireExclusive();
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Globals.WorldClosed = true;
-			myLogger = null;
-			MainThread_ReleaseExclusive();
-			Lock_MainThread = null;
-			lock_dummy = null;
-		}
-
 		/// <summary>
 		/// This should only ever be called from main thread.
 		/// </summary>
-		///// <returns>true if the exclusive lock was acquired, false if it is already held</returns>
 		public static void MainThread_AcquireExclusive()
 		{
 			Lock_MainThread.AcquireExclusive();
@@ -228,7 +210,5 @@ namespace Rynchodon
 			return result;
 		}
 
-		private static void LogLockStats(string source)
-		{ myLogger.debugLog("Lock Stats: Owned = " + Lock_MainThread.Owned + ", Shared Owners = " + Lock_MainThread.SharedOwners + ", Exclusive Waiters = " + Lock_MainThread.ExclusiveWaiters + ", Shared Waiters = " + Lock_MainThread.SharedWaiters); }
 	}
 }

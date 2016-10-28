@@ -35,17 +35,10 @@ namespace Rynchodon.Weapons
 		private static Logger s_logger = new Logger();
 		private static FastResourceLock lock_WeaponsTargeting = new FastResourceLock();
 
-		static TargetingBase()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			WeaponsTargeting = null;
-			s_logger = null;
-			lock_WeaponsTargeting = null;
+			WeaponsTargeting.Clear();
 		}
 
 		public static int GetWeaponsTargetingProjectile(IMyEntity entity)
@@ -169,10 +162,7 @@ namespace Rynchodon.Weapons
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
-			entity.OnClose += obj => {
-				if (WeaponsTargeting != null)
-					CurrentTarget = null;
-			};
+			entity.OnClose += obj => { CurrentTarget = null; };
 
 			//myLogger.debugLog("entity: " + MyEntity.getBestName() + ", block: " + CubeBlock.getBestName(), "TargetingBase()");
 		}

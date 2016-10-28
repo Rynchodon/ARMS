@@ -23,17 +23,6 @@ namespace Rynchodon.Weapons
 			return descr;
 		}
 
-		static WeaponDescription()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			KnownDescriptions = null;
-		}
-
 		private static WeaponDescription CreateFrom(MyCubeBlockDefinition definition)
 		{
 			if (string.IsNullOrWhiteSpace(definition.DescriptionString))

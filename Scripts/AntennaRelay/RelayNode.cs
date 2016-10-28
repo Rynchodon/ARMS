@@ -27,17 +27,6 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Storages that receive the position of this node but not data.</summary>
 		private static HashSet<RelayStorage> s_sendPositionTo = new HashSet<RelayStorage>();
 
-		static RelayNode()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			s_sendPositionTo = null;
-		}
-
 		private readonly Logger m_logger;
 		private readonly Func<string> m_loggingName;
 		private readonly Func<long> m_ownerId;

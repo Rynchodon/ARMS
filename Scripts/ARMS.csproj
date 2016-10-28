@@ -26,7 +26,7 @@
     </NoWarn>
   </PropertyGroup>
   <PropertyGroup>
-    <RunPostBuildEvent>Always</RunPostBuildEvent>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -116,7 +116,7 @@
     <Compile Include="Autopilot\Data\AllNavigationSettings.cs" />
     <Compile Include="Autopilot\Data\InfoString.cs" />
     <Compile Include="Autopilot\Destination.cs" />
-    <Compile Include="Autopilot\Harvest\DamageHandler.cs" />
+    <Compile Include="Autopilot\Harvest\ImmortalMiner.cs" />
     <Compile Include="Autopilot\Instruction\AutopilotActionList.cs" />
     <Compile Include="Autopilot\Instruction\Command\ACommand.cs" />
     <Compile Include="Autopilot\Instruction\AddCommandTreeNode.cs" />
@@ -202,6 +202,7 @@
     <Compile Include="Programmable\ProgrammableBlockCommunication.cs" />
     <Compile Include="AntennaRelay\ManualMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Update\Attributes.cs" />
     <Compile Include="Update\Saver.cs" />
     <Compile Include="Update\SerializableGameTime.cs" />
     <Compile Include="Update\UpdateManager.cs" />

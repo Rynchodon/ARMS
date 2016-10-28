@@ -1,35 +1,91 @@
-﻿using System;
+﻿#if LOG_ENABLED
+//#define DEBUG_LOCKS
+#if DEBUG_LOCKS
+#define STACK_TRACE
+#endif
+#endif
+
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
-using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
 
 namespace Rynchodon
 {
 	/// <summary>
-	/// Wrapper for VRage.FastResourceLock to log problems.
+	/// Wrapper for FastResourceLock to log problems.
 	/// </summary>
-	public class FastResourceLock_debug
+	public class FastResourceLock
 	{
+#if DEBUG_LOCKS
+
+		private struct Activity
+		{
+			private readonly string m_message;
+			private readonly bool m_owned;
+			private readonly int m_sharedOwners, m_exclusiveWaiters, m_sharedWaiters;
+			private readonly DateTime m_time;
+#if STACK_TRACE
+			private readonly StackTrace m_stackTrace;
+#endif
+
+			public Activity(VRage.FastResourceLock fastLock, string message)
+			{
+				this.m_message = message;
+				this.m_owned = fastLock.Owned;
+				this.m_sharedOwners = fastLock.SharedOwners;
+				this.m_exclusiveWaiters = fastLock.ExclusiveWaiters;
+				this.m_sharedWaiters = fastLock.SharedWaiters;
+				this.m_time = DateTime.Now;
+#if STACK_TRACE
+				this.m_stackTrace = new StackTrace();
+#endif
+			}
+
+			public void AppendTo(StringBuilder builder)
+			{
+				builder.Append(m_time.ToString("yyyy-MM-dd HH:mm:ss,fff"));
+				builder.Append(": ");
+				builder.AppendLine(m_message);
+
+				builder.Append("   State: Owned=");
+				builder.Append(m_owned);
+				builder.Append(", SharedOwners=");
+				builder.Append(m_sharedOwners);
+				builder.Append(", ExclusiveWaiters=");
+				builder.Append(m_exclusiveWaiters);
+				builder.Append(", SharedWaiters=");
+				builder.Append(m_sharedWaiters);
+				builder.AppendLine();
+
+#if STACK_TRACE
+				Logger.AppendStack(builder, m_stackTrace, typeof(FastResourceLock), typeof(Activity));
+#endif
+			}
+		}
+
 		private const int recentActivityCount = 20;
-		private const ulong timeout = 3600ul;
-		private static bool Debug = false;
+		private static readonly TimeSpan timeout = new TimeSpan(0, 1, 0);
+
+		
 
 		private Logger myLogger;
-		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
-		private MyQueue<Func<string>> recentActivity = new MyQueue<Func<string>>(recentActivityCount);
+		private MyQueue<Activity> recentActivity = new MyQueue<Activity>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
+#endif
 
-		static FastResourceLock_debug()
-		{ Set_Debug_Conditional(); }
+		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private static void Set_Debug_Conditional()
-		{ Debug = true; }
-
-		public FastResourceLock_debug(string LockName = "N/A")
+		public FastResourceLock(string lockName = "N/A", [CallerFilePath]string callerFilePath = null)
 		{
-			this.myLogger = new Logger(() => LockName);
+#if DEBUG_LOCKS
+			callerFilePath = Path.GetFileName(callerFilePath);
+			this.myLogger = new Logger(() => callerFilePath, () => lockName);
+#endif
 		}
 
 		#region Public Properties
@@ -47,59 +103,78 @@ namespace Rynchodon
 
 		public void AcquireExclusive()
 		{
-			if (Debug)
-				AcquireExclusive_Debug();
-			else
-				FastLock.AcquireExclusive();
+#if DEBUG_LOCKS
+			AcquireExclusive_Debug();
+#else
+			FastLock.AcquireExclusive();
+#endif
 		}
 
 		public void AcquireShared()
 		{
-			if (Debug)
-				AcquireShared_Debug();
-			else
-				FastLock.AcquireShared();
+#if DEBUG_LOCKS
+			AcquireShared_Debug();
+#else
+			FastLock.AcquireShared();
+#endif
 		}
 
 		public void ReleaseExclusive()
 		{
-			if (Debug)
-				ReleaseExclusive_Debug();
-			else
-				FastLock.ReleaseExclusive();
+#if DEBUG_LOCKS
+			ReleaseExclusive_Debug();
+#else
+			FastLock.ReleaseExclusive();
+#endif
 		}
 
 		public void ReleaseShared()
 		{
-			if (Debug)
-				ReleaseShared_Debug();
-			else
-				FastLock.ReleaseShared();
+#if DEBUG_LOCKS
+			ReleaseShared_Debug();
+#else
+			FastLock.ReleaseShared();
+#endif
 		}
 
 		public bool TryAcquireExclusive()
 		{
-			if (Debug)
-				return TryAcquireExclusive_Debug();
-			else
-				return FastLock.TryAcquireExclusive();
+#if DEBUG_LOCKS
+			return TryAcquireExclusive_Debug();
+#else
+			return FastLock.TryAcquireExclusive();
+#endif
 		}
 
 		public bool TryAcquireShared()
 		{
-			if (Debug)
-				return TryAcquireShared_Debug();
-			else
-				return FastLock.TryAcquireShared();
+#if DEBUG_LOCKS
+			return TryAcquireShared_Debug();
+#else
+			return FastLock.TryAcquireShared();
+#endif
 		}
 
-		public ExclusiveLock AcquireExclusiveUsing()
-		{ return new ExclusiveLock(this); }
+		public IDisposable AcquireExclusiveUsing()
+		{
+#if DEBUG_LOCKS
+			return new ExclusiveLock(this);
+#else
+			return FastLock.AcquireExclusiveUsing();
+#endif
+		}
 
-		public SharedLock AcquireSharedUsing()
-		{ return new SharedLock(this); }
+		public IDisposable AcquireSharedUsing()
+		{
+#if DEBUG_LOCKS
+			return new SharedLock(this);
+#else
+			return FastLock.AcquireSharedUsing();
+#endif
+		}
 
 		#endregion
+#if DEBUG_LOCKS
 		#region Debug
 
 		private void AddRecent(string message)
@@ -109,34 +184,30 @@ namespace Rynchodon
 				if (recentActivity.Count == recentActivityCount)
 					recentActivity.Dequeue();
 
-				recentActivity.Enqueue(() => DateTime.Now.Second + "." + DateTime.Now.Millisecond + " : " + message + '\n' + State());
-
-				//StringBuilder activity = new StringBuilder();
-				//activity.Append(DateTime.Now.Second);
-				//activity.Append('.');
-				//activity.Append(DateTime.Now.Millisecond);
-				//activity.Append(" : ");
-				//activity.Append(message);
-				//activity.AppendLine();
-				//activity.Append(State());
-
-				//var stack = new System.Diagnostics.StackTrace(); // not allowed in offical version of S.E.
-
-				//recentActivity.Enqueue(() => {
-				//	activity.Append(stack);
-				//	return activity.ToString();
-				//});
+				recentActivity.Enqueue(new Activity(FastLock, message));
 			}
 		}
 
-		private void PrintRecent()
+		private void PrintRecent(string reason, Logger.severity level = Logger.severity.FATAL)
 		{
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine(reason);
+			sb.Append("Current state: ");
+			sb.AppendLine(State());
+			sb.AppendLine("Recent activity:");
+			sb.AppendLine();
+
 			using (lock_recentActivity.AcquireExclusiveUsing())
 				while (recentActivity.Count != 0)
 				{
-					string recent = recentActivity.Dequeue().Invoke();
-					myLogger.debugLog("Recent: " + recent, Logger.severity.DEBUG);
+					recentActivity.Dequeue().AppendTo(sb);
+					sb.AppendLine();
 				}
+
+			sb.AppendLine("End of recent activity");
+			string log = sb.ToString();
+			VRage.Utils.MyLog.Default.WriteLine(log);
+			myLogger.alwaysLog(log, level);
 		}
 
 		/// <summary>
@@ -146,8 +217,8 @@ namespace Rynchodon
 		{
 			AddRecent("entered AcquireExclusive_Debug().");
 
-			ulong timeoutAt = Globals.UpdateCount + timeout;
-			while (Globals.UpdateCount < timeoutAt)
+			DateTime timeoutAt = DateTime.UtcNow + timeout;
+			while (DateTime.UtcNow < timeoutAt)
 				if (FastLock.TryAcquireExclusive())
 				{
 					AddRecent("acquired exclusive lock.");
@@ -155,8 +226,7 @@ namespace Rynchodon
 				}
 
 			// timed out
-			PrintRecent();
-			myLogger.alwaysLog("Lock timed out while trying to acquire exclusive. " + State(), Logger.severity.ERROR);
+			PrintRecent("Lock timed out while trying to acquire exclusive.");
 			throw new TimeoutException("lock timed out");
 		}
 
@@ -168,8 +238,8 @@ namespace Rynchodon
 			//myLogger.alwaysLog("entered AcquireShared_Debug(). " + State(), "AcquireShared_Debug()");
 			AddRecent("entered AcquireShared_Debug().");
 
-			ulong timeoutAt = Globals.UpdateCount + timeout;
-			while (Globals.UpdateCount < timeoutAt)
+			DateTime timeoutAt = DateTime.UtcNow + timeout;
+			while (DateTime.UtcNow < timeoutAt)
 				if (FastLock.TryAcquireShared())
 				{
 					AddRecent("acquired shared lock.");
@@ -177,8 +247,7 @@ namespace Rynchodon
 				}
 
 			// timed out
-			PrintRecent();
-			myLogger.alwaysLog("Lock timed out while trying to acquire shared. " + State(), Logger.severity.ERROR);
+			PrintRecent("Lock timed out while trying to acquire shared.");
 			throw new TimeoutException("lock timed out");
 		}
 
@@ -188,10 +257,7 @@ namespace Rynchodon
 
 			bool issue = !FastLock.Owned || FastLock.SharedOwners != 0;
 			if (issue)
-			{
-				PrintRecent();
-				myLogger.alwaysLog("Might not be able to release exclusive lock. " + State(), Logger.severity.WARNING);
-			}
+				PrintRecent("Might not be able to release exclusive lock.", Logger.severity.WARNING);
 
 			FastLock.ReleaseExclusive();
 
@@ -207,10 +273,7 @@ namespace Rynchodon
 
 			bool issue = !FastLock.Owned || FastLock.SharedOwners == 0;
 			if (issue)
-			{
-				PrintRecent();
-				myLogger.alwaysLog("Might not be able to release shared lock. " + State(), Logger.severity.WARNING);
-			}
+				PrintRecent("Might not be able to release shared lock.", Logger.severity.WARNING);
 
 			FastLock.ReleaseShared();
 
@@ -251,9 +314,9 @@ namespace Rynchodon
 
 		public class ExclusiveLock : IDisposable
 		{
-			private FastResourceLock_debug MyLock;
+			private FastResourceLock MyLock;
 
-			public ExclusiveLock(FastResourceLock_debug toLock)
+			public ExclusiveLock(FastResourceLock toLock)
 			{
 				this.MyLock = toLock;
 				this.MyLock.AcquireExclusive();
@@ -265,9 +328,9 @@ namespace Rynchodon
 
 		public class SharedLock : IDisposable
 		{
-			private FastResourceLock_debug MyLock;
+			private FastResourceLock MyLock;
 
-			public SharedLock(FastResourceLock_debug toLock)
+			public SharedLock(FastResourceLock toLock)
 			{
 				this.MyLock = toLock;
 				this.MyLock.AcquireShared();
@@ -278,5 +341,6 @@ namespace Rynchodon
 		}
 
 		#endregion
+#endif
 	}
 }

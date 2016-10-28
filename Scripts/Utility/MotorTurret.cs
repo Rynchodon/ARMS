@@ -31,17 +31,6 @@ namespace Rynchodon
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 		private const float def_RotationSpeedMultiplier = 100;
 
-		static MotorTurret()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
-		}
-
 		private static void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
 		{
 			elevation = (float)Math.Asin(vector.Y);
@@ -131,7 +120,7 @@ namespace Rynchodon
 
 		public void Dispose()
 		{
-			if (Static != null)
+			if (!Globals.WorldClosed)
 			{
 				Stop();
 				StatorEl = null;

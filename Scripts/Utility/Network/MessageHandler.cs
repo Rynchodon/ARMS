@@ -13,22 +13,35 @@ namespace Rynchodon.Utility.Network
 		public enum SubMod : byte { FW_EngagerControl, Message, SyncEntityValue, RequestEntityValue, ServerSettings, GuidedMissile }
 		public delegate void Handler(byte[] message, int position);
 
-		public static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();
-
+		private static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();
 		private static Logger s_logger = new Logger();
 
-		static MessageHandler()
+		[OnWorldLoad]
+		private static void Init()
 		{
 			MyAPIGateway.Multiplayer.RegisterMessageHandler(ModId, HandleMessage);
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			MyAPIGateway.Multiplayer.UnregisterMessageHandler(ModId, HandleMessage);
-			Handlers = null;
-			s_logger = null;
+		}
+
+		/// <summary>
+		/// Register a Handler for messages, only register once or an exception will be thrown.
+		/// </summary>
+		public static void AddHandler(SubMod id, Handler messageHandler)
+		{
+			Handlers.Add(id, messageHandler);
+		}
+
+		/// <summary>
+		/// Register a Handler for messages, can override a previous handler.
+		/// </summary>
+		public static void SetHandler(SubMod id, Handler messageHandler)
+		{
+			Handlers[id] = messageHandler;
 		}
 
 		private static void HandleMessage(byte[] received)

@@ -24,21 +24,38 @@ namespace Rynchodon.Autopilot.Harvest
 			private const int QUERY_STEP = 2;
 			private const int QUERY_MAX = QUERY_STEP - 1;
 
-			private static readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
-			private static bool[] RareMaterials;
-
-			static VoxelData()
+			private class StaticVariables
 			{
-				RareMaterials = new bool[MyDefinitionManager.Static.VoxelMaterialCount];
-				for (byte materialIndex = 0; materialIndex < MyDefinitionManager.Static.VoxelMaterialCount; materialIndex++)
-					RareMaterials[materialIndex] = MyDefinitionManager.Static.GetVoxelMaterialDefinition(materialIndex).IsRare;
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+				public readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
+				public readonly bool[] RareMaterials;
+
+				public StaticVariables()
+				{
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+					RareMaterials = new bool[MyDefinitionManager.Static.VoxelMaterialCount];
+					for (byte materialIndex = 0; materialIndex < MyDefinitionManager.Static.VoxelMaterialCount; materialIndex++)
+						RareMaterials[materialIndex] = MyDefinitionManager.Static.GetVoxelMaterialDefinition(materialIndex).IsRare;
+				}
 			}
 
-			private static void Entities_OnCloseAll()
+			private static StaticVariables value_static;
+			private static StaticVariables Static
 			{
-				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-				RareMaterials = null;
+				get
+				{
+					if (Globals.WorldClosed)
+						throw new Exception("World closed");
+					if (value_static == null)
+						value_static = new StaticVariables();
+					return value_static;
+				}
+				set { value_static = value; }
+			}
+
+			[OnWorldClose]
+			private static void Unload()
+			{
+				Static = null;
 			}
 
 			private readonly Logger m_logger;
@@ -49,7 +66,7 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(1000);
 			private readonly MyStorageData m_storage = new MyStorageData();
 
-			private TimeSpan m_throwOutVoxelData = Globals.ElapsedTime + LifeSpan_VoxelData;
+			private TimeSpan m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
 			private readonly FastResourceLock lock_throwOut = new FastResourceLock();
 
 			public bool NeedsUpdate { get; private set; }
@@ -128,7 +145,7 @@ namespace Rynchodon.Autopilot.Harvest
 			public void Read()
 			{
 				using (lock_throwOut.AcquireExclusiveUsing())
-					m_throwOutVoxelData = Globals.ElapsedTime + LifeSpan_VoxelData;
+					m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
 
 				NeedsUpdate = false;
 				Vector3D m_oreDetectorPosition = m_oreDetector.GetPosition();
@@ -176,7 +193,7 @@ namespace Rynchodon.Autopilot.Harvest
 											if (m_storage.Content(linear) > MyVoxelConstants.VOXEL_ISO_LEVEL)
 											{
 												byte mat = m_storage.Material(linear);
-												if (RareMaterials[mat])
+												if (Static.RareMaterials[mat])
 												{
 													//m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(linear) + ", vector: " + vector + ", position: " + vector + index
 													//	+ ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "Read()");
@@ -198,69 +215,84 @@ Finished_Deposit:
 
 		#region Static
 
-		private static ThreadManager m_thread = new ThreadManager(2, true, "OreDetector");
 		public delegate void OreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase voxel, string oreName);
 
-		/// <summary>
-		/// Material indecies by chemical symbol, subtype, and MinedOre.
-		/// </summary>
-		private static Dictionary<string, byte[]> MaterialGroup;
-
-		static OreDetector()
+		private class StaticVariables
 		{
-			var defs = MyDefinitionManager.Static.GetVoxelMaterialDefinitions();
-			Dictionary<string, List<byte>> MaterialGroup = new Dictionary<string, List<byte>>();
-			foreach (var def in defs)
+			public ThreadManager m_thread = new ThreadManager(2, true, "OreDetector");
+			/// <summary>
+			/// Material indecies by chemical symbol, subtype, and MinedOre.
+			/// </summary>
+			public Dictionary<string, byte[]> MaterialGroup;
+
+			public StaticVariables()
 			{
-				string subtype = def.Id.SubtypeName.Split('_')[0].Trim().ToLower();
-				string minedOre = def.MinedOre.Trim().ToLower();
-
-				List<byte> addTo;
-				if (!MaterialGroup.TryGetValue(subtype, out addTo))
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				var defs = MyDefinitionManager.Static.GetVoxelMaterialDefinitions();
+				Dictionary<string, List<byte>> matGroup = new Dictionary<string, List<byte>>();
+				foreach (var def in defs)
 				{
-					addTo = new List<byte>();
-					MaterialGroup.Add(subtype, addTo);
-				}
-				if (!addTo.Contains(def.Index))
-					addTo.Add(def.Index);
+					string subtype = def.Id.SubtypeName.Split('_')[0].Trim().ToLower();
+					string minedOre = def.MinedOre.Trim().ToLower();
 
-				if (!MaterialGroup.TryGetValue(minedOre, out addTo))
-				{
-					addTo = new List<byte>();
-					MaterialGroup.Add(minedOre, addTo);
-				}
-				if (!addTo.Contains(def.Index))
-					addTo.Add(def.Index);
-
-				string symbol;
-				if (GetChemicalSymbol(subtype, out symbol))
-				{
-					if (!MaterialGroup.TryGetValue(symbol, out addTo))
+					List<byte> addTo;
+					if (!matGroup.TryGetValue(subtype, out addTo))
 					{
 						addTo = new List<byte>();
-						MaterialGroup.Add(symbol, addTo);
+						matGroup.Add(subtype, addTo);
 					}
 					if (!addTo.Contains(def.Index))
 						addTo.Add(def.Index);
+
+					if (!matGroup.TryGetValue(minedOre, out addTo))
+					{
+						addTo = new List<byte>();
+						matGroup.Add(minedOre, addTo);
+					}
+					if (!addTo.Contains(def.Index))
+						addTo.Add(def.Index);
+
+					string symbol;
+					if (GetChemicalSymbol(subtype, out symbol))
+					{
+						if (!matGroup.TryGetValue(symbol, out addTo))
+						{
+							addTo = new List<byte>();
+							matGroup.Add(symbol, addTo);
+						}
+						if (!addTo.Contains(def.Index))
+							addTo.Add(def.Index);
+					}
 				}
+
+				this.MaterialGroup = new Dictionary<string, byte[]>();
+				foreach (var pair in matGroup)
+					this.MaterialGroup.Add(pair.Key, pair.Value.ToArray());
 			}
-
-			OreDetector.MaterialGroup = new Dictionary<string, byte[]>();
-			foreach (var pair in MaterialGroup)
-				OreDetector.MaterialGroup.Add(pair.Key, pair.Value.ToArray());
-
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private static void Entities_OnCloseAll()
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			MaterialGroup = null;
-			m_thread = null;
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			Static = null;
 		}
 
 		public static bool TryGetMaterial(string oreName, out byte[] oreTypes)
-		{ return MaterialGroup.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
+		{ return Static.MaterialGroup.TryGetValue(oreName.Trim().ToLower(), out oreTypes); }
 
 		/// <param name="subtypeName">SubtypeId without the _##</param>
 		public static bool GetChemicalSymbol(string subtypeName, out string symbol)
@@ -309,7 +341,7 @@ Finished_Deposit:
 			Vector3D position = requester.CubeBlock.GetPosition();
 			RelayStorage storage = requester.NetworkStorage;
 
-			m_thread.EnqueueAction(() => {
+			Static.m_thread.EnqueueAction(() => {
 				List<OreDetector> oreDetectors = ResourcePool<List<OreDetector>>.Get();
 				Registrar.ForEach((OreDetector detector) => {
 					if (detector.Block.IsWorking && requester.CubeBlock.canControlBlock(detector.Block) && detector.m_netClient.GetStorage() == storage)

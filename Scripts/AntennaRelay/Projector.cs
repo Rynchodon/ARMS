@@ -63,6 +63,104 @@ namespace Rynchodon.AntennaRelay
 				value_IntegrityFunctional = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityFunctional)),
 				value_IntegrityDamaged = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityDamaged)),
 				value_IntegrityZero = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityZero));
+
+			public StaticVariables()
+			{
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				MyAPIGateway.Session.DamageSystem.RegisterAfterDamageHandler((int)MyDamageSystemPriority.Low, AfterDamageHandler);
+
+				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySpaceProjector>());
+
+				AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this ship and nearby detected ships", Option.OnOff);
+				AddCheckbox("HD_This Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
+				AddCheckbox("HD_Owner", "Owned Ships", "Holographically display ships owned by this block's owner", Option.Owner);
+				AddCheckbox("HD_Faction", "Faction Ships", "Holographically display faction owned ships", Option.Faction);
+				AddCheckbox("HD_Neutral", "Neutral Ships", "Holographically display neutral ships", Option.Neutral);
+				AddCheckbox("HD_Enemy", "Enemy Ships", "Holographically display enemy ships", Option.Enemy);
+
+				MyTerminalControlSlider<MySpaceProjector> slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RangeDetection", MyStringId.GetOrCompute("Detection Range"), MyStringId.GetOrCompute("Maximum distance of detected entity"));
+				slider.DefaultValue = DefaultRangeDetection;
+				slider.Normalizer = (block, value) => Normalizer(MinRangeDetection, MaxRangeDetection, block, value);
+				slider.Denormalizer = (block, value) => Denormalizer(MinRangeDetection, MaxRangeDetection, block, value);
+				slider.Writer = (block, sb) => WriterMetres(GetRangeDetection, block, sb);
+				IMyTerminalValueControl<float> valueControl = slider;
+				valueControl.Getter = GetRangeDetection;
+				valueControl.Setter = SetRangeDetection;
+				TermControls.Add(slider);
+
+				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RadiusHolo", MyStringId.GetOrCompute("Hologram Radius"), MyStringId.GetOrCompute("Maximum radius of hologram"));
+				slider.DefaultValue = DefaultRadiusHolo;
+				slider.Normalizer = (block, value) => Normalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
+				slider.Denormalizer = (block, value) => Denormalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
+				slider.Writer = (block, sb) => WriterMetres(GetRadiusHolo, block, sb);
+				valueControl = slider;
+				valueControl.Getter = GetRadiusHolo;
+				valueControl.Setter = SetRadiusHolo;
+				TermControls.Add(slider);
+
+				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
+				slider.DefaultValue = DefaultSizeScale;
+				slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
+				slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
+				slider.Writer = (block, sb) => sb.Append(GetSizeScale(block));
+				valueControl = slider;
+				valueControl.Getter = GetSizeScale;
+				valueControl.Setter = SetSizeScale;
+				TermControls.Add(slider);
+
+				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
+
+				MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"),
+					MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
+				IMyTerminalValueControl<bool> valueControlBool = control;
+				valueControlBool.Getter = block => MouseControls;
+				valueControlBool.Setter = (block, value) => MouseControls = value;
+				TermControls.Add(control);
+
+				control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowBoundary", MyStringId.GetOrCompute("Show Boundary"), MyStringId.GetOrCompute("Show the boundaries of the hologram. User-specific setting."));
+				valueControlBool = control;
+				valueControlBool.Getter = block => ShowBoundary;
+				valueControlBool.Setter = (block, value) => ShowBoundary = value;
+				TermControls.Add(control);
+
+				AddCheckbox("HD_ShowOffset", "Show Offset Controls", "Display controls that can be used to adjust the position of the hologram", Option.ShowOffset);
+
+				AddOffsetSlider("HD_OffsetX", "Right/Left Offset", "+ve moves hologram to the right, -ve moves hologram to the left", 0);
+				AddOffsetSlider("HD_OffsetY", "Up/Down Offset", "+ve moves hologram up, -ve moves hologram down", 1);
+				AddOffsetSlider("HD_OffsetZ", "Back/Fore Offset", "+ve moves hologram back, -ve moves hologram forward", 2);
+
+				TermControls_Offset.Add(new MyTerminalControlSeparator<MySpaceProjector>());
+
+				AddCheckbox("HD_IntegrityColour", "Colour by Integrity", "Colour blocks according to their integrities", Option.IntegrityColours);
+
+				IMyTerminalControlColor colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_FullIntegriyColour");
+				colour.Title = MyStringId.GetOrCompute("Whole");
+				colour.Tooltip = MyStringId.GetOrCompute("Colour when block has full integrity. User-specific setting.");
+				colour.Getter = (block) => IntegrityFull;
+				colour.Setter = (block, value) => IntegrityFull = value;
+				TermControls_Colours.Add(colour);
+
+				colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
+				colour.Title = MyStringId.GetOrCompute("Func.");
+				colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just above critical integrity. User-specific setting.");
+				colour.Getter = (block) => IntegrityFunctional;
+				colour.Setter = (block, value) => IntegrityFunctional = value;
+				TermControls_Colours.Add(colour);
+
+				colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
+				colour.Title = MyStringId.GetOrCompute("Broken");
+				colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just below critical integrity. User-specific setting.");
+				colour.Getter = (block) => IntegrityDamaged;
+				colour.Setter = (block, value) => IntegrityDamaged = value;
+				TermControls_Colours.Add(colour);
+
+				colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_ZeroIntegriyColour");
+				colour.Title = MyStringId.GetOrCompute("Razed");
+				colour.Tooltip = MyStringId.GetOrCompute("Colour when block has zero integrity. User-specific setting.");
+				colour.Getter = (block) => IntegrityZero;
+				colour.Setter = (block, value) => IntegrityZero = value;
+				TermControls_Colours.Add(colour);
+			}
 		}
 
 		public static Color IntegrityFull
@@ -125,111 +223,29 @@ namespace Rynchodon.AntennaRelay
 		private const float MinOffset = -20f, MaxOffset = 20f;
 		private const double CrosshairRange = 20d;
 
-		private static StaticVariables Static = new StaticVariables();
-
-		static Projector()
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
-
-			MyAPIGateway.Session.DamageSystem.RegisterAfterDamageHandler((int)MyDamageSystemPriority.Low, AfterDamageHandler);
-
-			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySpaceProjector>());
-
-			AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this ship and nearby detected ships", Option.OnOff);
-			AddCheckbox("HD_This Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
-			AddCheckbox("HD_Owner", "Owned Ships", "Holographically display ships owned by this block's owner", Option.Owner);
-			AddCheckbox("HD_Faction", "Faction Ships", "Holographically display faction owned ships", Option.Faction);
-			AddCheckbox("HD_Neutral", "Neutral Ships", "Holographically display neutral ships", Option.Neutral);
-			AddCheckbox("HD_Enemy", "Enemy Ships", "Holographically display enemy ships", Option.Enemy);
-
-			MyTerminalControlSlider<MySpaceProjector> slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RangeDetection", MyStringId.GetOrCompute("Detection Range"), MyStringId.GetOrCompute("Maximum distance of detected entity"));
-			slider.DefaultValue = DefaultRangeDetection;
-			slider.Normalizer = (block, value) => Normalizer(MinRangeDetection, MaxRangeDetection, block, value);
-			slider.Denormalizer = (block, value) => Denormalizer(MinRangeDetection, MaxRangeDetection, block, value);
-			slider.Writer = (block, sb) => WriterMetres(GetRangeDetection, block, sb);
-			IMyTerminalValueControl<float> valueControl = slider;
-			valueControl.Getter = GetRangeDetection;
-			valueControl.Setter = SetRangeDetection;
-			Static.TermControls.Add(slider);
-
-			slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RadiusHolo", MyStringId.GetOrCompute("Hologram Radius"), MyStringId.GetOrCompute("Maximum radius of hologram"));
-			slider.DefaultValue = DefaultRadiusHolo;
-			slider.Normalizer = (block, value) => Normalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
-			slider.Denormalizer = (block, value) => Denormalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
-			slider.Writer = (block, sb) => WriterMetres(GetRadiusHolo, block, sb);
-			valueControl = slider;
-			valueControl.Getter = GetRadiusHolo;
-			valueControl.Setter = SetRadiusHolo;
-			Static.TermControls.Add(slider);
-
-			slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
-			slider.DefaultValue = DefaultSizeScale;
-			slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
-			slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
-			slider.Writer = (block, sb) => sb.Append(GetSizeScale(block));
-			valueControl = slider;
-			valueControl.Getter = GetSizeScale;
-			valueControl.Setter = SetSizeScale;
-			Static.TermControls.Add(slider);
-
-			Static.TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
-
-			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_MouseControls", MyStringId.GetOrCompute("Mouse Controls"),
-				MyStringId.GetOrCompute("Allow manipulation of hologram with mouse. User-specific setting."));
-			IMyTerminalValueControl<bool> valueControlBool = control;
-			valueControlBool.Getter = block => Static.MouseControls;
-			valueControlBool.Setter = (block, value) => Static.MouseControls = value;
-			Static.TermControls.Add(control);
-
-			control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowBoundary", MyStringId.GetOrCompute("Show Boundary"), MyStringId.GetOrCompute("Show the boundaries of the hologram. User-specific setting."));
-			valueControlBool = control;
-			valueControlBool.Getter = block => ShowBoundary;
-			valueControlBool.Setter = (block, value) => ShowBoundary = value;
-			Static.TermControls.Add(control);
-
-			AddCheckbox("HD_ShowOffset", "Show Offset Controls", "Display controls that can be used to adjust the position of the hologram", Option.ShowOffset);
-
-			AddOffsetSlider("HD_OffsetX", "Right/Left Offset", "+ve moves hologram to the right, -ve moves hologram to the left", 0);
-			AddOffsetSlider("HD_OffsetY", "Up/Down Offset", "+ve moves hologram up, -ve moves hologram down", 1);
-			AddOffsetSlider("HD_OffsetZ", "Back/Fore Offset", "+ve moves hologram back, -ve moves hologram forward", 2);
-
-			Static.TermControls_Offset.Add(new MyTerminalControlSeparator<MySpaceProjector>());
-
-			AddCheckbox("HD_IntegrityColour", "Colour by Integrity", "Colour blocks according to their integrities", Option.IntegrityColours);
-
-			IMyTerminalControlColor colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_FullIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Whole");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has full integrity. User-specific setting.");
-			colour.Getter = (block) => IntegrityFull;
-			colour.Setter = (block, value) => IntegrityFull = value;
-			Static.TermControls_Colours.Add(colour);
-
-			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Func.");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just above critical integrity. User-specific setting.");
-			colour.Getter = (block) => IntegrityFunctional;
-			colour.Setter = (block, value) => IntegrityFunctional = value;
-			Static.TermControls_Colours.Add(colour);
-
-			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_CriticalIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Broken");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block is just below critical integrity. User-specific setting.");
-			colour.Getter = (block) => IntegrityDamaged;
-			colour.Setter = (block, value) => IntegrityDamaged = value;
-			Static.TermControls_Colours.Add(colour);
-
-			colour = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlColor, IMyProjector>("HD_ZeroIntegriyColour");
-			colour.Title = MyStringId.GetOrCompute("Razed");
-			colour.Tooltip = MyStringId.GetOrCompute("Colour when block has zero integrity. User-specific setting.");
-			colour.Getter = (block) => IntegrityZero;
-			colour.Setter = (block, value) => IntegrityZero = value;
-			Static.TermControls_Colours.Add(colour);
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldLoad]
+		private static void Init()
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
+			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
 			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
 			Static = null;
 		}

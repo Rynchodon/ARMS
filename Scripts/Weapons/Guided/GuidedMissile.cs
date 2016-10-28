@@ -81,14 +81,7 @@ namespace Rynchodon.Weapons.Guided
 
 		static GuidedMissile()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.GuidedMissile, ReceiveMissilePositions);
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
+			MessageHandler.AddHandler(MessageHandler.SubMod.GuidedMissile, ReceiveMissilePositions);
 		}
 
 		//public static void CreateFromBuilder(Builder_GuidedMissile builder)
@@ -453,7 +446,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			m_stage = Stage.Exploded;
 
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
 
 			myLogger.debugLog("on close");
@@ -899,7 +892,7 @@ namespace Rynchodon.Weapons.Guided
 		private void StartGravity()
 		{
 			Vector3D position = MyEntity.GetPosition();
-			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Get();
 			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
 
 			foreach (MyPlanet planet in allPlanets)
@@ -917,7 +910,7 @@ namespace Rynchodon.Weapons.Guided
 				}
 
 			allPlanets.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+			ResourcePool<List<IMyVoxelBase>>.Return(allPlanets);
 
 			if (m_gravData != null)
 				UpdateGravity();

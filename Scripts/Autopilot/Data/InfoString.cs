@@ -28,8 +28,6 @@ namespace Rynchodon.Autopilot.Data
 
 		static InfoString()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-
 			m_strings.Add(StringId.None, string.Empty);
 			m_strings.Add(StringId.ReturnCause_Full, "Drills are full, need to unload");
 			m_strings.Add(StringId.ReturnCause_Heavy, "Ship mass is too great for thrusters");
@@ -39,12 +37,6 @@ namespace Rynchodon.Autopilot.Data
 			m_strings.Add(StringId.FighterNoPrimary, "Fighter has no weapon to aim");
 			m_strings.Add(StringId.FighterNoWeapons, "Fighter has no usable weapons");
 			m_strings.Add(StringId.WelderNotFinished, "Welder not able to finish");
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			m_strings = null;
 		}
 
 		public static string GetString(StringId f)

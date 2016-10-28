@@ -206,19 +206,6 @@ namespace Rynchodon.AntennaRelay
 		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
 
-		static RadarEquipment()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			staticLogger = null;
-			myThread = null;
-			AllDefinitions = null;
-		}
-
 		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>
 		public static bool IsRadarOrJammer(IMyCubeBlock block)
 		{

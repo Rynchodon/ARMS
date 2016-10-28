@@ -81,19 +81,9 @@ namespace Rynchodon
 
 		public static readonly MyDefinitionId Electricity = new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity");
 
-		private static bool m_worldClosed;
-
 		private static StaticVariables Static = new StaticVariables();
 
-		public static bool WorldClosed
-		{
-			get { return m_worldClosed; }
-			set
-			{
-				m_worldClosed = true;
-				Static = null;
-			}
-		}
+		public static bool WorldClosed;
 
 		public static IEnumerable<Vector3I> NeighboursOne { get { return Static.NeighboursOne; } }
 

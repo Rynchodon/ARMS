@@ -138,6 +138,20 @@ namespace Rynchodon.Utility
 					m_logger.debugLog("Failed to parse: " + split[0] + " to DateTime");
 					continue;
 				}
+				if (m_fileAgeName.ContainsKey(modified))
+				{
+					m_logger.alwaysLog("Duplicate key in file master: " + modified + ". Incrementing the later key", Logger.severity.WARNING);
+					for (int i = 0; m_fileAgeName.ContainsKey(modified); i++)
+					{
+						if (i < 100)
+							modified = modified.AddTicks(1);
+						else
+						{
+							m_logger.alwaysLog("Master file is corrupt", Logger.severity.FATAL);
+							throw new Exception(m_masterName + " is corrupt");
+						}
+					}
+				}
 				m_fileAgeName.Add(modified, split[1]);
 			}
 			reader.Close();

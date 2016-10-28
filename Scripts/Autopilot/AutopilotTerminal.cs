@@ -39,51 +39,68 @@ namespace Rynchodon.Autopilot
 			public Logger s_logger = new Logger();
 			public MyTerminalControlCheckbox<MyShipController> autopilotControl;
 			public MyTerminalControlTextbox<MyShipController> autopilotCommands;
+
+			public StaticVariables()
+			{
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				AddControl(new MyTerminalControlSeparator<MyShipController>() { Enabled = ShipAutopilot.IsAutopilotBlock, Visible = ShipAutopilot.IsAutopilotBlock });
+
+				autopilotControl = new MyTerminalControlCheckbox<MyShipController>("ArmsAp_OnOff", MyStringId.GetOrCompute("ARMS Autopilot"), MyStringId.GetOrCompute("Enable ARMS Autopilot"));
+				IMyTerminalValueControl<bool> valueControl = autopilotControl;
+				valueControl.Getter = GetAutopilotControl;
+				valueControl.Setter = SetAutopilotControl;
+				AddControl(autopilotControl);
+				AddAction(new MyTerminalAction<MyShipController>("ArmsAp_OnOff", new StringBuilder("ARMS Autopilot On/Off"), @"Textures\GUI\Icons\Actions\Toggle.dds") { Action = ToggleAutopilotControl });
+				AddAction(new MyTerminalAction<MyShipController>("ArmsAp_On", new StringBuilder("ARMS Autopilot On"), @"Textures\GUI\Icons\Actions\SwitchOn.dds") { Action = block => SetAutopilotControl(block, true) });
+				AddAction(new MyTerminalAction<MyShipController>("ArmsAp_Off", new StringBuilder("ARMS Autopilot Off"), @"Textures\GUI\Icons\Actions\SwitchOff.dds") { Action = block => SetAutopilotControl(block, false) });
+
+				autopilotCommands = new MyTerminalControlTextbox<MyShipController>("ArmsAp_Commands", MyStringId.GetOrCompute("Autopilot Commands"), MyStringId.NullOrEmpty);
+				autopilotCommands.Getter = GetAutopilotCommands;
+				autopilotCommands.Setter = SetAutopilotCommands;
+				AddControl(autopilotCommands);
+
+				MyTerminalControlButton<MyShipController> gooeyProgram = new MyTerminalControlButton<MyShipController>("ArmsAp_GuiProgram", MyStringId.GetOrCompute("Program Autopilot"), MyStringId.GetOrCompute("Interactive programming for autopilot"), GooeyProgram);
+				gooeyProgram.Enabled = ShipAutopilot.IsAutopilotBlock;
+				AddControl(gooeyProgram);
+
+				AddProperty<Enum>("ArmsAp_Status", autopilot => autopilot.m_autopilotStatus.Value);
+				foreach (AutopilotFlags flag in Enum.GetValues(typeof(AutopilotFlags)))
+					if (flag != 0)
+						AddProperty(flag);
+				AddProperty<Enum>("ArmsAp_PathStatus", autopilot => autopilot.m_pathfinderState.Value);
+				AddProperty<Enum>("ArmsAp_ReasonCannotTarget", autopilot => autopilot.m_reasonCannotTarget.Value);
+				AddProperty<Enum>("ArmsAp_Complaint", autopilot => autopilot.m_complaint.Value);
+				AddProperty("ArmsAp_WaitUntil", autopilot => new DateTime(autopilot.m_waitUntil.Value));
+				AddProperty("ArmsAp_BlockedBy", autopilot => GetNameForDisplay(autopilot, autopilot.m_blockedBy.Value));
+				AddProperty("ArmsAp_LinearDistance", autopilot => autopilot.LinearDistance);
+				AddProperty("ArmsAp_AngularDistance", autopilot => autopilot.AngularDistance);
+				AddProperty("ArmsAp_EnemyFinderBestTarget", autopilot => GetNameForDisplay(autopilot, autopilot.m_enemyFinderBestTarget.Value));
+				AddProperty("ArmsAp_WelderUnfinishedBlocks", autopilot => autopilot.m_welderUnfinishedBlocks.Value);
+				AddProperty("ArmsAp_NavigatorMover", autopilot => autopilot.m_prevNavMover.Value);
+				AddProperty("ArmsAp_NavigatorRotator", autopilot => autopilot.m_prevNavRotator.Value);
+				AddProperty("ArmsAp_NavigatorMoverInfo", autopilot => autopilot.m_prevNavMoverInfo.Value);
+				AddProperty("ArmsAp_NavigatorRotatorInfo", autopilot => autopilot.m_prevNavRotatorInfo.Value);
+			}
 		}
 
-		private static StaticVariables Static = new StaticVariables();
-
-		static AutopilotTerminal()
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
+		}
 
-			AddControl(new MyTerminalControlSeparator<MyShipController>() { Enabled = ShipAutopilot.IsAutopilotBlock, Visible = ShipAutopilot.IsAutopilotBlock });
-
-			Static.autopilotControl = new MyTerminalControlCheckbox<MyShipController>("ArmsAp_OnOff", MyStringId.GetOrCompute("ARMS Autopilot"), MyStringId.GetOrCompute("Enable ARMS Autopilot"));
-			IMyTerminalValueControl<bool> valueControl = Static.autopilotControl;
-			valueControl.Getter = GetAutopilotControl;
-			valueControl.Setter = SetAutopilotControl;
-			AddControl(Static.autopilotControl);
-			AddAction(new MyTerminalAction<MyShipController>("ArmsAp_OnOff", new StringBuilder("ARMS Autopilot On/Off"), @"Textures\GUI\Icons\Actions\Toggle.dds") { Action = ToggleAutopilotControl });
-			AddAction(new MyTerminalAction<MyShipController>("ArmsAp_On", new StringBuilder("ARMS Autopilot On"), @"Textures\GUI\Icons\Actions\SwitchOn.dds") { Action = block => SetAutopilotControl(block, true) });
-			AddAction(new MyTerminalAction<MyShipController>("ArmsAp_Off", new StringBuilder("ARMS Autopilot Off"), @"Textures\GUI\Icons\Actions\SwitchOff.dds") { Action = block => SetAutopilotControl(block, false) });
-
-			Static.autopilotCommands = new MyTerminalControlTextbox<MyShipController>("ArmsAp_Commands", MyStringId.GetOrCompute("Autopilot Commands"), MyStringId.NullOrEmpty);
-			Static.autopilotCommands.Getter = GetAutopilotCommands;
-			Static.autopilotCommands.Setter = SetAutopilotCommands;
-			AddControl(Static.autopilotCommands);
-
-			MyTerminalControlButton<MyShipController> gooeyProgram = new MyTerminalControlButton<MyShipController>("ArmsAp_GuiProgram", MyStringId.GetOrCompute("Program Autopilot"), MyStringId.GetOrCompute("Interactive programming for autopilot"), GooeyProgram);
-			gooeyProgram.Enabled = ShipAutopilot.IsAutopilotBlock;
-			AddControl(gooeyProgram);
-
-			AddProperty<Enum>("ArmsAp_Status", autopilot => autopilot.m_autopilotStatus.Value);
-			foreach (AutopilotFlags flag in Enum.GetValues(typeof(AutopilotFlags)))
-				if (flag != 0)
-					AddProperty(flag);
-			AddProperty<Enum>("ArmsAp_PathStatus", autopilot => autopilot.m_pathfinderState.Value);
-			AddProperty<Enum>("ArmsAp_ReasonCannotTarget", autopilot => autopilot.m_reasonCannotTarget.Value);
-			AddProperty<Enum>("ArmsAp_Complaint", autopilot => autopilot.m_complaint.Value);
-			AddProperty("ArmsAp_WaitUntil", autopilot => new DateTime(autopilot.m_waitUntil.Value));
-			AddProperty("ArmsAp_BlockedBy", autopilot => GetNameForDisplay(autopilot, autopilot.m_blockedBy.Value));
-			AddProperty("ArmsAp_LinearDistance", autopilot => autopilot.LinearDistance);
-			AddProperty("ArmsAp_AngularDistance", autopilot => autopilot.AngularDistance);
-			AddProperty("ArmsAp_EnemyFinderBestTarget", autopilot => GetNameForDisplay(autopilot, autopilot.m_enemyFinderBestTarget.Value));
-			AddProperty("ArmsAp_WelderUnfinishedBlocks", autopilot => autopilot.m_welderUnfinishedBlocks.Value);
-			AddProperty("ArmsAp_NavigatorMover", autopilot => autopilot.m_prevNavMover.Value);
-			AddProperty("ArmsAp_NavigatorRotator", autopilot => autopilot.m_prevNavRotator.Value);
-			AddProperty("ArmsAp_NavigatorMoverInfo", autopilot => autopilot.m_prevNavMoverInfo.Value);
-			AddProperty("ArmsAp_NavigatorRotatorInfo", autopilot => autopilot.m_prevNavRotatorInfo.Value);
+		[OnWorldClose]
+		private static void Unload()
+		{
+			Static = null;
 		}
 
 		private static void AddControl(MyTerminalControl<MyShipController> control)
@@ -113,8 +130,7 @@ namespace Rynchodon.Autopilot
 				AutopilotTerminal autopilot;
 				if (!Registrar.TryGetValue(block, out autopilot))
 				{
-					if (Static != null)
-						Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 					return default(T);
 				}
 				return function.Invoke(autopilot);
@@ -130,19 +146,12 @@ namespace Rynchodon.Autopilot
 			AddProperty("ArmsAp_" + flag, autopilot => (autopilot.m_autopilotFlags.Value & flag) != 0);
 		}
 
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
-		}
-
 		private static bool GetAutopilotControl(IMyTerminalBlock block)
 		{
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				if (Static != null)
-					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return false;
 			}
 
@@ -154,8 +163,7 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				if (Static != null)
-					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return;
 			}
 
@@ -167,8 +175,7 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				if (Static != null)
-					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return;
 			}
 
@@ -180,8 +187,7 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				if (Static != null)
-					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return new StringBuilder();
 			}
 
@@ -193,8 +199,7 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal autopilot;
 			if (!Registrar.TryGetValue(block, out autopilot))
 			{
-				if (Static != null)
-					Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
+				Static.s_logger.alwaysLog("Failed lookup of block: " + block.getBestName(), Logger.severity.WARNING);
 				return;
 			}
 
@@ -299,7 +304,7 @@ namespace Rynchodon.Autopilot
 		{
 			TimeSpan elapsed = Globals.ElapsedTime;
 			long newValue = (DateTime.UtcNow + waitUntil - elapsed).Ticks;
-			long difference = Math.Abs( (new DateTime(m_waitUntil.Value) - new DateTime(newValue)).Ticks);
+			long difference = Math.Abs((new DateTime(m_waitUntil.Value) - new DateTime(newValue)).Ticks);
 			if (difference > TimeSpan.TicksPerSecond)
 				m_waitUntil.Value = newValue;
 		}

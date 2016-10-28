@@ -52,42 +52,53 @@ namespace Rynchodon.AntennaRelay
 			public Logger s_logger = new Logger();
 			public List<long> s_detectedIds = new List<long>();
 			public List<MyTerminalControlCheckbox<MyTextPanel>> checkboxes = new List<MyTerminalControlCheckbox<MyTextPanel>>();
-		}
 
-		private static StaticVariables Static = new StaticVariables();
-
-		static TextPanel()
-		{
-			MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+			public StaticVariables()
 			{
-				ValidForGroups = false,
-				ActionWithParameters = TextPanel_DisplayEntities
-			};
-			MyTerminalControlFactory.AddAction(textPanel_displayEntities);
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
+				{
+					ValidForGroups = false,
+					ActionWithParameters = TextPanel_DisplayEntities
+				};
+				MyTerminalControlFactory.AddAction(textPanel_displayEntities);
 
-			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
+				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
 
-			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
-			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
-			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
-			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
+				AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
+				AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
+				AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
+				AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
+			}
 
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
+			private void AddCheckbox(string id, string title, string toolTip, Option opt)
+			{
+				MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
+				IMyTerminalValueControl<bool> valueControl = control as IMyTerminalValueControl<bool>;
+				valueControl.Getter = block => GetOptionTerminal(block, opt);
+				valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
+				MyTerminalControlFactory.AddControl(control);
+				checkboxes.Add(control);
+			}
 		}
 
-		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-			IMyTerminalValueControl<bool> valueControl = control as IMyTerminalValueControl<bool>;
-			valueControl.Getter = block => GetOptionTerminal(block, opt);
-			valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
-			MyTerminalControlFactory.AddControl(control);
-			Static.checkboxes.Add(control);
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 			Static = null;
 		}
 
@@ -125,7 +136,7 @@ namespace Rynchodon.AntennaRelay
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
 			{
-				if (Static == null)
+				if (Globals.WorldClosed)
 					return false;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
 			}
@@ -138,7 +149,7 @@ namespace Rynchodon.AntennaRelay
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block, out panel))
 			{
-				if (Static == null)
+				if (Globals.WorldClosed)
 					return;
 				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
 			}

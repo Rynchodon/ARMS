@@ -11,22 +11,8 @@ namespace Rynchodon.Weapons
 
 		private static Dictionary<MyWeaponDefinition, WeaponDefinitionExpanded> known = new Dictionary<MyWeaponDefinition, WeaponDefinitionExpanded>();
 
-		static WeaponDefinitionExpanded()
-		{
-			MyEntities.OnCloseAll += MyEntities_OnCloseAll;
-		}
-
-		private static void MyEntities_OnCloseAll()
-		{
-			MyEntities.OnCloseAll -= MyEntities_OnCloseAll;
-			known = null;
-		}
-
 		public static implicit operator WeaponDefinitionExpanded(MyWeaponDefinition weaponDefn)
 		{
-			if (known == null)
-				return null;
-
 			WeaponDefinitionExpanded result;
 			if (known.TryGetValue(weaponDefn, out result))
 				return result;

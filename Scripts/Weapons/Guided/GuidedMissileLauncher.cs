@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
 using Sandbox.Definitions;
-using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -20,19 +18,16 @@ namespace Rynchodon.Weapons.Guided
 
 		#region Static
 
-		private static Logger staticLogger = new Logger();
-
-		static GuidedMissileLauncher()
+		[OnWorldLoad]
+		private static void Init()
 		{
 			MyAPIGateway.Entities.OnEntityAdd += Entities_OnEntityAdd;
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldClose]
+		private static void Unload()
 		{
 			MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			staticLogger = null;
 		}
 
 		public static bool IsGuidedMissileLauncher(IMyCubeBlock block)
@@ -43,11 +38,9 @@ namespace Rynchodon.Weapons.Guided
 		private static void Entities_OnEntityAdd(IMyEntity obj)
 		{
 			if (obj.IsMissile())
-			{
-				Registrar.ForEach((GuidedMissileLauncher launcher) => {
-					return launcher.MissileBelongsTo(obj);
-				});
-			}
+				foreach (GuidedMissileLauncher launcher in Registrar.Scripts<GuidedMissileLauncher>())
+					if (launcher.MissileBelongsTo(obj))
+						break;
 		}
 
 		#endregion

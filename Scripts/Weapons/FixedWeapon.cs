@@ -15,7 +15,7 @@ namespace Rynchodon.Weapons
 
 		static FixedWeapon()
 		{
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.FW_EngagerControl, Handler_EngagerControl);
+			MessageHandler.AddHandler(MessageHandler.SubMod.FW_EngagerControl, Handler_EngagerControl);
 		}
 
 		/// <summary>

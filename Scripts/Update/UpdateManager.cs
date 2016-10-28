@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
@@ -117,7 +118,7 @@ namespace Rynchodon.Update
 			});
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
-				new DamageHandler();
+				new ImmortalMiner();
 		}
 
 		/// <summary>
@@ -405,6 +406,7 @@ namespace Rynchodon.Update
 			myLogger = new Logger(() => string.Empty, () => { return ManagerStatus.ToString(); });
 			ThreadTracker.SetGameThread();
 			Instance = this;
+			MainLock.MainThread_AcquireExclusive();
 		}
 
 		public void Init()
@@ -419,7 +421,10 @@ namespace Rynchodon.Update
 				if (!MyAPIGateway.Multiplayer.IsServer && MyAPIGateway.Session.Player == null)
 					return;
 
+				Globals.WorldClosed = false;
 				myLogger.debugLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
+				AttributeFinder.InvokeMethodsWithAttribute<OnWorldLoad>();
+				MyAPIGateway.Entities.OnCloseAll += UnloadData;
 
 				Saver.Instance.Initialize();
 
@@ -537,7 +542,6 @@ namespace Rynchodon.Update
 				switch (ManagerStatus)
 				{
 					case Status.Not_Initialized:
-						//myLogger.debugLog("Not Initialized", "UpdateAfterSimulation()");
 						Init();
 						return;
 
@@ -572,8 +576,9 @@ namespace Rynchodon.Update
 						foreach (Action item in pair.Value)
 							try
 							{
-								//item.Invoke();
-								Profiler.Profile(item);
+								Profiler.StartProfileBlock(item);
+								item.Invoke();
+								Profiler.EndProfileBlock();
 							}
 							catch (Exception ex2)
 							{
@@ -818,7 +823,18 @@ namespace Rynchodon.Update
 		{
 			base.UnloadData();
 			if (MyAPIGateway.Entities != null)
+			{
 				MyAPIGateway.Entities.OnEntityAdd -= Entities_OnEntityAdd;
+				MyAPIGateway.Entities.OnCloseAll -= UnloadData;
+			}
+
+			if (!Globals.WorldClosed)
+			{
+				Globals.WorldClosed = true;
+				MainLock.MainThread_ReleaseExclusive();
+				AttributeFinder.InvokeMethodsWithAttribute<OnWorldClose>();
+				Profiler.Write();
+			}
 
 			ManagerStatus = Status.Terminated;
 
@@ -836,8 +852,6 @@ namespace Rynchodon.Update
 			Characters = null;
 
 			Instance = null;
-
-			Profiler.Write();
 		}
 
 		/// <summary>

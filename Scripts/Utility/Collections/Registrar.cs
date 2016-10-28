@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
 using VRage;
@@ -12,8 +13,6 @@ namespace Rynchodon
 		private static class Register<T>
 		{
 
-			//private static readonly Logger s_logger = new Logger("Register<T>", () => typeof(T).ToString());
-
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();
 
@@ -21,26 +20,17 @@ namespace Rynchodon
 
 			static Register()
 			{
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			}
-
-			static void Entities_OnCloseAll()
-			{
-				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-				m_dictionary = null;
-				m_lock = null;
+				Registers.Add(m_dictionary);
 			}
 
 			public static void Add(long entityId, T script)
 			{
 				using (m_lock.AcquireExclusiveUsing())
 					m_dictionary.Add(entityId, script);
-				//s_logger.debugLog("Added " + script + ", for " + entityId, "Add()");
 			}
 
 			public static bool Remove(long entityId)
 			{
-				//s_logger.debugLog("Removing script, for " + entityId, "Remove()");
 				using (m_lock.AcquireExclusiveUsing())
 					return m_dictionary.Remove(entityId);
 			}
@@ -81,6 +71,15 @@ namespace Rynchodon
 
 		}
 
+		private static List<IDictionary> Registers = new List<IDictionary>();
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			foreach (IDictionary dict in Registers)
+				dict.Clear();
+		}
+
 		public static void Add<T>(IMyEntity entity, T item)
 		{
 			if (Globals.WorldClosed || entity.Closed)
@@ -99,11 +98,6 @@ namespace Rynchodon
 
 		public static bool TryGetValue<T>(long entityId, out T value)
 		{
-			if (Globals.WorldClosed)
-			{
-				value = default(T);
-				return false;
-			}
 			return Register<T>.TryGetValue(entityId, out value);
 		}
 
@@ -128,15 +122,11 @@ namespace Rynchodon
 
 		public static IEnumerable<T> Scripts<T>()
 		{
-			if (Globals.WorldClosed)
-				return new T[] { }; // fail silently
 			return Register<T>.Scripts();
 		}
 
 		public static bool Contains<T>(long entityId)
 		{
-			if (Globals.WorldClosed)
-				return false;
 			return Register<T>.Contains(entityId);
 		}
 

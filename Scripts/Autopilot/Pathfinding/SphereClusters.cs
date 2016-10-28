@@ -12,17 +12,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 	{
 		private static MyConcurrentPool<List<BoundingSphereD>> m_sphereLists = new MyConcurrentPool<List<BoundingSphereD>>();
 
-		static SphereClusters()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			m_sphereLists = null;
-		}
-
 		public readonly List<List<BoundingSphereD>> Clusters = new List<List<BoundingSphereD>>();
 
 		public void Add(ref BoundingSphereD sphere)

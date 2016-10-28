@@ -15,17 +15,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private static Threading.ThreadManager Thread = new Threading.ThreadManager(threadName: "RotateChecker");
 
-		static RotateChecker()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Thread = null;
-		}
-
 		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
 		private readonly Func<List<MyEntity>, IEnumerable<MyEntity>> m_collector;

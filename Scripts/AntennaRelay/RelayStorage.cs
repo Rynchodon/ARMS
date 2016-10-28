@@ -31,7 +31,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		public static void Receive(ICollection<RelayStorage> storage, LastSeen seen)
 		{
-			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Get();
 			try
 			{
 				foreach (RelayStorage sto in storage)
@@ -44,7 +44,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Return(sendToSet);
 			}
 		}
 
@@ -233,7 +233,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="seen">LastSeen data to receive.</param>
 		public void Receive(LastSeen seen)
 		{
-			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
@@ -252,7 +252,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Return(sendToSet);
 			}
 		}
 
@@ -263,7 +263,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="msg">Message to receive.</param>
 		public void Receive(Message msg)
 		{
-			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
@@ -282,7 +282,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Return(sendToSet);
 			}
 		}
 
@@ -292,7 +292,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="seen">Collection of LastSeen entitites.</param>
 		public void Receive(ICollection<LastSeen> seen)
 		{
-			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Pool.Get();
+			HashSet<RelayStorage> sendToSet = ResourcePool<HashSet<RelayStorage>>.Get();
 			try
 			{
 				AddStorage(sendToSet, this);
@@ -312,7 +312,7 @@ namespace Rynchodon.AntennaRelay
 			finally
 			{
 				sendToSet.Clear();
-				ResourcePool<HashSet<RelayStorage>>.Pool.Return(sendToSet);
+				ResourcePool<HashSet<RelayStorage>>.Return(sendToSet);
 			}
 		}
 

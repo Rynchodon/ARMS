@@ -110,17 +110,6 @@ namespace Rynchodon.AntennaRelay
 
 			private static ITerminalProperty<bool> s_prop_broadcasting;
 
-			static CR_AntennaBlock()
-			{
-				MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			}
-
-			static void Entities_OnCloseAll()
-			{
-				MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-				s_prop_broadcasting = null;
-			}
-
 			private IMyRadioAntenna m_antenna;
 
 			public override IMyEntity Entity

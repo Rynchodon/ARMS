@@ -85,18 +85,6 @@ namespace Rynchodon.Autopilot
 		public static ThreadManager AutopilotThread = new ThreadManager(threadName: "Autopilot");
 		private static HashSet<IMyCubeGrid> GridBeingControlled = new HashSet<IMyCubeGrid>();
 
-		static ShipAutopilot()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			AutopilotThread = null;
-			GridBeingControlled = null;
-		}
-
 		/// <summary>
 		/// Determines if the given block is an autopilot block. Does not check ServerSettings.
 		/// </summary>
@@ -185,8 +173,7 @@ namespace Rynchodon.Autopilot
 						return;
 
 					case State.Closed:
-						if (GridBeingControlled != null)
-							ReleaseControlledGrid();
+						ReleaseControlledGrid();
 						m_pathfinder = null;
 						m_commands = null;
 						return;

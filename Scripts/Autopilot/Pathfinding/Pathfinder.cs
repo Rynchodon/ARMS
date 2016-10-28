@@ -30,22 +30,37 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Unobstructed, SearchingForPath, FollowingPath, FailedToFindPath, Crashed
 		}
 
-		private static ThreadManager ThreadForeground;
-		private static ThreadManager ThreadBackground;
-
-		static Pathfinder()
+		private class StaticVariables
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			byte allowedThread = ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder);
-			ThreadForeground = new ThreadManager(allowedThread, false, "PathfinderForeground");
-			ThreadBackground = new ThreadManager(allowedThread, true, "PathfinderBackground");
+			public ThreadManager ThreadForeground, ThreadBackground;
+
+			public StaticVariables()
+			{
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+				byte allowedThread = ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder);
+				ThreadForeground = new ThreadManager(allowedThread, false, "PathfinderForeground");
+				ThreadBackground = new ThreadManager(allowedThread, true, "PathfinderBackground");
+			}
 		}
 
-		private static void Entities_OnCloseAll()
+		private static StaticVariables value_static;
+		private static StaticVariables Static
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			ThreadForeground = null;
-			ThreadBackground = null;
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_static == null)
+					value_static = new StaticVariables();
+				return value_static;
+			}
+			set { value_static = value; }
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			Static = null;
 		}
 
 		private readonly Logger m_logger;
@@ -189,7 +204,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid && m_destination.Equals(ref destination) && m_ignoreEntity == ignoreEntity && m_ignoreVoxel == ignoreVoxel && m_canChangeCourse == canChangeCourse)
 			{
-				ThreadForeground.EnqueueAction(Run);
+				Static.ThreadForeground.EnqueueAction(Run);
 				return;
 			}
 
@@ -209,7 +224,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_canChangeCourse = canChangeCourse;
 			m_pathfinding = false;
 
-			ThreadForeground.EnqueueAction(Run);
+			Static.ThreadForeground.EnqueueAction(Run);
 		}
 
 		private void Run()
@@ -257,9 +272,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 
 			if (m_runInterrupt)
-				ThreadForeground.EnqueueAction(Run);
+				Static.ThreadForeground.EnqueueAction(Run);
 			else if (m_pathfinding)
-				ThreadBackground.EnqueueAction(ContinuePathfinding);
+				Static.ThreadBackground.EnqueueAction(ContinuePathfinding);
 		}
 
 		private void FillDestWorld()

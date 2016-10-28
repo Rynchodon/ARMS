@@ -41,6 +41,12 @@ namespace Rynchodon.Threading
 
 		public void EnqueueAction(Action toQueue)
 		{
+			if (Globals.WorldClosed)
+			{
+				myLogger.debugLog("Cannot enqueue, world is closed");
+				return;
+			}
+
 			ActionQueue.Enqueue(toQueue);
 			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
@@ -59,12 +65,6 @@ namespace Rynchodon.Threading
 				else
 					MyAPIGateway.Parallel.Start(Run);
 			});
-		}
-
-		public void EnqueueIfIdle(Action toQueue)
-		{
-			if (ActionQueue.Count == 0)
-				EnqueueAction(toQueue);
 		}
 
 		private void Run()

@@ -34,22 +34,20 @@ namespace Rynchodon.Utility.Network
 
 		static EntityValue()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-			MessageHandler.Handlers.Add(MessageHandler.SubMod.SyncEntityValue, Handle_SyncEntityValue);
-			if (MyAPIGateway.Multiplayer.IsServer)
-				MessageHandler.Handlers.Add(MessageHandler.SubMod.RequestEntityValue, Handle_RequestEntityValue);
+			MessageHandler.AddHandler(MessageHandler.SubMod.SyncEntityValue, Handle_SyncEntityValue);
+			MessageHandler.AddHandler(MessageHandler.SubMod.RequestEntityValue, Handle_RequestEntityValue);
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldClose]
+		private static void Unload()
 		{
 			Static.logger.debugLog("bytes sent: " + Static.bytesSent + ", messages sent: " + Static.messagesSent, Logger.severity.INFO);
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
+			Static.allEntityValues.Clear();
 		}
 
 		public static Builder_EntityValues[] GetBuilders()
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return null;
 
 			List<Builder_EntityValues> all = new List<Builder_EntityValues>(Static.allEntityValues.Count);
@@ -89,7 +87,7 @@ namespace Rynchodon.Utility.Network
 
 		public static void ResumeFromSave(Builder_EntityValues[] savedValues)
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
 
 			foreach (Builder_EntityValues builder in savedValues)
@@ -120,7 +118,7 @@ namespace Rynchodon.Utility.Network
 
 		public static EntityValue TryGetEntityValue(long entityId, byte valueId)
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return null;
 
 			Dictionary<byte, EntityValue> entityValues;
@@ -136,7 +134,7 @@ namespace Rynchodon.Utility.Network
 
 		private static void Handle_SyncEntityValue(byte[] bytes, int pos)
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
 
 			long entityId = ByteConverter.GetLong(bytes, ref pos);
@@ -161,8 +159,14 @@ namespace Rynchodon.Utility.Network
 
 		private static void Handle_RequestEntityValue(byte[] bytes, int pos)
 		{
-			if (Static == null)
+			if (Globals.WorldClosed)
 				return;
+
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				Logger.AlwaysLog("Got a request for entity values, but this is not the server!", Logger.severity.WARNING);
+				return;
+			}
 
 			long entityId = ByteConverter.GetLong(bytes, ref pos);
 			ulong recipient = ByteConverter.GetUlong(bytes, ref pos);
@@ -200,7 +204,7 @@ namespace Rynchodon.Utility.Network
 
 		private static void entity_OnClose(IMyEntity obj)
 		{
-			if (Static != null)
+			if (!Globals.WorldClosed)
 				Static.allEntityValues.Remove(obj.EntityId);
 		}
 

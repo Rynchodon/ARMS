@@ -83,17 +83,6 @@ namespace Rynchodon.Attached
 
 		private static StaticVariables Static = new StaticVariables();
 
-		static AttachedGrid()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Static = null;
-		}
-
 		/// <summary>
 		/// Determines if two grids are attached.
 		/// </summary>
@@ -219,7 +208,7 @@ namespace Rynchodon.Attached
 
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, IMyCubeGrid grid2, bool add)
 		{
-			if (grid1 == grid2 || Static == null)
+			if (grid1 == grid2 || Globals.WorldClosed)
 				return;
 
 			AttachedGrid

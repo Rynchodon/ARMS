@@ -22,17 +22,6 @@ namespace Rynchodon.Autopilot.Navigator
 		/// <summary>The grid claimed and the grid that claimed it.</summary>
 		private static Dictionary<long, IMyCubeGrid> GridsClaimed = new Dictionary<long, IMyCubeGrid>();
 
-		static Grinder()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			GridsClaimed = null;
-		}
-
 		private enum Stage : byte { None, Intercept, Grind }
 
 		private readonly Logger m_logger;

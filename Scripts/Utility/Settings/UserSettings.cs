@@ -41,11 +41,24 @@ namespace Rynchodon.Settings
 
 		private const string userSettings_fileName = "UserSettings.txt";
 
-		private static UserSettings Instance;
-
-		static UserSettings()
+		private static UserSettings value_Instance;
+		private static UserSettings Instance
 		{
-			Instance = new UserSettings();
+			get
+			{
+				if (Globals.WorldClosed)
+					throw new Exception("World closed");
+				if (value_Instance == null)
+					value_Instance = new UserSettings();
+				return value_Instance;
+			}
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			value_Instance.writeAll();
+			value_Instance = null;
 		}
 
 		public static byte GetSetting(ByteSettingName name)
@@ -109,14 +122,6 @@ namespace Rynchodon.Settings
 
 			buildSettings();
 			readAll();
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			Instance = null;
-			writeAll();
 		}
 
 		/// <summary>

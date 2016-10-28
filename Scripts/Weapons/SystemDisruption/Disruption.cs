@@ -5,7 +5,6 @@ using System.Xml.Serialization;
 using Rynchodon.Update;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -33,16 +32,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 		public static HashSet<Disruption> AllDisruptions = new HashSet<Disruption>();
 		private static HashSet<IMyCubeBlock> m_allAffected = new HashSet<IMyCubeBlock>();
 
-		static Disruption()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			AllDisruptions = null;
-			m_allAffected = null;
+			AllDisruptions.Clear();
+			m_allAffected.Clear();
 		}
 
 		protected Logger m_logger { get; private set; }

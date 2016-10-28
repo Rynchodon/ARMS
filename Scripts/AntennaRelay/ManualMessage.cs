@@ -40,17 +40,16 @@ namespace Rynchodon.AntennaRelay
 
 		private static StaticVariables Static = new StaticVariables();
 
-		static ManualMessage()
+		[OnWorldLoad]
+		private static void Initialize()
 		{
 			MyTerminalControls.Static.CustomControlGetter += CustomHandler;
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
 		}
 
-		private static void Entities_OnCloseAll()
+		[OnWorldClose]
+		private static void Unload()
 		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
 			MyTerminalControls.Static.CustomControlGetter -= CustomHandler;
-			Static = null;
 		}
 
 		public static void CustomHandler(IMyTerminalBlock block, List<IMyTerminalControl> controlList)

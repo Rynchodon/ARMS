@@ -145,12 +145,9 @@ namespace Rynchodon.Autopilot.Movement
 			if (thrust == null)
 				return;
 
-			MainLock.MainThread_ReleaseExclusive();
 			try { newThruster(thrust); }
 			catch (Exception e)
 			{ myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
-			finally
-			{ MainLock.MainThread_AcquireExclusive(); }
 		}
 
 		/// <summary>
@@ -219,7 +216,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 worldGravity = Vector3.Zero;
 			m_planetAtmos = null;
 			m_airDensity = 0f;
-			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Pool.Get();
+			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Get();
 			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
 
 			foreach (MyPlanet planet in allPlanets)
@@ -245,7 +242,7 @@ namespace Rynchodon.Autopilot.Movement
 				}
 
 			allPlanets.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Pool.Return(allPlanets);
+			ResourcePool<List<IMyVoxelBase>>.Return(allPlanets);
 
 			CalcForceInDirection(Base6Directions.Direction.Forward);
 			CalcForceInDirection(Base6Directions.Direction.Backward);

@@ -93,17 +93,6 @@ namespace Rynchodon.Weapons
 
 		private static Dictionary<MyDefinitionId, Ammo> KnownDefinitions_Ammo = new Dictionary<MyDefinitionId, Ammo>();
 
-		static Ammo()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			KnownDefinitions_Ammo = null;
-		}
-
 		public static Ammo GetLoadedAmmo(IMyCubeBlock weapon)
 		{
 			MyEntity entity = (MyEntity)weapon;

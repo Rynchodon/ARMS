@@ -23,17 +23,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private static readonly TimeSpan SearchTimeout = new TimeSpan(0, 1, 0);
 		private static HashSet<long> s_reservedTargets = new HashSet<long>();
 
-		static FlyToGrid()
-		{
-			MyAPIGateway.Entities.OnCloseAll += Entities_OnCloseAll;
-		}
-
-		private static void Entities_OnCloseAll()
-		{
-			MyAPIGateway.Entities.OnCloseAll -= Entities_OnCloseAll;
-			s_reservedTargets = null;
-		}
-
 		private readonly Logger m_logger;
 		private readonly GridFinder m_gridFinder;
 		private readonly BlockNameOrientation m_targetBlock;
@@ -191,7 +180,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void UnreserveTarget()
 		{
-			if (m_reservedTarget != 0L && s_reservedTargets != null)
+			if (m_reservedTarget != 0L)
 			{
 				m_logger.debugLog("unreserve: " + m_reservedTarget);
 				s_reservedTargets.Remove(m_reservedTarget);
