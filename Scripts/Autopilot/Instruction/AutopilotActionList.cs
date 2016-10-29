@@ -25,11 +25,13 @@ namespace Rynchodon.Autopilot.Instruction
 		public void Add(AutopilotAction item)
 		{
 			m_mainList.Add(item);
+			m_mainListIndex = int.MaxValue;
 		}
 
 		public void Add(TextPanelMonitor item)
 		{
 			m_mainList.Add(item);
+			m_mainListIndex = int.MaxValue;
 		}
 
 		public void Clear()
@@ -46,6 +48,12 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private bool MoveNext(ref int depth)
 		{
+			if (m_mainListIndex == int.MaxValue)
+			{
+				Logger.AlwaysLog("List was not reset since last addition", Logger.severity.ERROR);
+				Reset();
+				return false;
+			}
 			CurrentIndex++;
 			depth++;
 			if (CurrentIndex > MaxIndex)
@@ -71,6 +79,7 @@ namespace Rynchodon.Autopilot.Instruction
 			m_mainListIndex++;
 			if (m_mainListIndex >= m_mainList.Count)
 			{
+				Logger.DebugLog("End of main list, m_mainListIndex: " + m_mainListIndex + ", m_mainList.Count: " + m_mainList.Count);
 				Current = null;
 				return false;
 			}
@@ -84,6 +93,7 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			TextPanelMonitor monitor = (TextPanelMonitor)element;
+			Logger.DebugLog("Resting sublist: " + monitor.TextPanel.nameWithId());
 			m_sublist = monitor.AutopilotActions;
 			m_sublist.Reset();
 			return MoveNext(ref depth);

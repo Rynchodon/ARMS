@@ -12,7 +12,7 @@
 # ARMS Dev only has scripts and has logging enabled
 # ARMS Model has data files, models, and textures
 
-import datetime, errno, logging, os.path, re, shutil, stat, subprocess, sys, xml.etree.ElementTree as ET
+import datetime, errno, logging, os.path, psutil, re, shutil, stat, subprocess, sys, time, xml.etree.ElementTree as ET
 
 logging.basicConfig(filename = "build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
 
@@ -116,23 +116,46 @@ if (len(sys.argv) < 2):
 	logging.error ("ERROR: Build configuration not specified")
 	sys.exit(12)
 
+for process in psutil.process_iter():
+	if process.name() == "SpaceEngineers.exe" or process.name() == "SpaceEngineersDedicated.exe" or process.name() == "LoadARMS.exe":
+		logging.info("Killing process: " + process.name())
+		process.kill()
+		try:
+			while process.status() != psutil.STATUS_DEAD:
+				time.sleep(1)
+		except psutil.NoSuchProcess:
+			pass
+
 logging.info("Build is " + str(sys.argv[1]))
 source = cSharp + 'bin/x64/' + sys.argv[1] + '/ARMS.dll'
 if (not os.path.exists(source)):
 	logging.error("Build not found")
 	sys.exit(13)
+
 target = SpaceEngineers + '/Bin64'
 if (not os.path.exists(target)):
 	logging.error("Not path to Space Engineers: " + SpaceEngineers)
 	sys.exit(14)
 shutil.copy2(source, target)
 logging.info("Copied dll to " + target)
+
+target += '/ARMS - Release Notes.txt'
+notes = "Unoffical build: " + sys.argv[1]
+file = open(target, "w")
+file.write(notes)
+file.close()
+
 target = SpaceEngineers + '/DedicatedServer64'
 if (not os.path.exists(target)):
 	logging.error("Not path to Space Engineers: " + SpaceEngineers)
 	sys.exit(15)
 shutil.copy2(source, target)
 logging.info("Copied dll to " + target)
+
+target += '/ARMS - Release Notes.txt'
+file = open(target, "w")
+file.write(notes)
+file.close()
 
 createDir(finalDir)
 createDir(finalDirDev)

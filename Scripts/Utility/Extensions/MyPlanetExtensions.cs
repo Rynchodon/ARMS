@@ -75,5 +75,10 @@ namespace Rynchodon
 			return planet.Components.Get<MyGravityProviderComponent>().GetWorldGravity(worldPosition);
 		}
 
+		public static float GetGravityLimit(this MyPlanet planet)
+		{
+			return ((MySphericalNaturalGravityComponent)planet.Components.Get<MyGravityProviderComponent>()).GravityLimit;
+		}
+
 	}
 }

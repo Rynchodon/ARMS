@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private PositionBlock? m_destinationOffset;
 
-			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative;
+			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative, m_minDistToJump;
 
 			private bool? m_ignoreAsteroid, m_pathfindeCanChangeCourse, m_formation;
 
@@ -54,6 +54,8 @@ namespace Rynchodon.Autopilot.Data
 				m_distanceAngle = float.NaN;
 				m_speedTarget = DefaultSpeed;
 				m_speedMaxRelative = float.MaxValue;
+				m_minDistToJump = 0f;
+				Logger.DebugLog("m_minDistToJump reset");
 
 				m_ignoreAsteroid = false;
 				m_pathfindeCanChangeCourse = true;
@@ -257,6 +259,16 @@ namespace Rynchodon.Autopilot.Data
 					return parent.SpeedMaxRelative;
 				}
 				set { m_speedMaxRelative = value; }
+			}
+
+			public float MinDistToJump
+			{
+				get { return m_minDistToJump ?? parent.MinDistToJump; }
+				set
+				{
+					Logger.DebugLog("changing from " + m_minDistToJump + " to " + value);
+					m_minDistToJump = value;
+				}
 			}
 
 			/// <summary>Pathfinder should not run voxel tests.</summary>

@@ -516,6 +516,7 @@ namespace Rynchodon.Autopilot
 			ApTerm.SetDistance(Settings_Current.Distance, Settings_Current.DistanceAngle);
 			ApTerm.m_welderUnfinishedBlocks.Value = m_navSet.WelderUnfinishedBlocks;
 			ApTerm.m_complaint.Value = Settings_Current.Complaint;
+			ApTerm.m_jumpComplaint.Value = m_pathfinder.JumpComplaint;
 		}
 
 		#endregion Custom Info

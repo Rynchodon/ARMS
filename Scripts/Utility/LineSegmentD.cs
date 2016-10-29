@@ -109,6 +109,16 @@ namespace Rynchodon
 			}
 		}
 
+		public LineD Line
+		{
+			get
+			{
+				if (!m_calculatedLength)
+					CalcLength();
+				return m_line;
+			}
+		}
+
 		public double LengthSquared() { return Vector3D.DistanceSquared(From, To); }
 
 		private void CalcLength()
@@ -294,6 +304,31 @@ namespace Rynchodon
 		{
 			distance *= distance;
 			return DistanceSquared(point) <= distance;
+		}
+
+		public bool Intersect(ref BoundingSphereD sphere, out double t1, out double t2)
+		{
+			Vector3D start = From;
+			Vector3D direct = Direction;
+			Vector3D startToCentre; Vector3D.Subtract(ref sphere.Center, ref start, out startToCentre);
+			double projStcDirect = startToCentre.Dot(ref direct);
+			double stcLenSq = startToCentre.LengthSquared();
+
+			double value = projStcDirect * projStcDirect - stcLenSq + sphere.Radius * sphere.Radius;
+			if (value < 0)
+			{
+				t1 = t2 = double.NaN;
+				return false;
+			}
+			if (value == 0)
+			{
+				t1 = t2 = projStcDirect;
+				return true;
+			}
+			double rootValue = Math.Sqrt(value);
+			t1 = projStcDirect - rootValue;
+			t2 = projStcDirect + rootValue;
+			return true;
 		}
 
 	}

@@ -121,6 +121,7 @@
     <Compile Include="Autopilot\Instruction\Command\ACommand.cs" />
     <Compile Include="Autopilot\Instruction\AddCommandTreeNode.cs" />
     <Compile Include="Autopilot\Instruction\AutopilotCommands.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Jump.cs" />
     <Compile Include="Autopilot\Instruction\Command\SingleWord\Asteroid.cs" />
     <Compile Include="Autopilot\Instruction\Command\BlockSearch\ABlockSearch.cs" />
     <Compile Include="Autopilot\Instruction\Command\BlockSearch\TargetBlockSearch.cs" />

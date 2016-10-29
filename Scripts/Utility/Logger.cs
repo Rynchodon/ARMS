@@ -7,7 +7,7 @@ using System.Text;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
-using VRage;
+using VRage.Collections;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -46,9 +46,9 @@ namespace Rynchodon
 			public int numLines = 0;
 		}
 
-//#if LOG_ENABLED
-//		public static HashSet<Logger> s_activeLoggers = new HashSet<Logger>();
-//#endif
+#if LOG_ENABLED
+		public static MyConcurrentHashSet<Logger> s_activeLoggers = new MyConcurrentHashSet<Logger>();
+#endif
 
 		private static StaticVariables value_static;
 		private static StaticVariables Static
@@ -65,19 +65,19 @@ namespace Rynchodon
 			}
 		}
 
-		//		[OnWorldLoad]
-		//		private static void Init()
-		//		{
-		//#if LOG_ENABLED
-		//			if (s_activeLoggers.Count != 0)
-		//			{
-		//				AlwaysLog("Active loggers: " + s_activeLoggers.Count, severity.DEBUG);
-		//				foreach (Logger logger in s_activeLoggers)
-		//					AlwaysLog("Active logger: " + logger.m_fileName + ", " + logger.f_context.InvokeIfExists());
-		//			}
-		//			s_activeLoggers.Clear();
-		//#endif
-		//		}
+		[OnWorldLoad]
+		private static void Init()
+		{
+#if LOG_ENABLED
+			if (s_activeLoggers.Count != 0)
+			{
+				AlwaysLog("Active loggers: " + s_activeLoggers.Count, severity.DEBUG);
+				foreach (Logger logger in s_activeLoggers)
+					AlwaysLog("Active logger: " + logger.m_fileName + ", " + logger.f_context.InvokeIfExists());
+			}
+			s_activeLoggers.Clear();
+#endif
+		}
 
 		[OnWorldClose]
 		private static void Unload()
@@ -127,7 +127,7 @@ namespace Rynchodon
 		public Logger([CallerFilePath] string callerPath = null)
 		{
 			AddToActive();
-			this.m_fileName = GetFileName(callerPath);
+			this.m_fileName = Path.GetFileName(callerPath);
 		}
 
 		/// <summary>
@@ -139,7 +139,7 @@ namespace Rynchodon
 		public Logger(Func<string> context, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			AddToActive();
-			this.m_fileName = GetFileName(callerPath);
+			this.m_fileName = Path.GetFileName(callerPath);
 			this.f_context = context;
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
@@ -153,7 +153,7 @@ namespace Rynchodon
 		public Logger(IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			AddToActive();
-			this.m_fileName = GetFileName(callerPath);
+			this.m_fileName = Path.GetFileName(callerPath);
 
 			if (block == null)
 			{
@@ -167,7 +167,7 @@ namespace Rynchodon
 					return "Null grid";
 				return grid.DisplayName + " - " + grid.EntityId;
 			};
-					
+
 			if (default_secondary == null)
 			{
 				this.f_state_primary = () => block.DefinitionDisplayNameText;
@@ -183,7 +183,7 @@ namespace Rynchodon
 		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
 			AddToActive();
-			this.m_fileName = GetFileName(callerPath);
+			this.m_fileName = Path.GetFileName(callerPath);
 
 			if (grid == null)
 			{
@@ -199,7 +199,7 @@ namespace Rynchodon
 		public Logger(IMyEntity entity, [CallerFilePath] string callerPath = null)
 		{
 			AddToActive();
-			this.m_fileName = GetFileName(callerPath);
+			this.m_fileName = Path.GetFileName(callerPath);
 
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
 			if (asBlock != null)
@@ -220,12 +220,19 @@ namespace Rynchodon
 			this.f_context = entity.getBestName;
 		}
 
+#if LOG_ENABLED
+		~Logger()
+		{
+			s_activeLoggers.Remove(this);
+		}
+#endif
+
 		[System.Diagnostics.Conditional("LOG_ENABLED")]
 		private void AddToActive()
 		{
-//#if LOG_ENABLED
-//			s_activeLoggers.Add(this);
-//#endif
+#if LOG_ENABLED
+			s_activeLoggers.Add(this);
+#endif
 		}
 
 		private static void deleteIfExists(string filename)
@@ -243,7 +250,7 @@ namespace Rynchodon
 				{
 					for (int i = 0; i < 10; i++)
 						deleteIfExists("log-" + i + ".txt");
-					FileMaster 	master = new FileMaster(s_logMaster, "log-", 10);
+					FileMaster master = new FileMaster(s_logMaster, "log-", 10);
 					Static.logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
 				}
 				else
@@ -269,11 +276,6 @@ namespace Rynchodon
 				MyLog.Default.WriteLine(ex);
 				throw;
 			}
-		}
-
-		private static string GetFileName(string path)
-		{
-			return Path.GetFileName(path);
 		}
 
 		/// <summary>
@@ -342,7 +344,7 @@ namespace Rynchodon
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		[System.Diagnostics.Conditional("PROFILE")]
@@ -350,13 +352,13 @@ namespace Rynchodon
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			log(context, GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+			log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>

@@ -82,6 +82,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			AddDummy(new Proximity(), commands);
 			AddDummy(new SpeedLimit(), commands);
+			AddDummy(new Jump(), commands);
 			AddDummy(new StraightLine(), commands);
 			AddDummy(new Asteroid(), commands);
 
@@ -219,6 +220,7 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		public void OnCommandsChanged()
 		{
+			m_logger.debugLog("entered");
 			m_actionList.Clear();
 		}
 
@@ -372,6 +374,8 @@ namespace Rynchodon.Autopilot.Instruction
 
 				actionList.Add(textPanelMonitor);
 			}
+
+			actionList.Reset();
 		}
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)

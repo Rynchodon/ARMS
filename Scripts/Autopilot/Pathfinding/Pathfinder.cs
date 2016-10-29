@@ -1,16 +1,19 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
+using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
+using Sandbox.Game.GameSystems;
 using Sandbox.Game.Weapons;
+using Sandbox.Game.World;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -33,6 +36,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private class StaticVariables
 		{
 			public ThreadManager ThreadForeground, ThreadBackground;
+			public MethodInfo RequestJump;
+			public FieldInfo JumpDisplacement;
 
 			public StaticVariables()
 			{
@@ -40,6 +45,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				byte allowedThread = ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder);
 				ThreadForeground = new ThreadManager(allowedThread, false, "PathfinderForeground");
 				ThreadBackground = new ThreadManager(allowedThread, true, "PathfinderBackground");
+
+				Type[] argTypes = new Type[] { typeof(Vector3D), typeof(long) };
+				RequestJump = typeof(MyGridJumpDriveSystem).GetMethod("RequestJump", BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, argTypes, null);
+
+				JumpDisplacement = typeof(MyGridJumpDriveSystem).GetField("m_jumpDirection", BindingFlags.NonPublic | BindingFlags.Instance);
 			}
 		}
 
@@ -68,7 +78,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
 		private bool m_runInterrupt, m_runHalt;
-		private ulong m_waitUntil;
+		private ulong m_waitUntil, m_nextJumpAttempt;
+		private LineSegmentD m_lineSegment = new LineSegmentD();
+		private MyGridJumpDriveSystem m_jumpSystem;
 
 		// Inputs: rarely change
 
@@ -133,7 +145,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 #endif
 			}
 		}
-		private LineSegmentD m_lineSegment = new LineSegmentD();
 
 		// Results
 
@@ -147,6 +158,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }
 		public RotateChecker RotateCheck { get { return Mover.RotateCheck; } }
 		public State CurrentState { get; private set; }
+		public InfoString.StringId_Jump JumpComplaint { get; private set; }
 
 		public Pathfinder(ShipControllerBlock block)
 		{
@@ -215,14 +227,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
 			m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
 
-			m_runInterrupt = true;
-			m_navBlock = navBlock;
-			m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
-			m_destination = destination;
-			m_ignoreEntity = ignoreEntity;
-			m_ignoreVoxel = ignoreVoxel;
-			m_canChangeCourse = canChangeCourse;
-			m_pathfinding = false;
+			using (m_runningLock.AcquireExclusiveUsing())
+			{
+				m_runInterrupt = true;
+				m_navBlock = navBlock;
+				m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
+				m_destination = destination;
+				m_ignoreEntity = ignoreEntity;
+				m_ignoreVoxel = ignoreVoxel;
+				m_canChangeCourse = canChangeCourse;
+			}
 
 			Static.ThreadForeground.EnqueueAction(Run);
 		}
@@ -243,14 +257,55 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (m_runHalt)
 					return;
 				if (m_runInterrupt)
+				{
 					m_path.Clear();
+					m_pathfinding = false;
+					m_runInterrupt = false;
+				}
 				else if (m_pathfinding)
 					return;
 
-				m_runInterrupt = false;
+				if (m_jumpSystem != null)
+				{
+					if (m_jumpSystem.GetJumpDriveDirection().HasValue)
+					{
+						JumpComplaint = InfoString.StringId_Jump.Jumping;
+						FillDestWorld();
+						return;
+					}
+					else
+					{
+						float distance = NavSet.Settings_Current.Distance;
+						FillDestWorld();
+						if (NavSet.Settings_Current.Distance < distance - MyGridJumpDriveSystem.MIN_JUMP_DISTANCE * 0.5d)
+						{
+							m_logger.debugLog("Jump completed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.INFO);
+							m_nextJumpAttempt = 0uL;
+							JumpComplaint = InfoString.StringId_Jump.None;
+						}
+						else
+						{
+							m_logger.debugLog("Jump failed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.WARNING);
+							JumpComplaint = InfoString.StringId_Jump.Failed;
+						}
+						m_jumpSystem = null;
+					}
+				}
+				else
+					FillDestWorld();
 
-				FillDestWorld();
 				TestCurrentPath();
+				// if the current path is obstructed, it is not possible to jump
+				if (m_targetDirection.IsValid())
+				{
+					if (TryJump())
+					{
+						m_targetDirection = Vector3.Invalid;
+						m_targetDistance = 0f;
+					}
+				}
+				else
+					JumpComplaint = InfoString.StringId_Jump.None;
 				OnComplete();
 			}
 			catch
@@ -606,7 +661,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (calcRepulse)
 					{
 						// avoid planet gravity to minimum of current altitude, destination altitude, and gravity limit * 2
-						float gravLimit = ((MySphericalNaturalGravityComponent)planet.Components.Get<MyGravityProviderComponent>()).GravityLimit * 2f;
+						float gravLimit = planet.GetGravityLimit() * 2f;
 						boundingRadius += distCentreToCurrent * distCentreToCurrent < distSqCentreToDest ?
 							Math.Min((float)distCentreToCurrent, gravLimit) :
 							gravLimit * gravLimit < distSqCentreToDest ?
@@ -1548,6 +1603,172 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D finishToPosition; Vector3D.Subtract(ref position, ref m_backward.m_startPosition, out finishToPosition);
 			Vector3D.Divide(ref finishToPosition, m_nodeDistance, out steps);
 		}
+
+		#region Jump
+
+		private bool TryJump()
+		{
+			if (Globals.UpdateCount < m_nextJumpAttempt)
+				return false;
+			m_nextJumpAttempt = Globals.UpdateCount + 100uL;
+			if (NavSet.Settings_Current.MinDistToJump < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE || NavSet.Settings_Current.Distance < NavSet.Settings_Current.MinDistToJump)
+			{
+				//m_logger.debugLog("not allowed to jump, distance: " + NavSet.Settings_Current.Distance + ", min dist: " + NavSet.Settings_Current.MinDistToJump);
+				JumpComplaint = InfoString.StringId_Jump.None;
+				return false;
+			}
+
+			// search for a drive
+			foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(Mover.Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, true))
+			{
+				CubeGridCache cache = CubeGridCache.GetFor(grid);
+				if (cache == null)
+				{
+					m_logger.debugLog("Missing a CubeGridCache");
+					return false;
+				}
+				foreach (MyJumpDrive jumpDrive in cache.BlocksOfType(typeof(MyObjectBuilder_JumpDrive)))
+					if (jumpDrive.CanJumpAndHasAccess(Mover.Block.CubeBlock.OwnerId))
+					{
+						m_nextJumpAttempt = Globals.UpdateCount + 1000uL;
+						return RequestJump();
+					}
+			}
+
+			//m_logger.debugLog("No usable jump drives", Logger.severity.TRACE);
+			JumpComplaint = InfoString.StringId_Jump.NotCharged;
+			return false;
+		}
+
+		/// <summary>
+		/// Based on MyGridJumpDriveSystem.RequestJump
+		/// </summary>
+		private bool RequestJump()
+		{
+			MyCubeBlock apBlock = (MyCubeBlock)Mover.Block.CubeBlock;
+			MyCubeGrid apGrid = apBlock.CubeGrid;
+
+			if (!Vector3.IsZero(MyGravityProviderSystem.CalculateNaturalGravityInPoint(apGrid.WorldMatrix.Translation)))
+			{
+				//m_logger.debugLog("Cannot jump, in gravity");
+				JumpComplaint = InfoString.StringId_Jump.InGravity;
+				return false;
+			}
+
+			// check for static grids or grids already jumping
+			foreach (MyCubeGrid grid in AttachedGrid.AttachedGrids(apGrid, AttachedGrid.AttachmentKind.Physics, true))
+			{
+				if (grid.MarkedForClose)
+				{
+					m_logger.debugLog("Cannot jump with closing grid: " + grid.nameWithId(), Logger.severity.WARNING);
+					JumpComplaint = InfoString.StringId_Jump.ClosingGrid;
+					return false;
+				}
+				if (grid.IsStatic)
+				{
+					m_logger.debugLog("Cannot jump with static grid: " + grid.nameWithId(), Logger.severity.WARNING);
+					JumpComplaint = InfoString.StringId_Jump.StaticGrid;
+					return false;
+				}
+				if (grid.GridSystems.JumpSystem.GetJumpDriveDirection().HasValue)
+				{
+					m_logger.debugLog("Cannot jump, grid already jumping: " + grid.nameWithId(), Logger.severity.WARNING);
+					JumpComplaint = InfoString.StringId_Jump.AlreadyJumping;
+					return false;
+				}
+			}
+
+			Vector3D finalDest = m_destination.WorldPosition();
+
+			if (MySession.Static.Settings.WorldSizeKm > 0 && finalDest.Length() > MySession.Static.Settings.WorldSizeKm * 500)
+			{
+				m_logger.debugLog("Cannot jump outside of world", Logger.severity.WARNING);
+				JumpComplaint = InfoString.StringId_Jump.DestOutsideWorld;
+				return false;
+			}
+
+			MyGridJumpDriveSystem jdSystem =apGrid.GridSystems.JumpSystem;
+			Vector3D jumpDisp; Vector3D.Subtract(ref finalDest, ref m_currentPosition, out jumpDisp);
+
+			// limit jump to maximum allowed by jump drive capacity
+			double maxJumpDistance = jdSystem.GetMaxJumpDistance(apBlock.OwnerId);
+			double jumpDistSq = jumpDisp.LengthSquared();
+			if (maxJumpDistance * maxJumpDistance < jumpDistSq)
+			{
+				m_logger.debugLog("Jump drives do not have sufficient power to jump the desired distance", Logger.severity.DEBUG);
+				Vector3D newJumpDisp; Vector3D.Multiply(ref jumpDisp, maxJumpDistance / Math.Sqrt(jumpDistSq), out newJumpDisp);
+				jumpDisp = newJumpDisp;
+
+				if (newJumpDisp.LengthSquared() < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE * MyGridJumpDriveSystem.MIN_JUMP_DISTANCE)
+				{
+					m_logger.debugLog("Jump drives do not have sufficient power to jump the minimum distance", Logger.severity.WARNING);
+					JumpComplaint = InfoString.StringId_Jump.CannotJumpMin;
+					return false;
+				}
+			}
+
+			// limit jump based on obstruction
+			m_lineSegment.From = m_currentPosition;
+			m_lineSegment.To = finalDest;
+			double apRadius = apGrid.PositionComp.LocalVolume.Radius;
+			LineD line = m_lineSegment.Line;
+			List<MyLineSegmentOverlapResult<MyEntity>> overlappingEntities; ResourcePool.Get(out overlappingEntities);
+			MyGamePruningStructure.GetTopmostEntitiesOverlappingRay(ref line, overlappingEntities);
+			MyLineSegmentOverlapResult<MyEntity> closest = new MyLineSegmentOverlapResult<MyEntity>() { Distance = double.MaxValue };
+			foreach (MyLineSegmentOverlapResult<MyEntity> overlap in overlappingEntities)
+			{
+				MyPlanet planet = overlap.Element as MyPlanet;
+				if (planet != null)
+				{
+					BoundingSphereD gravSphere = new BoundingSphereD(planet.PositionComp.GetPosition(), planet.GetGravityLimit() + apRadius);
+					double t1, t2;
+					if (m_lineSegment.Intersect(ref gravSphere, out t1, out t2))
+					{
+						if (t1 < closest.Distance)
+							closest = new MyLineSegmentOverlapResult<MyEntity>() { Distance = t1, Element = planet };
+					}
+					else
+					{
+						m_logger.debugLog("planet gravity does not hit line: " + planet.getBestName());
+						continue;
+					}
+				}
+				else
+				{
+					if (overlap.Element == apGrid)
+						continue;
+					if (overlap.Distance < closest.Distance)
+						closest = overlap;
+				}
+			}
+			overlappingEntities.Clear();
+			ResourcePool.Return(overlappingEntities);
+
+			if (closest.Element != null)
+			{
+				m_logger.debugLog("jump would hit: " + closest.Element.nameWithId() + ", shortening jump from " + m_lineSegment.Length + " to " + closest.Distance, Logger.severity.DEBUG);
+
+				if (closest.Distance < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE)
+				{
+					m_logger.debugLog("Jump is obstructed", Logger.severity.DEBUG);
+					JumpComplaint = InfoString.StringId_Jump.Obstructed;
+					return false;
+				}
+
+				m_lineSegment.To = m_lineSegment.From + m_lineSegment.Direction * closest.Distance;
+			}
+
+			m_logger.debugLog("Requesting jump to " + m_lineSegment.To, Logger.severity.DEBUG);
+			JumpComplaint = InfoString.StringId_Jump.Jumping;
+			// if jump fails after request, wait a long time before trying again
+			m_nextJumpAttempt = 10000uL;
+			Static.JumpDisplacement.SetValue(jdSystem, m_lineSegment.To - m_lineSegment.From);
+			Static.RequestJump.Invoke(jdSystem, new object[] { m_lineSegment.To, apBlock.OwnerId });
+			m_jumpSystem = jdSystem;
+			return true;
+		}
+
+		#endregion
 
 	}
 }

@@ -70,6 +70,7 @@ namespace Rynchodon.Autopilot
 				AddProperty<Enum>("ArmsAp_PathStatus", autopilot => autopilot.m_pathfinderState.Value);
 				AddProperty<Enum>("ArmsAp_ReasonCannotTarget", autopilot => autopilot.m_reasonCannotTarget.Value);
 				AddProperty<Enum>("ArmsAp_Complaint", autopilot => autopilot.m_complaint.Value);
+				AddProperty<Enum>("ArmsAp_JumpComplaint", autopilot => autopilot.m_jumpComplaint.Value);
 				AddProperty("ArmsAp_WaitUntil", autopilot => new DateTime(autopilot.m_waitUntil.Value));
 				AddProperty("ArmsAp_BlockedBy", autopilot => GetNameForDisplay(autopilot, autopilot.m_blockedBy.Value));
 				AddProperty("ArmsAp_LinearDistance", autopilot => autopilot.LinearDistance);
@@ -279,6 +280,7 @@ namespace Rynchodon.Autopilot
 		public EntityValue<Pathfinder.State> m_pathfinderState;
 		public EntityValue<GridFinder.ReasonCannotTarget> m_reasonCannotTarget;
 		public EntityValue<InfoString.StringId> m_complaint;
+		public EntityValue<InfoString.StringId_Jump> m_jumpComplaint;
 		public EntityValue<long> m_blockedBy;
 		public EntityValue<long> m_enemyFinderBestTarget;
 		public EntityValue<int> m_welderUnfinishedBlocks;
@@ -330,6 +332,7 @@ namespace Rynchodon.Autopilot
 			this.m_pathfinderState = new EntityValue<Pathfinder.State>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_reasonCannotTarget = new EntityValue<GridFinder.ReasonCannotTarget>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_complaint = new EntityValue<InfoString.StringId>(block, index++, m_block.RefreshCustomInfo, save: false);
+			this.m_jumpComplaint = new EntityValue<InfoString.StringId_Jump>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_waitUntil = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_blockedBy = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
 			this.m_distance = new EntityValue<long>(block, index++, m_block.RefreshCustomInfo, save: false);
@@ -460,6 +463,9 @@ namespace Rynchodon.Autopilot
 				foreach (InfoString.StringId flag in InfoString.AllStringIds())
 					if ((ids & flag) != 0)
 						customInfo.AppendLine(InfoString.GetString(flag));
+			InfoString.StringId_Jump jc = m_jumpComplaint.Value;
+			if (jc != InfoString.StringId_Jump.None)
+				customInfo.AppendLine(InfoString.GetString(jc));
 
 			// power
 			customInfo.Append("Current Input: ");
