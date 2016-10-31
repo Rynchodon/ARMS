@@ -23,6 +23,8 @@ namespace Rynchodon.Autopilot.Navigator
 	public class Fighter : NavigatorMover, IEnemyResponse, IDisposable
 	{
 
+		private const float FinalAltitude = -50f, InitialAltitude = 200f;
+
 		private static readonly MyObjectBuilderType[] TurretWeaponTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_LargeGatlingTurret), typeof(MyObjectBuilder_LargeMissileTurret), typeof(MyObjectBuilder_InteriorTurret) };
 		private static readonly TargetType[] CumulativeTypes = new TargetType[] { TargetType.SmallGrid, TargetType.LargeGrid, TargetType.Station };
 
@@ -171,16 +173,21 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_navSet.DistanceLessThan(m_weaponRange_min * 2f))
 				{
 					// we give orbiter a lower distance, so it will calculate orbital speed from that
-					m_orbiter = new Orbiter(m_pathfinder, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min - 50f, m_currentTarget.HostileName());
+					m_orbiter = new Orbiter(m_pathfinder, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min + FinalAltitude, m_currentTarget.HostileName());
 					// start further out so we can spiral inwards
 					m_finalOrbitAltitude = m_orbiter.Altitude;
-					m_orbiter.Altitude = m_finalOrbitAltitude + 250f;
+					m_orbiter.Altitude = m_finalOrbitAltitude + InitialAltitude - FinalAltitude;
 					m_logger.debugLog("weapon range: " + m_weaponRange_min + ", final orbit altitude: " + m_finalOrbitAltitude + ", initial orbit altitude: " + m_orbiter.Altitude, Logger.severity.DEBUG);
 				}
 				else
 				{
-					Vector3D direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition());
-					Vector3D offset = direction * m_weaponRange_min * 1.9f;
+					Vector3 direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition());
+					m_mover.Thrust.Update();
+					if (m_mover.SignificantGravity())
+						direction = direction.Cross((Vector3)m_mover.Thrust.WorldGravity / -m_mover.Thrust.GravityStrength);
+					else
+						direction = Vector3D.CalculatePerpendicularVector(direction);
+					Vector3D offset = direction * (m_weaponRange_min + InitialAltitude);
 
 					m_pathfinder.MoveTo(m_weapon_primary_pseudo, m_currentTarget, offset);
 					return;

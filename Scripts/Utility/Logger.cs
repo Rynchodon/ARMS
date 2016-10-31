@@ -7,7 +7,6 @@ using System.Text;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
-using VRage.Collections;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -46,10 +45,6 @@ namespace Rynchodon
 			public int numLines = 0;
 		}
 
-#if LOG_ENABLED
-		public static MyConcurrentHashSet<Logger> s_activeLoggers = new MyConcurrentHashSet<Logger>();
-#endif
-
 		private static StaticVariables value_static;
 		private static StaticVariables Static
 		{
@@ -63,20 +58,6 @@ namespace Rynchodon
 				}
 				return value_static;
 			}
-		}
-
-		[OnWorldLoad]
-		private static void Init()
-		{
-#if LOG_ENABLED
-			if (s_activeLoggers.Count != 0)
-			{
-				AlwaysLog("Active loggers: " + s_activeLoggers.Count, severity.DEBUG);
-				foreach (Logger logger in s_activeLoggers)
-					AlwaysLog("Active logger: " + logger.m_fileName + ", " + logger.f_context.InvokeIfExists());
-			}
-			s_activeLoggers.Clear();
-#endif
 		}
 
 		[OnWorldClose]
@@ -126,7 +107,6 @@ namespace Rynchodon
 
 		public Logger([CallerFilePath] string callerPath = null)
 		{
-			AddToActive();
 			this.m_fileName = Path.GetFileName(callerPath);
 		}
 
@@ -138,7 +118,6 @@ namespace Rynchodon
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
 		public Logger(Func<string> context, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			AddToActive();
 			this.m_fileName = Path.GetFileName(callerPath);
 			this.f_context = context;
 			this.f_state_primary = default_primary;
@@ -152,7 +131,6 @@ namespace Rynchodon
 		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
 		public Logger(IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			AddToActive();
 			this.m_fileName = Path.GetFileName(callerPath);
 
 			if (block == null)
@@ -182,7 +160,6 @@ namespace Rynchodon
 
 		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
 		{
-			AddToActive();
 			this.m_fileName = Path.GetFileName(callerPath);
 
 			if (grid == null)
@@ -198,7 +175,6 @@ namespace Rynchodon
 
 		public Logger(IMyEntity entity, [CallerFilePath] string callerPath = null)
 		{
-			AddToActive();
 			this.m_fileName = Path.GetFileName(callerPath);
 
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
@@ -218,21 +194,6 @@ namespace Rynchodon
 			}
 
 			this.f_context = entity.getBestName;
-		}
-
-#if LOG_ENABLED
-		~Logger()
-		{
-			s_activeLoggers.Remove(this);
-		}
-#endif
-
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
-		private void AddToActive()
-		{
-#if LOG_ENABLED
-			s_activeLoggers.Add(this);
-#endif
 		}
 
 		private static void deleteIfExists(string filename)

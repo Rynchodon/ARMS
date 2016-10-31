@@ -75,7 +75,7 @@ namespace Rynchodon
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref worldSphere, voxels);
 
 			foreach (MyVoxelBase voxel in voxels)
-				if (Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
+				if ((voxel is MyVoxelMap || voxel is MyPlanet) && Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
 				{
 					hitVoxel = voxel;
 					Profiler.EndProfileBlock();

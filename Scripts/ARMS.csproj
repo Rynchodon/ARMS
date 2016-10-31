@@ -191,6 +191,7 @@
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
+    <Compile Include="Autopilot\Pathfinding\Pathfinder_LowLevel.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_Structs.cs" />
     <Compile Include="Autopilot\Pathfinding\PathTester.cs" />
     <Compile Include="Autopilot\Pathfinding\RotateChecker.cs" />

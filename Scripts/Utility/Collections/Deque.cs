@@ -422,23 +422,14 @@ namespace Rynchodon.Utility.Collections
 			if (_head < _tail)
 			{
 				for (int index = _head; index < _tail; index++)
-				{
-					Logger.DebugLog("Simple, index: " + index + ", item: " + _array[index]);
 					yield return _array[index];
-				}
 			}
 			else
 			{
 				for (int index = _head; index < _array.Length; index++)
-				{
-					Logger.DebugLog("Going to end, index: " + index + ", item: " + _array[index]);
 					yield return _array[index];
-				}
 				for (int index = 0; index < _tail; index++)
-				{
-					Logger.DebugLog("From start, index: " + index + ", item: " + _array[index]);
 					yield return _array[index];
-				}
 			}
 		}
 

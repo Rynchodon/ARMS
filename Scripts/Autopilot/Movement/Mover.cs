@@ -607,7 +607,7 @@ namespace Rynchodon.Autopilot.Movement
 				moveAccel = Vector3.Normalize(moveAccel.vector) * primaryAccel;
 			}
 
-			m_logger.debugLog("Facing primary away from gravity and towards direction, moveAccel: " + moveAccel + ", fight gravity: " + fightGrav.ToLocal() + ", direction: " + direction.ToLocalNormalized() + ", new direction: " + (moveAccel + fightGrav.ToLocal()));
+			//m_logger.debugLog("Facing primary away from gravity and towards direction, moveAccel: " + moveAccel + ", fight gravity: " + fightGrav.ToLocal() + ", direction: " + direction.ToLocalNormalized() + ", new direction: " + (moveAccel + fightGrav.ToLocal()));
 
 			Vector3 dirV = moveAccel + fightGrav.ToLocal();
 			direction = RelativeDirection3F.FromLocal(Block.CubeGrid, dirV);

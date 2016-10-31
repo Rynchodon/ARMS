@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
 
-			m_logger.debugLog("Initialized");
+			//m_logger.debugLog("Initialized");
 		}
 
 		#region IEnemyResponse Members
@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			m_logger.debugLog("entered");
+			//m_logger.debugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -69,14 +69,12 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3D contactPoint;
 			TargetingBase.FindInterceptVector(m_controlBlock.Pseudo.WorldPosition, m_controlBlock.Physics.LinearVelocity, enemyPosition, m_enemy.GetLinearVelocity(), myAccel, true, out aimDirection, out contactPoint);
 
-			//m_mover.SetMove(m_controlBlock.Pseudo, contactPoint, ((DirectionWorld)(aimDirection * myAccel)).ToBlock(m_mover.Block.CubeBlock));
-
-			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: aimDirection * myAccel);
+			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: aimDirection * myAccel * 0.5f);
 		}
 
 		public void Rotate()
 		{
-			m_logger.debugLog("entered");
+			//m_logger.debugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -86,13 +84,21 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_approaching)
 			{
-				m_logger.debugLog("approaching");
+				//m_logger.debugLog("approaching");
 				m_mover.CalcRotate();
 			}
 			else
 			{
-				m_logger.debugLog("ramming");
-				m_mover.CalcRotate_Accel();
+				//m_logger.debugLog("ramming");
+				if (m_navSet.DistanceLessThan(100f))
+				{
+					// just before impact, face the target
+					Vector3 targetDirection = m_enemy.GetPosition() - m_controlBlock.CubeBlock.GetPosition();
+					targetDirection.Normalize();
+					m_mover.CalcRotate(m_mover.Thrust.Standard, RelativeDirection3F.FromWorld(m_mover.Block.CubeGrid, targetDirection));
+				}
+				else
+					m_mover.CalcRotate_Accel();
 			}
 		}
 

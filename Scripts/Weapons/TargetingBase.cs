@@ -478,7 +478,7 @@ namespace Rynchodon.Weapons
 
 					if (CharacterStateTracker.CurrentState(entity) == MyCharacterMovementEnum.Died)
 					{
-						myLogger.debugLog("(s)he's dead, jim: " + entity.nameWithId());
+						//myLogger.debugLog("(s)he's dead, jim: " + entity.nameWithId());
 						continue;
 					}
 

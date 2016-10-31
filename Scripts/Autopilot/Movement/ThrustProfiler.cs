@@ -495,7 +495,10 @@ namespace Rynchodon.Autopilot.Movement
 			float force = Grid.Physics.Mass * acceleration;
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 				if (GetForceInDirection(direction, true) < force)
+				{
+					myLogger.debugLog("Limited thrust in direction: " + direction);
 					return false;
+				}
 
 			return true;
 		}

@@ -477,8 +477,8 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("Pathfinder cannot rotate, moving away. destination: " + destinationWorld + ", directAway: " + Vector3.Normalize(directAway) +
 								", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius + ", targetPosition: " + targetPosition);
 
-							Destination dest = new Destination(targetPosition);
-							m_pathfinder.MoveTo(m_navBlock, ref dest, m_gridFinder.Grid.GetLinearVelocity());
+							m_destination.SetWorld(ref targetPosition);
+							m_pathfinder.MoveTo(m_navBlock, ref m_destination);
 							return;
 						}
 						else if (m_navSet.Settings_Current.Distance < 1f)
@@ -530,7 +530,7 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 
 						m_destination.Position += GetLandingFaceVector() * distanceBetween + m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity());
+						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
 						return;
 					}
 				case LandingState.Catch:
@@ -550,7 +550,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_logger.debugLog("target position: " + m_destination.WorldPosition() + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_destination.WorldPosition(), m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
 						}
 						m_destination.Position += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination, m_gridFinder.Grid.GetLinearVelocity());
+						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
 						return;
 					}
 			}

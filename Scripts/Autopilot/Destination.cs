@@ -7,9 +7,11 @@ namespace Rynchodon.Autopilot
 	public struct Destination
 	{
 
+		// NOTE: Use centre of entity because it works better if the entity rotates.
+
 		public static Destination FromWorld(IMyEntity entity, Vector3D worldPostion)
 		{
-			return new Destination(entity, worldPostion - entity.GetPosition());
+			return new Destination(entity, worldPostion - entity.GetCentre());
 		}
 
 		public IMyEntity Entity;
@@ -42,7 +44,7 @@ namespace Rynchodon.Autopilot
 		public Destination(ref IHitInfo hitInfo)
 		{
 			Entity = hitInfo.HitEntity;
-			Position = hitInfo.Position - Entity.GetPosition();
+			Position = hitInfo.Position - Entity.GetCentre();
 		}
 
 		public Vector3D WorldPosition()
@@ -54,12 +56,12 @@ namespace Rynchodon.Autopilot
 
 		public bool Equals(ref Destination other)
 		{
-			return this.Entity == other.Entity && this.Position == other.Position;
+			return this.Entity == other.Entity && Vector3D.DistanceSquared(this.Position, other.Position) < 1d;
 		}
 
 		public bool Equals(Destination other)
 		{
-			return this.Entity == other.Entity && this.Position == other.Position;
+			return this.Entity == other.Entity && Vector3D.DistanceSquared(this.Position, other.Position) < 1d;
 		}
 
 		public override string ToString()
@@ -67,6 +69,22 @@ namespace Rynchodon.Autopilot
 			if (Entity != null)
 				return base.ToString() + ": " + Entity.getBestName() + " + " + Position;
 			return base.ToString() + ": " + Position;
+		}
+
+		public void SetWorld(ref Vector3D worldPosition)
+		{
+			if (Entity == null)
+				Position = worldPosition;
+			else
+				Position = worldPosition - Entity.GetCentre();
+		}
+
+		public void SetWorld(Vector3D worldPosition)
+		{
+			if (Entity == null)
+				Position = worldPosition;
+			else
+				Position = worldPosition - Entity.GetCentre();
 		}
 
 	}

@@ -126,8 +126,9 @@ for process in psutil.process_iter():
 		except psutil.NoSuchProcess:
 			pass
 
-logging.info("Build is " + str(sys.argv[1]))
-source = cSharp + 'bin/x64/' + sys.argv[1] + '/ARMS.dll'
+build = sys.argv[1]
+logging.info("Build is " + build)
+source = cSharp + 'bin/x64/' + build + '/ARMS.dll'
 if (not os.path.exists(source)):
 	logging.error("Build not found")
 	sys.exit(13)
@@ -140,7 +141,7 @@ shutil.copy2(source, target)
 logging.info("Copied dll to " + target)
 
 target += '/ARMS - Release Notes.txt'
-notes = "Unoffical build: " + sys.argv[1]
+notes = "Unoffical build: " + sys.argv[1] + "\nBuilt: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 file = open(target, "w")
 file.write(notes)
 file.close()
@@ -190,6 +191,11 @@ eraseDir(finalDirDev + '/Textures/')
 # build scripts
 for module in modules[:]:
 	archiveScripts(module)
+
+pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
+if str.lower(build) == "release" and os.path.isfile(pathPublish):
+	p = subprocess.Popen(pathPublish)
+	p.wait()
 
 #    Pack Archive
 

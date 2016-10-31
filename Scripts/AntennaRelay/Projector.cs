@@ -161,6 +161,185 @@ namespace Rynchodon.AntennaRelay
 				colour.Setter = (block, value) => IntegrityZero = value;
 				TermControls_Colours.Add(colour);
 			}
+
+			#region Terminal Controls
+
+			private void AddCheckbox(string id, string title, string toolTip, Option opt)
+			{
+				MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
+				IMyTerminalValueControl<bool> valueControl = control;
+				valueControl.Getter = block => GetOptionTerminal(block, opt);
+				valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
+				if (TermControls.Count == 0)
+					MyTerminalControlFactory.AddControl(control);
+				TermControls.Add(control);
+			}
+
+			private void AddOffsetSlider(string id, string title, string toolTip, int dim)
+			{
+				MyTerminalControlSlider<MySpaceProjector> control = new MyTerminalControlSlider<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
+				Func<IMyTerminalBlock, float> getter = block => GetOffset(block, dim);
+				control.DefaultValue = dim == 1 ? 2.5f : 0f;
+				control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);
+				control.Denormalizer = (block, value) => Denormalizer(MinOffset, MaxOffset, block, value);
+				control.Writer = (block, sb) => WriterMetres(getter, block, sb);
+				IMyTerminalValueControl<float> valueControl = control;
+				valueControl.Getter = getter;
+				valueControl.Setter = (block, value) => SetOffset(block, dim, value);
+				TermControls_Offset.Add(control);
+			}
+
+			public void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
+			{
+				if (GetOptionTerminal(block, Option.OnOff))
+				{
+					// find show on hud
+					int indexSOH = 0;
+					for (; indexSOH < controls.Count && controls[indexSOH].Id != "ShowOnHUD"; indexSOH++) ;
+					// remove all controls after ShowOnHUD and before separator
+					controls.RemoveRange(indexSOH + 1, controls.Count - indexSOH - 3);
+
+					bool showOffset = GetOptionTerminal(block, Option.ShowOffset);
+
+					for (int index = 1; index < TermControls.Count; index++)
+					{
+						controls.Add(TermControls[index]);
+						if (showOffset && TermControls[index].Id == "HD_ShowOffset")
+						{
+							showOffset = false;
+							foreach (var offset in TermControls_Offset)
+								controls.Add(offset);
+						}
+					}
+
+					if (GetOptionTerminal(block, Option.IntegrityColours))
+						foreach (var colour in TermControls_Colours)
+							controls.Add(colour);
+				}
+			}
+
+			private bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return false;
+
+				return (proj.m_options.Value & opt) != 0;
+			}
+
+			private void SetOptionTerminal(IMyTerminalBlock block, Option opt, bool value)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return;
+
+				if (value)
+					proj.m_options.Value |= opt;
+				else
+					proj.m_options.Value &= ~opt;
+
+				if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
+					block.SwitchTerminalTo();
+			}
+
+			private float GetRangeDetection(IMyTerminalBlock block)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return 0f;
+
+				return proj.m_rangeDetection.Value;
+			}
+
+			private void SetRangeDetection(IMyTerminalBlock block, float value)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return;
+
+				proj.m_rangeDetection.Value = value;
+			}
+
+			private float GetRadiusHolo(IMyTerminalBlock block)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return 0f;
+
+				return proj.m_radiusHolo.Value;
+			}
+
+			private void SetRadiusHolo(IMyTerminalBlock block, float value)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return;
+
+				proj.m_radiusHolo.Value = value;
+			}
+
+			private float GetSizeScale(IMyTerminalBlock block)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return 0f;
+
+				return proj.m_sizeDistScale.Value;
+			}
+
+			private void SetSizeScale(IMyTerminalBlock block, float value)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return;
+
+				proj.m_sizeDistScale.Value = value;
+			}
+
+			private float GetOffset(IMyTerminalBlock block, int dim)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return 0f;
+
+				return proj.m_offset_ev.Value.GetDim(dim);
+			}
+
+			private void SetOffset(IMyTerminalBlock block, int dim, float value)
+			{
+				Projector proj;
+				if (!Registrar.TryGetValue(block, out proj))
+					return;
+
+				Vector3 offset = proj.m_offset_ev.Value;//.SetDim(dim, value);
+				offset.SetDim(dim, value);
+				proj.m_offset_ev.Value = offset;
+			}
+
+			private float Normalizer(float min, float max, IMyTerminalBlock block, float value)
+			{
+				return (value - min) / (max - min);
+			}
+
+			private float Denormalizer(float min, float max, IMyTerminalBlock block, float value)
+			{
+				return min + value * (max - min);
+			}
+
+			private void WriterMetres(Func<IMyTerminalBlock, float> Getter, IMyTerminalBlock block, StringBuilder stringBuilder)
+			{
+				stringBuilder.Append(PrettySI.makePretty(Getter(block)));
+				stringBuilder.Append("m");
+			}
+
+			public void UpdateVisual()
+			{
+				foreach (var control in TermControls)
+					control.UpdateVisual();
+			}
+
+			#endregion Terminal Controls
+
 		}
 
 		public static Color IntegrityFull
@@ -234,199 +413,20 @@ namespace Rynchodon.AntennaRelay
 					value_static = new StaticVariables();
 				return value_static;
 			}
-			set { value_static = value; }
 		}
 
 		[OnWorldLoad]
 		private static void Init()
 		{
-			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
+			MyTerminalControls.Static.CustomControlGetter += Static.CustomControlGetter;
 		}
 
 		[OnWorldClose]
 		private static void Unload()
 		{
-			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
-			Static = null;
+			MyTerminalControls.Static.CustomControlGetter -= value_static.CustomControlGetter;
+			value_static = null;
 		}
-
-		#region Terminal Controls
-
-		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
-		{
-			MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-			IMyTerminalValueControl<bool> valueControl = control;
-			valueControl.Getter = block => GetOptionTerminal(block, opt);
-			valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
-			if (Static.TermControls.Count == 0)
-				MyTerminalControlFactory.AddControl(control);
-			Static.TermControls.Add(control);
-		}
-
-		private static void AddOffsetSlider(string id, string title, string toolTip, int dim)
-		{
-			MyTerminalControlSlider<MySpaceProjector> control = new MyTerminalControlSlider<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-			Func<IMyTerminalBlock, float> getter = block => GetOffset(block, dim);
-			control.DefaultValue = dim == 1 ? 2.5f : 0f;
-			control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);
-			control.Denormalizer = (block, value) => Denormalizer(MinOffset, MaxOffset, block, value);
-			control.Writer = (block, sb) => WriterMetres(getter, block, sb);
-			IMyTerminalValueControl<float> valueControl = control;
-			valueControl.Getter = getter;
-			valueControl.Setter = (block, value) => SetOffset(block, dim, value);
-			Static.TermControls_Offset.Add(control);
-		}
-
-		private static void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
-		{
-			if (GetOptionTerminal(block, Option.OnOff))
-			{
-				// find show on hud
-				int indexSOH = 0;
-				for (; indexSOH < controls.Count && controls[indexSOH].Id != "ShowOnHUD"; indexSOH++) ;
-				// remove all controls after ShowOnHUD and before separator
-				controls.RemoveRange(indexSOH + 1, controls.Count - indexSOH - 3);
-
-				bool showOffset = GetOptionTerminal(block, Option.ShowOffset);
-
-				for (int index = 1; index < Static.TermControls.Count; index++)
-				{
-					controls.Add(Static.TermControls[index]);
-					if (showOffset && Static.TermControls[index].Id == "HD_ShowOffset")
-					{
-						showOffset = false;
-						foreach (var offset in Static.TermControls_Offset)
-							controls.Add(offset);
-					}
-				}
-
-				if (GetOptionTerminal(block, Option.IntegrityColours))
-					foreach (var colour in Static.TermControls_Colours)
-						controls.Add(colour);
-			}
-		}
-
-		private static bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return false;
-
-			return (proj.m_options.Value & opt) != 0;
-		}
-
-		private static void SetOptionTerminal(IMyTerminalBlock block, Option opt, bool value)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return;
-
-			if (value)
-				proj.m_options.Value |= opt;
-			else
-				proj.m_options.Value &= ~opt;
-
-			if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
-				block.SwitchTerminalTo();
-		}
-
-		private static float GetRangeDetection(IMyTerminalBlock block)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return 0f;
-
-			return proj.m_rangeDetection.Value;
-		}
-
-		private static void SetRangeDetection(IMyTerminalBlock block, float value)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return;
-
-			proj.m_rangeDetection.Value = value;
-		}
-
-		private static float GetRadiusHolo(IMyTerminalBlock block)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return 0f;
-
-			return proj.m_radiusHolo.Value;
-		}
-
-		private static void SetRadiusHolo(IMyTerminalBlock block, float value)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return;
-
-			proj.m_radiusHolo.Value = value;
-		}
-
-		private static float GetSizeScale(IMyTerminalBlock block)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return 0f;
-
-			return proj.m_sizeDistScale.Value;
-		}
-
-		private static void SetSizeScale(IMyTerminalBlock block, float value)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return;
-
-			proj.m_sizeDistScale.Value = value;
-		}
-
-		private static float GetOffset(IMyTerminalBlock block, int dim)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return 0f;
-
-			return proj.m_offset_ev.Value.GetDim(dim);
-		}
-
-		private static void SetOffset(IMyTerminalBlock block, int dim, float value)
-		{
-			Projector proj;
-			if (!Registrar.TryGetValue(block, out proj))
-				return;
-
-			Vector3 offset = proj.m_offset_ev.Value;//.SetDim(dim, value);
-			offset.SetDim(dim, value);
-			proj.m_offset_ev.Value = offset;
-		}
-
-		private static float Normalizer(float min, float max, IMyTerminalBlock block, float value)
-		{
-			return (value - min) / (max - min);
-		}
-
-		private static float Denormalizer(float min, float max, IMyTerminalBlock block, float value)
-		{
-			return min + value * (max - min);
-		}
-
-		private static void WriterMetres(Func<IMyTerminalBlock, float> Getter, IMyTerminalBlock block, StringBuilder stringBuilder)
-		{
-			stringBuilder.Append(PrettySI.makePretty(Getter(block)));
-			stringBuilder.Append("m");
-		}
-
-		private static void UpdateVisual()
-		{
-			foreach (var control in Static.TermControls)
-				control.UpdateVisual();
-		}
-
-		#endregion Terminal Controls
 
 		private static void AfterDamageHandler(object obj, MyDamageInformation damageInfo)
 		{
@@ -593,12 +593,12 @@ namespace Rynchodon.AntennaRelay
 			this.m_netClient = new RelayClient(block);
 
 			byte index = 0;
-			this.m_options = new EntityValue<Option>(block, index++, UpdateVisual);
-			this.m_rangeDetection = new EntityValue<float>(block, index++, UpdateVisual, DefaultRangeDetection);
-			this.m_radiusHolo = new EntityValue<float>(block, index++, UpdateVisual, DefaultRadiusHolo);
-			this.m_sizeDistScale = new EntityValue<float>(block, index++, UpdateVisual, DefaultSizeScale);
+			this.m_options = new EntityValue<Option>(block, index++, Static.UpdateVisual);
+			this.m_rangeDetection = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultRangeDetection);
+			this.m_radiusHolo = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultRadiusHolo);
+			this.m_sizeDistScale = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultSizeScale);
 			this.m_centreEntityId = new EntityValue<long>(block, index++, m_centreEntityId_AfterValueChanged);
-			this.m_offset_ev = new EntityValue<Vector3>(block, index++, UpdateVisual, new Vector3(0f, 2.5f, 0f));
+			this.m_offset_ev = new EntityValue<Vector3>(block, index++, Static.UpdateVisual, new Vector3(0f, 2.5f, 0f));
 
 			Registrar.Add(block, this);
 		}

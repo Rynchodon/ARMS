@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Sandbox.ModAPI;
 using VRage.Collections;
 using VRageMath;
 
@@ -10,18 +9,47 @@ namespace Rynchodon.Autopilot.Pathfinding
 	/// </summary>
 	public class SphereClusters
 	{
-		private static MyConcurrentPool<List<BoundingSphereD>> m_sphereLists = new MyConcurrentPool<List<BoundingSphereD>>();
 
-		public readonly List<List<BoundingSphereD>> Clusters = new List<List<BoundingSphereD>>();
-
-		public void Add(ref BoundingSphereD sphere)
+		/// <summary>
+		/// Clustering needs to ignore speed or the middle spheres become inconsistent, so we store the value without speed. For planets distance is also a factor in the variable component.
+		/// </summary>
+		public struct RepulseSphere
 		{
-			List<BoundingSphereD> joinedCluster = null;
-			List<BoundingSphereD> emptyCluster = null;
+			public static explicit operator RepulseSphere(BoundingSphereD sphere)
+			{
+				return new RepulseSphere() { Centre = sphere.Center, FixedRadius = sphere.Radius };
+			}
+
+			/// <summary>Position of the sphere</summary>
+			public Vector3D Centre;
+			/// <summary>Fixed radius of the sphere.</summary>
+			public double FixedRadius;
+			/// <summary>Variable component of the radius.</summary>
+			public double VariableRadius;
+
+			public double RepulseRadius { get { return FixedRadius + VariableRadius; } }
+
+			public override string ToString()
+			{
+				return "{Centre: " + Centre + " FixedRadius: " + PrettySI.makePretty(FixedRadius) + " VariableRadius: " + PrettySI.makePretty(VariableRadius) + "}";
+			}
+		}
+
+		private static MyConcurrentPool<List<RepulseSphere>> m_sphereLists = new MyConcurrentPool<List<RepulseSphere>>();
+
+		public readonly List<List<RepulseSphere>> Clusters = new List<List<RepulseSphere>>();
+		public readonly List<RepulseSphere> Planets = new List<RepulseSphere>();
+
+		public void Add(ref Vector3D position, double fixedRadius, double variable)
+		{
+			RepulseSphere sphere = new RepulseSphere() { Centre = position, FixedRadius = fixedRadius, VariableRadius = variable };
+
+			List<RepulseSphere> joinedCluster = null;
+			List<RepulseSphere> emptyCluster = null;
 
 			for (int indexO = Clusters.Count - 1; indexO >= 0; indexO--)
 			{
-				List<BoundingSphereD> cluster = Clusters[indexO];
+				List<RepulseSphere> cluster = Clusters[indexO];
 				if (cluster.Count == 0)
 				{
 					emptyCluster = cluster;
@@ -29,12 +57,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 				for (int indexI = cluster.Count - 1; indexI >= 0; indexI--)
 				{
-					BoundingSphereD checkSphere = cluster[indexI];
+					RepulseSphere checkSphere = cluster[indexI];
 
 					double distSq;
-					Vector3D.DistanceSquared(ref sphere.Center, ref checkSphere.Center, out distSq);
+					Vector3D.DistanceSquared(ref sphere.Centre, ref checkSphere.Centre, out distSq);
 
-					double radii = sphere.Radius + checkSphere.Radius;
+					double radii = sphere.FixedRadius + checkSphere.FixedRadius;
 					radii *= radii;
 
 					if (distSq <= radii)
@@ -77,13 +105,18 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			for (int indexO = Clusters.Count - 1; indexO >= 0; indexO--)
 			{
-				List<BoundingSphereD> cluster = Clusters[indexO];
+				List<RepulseSphere> cluster = Clusters[indexO];
 				if (cluster.Count < 2)
 					continue;
 				Vector3D[] points = new Vector3D[cluster.Count];
 				for (int indexI = cluster.Count - 1; indexI >= 0; indexI--)
-					points[indexI] = cluster[indexI].Center;
-				cluster.Add(BoundingSphereD.CreateFromPoints(points));
+					points[indexI] = cluster[indexI].Centre;
+
+				string log = "middle sphere: " + (RepulseSphere)BoundingSphereD.CreateFromPoints(points) + " from ";
+				foreach (var s in cluster)
+					log += s.Centre + ", ";
+				Logger.DebugLog(log);
+				cluster.Add((RepulseSphere)BoundingSphereD.CreateFromPoints(points));
 			}
 		}
 
@@ -91,7 +124,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			for (int index = Clusters.Count - 1; index >= 0; index--)
 			{
-				List<BoundingSphereD> cluster = Clusters[index];
+				List<RepulseSphere> cluster = Clusters[index];
 				cluster.Clear();
 				m_sphereLists.Return(cluster);
 			}

@@ -235,7 +235,11 @@ namespace Rynchodon.Utility.Network
 			set
 			{
 				if (m_value.Equals(value))
+				{
+					Logger.DebugLog("no change");
 					return;
+				}
+				Logger.DebugLog("changed from " + m_value + " to " + value);
 				m_synced = true;
 				m_value = value;
 				SendValue();

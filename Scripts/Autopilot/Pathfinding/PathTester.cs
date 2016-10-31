@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
 		public bool ObstructedBy(MyEntity entityTopMost, MyCubeBlock ignoreBlock, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out MyCubeBlock obstructBlock, out Vector3D hitPosition, bool extraRadius = true)
 		{
-			Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector);
+			//Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector);
 			Logger.DebugLog("rejection vector is invalid", Logger.severity.FATAL, condition: !rejectionVector.IsValid());
 
 			MyCubeGrid grid = entityTopMost as MyCubeGrid;
@@ -159,8 +159,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					Vector3 local = cell * gridSize;
 					Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-					Vector3D offsetWorld; Vector3D.Add(ref world, ref offset, out offsetWorld);
-					Vector3D relative; Vector3D.Subtract(ref offsetWorld, ref currentPosition, out relative);
+					Vector3D relative; Vector3D.Subtract(ref world, ref currentPosition, out relative);
 					Vector3 relativeF = relative;
 
 					float projectionDistance; Vector3 rejection;
@@ -178,6 +177,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 			}
 
+			minProjection += 2.5f; // allow autopilot to move away from a touching object
+
 			//Logger.DebugLog("projection min: " + minProjection + ", max: " + maxProjection + ", max for other: " + (maxProjection + rejectionDistance));
 			maxProjection += rejectionDistance;
 
@@ -192,7 +193,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				Vector3 local = cell * gridSize;
 				Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-				Vector3D relative; Vector3D.Subtract(ref world, ref currentPosition, out relative);
+				Vector3D offsetWorld; Vector3D.Subtract(ref world, ref offset, out offsetWorld);
+				Vector3D relative; Vector3D.Subtract(ref offsetWorld, ref currentPosition, out relative);
 				Vector3 relativeF = relative;
 
 				float projectionDistance; Vector3 rejection;
@@ -226,7 +228,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 									continue;
 							}
 							oGridCell = cell;
-							//Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
+							Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
 							return true;
 						}
 			}
