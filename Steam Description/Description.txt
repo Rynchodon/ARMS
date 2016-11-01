@@ -3,7 +3,7 @@ ARMS provides Electronic Navigation, Communication, and Targeting Systems
 [url=http://forum.keenswh.com/threads/mod-autopilot.7227970/] Deutsche Übersetzung von Robinson C. [/url]
 
 [h1]Read This[/h1]
-[url=https://github.com/Rynchodon/ExtendWhitelist/releases]ARMS requires Extend Whitelist to function, get the latest release here.[/url]
+[url=https://github.com/Rynchodon/Load-ARMS/releases/latest]ARMS requires Load-ARMS to function, get the latest release here.[/url]
 I will not be responding to comments posted below. Use "Request a Feature", "Report a Bug", or "Ask a Question" links below or start a new discussion.
 
 [b][u]Mod Features[/u][/b]
@@ -86,7 +86,7 @@ Multiplayer Testing - Degalus
 
 [url=http://www.nexusmods.com/spaceengineers/mods/24/?] On Nexus Mods [/url]
 [url=http://steamcommunity.com/sharedfiles/filedetails/?id=363880940] On Steam [/url]
-[url=https://github.com/Rynchodon/Autopilot] On GitHub [/url]
+[url=https://github.com/Rynchodon/ARMS] On GitHub [/url]
 
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/611696927911256823/] Request a Feature [/url]
 [url=http://steamcommunity.com/workshop/filedetails/discussion/363880940/622954023412161440/] Report a Bug [/url]

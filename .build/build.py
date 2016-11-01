@@ -194,8 +194,8 @@ for module in modules[:]:
 
 pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
 if str.lower(build) == "release" and os.path.isfile(pathPublish):
-	p = subprocess.Popen(pathPublish)
-	p.wait()
+	print(pathPublish)
+	os.system('start /wait cmd /c"' + pathPublish + '"')
 
 #    Pack Archive
 
