@@ -3,7 +3,6 @@ using System.Linq;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -14,6 +13,7 @@ namespace Rynchodon
 	public static class RayCast
 	{
 
+		public const bool DefaultCheckPlanet = false;
 		private const int FilterLayerVoxel = 28;
 
 		private static Logger m_logger = new Logger();
@@ -22,13 +22,13 @@ namespace Rynchodon
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
-		/// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
+		///// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// </summary>
-		public static bool Obstructed<Tignore>(LineD line, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool shortTest = true) where Tignore : IMyEntity
+		public static bool Obstructed<Tignore>(LineD line, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool checkPlanet = DefaultCheckPlanet) where Tignore : IMyEntity
 		{
 			List<MyLineSegmentOverlapResult<MyEntity>> potentialObstruction = ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Get();
 			MyGamePruningStructure.GetAllEntitiesInRay(ref line, potentialObstruction);
-			bool result = Obstructed(line, potentialObstruction.Select(overlap => overlap.Element), ignoreList, checkVoxel, shortTest);
+			bool result = Obstructed(line, potentialObstruction.Select(overlap => overlap.Element), ignoreList, checkVoxel, checkPlanet);
 			potentialObstruction.Clear();
 			ResourcePool<List<MyLineSegmentOverlapResult<MyEntity>>>.Return(potentialObstruction);
 			return result;
@@ -37,9 +37,9 @@ namespace Rynchodon
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
-		/// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
+		///// <param name="shortTest">When checking voxels, shortens the line by 1 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// </summary>
-		public static bool Obstructed<Tobstruct, Tignore>(LineD line, IEnumerable<Tobstruct> potentialObstructions, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool shortTest = true)
+		public static bool Obstructed<Tobstruct, Tignore>(LineD line, IEnumerable<Tobstruct> potentialObstructions, IEnumerable<Tignore> ignoreList, bool checkVoxel = true, bool checkPlanet = DefaultCheckPlanet)//, bool shortTest = true)
 			where Tobstruct : IMyEntity
 			where Tignore : IMyEntity
 		{
@@ -143,7 +143,7 @@ namespace Rynchodon
 				// Voxel Test
 				MyVoxelBase hitVoxel;
 				Vector3D hitPosition;
-				if (RayCastVoxels(line, out hitVoxel, out hitPosition, shortTest: shortTest))
+				if (RayCastVoxels(line, out hitVoxel, out hitPosition, checkPlanet))
 				{
 					m_logger.debugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
 					Profiler.EndProfileBlock();
@@ -160,43 +160,66 @@ namespace Rynchodon
 		/// Ray cast all the voxels in the world to check for intersection.
 		/// </summary>
 		/// <param name="line">The line to check</param>
-		/// <param name="shortTest">Shortens the line by 5 m, needed to interact with an entity that may be on the surface of the voxel.</param>
+		///// <param name="shortTest">Shortens the line by 5 m, needed to interact with an entity that may be on the surface of the voxel.</param>
 		/// <returns>True iff any voxel intersects the line</returns>
-		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool shortTest = false)
+		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet = DefaultCheckPlanet)
 		{
 			const double ShortenBy = 5d;
-
-			Profiler.StartProfileBlock();
-			if (shortTest)
+#if LOG_ENABLED
+			m_logger.debugLog("entered");
+			try
 			{
-				if (line.Length < ShortenBy)
-				{
-					hitVoxel = null;
-					hitPosition = Vector3.Invalid;
-					Profiler.EndProfileBlock();
-					return false;
-				}
-				line.Length -= ShortenBy;
-				line.To -= line.Direction * ShortenBy;
-			}
+#endif
+#if PROFILE
+			Profiler.StartProfileBlock();
+			try
+			{
+#endif
+			//if (shortTest)
+			//{
+			//	if (line.Length < ShortenBy)
+			//	{
+			//		hitVoxel = null;
+			//		hitPosition = Vector3.Invalid;
+			//		Profiler.EndProfileBlock();
+			//		return false;
+			//	}
+			//	line.Length -= ShortenBy;
+			//	line.To -= line.Direction * ShortenBy;
+			//}
 
 			CapsuleD capsule;
 			capsule.P0 = line.From;
 			capsule.P1 = line.To;
 			capsule.Radius = 0f;
-
-			Profiler.EndProfileBlock();
-			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition);
+			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, checkPlanet);
+#if PROFILE
+			}
+			finally { Profiler.EndProfileBlock(); }
+#endif
+#if LOG_ENABLED
+			}
+			finally { m_logger.debugLog("leaving"); }
+#endif
 		}
 
-		public static bool RayCastVoxels(ref Vector3D start, ref Vector3D end, out MyVoxelBase hitVoxel, out Vector3D hitPosition)
+		public static bool RayCastVoxels(ref Vector3D start, ref Vector3D end, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet = DefaultCheckPlanet)
 		{
+#if PROFILE
+			Profiler.StartProfileBlock();
+			try
+			{
+#endif
 			CapsuleD capsule;
 			capsule.P0 = start;
 			capsule.P1 = end;
 			capsule.Radius = 0f;
 
-			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition);
+			return CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, checkPlanet);
+#if PROFILE
+			}
+			finally { Profiler.EndProfileBlock(); }
+#endif
 		}
 
 	}

@@ -249,7 +249,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D rayDD = rayDirectionLength;
 			Vector3D.Add(ref capsule.P0, ref rayDD, out capsule.P1);
 			capsule.Radius = AutopilotGrid.PositionComp.LocalVolume.Radius;
-			if (!CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition))
+			if (!CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
 			{
 				Profiler.EndProfileBlock();
 				return false;
@@ -297,7 +297,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X, Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z };
 					capsule.P0 = offsetWorld;
 					capsule.P1 = end;
-					if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition))
+					if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
 					{
 						Profiler.EndProfileBlock();
 						return true;

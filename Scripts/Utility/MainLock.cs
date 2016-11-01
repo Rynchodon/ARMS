@@ -59,7 +59,7 @@ namespace Rynchodon
 			if (ThreadTracker.IsGameThread)
 				return lock_dummy.AcquireSharedUsing();
 
-			Profiler.StartProfileBlock("Waiting for shared lock. File: " + Path.GetFileName(callerFilePath) + ", member: " + callerMemberName);
+			Profiler.StartProfileBlock("Waiting for shared lock. File: " + Path.GetFileName(callerFilePath) + " Member: " + callerMemberName);
 			IDisposable result = Lock_MainThread.AcquireSharedUsing();
 			Profiler.EndProfileBlock();
 			return result;

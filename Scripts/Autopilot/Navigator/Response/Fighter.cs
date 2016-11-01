@@ -181,13 +181,11 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					Vector3 direction = Vector3D.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition());
 					m_mover.Thrust.Update();
-					if (m_mover.SignificantGravity())
-						direction = direction.Cross((Vector3)m_mover.Thrust.WorldGravity / -m_mover.Thrust.GravityStrength);
-					else
-						direction = Vector3D.CalculatePerpendicularVector(direction);
-					Vector3D offset = direction * (m_weaponRange_min + InitialAltitude);
+					Vector3 direction = m_mover.SignificantGravity() ?
+						(Vector3)m_mover.Thrust.WorldGravity / -m_mover.Thrust.GravityStrength :
+						Vector3.CalculatePerpendicularVector(Vector3.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition()));
+					Vector3 offset = direction * (m_weaponRange_min + InitialAltitude);
 
 					m_pathfinder.MoveTo(m_weapon_primary_pseudo, m_currentTarget, offset);
 					return;

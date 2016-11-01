@@ -133,7 +133,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			if (m_waitUntil > Globals.UpdateCount)
 			{
-				m_targetDirection = Vector3.Invalid;
+				m_holdPosition = true;
 				OnComplete();
 				return;
 			}

@@ -12,12 +12,15 @@ namespace Rynchodon.Autopilot.Harvest
 
 		public static void RegisterMiner(IMyCubeGrid miner, IMyVoxelBase voxel)
 		{
+			if (Instance != null)
 			Instance.miners.Add(miner, voxel);
 		}
 
 		public static bool UnregisterMiner(IMyCubeGrid miner)
 		{
-			return Instance.miners.Remove(miner);
+			if (Instance != null)
+				return Instance.miners.Remove(miner);
+			return true;
 		}
 
 		private readonly Dictionary<IMyCubeGrid, IMyVoxelBase> miners = new Dictionary<IMyCubeGrid, IMyVoxelBase>();

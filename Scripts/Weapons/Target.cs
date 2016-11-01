@@ -1,6 +1,5 @@
 using System;
 using Rynchodon.AntennaRelay;
-using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -105,6 +104,7 @@ namespace Rynchodon.Weapons
 
 		public void Update(LastSeen seen, IMyCubeBlock block = null)
 		{
+			Logger.DebugLog("Different entity", Logger.severity.ERROR, condition: seen.Entity != m_lastSeen.Entity);
 			m_lastSeen = seen;
 			if (block != null)
 				m_block = block;

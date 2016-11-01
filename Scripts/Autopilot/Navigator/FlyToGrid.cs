@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Destination m_destination;
 		private LandingState value_landingState = LandingState.None;
 		private Vector3I m_previousCell;
-		private float m_landingSpeedFudge;
+		//private float m_landingSpeedFudge;
 		private ulong next_attemptLock;
 		private bool m_beforeMerge;
 		private long m_reservedTarget;
@@ -522,14 +522,14 @@ namespace Rynchodon.Autopilot.Navigator
 						float distanceBetween = m_gridFinder.Block.GetLengthInDirection(m_landingDirection) * 0.5f + m_landingHalfSize + 0.1f;
 						//m_logger.debugLog("moving to " + (m_targetPosition + GetLandingFaceVector() * distanceBetween) + ", distance: " + m_navSet.Settings_Current.Distance, "Move_Land()");
 
-						if (m_navSet.DistanceLessThan(1f))
-						{
-							m_landingSpeedFudge += 0.0001f;
-							if (m_landingSpeedFudge > 0.1f)
-								m_landingSpeedFudge = -0.1f;
-						}
+						//if (m_navSet.DistanceLessThan(1f))
+						//{
+						//	m_landingSpeedFudge += 0.0001f;
+						//	if (m_landingSpeedFudge > 0.1f)
+						//		m_landingSpeedFudge = -0.1f;
+						//}
 
-						m_destination.Position += GetLandingFaceVector() * distanceBetween + m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
+						m_destination.Position += GetLandingFaceVector() * distanceBetween;
 						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
 						return;
 					}
@@ -542,14 +542,14 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
-						if (m_navSet.DistanceLessThan(1f))
-						{
-							m_landingSpeedFudge += 0.0001f;
-							if (m_landingSpeedFudge > 0.1f)
-								m_landingSpeedFudge = -0.1f;
-							m_logger.debugLog("target position: " + m_destination.WorldPosition() + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_destination.WorldPosition(), m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
-						}
-						m_destination.Position += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
+						//if (m_navSet.DistanceLessThan(1f))
+						//{
+						//	m_landingSpeedFudge += 0.0001f;
+						//	if (m_landingSpeedFudge > 0.1f)
+						//		m_landingSpeedFudge = -0.1f;
+						//	m_logger.debugLog("target position: " + m_destination.WorldPosition() + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_destination.WorldPosition(), m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
+						//}
+						//m_destination.Position += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
 						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
 						return;
 					}

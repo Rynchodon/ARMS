@@ -15,34 +15,41 @@ namespace Rynchodon
 		/// <param name="hitPosition">a point on the capsule's line close to obstruction</param>
 		public static bool Intersects(ref CapsuleD capsule, MyVoxelBase voxel, out Vector3D hitPosition, double capsuleLength = -1d)
 		{
+			Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1);
 			if (capsuleLength < 0)
 				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
 			double halfLength = capsuleLength * 0.5d;
 			Vector3D temp; Vector3D.Add(ref capsule.P0, ref capsule.P1, out temp);
 			Vector3D middle; Vector3D.Multiply(ref temp, 0.5d, out middle);
 
-			double radius = halfLength + capsule.Radius;
-			BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
-			if (!voxel.PositionComp.WorldVolume.Intersects(worldSphere))
+			if (halfLength < capsule.Radius * 25f)
 			{
-				hitPosition = Vector3.Invalid;
-				return false;
-			}
+				double radius = halfLength + capsule.Radius;
+				BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
+				if (!voxel.PositionComp.WorldVolume.Intersects(worldSphere))
+				{
+					hitPosition = Vector3.Invalid;
+					return false;
+				}
 
-			Vector3D leftBottom = voxel.PositionLeftBottomCorner;
-			Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
-			BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
+				Vector3D leftBottom = voxel.PositionLeftBottomCorner;
+				Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
+				BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
 
-			if (!voxel.Storage.Geometry.Intersects(ref localSphere))
-			{
-				hitPosition = Vector3.Invalid;
-				return false;
-			}
+				Logger.DebugLog("Checking: " + localSphere);
+				if (!voxel.Storage.Geometry.Intersects(ref localSphere))
+				{
+					Logger.DebugLog("No contact");
+					hitPosition = Vector3.Invalid;
+					return false;
+				}
+				Logger.DebugLog("Contact");
 
-			if (capsuleLength < 1f)
-			{
-				hitPosition = middle;
-				return true;
+				if (capsuleLength < 1f)
+				{
+					hitPosition = middle;
+					return true;
+				}
 			}
 
 			CapsuleD halfCapsule;
@@ -59,7 +66,7 @@ namespace Rynchodon
 			return Intersects(ref halfCapsule, voxel, out hitPosition, halfLength);
 		}
 
-		public static bool IntersectsVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, double capsuleLength = -1d)
+		public static bool IntersectsVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet, double capsuleLength = -1d)
 		{
 			Profiler.StartProfileBlock();
 			if (capsuleLength < 0)
@@ -75,12 +82,15 @@ namespace Rynchodon
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref worldSphere, voxels);
 
 			foreach (MyVoxelBase voxel in voxels)
-				if ((voxel is MyVoxelMap || voxel is MyPlanet) && Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
+			{
+				Logger.DebugLog("voxel: " + voxel.getBestName());
+				if ((voxel is MyVoxelMap || voxel is MyPlanet && checkPlanet) && Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
 				{
 					hitVoxel = voxel;
 					Profiler.EndProfileBlock();
 					return true;
 				}
+			}
 
 			voxels.Clear();
 			ResourcePool.Return(voxels);

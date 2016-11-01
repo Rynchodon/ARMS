@@ -104,8 +104,6 @@ namespace Rynchodon.Weapons.SystemDisruption
 						disrupt = new DisableTurret();
 						break;
 					case 4:
-						// vanilla turret controls are not respecting the change in ownership
-						continue;
 						disrupt = new TraitorTurret();
 						break;
 					case 5:

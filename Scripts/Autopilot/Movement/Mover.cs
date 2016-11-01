@@ -86,12 +86,12 @@ namespace Rynchodon.Autopilot.Movement
 
 		public DirectionWorld LinearVelocity
 		{
-			get { return Block.Physics.LinearVelocity * Globals.SimSpeed; }
+			get { return Block.Physics.LinearVelocity; }
 		}
 
 		public DirectionWorld AngularVelocity
 		{
-			get { return Block.Physics.AngularVelocity * Globals.SimSpeed; }
+			get { return Block.Physics.AngularVelocity; }
 		}
 
 		/// <summary>
@@ -167,19 +167,16 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="destPoint">The world position of the destination</param>
 		/// <param name="destVelocity">The speed of the destination</param>
 		/// <param name="landing">Puts an emphasis on not overshooting the target.</param>
-		public void CalcMove(PseudoBlock block, ref Vector3 destDirection, float destDistance, ref Vector3 destVelocity)
+		public void CalcMove(PseudoBlock block, ref Vector3 destDisp, ref Vector3 destVelocity)
 		{
 			m_logger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
 			const float landingSpeedFactor = 0.2f;
 
 			CheckGrid();
+			m_lastMoveAttempt = Globals.UpdateCount;
+			Thrust.Update();
 
 			// using local vectors
-
-			m_lastMoveAttempt = Globals.UpdateCount;
-			Vector3 destDisp; Vector3.Multiply(ref destDirection, destDistance, out destDisp);
-
-			Thrust.Update();
 
 			Vector3 velocity = LinearVelocity;
 

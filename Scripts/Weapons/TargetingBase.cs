@@ -142,7 +142,6 @@ namespace Rynchodon.Weapons
 						myLogger.debugLog("++ counts are now: " + counts + ", target: " + value.Entity.nameWithId());
 					}
 				}
-
 				value_CurrentTarget = value;
 			}
 		}

@@ -9,6 +9,11 @@ namespace Rynchodon.Autopilot
 
 		// NOTE: Use centre of entity because it works better if the entity rotates.
 
+		public static Destination FromWorld(IMyEntity entity, ref Vector3D worldPostion)
+		{
+			return new Destination(entity, worldPostion - entity.GetCentre());
+		}
+
 		public static Destination FromWorld(IMyEntity entity, Vector3D worldPostion)
 		{
 			return new Destination(entity, worldPostion - entity.GetCentre());

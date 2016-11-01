@@ -2,7 +2,6 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
-using Rynchodon.Utility.Vectors;
 using Rynchodon.Weapons;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -63,13 +62,18 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 
+			float myAccel = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_mover.Thrust.Standard.LocalMatrix.Forward)) * Movement.Mover.AvailableForceRatio / m_controlBlock.Physics.Mass;
+
 			Vector3D enemyPosition = m_enemy.GetPosition();
-			float myAccel = m_mover.Thrust.GetForceInDirection(Base6Directions.GetClosestDirection(m_mover.Thrust.Standard.LocalMatrix.Forward)) / m_controlBlock.Physics.Mass;
 			Vector3 aimDirection;
 			Vector3D contactPoint;
 			TargetingBase.FindInterceptVector(m_controlBlock.Pseudo.WorldPosition, m_controlBlock.Physics.LinearVelocity, enemyPosition, m_enemy.GetLinearVelocity(), myAccel, true, out aimDirection, out contactPoint);
+			Vector3 aimVelo; Vector3.Multiply(ref aimDirection, myAccel, out aimVelo);
 
-			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: aimDirection * myAccel * 0.5f);
+			Vector3 linearVelocity = m_controlBlock.Physics.LinearVelocity;
+			Vector3 addToVelocity; Vector3.Add(ref linearVelocity, ref aimVelo, out addToVelocity);
+
+			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: addToVelocity);
 		}
 
 		public void Rotate()

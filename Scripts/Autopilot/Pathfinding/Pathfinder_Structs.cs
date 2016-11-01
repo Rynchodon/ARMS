@@ -100,14 +100,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			public bool HasReached { get { return m_postions.Count != 0; } }
 
-			public bool HasTarget
-			{
-				get
-				{
-					Logger.DebugLog("Target should have been set", Logger.severity.ERROR, condition: m_target == 0 && m_postions.Count > 1 );
-					return m_target != 0;
-				}
-			}
+			public bool HasTarget { get { return m_target != 0; } }
 
 			public bool IsFinished { get { return m_postions.Count == 1; } }
 

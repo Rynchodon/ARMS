@@ -6,15 +6,12 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
-using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
-using VRage;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -585,7 +582,7 @@ namespace Rynchodon.Weapons
 				if (value_currentControl == value || Globals.WorldClosed)
 					return;
 
-				//myLogger.debugLog("Control changed from " + value_currentControl + " to " + value);
+				myLogger.debugLog("Control changed from " + value_currentControl + " to " + value);
 
 				if (MyAPIGateway.Multiplayer.IsServer)
 				{
@@ -640,6 +637,8 @@ namespace Rynchodon.Weapons
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger(weapon);
+			if (weapon.CubeGrid.EntityId != 112215316683455759L)
+				this.myLogger.MinimumLevel = Logger.severity.INFO;
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.IsNormalTurret = myTurret != null;
@@ -822,11 +821,10 @@ namespace Rynchodon.Weapons
 					Profiler.Profile(Update10);
 				}
 				Profiler.Profile(Update1);
-
-				UpdateNumber++;
 			}
 			catch (Exception ex)
 			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.WARNING); }
+			UpdateNumber++;
 		}
 
 		/// <summary>
@@ -953,7 +951,6 @@ namespace Rynchodon.Weapons
 
 			if (Obstructed(target.ContactPoint.Value, target.Entity))
 			{
-				//myLogger.debugLog("target is obstructed");
 				//myLogger.debugLog("blacklisting: " + target.Entity.getBestName());
 				BlacklistTarget();
 				if (++facingWrongWayFor > 9)
@@ -976,7 +973,14 @@ namespace Rynchodon.Weapons
 		{
 			myLogger.debugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
 			m_ignoreList[0] = target;
+#if LOG_ENABLED
+			myLogger.debugLog("ray cast obstruct");
+			bool obstructed = RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
+			myLogger.debugLog("back from ray cast");
+			return obstructed;
+#else
 			return RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
+#endif
 		}
 
 		private bool condition_changed;
@@ -1088,7 +1092,7 @@ namespace Rynchodon.Weapons
 						customInfo.AppendLine("ARMS rotor-turret");
 					break;
 				case Control.Engager:
-					customInfo.AppendLine("Engager controlling");
+					customInfo.AppendLine("Fighter controlling");
 					break;
 			}
 
