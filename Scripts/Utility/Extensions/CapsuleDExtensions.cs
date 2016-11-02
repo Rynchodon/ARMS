@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
-using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -18,9 +17,16 @@ namespace Rynchodon
 			Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1);
 			if (capsuleLength < 0)
 				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
+
 			double halfLength = capsuleLength * 0.5d;
 			Vector3D temp; Vector3D.Add(ref capsule.P0, ref capsule.P1, out temp);
 			Vector3D middle; Vector3D.Multiply(ref temp, 0.5d, out middle);
+
+			if (capsuleLength < 1f)
+			{
+				hitPosition = middle;
+				return true;
+			}
 
 			if (halfLength < capsule.Radius * 25f)
 			{
@@ -44,12 +50,6 @@ namespace Rynchodon
 					return false;
 				}
 				Logger.DebugLog("Contact");
-
-				if (capsuleLength < 1f)
-				{
-					hitPosition = middle;
-					return true;
-				}
 			}
 
 			CapsuleD halfCapsule;
