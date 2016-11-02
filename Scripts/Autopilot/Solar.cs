@@ -99,6 +99,10 @@ namespace Rynchodon.Autopilot
 			m_termControl_faceSun = new EntityValue<bool>(block, 0, () => Static.s_termControl_faceSun.UpdateVisual());
 
 			Registrar.Add(block, this);
+
+			// make sure controls are added
+			if (Static == null)
+				throw new Exception("Static does not exist");
 		}
 
 		private void myBlock_OnClose(VRage.ModAPI.IMyEntity obj)

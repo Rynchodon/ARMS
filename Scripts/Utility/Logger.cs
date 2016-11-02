@@ -452,6 +452,7 @@ namespace Rynchodon
 			Static.stringCache.Append(item.toLog);
 
 			Static.logWriter.WriteLine(Static.stringCache);
+			Static.logWriter.Flush();
 			Static.stringCache.Clear();
 		}
 

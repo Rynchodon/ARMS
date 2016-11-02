@@ -69,9 +69,7 @@ namespace Rynchodon
 		}
 
 		private const int recentActivityCount = 20;
-		private static readonly TimeSpan timeout = new TimeSpan(0, 1, 0);
-
-		
+		private static readonly TimeSpan timeout = new TimeSpan(0, 0, 10);
 
 		private Logger myLogger;
 		private MyQueue<Activity> recentActivity = new MyQueue<Activity>(recentActivityCount);

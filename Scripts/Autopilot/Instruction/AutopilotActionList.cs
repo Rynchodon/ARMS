@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Pathfinding;
 
 namespace Rynchodon.Autopilot.Instruction
@@ -99,9 +100,9 @@ namespace Rynchodon.Autopilot.Instruction
 			return MoveNext(ref depth);
 		}
 
-		public void Reset()
+		public void Reset([CallerMemberName] string caller = null)
 		{
-			Logger.DebugLog("entered");
+			Logger.DebugLog("entered from " + caller);
 			m_sublist = null;
 			CurrentIndex = m_mainListIndex = -1;
 		}

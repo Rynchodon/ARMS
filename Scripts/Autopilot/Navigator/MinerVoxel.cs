@@ -197,14 +197,13 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 
-			// check for currently touching voxel, usually resume from save
 			BoundingSphereD nearby = new BoundingSphereD(m_navDrill.WorldPosition, m_longestDimension * 4d);
 			List<MyVoxelBase> nearbyVoxels = new List<MyVoxelBase>();
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref nearby, nearbyVoxels);
 
 			foreach (MyVoxelBase voxel in nearbyVoxels)
 				// skip planet physics, ship should be near planet as well
-				if (voxel is IMyVoxelMap || voxel is MyPlanet)
+				if ((voxel is IMyVoxelMap || voxel is MyPlanet) && voxel.Intersects(ref nearby))
 				{
 					m_logger.debugLog("near a voxel, escape first", Logger.severity.DEBUG);
 					m_targetVoxel = voxel;
@@ -632,7 +631,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return obstruction;
 			else
 			{
-				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0", Logger.severity.WARNING);
+				m_logger.debugLog("Failed to intersect asteroid, using surfaceFinder.P0 P0: " + surfaceFinder.P0 + " P1: " + surfaceFinder.P1, Logger.severity.WARNING);
 				return surfaceFinder.P0;
 			}
 		}

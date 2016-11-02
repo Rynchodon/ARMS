@@ -177,6 +177,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return "N/A";
 			}, () => CurrentState.ToString());
 			Mover = new Mover(block, new RotateChecker(block.CubeBlock, CollectEntities));
+			m_autopilotGrid = (MyCubeGrid)block.CubeGrid;
 		}
 
 		// Methods
@@ -788,7 +789,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private bool CurrentObstructed(out MyEntity obstructingEntity, out Vector3D pointOfObstruction, out MyCubeBlock obstructBlock)
 		{
 			m_logger.debugLog("m_moveDirection: " + m_moveDirection, Logger.severity.FATAL, condition: Math.Abs(m_moveDirection.LengthSquared() - 1f) > 0.01f);
-			m_logger.debugLog("m_moveLength: " + m_moveLength, Logger.severity.FATAL, condition: Math.Abs(m_moveLength) < 0.1f);
+			//m_logger.debugLog("m_moveLength: " + m_moveLength, Logger.severity.FATAL, condition: Math.Abs(m_moveLength) < 0.1f);
 
 			MyCubeBlock ignoreBlock = m_ignoreEntity as MyCubeBlock;
 

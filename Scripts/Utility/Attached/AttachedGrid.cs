@@ -92,6 +92,9 @@ namespace Rynchodon.Attached
 		/// <returns>True iff the grids are attached.</returns>
 		public static bool IsGridAttached(IMyCubeGrid grid0, IMyCubeGrid grid1, AttachmentKind allowedConnections)
 		{
+			Logger.DebugLog("condition: grid0 == null", Logger.severity.FATAL, condition: grid0 == null);
+			Logger.DebugLog("condition: grid1 == null", Logger.severity.FATAL, condition: grid1 == null);
+
 			if (grid0 == grid1)
 				return true;
 
@@ -226,6 +229,8 @@ namespace Rynchodon.Attached
 		{
 			if (Globals.WorldClosed)
 				return null;
+
+			Logger.DebugLog("grid == null", Logger.severity.FATAL, condition: grid == null);
 
 			AttachedGrid attached;
 			if (!Registrar.TryGetValue(grid.EntityId, out attached))

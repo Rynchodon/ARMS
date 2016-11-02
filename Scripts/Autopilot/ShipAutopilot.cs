@@ -213,8 +213,7 @@ namespace Rynchodon.Autopilot
 
 		public void Update()
 		{
-			if (lock_execution.TryAcquireExclusive())
-				AutopilotThread.EnqueueAction(UpdateThread);
+			AutopilotThread.EnqueueAction(UpdateThread);
 		}
 
 		/// <summary>
@@ -222,6 +221,8 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void UpdateThread()
 		{
+			if (!lock_execution.TryAcquireExclusive())
+				return;
 			try
 			{
 				if (Globals.UpdateCount > m_nextCustomInfo)
