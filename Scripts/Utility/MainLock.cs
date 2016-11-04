@@ -8,7 +8,6 @@ using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using Ingame = VRage.Game.ModAPI.Ingame;
 
 namespace Rynchodon
 {
@@ -18,10 +17,15 @@ namespace Rynchodon
 	public static class MainLock
 	{
 
+		private class DummyDisposable : IDisposable
+		{
+			public void Dispose() { }
+		}
+
 		private static Logger myLogger = new Logger();
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
 		/// <summary>Dummy lock, exclusive is never held</summary>
-		private static FastResourceLock lock_dummy = new FastResourceLock();
+		private static DummyDisposable lock_dummy = new DummyDisposable();
 
 		/// <summary>
 		/// This should only ever be called from main thread.
@@ -57,7 +61,7 @@ namespace Rynchodon
 		public static IDisposable AcquireSharedUsing([CallerFilePath] string callerFilePath = null, [CallerMemberName] string callerMemberName = null)
 		{
 			if (ThreadTracker.IsGameThread)
-				return lock_dummy.AcquireSharedUsing();
+				return lock_dummy;
 
 			Profiler.StartProfileBlock("Waiting for shared lock. File: " + Path.GetFileName(callerFilePath) + " Member: " + callerMemberName);
 			IDisposable result = Lock_MainThread.AcquireSharedUsing();
@@ -94,38 +98,11 @@ namespace Rynchodon
 			UsingShared(() => grid.GetBlocks(blocks, collect));
 		}
 
-		#region IMyEntities
-
-		[Obsolete("Use MyGamePruningStructure")]
-		public static void GetEntities_Safe(this IMyEntities entitiesObject, HashSet<IMyEntity> entities, Func<IMyEntity, bool> collect = null)
-		{
-			UsingShared(() => entitiesObject.GetEntities(entities, collect));
-		}
-
-		#endregion
-
-		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMySlimBlock block)
-		{
-			MyObjectBuilder_CubeBlock result = null;
-			UsingShared(() => result = block.GetObjectBuilder());
-			return result;
-		}
-
 		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this IMyCubeBlock block)
 		{
 			MyObjectBuilder_CubeBlock result = null;
 			UsingShared(() => result = block.GetObjectBuilderCubeBlock());
 			return result;
-		}
-
-		public static MyObjectBuilder_CubeBlock GetObjectBuilder_Safe(this Ingame.IMyCubeBlock block)
-		{
-			return (block as IMyCubeBlock).GetObjectBuilder_Safe();
-		}
-
-		public static void GetInstances_Safe(this IMyVoxelMaps mapsObject, List<IMyVoxelBase> list, Func<IMyVoxelBase, bool> collect = null)
-		{
-			UsingShared(() => mapsObject.GetInstances(list, collect));
 		}
 
 		public static IMyIdentity GetIdentity_Safe(this IMyCharacter character)
@@ -148,38 +125,6 @@ namespace Rynchodon
 			return living ?? dead;
 		}
 
-		public static IMyIdentity GetIdentity_Safe(this IMyPlayer player)
-		{
-			IMyIdentity living = null;
-			IMyIdentity dead = null;
-			UsingShared(() => {
-				MyAPIGateway.Players.GetAllIdentites(null, id => {
-					if (living == null && id.IdentityId == player.IdentityId)
-					{
-						if (id.IsDead)
-							dead = id;
-						else
-							living = id;
-					}
-					return false;
-				});
-			});
-			return living ?? dead;
-		}
-
-		public static IMyPlayer GetPlayer_Safe(this IMyIdentity identity)
-		{
-			IMyPlayer match = null;
-			UsingShared(() => {
-				MyAPIGateway.Players.GetPlayers(null, player => {
-					if (match == null && player.IdentityId == identity.IdentityId)
-						match = player;
-					return false;
-				});
-			});
-			return match;
-		}
-
 		public static IMyPlayer GetPlayer_Safe(this IMyCharacter character)
 		{
 			string DisplayName = (character as IMyEntity).DisplayName;
@@ -192,22 +137,6 @@ namespace Rynchodon
 				});
 			});
 			return match;
-		}
-
-		public static void GetPlayers_Safe(this IMyPlayerCollection PlayColl, List<IMyPlayer> players, Func<IMyPlayer, bool> collect = null)
-		{
-			UsingShared(() => PlayColl.GetPlayers(players, collect));
-		}
-
-		public static IMyPlayer GetFirstPlayer_Safe(this IMyPlayerCollection playColl, Func<IMyPlayer, bool> match)
-		{
-			IMyPlayer result = null;
-			UsingShared(() => playColl.GetPlayers(null, player => {
-				if (result == null && match(player))
-					result = player;
-				return false;
-			}));
-			return result;
 		}
 
 	}

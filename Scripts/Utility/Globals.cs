@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Sandbox.Game.Entities;
+using Sandbox.Game.World;
 using VRage.Game;
 using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
@@ -101,6 +103,50 @@ namespace Rynchodon
 					yield return vector;
 				foreach (Vector3I vector in Static.NeighboursThree)
 					yield return vector;
+			}
+		}
+
+		private static List<MyVoxelMap> m_voxelMaps = new List<MyVoxelMap>();
+		private static List<MyPlanet> m_planets = new List<MyPlanet>();
+		private static FastResourceLock lock_voxels = new FastResourceLock();
+
+		public static void Update100()
+		{
+			using (lock_voxels.AcquireExclusiveUsing())
+			{
+				m_voxelMaps.Clear();
+				m_planets.Clear();
+				foreach (MyVoxelBase voxel in MySession.Static.VoxelMaps.Instances)
+				{
+					if (voxel is MyVoxelMap)
+						m_voxelMaps.Add((MyVoxelMap)voxel);
+					else if (voxel is MyPlanet)
+						m_planets.Add((MyPlanet)voxel);
+				}
+			}
+		}
+
+		public static IEnumerable<MyPlanet> AllPlanets()
+		{
+			using (lock_voxels.AcquireSharedUsing())
+				foreach (MyPlanet planet in m_planets)
+					yield return planet;
+		}
+
+		public static IEnumerable<MyVoxelMap> AllVoxelMaps()
+		{
+			using (lock_voxels.AcquireSharedUsing())
+				foreach (MyVoxelMap voxel in m_voxelMaps)
+					yield return voxel;
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			using (lock_voxels.AcquireExclusiveUsing())
+			{
+				m_voxelMaps.Clear();
+				m_planets.Clear();
 			}
 		}
 

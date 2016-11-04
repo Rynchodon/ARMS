@@ -773,25 +773,23 @@ namespace Rynchodon.Weapons
 			bool destroy = (tType & TargetType.Moving) != 0 || (tType & TargetType.Destroy) != 0;
 			if (destroy || Options.blocksToTarget.IsNullOrEmpty())
 			{
-				List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
-				grid.GetBlocks_Safe(allSlims, (slim) => slim.FatBlock is IMyTerminalBlock);
-
 				double closest = double.MaxValue;
-
-				foreach (IMySlimBlock slim in allSlims)
-					if (TargetableBlock(slim.FatBlock, !destroy))
+				foreach (MyCubeBlock block in cache.AllCubeBlocks())
+				{
+					if (block is IMyTerminalBlock && TargetableBlock(block, !destroy))
 					{
-						double distanceSq = Vector3D.DistanceSquared(myPosition, slim.FatBlock.GetPosition());
+						double distanceSq = Vector3D.DistanceSquared(myPosition, block.PositionComp.GetPosition());
 						if (doRangeTest && distanceSq > Options.TargetingRangeSquared)
 							continue;
 						distanceSq *= 1e12;
 
-						if (distanceSq < closest && CanConsiderHostile(slim.FatBlock))
+						if (distanceSq < closest && CanConsiderHostile(block))
 						{
-							target = slim.FatBlock;
+							target = block;
 							distanceValue = distanceSq;
 						}
 					}
+				}
 
 				if (target != null)
 				{

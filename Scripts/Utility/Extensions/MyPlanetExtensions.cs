@@ -17,21 +17,17 @@ namespace Rynchodon
 		public static MyPlanet GetClosestPlanet(Vector3D position, out double distSquared)
 		{
 			IMyVoxelBase closest = null;
-			double bestDistance = double.MaxValue;
-			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(null, voxel => {
-					if (voxel is MyPlanet)
-					{
-						double distance = Vector3D.DistanceSquared(position, voxel.GetCentre());
-						if (distance < bestDistance)
-						{
-							bestDistance = distance;
-							closest = voxel;
-						}
-					}
-				return false;
-			});
+			distSquared = double.MaxValue;
+			foreach (MyPlanet planet in Globals.AllPlanets())
+			{
+				double distance = Vector3D.DistanceSquared(position, planet.GetCentre());
+				if (distance < distSquared)
+				{
+					distSquared = distance;
+					closest = planet;
+				}
+			}
 
-			distSquared = bestDistance;
 			return (MyPlanet)closest;
 		}
 

@@ -358,6 +358,7 @@ namespace Rynchodon.Update
 			#endregion
 
 			new ChatHandler();
+			RegisterForUpdates(100, Globals.Update100);
 		}
 
 		private static UpdateManager Instance;

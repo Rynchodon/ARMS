@@ -141,29 +141,20 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void SetOrbitClosestVoxel(bool asteroid)
 		{
-			List<IMyVoxelBase> voxels = ResourcePool<List<IMyVoxelBase>>.Get();
-			if (asteroid)
-				MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxels, voxel => voxel is IMyVoxelMap);
-			else
-				MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(voxels, voxel => voxel is MyPlanet);
-
 			double closest = double.MaxValue;
 			IMyEntity closestEntity = null;
-			foreach (IMyEntity ent in voxels)
+			foreach (MyVoxelBase ent in asteroid ? (IEnumerable<MyVoxelBase>)Globals.AllVoxelMaps() : (IEnumerable<MyVoxelBase>)Globals.AllPlanets())
 			{
 				double dist = Vector3D.DistanceSquared(m_navBlock.WorldPosition, ent.GetCentre());
 				if (dist < closest)
 				{
-					m_logger.debugLog("closer than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
+					//m_logger.debugLog("closer than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
 					closest = dist;
 					closestEntity = ent;
 				}
-				m_logger.debugLog("further than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
+				//m_logger.debugLog("further than closest: " + ent + ", dist: " + Math.Sqrt(dist) + ", closest: " + Math.Sqrt(closest));
 			}
 			OrbitEntity = closestEntity;
-
-			voxels.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Return(voxels);
 		}
 
 		private void CalcFakeOrbitSpeedForce()

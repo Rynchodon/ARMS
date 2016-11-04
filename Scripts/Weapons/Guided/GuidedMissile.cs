@@ -892,10 +892,7 @@ namespace Rynchodon.Weapons.Guided
 		private void StartGravity()
 		{
 			Vector3D position = MyEntity.GetPosition();
-			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Get();
-			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
-
-			foreach (MyPlanet planet in allPlanets)
+			foreach (MyPlanet planet in Globals.AllPlanets())
 				if (planet.IsPositionInGravityWell(position))
 				{
 					Vector3D targetPosition = CurrentTarget.GetPosition();
@@ -908,9 +905,6 @@ namespace Rynchodon.Weapons.Guided
 					m_gravData = new GravityData(planet, gravAtTarget);
 					break;
 				}
-
-			allPlanets.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Return(allPlanets);
 
 			if (m_gravData != null)
 				UpdateGravity();

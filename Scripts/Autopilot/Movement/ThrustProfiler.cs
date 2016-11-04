@@ -216,10 +216,8 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 worldGravity = Vector3.Zero;
 			m_planetAtmos = null;
 			m_airDensity = 0f;
-			List<IMyVoxelBase> allPlanets = ResourcePool<List<IMyVoxelBase>>.Get();
-			MyAPIGateway.Session.VoxelMaps.GetInstances_Safe(allPlanets, voxel => voxel is MyPlanet);
 
-			foreach (MyPlanet planet in allPlanets)
+			foreach (MyPlanet planet in Globals.AllPlanets())
 				if (planet.IsPositionInGravityWell(position))
 				{
 					if (first)
@@ -240,9 +238,6 @@ namespace Rynchodon.Autopilot.Movement
 						m_planetAtmos = planet;
 					}
 				}
-
-			allPlanets.Clear();
-			ResourcePool<List<IMyVoxelBase>>.Return(allPlanets);
 
 			CalcForceInDirection(Base6Directions.Direction.Forward);
 			CalcForceInDirection(Base6Directions.Direction.Backward);
