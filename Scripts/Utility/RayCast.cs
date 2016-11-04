@@ -164,7 +164,7 @@ namespace Rynchodon
 		/// <returns>True iff any voxel intersects the line</returns>
 		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet = DefaultCheckPlanet)
 		{
-			const double ShortenBy = 5d;
+			//const double ShortenBy = 5d;
 #if LOG_ENABLED
 			m_logger.debugLog("entered");
 			try

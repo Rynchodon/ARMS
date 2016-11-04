@@ -236,10 +236,10 @@ namespace Rynchodon.Utility.Network
 			{
 				if (m_value.Equals(value))
 				{
-					Logger.DebugLog("no change");
+					//Logger.DebugLog("no change");
 					return;
 				}
-				Logger.DebugLog("changed from " + m_value + " to " + value);
+				//Logger.DebugLog("changed from " + m_value + " to " + value);
 				m_synced = true;
 				m_value = value;
 				SendValue();
@@ -310,11 +310,11 @@ namespace Rynchodon.Utility.Network
 
 		protected override void SetValue(byte[] bytes, ref int pos)
 		{
-			Logger.DebugLog("Setting value, previous: " + m_value);
+			//Logger.DebugLog("Setting value, previous: " + m_value);
 			m_synced = true;
 			ByteConverter.GetOfType(bytes, ref pos, ref m_value);
 			m_afterValueChanged.InvokeIfExists(this);
-			Logger.DebugLog("Setting value, new: " + m_value);
+			//Logger.DebugLog("Setting value, new: " + m_value);
 		}
 
 		protected override string GetValue()
@@ -360,7 +360,7 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
-		public override Type GetValueType()
+		public sealed override Type GetValueType()
 		{
 			return typeof(T);
 		}

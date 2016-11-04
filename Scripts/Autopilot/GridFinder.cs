@@ -364,7 +364,7 @@ namespace Rynchodon.Autopilot
 				m_logger.alwaysLog("Exception: " + nre, Logger.severity.ERROR);
 
 				if (!seen.Entity.Closed)
-					throw nre;
+					throw;
 				m_logger.debugLog("Caught exception caused by grid closing, ignoring.");
 				return false;
 			}

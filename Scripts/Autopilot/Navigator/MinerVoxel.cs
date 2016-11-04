@@ -161,7 +161,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 				m_mover.IsStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
-				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = value == State.Approaching;
+				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = value == State.Approaching || value == State.Move_Away;
 			}
 		}
 

@@ -19,8 +19,8 @@ namespace Rynchodon.Autopilot.Navigator
 		private const float MaxAngleRotate = 1f;
 		private static readonly TimeSpan SearchTimeout = new TimeSpan(0, 1, 0);
 
-		/// <summary>The grid claimed and the grid that claimed it.</summary>
-		private static Dictionary<long, IMyCubeGrid> GridsClaimed = new Dictionary<long, IMyCubeGrid>();
+		///// <summary>The grid claimed and the grid that claimed it.</summary>
+		//private static Dictionary<long, IMyCubeGrid> GridsClaimed = new Dictionary<long, IMyCubeGrid>();
 
 		private enum Stage : byte { None, Intercept, Grind }
 
@@ -69,22 +69,22 @@ namespace Rynchodon.Autopilot.Navigator
 			if (value == value_enemy)
 				return true;
 
-			if (value_enemy != null)
-				if (GridsClaimed.Remove(value_enemy.EntityId))
-					m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.TRACE);
-				else
-					m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.WARNING);
+			//if (value_enemy != null)
+			//	if (GridsClaimed.Remove(value_enemy.EntityId))
+			//		m_logger.debugLog("Removed " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.TRACE);
+			//	else
+			//		m_logger.alwaysLog("Failed to remove " + value_enemy.getBestName() + " from GridsClaimed", Logger.severity.WARNING);
 
-			if (value != null)
-			{
-				if (GridsClaimed.ContainsKey(value.EntityId))
-				{
-					m_logger.debugLog("Already claimed: " + value.getBestName(), Logger.severity.INFO);
-					return false;
-				}
-				else
-					GridsClaimed.Add(value.EntityId, m_controlBlock.CubeGrid);
-			}
+			//if (value != null)
+			//{
+			//	if (GridsClaimed.ContainsKey(value.EntityId))
+			//	{
+			//		m_logger.debugLog("Already claimed: " + value.getBestName(), Logger.severity.INFO);
+			//		return false;
+			//	}
+			//	else
+			//		GridsClaimed.Add(value.EntityId, m_controlBlock.CubeGrid);
+			//}
 
 			m_stage = Stage.None;
 			value_enemy = value;
@@ -117,7 +117,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			this.m_finder = new GridFinder(m_navSet, m_controlBlock, maxRange);
-			this.m_finder.GridCondition = GridCondition;
+			//this.m_finder.GridCondition = GridCondition;
 
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.NavigatorRotator = this;
@@ -305,26 +305,27 @@ namespace Rynchodon.Autopilot.Navigator
 						customInfo.AppendLine(" is too fast");
 						break;
 					case GridFinder.ReasonCannotTarget.Grid_Condition:
-						IMyCubeGrid claimedBy;
-						if (GridsClaimed.TryGetValue(m_finder.m_bestGrid.Entity.EntityId, out claimedBy))
-						{
-							if (m_controlBlock.CubeBlock.canConsiderFriendly(claimedBy))
-							{
-								customInfo.Append(m_finder.m_bestGrid.HostileName());
-								customInfo.Append(" is claimed by ");
-								customInfo.AppendLine(claimedBy.DisplayName);
-							}
-							else
-							{
-								customInfo.Append(m_finder.m_bestGrid.HostileName());
-								customInfo.AppendLine(" is claimed by another recyler.");
-							}
-						}
-						else
-						{
-							customInfo.Append(m_finder.m_bestGrid.HostileName());
-							customInfo.AppendLine(" was claimed, should be available shortly.");
-						}
+						//IMyCubeGrid claimedBy;
+						//if (GridsClaimed.TryGetValue(m_finder.m_bestGrid.Entity.EntityId, out claimedBy))
+						//{
+						//	if (m_controlBlock.CubeBlock.canConsiderFriendly(claimedBy))
+						//	{
+						//		customInfo.Append(m_finder.m_bestGrid.HostileName());
+						//		customInfo.Append(" is claimed by ");
+						//		customInfo.AppendLine(claimedBy.DisplayName);
+						//	}
+						//	else
+						//	{
+						//		customInfo.Append(m_finder.m_bestGrid.HostileName());
+						//		customInfo.AppendLine(" is claimed by another recyler.");
+						//	}
+						//}
+						//else
+						//{
+						//	customInfo.Append(m_finder.m_bestGrid.HostileName());
+						//	customInfo.AppendLine(" was claimed, should be available shortly.");
+						//}
+						customInfo.AppendLine("Obsolete condition");
 						break;
 				}
 				return;
@@ -383,26 +384,26 @@ namespace Rynchodon.Autopilot.Navigator
 			return m_grinderFull;
 		}
 
-		private bool GridCondition(IMyCubeGrid grid)
-		{
-			if (m_enemy == grid)
-				return true;
+		//private bool GridCondition(IMyCubeGrid grid)
+		//{
+		//	if (m_enemy == grid)
+		//		return true;
 
-			IMyCubeGrid claimedBy;
-			if (!GridsClaimed.TryGetValue(grid.EntityId, out claimedBy))
-				return true;
+		//	IMyCubeGrid claimedBy;
+		//	if (!GridsClaimed.TryGetValue(grid.EntityId, out claimedBy))
+		//		return true;
 
-			if (claimedBy != m_controlBlock.CubeGrid)
-				return false;
+		//	if (claimedBy != m_controlBlock.CubeGrid)
+		//		return false;
 
-			m_logger.debugLog("This grid has staked a claim but forgot about it", Logger.severity.INFO);
-			set_enemy(null);
-			if (GridsClaimed.Remove(grid.EntityId))
-				m_logger.debugLog("removed claim");
-			else
-				m_logger.alwaysLog("Failed to remove claim: " + grid.DisplayName, Logger.severity.WARNING);
-			return true;
-		}
+		//	m_logger.debugLog("This grid has staked a claim but forgot about it", Logger.severity.INFO);
+		//	set_enemy(null);
+		//	if (GridsClaimed.Remove(grid.EntityId))
+		//		m_logger.debugLog("removed claim");
+		//	else
+		//		m_logger.alwaysLog("Failed to remove claim: " + grid.DisplayName, Logger.severity.WARNING);
+		//	return true;
+		//}
 
 	}
 }

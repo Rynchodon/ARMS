@@ -22,8 +22,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 	public partial class Pathfinder
 	{
 
-		// TODO: gravity avoidance/repulsion, atmospheric avoidance/repulsion
-
 		public const float SpeedFactor = 3f, VoxelAdd = 10f;
 		private const float DefaultNodeDistance = 100f;
 
@@ -73,7 +71,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 
 		private readonly Logger m_logger;
-		private readonly PathTester m_tester = new PathTester();
+		private readonly PathTester m_tester;
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
 		private bool m_runInterrupt, m_runHalt;
@@ -177,7 +175,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return "N/A";
 			}, () => CurrentState.ToString());
 			Mover = new Mover(block, new RotateChecker(block.CubeBlock, CollectEntities));
-			m_autopilotGrid = (MyCubeGrid)block.CubeGrid;
+			m_tester = new PathTester(Mover.Block);
 		}
 
 		// Methods
@@ -262,7 +260,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			if (m_waitUntil > Globals.UpdateCount)
 			{
-				m_holdPosition = false;
+				m_holdPosition = true;
 				OnComplete();
 				return;
 			}
@@ -392,6 +390,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
+			m_logger.debugLog("Should not be moving! moveDisp: " + moveDisp, Logger.severity.ERROR, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
 			Vector3D currentPosition = m_autopilotGrid.GetCentre();
 			Vector3D destDisp = moveDisp.WorldPosition();
 			Vector3 disp = destDisp;
@@ -469,8 +468,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			MyEntity obstructing;
 			MyCubeBlock block;
-			Vector3D pointOfObstruction;
-			if (CurrentObstructed(out obstructing, out pointOfObstruction, out block))
+			if (CurrentObstructed(out obstructing, out block))
 			{
 				if (m_path.HasTarget)
 					if (TryRepairPath(ref disp))
@@ -641,6 +639,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					Vector3 obVel = entity.Physics.LinearVelocity;
 					if (entity is MyAmmoBase)
+						// missiles accelerate and have high damage regardless of speed so avoid them more
 						obVel.X *= 10f; obVel.Y *= 10f; obVel.Z *= 10f;
 
 					Vector3 relVel;
@@ -786,7 +785,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// For testing if the current path is obstructed by any entity in m_entitiesPruneAvoid.
 		/// </summary>
-		private bool CurrentObstructed(out MyEntity obstructingEntity, out Vector3D pointOfObstruction, out MyCubeBlock obstructBlock)
+		private bool CurrentObstructed(out MyEntity obstructingEntity, out MyCubeBlock obstructBlock)
 		{
 			m_logger.debugLog("m_moveDirection: " + m_moveDirection, Logger.severity.FATAL, condition: Math.Abs(m_moveDirection.LengthSquared() - 1f) > 0.01f);
 			//m_logger.debugLog("m_moveLength: " + m_moveLength, Logger.severity.FATAL, condition: Math.Abs(m_moveLength) < 0.1f);
@@ -803,7 +802,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				destTop = (MyEntity)m_destination.Entity.GetTopMostParent();
 				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
-					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out pointOfObstruction))
+					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock))
 					{
 						m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 						obstructingEntity = destTop;
@@ -830,7 +829,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition);
 					obstructingEntity = hitVoxel;
-					pointOfObstruction = hitPosition;
 					obstructBlock = null;
 					return true;
 				}
@@ -848,7 +846,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (obstructingEntity == destTop || obstructingEntity is MyVoxelBase)
 						// already checked
 						continue;
-					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out pointOfObstruction))
+					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock))
 					{
 						m_logger.debugLog("Obstructed by " + obstructingEntity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 						return true;
@@ -857,7 +855,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			//m_logger.debugLog("No obstruction");
 			obstructingEntity = null;
-			pointOfObstruction = Vector3.Invalid;
 			obstructBlock = null;
 			return false;
 		}
@@ -993,7 +990,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					BoundingSphereD gravSphere = new BoundingSphereD(planet.PositionComp.GetPosition(), planet.GetGravityLimit() + apRadius);
 					double t1, t2;
-					if (m_lineSegment.Intersect(ref gravSphere, out t1, out t2))
+					if (m_lineSegment.Intersects(ref gravSphere, out t1, out t2))
 					{
 						if (t1 < closest.Distance)
 							closest = new MyLineSegmentOverlapResult<MyEntity>() { Distance = t1, Element = planet };

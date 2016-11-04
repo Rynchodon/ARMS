@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Weapons;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
@@ -61,6 +64,22 @@ namespace Rynchodon
 		{
 			// only MyMissile derives from MyAmmoBase
 			return entity is MyAmmoBase;
+		}
+
+		/// <summary>
+		/// Enumerable for all the subparts in an entity's hierachy.
+		/// </summary>
+		/// <returns>Parent, name, subpart</returns>
+		public static IEnumerable<Tuple<MyEntity, string, MyEntitySubpart>> ExamineSubParts(this MyEntity entity)
+		{
+			if (entity.Subparts == null || entity.Subparts.Count == 0)
+				yield break;
+			foreach (KeyValuePair<string, MyEntitySubpart> pair in entity.Subparts)
+			{
+				yield return new Tuple<MyEntity, string, MyEntitySubpart>(entity, pair.Key, pair.Value);
+				foreach (Tuple<MyEntity, string, MyEntitySubpart> tuple in ExamineSubParts(pair.Value))
+					yield return tuple;
+			}
 		}
 
 	}

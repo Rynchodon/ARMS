@@ -14,7 +14,7 @@ namespace Rynchodon
 		/// <param name="hitPosition">a point on the capsule's line close to obstruction</param>
 		public static bool Intersects(ref CapsuleD capsule, MyVoxelBase voxel, out Vector3D hitPosition, double capsuleLength = -1d)
 		{
-			Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1);
+			Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1 + ", radius: " + capsule.Radius);
 			if (capsuleLength < 0)
 				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
 
@@ -42,14 +42,14 @@ namespace Rynchodon
 				Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
 				BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
 
-				Logger.DebugLog("Checking: " + localSphere);
+				//Logger.DebugLog("Checking: " + localSphere);
 				if (!voxel.Storage.Geometry.Intersects(ref localSphere))
 				{
-					Logger.DebugLog("No contact");
+					//Logger.DebugLog("No contact");
 					hitPosition = Vector3.Invalid;
 					return false;
 				}
-				Logger.DebugLog("Contact");
+				//Logger.DebugLog("Contact");
 			}
 
 			CapsuleD halfCapsule;

@@ -303,10 +303,10 @@ namespace Rynchodon
 		public bool DistanceLessEqual(ref Vector3D point, double distance)
 		{
 			distance *= distance;
-			return DistanceSquared(point) <= distance;
+			return DistanceSquared(ref point) <= distance;
 		}
 
-		public bool Intersect(ref BoundingSphereD sphere, out double t1, out double t2)
+		public bool Intersects(ref BoundingSphereD sphere)
 		{
 			Vector3D start = From;
 			Vector3D direct = Direction;
@@ -315,12 +315,24 @@ namespace Rynchodon
 			double stcLenSq = startToCentre.LengthSquared();
 
 			double value = projStcDirect * projStcDirect - stcLenSq + sphere.Radius * sphere.Radius;
-			if (value < 0)
+			return value >= 0d;
+		}
+
+		public bool Intersects(ref BoundingSphereD sphere, out double t1, out double t2)
+		{
+			Vector3D start = From;
+			Vector3D direct = Direction;
+			Vector3D startToCentre; Vector3D.Subtract(ref sphere.Center, ref start, out startToCentre);
+			double projStcDirect = startToCentre.Dot(ref direct);
+			double stcLenSq = startToCentre.LengthSquared();
+
+			double value = projStcDirect * projStcDirect - stcLenSq + sphere.Radius * sphere.Radius;
+			if (value < 0d)
 			{
 				t1 = t2 = double.NaN;
 				return false;
 			}
-			if (value == 0)
+			if (value == 0d)
 			{
 				t1 = t2 = projStcDirect;
 				return true;

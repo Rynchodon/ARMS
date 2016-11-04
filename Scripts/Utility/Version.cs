@@ -6,7 +6,7 @@ namespace Rynchodon
 {
 	public struct Version : IComparable<Version>
 	{
-		public readonly int Major, Minor, Build, Revision;
+		public int Major, Minor, Build, Revision;
 
 		public Version(int major, int minor, int build, int revision = 0)
 		{

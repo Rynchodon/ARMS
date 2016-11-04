@@ -326,8 +326,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						// already checked
 						continue;
 					MyCubeBlock obstructBlock;
-					Vector3D pointOfObstruction;
-					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref line.Direction, line.Length, out obstructBlock, out pointOfObstruction))
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref line.Direction, line.Length, out obstructBlock))
 					{
 						m_logger.debugLog("Obstructed by " + entity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 						Profiler.EndProfileBlock();
@@ -533,9 +532,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 				FindAPath();
 				return;
 			}
-
-			m_logger.debugLog("Pathfinding failed", Logger.severity.WARNING);
-			Logger.DebugNotify("Pathfinding failed", 10000, Logger.severity.WARNING);
+			
+			// with line, failing is "normal"
+			m_logger.debugLog("Pathfinding failed", m_canChangeCourse ? Logger.severity.WARNING : Logger.severity.DEBUG);
+			Logger.DebugNotify("Pathfinding failed", 10000, m_canChangeCourse ? Logger.severity.WARNING : Logger.severity.DEBUG);
 
 #if PROFILE
 			LogStats();
@@ -553,6 +553,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_pathfinding = false;
 			m_waitUntil = Globals.UpdateCount + 600uL;
 			CurrentState = State.FailedToFindPath;
+			Mover.IsStuck = true;
 		}
 
 		private void BuildPath(long forwardHash, long backwardHash = 0L)

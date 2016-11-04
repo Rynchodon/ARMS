@@ -101,7 +101,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="NavSet">Navigation settings to use.</param>
 		public Mover(ShipControllerBlock block, RotateChecker rotateCheck)
 		{
-			this.m_logger = new Logger(block.Controller);
+			this.m_logger = new Logger(block.Controller) { MinimumLevel = Logger.severity.INFO };
 			this.Block = block;
 			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 			this.RotateCheck = rotateCheck;
