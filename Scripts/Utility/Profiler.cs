@@ -2,9 +2,7 @@ using System; // partial
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Timers;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Library.Utils;
 
 namespace Rynchodon.Utility
@@ -40,6 +38,7 @@ namespace Rynchodon.Utility
 		{
 			public string Name;
 			public long Started;
+			public string Caller;
 		}
 
 		private class Stats
@@ -81,9 +80,9 @@ namespace Rynchodon.Utility
 		}
 
 		[System.Diagnostics.Conditional("PROFILE")]
-		public static void StartProfileBlock(Action action)
+		public static void StartProfileBlock(Action action, [CallerMemberName] string callerMemberName = null, [CallerFilePath] string callerFilePath = null)
 		{
-			StartProfileBlock(action.Method.Name, action.Target == null ? "N/A" : action.Target.GetType().Name);
+			StartProfileBlock(action.Method.Name, action.Target == null ? "N/A" : action.Target.GetType().Name, callerMemberName, callerFilePath);
 		}
 
 		/// <summary>
@@ -91,29 +90,34 @@ namespace Rynchodon.Utility
 		/// </summary>
 		/// <param name="name">The name of the block.</param>
 		[System.Diagnostics.Conditional("PROFILE")]
-		public static void StartProfileBlock([CallerMemberName] string memberName = null, [CallerFilePath] string fileName = null)
+		public static void StartProfileBlock([CallerMemberName] string profileMemberName = null, [CallerFilePath] string profileFilePath = null, [CallerMemberName] string callerMemberName = null, [CallerFilePath] string callerFilePath = null)
 		{
 			if (ProfileValues.m_block == null)
 				ProfileValues.m_block = new Stack<Block>();
-			if (fileName.Contains("\\"))
-				fileName = Path.GetFileName(fileName);
+			if (profileFilePath.Contains("\\"))
+				profileFilePath = Path.GetFileName(profileFilePath);
+			callerFilePath = Path.GetFileName(callerFilePath);
 			if (ProfileValues.m_block.Count > 1000)
 			{
+				Logger.AlwaysLog("Profile stack is too large: " + ProfileValues.m_block.Count);
 				foreach (var item in ProfileValues.m_block)
 					Logger.AlwaysLog("Item: " + item.Name, Logger.severity.ERROR);
 				throw new OverflowException("Profile stack is too large: " + ProfileValues.m_block.Count);
 			}
-			ProfileValues.m_block.Push(new Block() { Name = fileName + ',' + memberName, Started = ProfileValues.m_timer.ElapsedTicks });
+			ProfileValues.m_block.Push(new Block() { Name = profileFilePath + ',' + profileMemberName, Started = ProfileValues.m_timer.ElapsedTicks, Caller = callerFilePath + '.' + callerMemberName });
 		}
 
 		/// <summary>
 		/// End a profiling block, must be invoked even if an exception is thrown.
 		/// </summary>
 		[System.Diagnostics.Conditional("PROFILE")]
-		public static void EndProfileBlock()
+		public static void EndProfileBlock([CallerMemberName] string callerMemberName = null, [CallerFilePath] string callerFilePath = null)
 		{
 			Block ended = ProfileValues.m_block.Pop();
 			MyTimeSpan elapsed = new MyTimeSpan(ProfileValues.m_timer.ElapsedTicks - ended.Started);
+			string caller = Path.GetFileName(callerFilePath) + '.' + callerMemberName;
+			if (caller != ended.Caller)
+				throw new Exception("EndProfileBlock called by a different member than the one that started the block. Block: " + ended.Name + ", started by: " + ended.Caller + ", ended by: " + caller);
 
 			using (ProfileValues.m_lock.AcquireExclusiveUsing())
 			{

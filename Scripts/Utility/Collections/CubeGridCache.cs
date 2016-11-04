@@ -132,12 +132,13 @@ namespace Rynchodon
 			IMyCubeBlock fatblock = obj.FatBlock;
 			if (fatblock == null)
 			{
+				myLogger.debugLog("block removed: " + obj.getBestName());
+				Logger.DebugNotify("block removed: " + obj.getBestName());
 				SlimOnly.Remove(obj);
 				CellCount--;
 				return;
 			}
 
-			myLogger.debugLog("block removed: " + obj.getBestName());
 			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName());
 			lock_blocks.AcquireExclusive();
 			try

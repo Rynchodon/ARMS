@@ -6,7 +6,6 @@ using Rynchodon.Threading;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Voxels;
@@ -28,10 +27,11 @@ namespace Rynchodon.Autopilot.Harvest
 			{
 				public readonly TimeSpan LifeSpan_VoxelData = new TimeSpan(1, 0, 0);
 				public readonly bool[] RareMaterials;
+				public readonly Random Rand = new Random();
 
 				public StaticVariables()
 				{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+					Logger.DebugLog("entered", Logger.severity.TRACE);
 					RareMaterials = new bool[MyDefinitionManager.Static.VoxelMaterialCount];
 					for (byte materialIndex = 0; materialIndex < MyDefinitionManager.Static.VoxelMaterialCount; materialIndex++)
 						RareMaterials[materialIndex] = MyDefinitionManager.Static.GetVoxelMaterialDefinition(materialIndex).IsRare;
@@ -63,13 +63,41 @@ namespace Rynchodon.Autopilot.Harvest
 			private readonly IMyVoxelBase m_voxel;
 			private readonly float m_maxRange;
 
-			private readonly Dictionary<Vector3I, byte> m_materialLocations = new Dictionary<Vector3I, byte>(1000);
+			private readonly Dictionary<byte, List<Vector3I>> m_materialLocations2 = new Dictionary<byte, List<Vector3I>>();
 			private readonly MyStorageData m_storage = new MyStorageData();
 
 			private TimeSpan m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
-			private readonly FastResourceLock lock_throwOut = new FastResourceLock();
 
-			public bool NeedsUpdate { get; private set; }
+			private bool m_forceUpdate;
+			private Vector3D m_position;
+			public bool NeedsUpdate
+			{
+				get
+				{
+					if (m_forceUpdate)
+						return true;
+					Vector3D currentPosition = m_oreDetector.GetPosition();
+					double distSq; Vector3D.DistanceSquared(ref m_position, ref currentPosition, out distSq);
+					return distSq > 100f;
+				}
+				set
+				{
+					m_forceUpdate = value;
+					if (!value)
+						m_position = m_oreDetector.GetPosition();
+				}
+			}
+
+			private void AddMaterialLocation(byte material, ref Vector3I location)
+			{
+				List<Vector3I> list;
+				if (!m_materialLocations2.TryGetValue(material, out list))
+				{
+					list = new List<Vector3I>();
+					m_materialLocations2.Add(material, list);
+				}
+				list.Add(location);
+			}
 
 			public VoxelData(IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
 			{
@@ -92,49 +120,50 @@ namespace Rynchodon.Autopilot.Harvest
 			/// <returns>False iff VoxelData is very old and should be disposed of.</returns>
 			public bool IsValid()
 			{
-				using (lock_throwOut.AcquireExclusiveUsing())
-					return Globals.ElapsedTime < m_throwOutVoxelData;
+				return Globals.ElapsedTime < m_throwOutVoxelData;
 			}
 
-			public bool GetClosest(byte[] oreType, ref Vector3D worldPosition, out Vector3D closest, out byte foundOre)
+			public bool GetRandom(byte[] oreType, ref Vector3D worldPosition, out Vector3D position, out byte foundOre)
 			{
-				if (oreType == null)
-					m_logger.debugLog("searching for any");
-				else
-					foreach (byte b in oreType)
-						m_logger.debugLog("searching for: " + b);
+				//if (oreType == null)
+				//	m_logger.debugLog("searching for any");
+				//else
+				//	foreach (byte b in oreType)
+				//		m_logger.debugLog("searching for: " + b);
 
 				Vector3I search_voxelCellCoord;
 				MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldPosition, out search_voxelCellCoord);
 				search_voxelCellCoord >>= QUERY_LOD;
 
-				bool found = false;
-				closest = Vector3D.Zero;
-				foundOre = 255;
-
-				int closestDistance = int.MaxValue;
-				m_logger.debugLog("material count: " + m_materialLocations.Count);
-				foreach (var matLoc in m_materialLocations)
-					if (oreType == null || oreType.Contains(matLoc.Value))
-					{
-						int dist = matLoc.Key.DistanceSquared(search_voxelCellCoord);
-						if (dist < closestDistance)
+				if (oreType == null)
+				{
+					foreach (KeyValuePair<byte, List<Vector3I>> locations in m_materialLocations2.OrderBy(obj => Static.Rand.NextDouble()))
+						if (locations.Value.Count != 0)
 						{
-							Vector3D deposit_localPosition = matLoc.Key << QUERY_LOD;
-							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out closest);
-
-							m_logger.debugLog("entry position: " + matLoc.Key + ", local: " + deposit_localPosition + ", world: " + closest + ", distance: " + (float)Math.Sqrt(dist));
-
-							MyVoxelBase map = m_voxel as MyVoxelBase;
-							m_logger.debugLog("stor min: " + map.StorageMin);
-
-							closestDistance = dist;
-							found = true;
-							foundOre = matLoc.Value;
+							foundOre = locations.Key;
+							Vector3D deposit_localPosition = locations.Value[Static.Rand.Next(locations.Value.Count)] << QUERY_LOD;
+							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out position);
+							return true;
+						}
+				}
+				else
+				{
+					foreach (byte ore in oreType.OrderBy(obj => Static.Rand.NextDouble()))
+					{
+						List<Vector3I> locations;
+						if (m_materialLocations2.TryGetValue(ore, out locations) && locations.Count != 0)
+						{
+							foundOre = ore;
+							Vector3D deposit_localPosition = locations[Static.Rand.Next(locations.Count)] << QUERY_LOD;
+							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out position);
+							return true;
 						}
 					}
+				}
 
-				return found;
+				foundOre = 255;
+				position = Vector3D.Zero;
+				return false;
 			}
 
 			/// <summary>
@@ -144,8 +173,7 @@ namespace Rynchodon.Autopilot.Harvest
 			/// <returns>True if started, false if already running.</returns>
 			public void Read()
 			{
-				using (lock_throwOut.AcquireExclusiveUsing())
-					m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
+				m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
 
 				NeedsUpdate = false;
 				Vector3D m_oreDetectorPosition = m_oreDetector.GetPosition();
@@ -172,8 +200,9 @@ namespace Rynchodon.Autopilot.Harvest
 
 				Vector3I size = m_localMax - m_localMin;
 				m_logger.debugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1));
-				ulong processed = 0;
-				m_materialLocations.Clear();
+				//ulong processed = 0;
+				foreach (List<Vector3I> locations in m_materialLocations2.Values)
+					locations.Clear();
 
 				Vector3I vector = new Vector3I();
 				for (vector.X = m_localMin.X; vector.X < m_localMax.X; vector.X += QUERY_STEP)
@@ -197,20 +226,28 @@ namespace Rynchodon.Autopilot.Harvest
 												{
 													//m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(linear) + ", vector: " + vector + ", position: " + vector + index
 													//	+ ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "Read()");
-													m_materialLocations[vector + index] = mat;
-													processed++;
+													//m_materialLocations[vector + index] = mat;
+
+													List<Vector3I> locations;
+													if (!m_materialLocations2.TryGetValue(mat, out locations))
+													{
+														locations = new List<Vector3I>();
+														m_materialLocations2.Add(mat, locations);
+													}
+													locations.Add(vector + index);
+
+													//processed++;
 													goto Finished_Deposit;
 												}
 											}
 										}
 
-Finished_Deposit:
-								processed++;
+								Finished_Deposit:;
+								//processed++;
 							}
 
-				m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
+				//m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
 			}
-
 		}
 
 		#region Static
@@ -227,7 +264,7 @@ Finished_Deposit:
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
 				var defs = MyDefinitionManager.Static.GetVoxelMaterialDefinitions();
 				Dictionary<string, List<byte>> matGroup = new Dictionary<string, List<byte>>();
 				foreach (var def in defs)
@@ -372,7 +409,7 @@ Finished_Deposit:
 		private readonly float m_maxRange;
 		private readonly RelayClient m_netClient;
 
-		private readonly Dictionary<IMyVoxelBase, VoxelData> m_voxelData = new Dictionary<IMyVoxelBase, VoxelData>();
+		private readonly Dictionary<long, VoxelData> m_voxelData = new Dictionary<long, VoxelData>();
 		private readonly FastResourceLock l_voxelData = new FastResourceLock();
 
 		private readonly FastResourceLock l_getOreLocations = new FastResourceLock();
@@ -420,47 +457,51 @@ Finished_Deposit:
 		{
 			m_logger.debugLog("entered GetOreLocations()");
 
-			BoundingSphereD detection = new BoundingSphereD(m_oreDetector.GetPosition(), m_maxRange);
-			m_nearbyVoxel.Clear();
-			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel);
-
-			IOrderedEnumerable<MyVoxelBase> sorted = m_nearbyVoxel.OrderBy(voxel => Vector3D.DistanceSquared(voxel.GetCentre(), position));
-
-			foreach (IMyVoxelBase nearbyMap in sorted)
+			using (l_getOreLocations.AcquireExclusiveUsing())
 			{
-				if (nearbyMap is IMyVoxelMap || nearbyMap is MyPlanet)
+				BoundingSphereD detection = new BoundingSphereD(m_oreDetector.GetPosition(), m_maxRange);
+				m_nearbyVoxel.Clear();
+				MyGamePruningStructure.GetAllVoxelMapsInSphere(ref detection, m_nearbyVoxel);
+
+				IOrderedEnumerable<MyVoxelBase> sorted = m_nearbyVoxel.OrderBy(voxel => Vector3D.DistanceSquared(voxel.GetCentre(), position));
+
+				foreach (IMyVoxelBase nearbyMap in sorted)
 				{
-					VoxelData data;
-					using (l_voxelData.AcquireExclusiveUsing())
-						if (!m_voxelData.TryGetValue(nearbyMap, out data))
+					if (nearbyMap is IMyVoxelMap || nearbyMap is MyPlanet)
+					{
+						VoxelData data;
+						using (l_voxelData.AcquireExclusiveUsing())
 						{
-							data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
-							m_voxelData.Add(nearbyMap, data);
+							if (!m_voxelData.TryGetValue(nearbyMap.EntityId, out data))
+							{
+								data = new VoxelData(m_oreDetector, nearbyMap, m_maxRange);
+								m_voxelData.Add(nearbyMap.EntityId, data);
+							}
 						}
+						if (data.NeedsUpdate)
+						{
+							m_logger.debugLog("Data needs to be updated for " + nearbyMap.getBestName());
+							data.Read();
+						}
+						else
+							m_logger.debugLog("Old data OK for " + nearbyMap.getBestName());
 
-					if (data.NeedsUpdate)
-					{
-						m_logger.debugLog("Data needs to be updated for " + nearbyMap.getBestName());
-						data.Read();
-					}
-					else
-						m_logger.debugLog("Old data OK for " + nearbyMap.getBestName());
-
-					Vector3D closest;
-					byte foundOre;
-					if (data.GetClosest(oreType, ref position, out closest, out foundOre))
-					{
-						m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest));
-						string oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOre).MinedOre;
-						onComplete(true, closest, nearbyMap, oreName);
-						m_nearbyVoxel.Clear();
-						return true;
+						Vector3D closest;
+						byte foundOre;
+						if (data.GetRandom(oreType, ref position, out closest, out foundOre))
+						{
+							m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest));
+							string oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOre).MinedOre;
+							onComplete(true, closest, nearbyMap, oreName);
+							m_nearbyVoxel.Clear();
+							return true;
+						}
 					}
 				}
-			}
 
-			m_nearbyVoxel.Clear();
-			return false;
+				m_nearbyVoxel.Clear();
+				return false;
+			}
 		}
 
 	}

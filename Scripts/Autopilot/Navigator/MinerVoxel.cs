@@ -114,15 +114,14 @@ namespace Rynchodon.Autopilot.Navigator
 						m_currentTarget = m_approach.From;
 						break;
 					case State.Rotating:
-						m_currentTarget = m_depositPos;
+						m_currentTarget = m_approach.To;
+						m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
 						break;
 					case State.MoveTo:
-						m_currentTarget = m_approach.To;
-						m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
-						m_navSet.Settings_Task_NavMove.SpeedTarget = 10f;
 						break;
 					case State.Mining:
 						{
+							m_navSet.Settings_Task_NavMove.IgnoreAsteroid = true;
 							EnableDrills(true);
 							Vector3D pos = m_navDrill.WorldPosition;
 							m_currentTarget = pos + (m_depositPos - pos) * 2f;
@@ -161,7 +160,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 				m_mover.IsStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
-				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = value == State.Approaching || value == State.Move_Away;
+				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = !m_navSet.Settings_Current.IgnoreAsteroid;
 			}
 		}
 
@@ -257,14 +256,18 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 					break;
 				case State.Rotating:
-					m_mover.StopMove();
+					if (m_navSet.Settings_Current.Distance < m_longestDimension * 2f)
+					{
+						m_mover.StopMove();
+						return;
+					}
 					if (m_mover.IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
 						return;
 					}
-					return;
+					break;
 				case State.MoveTo:
 					if (m_navSet.Settings_Current.Distance < m_longestDimension * 2f)
 					{
@@ -455,7 +458,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 			{
-				m_logger.debugLog("rotate to face " + m_currentTarget);
+				//m_logger.debugLog("rotate to face " + m_currentTarget);
 				m_mover.CalcRotate(m_navDrill, RelativeDirection3F.FromWorld(m_controlBlock.CubeGrid, m_currentTarget - m_navDrill.WorldPosition));
 			}
 		}
@@ -675,7 +678,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private void MoveCurrent()
 		{
-			m_logger.debugLog("current target: " + m_currentTarget);
+			//m_logger.debugLog("current target: " + m_currentTarget);
 			Destination dest = Destination.FromWorld(m_targetVoxel, m_currentTarget);
 			m_pathfinder.MoveTo(m_navDrill, ref dest);
 		}

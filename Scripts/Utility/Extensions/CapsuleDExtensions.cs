@@ -14,7 +14,7 @@ namespace Rynchodon
 		/// <param name="hitPosition">a point on the capsule's line close to obstruction</param>
 		public static bool Intersects(ref CapsuleD capsule, MyVoxelBase voxel, out Vector3D hitPosition, double capsuleLength = -1d)
 		{
-			Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1 + ", radius: " + capsule.Radius);
+			//Logger.DebugLog("P0: " + capsule.P0 + ", P1: " + capsule.P1 + ", radius: " + capsule.Radius);
 			if (capsuleLength < 0)
 				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
 
@@ -82,15 +82,12 @@ namespace Rynchodon
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref worldSphere, voxels);
 
 			foreach (MyVoxelBase voxel in voxels)
-			{
-				Logger.DebugLog("voxel: " + voxel.getBestName());
 				if ((voxel is MyVoxelMap || voxel is MyPlanet && checkPlanet) && Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
 				{
 					hitVoxel = voxel;
 					Profiler.EndProfileBlock();
 					return true;
 				}
-			}
 
 			voxels.Clear();
 			ResourcePool.Return(voxels);

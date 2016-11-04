@@ -299,7 +299,7 @@ namespace Rynchodon.Utility.Network
 					MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 				if (!result)
 					Static.logger.alwaysLog("Failed to send message, length: " + bytes.Count + ", value: " + m_value, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
-				RecordBytesSent(this, bytes);
+				//RecordBytesSent(this, bytes);
 			}
 			finally
 			{
@@ -351,7 +351,7 @@ namespace Rynchodon.Utility.Network
 				ByteConverter.AppendBytes(bytes, MyAPIGateway.Multiplayer.MyId);
 				if (!MyAPIGateway.Multiplayer.SendMessageToServer(bytes.ToArray()))
 					Static.logger.alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
-				RecordBytesSent(this, bytes);
+				//RecordBytesSent(this, bytes);
 			}
 			finally
 			{
@@ -398,7 +398,7 @@ namespace Rynchodon.Utility.Network
 			updateMethod.Invoke(temp);
 			if (temp.EqualsIgnoreCapacity(current))
 			{
-				Static.logger.debugLog("equals, no send");
+				//Static.logger.debugLog("equals, no send");
 				temp.Clear();
 				Static.updateSB.Return(temp);
 			}

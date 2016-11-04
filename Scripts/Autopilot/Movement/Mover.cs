@@ -101,7 +101,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="NavSet">Navigation settings to use.</param>
 		public Mover(ShipControllerBlock block, RotateChecker rotateCheck)
 		{
-			this.m_logger = new Logger(block.Controller) { MinimumLevel = Logger.severity.INFO };
+			this.m_logger = new Logger(block.Controller);
 			this.Block = block;
 			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 			this.RotateCheck = rotateCheck;
@@ -434,7 +434,7 @@ namespace Rynchodon.Autopilot.Movement
 			// if the ship is limited, it must always face accel direction
 			if (!Thrust.CanMoveAnyDirection() && m_moveAccel != Vector3.Zero)
 			{
-				m_logger.debugLog("limited thrust");
+				//m_logger.debugLog("limited thrust");
 				CalcRotate_Accel();
 				return;
 			}
@@ -448,7 +448,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_thrustHigh && m_moveAccel != Vector3.Zero)
 			{
 				m_thrustHigh = false;
-				m_logger.debugLog("accel high");
+				//m_logger.debugLog("accel high");
 				CalcRotate_Accel();
 				return;
 			}
@@ -518,7 +518,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 linearVelocity = LinearVelocity;
 			if (!Thrust.CanMoveAnyDirection() || linearVelocity.LengthSquared() > 1f)
 			{
-				m_logger.debugLog("rotate to stop");
+				//m_logger.debugLog("rotate to stop");
 
 				if (SignificantGravity())
 					CalcRotate_InGravity(RelativeDirection3F.FromWorld(Block.CubeGrid, -linearVelocity));
@@ -553,7 +553,7 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 
-			m_logger.debugLog("stopping rotation");
+			//m_logger.debugLog("stopping rotation");
 			StopRotate();
 		}
 
@@ -737,8 +737,8 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 angularVelocity = AngularVelocity.ToBlock(Block.CubeBlock);// ((DirectionWorld)(-Block.Physics.AngularVelocity)).ToBlock(Block.CubeBlock);
 			m_rotateForceRatio = (m_rotateTargetVelocity + angularVelocity) / (minimumMoment * m_gyro.GyroForce);
 
-			m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity + angularVelocity));
-			m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio);
+			//m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity + ", angularVelocity: " + angularVelocity + ", accel: " + (m_rotateTargetVelocity + angularVelocity));
+			//m_logger.debugLog("minimumMoment: " + minimumMoment + ", force: " + m_gyro.GyroForce + ", rotateForceRatio: " + m_rotateForceRatio);
 
 			// dampeners
 			for (int index = 0; index < 3; index++)
@@ -823,7 +823,7 @@ namespace Rynchodon.Autopilot.Movement
 				//	return;
 				//}
 
-				m_logger.debugLog("Stopping the ship, move: " + m_moveForceRatio + ", rotate: " + m_rotateTargetVelocity);
+				//m_logger.debugLog("Stopping the ship, move: " + m_moveForceRatio + ", rotate: " + m_rotateTargetVelocity);
 				// should not toggle dampeners, grid may just have landed
 				MoveAndRotateStop(false);
 				return;
@@ -838,7 +838,7 @@ namespace Rynchodon.Autopilot.Movement
 					// wriggle
 					float wriggle = (upWoMove - WriggleAfter) * 0.0001f;
 
-					m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
+					//m_logger.debugLog("wriggle: " + wriggle + ", updates w/o moving: " + upWoMove);
 
 					m_rotateForceRatio.X += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
 					m_rotateForceRatio.Y += (0.5f - (float)Globals.Random.NextDouble()) * wriggle;
@@ -929,7 +929,7 @@ namespace Rynchodon.Autopilot.Movement
 			Sandbox.Game.Entities.IMyControllableEntity control = Block.Controller as Sandbox.Game.Entities.IMyControllableEntity;
 			if (control.EnabledDamping != enable)
 			{
-				m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable);
+				//m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (control.EnabledDamping != enable)
 						control.SwitchDamping();

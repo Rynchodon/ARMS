@@ -112,10 +112,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 				for (int indexI = cluster.Count - 1; indexI >= 0; indexI--)
 					points[indexI] = cluster[indexI].Centre;
 
-				string log = "middle sphere: " + (RepulseSphere)BoundingSphereD.CreateFromPoints(points) + " from ";
-				foreach (var s in cluster)
-					log += s.Centre + ", ";
-				Logger.DebugLog(log);
+				//string log = "middle sphere: " + (RepulseSphere)BoundingSphereD.CreateFromPoints(points) + " from ";
+				//foreach (var s in cluster)
+				//	log += s.Centre + ", ";
+				//Logger.DebugLog(log);
 				cluster.Add((RepulseSphere)BoundingSphereD.CreateFromPoints(points));
 			}
 		}

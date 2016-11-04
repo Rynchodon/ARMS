@@ -86,7 +86,7 @@ namespace Rynchodon
 		public static IDisposable AcquireSharedUsing()
 		{
 			if (ThreadTracker.IsGameThread)
-				return lock_dummy.AcquireSharedUsing();
+				return lock_dummy;
 
 			IDisposable result = Lock_MainThread.AcquireSharedUsing();
 			return result;

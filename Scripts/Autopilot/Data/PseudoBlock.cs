@@ -160,7 +160,7 @@ namespace Rynchodon.Autopilot.Data
 
 		public int FunctionalBlocks { get; private set; }
 
-		public override string DisplayName { get { return "Multi: " + typeof(T); } }
+		public override string DisplayName { get { return "Multi: " + typeof(T).Name; } }
 
 		/// <summary>
 		/// Creates a MultiBlock from a single block. However, if the block closes, will rebuild with all the blocks of type T.
