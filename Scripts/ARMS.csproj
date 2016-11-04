@@ -121,6 +121,7 @@
     <Compile Include="Autopilot\Instruction\Command\ACommand.cs" />
     <Compile Include="Autopilot\Instruction\AddCommandTreeNode.cs" />
     <Compile Include="Autopilot\Instruction\AutopilotCommands.cs" />
+    <Compile Include="Autopilot\Instruction\Command\Condition\WaitForBatteryRecharge.cs" />
     <Compile Include="Autopilot\Instruction\Command\Jump.cs" />
     <Compile Include="Autopilot\Instruction\Command\SingleWord\Asteroid.cs" />
     <Compile Include="Autopilot\Instruction\Command\BlockSearch\ABlockSearch.cs" />
@@ -172,6 +173,7 @@
     <Compile Include="Autopilot\Navigator\PointFacer.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
+    <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />
     <Compile Include="Autopilot\Navigator\Waypoint.cs" />
     <Compile Include="Autopilot\Navigator\WeldBlock.cs" />
     <Compile Include="Autopilot\Navigator\WeldGrid.cs" />

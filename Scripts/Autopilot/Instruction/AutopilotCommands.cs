@@ -97,6 +97,7 @@ namespace Rynchodon.Autopilot.Instruction
 			AddDummy(new Exit(), commands);
 			AddDummy(new Stop(), commands);
 			AddDummy(new Disable(), commands);
+			AddDummy(new WaitForBatteryRecharge(), commands);
 
 			rootCommands.Add(new AddCommandInternalNode("Flow Control", commands.ToArray()));
 
