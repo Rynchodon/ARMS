@@ -468,12 +468,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			MyEntity obstructing;
 			MyCubeBlock block;
-			if (CurrentObstructed(out obstructing, out block))
+			if (CurrentObstructed(out obstructing, out block) && (!m_path.HasTarget || !TryRepairPath(ref disp)))
 			{
-				if (m_path.HasTarget)
-					if (TryRepairPath(ref disp))
-						return;
-
 				m_obstructingEntity = new Obstruction() { Entity = obstructing, MatchPosition = m_canChangeCourse };
 				m_obstructingBlock = block;
 
@@ -502,7 +498,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			// if autopilot is off course, try to move back towards the line from last reached to current node
 
-			m_logger.debugLog("entered");
+			//m_logger.debugLog("entered");
 
 			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D lastReached; m_path.GetReached(out lastReached);
@@ -516,8 +512,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (distSquared > 1d)
 			{
-				m_logger.debugLog("Moving to point(" + moveToPoint + ") on line between last reached(" + m_lineSegment.From + ") and current node(" + m_lineSegment.To + ") that is closest to current position(" + m_currentPosition + ").");
-
 				Line moveLine = new Line(m_currentPosition, moveToPoint);
 				if (!CanTravelSegment(ref Vector3D.Zero, ref moveLine))
 				{
@@ -529,6 +523,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3D.Subtract(ref moveToPoint, ref m_currentPosition, out disp);
 					m_moveDirection = disp;
 					m_moveLength = m_moveDirection.Normalize();
+					m_logger.debugLog("Moving to point(" + moveToPoint + ") on line between last reached(" + m_lineSegment.From + ") and current node(" + m_lineSegment.To + ") that is closest to current position(" + m_currentPosition + ")." +
+						" m_moveDirection: " + m_moveDirection);
 					return true;
 				}
 			}
@@ -827,7 +823,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3D hitPosition;
 				if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayDirection, out hitVoxel, out hitPosition))
 				{
-					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition);
+					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition+ ", autopilotVelocity: " + autopilotVelocity + ", m_moveDirection: " + m_moveDirection);
 					obstructingEntity = hitVoxel;
 					obstructBlock = null;
 					return true;
@@ -862,7 +858,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private bool ObstructionMovingAway()
 		{
 			Vector3D velocity = m_obstructingEntity.LinearVelocity;
-			if (velocity.LengthSquared() < 10f)
+			if (velocity.LengthSquared() < 0.01f)
 				return false;
 			Vector3D position = m_obstructingEntity.GetCentre();
 			Vector3D nextPosition; Vector3D.Add(ref position, ref velocity, out nextPosition);

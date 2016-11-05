@@ -69,7 +69,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 
 			Vector3 rejectionVector; Vector3.Add(ref relativeVelocity, ref targetDirection, out rejectionVector);
-			rejectionVector.Normalize();
+			targetDistance += rejectionVector.Normalize();
 
 			return ObstructedBy(entity, ignoreBlock, ref Vector3D.Zero, ref rejectionVector, targetDistance, out obstructBlock);
 		}
@@ -95,11 +95,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 				foreach (MyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
 					if (drill.IsShooting)
 						if (SphereTest(drill, ref offset, ref rejectionVector, rejectionDistance, out obstructBlock))
+						{
+							Profiler.EndProfileBlock();
 							return true;
+						}
 				foreach (MyShipGrinder grinder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
 					if (grinder.IsShooting)
 						if (SphereTest(grinder, ref offset, ref rejectionVector, rejectionDistance, out obstructBlock))
+						{
+							Profiler.EndProfileBlock();
 							return true;
+						}
 				Profiler.EndProfileBlock();
 
 				if (ExtensionsRelations.canConsiderFriendly(Controller.CubeBlock, grid) && EndangerGrid(grid, ref offset, ref rejectionVector, rejectionDistance))
@@ -317,7 +323,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			Vector3D toObstruction; Vector3D.Subtract(ref obstructPosition, ref currentPosition, out toObstruction);
 			double dot = toObstruction.Dot(ref rejectionDirection);
-			return dot >= 0d || dot / toObstruction.Length() >= -0.5d;
+			return dot >= 0d;// || dot / toObstruction.Length() >= -0.5d;
 		}
 
 		/// <summary>
@@ -377,6 +383,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D rayDD = rayDirectionLength;
 			Vector3D.Add(ref capsule.P0, ref rayDD, out capsule.P1);
 			capsule.Radius = AutopilotGrid.PositionComp.LocalVolume.Radius;
+			//Logger.DebugLog("current position: " + currentPosition + ", offset: " + offset + ", line: " + rayDirectionLength + ", start: " + capsule.P0 + ", end: " + capsule.P1);
 			if (!CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
 			{
 				Profiler.EndProfileBlock();
