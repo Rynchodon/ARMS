@@ -31,6 +31,7 @@ finalDirDev = finalDir + ' Dev'
 finalDirModel = finalDir + ' Model'
 
 # in case build.ini is missing variables
+GitExe = os.devnull
 SpaceEngineers = os.devnull
 Zip7 = os.devnull
 
@@ -103,6 +104,13 @@ def copyWithExtension(l_from, l_to, l_ext, log):
 				shutil.copy2(sourceFile, target)
 				
 
+GitHubPath = os.getenv('LOCALAPPDATA') + "\\GitHub\\"
+if (os.path.exists(GitHubPath)):
+	for f in os.listdir(GitHubPath):
+		if (f.startswith('PortableGit_')):
+			GitExe = GitHubPath + str(f) + "\\cmd\\git.exe"
+			break
+
 if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
 
@@ -140,8 +148,31 @@ if (not os.path.exists(target)):
 shutil.copy2(source, target)
 logging.info("Copied dll to " + target)
 
+if os.path.exists(GitExe):
+	proc = subprocess.Popen([GitExe, "describe", "--always", "--dirty", "--tags"], stdout=subprocess.PIPE)
+	commit = str(proc.stdout.read())
+	commit = commit[2:len(commit)-3]
+else:
+	path = startDir + '/.git/HEAD'
+	file = open(path, 'r')
+	text = file.read()
+	file.close()
+	if (text.startswith('ref: ')):
+		path = startDir + '/.git/' + text[5:len(text) - 1]
+		if (os.path.exists(path)):
+			file = open (path, 'r')
+			commit = file.read()[:7]
+			file.close()
+		else:
+			logging.error("Does not exist: " + path)
+	else:
+		commit = text[:7]
+logging.info("Commit: " + commit)
+
 target += '/ARMS - Release Notes.txt'
-notes = "Unoffical build: " + sys.argv[1] + "\nBuilt: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+notes = "Unoffical build: " + sys.argv[1] + "\nBuilt: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n"
+notes += "Commit: " + commit + "\n"
+
 file = open(target, "w")
 file.write(notes)
 file.close()
@@ -194,8 +225,13 @@ for module in modules[:]:
 
 pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
 if str.lower(build) == "release" and os.path.isfile(pathPublish):
-	print(pathPublish)
-	os.system('start /wait cmd /c"' + pathPublish + '"')
+	if (os.path.exists(GitExe)):
+		if (commit.endswith("-dirty")):
+			logging.info("Cannot publish, working directory is dirty")
+		else:
+			os.system('start /wait cmd /c"' + pathPublish + '"')
+	else:
+		logging.info("Cannot publish, git.exe is missing")
 
 #    Pack Archive
 
