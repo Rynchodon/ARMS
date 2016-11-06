@@ -31,10 +31,7 @@ namespace Rynchodon.Autopilot.Movement
 		public const float OverworkedThreshold = 0.75f;
 		/// <summary>How far from the destination a ship needs to be to take a curved path instead of a straight one.</summary>
 		public const float PlanetMoveDist = 1000f;
-
-		/// <summary>Only update torque accel ratio when updates are at least this close together.</summary>
-		private const float MaxUpdateSeconds = Globals.UpdatesPerSecond;
-
+		public const float DistanceSpeedFactor = 0.2f;
 		private const ulong WriggleAfter = 500ul, StuckAfter = WriggleAfter + 2000ul, MoveAwayAfter = StuckAfter + 100ul;
 
 		private readonly Logger m_logger;
@@ -170,7 +167,6 @@ namespace Rynchodon.Autopilot.Movement
 		public void CalcMove(PseudoBlock block, ref Vector3 destDisp, ref Vector3 destVelocity)
 		{
 			m_logger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
-			const float landingSpeedFactor = 0.2f;
 
 			CheckGrid();
 			m_lastMoveAttempt = Globals.UpdateCount;
@@ -207,7 +203,7 @@ namespace Rynchodon.Autopilot.Movement
 
 				// apply relative speed limit
 				float relSpeedLimit = NavSet.Settings_Current.SpeedMaxRelative;
-					float landingSpeed = Math.Max(distance * landingSpeedFactor, landingSpeedFactor);
+					float landingSpeed = Math.Max(distance * DistanceSpeedFactor, DistanceSpeedFactor);
 					if (relSpeedLimit > landingSpeed)
 						relSpeedLimit = landingSpeed;
 				if (relSpeedLimit < float.MaxValue)
@@ -259,16 +255,16 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
-			m_logger.debugLog(string.Empty
-				//+ "block: " + block.Block.getBestName()
-				//+ ", dest point: " + destPoint
-				//+ ", position: " + block.WorldPosition
-				+ "destDisp: " + destDisp
-				+ ", destVelocity: " + destVelocity
-				+ ", targetVelocity: " + targetVelocity
-				+ ", velocity: " + velocity
-				+ ", m_moveAccel: " + m_moveAccel
-				+ ", moveForceRatio: " + m_moveForceRatio);
+			//m_logger.debugLog(string.Empty
+			//	//+ "block: " + block.Block.getBestName()
+			//	//+ ", dest point: " + destPoint
+			//	//+ ", position: " + block.WorldPosition
+			//	+ "destDisp: " + destDisp
+			//	+ ", destVelocity: " + destVelocity
+			//	+ ", targetVelocity: " + targetVelocity
+			//	+ ", velocity: " + velocity
+			//	+ ", m_moveAccel: " + m_moveAccel
+			//	+ ", moveForceRatio: " + m_moveForceRatio);
 		}
 
 		private void CalcMove(ref Vector3 velocity)

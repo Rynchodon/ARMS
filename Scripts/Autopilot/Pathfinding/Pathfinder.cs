@@ -449,12 +449,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 					float distance = dispF.Length();
 					Vector3 scaledRepulsion; Vector3.Multiply(ref repulsion, distance * 0.001f, out scaledRepulsion);
 					Vector3.Add(ref dispF, ref scaledRepulsion, out m_moveDirection);
-					m_logger.debugLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					//m_logger.debugLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 				else
 				{
 					Vector3.Add(ref dispF, ref repulsion, out m_moveDirection);
-					m_logger.debugLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					//m_logger.debugLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 			}
 			else
@@ -483,7 +483,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			m_logger.debugLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength);
+			//m_logger.debugLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength);
 			if (!m_path.HasTarget)
 			{
 				CurrentState = State.Unobstructed;
@@ -612,13 +612,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3 autopilotVelocity = m_autopilotVelocity;
 			m_checkVoxel = false;
 			float apRadius = m_autopilotShipBoundingRadius;
+			float closestEntityDist = float.MaxValue;
 
 			for (int index = m_entitiesRepulse.Count - 1; index >= 0; index--)
 			{
 				MyEntity entity = m_entitiesRepulse[index];
 
 				m_logger.debugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
-				m_logger.debugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy.Parent != null);
+				m_logger.debugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy != null && entity.Hierarchy.Parent != null);
 
 				Vector3D centre = entity.GetCentre();
 				Vector3D toCentreD;
@@ -678,6 +679,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (distCentreToCurrent < fixedRadius + linearSpeedFactor)
 				{
 					// Entity is too close to autopilot for repulsion.
+					if (calcRepulse)
+					{
+						float distBetween = (float)distCentreToCurrent - fixedRadius;
+						if (distBetween < closestEntityDist)
+							closestEntityDist = distBetween;
+					}
 					AvoidEntity(entity);
 					continue;
 				}
@@ -719,6 +726,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				repulsion = Vector3.Zero;
 				return;
 			}
+
+			NavSet.Settings_Task_NavWay.SpeedMaxRelative = Math.Max(closestEntityDist * Mover.DistanceSpeedFactor, 5f);
 
 			m_clusters.AddMiddleSpheres();
 

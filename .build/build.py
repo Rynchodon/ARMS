@@ -225,13 +225,8 @@ for module in modules[:]:
 
 pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
 if str.lower(build) == "release" and os.path.isfile(pathPublish):
-	if (os.path.exists(GitExe)):
-		if (commit.endswith("-dirty")):
-			logging.info("Cannot publish, working directory is dirty")
-		else:
-			os.system('start /wait cmd /c"' + pathPublish + '"')
-	else:
-		logging.info("Cannot publish, git.exe is missing")
+	# git tests moved to Publisher.cs
+	os.system('start /wait cmd /c"' + pathPublish + '"')
 
 #    Pack Archive
 

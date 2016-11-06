@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -125,12 +126,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 			public bool GetRandom(byte[] oreType, ref Vector3D worldPosition, out Vector3D position, out byte foundOre)
 			{
-				//if (oreType == null)
-				//	m_logger.debugLog("searching for any");
-				//else
-				//	foreach (byte b in oreType)
-				//		m_logger.debugLog("searching for: " + b);
-
+				Profiler.StartProfileBlock();
 				Vector3I search_voxelCellCoord;
 				MyVoxelCoordSystems.WorldPositionToVoxelCoord(m_voxel.PositionLeftBottomCorner, ref worldPosition, out search_voxelCellCoord);
 				search_voxelCellCoord >>= QUERY_LOD;
@@ -143,6 +139,7 @@ namespace Rynchodon.Autopilot.Harvest
 							foundOre = locations.Key;
 							Vector3D deposit_localPosition = locations.Value[Static.Rand.Next(locations.Value.Count)] << QUERY_LOD;
 							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out position);
+							Profiler.EndProfileBlock();
 							return true;
 						}
 				}
@@ -156,6 +153,7 @@ namespace Rynchodon.Autopilot.Harvest
 							foundOre = ore;
 							Vector3D deposit_localPosition = locations[Static.Rand.Next(locations.Count)] << QUERY_LOD;
 							MyVoxelCoordSystems.LocalPositionToWorldPosition(m_voxel.PositionLeftBottomCorner, ref deposit_localPosition, out position);
+							Profiler.EndProfileBlock();
 							return true;
 						}
 					}
@@ -163,6 +161,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 				foundOre = 255;
 				position = Vector3D.Zero;
+				Profiler.EndProfileBlock();
 				return false;
 			}
 
@@ -173,6 +172,7 @@ namespace Rynchodon.Autopilot.Harvest
 			/// <returns>True if started, false if already running.</returns>
 			public void Read()
 			{
+				Profiler.StartProfileBlock();
 				m_throwOutVoxelData = Globals.ElapsedTime + Static.LifeSpan_VoxelData;
 
 				NeedsUpdate = false;
@@ -189,7 +189,10 @@ namespace Rynchodon.Autopilot.Harvest
 
 				MyVoxelBase vox = m_voxel as MyVoxelBase;
 				if (m_voxel == null || m_voxel.Storage == null)
+				{
+					Profiler.EndProfileBlock();
 					return;
+				}
 
 				m_localMin = Vector3I.Clamp(m_localMin, vox.StorageMin, vox.StorageMax);
 				m_localMax = Vector3I.Clamp(m_localMax, vox.StorageMin, vox.StorageMax);
@@ -231,7 +234,7 @@ namespace Rynchodon.Autopilot.Harvest
 													List<Vector3I> locations;
 													if (!m_materialLocations2.TryGetValue(mat, out locations))
 													{
-														locations = new List<Vector3I>();
+														locations = new List<Vector3I>(1000);
 														m_materialLocations2.Add(mat, locations);
 													}
 													locations.Add(vector + index);
@@ -247,7 +250,9 @@ namespace Rynchodon.Autopilot.Harvest
 							}
 
 				//m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
+				Profiler.EndProfileBlock();
 			}
+
 		}
 
 		#region Static
@@ -496,6 +501,8 @@ namespace Rynchodon.Autopilot.Harvest
 							m_nearbyVoxel.Clear();
 							return true;
 						}
+						else
+							m_logger.debugLog("No ore found");
 					}
 				}
 

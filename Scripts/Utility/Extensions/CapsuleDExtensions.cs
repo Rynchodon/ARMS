@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using VRageMath;
@@ -28,28 +29,22 @@ namespace Rynchodon
 				return true;
 			}
 
-			if (halfLength < capsule.Radius * 25f)
+			double radius = halfLength + capsule.Radius;
+			BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
+			if (!voxel.PositionComp.WorldVolume.Intersects(worldSphere))
 			{
-				double radius = halfLength + capsule.Radius;
-				BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
-				if (!voxel.PositionComp.WorldVolume.Intersects(worldSphere))
-				{
-					hitPosition = Vector3.Invalid;
-					return false;
-				}
+				hitPosition = Vector3.Invalid;
+				return false;
+			}
 
-				Vector3D leftBottom = voxel.PositionLeftBottomCorner;
-				Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
-				BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
+			Vector3D leftBottom = voxel.PositionLeftBottomCorner;
+			Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
+			BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
 
-				//Logger.DebugLog("Checking: " + localSphere);
-				if (!voxel.Storage.Geometry.Intersects(ref localSphere))
-				{
-					//Logger.DebugLog("No contact");
-					hitPosition = Vector3.Invalid;
-					return false;
-				}
-				//Logger.DebugLog("Contact");
+			if (!voxel.Storage.Geometry.Intersects(ref localSphere))
+			{
+				hitPosition = Vector3.Invalid;
+				return false;
 			}
 
 			CapsuleD halfCapsule;

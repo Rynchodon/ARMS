@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
@@ -200,7 +201,8 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void Update()
 		{
-			myLogger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
+			// sometimes called from Game Thread when world is loaded, has not been an issue so far
+			//myLogger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName + ", from: " + callerPath + "." + callerMember, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
 
 			if (Globals.UpdateCount < m_nextUpdate)
 				return;

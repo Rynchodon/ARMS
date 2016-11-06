@@ -74,6 +74,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void GetAutopilotActions(string commands)
 		{
+			Logger.AlwaysLog("Commands: " + commands);
 			AutopilotActions.Clear();
 			m_autoCommands.GetActions(commands, AutopilotActions);
 		}

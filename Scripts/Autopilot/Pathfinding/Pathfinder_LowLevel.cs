@@ -56,6 +56,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
+			if (m_forward.m_reachedNodes.Count == 0 && m_backward.m_reachedNodes.Count == 0)
+			{
+				// limit node distance when autopilot is near destination
+				float maxNodeDist = Math.Max(NavSet.Settings_Current.Distance * 0.25f, 10f);
+				if (m_nodeDistance > maxNodeDist)
+				{
+					m_logger.debugLog("Limiting node distance to " + maxNodeDist);
+					m_nodeDistance = maxNodeDist;
+				}
+			}
+
 			double diffSquared; Vector3D.DistanceSquared(ref backStartPos, ref m_backward.m_startPosition, out diffSquared);
 			float destRadius = NavSet.Settings_Current.DestinationRadius;
 			destRadius *= destRadius;
@@ -540,9 +551,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 #if PROFILE
 			LogStats();
 #endif
-#if LOG_ENABLED
-			LogStats();
-#endif
 
 			PathfindingFailed();
 			return;
@@ -621,9 +629,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 
 #if PROFILE
-			LogStats();
-#endif
-#if LOG_ENABLED
 			LogStats();
 #endif
 
