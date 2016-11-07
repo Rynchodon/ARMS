@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Text.RegularExpressions;
 using Rynchodon.Autopilot.Instruction.Command;
 using Sandbox.ModAPI;
 
@@ -74,7 +75,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void GetAutopilotActions(string commands)
 		{
-			Logger.AlwaysLog("Commands: " + commands);
+			Logger.AlwaysLog("Commands: " + commands.Replace('\n', ' '));
 			AutopilotActions.Clear();
 			m_autoCommands.GetActions(commands, AutopilotActions);
 		}
