@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using Sandbox.ModAPI;
 
 namespace Rynchodon
 {
@@ -19,6 +20,12 @@ namespace Rynchodon
 		/// </summary>
 		public static void InvokeMethodsWithAttribute<T>() where T : Attribute
 		{
+			if (MyAPIGateway.Entities == null)
+			{
+				Logger.DebugLog("MyAPIGateway.Entities == null", Logger.severity.INFO);
+				return;
+			}
+
 			foreach (Type type in Assembly.GetCallingAssembly().GetTypes())
 				foreach (MethodInfo method in type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
 					if (method.IsDefined(typeof(T)))

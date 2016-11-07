@@ -18,13 +18,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 	public class PathTester
 	{
 
+		static PathTester()
+		{
+			Vector2IMatrix<Vector3D>.EqualityComparer = new EqualityComparer_Vector3D();
+		}
+
 		private const float StartRayCast = 2.5f;
 
-		/// <summary>Rejections of this grid</summary>
-		private Vector2IMatrix<bool> m_rejections = new Vector2IMatrix<bool>();
-		/// <summary>Rejections of the other grid.</summary>
-		private Vector2IMatrix<bool> m_rejectTests = new Vector2IMatrix<bool>();
 		private LineSegmentD m_lineSegment = new LineSegmentD();
+		private List<Vector2I> m_insideRing = new List<Vector2I>();
 
 		public ShipControllerBlock Controller;
 		public MyCubeGrid AutopilotGrid;
@@ -186,7 +188,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			//Logger.DebugLog("round to: " + roundTo + ", steps: " + steps);
 			//Logger.DebugLog("building m_rejections");
 
-			m_rejections.Clear();
+			Vector2IMatrix<bool> apShipRejections;
+			ResourcePool.Get(out apShipRejections);
+
 			MatrixD worldMatrix = AutopilotGrid.WorldMatrix;
 			float gridSize = AutopilotGrid.GridSize;
 			float minProjection = float.MaxValue, maxProjection = float.MinValue; // the permitted range when rejecting the other grids cells
@@ -215,7 +219,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
 					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-					m_rejections[ToCell(pc2, roundTo)] = true;
+					apShipRejections[ToCell(pc2, roundTo)] = true;
 					//Logger.DebugLog("My rejection: " + rejection + ", planar: " + ToCell(pc2, roundTo));
 				}
 			}
@@ -227,7 +231,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			//Logger.DebugLog("checking other grid cells");
 
-			m_rejectTests.Clear();
+			Vector2IMatrix<bool> otherGridRejections;
+			ResourcePool.Get(out otherGridRejections);
+
 			worldMatrix = oGrid.WorldMatrix;
 			gridSize = oGrid.GridSize;
 			foreach (Vector3I cell in oCache.OccupiedCells())
@@ -250,7 +256,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 				Vector2I cell2D = ToCell(pc2, roundTo);
 
-				if (!m_rejectTests.Add(cell2D, true))
+				if (!otherGridRejections.Add(cell2D, true))
 				{
 					//Logger.DebugLog("Already tested: " + cell2D);
 					continue;
@@ -262,7 +268,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector2I test;
 				for (test.X = cell2D.X - steps; test.X <= cell2D.X + steps; test.X++)
 					for (test.Y = cell2D.Y - steps; test.Y <= cell2D.Y + steps; test.Y++)
-						if (m_rejections.Contains(test))
+						if (apShipRejections.Contains(test))
 						{
 							if (checkBlock)
 							{
@@ -271,12 +277,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 									continue;
 							}
 							oGridCell = cell;
-							Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
+							//Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
+							apShipRejections.Clear();
+							otherGridRejections.Clear();
+							ResourcePool.Return(apShipRejections);
+							ResourcePool.Return(otherGridRejections);
 							return true;
 						}
 			}
 
 			oGridCell = Vector3I.Zero;
+			apShipRejections.Clear();
+			otherGridRejections.Clear();
+			ResourcePool.Return(apShipRejections);
+			ResourcePool.Return(otherGridRejections);
 			return false;
 		}
 
@@ -389,7 +403,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Profiler.EndProfileBlock();
 				return false;
 			}
-			capsule.Radius = AutopilotGrid.GridSize * 2f;
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 
@@ -401,7 +414,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 				0f, 0f, 0f, 1f);
 			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
 
-			m_rejections.Clear();
+			Vector2IMatrix<Vector3D> apShipRejections;
+			ResourcePool.Get(out apShipRejections);
+
 			MatrixD worldMatrix = AutopilotGrid.WorldMatrix;
 			float gridSize = AutopilotGrid.GridSize;
 			foreach (CubeGridCache cache in myCaches)
@@ -425,23 +440,73 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
 					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
-					if (!m_rejections.Add(ToCell(pc2, gridSize), true))
-						continue;
-
-					Vector3D end = new Vector3D() { X = offsetWorld.X + rayDirectionLength.X, Y = offsetWorld.Y + rayDirectionLength.Y, Z = offsetWorld.Z + rayDirectionLength.Z };
-					capsule.P0 = offsetWorld;
-					capsule.P1 = end;
-					if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
-					{
-						Profiler.EndProfileBlock();
-						return true;
-					}
+					apShipRejections.Add(ToCell(pc2, gridSize), offsetWorld);
 				}
 			}
+
+			Vector2IMatrix<bool> testedRejections;
+			ResourcePool.Get(out testedRejections);
+
+			//int tests = 0;
+			const int allowedEmpty = 2;
+			foreach (KeyValuePair<Vector2I, Vector3D> cell in apShipRejections.MiddleOut())
+			{
+				//Logger.DebugLog("Cell was not set: " + cell, Logger.severity.FATAL, condition: cell.Value == Vector3D.Zero);
+
+				if (!testedRejections.Add(cell.Key, true))
+					continue;
+
+				int ringIndex = 0;
+				m_insideRing.Clear();
+
+				int biggestRingSq = 0;
+				while (true)
+				{
+					int consecutiveEmpty = 0;
+					ExpandingRings.Ring ring = ExpandingRings.GetRing(ringIndex++);
+					foreach (Vector2I ringOffset in ring.Squares)
+						if (apShipRejections.Contains(ringOffset + cell.Key))
+						{
+							consecutiveEmpty = 0;
+						}
+						else
+						{
+							consecutiveEmpty++;
+							if (consecutiveEmpty > allowedEmpty)
+								goto GotRing;
+						}
+					m_insideRing.AddArray(ring.Squares);
+					biggestRingSq = ring.DistanceSquared;
+				}
+
+				GotRing:
+				foreach (Vector2I ringOffset in m_insideRing)
+					testedRejections.Add(ringOffset + cell.Key, true);
+
+				capsule.P0 = cell.Value;
+				capsule.P1 = new Vector3D(capsule.P0.X + rayDirectionLength.X, capsule.P0.Y + rayDirectionLength.Y, capsule.P0.Z + rayDirectionLength.Z);
+				capsule.Radius = (1f + (float)Math.Sqrt(biggestRingSq)) * gridSize;
+				//tests++;
+				if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
+				{
+					Profiler.EndProfileBlock();
+					apShipRejections.Clear();
+					testedRejections.Clear();
+					ResourcePool.Return(apShipRejections);
+					ResourcePool.Return(testedRejections);
+					return true;
+				}
+			}
+
+			//Logger.DebugLog("Cells: " + apShipRejections.Count + ", tests: " + tests);
 
 			hitVoxel = null;
 			hitPosition = Vector3.Invalid;
 			Profiler.EndProfileBlock();
+			apShipRejections.Clear();
+			testedRejections.Clear();
+			ResourcePool.Return(apShipRejections);
+			ResourcePool.Return(testedRejections);
 			return false;
 		}
 

@@ -14,20 +14,18 @@ namespace Rynchodon.Utility.Collections
 
 		private const int DefaultCapacity = 4;
 
+		public static IEqualityComparer<T> EqualityComparer = EqualityComparer<T>.Default;
+
 		private static bool EqualsDefault(T value)
 		{
-			return EqualityComparer<T>.Default.Equals(value, default(T));
+			return EqualityComparer.Equals(value, default(T));
 		}
 
 		private int m_offset;
 		private T[] m_array;
-
-		public OffsetList() { }
-
-		public OffsetList(int includeIndex)
-		{
-			InitializeArray(includeIndex);
-		}
+		
+		/// <summary>Number of entries in the list not equal to default(T)</summary>
+		public int Count { get; private set; }
 
 		/// <summary>
 		/// Gets or sets an element in the list.
@@ -57,8 +55,44 @@ namespace Rynchodon.Utility.Collections
 					Include(index);
 					iIndex = index - m_offset;
 				}
+				if (EqualsDefault(m_array[iIndex]))
+				{
+					if (!EqualsDefault(value))
+						Count++;
+				}
+				else if (EqualsDefault(value))
+					Count--;
 				m_array[iIndex] = value;
 			}
+		}
+
+		public OffsetList() { }
+
+		public OffsetList(int includeIndex)
+		{
+			InitializeArray(includeIndex);
+		}
+
+		public void Add(int index, T value)
+		{
+			if (m_array == null)
+				InitializeArray(index);
+			int iIndex = index - m_offset;
+			if (iIndex < 0 || iIndex >= m_array.Length)
+			{
+				Include(index);
+				iIndex = index - m_offset;
+			}
+			if (EqualsDefault(m_array[iIndex]))
+			{
+				if (!EqualsDefault(value))
+					Count++;
+				else
+					throw new ArgumentNullException("Cannot add " + default(T) + " to offset list");
+			}
+			else
+				throw new ArgumentException("An item with the key " + index + " already exists in the offset list");
+			m_array[iIndex] = value;
 		}
 
 		/// <summary>
@@ -69,6 +103,53 @@ namespace Rynchodon.Utility.Collections
 			if (m_array != null)
 				for (int ii = 0; ii < m_array.Length; ii++)
 					m_array[ii] = default(T);
+		}
+
+		/// <summary>
+		/// Determines if the value at index is not default(T).
+		/// </summary>
+		public bool ContainsKey(int index)
+		{
+			if (m_array == null)
+				return false;
+			int iIndex = index - m_offset;
+			if (iIndex >= 0 && iIndex < m_array.Length)
+				return !EqualsDefault(m_array[iIndex]);
+			return false;
+		}
+
+		public bool Remove(int index)
+		{
+			if (m_array == null)
+				InitializeArray(index);
+			int iIndex = index - m_offset;
+			if (iIndex < 0 || iIndex >= m_array.Length)
+			{
+				Include(index);
+				iIndex = index - m_offset;
+			}
+			if (EqualsDefault(m_array[iIndex]))
+				return false;
+			Count--;
+			m_array[iIndex] = default(T);
+			return true;
+		}
+
+		public bool TryGetValue(int index, out T value)
+		{
+			if (m_array == null)
+			{
+				value = default(T);
+				return false;
+			}
+			int iIndex = index - m_offset;
+			if (iIndex >= 0 && iIndex < m_array.Length)
+			{
+				value = m_array[iIndex];
+				return !EqualsDefault(value);
+			}
+			value = default(T);
+			return false;
 		}
 
 		/// <summary>
@@ -87,6 +168,28 @@ namespace Rynchodon.Utility.Collections
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{
 			return GetEnumerator();
+		}
+
+		public IEnumerable<KeyValuePair<int, T>> MiddleOut()
+		{
+			if (m_array == null)
+				yield break;
+
+			int middle = m_array.Length / 2;
+			int step = 0;
+			int maxStep = m_array.Length - middle;
+			int ii;
+			while ((ii = middle + step) < m_array.Length && ii >= 0)
+			{
+				//Logger.DebugLog("step: " + step + ", index: " + ii + ", outer: " + (m_offset + ii));
+				T value = m_array[ii];
+				if (!EqualsDefault(value))
+					yield return new KeyValuePair<int, T>(m_offset + ii, value);
+				if (step < 0)
+					step = -step;
+				else
+					step = -step - 1;
+			}
 		}
 
 		/// <summary>
@@ -171,7 +274,6 @@ namespace Rynchodon.Utility.Collections
 		/// <summary>
 		/// Get the internal index of the first and last non-default elements in the array.
 		/// </summary>
-		/// <param name="comparer">Comparer to use for equality testing.</param>
 		/// <param name="first">Internal index of the first non-default element in the array.</param>
 		/// <param name="last">Internal index of the last non-default element in the array.</param>
 		/// <returns>True if the array contains at least on non-default element. False, otherwise.</returns>
