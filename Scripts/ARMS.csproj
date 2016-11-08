@@ -170,7 +170,6 @@
     <Compile Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
-    <Compile Include="Autopilot\Navigator\PointFacer.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />
@@ -302,6 +301,7 @@
     <Compile Include="Weapons\SystemDisruption\MedicalRoom.cs" />
     <Compile Include="Weapons\SystemDisruption\TraitorTurret.cs" />
     <Compile Include="Weapons\Target.cs" />
+    <Compile Include="Weapons\TargeterTracker.cs" />
     <Compile Include="Weapons\TargetingBase.cs" />
     <Compile Include="Weapons\TargetingTypeOptions.cs" />
     <Compile Include="Weapons\Turret.cs" />

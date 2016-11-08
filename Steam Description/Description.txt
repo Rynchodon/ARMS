@@ -43,7 +43,7 @@ type "/autopilot help <topic>" for information about a specific topic
 A solar array of panels or oxygen farms can be instructed to face the sun by adding [ Face Sun ] to the name of any solar panel or oxygen farm. See [url=http://steamcommunity.com/sharedfiles/filedetails/?id=457179880] ARMS Demonstration World [/url].
 
 [b][u]Settings[/u][/b]
-The file at "%AppData%\SpaceEngineers\Storage\363880940.sbm_Autopilot\AutopilotSettings.txt" contains the settings for ARMS.
+The file at "%AppData%\SpaceEngineers\Storage\ARMS\ServerSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
 type "/arms settings" in game to see the current settings. Not all server settings will be displayed.
 bAllowAutopilot - this mod can control the movement of grids
@@ -59,9 +59,6 @@ fMaxSpeed - the maximum speed Autopilot is allowed to fly at
 fMaxWeaponRange - the maximum range any weapon can be set to
 
 [b][u]FAQ[/u][/b]
-Can you add jump drive support?
-[i]It is not possible at this time.[/i]
-
 Can you make it possible to save ore locations for later use?
 [i]It would be an enormous amount of work and there are more important things for me to be working on.[/i]
 

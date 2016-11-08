@@ -364,10 +364,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_entitiesRepulse.Clear();
 		}
 
+		private MyEntity GetTopMostDestEntity()
+		{
+			return m_destination.Entity != null ? (MyEntity)m_destination.Entity.GetTopMostParent() : null;
+		}
+
 		private MyEntity GetRelativeEntity()
 		{
 			Obstruction obstruct = m_obstructingEntity;
-			return obstruct.Entity != null && obstruct.MatchPosition ? obstruct.Entity : (MyEntity)m_destination.Entity;
+			return obstruct.Entity != null && obstruct.MatchPosition ? obstruct.Entity : GetTopMostDestEntity();
 		}
 
 		/// <summary>
@@ -403,7 +408,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (m_path.HasTarget)
 			{
 				// don't chase an obstructing entity unless it is the destination
-				if (m_obstructingEntity.Entity != m_destination.Entity && ObstructionMovingAway())
+				if (ObstructionMovingAway())
 				{
 					m_logger.debugLog("Obstruction is moving away, I'll just wait here", Logger.severity.DEBUG);
 					m_path.Clear();
@@ -799,12 +804,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			// if destination is obstructing it needs to be checked first, so we would match speed with destination
 
-			MyEntity destTop;
-			if (m_destination.Entity != null)
+			MyEntity destTop = GetTopMostDestEntity();
+			if (destTop != null)
 			{
 				//m_logger.debugLog("checking destination entity");
-
-				destTop = (MyEntity)m_destination.Entity.GetTopMostParent();
 				if (m_entitiesPruneAvoid.Contains(destTop))
 				{
 					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock))
@@ -815,8 +818,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 				}
 			}
-			else
-				destTop = null;
 
 			// check voxel next so that the ship will not match an obstruction that is on a collision course
 
@@ -866,6 +867,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private bool ObstructionMovingAway()
 		{
+			if (m_obstructingEntity.Entity == GetTopMostDestEntity())
+				return false;
 			Vector3D velocity = m_obstructingEntity.LinearVelocity;
 			if (velocity.LengthSquared() < 0.01f)
 				return false;

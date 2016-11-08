@@ -74,14 +74,8 @@ namespace Rynchodon.Attached
 			Physics = LandingGear | Terminal
 		}
 
-		private class StaticVariables
-		{
-			public Logger s_logger = new Logger();
-			public MyConcurrentPool<HashSet<AttachedGrid>> searchSet = new MyConcurrentPool<HashSet<AttachedGrid>>();
-			public MyConcurrentPool<HashSet<SerializableDefinitionId>> foundBlockIds = new MyConcurrentPool<HashSet<SerializableDefinitionId>>();
-		}
-
-		private static StaticVariables Static = new StaticVariables();
+		private static MyConcurrentPool<HashSet<AttachedGrid>> s_searchSet = new MyConcurrentPool<HashSet<AttachedGrid>>();
+		private static FastResourceLock lock_construct = new FastResourceLock();
 
 		/// <summary>
 		/// Determines if two grids are attached.
@@ -105,10 +99,10 @@ namespace Rynchodon.Attached
 			if (attached2 == null)
 				return false;
 
-			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			HashSet<AttachedGrid> search = s_searchSet.Get();
 			bool result = attached1.IsGridAttached(attached2, allowedConnections, search);
 			search.Clear();
-			Static.searchSet.Return(search);
+			s_searchSet.Return(search);
 			return result;
 		}
 
@@ -128,7 +122,7 @@ namespace Rynchodon.Attached
 			if (attached == null)
 				yield break;
 
-			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			HashSet<AttachedGrid> search = s_searchSet.Get();
 			try
 			{
 				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
@@ -137,7 +131,7 @@ namespace Rynchodon.Attached
 			finally
 			{
 				search.Clear();
-				Static.searchSet.Return(search);
+				s_searchSet.Return(search);
 			}
 		}
 
@@ -161,7 +155,7 @@ namespace Rynchodon.Attached
 			if (attached == null)
 				yield break;
 
-			HashSet<AttachedGrid> search = Static.searchSet.Get();
+			HashSet<AttachedGrid> search = s_searchSet.Get();
 			try
 			{
 				foreach (IMyCubeGrid grid in attached.Attached(allowedConnections, search))
@@ -174,7 +168,7 @@ namespace Rynchodon.Attached
 			finally
 			{
 				search.Clear();
-				Static.searchSet.Return(search);
+				s_searchSet.Return(search);
 			}
 		}
 
@@ -237,7 +231,9 @@ namespace Rynchodon.Attached
 			{
 				if (grid.Closed)
 					return null;
-				attached = new AttachedGrid(grid);
+				using (lock_construct.AcquireExclusiveUsing())
+					if (!Registrar.TryGetValue(grid.EntityId, out attached))
+						attached = new AttachedGrid(grid);
 			}
 
 			return attached;
