@@ -28,7 +28,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		public RotateChecker(IMyCubeBlock block, Func<List<MyEntity>, IEnumerable<MyEntity>> collector)
 		{
-			this.m_logger = new Logger(m_block);
+			this.m_logger = new Logger(block);
 			this.m_block = block;
 			this.m_collector = collector;
 		}
@@ -47,7 +47,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// Test if it is safe for the grid to rotate.
 		/// </summary>
 		/// <param name="axis">Normalized axis of rotation in world space.</param>
-		/// <param name="ignoreAsteroids"></param>
 		/// <returns>True iff the path is clear.</returns>
 		private bool in_TestRotate(Vector3 axis)
 		{
@@ -68,7 +67,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			float? lowerBound = myGrid.LocalAABB.Intersects(lower);
 			if (!lowerBound.HasValue)
 				m_logger.alwaysLog("Math fail, lowerBound does not have a value", Logger.severity.FATAL);
-			m_logger.debugLog("LocalAABB: " + myGrid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
+			//m_logger.debugLog("LocalAABB: " + myGrid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
 			float height = longestDim * 4f - upperBound.Value - lowerBound.Value;
 
 			float furthest = 0f;
@@ -85,11 +84,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 						furthest = cellDistSquared;
 				}
 			}
-			float length = (float)Math.Sqrt(furthest) + myGrid.GridSize * 0.5f;
+			float length = (float)Math.Sqrt(furthest) + myGrid.GridSize;
 
-			m_logger.debugLog("height: " + height + ", length: " + length);
+			//m_logger.debugLog("height: " + height + ", length: " + length);
 
-			BoundingSphereD surroundingSphere = new BoundingSphereD(centreOfMass, Math.Max(length, height));
+			BoundingSphereD surroundingSphere = new BoundingSphereD(centreOfMass, Math.Max(length, height) * MathHelper.Sqrt2);
 			m_obstructions.Clear();
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref surroundingSphere, m_obstructions);
 
@@ -150,6 +149,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					foreach (Vector3I cell in cache.OccupiedCells())
 						if (axisSegment.PointInCylinder(length, cell * grid.GridSize))
 						{
+							m_logger.debugLog("axis segment: " + axisSegment.From + " to " + axisSegment.To + ", radius: " + length + ", hit " + grid.nameWithId() + " at " + cell);
 							ObstructingEntity = grid;
 							return false;
 						}
