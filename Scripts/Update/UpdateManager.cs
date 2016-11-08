@@ -498,7 +498,7 @@ namespace Rynchodon.Update
 					myLogger.alwaysLog("Space Engineers build is DEBUG");
 #pragma warning restore 162
 
-				Logger.DebugNotify("ARMS dev version loaded", 10000);
+				Logger.DebugNotify("ARMS dev version loaded", 10000, Logger.severity.INFO);
 
 				ManagerStatus = Status.Initialized;
 			}

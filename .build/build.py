@@ -227,10 +227,10 @@ pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64
 if str.lower(build) == "release" and os.path.isfile(pathPublish):
 	# git tests moved to Publisher.cs
 	os.system('start /wait cmd /c"' + pathPublish + '"')
-
-Path = SpaceEngineers + '\Bin64'
-LoadArms = Path + '\LoadARMS.exe'
-os.system('start /D ' + Path + ' cmd /c"' + LoadArms)
+else:
+	Path = SpaceEngineers + '\Bin64'
+	LoadArms = Path + '\LoadARMS.exe'
+	os.system('start /D ' + Path + ' cmd /c"' + LoadArms)
 
 #    Pack Archive
 

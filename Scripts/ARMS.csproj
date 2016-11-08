@@ -220,7 +220,6 @@
     <Compile Include="Utility\ChatHandler.cs" />
     <Compile Include="Utility\Collections\BlockTypeList.cs" />
     <Compile Include="Utility\Collections\Deque.cs" />
-    <Compile Include="Utility\Collections\GridCellCache.cs" />
     <Compile Include="Utility\Collections\LockedDictionary.cs" />
     <Compile Include="Utility\Collections\OffsetList.cs" />
     <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
@@ -241,7 +240,6 @@
     <Compile Include="Utility\Instructions\BlockInstructions.cs" />
     <Compile Include="Utility\ByteConverter.cs" />
     <Compile Include="Utility\Collections\CubeGridCache.cs" />
-    <Compile Include="Utility\Collections\GridShapeProfiler.cs" />
     <Compile Include="Utility\Collections\LockedQueue.cs" />
     <Compile Include="Utility\Collections\ReadOnlyList.cs" />
     <Compile Include="Utility\Collections\Registrar.cs" />

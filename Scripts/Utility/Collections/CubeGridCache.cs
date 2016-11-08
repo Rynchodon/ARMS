@@ -12,6 +12,8 @@ using System.Linq;
 using VRageMath;
 using Rynchodon.Utility.Vectors;
 using VRage.Game.Entity;
+using Sandbox.Game.Entities.Cube;
+using VRage.Collections;
 
 namespace Rynchodon
 {
@@ -54,9 +56,7 @@ namespace Rynchodon
 		private readonly Logger myLogger;
 		private readonly IMyCubeGrid CubeGrid;
 
-		/// <summary>Blocks that do not have a FatBlock</summary>
-		private List<IMySlimBlock> SlimOnly = new List<IMySlimBlock>();
-		private Dictionary<MyObjectBuilderType, List<MyCubeBlock>> CubeBlocks = new Dictionary<MyObjectBuilderType, List<MyCubeBlock>>();
+		private Dictionary<MyObjectBuilderType, List<MySlimBlock>> CubeBlocks = new Dictionary<MyObjectBuilderType, List<MySlimBlock>>();
 		private FastResourceLock lock_blocks = new FastResourceLock();
 
 		public int CellCount { get; private set; }
@@ -96,75 +96,63 @@ namespace Rynchodon
 			finally { lock_blocks.ReleaseExclusive(); }
 		}
 
-		private void Add(IMySlimBlock obj)
+		private void Add(IMySlimBlock obj, bool fromAddInitialized = false)
 		{
-			IMyCubeBlock fatblock = obj.FatBlock;
-			if (fatblock == null)
-			{
-				SlimOnly.Add(obj);
-				CellCount++;
-				return;
-			}
-
-			MyCubeBlock cubeBlock = (MyCubeBlock)fatblock;
-			MyObjectBuilderType typeId = cubeBlock.BlockDefinition.Id.TypeId;
-			List<MyCubeBlock> blockList;
+			MySlimBlock block = (MySlimBlock)obj;
+			MyObjectBuilderType typeId = block.BlockDefinition.Id.TypeId;
+			List<MySlimBlock> blockList;
 			if (!CubeBlocks.TryGetValue(typeId, out blockList))
 			{
-				blockList = new List<MyCubeBlock>();
+				blockList = new List<MySlimBlock>();
 				CubeBlocks.Add(typeId, blockList);
 			}
-			blockList.Add(cubeBlock);
+			myLogger.debugLog("already in blockList: " + obj.nameWithId(), Logger.severity.ERROR, condition: blockList.Contains(block));
+			blockList.Add(block);
 
-			IMyTerminalBlock term = cubeBlock as IMyTerminalBlock;
+			IMyTerminalBlock term = block.FatBlock as IMyTerminalBlock;
 			if (term != null)
 			{
-				DefinitionType.TrySet(((MyCubeBlock)term).BlockDefinition.Id, term.DefinitionDisplayNameText);
+				if (DefinitionType.TrySet(((MyCubeBlock)term).BlockDefinition.Id, term.DefinitionDisplayNameText))
+					myLogger.debugLog("new type: " + term.DefinitionDisplayNameText, Logger.severity.DEBUG);
 				TerminalBlocks++;
 			}
 
-			Vector3I cellSize = cubeBlock.Max - cubeBlock.Min + 1;
+			Vector3I cellSize = block.Max - block.Min + 1;
 			CellCount += cellSize.X * cellSize.Y * cellSize.Z;
 		}
 
 		private void CubeGrid_OnBlockRemoved(IMySlimBlock obj)
 		{
-			IMyCubeBlock fatblock = obj.FatBlock;
-			if (fatblock == null)
-			{
-				myLogger.debugLog("block removed: " + obj.getBestName());
-				Logger.DebugNotify("block removed: " + obj.getBestName());
-				SlimOnly.Remove(obj);
-				CellCount--;
-				return;
-			}
-
-			myLogger.debugLog("block removed: " + obj.FatBlock.DefinitionDisplayNameText + "/" + obj.getBestName());
 			lock_blocks.AcquireExclusive();
 			try
 			{
-				MyCubeBlock cubeBlock = (MyCubeBlock)fatblock;
-				MyObjectBuilderType typeId = cubeBlock.BlockDefinition.Id.TypeId;
-				List<MyCubeBlock> blockList;
+				MySlimBlock block = (MySlimBlock)obj;
+				MyObjectBuilderType typeId = block.BlockDefinition.Id.TypeId;
+				List<MySlimBlock> blockList;
 				if (!CubeBlocks.TryGetValue(typeId, out blockList))
 				{
-					myLogger.debugLog("failed to get list of type: " + typeId);
+					myLogger.debugLog("failed to get list of type: " + typeId, Logger.severity.WARNING);
 					return;
 				}
-				if (blockList.Count == 1)
-					CubeBlocks.Remove(typeId);
-				else
-					blockList.Remove(cubeBlock);
+				if (!blockList.Remove(block))
+				{
+					myLogger.debugLog("already removed: " + obj.nameWithId(), Logger.severity.WARNING);
+					return;
+				}
 
-				if (cubeBlock is IMyTerminalBlock)
+				myLogger.debugLog("block removed: " + obj.nameWithId(), Logger.severity.TRACE);
+				//Logger.DebugNotify("block removed: " + obj.getBestName(), level: Logger.severity.TRACE);
+
+				if (blockList.Count == 0)
+					CubeBlocks.Remove(typeId);
+				if (block.FatBlock is IMyTerminalBlock)
 					TerminalBlocks--;
 
-				Vector3I cellSize = cubeBlock.Max - cubeBlock.Min + 1;
+				Vector3I cellSize = block.Max - block.Min + 1;
 				CellCount -= cellSize.X * cellSize.Y * cellSize.Z;
 			}
 			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally { lock_blocks.ReleaseExclusive(); }
-			myLogger.debugLog("leaving CubeGrid_OnBlockRemoved(): " + obj.getBestName());
 		}
 
 		public IEnumerable<MyCubeBlock> BlocksOfType(MyObjectBuilderType typeId)
@@ -172,10 +160,30 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				List<MyCubeBlock> blockList;
+				List<MySlimBlock> blockList;
 				if (CubeBlocks.TryGetValue(typeId, out blockList))
 					for (int i = blockList.Count - 1; i >= 0; i--)
-						yield return (MyCubeBlock)blockList[i];
+					{
+						MyCubeBlock cubeBlock = blockList[i].FatBlock;
+						if (cubeBlock != null)
+							yield return cubeBlock;
+					}
+			}
+			finally
+			{
+				lock_blocks.ReleaseShared();
+			}
+		}
+
+		public IEnumerable<MySlimBlock> SlimBlocksOfType(MyObjectBuilderType typeId)
+		{
+			lock_blocks.AcquireShared();
+			try
+			{
+				List<MySlimBlock> blockList;
+				if (CubeBlocks.TryGetValue(typeId, out blockList))
+					for (int i = blockList.Count - 1; i >= 0; i--)
+						yield return blockList[i];
 			}
 			finally
 			{
@@ -188,12 +196,33 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				List<MyCubeBlock> blockList;
+				List<MySlimBlock> blockList;
 				if (CubeBlocks.TryGetValue(defId.TypeId, out blockList))
 					for (int i = blockList.Count - 1; i >= 0; i--)
 					{
-						MyCubeBlock block = (MyCubeBlock)blockList[i];
-						if (!block.Closed && block.BlockDefinition.Id.SubtypeId == defId.SubtypeId)
+						MySlimBlock block = blockList[i];
+						MyCubeBlock cubeBlock = block.FatBlock;
+						if (cubeBlock != null && !cubeBlock.Closed && block.BlockDefinition.Id.SubtypeId == defId.SubtypeId)
+							yield return cubeBlock;
+					}
+			}
+			finally
+			{
+				lock_blocks.ReleaseShared();
+			}
+		}
+
+		public IEnumerable<MySlimBlock> SlimBlocksOfType(MyDefinitionId defId)
+		{
+			lock_blocks.AcquireShared();
+			try
+			{
+				List<MySlimBlock> blockList;
+				if (CubeBlocks.TryGetValue(defId.TypeId, out blockList))
+					for (int i = blockList.Count - 1; i >= 0; i--)
+					{
+						MySlimBlock block = blockList[i];
+						if (!block.Closed() && block.BlockDefinition.Id.SubtypeId == defId.SubtypeId)
 							yield return block;
 					}
 			}
@@ -208,9 +237,13 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
+				foreach (List<MySlimBlock> blockList in CubeBlocks.Values)
 					for (int i = blockList.Count - 1; i >= 0; i--)
-						yield return blockList[i];
+					{
+						MyCubeBlock cubeBlock = blockList[i].FatBlock;
+						if (cubeBlock != null)
+							yield return cubeBlock;
+					}
 			}
 			finally
 			{
@@ -223,12 +256,9 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				for (int i = SlimOnly.Count - 1; i >= 0; i--)
-					yield return SlimOnly[i];
-
-				foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
+				foreach (List<MySlimBlock> blockList in CubeBlocks.Values)
 					for (int i = blockList.Count - 1; i >= 0; i--)
-						yield return blockList[i].SlimBlock;
+						yield return blockList[i];
 			}
 			finally
 			{
@@ -241,46 +271,46 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				for (int i = SlimOnly.Count - 1; i >= 0; i--)
-					if (!SlimOnly[i].Closed())
-						yield return SlimOnly[i].Position;
-
 				Matrix invLocal = new Matrix();
 
-				foreach (List<MyCubeBlock> blockList in CubeBlocks.Values)
+				foreach (List<MySlimBlock> blockList in CubeBlocks.Values)
 				{
 					for (int i = blockList.Count - 1; i >= 0; i--)
 					{
-						MyCubeBlock block = blockList[i];
-						if (block.Closed)
-							continue;
-
-						if (block is IMyDoor && block.Subparts.Count != 0)
+						MySlimBlock slim = blockList[i];
+						if (slim.Closed())
 						{
-							foreach (MyEntitySubpart part in block.Subparts.Values)
-								yield return block.CubeGrid.WorldToGridInteger(part.PositionComp.GetPosition());
+							myLogger.debugLog("is closed: " + slim); // rare if blocks are being removed correctly
+							continue;
+						}
+
+						MyCubeBlock cubeBlock = slim.FatBlock;
+						if (cubeBlock is IMyDoor && cubeBlock.Subparts.Count != 0)
+						{
+							foreach (MyEntitySubpart part in cubeBlock.Subparts.Values)
+								yield return slim.CubeGrid.WorldToGridInteger(part.PositionComp.GetPosition());
 							continue;
 						}
 
 						// for piston base and stator, cell may not actually be inside local AABB
 						// if this is done for doors, they would always be treated as open
 						// other blocks have not been tested
-						bool checkLocal = block is IMyMotorStator || block is IMyPistonBase;
+						bool checkLocal = cubeBlock is IMyMotorStator || cubeBlock is IMyPistonBase;
 
 						if (checkLocal)
-							invLocal = Matrix.Invert(block.PositionComp.LocalMatrix);
+							invLocal = Matrix.Invert(cubeBlock.PositionComp.LocalMatrix);
 
 						Vector3I cell;
-						for (cell.X = block.Min.X; cell.X <= block.Max.X; cell.X++)
-							for (cell.Y = block.Min.Y; cell.Y <= block.Max.Y; cell.Y++)
-								for (cell.Z = block.Min.Z; cell.Z <= block.Max.Z; cell.Z++)
+						for (cell.X = slim.Min.X; cell.X <= slim.Max.X; cell.X++)
+							for (cell.Y = slim.Min.Y; cell.Y <= slim.Max.Y; cell.Y++)
+								for (cell.Z = slim.Min.Z; cell.Z <= slim.Max.Z; cell.Z++)
 								{
 									if (checkLocal)
 									{
-										Vector3 posGrid = cell * block.CubeGrid.GridSize;
+										Vector3 posGrid = cell * slim.CubeGrid.GridSize;
 										Vector3 posBlock;
 										Vector3.Transform(ref posGrid, ref invLocal, out posBlock);
-										if (block.PositionComp.LocalAABB.Contains(posBlock) == ContainmentType.Disjoint)
+										if (cubeBlock.PositionComp.LocalAABB.Contains(posBlock) == ContainmentType.Disjoint)
 											continue;
 									}
 									yield return cell;
@@ -299,7 +329,7 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				List<MyCubeBlock> blockList;
+				List<MySlimBlock> blockList;
 				if (CubeBlocks.TryGetValue(typeId, out blockList))
 					return blockList.Count;
 				else
@@ -317,12 +347,12 @@ namespace Rynchodon
 			lock_blocks.AcquireShared();
 			try
 			{
-				List<MyCubeBlock> blockList;
+				List<MySlimBlock> blockList;
 				if (CubeBlocks.TryGetValue(defId.TypeId, out blockList))
 					for (int i = blockList.Count - 1; i >= 0; i--)
 					{
-						MyCubeBlock block = (MyCubeBlock)blockList[i];
-						if (!block.Closed && block.BlockDefinition.Id.SubtypeId == defId.SubtypeId)
+						MySlimBlock block = blockList[i];
+						if (!block.Closed() && block.BlockDefinition.Id.SubtypeId == defId.SubtypeId)
 							count++;
 					}
 			}
@@ -339,22 +369,25 @@ namespace Rynchodon
 		/// <param name="objBuildType">Type to search for</param>
 		/// <param name="condition">Condition that block must match</param>
 		/// <returns>The number of blocks of the given type that match the condition.</returns>
-		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition = null, int stopCaringAt = int.MaxValue)
+		public int CountByType(MyObjectBuilderType objBuildType, Func<IMyCubeBlock, bool> condition, int stopCaringAt = int.MaxValue)
 		{
 			lock_blocks.AcquireShared();
 			try
 			{
-				List<MyCubeBlock> blockList;
+				List<MySlimBlock> blockList;
 				if (CubeBlocks.TryGetValue(objBuildType, out blockList))
 				{
 					int count = 0;
-					foreach (MyCubeBlock block in blockList)
-						if (condition == null || condition(block))
+					foreach (MySlimBlock block in blockList)
+					{
+						MyCubeBlock cubeBlock = block.FatBlock;
+						if (cubeBlock != null && condition(cubeBlock))
 						{
 							count++;
 							if (count >= stopCaringAt)
 								return count;
 						}
+					}
 
 					return count;
 				}

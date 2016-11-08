@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot.Navigator
 			// get blocks
 			var cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 
-			if (cache.CountByType(typeof(MyObjectBuilder_Drill), null, 1) == 0)
+			if (cache.CountByType(typeof(MyObjectBuilder_Drill)) == 0)
 			{
 				m_logger.debugLog("No Drills!", Logger.severity.INFO);
 				return;

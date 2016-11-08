@@ -504,9 +504,9 @@ namespace Rynchodon
 			switch (level)
 			{
 				case severity.TRACE:
-					return MyFontEnum.DarkBlue;
-				case severity.DEBUG:
 					return MyFontEnum.Blue;
+				case severity.DEBUG:
+					return MyFontEnum.DarkBlue;
 				case severity.INFO:
 					return MyFontEnum.Green;
 				case severity.WARNING:
