@@ -579,13 +579,13 @@ namespace Rynchodon.Autopilot
 			using (lock_execution.AcquireExclusiveUsing())
 			{
 				m_navSet.OnStartOfCommands();
-				m_logger.debugLog("resume: " + builder.Commands, Logger.severity.DEBUG);
+				m_logger.debugLog("resume: " + builder.Commands + ", current: " + builder.CurrentCommand, Logger.severity.DEBUG);
 				m_autopilotActions = m_commands.GetActions(builder.Commands);
 
-				while (m_autopilotActions.CurrentIndex < builder.CurrentCommand && m_autopilotActions.MoveNext())
+				while (m_autopilotActions.CurrentIndex < builder.CurrentCommand - 1 && m_autopilotActions.MoveNext())
 				{
-					m_logger.debugLog("fast forward: " + m_autopilotActions.Current);
 					m_autopilotActions.Current.Invoke(m_pathfinder);
+					m_logger.debugLog("fast forward: " + m_autopilotActions.CurrentIndex);
 
 					// clear navigators' levels
 					for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
@@ -595,10 +595,12 @@ namespace Rynchodon.Autopilot
 						{
 							m_logger.debugLog("clear " + levelName);
 							m_navSet.OnTaskComplete(levelName);
+							break;
 						}
 					}
 				}
-				m_autopilotActions.MoveNext();
+				if (m_autopilotActions.MoveNext())
+					m_autopilotActions.Current.Invoke(m_pathfinder);
 
 				// clear wait
 				m_navSet.OnTaskComplete(AllNavigationSettings.SettingsLevelName.NavWay);

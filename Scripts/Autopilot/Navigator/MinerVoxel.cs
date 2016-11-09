@@ -158,11 +158,13 @@ namespace Rynchodon.Autopilot.Navigator
 				m_logger.debugLog("Current target: " + m_currentTarget + ", current position: " + m_navDrill.WorldPosition);
 				m_mover.StopMove();
 				m_mover.StopRotate();
-				m_mover.IsStuck = false;
+				m_mover.MoveStuck = false;
 				m_navSet.OnTaskComplete_NavWay();
 				m_navSet.Settings_Task_NavWay.PathfinderCanChangeCourse = !m_navSet.Settings_Current.IgnoreAsteroid;
 			}
 		}
+
+		private bool IsStuck { get { return m_pathfinder.CurrentState == Pathfinder.State.FailedToFindPath || m_mover.MoveStuck; } }
 
 		public MinerVoxel(Pathfinder mover, byte[] OreTargets)
 			: base(mover)
@@ -248,7 +250,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Rotating;
 						return;
 					}
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -261,7 +263,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_mover.StopMove();
 						return;
 					}
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -275,7 +277,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.Mining;
 						return;
 					}
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -309,7 +311,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -325,7 +327,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck");
 						m_state = State.Mining_Tunnel;
@@ -344,7 +346,7 @@ namespace Rynchodon.Autopilot.Navigator
 						return;
 					}
 
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck", Logger.severity.DEBUG);
 						m_state = State.Mining_Escape;
@@ -368,7 +370,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_state = State.GetTarget;
 						return;
 					}
-					if (m_mover.IsStuck)
+					if (IsStuck)
 					{
 						m_logger.debugLog("Stuck");
 						m_state = State.Mining_Tunnel;

@@ -246,7 +246,7 @@ namespace Rynchodon.Autopilot
 				if (m_originalDestEntity != null)
 				{
 					m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, Logger.severity.DEBUG);
-					new Waypoint(m_pathfinder, m_navSet, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
+					new Waypoint(m_pathfinder, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
 				}
 				else
 				{

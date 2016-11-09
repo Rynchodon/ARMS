@@ -165,29 +165,11 @@ namespace Rynchodon
 		public static bool RayCastVoxels(LineD line, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet = DefaultCheckPlanet)
 		{
 			//const double ShortenBy = 5d;
-#if LOG_ENABLED
-			m_logger.debugLog("entered");
-			try
-			{
-#endif
 #if PROFILE
 			Profiler.StartProfileBlock();
 			try
 			{
 #endif
-			//if (shortTest)
-			//{
-			//	if (line.Length < ShortenBy)
-			//	{
-			//		hitVoxel = null;
-			//		hitPosition = Vector3.Invalid;
-			//		Profiler.EndProfileBlock();
-			//		return false;
-			//	}
-			//	line.Length -= ShortenBy;
-			//	line.To -= line.Direction * ShortenBy;
-			//}
-
 			CapsuleD capsule;
 			capsule.P0 = line.From;
 			capsule.P1 = line.To;
@@ -196,10 +178,6 @@ namespace Rynchodon
 #if PROFILE
 			}
 			finally { Profiler.EndProfileBlock(); }
-#endif
-#if LOG_ENABLED
-			}
-			finally { m_logger.debugLog("leaving"); }
 #endif
 		}
 

@@ -27,8 +27,7 @@ namespace Rynchodon
 		}
 
 		private LineD m_line;
-		private BoundingBoxD m_boundingBox;
-		private bool m_calculatedLength, m_calculatedBox;
+		private bool m_calculatedLength;
 
 		public LineSegmentD() { }
 
@@ -47,9 +46,7 @@ namespace Rynchodon
 			return new LineSegmentD()
 			{
 				m_line = this.m_line,
-				m_boundingBox = this.m_boundingBox,
-				m_calculatedLength = this.m_calculatedLength,
-				m_calculatedBox = this.m_calculatedBox
+				m_calculatedLength = this.m_calculatedLength
 			};
 		}
 
@@ -62,7 +59,6 @@ namespace Rynchodon
 					return;
 				m_line.From = value;
 				m_calculatedLength = false;
-				m_calculatedBox = false;
 			}
 		}
 
@@ -75,7 +71,6 @@ namespace Rynchodon
 					return;
 				m_line.To = value;
 				m_calculatedLength = false;
-				m_calculatedBox = false;
 			}
 		}
 
@@ -99,16 +94,6 @@ namespace Rynchodon
 			}
 		}
 
-		public BoundingBoxD BoundingBox
-		{
-			get
-			{
-				if (!m_calculatedBox)
-					CalcBox();
-				return m_boundingBox;
-			}
-		}
-
 		public LineD Line
 		{
 			get
@@ -129,14 +114,6 @@ namespace Rynchodon
 			m_calculatedLength = true;
 		}
 
-		private void CalcBox()
-		{
-			m_boundingBox = new BoundingBoxD();
-			m_boundingBox.Include(m_line.From);
-			m_boundingBox.Include(m_line.To);
-			m_calculatedBox = true;
-		}
-
 		public void Move(Vector3D shift)
 		{
 			Move(ref shift);
@@ -146,7 +123,6 @@ namespace Rynchodon
 		{
 			m_line.From += shift;
 			m_line.To += shift;
-			m_calculatedBox = false;
 		}
 
 		/// <summary>
@@ -242,12 +218,12 @@ namespace Rynchodon
 		/// <remarks>
 		/// based on http://stackoverflow.com/a/1501725
 		/// </remarks>
-		public void ClosestPoint(ref Vector3D coordinates, out Vector3D point)
+		public double ClosestPoint(ref Vector3D coordinates, out Vector3D point)
 		{
 			if (From == To)
 			{
 				point = From;
-				return;
+				return 0d;
 			}
 
 			Vector3D line_disp = To - From;
@@ -257,18 +233,19 @@ namespace Rynchodon
 			//(new Logger("LineSegmentD")).debugLog("From: " + From + ", To: " + To + ", coords: " + coordinates + ", disp: " + line_disp
 			//+ ", LengthSquared: " + LengthSquared() + ", fraction: " + fraction, "ClosestPoint()");
 
-			if (fraction < 0) // extends past From
+			if (fraction < 0d) // extends past From
 			{
 				point = From;
-				return;
+				return 0d;
 			}
-			else if (fraction > 1) // extends past To
+			else if (fraction > 1d) // extends past To
 			{
 				point = To;
-				return;
+				return 1d;
 			}
 
 			point = From + fraction * line_disp; // closest point on the line
+			return fraction;
 		}
 
 		/// <summary>
@@ -341,6 +318,13 @@ namespace Rynchodon
 			t1 = projStcDirect - rootValue;
 			t2 = projStcDirect + rootValue;
 			return true;
+		}
+
+		public void PointFromTValue(double tValue, out Vector3D point)
+		{
+			Vector3D direction = Direction;
+			Vector3D disp; Vector3D.Multiply(ref direction, tValue, out disp);
+			Vector3D.Add(ref m_line.From, ref disp, out point);
 		}
 
 	}

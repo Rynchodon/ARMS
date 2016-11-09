@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Collections.Generic;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Rynchodon.Utility.Vectors;
@@ -29,6 +31,7 @@ namespace Rynchodon.Autopilot.Data
 			private InfoString.StringId m_complaint;
 			private BlockNameOrientation m_destBlock;
 			private IMyEntity m_destEntity;
+			private Func<IMyEntity, bool> m_ignoreEntity;
 
 			private TimeSpan? m_waitUntil;
 
@@ -55,7 +58,6 @@ namespace Rynchodon.Autopilot.Data
 				m_speedTarget = DefaultSpeed;
 				m_speedMaxRelative = float.MaxValue;
 				m_minDistToJump = 0f;
-				Logger.DebugLog("m_minDistToJump reset");
 
 				m_ignoreAsteroid = false;
 				m_pathfindeCanChangeCourse = true;
@@ -123,7 +125,11 @@ namespace Rynchodon.Autopilot.Data
 						return m_navigatorMover;
 					return m_navigatorMover ?? parent.NavigatorMover;
 				}
-				set { m_navigatorMover = value; }
+				set
+				{
+					m_navigatorMover = value;
+					Logger.DebugLog("Nav Move: " + value);
+				}
 			}
 
 			/// <summary>
@@ -138,7 +144,11 @@ namespace Rynchodon.Autopilot.Data
 						return m_navigatorRotator;
 					return m_navigatorRotator ?? parent.NavigatorRotator;
 				}
-				set { m_navigatorRotator = value; }
+				set
+				{
+					m_navigatorRotator = value;
+					Logger.DebugLog("Nav Rotate: " + value);
+				}
 			}
 
 			/// <summary>
@@ -197,6 +207,28 @@ namespace Rynchodon.Autopilot.Data
 					return m_destEntity ?? parent.DestinationEntity;
 				}
 				set { m_destEntity = value; }
+			}
+
+			/// <summary>
+			/// Determines if pathfinder should ignore an entity.
+			/// </summary>
+			public Func<IMyEntity, bool> IgnoreEntity
+			{
+				private get
+				{
+					if (parent == null)
+						return m_ignoreEntity;
+					return m_ignoreEntity ?? parent.IgnoreEntity;
+				}
+				set { m_ignoreEntity = value; }
+			}
+
+			/// <summary>
+			/// For pathfinder to check if it should ignore an entity.
+			/// </summary>
+			public bool ShouldIgnoreEntity(IMyEntity entity)
+			{
+				return entity == DestinationEntity || IgnoreEntity.InvokeIfExists(entity);
 			}
 
 			/// <summary>How close the navigation block needs to be to the destination</summary>
@@ -264,11 +296,7 @@ namespace Rynchodon.Autopilot.Data
 			public float MinDistToJump
 			{
 				get { return m_minDistToJump ?? parent.MinDistToJump; }
-				set
-				{
-					Logger.DebugLog("changing from " + m_minDistToJump + " to " + value);
-					m_minDistToJump = value;
-				}
+				set { m_minDistToJump = value; }
 			}
 
 			/// <summary>Pathfinder should not run voxel tests.</summary>

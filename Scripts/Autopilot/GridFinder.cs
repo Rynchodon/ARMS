@@ -28,12 +28,14 @@ namespace Rynchodon.Autopilot
 		private readonly Logger m_logger;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly bool m_mustBeRecent;
+		public Vector3D m_startPosition;
 
-		private ulong NextSearch_Grid, NextSearch_Block;
-		//private List<LastSeen> m_enemies;
+		public ulong NextSearch_Grid { get; private set; }
+		public ulong NextSearch_Block { get; private set; }
 
 		public virtual LastSeen Grid { get; protected set; }
 		public IMyCubeBlock Block { get; private set; }
+		public Func<LastSeen, double> OrderValue;
 		public Func<IMyCubeGrid, bool> GridCondition;
 		/// <summary>Block requirements, other than can control.</summary>
 		public Func<IMyCubeBlock, bool> BlockCondition;
@@ -65,9 +67,10 @@ namespace Rynchodon.Autopilot
 				this.m_targetBlockName = targetBlock.LowerRemoveWhitespace();
 			this.m_controlBlock = controller;
 			this.m_allowedAttachment = allowedAttachment;
-			this.MaximumRange = float.MaxValue;
+			this.MaximumRange = 0f;
 			this.m_navSet = navSet;
 			this.m_mustBeRecent = mustBeRecent;
+			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 		}
 
 		/// <summary>
@@ -87,11 +90,12 @@ namespace Rynchodon.Autopilot
 			this.MaximumRange = maxRange;
 			this.m_navSet = navSet;
 			this.m_mustBeRecent = true;
+			this.m_startPosition = m_controlBlock.CubeBlock.GetPosition();
 		}
 
 		public void Update()
 		{
-			if (Grid == null)
+			if (Grid == null || OrderValue != null)
 			{
 				if (Globals.UpdateCount >= NextSearch_Grid)
 					GridSearch();
@@ -193,7 +197,7 @@ namespace Rynchodon.Autopilot
 			});
 
 			m_logger.debugLog("number of enemies: " + enemies.Count);
-			IOrderedEnumerable<LastSeen> enemiesByDistance = enemies.OrderBy(seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
+			IOrderedEnumerable<LastSeen> enemiesByDistance = enemies.OrderBy(OrderValue != null ? OrderValue : seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
 			m_reason = ReasonCannotTarget.None;
 			foreach (LastSeen enemy in enemiesByDistance)
 			{
@@ -321,7 +325,7 @@ namespace Rynchodon.Autopilot
 			try
 			{
 				// if it is too far from start, cannot target
-				if (MaximumRange > 1f && Vector3.DistanceSquared(m_controlBlock.CubeBlock.GetPosition(), seen.GetPosition()) > MaximumRange * MaximumRange)
+				if (MaximumRange > 1f && Vector3.DistanceSquared(m_startPosition, seen.GetPosition()) > MaximumRange * MaximumRange)
 				{
 					m_logger.debugLog("out of range: " + seen.Entity.getBestName());
 					if (m_reason < ReasonCannotTarget.Too_Far)

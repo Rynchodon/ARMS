@@ -55,23 +55,28 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 		}
 
-		private struct PathNodeSet
+		private class PathNodeSet
 		{
+			public const int MaxOpenNodes = 1024;
+
 			public Vector3D m_startPosition;
 			public MyBinaryStructHeap<float, PathNode> m_openNodes;
 			public Dictionary<long, PathNode> m_reachedNodes;
 			/// <summary>Nodes that are not near anything.</summary>
 			public List<Vector3D> m_blueSkyNodes;
+			/// <summary>True if one or more nodes were thrown out to keep open nodes under the limit.</summary>
+			public bool m_tossedNodes;
 #if PROFILE
 			public int m_unreachableNodes;
 #endif
 
-			public PathNodeSet(bool nothing)
+			public PathNodeSet()
 			{
 				m_startPosition = default(Vector3D);
-				m_openNodes = new MyBinaryStructHeap<float, PathNode>();
+				m_openNodes = new MyBinaryStructHeap<float, PathNode>(MaxOpenNodes);
 				m_reachedNodes = new Dictionary<long, PathNode>();
 				m_blueSkyNodes = new List<Vector3D>();
+				m_tossedNodes = false;
 #if PROFILE
 				m_unreachableNodes = 0;
 #endif
@@ -83,9 +88,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_openNodes.Clear();
 				m_reachedNodes.Clear();
 				m_blueSkyNodes.Clear();
+				m_tossedNodes = false;
 #if PROFILE
 				m_unreachableNodes = 0;
 #endif
+			}
+
+			public void AddOpenNode(ref PathNode node, float distToCur)
+			{
+				if (m_openNodes.Count == MaxOpenNodes)
+				{
+					m_openNodes.RemoveMax();
+					m_tossedNodes = true;
+				}
+				m_openNodes.Insert(node, distToCur);
 			}
 		}
 

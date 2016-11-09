@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Rynchodon.Utility
+namespace Rynchodon
 {
 	public static class DelegateExtensions
 	{

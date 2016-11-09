@@ -2,15 +2,6 @@
 #
 # This script combines the individual module folders into a single structure
 # for Space Engineers to load (and a bunch of other useful deploy tasks)
-#
-# It will create three mods,
-#   "%AppData%\SpaceEngineers\Mods\ARMS",
-#   "%AppData%\SpaceEngineers\Mods\ARMS Dev", and
-#   "%AppData%\SpaceEngineers\Mods\ARMS Model".
-#
-# ARMS is the release version
-# ARMS Dev only has scripts and has logging enabled
-# ARMS Model has data files, models, and textures
 
 import datetime, errno, logging, os.path, psutil, re, shutil, stat, subprocess, sys, time, xml.etree.ElementTree as ET
 
@@ -27,8 +18,6 @@ ignoreDirs = [ "bin", "obj", "Properties" ] # these are case-sensitive
 
 # paths files are moved to
 finalDir = os.getenv('APPDATA') + '\SpaceEngineers\Mods\ARMS'
-finalDirDev = finalDir + ' Dev'
-finalDirModel = finalDir + ' Model'
 
 # in case build.ini is missing variables
 GitExe = os.devnull
@@ -190,12 +179,9 @@ file.write(notes)
 file.close()
 
 createDir(finalDir)
-createDir(finalDirDev)
 
 # erase old data
 eraseDir(finalDir + '\\Data')
-eraseDir(finalDirDev + '\\Data')
-eraseDir(finalDirModel + '\\Data')
 
 # get modules
 os.chdir(startDir + '/Scripts/')
@@ -212,12 +198,6 @@ copyWithExtension(startDir + '/Audio/', finalDir + '/Audio/', '.xwm', True)
 copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
 copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
 copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
-copyWithExtension(startDir + '/Audio/', finalDirModel + '/Audio/', '.xwm', False)
-copyWithExtension(startDir + '/Data/', finalDirModel + '/Data/', '.sbc', False)
-copyWithExtension(startDir + '/Models/', finalDirModel + '/Models/', '.mwm', False)
-copyWithExtension(startDir + '/Textures/', finalDirModel + '/Textures/', '.dds', False)
-eraseDir(finalDirDev + '/Models/')
-eraseDir(finalDirDev + '/Textures/')
 
 # build scripts
 for module in modules[:]:

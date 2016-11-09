@@ -49,7 +49,7 @@ namespace Rynchodon.Autopilot.Movement
 		//private float m_prevRollControl = 0f;
 
 		private Vector3 m_lastMoveAccel = Vector3.Zero;
-		private float m_bestAngle = float.MaxValue;
+		//private float m_bestAngle = float.MaxValue;
 		private ulong m_lastMoveAttempt = ulong.MaxValue, m_lastAccel = ulong.MaxValue;
 
 		private bool m_stopped, m_thrustHigh;
@@ -66,7 +66,7 @@ namespace Rynchodon.Autopilot.Movement
 		}
 
 		/// <summary>Value is false iff this Mover is making progress.</summary>
-		public bool IsStuck
+		public bool MoveStuck
 		{
 			get
 			{
@@ -189,12 +189,6 @@ namespace Rynchodon.Autopilot.Movement
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
 				distance = destDisp.Length();
 
-				//if (distance + landingSpeedFactor < m_bestDistance || distance - 10f > m_bestDistance || float.IsNaN(NavSet.Settings_Current.Distance))
-				//{
-				//	m_bestDistance = distance;
-				//	m_lastAccel = Globals.UpdateCount;
-				//}
-
 				targetVelocity = MaximumVelocity(destDisp);
 
 				// project targetVelocity onto destination direction (take shortest path)
@@ -220,7 +214,7 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				targetVelocity = Vector3.Zero;
 				//distance = 0f;
-				m_lastAccel = Globals.UpdateCount;
+				//m_lastAccel = Globals.UpdateCount;
 			}
 
 			targetVelocity += destVelocity;
@@ -690,20 +684,13 @@ namespace Rynchodon.Autopilot.Movement
 			m_lastMoveAttempt = Globals.UpdateCount;
 			RotateCheck.TestRotate(displacement);
 
-			if (RotateCheck.ObstructingEntity != null)
-			{
-				m_logger.debugLog("Rotation obstructed by " + RotateCheck.ObstructingEntity.nameWithId());
-				m_rotateForceRatio = Vector3.Zero;
-				m_rotateTargetVelocity = Vector3.Zero;
-				return;
-			}
-
 			float distanceAngle = displacement.Length();
-			if (distanceAngle < m_bestAngle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
-			{
-				m_bestAngle = distanceAngle;
-				m_lastAccel = Globals.UpdateCount;
-			}
+			//if (distanceAngle < m_bestAngle || float.IsNaN(NavSet.Settings_Current.DistanceAngle))
+			//{
+			//	m_bestAngle = distanceAngle;
+			//	if (RotateCheck.ObstructingEntity == null)
+			//		m_lastAccel = Globals.UpdateCount;
+			//}
 			NavSet.Settings_Task_NavWay.DistanceAngle = distanceAngle;
 
 			//myLogger.debugLog("localDirect: " + localDirect + ", rotBlockDirect: " + rotBlockDirect + ", elevation: " + elevation + ", NFR_right: " + NFR_right + ", azimuth: " + azimuth + ", NFR_up: " + NFR_up + ", disp: " + displacement, "in_CalcRotate()");
@@ -728,6 +715,18 @@ namespace Rynchodon.Autopilot.Movement
 				m_rotateTargetVelocity += NFR_right * angl_pitch + NFR_up * angl_yaw;
 			}
 			//m_logger.debugLog("targetVelocity: " + m_rotateTargetVelocity, "in_CalcRotate()");
+
+			if (RotateCheck.ObstructingEntity != null)
+			{
+				float maxVel = (float)Math.Atan2(1d, Block.CubeGrid.LocalVolume.Radius);
+				float lenSq = m_rotateTargetVelocity.LengthSquared();
+				if (lenSq > maxVel)
+				{
+					m_logger.debugLog("Reducing target velocity from " + Math.Sqrt(lenSq) + " to " + maxVel);
+					Vector3 normVel; Vector3.Divide(ref m_rotateTargetVelocity, (float)Math.Sqrt(lenSq), out normVel);
+					Vector3.Multiply(ref normVel, maxVel, out m_rotateTargetVelocity);
+				}
+			}
 
 			// angular velocity is reversed
 			Vector3 angularVelocity = AngularVelocity.ToBlock(Block.CubeBlock);// ((DirectionWorld)(-Block.Physics.AngularVelocity)).ToBlock(Block.CubeBlock);
@@ -806,19 +805,6 @@ namespace Rynchodon.Autopilot.Movement
 			// if all the force ratio values are 0, Autopilot has to stop the ship, MoveAndRotate will not
 			if (m_moveForceRatio == Vector3.Zero && m_rotateTargetVelocity == Vector3.Zero)
 			{
-				// TODO: pathfinder will have to handle this
-				//IMyEntity obstruction = Pathfinding.MoveObstruction ?? Pathfinding.RotateObstruction;
-				//if (obstruction != null && CheckStuck(MoveAwayAfter))
-				//{
-				//	obstruction = obstruction.GetTopMostParent();
-				//	Vector3 displacement = Block.CubeBlock.GetPosition() - obstruction.GetCentre();
-				//	Vector3 away;
-				//	Vector3.Normalize(ref displacement, out away);
-				//	m_logger.debugLog("Stuck, creating Waypoint to move away from obstruction", Logger.severity.INFO);
-				//	new Waypoint(this, NavSet, AllNavigationSettings.SettingsLevelName.NavWay, obstruction, displacement + away * (10f + NavSet.Settings_Current.DestinationRadius));
-				//	return;
-				//}
-
 				//m_logger.debugLog("Stopping the ship, move: " + m_moveForceRatio + ", rotate: " + m_rotateTargetVelocity);
 				// should not toggle dampeners, grid may just have landed
 				MoveAndRotateStop(false);
