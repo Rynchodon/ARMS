@@ -12,6 +12,52 @@ namespace Rynchodon.Autopilot.Pathfinding
 	public partial class Pathfinder
 	{
 
+		private Path m_path = new Path(false);
+		private float m_nodeDistance = DefaultNodeDistance;
+		private double m_destRadiusSq { get { return m_nodeDistance * m_nodeDistance * 0.04f; } }
+		private PathNodeSet m_forward, m_backward;
+		private bool value_pathfinding;
+#if PROFILE
+		private DateTime m_timeStartPathfinding;
+#endif
+		private bool m_pathfinding
+		{
+			get { return value_pathfinding; }
+			set
+			{
+				if (value_pathfinding == value)
+					return;
+				value_pathfinding = value;
+				if (value)
+				{
+					ResourcePool.Get(out m_forward);
+					ResourcePool.Get(out m_backward);
+					m_nodeDistance = DefaultNodeDistance;
+					//Logger.DebugNotify("Started Pathfinding", level: Logger.severity.INFO);
+					m_logger.debugLog("Started pathfinding", Logger.severity.INFO);
+				}
+				else
+				{
+					m_waitUntil = 0uL;
+					m_forward.Clear();
+					m_backward.Clear();
+					ResourcePool.Return(m_forward);
+					ResourcePool.Return(m_backward);
+					m_forward = null;
+					m_backward = null;
+				}
+#if PROFILE
+				if (value)
+					m_timeStartPathfinding = DateTime.UtcNow;
+				else
+				{
+					TimeSpan timeSpentPathfinding = DateTime.UtcNow - m_timeStartPathfinding;
+					m_logger.debugLog("Spent " + PrettySI.makePretty(timeSpentPathfinding) + " pathfinding");
+				}
+#endif
+			}
+		}
+
 		/// <summary>
 		/// Starts the pathfinding.
 		/// </summary>
@@ -359,6 +405,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return true;
 		}
 
+		#region Create Path Nodes
+
 		private void CreatePathNodes(ref PathNode currentNode, bool isForwardSet)
 		{
 			if (!m_canChangeCourse)
@@ -480,6 +528,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			m_logger.debugLog("Next position: " + ReportRelativePosition(result.Position));
 		}
+
+		#endregion
 
 		private double MinPathDistance(ref Vector3D displacement)
 		{
@@ -695,6 +745,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return false;
 		}
 
+		#region Debug & Profile
+
 		private string ReportRelativePosition(Vector3D position)
 		{
 			return position + " => " + (position + m_obstructingEntity.GetPosition());
@@ -776,6 +828,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D finishToPosition; Vector3D.Subtract(ref position, ref m_backward.m_startPosition, out finishToPosition);
 			Vector3D.Divide(ref finishToPosition, m_nodeDistance, out steps);
 		}
+
+		#endregion
 
 	}
 }
