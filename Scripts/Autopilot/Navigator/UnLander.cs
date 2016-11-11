@@ -168,7 +168,7 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			Destination dest = new Destination(m_attachedEntity, m_detachOffset + m_detachDirection * m_detachLength);
-			m_pathfinder.MoveTo(m_unlandBlock, ref dest);
+			m_pathfinder.MoveTo(destinations: dest);
 		}
 
 		public void Rotate()

@@ -682,7 +682,7 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			//m_logger.debugLog("current target: " + m_currentTarget);
 			Destination dest = Destination.FromWorld(m_targetVoxel, m_currentTarget);
-			m_pathfinder.MoveTo(m_navDrill, ref dest);
+			m_pathfinder.MoveTo(destinations: dest);
 		}
 
 	}

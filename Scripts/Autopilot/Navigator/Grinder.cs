@@ -249,7 +249,7 @@ namespace Rynchodon.Autopilot.Navigator
 					m_logger.debugLog("Extricating ship from target");
 					m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 					Destination dest = Destination.FromWorld(m_enemy, m_targetPosition + m_navGrind.WorldMatrix.Backward * 100f);
-					m_pathfinder.MoveTo(m_navGrind, ref dest);
+					m_pathfinder.MoveTo(destinations: dest);
 				}
 				else
 				{
@@ -271,14 +271,14 @@ namespace Rynchodon.Autopilot.Navigator
 				//m_logger.debugLog("far away(" + distSq + "), moving to " + (m_targetPosition + targetToGrinder * offset));
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = float.MaxValue;
 				Destination dest = Destination.FromWorld(m_enemy, m_targetPosition + targetToGrinder * offset);
-				m_pathfinder.MoveTo(m_navGrind, ref dest);
+				m_pathfinder.MoveTo(destinations: dest);
 			}
 			else
 			{
 				//m_logger.debugLog("close(" + distSq + "), moving to " + m_targetPosition);
 				m_navSet.Settings_Task_NavMove.SpeedMaxRelative = 1f;
 				Destination dest = Destination.FromWorld(m_enemy, m_targetPosition);
-				m_pathfinder.MoveTo(m_navGrind, ref dest);
+				m_pathfinder.MoveTo(destinations: dest);
 			}
 		}
 
@@ -296,7 +296,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			//m_logger.debugLog("Moving to " + position);
 			Destination dest = Destination.FromWorld(m_enemy, position);
-			m_pathfinder.MoveTo(m_navGrind, ref dest);
+			m_pathfinder.MoveTo(destinations: dest);
 		}
 
 		public void Rotate()

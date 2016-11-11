@@ -52,7 +52,7 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 			{
 				Destination destination = new Destination(location);
-				m_pathfinder.MoveTo(NavigationBlock, ref destination);
+				m_pathfinder.MoveTo(destinations: destination);
 			}
 		}
 

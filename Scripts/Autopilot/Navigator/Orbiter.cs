@@ -212,7 +212,7 @@ namespace Rynchodon.Autopilot.Navigator
 				Math.Max(1f, OrbitSpeed - alt + Altitude) : 
 				OrbitSpeed;
 
-			m_pathfinder.MoveTo(m_navBlock, ref dest, addToVelocity: orbitDirection * speed);
+			m_pathfinder.MoveTo(destinations: dest, addToVelocity: orbitDirection * speed);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)

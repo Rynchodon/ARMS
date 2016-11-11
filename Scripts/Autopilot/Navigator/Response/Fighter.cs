@@ -187,7 +187,7 @@ namespace Rynchodon.Autopilot.Navigator
 						Vector3.CalculatePerpendicularVector(Vector3.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition()));
 					Vector3 offset = direction * (m_weaponRange_min + InitialAltitude);
 
-					m_pathfinder.MoveTo(m_weapon_primary_pseudo, m_currentTarget, offset);
+					m_pathfinder.MoveTo(m_currentTarget, offset);
 					return;
 				}
 			}

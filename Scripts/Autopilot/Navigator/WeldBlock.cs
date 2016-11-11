@@ -176,7 +176,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_stage = Stage.Lineup;
 					Destination dest = Destination.FromWorld(m_realGrid, m_lineUp.ClosestPoint(m_welder.WorldPosition));
-					m_pathfinder.MoveTo(m_welder, ref dest);
+					m_pathfinder.MoveTo(destinations: dest);
 					return;
 				}
 				else // linedup up
@@ -232,7 +232,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3D direction = m_welder.WorldPosition - m_targetWorld;
 			direction.Normalize();
 			Destination dest = Destination.FromWorld(m_realGrid, m_welder.WorldPosition + direction * 10d);
-			m_pathfinder.MoveTo(m_welder, ref dest);
+			m_pathfinder.MoveTo(destinations: dest);
 		}
 
 		private void MoveToTarget()
@@ -287,7 +287,7 @@ namespace Rynchodon.Autopilot.Navigator
 				Vector3D welderFromTarget = m_controlBlock.CubeBlock.GetPosition() - m_targetWorld;
 				welderFromTarget.Normalize();
 				Destination dest = Destination.FromWorld(m_realGrid, m_targetWorld + welderFromTarget * offset);
-				m_pathfinder.MoveTo(m_welder, ref dest);
+				m_pathfinder.MoveTo(destinations: dest);
 			}
 		}
 
