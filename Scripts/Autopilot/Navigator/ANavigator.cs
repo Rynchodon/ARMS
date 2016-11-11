@@ -55,9 +55,12 @@ namespace Rynchodon.Autopilot.Navigator
 		protected Mover m_mover { get { return m_pathfinder.Mover; } }
 		/// <summary>The settings this navigator is using.</summary>
 		protected AllNavigationSettings m_navSet { get { return m_pathfinder.Mover.NavSet; } }
-
 		/// <summary>The ship controller the mover is using.</summary>
 		protected ShipControllerBlock m_controlBlock { get { return m_pathfinder.Mover.Block; } }
+		/// <summary>Current navigation block</summary>
+		protected PseudoBlock m_navBlock { get { return m_navSet.Settings_Current.NavigationBlock; } }
+		/// <summary>Grid the ship controller is on</summary>
+		protected IMyCubeGrid m_grid { get { return m_pathfinder.Mover.Block.CubeGrid; } }
 
 		/// <summary>
 		/// Sets m_pathfinder and m_navSet for the navigator.

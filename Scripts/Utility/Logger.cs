@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Rynchodon.Autopilot.Data;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
@@ -156,6 +157,23 @@ namespace Rynchodon
 				this.f_state_primary = () => block.getNameOnly() + " - " + block.EntityId;
 				this.f_state_secondary = default_secondary;
 			}
+		}
+
+		public Logger(PseudoBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		 : this(block.Block, default_secondary, callerPath)
+		{
+			if (block == null || block.Block != null)
+				return;
+
+			this.f_context = () => {
+				IMyCubeGrid grid = block.Grid;
+				if (grid == null)
+					return "Null grid";
+				return grid.DisplayName + " - " + grid.EntityId;
+			};
+
+			this.f_state_primary = () => block.DisplayName;
+			this.f_state_secondary = default_secondary;
 		}
 
 		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)

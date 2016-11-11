@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using Rynchodon.Utility;
-using Rynchodon.Utility.Collections;
 using System.Linq;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Pathfinding
+namespace Rynchodon.Utility.Collections
 {
 	/// <summary>
 	/// For 2D int coordinates, yields neighbours in expanding rings. Each ring contains the all the closest elements to 0,0 that have not yet been yielded.
@@ -81,19 +79,23 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 
 		private static Ring[] m_rings = new Ring[0];
+		private static FastResourceLock m_lock = new FastResourceLock();
 
 		public static Ring GetRing(int index)
 		{
 			if (m_rings.Length <= index)
-			{
-				int length = Math.Max(index + 1, m_rings.Length * 2);
-				Logger.DebugLog("Rebuilding to " + length, Logger.severity.DEBUG);
-				m_rings = new Ring[length];
-				ExpandingRings exRings = new ExpandingRings();
-				for (int i = 0; i < length; i++)
-					m_rings[i] = new Ring(exRings.m_bestDistSquared, exRings.EnumerateRing().ToArray());
-			}
-			return m_rings[index];
+				using (m_lock.AcquireExclusiveUsing())
+					if (m_rings.Length <= index)
+					{
+						int length = Math.Max(index + 1, m_rings.Length * 2);
+						Logger.DebugLog("Rebuilding to " + length, Logger.severity.DEBUG);
+						m_rings = new Ring[length];
+						ExpandingRings exRings = new ExpandingRings();
+						for (int i = 0; i < length; i++)
+							m_rings[i] = new Ring(exRings.m_bestDistSquared, exRings.EnumerateRing().ToArray());
+					}
+			using (m_lock.AcquireSharedUsing())
+				return m_rings[index];
 		}
 
 		private Deque<Square> m_activeSquares = new Deque<Square>();
