@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
@@ -16,7 +15,6 @@ using Sandbox.Game.Weapons;
 using Sandbox.Game.World;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
@@ -27,12 +25,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		#region Static
 
 		public const float SpeedFactor = 3f, VoxelAdd = 10f;
-		private const float DefaultNodeDistance = 100f;
-
-		public enum State : byte
-		{
-			Unobstructed, SearchingForPath, FollowingPath, FailedToFindPath, Crashed
-		}
 
 		private class StaticVariables
 		{
@@ -92,6 +84,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private MyCubeGrid m_autopilotGrid { get { return m_tester.AutopilotGrid; } set { m_tester.AutopilotGrid = value; } }
 		private PseudoBlock m_navBlock;
 		private Destination m_destination; // only match speed with entity if there is no obstruction
+		private readonly IEnumerable<Destination> m_destinations;
 		private bool m_ignoreVoxel, m_canChangeCourse;
 
 		// Inputs: always updated
@@ -126,7 +119,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public Mover Mover { get; private set; }
 		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }
 		public RotateChecker RotateCheck { get { return Mover.RotateCheck; } }
-		public State CurrentState { get; private set; }
 		public InfoString.StringId_Jump JumpComplaint { get; private set; }
 
 		#endregion
@@ -267,10 +259,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (m_runInterrupt)
 				{
 					m_path.Clear();
-					m_pathfinding = false;
+					CurrentState = State.None;
 					m_runInterrupt = false;
 				}
-				else if (m_pathfinding)
+				else if (CurrentState == State.SearchingForPath)
 					return;
 
 				if (m_jumpSystem != null)
@@ -339,7 +331,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_runInterrupt)
 				Static.ThreadForeground.EnqueueAction(Run);
-			else if (m_pathfinding)
+			else if (CurrentState == State.SearchingForPath)
 				Static.ThreadBackground.EnqueueAction(ContinuePathfinding);
 		}
 
@@ -475,20 +467,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 					return;
 				}
 
-				CurrentState = State.FollowingPath;
-
 				// if near waypoint, pop it
-				double distanceToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distanceToDest);
-				if (distanceToDest < m_destRadiusSq)
+				double distSqCurToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distSqCurToDest);
+				Vector3D reached; m_path.GetReached(out reached);
+				Vector3D obstructPosition = m_obstructingEntity.GetPosition();
+				Vector3D reachedWorld; Vector3D.Add(ref reached, ref obstructPosition, out reachedWorld);
+				double distSqReachToDest; Vector3D.DistanceSquared(ref reachedWorld, ref m_destWorld, out distSqReachToDest);
+				if (distSqCurToDest < distSqReachToDest * 0.04d)
 				{
 					m_path.ReachedTarget();
 					m_logger.debugLog("Reached waypoint: " + m_path.GetReached() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
-					if (m_path.IsFinished)
-					{
-						//Logger.DebugNotify("Completed path", level: Logger.severity.INFO);
-						m_nodeDistance = DefaultNodeDistance;
-					}
-					else
+					if (!m_path.IsFinished)
 						SetNextPathTarget();
 					FillDestWorld();
 				}
@@ -544,7 +533,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_obstructingBlock = block;
 
 				m_holdPosition = true;
-				FindAPath();
+				StartPathfinding();
 				return;
 			}
 
@@ -735,6 +724,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			// when following a path, only collect entites to avoid, do not repulse
 			if (!calcRepulse)
 			{
+				NavSet.Settings_Task_NavWay.SpeedMaxRelative = float.MaxValue;
 				Profiler.EndProfileBlock();
 				repulsion = Vector3.Zero;
 				return;
@@ -817,18 +807,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			// if destination is obstructing it needs to be checked first, so we would match speed with destination
 
 			MyEntity destTop = GetTopMostDestEntity();
-			if (destTop != null)
+			if (destTop != null && m_entitiesPruneAvoid.Contains(destTop) && m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
 			{
-				//m_logger.debugLog("checking destination entity");
-				if (m_entitiesPruneAvoid.Contains(destTop))
-				{
-					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
-					{
-						m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
-						obstructingEntity = destTop;
-						return true;
-					}
-				}
+				m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
+				obstructingEntity = destTop;
+				return true;
 			}
 
 			// check voxel next so that the ship will not match an obstruction that is on a collision course

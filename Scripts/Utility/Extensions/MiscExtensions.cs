@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -364,6 +365,11 @@ namespace Rynchodon
 					return false;
 
 			return true;
+		}
+
+		public static IEnumerable<T> ToEnumerable<T>(this T item)
+		{
+			yield return item;
 		}
 
 	}

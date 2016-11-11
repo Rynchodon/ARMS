@@ -204,9 +204,9 @@ for module in modules[:]:
 	archiveScripts(module)
 
 pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
-if str.lower(build) == "release" and os.path.isfile(pathPublish):
+if "release" in str.lower(build) and os.path.isfile(pathPublish):
 	# git tests moved to Publisher.cs
-	os.system('start /wait cmd /c"' + pathPublish + '"')
+	os.system('start /wait cmd /c "' + pathPublish + '" ' + build)
 else:
 	Path = SpaceEngineers + '\Bin64'
 	LoadArms = Path + '\LoadARMS.exe'
