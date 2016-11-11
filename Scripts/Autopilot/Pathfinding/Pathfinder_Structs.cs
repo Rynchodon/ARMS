@@ -8,6 +8,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 	public partial class Pathfinder
 	{
 
+		/// <summary>
+		/// To keep autopilot from matching speed with a door while using the line command.
+		/// </summary>
 		private struct Obstruction : IEquatable<Obstruction>
 		{
 			public MyEntity Entity;

@@ -83,8 +83,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private MyCubeGrid m_autopilotGrid { get { return m_tester.AutopilotGrid; } set { m_tester.AutopilotGrid = value; } }
 		private PseudoBlock m_navBlock;
-		private Destination m_destination; // only match speed with entity if there is no obstruction
-		private readonly IEnumerable<Destination> m_destinations;
+		private Destination[] m_destinations;
+		/// <summary>Initially set to m_destinations[0], pathfinder may change this if one of the other destinations is easier to reach.</summary>
+		private Destination m_pickedDestination;
 		private bool m_ignoreVoxel, m_canChangeCourse;
 
 		// Inputs: always updated
@@ -150,7 +151,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Mover.CalcMove(NavSet.Settings_Current.NavigationBlock, ref Vector3.Zero, ref velocity);
 		}
 
-		public void MoveTo(PseudoBlock navBlock, LastSeen targetEntity, Vector3D offset = default(Vector3D), Vector3 addToVelocity = default(Vector3))
+		public void MoveTo(LastSeen targetEntity, Vector3D offset = default(Vector3D), Vector3 addToVelocity = default(Vector3))
 		{
 			m_runHalt = false;
 
@@ -166,44 +167,49 @@ namespace Rynchodon.Autopilot.Pathfinding
 				addToVelocity += targetEntity.LastKnownVelocity;
 				m_logger.debugLog("not recent. dest: " + dest + ", actual position: " + targetEntity.Entity.GetPosition());
 			}
-			MoveTo(navBlock, ref dest, addToVelocity);
+			MoveTo(addToVelocity, dest);
 		}
 
-		public void MoveTo(PseudoBlock navBlock, ref Destination destination, Vector3 addToVelocity = default(Vector3))
+		public void MoveTo(Vector3 addToVelocity = default(Vector3), params Destination[] destinations)
 		{
 			m_runHalt = false;
 			Move();
 
 			AllNavigationSettings.SettingsLevel level = Mover.NavSet.Settings_Current;
-			bool ignoreVoxel = level.IgnoreAsteroid;
-			bool canChangeCourse = level.PathfinderCanChangeCourse;
+			//bool ignoreVoxel = level.IgnoreAsteroid;
+			//bool canChangeCourse = level.PathfinderCanChangeCourse;
 
 			m_addToVelocity = addToVelocity;
+			m_destinations = destinations;
 
-			if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid && m_destination.Equals(ref destination) && m_ignoreVoxel == ignoreVoxel && m_canChangeCourse == canChangeCourse)
+			if (!level.PathfinderInterrupt)
 			{
-				if (m_destination.Position != destination.Position)
-					// values are close so a partial write shouldn't cause weirdness
-					m_destination.Position = destination.Position;
 				Static.ThreadForeground.EnqueueAction(Run);
 				return;
 			}
 
-			m_logger.debugLog("nav block changed from " + (m_navBlock == null ? "N/A" : m_navBlock.DisplayName) + " to " + navBlock.DisplayName, condition: m_navBlock != navBlock);
-			m_logger.debugLog("grid changed from " + m_autopilotGrid.getBestName() + " to " + navBlock.Grid.getBestName(), condition: m_autopilotGrid != navBlock.Grid);
-			m_logger.debugLog("destination changed from " + m_destination + " to " + destination, condition: !m_destination.Equals(ref destination));
-			m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
-			m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
+			//if (m_navBlock == navBlock && m_autopilotGrid == navBlock.Grid /*&& m_destinations[0].Equals(ref destinations[0])*/ && m_ignoreVoxel == ignoreVoxel && m_canChangeCourse == canChangeCourse)
+			//{
+			//	Static.ThreadForeground.EnqueueAction(Run);
+			//	return;
+			//}
+
+			//m_logger.debugLog("nav block changed from " + (m_navBlock == null ? "N/A" : m_navBlock.DisplayName) + " to " + navBlock.DisplayName, condition: m_navBlock != navBlock);
+			//m_logger.debugLog("grid changed from " + m_autopilotGrid.getBestName() + " to " + navBlock.Grid.getBestName(), condition: m_autopilotGrid != navBlock.Grid);
+			//m_logger.debugLog("destination changed from " + m_destinations[0] + " to " + destinations[0], condition: !m_destinations[0].Equals(ref destinations[0]));
+			//m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
+			//m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
 
 			using (m_runningLock.AcquireExclusiveUsing())
 			{
 				m_runInterrupt = true;
-				m_navBlock = navBlock;
+				m_navBlock = level.NavigationBlock;
 				m_autopilotGrid = (MyCubeGrid)m_navBlock.Grid;
-				m_destination = destination;
-				m_ignoreVoxel = ignoreVoxel;
-				m_canChangeCourse = canChangeCourse;
+				m_ignoreVoxel = level.IgnoreAsteroid;
+				m_canChangeCourse = level.PathfinderCanChangeCourse;
 				m_holdPosition = true;
+				level.PathfinderInterrupt = false;
+				m_pickedDestination = m_destinations[0];
 			}
 
 			Static.ThreadForeground.EnqueueAction(Run);
@@ -342,7 +348,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private void FillDestWorld()
 		{
 			m_currentPosition = m_autopilotGrid.GetCentre();
-			Vector3D finalDestWorld = m_destination.WorldPosition() + m_currentPosition - m_navBlock.WorldPosition;
+			Vector3D finalDestWorld = m_pickedDestination.WorldPosition() + m_currentPosition - m_navBlock.WorldPosition;
 			double distance; Vector3D.Distance(ref finalDestWorld, ref m_currentPosition, out distance);
 			NavSet.Settings_Current.Distance = (float)distance;
 
@@ -355,7 +361,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private MyEntity GetTopMostDestEntity()
 		{
-			return m_destination.Entity != null ? (MyEntity)m_destination.Entity.GetTopMostParent() : null;
+			return m_pickedDestination.Entity != null ? (MyEntity)m_pickedDestination.Entity.GetTopMostParent() : null;
 		}
 
 		private MyEntity GetRelativeEntity()
@@ -939,7 +945,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 			}
 
-			Vector3D finalDest = m_destination.WorldPosition();
+			Vector3D finalDest = m_pickedDestination.WorldPosition();
 
 			if (MySession.Static.Settings.WorldSizeKm > 0 && finalDest.Length() > MySession.Static.Settings.WorldSizeKm * 500)
 			{

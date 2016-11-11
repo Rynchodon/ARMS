@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot.Data
 
 			private float? m_destRadius, m_distance, m_distanceAngle, m_speedTarget, m_speedMaxRelative, m_minDistToJump;
 
-			private bool? m_ignoreAsteroid, m_pathfindeCanChangeCourse, m_formation;
+			private bool? m_ignoreAsteroid, m_pathfindeCanChangeCourse, m_formation, m_pathfinderInterrupt;
 
 			/// <summary>
 			/// Creates the top-level SettingLevel, which has defaults set.
@@ -62,6 +62,7 @@ namespace Rynchodon.Autopilot.Data
 				m_ignoreAsteroid = false;
 				m_pathfindeCanChangeCourse = true;
 				m_formation = false;
+				m_pathfinderInterrupt = true;
 			}
 
 			/// <summary>
@@ -318,6 +319,13 @@ namespace Rynchodon.Autopilot.Data
 			{
 				get { return m_formation ?? parent.Stay_In_Formation; }
 				set { m_formation = value; }
+			}
+
+			/// <summary>Pathfinder uses this to check if settings have changed.</summary>
+			public bool PathfinderInterrupt
+			{
+				get { return m_pathfinderInterrupt ?? parent.PathfinderInterrupt; }
+				set { m_pathfinderInterrupt = value; }
 			}
 
 		}
