@@ -140,21 +140,16 @@ namespace Rynchodon
 				return;
 			}
 
-			this.f_context = () => {
-				IMyCubeGrid grid = block.CubeGrid;
-				if (grid == null)
-					return "Null grid";
-				return grid.DisplayName + " - " + grid.EntityId;
-			};
+			this.f_context = () => block.CubeGrid.nameWithId();
 
 			if (default_secondary == null)
 			{
 				this.f_state_primary = () => block.DefinitionDisplayNameText;
-				this.f_state_secondary = () => block.getNameOnly() + " - " + block.EntityId;
+				this.f_state_secondary = () => block.nameWithId();
 			}
 			else
 			{
-				this.f_state_primary = () => block.getNameOnly() + " - " + block.EntityId;
+				this.f_state_primary = () => block.nameWithId();
 				this.f_state_secondary = default_secondary;
 			}
 		}
@@ -165,13 +160,7 @@ namespace Rynchodon
 			if (block == null || block.Block != null)
 				return;
 
-			this.f_context = () => {
-				IMyCubeGrid grid = block.Grid;
-				if (grid == null)
-					return "Null grid";
-				return grid.DisplayName + " - " + grid.EntityId;
-			};
-
+			this.f_context = () => block.Grid.nameWithId();
 			this.f_state_primary = () => block.DisplayName;
 			this.f_state_secondary = default_secondary;
 		}
@@ -186,7 +175,7 @@ namespace Rynchodon
 				return;
 			}
 
-			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
+			this.f_context = () => grid.nameWithId();
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
 		}
@@ -198,16 +187,16 @@ namespace Rynchodon
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
 			if (asBlock != null)
 			{
-				this.f_context = () => asBlock.CubeGrid.DisplayName + " - " + asBlock.CubeGrid.EntityId;
+				this.f_context = () => asBlock.CubeGrid.nameWithId();
 				this.f_state_primary = () => asBlock.DefinitionDisplayNameText;
-				this.f_state_secondary = () => asBlock.getNameOnly() + " - " + asBlock.EntityId;
+				this.f_state_secondary = () => asBlock.nameWithId();
 				return;
 			}
 
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
-				this.f_context = () => asGrid.DisplayName + " - " + asGrid.EntityId;
+				this.f_context = () => asGrid.nameWithId();
 				return;
 			}
 
