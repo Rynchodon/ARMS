@@ -74,7 +74,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private readonly PathTester m_tester;
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
-		private bool m_runInterrupt, m_runHalt;
+		private bool m_runInterrupt, m_runHalt, m_navSetChange;
 		private ulong m_waitUntil, m_nextJumpAttempt;
 		private LineSegmentD m_lineSegment = new LineSegmentD();
 		private MyGridJumpDriveSystem m_jumpSystem;
@@ -126,13 +126,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		public Pathfinder(ShipControllerBlock block)
 		{
-			m_logger = new Logger(() => m_autopilotGrid.getBestName(), () => {
+			m_logger = new Logger(() => m_autopilotGrid.nameWithId(), () => {
 				if (m_navBlock != null)
 					return m_navBlock.DisplayName;
 				return "N/A";
 			}, () => CurrentState.ToString());
 			Mover = new Mover(block, new RotateChecker(block.CubeBlock, CollectEntities));
 			m_tester = new PathTester(Mover.Block);
+			NavSet.AfterTaskComplete += NavSet_AfterTaskComplete;
+		}
+
+		private void NavSet_AfterTaskComplete()
+		{
+			m_navSetChange = true;
+			CurrentState = State.None;
 		}
 
 		#region On Autopilot Thread
@@ -182,7 +189,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_addToVelocity = addToVelocity;
 			m_destinations = destinations;
 
-			if (!level.PathfinderInterrupt)
+			if (!m_navSetChange)
 			{
 				Static.ThreadForeground.EnqueueAction(Run);
 				return;
@@ -200,6 +207,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			//m_logger.debugLog("ignore voxel changed from " + m_ignoreVoxel + " to " + ignoreVoxel, condition: m_ignoreVoxel != ignoreVoxel);
 			//m_logger.debugLog("can change course changed from " + m_canChangeCourse + " to " + canChangeCourse, condition: m_canChangeCourse != canChangeCourse);
 
+			m_logger.debugLog("Nav settings changed");
+
 			using (m_runningLock.AcquireExclusiveUsing())
 			{
 				m_runInterrupt = true;
@@ -208,7 +217,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_ignoreVoxel = level.IgnoreAsteroid;
 				m_canChangeCourse = level.PathfinderCanChangeCourse;
 				m_holdPosition = true;
-				level.PathfinderInterrupt = false;
+				m_navSetChange = false;
 				m_pickedDestination = m_destinations[0];
 			}
 
@@ -229,6 +238,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3 temp; Vector3.Add(ref targetVelocity, ref m_addToVelocity, out temp);
 				targetVelocity = temp;
 			}
+
+			if (m_navSetChange || m_runInterrupt || m_runHalt)
+				return;
 
 			if (m_holdPosition)
 			{
@@ -529,8 +541,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			{
 				if (ObstructionMovingAway(obstructing))
 				{
-					m_obstructingEntity = new Obstruction();
-					m_obstructingBlock = null;
 					m_holdPosition = true;
 					return;
 				}
@@ -687,7 +697,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (distCentreToCurrent < fixedRadius + linearSpeedFactor)
 				{
 					// Entity is too close to autopilot for repulsion.
-					if (calcRepulse && !(entity is MyVoxelBase))
+					if (calcRepulse)
 					{
 						float distBetween = (float)distCentreToCurrent - fixedRadius;
 						if (distBetween < closestEntityDist)

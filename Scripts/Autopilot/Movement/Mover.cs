@@ -103,8 +103,14 @@ namespace Rynchodon.Autopilot.Movement
 			this.Block = block;
 			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 			this.RotateCheck = rotateCheck;
+			this.NavSet.AfterTaskComplete += NavSet_AfterTaskComplete;
 
 			CheckGrid();
+		}
+
+		private void NavSet_AfterTaskComplete()
+		{
+			MoveStuck = false;
 		}
 
 		/// <summary>

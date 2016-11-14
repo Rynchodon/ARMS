@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Collections.Generic;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Settings;
 using Rynchodon.Utility.Vectors;
@@ -321,13 +319,6 @@ namespace Rynchodon.Autopilot.Data
 				set { m_formation = value; }
 			}
 
-			/// <summary>Pathfinder uses this to check if settings have changed.</summary>
-			public bool PathfinderInterrupt
-			{
-				get { return m_pathfinderInterrupt ?? parent.PathfinderInterrupt; }
-				set { m_pathfinderInterrupt = value; }
-			}
-
 		}
 
 		public static float DefaultRadius { get { return 100f; } }
@@ -379,6 +370,8 @@ namespace Rynchodon.Autopilot.Data
 
 		public int WelderUnfinishedBlocks { get; set; }
 
+		public event Action AfterTaskComplete;
+
 		public AllNavigationSettings(IMyCubeBlock defaultNavBlock)
 		{
 			this.defaultNavBlock = defaultNavBlock;
@@ -422,6 +415,7 @@ namespace Rynchodon.Autopilot.Data
 			if (Settings_Task_NavWay != null)
 				Settings_Task_NavWay.Dispose();
 			Settings_Task_NavWay = new SettingsLevel(Settings_Task_NavEngage);
+			AfterTaskComplete.InvokeIfExists();
 		}
 
 		public void OnTaskComplete(SettingsLevelName level)
