@@ -687,7 +687,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (distCentreToCurrent < fixedRadius + linearSpeedFactor)
 				{
 					// Entity is too close to autopilot for repulsion.
-					if (calcRepulse)
+					if (calcRepulse && !(entity is MyVoxelBase))
 					{
 						float distBetween = (float)distCentreToCurrent - fixedRadius;
 						if (distBetween < closestEntityDist)

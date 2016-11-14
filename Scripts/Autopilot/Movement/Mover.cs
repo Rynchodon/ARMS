@@ -4,6 +4,7 @@ using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
+using Sandbox.Game.GameSystems;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -857,7 +858,8 @@ namespace Rynchodon.Autopilot.Movement
 				//m_prevRollControl = rollControl;
 
 				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
-				Thrust.SetOverrides(ref gridMove);
+				Block.CubeGrid.Components.Get<MyEntityThrustComponent>().ControlThrust = gridMove;
+				//Thrust.SetOverrides(ref gridMove);
 			});
 		}
 

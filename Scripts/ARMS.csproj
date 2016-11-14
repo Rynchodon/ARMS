@@ -180,7 +180,13 @@
     <Compile Include="Autopilot\Harvest\OreDetector.cs" />
     <Compile Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\AMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\Miner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\EscapeMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\SurfaceMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\TunnelMiner.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />
@@ -202,7 +208,7 @@
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
-    <Compile Include="Autopilot\Pathfinding\ExpandingRings.cs" />
+    <Compile Include="Utility\Collections\ExpandingRings.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_LowLevel.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_Structs.cs" />

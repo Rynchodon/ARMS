@@ -85,7 +85,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			PositionGrid centre = ((PositionWorld)myGrid.Physics.CenterOfMassWorld).ToGrid(myGrid);
 
-			if (Vector3.DistanceSquared(centre, m_centreOfMass) > 1f || Math.Abs(myGrid.Physics.Mass - m_mass) > 10f)
+			if (Vector3.DistanceSquared(centre, m_centreOfMass) > 1f || Math.Abs(myGrid.Physics.Mass - m_mass) > 1000f)
 			{
 				using (m_lock.AcquireExclusiveUsing())
 				{

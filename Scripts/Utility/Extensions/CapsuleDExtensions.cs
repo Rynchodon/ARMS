@@ -37,14 +37,17 @@ namespace Rynchodon
 				return false;
 			}
 
-			Vector3D leftBottom = voxel.PositionLeftBottomCorner;
-			Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
-			BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
-
-			if (!voxel.Storage.Geometry.Intersects(ref localSphere))
+			if (capsuleLength < Math.Max(capsule.Radius, 1f) * 8f)
 			{
-				hitPosition = Vector3.Invalid;
-				return false;
+				Vector3D leftBottom = voxel.PositionLeftBottomCorner;
+				Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
+				BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
+
+				if (!voxel.Storage.Geometry.Intersects(ref localSphere))
+				{
+					hitPosition = Vector3.Invalid;
+					return false;
+				}
 			}
 
 			CapsuleD halfCapsule;
@@ -91,6 +94,11 @@ namespace Rynchodon
 			hitPosition = Vector3.Invalid;
 			Profiler.EndProfileBlock();
 			return false;
+		}
+
+		public static string String(this CapsuleD capsule)
+		{
+			return "{P0:" + capsule.P0 + ", P1:" + capsule.P1 + ", Radius:" + capsule.Radius + "}";
 		}
 
 	}

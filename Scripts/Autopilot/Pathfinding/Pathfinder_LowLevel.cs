@@ -1,5 +1,5 @@
-﻿#define SHOW_PATH // show the path found with GPS
-#define SHOW_REACHED // show points reached with GPS
+﻿//#define SHOW_PATH // show the path found with GPS
+//#define SHOW_REACHED // show points reached with GPS
 
 using System;
 using System.Collections.Generic;

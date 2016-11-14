@@ -119,9 +119,6 @@ namespace Rynchodon.Update
 				var od = new OreDetector(block);
 				RegisterForUpdates(1000, od.Update, block);
 			});
-
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
-				new ImmortalMiner();
 		}
 
 		/// <summary>

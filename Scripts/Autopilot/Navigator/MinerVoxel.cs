@@ -22,6 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 	/// Mines an IMyVoxelBase
 	/// Will not insist on rotation control until it is ready to start mining.
 	/// </summary>
+	[Obsolete]
 	public class MinerVoxel : NavigatorMover, INavigatorRotator, IDisposable
 	{
 
