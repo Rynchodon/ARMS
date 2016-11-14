@@ -202,7 +202,7 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bImmortalMiner, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 
-			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
+			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, (byte)(Math.Max(Environment.ProcessorCount / 2, 1))));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));
