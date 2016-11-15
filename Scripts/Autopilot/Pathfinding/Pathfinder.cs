@@ -250,7 +250,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 
 			m_logger.debugLog("Should not be moving! disp: " + disp, Logger.severity.ERROR, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
-			Vector3D currentPosition = m_autopilotGrid.GetCentre();
 			//m_logger.debugLog("moving: " + disp);
 			Mover.CalcMove(m_navBlock, ref disp, ref targetVelocity);
 		}
@@ -518,12 +517,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 					float distance = dispF.Length();
 					Vector3 scaledRepulsion; Vector3.Multiply(ref repulsion, distance * 0.001f, out scaledRepulsion);
 					Vector3.Add(ref dispF, ref scaledRepulsion, out m_moveDirection);
-					//m_logger.debugLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					m_logger.debugLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 				else
 				{
 					Vector3.Add(ref dispF, ref repulsion, out m_moveDirection);
-					//m_logger.debugLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					m_logger.debugLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 			}
 			else
@@ -553,7 +552,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			//m_logger.debugLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength);
+			m_logger.debugLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength + ", disp: " + dispF);
 			if (!m_path.HasTarget)
 			{
 				CurrentState = State.Unobstructed;
@@ -823,7 +822,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			// if destination is obstructing it needs to be checked first, so we would match speed with destination
 
 			MyEntity destTop = GetTopMostDestEntity();
-			if (destTop != null && m_entitiesPruneAvoid.Contains(destTop) && m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
+			if (destTop != null && m_pickedDestination.Position != Vector3D.Zero && m_entitiesPruneAvoid.Contains(destTop) && m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
 			{
 				m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 				obstructingEntity = destTop;

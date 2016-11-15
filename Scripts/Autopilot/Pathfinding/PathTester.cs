@@ -146,10 +146,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="offset">Difference between the current position of the autopilot ship and where it will be.</param>
 		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref Vector3 rejectionVector, float rejectionDistance, ref Vector3D offset, out Vector3I oGridCell, out float distance)
 		{
-			Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
+			//Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
 			//Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector + ", distance: " + rejectionDistance +
 			//	", final: " + (AutopilotGrid.GetCentre() + offset + rejectionVector * rejectionDistance));
-			Logger.DebugLog("rejction distance < 0: " + rejectionDistance, Logger.severity.ERROR, condition: rejectionDistance < 0f);
+			//Logger.DebugLog("rejction distance < 0: " + rejectionDistance, Logger.severity.ERROR, condition: rejectionDistance < 0f);
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
@@ -221,7 +221,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						maxProjection = projectionDistance;
 
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
+					//Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 					apShipRejections[ToCell(pc2, roundTo)] = true;
 					//Logger.DebugLog("My rejection: " + rejection + ", planar: " + ToCell(pc2, roundTo));
@@ -256,7 +256,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					continue;
 
 				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-				Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
+				//Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.WARNING, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 				Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 				Vector2I cell2D = ToCell(pc2, roundTo);
 

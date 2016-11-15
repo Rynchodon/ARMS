@@ -256,16 +256,16 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
-			//m_logger.debugLog(string.Empty
-			//	//+ "block: " + block.Block.getBestName()
-			//	//+ ", dest point: " + destPoint
-			//	//+ ", position: " + block.WorldPosition
-			//	+ "destDisp: " + destDisp
-			//	+ ", destVelocity: " + destVelocity
-			//	+ ", targetVelocity: " + targetVelocity
-			//	+ ", velocity: " + velocity
-			//	+ ", m_moveAccel: " + m_moveAccel
-			//	+ ", moveForceRatio: " + m_moveForceRatio);
+			m_logger.debugLog(string.Empty
+				//+ "block: " + block.Block.getBestName()
+				//+ ", dest point: " + destPoint
+				//+ ", position: " + block.WorldPosition
+				+ "destDisp: " + destDisp
+				+ ", destVelocity: " + destVelocity
+				+ ", targetVelocity: " + targetVelocity
+				+ ", velocity: " + velocity
+				+ ", m_moveAccel: " + m_moveAccel
+				+ ", moveForceRatio: " + m_moveForceRatio);
 		}
 
 		private void CalcMove(ref Vector3 velocity)

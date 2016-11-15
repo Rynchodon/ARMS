@@ -1,5 +1,5 @@
-﻿//#define SHOW_PATH // show the path found with GPS
-//#define SHOW_REACHED // show points reached with GPS
+﻿#define SHOW_PATH // show the path found with GPS
+#define SHOW_REACHED // show points reached with GPS
 
 using System;
 using System.Collections.Generic;
@@ -34,6 +34,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			get { return value_state; }
 			set
 			{
+				if (m_navSetChange)
+					value = State.None;
 				if (value_state == value)
 					return;
 
@@ -45,6 +47,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					m_waitUntil = 0uL;
 					m_forward.Clear();
+					ResourcePool.Return(m_forward);
 					m_forward = null;
 					ClearBackwards();
 				}
@@ -57,13 +60,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private void StartPathfinding()
 		{
-			m_logger.debugLog("entered");
-
 			m_path.Clear();
 #if SHOW_REACHED
 			PurgeTempGPS();
 #endif
 			CurrentState = State.SearchingForPath;
+
+			if (m_forward == null)
+			{
+				m_logger.debugLog("interrupted");
+				return;
+			}
 
 			Vector3D referencePosition;
 			SetupBackward(out referencePosition);
@@ -99,6 +106,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private void SetupForward(ref Vector3D referencePosition)
 		{
+			m_logger.debugLog("m_obstructingEntity.Entity == null", Logger.severity.FATAL, condition: m_obstructingEntity.Entity == null);
+			m_logger.debugLog("m_forward == null", Logger.severity.FATAL, condition: m_forward == null);
+
 			Vector3D startPosition;
 			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D.Subtract(ref m_currentPosition, ref obstructPosition, out startPosition);
@@ -166,6 +176,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D destWorld = dest.WorldPosition();
 			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D.Subtract(ref destWorld, ref obstructPosition, out fromObsPos);
+
+			m_logger.debugLog("destWorld: " + destWorld + ", obstructPosition: " + obstructPosition + ", fromObsPos: " + fromObsPos);
 		}
 
 		#endregion
@@ -246,7 +258,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.debugLog("Calculated repulsion for some reason: " + repulsion, Logger.severity.WARNING, condition: repulsion != Vector3.Zero, secondaryState: SetName(pnSet));
 
 			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
-			PathNode parent = pnSet.m_reachedNodes[currentNode.ParentKey];
+			PathNode parent;
+			if (!pnSet.m_reachedNodes.TryGetValue(currentNode.ParentKey, out parent))
+			{
+				m_logger.debugLog("Failed to get parent", Logger.severity.WARNING);
+				return;
+			}
 			Vector3D worldParent;
 			Vector3D.Add(ref obstructPosition, ref parent.Position, out worldParent);
 			Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
@@ -440,7 +457,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		
 		private void JustMove(float target, out PathNode closest)
 		{
-			m_logger.debugLog("target is too low: " + target + ", node dist: " + m_forward.NodeDistance, Logger.severity.ERROR, condition: target < m_forward.NodeDistance);
 			closest = default(PathNode);
 			closest.DistToCur = float.MaxValue;
 			foreach (KeyValuePair<long, PathNode> pair in m_forward.m_reachedNodes)

@@ -192,7 +192,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			AddOpenNode(ref firstNode, 0f);
 			m_reachedNodes.Add(firstNode.Key, firstNode);
-			m_logger.debugLog("Finished setup", Logger.severity.DEBUG);
+			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start, Logger.severity.DEBUG);
 		}
 
 		/// <summary>
