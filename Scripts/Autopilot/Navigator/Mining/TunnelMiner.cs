@@ -8,7 +8,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 {
 	class TunnelMiner : AMinerComponent
 	{
-		public enum Stage : byte { None, Mine, Tunnel, /*Backout*/ }
+		public enum Stage : byte { None, Mine, Tunnel, Escape }
 
 		private readonly Logger m_logger;
 
@@ -30,19 +30,16 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					case Stage.Tunnel:
 						if (m_target.Entity is MyPlanet)
 						{
+							m_stage = Stage.Escape;
 							new EscapeMiner(m_pathfinder, TargetVoxel);
 							return;
 						}
 						EnableDrills(true);
 						SetOutsideTarget(m_navBlock.WorldMatrix.Forward);
 						break;
-					//case Stage.Backout:
-					//	EnableDrills(false);
-					//	SetOutsideTarget(false);
-					//	break;
 				}
 
-				TaskCompleteNavWay();
+				m_navSet.OnTaskComplete_NavWay();
 				value_stage = value;
 			}
 		}
@@ -73,16 +70,16 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			switch (m_stage)
 			{
 				case Stage.Mine:
-					customInfo.Append("Mining ore at ");
+					customInfo.Append("Mining ");
+					customInfo.Append(m_oreName);
+					customInfo.Append(" at ");
+					customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 					break;
 				case Stage.Tunnel:
 					customInfo.Append("Tunneling to ");
+					customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 					break;
-				//case Stage.Backout:
-				//	customInfo.Append("Backing out to ");
-				//	break;
 			}
-			customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 		}
 
 		public override void Move()
@@ -92,7 +89,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				case Stage.Mine:
 					if (!MineTarget())
 					{
-						m_stage = Stage.Tunnel;
+						m_stage = Stage.Escape;
 						new EscapeMiner(m_pathfinder, TargetVoxel);
 					}
 					break;
@@ -104,18 +101,14 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 						m_navSet.OnTaskComplete_NavMove();
 					}
 					else if (!TunnelTarget())
+					{
+						m_stage = Stage.Escape;
 						new EscapeMiner(m_pathfinder, TargetVoxel);
+					}
 					break;
-				//case Stage.Backout:
-				//	if (!IsNearVoxel(2d))
-				//	{
-				//		m_logger.debugLog("Outside of voxel", Logger.severity.INFO);
-				//		m_mover.MoveAndRotateStop();
-				//		m_navSet.OnTaskComplete_NavMove();
-				//	}
-				//	else if (!BackoutTarget())
-				//		m_stage = Stage.Tunnel;
-				//	break;
+				case Stage.Escape:
+					m_stage = Stage.Tunnel;
+					break;
 			}
 		}
 
@@ -130,17 +123,13 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 						m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_grid, direction));
 						break;
 					}
-				//case Stage.Backout:
-				//	{
-				//		Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - m_target.WorldPosition());
-				//		m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_grid, direction));
-				//		break;
-				//	}
 			}
 		}
 
 		private bool MineTarget()
 		{
+			//m_logger.debugLog("distance: " + m_navSet.Settings_Current.Distance);
+
 			if (m_navSet.Settings_Current.Distance > 10f && !m_navSet.DirectionMatched() && IsNearVoxel())
 			{
 				// match direction

@@ -12,7 +12,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	class SurfaceMiner : AMinerComponent
 	{
 
-		public enum Stage : byte { None, GetSurface, Mine, /*Backout*/ }
+		public enum Stage : byte { None, GetSurface, Mine, Escape }
 
 		private static ThreadManager Thread = new ThreadManager(1, true, "Surface Miner");
 
@@ -35,19 +35,14 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				switch (value)
 				{
 					case Stage.GetSurface:
-						if (value_stage == Stage.None)
-							EnableDrills(true);
 						Thread.EnqueueAction(SetNextSurfacePoint);
 						break;
 					case Stage.Mine:
+						EnableDrills(true);
 						break;
-					//case Stage.Backout:
-					//	EnableDrills(false);
-					//	SetOutsideTarget(false);
-					//	break;
 				}
 
-				TaskCompleteNavWay();
+				m_navSet.OnTaskComplete_NavWay();
 				value_stage = value;
 			}
 		}
@@ -83,18 +78,18 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			switch (m_stage)
 			{
 				case Stage.GetSurface:
-					customInfo.AppendLine("Standby");
-					return;
+					customInfo.AppendLine("Scanning surface.");
+					break;
 				case Stage.Mine:
 					customInfo.Append("Mining ");
 					customInfo.Append(m_oreName);
 					customInfo.Append(" at ");
+					customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 					break;
 				//case Stage.Backout:
 				//	customInfo.Append("Backing out to ");
 				//	break;
 			}
-			customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 		}
 
 		public override void Move()
@@ -107,16 +102,9 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				case Stage.Mine:
 					MineTarget();
 					break;
-				//case Stage.Backout:
-				//	if (!IsNearVoxel(2d))
-				//	{
-				//		m_logger.debugLog("Outside of voxel", Logger.severity.INFO);
-				//		m_mover.MoveAndRotateStop();
-				//		m_navSet.OnTaskComplete_NavMove();
-				//	}
-				//	if (!BackoutTarget())
-				//		m_stage = Stage.Mine;
-				//	break;
+				case Stage.Escape:
+					m_stage = Stage.GetSurface;
+					break;
 			}
 		}
 
@@ -135,12 +123,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 						m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_grid, direction));
 						break;
 					}
-				//case Stage.Backout:
-				//	{
-				//		Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - m_target.WorldPosition());
-				//		m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_grid, direction));
-				//		break;
-				//	}
 			}
 		}
 
@@ -153,7 +135,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			}
 			else if (AbortMining())
 			{
-				m_stage = Stage.GetSurface;
+				m_stage = Stage.Escape;
 				new EscapeMiner(m_pathfinder, TargetVoxel);
 			}
 			else if (m_navSet.DistanceLessThan(1f))
@@ -161,7 +143,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (m_finalMine)
 				{
 					m_logger.debugLog("Reached target", Logger.severity.DEBUG);
-					m_stage = Stage.GetSurface;
+					m_stage = Stage.Escape;
 					new EscapeMiner(m_pathfinder, TargetVoxel);
 				}
 				else

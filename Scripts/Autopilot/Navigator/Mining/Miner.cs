@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using VRage.Voxels;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Navigator.Mining
@@ -17,6 +21,19 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	{
 
 		public enum Stage : byte { None, GetDeposit, Approach, Mining }
+
+		private static FieldInfo MyShipDrillDefinition__SensorOffset, MyShipDrillDefinition__SensorRadius;
+
+		static Miner()
+		{
+			Type MyShipDrillDefinition = typeof(MyCubeBlockDefinition).Assembly.GetType("Sandbox.Definitions.MyShipDrillDefinition", true);
+			MyShipDrillDefinition__SensorOffset = MyShipDrillDefinition.GetField("SensorOffset", BindingFlags.Instance | BindingFlags.Public);
+			if (MyShipDrillDefinition__SensorOffset == null)
+				throw new NullReferenceException("MyShipDrillDefinition__SensorOffset");
+			MyShipDrillDefinition__SensorRadius = MyShipDrillDefinition.GetField("SensorRadius", BindingFlags.Instance | BindingFlags.Public);
+			if (MyShipDrillDefinition__SensorRadius == null)
+				throw new NullReferenceException("MyShipDrillDefinition__SensorRadius");
+		}
 
 		private readonly Logger m_logger;
 		private readonly byte[] m_oreTargets;
@@ -126,8 +143,20 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
 		{
-			//throw new NotImplementedException();
 			customInfo.AppendLine("Preparing to mine");
+			switch (m_stage)
+			{
+				case Stage.GetDeposit:
+					customInfo.AppendLine("Searching for ore");
+					break;
+				case Stage.Approach:
+					customInfo.Append("Moving to ");
+					customInfo.AppendLine(m_approachPosition.ToPretty());
+					break;
+				case Stage.Mining:
+					customInfo.AppendLine("Mining in progress");
+					break;
+			}
 		}
 
 		public override void Move()
@@ -166,8 +195,42 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		/// </summary>
 		private bool CanTunnel()
 		{
-			// TODO:
-			return false;
+			CubeGridCache cache = CubeGridCache.GetFor(m_grid);
+			if (cache == null)
+				return false;
+
+			BoundingSphere[] sensors = new BoundingSphere[cache.CountByType(typeof(MyObjectBuilder_Drill))];
+			int drillIndex = 0;
+			foreach (MyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
+			{
+				float offset = (float)MyShipDrillDefinition__SensorOffset.GetValue(drill.BlockDefinition);
+				float radius = (float)MyShipDrillDefinition__SensorRadius.GetValue(drill.BlockDefinition);
+				sensors[drillIndex++] = new BoundingSphere(drill.LocalPosition() + drill.PositionComp.LocalMatrix.Forward * offset, radius + MyVoxelConstants.VOXEL_SIZE_IN_METRES_HALF);
+			}
+
+			Vector3 forward = m_navBlock.LocalMatrix.Forward;
+			foreach (Vector3I cell in m_grid.FirstBlocks(m_navBlock.LocalMatrix.Backward))
+			{
+				IMySlimBlock block = m_grid.GetCubeBlock(cell);
+				if (!(block.FatBlock is IMyShipDrill))
+				{
+					Ray ray = new Ray(cell * m_grid.GridSize, forward);
+
+					foreach (BoundingSphere sensor in sensors)
+						if (ray.Intersects(sensor).HasValue)
+						{
+							//m_logger.debugLog(block.getBestName() + " is behind a drill");
+							goto NextBlock;
+						}
+
+					//m_logger.debugLog(block.getBestName() + " is not behind any drill");
+					return false;
+				}
+
+				NextBlock:;
+			}
+
+			return true;
 		}
 
 		private void OnOreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase foundVoxel, string oreName)

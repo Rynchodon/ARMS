@@ -120,14 +120,22 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			}
 			else if (IsStuck)
 			{
-				m_logger.debugLog("Stuck", Logger.severity.DEBUG);
-				m_navSet.OnTaskComplete_NavWay();
+				if (m_stage == Stage.FromCentre)
+				{
+					m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+					m_stage = Stage.Backout;
+				}
+				else
+				{
+					m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+					m_navSet.OnTaskComplete_NavWay();
+				}
 			}
 			else if (!IsNearVoxel(2d))
 			{
 				m_logger.debugLog("Outside of voxel", Logger.severity.INFO);
 				m_mover.MoveAndRotateStop();
-				m_navSet.OnTaskComplete_NavWay();
+				m_navSet.OnTaskComplete_NavMove();
 			}
 			else
 			{

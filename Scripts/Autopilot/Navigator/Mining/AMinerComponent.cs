@@ -85,22 +85,12 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			Vector3D hitPos;
 			if (!CapsuleDExtensions.Intersects(ref capsule, voxel, out hitPos))
 			{
-				m_logger.alwaysLog("capsule: " + capsule.String() + ", does not intersect voxel", Logger.severity.ERROR);
+				m_logger.debugLog("capsule: " + capsule.String() + ", does not intersect voxel", Logger.severity.DEBUG);
 				hitPos = capsule.P0;
 			}
 
 			//m_logger.debugLog((tunnel ? "Tunnel target: " : "Backout target: ") + hitPos, Logger.severity.DEBUG);
 			m_target.SetWorld(ref hitPos);
-		}
-
-		/// <summary>
-		/// Clear waypoint and set mover and rotator to this. To prevent any other navigator from taking over.
-		/// </summary>
-		protected void TaskCompleteNavWay()
-		{
-			m_navSet.OnTaskComplete_NavWay();
-			m_navSet.Settings_Task_NavWay.NavigatorMover = this;
-			m_navSet.Settings_Task_NavWay.NavigatorRotator = this;
 		}
 
 	}
