@@ -102,7 +102,7 @@ namespace Rynchodon.Autopilot
 		{
 			myLogger.debugLog("entered printSingleCommand()", Logger.severity.TRACE);
 			StringBuilder print = new StringBuilder();
-			if (command.Equals("direction", StringComparison.OrdinalIgnoreCase) || command.Equals("distance", StringComparison.OrdinalIgnoreCase))
+			if (command.Equals("direction", StringComparison.InvariantCultureIgnoreCase) || command.Equals("distance", StringComparison.InvariantCultureIgnoreCase))
 				command += 's';
 			command = command.ToUpper();
 

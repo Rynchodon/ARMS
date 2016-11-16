@@ -178,7 +178,7 @@
     <Compile Include="Autopilot\EnemyFinder.cs" />
     <Compile Include="Autopilot\GridFinder.cs" />
     <Compile Include="Autopilot\Harvest\OreDetector.cs" />
-    <Compile Include="Autopilot\Help.cs" />
+    <None Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
