@@ -93,13 +93,6 @@ def copyWithExtension(l_from, l_to, l_ext, log):
 				shutil.copy2(sourceFile, target)
 				
 
-GitHubPath = os.getenv('LOCALAPPDATA') + "\\GitHub\\"
-if (os.path.exists(GitHubPath)):
-	for f in os.listdir(GitHubPath):
-		if (f.startswith('PortableGit_')):
-			GitExe = GitHubPath + str(f) + "\\cmd\\git.exe"
-			break
-
 if not os.path.exists(buildIni):
 	shutil.copy(buildIniTemplate, buildIni)
 
@@ -112,6 +105,23 @@ if (not os.path.exists(SpaceEngineers)):
 if (len(sys.argv) < 2):
 	logging.error ("ERROR: Build configuration not specified")
 	sys.exit(12)
+
+if (not os.path.exists(GitExe)):
+	GitExe = r"C:\Program Files (x86)\Git\bin\git.exe"
+	if (os.path.exists(GitExe)):
+		logging.info("Git in Program Files (x86)")
+	else:
+		GitExe = r"C:\Program Files\Git\bin\git.exe"
+		if (os.path.exists(GitExe)):
+			logging.info("Git in Program Files")
+		else:
+			GitHubPath = os.getenv('LOCALAPPDATA') + "\\GitHub\\"
+			if (os.path.exists(GitHubPath)):
+				for f in os.listdir(GitHubPath):
+					if (f.startswith('PortableGit_')):
+						logging.info("Git in " + str(f))
+						GitExe = GitHubPath + str(f) + "\\cmd\\git.exe"
+						break
 
 for process in psutil.process_iter():
 	if process.name() == "SpaceEngineers.exe" or process.name() == "SpaceEngineersDedicated.exe" or process.name() == "LoadARMS.exe":

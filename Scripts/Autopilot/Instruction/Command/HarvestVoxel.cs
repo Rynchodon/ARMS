@@ -157,14 +157,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 
 				foreach (string name in splitComma)
 				{
+					string trimmed = name.Trim();
 					Ore ore;
-					if (!TryGetOre(name, out ore))
+					if (!TryGetOre(trimmed, out ore))
 					{
 						message = "Not ore: " + name;
 						return null;
 					}
 					byte[] oreIds;
-					if (!OreDetector.TryGetMaterial(name, out oreIds))
+					if (!OreDetector.TryGetMaterial(trimmed, out oreIds))
 					{
 						message = "Failed to get material index: " + name;
 						return null;
@@ -309,7 +310,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		private bool TryGetOre(string name, out Ore ore)
 		{
 			foreach (Ore o in m_allOres)
-				if (o.SubtypeName == name || o.MinedOre == name || o.Symbol == name)
+				if (o.SubtypeName.Equals(name, StringComparison.InvariantCultureIgnoreCase) || o.MinedOre != null && o.MinedOre.Equals(name, StringComparison.InvariantCultureIgnoreCase) || o.Symbol.Equals(name, StringComparison.InvariantCultureIgnoreCase))
 				{
 					ore = o;
 					return true;
