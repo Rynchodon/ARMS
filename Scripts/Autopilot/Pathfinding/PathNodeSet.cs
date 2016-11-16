@@ -50,32 +50,32 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public abstract void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse);
 	}
 
-	class RootNode : PathNodeSet
-	{
-		public override IEnumerable<Vector3D> BlueSkyNodes { get { yield break; } }
+	//class RootNode : PathNodeSet
+	//{
+	//	public override IEnumerable<Vector3D> BlueSkyNodes { get { yield break; } }
 
-		public override int CompareTo(PathNodeSet other) { throw new NotImplementedException(); }
+	//	public override int CompareTo(PathNodeSet other) { throw new NotImplementedException(); }
 
-		public override bool HasReached(long key) { return m_startPosition.GetHash() == key; }
+	//	public override bool HasReached(long key) { return m_startPosition.GetHash() == key; }
 
-		public override void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse)
-		{
-			m_referencePosition = referencePosition;
-			m_startPosition = startPosition;
-		}
+	//	public override void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse)
+	//	{
+	//		m_referencePosition = referencePosition;
+	//		m_startPosition = startPosition;
+	//	}
 
-		public override bool TryGetReached(long key, out PathNode reached)
-		{
-			if (m_startPosition.GetHash() == key)
-			{
-				reached = new PathNode() { Position = m_startPosition };
-				return true;
-			}
+	//	public override bool TryGetReached(long key, out PathNode reached)
+	//	{
+	//		if (m_startPosition.GetHash() == key)
+	//		{
+	//			reached = new PathNode() { Position = m_startPosition };
+	//			return true;
+	//		}
 
-			reached = default(PathNode);
-			return false;
-		}
-	}
+	//		reached = default(PathNode);
+	//		return false;
+	//	}
+	//}
 
 	class FindingSet : PathNodeSet
 	{

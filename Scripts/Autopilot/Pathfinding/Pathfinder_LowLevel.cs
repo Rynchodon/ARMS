@@ -122,47 +122,74 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (m_backwardList == null)
 				return;
 
-			if (m_backwardList.Length == 1)
+			for (int i = 0; i < m_backwardList.Length; i++)
 			{
-				FindingSet back = (FindingSet)m_backwardList[0];
-				if (back == null)
-					return;
+				FindingSet back = (FindingSet)m_backwardList[i];
 				back.Clear();
 				ResourcePool.Return(back);
-				m_backwardList[0] = null;
+				m_backwardList[i] = null;
 			}
-			else
-				for (int i = 0; i < m_backwardList.Length; i++)
-					m_backwardList[i] = null;
+
+			//if (m_backwardList.Length == 1)
+			//{
+			//	FindingSet back = (FindingSet)m_backwardList[0];
+			//	if (back == null)
+			//		return;
+			//	back.Clear();
+			//	ResourcePool.Return(back);
+			//	m_backwardList[0] = null;
+			//}
+			//else
+			//	for (int i = 0; i < m_backwardList.Length; i++)
+			//		m_backwardList[i] = null;
 		}
 
 		private void CreateBackwards()
 		{
-			if (m_backwardList != null && m_backwardList.Length == 1)
-			{
-				FindingSet back = (FindingSet)m_backwardList[0];
-				if (back != null)
+			if (m_backwardList != null)
+				if (m_backwardList.Length == m_destinations.Length)
 				{
-					back.Clear();
-					if (m_destinations.Length == 1)
-						return;
-					ResourcePool.Return(back);
-					m_backwardList[0] = null;
+					for (int i = 0; i < m_backwardList.Length; i++)
+						if (m_backwardList[i] == null)
+							m_backwardList[i] = new FindingSet();
+						else
+							((FindingSet)m_backwardList[i]).Clear();
+					return;
 				}
-			}
+				else
+					ClearBackwards();
 
-			if (m_backwardList == null || m_backwardList.Length != m_destinations.Length)
-				m_backwardList = new PathNodeSet[m_destinations.Length];
+			m_backwardList = new PathNodeSet[m_destinations.Length];
 
-			if (m_backwardList.Length == 1)
-			{
-				if (m_backwardList[0] == null)
-					m_backwardList[0] = ResourcePool<FindingSet>.Get();
-			}
-			else
-				for (int i = 0; i < m_backwardList.Length; i++)
-					if (m_backwardList[i] == null)
-						m_backwardList[i] = new RootNode();
+			for (int i = 0; i < m_backwardList.Length; i++)
+				if (m_backwardList[i] == null)
+					m_backwardList[i] = new FindingSet();
+
+			//if (m_backwardList != null && m_backwardList.Length == 1)
+			//{
+			//	FindingSet back = (FindingSet)m_backwardList[0];
+			//	if (back != null)
+			//	{
+			//		back.Clear();
+			//		if (m_destinations.Length == 1)
+			//			return;
+			//		ResourcePool.Return(back);
+			//		m_backwardList[0] = null;
+			//	}
+			//}
+
+			//if (m_backwardList == null || m_backwardList.Length != m_destinations.Length)
+			//	m_backwardList = new PathNodeSet[m_destinations.Length];
+
+			//if (m_backwardList.Length == 1)
+			//{
+			//	if (m_backwardList[0] == null)
+			//		m_backwardList[0] = ResourcePool<FindingSet>.Get();
+			//}
+			//else
+			//	for (int i = 0; i < m_backwardList.Length; i++)
+			//		if (m_backwardList[i] == null)
+			//			m_backwardList[i] = new RootNode();
 		}
 
 		private void GetFromObsPosition(Destination dest, out Vector3D fromObsPos)
@@ -199,16 +226,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 					return;
 				FillDestWorld();
 
-				if (!m_canChangeCourse || m_backwardList.Length != 1)
+				if (!m_canChangeCourse)
 					ContinuePathfinding(m_forward);
 				else
 				{
 					PathNodeSet bestSet = m_forward;
 					foreach (PathNodeSet backSet in m_backwardList)
-					{
 						if (backSet.CompareTo(bestSet) < 0)
 							bestSet = backSet;
-					}
 					ContinuePathfinding((FindingSet)bestSet);
 				}
 				OnComplete();
