@@ -9,7 +9,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	class EscapeMiner : AMinerComponent
 	{
 
-		public enum Stage : byte { None, /*Pathfind,*/ FromCentre, Backout }
+		public enum Stage : byte { None, /*Pathfind,*/Backout, FromCentre, }
 
 		private readonly Logger m_logger;
 
@@ -24,11 +24,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 				switch (value)
 				{
-					case Stage.FromCentre:
-						SetOutsideTarget(Vector3D.Normalize(m_target.WorldPosition() - TargetVoxel.GetCentre()));
-						break;
 					case Stage.Backout:
 						SetOutsideTarget(m_navBlock.WorldMatrix.Backward);
+						break;
+					case Stage.FromCentre:
+						SetOutsideTarget(Vector3D.Normalize(m_target.WorldPosition() - TargetVoxel.GetCentre()));
 						break;
 				}
 
@@ -48,7 +48,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			level.SpeedTarget = 1f;
 			level.PathfinderCanChangeCourse = false;
 
-			m_stage = Stage.FromCentre;
+			m_stage = Stage.Backout;
 			EnableDrills(false);
 			m_logger.debugLog("started", Logger.severity.DEBUG);
 		}
@@ -57,15 +57,15 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			switch (m_stage)
 			{
-				case Stage.FromCentre:
-					{
-						m_mover.StopRotate();
-						break;
-					}
 				case Stage.Backout:
 					{
 						Vector3 direction = Vector3.Normalize(m_navBlock.WorldPosition - m_target.WorldPosition());
 						m_mover.CalcRotate(m_navBlock, RelativeDirection3F.FromWorld(m_grid, direction));
+						break;
+					}
+				case Stage.FromCentre:
+					{
+						m_mover.StopRotate();
 						break;
 					}
 			}
@@ -75,8 +75,8 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			switch (m_stage)
 			{
-				case Stage.FromCentre:
 				case Stage.Backout:
+				case Stage.FromCentre:
 					MoveToTarget();
 					return;
 			}
@@ -89,11 +89,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				//case Stage.Pathfind:
 				//	customInfo.AppendLine("Pathfind");
 				//	break;
-				case Stage.FromCentre:
-					customInfo.AppendLine("From Centre");
-					break;
 				case Stage.Backout:
 					customInfo.AppendLine("Backout");
+					break;
+				case Stage.FromCentre:
+					customInfo.AppendLine("From Centre");
 					break;
 			}
 		}
@@ -103,21 +103,23 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			if (m_navSet.DistanceLessThan(1f))
 			{
 				m_logger.debugLog("Reached position: " + m_target, Logger.severity.WARNING);
-				if (m_stage == Stage.FromCentre)
+				if (m_stage == Stage.Backout)
+				{
+					m_target.SetWorld(m_target.WorldPosition() + m_navBlock.WorldMatrix.Backward * 100d);
+				}
+				else
 				{
 					Vector3D targetWorld = m_target.WorldPosition();
 					MyVoxelBase voxel = TargetVoxel;
 					m_target.SetWorld(targetWorld + Vector3D.Normalize(targetWorld - voxel.GetCentre()) * voxel.PositionComp.LocalVolume.Radius);
 				}
-				else
-					m_target.SetWorld(m_target.WorldPosition() + m_navBlock.WorldMatrix.Backward * 100d);
 			}
 			else if (IsStuck)
 			{
-				if (m_stage == Stage.FromCentre)
+				if (m_stage == Stage.Backout)
 				{
 					m_logger.debugLog("Stuck", Logger.severity.DEBUG);
-					m_stage = Stage.Backout;
+					m_stage = Stage.FromCentre;
 				}
 				else
 				{
