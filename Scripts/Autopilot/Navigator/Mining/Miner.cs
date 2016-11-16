@@ -20,7 +20,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	class Miner : AMiner, IDisposable
 	{
 
-		public enum Stage : byte { None, GetDeposit, Approach, Mining }
+		public enum Stage : byte { None, GetDeposit, GetApproach, Approach, Mining }
 
 		private static FieldInfo MyShipDrillDefinition__SensorOffset, MyShipDrillDefinition__SensorRadius;
 
@@ -37,8 +37,10 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		private readonly Logger m_logger;
 		private readonly byte[] m_oreTargets;
-		private Vector3D m_approachPosition;
-		private AMinerComponent m_miner;
+
+		private string m_oreName;
+		private List<DepositFreeSpace> m_approachFinders;
+		private Destination[] m_destinations;
 
 		private IMyVoxelBase value_targetVoxel;
 		private IMyVoxelBase m_targetVoxel
@@ -76,7 +78,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 								return;
 							}
 							OreDetector.SearchForMaterial(m_controlBlock, m_oreTargets, OnOreSearchComplete);
-							m_miner = null;
 							m_logger.debugLog("Waiting on ore detector", Logger.severity.DEBUG);
 							break;
 						}
@@ -149,9 +150,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				case Stage.GetDeposit:
 					customInfo.AppendLine("Searching for ore");
 					break;
+				case Stage.GetApproach:
+					customInfo.AppendLine("Searching for path to " + m_oreName);
+					break;
 				case Stage.Approach:
-					customInfo.Append("Moving to ");
-					customInfo.AppendLine(m_approachPosition.ToPretty());
+					customInfo.AppendLine("Approaching " + m_oreName);
 					break;
 				case Stage.Mining:
 					customInfo.AppendLine("Mining in progress");
@@ -166,17 +169,16 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				case Stage.GetDeposit:
 					m_mover.StopMove();
 					return;
+				case Stage.GetApproach:
+					CheckApproaches();
+					return;
 				case Stage.Approach:
 					if (m_navSet.DistanceLessThan(1f))
 					{
-						m_logger.debugLog("Approached, start mining", Logger.severity.DEBUG);
-						m_navSet.OnTaskComplete_NavWay();
-						m_miner.Start();
-						m_stage = Stage.Mining;
+						CreateMiner();
 						return;
 					}
-					Destination dest = Destination.FromWorld(m_targetVoxel, ref m_approachPosition);
-					m_pathfinder.MoveTo(destinations: dest);
+					m_pathfinder.MoveTo(destinations: m_destinations);
 					return;
 				case Stage.Mining:
 					m_logger.debugLog("Finished mining", Logger.severity.DEBUG);
@@ -233,9 +235,9 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			return true;
 		}
 
-		private void OnOreSearchComplete(bool success, Vector3D orePosition, IMyVoxelBase foundVoxel, string oreName)
+		private void OnOreSearchComplete(bool success, IMyVoxelBase foundVoxel, string oreName, IEnumerable<Vector3D> positions)
 		{
-			m_logger.debugLog("success: " + success + ", orePosition: " + orePosition + ", foundVoxel: " + foundVoxel + ", oreName: " + oreName, Logger.severity.DEBUG);
+			m_logger.debugLog("success: " + success + ", foundVoxel: " + foundVoxel + ", oreName: " + oreName, Logger.severity.DEBUG);
 
 			if (!success)
 			{
@@ -246,34 +248,106 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			}
 
 			m_targetVoxel = foundVoxel;
-			SetApproachPoint(ref orePosition);
+			m_oreName = oreName;
 
-			if (CanTunnel()) // and ore is not near surface
-				m_miner = new TunnelMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
+			if (m_approachFinders != null)
+				m_approachFinders.Clear();
 			else
-				m_miner = new SurfaceMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
+				ResourcePool.Get(out m_approachFinders);
 
+			Vector3D centre = TargetVoxel.GetCentre();
+			double minSpace = 2d * m_grid.LocalVolume.Radius;
+
+			foreach (Vector3D pos in positions)
+			{
+				Vector3D deposit = pos;
+
+				if (deposit == centre)
+					deposit += 1;
+
+				m_approachFinders.Add(new DepositFreeSpace(TargetVoxel, ref deposit, minSpace));
+
+				if (m_approachFinders.Count == 32)
+					break;
+			}
+
+			m_logger.debugLog("Created " + m_approachFinders.Count + " finders for " + oreName);
+			m_stage = Stage.GetApproach;
+
+
+			//SetApproachPoint(ref orePosition);
+
+			//if (CanTunnel()) // and ore is not near surface
+			//	m_miner = new TunnelMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
+			//else
+			//	m_miner = new SurfaceMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
+
+			//m_stage = Stage.Approach;
+		}
+
+		private void CheckApproaches()
+		{
+			foreach (DepositFreeSpace approachFinder in m_approachFinders)
+				if (!approachFinder.Completed)
+					return;
+
+			m_logger.debugLog(m_approachFinders + " approach finders completed", Logger.severity.DEBUG);
+
+			m_destinations = new Destination[m_approachFinders.Count];
+			int index = 0;
+			foreach (DepositFreeSpace approachFinder in m_approachFinders)
+				m_destinations[index++] = Destination.FromWorld(m_targetVoxel, approachFinder.FreePosition);
 			m_stage = Stage.Approach;
 		}
 
-		private void SetApproachPoint(ref Vector3D orePosition)
+		private void CreateMiner()
 		{
-			// TODO: get a point inside asteroid
+			m_logger.debugLog("Approached, start mining", Logger.severity.DEBUG);
 
-			CapsuleD capsule;
-			capsule.P1 = orePosition;
-			capsule.Radius = m_grid.LocalVolume.Radius * 4f;
+			DepositFreeSpace closestApproach = null;
+			double closestDistSq = double.MaxValue;
+			Vector3D currentPosition = m_navBlock.WorldPosition;
+			foreach (DepositFreeSpace approachFinder in m_approachFinders)
+			{
+				double distSq = Vector3D.DistanceSquared(currentPosition, approachFinder.FreePosition);
+				if (distSq < closestDistSq)
+				{
+					closestDistSq = distSq;
+					closestApproach = approachFinder;
+				}
+			}
 
-			Vector3D centre = m_targetVoxel.GetCentre();
-			Vector3D toDepositFromCentre; Vector3D.Subtract(ref orePosition, ref centre, out toDepositFromCentre);
-			m_logger.debugLog("ore: " + orePosition + ", centre: " + centre + ", toDepositFromCentre: " + toDepositFromCentre);
-			toDepositFromCentre.Normalize();
-			Vector3D offset; Vector3D.Multiply(ref toDepositFromCentre, m_targetVoxel.LocalVolume.Radius, out offset);
-			Vector3D.Add(ref centre, ref offset, out capsule.P0);
+			m_approachFinders.Clear();
+			ResourcePool.Return(m_approachFinders);
+			m_approachFinders = null;
 
-			CapsuleDExtensions.Intersects(ref capsule, (MyVoxelBase)m_targetVoxel, out m_approachPosition);
-			m_logger.debugLog("Capsule: " + capsule.String() + ", hit: " + m_approachPosition);
+			m_navSet.OnTaskComplete_NavWay();
+			if (CanTunnel())
+				new TunnelMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, closestApproach.Deposit), m_oreName);
+			else
+				new SurfaceMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, closestApproach.Deposit), m_oreName);
+
+			m_stage = Stage.Mining;
 		}
+
+		//private void SetApproachPoint(ref Vector3D orePosition)
+		//{
+		//	Vector3D centre = TargetVoxel.GetCentre();
+		//	if (orePosition == centre)
+		//		orePosition += 1;
+
+		//	Vector3D toDepositFromCentre; Vector3D.Subtract(ref orePosition, ref centre, out toDepositFromCentre);
+		//	toDepositFromCentre.Normalize();
+		//	double minSpace = 4d * m_grid.LocalVolume.Radius;
+
+		//	TargetVoxel.FindSpace(orePosition, toDepositFromCentre, minSpace, true, null);
+		//	TargetVoxel.FindSpace(orePosition, -toDepositFromCentre, minSpace, false, null);
+		//}
+
+		//private void OnSpaceFound(bool success, Vector3D freeSpace)
+		//{
+
+		//}
 
 		private bool Return()
 		{

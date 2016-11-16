@@ -183,10 +183,14 @@
     <Compile Include="Autopilot\Navigator\Mining\AMiner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\DepositFreeSpace.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\FreeSpaceFinder.cs" />
     <Compile Include="Autopilot\Navigator\Mining\Miner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\EscapeMiner.cs" />
+    <None Include="Autopilot\Navigator\Mining\OreDepositApproachFinder.cs" />
     <Compile Include="Autopilot\Navigator\Mining\SurfaceMiner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\TunnelMiner.cs" />
+    <None Include="Autopilot\Navigator\Mining\VoxelOpenSpace.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />
@@ -202,7 +206,6 @@
     <Compile Include="Autopilot\Navigator\GOLIS.cs" />
     <Compile Include="Autopilot\Navigator\Grinder.cs" />
     <Compile Include="Autopilot\Navigator\Response\Kamikaze.cs" />
-    <Compile Include="Autopilot\Navigator\MinerVoxel.cs" />
     <Compile Include="Autopilot\Navigator\Orbiter.cs" />
     <Compile Include="Autopilot\Navigator\Response\Self_Destruct.cs" />
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
@@ -243,6 +246,7 @@
     <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
     <Compile Include="Utility\EqualityComparer_Vector3D.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
     <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
     <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
     <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />

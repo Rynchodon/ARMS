@@ -96,6 +96,13 @@ namespace Rynchodon
 			Register<T>.Remove(entity.EntityId);
 		}
 
+		public static void Remove<T>(long entityId)
+		{
+			if (Globals.WorldClosed)
+				return;
+			Register<T>.Remove(entityId);
+		}
+
 		public static bool TryGetValue<T>(long entityId, out T value)
 		{
 			return Register<T>.TryGetValue(entityId, out value);

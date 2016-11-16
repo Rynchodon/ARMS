@@ -52,11 +52,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = target;
 
-			m_logger.debugLog("created", Logger.severity.DEBUG);
-		}
-
-		public override void Start()
-		{
 			m_startPosition = m_navBlock.WorldPosition;
 			Vector3 toVoxelCentre = Vector3.Normalize(m_target.WorldPosition() - m_startPosition);
 			toVoxelCentre.CalculatePerpendicularVector(out m_perp1);

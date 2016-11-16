@@ -23,8 +23,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			m_oreName = oreName;
 		}
 
-		public abstract void Start();
-
 		protected void EnableDrills(bool enable)
 		{
 			if (enable)

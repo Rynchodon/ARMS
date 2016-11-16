@@ -96,7 +96,7 @@ namespace Rynchodon.Utility
 			if (ProfileValues.m_block == null)
 				ProfileValues.m_block = new Stack<Block>();
 			if (profileFilePath.Contains("\\"))
-				profileFilePath = Path.GetFileName(profileFilePath);
+				profileFilePath = Path.GetFileName(profileFilePath); // do not remove extension as a method may be profiled twice
 			callerFilePath = Path.GetFileName(callerFilePath);
 			if (ProfileValues.m_block.Count > 1000)
 			{

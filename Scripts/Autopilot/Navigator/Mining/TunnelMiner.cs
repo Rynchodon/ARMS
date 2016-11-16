@@ -49,11 +49,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = target;
 
-			m_logger.debugLog("created", Logger.severity.DEBUG);
-		}
-
-		public override void Start()
-		{
 			AllNavigationSettings.SettingsLevel level = m_navSet.Settings_Task_NavMove;
 			level.NavigatorMover = this;
 			level.NavigatorRotator = this;
