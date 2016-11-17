@@ -1,4 +1,6 @@
-#define LOG_MOVE
+#if DEBUG
+#define TRACE
+#endif
 
 using System;
 using Rynchodon.Autopilot.Data;
@@ -256,8 +258,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
-#if LOG_MOVE
-			m_logger.debugLog(string.Empty
+			m_logger.traceLog(string.Empty
 				//+ "block: " + block.Block.getBestName()
 				//+ ", dest point: " + destPoint
 				//+ ", position: " + block.WorldPosition
@@ -267,7 +268,6 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", velocity: " + velocity
 				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + m_moveForceRatio);
-#endif
 		}
 
 		private void CalcMove(ref Vector3 velocity)

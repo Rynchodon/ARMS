@@ -248,7 +248,7 @@ namespace Rynchodon.Utility.Collections
 
 			T[] newArray;
 
-#if LOG_ENABLED
+#if DEBUG
 			try
 			{
 #endif
@@ -257,7 +257,7 @@ namespace Rynchodon.Utility.Collections
 			for (int ii = iFirst; ii <= iLast; ii++)
 				newArray[ii + shift] = m_array[ii];
 
-#if LOG_ENABLED
+#if DEBUG
 			}
 			catch (Exception)
 			{

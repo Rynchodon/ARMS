@@ -637,8 +637,6 @@ namespace Rynchodon.Weapons
 
 			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
 			this.myLogger = new Logger(weapon);
-			if (weapon.CubeGrid.EntityId != 112215316683455759L)
-				this.myLogger.MinimumLevel = Logger.severity.INFO;
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.IsNormalTurret = myTurret != null;
@@ -973,14 +971,7 @@ namespace Rynchodon.Weapons
 		{
 			myLogger.debugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
 			m_ignoreList[0] = target;
-#if LOG_ENABLED
-			myLogger.debugLog("ray cast obstruct");
-			bool obstructed = RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
-			myLogger.debugLog("back from ray cast");
-			return obstructed;
-#else
 			return RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
-#endif
 		}
 
 		private bool condition_changed;

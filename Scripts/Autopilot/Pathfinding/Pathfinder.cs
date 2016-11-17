@@ -517,12 +517,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 					float distance = dispF.Length();
 					Vector3 scaledRepulsion; Vector3.Multiply(ref repulsion, distance * 0.001f, out scaledRepulsion);
 					Vector3.Add(ref dispF, ref scaledRepulsion, out m_moveDirection);
-					//m_logger.debugLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					m_logger.traceLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 				else
 				{
 					Vector3.Add(ref dispF, ref repulsion, out m_moveDirection);
-					//m_logger.debugLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					m_logger.traceLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 			}
 			else
@@ -552,7 +552,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			//m_logger.debugLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength + ", disp: " + dispF);
+			m_logger.traceLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength + ", disp: " + dispF);
 			if (!m_path.HasTarget)
 			{
 				CurrentState = State.Unobstructed;

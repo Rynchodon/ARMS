@@ -645,19 +645,19 @@ namespace Rynchodon.Autopilot.Pathfinding
 //#endif
 //		}
 
-#if LOG_ENABLED
+#if DEBUG
 		private Queue<IMyGps> m_shownPositions = new Queue<IMyGps>(100);
 		private List<IMyGps> m_allGpsList = new List<IMyGps>();
 #endif
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		[System.Diagnostics.Conditional("DEBUG")]
 		private void ShowPosition(PathNode currentNode, string name = null)
 		{
 			IMyGps gps = MyAPIGateway.Session.GPS.Create(name ?? currentNode.Position.ToString(), string.Empty, currentNode.Position + m_obstructingEntity.GetPosition(), true, true);
 			gps.DiscardAt = TimeSpan.MinValue;
 			//m_logger.debugLog("Showing " + gps.Coords);
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => MyAPIGateway.Session.GPS.AddLocalGps(gps));
-#if LOG_ENABLED
+#if DEBUG
 			m_shownPositions.Enqueue(gps);
 			if (m_shownPositions.Count == 100)
 			{
@@ -668,10 +668,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 #endif
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		[System.Diagnostics.Conditional("DEBUG")]
 		private void PurgeTempGPS()
 		{
-#if LOG_ENABLED
+#if DEBUG
 			m_shownPositions.Clear();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyGps gps in MyAPIGateway.Session.GPS.GetGpsList(MyAPIGateway.Session.Player.IdentityId))
@@ -686,7 +686,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return pnSet == m_forward ? "Forward" : "Backward";
 		}
 
-		//[System.Diagnostics.Conditional("LOG_ENABLED")]
+		//[System.Diagnostics.Conditional("DEBUG")]
 		//private void DebugRectClose(ref PathNodeSet pnSet, Vector3D position)
 		//{
 		//	foreach (PathNode otherNode in pnSet.m_reachedNodes.Values)

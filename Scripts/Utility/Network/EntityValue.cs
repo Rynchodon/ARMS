@@ -182,7 +182,7 @@ namespace Rynchodon.Utility.Network
 				instance.SendValue(recipient);
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		[System.Diagnostics.Conditional("DEBUG")]
 		protected static void RecordBytesSent<T>(EntityValue<T> sender, ICollection<byte> bytes)
 		{
 			Static.logger.debugLog("entity: " + sender.m_entityId + ", valueID: " + sender.m_valueId + ", value: " + sender.Value + ", bytes: " + bytes.Count);
