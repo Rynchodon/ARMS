@@ -333,7 +333,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (distSq < minDistSq && IsRejectionTowards(ref obsPos, ref currentPosition, ref rejectD))
 			{
 				Logger.DebugLog("Rejection " + rejectionVector + " hit " + entity.nameWithId());
-				obstructBlock = (MyCubeBlock)entity;
+				obstructBlock = entity as MyCubeBlock; // it may not be a block
 				return true;
 			}
 			obstructBlock = null;

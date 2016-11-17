@@ -1,3 +1,5 @@
+#define LOG_MOVE
+
 using System;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
@@ -190,11 +192,11 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			Vector3 targetVelocity;
-			float distance;
-			if (destDisp != Vector3.Zero)
+			//float distance;
+			if (destDisp.LengthSquared() > 0.01f)
 			{
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
-				distance = destDisp.Length();
+				float distance = destDisp.Length();
 
 				targetVelocity = MaximumVelocity(destDisp);
 
@@ -220,8 +222,6 @@ namespace Rynchodon.Autopilot.Movement
 			else
 			{
 				targetVelocity = Vector3.Zero;
-				//distance = 0f;
-				//m_lastAccel = Globals.UpdateCount;
 			}
 
 			targetVelocity += destVelocity;
@@ -256,6 +256,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
+#if LOG_MOVE
 			m_logger.debugLog(string.Empty
 				//+ "block: " + block.Block.getBestName()
 				//+ ", dest point: " + destPoint
@@ -266,6 +267,7 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", velocity: " + velocity
 				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + m_moveForceRatio);
+#endif
 		}
 
 		private void CalcMove(ref Vector3 velocity)

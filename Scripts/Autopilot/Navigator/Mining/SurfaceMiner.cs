@@ -19,7 +19,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		private readonly Logger m_logger;
 		private Vector3 m_perp1, m_perp2;
 		private int m_ringIndex, m_squareIndex;
-		private Vector3D m_startPosition, m_surfacePoint;
+		private Vector3D m_surfacePoint;
 		private bool m_finalMine;
 
 		private Stage value_stage;
@@ -52,10 +52,9 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = target;
 
-			m_startPosition = m_navBlock.WorldPosition;
-			Vector3 toVoxelCentre = Vector3.Normalize(m_target.WorldPosition() - m_startPosition);
-			toVoxelCentre.CalculatePerpendicularVector(out m_perp1);
-			Vector3.Cross(ref toVoxelCentre, ref m_perp1, out m_perp2);
+			Vector3 toDeposit = Vector3.Normalize(m_target.WorldPosition() - m_grid.GetCentre());
+			toDeposit.CalculatePerpendicularVector(out m_perp1);
+			Vector3.Cross(ref toDeposit, ref m_perp1, out m_perp2);
 
 			AllNavigationSettings.SettingsLevel level = m_navSet.Settings_Task_NavMove;
 			level.NavigatorMover = this;
@@ -76,14 +75,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					customInfo.AppendLine("Scanning surface.");
 					break;
 				case Stage.Mine:
-					customInfo.Append("Mining ");
+					customInfo.Append("Surface mining ");
 					customInfo.Append(m_oreName);
 					customInfo.Append(" at ");
 					customInfo.AppendLine(m_target.WorldPosition().ToPretty());
 					break;
-				//case Stage.Backout:
-				//	customInfo.Append("Backing out to ");
-				//	break;
 			}
 		}
 
@@ -157,9 +153,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		private void SetNextSurfacePoint()
 		{
 			CapsuleD surfaceFinder;
-			surfaceFinder.P1 = m_target.Entity.GetCentre();
 			surfaceFinder.Radius = 1f;
 			float maxRingSize = m_grid.LocalVolume.Radius; maxRingSize *= maxRingSize;
+			bool overMax = false;
+			surfaceFinder.P0 = m_grid.GetCentre();
+			Vector3D targetWorld = m_target.WorldPosition();
 
 			for (int i = 0; i < 1000; i++)
 			{
@@ -174,7 +172,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				Vector3 direct1; Vector3.Multiply(ref m_perp1, square.X, out direct1);
 				Vector3 direct2; Vector3.Multiply(ref m_perp2, square.Y, out direct2);
 
-				surfaceFinder.P0 = m_startPosition + direct1 + direct2;
+				surfaceFinder.P1 = targetWorld + direct1 + direct2;
 				if (CapsuleDExtensions.Intersects(ref surfaceFinder, (MyVoxelBase)m_target.Entity, out m_surfacePoint))
 				{
 					m_logger.debugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", hit voxel at " + m_surfacePoint);
@@ -182,10 +180,16 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					m_stage = Stage.Mine;
 					return;
 				}
-				m_logger.debugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", did not hit voxel. P0 constructed from " + m_startPosition + ", " + direct1 + ", " + direct2);
+				m_logger.debugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", did not hit voxel. P1 constructed from " + targetWorld + ", " + direct1 + ", " + direct2);
 
 				if (ring.DistanceSquared > maxRingSize)
 				{
+					if (overMax)
+					{
+						m_logger.alwaysLog("Infinite loop", Logger.severity.FATAL);
+						throw new Exception("Infinte loop");
+					}
+					overMax = true;
 					m_logger.debugLog("Over max ring size, starting next level", Logger.severity.INFO);
 					m_squareIndex = 0;
 					m_ringIndex = 0;

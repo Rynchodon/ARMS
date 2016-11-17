@@ -121,7 +121,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref nearby, nearbyVoxels);
 
 			foreach (MyVoxelBase voxel in nearbyVoxels)
-				if ((voxel is IMyVoxelMap || voxel is MyPlanet) && voxel.Intersects(ref nearby))
+				if ((voxel is IMyVoxelMap || voxel is MyPlanet) && voxel.ContainsOrIntersects(ref nearby))
 				{
 					m_logger.debugLog("near a voxel, escape first", Logger.severity.DEBUG);
 					m_stage = Stage.Mining;
@@ -173,7 +173,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					CheckApproaches();
 					return;
 				case Stage.Approach:
-					if (m_navSet.DistanceLessThan(1f))
+					if (m_navSet.DistanceLessThan(10f))
 					{
 						CreateMiner();
 						return;
@@ -256,7 +256,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				ResourcePool.Get(out m_approachFinders);
 
 			Vector3D centre = TargetVoxel.GetCentre();
-			double minSpace = 2d * m_grid.LocalVolume.Radius;
+			double minSpace = 4d * m_grid.LocalVolume.Radius;
 
 			foreach (Vector3D pos in positions)
 			{
@@ -317,12 +317,13 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				}
 			}
 
+			bool nearSurface = closestApproach.NearSurface;
 			m_approachFinders.Clear();
 			ResourcePool.Return(m_approachFinders);
 			m_approachFinders = null;
 
 			m_navSet.OnTaskComplete_NavWay();
-			if (CanTunnel())
+			if (!nearSurface && CanTunnel())
 				new TunnelMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, closestApproach.Deposit), m_oreName);
 			else
 				new SurfaceMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, closestApproach.Deposit), m_oreName);

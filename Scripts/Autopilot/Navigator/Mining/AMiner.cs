@@ -75,7 +75,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		protected bool IsNearVoxel(double lengthMulti = 1d)
 		{
 			BoundingSphereD surround = new BoundingSphereD(m_grid.GetCentre(), m_grid.LocalVolume.Radius);
-			return (TargetVoxel).Intersects(ref surround);
+			return (TargetVoxel).ContainsOrIntersects(ref surround);
 		}
 
 		public abstract void Rotate();

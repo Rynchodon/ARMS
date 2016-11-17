@@ -90,10 +90,10 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				//	customInfo.AppendLine("Pathfind");
 				//	break;
 				case Stage.Backout:
-					customInfo.AppendLine("Backout");
+					customInfo.AppendLine("Backing out");
 					break;
 				case Stage.FromCentre:
-					customInfo.AppendLine("From Centre");
+					customInfo.AppendLine("Moving away");
 					break;
 			}
 		}

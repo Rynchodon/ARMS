@@ -265,7 +265,7 @@
     <Compile Include="Utility\Collections\LockedQueue.cs" />
     <Compile Include="Utility\Collections\ReadOnlyList.cs" />
     <Compile Include="Utility\Collections\Registrar.cs" />
-    <Compile Include="Utility\Extensions\CapsuleExtensions.cs" />
+    <None Include="Utility\Extensions\CapsuleExtensions.cs" />
     <Compile Include="Utility\Extensions\DictionaryExtensions.cs" />
     <Compile Include="Utility\Extensions\ExtensionsRelations.cs" />
     <Compile Include="Utility\Extensions\IMyCubeBlockExtensions.cs" />

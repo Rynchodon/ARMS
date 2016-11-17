@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			switch (m_stage)
 			{
 				case Stage.Mine:
-					customInfo.Append("Mining ");
+					customInfo.Append("Tunnel mining ");
 					customInfo.Append(m_oreName);
 					customInfo.Append(" at ");
 					customInfo.AppendLine(m_target.WorldPosition().ToPretty());

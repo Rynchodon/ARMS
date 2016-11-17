@@ -1,5 +1,4 @@
 ﻿using Rynchodon.Threading;
-using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using VRageMath;
 
@@ -18,6 +17,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		public readonly double MinRadius;
 
 		public bool Completed { get; private set; }
+		public bool NearSurface { get; private set; }
 		private Vector3D m_freePosition;
 		public Vector3D FreePosition { get { return m_freePosition; } }
 
@@ -33,6 +33,9 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		private void Run()
 		{
 			Voxel.FindFreeSpace(Deposit, MinRadius, out m_freePosition);
+			CapsuleD capsule = new CapsuleD(m_freePosition, Deposit, 1f);
+			Vector3D closest; CapsuleDExtensions.Intersects(ref capsule, Voxel, out closest);
+			NearSurface = Vector3D.DistanceSquared(Deposit, closest) < 100d;
 			Completed = true;
 		}
 

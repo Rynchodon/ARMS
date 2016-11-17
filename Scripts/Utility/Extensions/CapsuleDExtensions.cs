@@ -31,23 +31,18 @@ namespace Rynchodon
 
 			double radius = halfLength + capsule.Radius;
 			BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
-			if (!voxel.PositionComp.WorldVolume.Intersects(worldSphere))
-			{
-				hitPosition = Vector3.Invalid;
-				return false;
-			}
-
 			if (capsuleLength < Math.Max(capsule.Radius, 1f) * 8f)
 			{
-				Vector3D leftBottom = voxel.PositionLeftBottomCorner;
-				Vector3D localMiddle; Vector3D.Subtract(ref middle, ref leftBottom, out localMiddle);
-				BoundingSphereD localSphere = new BoundingSphereD() { Center = localMiddle, Radius = radius };
-
-				if (!voxel.Storage.Geometry.Intersects(ref localSphere))
+				if (!voxel.ContainsOrIntersects(ref worldSphere))
 				{
-					hitPosition = Vector3.Invalid;
+					hitPosition = Globals.Invalid;
 					return false;
 				}
+			}
+			else if (!voxel.PositionComp.WorldAABB.Intersects(ref worldSphere))
+			{
+				hitPosition = Globals.Invalid;
+				return false;
 			}
 
 			CapsuleD halfCapsule;

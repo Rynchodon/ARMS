@@ -1,6 +1,6 @@
 ﻿// points are only shown with Debug build
-#define SHOW_PATH // show the path found with GPS
-#define SHOW_REACHED // show points reached with GPS
+//#define SHOW_PATH // show the path found with GPS
+//#define SHOW_REACHED // show points reached with GPS
 
 using System;
 using System.Collections.Generic;
@@ -126,9 +126,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			for (int i = 0; i < m_backwardList.Length; i++)
 			{
 				FindingSet back = (FindingSet)m_backwardList[i];
-				back.Clear();
-				ResourcePool.Return(back);
-				m_backwardList[i] = null;
+				if (back != null)
+				{
+					back.Clear();
+					ResourcePool.Return(back);
+					m_backwardList[i] = null;
+				}
 			}
 
 			//if (m_backwardList.Length == 1)
@@ -326,8 +329,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			foreach (PathNodeSet target in pnSet.m_targets)
 				if (target.HasReached(cNodePosHash))
 				{
-					m_logger.debugLog("Opposite set has same position");
-					BuildPath(cNodePosHash, target, cNodePosHash);
+					m_logger.debugLog("Opposite set has same position", secondaryState: SetName(pnSet));
+					if (pnSet == m_forward)
+						BuildPath(cNodePosHash, target, cNodePosHash);
+					else
+						BuildPath(cNodePosHash, pnSet, cNodePosHash);
 					return;
 				}
 
@@ -377,7 +383,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			ShowPosition(currentNode, SetName(pnSet));
 #endif
 
-			if (pnSet.m_reachedNodes.Count % 10 == 0 && pnSet.m_openNodes.Count > 100)
+			if (pnSet.NodeDistance < FindingSet.DefaultNodeDistance && pnSet.m_reachedNodes.Count % 10 == 0 && pnSet.m_openNodes.Count > 100)
 			{
 				m_logger.debugLog("Reached: " + pnSet.m_reachedNodes.Count + ", trying with higher node distance");
 				pnSet.ChangeNodeDistance(false, m_canChangeCourse);
@@ -570,16 +576,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 						return;
 					}
 				}
+				m_path.AddBack(ref node.Position);
 			}
 
 			//#if PROFILE
 			//			LogStats();
 			//#endif
 
-#if SHOW_PATH
 			foreach (Vector3D position in m_path.m_positions)
 				m_logger.debugLog("Path: " + ReportRelativePosition(position));
-#endif
 
 			if (backward != null)
 				for (int i = 0; i < m_backwardList.Length; i++)
@@ -670,7 +675,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_shownPositions.Clear();
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyGps gps in MyAPIGateway.Session.GPS.GetGpsList(MyAPIGateway.Session.Player.IdentityId))
-					if (gps.DiscardAt.HasValue && gps.DiscardAt.Value < MyAPIGateway.Session.ElapsedPlayTime)
+					if (gps.DiscardAt.HasValue)
 						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 			});
 #endif
