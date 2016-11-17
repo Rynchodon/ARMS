@@ -211,6 +211,7 @@
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
+    <Compile Include="Properties\VersionInfo - User.cs" />
     <Compile Include="Utility\Collections\ExpandingRings.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_LowLevel.cs" />
@@ -340,7 +341,6 @@
     <PostBuildEvent>python "$(SolutionDir)\..\.build\build.py" $(ConfigurationName)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>
-    </PreBuildEvent>
+    <PreBuildEvent>python "$(SolutionDir)\..\.build\pre-build.py" $(ConfigurationName)</PreBuildEvent>
   </PropertyGroup>
 </Project>
