@@ -9,7 +9,9 @@ using Rynchodon.Utility.Network;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.ModAPI;
+using VRage.Collections;
 using VRage.Game.Components;
+using VRage.ModAPI;
 
 namespace Rynchodon.Update
 {
@@ -44,6 +46,8 @@ namespace Rynchodon.Update
 		public static Saver Instance;
 
 		private readonly Logger m_logger;
+		/// <summary>LastSeen that were not added immediately upon world loading, Saver will keep trying to add them.</summary>
+		private CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>> m_failedLastSeen;
 		private FileMaster m_fileMaster;
 
 		private Builder_ArmsData m_data;
@@ -105,6 +109,66 @@ namespace Rynchodon.Update
 			{
 				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.Notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
+			}
+		}
+
+		public void RetryLastSeen()
+		{
+			foreach (KeyValuePair<long, CachingList<LastSeen.Builder_LastSeen>> storageLastSeen in m_failedLastSeen)
+			{
+				RelayNode node;
+				if (Registrar.TryGetValue(storageLastSeen.Key, out node))
+				{
+					RelayStorage store = node.Storage;
+					foreach (LastSeen.Builder_LastSeen builder in storageLastSeen.Value)
+					{
+						IMyEntity entity;
+						if (MyAPIGateway.Entities.TryGetEntityById(builder.EntityId, out entity))
+						{
+							LastSeen ls = new LastSeen(builder);
+							if (ls.IsValid)
+							{
+								m_logger.debugLog("Successfully created a LastSeen. Primary node: " + storageLastSeen.Key + ", entity: " + ls.Entity.nameWithId());
+								storageLastSeen.Value.Remove(builder);
+							}
+							else
+								m_logger.alwaysLog("Unknown failure with last seen", Logger.severity.ERROR);
+						}
+						else
+							m_logger.debugLog("Not yet available: " + builder.EntityId);
+					}
+					storageLastSeen.Value.ApplyRemovals();
+					if (storageLastSeen.Value.Count == 0)
+					{
+						m_logger.debugLog("Finished with: " + storageLastSeen.Key, Logger.severity.DEBUG);
+						m_failedLastSeen.Remove(storageLastSeen.Key);
+					}
+					else
+						m_logger.debugLog("For " + storageLastSeen.Key + ", " + storageLastSeen.Value.Count + " builders remain");
+				}
+				else
+					m_logger.debugLog("Failed to get node for " + storageLastSeen.Key, Logger.severity.WARNING);
+			}
+			m_failedLastSeen.ApplyRemovals();
+
+			if (m_failedLastSeen.Count() == 0)
+			{
+				m_logger.debugLog("All LastSeen have been successfully added", Logger.severity.INFO);
+				m_failedLastSeen = null;
+				UpdateManager.Unregister(100, RetryLastSeen);
+			}
+			else
+			{
+				m_logger.debugLog(m_failedLastSeen.Count() + " primary nodes still have last seen to be added");
+
+				if (Globals.UpdateCount >= 3600)
+				{
+					foreach (KeyValuePair<long, CachingList<LastSeen.Builder_LastSeen>> storageLastSeen in m_failedLastSeen)
+						foreach (LastSeen.Builder_LastSeen builder in storageLastSeen.Value)
+							m_logger.alwaysLog("Failed to add last seen to world. Primary node: " + storageLastSeen.Key + ", entity ID: " + builder.EntityId, Logger.severity.WARNING);
+					m_failedLastSeen = null;
+					UpdateManager.Unregister(100, RetryLastSeen);
+				}
 			}
 		}
 
@@ -209,10 +273,23 @@ namespace Rynchodon.Update
 					if (ls.IsValid)
 						store.Receive(ls);
 					else
-						m_logger.debugLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.WARNING);
+					{
+						m_logger.debugLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.DEBUG);
+						if (m_failedLastSeen == null)
+						{
+							m_failedLastSeen = new CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>>();
+							UpdateManager.Register(100, RetryLastSeen);
+						}
+						CachingList<LastSeen.Builder_LastSeen> list;
+						if (!m_failedLastSeen.TryGetValue(bns.PrimaryNode, out list))
+						{
+							list = new CachingList<LastSeen.Builder_LastSeen>();
+							m_failedLastSeen.Add(bns.PrimaryNode, list, true);
+						}
+						list.Add(bls);
+						list.ApplyAdditions();
+					}
 				}
-
-				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 				// messages in the save file belong on the server
 				if (messages == null)

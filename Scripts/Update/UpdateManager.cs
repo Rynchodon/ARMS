@@ -574,9 +574,6 @@ namespace Rynchodon.Update
 				switch (ManagerStatus)
 				{
 					case Status.Not_Initialized:
-						// the game can be slow to load some entities
-						if (Globals.UpdateCount < 10)
-							return;
 						Init();
 						return;
 
