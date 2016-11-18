@@ -666,7 +666,7 @@ namespace Rynchodon
 		}
 
 		[Conditional("DEBUG")]
-		public static void LogCallStack(severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+		public static void DebugLogCallStack(severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (!condition)

@@ -25,11 +25,13 @@ namespace Rynchodon
 
 		public static T Get()
 		{
+			CheckInstancesCreated();
 			return Pool.Get();
 		}
 
 		public static void Return(T item)
 		{
+			CheckInstancesCreated();
 			Pool.Return(item);
 		}
 
@@ -41,6 +43,16 @@ namespace Rynchodon
 		public static int InstancesCreated
 		{
 			get { return Pool.InstancesCreated; }
+		}
+
+		[System.Diagnostics.Conditional("DEBUG")]
+		private static void CheckInstancesCreated()
+		{
+			if (Pool.InstancesCreated != 0 && Pool.InstancesCreated % 100 == 0)
+			{
+				Logger.DebugLog(typeof(ResourcePool).Name + "<" + typeof(T).Name + "> generated " + Pool.InstancesCreated + " instances.", Logger.severity.WARNING);
+				Logger.DebugLogCallStack();
+			}
 		}
 
 	}

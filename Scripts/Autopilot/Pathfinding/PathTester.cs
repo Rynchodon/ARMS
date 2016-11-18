@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+//#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Attached;
@@ -6,7 +10,6 @@ using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Weapons;
 using VRage.Game.Components;
 using VRage.Game.Entity;
@@ -17,6 +20,68 @@ namespace Rynchodon.Autopilot.Pathfinding
 {
 	public class PathTester
 	{
+
+		public struct TestInput : IEquatable<TestInput>
+		{
+			public Vector3D Offset;
+			public Vector3 Direction;
+			/// <summary>Really distance, but Length is more visually distinct from Direction.</summary>
+			public float Length;
+
+			public bool Equals(TestInput other)
+			{
+				return Offset == other.Offset && Direction == other.Direction && Length == other.Length;
+			}
+
+			public override string ToString()
+			{
+				return "{Offset: " + Offset + " Direction: " + Direction + " Length: " + Length + "}";
+			}
+		}
+
+		public struct GridTestResult
+		{
+			public static readonly GridTestResult Default = new GridTestResult() { m_proximity = float.MaxValue };
+
+			private float m_proximity;
+
+			/// <summary>Approximation of the distance in the target direction that can be travelled.</summary>
+			public float Distance;
+			/// <summary>Approximation of how close the ship would get to an obstruction. In some cases, it will be less than zero. When setting, value is only changed if it is greater than the supplied value</summary>
+			public float Proximity
+			{
+				get { return m_proximity; }
+				set
+				{
+					if (value < m_proximity)
+						m_proximity = value;
+				}
+			}
+			/// <summary>Either null or the block that is obstructing the path.</summary>
+			public MyCubeBlock ObstructingBlock;
+		}
+
+		public struct VoxelTestResult
+		{
+			public static readonly VoxelTestResult Default = new VoxelTestResult() { m_proximity = float.MaxValue };
+
+			private float m_proximity;
+
+			/// <summary>Approximation of the distance in the target direction that can be travelled.</summary>
+			public float Distance;
+			/// <summary>Approximation of how close the ship would get to an obstruction. In some cases, it will be less than zero. When setting, value is only changed if it is greater than the supplied value</summary>
+			public float Proximity
+			{
+				get { return m_proximity; }
+				set
+				{
+					if (value < m_proximity)
+						m_proximity = value;
+				}
+			}
+			/// <summary>The voxel that is obstructing the path.</summary>
+			public MyVoxelBase ObstructingVoxel;
+		}
 
 		static PathTester()
 		{
@@ -47,96 +112,98 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return new Vector2I((int)Math.Round(vector.X / gridSize), (int)Math.Round(vector.Y / gridSize));
 		}
 
-		/// <summary>
-		/// For testing the current path of autopilot, accounts for current velocity.
-		/// </summary>
-		/// <param name="targetDirection">The direction the autopilot wants to travel in.</param>
-		public bool ObstructedBy(MyEntity entity, MyCubeBlock ignoreBlock, ref Vector3 targetDirection, float targetDistance, out MyCubeBlock obstructBlock, out float distance)
+		public void AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
 		{
-			//Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", targetDirection: " + targetDirection);
+#if DEBUG
+			if (entity == null)
+				throw new ArgumentNullException("entity");
+#endif
+			in_AdjustForCurrentVelocity(ref input, out adjusted, entity);
+		}
 
-			Vector3D currentPosition = AutopilotGrid.GetCentre();
+		public void AdjustForCurrentVelocityVoxel(ref TestInput input, out TestInput adjust)
+		{
+			in_AdjustForCurrentVelocity(ref input, out adjust, null);
+		}
 
+		private void in_AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
+		{
 			Vector3 autopilotVelocity = AutopilotGrid.Physics.LinearVelocity;
 			Vector3 relativeVelocity;
-			MyPhysicsComponentBase physics = entity.GetTopMostParent().Physics;
-			if (physics == null || physics.IsStatic)
+
+			if (entity == null)
 			{
 				relativeVelocity = autopilotVelocity;
 			}
 			else
 			{
-				Vector3 entityVelocity = physics.LinearVelocity;
-				Vector3.Subtract(ref autopilotVelocity, ref entityVelocity, out relativeVelocity);
+				MyPhysicsComponentBase physics = entity.GetTopMostParent().Physics;
+				if (physics == null || physics.IsStatic)
+				{
+					relativeVelocity = autopilotVelocity;
+				}
+				else
+				{
+					Vector3 entityVelocity = physics.LinearVelocity;
+					Vector3.Subtract(ref autopilotVelocity, ref entityVelocity, out relativeVelocity);
+				}
 			}
 
-			Vector3 rejectionVector; Vector3.Add(ref relativeVelocity, ref targetDirection, out rejectionVector);
-			targetDistance += rejectionVector.Normalize();
-
-			return ObstructedBy(entity, ignoreBlock, ref Vector3D.Zero, ref rejectionVector, targetDistance, out obstructBlock, out distance);
+			Vector3.Add(ref relativeVelocity, ref input.Direction, out adjusted.Direction);
+			adjusted.Offset = Vector3D.Zero;
+			adjusted.Length = Math.Min(input.Length, 20f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor);
 		}
 
 		/// <param name="offset">Added to current position of ship's blocks.</param>
 		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
-		public bool ObstructedBy(MyEntity entity, MyCubeBlock ignoreBlock, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out MyCubeBlock obstructBlock, out float distance)
+		public bool ObstructedBy(MyEntity entity, MyCubeBlock ignoreBlock, ref TestInput input, out GridTestResult result)
 		{
-			//Logger.DebugLog("checking: " + entityTopMost.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector);
-			Logger.DebugLog("rejection vector is invalid", Logger.severity.FATAL, condition: !rejectionVector.IsValid());
+			//Logger.DebugLog("checking: " + entity.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector + ", rejection distance: " + rejectionDistance);
+			Logger.DebugLog("rejection vector is invalid: " + input.Direction, Logger.severity.FATAL, condition: !input.Direction.IsValid() || Math.Abs(1f - input.Direction.LengthSquared()) > 0.01f);
 
+			result = GridTestResult.Default;
+			result.Distance = input.Length;
 			MyCubeGrid grid = entity as MyCubeGrid;
 			if (grid != null)
 			{
 				// check for dangerous tools on grid
 				CubeGridCache cache = CubeGridCache.GetFor(grid);
 				if (cache == null)
-				{
-					obstructBlock = null;
-					distance = 0f;
-					return true;
-				}
+					return false;
 				Profiler.StartProfileBlock("Checking Tools");
 				foreach (MyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
 					if (drill.IsShooting)
-						if (SphereTest(drill, ref offset, ref rejectionVector, rejectionDistance, out obstructBlock, out distance))
+						if (SphereTest(drill, ref input, ref result))
 						{
 							Profiler.EndProfileBlock();
 							return true;
 						}
 				foreach (MyShipGrinder grinder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
 					if (grinder.IsShooting)
-						if (SphereTest(grinder, ref offset, ref rejectionVector, rejectionDistance, out obstructBlock, out distance))
+						if (SphereTest(grinder, ref input, ref result))
 						{
 							Profiler.EndProfileBlock();
 							return true;
 						}
 				Profiler.EndProfileBlock();
 
-				if (ExtensionsRelations.canConsiderFriendly(Controller.CubeBlock, grid) && EndangerGrid(grid, ref offset, ref rejectionVector, rejectionDistance, out distance))
+				if (ExtensionsRelations.canConsiderFriendly(Controller.CubeBlock, grid) && EndangerGrid(grid, ref input, ref result))
 				{
 					Logger.DebugLog("Movement would endanger: " + grid.getBestName());
-					obstructBlock = null;
 					return true;
 				}
 
 				Profiler.StartProfileBlock("RejectionIntersects");
-				Vector3I hitCell;
-				if (RejectionIntersects(grid, ignoreBlock, ref rejectionVector, rejectionDistance, ref offset, out hitCell, out distance))
+				if (RejectionIntersects(grid, ignoreBlock, ref input, ref result))
 				{
-					MySlimBlock slim = grid.GetCubeBlock(hitCell);
-					obstructBlock = slim == null ? null : slim.FatBlock;
 					Profiler.EndProfileBlock();
-					//Logger.DebugLog("rejection intersects, block: " + (slim != null ? slim.getBestName() : "N/A") + " at " + grid.GridIntegerToWorld(hitCell));
 					return true;
 				}
-				//else
-				//	Logger.DebugLog("rejection does not intersect");
 				Profiler.EndProfileBlock();
 			}
 			else
-				return SphereTest(entity, ref offset, ref rejectionVector, rejectionDistance, out obstructBlock, out distance);
+				return SphereTest(entity, ref input, ref result);
 
-			obstructBlock = null;
-			distance = 0f;
 			return false;
 		}
 
@@ -144,7 +211,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="ignoreBlock">Block to ignore, or null</param>
 		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
 		/// <param name="offset">Difference between the current position of the autopilot ship and where it will be.</param>
-		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref Vector3 rejectionVector, float rejectionDistance, ref Vector3D offset, out Vector3I oGridCell, out float distance)
+		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref TestInput input, ref GridTestResult result)
 		{
 			//Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
 			//Logger.DebugLog("Testing for rejection intersection: " + oGrid.nameWithId() + ", starting from: " + (AutopilotGrid.GetCentre() + offset) + ", rejection vector: " + rejectionVector + ", distance: " + rejectionDistance +
@@ -158,38 +225,35 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (oCache == null)
 			{
 				Logger.DebugLog("Failed to get cache for other grid", Logger.severity.DEBUG);
-				oGridCell = Vector3I.Zero;
-				distance = 0f;
 				return false;
 			}
 
 			bool checkBlock = ignoreBlock != null && oGrid == ignoreBlock.CubeGrid;
 
-			Vector3 v; rejectionVector.CalculatePerpendicularVector(out v);
-			Vector3 w; Vector3.Cross(ref rejectionVector, ref v, out w);
+			Vector3 v; input.Direction.CalculatePerpendicularVector(out v);
+			Vector3 w; Vector3.Cross(ref input.Direction, ref v, out w);
 			Matrix to3D = new Matrix(v.X, v.Y, v.Z, 0f,
 				w.X, w.Y, w.Z, 0f,
-				rejectionVector.X, rejectionVector.Y, rejectionVector.Z, 0f,
+				input.Direction.X, input.Direction.Y, input.Direction.Z, 0f,
 				0f, 0f, 0f, 1f);
 			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
 
 			float roundTo;
-			int steps;
+			int minDistanceSquared;
 			if (AutopilotGrid.GridSizeEnum == oGrid.GridSizeEnum)
 			{
 				roundTo = AutopilotGrid.GridSize;
-				steps = 1;
+				minDistanceSquared = 1;
 			}
 			else
 			{
 				roundTo = Math.Min(AutopilotGrid.GridSize, oGrid.GridSize);
-				steps = (int)Math.Ceiling(Math.Max(AutopilotGrid.GridSize, oGrid.GridSize) / roundTo);
+				minDistanceSquared = (int)Math.Ceiling(Math.Max(AutopilotGrid.GridSize, oGrid.GridSize) / roundTo);
+				minDistanceSquared *= minDistanceSquared;
 			}
-			//if (extraRadius)
-			//	steps *= 2;
+			int maxDistanceSquared = minDistanceSquared * 100;
 
-			//Logger.DebugLog("round to: " + roundTo + ", steps: " + steps);
-			//Logger.DebugLog("building m_rejections");
+			Profiler.StartProfileBlock("RejectionIntersects:Build ship");
 
 			Vector2IMatrix<bool> apShipRejections;
 			ResourcePool.Get(out apShipRejections);
@@ -202,8 +266,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (cache == null)
 				{
 					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					oGridCell = Vector3I.Zero;
-					distance = 0f;
+					Profiler.EndProfileBlock();
 					return false;
 				}
 				foreach (Vector3I cell in cache.OccupiedCells())
@@ -214,7 +277,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3 relativeF = relative;
 
 					float projectionDistance; Vector3 rejection;
-					VectorExtensions.RejectNormalized(ref relativeF, ref rejectionVector, out projectionDistance, out rejection);
+					VectorExtensions.RejectNormalized(ref relativeF, ref input.Direction, out projectionDistance, out rejection);
 					if (projectionDistance < minProjection)
 						minProjection = projectionDistance;
 					else if (projectionDistance > maxProjection)
@@ -227,13 +290,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 					//Logger.DebugLog("My rejection: " + rejection + ", planar: " + ToCell(pc2, roundTo));
 				}
 			}
+			Profiler.EndProfileBlock();
 
 			minProjection += StartRayCast; // allow autopilot to move away from a touching object
 
 			//Logger.DebugLog("projection min: " + minProjection + ", max: " + maxProjection + ", max for other: " + (maxProjection + rejectionDistance));
-			maxProjection += rejectionDistance;
+			maxProjection += input.Length;
 
 			//Logger.DebugLog("checking other grid cells");
+
+			Profiler.StartProfileBlock("RejectionIntersects:other grid");
 
 			Vector2IMatrix<bool> otherGridRejections;
 			ResourcePool.Get(out otherGridRejections);
@@ -246,13 +312,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				Vector3 local = cell * gridSize;
 				Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
-				Vector3D offsetWorld; Vector3D.Subtract(ref world, ref offset, out offsetWorld);
+				Vector3D offsetWorld; Vector3D.Subtract(ref world, ref input.Offset, out offsetWorld);
 				Vector3D relative; Vector3D.Subtract(ref offsetWorld, ref currentPosition, out relative);
 				Vector3 relativeF = relative;
 
 				Vector3 rejection;
-				VectorExtensions.RejectNormalized(ref relativeF, ref rejectionVector, out distance, out rejection);
-				if (distance < minProjection || distance > maxProjection)
+				VectorExtensions.RejectNormalized(ref relativeF, ref input.Direction, out result.Distance, out rejection);
+				if (result.Distance < minProjection || result.Distance > maxProjection)
 					continue;
 
 				Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
@@ -269,33 +335,44 @@ namespace Rynchodon.Autopilot.Pathfinding
 				//Logger.DebugLog("Rejection: " + rejection + ", planar: " + cell2D);
 				//Logger.DebugLog("testing range. x: " + (cell2D.X - steps) + " - " + (cell2D.X + steps));
 
-				Vector2I test;
-				for (test.X = cell2D.X - steps; test.X <= cell2D.X + steps; test.X++)
-					for (test.Y = cell2D.Y - steps; test.Y <= cell2D.Y + steps; test.Y++)
-						if (apShipRejections.Contains(test))
-						{
-							if (checkBlock)
+				ExpandingRings.Ring ring = default(ExpandingRings.Ring);
+				for (int ringIndex = 0; ring.DistanceSquared <= maxDistanceSquared; ringIndex++)
+				{
+					ring = ExpandingRings.GetRing(ringIndex);
+					for (int squareIndex = 0; squareIndex < ring.Squares.Length; squareIndex ++)
+						if (apShipRejections.Contains(cell2D + ring.Squares[squareIndex]))
+							if (ring.DistanceSquared <= minDistanceSquared)
 							{
 								IMySlimBlock slim = oGrid.GetCubeBlock(cell);
-								if (slim.FatBlock == ignoreBlock)
-									continue;
+								if (checkBlock && slim.FatBlock == ignoreBlock)
+										continue;
+								if (slim != null)
+									result.ObstructingBlock = (MyCubeBlock)slim.FatBlock;
+								result.Proximity = 0f;
+								Logger.DebugLog("Hit, projectionDistance: " + result.Distance + ", min: " + minProjection + ", max: " + maxProjection + ", ring: " + ringIndex + ", ring dist sq: " + ring.DistanceSquared + ", min dist sq: " + minDistanceSquared + ", max dist sq: " + maxDistanceSquared);
+								Profiler.EndProfileBlock();
+								apShipRejections.Clear();
+								otherGridRejections.Clear();
+								ResourcePool.Return(apShipRejections);
+								ResourcePool.Return(otherGridRejections);
+								return true;
 							}
-							oGridCell = cell;
-							//Logger.DebugLog("Hit, projectionDistance: " + projectionDistance + ", min: " + minProjection + ", max: " + maxProjection);
-							apShipRejections.Clear();
-							otherGridRejections.Clear();
-							ResourcePool.Return(apShipRejections);
-							ResourcePool.Return(otherGridRejections);
-							return true;
-						}
-			}
+							else
+							{
+								maxDistanceSquared = ring.DistanceSquared;
+								goto NextCell;
+							}
+				}
 
-			oGridCell = Vector3I.Zero;
+				NextCell:;
+			}
+			Profiler.EndProfileBlock();
+
 			apShipRejections.Clear();
 			otherGridRejections.Clear();
 			ResourcePool.Return(apShipRejections);
 			ResourcePool.Return(otherGridRejections);
-			distance = 0f;
+			result.Proximity = (float)Math.Sqrt(maxDistanceSquared);
 			return false;
 		}
 
@@ -306,37 +383,35 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="offset">Difference between current postiong and where the ship will be</param>
 		/// <param name="rejectionVector">Direction of movement vector</param>
 		/// <param name="rejectionDistance">Distance of movement</param>
-		private bool SphereTest(MyEntity entity, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out MyCubeBlock obstructBlock, out float distance)
+		private bool SphereTest(MyEntity entity, ref TestInput input, ref GridTestResult result)
 		{
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
-			Vector3D rejectD = rejectionVector;
-			Vector3D disp; Vector3D.Multiply(ref rejectD, rejectionDistance, out disp);
+			Vector3D rejectD = input.Direction;
+			Vector3D disp; Vector3D.Multiply(ref rejectD, input.Length, out disp);
 			Vector3D finalPosition; Vector3D.Add(ref currentPosition, ref disp, out finalPosition);
-			double shipRadius = AutopilotGrid.PositionComp.LocalVolume.Radius;
+			float shipRadius = AutopilotGrid.PositionComp.LocalVolume.Radius;
 
 			Vector3D obsPos = entity.GetCentre();
-			Vector3D offObsPos; Vector3D.Subtract(ref obsPos, ref offset, out offObsPos);
-			double obsRadius = entity.PositionComp.LocalVolume.Radius;
+			Vector3D offObsPos; Vector3D.Subtract(ref obsPos, ref input.Offset, out offObsPos);
+			float obsRadius = entity.PositionComp.LocalVolume.Radius;
 
 			if (entity is MyCubeBlock)
+				// it is an active tool so increase the radius
 				obsRadius += 10f;
 
 			m_lineSegment.From = currentPosition;
 			m_lineSegment.To = finalPosition;
 			Vector3D closest;
-			distance = (float)m_lineSegment.ClosestPoint(ref offObsPos, out closest);
-			double distSq; Vector3D.DistanceSquared(ref offObsPos, ref closest, out distSq);
+			result.Distance = (float)m_lineSegment.ClosestPoint(ref offObsPos, out closest);
+			double distance; Vector3D.Distance(ref offObsPos, ref closest, out distance);
+			result.Proximity = (float)distance - (shipRadius + obsRadius);
 
-			double minDist = shipRadius + obsRadius;
-			double minDistSq = minDist * minDist;
-
-			if (distSq < minDistSq && IsRejectionTowards(ref obsPos, ref currentPosition, ref rejectD))
+			if (result.Proximity <= 0f && IsRejectionTowards(ref obsPos, ref currentPosition, ref rejectD))
 			{
-				Logger.DebugLog("Rejection " + rejectionVector + " hit " + entity.nameWithId());
-				obstructBlock = entity as MyCubeBlock; // it may not be a block
+				Logger.DebugLog("Rejection " + input.Direction + " hit " + entity.nameWithId());
+				result.ObstructingBlock = entity as MyCubeBlock; // it may not be a block
 				return true;
 			}
-			obstructBlock = null;
 			return false;
 		}
 
@@ -350,16 +425,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Tests if autopilot's ship would endanger a grid with a ship tool.
 		/// </summary>
-		private bool EndangerGrid(MyCubeGrid grid, ref Vector3D offset, ref Vector3 rejectionVector, float rejectionDistance, out float distance)
+		private bool EndangerGrid(MyCubeGrid grid, ref TestInput input, ref GridTestResult result)
 		{
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
 			Vector3D obstructPositon = grid.GetCentre();
-			Vector3D rejectD = rejectionVector;
+			Vector3D rejectD = input.Direction;
 
-			Vector3D gridPosition = grid.GetCentre() - offset;
-			double gridRadius = grid.PositionComp.LocalVolume.Radius;
+			Vector3D gridPosition = grid.GetCentre() - input.Offset;
+			float gridRadius = grid.PositionComp.LocalVolume.Radius;
 
-			Vector3 rejectDispF; Vector3.Multiply(ref rejectionVector, rejectionDistance, out rejectDispF);
+			Vector3 rejectDispF; Vector3.Multiply(ref input.Direction, input.Length, out rejectDispF);
 			Vector3D rejectDisp = rejectDispF;
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Terminal, true).Select(CubeGridCache.GetFor);
@@ -368,62 +443,74 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (cache == null)
 				{
 					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					distance = 0f;
 					return true;
 				}
 				foreach (MyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
-					if (drill.IsShooting && ToolObstructed(drill, ref gridPosition, gridRadius, ref rejectDisp, out distance) && IsRejectionTowards(ref obstructPositon, ref currentPosition, ref rejectD))
+					if (drill.IsShooting && ToolObstructed(drill, ref gridPosition, gridRadius, ref rejectDisp, ref result) && IsRejectionTowards(ref obstructPositon, ref currentPosition, ref rejectD))
 						return true;
 				foreach (MyShipGrinder grinder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
-					if (grinder.IsShooting && ToolObstructed(grinder, ref gridPosition, gridRadius, ref rejectDisp, out distance) && IsRejectionTowards(ref obstructPositon, ref currentPosition, ref rejectD))
+					if (grinder.IsShooting && ToolObstructed(grinder, ref gridPosition, gridRadius, ref rejectDisp, ref result) && IsRejectionTowards(ref obstructPositon, ref currentPosition, ref rejectD))
 						return true;
 			}
 
-			distance = 0f;
 			return false;
 		}
 
-		private bool ToolObstructed(MyCubeBlock drill, ref Vector3D gridPosition, double gridRadius, ref Vector3D rejectDisp, out float distance)
+		private bool ToolObstructed(MyCubeBlock drill, ref Vector3D gridPosition, float gridRadius, ref Vector3D rejectDisp, ref GridTestResult result)
 		{
 			m_lineSegment.From = drill.PositionComp.GetPosition();
 			m_lineSegment.To = m_lineSegment.From + rejectDisp;
 			Vector3D closest;
-			distance = (float)m_lineSegment.ClosestPoint(ref gridPosition, out closest);
-			double distCloseSq; Vector3D.DistanceSquared(ref gridPosition, ref closest, out distCloseSq);
-			double required = gridRadius + drill.PositionComp.LocalVolume.Radius + 5f;
-			return distCloseSq <= required * required;
+			result.Distance = (float)m_lineSegment.ClosestPoint(ref gridPosition, out closest);
+			double distance; Vector3D.Distance(ref gridPosition, ref closest, out distance);
+			result.Proximity = (float)distance - (gridRadius + drill.PositionComp.LocalVolume.Radius + 5f);
+			return result.Proximity <= 0f;
 		}
 
-		/// <param name="rayDirectionLength">Not normalized, should reflect the distance autopilot needs to travel.</param>
-		public bool RayCastIntersectsVoxel(ref Vector3D offset, ref Vector3 rayDirectionLength, out MyVoxelBase hitVoxel, out Vector3D hitPosition)
+		public bool RayCastIntersectsVoxel(ref TestInput input, out VoxelTestResult result)
 		{
 			Profiler.StartProfileBlock();
 
+			Logger.DebugLog("direction vector is invalid: " + input.Direction, Logger.severity.FATAL, condition: !input.Direction.IsValid() || Math.Abs(1f - input.Direction.LengthSquared()) > 0.01f);
+			Logger.TraceLog(input.ToString());
+
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
-			Vector3 rayDirection; Vector3.Normalize(ref rayDirectionLength, out rayDirection);
-			Vector3 startOffset; Vector3.Multiply(ref rayDirection, StartRayCast, out startOffset);
+			Vector3 startOffset; Vector3.Multiply(ref input.Direction, StartRayCast, out startOffset);
 			Vector3D startOffsetD = startOffset;
-			Vector3D totalOffset; Vector3D.Add(ref offset, ref startOffsetD, out totalOffset);
+			Vector3D totalOffset; Vector3D.Add(ref input.Offset, ref startOffsetD, out totalOffset);
 
 			CapsuleD capsule;
 			Vector3D.Add(ref currentPosition, ref totalOffset, out capsule.P0);
-			Vector3D rayDD = rayDirectionLength;
-			Vector3D.Add(ref capsule.P0, ref rayDD, out capsule.P1);
+			Vector3D capsuleDisp;
+			{
+				capsuleDisp.X = input.Direction.X * input.Length;
+				capsuleDisp.Y = input.Direction.Y * input.Length;
+				capsuleDisp.Z = input.Direction.Z * input.Length;
+			}
+			Vector3D.Add(ref capsule.P0, ref capsuleDisp, out capsule.P1);
 			capsule.Radius = AutopilotGrid.PositionComp.LocalVolume.Radius;
 			//Logger.DebugLog("current position: " + currentPosition + ", offset: " + offset + ", line: " + rayDirectionLength + ", start: " + capsule.P0 + ", end: " + capsule.P1);
-			if (!CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
+
+			result = VoxelTestResult.Default;
+			Vector3D hitPosition;
+			float proximity = (float)CapsuleDExtensions.ProximityToVoxel(ref capsule, out result.ObstructingVoxel, out hitPosition, true, input.Length);
+			result.Proximity = 10f * proximity; // lie because we have not done a proper test but could have a very nice result
+			if (proximity > 1f)
 			{
+				Logger.TraceLog("Large capsule DOES NOT intersect voxel: " + capsule.String() + ", proximity: " + proximity + "/" + result.Proximity);
+				result.Distance = input.Length;
 				Profiler.EndProfileBlock();
 				return false;
 			}
+			Logger.TraceLog("Large capsule DOES intersect voxel: " + capsule.String() + ", proximity: " + proximity + "/" + result.Proximity);
 
 			IEnumerable<CubeGridCache> myCaches = AttachedGrid.AttachedGrids(AutopilotGrid, AttachedGrid.AttachmentKind.Physics, true).Select(CubeGridCache.GetFor);
 
-			Vector3 v; rayDirection.CalculatePerpendicularVector(out v);
-			Vector3 w; Vector3.Cross(ref rayDirection, ref v, out w);
+			Vector3 v; input.Direction.CalculatePerpendicularVector(out v);
+			Vector3 w; Vector3.Cross(ref input.Direction, ref v, out w);
 			Matrix to3D = new Matrix(v.X, v.Y, v.Z, 0f,
 				w.X, w.Y, w.Z, 0f,
-				rayDirection.X, rayDirection.Y, rayDirection.Z, 0f,
+				input.Direction.X, input.Direction.Y, input.Direction.Z, 0f,
 				0f, 0f, 0f, 1f);
 			Matrix to2D; Matrix.Invert(ref to3D, out to2D);
 
@@ -437,8 +524,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (cache == null)
 				{
 					Logger.DebugLog("Missing a cache", Logger.severity.DEBUG);
-					hitVoxel = null;
-					hitPosition = Vector3.Invalid;
 					Profiler.EndProfileBlock();
 					return false;
 				}
@@ -449,7 +534,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3D offsetWorld; Vector3D.Add(ref world, ref totalOffset, out offsetWorld);
 					Vector3D relative; Vector3D.Subtract(ref offsetWorld, ref currentPosition, out relative);
 					Vector3 relativeF = relative;
-					Vector3 rejection; Vector3.Reject(ref relativeF, ref rayDirection, out rejection);
+					Vector3 rejection; Vector3.Reject(ref relativeF, ref input.Direction, out rejection);
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
 					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
@@ -460,7 +545,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector2IMatrix<bool> testedRejections;
 			ResourcePool.Get(out testedRejections);
 
-			//int tests = 0;
 			const int allowedEmpty = 2;
 			foreach (KeyValuePair<Vector2I, Vector3D> cell in apShipRejections.MiddleOut())
 			{
@@ -497,29 +581,29 @@ namespace Rynchodon.Autopilot.Pathfinding
 					testedRejections.Add(ringOffset + cell.Key, true);
 
 				capsule.P0 = cell.Value;
-				capsule.P1 = new Vector3D(capsule.P0.X + rayDirectionLength.X, capsule.P0.Y + rayDirectionLength.Y, capsule.P0.Z + rayDirectionLength.Z);
+				Vector3D.Add(ref capsule.P0, ref capsuleDisp, out capsule.P1);
 				capsule.Radius = (1f + (float)Math.Sqrt(biggestRingSq)) * gridSize;
-				//tests++;
-				if (CapsuleDExtensions.IntersectsVoxel(ref capsule, out hitVoxel, out hitPosition, true))
+				result.Proximity = (float)CapsuleDExtensions.ProximityToVoxel(ref capsule, out result.ObstructingVoxel, out hitPosition, true, input.Length);
+				if (result.Proximity <= 1f)
 				{
-					Profiler.EndProfileBlock();
+					Logger.TraceLog("Block capsule does hit voxel: " + capsule.String() + ", proxmity: " + result.Proximity);
+					double distance;  Vector3D.Distance(ref capsule.P0, ref hitPosition, out distance);
+					result.Distance = (float)distance;
 					apShipRejections.Clear();
 					testedRejections.Clear();
 					ResourcePool.Return(apShipRejections);
 					ResourcePool.Return(testedRejections);
+					Profiler.EndProfileBlock();
 					return true;
 				}
 			}
 
-			//Logger.DebugLog("Cells: " + apShipRejections.Count + ", tests: " + tests);
-
-			hitVoxel = null;
-			hitPosition = Vector3.Invalid;
-			Profiler.EndProfileBlock();
+			Logger.TraceLog("Ship's path is clear from voxels, proximity: " + result.Proximity);
 			apShipRejections.Clear();
 			testedRejections.Clear();
 			ResourcePool.Return(apShipRejections);
 			ResourcePool.Return(testedRejections);
+			Profiler.EndProfileBlock();
 			return false;
 		}
 

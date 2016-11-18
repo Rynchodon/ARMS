@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+//#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
@@ -59,6 +63,55 @@ namespace Rynchodon
 			return Intersects(ref halfCapsule, voxel, out hitPosition, halfLength);
 		}
 
+		public static double Proximity(ref CapsuleD capsule, MyVoxelBase voxel, ref Vector3D hitPosition, double capsuleLength = -1d)
+		{
+			Logger.TraceLog(capsule.String());
+
+			if (capsuleLength < 0)
+				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
+
+			double halfLength = capsuleLength * 0.5d;
+			Vector3D temp; Vector3D.Add(ref capsule.P0, ref capsule.P1, out temp);
+			Vector3D middle; Vector3D.Multiply(ref temp, 0.5d, out middle);
+
+			if (capsuleLength < 1d)
+			{
+				hitPosition = middle;
+				Logger.TraceLog("capsule length < 1: " + capsuleLength);
+				return capsuleLength;
+			}
+
+			double radius = halfLength + capsule.Radius;
+			BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
+			if (capsuleLength < Math.Max(capsule.Radius, 1f) * 8f)
+			{
+				if (!voxel.ContainsOrIntersects(ref worldSphere))
+				{
+					Logger.TraceLog("sphere does not intersect voxel: " + worldSphere + ", capsuleLength: " + capsuleLength);
+					return capsuleLength;
+				}
+			}
+			else if (!voxel.PositionComp.WorldAABB.Intersects(ref worldSphere))
+			{
+				Logger.TraceLog("sphere does not intersect voxel AABB: " + worldSphere + ", capsuleLength: " + capsuleLength);
+				return capsuleLength;
+			}
+
+			CapsuleD halfCapsule;
+			halfCapsule.P0 = capsule.P0;
+			halfCapsule.P1 = middle;
+			halfCapsule.Radius = capsule.Radius;
+
+			double prox = Proximity(ref halfCapsule, voxel, ref hitPosition, halfLength);
+			if (prox < 1f)
+				return prox;
+
+			halfCapsule.P0 = middle;
+			halfCapsule.P1 = capsule.P1;
+
+			return Math.Min(prox, Proximity(ref halfCapsule, voxel, ref hitPosition, halfLength));
+		}
+
 		public static bool IntersectsVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet, double capsuleLength = -1d)
 		{
 			Profiler.StartProfileBlock();
@@ -78,6 +131,8 @@ namespace Rynchodon
 				if ((voxel is MyVoxelMap || voxel is MyPlanet && checkPlanet) && Intersects(ref capsule, voxel, out hitPosition, capsuleLength))
 				{
 					hitVoxel = voxel;
+					voxels.Clear();
+					ResourcePool.Return(voxels);
 					Profiler.EndProfileBlock();
 					return true;
 				}
@@ -89,6 +144,51 @@ namespace Rynchodon
 			hitPosition = Vector3.Invalid;
 			Profiler.EndProfileBlock();
 			return false;
+		}
+
+		public static double ProximityToVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet, double capsuleLength = -1d)
+		{
+			Profiler.StartProfileBlock();
+			if (capsuleLength < 0)
+				Vector3D.Distance(ref capsule.P0, ref capsule.P1, out capsuleLength);
+			double halfLength = capsuleLength * 0.5d;
+			Vector3D temp; Vector3D.Add(ref capsule.P0, ref capsule.P1, out temp);
+			Vector3D middle; Vector3D.Multiply(ref temp, 0.5d, out middle);
+
+			double radius = halfLength + capsule.Radius;
+			BoundingSphereD worldSphere = new BoundingSphereD() { Center = middle, Radius = radius };
+
+			List<MyVoxelBase> voxels = ResourcePool<List<MyVoxelBase>>.Get();
+			MyGamePruningStructure.GetAllVoxelMapsInSphere(ref worldSphere, voxels);
+
+			double closestProx = double.MaxValue;
+			hitPosition = Globals.Invalid;
+			foreach (MyVoxelBase voxel in voxels)
+				if (voxel is MyVoxelMap || voxel is MyPlanet && checkPlanet)
+				{
+					double proximity = Proximity(ref capsule, voxel, ref hitPosition, capsuleLength);
+					if (proximity < closestProx)
+					{
+						Logger.TraceLog("proximity is less than closest. proximity: " + proximity + ", closest: " + closestProx);
+						closestProx = proximity;
+					}
+					if (closestProx < 1d)
+					{
+						Logger.TraceLog("closest under 1: " + closestProx);
+						hitVoxel = voxel;
+						voxels.Clear();
+						ResourcePool.Return(voxels);
+						Profiler.EndProfileBlock();
+						return closestProx;
+					}
+				}
+
+			voxels.Clear();
+			ResourcePool.Return(voxels);
+
+			hitVoxel = null;
+			Profiler.EndProfileBlock();
+			return closestProx;
 		}
 
 		public static string String(this CapsuleD capsule)

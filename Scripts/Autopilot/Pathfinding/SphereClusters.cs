@@ -35,7 +35,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 		}
 
-		private static MyConcurrentPool<List<RepulseSphere>> m_sphereLists = new MyConcurrentPool<List<RepulseSphere>>();
+		//private static MyConcurrentPool<List<RepulseSphere>> m_sphereLists = new MyConcurrentPool<List<RepulseSphere>>();
 
 		public readonly List<List<RepulseSphere>> Clusters = new List<List<RepulseSphere>>();
 		public readonly List<RepulseSphere> Planets = new List<RepulseSphere>();
@@ -88,7 +88,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					emptyCluster.Add(sphere);
 				else
 				{
-					joinedCluster = m_sphereLists.Get();
+					ResourcePool.Get(out joinedCluster);
 					joinedCluster.Add(sphere);
 					Clusters.Add(joinedCluster);
 				}
@@ -126,7 +126,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			{
 				List<RepulseSphere> cluster = Clusters[index];
 				cluster.Clear();
-				m_sphereLists.Return(cluster);
+				ResourcePool.Return(cluster);
 			}
 			Clusters.Clear();
 		}

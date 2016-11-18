@@ -138,19 +138,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 					m_backwardList[i] = null;
 				}
 			}
-
-			//if (m_backwardList.Length == 1)
-			//{
-			//	FindingSet back = (FindingSet)m_backwardList[0];
-			//	if (back == null)
-			//		return;
-			//	back.Clear();
-			//	ResourcePool.Return(back);
-			//	m_backwardList[0] = null;
-			//}
-			//else
-			//	for (int i = 0; i < m_backwardList.Length; i++)
-			//		m_backwardList[i] = null;
 		}
 
 		private void CreateBackwards()
@@ -160,7 +147,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					for (int i = 0; i < m_backwardList.Length; i++)
 						if (m_backwardList[i] == null)
-							m_backwardList[i] = new FindingSet();
+							m_backwardList[i] = ResourcePool<FindingSet>.Get();
 						else
 							((FindingSet)m_backwardList[i]).Clear();
 					return;
@@ -172,33 +159,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			for (int i = 0; i < m_backwardList.Length; i++)
 				if (m_backwardList[i] == null)
-					m_backwardList[i] = new FindingSet();
-
-			//if (m_backwardList != null && m_backwardList.Length == 1)
-			//{
-			//	FindingSet back = (FindingSet)m_backwardList[0];
-			//	if (back != null)
-			//	{
-			//		back.Clear();
-			//		if (m_destinations.Length == 1)
-			//			return;
-			//		ResourcePool.Return(back);
-			//		m_backwardList[0] = null;
-			//	}
-			//}
-
-			//if (m_backwardList == null || m_backwardList.Length != m_destinations.Length)
-			//	m_backwardList = new PathNodeSet[m_destinations.Length];
-
-			//if (m_backwardList.Length == 1)
-			//{
-			//	if (m_backwardList[0] == null)
-			//		m_backwardList[0] = ResourcePool<FindingSet>.Get();
-			//}
-			//else
-			//	for (int i = 0; i < m_backwardList.Length; i++)
-			//		if (m_backwardList[i] == null)
-			//			m_backwardList[i] = new RootNode();
+					m_backwardList[i] = ResourcePool<FindingSet>.Get();
 		}
 
 		private void GetFromObsPosition(Destination dest, out Vector3D fromObsPos)
@@ -207,7 +168,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D.Subtract(ref destWorld, ref obstructPosition, out fromObsPos);
 
-			m_logger.debugLog("destWorld: " + destWorld + ", obstructPosition: " + obstructPosition + ", fromObsPos: " + fromObsPos);
+			m_logger.traceLog("destWorld: " + destWorld + ", obstructPosition: " + obstructPosition + ", fromObsPos: " + fromObsPos);
 		}
 
 		#endregion
@@ -254,6 +215,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			catch
 			{
+				m_logger.alwaysLog("Pathfinder crashed", Logger.severity.ERROR);
 				CurrentState = State.Crashed;
 				throw;
 			}
@@ -265,6 +227,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Continues pathfinding.
 		/// </summary>
+		/// <param name="pnSet">The active set.</param>
 		private void ContinuePathfinding(FindingSet pnSet)
 		{
 			//PathNodeSet pnSet = isForwardSet ? m_forward : m_backward;
@@ -296,18 +259,22 @@ namespace Rynchodon.Autopilot.Pathfinding
 			CalcRepulsion(false, out repulsion);
 			m_logger.debugLog("Calculated repulsion for some reason: " + repulsion, Logger.severity.WARNING, condition: repulsion != Vector3.Zero, secondaryState: SetName(pnSet));
 
-			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			PathNode parent;
 			if (!pnSet.m_reachedNodes.TryGetValue(currentNode.ParentKey, out parent))
 			{
-				m_logger.debugLog("Failed to get parent", Logger.severity.WARNING);
+				m_logger.debugLog("Failed to get parent", Logger.severity.ERROR);
 				return;
 			}
 			Vector3D worldParent;
+			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D.Add(ref obstructPosition, ref parent.Position, out worldParent);
-			Vector3D offset; Vector3D.Subtract(ref worldParent, ref m_currentPosition, out offset);
+			PathTester.TestInput input;
+			Vector3D.Subtract(ref worldParent, ref m_currentPosition, out input.Offset);
+			input.Direction = currentNode.DirectionFromParent;
+			input.Length = currentNode.DistToCur - parent.DistToCur;
 
-			if (!CanTravelSegment(ref offset, ref currentNode.DirectionFromParent, currentNode.DistToCur - parent.DistToCur))
+			float proximity;
+			if (!CanTravelSegment(ref input, out proximity))
 			{
 #if PROFILE
 				pnSet.m_unreachableNodes++;
@@ -315,15 +282,34 @@ namespace Rynchodon.Autopilot.Pathfinding
 				//m_logger.debugLog("Not reachable: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
 				return;
 			}
-			m_logger.debugLog("Reached node: " + ReportRelativePosition(currentNode.Position) + " from " + ReportRelativePosition(pnSet.m_reachedNodes[currentNode.ParentKey].Position) + ", reached: " + pnSet.m_reachedNodes.Count + ", open: " + pnSet.m_openNodes.Count, secondaryState: SetName(pnSet));
+			ReachedNode(pnSet, ref currentNode, ref input, proximity);
+		}
+
+		/// <summary>
+		/// Called when a node is reached. Tests against targets and creates new nodes.
+		/// </summary>
+		/// <param name="pnSet">The active set.</param>
+		/// <param name="currentNode">The node that was reached.</param>
+		/// <param name="input">Param for CanTravelSegment, Offset and Direction should be correct.</param>
+		/// <param name="proximity">Result from CanTravelSegment, how close the ship would come to an entity when traveling to this node from its parent.</param>
+		private void ReachedNode(FindingSet pnSet, ref PathNode currentNode, ref PathTester.TestInput input, float proximity)
+		{
+			// impose a penalty for going near entities, this does not affect this node but will affect its children
+			// this really helps prevent pathfinder getting stuck but the penalty might be too high
+			float penalty = 10f * (100f - MathHelper.Clamp(proximity, 0f, 100f));
+			m_logger.debugLog("Reached node: " + ReportRelativePosition(currentNode.Position) + " from " + ReportRelativePosition(pnSet.m_reachedNodes[currentNode.ParentKey].Position) +
+				", reached: " + pnSet.m_reachedNodes.Count + ", open: " + pnSet.m_openNodes.Count + ", proximity: " + proximity + ", penalty: " + penalty, secondaryState: SetName(pnSet));
+			currentNode.DistToCur += penalty;
 			long cNodePosHash = currentNode.Key;
 			pnSet.m_reachedNodes.Add(cNodePosHash, currentNode);
 
 			if (!m_canChangeCourse)
 			{
+				// test from current node position to destination
 				m_logger.debugLog("Running backwards search", Logger.severity.ERROR, condition: pnSet != m_forward, secondaryState: SetName(pnSet));
-				Vector3D.Subtract(ref m_currentPosition, ref pnSet.m_referencePosition, out offset);
-				if (CanTravelSegment(ref offset, ref currentNode.DirectionFromParent, currentNode.DistToCur - parent.DistToCur))
+				Vector3D.Subtract(ref m_currentPosition, ref pnSet.m_referencePosition, out input.Offset);
+				input.Length = (float)Vector3D.Distance(currentNode.Position, pnSet.m_referencePosition);
+				if (CanTravelSegment(ref input, out proximity))
 				{
 					m_logger.debugLog("Reached destination from node: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
 					m_logger.debugLog("Backwards start is not reference position", Logger.severity.ERROR, condition: m_backwardList[0].m_startPosition != pnSet.m_referencePosition);
@@ -347,47 +333,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 					return;
 				}
 
-			// blue sky test
-
+			Vector3D obstructPosition = m_obstructingEntity.GetPosition();
 			Vector3D currentNodeWorld; Vector3D.Add(ref obstructPosition, ref currentNode.Position, out currentNodeWorld);
 			BoundingSphereD sphere = new BoundingSphereD() { Center = currentNodeWorld, Radius = m_autopilotShipBoundingRadius + 100f };
 			m_entitiesRepulse.Clear(); // use repulse list as prune/avoid is needed for CanTravelSegment
 			MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref sphere, m_entitiesRepulse);
-			if (m_entitiesRepulse.Count == 0)
-			{
-				//Logger.DebugNotify(SetName(pnSet) + " Blue Sky");
-				m_logger.debugLog("Blue sky node: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
-
-				Vector3D.Subtract(ref currentNodeWorld, ref m_currentPosition, out offset);
-
-				foreach (PathNodeSet target in pnSet.m_targets)
-				{
-					if (CanTravelSegment(ref offset, ref currentNode.Position, ref target.m_startPosition))
-					{
-						m_logger.debugLog("Blue sky to opposite start", secondaryState: SetName(pnSet));
-						if (pnSet == m_forward)
-							BuildPath(cNodePosHash, target, target.m_startPosition.GetHash());
-						else
-							BuildPath(target.m_startPosition.GetHash(), pnSet, cNodePosHash);
-						return;
-					}
-					foreach (Vector3D targetBlueSky in target.BlueSkyNodes)
-						if (CanTravelSegment(ref offset, currentNode.Position, targetBlueSky))
-						{
-							m_logger.debugLog("Blue sky path", secondaryState: SetName(pnSet));
-							if (pnSet == m_forward)
-								BuildPath(cNodePosHash, target, targetBlueSky.GetHash());
-							else
-								BuildPath(targetBlueSky.GetHash(), pnSet, cNodePosHash);
-							return;
-						}
-				}
-				pnSet.m_blueSkyNodes.Add(currentNode.Position);
-#if SHOW_REACHED
-				ShowPosition(currentNode, "Blue Sky " + SetName(pnSet));
-#endif
+			if (m_entitiesRepulse.Count == 0 && BlueSkyReached(pnSet, currentNode, ref currentNodeWorld))
 				return;
-			}
 
 #if SHOW_REACHED
 			ShowPosition(currentNode, SetName(pnSet));
@@ -403,47 +355,86 @@ namespace Rynchodon.Autopilot.Pathfinding
 			pnSet.CreatePathNode(ref currentNode, m_canChangeCourse);
 		}
 
-		private bool CanTravelSegment(ref Vector3D offset, Vector3D start, Vector3D end)
+		/// <summary>
+		/// Called when a blue sky node is reached. Tests if the ship can reach a target blue sky or target start.
+		/// </summary>
+		/// <param name="pnSet">The active set.</param>
+		/// <param name="currentNode">The blue sky node.</param>
+		/// <param name="currentNodeWorld">World Position of the current node.</param>
+		/// <returns>True iff opposite start or target blue sky is reached, in which case, this method will have invoked BuildPath.</returns>
+		private bool BlueSkyReached(FindingSet pnSet, PathNode currentNode, ref Vector3D currentNodeWorld)
 		{
-			Vector3D directD; Vector3D.Subtract(ref end, ref start, out directD);
-			Vector3 direct = directD;
-			float length = direct.Normalize();
-			return CanTravelSegment(ref offset, ref direct, length);
+			//Logger.DebugNotify(SetName(pnSet) + " Blue Sky");
+			m_logger.debugLog("Blue sky node: " + ReportRelativePosition(currentNode.Position), secondaryState: SetName(pnSet));
+
+			PathTester.TestInput input;
+			Vector3D.Subtract(ref currentNodeWorld, ref m_currentPosition, out input.Offset);
+
+			foreach (PathNodeSet target in pnSet.m_targets)
+			{
+				Vector3D disp; Vector3D.Subtract(ref target.m_startPosition, ref currentNode.Position, out disp);
+				input.Direction = disp;
+				input.Length = input.Direction.Normalize();
+
+				float proximity;
+				if (CanTravelSegment(ref input, out proximity))
+				{
+					m_logger.debugLog("Blue sky to opposite start", secondaryState: SetName(pnSet));
+					if (pnSet == m_forward)
+						BuildPath(currentNode.Key, target, target.m_startPosition.GetHash());
+					else
+						BuildPath(target.m_startPosition.GetHash(), pnSet, currentNode.Key);
+					return true;
+				}
+				foreach (Vector3D targetBlueSky in target.BlueSkyNodes)
+				{
+					input.Direction = Vector3D.Subtract(targetBlueSky, currentNode.Position);
+					input.Length = input.Direction.Normalize();
+
+					if (CanTravelSegment(ref input, out proximity))
+					{
+						m_logger.debugLog("Blue sky path", secondaryState: SetName(pnSet));
+						if (pnSet == m_forward)
+							BuildPath(currentNode.Key, target, targetBlueSky.GetHash());
+						else
+							BuildPath(targetBlueSky.GetHash(), pnSet, currentNode.Key);
+						return true;
+					}
+				}
+			}
+			pnSet.m_blueSkyNodes.Add(currentNode.Position);
+#if SHOW_REACHED
+				ShowPosition(currentNode, "Blue Sky " + SetName(pnSet));
+#endif
+			return false;
 		}
 
-		private bool CanTravelSegment(ref Vector3D offset, ref Vector3D start, ref Vector3D end)
-		{
-			Vector3D directD; Vector3D.Subtract(ref end, ref start, out directD);
-			Vector3 direct = directD;
-			float length = direct.Normalize();
-			return CanTravelSegment(ref offset, ref direct, length);
-		}
-
-		/// <param name="offset">Difference between start of segment and current position.</param>
-		/// <param name="line">Relative from and relative to</param>
-		private bool CanTravelSegment(ref Vector3D offset, ref Vector3 direction, float length)
+		/// <summary>
+		/// Tests if a line can be traveled from input.Offset to input.Offset + input.Direction * input.Length
+		/// </summary>
+		/// <param name="input">Param for PathTester</param>
+		/// <param name="proximity">How close the ship would come to an obstruction.</param>
+		/// <returns>True iff the segment can be traveled by the ship.</returns>
+		private bool CanTravelSegment(ref PathTester.TestInput input, out float proximity)
 		{
 			Profiler.StartProfileBlock();
 
+			m_logger.debugLog(input.ToString());
 			MyCubeBlock ignoreBlock = NavSet.Settings_Current.DestinationEntity as MyCubeBlock;
-
-			m_logger.debugLog("offset: " + offset + ", direction: " + direction + ", length: " + length);
+			proximity = float.MaxValue;
 
 			if (m_checkVoxel)
 			{
 				//m_logger.debugLog("raycasting voxels");
-
-				Vector3 adjustment; Vector3.Multiply(ref direction, VoxelAdd, out adjustment);
-				Vector3 disp; Vector3.Multiply(ref direction, length, out disp);
-				Vector3 rayTest; Vector3.Add(ref disp, ref adjustment, out rayTest);
-				MyVoxelBase hitVoxel;
-				Vector3D hitPosition;
-				if (m_tester.RayCastIntersectsVoxel(ref offset, ref rayTest, out hitVoxel, out hitPosition))
+				PathTester.VoxelTestResult result;
+				if (m_tester.RayCastIntersectsVoxel(ref input, out result))
 				{
 					//m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition, Logger.severity.DEBUG, condition: hitVoxel != m_obstructingEntity.Entity);
 					Profiler.EndProfileBlock();
 					return false;
 				}
+				if (result.Proximity < proximity)
+					proximity = result.Proximity;
 			}
 
 			//m_logger.traceLog("checking " + m_entitiesPruneAvoid.Count + " entites - voxels");
@@ -455,15 +446,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 					if (entity is MyVoxelBase)
 						// already checked
 						continue;
-					MyCubeBlock obstructBlock;
-					float distance;
 					//m_logger.debugLog("checking: " + entity.nameWithId());
-					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref direction, length, out obstructBlock, out distance))
+					PathTester.GridTestResult result;
+					if (m_tester.ObstructedBy(entity, ignoreBlock, ref input, out result))
 					{
 						//m_logger.debugLog("Obstructed by " + entity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG, condition: entity != m_obstructingEntity.Entity);
 						Profiler.EndProfileBlock();
 						return false;
 					}
+					if (result.Proximity < proximity)
+						proximity = result.Proximity;
 				}
 
 			//m_logger.debugLog("No obstruction. Start: " + (m_currentPosition + offset) + ", finish: " + (m_currentPosition + offset + (line.To - line.From)));
@@ -471,6 +463,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return true;
 		}
 
+		/// <summary>
+		/// Resolves set running out of nodes, either changing NodeDistance, moving the ship, or failing pathfinding.
+		/// </summary>
+		/// <param name="pnSet">The set that is out of nodes.</param>
 		private void OutOfNodes(FindingSet pnSet)
 		{
 			if (pnSet.NodeDistance > FindingSet.MinNodeDistance)
@@ -503,6 +499,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Move to arbitrary node, this can resolve circular obstructions.
 		/// </summary>
+		/// <returns>True iff a path has been built to an arbitrary node.</returns>
 		private bool MoveToArbitrary()
 		{
 			if (m_forward.m_openNodes.Count != 0 && m_forward.m_reachedNodes.Count * m_forward.NodeDistance < 1000)
@@ -665,7 +662,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 			for (target = m_path.m_target == 0 ? m_path.Count - 1 : m_path.m_target - 1; target > 0; target--)
 			{
 				m_logger.debugLog("Trying potential target #" + target + ": " + m_path.m_positions[target]);
-				if (CanTravelSegment(ref Vector3D.Zero, currentPosition, m_path.m_positions[target]))
+				PathTester.TestInput input;
+				input.Offset = Vector3D.Zero;
+				input.Direction = Vector3D.Subtract(m_path.m_positions[target], currentPosition);
+				input.Length = input.Direction.Normalize();
+
+				float proximity;
+				if (CanTravelSegment(ref input, out proximity))
 				{
 					m_logger.debugLog("Next target is position #" + target);
 					m_path.m_target = target;
