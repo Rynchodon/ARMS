@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Rynchodon.AntennaRelay;
@@ -249,8 +253,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			m_logger.debugLog("Should not be moving! disp: " + disp, Logger.severity.ERROR, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
-			//m_logger.debugLog("moving: " + disp);
+			m_logger.traceLog("Should not be moving! disp: " + disp, Logger.severity.DEBUG, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
+			m_logger.traceLog("moving: " + disp);
 			Mover.CalcMove(m_navBlock, ref disp, ref targetVelocity);
 		}
 		
@@ -422,6 +426,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			foreach (MyEntity entity in CollectEntities(m_entitiesPruneAvoid))
 				if (!NavSet.Settings_Current.ShouldIgnoreEntity(entity))
 					m_entitiesRepulse.Add(entity);
+				else
+					m_logger.debugLog("Ignore: " + entity.nameWithId());
 
 			Profiler.EndProfileBlock();
 		}
@@ -486,11 +492,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				// if near waypoint, pop it
 				double distSqCurToDest; Vector3D.DistanceSquared(ref m_currentPosition, ref m_destWorld, out distSqCurToDest);
-				Vector3D reached; m_path.GetReached(out reached);
-				Vector3D obstructPosition = m_obstructingEntity.GetPosition();
-				Vector3D reachedWorld; Vector3D.Add(ref reached, ref obstructPosition, out reachedWorld);
-				double distSqReachToDest; Vector3D.DistanceSquared(ref reachedWorld, ref m_destWorld, out distSqReachToDest);
-				if (distSqCurToDest < distSqReachToDest * 0.04d)
+
+				bool reachedDest;
+				if (distSqCurToDest < 1d)
+					reachedDest = true;
+				else
+				{
+					Vector3D reached; m_path.GetReached(out reached);
+					Vector3D obstructPosition = m_obstructingEntity.GetPosition();
+					Vector3D reachedWorld; Vector3D.Add(ref reached, ref obstructPosition, out reachedWorld);
+					double distSqReachToDest; Vector3D.DistanceSquared(ref reachedWorld, ref m_destWorld, out distSqReachToDest);
+					reachedDest = distSqCurToDest < distSqReachToDest * 0.04d;
+				}
+
+				if (reachedDest)
 				{
 					m_path.ReachedTarget();
 					m_logger.debugLog("Reached waypoint: " + m_path.GetReached() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);

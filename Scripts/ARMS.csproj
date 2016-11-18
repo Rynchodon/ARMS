@@ -180,6 +180,7 @@
     <Compile Include="Autopilot\Harvest\OreDetector.cs" />
     <None Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
+    <Compile Include="Autopilot\Navigator\ALand.cs" />
     <Compile Include="Autopilot\Navigator\Mining\AMiner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />

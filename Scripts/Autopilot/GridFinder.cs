@@ -4,8 +4,6 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Utility.Vectors;
-using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -19,7 +17,7 @@ namespace Rynchodon.Autopilot
 
 		public enum ReasonCannotTarget : byte { None, Too_Far, Grid_Condition, Too_Fast }
 
-		private const ulong SearchInterval_Grid = 100ul, SearchInterval_Block = 1000ul;
+		private const ulong SearchInterval_Grid = 100ul, SearchInterval_Block = 100ul;
 
 		public readonly string m_targetGridName, m_targetBlockName;
 
@@ -134,7 +132,7 @@ namespace Rynchodon.Autopilot
 			RelayStorage store = m_netStore;
 			if (store == null)
 			{
-				m_logger.debugLog("no storage", Logger.severity.WARNING);
+				m_logger.debugLog("no storage", Logger.severity.DEBUG);
 				return;
 			}
 
@@ -162,7 +160,7 @@ namespace Rynchodon.Autopilot
 			RelayStorage store = m_netStore;
 			if (store == null)
 			{
-				m_logger.debugLog("no storage", Logger.severity.WARNING);
+				m_logger.debugLog("no storage", Logger.severity.DEBUG);
 				return;
 			}
 

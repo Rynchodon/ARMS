@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public abstract int CompareTo(PathNodeSet other);
 		public abstract bool HasReached(long key);
 		public abstract bool TryGetReached(long key, out PathNode reached);
-		public abstract void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse);
+		public abstract void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse, int maxNodeDistance);
 	}
 
 	//class RootNode : PathNodeSet
@@ -125,6 +125,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public Dictionary<long, PathNode> m_reachedNodes;
 		/// <summary>Nodes that have been reached that are not near anything.</summary>
 		public List<Vector3D> m_blueSkyNodes;
+		public bool Failed { get { return NodeDistance == 1 && m_openNodes.Count == 0; } }
 #if PROFILE
 			public int m_unreachableNodes;
 #endif
@@ -167,6 +168,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 		{
 			FindingSet otherFS = (FindingSet)other;
 
+			if (this.Failed)
+				return 1;
+			else if (otherFS.Failed)
+				return -1;
+
 			int value = m_blueSkyNodes.Count - otherFS.m_blueSkyNodes.Count;
 			if (value != 0)
 				return value;
@@ -178,7 +184,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return 0;
 		}
 
-		public override void Setup(ref Vector3D reference, ref Vector3D start, bool canChangeCourse)
+		public override void Setup(ref Vector3D reference, ref Vector3D start, bool canChangeCourse, int maxNodeDistance)
 		{
 			Clear();
 			m_referencePosition = reference;
@@ -192,7 +198,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			AddOpenNode(ref firstNode, 0f);
 			m_reachedNodes.Add(firstNode.Key, firstNode);
-			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start, Logger.severity.DEBUG);
+			while (NodeDistance > maxNodeDistance)
+				NodeDistance = NodeDistance >> 1;
+			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start + ", NodeDistance: " + NodeDistance, Logger.severity.DEBUG);
 		}
 
 		/// <summary>

@@ -237,6 +237,15 @@ namespace Rynchodon.Autopilot.Data
 				set { m_destRadius = value; }
 			}
 
+			public float DestinationRadiusSquared
+			{
+				get
+				{
+					float destRadius = DestinationRadius;
+					return destRadius * destRadius;
+				}
+			}
+
 			/// <summary>
 			/// <para>Distance between current position and destination.</para>
 			/// </summary>
