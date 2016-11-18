@@ -23,8 +23,6 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Logger m_logger;
 		private readonly GridFinder m_gridFinder;
 		private readonly BlockNameOrientation m_targetBlock;
-		private readonly PseudoBlock m_contBlock;
-		private readonly PseudoBlock m_navBlock;
 		/// <summary>m_targetBlock.Forward  or opposite of the landing face</summary>
 		private readonly Base6Directions.Direction m_landingDirection;
 		/// <summary>Half of length of landing block in the direction it will be landing.</summary>
@@ -41,7 +39,6 @@ namespace Rynchodon.Autopilot.Navigator
 		//private float m_landingSpeedFudge;
 		private ulong next_attemptLock;
 		private bool m_beforeMerge;
-		private long m_reservedTarget;
 
 		public LandingState m_landingState
 		{
@@ -99,11 +96,10 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 				this.m_gridFinder = new GridFinder(m_navSet, m_controlBlock, targetGrid, blockName, allowedAttachment);
 			this.m_landingFriend = !(this.m_gridFinder is EnemyFinder);
-			this.m_contBlock = m_navSet.Settings_Commands.NavigationBlock;
 
 			if (landingBlock == null)
 				landingBlock = m_navSet.Settings_Current.LandingBlock;
-			m_navBlock = landingBlock ?? m_navSet.Settings_Current.NavigationBlock;
+			m_navSet.Settings_Task_NavRot.NavigationBlock = landingBlock;
 
 			if (landingBlock != null)
 			{
@@ -168,16 +164,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_settingLevel = m_landingState != LandingState.None ? AllNavigationSettings.SettingsLevelName.NavRot : AllNavigationSettings.SettingsLevelName.NavMove;
 			m_navSet.GetSettingsLevel(m_settingLevel).NavigatorMover = this;
-		}
-
-		~FlyToGrid()
-		{
-			Dispose();
-		}
-
-		public void Dispose()
-		{
-			UnreserveTarget();
 		}
 
 		public override void Move()
@@ -465,7 +451,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 						Vector3D closestPoint = destinationLine.ClosestPoint(m_navBlock.WorldPosition);
 
-						//m_logger.debugLog("Flying to closest point on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint, "Move_Land()");
+						m_logger.debugLog("Flying to closest point to " + m_navBlock.WorldPosition + " on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint);
 						m_logger.debugLog("missing block", Logger.severity.ERROR, condition: m_gridFinder.Block == null);
 						m_destination = Destination.FromWorld(m_gridFinder.Block, closestPoint);
 						m_pathfinder.MoveTo(destinations: m_destination);

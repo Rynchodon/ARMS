@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
-			int maxNodeDistance = Math.Max((int)NavSet.Settings_Current.Distance >> 2, 1);
+			int maxNodeDistance = (int)NavSet.Settings_Current.Distance >> 2;
 
 			Vector3D referencePosition;
 			SetupBackward(out referencePosition, maxNodeDistance);
@@ -427,6 +427,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			MyCubeBlock ignoreBlock = NavSet.Settings_Current.DestinationEntity as MyCubeBlock;
 
+			m_logger.debugLog("offset: " + offset + ", direction: " + direction + ", length: " + length);
+
 			if (m_checkVoxel)
 			{
 				//m_logger.debugLog("raycasting voxels");
@@ -444,7 +446,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				}
 			}
 
-			//m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - voxels");
+			//m_logger.traceLog("checking " + m_entitiesPruneAvoid.Count + " entites - voxels");
 
 			if (m_entitiesPruneAvoid.Count != 0)
 				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
@@ -455,6 +457,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						continue;
 					MyCubeBlock obstructBlock;
 					float distance;
+					//m_logger.debugLog("checking: " + entity.nameWithId());
 					if (m_tester.ObstructedBy(entity, ignoreBlock, ref offset, ref direction, length, out obstructBlock, out distance))
 					{
 						//m_logger.debugLog("Obstructed by " + entity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG, condition: entity != m_obstructingEntity.Entity);
@@ -470,7 +473,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private void OutOfNodes(FindingSet pnSet)
 		{
-			if (pnSet.NodeDistance > 1)
+			if (pnSet.NodeDistance > FindingSet.MinNodeDistance)
 			{
 				pnSet.ChangeNodeDistance(true, m_canChangeCourse);
 				return;

@@ -1,5 +1,5 @@
 ﻿#if DEBUG
-#define TRACE
+//#define TRACE
 #endif
 
 using System;
@@ -371,7 +371,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			m_destWorld = m_path.HasTarget ? m_path.GetTarget() + m_obstructingEntity.GetPosition() : finalDestWorld;
 
-			m_logger.debugLog("final dest world: " + finalDestWorld + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
+			m_logger.traceLog("final dest world: " + finalDestWorld + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
 		}
 
 		private MyEntity GetTopMostDestEntity()
@@ -395,7 +395,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (distSq < 1d)
 				return false;
 
-			if (obstVlocity.LengthSquared() < 0.01f)
+			if (obstVlocity.LengthSquared() < 0.01d)
 				return false;
 			Vector3D position = obstruction.GetCentre();
 			Vector3D nextPosition; Vector3D.Add(ref position, ref obstVlocity, out nextPosition);
@@ -426,8 +426,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			foreach (MyEntity entity in CollectEntities(m_entitiesPruneAvoid))
 				if (!NavSet.Settings_Current.ShouldIgnoreEntity(entity))
 					m_entitiesRepulse.Add(entity);
-				else
-					m_logger.debugLog("Ignore: " + entity.nameWithId());
 
 			Profiler.EndProfileBlock();
 		}
@@ -482,7 +480,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				// don't chase an obstructing entity unless it is the destination
 				if (ObstructionMovingAway(m_obstructingEntity.Entity))
 				{
-					m_logger.debugLog("Obstruction is moving away, I'll just wait here", Logger.severity.DEBUG);
+					m_logger.debugLog("Obstruction is moving away, I'll just wait here", Logger.severity.TRACE);
 					m_path.Clear();
 					m_obstructingEntity = new Obstruction();
 					m_obstructingBlock = null;
@@ -509,9 +507,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 				{
 					m_path.ReachedTarget();
 					m_logger.debugLog("Reached waypoint: " + m_path.GetReached() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
-					if (!m_path.IsFinished)
-						SetNextPathTarget();
 					FillDestWorld();
+					if (!m_path.IsFinished)
+					{
+						FillEntitiesLists();
+						if (!SetNextPathTarget())
+						{
+							m_logger.debugLog("Failed to set next target, clearing path");
+							m_path.Clear();
+						}
+					}
 				}
 			}
 
@@ -559,10 +564,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 					return;
 				}
 
-				m_obstructingEntity = new Obstruction() { Entity = obstructing, MatchPosition = m_canChangeCourse };
+				m_obstructingEntity = new Obstruction() { Entity = obstructing, MatchPosition = m_canChangeCourse }; // when not MatchPosition, ship will still match with destination
 				m_obstructingBlock = block;
-
 				m_holdPosition = true;
+
+				m_logger.debugLog("Current path is obstructed by " + obstructing.getBestName() + "." + block.getBestName() + ", starting pathfinding", Logger.severity.DEBUG);
 				StartPathfinding();
 				return;
 			}
@@ -583,9 +589,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// </summary>
 		private bool TryRepairPath(float distReached)
 		{
-			if (SetNextPathTarget())
-				return true;
-
 			if (distReached < 1f)
 				return false;
 
@@ -606,8 +609,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3 directF = direction;
 				float length = directF.Normalize();
 
+				if (length < 1f)
+				{
+					m_logger.debugLog("Already on line");
+					break;
+				}
+
 				if (CanTravelSegment(ref Vector3D.Zero, ref directF, length))
 				{
+					m_logger.debugLog("can travel to line");
 					m_moveDirection = directF;
 					m_moveLength = length;
 					return true;
@@ -615,13 +625,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				tValue *= 0.5d;
 				if (tValue <= 1d)
+				{
+					m_logger.debugLog("Cannot reach line");
 					break;
+				}
 				Vector3D disp; Vector3D.Multiply(ref direction, tValue, out disp);
 				Vector3D.Add(ref lastReachWorld, ref disp, out target);
 			}
 
-			m_logger.debugLog("Failed to repair path");
-			return false;
+			return SetNextPathTarget();
 		}
 
 		#endregion
@@ -839,7 +851,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			MyEntity destTop = GetTopMostDestEntity();
 			if (destTop != null && m_pickedDestination.Position != Vector3D.Zero && m_entitiesPruneAvoid.Contains(destTop) && m_tester.ObstructedBy(destTop, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
 			{
-				m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
+				//m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 				obstructingEntity = destTop;
 				return true;
 			}
@@ -858,7 +870,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				Vector3D hitPosition;
 				if (m_tester.RayCastIntersectsVoxel(ref Vector3D.Zero, ref rayDirection, out hitVoxel, out hitPosition))
 				{
-					m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition+ ", autopilotVelocity: " + autopilotVelocity + ", m_moveDirection: " + m_moveDirection);
+					//m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition+ ", autopilotVelocity: " + autopilotVelocity + ", m_moveDirection: " + m_moveDirection);
 					obstructingEntity = hitVoxel;
 					obstructBlock = null;
 					double distanceD; Vector3D.Distance(ref m_currentPosition, ref hitPosition, out distanceD);
@@ -881,7 +893,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						continue;
 					if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref m_moveDirection, m_moveLength, out obstructBlock, out distance))
 					{
-						m_logger.debugLog("Obstructed by " + obstructingEntity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
+						//m_logger.debugLog("Obstructed by " + obstructingEntity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 						return true;
 					}
 				}

@@ -90,10 +90,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			//m_logger.debugLog("offset: " + m_detachOffset + ", direction: " + m_detachDirection);
 
-			float shipRadius = m_grid.LocalVolume.Radius;
-			if (m_navSet.Settings_Task_NavMove.DestinationRadius < shipRadius)
-				m_navSet.Settings_Task_NavMove.DestinationRadius = shipRadius;
-			m_destination.Position = m_unlandBlock.WorldMatrix.Backward * m_navSet.Settings_Task_NavMove.DestinationRadius;
+			m_destination.Position = m_unlandBlock.WorldMatrix.Backward * 100f;
 
 			m_navSet.Settings_Task_NavMove.NavigatorMover = this;
 			m_navSet.Settings_Task_NavMove.NavigatorRotator = this;
@@ -111,7 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			double distSqMoved = Vector3D.DistanceSquared(m_destination.Entity.GetPosition() + m_detachOffset, m_unlandBlock.WorldPosition);
 			//m_navSet.Settings_Task_NavMove.Distance = (float)distanceMoved;
-			if (distSqMoved > m_navSet.Settings_Current.DestinationRadiusSquared)
+			if (distSqMoved > 100f)
 			{
 				//if (m_detachLength >= Math.Min(m_controlBlock.CubeGrid.GetLongestDim(), m_navSet.Settings_Task_NavEngage.DestinationRadius))
 				//{
@@ -176,15 +173,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Rotate()
 		{
-			// if waypoint or anything moves the ship, there is no point in returning to unland
-			if (m_navSet.Settings_Current.NavigatorMover != this)
-			{
-				m_logger.debugLog("lost control over movement", Logger.severity.INFO);
-				m_navSet.OnTaskComplete_NavMove();
-				m_mover.MoveAndRotateStop(false);
-				return;
-			}
-
 			m_mover.StopRotate();
 		}
 

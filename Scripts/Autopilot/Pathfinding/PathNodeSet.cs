@@ -81,6 +81,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 	{
 		public const int MaxOpenNodes = 1024;
 		public const int DefaultNodeDistance = 128;
+		public const int MinNodeDistance = 2; // needs to be greater than the minimum distance for poping a waypoint
 		public const float TurnPenalty = 100f;
 
 		public static double MinPathDistance(ref Vector3D to, ref Vector3D from)
@@ -125,7 +126,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public Dictionary<long, PathNode> m_reachedNodes;
 		/// <summary>Nodes that have been reached that are not near anything.</summary>
 		public List<Vector3D> m_blueSkyNodes;
-		public bool Failed { get { return NodeDistance == 1 && m_openNodes.Count == 0; } }
+		public bool Failed { get { return NodeDistance == MinNodeDistance && m_openNodes.Count == 0; } }
 #if PROFILE
 			public int m_unreachableNodes;
 #endif
@@ -198,6 +199,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			AddOpenNode(ref firstNode, 0f);
 			m_reachedNodes.Add(firstNode.Key, firstNode);
+			if (maxNodeDistance < MinNodeDistance)
+				maxNodeDistance = MinNodeDistance;
 			while (NodeDistance > maxNodeDistance)
 				NodeDistance = NodeDistance >> 1;
 			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start + ", NodeDistance: " + NodeDistance, Logger.severity.DEBUG);

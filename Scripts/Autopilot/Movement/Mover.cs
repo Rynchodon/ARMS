@@ -1,5 +1,5 @@
 #if DEBUG
-#define TRACE
+//#define TRACE
 #endif
 
 using System;

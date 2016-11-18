@@ -25,7 +25,6 @@ namespace Rynchodon.Autopilot.Navigator
 		public float OrbitSpeed { get; private set; }
 
 		private readonly Logger m_logger;
-		private readonly PseudoBlock m_navBlock;
 		private readonly GridFinder m_gridFinder;
 		private IMyEntity value_orbitEntity;
 		private Vector3 m_orbitAxis;
@@ -92,7 +91,6 @@ namespace Rynchodon.Autopilot.Navigator
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
-			this.m_navBlock = m_navSet.Settings_Current.NavigationBlock;
 
 			switch (entity.LowerRemoveWhitespace())
 			{
@@ -121,15 +119,13 @@ namespace Rynchodon.Autopilot.Navigator
 		/// Creates an Orbiter for a specific entity, fake orbit only.
 		/// Does not add itself to navSet.
 		/// </summary>
-		/// <param name="faceBlock">The block that will be faced towards the orbited entity</param>
 		/// <param name="entity">The entity to be orbited</param>
 		/// <param name="distance">The distance between the orbiter and the orbited entity</param>
 		/// <param name="name">What to call the orbited entity</param>
-		public Orbiter(Pathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock faceBlock, IMyEntity entity, float distance, string name)
+		public Orbiter(Pathfinder pathfinder, AllNavigationSettings navSet, IMyEntity entity, float distance, string name)
 			: base(pathfinder)
 		{
 			this.m_logger = new Logger(m_controlBlock.CubeBlock);
-			this.m_navBlock = faceBlock;
 			this.m_orbitEntity_name = name;
 
 			Altitude = distance;
