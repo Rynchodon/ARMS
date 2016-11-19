@@ -83,7 +83,7 @@ namespace Rynchodon.Settings
 
 		private ServerSettings()
 		{
-			m_currentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetCallingAssembly().Location));
+			m_currentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location));
 			buildSettings();
 			m_settingsLoaded = false;
 

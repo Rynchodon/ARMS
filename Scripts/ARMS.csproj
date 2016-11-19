@@ -213,6 +213,7 @@
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
     <Compile Include="Properties\VersionInfo - User.cs" />
+    <Compile Include="Update\DisableNotifyDownload.cs" />
     <Compile Include="Utility\Collections\ExpandingRings.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_LowLevel.cs" />
@@ -224,9 +225,9 @@
     <Compile Include="Autopilot\ShipAutopilot.cs" />
     <Compile Include="Autopilot\Solar.cs" />
     <Compile Include="AntennaRelay\RelayStorage.cs" />
-    <Compile Include="Programmable\Control Autopilot.cs" />
-    <Compile Include="Programmable\HandleDetectedEntities.cs" />
-    <Compile Include="Programmable\ProgrammableBlockCommunication.cs" />
+    <None Include="Programmable\Control Autopilot.cs" />
+    <None Include="Programmable\HandleDetectedEntities.cs" />
+    <None Include="Programmable\ProgrammableBlockCommunication.cs" />
     <Compile Include="AntennaRelay\ManualMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Update\Attributes.cs" />

@@ -77,6 +77,10 @@ def copyWithExtension(l_from, l_to, l_ext, log):
 	
 	l_ext = l_ext.lower()
 	for path, dirs, files, in os.walk(l_from):
+		for dir in dirs:
+			if dir == 'obj':
+				dirs.remove(dir)
+				
 		for file in files:
 			if file.lower().endswith(l_ext):
 				target = path.replace(l_from, l_to)
@@ -168,6 +172,7 @@ copyWithExtension(startDir + '/Audio/', finalDir + '/Audio/', '.xwm', True)
 copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
 copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
 copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
+copyWithExtension(startDir + '/Scripts/SteamShipped/', finalDir + '/Data/Scripts/SteamShipped/', '.cs', True)
 
 # build scripts
 for module in modules[:]:

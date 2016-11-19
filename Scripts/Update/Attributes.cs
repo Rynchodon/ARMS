@@ -26,7 +26,7 @@ namespace Rynchodon
 				return;
 			}
 
-			foreach (Type type in Assembly.GetCallingAssembly().GetTypes())
+			foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
 				foreach (MethodInfo method in type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
 					if (method.IsDefined(typeof(T)))
 						if (method.GetParameters().Length != 0)
