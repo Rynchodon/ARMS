@@ -12,6 +12,10 @@ namespace Rynchodon
 	/// Identifies a static method that is used to clear/reset a class when a world is closed.
 	/// </summary>
 	public class OnWorldClose : System.Attribute { }
+	/// <summary>
+	/// Identifies a static method that is invoked when the world is saved.
+	/// </summary>
+	public class OnWorldSave : System.Attribute { }
 
 	public static class AttributeFinder
 	{

@@ -10,7 +10,6 @@ using Rynchodon.Weapons;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.ModAPI;
 using VRage.Collections;
-using VRage.Game.Components;
 using VRage.ModAPI;
 
 namespace Rynchodon.Update
@@ -19,8 +18,7 @@ namespace Rynchodon.Update
 	/// Saves/loads persistent data to/from a save file.
 	/// </summary>
 	/// TODO: client saving
-	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
-	public class Saver : MySessionComponentBase
+	public class Saver
 	{
 
 		[Serializable]
@@ -35,31 +33,40 @@ namespace Rynchodon.Update
 			public RelayStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
+			[Obsolete("Old save data, new saves use EntityValues")]
 			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
+			[Obsolete("Old save data, new saves use EntityValues")]
 			public TextPanel.Builder_TextPanel[] TextPanel;
+			[Obsolete("Old save data, new saves use EntityValues")]
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
 			public EntityValue.Builder_EntityValues[] EntityValues;
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
 
-		public static Saver Instance;
+		public static Saver Instance { get; private set; }
+
+		[OnWorldLoad]
+		private static void OnLoad()
+		{
+			Instance = new Saver();
+		}
+
+		[OnWorldClose]
+		private static void Unload()
+		{
+			Instance = null;
+		}
 
 		private readonly Logger m_logger;
 		/// <summary>LastSeen that were not added immediately upon world loading, Saver will keep trying to add them.</summary>
 		private CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>> m_failedLastSeen;
 		private FileMaster m_fileMaster;
-
 		private Builder_ArmsData m_data;
 
-		public Saver()
+		private Saver()
 		{
-			this.m_logger = new Logger();
-			Instance = this;
-		}
-
-		public void Initialize()
-		{
+			m_logger = new Logger();
 			GetData();
 		}
 
@@ -78,7 +85,7 @@ namespace Rynchodon.Update
 				}
 			}
 
-			string identifier = LegacyIdentifier();
+			string identifier = LegacyIdentifier(true);
 			if (identifier == null)
 			{
 				m_logger.debugLog("no identifier");
@@ -112,7 +119,7 @@ namespace Rynchodon.Update
 			}
 		}
 
-		public void RetryLastSeen()
+		private void RetryLastSeen()
 		{
 			foreach (KeyValuePair<long, CachingList<LastSeen.Builder_LastSeen>> storageLastSeen in m_failedLastSeen)
 			{
@@ -172,7 +179,7 @@ namespace Rynchodon.Update
 			}
 		}
 
-		private string LegacyIdentifier()
+		private string LegacyIdentifier(bool loading)
 		{
 			string path = MyAPIGateway.Session.CurrentPath;
 			string saveId_fromPath = path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1) + ".xml";
@@ -206,18 +213,21 @@ namespace Rynchodon.Update
 				{
 					if (m_fileMaster.FileExists(saveId_fromWorld))
 					{
-						m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
+						if (loading)
+							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
 						saveId = saveId_fromWorld;
 					}
 					else
 					{
-						m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
+						if (loading)
+							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
 						return null;
 					}
 				}
 				else
 				{
-					m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
+					if (loading)
+						m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
 					return null;
 				}
 			}
@@ -376,6 +386,8 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 				}
 
+#pragma warning disable CS0618
+
 			// programmable block
 
 			if (m_data.ProgrammableBlock != null)
@@ -412,6 +424,8 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 				}
 
+#pragma warning restore CS0618
+
 			// entity values
 
 			if (m_data.EntityValues != null)
@@ -423,7 +437,8 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// Saves data to a variable.
 		/// </summary>
-		public override void SaveData()
+		[OnWorldSave]
+		private static void SaveData()
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 				return;
@@ -467,57 +482,24 @@ namespace Rynchodon.Update
 						buildAuto.Add(builder);
 				});
 				data.Autopilot = buildAuto.ToArray();
-
-				//// programmable block
-
-				//List<ProgrammableBlock.Builder_ProgrammableBlock> buildProgram = new List<ProgrammableBlock.Builder_ProgrammableBlock>();
-				//Registrar.ForEach<ProgrammableBlock>(program => {
-				//	ProgrammableBlock.Builder_ProgrammableBlock builder = program.GetBuilder();
-				//	if (builder != null)
-				//		buildProgram.Add(builder);
-				//});
-				//data.ProgrammableBlock = buildProgram.ToArray();
-
-				//// text panel
-
-				//List<TextPanel.Builder_TextPanel> buildPanel = new List<TextPanel.Builder_TextPanel>();
-				//Registrar.ForEach<TextPanel>(panel => {
-				//	TextPanel.Builder_TextPanel builder = panel.GetBuilder();
-				//	if (builder != null)
-				//		buildPanel.Add(builder);
-				//});
-				//data.TextPanel = buildPanel.ToArray();
-
-				//// weapon
-
-				//List<WeaponTargeting.Builder_WeaponTargeting> buildWeapon = new List<WeaponTargeting.Builder_WeaponTargeting>();
-				//Action<WeaponTargeting> act = weapon => {
-				//	WeaponTargeting.Builder_WeaponTargeting builder = weapon.GetBuilder();
-				//	if (builder != null)
-				//		buildWeapon.Add(builder);
-				//};
-				//Registrar.ForEach<FixedWeapon>(act);
-				//Registrar.ForEach<Turret>(act);
-				//data.Weapon = buildWeapon.ToArray();
-
+				
 				// entity values
 
 				data.EntityValues = EntityValue.GetBuilders();
 
-
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
 
-				if (m_fileMaster != null)
+				if (Instance.m_fileMaster != null)
 				{
-					string identifier = LegacyIdentifier();
+					string identifier = Instance.LegacyIdentifier(false);
 					if (identifier != null)
-						if (m_fileMaster.Delete(identifier))
-							m_logger.debugLog("file deleted: " + identifier);
+						if (Instance.m_fileMaster.Delete(identifier))
+							Logger.DebugLog("file deleted: " + identifier);
 				}
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+				Logger.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.Notify("ARMS: failed to save data", 60000, Logger.severity.ERROR);
 			}
 		}

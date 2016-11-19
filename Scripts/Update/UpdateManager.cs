@@ -458,8 +458,6 @@ namespace Rynchodon.Update
 				AttributeFinder.InvokeMethodsWithAttribute<OnWorldLoad>();
 				MyAPIGateway.Entities.OnCloseAll += UnloadData;
 
-				Saver.Instance.Initialize();
-
 				if (!MyAPIGateway.Multiplayer.MultiplayerActive)
 				{
 					myLogger.alwaysLog("Single player, running server scripts", Logger.severity.INFO);
@@ -838,6 +836,11 @@ namespace Rynchodon.Update
 		}
 
 		#endregion
+
+		public override void SaveData()
+		{
+			AttributeFinder.InvokeMethodsWithAttribute<OnWorldSave>();
+		}
 
 		protected override void UnloadData()
 		{

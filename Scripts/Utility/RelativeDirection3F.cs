@@ -3,7 +3,6 @@ using VRageMath;
 
 namespace Rynchodon
 {
-	[System.Obsolete("Replaced by Utility.Vectors.Direction")]
 	public class RelativeDirection3F
 	{
 		//One of these will always be set on creation.
