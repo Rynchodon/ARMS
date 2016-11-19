@@ -23,6 +23,17 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
 {
+	/// <summary>
+	/// Figures out how to get to where the navigator wants to go, supplies the direction and distance to Mover.
+	/// </summary>
+	/// <remarks>
+	/// The process is divided into two parts: high-level/repulsion and low-level/pathfinding.
+	/// Repulsion treats every potential obstruction as a sphere and tries to keep autopilot away from those spheres.
+	/// When autopilot gets too close to a potential obstruction or repulsion is not suitable, Pathfinder switches to pathfinding.
+	/// Pathfinding is based on A* but uses waypoints instead of grid cells as they are more suited to the complex environments and ships in Space Engineers.
+	/// 
+	/// Obviously it is a lot more complicated than that but if anyone is actually reading this and has questions, just ask.
+	/// </remarks>
 	public partial class Pathfinder
 	{
 
@@ -128,6 +139,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#endregion
 
+		/// <summary>
+		/// Creates a Pathfinder for a ShipControllerBlock.
+		/// </summary>
+		/// <param name="block">The autopilot or remote control that needs to find its way in the world.</param>
 		public Pathfinder(ShipControllerBlock block)
 		{
 			m_logger = new Logger(() => m_autopilotGrid.nameWithId(), () => {
@@ -140,6 +155,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			NavSet.AfterTaskComplete += NavSet_AfterTaskComplete;
 		}
 
+		/// <summary>
+		/// Forces Pathfinder to reset.
+		/// </summary>
 		private void NavSet_AfterTaskComplete()
 		{
 			m_navSetChange = true;
@@ -148,13 +166,21 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region On Autopilot Thread
 
+		/// <summary>
+		/// Forces Pathfinder to stop.
+		/// </summary>
 		public void Halt()
 		{
 			m_runHalt = true;
 		}
 
+		/// <summary>
+		/// Maintain the current position and the specified velocity.
+		/// </summary>
+		/// <param name="velocity">The velocity that autopilot will maintain.</param>
 		public void HoldPosition(Vector3 velocity)
 		{
+			// TODO: this should pathfinding to avoid things coming at it.
 			m_logger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
 
 			m_runInterrupt = true;
@@ -162,6 +188,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Mover.CalcMove(NavSet.Settings_Current.NavigationBlock, ref Vector3.Zero, ref velocity);
 		}
 
+		/// <summary>
+		/// Move to an entity given by a LastSeen, performs recent check so navigator will not have to.
+		/// </summary>
+		/// <param name="targetEntity">The destination entity.</param>
+		/// <param name="offset">Destination's offset from the centre of targetEntity.</param>
+		/// <param name="addToVelocity">Velocity to add to autopilot's target velocity.</param>
 		public void MoveTo(LastSeen targetEntity, Vector3D offset = default(Vector3D), Vector3 addToVelocity = default(Vector3))
 		{
 			m_runHalt = false;
@@ -181,6 +213,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			MoveTo(addToVelocity, dest);
 		}
 
+		/// <summary>
+		/// Pathfind to one or more destinations. Pathfinder will first attempt to move to the first destination and, failing that, will treat all destinations as valid targets.
+		/// </summary>
+		/// <param name="addToVelocity">Velocity to add to autopilot's target velocity.</param>
+		/// <param name="destinations">The destinations that autopilot will try to reach.</param>
 		public void MoveTo(Vector3 addToVelocity = default(Vector3), params Destination[] destinations)
 		{
 			m_runHalt = false;
@@ -248,6 +285,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Flow
 
+		/// <summary>
+		/// Main entry point while not pathfinding.
+		/// </summary>
 		private void Run()
 		{
 			if (m_waitUntil > Globals.UpdateCount)
@@ -323,6 +363,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			PostRun();
 		}
 
+		/// <summary>
+		/// Clears entity lists.
+		/// </summary>
 		private void OnComplete()
 		{
 			m_entitiesPruneAvoid.Clear();
@@ -347,6 +390,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Common
 
+		/// <summary>
+		/// Sets m_destWorld to the correct value.
+		/// </summary>
 		private void FillDestWorld()
 		{
 			m_currentPosition = m_autopilotGrid.GetCentre();
@@ -361,17 +407,30 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_logger.traceLog("final dest world: " + finalDestWorld + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
 		}
 
+		/// <summary>
+		/// Gets the top most entity of the destination entity, if it exists.
+		/// </summary>
+		/// <returns>The top most destination entity or null.</returns>
 		private MyEntity GetTopMostDestEntity()
 		{
 			return m_pickedDestination.Entity != null ? (MyEntity)m_pickedDestination.Entity.GetTopMostParent() : null;
 		}
 
+		/// <summary>
+		/// Get the entity autopilot will navigate relative to.
+		/// </summary>
+		/// <returns>The entity autopilot will navigate relative to.</returns>
 		private MyEntity GetRelativeEntity()
 		{
 			Obstruction obstruct = m_obstructingEntity;
 			return obstruct.Entity != null && obstruct.MatchPosition ? obstruct.Entity : GetTopMostDestEntity();
 		}
 
+		/// <summary>
+		/// Tests whether of not the specified entity is moving away and is not the top-most destination entity.
+		/// </summary>
+		/// <param name="obstruction">The entity to test for moving away.</param>
+		/// <returns>True iff the entity is moving away.</returns>
 		private bool ObstructionMovingAway(MyEntity obstruction)
 		{
 			m_logger.debugLog("obstruction == null", Logger.severity.FATAL, condition: obstruction == null);
@@ -422,6 +481,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// Enumerable for entities which are not normally ignored.
 		/// </summary>
+		/// <param name="fromPruning">The list of entities from MyGamePruningStrucure</param>
+		/// <returns>Enumerable for entities which are not normally ignored.</returns>
 		private IEnumerable<MyEntity> CollectEntities(List<MyEntity> fromPruning)
 		{
 			for (int i = fromPruning.Count - 1; i >= 0; i--)
@@ -462,6 +523,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Test Path
 
+		/// <summary>
+		/// Test the current path for obstructions, sets the move direction and distance, and starts pathfinding if the current path cannot be travelled.
+		/// </summary>
 		private void TestCurrentPath()
 		{
 			if (m_path.HasTarget)
@@ -576,6 +640,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// if autopilot is off course, try to move back towards the line from last reached to current node
 		/// </summary>
+		/// <param name="distReached">Estimated distance along the path before encountering an obstruction. </param>
 		private bool TryRepairPath(float distReached)
 		{
 			if (distReached < 1f)
@@ -784,7 +849,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// For most entities add it to m_entitiesPruneAvoid. For voxel set m_checkVoxel.
 		/// </summary>
-		/// <param name="entity"></param>
+		/// <param name="entity">If it is a voxel, set m_checkVoxel = true, otherwise added to m_entitiesPruneAvoid.</param>
 		private void AvoidEntity(MyEntity entity)
 		{
 			if (entity is MyVoxelBase)
@@ -793,6 +858,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_entitiesPruneAvoid.Add(entity);
 		}
 
+		/// <summary>
+		/// Calculate repulsion for a specified sphere.
+		/// </summary>
 		/// <param name="sphere">The sphere which is repulsing the autopilot.</param>
 		/// <param name="repulsion">Vector to which the repulsive force of sphere will be added.</param>
 		private void CalcRepulsion(ref SphereClusters.RepulseSphere sphere, ref Vector3 repulsion)
@@ -828,6 +896,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>
 		/// For testing if the current path is obstructed by any entity in m_entitiesPruneAvoid.
 		/// </summary>
+		/// <param name="obstructingEntity">An entity that is blocking the current path.</param>
+		/// <param name="obstructBlock">The block to report as blocking the path.</param>
+		/// <param name="distance">Estimated distance along the path before encountering an obstruction.</param>
+		/// <returns>True iff the current path is obstructed.</returns>
 		private bool CurrentObstructed(out MyEntity obstructingEntity, out MyCubeBlock obstructBlock, out float distance)
 		{
 			m_logger.debugLog("m_moveDirection: " + m_moveDirection, Logger.severity.FATAL, condition: Math.Abs(m_moveDirection.LengthSquared() - 1f) > 0.01f);
@@ -906,6 +978,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Jump
 
+		/// <summary>
+		/// Attempt to jump the ship towards m_pickedDestination.
+		/// </summary>
+		/// <returns>True if the ship is going to jump.</returns>
 		private bool TryJump()
 		{
 			if (Globals.UpdateCount < m_nextJumpAttempt)
@@ -941,8 +1017,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 
 		/// <summary>
-		/// Based on MyGridJumpDriveSystem.RequestJump
+		/// Based on MyGridJumpDriveSystem.RequestJump. If the ship is allowed to jump, requests the jump system jump the ship.
 		/// </summary>
+		/// <returns>True if Pathfinder has requested a jump.</returns>
 		private bool RequestJump()
 		{
 			MyCubeBlock apBlock = (MyCubeBlock)Mover.Block.CubeBlock;

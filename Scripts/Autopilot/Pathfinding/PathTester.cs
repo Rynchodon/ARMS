@@ -18,12 +18,20 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
 {
+	/// <summary>
+	/// Performs the comutations necessary to determine whether or not a path is clear.
+	/// </summary>
 	public class PathTester
 	{
 
+		/// <summary>
+		/// Standard inputs for PathTester's public functions.
+		/// </summary>
 		public struct TestInput : IEquatable<TestInput>
 		{
+			/// <summary>Difference between the current position of the ship and the start of the path segment.</summary>
 			public Vector3D Offset;
+			/// <summary>The direction of travel</summary>
 			public Vector3 Direction;
 			/// <summary>Really distance, but Length is more visually distinct from Direction.</summary>
 			public float Length;
@@ -39,6 +47,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 		}
 
+		/// <summary>
+		/// Results for entities that are not voxels.
+		/// </summary>
 		public struct GridTestResult
 		{
 			public static readonly GridTestResult Default = new GridTestResult() { m_proximity = float.MaxValue };
@@ -61,6 +72,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			public MyCubeBlock ObstructingBlock;
 		}
 
+		/// <summary>
+		/// Results for voxel tests.
+		/// </summary>
 		public struct VoxelTestResult
 		{
 			public static readonly VoxelTestResult Default = new VoxelTestResult() { m_proximity = float.MaxValue };
@@ -112,6 +126,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return new Vector2I((int)Math.Round(vector.X / gridSize), (int)Math.Round(vector.Y / gridSize));
 		}
 
+		/// <summary>
+		/// Adjusts input for the autopilot's velocity and entity's velocity.
+		/// </summary>
+		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
+		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot and entity.</param>
+		/// <param name="entity">The potential obstruction</param>
 		public void AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
 		{
 #if DEBUG
@@ -121,11 +141,22 @@ namespace Rynchodon.Autopilot.Pathfinding
 			in_AdjustForCurrentVelocity(ref input, out adjusted, entity);
 		}
 
+		/// <summary>
+		/// Adjusts input for the autopilot's velocity.
+		/// </summary>
+		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
+		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot.</param>
 		public void AdjustForCurrentVelocityVoxel(ref TestInput input, out TestInput adjust)
 		{
 			in_AdjustForCurrentVelocity(ref input, out adjust, null);
 		}
 
+		/// <summary>
+		/// Adjusts input for the autopilot's velocity and entity's velocity.
+		/// </summary>
+		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
+		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot and entity.</param>
+		/// <param name="entity">The potential obstruction</param>
 		private void in_AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
 		{
 			Vector3 autopilotVelocity = AutopilotGrid.Physics.LinearVelocity;
@@ -154,8 +185,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 			adjusted.Length = Math.Min(input.Length, 20f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor);
 		}
 
-		/// <param name="offset">Added to current position of ship's blocks.</param>
-		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
+		/// <summary>
+		/// Tests if a section of space can be travelled without hitting the specified entity.
+		/// </summary>
+		/// <param name="entity">The potential obstruction</param>
+		/// <param name="ignoreBlock">Null or the block autopilot is trying to connect with.</param>
+		/// <param name="input"><see cref="TestInput"/></param>
+		/// <param name="result"><see cref="GridTestResult"/></param>
+		/// <returns>True if the specified entity obstructs the path.</returns>
 		public bool ObstructedBy(MyEntity entity, MyCubeBlock ignoreBlock, ref TestInput input, out GridTestResult result)
 		{
 			//Logger.DebugLog("checking: " + entity.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector + ", rejection distance: " + rejectionDistance);
@@ -207,10 +244,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return false;
 		}
 
+		/// <summary>
+		/// Tests a grid for obstructing the ship via vector rejection.
+		/// </summary>
 		/// <param name="oGrid">The grid that may obstruct this one.</param>
 		/// <param name="ignoreBlock">Block to ignore, or null</param>
-		/// <param name="rejectionVector">Direction of travel of autopilot ship, should be normalized</param>
-		/// <param name="offset">Difference between the current position of the autopilot ship and where it will be.</param>
+		/// <param name="input"><see cref="TestInput"/></param>
+		/// <param name="result"><see cref="GridTestResult"/></param>
+		/// <returns>True if oGrid is blocking the ship.</returns>
 		private bool RejectionIntersects(MyCubeGrid oGrid, MyCubeBlock ignoreBlock, ref TestInput input, ref GridTestResult result)
 		{
 			//Logger.DebugLog("Rejection vector is not normalized, length squared: " + rejectionVector.LengthSquared(), Logger.severity.FATAL, condition: Math.Abs(rejectionVector.LengthSquared() - 1f) > 0.001f);
@@ -380,9 +421,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// Sphere test for simple entities, like floating objects, and for avoiding dangerous ships tools.
 		/// </summary>
 		/// <param name="entity">The entity to test.</param>
-		/// <param name="offset">Difference between current postiong and where the ship will be</param>
-		/// <param name="rejectionVector">Direction of movement vector</param>
-		/// <param name="rejectionDistance">Distance of movement</param>
+		/// <param name="input"><see cref="TestInput"/></param>
+		/// <param name="result"><see cref="GridTestResult"/></param>
+		/// <returns>True if the entity is obstructing the ship.</returns>
 		private bool SphereTest(MyEntity entity, ref TestInput input, ref GridTestResult result)
 		{
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
@@ -415,16 +456,27 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return false;
 		}
 
+		/// <summary>
+		/// Tests if the vector from currentPosition to obstructPosition is in the same direction as rejectionDirection.
+		/// </summary>
+		/// <param name="obstructPosition">Position of the obstruction</param>
+		/// <param name="currentPosition">Current position of the ship</param>
+		/// <param name="rejectionDirection">Direction of travel.</param>
+		/// <returns>True if the vector from currentPosition to obstructPosition is in the same direction as rejectionDirection.</returns>
 		private bool IsRejectionTowards(ref Vector3D obstructPosition, ref Vector3D currentPosition, ref Vector3D rejectionDirection)
 		{
 			Vector3D toObstruction; Vector3D.Subtract(ref obstructPosition, ref currentPosition, out toObstruction);
 			double dot = toObstruction.Dot(ref rejectionDirection);
-			return dot >= 0d;// || dot / toObstruction.Length() >= -0.5d;
+			return dot >= 0d;
 		}
 
 		/// <summary>
 		/// Tests if autopilot's ship would endanger a grid with a ship tool.
 		/// </summary>
+		/// <param name="grid">The grid that is potentially endangered.</param>
+		/// <param name="input"><see cref="TestInput"/></param>
+		/// <param name="result"><see cref="GridTestResult"/></param>
+		/// True if the ship would endanger grid.
 		private bool EndangerGrid(MyCubeGrid grid, ref TestInput input, ref GridTestResult result)
 		{
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
@@ -456,17 +508,32 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return false;
 		}
 
-		private bool ToolObstructed(MyCubeBlock drill, ref Vector3D gridPosition, float gridRadius, ref Vector3D rejectDisp, ref GridTestResult result)
+		/// <summary>
+		/// Tests if a specified tool will endager a grid at gridPosition.
+		/// </summary>
+		/// <param name="tool">The hazardous tool.</param>
+		/// <param name="gridPosition">The positon of the grid.</param>
+		/// <param name="gridRadius">The radius around gridPosition which the tool must not intersect.</param>
+		/// <param name="rejectDisp">The displacement of travel.</param>
+		/// <param name="result"><see cref="GridTestResult"/></param>
+		/// <returns>True if tool would endanger a grid at gridPosition.</returns>
+		private bool ToolObstructed(MyCubeBlock tool, ref Vector3D gridPosition, float gridRadius, ref Vector3D rejectDisp, ref GridTestResult result)
 		{
-			m_lineSegment.From = drill.PositionComp.GetPosition();
+			m_lineSegment.From = tool.PositionComp.GetPosition();
 			m_lineSegment.To = m_lineSegment.From + rejectDisp;
 			Vector3D closest;
 			result.Distance = (float)m_lineSegment.ClosestPoint(ref gridPosition, out closest);
 			double distance; Vector3D.Distance(ref gridPosition, ref closest, out distance);
-			result.Proximity = (float)distance - (gridRadius + drill.PositionComp.LocalVolume.Radius + 5f);
+			result.Proximity = (float)distance - (gridRadius + tool.PositionComp.LocalVolume.Radius + 5f);
 			return result.Proximity <= 0f;
 		}
 
+		/// <summary>
+		/// Tests if the ship is obstructed by any voxel.
+		/// </summary>
+		/// <param name="input"><see cref="TestInput"/></param>
+		/// <param name="result"><see cref="VoxelTestResult"/></param>
+		/// <returns>True iff a voxel is obstructing the ship.</returns>
 		public bool RayCastIntersectsVoxel(ref TestInput input, out VoxelTestResult result)
 		{
 			Profiler.StartProfileBlock();

@@ -13,6 +13,8 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
 {
+	// see Pathfinder.cs for Summary & Remarks
+	// contains the low-level/pathfinding parts of Pathfinder
 	public partial class Pathfinder
 	{
 
@@ -59,6 +61,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Setup
 
+		/// <summary>
+		/// Prepares forwards & backwards sets for pathfinding and starts the process.
+		/// </summary>
 		private void StartPathfinding()
 		{
 			m_path.Clear();
@@ -86,6 +91,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_forward.m_targets = m_backwardList;
 		}
 
+		/// <summary>
+		/// Prepares the backwards sets for pathfinding.
+		/// </summary>
+		/// <param name="referencePosition">The position from which all pathfinding nodes for all sets will have a discrete distance.</param>
+		/// <param name="maxNodeDistance">The maximum distance between nodes.</param>
 		private void SetupBackward(out Vector3D referencePosition, int maxNodeDistance)
 		{
 			referencePosition = default(Vector3D);
@@ -110,6 +120,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				throw new Exception("no backwards set! destination count: " + m_destinations.Length);
 		}
 
+		/// <summary>
+		/// Prepares the forwards set for pathfinding.
+		/// </summary>
+		/// <param name="referencePosition">The position from which all pathfinding nodes for all sets will have a discrete distance.</param>
+		/// <param name="maxNodeDistance">The maximum distance between nodes.</param>
 		private void SetupForward(ref Vector3D referencePosition, int maxNodeDistance)
 		{
 			m_logger.debugLog("m_obstructingEntity.Entity == null", Logger.severity.FATAL, condition: m_obstructingEntity.Entity == null);
@@ -123,6 +138,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_path.AddFront(ref m_forward.m_startPosition);
 		}
 
+		/// <summary>
+		/// Remove all sets from m_backwardList.
+		/// </summary>
 		private void ClearBackwards()
 		{
 			if (m_backwardList == null)
@@ -140,6 +158,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 		}
 
+		/// <summary>
+		/// Fill and clean m_backwardList.
+		/// </summary>
 		private void CreateBackwards()
 		{
 			if (m_backwardList != null)
@@ -162,6 +183,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 					m_backwardList[i] = ResourcePool<FindingSet>.Get();
 		}
 
+		/// <summary>
+		/// Converts a destination to a node position.
+		/// </summary>
+		/// <param name="dest">The destination to get the position from.</param>
+		/// <param name="fromObsPos">The node position.</param>
 		private void GetFromObsPosition(Destination dest, out Vector3D fromObsPos)
 		{
 			Vector3D destWorld = dest.WorldPosition();
@@ -173,6 +199,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#endregion
 		
+		/// <summary>
+		/// Main entry point while pathfinding.
+		/// </summary>
 		private void ContinuePathfinding()
 		{
 			if (m_waitUntil > Globals.UpdateCount)
@@ -543,12 +572,21 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return false;
 		}
 
+		/// <summary>
+		/// Sets the state to failed and sets wait.
+		/// </summary>
 		private void PathfindingFailed()
 		{
 			m_waitUntil = Globals.UpdateCount + 600uL;
 			CurrentState = State.FailedToFindPath;
 		}
 
+		/// <summary>
+		/// Upon completion of pathfinding, this method builds the path that autopilot will have to follow.
+		/// </summary>
+		/// <param name="forwardHash">Position hash of the forward node that was reached.</param>
+		/// <param name="backward">The backward set that was reached.</param>
+		/// <param name="backwardHash">Position hash of the backward node that was reached.</param>
 		private void BuildPath(long forwardHash, PathNodeSet backward = null, long backwardHash = 0L)
 		{
 			m_path.Clear();
@@ -650,6 +688,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 			SetNextPathTarget();
 		}
 
+		/// <summary>
+		/// Sets the next reachable waypoint in m_path as Pathfinder's target.
+		/// </summary>
+		/// <returns>True iff any waypoint can be reached.</returns>
 		private bool SetNextPathTarget()
 		{
 			m_logger.debugLog("Path is empty", Logger.severity.ERROR, condition: m_path.Count == 0);
@@ -682,6 +724,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Debug & Profile
 
+		/// <summary>
+		/// Constructs a string containing the supplied position and its world translation.
+		/// </summary>
+		/// <param name="position">The relative position of a node.</param>
+		/// <returns>A string containing the supplied position and its world translation.</returns>
 		private string ReportRelativePosition(Vector3D position)
 		{
 			return position + " => " + (position + m_obstructingEntity.GetPosition());
@@ -705,6 +752,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private List<IMyGps> m_allGpsList = new List<IMyGps>();
 #endif
 
+		/// <summary>
+		/// Show the position of a node on the HUD using GPS marker.
+		/// </summary>
+		/// <param name="currentNode">The node which will have its position shown.</param>
+		/// <param name="name">The name to give the GPS marker.</param>
 		[System.Diagnostics.Conditional("DEBUG")]
 		private void ShowPosition(PathNode currentNode, string name = null)
 		{
@@ -723,6 +775,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 #endif
 		}
 
+		/// <summary>
+		/// Remove ALL temporary GPS markers.
+		/// </summary>
 		[System.Diagnostics.Conditional("DEBUG")]
 		private void PurgeTempGPS()
 		{
