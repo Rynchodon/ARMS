@@ -1,5 +1,5 @@
-# Autopilot
-Autopilot is a mod for [Space Engineers](http://www.spaceengineersgame.com/)
+# ARMS
+ARMS is a mod for [Space Engineers](http://www.spaceengineersgame.com/)
 that provides a simple interface for automated sequences of piloting actions
 like navigation, engagement, collision avoidance, docking, and more.
 
@@ -13,7 +13,7 @@ feature list.
 
 ## Getting started
 If you'd simply like to use the mod, please subscribe to it via the Steam
-Workshop as you normally would and enable it on your save or server.
+Workshop as you normally would and download [Load-ARMS](https://github.com/Rynchodon/Load-ARMS) and follow the readme instructions.
 
 To work with a local development copy of this mod instead, follow the steps
 listed [on the wiki](https://github.com/Rynchodon/Autopilot/wiki/Developing-Autopilot).
