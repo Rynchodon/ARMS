@@ -77,7 +77,7 @@ namespace Rynchodon.AntennaRelay
 
 		public Player()
 		{
-			myLogger = new Logger(() => myPlayer.DisplayName) { MinimumLevel = Logger.severity.TRACE };
+			myLogger = new Logger(() => myPlayer.DisplayName);
 
 			Data.Add(UserSettings.ByteSettingName.EnemiesOnHUD, new GpsData());
 			Data.Add(UserSettings.ByteSettingName.NeutralOnHUD, new GpsData());
@@ -138,7 +138,7 @@ namespace Rynchodon.AntennaRelay
 				}
 				else
 				{
-					myLogger.debugLog("player controlling incompatible entity: " + controlled.getBestName(), Logger.severity.TRACE);
+					myLogger.traceLog("player controlling incompatible entity: " + controlled.getBestName(), Logger.severity.TRACE);
 					m_storage = null;
 					m_soundEmitter = null;
 					m_threat = null;
@@ -147,7 +147,7 @@ namespace Rynchodon.AntennaRelay
 			}
 			else if (m_storage == null || m_storage.Invoke() == null)
 			{
-				myLogger.debugLog("no storage", Logger.severity.TRACE);
+				myLogger.traceLog("no storage", Logger.severity.TRACE);
 				m_threat = null;
 				return;
 			}
@@ -174,7 +174,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_storage == null)
 			{
-				myLogger.debugLog("no storage getter");
+				myLogger.traceLog("no storage getter");
 				return;
 			}
 
@@ -182,13 +182,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (store == null)
 			{
-				myLogger.debugLog("no storage");
+				myLogger.traceLog("no storage");
 				return;
 			}
 
 			if (store.LastSeenCount == 0)
 			{
-				myLogger.debugLog("No LastSeen");
+				myLogger.traceLog("No LastSeen");
 				return;
 			}
 
@@ -206,7 +206,7 @@ namespace Rynchodon.AntennaRelay
 
 				if (seen.isRecent_Broadcast())
 				{
-					//myLogger.debugLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
+					//myLogger.traceLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
 					return;
 				}
 
@@ -300,7 +300,7 @@ namespace Rynchodon.AntennaRelay
 				MyEntity entity = relateData.entities[index];
 				if (entity != null)
 				{
-					myLogger.debugLog("detritus: " + entity.nameWithId());
+					myLogger.traceLog("detritus: " + entity.nameWithId());
 					MyHud.LocationMarkers.UnregisterMarker(entity);
 					relateData.entities[index] = null;
 				}
@@ -414,7 +414,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_storage == null)
 			{
-				myLogger.debugLog("no storage getter");
+				myLogger.traceLog("no storage getter");
 				return;
 			}
 
@@ -422,7 +422,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (store == null)
 			{
-				myLogger.debugLog("no storage");
+				myLogger.traceLog("no storage");
 				return;
 			}
 

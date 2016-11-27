@@ -1,7 +1,6 @@
 ﻿using System;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
-using VRage;
 
 namespace Rynchodon.Threading
 {
@@ -10,12 +9,19 @@ namespace Rynchodon.Threading
 
 		private const int QueueOverflow = 1000000;
 
+		private static readonly int StaticMaxParallel;
+		private static int StaticParallel;
+		private static readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
+
+		static ThreadManager()
+		{
+			StaticMaxParallel = Math.Max(Environment.ProcessorCount - 2, 1);
+		}
+
 		private readonly Logger myLogger = new Logger();
 
 		private readonly bool Background;
 		private readonly string ThreadName;
-
-		private readonly FastResourceLock lock_parallelTasks = new FastResourceLock();
 
 		private LockedQueue<Action> ActionQueue = new LockedQueue<Action>(8);
 
@@ -50,7 +56,7 @@ namespace Rynchodon.Threading
 			ActionQueue.Enqueue(toQueue);
 			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
-			if (ParallelTasks >= AllowedParallel)
+			if (ParallelTasks >= AllowedParallel || StaticParallel >= StaticMaxParallel)
 				return;
 
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
@@ -71,9 +77,10 @@ namespace Rynchodon.Threading
 		{
 			using (lock_parallelTasks.AcquireExclusiveUsing())
 			{
-				if (ParallelTasks >= AllowedParallel)
+				if (ParallelTasks >= AllowedParallel || StaticParallel >= StaticMaxParallel)
 					return;
 				ParallelTasks++;
+				StaticParallel++;
 			}
 			try
 			{
@@ -96,7 +103,10 @@ namespace Rynchodon.Threading
 			finally
 			{
 				using (lock_parallelTasks.AcquireExclusiveUsing())
+				{
 					ParallelTasks--;
+					StaticParallel--;
+				}
 				ThreadTracker.ThreadName = null;
 			}
 		}

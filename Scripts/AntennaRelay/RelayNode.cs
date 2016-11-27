@@ -75,7 +75,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (value_storage != null)
 				{
-					m_logger.debugLog("new storage, primary node: " + value_storage.PrimaryNode.LoggingName +
+					m_logger.traceLog("new storage, primary node: " + value_storage.PrimaryNode.LoggingName +
 						" => " + value.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 					// one ways are no longer valid
@@ -87,7 +87,7 @@ namespace Rynchodon.AntennaRelay
 						value_storage.RemoveMessageHandler(EntityId);
 				}
 				else
-					m_logger.debugLog("new storage, primary node: " + value.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+					m_logger.traceLog("new storage, primary node: " + value.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 
 				if (value != null && MessageHandler != null)
 					value.AddMessageHandler(EntityId, MessageHandler);
@@ -111,7 +111,7 @@ namespace Rynchodon.AntennaRelay
 		public RelayNode(IMyCubeBlock block)
 		{
 			this.m_loggingName = () => block.DisplayNameText;
-			this.m_logger = new Logger(block) { MinimumLevel = Logger.severity.INFO };
+			this.m_logger = new Logger(block);
 			this.m_ownerId = () => block.OwnerId;
 			this.m_entity = block;
 			this.m_comp_blockAttach = block;
@@ -133,7 +133,7 @@ namespace Rynchodon.AntennaRelay
 			IMyPlayer player = character.GetPlayer_Safe();
 
 			this.m_loggingName = () => player.DisplayName;
-			this.m_logger = new Logger(this.m_loggingName) { MinimumLevel = Logger.severity.INFO };
+			this.m_logger = new Logger(this.m_loggingName);
 			this.m_ownerId = () => player.PlayerID;
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
@@ -148,7 +148,7 @@ namespace Rynchodon.AntennaRelay
 		public RelayNode(IMyEntity missile, Func<long> ownerId, ComponentRadio radio)
 		{
 			this.m_loggingName = missile.getBestName;
-			this.m_logger = new Logger(missile) { MinimumLevel = Logger.severity.INFO };
+			this.m_logger = new Logger(missile);
 			this.m_ownerId = ownerId;
 			this.m_entity = missile;
 			this.m_comp_radio = radio;
@@ -179,13 +179,13 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (m_directConnect.Add(node))
 					{
-						m_logger.debugLog("Now connected to " + node.LoggingName, Logger.severity.DEBUG);
+						m_logger.traceLog("Now connected to " + node.LoggingName, Logger.severity.DEBUG);
 
 						if (this.Storage == null)
 						{
 							if (node.Storage != null)
 							{
-								m_logger.debugLog("Using storage from other node: " + node.LoggingName
+								m_logger.traceLog("Using storage from other node: " + node.LoggingName
 									+ ", primary: " + node.Storage.PrimaryNode.LoggingName, Logger.severity.DEBUG);
 								this.Storage = node.Storage;
 							}
@@ -195,25 +195,25 @@ namespace Rynchodon.AntennaRelay
 							// should prefer blocks since they are less likely to be removed from world while offline
 							if (this.Block != null && node.Block == null)
 							{
-								m_logger.debugLog("Nodes have different storages, copying to this node's storage because this node is a block", Logger.severity.DEBUG);
+								m_logger.traceLog("Nodes have different storages, copying to this node's storage because this node is a block", Logger.severity.DEBUG);
 								node.Storage.CopyTo(this.Storage);
 								node.Storage = this.Storage;
 							}
 							else if (this.Block == null && node.Block != null)
 							{
-								m_logger.debugLog("Nodes have different storages, copying to other node's storage beacause other node is a block", Logger.severity.DEBUG);
+								m_logger.traceLog("Nodes have different storages, copying to other node's storage beacause other node is a block", Logger.severity.DEBUG);
 								this.Storage.CopyTo(node.Storage);
 								this.Storage = node.Storage;
 							}
 							else if (this.Storage.Size < node.Storage.Size)
 							{
-								m_logger.debugLog("Nodes have different storages, copying to other node's storage", Logger.severity.DEBUG);
+								m_logger.traceLog("Nodes have different storages, copying to other node's storage", Logger.severity.DEBUG);
 								this.Storage.CopyTo(node.Storage);
 								this.Storage = node.Storage;
 							}
 							else
 							{
-								m_logger.debugLog("Nodes have different storages, copying to this node's storage", Logger.severity.DEBUG);
+								m_logger.traceLog("Nodes have different storages, copying to this node's storage", Logger.severity.DEBUG);
 								node.Storage.CopyTo(this.Storage);
 								node.Storage = this.Storage;
 							}
@@ -224,7 +224,7 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (m_directConnect.Remove(node))
 					{
-						m_logger.debugLog("No longer connected to " + node.LoggingName, Logger.severity.DEBUG);
+						m_logger.traceLog("No longer connected to " + node.LoggingName, Logger.severity.DEBUG);
 						checkPrimary = true;
 					}
 				}
@@ -234,7 +234,7 @@ namespace Rynchodon.AntennaRelay
 					{
 						if (m_oneWayConnect.Add(node))
 						{
-							m_logger.debugLog("New one-way connection to " + node.LoggingName, Logger.severity.DEBUG);
+							m_logger.traceLog("New one-way connection to " + node.LoggingName, Logger.severity.DEBUG);
 							Storage.AddPushTo(node);
 						}
 					}
@@ -242,7 +242,7 @@ namespace Rynchodon.AntennaRelay
 					{
 						if (m_oneWayConnect.Remove(node))
 						{
-							m_logger.debugLog("Lost one-way connection to " + node.LoggingName, Logger.severity.DEBUG);
+							m_logger.traceLog("Lost one-way connection to " + node.LoggingName, Logger.severity.DEBUG);
 							Storage.RemovePushTo(node);
 						}
 					}
@@ -260,11 +260,11 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			// connections don't update immediately, so don't worry about a single message (per block)
-			m_logger.debugLog("Not connected to primary node", Logger.severity.INFO, condition: !IsConnectedTo(Storage.PrimaryNode));
+			m_logger.traceLog("Not connected to primary node", Logger.severity.INFO, condition: !IsConnectedTo(Storage.PrimaryNode));
 
 			IMyEntity topEntity = m_entity.GetTopMostParent();
 
-			m_logger.debugLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
+			m_logger.traceLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
 			RelayStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
 
 			if (Storage.VeryRecentRadarInfo(topEntity.EntityId))
@@ -295,9 +295,9 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (this.m_comp_radio != null && other.m_comp_radio != null && this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
 					if (s_sendPositionTo.Add(other.Storage))
-						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
+						m_logger.traceLog("Hostile receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
 					else
-						m_logger.debugLog("Hostile receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
+						m_logger.traceLog("Hostile receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
 				return CommunicationType.None;
 			}
 
@@ -323,9 +323,9 @@ namespace Rynchodon.AntennaRelay
 				// check beacon to radio antenna
 				if (this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)
 					if (s_sendPositionTo.Add(other.Storage))
-						m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
+						m_logger.traceLog("Friendly receiver in range: " + other.LoggingName + ", new storage: " + other.Storage.PrimaryNode.LoggingName);
 					else
-						m_logger.debugLog("Friendly receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
+						m_logger.traceLog("Friendly receiver in range: " + other.LoggingName + ", existing storage: " + other.Storage.PrimaryNode.LoggingName);
 			}
 
 			return CommunicationType.None;

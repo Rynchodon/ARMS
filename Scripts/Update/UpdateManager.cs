@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
@@ -15,7 +14,6 @@ using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
-using Sandbox.Game.World;
 using Sandbox.ModAPI;
 using VRage.FileSystem;
 using VRage.Game;
@@ -119,9 +117,6 @@ namespace Rynchodon.Update
 				var od = new OreDetector(block);
 				RegisterForUpdates(1000, od.Update, block);
 			});
-
-			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bImmortalMiner))
-				new ImmortalMiner();
 		}
 
 		/// <summary>
@@ -361,6 +356,7 @@ namespace Rynchodon.Update
 			#endregion
 
 			new ChatHandler();
+			Globals.Update100();
 			RegisterForUpdates(100, Globals.Update100);
 		}
 
@@ -399,6 +395,8 @@ namespace Rynchodon.Update
 		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
 		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
+			if (Globals.WorldClosed)
+				return;
 			Instance.ExternalRegistrations.Enqueue(() => {
 				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
 			});
@@ -406,32 +404,32 @@ namespace Rynchodon.Update
 
 		public static void Unregister(uint frequency, Action toInvoke)
 		{
+			if (Globals.WorldClosed)
+				return;
 			Instance.ExternalRegistrations.Enqueue(() => {
 				Instance.UnRegisterForUpdates(frequency, toInvoke);
 			});
 		}
 
-		private Dictionary<uint, List<Action>> UpdateRegistrar;
+		private Dictionary<uint, List<Action>> UpdateRegistrar = new Dictionary<uint, List<Action>>();
 
-		private Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors;
+		private Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
 		/// <summary>For scripts that use a separate condition to determine if they run for a block.</summary>
-		private List<Action<IMyCubeBlock>> EveryBlockScriptConstructors;
+		private List<Action<IMyCubeBlock>> EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
 		/// <summary>For scripts that run on IMyCharacter entities.</summary>
-		private List<Action<IMyCharacter>> CharacterScriptConstructors;
-		private List<Action<IMyCubeGrid>> GridScriptConstructors;
+		private List<Action<IMyCharacter>> CharacterScriptConstructors = new List<Action<IMyCharacter>>();
+		private List<Action<IMyCubeGrid>> GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
 		private enum Status : byte { Not_Initialized, Initialized, Started, Terminated }
 		private Status ManagerStatus = Status.Not_Initialized;
 
-		private LockedQueue<Action> AddRemoveActions;
-		private LockedQueue<Action> ExternalRegistrations;
-		private List<IMyPlayer> playersAPI;
-		private List<IMyPlayer> playersCached;
+		private LockedQueue<Action> AddRemoveActions = new LockedQueue<Action>();
+		private LockedQueue<Action> ExternalRegistrations = new LockedQueue<Action>();
 
 		private HashSet<long> CubeBlocks = new HashSet<long>();
 		private HashSet<long> Characters = new HashSet<long>();
 
-		private readonly Logger myLogger;
+		private Logger myLogger;
 
 		private DateTime m_lastUpdate;
 
@@ -459,20 +457,6 @@ namespace Rynchodon.Update
 				myLogger.debugLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
 				AttributeFinder.InvokeMethodsWithAttribute<OnWorldLoad>();
 				MyAPIGateway.Entities.OnCloseAll += UnloadData;
-
-				Saver.Instance.Initialize();
-
-				UpdateRegistrar = new Dictionary<uint, List<Action>>();
-				AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
-				EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
-				CharacterScriptConstructors = new List<Action<IMyCharacter>>();
-				GridScriptConstructors = new List<Action<IMyCubeGrid>>();
-
-				playersAPI = new List<IMyPlayer>();
-				playersCached = new List<IMyPlayer>();
-
-				AddRemoveActions = new LockedQueue<Action>(8);
-				ExternalRegistrations = new LockedQueue<Action>(1);
 
 				if (!MyAPIGateway.Multiplayer.MultiplayerActive)
 				{
@@ -844,14 +828,19 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void Grid_OnClosing(IMyEntity gridAsEntity)
 		{
-			myLogger.debugLog("entered Grid_OnClosing(): " + gridAsEntity.getBestName());
+			// myLogger may be null, so log with Logger...
+
 			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			asGrid.OnClosing -= Grid_OnClosing;
-			myLogger.debugLog("leaving Grid_OnClosing(): " + gridAsEntity.getBestName());
 		}
 
 		#endregion
+
+		public override void SaveData()
+		{
+			AttributeFinder.InvokeMethodsWithAttribute<OnWorldSave>();
+		}
 
 		protected override void UnloadData()
 		{
@@ -870,22 +859,12 @@ namespace Rynchodon.Update
 				Profiler.Write();
 			}
 
+			// in case SE doesn't clean up properly, clear all fields
+			foreach (FieldInfo field in GetType().GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+				if (!field.IsLiteral && !field.IsInitOnly)
+					field.SetValue(this, null);
+
 			ManagerStatus = Status.Terminated;
-
-			UpdateRegistrar = null;
-			AllBlockScriptConstructors = null;
-			EveryBlockScriptConstructors = null;
-			CharacterScriptConstructors = null;
-			GridScriptConstructors = null;
-
-			playersAPI = null;
-			playersCached = null;
-
-			AddRemoveActions = null;
-			CubeBlocks = null;
-			Characters = null;
-
-			Instance = null;
 		}
 
 		/// <summary>

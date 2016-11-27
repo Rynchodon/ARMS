@@ -141,6 +141,12 @@ namespace Rynchodon
 			return X * X + Y * Y + Z * Z;
 		}
 
+		public static int DistanceSquared(ref Vector3I vec, ref Vector3I sec)
+		{
+			int X = vec.X - sec.X, Y = vec.Y - sec.Y, Z = vec.Z - sec.Z;
+			return X * X + Y * Y + Z * Z;
+		}
+
 		public static Matrix OuterProduct(this Vector3 first, ref Vector3 second, out Matrix result)
 		{
 			result = new Matrix()

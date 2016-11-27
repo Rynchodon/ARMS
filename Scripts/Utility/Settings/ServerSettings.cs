@@ -72,7 +72,7 @@ namespace Rynchodon.Settings
 		private System.IO.TextWriter settingsWriter;
 		private Logger myLogger = new Logger();
 		private Version fileVersion;
-		private Version m_currentVersion;
+		private Version m_currentVersion, m_serverVersion;
 		private bool m_settingsLoaded;
 
 		[OnWorldClose]
@@ -83,12 +83,13 @@ namespace Rynchodon.Settings
 
 		private ServerSettings()
 		{
-			m_currentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetCallingAssembly().Location));
+			m_currentVersion = new Version(FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location));
 			buildSettings();
 			m_settingsLoaded = false;
 
 			if (MyAPIGateway.Multiplayer.IsServer)
 			{
+				m_serverVersion = m_currentVersion;
 				m_settingsLoaded = true;
 				MessageHandler.SetHandler(MessageHandler.SubMod.ServerSettings, Server_ReceiveMessage);
 
@@ -127,6 +128,12 @@ namespace Rynchodon.Settings
 
 				List<byte> send = new List<byte>();
 				ByteConverter.AppendBytes(send, (byte)MessageHandler.SubMod.ServerSettings);
+
+				ByteConverter.AppendBytes(send, m_serverVersion.Major);
+				ByteConverter.AppendBytes(send, m_serverVersion.Minor);
+				ByteConverter.AppendBytes(send, m_serverVersion.Build);
+				ByteConverter.AppendBytes(send, m_serverVersion.Revision);
+
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowHacker));
@@ -152,6 +159,22 @@ namespace Rynchodon.Settings
 			try
 			{
 				myLogger.debugLog("Received settings from server");
+
+				m_serverVersion.Major = ByteConverter.GetInt(message, ref pos);
+				m_serverVersion.Minor = ByteConverter.GetInt(message, ref pos);
+				m_serverVersion.Build = ByteConverter.GetInt(message, ref pos);
+				m_serverVersion.Revision = ByteConverter.GetInt(message, ref pos);
+				
+				if (m_currentVersion.Major == m_serverVersion.Major && m_currentVersion.Minor == m_serverVersion.Minor && m_currentVersion.Build == m_serverVersion.Build)
+				{
+					if (m_currentVersion.Revision != m_serverVersion.Revision)
+						myLogger.alwaysLog("Server has different revision of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.WARNING);
+				}
+				else
+				{
+					myLogger.alwaysLog("Server has different version of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.FATAL);
+					return;
+				}
 
 				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
@@ -202,7 +225,7 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bImmortalMiner, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
 
-			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, 4));
+			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, (byte)(Math.Max(Environment.ProcessorCount / 2, 1))));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));

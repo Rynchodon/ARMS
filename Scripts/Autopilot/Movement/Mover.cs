@@ -1,9 +1,14 @@
+#if DEBUG
+//#define TRACE
+#endif
+
 using System;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
+using Sandbox.Game.GameSystems;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -102,8 +107,14 @@ namespace Rynchodon.Autopilot.Movement
 			this.Block = block;
 			this.NavSet = new AllNavigationSettings(block.CubeBlock);
 			this.RotateCheck = rotateCheck;
+			this.NavSet.AfterTaskComplete += NavSet_AfterTaskComplete;
 
 			CheckGrid();
+		}
+
+		private void NavSet_AfterTaskComplete()
+		{
+			MoveStuck = false;
 		}
 
 		/// <summary>
@@ -183,11 +194,11 @@ namespace Rynchodon.Autopilot.Movement
 			velocity = Vector3.Transform(velocity, directionToLocal);
 
 			Vector3 targetVelocity;
-			float distance;
-			if (destDisp != Vector3.Zero)
+			//float distance;
+			if (destDisp.LengthSquared() > 0.01f)
 			{
 				destDisp = Vector3.Transform(destDisp, directionToLocal);
-				distance = destDisp.Length();
+				float distance = destDisp.Length();
 
 				targetVelocity = MaximumVelocity(destDisp);
 
@@ -213,8 +224,6 @@ namespace Rynchodon.Autopilot.Movement
 			else
 			{
 				targetVelocity = Vector3.Zero;
-				//distance = 0f;
-				//m_lastAccel = Globals.UpdateCount;
 			}
 
 			targetVelocity += destVelocity;
@@ -249,16 +258,16 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
-			//m_logger.debugLog(string.Empty
-			//	//+ "block: " + block.Block.getBestName()
-			//	//+ ", dest point: " + destPoint
-			//	//+ ", position: " + block.WorldPosition
-			//	+ "destDisp: " + destDisp
-			//	+ ", destVelocity: " + destVelocity
-			//	+ ", targetVelocity: " + targetVelocity
-			//	+ ", velocity: " + velocity
-			//	+ ", m_moveAccel: " + m_moveAccel
-			//	+ ", moveForceRatio: " + m_moveForceRatio);
+			m_logger.traceLog(string.Empty
+				//+ "block: " + block.Block.getBestName()
+				//+ ", dest point: " + destPoint
+				//+ ", position: " + block.WorldPosition
+				+ "destDisp: " + destDisp
+				+ ", destVelocity: " + destVelocity
+				+ ", targetVelocity: " + targetVelocity
+				+ ", velocity: " + velocity
+				+ ", m_moveAccel: " + m_moveAccel
+				+ ", moveForceRatio: " + m_moveForceRatio);
 		}
 
 		private void CalcMove(ref Vector3 velocity)
@@ -857,7 +866,8 @@ namespace Rynchodon.Autopilot.Movement
 				//m_prevRollControl = rollControl;
 
 				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
-				Thrust.SetOverrides(ref gridMove);
+				Block.CubeGrid.Components.Get<MyEntityThrustComponent>().ControlThrust = gridMove;
+				//Thrust.SetOverrides(ref gridMove);
 			});
 		}
 

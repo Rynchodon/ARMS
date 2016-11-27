@@ -173,14 +173,22 @@
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
-    <Compile Include="Autopilot\Movement\IMover.cs" />
+    <None Include="Autopilot\Movement\IMover.cs" />
     <Compile Include="Autopilot\Movement\ThrustProfiler.cs" />
     <Compile Include="Autopilot\EnemyFinder.cs" />
     <Compile Include="Autopilot\GridFinder.cs" />
     <Compile Include="Autopilot\Harvest\OreDetector.cs" />
     <None Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
+    <Compile Include="Autopilot\Navigator\ALand.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\AMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\DepositFreeSpace.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\Miner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\EscapeMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\SurfaceMiner.cs" />
+    <Compile Include="Autopilot\Navigator\Mining\TunnelMiner.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />
@@ -196,13 +204,14 @@
     <Compile Include="Autopilot\Navigator\GOLIS.cs" />
     <Compile Include="Autopilot\Navigator\Grinder.cs" />
     <Compile Include="Autopilot\Navigator\Response\Kamikaze.cs" />
-    <Compile Include="Autopilot\Navigator\MinerVoxel.cs" />
     <Compile Include="Autopilot\Navigator\Orbiter.cs" />
     <Compile Include="Autopilot\Navigator\Response\Self_Destruct.cs" />
     <Compile Include="Autopilot\Navigator\Shopper.cs" />
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
-    <Compile Include="Autopilot\Pathfinding\ExpandingRings.cs" />
+    <Compile Include="Properties\VersionInfo - User.cs" />
+    <Compile Include="Update\DisableNotifyDownload.cs" />
+    <Compile Include="Utility\Collections\ExpandingRings.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_LowLevel.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder_Structs.cs" />
@@ -213,9 +222,9 @@
     <Compile Include="Autopilot\ShipAutopilot.cs" />
     <Compile Include="Autopilot\Solar.cs" />
     <Compile Include="AntennaRelay\RelayStorage.cs" />
-    <Compile Include="Programmable\Control Autopilot.cs" />
-    <Compile Include="Programmable\HandleDetectedEntities.cs" />
-    <Compile Include="Programmable\ProgrammableBlockCommunication.cs" />
+    <None Include="Programmable\Control Autopilot.cs" />
+    <None Include="Programmable\HandleDetectedEntities.cs" />
+    <None Include="Programmable\ProgrammableBlockCommunication.cs" />
     <Compile Include="AntennaRelay\ManualMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Update\Attributes.cs" />
@@ -237,6 +246,7 @@
     <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
     <Compile Include="Utility\EqualityComparer_Vector3D.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
     <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
     <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
     <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />
@@ -255,7 +265,7 @@
     <Compile Include="Utility\Collections\LockedQueue.cs" />
     <Compile Include="Utility\Collections\ReadOnlyList.cs" />
     <Compile Include="Utility\Collections\Registrar.cs" />
-    <Compile Include="Utility\Extensions\CapsuleExtensions.cs" />
+    <None Include="Utility\Extensions\CapsuleExtensions.cs" />
     <Compile Include="Utility\Extensions\DictionaryExtensions.cs" />
     <Compile Include="Utility\Extensions\ExtensionsRelations.cs" />
     <Compile Include="Utility\Extensions\IMyCubeBlockExtensions.cs" />
@@ -279,7 +289,6 @@
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />
     <Compile Include="Utility\RelativeDirection3F.cs" />
-    <Compile Include="Utility\RelativePosition3F.cs" />
     <Compile Include="Utility\Collections\ResourcePool.cs" />
     <Compile Include="Utility\Settings\ServerSettings.cs" />
     <Compile Include="Utility\Settings\Setting.cs" />
@@ -330,7 +339,6 @@
     <PostBuildEvent>python "$(SolutionDir)\..\.build\build.py" $(ConfigurationName)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>
-    </PreBuildEvent>
+    <PreBuildEvent>python "$(SolutionDir)\..\.build\pre-build.py" $(ConfigurationName)</PreBuildEvent>
   </PropertyGroup>
 </Project>

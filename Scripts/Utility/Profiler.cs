@@ -44,6 +44,7 @@ namespace Rynchodon.Utility
 		private class Stats
 		{
 			public MyTimeSpan TimeSpent;
+			public MyTimeSpan Worst = MyTimeSpan.Zero;
 			public long Invokes;
 		}
 
@@ -66,7 +67,7 @@ namespace Rynchodon.Utility
 		{
 			FileMaster master = new FileMaster("Profiler master.txt", "Profiler - ", 10);
 			System.IO.TextWriter writer = master.GetTextWriter(DateTime.UtcNow.Ticks + ".csv");
-			writer.WriteLine("Class Name, Method Name, Seconds, Invokes, Seconds per Invoke, Ratio of Sum, Ratio of Game Time");
+			writer.WriteLine("Class Name, Method Name, Seconds, Invokes, Seconds per Invoke, Worst Time, Ratio of Sum, Ratio of Game Time");
 
 			using (ProfileValues.m_lock.AcquireExclusiveUsing())
 			{
@@ -95,7 +96,7 @@ namespace Rynchodon.Utility
 			if (ProfileValues.m_block == null)
 				ProfileValues.m_block = new Stack<Block>();
 			if (profileFilePath.Contains("\\"))
-				profileFilePath = Path.GetFileName(profileFilePath);
+				profileFilePath = Path.GetFileName(profileFilePath); // do not remove extension as a method may be profiled twice
 			callerFilePath = Path.GetFileName(callerFilePath);
 			if (ProfileValues.m_block.Count > 1000)
 			{
@@ -129,6 +130,8 @@ namespace Rynchodon.Utility
 				}
 				s.TimeSpent += elapsed;
 				s.Invokes++;
+				if (elapsed > s.Worst)
+					s.Worst = elapsed;
 
 				if (ProfileValues.m_block.Count == 0)
 					ProfileValues.m_total.TimeSpent += elapsed;
@@ -152,6 +155,8 @@ namespace Rynchodon.Utility
 			writer.Write(s.Invokes);
 			writer.Write(',');
 			writer.Write(s.TimeSpent.Seconds / (double)s.Invokes);
+			writer.Write(',');
+			writer.Write(s.Worst.Seconds);
 			writer.Write(',');
 			writer.Write((double)s.TimeSpent.Ticks / (double)ProfileValues.m_total.TimeSpent.Ticks);
 			writer.Write(',');

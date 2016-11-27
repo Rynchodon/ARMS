@@ -59,7 +59,7 @@ namespace Rynchodon.Autopilot.Navigator
 			flyDirection.Normalize();
 
 			Destination destination = new Destination(position + flyDirection * 1e6);
-			m_pathfinder.MoveTo(m_mover.Block.Pseudo, ref destination);
+			m_pathfinder.MoveTo(destinations: destination);
 		}
 
 		public void Rotate()

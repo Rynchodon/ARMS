@@ -150,5 +150,7 @@ namespace Rynchodon
 			}
 		}
 
+		public static Vector3D Invalid = Vector3.Invalid;
+
 	}
 }

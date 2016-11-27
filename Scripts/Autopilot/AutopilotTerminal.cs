@@ -218,7 +218,10 @@ namespace Rynchodon.Autopilot
 		{
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
+			{
+				Logger.DebugLog("Failed to get entity for " + entityId, Logger.severity.WARNING);
 				return "Unknown Entity";
+			}
 			return entity.GetNameForDisplay(autopilot.m_block.OwnerId);
 		}
 

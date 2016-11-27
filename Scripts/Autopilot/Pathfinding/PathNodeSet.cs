@@ -33,10 +33,55 @@ namespace Rynchodon.Autopilot.Pathfinding
 		}
 	}
 
-	class PathNodeSet : IComparable<PathNodeSet>
+	abstract class PathNodeSet : IComparable<PathNodeSet>
+	{
+		/// <summary>Nodes will be a discrete distance from this position. Relative to obstruction.</summary>
+		public Vector3D m_referencePosition;
+		/// <summary>Where this set starts from. Relative to obstruction.</summary>
+		public Vector3D m_startPosition;
+		/// <summary>PathNodeSet that this PathNodeSet is trying to reach.</summary>
+		public IEnumerable<PathNodeSet> m_targets;
+
+		public abstract IEnumerable<Vector3D> BlueSkyNodes { get; }
+
+		public abstract int CompareTo(PathNodeSet other);
+		public abstract bool HasReached(long key);
+		public abstract bool TryGetReached(long key, out PathNode reached);
+		public abstract void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse, int maxNodeDistance);
+	}
+
+	//class RootNode : PathNodeSet
+	//{
+	//	public override IEnumerable<Vector3D> BlueSkyNodes { get { yield break; } }
+
+	//	public override int CompareTo(PathNodeSet other) { throw new NotImplementedException(); }
+
+	//	public override bool HasReached(long key) { return m_startPosition.GetHash() == key; }
+
+	//	public override void Setup(ref Vector3D referencePosition, ref Vector3D startPosition, bool m_canChangeCourse)
+	//	{
+	//		m_referencePosition = referencePosition;
+	//		m_startPosition = startPosition;
+	//	}
+
+	//	public override bool TryGetReached(long key, out PathNode reached)
+	//	{
+	//		if (m_startPosition.GetHash() == key)
+	//		{
+	//			reached = new PathNode() { Position = m_startPosition };
+	//			return true;
+	//		}
+
+	//		reached = default(PathNode);
+	//		return false;
+	//	}
+	//}
+
+	class FindingSet : PathNodeSet
 	{
 		public const int MaxOpenNodes = 1024;
 		public const int DefaultNodeDistance = 128;
+		public const int MinNodeDistance = 2; // needs to be greater than the minimum distance for poping a waypoint
 		public const float TurnPenalty = 100f;
 
 		public static double MinPathDistance(ref Vector3D to, ref Vector3D from)
@@ -75,18 +120,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private readonly Logger m_logger;
 
-		/// <summary>Nodes will be a discrete distance from this position. Relative to obstruction.</summary>
-		public Vector3D m_referencePosition;
-		/// <summary>Where this set starts from. Relative to obstruction.</summary>
-		public Vector3D m_startPosition;
 		/// <summary>Nodes that have not been testing for reachable, sorted by estimated distance to target set. Use AddOpenNode to add nodes.</summary>
 		public MyBinaryStructHeap<float, PathNode> m_openNodes;
 		/// <summary>Nodes that have been reached, indexed by position hash or "Key".</summary>
 		public Dictionary<long, PathNode> m_reachedNodes;
 		/// <summary>Nodes that have been reached that are not near anything.</summary>
 		public List<Vector3D> m_blueSkyNodes;
-		/// <summary>PathNodeSet that this PathNodeSet is trying to reach.</summary>
-		public IEnumerable<PathNodeSet> m_targets;
+		public bool Failed { get { return NodeDistance == MinNodeDistance && m_openNodes.Count == 0; } }
 #if PROFILE
 			public int m_unreachableNodes;
 #endif
@@ -94,13 +134,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>Affects the distance between path nodes and their children when creating new path nodes. Before the start node is processed, it will be DefaultNodeDistance * 2.</summary>
 		public int NodeDistance { get; private set; }
 
-		public PathNodeSet()
+		public override IEnumerable<Vector3D> BlueSkyNodes { get { return m_blueSkyNodes; } }
+
+		public FindingSet()
 		{
 			m_openNodes = new MyBinaryStructHeap<float, PathNode>(MaxOpenNodes);
 			m_reachedNodes = new Dictionary<long, PathNode>();
 			m_blueSkyNodes = new List<Vector3D>();
 			NodeDistance = DefaultNodeDistance << 1;
-			m_logger = new Logger(ResourcePool<PathNodeSet>.InstancesCreated.ToString, () => m_referencePosition.ToString() + ":" + m_startPosition.ToString(), () => string.Concat(m_blueSkyNodes.Count, ':', m_reachedNodes.Count, ':', m_openNodes.Count));
+			m_logger = new Logger(ResourcePool<FindingSet>.InstancesCreated.ToString, () => m_referencePosition.ToString() + ":" + m_startPosition.ToString(), () => string.Concat(m_blueSkyNodes.Count, ':', m_reachedNodes.Count, ':', m_openNodes.Count));
 #if PROFILE
 				m_unreachableNodes = 0;
 #endif
@@ -118,7 +160,32 @@ namespace Rynchodon.Autopilot.Pathfinding
 #endif
 		}
 
-		public void Setup(ref Vector3D reference, ref Vector3D start, bool canChangeCourse)
+		/// <summary>
+		/// Compares this PathNodeSet to another for the purposes of scheduling.
+		/// </summary>
+		/// <param name="other">The object to compare this to.</param>
+		/// <returns>A negative integer, zero, or a positive integer, indicating scheduling priority.</returns>
+		public override int CompareTo(PathNodeSet other)
+		{
+			FindingSet otherFS = (FindingSet)other;
+
+			if (this.Failed)
+				return 1;
+			else if (otherFS.Failed)
+				return -1;
+
+			int value = m_blueSkyNodes.Count - otherFS.m_blueSkyNodes.Count;
+			if (value != 0)
+				return value;
+
+			value = m_reachedNodes.Count - otherFS.m_reachedNodes.Count;
+			if (value != 0)
+				return value;
+
+			return 0;
+		}
+
+		public override void Setup(ref Vector3D reference, ref Vector3D start, bool canChangeCourse, int maxNodeDistance)
 		{
 			Clear();
 			m_referencePosition = reference;
@@ -132,7 +199,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			AddOpenNode(ref firstNode, 0f);
 			m_reachedNodes.Add(firstNode.Key, firstNode);
-			m_logger.debugLog("Finished setup", Logger.severity.DEBUG);
+			if (maxNodeDistance < MinNodeDistance)
+				maxNodeDistance = MinNodeDistance;
+			while (NodeDistance > maxNodeDistance)
+				NodeDistance = NodeDistance >> 1;
+			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start + ", NodeDistance: " + NodeDistance, Logger.severity.DEBUG);
 		}
 
 		/// <summary>
@@ -192,24 +263,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				CreatePathNode(ref currentNode);
 			else
 				CreatePathNodeLine(ref currentNode);
-		}
-
-		/// <summary>
-		/// Compares this PathNodeSet to another for the purposes of scheduling.
-		/// </summary>
-		/// <param name="other">The object to compare this to.</param>
-		/// <returns>A negative integer, zero, or a positive integer, indicating scheduling priority.</returns>
-		public int CompareTo(PathNodeSet other)
-		{
-			int value = m_blueSkyNodes.Count - other.m_blueSkyNodes.Count;
-			if (value != 0)
-				return value;
-
-			value = m_reachedNodes.Count - other.m_reachedNodes.Count;
-			if (value != 0)
-				return value;
-
-			return 0;
 		}
 
 		/// <summary>
@@ -314,6 +367,16 @@ namespace Rynchodon.Autopilot.Pathfinding
 			};
 			// do not bother with key as there will only be one open node
 			AddOpenNode(ref result, 0f);
+		}
+
+		public override bool HasReached(long key)
+		{
+			return m_reachedNodes.ContainsKey(key);
+		}
+
+		public override bool TryGetReached(long key, out PathNode reached)
+		{
+			return m_reachedNodes.TryGetValue(key, out reached);
 		}
 
 	} // class

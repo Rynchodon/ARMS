@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Rynchodon.Autopilot.Data;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.ModAPI;
@@ -19,6 +20,13 @@ namespace Rynchodon
 	/// </summary>
 	/// <remarks>
 	/// <para>Log4J Pattern for GamutLogViewer: [%date][%level][%Thread][%Context][%FileName][%Member][%Line][%PriState][%SecState]%Message</para>
+	/// <para> </para>
+	/// <para>DEBUG and PROFILE constants are specified by their respective builds.</para>
+	/// <para>TRACE shall only be defined as follows:</para>
+	/// <para>#if DEBUG</para>
+	/// <para>#define TRACE</para>
+	/// <para>#endif</para>
+	/// <para>Otherwise, an exception will be thrown by traceLog and TraceLog</para>
 	/// </remarks>
 	public class Logger
 	{
@@ -139,23 +147,29 @@ namespace Rynchodon
 				return;
 			}
 
-			this.f_context = () => {
-				IMyCubeGrid grid = block.CubeGrid;
-				if (grid == null)
-					return "Null grid";
-				return grid.DisplayName + " - " + grid.EntityId;
-			};
+			this.f_context = () => block.CubeGrid.nameWithId();
 
 			if (default_secondary == null)
 			{
 				this.f_state_primary = () => block.DefinitionDisplayNameText;
-				this.f_state_secondary = () => block.getNameOnly() + " - " + block.EntityId;
+				this.f_state_secondary = () => block.nameWithId();
 			}
 			else
 			{
-				this.f_state_primary = () => block.getNameOnly() + " - " + block.EntityId;
+				this.f_state_primary = () => block.nameWithId();
 				this.f_state_secondary = default_secondary;
 			}
+		}
+
+		public Logger(PseudoBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
+		 : this(block.Block, default_secondary, callerPath)
+		{
+			if (block == null || block.Block != null)
+				return;
+
+			this.f_context = () => block.Grid.nameWithId();
+			this.f_state_primary = () => block.DisplayName;
+			this.f_state_secondary = default_secondary;
 		}
 
 		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
@@ -168,7 +182,7 @@ namespace Rynchodon
 				return;
 			}
 
-			this.f_context = () => grid.DisplayName + " - " + grid.EntityId;
+			this.f_context = () => grid.nameWithId();
 			this.f_state_primary = default_primary;
 			this.f_state_secondary = default_secondary;
 		}
@@ -180,16 +194,16 @@ namespace Rynchodon
 			IMyCubeBlock asBlock = entity as IMyCubeBlock;
 			if (asBlock != null)
 			{
-				this.f_context = () => asBlock.CubeGrid.DisplayName + " - " + asBlock.CubeGrid.EntityId;
+				this.f_context = () => asBlock.CubeGrid.nameWithId();
 				this.f_state_primary = () => asBlock.DefinitionDisplayNameText;
-				this.f_state_secondary = () => asBlock.getNameOnly() + " - " + asBlock.EntityId;
+				this.f_state_secondary = () => asBlock.nameWithId();
 				return;
 			}
 
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
-				this.f_context = () => asGrid.DisplayName + " - " + asGrid.EntityId;
+				this.f_context = () => asGrid.nameWithId();
 				return;
 			}
 
@@ -240,15 +254,34 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
+		/// Conditional on TRACE in calling class. TRACE must be manually specified. If this method is invoked and the build is not Debug an Exception will be thrown.
 		/// </summary>
 		/// <param name="condition">only log if true</param>
 		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		/// <exception cref="Exception">When the build is not DEBUG</exception>
+		[System.Diagnostics.Conditional("TRACE")]
+		public void traceLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+#if DEBUG
+			if (condition)
+				log(level, member, lineNumber, toLog, primaryState, secondaryState);
+#else
+			throw new Exception("DEBUG is not defined");
+#endif
+		}
+
+		/// <summary>
+		/// Conditional on DEBUG in calling class. DEBUG is specified by Debug build.
+		/// </summary>
+		/// <param name="condition">only log if true</param>
+		/// <param name="toLog">message to log</param>
+		/// <param name="level">severity level</param>
+		/// <param name="primaryState">class specific, appears before secondary state in log</param>
+		/// <param name="secondaryState">class specific, appears before message in log</param>
+		[System.Diagnostics.Conditional("DEBUG")]
 		public void debugLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
@@ -256,15 +289,14 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// For logging INFO and lower severity, conditional on LOG_ENABLED in calling class. Sometimes used for WARNING.
+		/// Conditional on DEBUG in calling class. DEBUG is specified by Debug build.
 		/// </summary>
 		/// <param name="condition">only log if true</param>
 		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		[System.Diagnostics.Conditional("DEBUG")]
 		public void debugLog(Func<string> toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
@@ -272,11 +304,10 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// For logging while PROFILE is set.
+		/// Conditional on PROFILE in calling class. PROFILE is specified by Profile build.
 		/// </summary>
 		/// <param name="condition">only log if true</param>
 		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
@@ -288,10 +319,9 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// For logging WARNING and higher severity.
+		/// For logging messages in any build.
 		/// </summary>
 		/// <param name="toLog">message to log</param>
-		/// <param name="methodName">calling method</param>
 		/// <param name="level">severity level</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
@@ -300,7 +330,26 @@ namespace Rynchodon
 			log(level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		/// <summary>
+		/// Conditional on TRACE in calling class. TRACE must be manually specified. If this method is invoked and the build is not Debug an Exception will be thrown.
+		/// </summary>
+		/// <exception cref="Exception">When the build is not DEBUG</exception>
+		[System.Diagnostics.Conditional("TRACE")]
+		public static void TraceLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+#if DEBUG
+			if (condition)
+				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+#else
+			throw new Exception("DEBUG is not defined");
+#endif
+		}
+
+		/// <summary>
+		/// Conditional on DEBUG in calling class. DEBUG is specified by Debug build.
+		/// </summary>
+		[System.Diagnostics.Conditional("DEBUG")]
 		public static void DebugLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
@@ -308,6 +357,9 @@ namespace Rynchodon
 				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
+		/// <summary>
+		/// Conditional on PROFILE in calling class. PROFILE is specified by Profile build.
+		/// </summary>
 		[System.Diagnostics.Conditional("PROFILE")]
 		public static void ProfileLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
@@ -316,17 +368,16 @@ namespace Rynchodon
 				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
+		/// <summary>
+		/// For logging messages in any build.
+		/// </summary>
 		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
-		/// <summary>
-		/// Do not call from outside Logger class, use debugLog or alwaysLog.
-		/// </summary>
 		/// <param name="level">severity level</param>
-		/// <param name="methodName">calling method</param>
 		/// <param name="toLog">message to log</param>
 		/// <param name="primaryState">class specific, appears before secondary state in log</param>
 		/// <param name="secondaryState">class specific, appears before message in log</param>
@@ -468,13 +519,13 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// For a safe way to display a message as a notification, conditional on LOG_ENABLED.
+		/// For a safe way to display a message as a notification, conditional on DEBUG.
 		/// </summary>
 		/// <param name="message">the notification message</param>
 		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
 		/// <param name="level">severity level</param>
 		/// <returns>true iff the message was displayed</returns>
-		[System.Diagnostics.Conditional("LOG_ENABLED")]
+		[System.Diagnostics.Conditional("DEBUG")]
 		public static void DebugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{ Notify(message, disappearTimeMs, level); }
 #if UNSTABLE
@@ -614,8 +665,8 @@ namespace Rynchodon
 			}
 		}
 
-		[Conditional("LOG_ENABLED")]
-		public static void LogCallStack(severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
+		[Conditional("DEBUG")]
+		public static void DebugLogCallStack(severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (!condition)

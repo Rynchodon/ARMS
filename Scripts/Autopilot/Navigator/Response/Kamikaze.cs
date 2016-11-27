@@ -58,7 +58,7 @@ namespace Rynchodon.Autopilot.Navigator
 			m_approaching = m_mover.SignificantGravity() && !m_navSet.DistanceLessThan(3000f);
 			if (m_approaching)
 			{
-				m_pathfinder.MoveTo(m_mover.Block.Pseudo, m_enemy);
+				m_pathfinder.MoveTo(m_enemy);
 				return;
 			}
 
@@ -73,7 +73,7 @@ namespace Rynchodon.Autopilot.Navigator
 			Vector3 linearVelocity = m_controlBlock.Physics.LinearVelocity;
 			Vector3 addToVelocity; Vector3.Add(ref linearVelocity, ref aimVelo, out addToVelocity);
 
-			m_pathfinder.MoveTo(m_controlBlock.Pseudo, m_enemy, addToVelocity: addToVelocity);
+			m_pathfinder.MoveTo(m_enemy, addToVelocity: addToVelocity);
 		}
 
 		public void Rotate()

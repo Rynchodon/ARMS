@@ -62,7 +62,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopRotate();
 			}
 			else
-				m_pathfinder.MoveTo(NavBlock, ref m_destination);
+				m_pathfinder.MoveTo(destinations: m_destination);
 		}
 
 		public void Rotate()

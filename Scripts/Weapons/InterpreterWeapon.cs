@@ -2,11 +2,8 @@
 using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Instructions;
-using Rynchodon.Settings;
-using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
@@ -33,7 +30,7 @@ namespace Rynchodon.Weapons
 			this.Block = block;
 			this.Grid = block.CubeGrid;
 
-			myLogger = new Logger(() => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly()) { MinimumLevel = Logger.severity.INFO };
+			myLogger = new Logger(() => Grid.DisplayName, () => Block.DefinitionDisplayNameText, () => Block.getNameOnly());
 		}
 
 		/// <summary>
@@ -55,7 +52,7 @@ namespace Rynchodon.Weapons
 
 			Parse(instructions);
 
-			myLogger.debugLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count);
+			myLogger.traceLog("leaving, instruct found: " + InstructFound + ", error count: " + Errors.Count);
 			return InstructFound || Errors.Count == 0;
 		}
 
@@ -69,7 +66,7 @@ namespace Rynchodon.Weapons
 		{
 			if (string.IsNullOrWhiteSpace(instructions))
 			{
-				myLogger.debugLog("no instructions");
+				myLogger.traceLog("no instructions");
 				return;
 			}
 
@@ -90,13 +87,13 @@ namespace Rynchodon.Weapons
 
 			foreach (string instruct in splitInstructions)
 			{
-				myLogger.debugLog("instruct = " + instruct);
+				myLogger.traceLog("instruct = " + instruct);
 				CurrentIndex++;
 				if (instruct.StartsWith("(") && instruct.EndsWith(")"))
 				{
 					string blockList = instruct.Substring(1, instruct.Length - 2);
 					ParseBlockList(blockList);
-					myLogger.debugLog("good instruct: " + instruct);
+					myLogger.traceLog("good instruct: " + instruct);
 					InstructFound = true;
 				}
 				else
@@ -106,7 +103,7 @@ namespace Rynchodon.Weapons
 						|| ParseEntityId(instruct)
 						|| GetFromPanel(instruct))
 					{
-						myLogger.debugLog("good instruct: " + instruct);
+						myLogger.traceLog("good instruct: " + instruct);
 						InstructFound = true;
 					}
 					else
@@ -143,7 +140,7 @@ namespace Rynchodon.Weapons
 			TargetType result;
 			if (Enum.TryParse<TargetType>(toParse, true, out result))
 			{
-				myLogger.debugLog("Adding target type: " + toParse + "/" + result);
+				myLogger.traceLog("Adding target type: " + toParse + "/" + result);
 				Options.CanTarget |= result;
 				return true;
 			}
@@ -164,7 +161,7 @@ namespace Rynchodon.Weapons
 			TargetingFlags result;
 			if (Enum.TryParse<TargetingFlags>(toParse, true, out result))
 			{
-				myLogger.debugLog("Adding target flag: " + toParse);
+				myLogger.traceLog("Adding target flag: " + toParse);
 				Options.Flags |= result;
 				return true;
 			}
@@ -198,7 +195,7 @@ namespace Rynchodon.Weapons
 			int range;
 			if (int.TryParse(rangeString, out range))
 			{
-				myLogger.debugLog("setting TargetingRange to " + range + " from " + rangeString);
+				myLogger.traceLog("setting TargetingRange to " + range + " from " + rangeString);
 				Options.TargetingRange = range;
 				return true;
 			}
@@ -251,21 +248,21 @@ namespace Rynchodon.Weapons
 			else
 				panelName = toParse;
 
-			Ingame.IMyTextPanel panel;
+			IMyTextPanel panel;
 			if (!GetTextPanel(panelName, out panel))
 			{
-				myLogger.debugLog("Panel not found: " + panelName);
+				myLogger.traceLog("Panel not found: " + panelName);
 				return false;
 			}
 
-			myLogger.debugLog("Found panel: " + panel.DisplayNameText);
+			myLogger.traceLog("Found panel: " + panel.DisplayNameText);
 
 			string panelText = panel.GetPublicText();
 			AddMonitor(panel.GetPublicText);
 
 			if (string.IsNullOrWhiteSpace(panelText))
 			{
-				myLogger.debugLog("Panel has no text: " + panel.DisplayNameText);
+				myLogger.traceLog("Panel has no text: " + panel.DisplayNameText);
 				return true;
 			}
 
@@ -280,7 +277,7 @@ namespace Rynchodon.Weapons
 				identifierIndex = lowerText.IndexOf(identifier);
 				if (identifierIndex < 0)
 				{
-					myLogger.debugLog("could not find " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
+					myLogger.traceLog("could not find " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 					return false;
 				}
 				startOfCommands = panelText.IndexOf('[', identifierIndex + identifier.Length) + 1;
@@ -294,14 +291,14 @@ namespace Rynchodon.Weapons
 
 			if (startOfCommands < 0)
 			{
-				myLogger.debugLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
+				myLogger.traceLog("could not find start of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				return false;
 			}
 
 			int endOfCommands = panelText.IndexOf(']', startOfCommands + 1);
 			if (endOfCommands < 0)
 			{
-				myLogger.debugLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
+				myLogger.traceLog("could not find end of commands following " + identifier + " in text of " + panel.DisplayNameText, Logger.severity.DEBUG);
 				return false;
 			}
 
@@ -310,7 +307,7 @@ namespace Rynchodon.Weapons
 			return true; // this instruction was successfully executed, even if sub instructions were not
 		}
 
-		private bool GetTextPanel(string name, out Ingame.IMyTextPanel panel)
+		private bool GetTextPanel(string name, out IMyTextPanel panel)
 		{
 			IMyCubeBlock foundBlock = null;
 			int bestNameLength = int.MaxValue;
@@ -329,7 +326,7 @@ namespace Rynchodon.Weapons
 					}
 				}
 
-			panel = foundBlock as Ingame.IMyTextPanel;
+			panel = foundBlock as IMyTextPanel;
 			return panel != null;
 		}
 

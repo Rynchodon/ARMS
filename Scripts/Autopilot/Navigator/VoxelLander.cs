@@ -115,7 +115,7 @@ namespace Rynchodon.Autopilot.Navigator
 						m_mover.StopMove();
 					}
 					else
-						m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion);
+						m_pathfinder.MoveTo(destinations: m_targetPostion);
 					return;
 				case Stage.Rotate:
 					if (m_navSet.DirectionMatched(0.01f))
@@ -157,7 +157,7 @@ namespace Rynchodon.Autopilot.Navigator
 							return;
 						}
 
-						m_pathfinder.MoveTo(m_landBlock, ref m_targetPostion);
+						m_pathfinder.MoveTo(destinations: m_targetPostion);
 						return;
 					}
 			}

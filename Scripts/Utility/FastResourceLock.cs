@@ -1,4 +1,4 @@
-﻿#if LOG_ENABLED
+﻿#if DEBUG
 //#define DEBUG_LOCKS
 #if DEBUG_LOCKS
 #define STACK_TRACE

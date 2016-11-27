@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Rynchodon.Autopilot.Harvest;
-using Rynchodon.Autopilot.Navigator;
+using Rynchodon.Autopilot.Navigator.Mining;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
@@ -178,7 +178,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 			}
 
 			message = null;
-			return mover => new MinerVoxel(mover, oreType);
+			return mover => new Miner(mover, oreType);
 		}
 
 		protected override string TermToString()

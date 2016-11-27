@@ -78,6 +78,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.FighterNoPrimary;
 				return false;
 			}
+			m_navSet.Settings_Task_NavEngage.NavigationBlock = m_weapon_primary_pseudo;
 
 			if (m_weaponDataDirty)
 				UpdateWeaponData();
@@ -173,7 +174,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_navSet.DistanceLessThan(m_weaponRange_min * 2f))
 				{
 					// we give orbiter a lower distance, so it will calculate orbital speed from that
-					m_orbiter = new Orbiter(m_pathfinder, m_navSet, m_weapon_primary_pseudo, m_currentTarget.Entity, m_weaponRange_min + FinalAltitude, m_currentTarget.HostileName());
+					m_orbiter = new Orbiter(m_pathfinder, m_navSet, m_currentTarget.Entity, m_weaponRange_min + FinalAltitude, m_currentTarget.HostileName());
 					// start further out so we can spiral inwards
 					m_finalOrbitAltitude = m_orbiter.Altitude;
 					m_orbiter.Altitude = m_finalOrbitAltitude + InitialAltitude - FinalAltitude;
@@ -187,7 +188,7 @@ namespace Rynchodon.Autopilot.Navigator
 						Vector3.CalculatePerpendicularVector(Vector3.Normalize(m_weapon_primary_pseudo.WorldPosition - m_currentTarget.GetPosition()));
 					Vector3 offset = direction * (m_weaponRange_min + InitialAltitude);
 
-					m_pathfinder.MoveTo(m_weapon_primary_pseudo, m_currentTarget, offset);
+					m_pathfinder.MoveTo(m_currentTarget, offset);
 					return;
 				}
 			}

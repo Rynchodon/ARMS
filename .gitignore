@@ -1,12 +1,11 @@
 # Build Files
 Archive/
 Archive.7z
+build.ini
+VersionInfo - User.cs
 *.tmp*
 **/mwmBuilder/
 **/MwmBuilder.log
-
-# varies by computer
-build.ini
 
 #################
 ## Eclipse

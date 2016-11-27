@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using SpaceEngineers.Game.ModAPI;
@@ -15,19 +13,16 @@ using Ingame = Sandbox.ModAPI.Ingame;
 namespace Rynchodon.Autopilot.Navigator
 {
 
-	public class FlyToGrid : NavigatorMover, INavigatorRotator, IDisposable
+	class FlyToGrid : ALand
 	{
 
 		public enum LandingState : byte { None, Approach, Holding, LineUp, Landing, Catch }
 
 		private static readonly TimeSpan SearchTimeout = new TimeSpan(0, 1, 0);
-		private static HashSet<long> s_reservedTargets = new HashSet<long>();
 
 		private readonly Logger m_logger;
 		private readonly GridFinder m_gridFinder;
 		private readonly BlockNameOrientation m_targetBlock;
-		private readonly PseudoBlock m_contBlock;
-		private readonly PseudoBlock m_navBlock;
 		/// <summary>m_targetBlock.Forward  or opposite of the landing face</summary>
 		private readonly Base6Directions.Direction m_landingDirection;
 		/// <summary>Half of length of landing block in the direction it will be landing.</summary>
@@ -44,7 +39,6 @@ namespace Rynchodon.Autopilot.Navigator
 		//private float m_landingSpeedFudge;
 		private ulong next_attemptLock;
 		private bool m_beforeMerge;
-		private long m_reservedTarget;
 
 		public LandingState m_landingState
 		{
@@ -62,6 +56,8 @@ namespace Rynchodon.Autopilot.Navigator
 					case LandingState.Catch:
 					case LandingState.Landing:
 						{
+							m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Block != null ? m_gridFinder.Block : m_gridFinder.Grid.Entity;
+
 							IMyFunctionalBlock asFunc = m_navBlock.Block as IMyFunctionalBlock;
 							if (asFunc != null && !asFunc.Enabled)
 							{
@@ -79,6 +75,9 @@ namespace Rynchodon.Autopilot.Navigator
 							}
 							break;
 						}
+					default:
+						m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = null;
+						break;
 				}
 
 				m_navSet.OnTaskComplete_NavWay();
@@ -97,11 +96,10 @@ namespace Rynchodon.Autopilot.Navigator
 			else
 				this.m_gridFinder = new GridFinder(m_navSet, m_controlBlock, targetGrid, blockName, allowedAttachment);
 			this.m_landingFriend = !(this.m_gridFinder is EnemyFinder);
-			this.m_contBlock = m_navSet.Settings_Commands.NavigationBlock;
 
 			if (landingBlock == null)
 				landingBlock = m_navSet.Settings_Current.LandingBlock;
-			m_navBlock = landingBlock ?? m_navSet.Settings_Current.NavigationBlock;
+			m_navSet.Settings_Task_NavRot.NavigationBlock = landingBlock;
 
 			if (landingBlock != null)
 			{
@@ -130,13 +128,13 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => {
 						Ingame.IMyShipConnector connector = block as Ingame.IMyShipConnector;
-						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block) && ReserveTarget(connector.EntityId);
+						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block) && CanReserveTarget(connector.EntityId);
 					};
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.FirstFaceDirection());
 				}
 				else if (landingBlock.Block is IMyShipMergeBlock)
 				{
-					m_gridFinder.BlockCondition = block => block is IMyShipMergeBlock && ReserveTarget(block.EntityId);
+					m_gridFinder.BlockCondition = block => block is IMyShipMergeBlock && CanReserveTarget(block.EntityId);
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.FirstFaceDirection());
 					(landingBlock.Block as IMyShipMergeBlock).BeforeMerge += MergeBlock_BeforeMerge;
 				}
@@ -166,44 +164,6 @@ namespace Rynchodon.Autopilot.Navigator
 
 			m_settingLevel = m_landingState != LandingState.None ? AllNavigationSettings.SettingsLevelName.NavRot : AllNavigationSettings.SettingsLevelName.NavMove;
 			m_navSet.GetSettingsLevel(m_settingLevel).NavigatorMover = this;
-		}
-
-		~FlyToGrid()
-		{
-			Dispose();
-		}
-
-		public void Dispose()
-		{
-			UnreserveTarget();
-		}
-
-		private void UnreserveTarget()
-		{
-			if (m_reservedTarget != 0L)
-			{
-				m_logger.debugLog("unreserve: " + m_reservedTarget);
-				s_reservedTargets.Remove(m_reservedTarget);
-				m_reservedTarget = 0L;
-			}
-		}
-
-		private bool ReserveTarget(long target)
-		{
-			if (target == m_reservedTarget)
-				return true;
-
-			UnreserveTarget();
-
-			if (s_reservedTargets.Add(target))
-			{
-				m_logger.debugLog("reserve: " + target);
-				m_reservedTarget = target;
-				return true;
-			}
-			else
-				m_logger.debugLog("cannot reserve: " + target);
-			return false;
 		}
 
 		public override void Move()
@@ -241,15 +201,11 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 			{
-				if (m_gridFinder.Block != null && m_landingState < LandingState.Landing)
-					m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Block;
-				else
-					m_navSet.GetSettingsLevel(m_settingLevel).DestinationEntity = m_gridFinder.Grid.Entity;
 				m_searchTimeoutAt = Globals.ElapsedTime + SearchTimeout;
 
 				if (!m_gridFinder.Grid.isRecent())
 				{
-					m_pathfinder.MoveTo(m_navBlock, m_gridFinder.Grid);
+					m_pathfinder.MoveTo(m_gridFinder.Grid);
 					return;
 				}
 
@@ -276,7 +232,7 @@ namespace Rynchodon.Autopilot.Navigator
 				if (m_landingState == LandingState.None && m_navSet.Settings_Current.Stay_In_Formation)
 				{
 					m_logger.debugLog("Maintaining offset position from target", condition: m_navSet.DistanceLessThanDestRadius());
-					m_pathfinder.MoveTo(m_navBlock, ref m_destination);
+					m_pathfinder.MoveTo(destinations: m_destination);
 					return;
 				}
 
@@ -299,11 +255,11 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
-				m_pathfinder.MoveTo(m_navBlock, ref m_destination);
+				m_pathfinder.MoveTo(destinations: m_destination);
 			}
 		}
 
-		public void Rotate()
+		public override void Rotate()
 		{
 			if (m_gridFinder.Grid == null)
 			{
@@ -436,7 +392,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				case LandingState.Holding:
 					{
-						if (m_gridFinder.Block != null)
+						if (m_gridFinder.Block != null && ReserveTarget(m_gridFinder.Block.EntityId))
 						{
 							m_logger.debugLog("Have a block, starting landing sequence", Logger.severity.DEBUG);
 							m_landingState = LandingState.LineUp;
@@ -463,24 +419,24 @@ namespace Rynchodon.Autopilot.Navigator
 								return;
 							}
 						}
-						else if (m_pathfinder.RotateCheck.ObstructingEntity != null)
-						{
-							Vector3D destinationWorld = m_destination.WorldPosition();
-							Vector3 directAway = m_navBlock.WorldPosition - destinationWorld;
-							if (directAway.LengthSquared() < 1)
-							{
-								destinationWorld = m_gridFinder.Grid.Entity.WorldAABB.Center;
-								directAway = m_navBlock.WorldPosition - destinationWorld;
-							}
-							Vector3D targetPosition = destinationWorld + Vector3.Normalize(directAway) * m_navSet.Settings_Current.DestinationRadius;
+						//else if (m_pathfinder.RotateCheck.ObstructingEntity != null)
+						//{
+						//	Vector3D destinationWorld = m_destination.WorldPosition();
+						//	Vector3 directAway = m_navBlock.WorldPosition - destinationWorld;
+						//	if (directAway.LengthSquared() < 1)
+						//	{
+						//		destinationWorld = m_gridFinder.Grid.Entity.WorldAABB.Center;
+						//		directAway = m_navBlock.WorldPosition - destinationWorld;
+						//	}
+						//	Vector3D targetPosition = destinationWorld + Vector3.Normalize(directAway) * m_navSet.Settings_Current.DestinationRadius;
 
-							m_logger.debugLog("Pathfinder cannot rotate, moving away. destination: " + destinationWorld + ", directAway: " + Vector3.Normalize(directAway) +
-								", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius + ", targetPosition: " + targetPosition);
+						//	m_logger.debugLog("Pathfinder cannot rotate, moving away. destination: " + destinationWorld + ", directAway: " + Vector3.Normalize(directAway) +
+						//		", DestinationRadius: " + m_navSet.Settings_Current.DestinationRadius + ", targetPosition: " + targetPosition);
 
-							m_destination.SetWorld(ref targetPosition);
-							m_pathfinder.MoveTo(m_navBlock, ref m_destination);
-							return;
-						}
+						//	m_destination.SetWorld(ref targetPosition);
+						//	m_pathfinder.MoveTo(destinations: m_destination);
+						//	return;
+						//}
 						else if (m_navSet.Settings_Current.Distance < 1f)
 						{
 							// replace do nothing (line) or other rotator that is preventing ship from landing
@@ -495,10 +451,10 @@ namespace Rynchodon.Autopilot.Navigator
 
 						Vector3D closestPoint = destinationLine.ClosestPoint(m_navBlock.WorldPosition);
 
-						//m_logger.debugLog("Flying to closest point on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint, "Move_Land()");
+						m_logger.debugLog("Flying to closest point to " + m_navBlock.WorldPosition + " on line between " + destinationLine.From + " and " + destinationLine.To + " which is " + closestPoint);
 						m_logger.debugLog("missing block", Logger.severity.ERROR, condition: m_gridFinder.Block == null);
 						m_destination = Destination.FromWorld(m_gridFinder.Block, closestPoint);
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
+						m_pathfinder.MoveTo(destinations: m_destination);
 						return;
 					}
 				case LandingState.Landing:
@@ -530,7 +486,7 @@ namespace Rynchodon.Autopilot.Navigator
 						//}
 
 						m_destination.Position += GetLandingFaceVector() * distanceBetween;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
+						m_pathfinder.MoveTo(destinations: m_destination);
 						return;
 					}
 				case LandingState.Catch:
@@ -550,7 +506,7 @@ namespace Rynchodon.Autopilot.Navigator
 						//	m_logger.debugLog("target position: " + m_destination.WorldPosition() + ", nav position: " + m_navBlock.WorldPosition + ", distance: " + Vector3D.Distance(m_destination.WorldPosition(), m_navBlock.WorldPosition) + "/" + m_navSet.Settings_Current.Distance + ", fudge: " + m_landingSpeedFudge);
 						//}
 						//m_destination.Position += m_gridFinder.Grid.GetLinearVelocity() * m_landingSpeedFudge;
-						m_pathfinder.MoveTo(m_navBlock, ref m_destination);
+						m_pathfinder.MoveTo(destinations: m_destination);
 						return;
 					}
 			}
