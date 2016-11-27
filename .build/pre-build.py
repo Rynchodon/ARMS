@@ -23,7 +23,7 @@ if (not os.path.exists(GitExe)):
 	logging.warning("Could not locate git, cannot update revision")
 	sys.exit(0)
 
-if len(sys.argv) > 1 and 'release' in sys.argv[1]:
+if len(sys.argv) > 1 and 'release' in sys.argv[1].lower():
 	logging.info('build: ' + sys.argv[1])
 	revision = 0
 else:

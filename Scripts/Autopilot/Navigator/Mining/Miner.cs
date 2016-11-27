@@ -21,6 +21,8 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	{
 
 		public enum Stage : byte { None, GetDeposit, GetApproach, Approach, Mining }
+		/// <summary>The maximum number of deposits that Miner will consider.</summary>
+		public const int MaxDeposits = 32;
 
 		private static FieldInfo MyShipDrillDefinition__SensorOffset, MyShipDrillDefinition__SensorRadius;
 
@@ -267,22 +269,12 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 				m_approachFinders.Add(new DepositFreeSpace(TargetVoxel, ref deposit, minSpace));
 
-				if (m_approachFinders.Count == 32)
+				if (m_approachFinders.Count == MaxDeposits)
 					break;
 			}
 
 			m_logger.debugLog("Created " + m_approachFinders.Count + " finders for " + oreName);
 			m_stage = Stage.GetApproach;
-
-
-			//SetApproachPoint(ref orePosition);
-
-			//if (CanTunnel()) // and ore is not near surface
-			//	m_miner = new TunnelMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
-			//else
-			//	m_miner = new SurfaceMiner(m_pathfinder, Destination.FromWorld(m_targetVoxel, ref orePosition), oreName);
-
-			//m_stage = Stage.Approach;
 		}
 
 		private void CheckApproaches()
@@ -291,12 +283,37 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (!approachFinder.Completed)
 					return;
 
-			m_logger.debugLog(m_approachFinders + " approach finders completed", Logger.severity.DEBUG);
+			m_logger.debugLog(m_approachFinders.Count + " approach finders completed", Logger.severity.DEBUG);
 
-			m_destinations = new Destination[m_approachFinders.Count];
-			int index = 0;
+			// first try to get a deposit that is near surface, failing that grab any deposit
+
+			List<DepositFreeSpace> removeList = new List<DepositFreeSpace>(m_approachFinders.Count);
+			List<Destination> destinations = new List<Destination>(m_approachFinders.Count);
 			foreach (DepositFreeSpace approachFinder in m_approachFinders)
-				m_destinations[index++] = Destination.FromWorld(m_targetVoxel, approachFinder.FreePosition);
+				if (approachFinder.NearSurface)
+				{
+					m_logger.debugLog("near surface: " + approachFinder.FreePosition);
+					destinations.Add(Destination.FromWorld(m_targetVoxel, approachFinder.FreePosition));
+				}
+				else
+				{
+					m_logger.debugLog("not near surface: " + approachFinder.FreePosition);
+					removeList.Add(approachFinder);
+				}
+			if (destinations.Count == 0)
+			{
+				m_logger.debugLog("No ore is near surface.", Logger.severity.DEBUG);
+				m_destinations = new Destination[m_approachFinders.Count];
+				int index = 0;
+				foreach (DepositFreeSpace approachFinder in m_approachFinders)
+					m_destinations[index++] = Destination.FromWorld(m_targetVoxel, approachFinder.FreePosition);
+			}
+			else
+			{
+				foreach (DepositFreeSpace remove in removeList)
+					m_approachFinders.Remove(remove);
+				m_destinations = destinations.ToArray();
+			}
 			m_stage = Stage.Approach;
 		}
 
@@ -330,25 +347,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 			m_stage = Stage.Mining;
 		}
-
-		//private void SetApproachPoint(ref Vector3D orePosition)
-		//{
-		//	Vector3D centre = TargetVoxel.GetCentre();
-		//	if (orePosition == centre)
-		//		orePosition += 1;
-
-		//	Vector3D toDepositFromCentre; Vector3D.Subtract(ref orePosition, ref centre, out toDepositFromCentre);
-		//	toDepositFromCentre.Normalize();
-		//	double minSpace = 4d * m_grid.LocalVolume.Radius;
-
-		//	TargetVoxel.FindSpace(orePosition, toDepositFromCentre, minSpace, true, null);
-		//	TargetVoxel.FindSpace(orePosition, -toDepositFromCentre, minSpace, false, null);
-		//}
-
-		//private void OnSpaceFound(bool success, Vector3D freeSpace)
-		//{
-
-		//}
 
 		private bool Return()
 		{

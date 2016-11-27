@@ -185,13 +185,10 @@
     <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
     <Compile Include="Autopilot\Navigator\Mining\DepositFreeSpace.cs" />
-    <Compile Include="Autopilot\Navigator\Mining\FreeSpaceFinder.cs" />
     <Compile Include="Autopilot\Navigator\Mining\Miner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\EscapeMiner.cs" />
-    <None Include="Autopilot\Navigator\Mining\OreDepositApproachFinder.cs" />
     <Compile Include="Autopilot\Navigator\Mining\SurfaceMiner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\TunnelMiner.cs" />
-    <None Include="Autopilot\Navigator\Mining\VoxelOpenSpace.cs" />
     <Compile Include="Autopilot\Navigator\Response\EnemyLander.cs" />
     <Compile Include="Autopilot\Navigator\VoxelLander.cs" />
     <Compile Include="Autopilot\Navigator\WaitForCondition.cs" />

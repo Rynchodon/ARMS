@@ -17,6 +17,7 @@ namespace Rynchodon.Update
 	/// <summary>
 	/// Saves/loads persistent data to/from a save file.
 	/// </summary>
+	/// TODO: rework this to work better with parallel loading
 	/// TODO: client saving
 	public class Saver
 	{
@@ -253,7 +254,7 @@ namespace Rynchodon.Update
 
 			m_logger.alwaysLog("Save version: " + m_data.ArmsVersion, Logger.severity.INFO);
 
-			// network
+			// relay
 
 			Dictionary<Message.Builder_Message, Message> messages = MyAPIGateway.Multiplayer.IsServer ? new Dictionary<Message.Builder_Message, Message>() : null;
 			SerializableGameTime.Adjust = new TimeSpan(m_data.SaveTime);
