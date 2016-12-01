@@ -10,14 +10,12 @@ using Rynchodon.Weapons;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.ModAPI;
 using VRage.Collections;
-using VRage.ModAPI;
 
 namespace Rynchodon.Update
 {
 	/// <summary>
 	/// Saves/loads persistent data to/from a save file.
 	/// </summary>
-	/// TODO: rework this to work better with parallel loading
 	/// TODO: client saving
 	public class Saver
 	{
@@ -130,8 +128,7 @@ namespace Rynchodon.Update
 					RelayStorage store = node.Storage;
 					foreach (LastSeen.Builder_LastSeen builder in storageLastSeen.Value)
 					{
-						IMyEntity entity;
-						if (MyAPIGateway.Entities.TryGetEntityById(builder.EntityId, out entity))
+						if (MyAPIGateway.Entities.EntityExists(builder.EntityId))
 						{
 							LastSeen ls = new LastSeen(builder);
 							if (ls.IsValid)
@@ -273,7 +270,7 @@ namespace Rynchodon.Update
 					store = node.Storage;
 					if (store == null)
 					{
-						m_logger.debugLog("failed to create storage for " + node.LoggingName, Logger.severity.ERROR);
+						m_logger.alwaysLog("failed to create storage for " + node.LoggingName, Logger.severity.ERROR);
 						continue;
 					}
 				}
@@ -285,7 +282,7 @@ namespace Rynchodon.Update
 						store.Receive(ls);
 					else
 					{
-						m_logger.debugLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.DEBUG);
+						m_logger.alwaysLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.WARNING);
 						if (m_failedLastSeen == null)
 						{
 							m_failedLastSeen = new CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>>();
@@ -302,6 +299,8 @@ namespace Rynchodon.Update
 					}
 				}
 
+				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+			
 				// messages in the save file belong on the server
 				if (messages == null)
 					continue;
@@ -321,7 +320,7 @@ namespace Rynchodon.Update
 					if (msg.IsValid)
 						store.Receive(msg);
 					else
-						m_logger.debugLog("failed to create a valid message from builder for " + bm.DestCubeBlock, Logger.severity.WARNING);
+						m_logger.alwaysLog("failed to create a valid message from builder for " + bm.DestCubeBlock + "/" + bm.SourceCubeBlock, Logger.severity.WARNING);
 				}
 
 				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);

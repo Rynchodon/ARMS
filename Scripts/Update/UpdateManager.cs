@@ -732,15 +732,9 @@ namespace Rynchodon.Update
 			if (!(entity.Save || entity is IMyCharacter))
 				return;
 
-			//myLogger.debugLog("adding entity: " + entity.getBestName() + ", flags: " + entity.Flags + ", persistent: " + entity.PersistentFlags, "AddEntity()");
-
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
-				//myLogger.debugLog("adding grid: " + asGrid.DisplayName + ", flags: " + asGrid.Flags + ", persistent: " + asGrid.PersistentFlags, "AddEntity()");
-
-				//myLogger.debugLog("save: " + asGrid.Save, "AddEntity()");
-
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
