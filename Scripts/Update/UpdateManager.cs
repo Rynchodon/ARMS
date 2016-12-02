@@ -6,6 +6,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Autopilot.Harvest;
+using Rynchodon.Autopilot.Movement;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
@@ -78,6 +79,11 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), construct);
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), construct);
+
+			RegisterForGrid(grid => {
+				AeroProfiler ap = new AeroProfiler(grid);
+				RegisterForUpdates(1, ap.Update1, grid);
+			});
 
 			#endregion
 

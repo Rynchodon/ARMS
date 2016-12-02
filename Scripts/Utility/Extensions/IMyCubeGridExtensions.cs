@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Sandbox.Engine.Utils;
+using Sandbox.Game.Entities;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -59,6 +61,12 @@ namespace Rynchodon
 
 			int baseStart; Vector3I.Dot(ref baseDirection, ref min, out baseStart);
 			int baseEnd; Vector3I.Dot(ref baseDirection, ref max, out baseEnd);
+			if (baseStart > baseEnd)
+			{
+				int temp = baseStart;
+				baseStart = baseEnd;
+				baseEnd = temp;
+			}
 			bool incrementBase = baseStart <= baseEnd;
 
 			int perp0Min; Vector3I.Dot(ref perp0, ref min, out perp0Min);
@@ -79,11 +87,11 @@ namespace Rynchodon
 				perp1Min = temp;
 			}
 
-			Logger.DebugLog("min: " + min + ", max: " + max);
-			Logger.DebugLog("base: " + baseDirection + ", perp0: " + perp0 + ", perp1: " + perp1);
-			Logger.DebugLog("base range: " + baseStart + ":" + baseEnd);
-			Logger.DebugLog("perp0 range: " + perp0Min + ":" + perp0Max);
-			Logger.DebugLog("perp1 range: " + perp1Min + ":" + perp1Max);
+			Logger.TraceLog("min: " + min + ", max: " + max, Logger.severity.DEBUG);
+			Logger.TraceLog("base: " + baseDirection + ", perp0: " + perp0 + ", perp1: " + perp1, Logger.severity.DEBUG);
+			Logger.TraceLog("base range: " + baseStart + ":" + baseEnd, Logger.severity.DEBUG);
+			Logger.TraceLog("perp0 range: " + perp0Min + ":" + perp0Max, Logger.severity.DEBUG);
+			Logger.TraceLog("perp1 range: " + perp1Min + ":" + perp1Max, Logger.severity.DEBUG);
 
 			for (int perp0Value = perp0Min; perp0Value <= perp0Max; perp0Value++)
 				for (int perp1Value = perp1Min; perp1Value <= perp1Max; perp1Value++)
@@ -109,6 +117,25 @@ namespace Rynchodon
 				}
 
 			yield break;
+		}
+
+		/// <summary>
+		/// Populates outHitPositions with cell positions of the grid, regardless of whether or not there are blocks occupying those cells.
+		/// </summary>
+		/// <param name="grid">The grid to get cell positions of.</param>
+		/// <param name="localStart">The local position to start from.</param>
+		/// <param name="localEnd">The local position to end at.</param>
+		/// <param name="outHitPositions">Populated with cells that the line passes through.</param>
+		public static void RayCastCellsLocal(this IMyCubeGrid grid, Vector3D localStart, Vector3D localEnd, List<Vector3I> outHitPositions)
+		{
+			Vector3D offset = ((MyCubeGrid)grid).GridSizeHalfVector;
+			Vector3D offStart; Vector3D.Add(ref localStart, ref offset, out offStart);
+			Vector3D offEnd; Vector3D.Add(ref localEnd, ref offset, out offEnd);
+
+			Vector3I min = grid.Min - Vector3I.One;
+			Vector3I max = grid.Max + Vector3I.One;
+
+			MyGridIntersection.Calculate(outHitPositions, grid.GridSize, offStart, offEnd, min, max);
 		}
 
 	}
