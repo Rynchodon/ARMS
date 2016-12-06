@@ -14,18 +14,34 @@ namespace Rynchodon.Autopilot.Movement
 {
 	class AeroProfiler
 	{
-
-		private struct CellData
+		private class AeroCell
 		{
-			public float AirPress;
-			/// <summary>
-			/// Negative velocity of air in a cell.
-			/// </summary>
-			public Vector3 Velocity;
+			public float CurAirPress, NextAirPress;
+			public float CurDemand, NextDemand;
+			public Vector3 CurVelocity, NextVelocity;
+
+			public AeroCell() { }
+
+			public void Copy(AeroCell copy)
+			{
+				CurAirPress = copy.CurAirPress;
+				CurDemand = copy.CurDemand;
+				CurVelocity = copy.CurVelocity;
+				NextAirPress = copy.NextAirPress;
+				NextDemand = copy.NextDemand;
+				NextVelocity = copy.NextVelocity;
+			}
+
+			public void ApplyChanges()
+			{
+				CurAirPress = NextAirPress;
+				CurDemand = NextDemand;
+				CurVelocity = NextVelocity;
+			}
 
 			public override string ToString()
 			{
-				return "AirPress: " + AirPress + ", Velocity: " + Velocity;
+				return "AirPress: " + NextAirPress + ", Demand: " + NextDemand + ", Velocity: " + NextVelocity;
 			}
 		}
 
@@ -56,10 +72,10 @@ namespace Rynchodon.Autopilot.Movement
 		private readonly Logger m_logger;
 		private readonly IMyCubeGrid m_grid;
 
-		private CellData[,,] m_data, m_previous;
+		private AeroCell[,,] m_data;
 
 		private Vector3I m_minCell, m_maxCell, m_sizeCell, m_direction;
-		private CellData m_defaultData;
+		private AeroCell m_defaultData;
 
 		public bool Running { get; private set; }
 		public bool Success { get; private set; }
@@ -93,17 +109,17 @@ namespace Rynchodon.Autopilot.Movement
 			m_maxCell = m_grid.Max + GridPadding;
 			m_sizeCell = m_maxCell - m_minCell + 1;
 
-			m_data = new CellData[m_sizeCell.X, m_sizeCell.Y, m_sizeCell.Z];
-			m_previous = new CellData[m_sizeCell.X, m_sizeCell.Y, m_sizeCell.Z];
+			m_data = new AeroCell[m_sizeCell.X, m_sizeCell.Y, m_sizeCell.Z];
 
-			m_defaultData.AirPress = 1f;
+			m_defaultData.CurAirPress = 1f;
 
 			// TODO: foreach direction
 			m_direction = Base6Directions.IntDirections[0];
 
-			m_defaultData.Velocity = m_direction * -2f;
-			m_data.SetAll(m_defaultData);
-			m_previous.SetAll(m_defaultData);
+			m_defaultData.CurVelocity = m_direction * -1.5f;
+
+			SetDefault();
+
 			SaltAir();
 
 			Vector3 drag = Vector3.Zero;
@@ -132,14 +148,40 @@ namespace Rynchodon.Autopilot.Movement
 				previousDrag = drag;
 
 				DiffuseAir();
+				ApplyAllChanges();
 				MoveAir();
+				ApplyAllChanges();
 				CalculateDrag(out drag);
+
+#if DEBUG
+				if (m_defaultData.NextAirPress != 0f)
+					m_logger.alwaysLog("Default air pressure modification attempt: " + m_defaultData.NextAirPress, Logger.severity.ERROR);
+				if (m_defaultData.NextDemand != 0f)
+					m_logger.alwaysLog("Default demand modification attempt: " + m_defaultData.NextDemand, Logger.severity.ERROR);
+				if (m_defaultData.NextVelocity != Vector3.Zero)
+					m_logger.alwaysLog("Default velocity modification attempt: " + m_defaultData.NextVelocity, Logger.severity.ERROR);
+#endif
 			}
 
 			// TODO: report
 			// TODO: cleanup
+		}
 
-			Update.UpdateManager.Register(1, DebugDraw_Velocity, m_grid);
+		private void SetDefault()
+		{
+			Vector3I index;
+			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
+				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
+					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
+					{
+						AeroCell data = m_data[index.X, index.Y, index.Z];
+						if (data == null)
+						{
+							data = new AeroCell();
+							m_data[index.X, index.Y, index.Z] = data;
+						}
+						data.Copy(m_defaultData);
+					}
 		}
 
 		/// <summary>
@@ -150,11 +192,11 @@ namespace Rynchodon.Autopilot.Movement
 			foreach (Vector3I hitCell in m_grid.FirstBlocks(m_direction))
 			{
 				Vector3I prevIndex = hitCell - m_direction - m_minCell;
-				CellData cellData;
-				GetValue(m_data, ref prevIndex, out cellData);
-				cellData.AirPress += 0.001f;
-				SetValue(m_data, ref prevIndex, ref cellData);
-				//m_logger.traceLog("Salted air at " + (hitCell - m_direction) + ", " + cellData);
+				AeroCell cellData;
+				GetValue(ref prevIndex, out cellData);
+				cellData.NextAirPress = cellData.CurAirPress + 0.001f;
+				cellData.ApplyChanges();
+				m_logger.debugLog("Salted air at " + (hitCell - m_direction) + ", " + cellData);
 			}
 		}
 
@@ -163,7 +205,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		private void MoveAir()
 		{
-			Globals.Swap(ref m_data, ref m_previous);
 			float gridSize = m_grid.GridSize;
 
 			Vector3I index;
@@ -171,32 +212,25 @@ namespace Rynchodon.Autopilot.Movement
 				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
 					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
 					{
+						AeroCell currentData;
+						GetValue(ref index, out currentData);
+						if (currentData.CurAirPress == 1f)
+							continue;
+
 						Vector3I currentCell = index + m_minCell;
-						if (m_grid.CubeExists(currentCell))
-						{
-							m_logger.traceLog("Block exists at " + currentCell);
-							continue;
-						}
+						// blocks should have air pressure == 1
+						m_logger.debugLog("Block exists at " + currentCell + ", " + currentData, Logger.severity.ERROR, condition: m_grid.CubeExists(currentCell));
 
-						CellData currentData;
-						GetValue(m_previous, ref index, out currentData);
-						if (currentData.AirPress == 1f)
-						{
-							//m_logger.traceLog("cell: " + currentCell + ", early return, " + currentData);
-							continue;
-						}
-
-						Vector3 sourceCellAvg;
+						currentData.NextVelocity = currentData.CurVelocity;
+						Vector3 sourceCellAvg = currentCell + currentData.NextVelocity;
 
 						while (true)
 						{
-							if (currentData.Velocity.AbsMax() < 0.1f)
+							if (currentData.NextVelocity.AbsMax() < 0.1f)
 							{
 								m_logger.traceLog("Air is stopped at " + currentCell + ", " + currentData);
-								goto SetValue;
+								break;
 							}
-
-							sourceCellAvg = currentCell + currentData.Velocity;
 
 							// check for blocks between here and source
 							Vector3 sourceLocalAvg; Vector3.Multiply(ref sourceCellAvg, gridSize, out sourceLocalAvg);
@@ -205,19 +239,26 @@ namespace Rynchodon.Autopilot.Movement
 							if (((MyCubeGrid)m_grid).GetIntersectionWithLine(ref line, ref hitInfo, IntersectionFlags.DIRECT_TRIANGLES))
 							{
 								Vector3 norm = hitInfo.Triangle.NormalInObjectSpace;
-								m_logger.debugLog("Air intersects block, cell: " + currentCell + ", velocity: " + currentData.Velocity + ", block position: " + hitInfo.Position + ", normal: " + norm);
+								m_logger.debugLog("Air intersects block, cell: " + currentCell + ", velocity: " + currentData.NextVelocity + ", block position: " + hitInfo.Position + ", normal: " + norm);
 
-								float projectionLength; Vector3.Dot(ref currentData.Velocity, ref norm, out projectionLength);
-								m_logger.debugLog("Normal is in wrong direction, velocity: " + currentData.Velocity + ", normal: " + norm + ", dot: " + projectionLength, Logger.severity.ERROR, condition: projectionLength >= 0f);
+								float projectionLength; Vector3.Dot(ref currentData.NextVelocity, ref norm, out projectionLength);
+								m_logger.traceLog("Normal is in wrong direction, velocity: " + currentData.NextVelocity + ", normal: " + norm + ", dot: " + projectionLength, Logger.severity.ERROR, condition: projectionLength >= 0f);
 								Vector3 projection; Vector3.Multiply(ref norm, -projectionLength, out projection);
-								Vector3.Add(ref currentData.Velocity, ref projection, out currentData.Velocity);
+								Vector3.Add(ref currentData.NextVelocity, ref projection, out currentData.NextVelocity);
+								sourceCellAvg = currentCell + currentData.NextVelocity;
+
+								m_logger.debugLog("projection: " + projection + ", " + currentData);
 							}
 							else
+							{
+								m_logger.traceLog("Cell: " + currentCell + ", " + currentData);
 								break;
+							}
 						}
-						
-						currentData = new CellData();
-						
+
+						currentData.NextAirPress = 0f;
+						currentData.NextVelocity = Vector3.Zero;
+
 						// pull air
 						Vector3I low;
 						low.X = (int)Math.Floor(sourceCellAvg.X);
@@ -228,8 +269,6 @@ namespace Rynchodon.Autopilot.Movement
 
 						Vector3 ratioLow = high - sourceCellAvg;
 						Vector3 ratioHigh = sourceCellAvg - low;
-
-						//m_logger.traceLog("ratioLow: " + ratioLow + ", ratioHigh: " + ratioHigh);
 
 						foreach (Vector3I sourceLowHigh in LowHigh)
 						{
@@ -259,18 +298,16 @@ namespace Rynchodon.Autopilot.Movement
 							if (sourceRatio < 0.01f)
 								continue;
 
-							CellData sourceData;
-							GetValueOrDefault(m_previous, ref sourceIndex, out sourceData);
+							AeroCell sourceData;
+							GetValueOrDefault(ref sourceIndex, out sourceData);
 							//m_logger.traceLog("Air moving to " + currentCell + " from " + sourceCell + ", ratio: " + sourceRatio + "/" + sourceRatioParts + ", pressure: " + sourceData.AirPress + ", velocity: " + sourceData.Velocity);
 
-							currentData.AirPress += sourceData.AirPress * sourceRatio;
-							Vector3 transferredVelocity; Vector3.Multiply(ref sourceData.Velocity, sourceRatio, out transferredVelocity);
-							Vector3.Add(ref currentData.Velocity, ref transferredVelocity, out currentData.Velocity);
+							currentData.NextAirPress += sourceData.CurAirPress * sourceRatio;
+							Vector3 transferredVelocity; Vector3.Multiply(ref sourceData.CurVelocity, sourceRatio, out transferredVelocity);
+							Vector3.Add(ref currentData.NextVelocity, ref transferredVelocity, out currentData.NextVelocity);
 						}
 
-						SetValue:
-						m_logger.traceLog("Cell: " + currentCell + ", pressure: " + currentData.AirPress + ", velocity: " + currentData.Velocity);
-						SetValue(m_data, ref index, ref currentData);
+						m_logger.traceLog("Cell: " + currentCell + ", " + currentData);
 					}
 		}
 
@@ -279,16 +316,17 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		private void DiffuseAir()
 		{
-			Globals.Swap(ref m_data, ref m_previous);
-
 			Vector3I index;
 			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
 				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
 					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
 					{
 						Vector3I cell = index + m_minCell;
-						CellData currentData;
-						GetValue(m_previous, ref index, out currentData);
+						if (m_grid.CubeExists(cell))
+							continue;
+
+						AeroCell currentData;
+						GetValue(ref index, out currentData);
 
 						foreach (Vector3I offset in Globals.NeighboursOne)
 						{
@@ -297,41 +335,41 @@ namespace Rynchodon.Autopilot.Movement
 								continue;
 
 							Vector3I neighbourIndex = neighbourCell - m_minCell;
-							CellData neighbourData;
-							GetValueOrDefault(m_previous, ref neighbourIndex, out neighbourData);
+							AeroCell neighbourData;
+							GetValueOrDefault(ref neighbourIndex, out neighbourData);
 
-							if (currentData.AirPress == neighbourData.AirPress)
+							if (currentData.CurAirPress == neighbourData.CurAirPress)
 							{
 								//m_logger.traceLog("Cell: " + cell + ", neighbour: " + neighbourCell + ", air pressure: " + currentData.AirPress + ", neighbour pressure: " + neighbourData.AirPress);
 								continue;
 							}
 
-							float airChange = (neighbourData.AirPress - currentData.AirPress) * CellEqualization;
-							currentData.AirPress += airChange;
+							float airChange = (neighbourData.CurAirPress - currentData.CurAirPress) * CellEqualization;
+							currentData.NextAirPress = currentData.CurAirPress + airChange;
 
 							if (airChange > 0f)
 							{
 								// this cell gets air from neighbour
-								Vector3 inheritedVelocity; Vector3.Multiply(ref neighbourData.Velocity, airChange, out inheritedVelocity);
+								Vector3 inheritedVelocity; Vector3.Multiply(ref neighbourData.CurVelocity, airChange, out inheritedVelocity);
 								Vector3 diffusionVelocity = Vector3.Multiply(offset, airChange);
 								Vector3 inheritDiffuse; Vector3.Add(ref inheritedVelocity, ref diffusionVelocity, out inheritDiffuse);
-								Vector3.Add(ref currentData.Velocity, ref inheritDiffuse, out currentData.Velocity);
+								Vector3.Add(ref currentData.CurVelocity, ref inheritDiffuse, out currentData.NextVelocity);
 
-								m_logger.traceLog("Air moved from " + cell + " to " + neighbourCell + " is " + airChange + ", velocity change: " + inheritDiffuse + ", velocity: " + currentData.Velocity);
+								m_logger.traceLog("Air moved from " + cell + " to " + neighbourCell + " is " + airChange + ", velocity change: " + inheritDiffuse + ", velocity: " + currentData.NextVelocity);
 							}
 							else
 							{
 								// this cell looses air to neighbour
-								Vector3 inheritedVelocity; Vector3.Multiply(ref currentData.Velocity, airChange, out inheritedVelocity);
+								Vector3 inheritedVelocity; Vector3.Multiply(ref currentData.CurVelocity, airChange, out inheritedVelocity);
 								Vector3 diffusionVelocity = Vector3.Multiply(-offset, airChange);
 								Vector3 inheritDiffuse; Vector3.Add(ref inheritedVelocity, ref diffusionVelocity, out inheritDiffuse);
-								Vector3.Subtract(ref currentData.Velocity, ref inheritDiffuse, out currentData.Velocity);
+								Vector3.Subtract(ref currentData.CurVelocity, ref inheritDiffuse, out currentData.NextVelocity);
 
-								m_logger.traceLog("Air moved from " + cell + " to " + neighbourCell + " is " + airChange + ", velocity change: " + inheritDiffuse + ", velocity: " + currentData.Velocity);
+								m_logger.traceLog("Air moved from " + cell + " to " + neighbourCell + " is " + airChange + ", velocity change: " + inheritDiffuse + ", velocity: " + currentData.NextVelocity);
 							}
 						}
 
-						SetValue(m_data, ref index, ref currentData);
+						m_logger.traceLog("Cell: " + cell + ", " + currentData);
 					}
 		}
 
@@ -343,45 +381,35 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			drag = Vector3.Zero;
 
-			Vector3I index;
-			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
-				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
-					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
-					{
-						CellData currentData;
-						GetValue(m_data, ref index, out currentData);
-
-						Vector3 effect; Vector3.Subtract(ref currentData.Velocity, ref m_defaultData.Velocity, out effect);
-						m_logger.traceLog("Index: " + index + ", velocity: " + currentData.Velocity + ", effect: " + effect);
-						Vector3.Subtract(ref drag, ref effect, out drag);
-					}
+			foreach (AeroCell currentData in m_data)
+			{
+				Vector3 effect; Vector3.Subtract(ref currentData.CurVelocity, ref m_defaultData.CurVelocity, out effect);
+				Vector3.Subtract(ref drag, ref effect, out drag);
+			}
 
 			float gridSize = m_grid.GridSize;
 			Vector3.Multiply(ref drag, gridSize * gridSize, out drag);
 		}
 
-		private void GetValue(CellData[,,] array, ref Vector3I index, out CellData value)
+		private void GetValue(ref Vector3I index, out AeroCell value)
 		{
-			value = array[index.X, index.Y, index.Z];
-			if (value.AirPress == 1f)
-				value = m_defaultData;
+			value = m_data[index.X, index.Y, index.Z];
 		}
 
-		private void GetValueOrDefault(CellData[,,] array, ref Vector3I index, out CellData value)
+		private void GetValueOrDefault(ref Vector3I index, out AeroCell value)
 		{
 			if (!IsGridIndex(ref index))
 			{
 				value = m_defaultData;
 				return;
 			}
-			value = array[index.X, index.Y, index.Z];
-			if (value.AirPress == 1f)
-				value = m_defaultData;
+			value = m_data[index.X, index.Y, index.Z];
 		}
 
-		private void SetValue(CellData[,,] array, ref Vector3I index, ref CellData value)
+		private void ApplyAllChanges()
 		{
-			array[index.X, index.Y, index.Z] = value;
+			foreach (AeroCell data in m_data)
+				data.ApplyChanges();
 		}
 
 		private bool IsGridCell(ref Vector3I cell)
@@ -400,7 +428,7 @@ namespace Rynchodon.Autopilot.Movement
 				0 <= index.Z && index.Z < m_sizeCell.Z;
 		}
 
-		private void DebugDraw_Velocity()
+		public void DebugDraw_Velocity()
 		{
 			if (!ThreadTracker.IsGameThread)
 				throw new Exception("Not on game thread");
@@ -409,35 +437,35 @@ namespace Rynchodon.Autopilot.Movement
 			float radius = m_grid.GridSize * 0.125f;
 			MatrixD rotationMatrix = worldMatrix.GetOrientation();
 			float lineLength = m_grid.GridSize * 0.25f;
-			float defaultSpeed = m_defaultData.Velocity.Length();
+			float defaultSpeed = m_defaultData.CurVelocity.Length();
 
 			Vector3I index;
 			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
 				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
 					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
 					{
-						CellData currentData;
-						GetValue(m_data, ref index, out currentData);
+						AeroCell currentData;
+						GetValue(ref index, out currentData);
 
-						if (Math.Abs(currentData.AirPress - m_defaultData.AirPress) < 0.1f && currentData.Velocity.Equals(m_defaultData.Velocity, 0.1f))
+						if (Math.Abs(currentData.CurAirPress - m_defaultData.CurAirPress) < 0.1f && currentData.CurVelocity.Equals(m_defaultData.CurVelocity, 0.1f))
 							continue;
 
 						Vector3D worldPosition = m_grid.GridIntegerToWorld(index + m_minCell);
 						worldMatrix.Translation = worldPosition;
 						Color airPressColour;
-						if (currentData.AirPress > m_defaultData.AirPress)
+						if (currentData.CurAirPress > m_defaultData.CurAirPress)
 						{
-							int value = 255 - (int)((currentData.AirPress - m_defaultData.AirPress) / m_defaultData.AirPress * 255f);
+							int value = 255 - (int)((currentData.CurAirPress - m_defaultData.CurAirPress) / m_defaultData.CurAirPress * 255f);
 							airPressColour = new Color(255, value, value);
 						}
 						else
 						{
-							int value = 255 - (int)((m_defaultData.AirPress - currentData.AirPress) / m_defaultData.AirPress * 255f);
+							int value = 255 - (int)((m_defaultData.CurAirPress - currentData.CurAirPress) / m_defaultData.CurAirPress * 255f);
 							airPressColour = new Color(value, value, 255);
 						}
 						MySimpleObjectDraw.DrawTransparentSphere(ref worldMatrix, radius, ref airPressColour, MySimpleObjectRasterizer.Solid, 4);
 
-						float speed = currentData.Velocity.Length();
+						float speed = currentData.CurVelocity.Length();
 						Color speedColour;
 						if (speed > defaultSpeed)
 						{
@@ -451,8 +479,8 @@ namespace Rynchodon.Autopilot.Movement
 						}
 						Vector4 speedColourVector = speedColour.ToVector4();
 
-						Vector3.Multiply(ref currentData.Velocity, lineLength / speed, out currentData.Velocity);
-						Vector3D direction = Vector3D.Transform(currentData.Velocity, ref rotationMatrix);
+						Vector3.Multiply(ref currentData.CurVelocity, lineLength / speed, out currentData.CurVelocity);
+						Vector3D direction = Vector3D.Transform(currentData.CurVelocity, ref rotationMatrix);
 						Vector3D worldEnd; Vector3D.Add(ref worldPosition, ref direction, out worldEnd);
 						MySimpleObjectDraw.DrawLine(worldPosition, worldEnd, "WeaponLaser", ref speedColourVector, 0.025f);
 
