@@ -81,8 +81,8 @@ namespace Rynchodon.Update
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), construct);
 
 			RegisterForGrid(grid => {
-				AeroProfiler ap = new AeroProfiler(grid);
-				RegisterForUpdates(1, ap.Update1, grid);
+				AeroEffects aero = new AeroEffects(grid);
+				RegisterForUpdates(100, aero.Update100);
 			});
 
 			#endregion

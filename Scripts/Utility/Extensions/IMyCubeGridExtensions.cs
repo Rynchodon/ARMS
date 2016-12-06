@@ -47,13 +47,16 @@ namespace Rynchodon
 
 			BoundingBox localAABB = grid.LocalAABB;
 
-			Vector3 minF; Vector3.Divide(ref localAABB.Min, grid.GridSize, out minF);
-			Vector3 maxF; Vector3.Divide(ref localAABB.Max, grid.GridSize, out maxF);
-			Vector3I min, max;
+			Vector3I min = grid.Min, max = grid.Max;
 
-			Func<float, int> round = f => (int)Math.Round(f);
-			minF.ApplyOperation(round, out min);
-			maxF.ApplyOperation(round, out max);
+			// ???
+			//Vector3 minF; Vector3.Divide(ref localAABB.Min, grid.GridSize, out minF);
+			//Vector3 maxF; Vector3.Divide(ref localAABB.Max, grid.GridSize, out maxF);
+			//Vector3I min, max;
+
+			//Func<float, int> round = f => (int)Math.Round(f);
+			//minF.ApplyOperation(round, out min);
+			//maxF.ApplyOperation(round, out max);
 
 			Vector3I perp0, perp1;
 			perp0 = Base6Directions.GetIntVector(Base6Directions.GetPerpendicular(Base6Directions.GetDirection(baseDirection)));
