@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Multiplayer;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;

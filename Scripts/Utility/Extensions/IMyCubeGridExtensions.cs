@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using Sandbox.Engine.Utils;
 using Sandbox.Game.Entities;
@@ -129,7 +127,7 @@ namespace Rynchodon
 		/// <param name="localStart">The local position to start from.</param>
 		/// <param name="localEnd">The local position to end at.</param>
 		/// <param name="outHitPositions">Populated with cells that the line passes through.</param>
-		public static void RayCastCellsLocal(this IMyCubeGrid grid, Vector3D localStart, Vector3D localEnd, List<Vector3I> outHitPositions)
+		public static void RayCastCellsLocal(this IMyCubeGrid grid, ref Vector3D localStart, ref Vector3D localEnd, List<Vector3I> outHitPositions)
 		{
 			Vector3D offset = ((MyCubeGrid)grid).GridSizeHalfVector;
 			Vector3D offStart; Vector3D.Add(ref localStart, ref offset, out offStart);
