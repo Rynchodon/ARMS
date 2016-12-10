@@ -12,11 +12,14 @@ namespace Rynchodon
 	static class CubeLineIntersection
 	{
 
+		private const IntersectionFlags DefaultFlags = IntersectionFlags.ALL_TRIANGLES;
+
 		/// <summary>
 		/// Tests a line for intersection with models of blocks on the grid.
 		/// </summary>
-		public static bool Intersects(this MyCubeGrid grid, ref LineD localLine, List<Vector3I> rayCastPositions, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = IntersectionFlags.DIRECT_TRIANGLES)
+		public static bool Intersects(this MyCubeGrid grid, ref LineD localLine, List<Vector3I> rayCastPositions, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = DefaultFlags)
 		{
+			rayCastPositions.Clear();
 			grid.RayCastCellsLocal(ref localLine.From, ref localLine.To, rayCastPositions);
 			for (int i = 0; i < rayCastPositions.Count; i++)
 			{
@@ -32,8 +35,10 @@ namespace Rynchodon
 		/// <summary>
 		/// Tests a line for intersection with models of blocks on the grid.
 		/// </summary>
-		public static bool Intersects(this MyCubeBlock block, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = IntersectionFlags.DIRECT_TRIANGLES)
+		public static bool Intersects(this MyCubeBlock block, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = DefaultFlags)
 		{
+			Logger.TraceLog("Checking cube block: " + block.getBestName() + ", line from: " + localLine.From + ", to: " + localLine.To);
+
 			MyCompoundCubeBlock compound = block as MyCompoundCubeBlock;
 			if (compound != null)
 			{
@@ -50,8 +55,10 @@ namespace Rynchodon
 		/// <summary>
 		/// Tests a line for intersection with models of blocks on the grid.
 		/// </summary>
-		public static bool Intersects(this MySlimBlock slim, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = IntersectionFlags.DIRECT_TRIANGLES)
+		public static bool Intersects(this MySlimBlock slim, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = DefaultFlags)
 		{
+			Logger.TraceLog("Checking slim block: " + slim.getBestName() + ", line from: " + localLine.From + ", to: " + localLine.To);
+
 			if (slim.FatBlock != null)
 				return Intersects(slim.FatBlock, ref localLine, out result);
 
@@ -61,26 +68,41 @@ namespace Rynchodon
 
 			foreach (MyCubePart part in cube.Parts)
 			{
-				MatrixD localMatrix = part.InstanceData.LocalMatrix;
-				MatrixD invLocal; MatrixD.Invert(ref localMatrix, out invLocal);
+				Matrix localMatrix = part.InstanceData.LocalMatrix;
+				Matrix invLocal; Matrix.Invert(ref localMatrix, out invLocal);
+				MatrixD invLocalD = invLocal;
 
-				result = part.Model.GetTrianglePruningStructure().GetIntersectionWithLine(slim.CubeGrid, ref localLine, ref invLocal, flags);
+				Logger.TraceLog("Checking part: " + part.Model.AssetName + ", line from " + localLine.From + " to " + localLine.To + " becomes " +
+					Vector3D.Transform(localLine.From, ref invLocalD) + " to " + Vector3D.Transform(localLine.To, ref invLocalD));
+
+				result = part.Model.GetTrianglePruningStructure().GetIntersectionWithLine(slim.CubeGrid, ref localLine, ref invLocalD, flags);
 				if (result.HasValue)
+				{
+					MyIntersectionResultLineTriangleEx value = result.Value;
+					Vector3.Transform(ref value.IntersectionPointInObjectSpace, ref localMatrix, out value.IntersectionPointInObjectSpace);
+					Matrix orientation = localMatrix.GetOrientation();
+					Vector3.Transform(ref value.NormalInObjectSpace, ref orientation, out value.NormalInObjectSpace);
+
+					result = value;
 					return true;
+				}
 			}
 
 			result = null;
 			return false;
 		}
 
-		private static bool Intersects(MyEntity entity, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = IntersectionFlags.DIRECT_TRIANGLES)
+		private static bool Intersects(MyEntity entity, ref LineD localLine, out MyIntersectionResultLineTriangleEx? result, IntersectionFlags flags = DefaultFlags)
 		{
+			Logger.TraceLog("Checking entity: " + entity.getBestName() + ", line from: " + localLine.From + ", to: " + localLine.To);
+
 			Logger.DebugLog("entity is a MyCubeGrid, please call the appropriate method", Logger.severity.FATAL, condition: entity is MyCubeGrid);
 
-			MatrixD localMatrix = entity.PositionComp.LocalMatrix;
-			MatrixD invLocal; MatrixD.Invert(ref localMatrix, out invLocal);
+			Matrix localMatrix = entity.PositionComp.LocalMatrix;
+			Matrix invLocal; Matrix.Invert(ref localMatrix, out invLocal);
+			MatrixD invLocalD = invLocal;
 
-			result = entity.ModelCollision.GetTrianglePruningStructure().GetIntersectionWithLine(entity, ref localLine, ref invLocal, flags);
+			result = entity.ModelCollision.GetTrianglePruningStructure().GetIntersectionWithLine(entity, ref localLine, ref invLocalD, flags);
 			if (result.HasValue)
 				return true;
 

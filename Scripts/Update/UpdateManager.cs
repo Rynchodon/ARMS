@@ -82,6 +82,7 @@ namespace Rynchodon.Update
 
 			RegisterForGrid(grid => {
 				AeroEffects aero = new AeroEffects(grid);
+				RegisterForUpdates(1, aero.Update1, grid);
 				RegisterForUpdates(100, aero.Update100, grid);
 			});
 

@@ -172,7 +172,6 @@
     <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
     <Compile Include="Autopilot\Movement\AeroEffects.cs" />
-    <None Include="Autopilot\Movement\AeroProfiler_old.cs" />
     <Compile Include="Autopilot\Movement\AeroProfiler.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
