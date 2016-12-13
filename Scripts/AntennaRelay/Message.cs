@@ -70,7 +70,7 @@ namespace Rynchodon.AntennaRelay
 			ByteConverter.AppendBytes(Static.bytes, recipientBlock);
 			ByteConverter.AppendBytes(Static.bytes, message);
 
-			if (MyAPIGateway.Multiplayer.SendMessageToServer(Static.bytes.ToArray()))
+			if (MyAPIGateway.Multiplayer.TrySendMessageToServer(Static.bytes.ToArray()))
 				Static.logger.debugLog("Sent message to server");
 			else
 			{

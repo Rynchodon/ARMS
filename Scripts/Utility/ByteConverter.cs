@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using VRageMath;
@@ -315,22 +317,36 @@ namespace Rynchodon
 					AppendBytes(bytes, (string)(object)data);
 					return;
 			}
-			if (typeof(T) == typeof(StringBuilder))
+			Type typeofT = typeof(T);
+			if (typeofT == typeof(StringBuilder))
 			{
 				AppendBytes(bytes, (StringBuilder)(object)data);
 				return;
 			}
-			if (typeof(T) == typeof(Vector3))
+			if (typeofT == typeof(Vector3))
 			{
 				AppendBytes(bytes, (Vector3)(object)data);
 				return;
 			}
-			if (typeof(T) == typeof(Vector3D))
+			if (typeofT == typeof(Vector3D))
 			{
 				AppendBytes(bytes, (Vector3D)(object)data);
 				return;
 			}
 			throw new InvalidCastException("data is of invalid type: " + code + ", " + data);
+		}
+
+		public static void AppendBytes<T>(List<byte> bytes, IEnumerable<T> data)
+		{
+			if (data == null)
+			{
+				AppendBytes(bytes, 0);
+				return;
+			}
+
+			AppendBytes(bytes, data.Count());
+			foreach (T item in data)
+				AppendBytes(bytes, item);
 		}
 
 		#endregion List
@@ -439,7 +455,10 @@ namespace Rynchodon
 
 		public static StringBuilder GetStringBuilder(byte[] bytes, ref int pos)
 		{
-			return new StringBuilder(GetString(bytes, ref pos));
+			StringBuilder result = new StringBuilder(GetInt(bytes, ref pos));
+			for (int index = 0; index < result.Length; index++)
+				result[index] = GetChar(bytes, ref pos);
+			return result;
 		}
 
 		public static Vector3 GetVector3(byte[] bytes, ref int pos)
@@ -493,22 +512,31 @@ namespace Rynchodon
 					value = (T)(object)GetString(bytes, ref pos);
 					return;
 			}
-			if (typeof(T) == typeof(StringBuilder))
+			Type typeofT = typeof(T);
+			if (typeofT == typeof(StringBuilder))
 			{
-				value = (T)(object)new StringBuilder(GetString(bytes, ref pos));
+				value = (T)(object)GetStringBuilder(bytes, ref pos);
 				return;
 			}
-			if (typeof(T) == typeof(Vector3))
+			if (typeofT == typeof(Vector3))
 			{
 				value = (T)(object)GetVector3(bytes, ref pos);
 				return;
 			}
-			if (typeof(T) == typeof(Vector3D))
+			if (typeofT == typeof(Vector3D))
 			{
 				value = (T)(object)GetVector3D(bytes, ref pos);
 				return;
 			}
 			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));
+		}
+
+		public static T[] GetArrayOfType<T>(byte[] bytes, ref int pos)
+		{
+			T[] array = new T[GetInt(bytes, ref pos)];
+			for (int i = 0; i < array.Length; ++i)
+				GetOfType(bytes, ref pos, ref array[i]);
+			return array;
 		}
 
 		#endregion From Byte Array

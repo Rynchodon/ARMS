@@ -286,10 +286,11 @@
     <Compile Include="Utility\MainLock.cs" />
     <Compile Include="Utility\MathExtension.cs" />
     <Compile Include="Utility\MotorTurret.cs" />
-    <Compile Include="Utility\Network\LoadDistribution.cs" />
+    <Compile Include="Utility\Network\MessageTooLongException.cs" />
+    <Compile Include="Utility\Network\RemoteTask.cs" />
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
-    <None Include="Utility\Network\TestLoadDist.cs" />
+    <Compile Include="Utility\Network\TestRemoteTask.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />
