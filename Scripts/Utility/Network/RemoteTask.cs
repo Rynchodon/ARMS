@@ -19,6 +19,12 @@ namespace Rynchodon.Utility.Network
 	abstract class RemoteTask
 	{
 
+		/// <summary>Identifies a field or property of a RemoteTask as an argument, it will be sent to the client.</summary>
+		internal class ArgumentAttribute : Attribute { }
+		/// <summary>Identifies a field or property of a RemoteTask as a result, it will be sent to the server.</summary>
+		internal class ResultAttribute : Attribute { }
+
+		private const ulong ServerKey = 0uL;
 		private static readonly TimeSpan TimeoutAfter = new TimeSpan(0, 1, 0);
 		private static readonly TimeSpan KeepAliveInterval = new TimeSpan(0, 0, 15);
 
@@ -62,7 +68,7 @@ namespace Rynchodon.Utility.Network
 
 			MySession.Static.Players.PlayersChanged += OnPlayersChanged;
 			m_clients = new Dictionary<ulong, Client>();
-			m_clients.Add(0uL, new Client() { OutstandingTasks = int.MaxValue / 2 }); // for the server
+			m_clients.Add(ServerKey, new Client() { OutstandingTasks = int.MaxValue / 2 }); // for the server
 			foreach (MyPlayer player in MySession.Static.Players.GetOnlinePlayers())
 				OnPlayersChanged(true, player.Id);
 
@@ -126,7 +132,7 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <typeparam name="T">The type of task to start.</typeparam>
 		/// <param name="task">The task to start.</param>
-		public static void StartTask<T>(T task) where T : RemoteTask, new()
+		public static void StartTask<T>(T task, bool runOnServer = false) where T : RemoteTask, new()
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 				throw new Exception("Not server");
@@ -143,7 +149,7 @@ namespace Rynchodon.Utility.Network
 			foreach (KeyValuePair<byte, Type> pair in m_taskTypes)
 				if (pair.Value == taskType)
 				{
-					task.SteamId = GetIdlemostClient();
+					task.SteamId = runOnServer ? GetServerClient() : GetIdlemostClient();
 
 					task.TaskId = m_nextOutstandingTaskId++;
 					while (m_outstandingTask.ContainsKey(task.TaskId))
@@ -153,14 +159,20 @@ namespace Rynchodon.Utility.Network
 					ByteConverter.AppendBytes(m_message, MessageHandler.SubMod.LoadDistribution);
 					ByteConverter.AppendBytes(m_message, task.TaskId);
 					ByteConverter.AppendBytes(m_message, pair.Key);
-					task.ParamSerialize(m_message);
+
+					foreach (FieldInfo field in taskType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+						if (field.HasAttribute<ArgumentAttribute>())
+							ByteConverter.AppendBytes(m_message, field.GetValue(task));
+					foreach (PropertyInfo property in taskType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+						if (property.HasAttribute<ArgumentAttribute>())
+							ByteConverter.AppendBytes(m_message, property.GetValue(task));
 
 					Logger.TraceLog("Sending task request: " + typeof(T) + ", " + pair.Key + ", " + task.TaskId + ", task: " + task + ", m_outstandingTask.Count: " + m_outstandingTask.Count);
 
 					m_outstandingTask.Add(task.TaskId, task);
 					task.StartMonitorTask();
 
-					if (task.SteamId == 0uL || task.SteamId == MyAPIGateway.Multiplayer.MyId)
+					if (task.SteamId == ServerKey || task.SteamId == MyAPIGateway.Multiplayer.MyId)
 						HandleStartRequest(m_message.ToArray(), 1);
 					else
 						MyAPIGateway.Multiplayer.SendMessageTo(m_message.ToArray(), task.SteamId);
@@ -196,7 +208,12 @@ namespace Rynchodon.Utility.Network
 			RemoteTask task = (RemoteTask)Activator.CreateInstance(taskType);
 			task.TaskId = taskId;
 
-			task.ParamDeserialize(startMessage, position);
+			foreach (FieldInfo field in taskType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+				if (field.HasAttribute<ArgumentAttribute>())
+					field.SetValue(task, ByteConverter.GetOfType(startMessage, ref position, field.FieldType));
+			foreach (PropertyInfo property in taskType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+				if (property.HasAttribute<ArgumentAttribute>())
+					property.SetValue(task, ByteConverter.GetOfType(startMessage, ref position, property.PropertyType));
 
 			Logger.TraceLog("Created Task with ID: " + task.TaskId + ", Task: " + task);
 
@@ -219,11 +236,22 @@ namespace Rynchodon.Utility.Network
 			ByteConverter.AppendBytes(m_message, task.TaskId);
 			ByteConverter.AppendBytes(m_message, task.CurrentStatus);
 			if (task.CurrentStatus == Status.Success)
-				task.ResultSerialize(m_message);
+			{
+				Type taskType = task.GetType();
+				foreach (FieldInfo field in taskType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+					if (field.HasAttribute<ResultAttribute>())
+						ByteConverter.AppendBytes(m_message, field.GetValue(task));
+				foreach (PropertyInfo property in taskType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+					if (property.HasAttribute<ResultAttribute>())
+						ByteConverter.AppendBytes(m_message, property.GetValue(task));
+			}
 
 			Logger.TraceLog("Sending status for " + task);
 
-			MyAPIGateway.Multiplayer.SendMessageToServer(m_message.ToArray());
+			if (MyAPIGateway.Multiplayer.IsServer)
+				HandleStatus(m_message.ToArray(), 1);
+			else
+				MyAPIGateway.Multiplayer.SendMessageToServer(m_message.ToArray());
 		}
 
 		private static void HandleStatus(byte[] resultMessage, int position)
@@ -240,19 +268,26 @@ namespace Rynchodon.Utility.Network
 			task.CurrentStatus = status;
 			task.KeepAlive();
 
-			Logger.TraceLog("Got update for " + task);
 
 			switch (status)
 			{
 				case Status.None:
 					throw new Exception("None status");
 				case Status.Started:
+					Logger.TraceLog("Got heartbeat for "  + task);
 					return;
 				case Status.Success:
-					task.ResultDeserialize(resultMessage, position);
+					Type taskType = task.GetType();
+					foreach (FieldInfo field in taskType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+						if (field.HasAttribute<ResultAttribute>())
+							field.SetValue(task, ByteConverter.GetOfType(resultMessage, ref position, field.FieldType));
+					foreach (PropertyInfo property in taskType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+						if (property.HasAttribute<ResultAttribute>())
+							property.SetValue(task, ByteConverter.GetOfType(resultMessage, ref position, property.PropertyType));
 					break;
 			}
 
+			Logger.TraceLog("Got result for " + task);
 			task.EndMonitorTask();
 		}
 
@@ -268,11 +303,18 @@ namespace Rynchodon.Utility.Network
 				if (c.Value.OutstandingTasks < idlemost.Value.OutstandingTasks)
 					idlemost = c;
 
-			Logger.TraceLog("Idlemost: Steam ID: " + idlemost.Key + ", Client: " + idlemost);
+			Logger.TraceLog("Idlemost: Steam ID: " + idlemost.Key + ", Client: " + idlemost.Value);
 
 			Client client = idlemost.Value;
 			++client.OutstandingTasks;
 			return idlemost.Key;
+		}
+
+		private static ulong GetServerClient()
+		{
+			Client client = m_clients[ServerKey];
+			++client.OutstandingTasks;
+			return ServerKey;
 		}
 
 		/// <summary>
@@ -320,7 +362,7 @@ namespace Rynchodon.Utility.Network
 			}
 			else if (TimeoutAfter < DateTime.UtcNow - LastResponse)
 			{
-				Logger.TraceLog("Client stopped responding. Now: " + DateTime.UtcNow + ", LastResponse: " + LastResponse + ", elapsed: " + (DateTime.UtcNow - LastResponse));
+				Logger.TraceLog("Client stopped responding: " + ToString());
 
 				CurrentStatus = Status.Timeout;
 				EndMonitorTask();
@@ -358,7 +400,7 @@ namespace Rynchodon.Utility.Network
 			if (KeepAliveInterval < DateTime.UtcNow - LastResponse)
 			{
 				Logger.TraceLog("Sending heartbeat");
-
+				KeepAlive();
 				SendStatus(this);
 			}
 		}
@@ -383,32 +425,6 @@ namespace Rynchodon.Utility.Network
 		/// Invoked on the client to start the task.
 		/// </summary>
 		protected abstract void Start();
-
-		/// <summary>
-		/// Add the parameters, if any, to the message to be sent to the client.
-		/// </summary>
-		/// <param name="startMessage">The message to append to.</param>
-		protected virtual void ParamSerialize(List<byte> startMessage) { }
-		
-		/// <summary>
-		/// Extract the paramters, if any, on the client.
-		/// </summary>
-		/// <param name="startMessage">The message from the server.</param>
-		/// <param name="pos">The start position of the parameters</param>
-		protected virtual void ParamDeserialize(byte[] startMessage, int pos) { }
-
-		/// <summary>
-		/// Add the results, if any, to the message to be sent to the server.
-		/// </summary>
-		/// <param name="resultMessage">The message to append to.</param>
-		protected virtual void ResultSerialize(List<byte> resultMessage) { }
-
-		/// <summary>
-		/// Extract the reslts, if any, on the server.
-		/// </summary>
-		/// <param name="resultMessage">The message from the client.</param>
-		/// <param name="pos">The start position of the results</param>
-		protected virtual void ResultDeserialize(byte[] resultMessage, int pos) { }
 
 		/// <summary>
 		/// Invoked on the server after the task is completed.

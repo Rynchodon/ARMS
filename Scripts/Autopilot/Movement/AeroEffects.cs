@@ -3,8 +3,11 @@
 #endif
 
 using System;
+using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities;
 using Sandbox.Game.World;
+using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -14,27 +17,70 @@ namespace Rynchodon.Autopilot.Movement
 	class AeroEffects
 	{
 
+		private class ProfileTask : RemoteTask
+		{
+			private AeroProfiler Profiler;
+			[Argument]
+			private long EntityId;
+			[Result]
+			public Vector3[] DragCoefficient;
+
+			public ProfileTask() { }
+
+			public ProfileTask(long EntityId)
+			{
+				this.EntityId = EntityId;
+			}
+
+			protected override void Start()
+			{
+				IMyCubeGrid grid = (IMyCubeGrid)MyAPIGateway.Entities.GetEntityById(EntityId);
+				Profiler = new AeroProfiler(grid);
+				Update.UpdateManager.Register(100, CheckProfiler);
+			}
+
+			private void CheckProfiler()
+			{
+				if (Profiler.Running)
+					return;
+
+				Update.UpdateManager.Unregister(100, CheckProfiler);
+				if (Profiler.Success)
+				{
+					DragCoefficient = Profiler.DragCoefficient;
+					Completed(Status.Success);
+				}
+				else
+					Completed(Status.Exception);
+			}
+		}
+
 		private const ulong ProfileWait = 200uL;
 
 		private readonly Logger m_logger;
 		private readonly IMyCubeGrid m_grid;
+		private readonly CubeGridCache m_cache;
 
 		private ulong m_profileAt;
+		private ProfileTask m_profileTask;
+
 		private float m_airDensity;
 		private Vector3 m_worldDrag;
 
-		private AeroProfiler m_profiler;
-
+		// public because Autopilot is going to need it later
 		public Vector3[] DragCoefficient { get; private set; }
 
 		public AeroEffects(IMyCubeGrid grid)
 		{
 			this.m_logger = new Logger(grid);
 			this.m_grid = grid;
+			this.m_cache = CubeGridCache.GetFor(m_grid);
 			this.m_profileAt = Globals.UpdateCount + ProfileWait;
 
 			m_grid.OnBlockAdded += OnBlockChange;
 			m_grid.OnBlockRemoved += OnBlockChange;
+
+			Registrar.Add(grid, this);
 		}
 
 		public void Update1()
@@ -80,7 +126,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3D worldDrag; Vector3D.Transform(ref localDrag, ref world, out worldDrag);
 			m_worldDrag = worldDrag;
 
-			m_logger.traceLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
+			m_logger.debugLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
 
 			m_grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, m_worldDrag, null, null);
 		}
@@ -88,18 +134,26 @@ namespace Rynchodon.Autopilot.Movement
 		public void Update100()
 		{
 			FillAirDensity();
-			if (m_profileAt <= Globals.UpdateCount && !m_grid.IsStatic && m_airDensity != 0f)
+			if (m_grid.IsStatic || m_airDensity == 0f)
+				return;
+
+			if (m_profileAt <= Globals.UpdateCount)
 			{
-				m_logger.debugLog("Running profiler", Logger.severity.DEBUG);
+				m_logger.debugLog("Starting profile task", Logger.severity.DEBUG);
 				m_profileAt = ulong.MaxValue;
-				m_profiler = new AeroProfiler(m_grid);
+				m_profileTask = new ProfileTask(m_grid.EntityId);
+				RemoteTask.StartTask(m_profileTask, ((MyCubeGrid)m_grid).CubeBlocks.Count < 100);
 				return;
 			}
-			if (m_profiler != null && !m_profiler.Running)
+			if (m_profileTask != null && m_profileTask.CurrentStatus > RemoteTask.Status.Started)
 			{
-				if (m_profiler.Success)
-					DragCoefficient = m_profiler.DragCoefficient;
-				m_profiler = null;
+				if (m_profileTask.CurrentStatus == RemoteTask.Status.Success)
+				{
+					DragCoefficient = m_profileTask.DragCoefficient;
+					for (int i = 0; i < 6; ++i)
+						m_logger.debugLog("Direction: " + (Base6Directions.Direction)i + ", DragCoefficient: " + DragCoefficient[i], Logger.severity.DEBUG);
+				}
+				m_profileTask = null;
 			}
 		}
 
@@ -135,7 +189,15 @@ namespace Rynchodon.Autopilot.Movement
 			if (m_worldDrag == Vector3D.Zero)
 				return;
 
-			AeroDrawIndicators.DrawDrag(block, ref m_worldDrag, m_airDensity);
+			Vector3 drag = Vector3.Zero;
+			foreach (IMyCubeGrid grid in Attached.AttachedGrid.AttachedGrids(m_grid, Attached.AttachedGrid.AttachmentKind.Physics, true))
+			{
+				AeroEffects aero;
+				if (Registrar.TryGetValue(grid.EntityId, out aero))
+					Vector3.Add(ref drag, ref aero.m_worldDrag, out drag);
+			}
+
+			AeroDrawIndicators.DrawDrag(block, ref drag, m_airDensity);
 		}
 
 	}

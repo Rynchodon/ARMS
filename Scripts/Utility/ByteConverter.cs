@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using VRageMath;
@@ -278,75 +279,81 @@ namespace Rynchodon
 			AppendBytes(bytes, v.Z);
 		}
 
-		public static void AppendBytes<T>(List<byte> bytes, T data)
+		public static void AppendBytes(List<byte> bytes, object data)
 		{
-			TypeCode code = Convert.GetTypeCode(data);
-			switch (code)
+			switch (Convert.GetTypeCode(data))
 			{
 				case TypeCode.Boolean:
-					AppendBytes(bytes, (bool)(object)data);
+					AppendBytes(bytes, (bool)data);
 					return;
 				case TypeCode.Byte:
-					AppendBytes(bytes, (byte)(object)data);
+					AppendBytes(bytes, (byte)data);
 					return;
 				case TypeCode.Int16:
-					AppendBytes(bytes, (short)(object)data);
+					AppendBytes(bytes, (short)data);
 					return;
 				case TypeCode.UInt16:
-					AppendBytes(bytes, (ushort)(object)data);
+					AppendBytes(bytes, (ushort)data);
 					return;
 				case TypeCode.Int32:
-					AppendBytes(bytes, (int)(object)data);
+					AppendBytes(bytes, (int)data);
 					return;
 				case TypeCode.UInt32:
-					AppendBytes(bytes, (uint)(object)data);
+					AppendBytes(bytes, (uint)data);
 					return;
 				case TypeCode.Int64:
-					AppendBytes(bytes, (long)(object)data);
+					AppendBytes(bytes, (long)data);
 					return;
 				case TypeCode.UInt64:
-					AppendBytes(bytes, (ulong)(object)data);
+					AppendBytes(bytes, (ulong)data);
 					return;
 				case TypeCode.Single:
-					AppendBytes(bytes, (float)(object)data);
+					AppendBytes(bytes, (float)data);
 					return;
 				case TypeCode.Double:
-					AppendBytes(bytes, (double)(object)data);
+					AppendBytes(bytes, (double)data);
 					return;
 				case TypeCode.String:
-					AppendBytes(bytes, (string)(object)data);
+					AppendBytes(bytes, (string)data);
 					return;
 			}
-			Type typeofT = typeof(T);
-			if (typeofT == typeof(StringBuilder))
+			Type typeOfData = data.GetType();
+			if (typeOfData == typeof(StringBuilder))
 			{
-				AppendBytes(bytes, (StringBuilder)(object)data);
+				AppendBytes(bytes, (StringBuilder)data);
 				return;
 			}
-			if (typeofT == typeof(Vector3))
+			if (typeOfData == typeof(Vector3))
 			{
-				AppendBytes(bytes, (Vector3)(object)data);
+				AppendBytes(bytes, (Vector3)data);
 				return;
 			}
-			if (typeofT == typeof(Vector3D))
+			if (typeOfData == typeof(Vector3D))
 			{
-				AppendBytes(bytes, (Vector3D)(object)data);
+				AppendBytes(bytes, (Vector3D)data);
 				return;
 			}
-			throw new InvalidCastException("data is of invalid type: " + code + ", " + data);
-		}
-
-		public static void AppendBytes<T>(List<byte> bytes, IEnumerable<T> data)
-		{
-			if (data == null)
+			if (typeof(IEnumerable).IsAssignableFrom(typeOfData))
 			{
-				AppendBytes(bytes, 0);
+				IEnumerable enumerable = (IEnumerable)data;
+				int count;
+				if (typeof(ICollection).IsAssignableFrom(typeOfData))
+					count = ((ICollection)data).Count;
+				else
+				{
+					count = 0;
+					foreach (object item in enumerable)
+						++count;
+				}
+				AppendBytes(bytes, count);
+				foreach (object item in enumerable)
+				{
+					Logger.DebugLog("Array item: " + item);
+					AppendBytes(bytes, item);
+				}
 				return;
 			}
-
-			AppendBytes(bytes, data.Count());
-			foreach (T item in data)
-				AppendBytes(bytes, item);
+			throw new InvalidCastException("data is of invalid type: " + Convert.GetTypeCode(data) + ", " + typeOfData + ", " + data);
 		}
 
 		#endregion List
@@ -512,30 +519,87 @@ namespace Rynchodon
 					value = (T)(object)GetString(bytes, ref pos);
 					return;
 			}
-			Type typeofT = typeof(T);
-			if (typeofT == typeof(StringBuilder))
+			Type typeOfValue = value.GetType();
+			if (typeOfValue == typeof(StringBuilder))
 			{
 				value = (T)(object)GetStringBuilder(bytes, ref pos);
 				return;
 			}
-			if (typeofT == typeof(Vector3))
+			if (typeOfValue == typeof(Vector3))
 			{
 				value = (T)(object)GetVector3(bytes, ref pos);
 				return;
 			}
-			if (typeofT == typeof(Vector3D))
+			if (typeOfValue == typeof(Vector3D))
 			{
 				value = (T)(object)GetVector3D(bytes, ref pos);
 				return;
 			}
-			throw new ArgumentException("Invalid TypeCode: " + Convert.GetTypeCode(value));
+			throw new InvalidCastException("value is of invalid type: " + Convert.GetTypeCode(value) + ", " + typeOfValue + ", " + value);
 		}
 
-		public static T[] GetArrayOfType<T>(byte[] bytes, ref int pos)
+		public static object GetOfType(byte[] bytes, ref int pos, Type typeOfObject)
 		{
-			T[] array = new T[GetInt(bytes, ref pos)];
-			for (int i = 0; i < array.Length; ++i)
-				GetOfType(bytes, ref pos, ref array[i]);
+			if (typeOfObject == typeof(bool))
+				return GetBool(bytes, ref pos);
+
+			if (typeOfObject == typeof(byte))
+				return GetByte(bytes, ref pos);
+
+			if (typeOfObject == typeof(short))
+				return GetShort(bytes, ref pos);
+
+			if (typeOfObject == typeof(ushort))
+				return GetUshort(bytes, ref pos);
+
+			if (typeOfObject == typeof(int))
+				return GetInt(bytes, ref pos);
+
+			if (typeOfObject == typeof(uint))
+				return GetUint(bytes, ref pos);
+
+			if (typeOfObject == typeof(long))
+				return GetLong(bytes, ref pos);
+
+			if (typeOfObject == typeof(ulong))
+				return GetUlong(bytes, ref pos);
+
+			if (typeOfObject == typeof(float))
+				return GetFloat(bytes, ref pos);
+
+			if (typeOfObject == typeof(double))
+				return GetDouble(bytes, ref pos);
+
+			if (typeOfObject == typeof(char))
+				return GetChar(bytes, ref pos);
+
+			if (typeOfObject == typeof(string))
+				return GetString(bytes, ref pos);
+
+			if (typeOfObject == typeof(StringBuilder))
+				return GetStringBuilder(bytes, ref pos);
+
+			if (typeOfObject == typeof(Vector3))
+				return GetVector3(bytes, ref pos);
+
+			if (typeOfObject == typeof(Vector3D))
+				return GetVector3D(bytes, ref pos);
+
+			if (typeof(Array).IsAssignableFrom(typeOfObject))
+				return CreateArray(bytes, ref pos, typeOfObject);
+
+			throw new InvalidCastException("typeOfObject is invalid: " + typeOfObject);
+		}
+
+		private static Array CreateArray(byte[] bytes, ref int pos, Type typeOfObject)
+		{
+			Type elementType = typeOfObject.GetElementType();
+			Array array = Array.CreateInstance(elementType, GetInt(bytes, ref pos));
+			for (int index = 0; index < array.Length; ++index)
+			{
+				array.SetValue(GetOfType(bytes, ref pos, elementType), index);
+				Logger.DebugLog("Array item: " + array.GetValue(index));
+			}
 			return array;
 		}
 
