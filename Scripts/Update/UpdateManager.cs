@@ -133,27 +133,12 @@ namespace Rynchodon.Update
 		{
 			#region Attached
 
-			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
-				StatorRotor.Stator stator = new StatorRotor.Stator(block);
-				RegisterForUpdates(1, stator.Update10, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedStator), (block) => {
-				StatorRotor.Stator stator = new StatorRotor.Stator(block);
-				RegisterForUpdates(1, stator.Update10, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
-				new StatorRotor.Rotor(block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
-				new StatorRotor.Rotor(block);
-			});
+			RegisterForBlock(new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator), typeof(MyObjectBuilder_MotorSuspension) }, 
+				block => RegisterForUpdates(100, (new StatorRotor.Stator(block)).Update, block));
 
 			RegisterForBlock(typeof(MyObjectBuilder_ExtendedPistonBase), (block) => {
 				Piston.PistonBase pistonBase = new Piston.PistonBase(block);
 				RegisterForUpdates(100, pistonBase.Update, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
-				new Piston.PistonTop(block);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
