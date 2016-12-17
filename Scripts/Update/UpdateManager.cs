@@ -5,8 +5,8 @@ using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Aerodynamics;
 using Rynchodon.Autopilot.Harvest;
-using Rynchodon.Autopilot.Movement;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
@@ -79,12 +79,6 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), construct);
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 				RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), construct);
-
-			RegisterForGrid(grid => {
-				AeroEffects aero = new AeroEffects(grid);
-				RegisterForUpdates(1, aero.Update1, grid);
-				RegisterForUpdates(100, aero.Update100, grid);
-			});
 
 			#endregion
 
@@ -224,6 +218,17 @@ namespace Rynchodon.Update
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), apConstruct);
 				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), apConstruct);
+			}
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAirResistanceBeta))
+			{
+				RegisterForGrid(grid => {
+					AeroEffects aero = new AeroEffects(grid);
+					RegisterForUpdates(1, aero.Update1, grid);
+					if (MyAPIGateway.Multiplayer.IsServer)
+						RegisterForUpdates(100, aero.Update100, grid);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), block => RegisterForUpdates(1, (new CockpitTerminal(block)).Update1, block));
 			}
 
 			#endregion

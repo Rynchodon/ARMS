@@ -4,15 +4,15 @@
 
 using System;
 using Rynchodon.Utility.Network;
+using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Movement
+namespace Rynchodon.Autopilot.Aerodynamics
 {
 	class AeroEffects
 	{
@@ -68,7 +68,7 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 m_worldDrag;
 
 		// public because Autopilot is going to need it later
-		public Vector3[] DragCoefficient { get; private set; }
+		public Vector3[] DragCoefficient;
 
 		public AeroEffects(IMyCubeGrid grid)
 		{
@@ -85,7 +85,8 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void Update1()
 		{
-			ApplyDrag();
+			if (MyAPIGateway.Multiplayer.IsServer)
+				ApplyDrag();
 			DrawAirAndDrag();
 		}
 
@@ -126,7 +127,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3D worldDrag; Vector3D.Transform(ref localDrag, ref world, out worldDrag);
 			m_worldDrag = worldDrag;
 
-			m_logger.debugLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
+			m_logger.traceLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
 
 			m_grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, m_worldDrag, null, null);
 		}
@@ -194,7 +195,10 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				AeroEffects aero;
 				if (Registrar.TryGetValue(grid.EntityId, out aero))
+				{
 					Vector3.Add(ref drag, ref aero.m_worldDrag, out drag);
+					m_logger.traceLog("Drag: " + ((DirectionWorld)aero.m_worldDrag).ToGrid(m_grid), primaryState: grid.nameWithId());
+				}
 			}
 
 			AeroDrawIndicators.DrawDrag(block, ref drag, m_airDensity);

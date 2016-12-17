@@ -50,7 +50,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			public StaticVariables()
 			{
 			Logger.DebugLog("entered", Logger.severity.TRACE);
-				byte allowedThread = ServerSettings.GetSetting<byte>(ServerSettings.SettingName.yParallelPathfinder);
+				byte allowedThread = (byte)(Environment.ProcessorCount / 2);
 				ThreadForeground = new ThreadManager(allowedThread, false, "PathfinderForeground");
 				ThreadBackground = new ThreadManager(allowedThread, true, "PathfinderBackground");
 

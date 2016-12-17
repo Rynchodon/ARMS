@@ -10,7 +10,7 @@ using VRage.Game.Gui;
 using VRage.Utils;
 using VRage.Game.ModAPI;
 
-namespace Rynchodon.Autopilot.Movement
+namespace Rynchodon.Autopilot.Aerodynamics
 {
 	static class AeroDrawIndicators
 	{

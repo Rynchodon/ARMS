@@ -171,9 +171,12 @@
     <Compile Include="Autopilot\Instruction\Command\Wait.cs" />
     <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
-    <Compile Include="Autopilot\Movement\AeroDrawIndicators.cs" />
-    <Compile Include="Autopilot\Movement\AeroEffects.cs" />
-    <Compile Include="Autopilot\Movement\AeroProfiler.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroDrawIndicators.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroEffects.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroProfiler.cs" />
+    <Compile Include="Autopilot\Aerodynamics\FlightControlAssist.cs" />
+    <Compile Include="Autopilot\Aerodynamics\CockpitTerminal.cs" />
+    <Compile Include="Autopilot\Aerodynamics\RotorPicker.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
     <None Include="Autopilot\Movement\IMover.cs" />

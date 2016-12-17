@@ -234,7 +234,7 @@ namespace Rynchodon.Utility.Network
 			}
 			set
 			{
-				if (m_value.Equals(value))
+				if (Equals(m_value, value))
 				{
 					//Logger.DebugLog("no change");
 					return;

@@ -64,6 +64,7 @@ namespace Rynchodon.Utility
 			StringBuilder display = new StringBuilder();
 
 			display.AppendLine("Server settings:");
+			Append<bool>(display, ServerSettings.SettingName.bAirResistanceBeta);
 			Append<bool>(display, ServerSettings.SettingName.bAllowAutopilot);
 			Append<bool>(display, ServerSettings.SettingName.bAllowGuidedMissile);
 			Append<bool>(display, ServerSettings.SettingName.bAllowHacker);

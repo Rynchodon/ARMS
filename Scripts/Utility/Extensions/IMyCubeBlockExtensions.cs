@@ -164,5 +164,19 @@ namespace Rynchodon
 			return ((MyCubeBlock)block).BlockDefinition;
 		}
 
+		public static bool IsOnSide(this IMyCubeBlock block, Vector3 side)
+		{
+			Vector3 blockPosition = block.LocalPosition();
+			Vector3D centreOfMass = block.CubeGrid.Physics.CenterOfMassWorld;
+			MatrixD invWorld = block.CubeGrid.PositionComp.WorldMatrixNormalizedInv;
+			Vector3D.Transform(ref centreOfMass, ref invWorld, out centreOfMass);
+			Vector3 localCentreOfMass = centreOfMass;
+
+			float blockPosInDirect; Vector3.Dot(ref blockPosition, ref side, out blockPosInDirect);
+			float centreInDirect; Vector3.Dot(ref localCentreOfMass, ref side, out centreInDirect);
+
+			return blockPosInDirect > centreInDirect;
+		}
+
 	}
 }

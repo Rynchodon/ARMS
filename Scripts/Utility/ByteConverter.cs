@@ -535,6 +535,11 @@ namespace Rynchodon
 				value = (T)(object)GetVector3D(bytes, ref pos);
 				return;
 			}
+			if (typeof(Array).IsAssignableFrom(typeOfValue))
+			{
+				value = (T)(object)CreateArray(bytes, ref pos, typeOfValue);
+				return;
+			}
 			throw new InvalidCastException("value is of invalid type: " + Convert.GetTypeCode(value) + ", " + typeOfValue + ", " + value);
 		}
 

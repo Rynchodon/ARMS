@@ -1,6 +1,5 @@
 ﻿#if DEBUG
 //#define TRACE
-//#define DEBUG_DRAW
 #endif
 
 using System;
@@ -16,7 +15,7 @@ using VRage.Game.ModAPI;
 using VRage.Game.Models;
 using VRageMath;
 
-namespace Rynchodon.Autopilot.Movement
+namespace Rynchodon.Autopilot.Aerodynamics
 {
 	class AeroProfiler
 	{
@@ -90,6 +89,8 @@ namespace Rynchodon.Autopilot.Movement
 		private readonly Logger m_logger;
 		private readonly MyCubeGrid m_grid;
 
+		public readonly Base6Directions.Direction? m_drawDirection;
+
 		private AeroCell[,,] m_data;
 		private List<Vector3I> m_rayCastCells = new List<Vector3I>();
 
@@ -100,14 +101,20 @@ namespace Rynchodon.Autopilot.Movement
 		public bool Success { get; private set; }
 		public Vector3[] DragCoefficient { get; private set; }
 
-		public AeroProfiler(IMyCubeGrid grid)
+		public AeroProfiler(IMyCubeGrid grid, Base6Directions.Direction? drawDirection = null)
 		{
 			this.m_logger = new Logger(grid);
 			this.m_grid = (MyCubeGrid)grid;
+			this.m_drawDirection = drawDirection;
 
 			Running = true;
 			Success = false;
 			Thread.EnqueueAction(Run);
+		}
+
+		public void DisableDraw()
+		{
+			Unregister(null);
 		}
 
 		private void Unregister(object obj)
@@ -115,7 +122,7 @@ namespace Rynchodon.Autopilot.Movement
 			m_grid.OnBlockAdded -= Unregister;
 			m_grid.OnBlockRemoved -= Unregister;
 			m_grid.OnClose -= Unregister;
-			UpdateManager.Unregister(1, DebugDraw_Velocity);
+			UpdateManager.Unregister(1, DrawPressureVelocity);
 		}
 
 		private void Run()
@@ -128,9 +135,8 @@ namespace Rynchodon.Autopilot.Movement
 			finally
 			{
 				Running = false;
-#if !DEBUG_DRAW
-				m_data = null;
-#endif
+				if (!m_drawDirection.HasValue)
+					m_data = null;
 			}
 		}
 
@@ -141,21 +147,25 @@ namespace Rynchodon.Autopilot.Movement
 			m_minCell = m_grid.Min - GridPadding;
 			m_maxCell = m_grid.Max + GridPadding;
 			m_sizeCell = m_maxCell - m_minCell + 1;
-			int blockCount = ((MyCubeGrid)m_grid).BlocksCount;
+			int blockCount = m_grid.BlocksCount;
 
 			m_data = new AeroCell[m_sizeCell.X, m_sizeCell.Y, m_sizeCell.Z];
 			DragCoefficient = new Vector3[6];
 			Init();
-#if DEBUG_DRAW
-			UpdateManager.Register(1, DebugDraw_Velocity);
-			m_grid.OnBlockAdded += Unregister;
-			m_grid.OnBlockRemoved += Unregister;
-			m_grid.OnClose += Unregister;
-#endif
+			if (m_drawDirection.HasValue)
+			{
+				UpdateManager.Register(1, DrawPressureVelocity);
+				m_grid.OnBlockAdded += Unregister;
+				m_grid.OnBlockRemoved += Unregister;
+				m_grid.OnClose += Unregister;
+			}
 
 			for (int dirIndex = 0; dirIndex < 6; ++dirIndex)
 			{
-				m_shipDirection = Base6Directions.IntDirections[dirIndex];
+				if (m_drawDirection.HasValue)
+					m_shipDirection = Base6Directions.GetIntVector(m_drawDirection.Value);
+				else
+					m_shipDirection = Base6Directions.IntDirections[dirIndex];
 
 				m_defaultData = new AeroCell(1f, -m_shipDirection);
 				m_defaultData.ApplyChanges();
@@ -171,7 +181,7 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					if (steps > minSteps)
 					{
-						float changeThreshold = Math.Max(dragValues[0].AbsMax(), 1f) * 0.001f;
+						float changeThreshold = Math.Max(dragValues[0].AbsMax(), 1f) * 0.01f;
 						if (Vector3.RectangularDistance(ref dragValues[0], ref dragValues[1]) < changeThreshold || Vector3.RectangularDistance(ref dragValues[0], ref dragValues[2]) < changeThreshold)
 						{
 							dragValues[0] = (dragValues[0] + dragValues[1]) * 0.5f;
@@ -206,10 +216,8 @@ namespace Rynchodon.Autopilot.Movement
 				}
 
 				DragCoefficient[(int)Base6Directions.GetDirection(m_shipDirection)] = dragValues[0];
-#if DEBUG_DRAW
-				if (Base6Directions.GetDirection(m_shipDirection) == Base6Directions.Direction.Forward)
+				if (m_drawDirection.HasValue)
 					break;
-#endif
 			}
 
 			m_logger.traceLog("exiting");
@@ -650,7 +658,9 @@ namespace Rynchodon.Autopilot.Movement
 					}
 		}
 
-		public void DebugDraw_Velocity()
+		#endregion
+
+		public void DrawPressureVelocity()
 		{
 			if (!ThreadTracker.IsGameThread)
 				throw new Exception("Not on game thread");
@@ -709,8 +719,6 @@ namespace Rynchodon.Autopilot.Movement
 						//m_logger.debugLog("Cell: " + (index + m_minCell) + ", " + currentData + ", sphere: " + airPressColour + ", line: " + speedColour);
 					}
 		}
-
-#endregion
 
 	}
 }
