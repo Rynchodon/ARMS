@@ -42,14 +42,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			m_listbox.ListContent = ListContent;
 			m_listbox.ItemSelected = ItemSelected;
 
-			m_sensitivitySlider = new MyTerminalControlSlider<MyCockpit>("Arms_RotorPickerSensitivity", MyStringId.GetOrCompute("Sensitivity"), MyStringId.GetOrCompute("Affects how quickly and how far the rotors rotate"));
+			m_sensitivitySlider = new MyTerminalControlSlider<MyCockpit>("Arms_RotorPickerSensitivity", MyStringId.GetOrCompute("Control Sensitivity"), MyStringId.GetOrCompute("How sensitive the ship will be to input"));
 			m_sensitivitySlider.DefaultValue = 1f;
 			m_sensitivitySlider.Getter = b => m_sensitivity;
 			m_sensitivitySlider.Setter = (b, value) => m_sensitivity = value;
 			m_sensitivitySlider.SetLogLimits(0.01f, 100f);
 			m_sensitivitySlider.Writer = (b, sb) => sb.Append(m_sensitivity);
 
-			m_trimSlider = new MyTerminalControlSlider<MyCockpit>("Arms_RotorPickerTrim", MyStringId.GetOrCompute("Trim"), MyStringId.GetOrCompute("Angle of the rotors for level flight"));
+			m_trimSlider = new MyTerminalControlSlider<MyCockpit>("Arms_RotorPickerTrim", MyStringId.GetOrCompute("Trim"), MyStringId.GetOrCompute("Default angle of rotors"));
 			m_trimSlider.DefaultValue = 0f;
 			m_trimSlider.Getter = b => m_trim;
 			m_trimSlider.Setter = (b, value) => m_trim = value;

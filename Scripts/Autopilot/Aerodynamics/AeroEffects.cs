@@ -130,6 +130,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			m_logger.traceLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
 
 			m_grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, m_worldDrag, null, null);
+
+			// I am assuming it is not worth the trouble to properly calculate angular resistance. This is similar to gyro damping.
+			Vector3 angularVelocity = ((DirectionWorld)m_grid.Physics.AngularVelocity).ToGrid(m_grid);
+			Vector3 impulse = angularVelocity * -m_grid.Physics.Mass;
+			m_grid.Physics.AddForce(MyPhysicsForceType.ADD_BODY_FORCE_AND_BODY_TORQUE, null, null, impulse);
 		}
 
 		public void Update100()
