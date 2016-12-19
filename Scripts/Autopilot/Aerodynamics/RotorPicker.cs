@@ -16,6 +16,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 {
 	class RotorPicker
 	{
+		public delegate void ControlRotorParams(out IEnumerable<IMyMotorStator> rotors, out float sensitivity, out float trim);
 		public delegate void SetControlRotors(IEnumerable<IMyMotorStator> rotors, float sensitivity, float trim);
 
 		private IMyCubeBlock m_block;
@@ -33,10 +34,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private MyTerminalControlButton<MyCockpit> m_save;
 
-		public RotorPicker(IMyTerminalBlock block, string rotorName, SetControlRotors onComplete)
+		public RotorPicker(IMyTerminalBlock cockpit, string rotorName, ControlRotorParams rotorParams, SetControlRotors onComplete)
 		{
-			m_block = block;
+			m_block = cockpit;
 			m_onComplete = onComplete;
+
+			IEnumerable<IMyMotorStator> selected;
+			rotorParams(out selected, out m_sensitivity, out m_trim);
+			m_trim = MathHelper.ToDegrees(m_trim);
 
 			m_listbox = new MyTerminalControlListbox<MyCockpit>("Arms_RotorPicker", MyStringId.GetOrCompute(rotorName + " Rotors"), MyStringId.NullOrEmpty, true, 14);
 			m_listbox.ListContent = ListContent;
@@ -58,15 +63,21 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			m_save = new MyTerminalControlButton<MyCockpit>("Arms_RotorPickerSave", MyStringId.GetOrCompute("Save & Exit"), MyStringId.NullOrEmpty, SaveAndExit);
 
-			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
-			block.SwitchTerminalTo();
+			CubeGridCache cache = CubeGridCache.GetFor(m_block.CubeGrid);
 
-			CubeGridCache cache = CubeGridCache.GetFor(block.CubeGrid);
 			if (cache == null)
 				return;
 
 			foreach (IMyMotorStator stator in cache.BlocksOfType(typeof(MyObjectBuilder_MotorStator)))
-				m_allItems.Add(new MyGuiControlListbox.Item(new StringBuilder(stator.DisplayNameText), userData: stator));
+			{
+				MyGuiControlListbox.Item item = new MyGuiControlListbox.Item(new StringBuilder(stator.DisplayNameText), userData: stator);
+				m_allItems.Add(item);
+				if (selected.Contains(stator))
+					m_selected.Add(item);
+			}
+
+			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
+			cockpit.SwitchTerminalTo();
 		}
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)

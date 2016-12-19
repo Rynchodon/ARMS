@@ -204,7 +204,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				return;
 			}
 
-			new RotorPicker(block, "Aileron", cockpitTerminal.m_controlHelper.SetAilerons);
+			new RotorPicker(block, "Aileron", cockpitTerminal.m_controlHelper.AileronParams, cockpitTerminal.m_controlHelper.SetAilerons);
 		}
 
 		private static void RotorButtonElevator(MyCockpit block)
@@ -216,7 +216,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				return;
 			}
 
-			new RotorPicker(block, "Elevator", cockpitTerminal.m_controlHelper.SetElevators);
+			new RotorPicker(block, "Elevator", cockpitTerminal.m_controlHelper.ElevatorParams, cockpitTerminal.m_controlHelper.SetElevators);
 		}
 
 		private static void RotorButtonRudder(MyCockpit block)
@@ -228,7 +228,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				return;
 			}
 
-			new RotorPicker(block, "Rudder", cockpitTerminal.m_controlHelper.SetRudders);
+			new RotorPicker(block, "Rudder", cockpitTerminal.m_controlHelper.RudderParams, cockpitTerminal.m_controlHelper.SetRudders);
 		}
 
 		private readonly MyCockpit m_cockpit;
@@ -243,9 +243,23 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			set
 			{
 				if (value_profiler != null)
+				{
 					value_profiler.DisableDraw();
+					m_cockpit.CubeGrid.OnBlockAdded -= CubeGrid_OnBlockChange;
+					m_cockpit.CubeGrid.OnBlockRemoved -= CubeGrid_OnBlockChange;
+				}
+				if (value != null)
+				{
+					m_cockpit.CubeGrid.OnBlockAdded += CubeGrid_OnBlockChange;
+					m_cockpit.CubeGrid.OnBlockRemoved += CubeGrid_OnBlockChange;
+				}
 				value_profiler = value;
 			}
+		}
+
+		private void CubeGrid_OnBlockChange(Sandbox.Game.Entities.Cube.MySlimBlock obj)
+		{
+			value_profiler = null;
 		}
 
 		private FlightControlAssist m_controlHelper;

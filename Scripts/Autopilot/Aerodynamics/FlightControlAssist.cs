@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rynchodon.Autopilot.Data;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -64,11 +65,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private readonly Logger m_logger;
 		private readonly PseudoBlock Pseudo;
 
-		private FlightControlStator[] Aileron, Elevator, Rudder;
+		private FlightControlStator[] m_aileron, m_elevator, m_rudder;
 		/// <summary>How sensitive the ship will be to input. pitch, yaw, roll.</summary>
-		private Vector3 ControlSensitivity;
+		private Vector3 m_controlSensitivity = new Vector3(1f, 1f, 1f);
 		/// <summary>Default position for rotors. pitch, yaw, roll.</summary>
-		private Vector3 Trim;
+		private Vector3 m_trim;
 
 		private MyCubeGrid m_grid { get { return m_cockpit.CubeGrid; } }
 
@@ -76,6 +77,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		{
 			this.m_cockpit = cockpit;
 			this.m_logger = new Logger(m_grid);
+			this.m_aileron = m_elevator = m_rudder = new FlightControlStator[0];
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_grid);
 
@@ -91,8 +93,8 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		public void SetAilerons(IEnumerable<IMyMotorStator> rotors, float sensitivity, float trim)
 		{
-			ControlSensitivity.Z = sensitivity;
-			Trim.Z = trim;
+			m_controlSensitivity.Z = sensitivity;
+			m_trim.Z = trim;
 
 			List<FlightControlStator> statorList = new List<FlightControlStator>();
 			foreach (IMyMotorStator stator in rotors)
@@ -113,16 +115,13 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 				statorList.Add(flightControl);
 			}
-			if (statorList.Count != 0)
-				Aileron = statorList.ToArray();
-			else
-				Aileron = null;
+			m_aileron = statorList.ToArray();
 		}
 
 		public void SetElevators(IEnumerable<IMyMotorStator> rotors, float sensitivity, float trim)
 		{
-			ControlSensitivity.X = sensitivity;
-			Trim.X = trim;
+			m_controlSensitivity.X = sensitivity;
+			m_trim.X = trim;
 
 			List<FlightControlStator> statorList = new List<FlightControlStator>();
 			foreach (IMyMotorStator stator in rotors)
@@ -156,16 +155,13 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 				statorList.Add(flightControl);
 			}
-			if (statorList.Count != 0)
-				Elevator = statorList.ToArray();
-			else
-				Elevator = null;
+			m_elevator = statorList.ToArray();
 		}
 
 		public void SetRudders(IEnumerable<IMyMotorStator> rotors, float sensitivity, float trim)
 		{
-			ControlSensitivity.Y = sensitivity;
-			Trim.Y = trim;
+			m_controlSensitivity.Y = sensitivity;
+			m_trim.Y = trim;
 
 			List<FlightControlStator> statorList = new List<FlightControlStator>();
 			foreach (IMyMotorStator stator in rotors)
@@ -199,10 +195,28 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 				statorList.Add(flightControl);
 			}
-			if (statorList.Count != 0)
-				Rudder = statorList.ToArray();
-			else
-				Rudder = null;
+			m_rudder = statorList.ToArray();
+		}
+
+		public void AileronParams(out IEnumerable<IMyMotorStator> rotors, out float sensitivity, out float trim)
+		{
+			rotors = m_aileron.Select(a => a.Stator);
+			sensitivity = m_controlSensitivity.Z;
+			trim = m_trim.Z;
+		}
+
+		public void ElevatorParams(out IEnumerable<IMyMotorStator> rotors, out float sensitivity, out float trim)
+		{
+			rotors = m_elevator.Select(a => a.Stator);
+			sensitivity = m_controlSensitivity.X;
+			trim = m_trim.X;
+		}
+
+		public void RudderParams(out IEnumerable<IMyMotorStator> rotors, out float sensitivity, out float trim)
+		{
+			rotors = m_rudder.Select(a => a.Stator);
+			sensitivity = m_controlSensitivity.Y;
+			trim = m_trim.Y;
 		}
 
 		private void Update10()
@@ -223,11 +237,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				return;
 			Vector3 gravityDirection = closest.GetWorldGravityNormalized(ref gridCentre);
 
-			if (Aileron != null)
+			if (m_aileron != null)
 				AileronHelper(ref gravityDirection, skipInput);
-			if (Elevator != null)
+			if (m_elevator != null)
 				ElevatorHelper(skipInput);
-			if (Rudder != null)
+			if (m_rudder != null)
 				RudderHelper(skipInput);
 		}
 
@@ -239,9 +253,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			else
 			{
 				if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_RIGHT))
-					targetRollVelocity = ControlSensitivity.Z;
+					targetRollVelocity = m_controlSensitivity.Z;
 				else if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_LEFT))
-					targetRollVelocity = -ControlSensitivity.Z;
+					targetRollVelocity = -m_controlSensitivity.Z;
 				// No input. If nearly level, level off. Otherwise, stop rolling.
 				else if (Vector3.Dot(gravityDirection, Pseudo.WorldMatrix.Down) > 0.5f)
 				{
@@ -256,30 +270,30 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			}
 
 			float currentRollVelocity = Vector3.Dot(m_grid.Physics.AngularVelocity, Pseudo.WorldMatrix.Forward);
-			float targetAngle = SqrtMag(targetRollVelocity - currentRollVelocity) + Trim.Z;
-			for (int index = 0; index < Aileron.Length; ++index)
-				Aileron[index].SetTarget(targetAngle);
+			float targetAngle = SqrtMag(targetRollVelocity - currentRollVelocity) + m_trim.Z;
+			for (int index = 0; index < m_aileron.Length; ++index)
+				m_aileron[index].SetTarget(targetAngle);
 		}
 
 		private void ElevatorHelper(bool skipInput)
 		{
 			Vector3 angularVelocity = m_grid.Physics.AngularVelocity;
-			float targetPitchVelocity = skipInput ? 0f : ControlSensitivity.X * MyAPIGateway.Input.GetMouseYForGamePlay() * -0.1f;
+			float targetPitchVelocity = skipInput ? 0f : m_controlSensitivity.X * MyAPIGateway.Input.GetMouseYForGamePlay() * -0.1f;
 			float currentPitchVelocity = Vector3.Dot(angularVelocity, Pseudo.WorldMatrix.Right);
-			float targetAngle = SqrtMag(targetPitchVelocity - currentPitchVelocity) + Trim.X;
+			float targetAngle = SqrtMag(targetPitchVelocity - currentPitchVelocity) + m_trim.X;
 			m_logger.debugLog("angularVelocity: " + angularVelocity + ", targetPitchVelocity: " + targetPitchVelocity + ", currentPitchVelocity: " + currentPitchVelocity + ", acceleration: " + targetAngle);
-			for (int index = 0; index < Elevator.Length; ++index)
-				Elevator[index].SetTarget(targetAngle);
+			for (int index = 0; index < m_elevator.Length; ++index)
+				m_elevator[index].SetTarget(targetAngle);
 		}
 
 		private void RudderHelper(bool skipInput)
 		{
 			Vector3 angularVelocity = m_grid.Physics.AngularVelocity;
-			float targetYawVelocity = skipInput ? 0f : ControlSensitivity.Y * MyAPIGateway.Input.GetMouseXForGamePlay() * 0.1f;
+			float targetYawVelocity = skipInput ? 0f : m_controlSensitivity.Y * MyAPIGateway.Input.GetMouseXForGamePlay() * 0.1f;
 			float currentYawVelocity = Vector3.Dot(angularVelocity, Pseudo.WorldMatrix.Down);
-			float targetAngle = SqrtMag(targetYawVelocity - currentYawVelocity) + Trim.Y;
-			for (int index = 0; index < Rudder.Length; ++index)
-				Rudder[index].SetTarget(targetAngle);
+			float targetAngle = SqrtMag(targetYawVelocity - currentYawVelocity) + m_trim.Y;
+			for (int index = 0; index < m_rudder.Length; ++index)
+				m_rudder[index].SetTarget(targetAngle);
 		}
 
 		private float SqrtMag(float value)
