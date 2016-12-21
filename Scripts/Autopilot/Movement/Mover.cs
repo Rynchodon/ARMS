@@ -840,15 +840,14 @@ namespace Rynchodon.Autopilot.Movement
 				m_moveForceRatio *= 1f + (upWoMove - WriggleAfter) * 0.1f;
 			}
 
-			//// clamp values and invert operations MoveAndRotate will perform
-			Vector3 moveControl; m_moveForceRatio.ApplyOperation(dim => MathHelper.Clamp(dim, -1, 1), out moveControl);
-			//m_logger.debugLog("m_moveForceRatio: " + m_moveForceRatio + ", moveControl: " + moveControl, "MoveAndRotate()");
+			// clamp values
+			Vector3 moveControl;
+			moveControl.X = MathHelper.Clamp(m_moveForceRatio.X, -1f, 1f);
+			moveControl.Y = MathHelper.Clamp(m_moveForceRatio.Y, -1f, 1f);
+			moveControl.Z = MathHelper.Clamp(m_moveForceRatio.Z, -1f, 1f);
 
-			Vector2 rotateControl = Vector2.Zero;
-			rotateControl.X = MathHelper.Clamp(m_rotateForceRatio.X, -1, 1) * pixelsForMaxRotation;
-			rotateControl.Y = MathHelper.Clamp(m_rotateForceRatio.Y, -1, 1) * pixelsForMaxRotation;
-
-			float rollControl = MathHelper.Clamp(m_rotateForceRatio.Z, -1, 1) / RollControlMultiplier;
+			Vector3 rotateControl = -m_rotateForceRatio; // control torque is opposite of move indicator
+			Vector3.ClampToSphere(ref rotateControl, 1f);
 
 			//// gyros use opposite values from MoveAndRotate
 			//Vector3 rotateRollControl; m_rotateTargetVelocity.ApplyOperation(dim => MathHelper.Clamp(-dim, -MathHelper.TwoPi, MathHelper.TwoPi), out rotateRollControl);
@@ -859,15 +858,11 @@ namespace Rynchodon.Autopilot.Movement
 
 				//m_logger.debugLog("rotate control: " + rotateControl + ", previous: " + m_prevRotateControl + ", delta: " + (rotateControl - m_prevRotateControl), "MoveAndRotate()");
 
-				controller.MoveAndRotateStopped();
-				controller.MoveAndRotate(Vector3.Zero, rotateControl, rollControl);
-				//m_prevMoveControl = moveControl;
-				//m_prevRotateControl = rotateControl;
-				//m_prevRollControl = rollControl;
+				DirectionGrid gridRotate = ((DirectionBlock)rotateControl).ToGrid(Block.CubeBlock);
+				Block.Controller.GridGyroSystem.ControlTorque = gridRotate;
 
 				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
 				Block.CubeGrid.Components.Get<MyEntityThrustComponent>().ControlThrust = gridMove;
-				//Thrust.SetOverrides(ref gridMove);
 			});
 		}
 

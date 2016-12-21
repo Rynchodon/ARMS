@@ -210,6 +210,7 @@
     <Compile Include="Autopilot\Navigator\Stopper.cs" />
     <Compile Include="Autopilot\Navigator\UnLander.cs" />
     <Compile Include="Properties\VersionInfo - User.cs" />
+    <None Include="Properties\VersionInfo.cs" />
     <Compile Include="Update\DisableNotifyDownload.cs" />
     <Compile Include="Utility\Collections\ExpandingRings.cs" />
     <Compile Include="Autopilot\Pathfinding\Pathfinder.cs" />
