@@ -541,6 +541,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Logger.DebugLog("direction vector is invalid: " + input.Direction, Logger.severity.FATAL, condition: !input.Direction.IsValid() || Math.Abs(1f - input.Direction.LengthSquared()) > 0.01f);
 			Logger.TraceLog(input.ToString());
 
+			if (input.Length < 1f)
+			{
+				// need to skip as Proximity doesn't work with short capsules
+				// should be safe, as the ship got here somehow
+				Logger.TraceLog("Input length is small, no voxel test necessary");
+				result = VoxelTestResult.Default;
+				result.Distance = input.Length;
+				result.Proximity = 1f;
+				return false;
+			}
+
 			Vector3D currentPosition = AutopilotGrid.GetCentre();
 			Vector3 startOffset; Vector3.Multiply(ref input.Direction, StartRayCast, out startOffset);
 			Vector3D startOffsetD = startOffset;

@@ -849,20 +849,28 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 rotateControl = -m_rotateForceRatio; // control torque is opposite of move indicator
 			Vector3.ClampToSphere(ref rotateControl, 1f);
 
-			//// gyros use opposite values from MoveAndRotate
-			//Vector3 rotateRollControl; m_rotateTargetVelocity.ApplyOperation(dim => MathHelper.Clamp(-dim, -MathHelper.TwoPi, MathHelper.TwoPi), out rotateRollControl);
-
 			m_stopped = false;
 			MyShipController controller = Block.Controller;
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 
 				//m_logger.debugLog("rotate control: " + rotateControl + ", previous: " + m_prevRotateControl + ", delta: " + (rotateControl - m_prevRotateControl), "MoveAndRotate()");
 
-				DirectionGrid gridRotate = ((DirectionBlock)rotateControl).ToGrid(Block.CubeBlock);
-				Block.Controller.GridGyroSystem.ControlTorque = gridRotate;
+				if (Block.Controller.GridGyroSystem != null)
+				{
+					DirectionGrid gridRotate = ((DirectionBlock)rotateControl).ToGrid(Block.CubeBlock);
+					Block.Controller.GridGyroSystem.ControlTorque = gridRotate;
+				}
+				else
+					m_logger.debugLog("No gyro system");
 
-				DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
-				Block.CubeGrid.Components.Get<MyEntityThrustComponent>().ControlThrust = gridMove;
+				MyEntityThrustComponent thrustComponent = Block.CubeGrid.Components.Get<MyEntityThrustComponent>();
+				if (thrustComponent != null)
+				{
+					DirectionGrid gridMove = ((DirectionBlock)moveControl).ToGrid(Block.CubeBlock);
+					thrustComponent.ControlThrust = gridMove;
+				}
+				else
+					m_logger.debugLog("No thrust component");
 			});
 		}
 

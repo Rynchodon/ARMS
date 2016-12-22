@@ -298,6 +298,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			VectorExtensions.RoundTo(ref finishToPosition, NodeDistance);
 			Vector3D.Add(ref m_referencePosition, ref finishToPosition, out position);
 
+			m_logger.debugLog("m_reachedNodes == null", Logger.severity.FATAL, condition: m_reachedNodes == null);
+
 			if (m_reachedNodes.ContainsKey(position.GetHash()))
 			{
 				Profiler.EndProfileBlock();

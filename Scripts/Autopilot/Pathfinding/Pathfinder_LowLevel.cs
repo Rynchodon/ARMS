@@ -55,6 +55,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					ClearBackwards();
 				}
 
+				m_logger.debugLog("Changed state from " + value_state + " to " + value);
 				value_state = value;
 			}
 		}
@@ -211,6 +212,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 
+			m_logger.debugLog("m_runningLock == null", Logger.severity.FATAL, condition: m_runningLock == null);
+
 			if (!m_runningLock.TryAcquireExclusive())
 				return;
 			try
@@ -223,10 +226,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 					ContinuePathfinding(m_forward);
 				else
 				{
+					m_logger.debugLog("m_forward == null", Logger.severity.FATAL, condition: m_forward == null);
+					m_logger.debugLog("m_backwardList == null", Logger.severity.FATAL, condition: m_backwardList == null);
+
 					PathNodeSet bestSet = null;
 					foreach (PathNodeSet backSet in m_backwardList)
 						if (bestSet == null || backSet.CompareTo(bestSet) < 0)
 							bestSet = backSet;
+					m_logger.debugLog("bestSet == null", Logger.severity.FATAL, condition: bestSet == null);
 					FindingSet fs = (FindingSet)bestSet;
 					if (fs.Failed)
 					{

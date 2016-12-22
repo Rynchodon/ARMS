@@ -63,6 +63,10 @@ namespace Rynchodon
 			return Intersects(ref halfCapsule, voxel, out hitPosition, halfLength);
 		}
 
+		/// <summary>
+		/// Estimates the proximity between a given capsule and a voxel.
+		/// </summary>
+		/// <param name="capsule">The capsule to test for intersection, the points must be at least one metre apart.</param>
 		public static double Proximity(ref CapsuleD capsule, MyVoxelBase voxel, ref Vector3D hitPosition, double capsuleLength = -1d)
 		{
 			Logger.TraceLog(capsule.String());
@@ -112,6 +116,7 @@ namespace Rynchodon
 			return Math.Min(prox, Proximity(ref halfCapsule, voxel, ref hitPosition, halfLength));
 		}
 
+
 		public static bool IntersectsVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet, double capsuleLength = -1d)
 		{
 			Profiler.StartProfileBlock();
@@ -146,6 +151,10 @@ namespace Rynchodon
 			return false;
 		}
 
+		/// <summary>
+		/// Estimates the proximity between a given capsule and any voxel.
+		/// </summary>
+		/// <param name="capsule">The capsule to test for intersection, the points must be at least one metre apart.</param>
 		public static double ProximityToVoxel(ref CapsuleD capsule, out MyVoxelBase hitVoxel, out Vector3D hitPosition, bool checkPlanet, double capsuleLength = -1d)
 		{
 			Profiler.StartProfileBlock();
@@ -166,6 +175,26 @@ namespace Rynchodon
 			foreach (MyVoxelBase voxel in voxels)
 				if (voxel is MyVoxelMap || voxel is MyPlanet && checkPlanet)
 				{
+					if (voxel is MyPlanet)
+					{
+						LineSegmentD line;
+						ResourcePool.Get(out line);
+						line.From = capsule.P0;
+						line.To = capsule.P1;
+
+						double minDistSq = line.DistanceSquared(voxel.GetCentre());
+						double maxPlanetRadius = ((MyPlanet)voxel).MaximumRadius;
+
+						ResourcePool.Return(line);
+
+						if (minDistSq > maxPlanetRadius * maxPlanetRadius)
+						{
+							Logger.DebugLog("Skip planet from: " + line.From + ", to: " + line.To + ", planet centre: " + voxel.GetCentre() + ", min dist sq to centre: " + minDistSq + ", max planet radius: " + maxPlanetRadius);
+							continue;
+						}
+						Logger.DebugLog("Check planet from: " + line.From + ", to: " + line.To + ", planet centre: " + voxel.GetCentre() + ", min dist sq to centre: " + minDistSq + ", max planet radius: " + maxPlanetRadius);
+					}
+
 					double proximity = Proximity(ref capsule, voxel, ref hitPosition, capsuleLength);
 					if (proximity < closestProx)
 					{

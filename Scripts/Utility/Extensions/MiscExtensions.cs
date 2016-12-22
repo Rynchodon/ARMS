@@ -89,10 +89,16 @@ namespace Rynchodon
 		}
 
 		public static void throwIfNull_argument(this object argument, string name)
-		{ VRage.Exceptions.ThrowIf<ArgumentNullException>(argument == null, name + " == null"); }
+		{
+			if (argument == null)
+				throw new ArgumentNullException(name);
+		}
 
 		public static void throwIfNull_variable(this object variable, string name)
-		{ VRage.Exceptions.ThrowIf<NullReferenceException>(variable == null, name + " == null"); }
+		{
+			if (variable == null)
+				throw new NullReferenceException(name);
+		}
 
 		public static string ToPrettySeconds(this VRage.Library.Utils.MyTimeSpan timeSpan)
 		{ return PrettySI.makePretty(timeSpan.Seconds) + 's'; }
