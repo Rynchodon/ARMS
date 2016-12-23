@@ -10,7 +10,6 @@ namespace Rynchodon.Attached
 	public abstract class AttachableBlockBase
 	{
 
-		private readonly Logger myLogger;
 		public readonly AttachedGrid.AttachmentKind AttachmentKind;
 		public readonly IMyCubeBlock myBlock;
 
@@ -24,38 +23,16 @@ namespace Rynchodon.Attached
 
 		protected AttachableBlockBase(IMyCubeBlock block, AttachedGrid.AttachmentKind kind)
 		{
-			myLogger = new Logger(block);
 			AttachmentKind = kind;
 			myBlock = block;
 
-			myLogger.debugLog("Created for: " + block.DisplayNameText);
+			Logger.DebugLog("Created for: " + block.DisplayNameText);
 
 			block.OnMarkForClose += Detach;
-			Registrar.Add(this.myBlock, this);
-		}
-
-		protected AttachableBlockBase GetPartner(long entityId)
-		{
-			if (entityId == 0)
-			{
-				//myLogger.debugLog("No partner, id == 0", "GetPartner()", Logger.severity.TRACE);
-				return null;
-			}
-
-			AttachableBlockBase result;
-			if (!Registrar.TryGetValue(entityId, out result))
-			{
-				myLogger.debugLog("Failed to get partner, " + entityId + " not in registry.", Logger.severity.DEBUG);
-				return null;
-			}
-
-			//myLogger.debugLog("Got partner: " + result.myBlock.DisplayNameText + ':' + entityId, "GetPartner()", Logger.severity.TRACE);
-			return result;
 		}
 
 		protected void Attach(IMyCubeBlock block)
 		{
-			//myLogger.debugLog("Attach(block: " + block.DisplayNameText + ")", "Attach()");
 			if (curAttToBlock == block)
 				return;
 
@@ -66,7 +43,6 @@ namespace Rynchodon.Attached
 
 		protected void Attach(IMyCubeGrid grid)
 		{
-			//myLogger.debugLog("Attach(grid: " + grid.DisplayName + ")", "Attach()");
 			Attach(grid, false);
 		}
 
@@ -81,7 +57,7 @@ namespace Rynchodon.Attached
 			myGrid.OnMarkForClose += Detach;
 			grid.OnMarkForClose += Detach;
 
-			myLogger.debugLog("attaching " + myGrid.DisplayName + " to " + grid.DisplayName, Logger.severity.DEBUG);
+			Logger.DebugLog("attaching " + myGrid.DisplayName + " to " + grid.DisplayName, Logger.severity.DEBUG);
 			AttachedGrid.AddRemoveConnection(AttachmentKind, myGrid, grid, true);
 			curAttTo = grid;
 		}
@@ -102,19 +78,19 @@ namespace Rynchodon.Attached
 				curAttToBlock = null;
 			}
 
-			myLogger.debugLog("detaching " + myGrid.DisplayName + " from " + curAttTo.DisplayName, Logger.severity.DEBUG);
+			Logger.DebugLog("detaching " + myGrid.DisplayName + " from " + curAttTo.DisplayName, Logger.severity.DEBUG);
 			AttachedGrid.AddRemoveConnection(AttachmentKind, myGrid, curAttTo, false);
 			curAttTo = null;
 		}
 
 		private void Detach(IMyEntity obj)
 		{
-			myLogger.debugLog("closed object: " + obj.getBestName());
+			Logger.DebugLog("closed object: " + obj.getBestName());
 			try
 			{ Detach(); }
 			catch (Exception ex)
 			{
-				myLogger.debugLog("Exception: " + ex, Logger.severity.ERROR);
+				Logger.DebugLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.DebugNotify("Detach encountered an exception", 10000, Logger.severity.ERROR);
 			}
 		}

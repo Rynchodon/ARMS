@@ -46,6 +46,7 @@ A solar array of panels or oxygen farms can be instructed to face the sun by add
 The file at "%AppData%\SpaceEngineers\Storage\ARMS\ServerSettings.txt" contains the settings for ARMS.
 To reset a value to its default, simply delete it.
 type "/arms settings" in game to see the current settings. Not all server settings will be displayed.
+bAirResistanceBeta - enable air resistance for ships in atmosphere, does not work with Autopilot yet
 bAllowAutopilot - this mod can control the movement of grids
 bAllowGuidedMissile - allows guided missiles, requires bAllowWeaponControl
 bAllowHacker - allows hacker block

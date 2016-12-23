@@ -171,6 +171,12 @@
     <Compile Include="Autopilot\Instruction\Command\Wait.cs" />
     <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroDrawIndicators.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroEffects.cs" />
+    <Compile Include="Autopilot\Aerodynamics\AeroProfiler.cs" />
+    <Compile Include="Autopilot\Aerodynamics\FlightControlAssist.cs" />
+    <Compile Include="Autopilot\Aerodynamics\CockpitTerminal.cs" />
+    <Compile Include="Autopilot\Aerodynamics\RotorPicker.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
     <None Include="Autopilot\Movement\IMover.cs" />
@@ -249,6 +255,7 @@
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
     <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
     <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
+    <Compile Include="Utility\Extensions\CubeLineIntersection.cs" />
     <Compile Include="Utility\Extensions\DelegateExtensions.cs" />
     <Compile Include="Utility\Extensions\FastResourceLockExtensions.cs" />
     <Compile Include="Utility\Extensions\IMyCubeGridExtensions.cs" />
@@ -284,10 +291,11 @@
     <Compile Include="Utility\MainLock.cs" />
     <Compile Include="Utility\MathExtension.cs" />
     <Compile Include="Utility\MotorTurret.cs" />
-    <Compile Include="Utility\Network\LoadDistribution.cs" />
+    <Compile Include="Utility\Network\MessageTooLongException.cs" />
+    <Compile Include="Utility\Network\RemoteTask.cs" />
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
-    <None Include="Utility\Network\TestLoadDist.cs" />
+    <None Include="Utility\Network\TestRemoteTask.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

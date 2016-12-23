@@ -16,8 +16,7 @@ namespace Rynchodon.Settings
 	{
 		public enum SettingName : byte
 		{
-			bAllowAutopilot, bAllowGuidedMissile, bAllowHacker, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
-			yParallelPathfinder,
+			bAirResistanceBeta, bAllowAutopilot, bAllowGuidedMissile, bAllowHacker, bAllowRadar, bAllowWeaponControl, bImmortalMiner, bUseRemoteControl, 
 			fDefaultSpeed, fMaxSpeed, fMaxWeaponRange
 		}
 
@@ -134,6 +133,7 @@ namespace Rynchodon.Settings
 				ByteConverter.AppendBytes(send, m_serverVersion.Build);
 				ByteConverter.AppendBytes(send, m_serverVersion.Revision);
 
+				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAirResistanceBeta));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowAutopilot));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowGuidedMissile));
 				ByteConverter.AppendBytes(send, GetSetting<bool>(SettingName.bAllowHacker));
@@ -176,6 +176,7 @@ namespace Rynchodon.Settings
 					return;
 				}
 
+				SetSetting<bool>(SettingName.bAirResistanceBeta, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowAutopilot, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowGuidedMissile, ByteConverter.GetBool(message, ref pos));
 				SetSetting<bool>(SettingName.bAllowHacker, ByteConverter.GetBool(message, ref pos));
@@ -217,6 +218,7 @@ namespace Rynchodon.Settings
 		/// </summary>
 		private void buildSettings()
 		{
+			AllSettings.Add(SettingName.bAirResistanceBeta, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bAllowAutopilot, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowGuidedMissile, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bAllowHacker, new SettingSimple<bool>(true));
@@ -224,8 +226,6 @@ namespace Rynchodon.Settings
 			AllSettings.Add(SettingName.bAllowWeaponControl, new SettingSimple<bool>(true));
 			AllSettings.Add(SettingName.bImmortalMiner, new SettingSimple<bool>(false));
 			AllSettings.Add(SettingName.bUseRemoteControl, new SettingSimple<bool>(false));
-
-			AllSettings.Add(SettingName.yParallelPathfinder, new SettingMinMax<byte>(1, 100, (byte)(Math.Max(Environment.ProcessorCount / 2, 1))));
 
 			AllSettings.Add(SettingName.fDefaultSpeed, new SettingMinMax<float>(1, float.MaxValue, 100));
 			AllSettings.Add(SettingName.fMaxSpeed, new SettingMinMax<float>(10, float.MaxValue, float.MaxValue));

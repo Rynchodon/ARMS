@@ -125,14 +125,14 @@ namespace Rynchodon
 			return "GPS:" + name + ':' + vec.X + ':' + vec.Y + ':' + vec.Z + ':';
 		}
 
-		public static string ToPretty(this Vector3 vec)
+		public static string ToPretty(this Vector3 vec, byte sigFigs = 3)
 		{
-			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+			return '{' + PrettySI.makePretty(vec.X, sigFigs, false) + ", " + PrettySI.makePretty(vec.Y, sigFigs, false) + ", " + PrettySI.makePretty(vec.Z, sigFigs, false) + '}';
 		}
 
-		public static string ToPretty(this Vector3D vec)
+		public static string ToPretty(this Vector3D vec, byte sigFigs = 3)
 		{
-			return '{' + PrettySI.makePretty(vec.X, 3, false) + ", " + PrettySI.makePretty(vec.Y, 3, false) + ", " + PrettySI.makePretty(vec.Z, 3, false) + '}';
+			return '{' + PrettySI.makePretty(vec.X, sigFigs, false) + ", " + PrettySI.makePretty(vec.Y, sigFigs, false) + ", " + PrettySI.makePretty(vec.Z, sigFigs, false) + '}';
 		}
 
 		public static int DistanceSquared(this Vector3I vec, Vector3I sec)
@@ -229,6 +229,16 @@ namespace Rynchodon
 			if (value >= 0d ? mod >= halfRound : mod < -halfRound)
 				value += roundTo;
 			vector.Z = value;
+		}
+
+		public static int Min(this Vector3I vector)
+		{
+			return Math.Min(vector.X, Math.Min(vector.Y, vector.Z));
+		}
+
+		public static int Max(this Vector3I vector)
+		{
+			return Math.Max(vector.X, Math.Max(vector.Y, vector.Z));
 		}
 
 	}

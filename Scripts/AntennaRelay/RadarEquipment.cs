@@ -203,7 +203,7 @@ namespace Rynchodon.AntennaRelay
 		private const float decoyVolume = 10000f;
 
 		private static Logger staticLogger = new Logger();
-		private static ThreadManager myThread = new ThreadManager(threadName: "Radar");
+		private static ThreadManager myThread = new ThreadManager(background: true, threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
 
 		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>

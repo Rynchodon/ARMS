@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Sandbox.Game.Entities;
+﻿using System.Collections.Generic;
 using Sandbox.Game.Entities.Cube;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -95,6 +93,55 @@ namespace Rynchodon
 		public static float Damage(this IMySlimBlock block)
 		{
 			return block.CurrentDamage + 1f - block.BuildLevelRatio;
+		}
+
+		public static IEnumerable<Vector3I> FirstCells(this IMySlimBlock block, Base6Directions.Direction direction)
+		{
+			MySlimBlock slimBlock = (MySlimBlock)block;
+			Vector3I min = slimBlock.Min, max = slimBlock.Max;
+			Vector3I cell;
+
+			switch (direction)
+			{
+				case Base6Directions.Direction.Right:
+					cell.X = max.X;
+					for (cell.Y = min.Y; cell.Y <= max.Y; ++cell.Y)
+						for (cell.Z = min.Z; cell.Z <= max.Z; ++cell.Z)
+							yield return cell;
+					yield break;
+				case Base6Directions.Direction.Left:
+					cell.X = min.X;
+					for (cell.Y = min.Y; cell.Y <= max.Y; ++cell.Y)
+						for (cell.Z = min.Z; cell.Z <= max.Z; ++cell.Z)
+							yield return cell;
+					yield break;
+
+				case Base6Directions.Direction.Up:
+					cell.Y = max.Y;
+					for (cell.X = min.X; cell.X <= max.X; ++cell.X)
+						for (cell.Z = min.Z; cell.Z <= max.Z; ++cell.Z)
+							yield return cell;
+					yield break;
+				case Base6Directions.Direction.Down:
+					cell.Y = min.Y;
+					for (cell.X = min.X; cell.X <= max.X; ++cell.X)
+						for (cell.Z = min.Z; cell.Z <= max.Z; ++cell.Z)
+							yield return cell;
+					yield break;
+
+				case Base6Directions.Direction.Backward:
+					cell.Z = max.Z;
+					for (cell.X = min.X; cell.X <= max.X; ++cell.X)
+						for (cell.Y = min.Y; cell.Y <= max.Y; ++cell.Y)
+							yield return cell;
+					yield break;
+				case Base6Directions.Direction.Forward:
+					cell.Z = min.Z;
+					for (cell.X = min.X; cell.X <= max.X; ++cell.X)
+						for (cell.Y = min.Y; cell.Y <= max.Y; ++cell.Y)
+							yield return cell;
+					yield break;
+			}
 		}
 
 	}

@@ -1,28 +1,21 @@
-﻿using VRage.Game.ModAPI;
-using Ingame = Sandbox.ModAPI.Ingame;
+﻿using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
 
 namespace Rynchodon.Attached
 {
 	public class Connector : AttachableBlockUpdate
 	{
-		private readonly Logger myLogger;
-
 		public Connector(IMyCubeBlock block)
 			: base(block, AttachedGrid.AttachmentKind.Connector)
-		{
-			myLogger = new Logger(block);
-		}
+		{ }
 
-		protected override AttachableBlockBase GetPartner()
+		protected override IMyCubeBlock GetPartner()
 		{
-			Ingame.IMyShipConnector myConn = myBlock as Ingame.IMyShipConnector;
+			IMyShipConnector myConn = (IMyShipConnector)myBlock;
 			if (!myConn.IsConnected)
 				return null;
 
-			Ingame.IMyShipConnector other = myConn.OtherConnector;
-			if (other == null)
-				return null;
-			return GetPartner(other.EntityId);
+			return myConn.OtherConnector;
 		}
 	}
 }

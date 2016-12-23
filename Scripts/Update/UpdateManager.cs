@@ -5,6 +5,7 @@ using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
+using Rynchodon.Autopilot.Aerodynamics;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
@@ -126,27 +127,12 @@ namespace Rynchodon.Update
 		{
 			#region Attached
 
-			RegisterForBlock(typeof(MyObjectBuilder_MotorStator), (block) => {
-				StatorRotor.Stator stator = new StatorRotor.Stator(block);
-				RegisterForUpdates(1, stator.Update10, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedStator), (block) => {
-				StatorRotor.Stator stator = new StatorRotor.Stator(block);
-				RegisterForUpdates(1, stator.Update10, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorRotor), (block) => {
-				new StatorRotor.Rotor(block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_MotorAdvancedRotor), (block) => {
-				new StatorRotor.Rotor(block);
-			});
+			RegisterForBlock(new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator), typeof(MyObjectBuilder_MotorSuspension) }, 
+				block => RegisterForUpdates(100, (new StatorRotor.Stator(block)).Update, block));
 
 			RegisterForBlock(typeof(MyObjectBuilder_ExtendedPistonBase), (block) => {
 				Piston.PistonBase pistonBase = new Piston.PistonBase(block);
 				RegisterForUpdates(100, pistonBase.Update, block);
-			});
-			RegisterForBlock(typeof(MyObjectBuilder_PistonTop), (block) => {
-				new Piston.PistonTop(block);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_ShipConnector), (block) => {
@@ -232,6 +218,17 @@ namespace Rynchodon.Update
 				if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bUseRemoteControl))
 					RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), apConstruct);
 				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), apConstruct);
+			}
+
+			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAirResistanceBeta))
+			{
+				RegisterForGrid(grid => {
+					AeroEffects aero = new AeroEffects(grid);
+					RegisterForUpdates(1, aero.Update1, grid);
+					if (MyAPIGateway.Multiplayer.IsServer)
+						RegisterForUpdates(100, aero.Update100, grid);
+				});
+				RegisterForBlock(typeof(MyObjectBuilder_Cockpit), block => RegisterForUpdates(1, (new CockpitTerminal(block)).Update1, block));
 			}
 
 			#endregion

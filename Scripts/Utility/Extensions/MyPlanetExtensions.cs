@@ -1,6 +1,4 @@
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -16,7 +14,7 @@ namespace Rynchodon
 
 		public static MyPlanet GetClosestPlanet(Vector3D position, out double distSquared)
 		{
-			IMyVoxelBase closest = null;
+			MyPlanet closest = null;
 			distSquared = double.MaxValue;
 			foreach (MyPlanet planet in Globals.AllPlanets())
 			{
@@ -28,7 +26,7 @@ namespace Rynchodon
 				}
 			}
 
-			return (MyPlanet)closest;
+			return closest;
 		}
 
 		public static bool IsPositionInGravityWell(this MyPlanet planet, ref Vector3D worldPosition)

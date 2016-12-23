@@ -234,7 +234,7 @@ namespace Rynchodon.Utility.Network
 			}
 			set
 			{
-				if (m_value.Equals(value))
+				if (Equals(m_value, value))
 				{
 					//Logger.DebugLog("no change");
 					return;
@@ -349,8 +349,7 @@ namespace Rynchodon.Utility.Network
 				ByteConverter.AppendBytes(bytes, (byte)MessageHandler.SubMod.RequestEntityValue);
 				ByteConverter.AppendBytes(bytes, m_entityId);
 				ByteConverter.AppendBytes(bytes, MyAPIGateway.Multiplayer.MyId);
-				if (!MyAPIGateway.Multiplayer.SendMessageToServer(bytes.ToArray()))
-					Static.logger.alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR, m_entityId.ToString(), m_valueId.ToString());
+				MyAPIGateway.Multiplayer.SendMessageToServer(bytes.ToArray());
 				//RecordBytesSent(this, bytes);
 			}
 			finally
