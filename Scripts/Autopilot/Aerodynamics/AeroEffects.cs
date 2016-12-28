@@ -14,6 +14,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Aerodynamics
 {
+	/// <summary>
+	/// Applies the air effects to the grid. Runs AeroProfiler when needed.
+	/// </summary>
 	class AeroEffects
 	{
 
@@ -133,7 +136,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			// I am assuming it is not worth the trouble to properly calculate angular resistance. This is similar to gyro damping.
 			Vector3 angularVelocity = ((DirectionWorld)m_grid.Physics.AngularVelocity).ToGrid(m_grid);
-			Vector3 impulse = angularVelocity * -m_grid.Physics.Mass;
+			Vector3 impulse = angularVelocity * m_grid.Physics.Mass * -10f;
 			m_grid.Physics.AddForce(MyPhysicsForceType.ADD_BODY_FORCE_AND_BODY_TORQUE, null, null, impulse);
 		}
 

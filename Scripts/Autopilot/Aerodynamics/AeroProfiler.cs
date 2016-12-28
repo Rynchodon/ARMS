@@ -17,6 +17,9 @@ using VRageMath;
 
 namespace Rynchodon.Autopilot.Aerodynamics
 {
+	/// <summary>
+	/// Performs the calculations of air flow around a grid. Disposed of upon completion unless drawing.
+	/// </summary>
 	class AeroProfiler
 	{
 		private class AeroCell

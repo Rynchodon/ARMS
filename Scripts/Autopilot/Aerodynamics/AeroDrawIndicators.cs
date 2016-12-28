@@ -12,6 +12,9 @@ using VRage.Game.ModAPI;
 
 namespace Rynchodon.Autopilot.Aerodynamics
 {
+	/// <summary>
+	/// Draws the air indicators in the top left corner of the screen.
+	/// </summary>
 	static class AeroDrawIndicators
 	{
 

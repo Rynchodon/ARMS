@@ -59,7 +59,10 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			m_trimSlider.Getter = b => m_trim;
 			m_trimSlider.Setter = (b, value) => m_trim = value;
 			m_trimSlider.SetLimits(-45f, 45f);
-			m_trimSlider.Writer = (b, sb) => sb.Append(m_trim);
+			m_trimSlider.Writer = (b, sb) => {
+				sb.Append(m_trim);
+				sb.Append('°');
+			};
 
 			m_save = new MyTerminalControlButton<MyCockpit>("Arms_RotorPickerSave", MyStringId.GetOrCompute("Save & Exit"), MyStringId.NullOrEmpty, SaveAndExit);
 

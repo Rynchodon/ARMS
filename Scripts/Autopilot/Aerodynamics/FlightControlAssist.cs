@@ -22,18 +22,16 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		{
 			private static ITerminalProperty<float> VelocityProperty;
 
-			private float m_previousTargetAngle;
-
 			public IMyMotorStator Stator;
 			public bool Flipped;
 
 			public FlightControlStator(IMyMotorStator Stator)
 			{
-				this.m_previousTargetAngle = 0f;
 				this.Stator = Stator;
 				this.Flipped = false;
 
-
+				if (VelocityProperty == null)
+					VelocityProperty = (ITerminalProperty<float>)Stator.GetProperty("Velocity");
 				((ITerminalProperty<float>)Stator.GetProperty("LowerLimit")).SetValue(Stator, -45f);
 				((ITerminalProperty<float>)Stator.GetProperty("UpperLimit")).SetValue(Stator, 45f);
 			}
@@ -45,12 +43,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			public void SetTarget(float targetAngle)
 			{
-				targetAngle = (targetAngle) * 0.2f + m_previousTargetAngle * 0.8f; // smooth transition
-				m_previousTargetAngle = targetAngle;
 				if (Flipped)
 					targetAngle = -targetAngle;
-				if (VelocityProperty == null)
-					VelocityProperty = (ITerminalProperty<float>)Stator.GetProperty("Velocity");
+
 				float targetVelocity = (targetAngle - Stator.Angle) * 60f;
 				float currentVelocity = Stator.Velocity;
 				if (((targetVelocity == 0f) != (currentVelocity == 0f)) || Math.Abs(targetVelocity - currentVelocity) > 0.1f)
@@ -61,6 +56,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		}
 
 		private const byte StopAfter = 4;
+		private const float InputSmoothing = 0.2f, OppInputSmooth = 1f - InputSmoothing;
 		private readonly MyCockpit m_cockpit;
 		private readonly Logger m_logger;
 		private readonly PseudoBlock Pseudo;
@@ -70,6 +66,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private Vector3 m_controlSensitivity = new Vector3(1f, 1f, 1f);
 		/// <summary>Default position for rotors. pitch, yaw, roll.</summary>
 		private Vector3 m_trim;
+
+		private Vector3 m_previousInput;
+		private Vector3 m_previousVelocity;
+		private Vector3 m_previousTargetVelocity;
+		private Vector3 m_stabilizeFactor = new Vector3(1f, 1f, 1f);
 
 		private MyCubeGrid m_grid { get { return m_cockpit.CubeGrid; } }
 
@@ -231,6 +232,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			bool skipInput = MyGuiScreenGamePlay.ActiveGameplayScreen != null || MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.LOOKAROUND);
 
+			m_logger.debugLog("active screen: " + MyGuiScreenGamePlay.ActiveGameplayScreen, condition: MyGuiScreenGamePlay.ActiveGameplayScreen != null);
+			m_logger.debugLog("Lookaround", condition: MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.LOOKAROUND));
+
 			Vector3D gridCentre = m_grid.GetCentre();
 			MyPlanet closest = MyPlanetExtensions.GetClosestPlanet(gridCentre);
 			if (closest.GetAirDensity(gridCentre) == 0f)
@@ -247,58 +251,152 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private void AileronHelper(ref Vector3 gravityDirection, bool skipInput)
 		{
-			float targetRollVelocity;
+			float input;
 			if (skipInput)
-				targetRollVelocity = 0f;
+				input = 0f;
+			else if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_RIGHT))
+				input = 1f;
+			else if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_LEFT))
+				input = -1f;
+			else
+				input = 0f;
+			input = input * InputSmoothing + m_previousInput.Z * OppInputSmooth;
+
+			float currentVelocity = Vector3.Dot(m_grid.Physics.AngularVelocity, Pseudo.WorldMatrix.Forward);
+			float targetVelocity, targetAngle;
+
+			if (Math.Abs(input) > 0.01f)
+			{
+				targetVelocity = input * m_controlSensitivity.Z;
+				targetAngle = SqrtMag(targetVelocity - currentVelocity) + m_trim.Z;
+			}
 			else
 			{
-				if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_RIGHT))
-					targetRollVelocity = m_controlSensitivity.Z;
-				else if (MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.ROLL_LEFT))
-					targetRollVelocity = -m_controlSensitivity.Z;
 				// No input. If nearly level, level off. Otherwise, stop rolling.
-				else if (Vector3.Dot(gravityDirection, Pseudo.WorldMatrix.Down) > 0.5f)
+				if (Vector3.Dot(gravityDirection, Pseudo.WorldMatrix.Down) > 0.5f)
 				{
 					float invCurrentRoll = Vector3.Dot(gravityDirection, Pseudo.WorldMatrix.Left);
 					if (-0.1f < invCurrentRoll && invCurrentRoll < 0.1f)
-						targetRollVelocity = invCurrentRoll;
+						targetVelocity = invCurrentRoll;
 					else
-						targetRollVelocity = 0f;
+						targetVelocity = 0f;
 				}
 				else
-					targetRollVelocity = 0f;
+					targetVelocity = 0f;
+
+				ModStabilizeFactor(2, targetVelocity, currentVelocity);
+				targetAngle = m_stabilizeFactor.Z * SqrtMag(targetVelocity - currentVelocity) + m_trim.Z;
+
+				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Z + ", targetAngle: " + targetAngle);
 			}
 
-			float currentRollVelocity = Vector3.Dot(m_grid.Physics.AngularVelocity, Pseudo.WorldMatrix.Forward);
-			float targetAngle = SqrtMag(targetRollVelocity - currentRollVelocity) + m_trim.Z;
 			for (int index = 0; index < m_aileron.Length; ++index)
 				m_aileron[index].SetTarget(targetAngle);
+
+			m_previousInput.Z = input;
+			m_previousVelocity.Z = currentVelocity;
+			m_previousTargetVelocity.Z = targetVelocity;
 		}
 
 		private void ElevatorHelper(bool skipInput)
 		{
-			Vector3 angularVelocity = m_grid.Physics.AngularVelocity;
-			float targetPitchVelocity = skipInput ? 0f : m_controlSensitivity.X * MyAPIGateway.Input.GetMouseYForGamePlay() * -0.1f;
-			float currentPitchVelocity = Vector3.Dot(angularVelocity, Pseudo.WorldMatrix.Right);
-			float targetAngle = SqrtMag(targetPitchVelocity - currentPitchVelocity) + m_trim.X;
-			m_logger.debugLog("angularVelocity: " + angularVelocity + ", targetPitchVelocity: " + targetPitchVelocity + ", currentPitchVelocity: " + currentPitchVelocity + ", acceleration: " + targetAngle);
+			float input = skipInput ? 0f : MyAPIGateway.Input.GetMouseYForGamePlay() * -0.01f;
+			input = input * InputSmoothing + m_previousInput.X * OppInputSmooth;
+
+			float currentVelocity = Vector3.Dot(m_grid.Physics.AngularVelocity, Pseudo.WorldMatrix.Right);
+			float targetVelocity, targetAngle;
+
+			if (Math.Abs(input) > 0.01f)
+			{
+				targetVelocity = input * m_controlSensitivity.X;
+				targetAngle = SqrtMag(targetVelocity - currentVelocity) + m_trim.X;
+			}
+			else
+			{
+				// No input. Stop pitching.
+				targetVelocity = 0f;
+				ModStabilizeFactor(0, targetVelocity, currentVelocity);
+				targetAngle = m_stabilizeFactor.X * SqrtMag(targetVelocity - currentVelocity) + m_trim.X;
+
+				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.X + ", targetAngle: " + targetAngle);
+			}
+
 			for (int index = 0; index < m_elevator.Length; ++index)
 				m_elevator[index].SetTarget(targetAngle);
+
+			m_previousInput.X = input;
+			m_previousVelocity.X = currentVelocity;
+			m_previousTargetVelocity.X = targetVelocity;
 		}
 
 		private void RudderHelper(bool skipInput)
 		{
-			Vector3 angularVelocity = m_grid.Physics.AngularVelocity;
-			float targetYawVelocity = skipInput ? 0f : m_controlSensitivity.Y * MyAPIGateway.Input.GetMouseXForGamePlay() * 0.1f;
-			float currentYawVelocity = Vector3.Dot(angularVelocity, Pseudo.WorldMatrix.Down);
-			float targetAngle = SqrtMag(targetYawVelocity - currentYawVelocity) + m_trim.Y;
+			float input = skipInput ? 0f : MyAPIGateway.Input.GetMouseXForGamePlay() * 0.01f;
+			input = input * InputSmoothing + m_previousInput.Y * OppInputSmooth;
+
+			float currentVelocity = Vector3.Dot(m_grid.Physics.AngularVelocity, Pseudo.WorldMatrix.Down);
+			float targetVelocity, targetAngle;
+
+			if (Math.Abs(input) > 0.01f)
+			{
+				targetVelocity = input * m_controlSensitivity.Y;
+				targetAngle = SqrtMag(targetVelocity - currentVelocity) + m_trim.Y;
+			}
+			else
+			{
+				// No input. Stop yawing.
+				targetVelocity = 0f;
+				ModStabilizeFactor(1, targetVelocity, currentVelocity);
+				targetAngle = m_stabilizeFactor.Y * SqrtMag(targetVelocity - currentVelocity) + m_trim.Y;
+
+				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Y + ", targetAngle: " + targetAngle);
+			}
+
 			for (int index = 0; index < m_rudder.Length; ++index)
 				m_rudder[index].SetTarget(targetAngle);
+
+			m_previousInput.Y = input;
+			m_previousVelocity.Y = currentVelocity;
+			m_previousTargetVelocity.Y = targetVelocity;
 		}
 
 		private float SqrtMag(float value)
 		{
 			return (float)(Math.Sign(value) * Math.Sqrt(Math.Abs(value)));
+		}
+
+		private void ModStabilizeFactor(int index, float targetVelocity, float currentVelocity)
+		{
+			if (Math.Abs(targetVelocity - currentVelocity) < 0.1f)
+				return;
+
+			float previousTargetVelocity = m_previousTargetVelocity.GetDim(index);
+
+			if (Math.Abs(targetVelocity - previousTargetVelocity) > 0.01f)
+			{
+				m_logger.debugLog("target velocity changed", primaryState: "index: " + index);
+				return;
+			}
+
+			float previousVelocity = m_previousVelocity.GetDim(index);
+
+			float currDiff = targetVelocity - currentVelocity;
+			float prevDiff = targetVelocity - previousVelocity;
+
+			float ratio = currDiff / prevDiff;
+
+			if (ratio < 0.5f)
+			{
+				m_stabilizeFactor.SetDim(index, 0.99f * m_stabilizeFactor.GetDim(index));
+				m_logger.debugLog("ratio is low: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
+					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity, primaryState: "index: " + index);
+			}
+			else if (ratio > 0.9f)
+			{
+				m_stabilizeFactor.SetDim(index, 1.01f * m_stabilizeFactor.GetDim(index));
+				m_logger.debugLog("ratio is high: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
+					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity, primaryState: "index: " + index);
+			}
 		}
 
 	}
