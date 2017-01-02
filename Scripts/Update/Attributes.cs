@@ -7,14 +7,17 @@ namespace Rynchodon
 	/// <summary>
 	/// Identifies a static method that is used to initialize a class after a world is loaded.
 	/// </summary>
+	[AttributeUsage(AttributeTargets.Method)]
 	public class OnWorldLoad : System.Attribute { }
 	/// <summary>
 	/// Identifies a static method that is used to clear/reset a class when a world is closed.
 	/// </summary>
+	[AttributeUsage(AttributeTargets.Method)]
 	public class OnWorldClose : System.Attribute { }
 	/// <summary>
 	/// Identifies a static method that is invoked when the world is saved.
 	/// </summary>
+	[AttributeUsage(AttributeTargets.Method)]
 	public class OnWorldSave : System.Attribute { }
 
 	public static class AttributeFinder
