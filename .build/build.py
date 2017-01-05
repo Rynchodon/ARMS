@@ -120,37 +120,37 @@ for process in psutil.process_iter():
 
 build = sys.argv[1]
 logging.info("Build is " + build)
-source = cSharp + 'bin/x64/' + build + '/ARMS.dll'
-if (not os.path.exists(source)):
-	logging.error("Build not found")
-	sys.exit(13)
+#source = cSharp + 'bin/x64/' + build + '/ARMS.dll'
+#if (not os.path.exists(source)):
+#	logging.error("Build not found")
+#	sys.exit(13)
 
-target = SpaceEngineers + '/Bin64'
-if (not os.path.exists(target)):
-	logging.error("Not path to Space Engineers: " + SpaceEngineers)
-	sys.exit(14)
-shutil.copy2(source, target)
-logging.info("Copied dll to " + target)
+#target = SpaceEngineers + '/Bin64'
+#if (not os.path.exists(target)):
+#	logging.error("Not path to Space Engineers: " + SpaceEngineers)
+#	sys.exit(14)
+#shutil.copy2(source, target)
+#logging.info("Copied dll to " + target)
 
-target += '/ARMS - Release Notes.txt'
-notes = "Unoffical build: " + sys.argv[1] + "\nBuilt: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n"
-notes += "Commit: " + gitCommit + "\n"
+#target += '/ARMS - Release Notes.txt'
+#notes = "Unoffical build: " + sys.argv[1] + "\nBuilt: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n"
+#notes += "Commit: " + gitCommit + "\n"
 
-file = open(target, "w")
-file.write(notes)
-file.close()
+#file = open(target, "w")
+#file.write(notes)
+#file.close()
 
-target = SpaceEngineers + '/DedicatedServer64'
-if (not os.path.exists(target)):
-	logging.error("Not path to Space Engineers: " + SpaceEngineers)
-	sys.exit(15)
-shutil.copy2(source, target)
-logging.info("Copied dll to " + target)
+#target = SpaceEngineers + '/DedicatedServer64'
+#if (not os.path.exists(target)):
+#	logging.error("Not path to Space Engineers: " + SpaceEngineers)
+#	sys.exit(15)
+#shutil.copy2(source, target)
+#logging.info("Copied dll to " + target)
 
-target += '/ARMS - Release Notes.txt'
-file = open(target, "w")
-file.write(notes)
-file.close()
+#target += '/ARMS - Release Notes.txt'
+#file = open(target, "w")
+#file.write(notes)
+#file.close()
 
 createDir(finalDir)
 
@@ -178,14 +178,26 @@ copyWithExtension(startDir + '/Scripts/SteamShipped/', finalDir + '/Data/Scripts
 for module in modules[:]:
 	archiveScripts(module)
 
-pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
-if "release" in str.lower(build) and os.path.isfile(pathPublish):
-	# git tests moved to Publisher.cs
-	os.system('start /wait cmd /c "' + pathPublish + '" ' + build)
-else:
-	Path = SpaceEngineers + '\Bin64'
-	LoadArms = Path + '\LoadARMS.exe'
-	os.system('start /D ' + Path + ' cmd /c"' + LoadArms)
+#pathPublish = os.path.split(startDir)[0] + "\\PublishARMS\\PublishARMS\\bin\\x64\\Release\\PublishARMS.exe"
+#if "release" in str.lower(build) and os.path.isfile(pathPublish):
+#	git tests moved to Publisher.cs
+#	os.system('start /wait cmd /c "' + pathPublish + '" ' + build)
+#else:
+
+
+SpaceBin = SpaceEngineers + '\Bin64'
+LoadArmsExe = SpaceBin + '\LoadARMS.exe'
+
+source = cSharp + 'bin/x64/' + build
+command = '""' + LoadArmsExe + '" --author=Rynchodon --repo=ARMS'
+if "release" in str.lower(build):
+	command = command + ' --publish '
+command = command + 'ARMS.dll ..\..\..\..\Readme.md"'
+logging.info(command)
+os.system('start /D "' + source + '" cmd.exe /C ' + command)
+
+#SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
+#os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
 
 #    Pack Archive
 
