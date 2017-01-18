@@ -3,6 +3,8 @@ Archive/
 Archive.7z
 build.ini
 VersionInfo - User.cs
+*.blend1
+*.blockdef.xml
 *.tmp*
 **/mwmBuilder/
 **/MwmBuilder.log

@@ -1,50 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0"?>
 <Model Name="Autopilot-Block">
-	<Parameter Name="RescaleFactor">1.0</Parameter>
-	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
-	<Parameter Name="Centered">false</Parameter>
-	<Parameter Name="SpecularPower">5.0</Parameter>
-	<Parameter Name="SpecularShininess">5.0</Parameter>
-	<Material Name="Paintable">
-		<Parameter Name="Technique">MESH</Parameter>
-		<Parameter Name="SpecularIntensity">0.0</Parameter>
-		<Parameter Name="SpecularPower">0.0</Parameter>
-		<Parameter Name="DiffuseColorX">255</Parameter>
-		<Parameter Name="DiffuseColorY">255</Parameter>
-		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Cubes\autopilot_me.dds</Parameter>
-		<!--material has no NormalTexture-->
-		<Parameter Name="ColorMetalTexture">Textures\Cubes\autopilot_cm.dds</Parameter>
-		<!--material has no NormalGlossTexture-->
-		<Parameter Name="AddMapsTexture">Textures\Cubes\autopilot_add.dds</Parameter>
-		<!--material has no AlphamaskTexture-->
-	</Material>
-	<Material Name="radar">
-		<Parameter Name="Technique">ALPHAMASK</Parameter>
-		<Parameter Name="SpecularIntensity">0.0</Parameter>
-		<Parameter Name="SpecularPower">0.0</Parameter>
-		<Parameter Name="DiffuseColorX">255</Parameter>
-		<Parameter Name="DiffuseColorY">255</Parameter>
-		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Cubes\radar_me.dds</Parameter>
-		<!--material has no NormalTexture-->
-		<Parameter Name="ColorMetalTexture">Textures\Cubes\radar_cm.dds</Parameter>
-		<Parameter Name="NormalGlossTexture">Textures\Cubes\large_assembler_ng.dds</Parameter>
-		<Parameter Name="AddMapsTexture">Textures\Cubes\radar_add.dds</Parameter>
-		<Parameter Name="AlphamaskTexture">Textures\Cubes\dx11_alphamask.dds</Parameter>
-	</Material>
-	<Material Name="DX11">
-		<Parameter Name="Technique">MESH</Parameter>
-		<Parameter Name="SpecularIntensity">0.0</Parameter>
-		<Parameter Name="SpecularPower">0.0</Parameter>
-		<Parameter Name="DiffuseColorX">255</Parameter>
-		<Parameter Name="DiffuseColorY">255</Parameter>
-		<Parameter Name="DiffuseColorZ">255</Parameter>
-		<Parameter Name="DiffuseTexture">Textures\Cubes\LargeBattery_me.dds</Parameter>
-		<Parameter Name="NormalTexture">Textures\Cubes\LargeBattery_ns.dds</Parameter>
-		<Parameter Name="ColorMetalTexture">Textures\Cubes\LargeBattery_cm.dds</Parameter>
-		<Parameter Name="NormalGlossTexture">Textures\Cubes\LargeBattery_ng.dds</Parameter>
-		<Parameter Name="AddMapsTexture">Textures\Cubes\LargeBattery_add.dds</Parameter>
-		<!--material has no AlphamaskTexture-->
-	</Material>
+  <Parameter Name="RescaleFactor">0.002</Parameter>
+  <Parameter Name="RescaleToLengthInMeters">false</Parameter>
+  <Parameter Name="Centered">false</Parameter>
+  <Material Name="Colourable">
+    <Parameter Name="Technique">MESH</Parameter>
+    <Parameter Name="ColorMetalTexture">Textures\Models\Cubes\MetallicPaint_cm.dds</Parameter>
+    <Parameter Name="NormalGlossTexture">Textures\Models\Cubes\MetallicPaint_ng.dds</Parameter>
+    <Parameter Name="AddMapsTexture">Textures\Models\Cubes\MetallicPaint_add.dds</Parameter>
+  </Material>
+  <Material Name="RadarSphere">
+    <Parameter Name="Technique">MESH</Parameter>
+    <Parameter Name="ColorMetalTexture">Textures\Models\Cubes\radar_cm.dds</Parameter>
+    <Parameter Name="AddMapsTexture">Textures\Models\Cubes\radar_add.dds</Parameter>
+  </Material>
+  <Material Name="RedCube">
+    <Parameter Name="Technique">MESH</Parameter>
+    <Parameter Name="ColorMetalTexture">Textures\Models\Cubes\autopilot_redcube_cm.dds</Parameter>
+    <Parameter Name="AddMapsTexture">Textures\Models\Cubes\autopilot_redcube_add.dds</Parameter>
+  </Material>
 </Model>
