@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using Rynchodon.Threading;
 using Rynchodon.Weapons.Guided;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Lights;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
-using VRage;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -205,6 +207,7 @@ namespace Rynchodon.AntennaRelay
 		private static Logger staticLogger = new Logger();
 		private static ThreadManager myThread = new ThreadManager(background: true, threadName: "Radar");
 		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
+		private static FieldInfo MyBeacon__m_light = typeof(MyBeacon).GetField("m_light", BindingFlags.Instance | BindingFlags.NonPublic);
 
 		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>
 		public static bool IsRadarOrJammer(IMyCubeBlock block)
@@ -295,6 +298,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly IMyEntity Entity;
 		/// <summary>Block for comparing relations.</summary>
 		private readonly IMyCubeBlock RelationsBlock;
+		private readonly MyLight m_beaconLight;
 
 		/// <summary>Entity as IMyCubeBlock</summary>
 		private IMyCubeBlock CubeBlock
@@ -396,6 +400,8 @@ namespace Rynchodon.AntennaRelay
 			if (detectionTypes > 1)
 				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
 
+			m_beaconLight = GetLight();
+
 			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
 		}
 
@@ -420,6 +426,8 @@ namespace Rynchodon.AntennaRelay
 			if (detectionTypes > 1)
 				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
 
+			m_beaconLight = GetLight();
+
 			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
 		}
 
@@ -429,8 +437,25 @@ namespace Rynchodon.AntennaRelay
 			TermBlock.AppendingCustomInfo -= AppendingCustomInfo;
 		}
 
+		private MyLight GetLight()
+		{
+			MyBeacon beacon = this.Entity as MyBeacon;
+			if (beacon == null)
+				return null;
+
+			return (MyLight)MyBeacon__m_light.GetValue(beacon);
+		}
+
 		public void Update100()
 		{
+			if (m_beaconLight != null && m_beaconLight.Intensity != 0f)
+			{
+				m_beaconLight.GlareIntensity = 0f;
+				m_beaconLight.Intensity = 0f;
+				m_beaconLight.ReflectorIntensity = 0f;
+				m_beaconLight.UpdateLight();
+			}
+
 			if (myLock.TryAcquireExclusive())
 			{
 				if (m_node == null)
