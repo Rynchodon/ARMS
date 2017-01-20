@@ -89,7 +89,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private readonly PathTester m_tester;
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
-		private bool m_runInterrupt, m_runHalt, m_navSetChange;
+		private bool m_runInterrupt, m_runHalt, m_navSetChange = true;
 		private ulong m_waitUntil, m_nextJumpAttempt;
 		private LineSegmentD m_lineSegment = new LineSegmentD();
 		private MyGridJumpDriveSystem m_jumpSystem;
@@ -161,7 +161,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private void NavSet_AfterTaskComplete()
 		{
 			m_navSetChange = true;
-			CurrentState = State.None;
+			if (CurrentState != State.Crashed)
+				CurrentState = State.None;
 		}
 
 		#region On Autopilot Thread
@@ -247,6 +248,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="destinations">The destinations that autopilot will try to reach.</param>
 		public void MoveTo(Vector3 addToVelocity = default(Vector3), params Destination[] destinations)
 		{
+			if (CurrentState == State.Crashed)
+			{
+				m_runHalt = true;
+				Mover.MoveAndRotateStop(false);
+				return;
+			}
+
 			m_runHalt = false;
 			Move();
 
