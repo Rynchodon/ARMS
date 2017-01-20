@@ -296,8 +296,7 @@ namespace Rynchodon.Autopilot.Navigator
 					return;
 				}
 
-				m_logger.debugLog("no Block, not facing");
-				m_mover.StopRotate();
+				m_mover.CalcRotate();
 				return;
 			}
 
@@ -398,7 +397,7 @@ namespace Rynchodon.Autopilot.Navigator
 							m_landingState = LandingState.LineUp;
 							return;
 						}
-						m_pathfinder.HoldPosition(m_gridFinder.Grid.GetLinearVelocity());
+						m_pathfinder.HoldPosition(m_gridFinder.Grid);
 						return;
 					}
 				case LandingState.LineUp:
@@ -469,7 +468,7 @@ namespace Rynchodon.Autopilot.Navigator
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
 							m_logger.debugLog("waiting for direction to match");
-							m_pathfinder.HoldPosition(m_gridFinder.Grid.GetLinearVelocity());
+							m_pathfinder.HoldPosition(m_gridFinder.Grid);
 							return;
 						}
 
@@ -494,7 +493,7 @@ namespace Rynchodon.Autopilot.Navigator
 						if (m_navSet.Settings_Current.DistanceAngle > 0.1f)
 						{
 							m_logger.debugLog("waiting for direction to match");
-							m_pathfinder.HoldPosition(m_gridFinder.Grid.GetLinearVelocity());
+							m_pathfinder.HoldPosition(m_gridFinder.Grid);
 							return;
 						}
 

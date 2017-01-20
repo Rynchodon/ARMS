@@ -254,7 +254,7 @@ namespace Rynchodon.Autopilot.Navigator
 				else
 				{
 					m_logger.debugLog("Waiting for angle to match");
-					m_pathfinder.HoldPosition(m_enemy.GetLinearVelocity());
+					m_pathfinder.HoldPosition(m_enemy);
 				}
 				return;
 			}

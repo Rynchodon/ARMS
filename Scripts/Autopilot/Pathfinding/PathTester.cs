@@ -131,33 +131,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// </summary>
 		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
 		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot and entity.</param>
-		/// <param name="entity">The potential obstruction</param>
-		public void AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
-		{
-#if DEBUG
-			if (entity == null)
-				throw new ArgumentNullException("entity");
-#endif
-			in_AdjustForCurrentVelocity(ref input, out adjusted, entity);
-		}
-
-		/// <summary>
-		/// Adjusts input for the autopilot's velocity.
-		/// </summary>
-		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
-		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot.</param>
-		public void AdjustForCurrentVelocityVoxel(ref TestInput input, out TestInput adjust)
-		{
-			in_AdjustForCurrentVelocity(ref input, out adjust, null);
-		}
-
-		/// <summary>
-		/// Adjusts input for the autopilot's velocity and entity's velocity.
-		/// </summary>
-		/// <param name="input">Original TestInput with Direction as the desired direction of travel and Length as the distance to the destination.</param>
-		/// <param name="adjusted">Offset will be zero, Direction and Length will be modified from input for the velocity of autopilot and entity.</param>
-		/// <param name="entity">The potential obstruction</param>
-		private void in_AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity)
+		/// <param name="entity">The potential obstruction, if null, assumes a static entity</param>
+		public void AdjustForCurrentVelocity(ref TestInput input, out TestInput adjusted, MyEntity entity, bool destination)
 		{
 			Vector3 autopilotVelocity = AutopilotGrid.Physics.LinearVelocity;
 			Vector3 relativeVelocity;
@@ -182,7 +157,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			Vector3.Add(ref relativeVelocity, ref input.Direction, out adjusted.Direction);
 			adjusted.Offset = Vector3D.Zero;
-			adjusted.Length = Math.Min(input.Length, 20f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor);
+			if (adjusted.Direction == Vector3.Zero)
+				adjusted.Length = 0f;
+			else
+			{
+				adjusted.Length = 20f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor;
+				if (destination && input.Length < adjusted.Length)
+					adjusted.Length = input.Length;
+			}
 		}
 
 		/// <summary>
@@ -196,7 +178,10 @@ namespace Rynchodon.Autopilot.Pathfinding
 		public bool ObstructedBy(MyEntity entity, MyCubeBlock ignoreBlock, ref TestInput input, out GridTestResult result)
 		{
 			//Logger.DebugLog("checking: " + entity.getBestName() + ", offset: " + offset + ", rejection vector: " + rejectionVector + ", rejection distance: " + rejectionDistance);
-			Logger.DebugLog("rejection vector is invalid: " + input.Direction, Logger.severity.FATAL, condition: !input.Direction.IsValid() || Math.Abs(1f - input.Direction.LengthSquared()) > 0.01f);
+#if DEBUG
+			if (!input.Direction.IsValid() || Math.Abs(1f - input.Direction.LengthSquared()) > 0.01f)
+				throw new Exception("rejection vector is invalid. entity: " + entity.nameWithId() + ", input: " + input);
+#endif
 
 			result = GridTestResult.Default;
 			result.Distance = input.Length;
