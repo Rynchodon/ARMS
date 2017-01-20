@@ -194,10 +194,10 @@ if "release" in str.lower(build):
 	command = command + ' --publish '
 command = command + ' ARMS.dll ..\..\..\..\Readme.md"'
 logging.info(command)
-os.system('start /D "' + source + '" cmd.exe /C ' + command)
+os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
 
-#SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
-#os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
+SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
+os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
 
 #    Pack Archive
 
