@@ -9,7 +9,6 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Movement;
-using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
@@ -753,7 +752,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				MyPlanet planet = entity as MyPlanet;
 				if (planet != null)
 				{
-					if (distCentreToCurrent - apRadius - linearSpeedFactor < planet.MaximumRadius)
+					float maxRadius = planet.MaximumRadius;
+					if (distCentreToCurrent - apRadius - linearSpeedFactor < maxRadius)
 						m_checkVoxel = true;
 					if (calcRepulse)
 					{
@@ -761,14 +761,29 @@ namespace Rynchodon.Autopilot.Pathfinding
 						float gllsf = gravLimit + linearSpeedFactor;
 						if (gllsf * gllsf < distSqCentreToDest)
 						{
-							// destination is not near planet, use gravity limit
-							m_logger.debugLog("Far planet sphere: " + new SphereClusters.RepulseSphere() { Centre = centre, FixedRadius = gravLimit, VariableRadius = linearSpeedFactor });
-							m_clusters.Add(ref centre, gravLimit, linearSpeedFactor);
+							// destination is not near planet
+							SphereClusters.RepulseSphere sphere = new SphereClusters.RepulseSphere()
+							{
+								Centre = centre,
+								FixedRadius = maxRadius,
+								VariableRadius = gravLimit - maxRadius + linearSpeedFactor
+							};
+							sphere.SetEntity(entity);
+							m_logger.traceLog("Far planet sphere: " + sphere);
+							m_clusters.Add(ref sphere);
 						}
 						else
 						{
-							m_logger.debugLog("Nearby planet sphere: " + new SphereClusters.RepulseSphere() { Centre = centre, FixedRadius = Math.Sqrt(distSqCentreToDest), VariableRadius = distAutopilotToFinalDest * 0.1f });
-							m_clusters.Add(ref centre, Math.Sqrt(distSqCentreToDest), Math.Min(linearSpeedFactor + distAutopilotToFinalDest * 0.1f, distAutopilotToFinalDest * 0.25f));
+							// destination is near planet, keep autopilot further from the planet based on speed and distance to destination
+							SphereClusters.RepulseSphere sphere = new SphereClusters.RepulseSphere()
+							{
+								Centre = centre,
+								FixedRadius = Math.Sqrt(distSqCentreToDest),
+								VariableRadius = Math.Min(linearSpeedFactor + distAutopilotToFinalDest * 0.1f, distAutopilotToFinalDest * 0.25f)
+							};
+							sphere.SetEntity(entity);
+							m_logger.traceLog("Nearby planet sphere: " + sphere);
+							m_clusters.Add(ref sphere);
 						}
 					}
 					continue;
@@ -813,8 +828,15 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				if (calcRepulse)
 				{
-					//m_logger.debugLog(entity.getBestName() + " sphere: " + new SphereClusters.RepulseSphere() { Centre = centre, FixedRadius = fixedRadius, VariableRadius = linearSpeedFactor });
-					m_clusters.Add(ref centre, fixedRadius, linearSpeedFactor);
+					SphereClusters.RepulseSphere sphere = new SphereClusters.RepulseSphere()
+					{
+						Centre = centre,
+						FixedRadius = fixedRadius,
+						VariableRadius = linearSpeedFactor
+					};
+					sphere.SetEntity(entity);
+					//m_logger.traceLog("sphere: " + sphere);
+					m_clusters.Add(ref sphere);
 				}
 			}
 
@@ -883,7 +905,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			float repulseMagnitude = maxRepulseDist - toCurrentLen;
 
 			Vector3 sphereRepulsion; Vector3.Multiply(ref toCurrent, repulseMagnitude / toCurrentLen, out sphereRepulsion);
-			//m_logger.debugLog("repulsion of sphere: " + sphere + " is " + sphereRepulsion);// + ", entity: "+ entity.getBestName());
+			m_logger.traceLog("repulsion of " + sphereRepulsion + " from sphere: " + sphere);
 			repulsion.X += sphereRepulsion.X;
 			repulsion.Y += sphereRepulsion.Y;
 			repulsion.Z += sphereRepulsion.Z;

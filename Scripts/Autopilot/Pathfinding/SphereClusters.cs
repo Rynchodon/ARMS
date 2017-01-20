@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
-using VRage.Collections;
+using System.Diagnostics;
+using System.Linq;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Pathfinding
@@ -15,10 +17,9 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// </summary>
 		public struct RepulseSphere
 		{
-			public static explicit operator RepulseSphere(BoundingSphereD sphere)
-			{
-				return new RepulseSphere() { Centre = sphere.Center, FixedRadius = sphere.Radius };
-			}
+#if DEBUG
+			public IMyEntity[] Entities;
+#endif
 
 			/// <summary>Position of the sphere</summary>
 			public Vector3D Centre;
@@ -29,21 +30,30 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			public double RepulseRadius { get { return FixedRadius + VariableRadius; } }
 
+			[Conditional("DEBUG")]
+			public void SetEntity(IMyEntity entity)
+			{
+#if DEBUG
+				Entities = new IMyEntity[] { entity };
+#endif
+			}
+
 			public override string ToString()
 			{
+
+#if DEBUG
+				return "{Centre: " + Centre + " FixedRadius: " + PrettySI.makePretty(FixedRadius) + " VariableRadius: " + PrettySI.makePretty(VariableRadius) + " Entities: {" + string.Join(",", Entities.Select(MiscExtensions.getBestName)) + "} }";
+#else
 				return "{Centre: " + Centre + " FixedRadius: " + PrettySI.makePretty(FixedRadius) + " VariableRadius: " + PrettySI.makePretty(VariableRadius) + "}";
+#endif
 			}
 		}
-
-		//private static MyConcurrentPool<List<RepulseSphere>> m_sphereLists = new MyConcurrentPool<List<RepulseSphere>>();
 
 		public readonly List<List<RepulseSphere>> Clusters = new List<List<RepulseSphere>>();
 		public readonly List<RepulseSphere> Planets = new List<RepulseSphere>();
 
-		public void Add(ref Vector3D position, double fixedRadius, double variable)
+		public void Add(ref RepulseSphere sphere)
 		{
-			RepulseSphere sphere = new RepulseSphere() { Centre = position, FixedRadius = fixedRadius, VariableRadius = variable };
-
 			List<RepulseSphere> joinedCluster = null;
 			List<RepulseSphere> emptyCluster = null;
 
@@ -112,11 +122,19 @@ namespace Rynchodon.Autopilot.Pathfinding
 				for (int indexI = cluster.Count - 1; indexI >= 0; indexI--)
 					points[indexI] = cluster[indexI].Centre;
 
-				//string log = "middle sphere: " + (RepulseSphere)BoundingSphereD.CreateFromPoints(points) + " from ";
-				//foreach (var s in cluster)
-				//	log += s.Centre + ", ";
-				//Logger.DebugLog(log);
-				cluster.Add((RepulseSphere)BoundingSphereD.CreateFromPoints(points));
+				BoundingSphereD sphere = BoundingSphereD.CreateFromPoints(points);
+				RepulseSphere repulse = new RepulseSphere() { Centre = sphere.Center, FixedRadius = sphere.Radius };
+
+#if DEBUG
+				List<IMyEntity> entities; ResourcePool.Get(out entities);
+				foreach (RepulseSphere rs in cluster)
+					entities.AddArray(rs.Entities);
+				repulse.Entities = entities.ToArray();
+				entities.Clear();
+				ResourcePool.Return(entities);
+#endif
+
+				cluster.Add(repulse);
 			}
 		}
 
