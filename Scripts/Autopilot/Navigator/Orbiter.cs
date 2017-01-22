@@ -48,6 +48,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 				m_navSet.Settings_Task_NavMove.DestinationEntity = value;
 
+				// if orbiting a grid near the surface of a planet, avoid going below it
 				if (value is IMyCubeGrid)
 				{
 					Vector3D navBlockPos = m_navBlock.WorldPosition;

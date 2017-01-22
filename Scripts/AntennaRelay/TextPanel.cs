@@ -281,6 +281,8 @@ namespace Rynchodon.AntennaRelay
 			if (m_sortableList.Count == 0)
 			{
 				m_textPanel.WritePublicText("No entities detected");
+				m_sortableList.Clear();
+				ResourcePool<List<sortableLastSeen>>.Return(m_sortableList);
 				return;
 			}
 

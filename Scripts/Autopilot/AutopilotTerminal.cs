@@ -472,7 +472,7 @@ namespace Rynchodon.Autopilot
 
 			// power
 			customInfo.Append("Current Input: ");
-			customInfo.Append(PrettySI.makePretty(((MyCubeBlock)m_block).ResourceSink.RequiredInput * 1e6f));
+			customInfo.Append(PrettySI.makePretty(((MyCubeBlock)m_block).ResourceSink.RequiredInputByType(Globals.Electricity) * 1e6f));
 			customInfo.AppendLine("W");
 		}
 

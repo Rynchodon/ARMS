@@ -87,7 +87,7 @@ namespace Rynchodon.Utility.Collections
 				using (m_lock.AcquireExclusiveUsing())
 					if (m_rings.Length <= index)
 					{
-						int length = Math.Max(index + 1, m_rings.Length * 2);
+						int length = Math.Max(1024, Math.Max(index + 1, m_rings.Length * 2));
 						Logger.DebugLog("Rebuilding to " + length, Logger.severity.DEBUG);
 						m_rings = new Ring[length];
 						ExpandingRings exRings = new ExpandingRings();

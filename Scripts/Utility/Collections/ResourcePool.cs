@@ -22,6 +22,9 @@ namespace Rynchodon
 	{
 
 		private static MyConcurrentPool<T> Pool = new MyConcurrentPool<T>();
+#if DEBUG
+		private static int lastComplain = 0;
+#endif
 
 		public static T Get()
 		{
@@ -48,11 +51,14 @@ namespace Rynchodon
 		[System.Diagnostics.Conditional("DEBUG")]
 		private static void CheckInstancesCreated()
 		{
-			if (Pool.InstancesCreated != 0 && Pool.InstancesCreated % 100 == 0)
+#if DEBUG
+			if (Pool.InstancesCreated != lastComplain && Pool.InstancesCreated % 100 == 0)
 			{
+				lastComplain = Pool.InstancesCreated;
 				Logger.DebugLog(typeof(ResourcePool).Name + "<" + typeof(T).Name + "> generated " + Pool.InstancesCreated + " instances.", Logger.severity.WARNING);
 				Logger.DebugLogCallStack();
 			}
+#endif
 		}
 
 	}

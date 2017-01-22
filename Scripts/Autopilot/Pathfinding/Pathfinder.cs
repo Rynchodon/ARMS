@@ -262,6 +262,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			m_addToVelocity = addToVelocity;
 			m_destinations = destinations;
+			m_pickedDestination = m_destinations[0];
 
 			if (!m_navSetChange)
 			{
@@ -280,7 +281,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_canChangeCourse = level.PathfinderCanChangeCourse;
 				m_holdPosition = true;
 				m_navSetChange = false;
-				m_pickedDestination = m_destinations[0];
 			}
 
 			if (m_navBlock == null)
@@ -318,7 +318,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 
 			m_logger.traceLog("Should not be moving! disp: " + disp, Logger.severity.DEBUG, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
-			m_logger.traceLog("moving: " + disp);
+			m_logger.traceLog("moving: " + disp + ", targetVelocity: " + targetVelocity);
 			Mover.CalcMove(m_navBlock, ref disp, ref targetVelocity);
 		}
 		
@@ -445,7 +445,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			m_destWorld = m_path.HasTarget ? m_path.GetTarget() + m_obstructingEntity.GetPosition() : finalDestWorld;
 
-			m_logger.traceLog("final dest world: " + finalDestWorld + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + ", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
+			m_logger.traceLog("final dest world: " + finalDestWorld + ", picked: " + m_pickedDestination.WorldPosition() + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + 
+				", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
 		}
 
 		/// <summary>
@@ -814,7 +815,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 								VariableRadius = gravLimit - maxRadius + linearSpeedFactor
 							};
 							sphere.SetEntity(entity);
-							m_logger.traceLog("Far planet sphere: " + sphere);
+							//m_logger.traceLog("Far planet sphere: " + sphere);
 							m_clusters.Add(ref sphere);
 						}
 						else
@@ -827,7 +828,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 								VariableRadius = Math.Min(linearSpeedFactor + distAutopilotToFinalDest * 0.1f, distAutopilotToFinalDest * 0.25f)
 							};
 							sphere.SetEntity(entity);
-							m_logger.traceLog("Nearby planet sphere: " + sphere);
+							//m_logger.traceLog("Nearby planet sphere: " + sphere);
 							m_clusters.Add(ref sphere);
 						}
 					}
@@ -880,7 +881,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						VariableRadius = linearSpeedFactor
 					};
 					sphere.SetEntity(entity);
-					m_logger.traceLog("sphere: " + sphere);
+					//m_logger.traceLog("sphere: " + sphere);
 					m_clusters.Add(ref sphere);
 				}
 			}

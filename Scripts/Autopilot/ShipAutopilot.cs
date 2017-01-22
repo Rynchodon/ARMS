@@ -209,7 +209,7 @@ namespace Rynchodon.Autopilot
 				m_block.Terminal.SetCustomName((nameBefore + nameAfter).Trim());
 			}
 
-			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity"), PowerRequired);
+			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, PowerRequired);
 			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
 			Registrar.Add(block, this);
 		}
