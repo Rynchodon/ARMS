@@ -192,7 +192,7 @@ source = cSharp + 'bin/x64/' + build
 command = '""' + LoadArmsExe + '" --author=Rynchodon --repo=ARMS'
 if "release" in str.lower(build):
 	command = command + ' --publish '
-command = command + ' ARMS.dll ..\..\..\..\Readme.md"'
+command = command + ' ARMS.dll ..\..\..\..\README.md ..\..\..\..\LICENSE"'
 logging.info(command)
 os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
 
