@@ -10,12 +10,13 @@
       <DisplayName>Cruise Missile R12VP</DisplayName>
       <Description>
         GuidanceSeconds=90;
+        Acceleration=25;
         RotationPerUpdate=0.017453292519943;
         RadarReflectivity=0.067;
         DetonateRange=3;
       </Description>
       <BasicProperties>
-        <DesiredSpeed>200</DesiredSpeed>
+        <DesiredSpeed>400</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>12000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
@@ -25,10 +26,10 @@
         <MissileMass>3000</MissileMass>
         <MissileExplosionRadius>15</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_R12VP_Missile.mwm</MissileModelName>
-        <MissileAcceleration>10</MissileAcceleration>
+        <MissileAcceleration>25</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
         <MissileSkipAcceleration>false</MissileSkipAcceleration>
-        <MissileExplosionDamage>10000</MissileExplosionDamage>
+        <MissileExplosionDamage>30000</MissileExplosionDamage>
       </MissileProperties>
     </Ammo>
 
@@ -49,7 +50,7 @@
         EMP_Seconds=30;
       </Description>
       <BasicProperties>
-        <DesiredSpeed>200</DesiredSpeed>
+        <DesiredSpeed>600</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>8000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
@@ -77,6 +78,7 @@
         Acceleration=100;
         RotationPerUpdate=0.01;
         RadarReflectivity=0.081;
+        HasAntenna=true;
         ClusterCooldown=5;
       </Description>
       <BasicProperties>
@@ -114,7 +116,7 @@
       <BasicProperties>
         <DesiredSpeed>1000</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>2000</MaxTrajectory>
+        <MaxTrajectory>3000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
         <BackkickForce>70</BackkickForce>
       </BasicProperties>
