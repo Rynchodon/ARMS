@@ -962,7 +962,8 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			if (Obstructed(target.ContactPoint.Value, target.Entity))
+			Vector3D position = target.ContactPoint.Value;
+			if (Obstructed(ref position, target.Entity))
 			{
 				//myLogger.debugLog("blacklisting: " + target.Entity.getBestName());
 				BlacklistTarget();
@@ -982,7 +983,7 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		/// <param name="contactPosition">position of entity to shoot</param>
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
-		protected override bool Obstructed(Vector3D contactPosition, IMyEntity target)
+		protected override bool Obstructed(ref Vector3D contactPosition, IMyEntity target)
 		{
 			myLogger.debugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
 			m_ignoreList[0] = target;

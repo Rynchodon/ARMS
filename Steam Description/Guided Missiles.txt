@@ -90,7 +90,7 @@ Missiles included in ARMS use the following naming convention:
 [*]Good vs Soft Targets - Good damage over a large area, thanks to the multiple missiles
 [*]Medium Range - will travel 5 km
 [*]Max speed of 800 m/s
-[*]Pre-set Guidance for 15 seconds
+[*]Radio guidance for 15 seconds
 [*]Detonates only with a direct hit
 [/list]
 

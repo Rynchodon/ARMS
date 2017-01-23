@@ -72,7 +72,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
-      <DisplayName>18x Swarm Missile B3MP</DisplayName>
+      <DisplayName>18x Swarm Missile B5MP</DisplayName>
       <Description>
         GuidanceSeconds=15;
         Acceleration=100;
@@ -104,7 +104,7 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
-      <DisplayName>Interceptor Missile R5VT</DisplayName>
+      <DisplayName>Interceptor Missile R3VT</DisplayName>
       <Description>
         GuidanceSeconds=15;
         AcquisitionAngle=0.5;

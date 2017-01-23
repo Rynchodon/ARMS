@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
@@ -179,38 +180,27 @@ namespace Rynchodon.Weapons
 			myLogger = new Logger(block);
 		}
 
-		private bool PhysicalProblem(Vector3D targetPos, IMyEntity target)
+		private bool PhysicalProblem(ref Vector3D targetPos, IMyEntity target)
 		{
-			return !CanRotateTo(targetPos) || Obstructed(targetPos, target);
+			return !CanRotateTo(ref targetPos, target) || Obstructed(ref targetPos, target);
 		}
 
 		private bool myTarget_PhysicalProblem()
 		{
 			myLogger.debugLog("No current target", Logger.severity.FATAL, condition: myTarget == null || myTarget.Entity == null);
 			Vector3D targetPos = myTarget.GetPosition();
-			return !myTarget_CanRotateTo(targetPos) || Obstructed(targetPos, myTarget.Entity);
+			return !CanRotateTo(ref targetPos, myTarget.Entity) || Obstructed(ref targetPos, myTarget.Entity);
 		}
 
 		/// <summary>
-		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth. Tested for new targets.
+		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth.
 		/// </summary>
 		/// <param name="targetPos">The position of the target.</param>
 		/// <returns>true if the rotation is allowed</returns>
 		/// <remarks>Invoked on targeting thread.</remarks>
-		protected abstract bool CanRotateTo(Vector3D targetPos);
+		protected abstract bool CanRotateTo(ref Vector3D targetPos, IMyEntity target);
 
-		/// <summary>
-		/// Used to apply restrictions on rotation, such as min/max elevation/azimuth. Tested for current target.
-		/// </summary>
-		/// <param name="targetPos">The position of the target.</param>
-		/// <returns>true if the rotation is allowed</returns>
-		/// <remarks>Invoked on targeting thread.</remarks>
-		protected virtual bool myTarget_CanRotateTo(Vector3D targetPos)
-		{
-			return CanRotateTo(targetPos);
-		}
-
-		protected abstract bool Obstructed(Vector3D targetPos, IMyEntity target);
+		protected abstract bool Obstructed(ref Vector3D targetPos, IMyEntity target);
 
 		/// <summary>
 		/// Determines the speed of the projectile.
@@ -237,19 +227,24 @@ namespace Rynchodon.Weapons
 			Blacklist.Clear();
 		}
 
+#if DEBUG
+		protected void BlacklistTarget([CallerMemberName] string caller = null)
+		{
+			myLogger.debugLog("Blacklisting " + myTarget.Entity + ", caller: " + caller);
+#else
 		protected void BlacklistTarget()
 		{
-			myLogger.debugLog("Blacklisting " + myTarget.Entity);
+#endif
 			Blacklist.Add(myTarget.Entity);
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 		}
 
-		#region Targeting
+			#region Targeting
 
-		/// <summary>
-		/// Finds a target
-		/// </summary>
+			/// <summary>
+			/// Finds a target
+			/// </summary>
 		protected void UpdateTarget()
 		{
 			if (Options.TargetingRange < 1f)
@@ -263,11 +258,8 @@ namespace Rynchodon.Weapons
 			if (myTarget.Entity != null && !myTarget.Entity.Closed)
 			{
 				if (TryHard)
-				{
-					if (!myTarget_PhysicalProblem())
-						return;
-				}
-				else if ((myTarget.TType & TargetType.Projectile) != 0 && ProjectileIsThreat(myTarget.Entity, myTarget.TType) && !myTarget_PhysicalProblem())
+					return;
+				if ((myTarget.TType & TargetType.Projectile) != 0 && ProjectileIsThreat(myTarget.Entity, myTarget.TType))
 					return;
 			}
 
@@ -628,7 +620,7 @@ namespace Rynchodon.Weapons
 						continue;
 					}
 
-					if (PhysicalProblem(targetPosition, target))
+					if (PhysicalProblem(ref targetPosition, target))
 					{
 						//myLogger.debugLog("can't target: " + target.getBestName());
 						Blacklist.Add(target);
@@ -676,7 +668,8 @@ namespace Rynchodon.Weapons
 			if (Blacklist.Contains(block))
 				return false;
 
-			if (!CanRotateTo(block.GetPosition()))
+			Vector3D position = block.GetPosition();
+			if (!CanRotateTo(ref position, block))
 				return false;
 
 			return true;
@@ -868,7 +861,8 @@ namespace Rynchodon.Weapons
 							continue;
 					}
 
-					if (!PhysicalProblem(projectile.GetPosition(), projectile))
+					Vector3D position = projectile.GetPosition();
+					if (!PhysicalProblem(ref position, projectile))
 					{
 						myTarget = new TurretTarget(projectile, tType);
 						return true;
@@ -900,16 +894,16 @@ namespace Rynchodon.Weapons
 				return false;
 		}
 
-		#endregion
+#endregion
 
-		#region Target Interception
+#region Target Interception
 
 		/// <summary>
 		/// Calculates FiringDirection and InterceptionPoint
 		/// </summary>
 		protected void SetFiringDirection()
 		{
-			if (myTarget.Entity == null || myTarget.Entity.MarkedForClose || MyEntity.MarkedForClose)
+			if (myTarget.Entity == null || MyEntity.MarkedForClose)
 				return;
 
 			FindInterceptVector();
@@ -933,15 +927,15 @@ namespace Rynchodon.Weapons
 			Vector3 shooterVel = MyEntity.GetLinearVelocity();
 			Vector3D targetOrigin = myTarget.GetPosition();
 
-			myLogger.debugLog(() => "shotOrigin is not valid: " + shotOrigin, Logger.severity.FATAL, condition: !shotOrigin.IsValid());
-			myLogger.debugLog(() => "shooterVel is not valid: " + shooterVel, Logger.severity.FATAL, condition: !shooterVel.IsValid());
-			myLogger.debugLog(() => "targetOrigin is not valid: " + targetOrigin, Logger.severity.FATAL, condition: !targetOrigin.IsValid());
+			//myLogger.debugLog(() => "shotOrigin is not valid: " + shotOrigin, Logger.severity.FATAL, condition: !shotOrigin.IsValid());
+			//myLogger.debugLog(() => "shooterVel is not valid: " + shooterVel, Logger.severity.FATAL, condition: !shooterVel.IsValid());
+			//myLogger.debugLog(() => "targetOrigin is not valid: " + targetOrigin, Logger.severity.FATAL, condition: !targetOrigin.IsValid());
 
 			Vector3 targetVel = myTarget.GetLinearVelocity();
 			Vector3 relativeVel = (targetVel - shooterVel);
 
-			myLogger.debugLog(() => "targetVel is not valid: " + targetVel, Logger.severity.FATAL, condition: !targetVel.IsValid());
-			myLogger.debugLog(() => "relativeVel is not valid: " + relativeVel, Logger.severity.FATAL, condition: !relativeVel.IsValid());
+			//myLogger.debugLog(() => "targetVel is not valid: " + targetVel, Logger.severity.FATAL, condition: !targetVel.IsValid());
+			//myLogger.debugLog(() => "relativeVel is not valid: " + relativeVel, Logger.severity.FATAL, condition: !relativeVel.IsValid());
 
 			targetOrigin += relativeVel * Globals.UpdateDuration;
 			float shotSpeed = ProjectileSpeed(ref targetOrigin);
@@ -984,10 +978,10 @@ namespace Rynchodon.Weapons
 					myTarget.FiringDirection = direction;
 					myTarget.ContactPoint = shotOrigin + direction * distanceToTarget;
 
-					myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", directionToTarget: " + directionToTarget +
-						", displacementToTarget: " + displacementToTarget + ", shotVelTang: " + shotVelTang, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
-					myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", shotOrigin: " + shotOrigin +
-						", direction: " + direction + ", distanceToTarget: " + distanceToTarget, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
+					//myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", directionToTarget: " + directionToTarget +
+					//	", displacementToTarget: " + displacementToTarget + ", shotVelTang: " + shotVelTang, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
+					//myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", shotOrigin: " + shotOrigin +
+					//	", direction: " + direction + ", distanceToTarget: " + distanceToTarget, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
 					return;
 				}
 				//myLogger.debugLog("shot too slow, blacklisting");
@@ -1014,10 +1008,10 @@ namespace Rynchodon.Weapons
 				myTarget.FiringDirection = firingDirection;
 				myTarget.ContactPoint = contactPoint;
 
-				myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", shotSpeedOrth: " + shotSpeedOrth +
-					", directionToTarget: " + directionToTarget + ", firingDirection: " + firingDirection, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
-				myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", timeToCollision: " + timeToCollision +
-					", shotVel: " + shotVel + ", contactPoint: " + contactPoint, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
+				//myLogger.debugLog(() => "invalid FiringDirection: " + myTarget.FiringDirection + ", shotSpeedOrth: " + shotSpeedOrth +
+				//	", directionToTarget: " + directionToTarget + ", firingDirection: " + firingDirection, Logger.severity.FATAL, condition: !myTarget.FiringDirection.IsValid());
+				//myLogger.debugLog(() => "invalid ContactPoint: " + myTarget.ContactPoint + ", timeToCollision: " + timeToCollision +
+				//	", shotVel: " + shotVel + ", contactPoint: " + contactPoint, Logger.severity.FATAL, condition: !myTarget.ContactPoint.IsValid());
 			}
 		}
 
@@ -1089,7 +1083,7 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		#endregion
+#endregion
 
 		private bool CanConsiderHostile(IMyEntity target)
 		{

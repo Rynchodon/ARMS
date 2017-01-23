@@ -6,6 +6,7 @@ using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
@@ -112,7 +113,7 @@ namespace Rynchodon.Weapons
 				Options.CanTarget &= ~typeFlag;
 		}
 
-		protected override bool CanRotateTo(Vector3D targetPoint)
+		protected override bool CanRotateTo(ref Vector3D targetPoint, IMyEntity target)
 		{
 			Vector3 localTarget = Vector3.Transform(targetPoint, CubeBlock.WorldMatrixNormalizedInv);
 			localTarget.Normalize();

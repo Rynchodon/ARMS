@@ -47,7 +47,7 @@
         <TypeId>AmmoMagazine</TypeId>
         <SubtypeId>Souper_B3MP_Missile</SubtypeId>
       </Id>
-      <DisplayName>18x Swarm Missile B3MP</DisplayName>
+      <DisplayName>18x Swarm Missile B5MP</DisplayName>
       <Icon>Textures\Icon\Souper_B3MP_Missile.dds</Icon>
       <Size>
         <X>0.3</X>
@@ -67,7 +67,7 @@
         <TypeId>AmmoMagazine</TypeId>
         <SubtypeId>Souper_C1VT_Interceptor_Missile</SubtypeId>
       </Id>
-      <DisplayName>Interceptor Missile R5VT</DisplayName>
+      <DisplayName>Interceptor Missile R3VT</DisplayName>
       <Icon>Textures\Icon\Interceptor_Missile.dds</Icon>
       <Size>
         <X>0.5</X>

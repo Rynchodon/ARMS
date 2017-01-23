@@ -99,11 +99,11 @@ namespace Rynchodon.Weapons.Guided
 				try
 				{
 					if (missile.Stopped)
-						return;
+						continue;
 					if (missile.myCluster != null)
 						missile.UpdateCluster();
 					if (missile.myTarget.TType == TargetType.None)
-						return;
+						continue;
 					if (missile.m_stage >= Stage.MidCourse && missile.m_stage <= Stage.Guided)
 						missile.SetFiringDirection();
 					missile.Update();
@@ -143,8 +143,9 @@ namespace Rynchodon.Weapons.Guided
 			{
 				try
 				{
+					missile.myLogger.debugLog("updating");
 					if (missile.Stopped)
-						return;
+						continue;
 					if (missile.m_stage == Stage.SemiActive)
 						missile.TargetSemiActive();
 					else if (missile.m_stage != Stage.Golis)
@@ -418,23 +419,26 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		protected override bool CanRotateTo(Vector3D targetPos)
+		protected override bool CanRotateTo(ref Vector3D targetPos, IMyEntity target)
 		{
 			if (myDescr.AcquisitionAngle == MathHelper.Pi)
 				return true;
 
-			Vector3D displacement = targetPos - MyEntity.GetPosition();
+			Vector3 displacement = targetPos - MyEntity.GetPosition();
 			displacement.Normalize();
-			//myLogger.debugLog("forwardness: " + Vector3.Dot(displacement, MyEntity.WorldMatrix.Forward) + ", CosCanRotateArc: " + myDescr.CosCanRotateArc);
-			return Vector3D.Dot(displacement, MyEntity.WorldMatrix.Forward) > myDescr.CosAcquisitionAngle;
+			Vector3 direction = Vector3.Normalize(MyEntity.Physics.LinearVelocity);
+			bool canRotate = Vector3D.Dot(displacement, direction) > myDescr.CosAcquisitionAngle;
+
+			if (!canRotate && target == CurrentTarget.Entity)
+			{
+				myLogger.debugLog("Losing current target, checking proximity", Logger.severity.DEBUG);
+				ProximityDetonate();
+			}
+
+			return canRotate;
 		}
 
-		protected override bool myTarget_CanRotateTo(Vector3D targetPos)
-		{
-			return true;
-		}
-
-		protected override bool Obstructed(Vector3D targetPos, IMyEntity target)
+		protected override bool Obstructed(ref Vector3D targetPos, IMyEntity target)
 		{
 			return false;
 		}
@@ -463,10 +467,10 @@ namespace Rynchodon.Weapons.Guided
 			if (!cached.FiringDirection.HasValue)
 				return;
 
-			//myLogger.debugLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint);
+			myLogger.traceLog("target: " + cached.Entity.getBestName() + ", ContactPoint: " + cached.ContactPoint);
 
-			myLogger.debugLog("FiringDirection invalid: " + cached.FiringDirection, Logger.severity.FATAL, condition: !cached.FiringDirection.IsValid());
-			myLogger.debugLog("ContactPoint invalid: " + cached.ContactPoint, Logger.severity.FATAL, condition: !cached.ContactPoint.IsValid());
+			myLogger.traceLog("FiringDirection invalid: " + cached.FiringDirection, Logger.severity.FATAL, condition: !cached.FiringDirection.IsValid());
+			myLogger.traceLog("ContactPoint invalid: " + cached.ContactPoint, Logger.severity.FATAL, condition: !cached.ContactPoint.IsValid());
 
 			Vector3 targetDirection;
 
@@ -492,7 +496,7 @@ namespace Rynchodon.Weapons.Guided
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
 			float angle = (float)Math.Acos(Vector3.Dot(forward, targetDirection));
 
-			//myLogger.debugLog("forward: " + forward + ", targetDirection: " + targetDirection + ", angle: " + angle);
+			myLogger.traceLog("forward: " + forward + ", targetDirection: " + targetDirection + ", angle: " + angle);
 
 			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
@@ -511,8 +515,6 @@ namespace Rynchodon.Weapons.Guided
 					MyEntity.WorldMatrix = newMatrix;
 				}
 			}
-
-			//myLogger.debugLog("targetDirection: " + targetDirection + ", forward: " + forward);
 
 			{ // accelerate if facing target
 				if (angle < Static.Angle_AccelerateWhen && addSpeedPerUpdate > 0f && MyEntity.GetLinearVelocity().LengthSquared() < myAmmo.AmmoDefinition.DesiredSpeed * myAmmo.AmmoDefinition.DesiredSpeed)
@@ -535,22 +537,31 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
-			if (!MyAPIGateway.Multiplayer.IsServer)
+			if (myDescr.AcquisitionAngle == MathHelper.Pi) // otherwise we check while outside of AcquisitionAngle see CanRotateTo
+				ProximityDetonate();
+		}
+
+		/// <summary>
+		/// If the missile is near the target and not getting closer, detonate.
+		/// </summary>
+		private void ProximityDetonate()
+		{
+			if (!MyAPIGateway.Multiplayer.IsServer || myDescr.DetonateRange == 0f)
 				return;
 
-			{ // detonate when barely missing the target
-				Vector3D myPosition = MyEntity.GetPosition();
-				Vector3D targetPosition = cached.GetPosition();
+			Target cached = CurrentTarget;
+			if (!cached.FiringDirection.HasValue)
+				return;
 
-				double distSq; Vector3D.DistanceSquared(ref myPosition, ref targetPosition, out distSq);
-				if (distSq < myDescr.DetonateRange * myDescr.DetonateRange &&
-					Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(targetDirection) < Static.Cos_Angle_Detonate)
-				{
-					myLogger.debugLog("proximity detonation, target: " + cached.Entity + ", target position: " + cached.GetPosition() + ", real position: " + cached.Entity.GetPosition() + ", type: " + cached.GetType().Name);
-					Explode();
-					m_stage = Stage.Terminated;
-					return;
-				}
+			Vector3D myPosition = MyEntity.GetPosition();
+			Vector3D targetPosition = cached.GetPosition();
+
+			double distSq; Vector3D.DistanceSquared(ref myPosition, ref targetPosition, out distSq);
+			if (distSq < myDescr.DetonateRange * myDescr.DetonateRange &&	Vector3.Normalize(MyEntity.GetLinearVelocity()).Dot(cached.FiringDirection.Value) < Static.Cos_Angle_Detonate)
+			{
+				myLogger.debugLog("proximity detonation, target: " + cached.Entity + ", target position: " + cached.GetPosition() + ", real position: " + cached.Entity.GetPosition() + ", type: " + cached.GetType().Name, Logger.severity.INFO);
+				Explode();
+				m_stage = Stage.Terminated;
 			}
 		}
 
@@ -768,7 +779,7 @@ namespace Rynchodon.Weapons.Guided
 			m_rail.Rail.To = m_rail.Rail.From + matrix.Forward * 100d;
 
 			Vector3D closest = m_rail.Rail.ClosestPoint(MyEntity.GetPosition());
-			//myLogger.debugLog("my position: " + MyEntity.GetPosition() + ", closest point: " + closest + ", distance: " + Vector3D.Distance(MyEntity.GetPosition(), closest), "UpdateRail()");
+			myLogger.debugLog("my position: " + MyEntity.GetPosition() + ", closest point: " + closest + ", distance: " + Vector3D.Distance(MyEntity.GetPosition(), closest));
 			//myLogger.debugLog("my forward: " + MyEntity.WorldMatrix.Forward + ", block forward: " + matrix.Forward + ", angle: " + MyEntity.WorldMatrix.Forward.AngleBetween(matrix.Forward), "UpdateRail()");
 
 			matrix.Translation = closest;

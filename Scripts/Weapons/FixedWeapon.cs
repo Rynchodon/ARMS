@@ -155,7 +155,7 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		protected override bool CanRotateTo(VRageMath.Vector3D targetPoint)
+		protected override bool CanRotateTo(ref Vector3D targetPoint, IMyEntity target)
 		{
 			if (MyMotorTurret == null)
 				return true;
