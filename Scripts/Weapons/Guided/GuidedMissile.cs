@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Game.Entities;
@@ -83,6 +84,12 @@ namespace Rynchodon.Weapons.Guided
 
 		public static void Update1()
 		{
+#if PROFILE
+			Profiler.StartProfileBlock();
+			try
+			{
+#endif
+
 			Static.AllGuidedMissiles.ApplyChanges();
 			if (Static.AllGuidedMissiles.Count == 0)
 				return;
@@ -111,10 +118,24 @@ namespace Rynchodon.Weapons.Guided
 					Static.AllGuidedMissiles.Remove(missile);
 				}
 			}
+
+#if PROFILE
+			}
+			finally
+			{
+				Profiler.EndProfileBlock();
+			}
+#endif
 		}
 
 		public static void Update10()
 		{
+#if PROFILE
+			Profiler.StartProfileBlock();
+			try
+			{
+#endif
+
 			if (Static.AllGuidedMissiles.Count == 0)
 				return;
 
@@ -141,10 +162,24 @@ namespace Rynchodon.Weapons.Guided
 					Static.AllGuidedMissiles.Remove(missile);
 				}
 			}
+
+#if PROFILE
+			}
+			finally
+			{
+				Profiler.EndProfileBlock();
+			}
+#endif
 		}
 
 		public static void Update100()
 		{
+#if PROFILE
+			Profiler.StartProfileBlock();
+			try
+			{
+#endif
+
 			if (Static.AllGuidedMissiles.Count == 0)
 				return;
 
@@ -190,6 +225,14 @@ namespace Rynchodon.Weapons.Guided
 			if (MyAPIGateway.Multiplayer.IsServer)
 				if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, Static.SerialPositions.ToArray(), false))
 					Static.staticLogger.alwaysLog("Missile sync failed, too many missiles in play: " + Static.AllGuidedMissiles.Count + ", byte count: " + Static.SerialPositions.Count);
+
+#if PROFILE
+			}
+			finally
+			{
+				Profiler.EndProfileBlock();
+			}
+#endif
 		}
 
 		private static void ReceiveMissilePositions(byte[] data, int pos)
