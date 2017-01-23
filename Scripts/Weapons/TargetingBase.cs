@@ -41,7 +41,7 @@ namespace Rynchodon.Weapons
 			WeaponsTargeting.Clear();
 		}
 
-		public static int GetWeaponsTargetingProjectile(IMyEntity entity)
+		public static int GetWeaponsTargeting(IMyEntity entity)
 		{
 			WeaponCounts result;
 			using (lock_WeaponsTargeting.AcquireSharedUsing())
@@ -97,7 +97,7 @@ namespace Rynchodon.Weapons
 					{
 						WeaponCounts counts;
 						if (!WeaponsTargeting.TryGetValue(value_CurrentTarget.Entity.EntityId, out counts))
-							throw new Exception("WeaponsTargetingProjectile does not contain " + value_CurrentTarget.Entity.nameWithId());
+							throw new Exception("WeaponsTargeting does not contain " + value_CurrentTarget.Entity.nameWithId());
 						myLogger.debugLog("counts are now: " + counts + ", target: " + value_CurrentTarget.Entity.nameWithId());
 						if (GuidedLauncher)
 						{
@@ -161,9 +161,16 @@ namespace Rynchodon.Weapons
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 			Options = new TargetingOptions();
-			entity.OnClose += obj => { CurrentTarget = null; };
+			entity.OnClose += Entity_OnClose;
 
 			//myLogger.debugLog("entity: " + MyEntity.getBestName() + ", block: " + CubeBlock.getBestName(), "TargetingBase()");
+		}
+
+		private void Entity_OnClose(IMyEntity obj)
+		{
+			if (Globals.WorldClosed)
+				return;
+			CurrentTarget = null;
 		}
 
 		public TargetingBase(IMyCubeBlock block)
@@ -695,6 +702,9 @@ namespace Rynchodon.Weapons
 			target = null;
 			distanceValue = double.MaxValue;
 
+			if (cache == null)
+				return false;
+
 			if (cache.TerminalBlocks == 0)
 			{
 				//myLogger.debugLog("no terminal blocks on grid: " + grid.DisplayName);
@@ -832,7 +842,7 @@ namespace Rynchodon.Weapons
 			{
 				IOrderedEnumerable<IMyEntity> sorted;
 				using (lock_WeaponsTargeting.AcquireSharedUsing())
-					sorted = targetsOfType.OrderBy(entity => GetWeaponsTargetingProjectile(entity));
+					sorted = targetsOfType.OrderBy(entity => GetWeaponsTargeting(entity));
 
 				foreach (IMyEntity entity in sorted)
 				{

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Sandbox.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -8,14 +7,6 @@ namespace Rynchodon.Weapons
 {
 	public class Cluster
 	{
-
-		[Serializable]
-		public class Builder_Cluster
-		{
-			public long[] Slaves;
-			public Vector3[] SlaveOffsets;
-			public float MinOffMult, OffsetMulti;
-		}
 
 		private readonly Logger m_logger;
 		private readonly float MinOffMult;
@@ -92,48 +83,9 @@ namespace Rynchodon.Weapons
 			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, Logger.severity.DEBUG);
 		}
 
-		public Cluster(IMyEntity master, Builder_Cluster builder)
-		{
-			this.m_logger = new Logger();
-			this.Master = master;
-			this.MinOffMult = builder.MinOffMult;
-			this.OffsetMulti = builder.OffsetMulti;
-			this.masterVelocity = master.Physics.LinearVelocity;
-
-			this.Slaves = new List<IMyEntity>(builder.Slaves.Length);
-			this.SlaveOffsets = new List<Vector3>(builder.Slaves.Length);
-			for (int index = 0; index < builder.Slaves.Length; index++)
-			{
-				IMyEntity slave;
-				if (!MyAPIGateway.Entities.TryGetEntityById(builder.Slaves[index], out slave))
-				{
-					m_logger.alwaysLog("Failed to get slave for " + builder.Slaves[index], Logger.severity.WARNING);
-					continue;
-				}
-				this.Slaves[index] = slave;
-				this.SlaveOffsets[index] = builder.SlaveOffsets[index];
-			}
-		}
-
 		public void AdjustMulti(float target)
 		{
 			OffsetMulti = MathHelper.Max(MinOffMult, target);
-		}
-
-		public Builder_Cluster GetBuilder()
-		{
-			Builder_Cluster result = new Builder_Cluster()
-			{
-				SlaveOffsets = SlaveOffsets.ToArray(),
-				MinOffMult = MinOffMult,
-				OffsetMulti = OffsetMulti,
-			};
-
-			result.Slaves = new long[Slaves.Count];
-			for (int index = 0; index < Slaves.Count; index++)
-				result.Slaves[index] = Slaves[index].EntityId;
-
-			return result;
 		}
 
 	}

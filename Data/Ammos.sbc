@@ -107,6 +107,7 @@
         GuidanceSeconds=15;
         AcquisitionAngle=0.5;
         Acceleration=100;
+        RadarReflectivity=0.081;
         TargetRange=800;
         DetonateRange=10;
       </Description>
