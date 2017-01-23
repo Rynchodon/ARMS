@@ -24,7 +24,7 @@
       </BasicProperties>
       <MissileProperties>
         <MissileMass>3000</MissileMass>
-        <MissileExplosionRadius>15</MissileExplosionRadius>
+        <MissileExplosionRadius>10</MissileExplosionRadius>
         <MissileModelName>Models\Weapons\Souper_R12VP_Missile.mwm</MissileModelName>
         <MissileAcceleration>25</MissileAcceleration>
         <MissileInitialSpeed>10</MissileInitialSpeed>
@@ -84,7 +84,7 @@
       <BasicProperties>
         <DesiredSpeed>800</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
-        <MaxTrajectory>3000</MaxTrajectory>
+        <MaxTrajectory>5000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>
         <BackkickForce>700</BackkickForce>
       </BasicProperties>
@@ -104,17 +104,17 @@
         <TypeId>AmmoDefinition</TypeId>
         <SubtypeId>Souper_R1VT_Interceptor_Missile</SubtypeId>
       </Id>
-      <DisplayName>Interceptor Missile R1VT</DisplayName>
+      <DisplayName>Interceptor Missile R5VT</DisplayName>
       <Description>
         GuidanceSeconds=15;
         AcquisitionAngle=0.5;
-        Acceleration=100;
+        Acceleration=400;
         RadarReflectivity=0.081;
         TargetRange=800;
         DetonateRange=10;
       </Description>
       <BasicProperties>
-        <DesiredSpeed>1000</DesiredSpeed>
+        <DesiredSpeed>1500</DesiredSpeed>
         <SpeedVariance>0</SpeedVariance>
         <MaxTrajectory>3000</MaxTrajectory>
         <IsExplosive>true</IsExplosive>

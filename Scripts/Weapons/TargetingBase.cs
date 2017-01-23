@@ -884,6 +884,9 @@ namespace Rynchodon.Weapons
 			if (projectile.Closed)
 				return false;
 
+			if (Guided.GuidedMissile.IsGuidedMissile(projectile.EntityId))
+				return true;
+
 			Vector3D projectilePosition = projectile.GetCentre();
 			BoundingSphereD ignoreArea = new BoundingSphereD(ProjectilePosition(), Options.TargetingRange / 10f);
 			if (ignoreArea.Contains(projectilePosition) == ContainmentType.Contains)

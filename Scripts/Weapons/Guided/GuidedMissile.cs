@@ -414,9 +414,6 @@ namespace Rynchodon.Weapons.Guided
 			sat.Update(MyEntity);
 		}
 
-		/// <remarks>
-		/// Runs on separate thread.
-		/// </remarks>
 		private void Update()
 		{
 			Target cached = CurrentTarget;
@@ -514,9 +511,6 @@ namespace Rynchodon.Weapons.Guided
 			}
 		}
 
-		/// <remarks>
-		/// Runs on separate thread.
-		/// </remarks>
 		private void UpdateCluster()
 		{
 			const float moveSpeed = 3f;
@@ -700,7 +694,7 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Updates myAntenna and sends LastSeen of this missile to launcher. Runs on game thread.
+		/// Updates myAntenna and sends LastSeen of this missile to launcher.
 		/// </summary>
 		private void UpdateNetwork()
 		{
@@ -763,7 +757,7 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Updates stored gravity values. Runs on missile thread.
+		/// Updates stored gravity values.
 		/// </summary>
 		private void UpdateGravity()
 		{
@@ -779,7 +773,7 @@ namespace Rynchodon.Weapons.Guided
 		}
 
 		/// <summary>
-		/// Applies gravitational acceleration to the missile. Runs on game thread.
+		/// Applies gravitational acceleration to the missile.
 		/// </summary>
 		private void ApplyGravity()
 		{

@@ -58,7 +58,7 @@ Multiple EMP hits on a grid will stack, with a separate timer for each impact.
 [h1]Blocks and Missile Types[/h1]
 ARMS provides a selection of missiles to use, but any mod can add additional missiles and launchers using the functionality above by simply including the appropriate metadata in the block definition.
 
-ARMS available missiles are named following the designation scheme listed [url=http://www.brahmos.com/content.php?id=10&sid=9]here[/url], with one position each for:
+Missiles included in ARMS use the following naming convention:
 [list]
 [*]Type - Either R for cRuise or B for Ballistic
 [*]Range - in km
@@ -68,10 +68,10 @@ ARMS available missiles are named following the designation scheme listed [url=h
  
 [u]Cruise Missile Launcher - Cruise Missile R12VP[/u]
 [list]
-[*]Anti-Armor - Large damage in a concentrated radius around the target
+[*]Anti-Armor - High damage in a concentrated radius
 [*]Very Long Range - will travel 12 km
-[*]Slow - A max speed of 200 m/s makes these easier to shoot down
-[*]Pre-set Guidance for 60 seconds
+[*]Max speed of 400 m/s
+[*]Pre-set Guidance for 90 seconds
 [*]Detonates within 3 meters of its target
 [/list]
 
@@ -79,27 +79,27 @@ ARMS available missiles are named following the designation scheme listed [url=h
 [list]
 [*]EMP - 300 MW of EMP damage for 30 seconds and a small amount of conventional damage
 [*]Long Range - will travel 8 km
-[*]Slow - A max speed of 200 m/s makes these easier to shoot down
+[*]Max speed of 600 m/s
 [*]Radio guidance for 60 seconds
 [*]Detonates within 3 meters of its target
 [/list]
 
-[u]Swarm Missile Launcher - Swarm Missile B3MP[/u]
+[u]Swarm Missile Launcher - Swarm Missile B5MP[/u]
 [list]
 [*]Multiple Missiles - this launcher shoots a spread of 18 missiles at once
 [*]Good vs Soft Targets - Good damage over a large area, thanks to the multiple missiles
-[*]Medium Range - will travel 3 km
-[*]Moderately Fast - A max speed of 800 m/s makes these difficult to shoot down
+[*]Medium Range - will travel 5 km
+[*]Max speed of 800 m/s
 [*]Pre-set Guidance for 15 seconds
 [*]Detonates only with a direct hit
 [/list]
 
-[u]Missile Defense Turret - Interceptor Missile R1VT[/u]
+[u]Missile Defense Turret - Interceptor Missile R3VT[/u]
 [list]
-[*]Good for Interception - Each missile has a large explosion radius but very low damage
-[*]Short Range - will only travel for 2000 meters
-[*]Defense Turret will fire at targets up to 2000 meters away, if they are detected by radar
-[*]Moderately Fast - A max speed of 650 m/s allows these to quickly reach incoming threats
+[*]Designed for shooting down enemy missiles - Each missile has a large explosion radius but very low damage
+[*]Medium Range - will travel for 3 km
+[*]Defense Turret will fire at targets up to 3 km away, if they are detected by radar
+[*]A max speed of 1500 m/s allows these to quickly reach incoming threats
 [*]Self-Guided for 15 seconds with 800 meters of detection range
 [*]Detonates within 10 meters of its target
 [/list]

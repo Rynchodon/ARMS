@@ -589,12 +589,12 @@ namespace Rynchodon.Weapons
 					if (IsNormalTurret)
 					{
 						if (value == Control.Off)
-							GameThreadActions.Enqueue(() => myTurret.ResetTargetingToDefault());
+							GameThreadActions.Enqueue(myTurret.ResetTargetingToDefault);
 						else
-							GameThreadActions.Enqueue(() => myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10));
+							GameThreadActions.Enqueue(SetBarrelNeutral);
 					}
 					if (value == Control.Off)
-						GameThreadActions.Enqueue(() => ((IMyFunctionalBlock)CubeBlock).GetActionWithName("Shoot_Off").Apply(CubeBlock));
+						GameThreadActions.Enqueue(ShootOff);
 				}
 
 				if (value == Control.Engager)
@@ -603,6 +603,21 @@ namespace Rynchodon.Weapons
 				value_currentControl = value;
 				FireWeapon = false;
 			}
+		}
+
+		private void SetBarrelNeutral()
+		{
+			myTurret.SetTarget(ProjectilePosition() + Facing() * 10f);
+		}
+
+		private void ShootOn()
+		{
+			((MyUserControllableGun)CubeBlock).SetShooting(true);
+		}
+
+		private void ShootOff()
+		{
+			((MyUserControllableGun)CubeBlock).SetShooting(false);
 		}
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
@@ -708,17 +723,17 @@ namespace Rynchodon.Weapons
 					if (FireWeapon)
 					{
 						//myLogger.debugLog("Opening fire", "Update_Targeting()");
-						(CubeBlock as IMyTerminalBlock).GetActionWithName("Shoot_On").Apply(CubeBlock);
+						ShootOn();
 					}
 					else
 					{
 						//myLogger.debugLog("Holding fire", "Update_Targeting()");
 						IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
-						func.GetActionWithName("Shoot_Off").Apply(CubeBlock);
+						ShootOff();
 
 						// Shoot_Off is not working for gatling/interior turrets, this seems to do the trick
 						if (myTurret != null)
-							myTurret.SetTarget(ProjectilePosition() + (CubeBlock.WorldMatrix.Backward + CubeBlock.WorldMatrix.Up) * 10);
+							SetBarrelNeutral();
 					}
 				}
 
