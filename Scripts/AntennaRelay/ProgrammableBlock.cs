@@ -7,7 +7,6 @@ using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Collections;
 using VRage.Game.ModAPI;
@@ -37,12 +36,14 @@ namespace Rynchodon.AntennaRelay
 		private class StaticVariables
 		{
 			public Logger s_logger = new Logger();
+
+			public MyTerminalControlSeparator<MyProgrammableBlock> separator = new MyTerminalControlSeparator<MyProgrammableBlock>();
 			public MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetected;
 			public MyTerminalControlTextbox<MyProgrammableBlock> blockCountList;
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
 				MyTerminalAction<MyProgrammableBlock> programmable_sendMessage = new MyTerminalAction<MyProgrammableBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
 				{
 					ValidForGroups = false,
@@ -53,20 +54,24 @@ namespace Rynchodon.AntennaRelay
 				programmable_sendMessage.ParameterDefinitions.Add(Ingame.TerminalActionParameter.Get(string.Empty));
 				MyTerminalControlFactory.AddAction(programmable_sendMessage);
 
-				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
-
 				handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
-				IMyTerminalValueControl<bool> valueControl = handleDetected as IMyTerminalValueControl<bool>;
-				valueControl.Getter = GetHandleDetectedTerminal;
-				valueControl.Setter = SetHandleDetectedTerminal;
-				MyTerminalControlFactory.AddControl(handleDetected);
+				handleDetected.AddGetSetEntityValue((ProgrammableBlock block) => block.m_handleDetectedTerminal_ev);
 
-				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separate list of blocks to count"));
-				blockCountList.Visible = block => ((ITerminalProperty<bool>)((IMyTerminalBlock)block).GetProperty("HandleDetected")).GetValue(block);
-				IMyTerminalControlTextbox asInterface = blockCountList as IMyTerminalControlTextbox;
-				asInterface.Getter = GetBlockCountList;
-				asInterface.Setter = SetBlockCountList;
-				MyTerminalControlFactory.AddControl(blockCountList);
+				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
+				blockCountList.Visible = block => handleDetected.GetValue(block);
+				blockCountList.AddGetSetEntityValue((ProgrammableBlock block) => block.m_blockCountList_ev);
+
+				MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+			}
+
+			private void CustomControlGetter(IMyTerminalBlock block, System.Collections.Generic.List<IMyTerminalControl> controls)
+			{
+				if (block is MyProgrammableBlock)
+				{
+					controls.Add(separator);
+					controls.Add(handleDetected);
+					controls.Add(blockCountList);
+				}
 			}
 		}
 
@@ -120,59 +125,6 @@ namespace Rynchodon.AntennaRelay
 				(block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));
 		}
 
-		private static bool GetHandleDetectedTerminal(IMyTerminalBlock block)
-		{
-			ProgrammableBlock pb;
-			if (!Registrar.TryGetValue(block, out pb))
-			{
-				if (Static.s_logger == null)
-					return false;
-				throw new ArgumentException("block id not found in registrar");
-			}
-
-			return pb.m_handleDetectedTerminal;
-		}
-
-		private static void SetHandleDetectedTerminal(IMyTerminalBlock block, bool value)
-		{
-			ProgrammableBlock pb;
-			if (!Registrar.TryGetValue(block, out pb))
-			{
-				if (Static.s_logger == null)
-					return;
-				throw new ArgumentException("block id not found in registrar");
-			}
-
-			pb.m_handleDetectedTerminal = value;
-			block.SwitchTerminalTo();
-		}
-
-		private static StringBuilder GetBlockCountList(IMyTerminalBlock block)
-		{
-			ProgrammableBlock pb;
-			if (!Registrar.TryGetValue(block, out pb))
-			{
-				if (Static.s_logger == null)
-					return new StringBuilder();
-				throw new ArgumentException("block id not found in registrar");
-			}
-
-			return pb.m_blockCountList_sb;
-		}
-
-		private static void SetBlockCountList(IMyTerminalBlock block, StringBuilder value)
-		{
-			ProgrammableBlock pb;
-			if (!Registrar.TryGetValue(block, out pb))
-			{
-				if (Static.s_logger == null)
-					return;
-				throw new ArgumentException("block id not found in registrar");
-			}
-
-			pb.m_blockCountList_sb = value;
-		}
-
 		private static void UpdateVisual()
 		{
 			Static.handleDetected.UpdateVisual();
@@ -205,6 +157,9 @@ namespace Rynchodon.AntennaRelay
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
+			if (Static == null)
+				throw new Exception("StaticVariables not loaded");
+
 			m_logger = new Logger(block);
 			m_progBlock = block as Ingame.IMyProgrammableBlock;
 			m_networkClient = new RelayClient(block, HandleMessage);

@@ -9,7 +9,6 @@ using Rynchodon.Utility.Network;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
@@ -20,7 +19,6 @@ using VRage.ModAPI;
 using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
@@ -69,7 +67,7 @@ namespace Rynchodon.AntennaRelay
 			Logger.DebugLog("entered", Logger.severity.TRACE);
 				MyAPIGateway.Session.DamageSystem.RegisterAfterDamageHandler((int)MyDamageSystemPriority.Low, AfterDamageHandler);
 
-				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySpaceProjector>());
+				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
 				AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this ship and nearby detected ships", Option.OnOff);
 				AddCheckbox("HD_This Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
@@ -170,8 +168,6 @@ namespace Rynchodon.AntennaRelay
 				IMyTerminalValueControl<bool> valueControl = control;
 				valueControl.Getter = block => GetOptionTerminal(block, opt);
 				valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
-				if (TermControls.Count == 0)
-					MyTerminalControlFactory.AddControl(control);
 				TermControls.Add(control);
 			}
 
@@ -191,6 +187,12 @@ namespace Rynchodon.AntennaRelay
 
 			public void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
 			{
+				if (!(block is IMyProjector))
+					return;
+
+				controls.Add(TermControls[0]);
+				controls.Add(TermControls[1]);
+
 				if (GetOptionTerminal(block, Option.OnOff))
 				{
 					// find show on hud
@@ -201,7 +203,7 @@ namespace Rynchodon.AntennaRelay
 
 					bool showOffset = GetOptionTerminal(block, Option.ShowOffset);
 
-					for (int index = 1; index < TermControls.Count; index++)
+					for (int index = 2; index < TermControls.Count; index++)
 					{
 						controls.Add(TermControls[index]);
 						if (showOffset && TermControls[index].Id == "HD_ShowOffset")
@@ -588,6 +590,9 @@ namespace Rynchodon.AntennaRelay
 
 		public Projector(IMyCubeBlock block)
 		{
+			if (Static == null)
+				throw new Exception("StaticVariables not loaded");
+
 			this.m_logger = new Logger(block);
 			this.m_block = block;
 			this.m_netClient = new RelayClient(block);
