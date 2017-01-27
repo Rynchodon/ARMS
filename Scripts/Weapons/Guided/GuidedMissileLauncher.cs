@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Entity;
@@ -48,7 +49,7 @@ namespace Rynchodon.Weapons.Guided
 		private readonly Logger myLogger;
 		public readonly WeaponTargeting m_weaponTarget;
 		public IMyCubeBlock CubeBlock { get { return m_weaponTarget.CubeBlock; } }
-		public IMyFunctionalBlock FuncBlock { get { return CubeBlock as IMyFunctionalBlock; } }
+		public MyFunctionalBlock FuncBlock { get { return (MyFunctionalBlock)CubeBlock; } }
 		/// <summary>Local position where the magic happens (hopefully).</summary>
 		private readonly BoundingBox MissileSpawnBox;
 		private readonly MyInventoryBase myInventory;
@@ -215,7 +216,7 @@ namespace Rynchodon.Weapons.Guided
 			else
 			{
 				m_onCooldown = true;
-				FuncBlock.RequestEnable(false);
+				FuncBlock.Enabled = false;
 				FuncBlock.ApplyAction("Shoot_Off");
 				cooldownUntil = Globals.ElapsedTime + TimeSpan.FromSeconds(loadedAmmo.Description.ClusterCooldown);
 			}
@@ -231,7 +232,7 @@ namespace Rynchodon.Weapons.Guided
 				if (m_onCooldown && FuncBlock.Enabled)
 				{
 					myLogger.debugLog("deactivating");
-					FuncBlock.RequestEnable(false);
+					FuncBlock.Enabled = false;
 					FuncBlock.ApplyAction("Shoot_Off");
 				}
 			}
@@ -240,7 +241,7 @@ namespace Rynchodon.Weapons.Guided
 				myLogger.debugLog("off cooldown");
 				if (m_onCooldown)
 					// do not restore shooting toggle, makes it difficult to turn the thing off
-					FuncBlock.RequestEnable(true);
+					FuncBlock.Enabled = true;
 				if (m_onGameCooldown)
 					m_weaponTarget.SuppressTargeting = false;
 				m_onCooldown = false;

@@ -1,5 +1,5 @@
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
+using Sandbox.Game.Entities.Cube;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -23,14 +23,14 @@ namespace Rynchodon.Weapons.SystemDisruption
 		protected override void StartEffect(IMyCubeBlock block)
 		{
 			// stop turret from shooting its current target
-			(block as IMyFunctionalBlock).RequestEnable(false);
+			((MyFunctionalBlock)block).Enabled = false;
 			block.ApplyAction("OnOff_On");
 		}
 
 		protected override void EndEffect(IMyCubeBlock block)
 		{
 			// stop turret from shooting its current target
-			(block as IMyFunctionalBlock).RequestEnable(false);
+			((MyFunctionalBlock)block).Enabled = false;
 			block.ApplyAction("OnOff_On");
 		}
 

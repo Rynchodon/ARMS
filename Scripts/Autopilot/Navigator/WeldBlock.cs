@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders; // from MedievalEngineers.ObjectBuilders.dll and SpaceEngineers.ObjectBuilders.dll
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI; // from Sandbox.Common.dll
+using SpaceEngineers.Game.Entities.Blocks;
 using VRage.Game.ModAPI; // from VRage.Math.dll
 using VRageMath;
 
@@ -325,9 +326,9 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-				foreach (IMyShipWelder welder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipWelder)))
+				foreach (MyShipWelder welder in cache.BlocksOfType(typeof(MyObjectBuilder_ShipWelder)))
 					if (!welder.Closed)
-						welder.RequestEnable(enable);
+						welder.Enabled = enable;
 			});
 		}
 

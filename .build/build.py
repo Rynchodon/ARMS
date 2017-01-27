@@ -196,8 +196,9 @@ command = command + ' ARMS.dll ..\..\..\..\README.md ..\..\..\..\LICENSE"'
 logging.info(command)
 os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
 
-SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
-os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
+if not "release" in str.lower(build):
+	SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
+	os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
 
 #    Pack Archive
 

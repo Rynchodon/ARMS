@@ -18,7 +18,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private const float s_hackStrength = 50f;
 		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
 		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
-		private static float allowedBreakForce = 1f;
+		//private static float allowedBreakForce = 1f;
 
 		public static bool IsHacker(IMyCubeBlock block)
 		{
@@ -58,19 +58,22 @@ namespace Rynchodon.Weapons.SystemDisruption
 				m_strengthLeft = 0f;
 				return;
 			}
-			if (m_hackBlock.BreakForce > allowedBreakForce)
-			{
-				m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce);
-				ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
-				if (prop == null)
-				{
-					m_logger.debugLog("break force is disabled in SE", Logger.severity.INFO);
-					allowedBreakForce = float.PositiveInfinity;
-				}
-				else
-					prop.SetValue(m_hackBlock, allowedBreakForce);
-			}
-			if (allowedBreakForce == float.PositiveInfinity)
+
+			// break force might be removed from game entirely
+			//if (m_hackBlock.BreakForce > allowedBreakForce)
+			//{
+			//	m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce);
+			//	ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
+			//	if (prop == null)
+			//	{
+			//		m_logger.debugLog("break force is disabled in SE", Logger.severity.INFO);
+			//		allowedBreakForce = float.PositiveInfinity;
+			//	}
+			//	else
+			//		prop.SetValue(m_hackBlock, allowedBreakForce);
+			//}
+			//if (allowedBreakForce == float.PositiveInfinity)
+
 				// landing gear is unbreakable, disconnect / fail if not otherwise attached
 				if (!AttachedGrid.IsGridAttached(m_hackBlock.CubeGrid as IMyCubeGrid, attached, AttachedGrid.AttachmentKind.Physics))
 				{

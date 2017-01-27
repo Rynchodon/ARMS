@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -176,6 +177,11 @@ namespace Rynchodon
 			float centreInDirect; Vector3.Dot(ref localCentreOfMass, ref side, out centreInDirect);
 
 			return blockPosInDirect > centreInDirect;
+		}
+
+		public static void EnableGameThread(this IMyCubeBlock block, bool enable)
+		{
+			MyAPIGateway.Utilities.InvokeOnGameThread(() => ((MyFunctionalBlock)block).Enabled = enable);
 		}
 
 	}

@@ -366,6 +366,9 @@ namespace Rynchodon.AntennaRelay
 
 		#endregion
 
+		/// <summary>
+		/// Create a RadarEquipment for a block, getting the definition from the block.
+		/// </summary>
 		public RadarEquipment(IMyCubeBlock block)
 		{
 			this.myLogger = new Logger(block);
@@ -384,9 +387,10 @@ namespace Rynchodon.AntennaRelay
 			PowerLevel_Current = Math.Min(PowerLevel_Target, myDefinition.MaxPowerLevel);
 			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
 
-			IMyFunctionalBlock func = block as IMyFunctionalBlock;
-			func.RequestEnable(false);
-			func.RequestEnable(true);
+			// maybe this is a bug fix?
+			MyFunctionalBlock func = (MyFunctionalBlock)block;
+			func.Enabled = false;
+			func.Enabled = true;
 
 			TermBlock.RefreshCustomInfo();
 
@@ -405,6 +409,9 @@ namespace Rynchodon.AntennaRelay
 			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
 		}
 
+		/// <summary>
+		/// Create a RadarEquipment for an entity, with the specified definition and an owner block.
+		/// </summary>
 		public RadarEquipment(IMyEntity radarEntity, Definition radarDef, IMyCubeBlock relationsBlock)
 		{
 			this.myLogger = new Logger(() => RelationsBlock.CubeGrid.DisplayName, () => RelationsBlock.DisplayNameText, () => radarEntity.ToString());
@@ -534,10 +541,7 @@ namespace Rynchodon.AntennaRelay
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					if (CubeBlock != null)
-						(CubeBlock as IMyFunctionalBlock).RequestEnable(false);
-				});
+				CubeBlock.EnableGameThread(false);
 			}
 			finally
 			{ myLock.ReleaseExclusive(); }

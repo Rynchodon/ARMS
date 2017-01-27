@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Rynchodon.AntennaRelay;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Character;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Collections;
@@ -469,12 +470,12 @@ namespace Rynchodon.Weapons
 					continue;
 				}
 
-				IMyCharacter asChar = entity as IMyCharacter;
+				MyCharacter asChar = entity as MyCharacter;
 				if (asChar != null)
 				{
 					//myLogger.debugLog("character: " + entity.nameWithId());
 
-					if (CharacterStateTracker.CurrentState(entity) == MyCharacterMovementEnum.Died)
+					if (asChar.IsDead)
 					{
 						//myLogger.debugLog("(s)he's dead, jim: " + entity.nameWithId());
 						continue;

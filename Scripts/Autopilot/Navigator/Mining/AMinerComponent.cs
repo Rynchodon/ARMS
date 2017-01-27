@@ -3,6 +3,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRageMath;
 
@@ -40,7 +41,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyShipDrill drill in cache.BlocksOfType(typeof(MyObjectBuilder_Drill)))
 					if (!drill.Closed)
-						drill.RequestEnable(enable);
+						((MyFunctionalBlock)drill).Enabled = enable;
 			});
 		}
 

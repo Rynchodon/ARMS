@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Weapons;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game.Entity;
@@ -416,7 +417,7 @@ namespace Rynchodon.Autopilot.Navigator
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				foreach (IMyShipGrinder grinder in CubeGridCache.GetFor(m_controlBlock.CubeGrid).BlocksOfType(typeof(MyObjectBuilder_ShipGrinder)))
 					if (!grinder.Closed)
-						grinder.RequestEnable(enable);
+						((MyFunctionalBlock)grinder).Enabled = enable;
 			});
 		}
 

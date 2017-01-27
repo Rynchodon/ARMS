@@ -1,5 +1,6 @@
 ﻿using System;
-using SpaceEngineers.Game.ModAPI;
+using Sandbox.Common.ObjectBuilders;
+using SpaceEngineers.Game.Entities.Blocks;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
@@ -7,12 +8,12 @@ namespace Rynchodon.Attached
 {
 	public class LandingGear : AttachableBlockBase
 	{
-		private IMyLandingGear myGear { get { return myBlock as IMyLandingGear; } }
+		private MyLandingGear myGear { get { return (MyLandingGear)myBlock; } }
 
 		public LandingGear(IMyCubeBlock block)
 			: base (block, AttachedGrid.AttachmentKind.LandingGear)
 		{
-			this.myGear.StateChanged += myGear_StateChanged;
+			this.myGear.LockModeChanged += MyGear_LockModeChanged;
 
 			IMyCubeGrid attached = myGear.GetAttachedEntity() as IMyCubeGrid;
 			if (attached != null)
@@ -23,10 +24,14 @@ namespace Rynchodon.Attached
 
 		private void myGear_OnClosing(IMyEntity obj)
 		{
-			myGear.StateChanged -= myGear_StateChanged;
+			this.myGear.LockModeChanged -= MyGear_LockModeChanged;
 		}
 
-		private void myGear_StateChanged(bool obj)
+#if UNSTABLE
+		private void MyGear_LockModeChanged(Sandbox.Game.Entities.Interfaces.IMyLandingGear gear, SpaceEngineers.Game.ModAPI.Ingame.LandingGearMode oldMode)
+#else
+		private void MyGear_LockModeChanged(Sandbox.Game.Entities.Interfaces.IMyLandingGear gear, LandingGearMode oldMode)
+#endif
 		{
 			try
 			{

@@ -10,6 +10,7 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
+		Debug-Unstable|x64 = Debug-Unstable|x64
 		Profile|x64 = Profile|x64
 		Release|x64 = Release|x64
 		Release-Unstable|x64 = Release-Unstable|x64
@@ -18,6 +19,9 @@ Global
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug|x64.ActiveCfg = Debug|x64
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug|x64.Build.0 = Debug|x64
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug|x64.Deploy.0 = Debug|x64
+		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug-Unstable|x64.ActiveCfg = Debug-Unstable|x64
+		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug-Unstable|x64.Build.0 = Debug-Unstable|x64
+		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Debug-Unstable|x64.Deploy.0 = Debug-Unstable|x64
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Profile|x64.ActiveCfg = Profile|x64
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Profile|x64.Build.0 = Profile|x64
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Release|x64.ActiveCfg = Release|x64
@@ -26,6 +30,8 @@ Global
 		{76D2857A-6AAB-4DAD-8BCA-498984875AED}.Release-Unstable|x64.Build.0 = Release-Unstable|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Debug|x64.ActiveCfg = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Debug|x64.Build.0 = Release|x64
+		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Debug-Unstable|x64.ActiveCfg = Release|x64
+		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Debug-Unstable|x64.Build.0 = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Profile|x64.ActiveCfg = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Profile|x64.Build.0 = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Release|x64.ActiveCfg = Release|x64

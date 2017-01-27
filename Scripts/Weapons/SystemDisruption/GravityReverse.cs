@@ -1,6 +1,7 @@
 
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI.Interfaces;
+using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
@@ -29,16 +30,10 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		private void ReverseGravity(IMyCubeBlock block)
 		{
-			Ingame.IMyGravityGenerator rect = block as Ingame.IMyGravityGenerator;
-			if (rect != null)
+			IMyGravityGeneratorBase gravityBase = block as IMyGravityGeneratorBase;
+			if (gravityBase != null)
 			{
-				rect.GetProperty("Gravity").AsFloat().SetValue(rect, -rect.Gravity * Gee);
-				return;
-			}
-			Ingame.IMyGravityGeneratorSphere sphere = block as Ingame.IMyGravityGeneratorSphere;
-			if (sphere != null)
-			{
-				sphere.GetProperty("Gravity").AsFloat().SetValue(sphere, -sphere.Gravity * Gee);
+				gravityBase.GravityAcceleration = -gravityBase.GravityAcceleration;
 				return;
 			}
 

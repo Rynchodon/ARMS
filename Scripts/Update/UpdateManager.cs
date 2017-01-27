@@ -164,7 +164,6 @@ namespace Rynchodon.Update
 					RelayNode node = new RelayNode(character);
 					RegisterForUpdates(100, node.Update100, (IMyEntity)character);
 				}
-				new CharacterStateTracker(character);
 			});
 
 			RegisterForBlock(typeof(MyObjectBuilder_MyProgrammableBlock), block => {

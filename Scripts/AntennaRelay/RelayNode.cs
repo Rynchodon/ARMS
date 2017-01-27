@@ -134,7 +134,7 @@ namespace Rynchodon.AntennaRelay
 
 			this.m_loggingName = () => player.DisplayName;
 			this.m_logger = new Logger(this.m_loggingName);
-			this.m_ownerId = () => player.PlayerID;
+			this.m_ownerId = () => player.IdentityId;
 			this.m_entity = character as IMyEntity;
 			this.m_player = player;
 			this.m_comp_radio = ComponentRadio.CreateRadio(character);

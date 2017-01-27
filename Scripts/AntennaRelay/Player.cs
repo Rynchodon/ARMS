@@ -104,7 +104,7 @@ namespace Rynchodon.AntennaRelay
 			UpdateManager.Register(30, MissileHudWarning);
 			UpdateManager.Register(1, MissileAudioWarning);
 
-			myLogger.debugLog("initialized, player id: " + myPlayer.PlayerID + ", identity id: " + myPlayer.IdentityId, Logger.severity.DEBUG);
+			myLogger.debugLog("initialized, identity id: " + myPlayer.IdentityId, Logger.severity.DEBUG);
 		}
 
 		private void Update()
@@ -369,7 +369,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				case LastSeen.EntityType.Character:
 				case LastSeen.EntityType.Grid:
-					switch (myPlayer.PlayerID.getRelationsTo(seen.Entity))
+					switch (myPlayer.IdentityId.getRelationsTo(seen.Entity))
 					{
 						case ExtensionsRelations.Relations.Enemy:
 						case ExtensionsRelations.Relations.NoOwner:

@@ -138,8 +138,10 @@ namespace Rynchodon.Instructions
 					return;
 				}
 				//m_logger.debugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
+#pragma warning disable CS0618
 				AddMonitor(asPanel.GetPrivateTitle);
 				if (GetInstructions(asPanel.GetPrivateTitle()))
+#pragma warning restore CS0618
 				{
 					//m_logger.debugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
 					return;

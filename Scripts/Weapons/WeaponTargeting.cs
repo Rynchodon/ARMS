@@ -7,6 +7,7 @@ using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
@@ -773,8 +774,8 @@ namespace Rynchodon.Weapons
 			catch (Exception ex)
 			{
 				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				if (MyAPIGateway.Multiplayer.IsServer)
-					FuncBlock.RequestEnable(false);
+				if (MyAPIGateway.Multiplayer.IsServer && FuncBlock != null)
+					((MyFunctionalBlock)FuncBlock).Enabled = false;
 
 				((IMyFunctionalBlock)CubeBlock).AppendCustomInfo("ARMS targeting crashed, see log for details");
 			}

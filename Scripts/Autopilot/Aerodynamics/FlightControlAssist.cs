@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.Autopilot.Data;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
@@ -47,7 +48,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 					targetAngle = -targetAngle;
 
 				float targetVelocity = (targetAngle - Stator.Angle) * 60f;
-				float currentVelocity = Stator.Velocity;
+				float currentVelocity = ((MyMotorStator)Stator).TargetVelocity;
 				if (((targetVelocity == 0f) != (currentVelocity == 0f)) || Math.Abs(targetVelocity - currentVelocity) > 0.1f)
 					VelocityProperty.SetValue(Stator, targetVelocity);
 				Logger.TraceLog("target acceleration: " + targetAngle + ", target angle: " + targetAngle + ", stator angle: " + Stator.Angle + ", target velocity: " + targetVelocity + ", current velocity: " + currentVelocity,

@@ -58,6 +58,15 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <DefineConstants>UNSTABLE</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug-Unstable|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug-Unstable\</OutputPath>
+    <DefineConstants>DEBUG;LOG_ENABLED UNSTABLE</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Sandbox.Common">
       <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\Sandbox.Common.dll</HintPath>
@@ -314,7 +323,6 @@
     <Compile Include="Utility\Version.cs" />
     <Compile Include="Utility\XML_Amendments.cs" />
     <Compile Include="Weapons\Ammo.cs" />
-    <Compile Include="Weapons\CharacterStateTracker.cs" />
     <Compile Include="Weapons\Cluster.cs" />
     <Compile Include="Weapons\FixedWeapon.cs" />
     <Compile Include="Weapons\Guided\GuidedMissile.cs" />

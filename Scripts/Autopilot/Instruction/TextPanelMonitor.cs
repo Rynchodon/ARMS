@@ -11,7 +11,7 @@ namespace Rynchodon.Autopilot.Instruction
 		public readonly IMyTextPanel TextPanel;
 		private readonly AutopilotCommands m_autoCommands;
 		private string m_panelText, m_identifier;
-		private bool m_private = true;
+		private bool m_private = false;
 
 		private AutopilotActionList m_autopilotActions = new AutopilotActionList();
 
@@ -33,7 +33,11 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CheckCommandsChanged()
 		{
-			string currentText = m_private ? TextPanel.GetPrivateText() : TextPanel.GetPublicText();
+			string currentText = m_private ?
+#pragma warning disable CS0618
+				TextPanel.GetPrivateText() :
+#pragma warning restore CS0618
+				TextPanel.GetPublicText();
 			if (currentText == m_panelText)
 				return;
 
@@ -57,7 +61,11 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 
 			m_private = !m_private;
-			m_panelText = m_private ? TextPanel.GetPrivateText() : TextPanel.GetPublicText();
+			m_panelText = m_private ?
+#pragma warning disable CS0618
+				TextPanel.GetPrivateText() :
+#pragma warning restore CS0618
+				TextPanel.GetPublicText();
 			m = Regex.Match(m_panelText, pattern, RegexOptions.Singleline);
 			if (m.Success)
 			{

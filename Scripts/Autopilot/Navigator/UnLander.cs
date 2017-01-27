@@ -2,7 +2,9 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
+using SpaceEngineers.Game.Entities.Blocks;
 using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -63,21 +65,15 @@ namespace Rynchodon.Autopilot.Navigator
 				else
 				{
 					m_logger.debugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
-					IMyFunctionalBlock func = m_unlandBlock.Block as IMyFunctionalBlock;
-					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-						if (func != null)
-							func.RequestEnable(false);
-					});
-					return;
+					m_unlandBlock.Block.EnableGameThread(false);
 				}
 			}
 
-			IMyCubeBlock block = this.m_unlandBlock.Block;
-			if (block is IMyLandingGear)
+			MyLandingGear landingGear = this.m_unlandBlock.Block as MyLandingGear;
+			if (landingGear != null)
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					(block as IMyFunctionalBlock).RequestEnable(true);
-					if ((block.GetObjectBuilderCubeBlock() as MyObjectBuilder_LandingGear).AutoLock)
-						asGear.ApplyAction("Autolock");
+					landingGear.Enabled = true;
+					landingGear.AutoLock = true;
 				});
 
 			m_detachOffset = m_unlandBlock.Block.GetPosition() - m_destination.Entity.GetPosition();
@@ -104,7 +100,7 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			}
 			else if (m_unlandBlock.Block.IsWorking)
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => ((IMyFunctionalBlock)m_unlandBlock.Block).RequestEnable(false));
+				m_unlandBlock.Block.EnableGameThread(false);
 
 			double distSqMoved = Vector3D.DistanceSquared(m_destination.Entity.GetPosition() + m_detachOffset, m_unlandBlock.WorldPosition);
 			//m_navSet.Settings_Task_NavMove.Distance = (float)distanceMoved;
@@ -112,9 +108,7 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				//if (m_detachLength >= Math.Min(m_controlBlock.CubeGrid.GetLongestDim(), m_navSet.Settings_Task_NavEngage.DestinationRadius))
 				//{
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					(m_unlandBlock.Block as IMyFunctionalBlock).RequestEnable(false);
-				});
+				m_unlandBlock.Block.EnableGameThread(false);
 				m_logger.debugLog("Moved away. distSqMoved: " + distSqMoved + ", dest radius: " + m_navSet.Settings_Task_NavEngage.DestinationRadius, Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavMove();
 				m_mover.MoveAndRotateStop(false);
@@ -148,17 +142,18 @@ namespace Rynchodon.Autopilot.Navigator
 			}
 			else
 			{
-				IMyShipConnector asConn = m_unlandBlock.Block as IMyShipConnector;
+				MyShipConnector asConn = (MyShipConnector)m_unlandBlock.Block;
 				if (asConn != null)
 				{
-					m_attached = asConn.IsConnected;
+					m_attached = asConn.Connected;
 					if (m_attached)
 					{
-						ReserveTarget(asConn.OtherConnector.EntityId);
+						MyShipConnector otherConnector = (MyShipConnector)((IMyShipConnector)asConn).OtherConnector;
+						ReserveTarget(otherConnector.EntityId);
 						m_logger.debugLog("Unlocking connector", Logger.severity.DEBUG);
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-							asConn.RequestEnable(true);
-							asConn.OtherConnector.RequestEnable(true);
+							asConn.Enabled = true;
+							otherConnector.Enabled = true;
 							asConn.ApplyAction("Unlock");
 						});
 					}

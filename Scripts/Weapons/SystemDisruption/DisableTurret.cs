@@ -1,4 +1,5 @@
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
@@ -17,12 +18,12 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		protected override void StartEffect(IMyCubeBlock block)
 		{
-			(block as IMyFunctionalBlock).RequestEnable(false);
+			(block as MyFunctionalBlock).Enabled = false;
 		}
 
 		protected override void EndEffect(IMyCubeBlock block)
 		{
-			(block as IMyFunctionalBlock).RequestEnable(true);
+			(block as MyFunctionalBlock).Enabled = true;
 		}
 
 	}
