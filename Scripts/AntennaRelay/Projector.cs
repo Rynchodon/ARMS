@@ -64,8 +64,10 @@ namespace Rynchodon.AntennaRelay
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
 				MyAPIGateway.Session.DamageSystem.RegisterAfterDamageHandler((int)MyDamageSystemPriority.Low, AfterDamageHandler);
+
+				TerminalControlHelper.EnsureTerminalControlCreated<MySpaceProjector>();
 
 				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 

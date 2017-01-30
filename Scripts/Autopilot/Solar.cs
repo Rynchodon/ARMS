@@ -22,7 +22,10 @@ namespace Rynchodon.Autopilot
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MySolarPanel>();
+				TerminalControlHelper.EnsureTerminalControlCreated<MyOxygenFarm>();
+
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySolarPanel>());
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyOxygenFarm>());
 

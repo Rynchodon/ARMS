@@ -315,6 +315,7 @@
     <Compile Include="Utility\Settings\Setting.cs" />
     <Compile Include="Utility\Settings\UserSettings.cs" />
     <Compile Include="Utility\SunProperties.cs" />
+    <Compile Include="Utility\TerminalControlHelper.cs" />
     <Compile Include="Utility\TerminalTextBox.cs" />
     <Compile Include="Utility\Threading\ThreadManager.cs" />
     <Compile Include="Utility\Threading\ThreadTracker.cs" />

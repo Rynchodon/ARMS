@@ -13,6 +13,7 @@ using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
+using SpaceEngineers.Game.Weapons.Guns;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -69,22 +70,8 @@ namespace Rynchodon.Weapons
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
-				// When we get controls later, SE will create a list if there is none, which will prevent MyLargeTurretBase from creating the controls.
-				// TODO: this isn't working, need another solution
-				//if (!MyTerminalControlFactory.AreControlsCreated<MyLargeTurretBase>())
-				//{
-				//	logger.debugLog("forcing creation of turret controls");
-
-				//	MyObjectBuilder_CubeGrid gridBuilder = new MyObjectBuilder_CubeGrid();
-				//	gridBuilder.CubeBlocks.Add(new MyObjectBuilder_InteriorTurret());
-				//	MyEntity grid = MyEntities.CreateFromObjectBuilder(gridBuilder);
-				//}
-
-				var controls = MyTerminalControlFactory.GetControls(typeof(MyUserControllableGun));
-
-				//logger.debugLog("controls: " + controls);
-				//logger.debugLog("control count: " + controls.Count);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MyLargeMissileTurret>();
 
 				// find the current position of shoot On/Off
 				int currentIndex = 0;

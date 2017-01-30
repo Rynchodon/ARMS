@@ -55,7 +55,9 @@ namespace Rynchodon.AntennaRelay
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MyTextPanel>();
+
 				MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
 				{
 					ValidForGroups = false,

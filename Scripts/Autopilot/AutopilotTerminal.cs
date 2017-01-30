@@ -42,7 +42,10 @@ namespace Rynchodon.Autopilot
 
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MyCockpit>();
+				TerminalControlHelper.EnsureTerminalControlCreated<MyRemoteControl>();
+
 				AddControl(new MyTerminalControlSeparator<MyShipController>() { Enabled = ShipAutopilot.IsAutopilotBlock, Visible = ShipAutopilot.IsAutopilotBlock });
 
 				autopilotControl = new MyTerminalControlCheckbox<MyShipController>("ArmsAp_OnOff", MyStringId.GetOrCompute("ARMS Autopilot"), MyStringId.GetOrCompute("Enable ARMS Autopilot"));

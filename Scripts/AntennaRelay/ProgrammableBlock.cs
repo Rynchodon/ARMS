@@ -44,6 +44,8 @@ namespace Rynchodon.AntennaRelay
 			public StaticVariables()
 			{
 				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MyProgrammableBlock>();
+
 				MyTerminalAction<MyProgrammableBlock> programmable_sendMessage = new MyTerminalAction<MyProgrammableBlock>("SendMessage", new StringBuilder("Send Message"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
 				{
 					ValidForGroups = false,
