@@ -306,6 +306,7 @@
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
     <None Include="Utility\Network\TestRemoteTask.cs" />
+    <Compile Include="Utility\Network\TerminalSync.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

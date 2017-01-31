@@ -312,7 +312,7 @@ namespace Rynchodon.Utility.Network
 		{
 			//Logger.DebugLog("Setting value, previous: " + m_value);
 			m_synced = true;
-			ByteConverter.GetOfType(bytes, ref pos, ref m_value);
+			m_value = (T)ByteConverter.GetOfType(bytes, ref pos, typeof(T));
 			m_afterValueChanged.InvokeIfExists(this);
 			//Logger.DebugLog("Setting value, new: " + m_value);
 		}

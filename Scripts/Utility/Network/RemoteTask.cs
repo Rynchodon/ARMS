@@ -257,7 +257,7 @@ namespace Rynchodon.Utility.Network
 		private static void HandleStatus(byte[] resultMessage, int position)
 		{
 			int taskId = ByteConverter.GetInt(resultMessage, ref position);
-			Status status = Status.None; ByteConverter.GetOfType(resultMessage, ref position, ref status);
+			Status status = (Status)ByteConverter.GetOfType(resultMessage, ref position, typeof(Status));
 
 			RemoteTask task;
 			if (!m_outstandingTask.TryGetValue(taskId, out task))
