@@ -18,8 +18,6 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
-			public Logger logger = new Logger();
-
 			public MyTerminalControlButton<MyFunctionalBlock>
 				SendMessageButton = new MyTerminalControlButton<MyFunctionalBlock>("ManualMessageId", MyStringId.GetOrCompute("Send Message"),
 					MyStringId.GetOrCompute("Send a message to an Autopilot or Programmable block"), SendMessage) { SupportsMultipleBlocks = false },

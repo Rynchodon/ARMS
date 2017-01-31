@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using Rynchodon.Update;
 using Sandbox.Game.Entities.Cube;
@@ -18,21 +17,32 @@ namespace Rynchodon.Utility.Network
 	/// <summary>
 	/// Objects of this type synchronize and save terminal control values.
 	/// </summary>
-	/// TODO: request from server
 	/// TODO: saving
+	/// TODO: store extra values
 	public abstract class TerminalSync
 	{
 
 		public enum Id : byte
 		{
+			ProgrammableBlock_HandleDetected,
+			ProgrammableBlock_BlockList,
 		}
 
 		private static Dictionary<Id, TerminalSync> _syncs;
 		protected static MyConcurrentPool<StringBuilder> _stringBuilderPool = new MyConcurrentPool<StringBuilder>();
+		private static bool _hasValues;
 
 		static TerminalSync()
 		{
-			MessageHandler.AddHandler(MessageHandler.SubMod.TerminalValueControlSync, HandleMessage);
+			MessageHandler.AddHandler(MessageHandler.SubMod.TerminalSync, HandleValue);
+			MessageHandler.AddHandler(MessageHandler.SubMod.TerminalSyncRequest, HandleRequest);
+		}
+
+		[OnWorldLoad]
+		private static void OnLoad()
+		{
+			_syncs = new Dictionary<Id, TerminalSync>();
+			_hasValues = MyAPIGateway.Multiplayer.IsServer;
 		}
 
 		[OnWorldClose]
@@ -41,14 +51,10 @@ namespace Rynchodon.Utility.Network
 			_syncs = null;
 		}
 
-		private static void HandleMessage(byte[] message, int position)
+		private static void HandleValue(byte[] message, int position)
 		{
 			if (_syncs == null)
-			{
-				if (Globals.WorldClosed)
-					return;
-				throw new Exception("Not initialized");
-			}
+				return;
 
 			try
 			{
@@ -61,19 +67,110 @@ namespace Rynchodon.Utility.Network
 					return;
 				}
 				Logger.TraceLog("got instance: " + instance.GetType().Name);
-				long blockId = ByteConverter.GetLong(message, ref position);
-				Logger.TraceLog("block id: " + blockId);
 				Type type = instance.ValueType;
 				Logger.TraceLog("type: " + type);
-				object value = type == null ? null : ByteConverter.GetOfType(message, ref position, type);
-				Logger.TraceLog("value: " + value);
-				instance.SetValue(blockId, value);
+				while (position < message.Length)
+				{
+					long blockId = ByteConverter.GetLong(message, ref position);
+					Logger.TraceLog("block id: " + blockId);
+					object value = type == null ? null : ByteConverter.GetOfType(message, ref position, type);
+					Logger.TraceLog("value: " + value);
+					instance.SetValue(blockId, value);
+				}
 			}
 			catch (Exception ex)
 			{
 				Logger.AlwaysLog(ex.ToString(), Logger.severity.ERROR);
 				Logger.AlwaysLog("Message: " + string.Join(",", message), Logger.severity.ERROR);
 			}
+		}
+
+		private static void HandleRequest(byte[] message, int position)
+		{
+			if (_syncs == null)
+				return;
+
+			try
+			{
+				SendValues(ByteConverter.GetUlong(message, ref position));
+			}
+			catch (Exception ex)
+			{
+				Logger.AlwaysLog(ex.ToString(), Logger.severity.ERROR);
+				Logger.AlwaysLog("Message: " + string.Join(",", message), Logger.severity.ERROR);
+			}
+		}
+
+		private static void RequestValues()
+		{
+			if (MyAPIGateway.Multiplayer.IsServer)
+				throw new Exception("Cannot request values, this is the server");
+
+			List<byte> bytes; ResourcePool.Get(out bytes);
+			bytes.Clear();
+
+			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.TerminalSyncRequest);
+			ByteConverter.AppendBytes(bytes, MyAPIGateway.Multiplayer.MyId);
+
+			Logger.DebugLog("requesting values from server");
+
+			if (!MyAPIGateway.Multiplayer.SendMessageToServer(MessageHandler.ModId, bytes.ToArray()))
+				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
+
+			bytes.Clear();
+			ResourcePool.Return(bytes);
+		}
+
+		private static void SendValues(ulong recipient)
+		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				Logger.AlwaysLog("Cannot send values, this is not the server", Logger.severity.ERROR);
+				return;
+			}
+			if (_syncs == null)
+				return;
+
+			List<byte> bytes; ResourcePool.Get(out bytes);
+			bytes.Clear();
+			int size = 0;
+
+			foreach (KeyValuePair<Id, TerminalSync> termSync in _syncs)
+			{
+				foreach (KeyValuePair<long, object> valuePair in termSync.Value.AllValues())
+				{
+					int count = bytes.Count;
+
+					ByteConverter.AppendBytes(bytes, valuePair.Key);
+					ByteConverter.AppendBytes(bytes, valuePair.Value);
+
+					size = bytes.Count - count;
+
+					if (count + size > 4094)
+						SendValues(termSync.Key, bytes, recipient);
+				}
+				SendValues(termSync.Key, bytes, recipient);
+			}
+
+			bytes.Clear();
+			ResourcePool.Return(bytes);
+		}
+
+		private static void SendValues(Id id, List<byte> bytes, ulong recipient)
+		{
+			if (bytes.Count == 0)
+				return;
+
+			byte[] message = new byte[bytes.Count + 2];
+			message[0] = (byte)Convert.ChangeType(MessageHandler.SubMod.TerminalSync, TypeCode.Byte);
+			message[1] = (byte)Convert.ChangeType(id, TypeCode.Byte);
+			bytes.CopyTo(message, 2);
+			bytes.Clear();
+
+			Logger.DebugLog("sending values for " + id + ", message length: " + message.Length);
+
+			if (!MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, message, recipient))
+				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
 		}
 
 		protected readonly Id _id;
@@ -87,12 +184,14 @@ namespace Rynchodon.Utility.Network
 			this._save = save;
 
 			if (_syncs == null)
-			{
-				if (Globals.WorldClosed)
-					return;
-				_syncs = new Dictionary<Id, TerminalSync>();
-			}
+				return;
 			_syncs.Add(id, this);
+
+			if (!_hasValues)
+			{
+				_hasValues = true;
+				RequestValues();
+			}
 		}
 
 		/// <summary>
@@ -106,8 +205,9 @@ namespace Rynchodon.Utility.Network
 			Logger.TraceLog("entered, blockId: " + blockId + ", value: " + value + ", clientId: " + clientId);
 
 			List<byte> bytes; ResourcePool.Get(out bytes);
+			bytes.Clear();
 
-			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.TerminalValueControlSync);
+			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.TerminalSync);
 			ByteConverter.AppendBytes(bytes, _id);
 			ByteConverter.AppendBytes(bytes, blockId);
 			if (value != null)
@@ -133,6 +233,8 @@ namespace Rynchodon.Utility.Network
 		/// <param name="value">The value as object</param>
 		protected abstract void SetValue(long blockId, object value);
 
+		protected abstract IEnumerable<KeyValuePair<long, object>> AllValues();
+
 	}
 
 	/// <summary>
@@ -140,7 +242,7 @@ namespace Rynchodon.Utility.Network
 	/// </summary>
 	/// <typeparam name="TBlock">The type of block</typeparam>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public class TerminalButtonSync<TBlock, TScript> : TerminalSync where TBlock : MyTerminalBlock
+	public sealed class TerminalButtonSync<TBlock, TScript> : TerminalSync where TBlock : MyTerminalBlock
 	{
 
 		public delegate void OnButtonPressed(TScript script);
@@ -221,6 +323,11 @@ namespace Rynchodon.Utility.Network
 				Logger.AlwaysLog("block not found in Registrar: " + blockId, Logger.severity.WARNING, _id.ToString());
 		}
 
+		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		{
+			return new KeyValuePair<long, object>[0];
+		}
+
 	}
 
 	/// <summary>
@@ -234,12 +341,12 @@ namespace Rynchodon.Utility.Network
 
 		public delegate TValue GetterDelegate(TScript script);
 		public delegate void SetterDelegate(TScript script, TValue value);
-		public delegate void AfterValueChanged(TScript scirpt);
+		//public delegate void AfterValueChanged(TScript scirpt);
 
 		public readonly MyTerminalValueControl<TBlock, TValue> _control;
 		protected readonly GetterDelegate _getter;
 		protected readonly SetterDelegate _setter;
-		protected readonly AfterValueChanged _afterValueChanged;
+		//protected readonly AfterValueChanged _afterValueChanged;
 
 		public TValue this[TBlock block]
 		{
@@ -255,7 +362,7 @@ namespace Rynchodon.Utility.Network
 
 		protected override sealed Type ValueType { get { return typeof(TValue); } }
 
-		protected TerminalSync(Id id, MyTerminalValueControl<TBlock, TValue> control, GetterDelegate getter, SetterDelegate setter, AfterValueChanged afterValueChanged = null, bool save = true)
+		protected TerminalSync(Id id, MyTerminalValueControl<TBlock, TValue> control, GetterDelegate getter, SetterDelegate setter, /*AfterValueChanged afterValueChanged = null,*/ bool save = true)
 			: base(id, save)
 		{
 			Logger.TraceLog("entered", context: _id.ToString());
@@ -263,7 +370,7 @@ namespace Rynchodon.Utility.Network
 			_control = control;
 			_getter = getter;
 			_setter = setter;
-			_afterValueChanged = afterValueChanged;
+			//_afterValueChanged = afterValueChanged;
 
 			control.Getter = GetValue;
 			control.Setter = SetValue;
@@ -299,6 +406,17 @@ namespace Rynchodon.Utility.Network
 
 		protected abstract void SetValue(long blockId, TValue value, bool send);
 
+		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		{
+			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
+			{
+				TValue value = _getter(pair.Value);
+				if (EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
+					continue;
+				yield return new KeyValuePair<long, object>(pair.Key, value);
+			}
+		}
+
 	}
 
 	/// <summary>
@@ -317,9 +435,9 @@ namespace Rynchodon.Utility.Network
 		/// <param name="control">GUI control for getting/setting the value.</param>
 		/// <param name="getter">Function to get the value from a script.</param>
 		/// <param name="setter">Function to set a value in a script.</param>
-		/// <param name="afterValueChanged">Function invoked after value changes. Do not put UpdateVisual here, it is always invoked.</param>
+		///// <param name="afterValueChanged">Function invoked after value changes. Do not put UpdateVisual here, it is always invoked.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalValueSync(Id id, MyTerminalValueControl<TBlock, TValue> control, GetterDelegate getter, SetterDelegate setter, AfterValueChanged afterValueChanged = null, bool save = true) : base(id, control, getter, setter, afterValueChanged, save) { }
+		public TerminalValueSync(Id id, MyTerminalValueControl<TBlock, TValue> control, GetterDelegate getter, SetterDelegate setter, /*AfterValueChanged afterValueChanged = null,*/ bool save = true) : base(id, control, getter, setter, /*afterValueChanged,*/ save) { }
 
 		protected override void SetValue(long blockId, TValue value, bool send)
 		{
@@ -336,7 +454,7 @@ namespace Rynchodon.Utility.Network
 					if (send)
 						SendValue(blockId, value);
 					_control.UpdateVisual();
-					_afterValueChanged?.Invoke(script);
+					//_afterValueChanged?.Invoke(script);
 				}
 				else
 					Logger.TraceLog("equals previous value", context: _id.ToString());
@@ -367,10 +485,10 @@ namespace Rynchodon.Utility.Network
 		/// <param name="control">GUI control for getting/setting the value.</param>
 		/// <param name="getter">Function to get the StringBuilder from a script.</param>
 		/// <param name="setter">Function to set a StringBuilder in a script.</param>
-		/// <param name="afterValueChanged">Function invoked after StringBuilder changes. Do not put UpdateVisual here, it is always invoked.</param>
+		///// <param name="afterValueChanged">Function invoked after StringBuilder changes. Do not put UpdateVisual here, it is always invoked.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalStringBuilderSync(Id id, MyTerminalControlTextbox<TBlock> control, GetterDelegate getter, SetterDelegate setter, AfterValueChanged afterValueChanged = null, bool save = true)
-			: base(id, control, getter, setter, afterValueChanged, save)
+		public TerminalStringBuilderSync(Id id, MyTerminalControlTextbox<TBlock> control, GetterDelegate getter, SetterDelegate setter, /*AfterValueChanged afterValueChanged = null,*/ bool save = true)
+			: base(id, control, getter, setter, /*afterValueChanged,*/ save)
 		{
 			Logger.TraceLog("entered", context: _id.ToString());
 
@@ -418,12 +536,23 @@ namespace Rynchodon.Utility.Network
 				if (send)
 					EnqueueSend(blockId);
 				_control.UpdateVisual();
-				_afterValueChanged?.Invoke(script);
+				//_afterValueChanged?.Invoke(script);
 				return;
 			}
 
 			if (!Globals.WorldClosed)
 				Logger.AlwaysLog("block not found in Registrar: " + blockId, Logger.severity.WARNING, _id.ToString());
+		}
+
+		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		{
+			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
+			{
+				StringBuilder value = _getter(pair.Value);
+				if (value == null || value.Length == 0)
+					continue;
+				yield return new KeyValuePair<long, object>(pair.Key, value);
+			}
 		}
 
 		private void EnqueueSend(long blockId)

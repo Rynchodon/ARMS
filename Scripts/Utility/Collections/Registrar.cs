@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using Sandbox.ModAPI;
-using VRage;
 using VRage.ModAPI;
 
 namespace Rynchodon
@@ -15,18 +12,30 @@ namespace Rynchodon
 
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();
+			private static List<Action<T>> m_afterScriptAdded;
 
 			public static bool Closed { get { return m_dictionary == null; } }
 
 			static Register()
 			{
-				Registers.Add(m_dictionary);
+				UnloadAction.Add(Unload);
+			}
+
+			private static void Unload()
+			{
+				m_dictionary.Clear();
+				m_afterScriptAdded = null;
 			}
 
 			public static void Add(long entityId, T script)
 			{
 				using (m_lock.AcquireExclusiveUsing())
 					m_dictionary.Add(entityId, script);
+				if (m_afterScriptAdded != null)
+					using (m_lock.AcquireSharedUsing())
+						if (m_afterScriptAdded != null)
+							foreach (Action<T> act in m_afterScriptAdded)
+								act.Invoke(script);
 			}
 
 			public static bool Remove(long entityId)
@@ -59,8 +68,13 @@ namespace Rynchodon
 			public static IEnumerable<T> Scripts()
 			{
 				using (m_lock.AcquireSharedUsing())
-					foreach (T script in m_dictionary.Values)
-						yield return script;
+					return m_dictionary.Values;
+			}
+
+			public static IEnumerable<KeyValuePair<long, T>> IdScripts()
+			{
+				using (m_lock.AcquireSharedUsing())
+					return m_dictionary;
 			}
 
 			public static bool Contains(long entityId)
@@ -69,15 +83,25 @@ namespace Rynchodon
 					return m_dictionary.ContainsKey(entityId);
 			}
 
+			public static void AddAfterScriptAdded(Action<T> action)
+			{
+				using (m_lock.AcquireExclusiveUsing())
+				{
+					if (m_afterScriptAdded == null)
+						m_afterScriptAdded = new List<Action<T>>();
+					m_afterScriptAdded.Add(action);
+				}
+			}
+
 		}
 
-		private static List<IDictionary> Registers = new List<IDictionary>();
+		private static List<Action> UnloadAction = new List<Action>();
 
 		[OnWorldClose]
 		private static void Unload()
 		{
-			foreach (IDictionary dict in Registers)
-				dict.Clear();
+			foreach (Action act in UnloadAction)
+				act.Invoke();
 		}
 
 		public static void Add<T>(IMyEntity entity, T item)
@@ -132,9 +156,19 @@ namespace Rynchodon
 			return Register<T>.Scripts();
 		}
 
+		public static IEnumerable<KeyValuePair<long, T>> IdScripts<T>()
+		{
+			return Register<T>.IdScripts();
+		}
+
 		public static bool Contains<T>(long entityId)
 		{
 			return Register<T>.Contains(entityId);
+		}
+
+		public static void AddAfterScriptAdded<T>(Action<T> act)
+		{
+			Register<T>.AddAfterScriptAdded(act);
 		}
 
 		private static void OnClose<T>(IMyEntity obj)
