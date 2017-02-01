@@ -261,6 +261,7 @@
     <Compile Include="Utility\Collections\LockedDictionary.cs" />
     <Compile Include="Utility\Collections\OffsetList.cs" />
     <Compile Include="Utility\Collections\Vector2IMatrix.cs" />
+    <Compile Include="Utility\EqualityComparer_StringBuilder.cs" />
     <Compile Include="Utility\EqualityComparer_Vector3D.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
     <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
@@ -306,7 +307,12 @@
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
     <None Include="Utility\Network\TestRemoteTask.cs" />
+    <Compile Include="Utility\Network\TerminalButtonSync.cs" />
+    <Compile Include="Utility\Network\TerminalStringBuilderSync.cs" />
     <Compile Include="Utility\Network\TerminalSync.cs" />
+    <Compile Include="Utility\Network\TerminalSyncMessage.cs" />
+    <Compile Include="Utility\Network\TerminalSync_generic.cs" />
+    <Compile Include="Utility\Network\TerminalValueSync.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

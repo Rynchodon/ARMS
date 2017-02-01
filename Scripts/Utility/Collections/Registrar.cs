@@ -12,7 +12,7 @@ namespace Rynchodon
 
 			private static Dictionary<long, T> m_dictionary = new Dictionary<long, T>();
 			private static FastResourceLock m_lock = new FastResourceLock();
-			private static List<Action<T>> m_afterScriptAdded;
+			private static List<Action<long, T>> m_afterScriptAdded;
 
 			public static bool Closed { get { return m_dictionary == null; } }
 
@@ -31,11 +31,12 @@ namespace Rynchodon
 			{
 				using (m_lock.AcquireExclusiveUsing())
 					m_dictionary.Add(entityId, script);
+
 				if (m_afterScriptAdded != null)
 					using (m_lock.AcquireSharedUsing())
 						if (m_afterScriptAdded != null)
-							foreach (Action<T> act in m_afterScriptAdded)
-								act.Invoke(script);
+							foreach (Action<long, T> act in m_afterScriptAdded)
+								act.Invoke(entityId, script);
 			}
 
 			public static bool Remove(long entityId)
@@ -83,13 +84,37 @@ namespace Rynchodon
 					return m_dictionary.ContainsKey(entityId);
 			}
 
-			public static void AddAfterScriptAdded(Action<T> action)
+			/// <summary>
+			/// Add an action that runs after a script is added, the action will also be run on all current scripts.
+			/// </summary>
+			/// <param name="action">The action to run after a script is added.</param>
+			public static void AddAfterScriptAdded(Action<long, T> action)
 			{
 				using (m_lock.AcquireExclusiveUsing())
 				{
 					if (m_afterScriptAdded == null)
-						m_afterScriptAdded = new List<Action<T>>();
+						m_afterScriptAdded = new List<Action<long, T>>();
 					m_afterScriptAdded.Add(action);
+					foreach (KeyValuePair<long, T> pair in m_dictionary)
+						action.Invoke(pair.Key, pair.Value);
+				}
+			}
+
+			/// <summary>
+			/// Try to remove an action that runs after a script is added.
+			/// </summary>
+			/// <param name="action">The action to remove</param>
+			/// <returns>True if the action was removed. False if is not present.</returns>
+			public static bool RemoveAfterScriptAdded(Action<long, T> action)
+			{
+				using (m_lock.AcquireExclusiveUsing())
+				{
+					if (m_afterScriptAdded == null)
+						return false;
+					bool result = m_afterScriptAdded.Remove(action);
+					if (m_afterScriptAdded.Count == 0)
+						m_afterScriptAdded = null;
+					return true;
 				}
 			}
 
@@ -166,9 +191,25 @@ namespace Rynchodon
 			return Register<T>.Contains(entityId);
 		}
 
-		public static void AddAfterScriptAdded<T>(Action<T> act)
+		/// <summary>
+		/// Add an action that runs after a script is added, the action will also be run on all current scripts.
+		/// </summary>
+		/// <typeparam name="T">The type of script</typeparam>
+		/// <param name="action">The action to run after a script is added.</param>
+		public static void AddAfterScriptAdded<T>(Action<long, T> action)
 		{
-			Register<T>.AddAfterScriptAdded(act);
+			Register<T>.AddAfterScriptAdded(action);
+		}
+
+		/// <summary>
+		/// Try to remove an action that runs after a script is added.
+		/// </summary>
+		/// <typeparam name="T">The type of script</typeparam>
+		/// <param name="action">The action to remove</param>
+		/// <returns>True if the action was removed. False if is not present.</returns>
+		public static bool RemoveAfterScriptAdded<T>(Action<long, T> action)
+		{
+			return Register<T>.RemoveAfterScriptAdded(action);
 		}
 
 		private static void OnClose<T>(IMyEntity obj)
