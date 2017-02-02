@@ -16,13 +16,17 @@ namespace Rynchodon.Utility.Network
 	/// Objects of this type synchronize and save terminal controls.
 	/// </summary>
 	/// TODO: saving
+	/// TODO: default value
 	public abstract partial class TerminalSync
 	{
 
 		public enum Id : byte
 		{
+			None,
 			ProgrammableBlock_HandleDetected,
 			ProgrammableBlock_BlockList,
+			Solar_FaceSun,
+			TextPanel_Option
 		}
 
 		public struct SyncMessage
@@ -77,6 +81,11 @@ namespace Rynchodon.Utility.Network
 			_orphanValues = null;
 			_outgoingMessages = null;
 			_syncs = null;
+		}
+
+		public static bool TryGet(Id id, out TerminalSync sync)
+		{
+			return _syncs.TryGetValue(id, out sync);
 		}
 
 		private static void HandleValue(byte[] message, int position)
@@ -254,6 +263,13 @@ namespace Rynchodon.Utility.Network
 
 			_logger.traceLog("initialized");
 		}
+
+		/// <summary>
+		/// Set value from saved string.
+		/// </summary>
+		/// <param name="blockId">EntityId of the block</param>
+		/// <param name="value">The value as a string</param>
+		public abstract void SetValue(long blockId, string value);
 
 		/// <summary>
 		/// Send a value to other game clients.

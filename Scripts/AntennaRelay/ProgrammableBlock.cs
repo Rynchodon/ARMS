@@ -34,8 +34,8 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
-			public TerminalValueSync<MyProgrammableBlock, bool, ProgrammableBlock> handleDetected;
-			public TerminalStringBuilderSync<MyProgrammableBlock, ProgrammableBlock> blockCountList;
+			public MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetected;
+			public MyTerminalControlTextbox<MyProgrammableBlock> blockCountList;
 
 			public StaticVariables()
 			{
@@ -54,16 +54,16 @@ namespace Rynchodon.AntennaRelay
 
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
 
-				MyTerminalControlOnOffSwitch<MyProgrammableBlock> handleDetectedControl = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
-				handleDetected = new TerminalValueSync<MyProgrammableBlock, bool, ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_HandleDetected, handleDetectedControl, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
-				MyTerminalControlFactory.AddControl(handleDetectedControl);
+				handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
+				new TerminalValueSync<bool, ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_HandleDetected, handleDetected, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
+				MyTerminalControlFactory.AddControl(handleDetected);
 
-				MyTerminalControlTextbox<MyProgrammableBlock> blockCountListControl = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
-				blockCountList = new TerminalStringBuilderSync<MyProgrammableBlock, ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_BlockList, blockCountListControl, (prog) => prog.value_blockCountList, (prog, value) => {
+				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
+				new TerminalStringBuilderSync<ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_BlockList, blockCountList, (prog) => prog.value_blockCountList, (prog, value) => {
 					prog.value_blockCountList = value;
 					prog.m_blockCountList_btl = new BlockTypeList(prog.m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','));
-				}/*, (script) => script.m_blockCountList_btl = new BlockTypeList(script.m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','))*/);
-				MyTerminalControlFactory.AddControl(blockCountListControl);
+				});
+				MyTerminalControlFactory.AddControl(blockCountList);
 			}
 		}
 
@@ -121,14 +121,14 @@ namespace Rynchodon.AntennaRelay
 		private bool m_handleDetectedTerminal
 		{
 			get { return value_handleDetectedTerminal; }
-			set { Static.handleDetected[m_progBlock.EntityId] = value; }
+			set { Static.handleDetected.SetValue((MyProgrammableBlock)m_progBlock, value); }
 		}
 
 		private StringBuilder value_blockCountList = new StringBuilder();
 		private StringBuilder m_blockCountList_sb
 		{
 			get { return value_blockCountList; }
-			set { Static.blockCountList[m_progBlock.EntityId] = value; }
+			set { Static.blockCountList.SetValue((MyProgrammableBlock)m_progBlock, value); }
 		}
 
 		private BlockTypeList m_blockCountList_btl;

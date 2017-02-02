@@ -6,17 +6,16 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Update;
-using Sandbox.Game.Entities.Cube;
-using Sandbox.Game.Gui;
+using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Utility.Network
 {
 	/// <summary>
 	/// Synchronize and save a StringBuilder associated with a terminal control. The StringBuilder is synchronized from time to time.
 	/// </summary>
-	/// <typeparam name="TBlock">The type of block</typeparam>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalStringBuilderSync<TBlock, TScript> : TerminalSync<TBlock, StringBuilder, TScript> where TBlock : MyTerminalBlock
+	public sealed class TerminalStringBuilderSync<TScript> : TerminalSync<StringBuilder, TScript>
 	{
 
 		private static HashSet<long> _updatedBlocks;
@@ -30,7 +29,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="getter">Function to get the StringBuilder from a script.</param>
 		/// <param name="setter">Function to set a StringBuilder in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalStringBuilderSync(Id id, MyTerminalControlTextbox<TBlock> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
+		public TerminalStringBuilderSync(Id id, IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
 			: base(id, control, getter, setter, save)
 		{
 			_logger.traceLog("entered");
@@ -45,7 +44,7 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <param name="block">The block whose StringBuilder may have changed.</param>
 		/// <param name="updateMethod">Method to populate the StringBuilder</param>
-		public void Update(TBlock block, Action<StringBuilder> updateMethod)
+		public void Update(IMyTerminalBlock block, Action<StringBuilder> updateMethod)
 		{
 			_logger.traceLog("entered");
 
@@ -67,6 +66,11 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		public override void SetValue(long blockId, string value)
+		{
+			SetValue(blockId, new StringBuilder(value));
+		}
+
 		protected override void SetValue(long blockId, TScript script, StringBuilder value, bool send)
 		{
 			_logger.traceLog("entered");
@@ -75,7 +79,8 @@ namespace Rynchodon.Utility.Network
 			_setter(script, value);
 			if (send)
 				EnqueueSend(blockId);
-			_control.UpdateVisual();
+
+			UpdateVisual();
 		}
 
 		protected override IEnumerable<KeyValuePair<long, object>> AllValues()

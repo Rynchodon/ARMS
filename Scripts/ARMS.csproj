@@ -313,6 +313,7 @@
     <Compile Include="Utility\Network\TerminalSyncMessage.cs" />
     <Compile Include="Utility\Network\TerminalSync_generic.cs" />
     <Compile Include="Utility\Network\TerminalValueSync.cs" />
+    <Compile Include="Utility\Network\UpgradeEntityValue.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

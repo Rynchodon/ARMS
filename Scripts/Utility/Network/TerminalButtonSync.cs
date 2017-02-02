@@ -4,9 +4,8 @@
 
 using System;
 using System.Collections.Generic;
-using Sandbox.Game.Entities.Cube;
-using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Utility.Network
 {
@@ -14,9 +13,8 @@ namespace Rynchodon.Utility.Network
 	/// <summary>
 	/// For running an event when a terminal control button is pressed.
 	/// </summary>
-	/// <typeparam name="TBlock">The type of block</typeparam>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalButtonSync<TBlock, TScript> : TerminalSync where TBlock : MyTerminalBlock
+	public sealed class TerminalButtonSync<TScript> : TerminalSync
 	{
 
 		public delegate void OnButtonPressed(TScript script);
@@ -33,7 +31,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="control">Button for triggering the event</param>
 		/// <param name="onPress">The event to run.</param>
 		/// <param name="serverOnly">If true, run the event on the server. Otherwise, run the event on all clients.</param>
-		public TerminalButtonSync(Id id, MyTerminalControlButton<TBlock> control, OnButtonPressed onPress, bool serverOnly = true) : base(id, false)
+		public TerminalButtonSync(Id id, IMyTerminalControlButton control, OnButtonPressed onPress, bool serverOnly = true) : base(id, false)
 		{
 			_logger.traceLog("entered");
 
@@ -43,7 +41,7 @@ namespace Rynchodon.Utility.Network
 			control.Action = Pressed;
 		}
 
-		private void Pressed(TBlock block)
+		private void Pressed(IMyTerminalBlock block)
 		{
 			_logger.traceLog("entered");
 
@@ -74,6 +72,11 @@ namespace Rynchodon.Utility.Network
 
 			if (!Globals.WorldClosed)
 				LogMissingFromRegistrar(block.EntityId, false);
+		}
+
+		public override void SetValue(long blockId, string value)
+		{
+			throw new NotSupportedException();
 		}
 
 		protected override void SetValue(SyncMessage sync)

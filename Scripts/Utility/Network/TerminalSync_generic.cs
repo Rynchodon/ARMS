@@ -4,9 +4,9 @@
 
 using System;
 using System.Collections.Generic;
-using Sandbox.Game.Entities.Cube;
-using Sandbox.Game.Screens.Terminal.Controls;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
+using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Utility.Network
 {
@@ -14,34 +14,21 @@ namespace Rynchodon.Utility.Network
 	/// <summary>
 	/// Contains generic members of TerminalSync.
 	/// </summary>
-	/// <typeparam name="TBlock">The type of block</typeparam>
 	/// <typeparam name="TValue">The type of value</typeparam>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public abstract class TerminalSync<TBlock, TValue, TScript> : TerminalSync where TBlock : MyTerminalBlock
+	public abstract class TerminalSync<TValue, TScript> : TerminalSync
 	{
 
 		public delegate TValue GetterDelegate(TScript script);
 		public delegate void SetterDelegate(TScript script, TValue value);
 
-		public readonly MyTerminalValueControl<TBlock, TValue> _control;
+		private readonly object _control;
 		protected readonly GetterDelegate _getter;
 		protected readonly SetterDelegate _setter;
 
-		public TValue this[TBlock block]
-		{
-			get { return GetValue(block); }
-			set { SetValue(block, value); }
-		}
-
-		public TValue this[long blockId]
-		{
-			get { return GetValue(blockId); }
-			set { SetValue(blockId, value); }
-		}
-
 		protected override sealed Type ValueType { get { return typeof(TValue); } }
 
-		protected TerminalSync(Id id, MyTerminalValueControl<TBlock, TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
+		protected TerminalSync(Id id, IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
 			: base(id, save)
 		{
 			_logger.traceLog("entered");
@@ -54,7 +41,46 @@ namespace Rynchodon.Utility.Network
 			control.Setter = SetValue;
 		}
 
-		protected TValue GetValue(TBlock block)
+		protected TerminalSync(Id id, GetterDelegate getter, SetterDelegate setter, bool save = true)
+			: base(id, save)
+		{
+			_logger.traceLog("entered");
+
+			if (!typeof(Enum).IsAssignableFrom(ValueType))
+				throw new Exception("not enum: " + ValueType);
+
+			_control = new List<IMyTerminalControl>();
+			_getter = getter;
+			_setter = setter;
+		}
+
+		public void AddFlagControl(TValue flag, IMyTerminalValueControl<bool> control)
+		{
+			List<IMyTerminalControl> _control = this._control as List<IMyTerminalControl>;
+			if (_control == null)
+				throw new InvalidOperationException("Cannot add control, did not use flags constructor");
+
+			Type underlying = Enum.GetUnderlyingType(ValueType);
+
+			int intFlag = (int)Convert.ChangeType(flag, underlying);
+
+			control.Getter = (block) => {
+				int allFlags = (int)Convert.ChangeType(GetValue(block), underlying);
+				return (allFlags & intFlag) == intFlag;
+			};
+			control.Setter = (block, value) => {
+				int allFlags = (int)Convert.ChangeType(GetValue(block), underlying);
+				if (value)
+					allFlags |= intFlag;
+				else
+					allFlags &= ~intFlag;
+				SetValue(block, (TValue)Convert.ChangeType(Convert.ChangeType(allFlags, underlying), ValueType));
+			};
+
+			_control.Add((IMyTerminalControl)control);
+		}
+
+		protected TValue GetValue(IMyTerminalBlock block)
 		{
 			return GetValue(block.EntityId);
 		}
@@ -67,10 +93,10 @@ namespace Rynchodon.Utility.Network
 
 			if (!Globals.WorldClosed)
 				LogMissingFromRegistrar(blockId, false);
-			return _control.GetDefaultValue(null);
+			return default(TValue);
 		}
 
-		protected void SetValue(TBlock block, TValue value)
+		protected void SetValue(IMyTerminalBlock block, TValue value)
 		{
 			TScript script;
 			if (Registrar.TryGetValue(block, out script))
@@ -141,15 +167,13 @@ namespace Rynchodon.Utility.Network
 
 		protected abstract void SetValue(long blockId, TScript script, TValue value, bool send);
 
-		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		protected void UpdateVisual()
 		{
-			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
-			{
-				TValue value = _getter(pair.Value);
-				if (EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
-					continue;
-				yield return new KeyValuePair<long, object>(pair.Key, value);
-			}
+			if (_control is IMyTerminalControl)
+				((IMyTerminalControl)_control).UpdateVisual();
+			else
+				foreach (IMyTerminalControl control in ((List<IMyTerminalControl>)_control))
+					control.UpdateVisual();
 		}
 
 		private void CheckForOrphan(long blockId, TScript script)
@@ -201,7 +225,10 @@ namespace Rynchodon.Utility.Network
 
 		private bool ValidateType(object obj)
 		{
-			return obj != null && obj.GetType() == ValueType;
+			if (typeof(Enum).IsAssignableFrom(ValueType) && Enum.GetUnderlyingType(ValueType) == obj.GetType())
+				return true;
+
+			return obj != null && ValueType == obj.GetType();
 		}
 
 	}

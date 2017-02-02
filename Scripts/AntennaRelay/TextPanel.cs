@@ -10,7 +10,6 @@ using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Collections;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -30,11 +29,6 @@ namespace Rynchodon.AntennaRelay
 			public byte Options;
 		}
 
-		private const char separator = ':';
-		private const string radarIconId = "Radar";
-		private const string timeString = "Current as of: ";
-		private const string tab = "    ";
-
 		[Flags]
 		private enum Option : byte
 		{
@@ -46,144 +40,85 @@ namespace Rynchodon.AntennaRelay
 			Refresh = 16,
 		}
 
-		private class StaticVariables
+		private const char separator = ':';
+		private const string radarIconId = "Radar";
+		private const string timeString = "Current as of: ";
+		private const string tab = "    ";
+
+		private static readonly char[] OptionsSeparators = { ',', ';', ':' };
+		private static readonly List<long> s_detectedIds = new List<long>();
+
+		[OnWorldLoad]
+		private static void CreateTerminal()
 		{
-			public char[] OptionsSeparators = { ',', ';', ':' };
-			public Logger s_logger = new Logger();
-			public List<long> s_detectedIds = new List<long>();
-			public List<MyTerminalControlCheckbox<MyTextPanel>> checkboxes = new List<MyTerminalControlCheckbox<MyTextPanel>>();
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+			TerminalControlHelper.EnsureTerminalControlCreated<MyTextPanel>();
 
-			public StaticVariables()
+			MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
 			{
-				Logger.DebugLog("entered", Logger.severity.TRACE);
-				TerminalControlHelper.EnsureTerminalControlCreated<MyTextPanel>();
+				ValidForGroups = false,
+				ActionWithParameters = TextPanel_DisplayEntities
+			};
+			MyTerminalControlFactory.AddAction(textPanel_displayEntities);
 
-				MyTerminalAction<MyTextPanel> textPanel_displayEntities = new MyTerminalAction<MyTextPanel>("DisplayEntities", new StringBuilder("Display Entities"), "Textures\\GUI\\Icons\\Actions\\Start.dds")
-				{
-					ValidForGroups = false,
-					ActionWithParameters = TextPanel_DisplayEntities
-				};
-				MyTerminalControlFactory.AddAction(textPanel_displayEntities);
+			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
 
-				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
+			TerminalValueSync<Option, TextPanel> sync = new TerminalValueSync<Option, TextPanel>(TerminalSync.Id.TextPanel_Option, (script) => script.m_optionsTerminal, (script, value) => script.m_optionsTerminal = value);
 
-				AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
-				AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
-				AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
-				AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
-			}
-
-			private void AddCheckbox(string id, string title, string toolTip, Option opt)
-			{
-				MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-				IMyTerminalValueControl<bool> valueControl = control as IMyTerminalValueControl<bool>;
-				valueControl.Getter = block => GetOptionTerminal(block, opt);
-				valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
-				MyTerminalControlFactory.AddControl(control);
-				checkboxes.Add(control);
-			}
+			AddCheckbox(sync, "DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
+			AddCheckbox(sync, "DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
+			AddCheckbox(sync, "DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
+			AddCheckbox(sync, "DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
 		}
 
-		private static StaticVariables value_static;
-		private static StaticVariables Static
+		private static void AddCheckbox(TerminalValueSync<Option, TextPanel> sync, string id, string title, string toolTip, Option opt)
 		{
-			get
-			{
-				if (Globals.WorldClosed)
-					throw new Exception("World closed");
-				if (value_static == null)
-					value_static = new StaticVariables();
-				return value_static;
-			}
-			set { value_static = value; }
-		}
+			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
 
-		[OnWorldClose]
-		private static void Unload()
-		{
-			Static = null;
+			sync.AddFlagControl(opt, control);
+
+			MyTerminalControlFactory.AddControl(control);
 		}
 
 		/// <param name="args">EntityIds as long</param>
 		private static void TextPanel_DisplayEntities(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
 		{
-			Static.s_detectedIds.Clear();
+			s_detectedIds.Clear();
 
 			for (int i = 0; i < args.Count; i++)
 			{
 				if (args[i].TypeCode != TypeCode.Int64)
 				{
-					Static.s_logger.debugLog("TerminalActionParameter # " + i + " is of wrong type, expected Int64, got " + args[i].TypeCode, Logger.severity.WARNING);
+					Logger.DebugLog("TerminalActionParameter # " + i + " is of wrong type, expected Int64, got " + args[i].TypeCode, Logger.severity.WARNING);
 					if (MyAPIGateway.Session.Player != null)
 						block.AppendCustomInfo("Failed to display entities:\nTerminalActionParameter #" + i + " is of wrong type, expected Int64 (AKA long), got " + args[i].TypeCode + '\n');
 					return;
 				}
-				Static.s_detectedIds.Add((long)args[i].Value);
+				s_detectedIds.Add((long)args[i].Value);
 			}
 
 			TextPanel panel;
 			if (!Registrar.TryGetValue(block.EntityId, out panel))
 			{
-				Static.s_logger.alwaysLog("Text panel not found in registrar: " + block.EntityId, Logger.severity.ERROR);
+				Logger.AlwaysLog("Text panel not found in registrar: " + block.EntityId, Logger.severity.ERROR);
 				return;
 			}
 
-			Static.s_logger.debugLog("Found text panel with id: " + block.EntityId);
+			Logger.DebugLog("Found text panel with id: " + block.EntityId);
 
-			panel.Display(Static.s_detectedIds);
-		}
-
-		private static bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
-		{
-			TextPanel panel;
-			if (!Registrar.TryGetValue(block, out panel))
-			{
-				if (Globals.WorldClosed)
-					return false;
-				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
-			}
-
-			return (panel.m_optionsTerminal & opt) != 0;
-		}
-
-		private static void SetOptionTerminal(IMyTerminalBlock block, Option opt, bool value)
-		{
-			TextPanel panel;
-			if (!Registrar.TryGetValue(block, out panel))
-			{
-				if (Globals.WorldClosed)
-					return;
-				throw new ArgumentException("block: " + block.EntityId + " not found in registrar");
-			}
-
-			if (value)
-				panel.m_optionsTerminal |= opt;
-			else
-				panel.m_optionsTerminal &= ~opt;
-		}
-
-		private static void UpdateVisual()
-		{
-			foreach (var control in Static.checkboxes)
-				control.UpdateVisual();
+			panel.Display(s_detectedIds);
 		}
 
 		private readonly Ingame.IMyTextPanel m_textPanel;
 		private readonly Logger myLogger;
 
-		private readonly EntityValue<Option> m_optionsTerminal_ev;
+		private Option m_optionsTerminal;
 
 		private IMyTerminalBlock myTermBlock;
 		private RelayClient m_networkClient;
 		private Option m_options;
 		private List<sortableLastSeen> m_sortableList;
 		private TimeSpan m_lastDisplay;
-
-		private Option m_optionsTerminal
-		{
-			get { return m_optionsTerminal_ev.Value; }
-			set { m_optionsTerminal_ev.Value = value; }
-		}
 
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
@@ -193,7 +128,6 @@ namespace Rynchodon.AntennaRelay
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new RelayClient(block);
 			myLogger.debugLog("init: " + m_block.DisplayNameText);
-			m_optionsTerminal_ev = new EntityValue<Option>(block, 0, UpdateVisual);
 
 			Registrar.Add(block, this);
 		}
@@ -206,22 +140,9 @@ namespace Rynchodon.AntennaRelay
 			this.m_optionsTerminal = (Option)builder.Options;
 		}
 
-		public Builder_TextPanel GetBuilder()
-		{
-			// do not save if default
-			if (m_optionsTerminal == Option.None)
-				return null;
-
-			return new Builder_TextPanel()
-			{
-				BlockId = m_block.EntityId,
-				Options = (byte)m_optionsTerminal
-			};
-		}
-
 		protected override bool ParseAll(string instructions)
 		{
-			string[] opts = instructions.RemoveWhitespace().Split(Static.OptionsSeparators);
+			string[] opts = instructions.RemoveWhitespace().Split(OptionsSeparators);
 			m_options = Option.None;
 			foreach (string opt in opts)
 			{
@@ -536,11 +457,11 @@ namespace Rynchodon.AntennaRelay
 			{
 				if (this.Autopilot.m_autopilotStatus.Value == other.Autopilot.m_autopilotStatus.Value)
 				{
-					Static.s_logger.debugLog("same status: " + this.Autopilot.m_autopilotStatus.Value);
+					Logger.DebugLog("same status: " + this.Autopilot.m_autopilotStatus.Value);
 					return this.DistanceSquared.CompareTo(other.DistanceSquared);
 				}
 
-				Static.s_logger.debugLog("diff status: " + this.Autopilot.m_autopilotStatus.Value + " vs " + other.Autopilot.m_autopilotStatus.Value + ", diff: " + ((int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value));
+				Logger.DebugLog("diff status: " + this.Autopilot.m_autopilotStatus.Value + " vs " + other.Autopilot.m_autopilotStatus.Value + ", diff: " + ((int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value));
 				return (int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value;
 			}
 

@@ -38,7 +38,7 @@ namespace Rynchodon.Update
 			public TextPanel.Builder_TextPanel[] TextPanel;
 			[Obsolete("Old save data, new saves use EntityValues")]
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
-			public EntityValue.Builder_EntityValues[] EntityValues;
+			public UpgradeEntityValue.Builder_EntityValues[] EntityValues;
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
@@ -429,7 +429,7 @@ namespace Rynchodon.Update
 			// entity values
 
 			if (m_data.EntityValues != null)
-				EntityValue.ResumeFromSave(m_data.EntityValues);
+				UpgradeEntityValue.Load(m_data.EntityValues);
 
 			m_data = null;
 		}
@@ -483,10 +483,6 @@ namespace Rynchodon.Update
 				});
 				data.Autopilot = buildAuto.ToArray();
 				
-				// entity values
-
-				data.EntityValues = EntityValue.GetBuilders();
-
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
 
 				if (Instance.m_fileMaster != null)
