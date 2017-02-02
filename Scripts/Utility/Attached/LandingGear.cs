@@ -1,5 +1,4 @@
 ﻿using System;
-using Sandbox.Common.ObjectBuilders;
 using SpaceEngineers.Game.Entities.Blocks;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -27,11 +26,7 @@ namespace Rynchodon.Attached
 			this.myGear.LockModeChanged -= MyGear_LockModeChanged;
 		}
 
-#if UNSTABLE
 		private void MyGear_LockModeChanged(Sandbox.Game.Entities.Interfaces.IMyLandingGear gear, SpaceEngineers.Game.ModAPI.Ingame.LandingGearMode oldMode)
-#else
-		private void MyGear_LockModeChanged(Sandbox.Game.Entities.Interfaces.IMyLandingGear gear, LandingGearMode oldMode)
-#endif
 		{
 			try
 			{
