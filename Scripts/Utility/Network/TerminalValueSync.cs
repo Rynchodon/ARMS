@@ -27,12 +27,10 @@ namespace Rynchodon.Utility.Network
 		/// <param name="save">Iff true, save the value to disk.</param>
 		public TerminalValueSync(Id id, IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true) : base(id, control, getter, setter, save) { }
 
-		public TerminalValueSync(Id id, GetterDelegate getter, SetterDelegate setter, bool save = true) : base(id, getter, setter, save) { }
-
 		public override void SetValue(long blockId, string value)
 		{
 			SetValue(blockId, typeof(IConvertible).IsAssignableFrom(ValueType)
-				? typeof(Enum).IsAssignableFrom(ValueType) ? Enum.Parse(ValueType, value) : Convert.ChangeType(value, ValueType)
+				? Convert.ChangeType(value, ValueType)
 				: MyAPIGateway.Utilities.SerializeFromXML<TValue>(value));
 		}
 

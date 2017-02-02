@@ -29,34 +29,65 @@ namespace Rynchodon.Utility.Network
 			public string[] values;
 		}
 
-		private struct IdMapping
+		private class Mapping
 		{
 			public readonly Type BlockType;
 			public readonly byte EntityValueId;
-			public readonly TerminalSync.Id TerminalSyncId;
 
-			public IdMapping(Type BlockType, byte EntityValueId, TerminalSync.Id TerminalSyncId)
+			public Mapping(Type BlockType, byte EntityValueId)
 			{
 				this.BlockType = BlockType;
 				this.EntityValueId = EntityValueId;
+			}
+		}
+
+		private class SimpleMapping: Mapping
+		{
+			public readonly TerminalSync.Id TerminalSyncId;
+
+			public SimpleMapping(Type BlockType, byte EntityValueId, TerminalSync.Id TerminalSyncId)
+				: base(BlockType, EntityValueId)
+			{
 				this.TerminalSyncId = TerminalSyncId;
 			}
 		}
 
-		private static List<IdMapping> _maps;
+		private class EnumMapping : Mapping
+		{
+			public readonly TerminalSync.Id[] TerminalSyncId;
+
+			public EnumMapping(Type BlockType, byte EntityValueId, TerminalSync.Id[] TerminalSyncId)
+				: base(BlockType, EntityValueId)
+			{
+				this.TerminalSyncId = TerminalSyncId;
+			}
+
+			public IEnumerable<KeyValuePair<TerminalSync.Id, bool>> Enumerate(int EnumValue)
+			{
+				int flag = 1;
+				for (int index = 0; index < TerminalSyncId.Length; ++index)
+				{
+					yield return new KeyValuePair<TerminalSync.Id, bool>(TerminalSyncId[index], (EnumValue & flag) != 0);
+					flag *= 2;
+				}
+			}
+		}
+
+		private static List<Mapping> _maps;
 		private static List<Builder_EntityValues> _data;
 
 		public static void Load(Builder_EntityValues[] data)
 		{
 			_data = new List<Builder_EntityValues>(data);
 
-			_maps = new List<IdMapping>();
+			_maps = new List<Mapping>();
 			Type type = typeof(IMyProgrammableBlock);
-			_maps.Add(new IdMapping(type, 0, TerminalSync.Id.ProgrammableBlock_HandleDetected));
-			_maps.Add(new IdMapping(type, 1, TerminalSync.Id.ProgrammableBlock_BlockList));
-			_maps.Add(new IdMapping(typeof(IMySolarPanel), 0, TerminalSync.Id.Solar_FaceSun));
-			_maps.Add(new IdMapping(typeof(IMyOxygenFarm), 0, TerminalSync.Id.Solar_FaceSun));
-			_maps.Add(new IdMapping(typeof(IMyTextPanel), 0, TerminalSync.Id.TextPanel_Option));
+			_maps.Add(new SimpleMapping(type, 0, TerminalSync.Id.ProgrammableBlock_HandleDetected));
+			_maps.Add(new SimpleMapping(type, 1, TerminalSync.Id.ProgrammableBlock_BlockList));
+			_maps.Add(new SimpleMapping(typeof(IMySolarPanel), 0, TerminalSync.Id.Solar_FaceSun));
+			_maps.Add(new SimpleMapping(typeof(IMyOxygenFarm), 0, TerminalSync.Id.Solar_FaceSun));
+
+			_maps.Add(new EnumMapping(typeof(IMyTextPanel), 0, new TerminalSync.Id[] { TerminalSync.Id.TextPanel_DisplayDetected, TerminalSync.Id.TextPanel_DisplayGPS, TerminalSync.Id.TextPanel_DisplayEntityId, TerminalSync.Id.TextPanel_DisplayAutopilotStatus }));
 
 			MyEntities.OnEntityAdd += MyEntities_OnEntityAdd;
 			foreach (MyEntity entity in MyEntities.GetEntities())
@@ -100,22 +131,26 @@ namespace Rynchodon.Utility.Network
 		{
 			for (int index = entityValues.valueIds.Length - 1; index >= 0; --index)
 			{
-				TerminalSync.Id id = GetMapped(block, entityValues.valueIds[index]);
-				if (id == TerminalSync.Id.None)
+				Mapping mapping = GetMapping(block, entityValues.valueIds[index]);
+				if (mapping == null)
 				{
 					// if the value is obsolete, this is fine
 					Logger.AlwaysLog("No mapping for " + block.GetType().Name + " and " + entityValues.valueIds[index], Logger.severity.INFO);
 					continue;
 				}
-				TerminalSync sync;
-				if (!TerminalSync.TryGet(id, out sync))
+				if (mapping is SimpleMapping)
+					ApplyMap(block, entityValues.values[index], ((SimpleMapping)mapping).TerminalSyncId);
+				else
 				{
-					Logger.AlwaysLog("Failed to get TerminalSync for " + id, Logger.severity.ERROR);
-					continue;
+					int enumValue;
+					if (!int.TryParse(entityValues.values[index], out enumValue))
+					{
+						Logger.AlwaysLog("Cannot convert: " + entityValues.values[index] + " to int");
+						continue;
+					}
+					foreach (KeyValuePair<TerminalSync.Id, bool> pair in ((EnumMapping)mapping).Enumerate(enumValue))
+						ApplyMap(block, pair.Value.ToString(), pair.Key);
 				}
-
-				Logger.TraceLog("Setting entity value for " + block.nameWithId() + ", value id: " + id + ", value: " + entityValues.values[index]);
-				sync.SetValue(entityValues.entityId, entityValues.values[index]);
 			}
 
 			Logger.TraceLog("Converted entity ids for " + block.nameWithId());
@@ -124,20 +159,33 @@ namespace Rynchodon.Utility.Network
 			{
 				Logger.DebugLog("All entity values converted");
 				_data = null;
+				_maps = null;
 			}
 		}
 
-		private static TerminalSync.Id GetMapped(IMyCubeBlock block, byte entityValueId)
+		private static Mapping GetMapping(IMyCubeBlock block, byte entityValueId)
 		{
 			Type type = block.GetType();
 			for (int index = _maps.Count - 1; index >= 0; --index)
 			{
-				IdMapping map = _maps[index];
+				Mapping map = _maps[index];
 				if (map.BlockType.IsAssignableFrom(type) && map.EntityValueId == entityValueId)
-					return map.TerminalSyncId;
+					return map;
 			}
 
-			return TerminalSync.Id.None;
+			return null;
+		}
+
+		private static void ApplyMap(IMyCubeBlock block, string value, TerminalSync.Id id)
+		{
+			TerminalSync sync;
+			if (!TerminalSync.TryGet(id, out sync))
+				Logger.AlwaysLog("Failed to get TerminalSync for " + id, Logger.severity.ERROR);
+			else
+			{
+				Logger.TraceLog("Setting entity value for " + block.nameWithId() + ", value id: " + id + ", value: " + value);
+				sync.SetValue(block.EntityId, value);
+			}
 		}
 
 	}

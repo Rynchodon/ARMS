@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Utility.Network
@@ -39,45 +38,6 @@ namespace Rynchodon.Utility.Network
 
 			control.Getter = GetValue;
 			control.Setter = SetValue;
-		}
-
-		protected TerminalSync(Id id, GetterDelegate getter, SetterDelegate setter, bool save = true)
-			: base(id, save)
-		{
-			_logger.traceLog("entered");
-
-			if (!typeof(Enum).IsAssignableFrom(ValueType))
-				throw new Exception("not enum: " + ValueType);
-
-			_control = new List<IMyTerminalControl>();
-			_getter = getter;
-			_setter = setter;
-		}
-
-		public void AddFlagControl(TValue flag, IMyTerminalValueControl<bool> control)
-		{
-			List<IMyTerminalControl> _control = this._control as List<IMyTerminalControl>;
-			if (_control == null)
-				throw new InvalidOperationException("Cannot add control, did not use flags constructor");
-
-			Type underlying = Enum.GetUnderlyingType(ValueType);
-
-			int intFlag = (int)Convert.ChangeType(flag, underlying);
-
-			control.Getter = (block) => {
-				int allFlags = (int)Convert.ChangeType(GetValue(block), underlying);
-				return (allFlags & intFlag) == intFlag;
-			};
-			control.Setter = (block, value) => {
-				int allFlags = (int)Convert.ChangeType(GetValue(block), underlying);
-				if (value)
-					allFlags |= intFlag;
-				else
-					allFlags &= ~intFlag;
-				SetValue(block, (TValue)Convert.ChangeType(Convert.ChangeType(allFlags, underlying), ValueType));
-			};
-
-			_control.Add((IMyTerminalControl)control);
 		}
 
 		protected TValue GetValue(IMyTerminalBlock block)
@@ -225,9 +185,6 @@ namespace Rynchodon.Utility.Network
 
 		private bool ValidateType(object obj)
 		{
-			if (typeof(Enum).IsAssignableFrom(ValueType) && Enum.GetUnderlyingType(ValueType) == obj.GetType())
-				return true;
-
 			return obj != null && ValueType == obj.GetType();
 		}
 

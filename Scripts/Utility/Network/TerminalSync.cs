@@ -26,7 +26,10 @@ namespace Rynchodon.Utility.Network
 			ProgrammableBlock_HandleDetected,
 			ProgrammableBlock_BlockList,
 			Solar_FaceSun,
-			TextPanel_Option
+			TextPanel_DisplayDetected,
+			TextPanel_DisplayGPS,
+			TextPanel_DisplayEntityId,
+			TextPanel_DisplayAutopilotStatus,
 		}
 
 		public struct SyncMessage

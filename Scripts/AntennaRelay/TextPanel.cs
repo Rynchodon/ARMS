@@ -63,23 +63,26 @@ namespace Rynchodon.AntennaRelay
 
 			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
 
-			TerminalValueSync<Option, TextPanel> sync = new TerminalValueSync<Option, TextPanel>(TerminalSync.Id.TextPanel_Option, (script) => script.m_optionsTerminal, (script, value) => script.m_optionsTerminal = value);
-
-			AddCheckbox(sync, "DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
-			AddCheckbox(sync, "DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
-			AddCheckbox(sync, "DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
-			AddCheckbox(sync, "DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
+			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected, TerminalSync.Id.TextPanel_DisplayDetected);
+			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS, TerminalSync.Id.TextPanel_DisplayGPS);
+			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId, TerminalSync.Id.TextPanel_DisplayEntityId);
+			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus, TerminalSync.Id.TextPanel_DisplayAutopilotStatus);
 		}
 
-		private static void AddCheckbox(TerminalValueSync<Option, TextPanel> sync, string id, string title, string toolTip, Option opt)
+		private static void AddCheckbox(string id, string title, string toolTip, Option opt, TerminalSync.Id tsId)
 		{
 			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-
-			sync.AddFlagControl(opt, control);
-
+			new TerminalValueSync<bool, TextPanel>(tsId, control, 
+				(panel) => (panel.m_optionsTerminal & opt) == opt,
+				(panel, value) => {
+				if (value)
+					panel.m_optionsTerminal |= opt;
+				else
+					panel.m_optionsTerminal &= ~opt;
+			});
 			MyTerminalControlFactory.AddControl(control);
 		}
-
+		
 		/// <param name="args">EntityIds as long</param>
 		private static void TextPanel_DisplayEntities(MyFunctionalBlock block, ListReader<Ingame.TerminalActionParameter> args)
 		{
