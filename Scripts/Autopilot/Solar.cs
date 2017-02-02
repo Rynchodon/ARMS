@@ -27,7 +27,7 @@ namespace Rynchodon.Autopilot
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyOxygenFarm>());
 
 				MyTerminalControlCheckbox<MyTerminalBlock> s_termControl_faceSun = new MyTerminalControlCheckbox<MyTerminalBlock>("FaceSun", MyStringId.GetOrCompute("Face Sun"), MyStringId.GetOrCompute("Face this block towards the sun"));
-				new TerminalValueSync<bool, Solar>(TerminalSync.Id.Solar_FaceSun, s_termControl_faceSun, (script) => script.m_termControl_faceSun, (script, value) => script.m_termControl_faceSun = value);
+				new TerminalValueSync<bool, Solar>(s_termControl_faceSun, (script) => script.m_termControl_faceSun, (script, value) => script.m_termControl_faceSun = value);
 
 				MyTerminalControlFactory.AddControl<MyTerminalBlock, MySolarPanel>(s_termControl_faceSun);
 				MyTerminalControlFactory.AddControl<MyTerminalBlock, MyOxygenFarm>(s_termControl_faceSun);

@@ -25,7 +25,23 @@ namespace Rynchodon.Utility.Network
 			None,
 			ProgrammableBlock_HandleDetected,
 			ProgrammableBlock_BlockList,
+
+			Projector_HoloDisplay,
+			Projector_HD_This_Ship,
+			Projector_HD_Owner,
+			Projector_HD_Faction,
+			Projector_HD_Neutral,
+			Projector_HD_Enemy,
+			Projector_HD_RangeDetection,
+			Projector_HD_RadiusHolo,
+			Projector_HD_EntitySizeScale,
+			Projector_HD_OffsetX,
+			Projector_HD_OffsetY,
+			Projector_HD_OffsetZ,
+			Projector_HD_IntegrityColour,
+
 			Solar_FaceSun,
+
 			TextPanel_DisplayDetected,
 			TextPanel_DisplayGPS,
 			TextPanel_DisplayEntityId,
@@ -172,6 +188,14 @@ namespace Rynchodon.Utility.Network
 			ByteConverter.AppendBytes(bytes, sync.value);
 		}
 
+		private static Id GetId(Type scriptType, string terminalControlId)
+		{
+			Id id;
+			if (!Enum.TryParse(scriptType.Name + '_' + terminalControlId, out id))
+				throw new Exception("No id for " + scriptType.Name + " and " + terminalControlId);
+			return id;
+		}
+
 		private static void RequestValues()
 		{
 			if (MyAPIGateway.Multiplayer.IsServer)
@@ -248,15 +272,15 @@ namespace Rynchodon.Utility.Network
 		protected readonly bool _save;
 		protected readonly Logger _logger;
 
-		protected TerminalSync(Id id, bool save = true)
+		protected TerminalSync(Type scriptType, string terminalControlId, bool save = true)
 		{
-			this._id = id;
+			this._id = GetId(scriptType, terminalControlId);
 			this._save = save;
 			this._logger = new Logger(_id.ToString);
 
 			if (_syncs == null)
 				return;
-			_syncs.Add(id, this);
+			_syncs.Add(_id, this);
 
 			if (!_hasValues)
 			{

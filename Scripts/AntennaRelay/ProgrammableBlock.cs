@@ -55,11 +55,11 @@ namespace Rynchodon.AntennaRelay
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
 
 				handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
-				new TerminalValueSync<bool, ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_HandleDetected, handleDetected, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
+				new TerminalValueSync<bool, ProgrammableBlock>(handleDetected, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
 				MyTerminalControlFactory.AddControl(handleDetected);
 
 				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
-				new TerminalStringBuilderSync<ProgrammableBlock>(TerminalSync.Id.ProgrammableBlock_BlockList, blockCountList, (prog) => prog.value_blockCountList, (prog, value) => {
+				new TerminalStringBuilderSync<ProgrammableBlock>(blockCountList, (prog) => prog.value_blockCountList, (prog, value) => {
 					prog.value_blockCountList = value;
 					prog.m_blockCountList_btl = new BlockTypeList(prog.m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','));
 				});

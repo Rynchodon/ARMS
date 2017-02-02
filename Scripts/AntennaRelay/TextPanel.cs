@@ -63,23 +63,22 @@ namespace Rynchodon.AntennaRelay
 
 			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyTextPanel>());
 
-			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected, TerminalSync.Id.TextPanel_DisplayDetected);
-			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS, TerminalSync.Id.TextPanel_DisplayGPS);
-			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId, TerminalSync.Id.TextPanel_DisplayEntityId);
-			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus, TerminalSync.Id.TextPanel_DisplayAutopilotStatus);
+			AddCheckbox("DisplayDetected", "Display Detected", "Write detected entities to the public text of the panel", Option.DisplayDetected);
+			AddCheckbox("DisplayGPS", "Display GPS", "Write gps with detected entities", Option.GPS);
+			AddCheckbox("DisplayEntityId", "Display Entity ID", "Write entity ID with detected entities", Option.EntityId);
+			AddCheckbox("DisplayAutopilotStatus", "Display Autopilot Status", "Write the status of nearby Autopilots to the public text of the panel", Option.AutopilotStatus);
 		}
 
-		private static void AddCheckbox(string id, string title, string toolTip, Option opt, TerminalSync.Id tsId)
+		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
 		{
 			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-			new TerminalValueSync<bool, TextPanel>(tsId, control, 
-				(panel) => (panel.m_optionsTerminal & opt) == opt,
+			new TerminalValueSync<bool, TextPanel>(control, (panel) => (panel.m_optionsTerminal & opt) == opt,
 				(panel, value) => {
-				if (value)
-					panel.m_optionsTerminal |= opt;
-				else
-					panel.m_optionsTerminal &= ~opt;
-			});
+					if (value)
+						panel.m_optionsTerminal |= opt;
+					else
+						panel.m_optionsTerminal &= ~opt;
+				});
 			MyTerminalControlFactory.AddControl(control);
 		}
 		

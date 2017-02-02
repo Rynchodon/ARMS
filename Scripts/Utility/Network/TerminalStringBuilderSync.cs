@@ -24,13 +24,12 @@ namespace Rynchodon.Utility.Network
 		/// <summary>
 		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
 		/// </summary>
-		/// <param name="id">Unique id for sending across a network</param>
 		/// <param name="control">GUI control for getting/setting the value.</param>
 		/// <param name="getter">Function to get the StringBuilder from a script.</param>
 		/// <param name="setter">Function to set a StringBuilder in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalStringBuilderSync(Id id, IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
-			: base(id, control, getter, setter, save)
+		public TerminalStringBuilderSync(IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
+			: base(control, getter, setter, save)
 		{
 			_logger.traceLog("entered");
 

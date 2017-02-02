@@ -27,8 +27,8 @@ namespace Rynchodon.Utility.Network
 
 		protected override sealed Type ValueType { get { return typeof(TValue); } }
 
-		protected TerminalSync(Id id, IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
-			: base(id, save)
+		protected TerminalSync(IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
+			: base(typeof(TScript), control.Id , save)
 		{
 			_logger.traceLog("entered");
 
@@ -40,12 +40,12 @@ namespace Rynchodon.Utility.Network
 			control.Setter = SetValue;
 		}
 
-		protected TValue GetValue(IMyTerminalBlock block)
+		public TValue GetValue(IMyTerminalBlock block)
 		{
 			return GetValue(block.EntityId);
 		}
 
-		protected TValue GetValue(long blockId)
+		public TValue GetValue(long blockId)
 		{
 			TScript script;
 			if (Registrar.TryGetValue(blockId, out script))
@@ -56,7 +56,7 @@ namespace Rynchodon.Utility.Network
 			return default(TValue);
 		}
 
-		protected void SetValue(IMyTerminalBlock block, TValue value)
+		public void SetValue(IMyTerminalBlock block, TValue value)
 		{
 			TScript script;
 			if (Registrar.TryGetValue(block, out script))
@@ -69,7 +69,7 @@ namespace Rynchodon.Utility.Network
 				LogMissingFromRegistrar(block.EntityId, false);
 		}
 
-		protected void SetValue(long blockId, object value)
+		public void SetValue(long blockId, object value)
 		{
 			TScript script;
 			if (Registrar.TryGetValue(blockId, out script))

@@ -89,6 +89,8 @@ namespace Rynchodon.Utility.Network
 
 			_maps.Add(new EnumMapping(typeof(IMyTextPanel), 0, new TerminalSync.Id[] { TerminalSync.Id.TextPanel_DisplayDetected, TerminalSync.Id.TextPanel_DisplayGPS, TerminalSync.Id.TextPanel_DisplayEntityId, TerminalSync.Id.TextPanel_DisplayAutopilotStatus }));
 
+			_maps.Add(new EnumMapping(typeof(IMyProjector), 0, new TerminalSync.Id[] { TerminalSync.Id.Projector_HD_Enemy, TerminalSync.Id.Projector_HD_Neutral, TerminalSync.Id.Projector_HD_Faction, TerminalSync.Id.Projector_HD_Owner, TerminalSync.Id.Projector_HoloDisplay, TerminalSync.Id.Projector_HD_IntegrityColour, TerminalSync.Id.None, TerminalSync.Id.Projector_HD_This_Ship }));
+
 			MyEntities.OnEntityAdd += MyEntities_OnEntityAdd;
 			foreach (MyEntity entity in MyEntities.GetEntities())
 				MyEntities_OnEntityAdd(entity);
@@ -149,7 +151,8 @@ namespace Rynchodon.Utility.Network
 						continue;
 					}
 					foreach (KeyValuePair<TerminalSync.Id, bool> pair in ((EnumMapping)mapping).Enumerate(enumValue))
-						ApplyMap(block, pair.Value.ToString(), pair.Key);
+						if (pair.Key != TerminalSync.Id.None)
+							ApplyMap(block, pair.Value.ToString(), pair.Key);
 				}
 			}
 

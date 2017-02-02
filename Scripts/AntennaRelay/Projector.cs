@@ -72,40 +72,34 @@ namespace Rynchodon.AntennaRelay
 				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
 
 				AddCheckbox("HoloDisplay", "Holographic Display", "Holographically display this ship and nearby detected ships", Option.OnOff);
-				AddCheckbox("HD_This Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
+				AddCheckbox("HD_This_Ship", "This Ship", "Holographically display this ship", Option.ThisShip);
 				AddCheckbox("HD_Owner", "Owned Ships", "Holographically display ships owned by this block's owner", Option.Owner);
 				AddCheckbox("HD_Faction", "Faction Ships", "Holographically display faction owned ships", Option.Faction);
 				AddCheckbox("HD_Neutral", "Neutral Ships", "Holographically display neutral ships", Option.Neutral);
 				AddCheckbox("HD_Enemy", "Enemy Ships", "Holographically display enemy ships", Option.Enemy);
 
 				MyTerminalControlSlider<MySpaceProjector> slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RangeDetection", MyStringId.GetOrCompute("Detection Range"), MyStringId.GetOrCompute("Maximum distance of detected entity"));
+				TerminalValueSync<float, Projector> tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_rangeDetection, (proj, value) => proj.m_rangeDetection = value);
 				slider.DefaultValue = DefaultRangeDetection;
 				slider.Normalizer = (block, value) => Normalizer(MinRangeDetection, MaxRangeDetection, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRangeDetection, MaxRangeDetection, block, value);
-				slider.Writer = (block, sb) => WriterMetres(GetRangeDetection, block, sb);
-				IMyTerminalValueControl<float> valueControl = slider;
-				valueControl.Getter = GetRangeDetection;
-				valueControl.Setter = SetRangeDetection;
+				slider.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RadiusHolo", MyStringId.GetOrCompute("Hologram Radius"), MyStringId.GetOrCompute("Maximum radius of hologram"));
+				tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_radiusHolo, (proj, value) => proj.m_radiusHolo = value);
 				slider.DefaultValue = DefaultRadiusHolo;
 				slider.Normalizer = (block, value) => Normalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
-				slider.Writer = (block, sb) => WriterMetres(GetRadiusHolo, block, sb);
-				valueControl = slider;
-				valueControl.Getter = GetRadiusHolo;
-				valueControl.Setter = SetRadiusHolo;
+				slider.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
+				tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_sizeDistScale, (proj, value) => proj.m_sizeDistScale = value);
 				slider.DefaultValue = DefaultSizeScale;
 				slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
-				slider.Writer = (block, sb) => sb.Append(GetSizeScale(block));
-				valueControl = slider;
-				valueControl.Getter = GetSizeScale;
-				valueControl.Setter = SetSizeScale;
+				slider.Writer = (block, sb) => sb.Append(tvs.GetValue(block));
 				TermControls.Add(slider);
 
 				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
@@ -167,23 +161,31 @@ namespace Rynchodon.AntennaRelay
 			private void AddCheckbox(string id, string title, string toolTip, Option opt)
 			{
 				MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-				IMyTerminalValueControl<bool> valueControl = control;
-				valueControl.Getter = block => GetOptionTerminal(block, opt);
-				valueControl.Setter = (block, value) => SetOptionTerminal(block, opt, value);
+
+				new TerminalValueSync<bool, Projector>(control,
+					(proj) => (proj.m_options & opt) == opt,
+					(proj, value) => {
+						if (value)
+							proj.m_options |= opt;
+						else
+							proj.m_options &= ~opt;
+						if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
+							proj.m_block.SwitchTerminalTo();
+					});
+
 				TermControls.Add(control);
 			}
 
 			private void AddOffsetSlider(string id, string title, string toolTip, int dim)
 			{
 				MyTerminalControlSlider<MySpaceProjector> control = new MyTerminalControlSlider<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-				Func<IMyTerminalBlock, float> getter = block => GetOffset(block, dim);
+
+				TerminalValueSync<float, Projector> tvs = new TerminalValueSync<float, Projector>(control, (proj) => proj.m_offset_ev.GetDim(dim), (proj, value) => proj.m_offset_ev.SetDim(dim, value));
+
 				control.DefaultValue = dim == 1 ? 2.5f : 0f;
 				control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);
 				control.Denormalizer = (block, value) => Denormalizer(MinOffset, MaxOffset, block, value);
-				control.Writer = (block, sb) => WriterMetres(getter, block, sb);
-				IMyTerminalValueControl<float> valueControl = control;
-				valueControl.Getter = getter;
-				valueControl.Setter = (block, value) => SetOffset(block, dim, value);
+				control.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
 				TermControls_Offset.Add(control);
 			}
 
@@ -192,10 +194,18 @@ namespace Rynchodon.AntennaRelay
 				if (!(block is IMyProjector))
 					return;
 
+				Projector instance;
+				if (!Registrar.TryGetValue(block, out instance))
+				{
+					if (!Globals.WorldClosed)
+						Logger.AlwaysLog("Failed to get block: " + block.nameWithId());
+					return;
+				}
+
 				controls.Add(TermControls[0]);
 				controls.Add(TermControls[1]);
 
-				if (GetOptionTerminal(block, Option.OnOff))
+				if (instance.GetOption(Option.OnOff))
 				{
 					// find show on hud
 					int indexSOH = 0;
@@ -203,7 +213,7 @@ namespace Rynchodon.AntennaRelay
 					// remove all controls after ShowOnHUD and before separator
 					controls.RemoveRange(indexSOH + 1, controls.Count - indexSOH - 3);
 
-					bool showOffset = GetOptionTerminal(block, Option.ShowOffset);
+					bool showOffset = instance.GetOption(Option.ShowOffset);
 
 					for (int index = 2; index < TermControls.Count; index++)
 					{
@@ -216,108 +226,10 @@ namespace Rynchodon.AntennaRelay
 						}
 					}
 
-					if (GetOptionTerminal(block, Option.IntegrityColours))
+					if (instance.GetOption(Option.IntegrityColours))
 						foreach (var colour in TermControls_Colours)
 							controls.Add(colour);
 				}
-			}
-
-			private bool GetOptionTerminal(IMyTerminalBlock block, Option opt)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return false;
-
-				return (proj.m_options.Value & opt) != 0;
-			}
-
-			private void SetOptionTerminal(IMyTerminalBlock block, Option opt, bool value)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return;
-
-				if (value)
-					proj.m_options.Value |= opt;
-				else
-					proj.m_options.Value &= ~opt;
-
-				if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
-					block.SwitchTerminalTo();
-			}
-
-			private float GetRangeDetection(IMyTerminalBlock block)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return 0f;
-
-				return proj.m_rangeDetection.Value;
-			}
-
-			private void SetRangeDetection(IMyTerminalBlock block, float value)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return;
-
-				proj.m_rangeDetection.Value = value;
-			}
-
-			private float GetRadiusHolo(IMyTerminalBlock block)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return 0f;
-
-				return proj.m_radiusHolo.Value;
-			}
-
-			private void SetRadiusHolo(IMyTerminalBlock block, float value)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return;
-
-				proj.m_radiusHolo.Value = value;
-			}
-
-			private float GetSizeScale(IMyTerminalBlock block)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return 0f;
-
-				return proj.m_sizeDistScale.Value;
-			}
-
-			private void SetSizeScale(IMyTerminalBlock block, float value)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return;
-
-				proj.m_sizeDistScale.Value = value;
-			}
-
-			private float GetOffset(IMyTerminalBlock block, int dim)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return 0f;
-
-				return proj.m_offset_ev.Value.GetDim(dim);
-			}
-
-			private void SetOffset(IMyTerminalBlock block, int dim, float value)
-			{
-				Projector proj;
-				if (!Registrar.TryGetValue(block, out proj))
-					return;
-
-				Vector3 offset = proj.m_offset_ev.Value;//.SetDim(dim, value);
-				offset.SetDim(dim, value);
-				proj.m_offset_ev.Value = offset;
 			}
 
 			private float Normalizer(float min, float max, IMyTerminalBlock block, float value)
@@ -561,34 +473,34 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private readonly Logger m_logger;
-		private readonly IMyCubeBlock m_block;
+		private readonly IMyProjector m_block;
 		private readonly RelayClient m_netClient;
 
 		private readonly Dictionary<long, SeenHolo> m_holoEntities = new Dictionary<long, SeenHolo>();
 		/// <summary>List of entities to remove holo entirely, it will have to be re-created to be displayed again</summary>
 		private readonly List<long> m_holoEntitiesRemove = new List<long>();
 
-		private EntityValue<Option> m_options;
+		private Option m_options;
 		/// <summary>How close a detected entity needs to be to be placed inside the holographic area.</summary>
-		private EntityValue<float> m_rangeDetection;
+		private float m_rangeDetection;
 		/// <summary>Maximum radius of holographic area, holo entities should fit inside a sphere of this size.</summary>
-		private EntityValue<float> m_radiusHolo;
+		private float m_radiusHolo;
 		/// <summary>Size scale is distance scale * m_sizeDistScale</summary>
-		private EntityValue<float> m_sizeDistScale;
+		private float m_sizeDistScale;
 		/// <summary>Id of the real entity that is centred</summary>
-		private EntityValue<long> m_centreEntityId;
-		private EntityValue<Vector3> m_offset_ev;
+		private long m_centreEntityId;
+		private Vector3 m_offset_ev;
 
 		private DateTime m_clearAllAt = DateTime.UtcNow + Static.keepInCache;
 		/// <summary>The real entity that is centred</summary>
 		private IMyEntity value_centreEntity;
 		private bool m_playerCanSee;
 
-		private bool Enabled { get { return m_block.IsWorking && (m_options.Value & Option.OnOff) != 0; } }
+		private bool Enabled { get { return m_block.IsWorking && (m_options & Option.OnOff) != 0; } }
 
 		private IMyEntity m_centreEntity { get { return value_centreEntity ?? m_block; } }
 
-		private PositionBlock m_offset { get { return m_offset_ev.Value; } }
+		private PositionBlock m_offset { get { return m_offset_ev; } }
 
 		public Projector(IMyCubeBlock block)
 		{
@@ -596,16 +508,8 @@ namespace Rynchodon.AntennaRelay
 				throw new Exception("StaticVariables not loaded");
 
 			this.m_logger = new Logger(block);
-			this.m_block = block;
+			this.m_block = (IMyProjector)block;
 			this.m_netClient = new RelayClient(block);
-
-			byte index = 0;
-			this.m_options = new EntityValue<Option>(block, index++, Static.UpdateVisual);
-			this.m_rangeDetection = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultRangeDetection);
-			this.m_radiusHolo = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultRadiusHolo);
-			this.m_sizeDistScale = new EntityValue<float>(block, index++, Static.UpdateVisual, DefaultSizeScale);
-			this.m_centreEntityId = new EntityValue<long>(block, index++, m_centreEntityId_AfterValueChanged);
-			this.m_offset_ev = new EntityValue<Vector3>(block, index++, Static.UpdateVisual, new Vector3(0f, 2.5f, 0f));
 
 			Registrar.Add(block, this);
 		}
@@ -640,7 +544,7 @@ namespace Rynchodon.AntennaRelay
 				MyEntity[] ignore = new MyEntity[] { (MyEntity)MyAPIGateway.Session.Player.Controller.ControlledEntity };
 				foreach (Vector3 vector in Static.Directions)
 				{
-					LineD ray = new LineD(playerPos, holoCentre + vector * m_radiusHolo.Value);
+					LineD ray = new LineD(playerPos, holoCentre + vector * m_radiusHolo);
 					MyGamePruningStructure.GetTopmostEntitiesOverlappingRay(ref ray, entitiesInRay);
 					if (!RayCast.Obstructed(ray, entitiesInRay.Select(overlap => overlap.Element), ignore))
 					{
@@ -678,7 +582,7 @@ namespace Rynchodon.AntennaRelay
 						SetupProjection(sh.Holo);
 						SetVisible(sh.Holo, true);
 					}
-					if (sh.Seen.Entity is MyCubeGrid && sh.ColouredByIntegrity != ((m_options.Value & Option.IntegrityColours) != 0))
+					if (sh.Seen.Entity is MyCubeGrid && sh.ColouredByIntegrity != ((m_options & Option.IntegrityColours) != 0))
 					{
 						if (sh.ColouredByIntegrity)
 							RestoreColour(sh);
@@ -733,8 +637,8 @@ namespace Rynchodon.AntennaRelay
 
 			PositionWorld projectionCentre = m_offset.ToWorld(m_block);
 
-			float distanceScale = m_radiusHolo.Value / m_rangeDetection.Value;
-			float sizeScale = distanceScale * m_sizeDistScale.Value;
+			float distanceScale = m_radiusHolo / m_rangeDetection;
+			float sizeScale = distanceScale * m_sizeDistScale;
 
 			foreach (SeenHolo sh in m_holoEntities.Values)
 			{
@@ -750,7 +654,7 @@ namespace Rynchodon.AntennaRelay
 				MatrixD sphereMatrix = m_block.WorldMatrix;
 				sphereMatrix.Translation = projectionCentre;
 				Color c = Color.Yellow;
-				MySimpleObjectDraw.DrawTransparentSphere(ref sphereMatrix, m_radiusHolo.Value, ref c, MySimpleObjectRasterizer.Wireframe, 8);
+				MySimpleObjectDraw.DrawTransparentSphere(ref sphereMatrix, m_radiusHolo, ref c, MySimpleObjectRasterizer.Wireframe, 8);
 			}
 		}
 
@@ -759,7 +663,7 @@ namespace Rynchodon.AntennaRelay
 			MatrixD headMatrix = MyAPIGateway.Session.ControlledObject.GetHeadMatrix(true);
 			RayD ray = new RayD(headMatrix.Translation, headMatrix.Forward);
 
-			BoundingSphereD holoSphere = new BoundingSphereD(m_offset.ToWorld(m_block), m_radiusHolo.Value);
+			BoundingSphereD holoSphere = new BoundingSphereD(m_offset.ToWorld(m_block), m_radiusHolo);
 			double tmin, tmax;
 
 			if (!holoSphere.IntersectRaySphere(ray, out tmin, out tmax) || tmin > CrosshairRange)
@@ -780,12 +684,12 @@ namespace Rynchodon.AntennaRelay
 					rangeMulti /= ScrollRangeMulti;
 					scrollSteps++;
 				}
-				m_rangeDetection.Value *= rangeMulti;
+				m_rangeDetection *= rangeMulti;
 			}
 
 			if (MyAPIGateway.Input.IsNewRightMousePressed())
 			{
-				m_centreEntityId.Value = 0L;
+				m_centreEntityId = 0L;
 			}
 			else if (MyAPIGateway.Input.IsNewLeftMousePressed())
 			{
@@ -800,7 +704,7 @@ namespace Rynchodon.AntennaRelay
 					}
 
 				if (firstHit != null)
-					m_centreEntityId.Value = firstHit.EntityId;
+					m_centreEntityId = firstHit.EntityId;
 			}
 		}
 
@@ -817,13 +721,13 @@ namespace Rynchodon.AntennaRelay
 				return false;
 			}
 
-			float rangeDetection = m_rangeDetection.Value; rangeDetection *= rangeDetection;
+			float rangeDetection = m_rangeDetection; rangeDetection *= rangeDetection;
 			return Vector3D.DistanceSquared(m_centreEntity.GetPosition(), seen.Entity.GetCentre()) <= rangeDetection;
 		}
 
 		private bool CheckRelations(IMyEntity entity)
 		{
-			return entity == m_block.CubeGrid ? (m_options.Value & Option.ThisShip) != 0 : (m_options.Value & (Option)m_block.getRelationsTo(entity)) != 0;
+			return entity == m_block.CubeGrid ? (m_options & Option.ThisShip) != 0 : (m_options & (Option)m_block.getRelationsTo(entity)) != 0;
 		}
 
 		private void CreateHolo(LastSeen seen)
@@ -973,7 +877,7 @@ namespace Rynchodon.AntennaRelay
 
 		private void m_centreEntityId_AfterValueChanged()
 		{
-			long entityId = m_centreEntityId.Value;
+			long entityId = m_centreEntityId;
 			if (entityId == 0L)
 			{
 				value_centreEntity = null;
@@ -984,6 +888,11 @@ namespace Rynchodon.AntennaRelay
 				value_centreEntity = null;
 			}
 			m_logger.debugLog("centre entity is now " + m_centreEntity.getBestName() + "(" + entityId + ")");
+		}
+
+		private bool GetOption(Option opt)
+		{
+			return (m_options & opt) == opt;
 		}
 
 	}

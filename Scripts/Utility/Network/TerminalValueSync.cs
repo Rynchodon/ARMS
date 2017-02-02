@@ -20,12 +20,12 @@ namespace Rynchodon.Utility.Network
 		/// <summary>
 		/// Synchronize and save a value associated with a terminal control. The value will be synchronized everytime it changes.
 		/// </summary>
-		/// <param name="id">Unique id for sending accross a network.</param>
 		/// <param name="control">GUI control for getting/setting the value.</param>
 		/// <param name="getter">Function to get the value from a script.</param>
 		/// <param name="setter">Function to set a value in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalValueSync(Id id, IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true) : base(id, control, getter, setter, save) { }
+		public TerminalValueSync(IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true) 
+			: base(control, getter, setter, save) { }
 
 		public override void SetValue(long blockId, string value)
 		{

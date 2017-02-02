@@ -27,11 +27,11 @@ namespace Rynchodon.Utility.Network
 		/// <summary>
 		/// Run an event when a terminal control button is presseed.
 		/// </summary>
-		/// <param name="id">Unique id for sending accross a network.</param>
 		/// <param name="control">Button for triggering the event</param>
 		/// <param name="onPress">The event to run.</param>
 		/// <param name="serverOnly">If true, run the event on the server. Otherwise, run the event on all clients.</param>
-		public TerminalButtonSync(Id id, IMyTerminalControlButton control, OnButtonPressed onPress, bool serverOnly = true) : base(id, false)
+		public TerminalButtonSync(IMyTerminalControlButton control, OnButtonPressed onPress, bool serverOnly = true)
+			: base(typeof(TScript), control.Id, false)
 		{
 			_logger.traceLog("entered");
 
@@ -41,7 +41,7 @@ namespace Rynchodon.Utility.Network
 			control.Action = Pressed;
 		}
 
-		private void Pressed(IMyTerminalBlock block)
+		public void Pressed(IMyTerminalBlock block)
 		{
 			_logger.traceLog("entered");
 
