@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Utility.Network
@@ -11,13 +10,28 @@ namespace Rynchodon.Utility.Network
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
 	public sealed class ValueSync<TValue, TScript> : AValueSync<TValue, TScript>
 	{
-		public ValueSync(string valueId, GetterDelegate getter, SetterDelegate setter, bool save = true) : base(valueId, getter, setter, save) { }
 
-		public override void SetValue(long blockId, string value)
+		/// <summary>
+		/// Synchronize a value that is not directly tied to a terminal control. The value will be synchronized every time it changes.
+		/// </summary>
+		/// <param name="valueId">Identifier for the value</param>
+		/// <param name="getter">Method to get the value from a script</param>
+		/// <param name="setter">Method to set the value in a script</param>
+		/// <param name="save">Save the value to disk</param>
+		/// <param name="defaultValue">Do not get value from server when it equals defaultValue. The value in the script will NOT be set to defaultValue by ValueSync.</param>
+		public ValueSync(string valueId, GetterDelegate getter, SetterDelegate setter, bool save = true, TValue defaultValue = default(TValue)) 
+			: base(valueId, getter, setter, save, defaultValue) { }
+
+		/// <summary>
+		/// Set value from saved string.
+		/// </summary>
+		/// <param name="entityId">Id of the script's entity</param>
+		/// <param name="value">The value as a string</param>
+		public override void SetValue(long entityId, string value)
 		{
-			SetValue(blockId, typeof(IConvertible).IsAssignableFrom(ValueType)
-				? Convert.ChangeType(value, ValueType)
-				: MyAPIGateway.Utilities.SerializeFromXML<TValue>(value));
+			SetValue(entityId, typeof(IConvertible).IsAssignableFrom(typeof(TValue))
+				? (TValue)Convert.ChangeType(value, typeof(TValue))
+				: MyAPIGateway.Utilities.SerializeFromXML<TValue>(value), false);
 		}
 
 		protected override void SetValue(long entityId, TScript script, TValue value, bool send)
@@ -25,7 +39,7 @@ namespace Rynchodon.Utility.Network
 			traceLog("entered");
 
 			TValue currentValue = _getter(script);
-			if (!EqualityComparer<TValue>.Default.Equals(value, currentValue))
+			if (!EqualityComparer.Equals(value, currentValue))
 			{
 				traceLog("value changed from " + currentValue + " to " + value);
 				_setter(script, value);
@@ -36,15 +50,5 @@ namespace Rynchodon.Utility.Network
 				traceLog("equals previous value");
 		}
 
-		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
-		{
-			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
-			{
-				TValue value = _getter(pair.Value);
-				if (EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
-					continue;
-				yield return new KeyValuePair<long, object>(pair.Key, value);
-			}
-		}
 	}
 }

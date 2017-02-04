@@ -6,6 +6,10 @@ namespace Rynchodon.Utility
 {
 	public class EqualityComparer_Vector3D : IEqualityComparer<Vector3D>, IEqualityComparer
 	{
+		public static readonly EqualityComparer_Vector3D Instance = new EqualityComparer_Vector3D();
+
+		private EqualityComparer_Vector3D() { }
+
 		public new bool Equals(object x, object y)
 		{
 			return Equals((Vector3D)x, (Vector3D)y);

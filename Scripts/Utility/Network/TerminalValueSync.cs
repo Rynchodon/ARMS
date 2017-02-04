@@ -3,7 +3,6 @@
 #endif
 
 using System;
-using System.Collections.Generic;
 using Sandbox.ModAPI.Interfaces.Terminal;
 
 namespace Rynchodon.Utility.Network
@@ -25,8 +24,9 @@ namespace Rynchodon.Utility.Network
 		/// <param name="getter">Function to get the value from a script.</param>
 		/// <param name="setter">Function to set a value in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalValueSync(IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true)
-			: base(control.Id, getter, setter, save)
+		/// <param name="defaultValue">Do not get value from server when it equals defaultValue. The value in the script will NOT be set to defaultValue by ValueSync.</param>
+		public TerminalValueSync(IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true, TValue defaultValue = default(TValue))
+			: base(control.Id, getter, setter, save, defaultValue)
 		{
 			control.Getter = GetValue;
 			control.Setter = SetValue;
@@ -34,6 +34,12 @@ namespace Rynchodon.Utility.Network
 			_control = (IMyTerminalControl)control;
 		}
 
+		/// <summary>
+		/// Synchronize and save a value associated with a terminal control. The value will be synchronized everytime it changes.
+		/// </summary>
+		/// <param name="control">GUI control for getting/setting the value.</param>
+		/// <param name="fieldOrPropertyName">The name of a field or property in the script to get/set the value from/to. If the field or propert has a default value, the DefaultValueAttribute should be used.</param>
+		/// <param name="save">Iff true, save the value to disk.</param>
 		public TerminalValueSync(IMyTerminalValueControl<TValue> control, string fieldOrPropertyName, bool save = true)
 			: base(control.Id, fieldOrPropertyName, save)
 		{
@@ -43,9 +49,14 @@ namespace Rynchodon.Utility.Network
 			_control = (IMyTerminalControl)control;
 		}
 
+		/// <summary>
+		/// Set value from saved string.
+		/// </summary>
+		/// <param name="entityId">Id of the script's entity</param>
+		/// <param name="value">The value as a string</param>
 		public override void SetValue(long blockId, string value)
 		{
-			SetValue(blockId, Convert.ChangeType(value, ValueType));
+			SetValue(blockId, (TValue)Convert.ChangeType(value, typeof(TValue)), false);
 		}
 
 		protected override void SetValue(long blockId, TScript script, TValue value, bool send)
@@ -53,7 +64,7 @@ namespace Rynchodon.Utility.Network
 			traceLog("entered");
 
 			TValue currentValue = _getter(script);
-			if (!EqualityComparer<TValue>.Default.Equals(value, currentValue))
+			if (!EqualityComparer.Equals(value, currentValue))
 			{
 				traceLog("value changed from " + currentValue + " to " + value);
 				_setter(script, value);
@@ -64,17 +75,6 @@ namespace Rynchodon.Utility.Network
 			}
 			else
 				traceLog("equals previous value");
-		}
-
-		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
-		{
-			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
-			{
-				TValue value = _getter(pair.Value);
-				if (EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
-					continue;
-				yield return new KeyValuePair<long, object>(pair.Key, value);
-			}
 		}
 
 		private void UpdateVisual()

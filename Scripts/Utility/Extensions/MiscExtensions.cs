@@ -360,7 +360,7 @@ namespace Rynchodon
 
 		public static bool EqualsIgnoreCapacity(this StringBuilder first, StringBuilder second)
 		{
-			if (object.ReferenceEquals(first, second))
+			if (ReferenceEquals(first, second))
 				return true;
 
 			if (first.Length != second.Length)

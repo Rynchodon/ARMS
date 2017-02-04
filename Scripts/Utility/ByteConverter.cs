@@ -10,6 +10,63 @@ namespace Rynchodon
 	public static class ByteConverter
 	{
 
+		private static class TypeConverter<T>
+		{
+			public delegate void AppendBytesDelegate(List<byte> bytes, T data);
+			public delegate T ReadBytesDelegate(byte[] bytes, ref int position);
+
+			public static AppendBytesDelegate AppendBytes;
+			public static ReadBytesDelegate ReadBytes;
+		}
+
+		static ByteConverter()
+		{
+			TypeConverter<bool>.AppendBytes = AppendBytes;
+			TypeConverter<bool>.ReadBytes = GetBool;
+
+			TypeConverter<byte>.AppendBytes = AppendBytes;
+			TypeConverter<byte>.ReadBytes = GetByte;
+
+			TypeConverter<short>.AppendBytes = AppendBytes;
+			TypeConverter<short>.ReadBytes = GetShort;
+
+			TypeConverter<ushort>.AppendBytes = AppendBytes;
+			TypeConverter<ushort>.ReadBytes = GetUshort;
+
+			TypeConverter<int>.AppendBytes = AppendBytes;
+			TypeConverter<int>.ReadBytes = GetInt;
+
+			TypeConverter<uint>.AppendBytes = AppendBytes;
+			TypeConverter<uint>.ReadBytes = GetUint;
+
+			TypeConverter<long>.AppendBytes = AppendBytes;
+			TypeConverter<long>.ReadBytes = GetLong;
+
+			TypeConverter<ulong>.AppendBytes = AppendBytes;
+			TypeConverter<ulong>.ReadBytes = GetUlong;
+
+			TypeConverter<float>.AppendBytes = AppendBytes;
+			TypeConverter<float>.ReadBytes = GetFloat;
+
+			TypeConverter<double>.AppendBytes = AppendBytes;
+			TypeConverter<double>.ReadBytes = GetDouble;
+
+			TypeConverter<string>.AppendBytes = AppendBytes;
+			TypeConverter<string>.ReadBytes = GetString;
+
+			TypeConverter<DateTime>.AppendBytes = AppendBytes;
+			TypeConverter<DateTime>.ReadBytes = GetDateTime;
+
+			TypeConverter<StringBuilder>.AppendBytes = AppendBytes;
+			TypeConverter<StringBuilder>.ReadBytes = GetStringBuilder;
+
+			TypeConverter<Vector3>.AppendBytes = AppendBytes;
+			TypeConverter<Vector3>.ReadBytes = GetVector3;
+
+			TypeConverter<Vector3D>.AppendBytes = AppendBytes;
+			TypeConverter<Vector3D>.ReadBytes = GetVector3D;
+		}
+
 		#region Union
 
 		[StructLayout(LayoutKind.Explicit)]
@@ -204,6 +261,11 @@ namespace Rynchodon
 				AppendBytes(bytes, c);
 		}
 
+		public static void AppendBytes(List<byte> bytes, DateTime dt)
+		{
+			AppendBytes(bytes, new byteUnion64() { l = dt.Ticks });
+		}
+
 		public static void AppendBytes(List<byte> bytes, StringBuilder s)
 		{
 			AppendBytes(bytes, s.Length);
@@ -223,6 +285,17 @@ namespace Rynchodon
 			AppendBytes(bytes, v.X);
 			AppendBytes(bytes, v.Y);
 			AppendBytes(bytes, v.Z);
+		}
+
+		public static void AppendBytes<T>(List<byte> bytes, T data)
+		{
+			if (TypeConverter<T>.AppendBytes != null)
+			{
+				TypeConverter<T>.AppendBytes(bytes, data);
+				return;
+			}
+
+			AppendBytes(bytes, (object)data);
 		}
 
 		public static void AppendBytes(List<byte> bytes, object data)
@@ -255,6 +328,9 @@ namespace Rynchodon
 					case TypeCode.UInt64:
 						AppendBytes(bytes, (ulong)data);
 						return;
+					case TypeCode.DateTime:
+						AppendBytes(bytes, ((DateTime)data).Ticks);
+						return;
 					case TypeCode.Single:
 						AppendBytes(bytes, (float)data);
 						return;
@@ -264,6 +340,8 @@ namespace Rynchodon
 					case TypeCode.String:
 						AppendBytes(bytes, (string)data);
 						return;
+					default:
+						throw new Exception("No conversion for: " + convertible.GetTypeCode() + ", " + data);
 				}
 
 			Type typeOfData = data.GetType();
@@ -450,6 +528,11 @@ namespace Rynchodon
 			return new string(result);
 		}
 
+		public static DateTime GetDateTime(byte[] bytes, ref int pos)
+		{
+			return new DateTime(GetByteUnion64(bytes, ref pos).l);
+		}
+
 		public static StringBuilder GetStringBuilder(byte[] bytes, ref int pos)
 		{
 			return new StringBuilder(GetString(bytes, ref pos));
@@ -463,6 +546,14 @@ namespace Rynchodon
 		public static Vector3D GetVector3D(byte[] bytes, ref int pos)
 		{
 			return new Vector3D(GetDouble(bytes, ref pos), GetDouble(bytes, ref pos), GetDouble(bytes, ref pos));
+		}
+
+		public static T GetOfType<T>(byte[] bytes, ref int position)
+		{
+			if (TypeConverter<T>.ReadBytes != null)
+				return TypeConverter<T>.ReadBytes(bytes, ref position);
+
+			return (T)GetOfType(bytes, ref position, typeof(T));
 		}
 
 		public static object GetOfType(byte[] bytes, ref int pos, Type typeOfObject)
@@ -493,6 +584,9 @@ namespace Rynchodon
 
 			if (typeOfObject == typeof(ulong))
 				return GetUlong(bytes, ref pos);
+
+			if (typeOfObject == typeof(DateTime))
+				return new DateTime(GetLong(bytes, ref pos));
 
 			if (typeOfObject == typeof(float))
 				return GetFloat(bytes, ref pos);

@@ -19,10 +19,22 @@ namespace Rynchodon.Utility.Network
 
 		public delegate void OnButtonPressed(TScript script);
 
+		private class OutgoingMessage
+		{
+			public readonly ulong? ClientId;
+			public readonly List<long> EntityId = new List<long>();
+
+			public OutgoingMessage(long EntityId, ulong? ClientId)
+			{
+				this.EntityId.Add(EntityId);
+				this.ClientId = ClientId;
+			}
+		}
+
 		private readonly OnButtonPressed _onPress;
 		private readonly bool _serverOnly;
 
-		protected override Type ValueType { get { return null; } }
+		private OutgoingMessage _outgoing;
 
 		/// <summary>
 		/// Run an event when a terminal control button is presseed.
@@ -58,14 +70,14 @@ namespace Rynchodon.Utility.Network
 					else
 					{
 						traceLog("sending to server");
-						SendValue(block.EntityId, null, MyAPIGateway.Multiplayer.ServerId);
+						SendValue(block.EntityId, MyAPIGateway.Multiplayer.ServerId);
 					}
 				}
 				else
 				{
 					traceLog("running here and sending to server");
 					_onPress(script);
-					SendValue(block.EntityId, null);
+					SendValue(block.EntityId);
 				}
 				return;
 			}
@@ -79,11 +91,11 @@ namespace Rynchodon.Utility.Network
 			throw new NotSupportedException();
 		}
 
-		protected override void SetValue(SyncMessage sync)
+		protected override void SetValue(byte[] message, int position)
 		{
-			for (int index = sync.entityId.Count - 1; index >= 0; --index)
+			while (position < message.Length)
 			{
-				long blockId = sync.entityId[index];
+				long blockId = ByteConverter.GetLong(message, ref position);
 
 				TScript script;
 				if (Registrar.TryGetValue(blockId, out script))
@@ -103,10 +115,79 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
-		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		#region SendValue
+
+		protected override void SendAll(ulong clientId) { }
+
+		private void SendValue(long entityId, ulong? clientId = null)
 		{
-			return new KeyValuePair<long, object>[0];
+			if (_outgoing == null)
+			{
+				_outgoing = new OutgoingMessage(entityId, clientId);
+				MyAPIGateway.Utilities.InvokeOnGameThread(SendOutgoing);
+			}
+			else if (_outgoing.ClientId == clientId)
+			{
+				_outgoing.EntityId.Add(entityId);
+			}
+			else
+			{
+				SendOutgoing();
+				_outgoing = new OutgoingMessage(entityId, clientId);
+			}
 		}
+
+		private void SendOutgoing()
+		{
+			const int maxSize = 4088;
+
+			List<byte> bytes; ResourcePool.Get(out bytes);
+			AddIdAndValue(bytes);
+
+			int initCount = bytes.Count;
+
+			if (initCount > maxSize)
+			{
+				Logger.AlwaysLog("Cannot send message, value is too large. byte count: " + initCount);
+				_outgoing = null;
+				return;
+			}
+
+			for (int entityIdIndex = _outgoing.EntityId.Count - 1; entityIdIndex >= 0; --entityIdIndex)
+			{
+				ByteConverter.AppendBytes(bytes, _outgoing.EntityId[entityIdIndex]);
+				if (bytes.Count > maxSize)
+				{
+					Logger.TraceLog("Over max size, splitting message");
+					SendOutgoing(bytes);
+					AddIdAndValue(bytes);
+				}
+			}
+
+			SendOutgoing(bytes);
+			_outgoing = null;
+			bytes.Clear();
+			ResourcePool.Return(bytes);
+		}
+
+		private void AddIdAndValue(List<byte> bytes)
+		{
+			bytes.Clear();
+			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.Sync);
+			ByteConverter.AppendBytes(bytes, _id);
+		}
+
+		private void SendOutgoing(List<byte> bytes)
+		{
+			Logger.TraceLog("sending to: " + _outgoing.ClientId + ", entities: " + string.Join(",", _outgoing.EntityId));
+			bool result = _outgoing.ClientId.HasValue
+			? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
+			: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
+			if (!result)
+				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
+		}
+
+		#endregion
 
 	}
 

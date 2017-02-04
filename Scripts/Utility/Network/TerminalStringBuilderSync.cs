@@ -18,10 +18,12 @@ namespace Rynchodon.Utility.Network
 	public sealed class TerminalStringBuilderSync<TScript> : AValueSync<StringBuilder, TScript>
 	{
 
-		private static HashSet<long> _updatedBlocks;
-		private static ulong _waitUntil;
-
 		private readonly IMyTerminalControl _control;
+
+		private HashSet<long> _updatedBlocks;
+		private ulong _waitUntil;
+
+		protected override IEqualityComparer<StringBuilder> EqualityComparer { get { return EqualityComparer_StringBuilder.Instance; } }
 
 		/// <summary>
 		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
@@ -67,9 +69,14 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		/// <summary>
+		/// Set value from saved string.
+		/// </summary>
+		/// <param name="entityId">Id of the script's entity</param>
+		/// <param name="value">The value as a string</param>
 		public override void SetValue(long blockId, string value)
 		{
-			SetValue(blockId, new StringBuilder(value));
+			SetValue(blockId, new StringBuilder(value), false);
 		}
 
 		protected override void SetValue(long blockId, TScript script, StringBuilder value, bool send)
@@ -84,15 +91,9 @@ namespace Rynchodon.Utility.Network
 			UpdateVisual();
 		}
 
-		protected override IEnumerable<KeyValuePair<long, object>> AllValues()
+		protected override bool IsDefault(StringBuilder value)
 		{
-			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
-			{
-				StringBuilder value = _getter(pair.Value);
-				if (value == null || value.Length == 0)
-					continue;
-				yield return new KeyValuePair<long, object>(pair.Key, value);
-			}
+			return value.IsNullOrWhitespace();
 		}
 
 		private void EnqueueSend(long blockId)
