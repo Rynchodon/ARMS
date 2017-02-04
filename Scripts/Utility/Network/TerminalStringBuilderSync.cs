@@ -15,11 +15,13 @@ namespace Rynchodon.Utility.Network
 	/// Synchronize and save a StringBuilder associated with a terminal control. The StringBuilder is synchronized from time to time.
 	/// </summary>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalStringBuilderSync<TScript> : TerminalSync<StringBuilder, TScript>
+	public sealed class TerminalStringBuilderSync<TScript> : AValueSync<StringBuilder, TScript>
 	{
 
 		private static HashSet<long> _updatedBlocks;
 		private static ulong _waitUntil;
+
+		private readonly IMyTerminalControl _control;
 
 		/// <summary>
 		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
@@ -29,13 +31,13 @@ namespace Rynchodon.Utility.Network
 		/// <param name="setter">Function to set a StringBuilder in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
 		public TerminalStringBuilderSync(IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
-			: base(control, getter, setter, save)
+			: base(((IMyTerminalControl)control).Id, getter, setter, save)
 		{
-			_logger.traceLog("entered");
-
 			// MyTerminalControlTextbox has different Getter/Setter
 			control.Getter = GetValue;
 			control.Setter = SetValue;
+
+			_control = control;
 		}
 
 		/// <summary>
@@ -45,20 +47,20 @@ namespace Rynchodon.Utility.Network
 		/// <param name="updateMethod">Method to populate the StringBuilder</param>
 		public void Update(IMyTerminalBlock block, Action<StringBuilder> updateMethod)
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
 			StringBuilder temp = _stringBuilderPool.Get(), current = GetValue(block);
 
 			updateMethod.Invoke(temp);
 			if (temp.EqualsIgnoreCapacity(current))
 			{
-				_logger.traceLog("equals previous value");
+				traceLog("equals previous value");
 				temp.Clear();
 				_stringBuilderPool.Return(temp);
 			}
 			else
 			{
-				_logger.traceLog("value changed from " + current + " to " + temp);
+				traceLog("value changed from " + current + " to " + temp);
 				SetValue(block, temp);
 				current.Clear();
 				_stringBuilderPool.Return(current);
@@ -72,9 +74,9 @@ namespace Rynchodon.Utility.Network
 
 		protected override void SetValue(long blockId, TScript script, StringBuilder value, bool send)
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
-			_logger.traceLog("set value to " + value);
+			traceLog("set value to " + value);
 			_setter(script, value);
 			if (send)
 				EnqueueSend(blockId);
@@ -95,7 +97,7 @@ namespace Rynchodon.Utility.Network
 
 		private void EnqueueSend(long blockId)
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
 			if (_updatedBlocks == null)
 			{
@@ -109,7 +111,7 @@ namespace Rynchodon.Utility.Network
 
 		private void Update10()
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
 			if (_waitUntil > Globals.UpdateCount)
 				return;
@@ -119,6 +121,11 @@ namespace Rynchodon.Utility.Network
 
 			UpdateManager.Unregister(10, Update10);
 			_updatedBlocks = null;
+		}
+
+		private void UpdateVisual()
+		{
+			_control.UpdateVisual();
 		}
 
 	}

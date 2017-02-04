@@ -10,6 +10,7 @@ using VRage.ModAPI;
 namespace Rynchodon.Utility.Network
 {
 
+	[Obsolete]
 	public abstract class EntityValue
 	{
 
@@ -199,6 +200,7 @@ namespace Rynchodon.Utility.Network
 
 	}
 
+	[Obsolete]
 	public class EntityValue<T> : EntityValue
 	{
 
@@ -366,6 +368,7 @@ namespace Rynchodon.Utility.Network
 
 	}
 
+	[Obsolete]
 	public class EntityStringBuilder : EntityValue<StringBuilder>
 	{
 

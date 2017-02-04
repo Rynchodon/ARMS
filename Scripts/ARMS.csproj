@@ -299,6 +299,7 @@
     <Compile Include="Utility\LineSegment.cs" />
     <Compile Include="Utility\LineSegmentD.cs" />
     <Compile Include="Utility\Logger.cs" />
+    <Compile Include="Utility\LogWise.cs" />
     <Compile Include="Utility\MainLock.cs" />
     <Compile Include="Utility\MathExtension.cs" />
     <Compile Include="Utility\MotorTurret.cs" />
@@ -309,11 +310,13 @@
     <None Include="Utility\Network\TestRemoteTask.cs" />
     <Compile Include="Utility\Network\TerminalButtonSync.cs" />
     <Compile Include="Utility\Network\TerminalStringBuilderSync.cs" />
-    <Compile Include="Utility\Network\TerminalSync.cs" />
+    <Compile Include="Utility\Network\ASync.cs" />
     <Compile Include="Utility\Network\TerminalSyncMessage.cs" />
-    <Compile Include="Utility\Network\TerminalSync_generic.cs" />
+    <None Include="Utility\Network\ATerminalValueSync.cs" />
     <Compile Include="Utility\Network\TerminalValueSync.cs" />
     <Compile Include="Utility\Network\UpgradeEntityValue.cs" />
+    <Compile Include="Utility\Network\AValueSync.cs" />
+    <Compile Include="Utility\Network\ValueSync.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

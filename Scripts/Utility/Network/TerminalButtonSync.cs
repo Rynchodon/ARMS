@@ -14,7 +14,7 @@ namespace Rynchodon.Utility.Network
 	/// For running an event when a terminal control button is pressed.
 	/// </summary>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalButtonSync<TScript> : TerminalSync
+	public sealed class TerminalButtonSync<TScript> : ASync
 	{
 
 		public delegate void OnButtonPressed(TScript script);
@@ -33,7 +33,7 @@ namespace Rynchodon.Utility.Network
 		public TerminalButtonSync(IMyTerminalControlButton control, OnButtonPressed onPress, bool serverOnly = true)
 			: base(typeof(TScript), control.Id, false)
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
 			_onPress = onPress;
 			_serverOnly = serverOnly;
@@ -43,7 +43,7 @@ namespace Rynchodon.Utility.Network
 
 		public void Pressed(IMyTerminalBlock block)
 		{
-			_logger.traceLog("entered");
+			traceLog("entered");
 
 			TScript script;
 			if (Registrar.TryGetValue(block.EntityId, out script))
@@ -52,18 +52,18 @@ namespace Rynchodon.Utility.Network
 				{
 					if (MyAPIGateway.Multiplayer.IsServer)
 					{
-						_logger.traceLog("running here");
+						traceLog("running here");
 						_onPress(script);
 					}
 					else
 					{
-						_logger.traceLog("sending to server");
+						traceLog("sending to server");
 						SendValue(block.EntityId, null, MyAPIGateway.Multiplayer.ServerId);
 					}
 				}
 				else
 				{
-					_logger.traceLog("running here and sending to server");
+					traceLog("running here and sending to server");
 					_onPress(script);
 					SendValue(block.EntityId, null);
 				}
@@ -81,9 +81,9 @@ namespace Rynchodon.Utility.Network
 
 		protected override void SetValue(SyncMessage sync)
 		{
-			for (int index = sync.blockId.Count - 1; index >= 0; --index)
+			for (int index = sync.entityId.Count - 1; index >= 0; --index)
 			{
-				long blockId = sync.blockId[index];
+				long blockId = sync.entityId[index];
 
 				TScript script;
 				if (Registrar.TryGetValue(blockId, out script))
@@ -92,7 +92,7 @@ namespace Rynchodon.Utility.Network
 						Logger.AlwaysLog("Got button pressed event intended for the server", Logger.severity.WARNING, _id.ToString());
 					else
 					{
-						_logger.traceLog("running here");
+						traceLog("running here");
 						_onPress(script);
 					}
 					return;

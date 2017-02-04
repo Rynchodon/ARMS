@@ -38,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 			ThisShip = 128,
 			OnOff = 16,
 			IntegrityColours = 32,
-			ShowOffset = 64
+			//ShowOffset = 64
 		}
 
 		private class StaticVariables
@@ -55,7 +55,7 @@ namespace Rynchodon.AntennaRelay
 			public readonly List<IMyTerminalControl> TermControls_Colours = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Offset = new List<IMyTerminalControl>();
 
-			public bool MouseControls;
+			public bool MouseControls, ShowOffset;
 			public Color
 				value_IntegrityFull = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityFull)),
 				value_IntegrityFunctional = new Color(UserSettings.GetSetting(UserSettings.IntSettingName.IntegrityFunctional)),
@@ -79,27 +79,27 @@ namespace Rynchodon.AntennaRelay
 				AddCheckbox("HD_Enemy", "Enemy Ships", "Holographically display enemy ships", Option.Enemy);
 
 				MyTerminalControlSlider<MySpaceProjector> slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RangeDetection", MyStringId.GetOrCompute("Detection Range"), MyStringId.GetOrCompute("Maximum distance of detected entity"));
-				TerminalValueSync<float, Projector> tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_rangeDetection, (proj, value) => proj.m_rangeDetection = value);
+				TerminalValueSync<float, Projector> tvsRange = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_rangeDetection, (proj, value) => proj.m_rangeDetection = value);
 				slider.DefaultValue = DefaultRangeDetection;
 				slider.Normalizer = (block, value) => Normalizer(MinRangeDetection, MaxRangeDetection, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRangeDetection, MaxRangeDetection, block, value);
-				slider.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
+				slider.Writer = (block, sb) => WriterMetres(tvsRange.GetValue(block), sb);
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RadiusHolo", MyStringId.GetOrCompute("Hologram Radius"), MyStringId.GetOrCompute("Maximum radius of hologram"));
-				tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_radiusHolo, (proj, value) => proj.m_radiusHolo = value);
+				TerminalValueSync<float, Projector>  tvsRadius = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_radiusHolo, (proj, value) => proj.m_radiusHolo = value);
 				slider.DefaultValue = DefaultRadiusHolo;
 				slider.Normalizer = (block, value) => Normalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
-				slider.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
+				slider.Writer = (block, sb) => WriterMetres(tvsRadius.GetValue(block), sb);
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
-				tvs = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_sizeDistScale, (proj, value) => proj.m_sizeDistScale = value);
+				TerminalValueSync<float, Projector> tvsScale = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_sizeDistScale, (proj, value) => proj.m_sizeDistScale = value);
 				slider.DefaultValue = DefaultSizeScale;
 				slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
-				slider.Writer = (block, sb) => sb.Append(tvs.GetValue(block));
+				slider.Writer = (block, sb) => sb.Append(tvsScale.GetValue(block));
 				TermControls.Add(slider);
 
 				TermControls.Add(new MyTerminalControlSeparator<MySpaceProjector>());
@@ -117,7 +117,13 @@ namespace Rynchodon.AntennaRelay
 				valueControlBool.Setter = (block, value) => ShowBoundary = value;
 				TermControls.Add(control);
 
-				AddCheckbox("HD_ShowOffset", "Show Offset Controls", "Display controls that can be used to adjust the position of the hologram", Option.ShowOffset);
+				control = new MyTerminalControlCheckbox<MySpaceProjector>("HD_ShowOffset", MyStringId.GetOrCompute("Show Offset Controls"), MyStringId.GetOrCompute("Display controls that can be used to adjust the position of the hologram. User-specific setting."));
+				control.Getter = block => ShowOffset;
+				control.Setter = (block, value) => {
+					ShowOffset = value;
+					IMyTerminalBlockExtensions.SwitchTerminalTo(null);
+				};
+				TermControls.Add(control);
 
 				AddOffsetSlider("HD_OffsetX", "Right/Left Offset", "+ve moves hologram to the right, -ve moves hologram to the left", 0);
 				AddOffsetSlider("HD_OffsetY", "Up/Down Offset", "+ve moves hologram up, -ve moves hologram down", 1);
@@ -154,6 +160,13 @@ namespace Rynchodon.AntennaRelay
 				colour.Getter = (block) => IntegrityZero;
 				colour.Setter = (block, value) => IntegrityZero = value;
 				TermControls_Colours.Add(colour);
+
+				new ValueSync<long, Projector>("CentreEntity",
+					 (script) => script.m_centreEntityId, 
+					(script, value) => {
+					script.m_centreEntityId = value;
+					script.m_centreEntityId_AfterValueChanged();
+				});
 			}
 
 			#region Terminal Controls
@@ -165,11 +178,12 @@ namespace Rynchodon.AntennaRelay
 				new TerminalValueSync<bool, Projector>(control,
 					(proj) => (proj.m_options & opt) == opt,
 					(proj, value) => {
+						logger.debugLog("set option: " + opt + " to " + value + ", current options: " + proj.m_options);
 						if (value)
 							proj.m_options |= opt;
 						else
 							proj.m_options &= ~opt;
-						if (opt == Option.OnOff || opt == Option.ShowOffset || opt == Option.IntegrityColours)
+						if (opt == Option.OnOff || opt == Option.IntegrityColours)
 							proj.m_block.SwitchTerminalTo();
 					});
 
@@ -185,7 +199,7 @@ namespace Rynchodon.AntennaRelay
 				control.DefaultValue = dim == 1 ? 2.5f : 0f;
 				control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);
 				control.Denormalizer = (block, value) => Denormalizer(MinOffset, MaxOffset, block, value);
-				control.Writer = (block, sb) => WriterMetres(tvs.GetValue, block, sb);
+				control.Writer = (block, sb) => WriterMetres(tvs.GetValue(block), sb);
 				TermControls_Offset.Add(control);
 			}
 
@@ -213,7 +227,7 @@ namespace Rynchodon.AntennaRelay
 					// remove all controls after ShowOnHUD and before separator
 					controls.RemoveRange(indexSOH + 1, controls.Count - indexSOH - 3);
 
-					bool showOffset = instance.GetOption(Option.ShowOffset);
+					bool showOffset = ShowOffset;
 
 					for (int index = 2; index < TermControls.Count; index++)
 					{
@@ -242,9 +256,9 @@ namespace Rynchodon.AntennaRelay
 				return min + value * (max - min);
 			}
 
-			private void WriterMetres(Func<IMyTerminalBlock, float> Getter, IMyTerminalBlock block, StringBuilder stringBuilder)
+			private void WriterMetres(float value, StringBuilder stringBuilder)
 			{
-				stringBuilder.Append(PrettySI.makePretty(Getter(block)));
+				stringBuilder.Append(PrettySI.makePretty(value));
 				stringBuilder.Append("m");
 			}
 

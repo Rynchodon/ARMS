@@ -11,6 +11,7 @@ using Sandbox.ModAPI;
 using SpaceEngineers.Game.ModAPI;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace Rynchodon.Utility.Network
 {
@@ -43,33 +44,65 @@ namespace Rynchodon.Utility.Network
 
 		private class SimpleMapping: Mapping
 		{
-			public readonly TerminalSync.Id TerminalSyncId;
+			public readonly ASync.Id TerminalSyncId;
 
-			public SimpleMapping(Type BlockType, byte EntityValueId, TerminalSync.Id TerminalSyncId)
+			public SimpleMapping(Type BlockType, byte EntityValueId, ASync.Id TerminalSyncId)
 				: base(BlockType, EntityValueId)
 			{
 				this.TerminalSyncId = TerminalSyncId;
 			}
 		}
 
-		private class EnumMapping : Mapping
+		private abstract class ComplexMapping : Mapping
 		{
-			public readonly TerminalSync.Id[] TerminalSyncId;
+			public readonly ASync.Id[] TerminalSyncId;
 
-			public EnumMapping(Type BlockType, byte EntityValueId, TerminalSync.Id[] TerminalSyncId)
-				: base(BlockType, EntityValueId)
+			public ComplexMapping(Type BlockType, byte EntityValueId, ASync.Id[] TerminalSyncId) : base(BlockType, EntityValueId)
 			{
 				this.TerminalSyncId = TerminalSyncId;
 			}
 
-			public IEnumerable<KeyValuePair<TerminalSync.Id, bool>> Enumerate(int EnumValue)
+			public abstract IEnumerable<KeyValuePair<ASync.Id, string>> Enumerate(string value);
+		}
+
+		private sealed class EnumMapping : ComplexMapping
+		{
+			public EnumMapping(Type BlockType, byte EntityValueId, ASync.Id[] TerminalSyncId) : base(BlockType, EntityValueId, TerminalSyncId) { }
+
+			public override IEnumerable<KeyValuePair<ASync.Id, string>> Enumerate(string value)
 			{
+				int EnumValue;
+				if (!int.TryParse(value, out EnumValue))
+				{
+					Logger.AlwaysLog("Cannot convert \"" + value + "\" to int", Logger.severity.ERROR);
+					yield break;
+				}
+
 				int flag = 1;
 				for (int index = 0; index < TerminalSyncId.Length; ++index)
 				{
-					yield return new KeyValuePair<TerminalSync.Id, bool>(TerminalSyncId[index], (EnumValue & flag) != 0);
+					yield return new KeyValuePair<ASync.Id, string>(TerminalSyncId[index], ((EnumValue & flag) != 0).ToString());
 					flag *= 2;
 				}
+			}
+		}
+
+		private sealed class Vector3Mapping : ComplexMapping
+		{
+			public Vector3Mapping(Type BlockType, byte EntityValueId, ASync.Id[] TerminalSyncId) : base(BlockType, EntityValueId, TerminalSyncId) { }
+
+			public override IEnumerable<KeyValuePair<ASync.Id, string>> Enumerate(string value)
+			{
+				Vector3 vector;
+				try { vector = MyAPIGateway.Utilities.SerializeFromXML<Vector3>(value); }
+				catch (Exception)
+				{
+					Logger.AlwaysLog("Cannot convert \"" + value + "\" to Vector3", Logger.severity.ERROR);
+					yield break;
+				}
+
+				for (int dim = 0; dim < 3; ++dim)
+					yield return new KeyValuePair<ASync.Id, string>(TerminalSyncId[dim], vector.GetDim(dim).ToString());
 			}
 		}
 
@@ -81,15 +114,27 @@ namespace Rynchodon.Utility.Network
 			_data = new List<Builder_EntityValues>(data);
 
 			_maps = new List<Mapping>();
-			Type type = typeof(IMyProgrammableBlock);
-			_maps.Add(new SimpleMapping(type, 0, TerminalSync.Id.ProgrammableBlock_HandleDetected));
-			_maps.Add(new SimpleMapping(type, 1, TerminalSync.Id.ProgrammableBlock_BlockList));
-			_maps.Add(new SimpleMapping(typeof(IMySolarPanel), 0, TerminalSync.Id.Solar_FaceSun));
-			_maps.Add(new SimpleMapping(typeof(IMyOxygenFarm), 0, TerminalSync.Id.Solar_FaceSun));
 
-			_maps.Add(new EnumMapping(typeof(IMyTextPanel), 0, new TerminalSync.Id[] { TerminalSync.Id.TextPanel_DisplayDetected, TerminalSync.Id.TextPanel_DisplayGPS, TerminalSync.Id.TextPanel_DisplayEntityId, TerminalSync.Id.TextPanel_DisplayAutopilotStatus }));
+			Type type = typeof(IMyShipController);
+			_maps.Add(new SimpleMapping(type, 0, ASync.Id.AutopilotTerminal_ArmsAp_OnOff));
+			_maps.Add(new SimpleMapping(type, 1, ASync.Id.AutopilotTerminal_ArmsAp_Commands));
 
-			_maps.Add(new EnumMapping(typeof(IMyProjector), 0, new TerminalSync.Id[] { TerminalSync.Id.Projector_HD_Enemy, TerminalSync.Id.Projector_HD_Neutral, TerminalSync.Id.Projector_HD_Faction, TerminalSync.Id.Projector_HD_Owner, TerminalSync.Id.Projector_HoloDisplay, TerminalSync.Id.Projector_HD_IntegrityColour, TerminalSync.Id.None, TerminalSync.Id.Projector_HD_This_Ship }));
+			type = typeof(IMyProgrammableBlock);
+			_maps.Add(new SimpleMapping(type, 0, ASync.Id.ProgrammableBlock_HandleDetected));
+			_maps.Add(new SimpleMapping(type, 1, ASync.Id.ProgrammableBlock_BlockCounts));
+
+			type = typeof(IMyProjector);
+			_maps.Add(new EnumMapping(type, 0, new ASync.Id[] { ASync.Id.Projector_HD_Enemy, ASync.Id.Projector_HD_Neutral, ASync.Id.Projector_HD_Faction, ASync.Id.Projector_HD_Owner, ASync.Id.Projector_HoloDisplay, ASync.Id.Projector_HD_IntegrityColour, ASync.Id.None, ASync.Id.Projector_HD_This_Ship }));
+			_maps.Add(new SimpleMapping(type, 1, ASync.Id.Projector_HD_RangeDetection));
+			_maps.Add(new SimpleMapping(type, 2, ASync.Id.Projector_HD_RadiusHolo));
+			_maps.Add(new SimpleMapping(type, 3, ASync.Id.Projector_HD_EntitySizeScale));
+			_maps.Add(new SimpleMapping(type, 4, ASync.Id.Projector_CentreEntity));
+			_maps.Add(new Vector3Mapping(type, 5, new ASync.Id[] { ASync.Id.Projector_HD_OffsetX, ASync.Id.Projector_HD_OffsetY, ASync.Id.Projector_HD_OffsetZ }));
+
+			_maps.Add(new SimpleMapping(typeof(IMySolarPanel), 0, ASync.Id.Solar_FaceSun));
+			_maps.Add(new SimpleMapping(typeof(IMyOxygenFarm), 0, ASync.Id.Solar_FaceSun));
+
+			_maps.Add(new EnumMapping(typeof(IMyTextPanel), 0, new ASync.Id[] { ASync.Id.TextPanel_DisplayDetected, ASync.Id.TextPanel_DisplayGPS, ASync.Id.TextPanel_DisplayEntityId, ASync.Id.TextPanel_DisplayAutopilotStatus }));
 
 			MyEntities.OnEntityAdd += MyEntities_OnEntityAdd;
 			foreach (MyEntity entity in MyEntities.GetEntities())
@@ -137,22 +182,19 @@ namespace Rynchodon.Utility.Network
 				if (mapping == null)
 				{
 					// if the value is obsolete, this is fine
-					Logger.AlwaysLog("No mapping for " + block.GetType().Name + " and " + entityValues.valueIds[index], Logger.severity.INFO);
+					Logger.AlwaysLog("No mapping for " + block.GetType().Name + " and " + entityValues.valueIds[index], Logger.severity.WARNING);
 					continue;
 				}
+
+				string value = entityValues.values[index];
+
 				if (mapping is SimpleMapping)
-					ApplyMap(block, entityValues.values[index], ((SimpleMapping)mapping).TerminalSyncId);
+					ApplyMap(block, ((SimpleMapping)mapping).TerminalSyncId, value);
 				else
 				{
-					int enumValue;
-					if (!int.TryParse(entityValues.values[index], out enumValue))
-					{
-						Logger.AlwaysLog("Cannot convert: " + entityValues.values[index] + " to int");
-						continue;
-					}
-					foreach (KeyValuePair<TerminalSync.Id, bool> pair in ((EnumMapping)mapping).Enumerate(enumValue))
-						if (pair.Key != TerminalSync.Id.None)
-							ApplyMap(block, pair.Value.ToString(), pair.Key);
+					foreach (KeyValuePair<ASync.Id, string> pair in ((ComplexMapping)mapping).Enumerate(value))
+						if (pair.Key != ASync.Id.None)
+							ApplyMap(block, pair.Key, pair.Value);
 				}
 			}
 
@@ -179,10 +221,10 @@ namespace Rynchodon.Utility.Network
 			return null;
 		}
 
-		private static void ApplyMap(IMyCubeBlock block, string value, TerminalSync.Id id)
+		private static void ApplyMap(IMyCubeBlock block, ASync.Id id, string value)
 		{
-			TerminalSync sync;
-			if (!TerminalSync.TryGet(id, out sync))
+			ASync sync;
+			if (!ASync.TryGet(id, out sync))
 				Logger.AlwaysLog("Failed to get TerminalSync for " + id, Logger.severity.ERROR);
 			else
 			{

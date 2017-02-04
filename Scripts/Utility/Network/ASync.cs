@@ -13,18 +13,44 @@ using VRage.Collections;
 namespace Rynchodon.Utility.Network
 {
 	/// <summary>
-	/// Objects of this type synchronize and save terminal controls.
+	/// Objects of this type synchronize and save events or values.
 	/// </summary>
 	/// TODO: saving
 	/// TODO: default value
-	public abstract partial class TerminalSync
+	public abstract class ASync : LogWise
 	{
 
 		public enum Id : byte
 		{
 			None,
+
+			AutopilotTerminal_ArmsAp_OnOff,
+			AutopilotTerminal_ArmsAp_Commands,
+			AutopilotTerminal_ArmsAp_Status,
+
+			AutopilotTerminal_ArmsAp_HasControl,
+			AutopilotTerminal_ArmsAp_RotationBlocked,
+			AutopilotTerminal_ArmsAp_EnemyFinderIssue,
+			AutopilotTerminal_ArmsAp_HasNavigatorMover,
+			AutopilotTerminal_ArmsAp_HasNavigatorRotator,
+
+			AutopilotTerminal_ArmsAp_PathStatus,
+			AutopilotTerminal_ArmsAp_ReasonCannotTarget,
+			AutopilotTerminal_ArmsAp_Complaint,
+			AutopilotTerminal_ArmsAp_JumpComplaint,
+			AutopilotTerminal_ArmsAp_WaitUntil,
+			AutopilotTerminal_ArmsAp_BlockedBy,
+			AutopilotTerminal_ArmsAp_LinearDistance,
+			AutopilotTerminal_ArmsAp_AngularDistance,
+			AutopilotTerminal_ArmsAp_EnemyFinderBestTarget,
+			AutopilotTerminal_ArmsAp_WelderUnfinishedBlocks,
+			AutopilotTerminal_ArmsAp_NavigatorMover,
+			AutopilotTerminal_ArmsAp_NavigatorRotator,
+			AutopilotTerminal_ArmsAp_NavigatorMoverInfo,
+			AutopilotTerminal_ArmsAp_NavigatorRotatorInfo,
+
 			ProgrammableBlock_HandleDetected,
-			ProgrammableBlock_BlockList,
+			ProgrammableBlock_BlockCounts,
 
 			Projector_HoloDisplay,
 			Projector_HD_This_Ship,
@@ -39,6 +65,7 @@ namespace Rynchodon.Utility.Network
 			Projector_HD_OffsetY,
 			Projector_HD_OffsetZ,
 			Projector_HD_IntegrityColour,
+			Projector_CentreEntity,
 
 			Solar_FaceSun,
 
@@ -51,22 +78,22 @@ namespace Rynchodon.Utility.Network
 		public struct SyncMessage
 		{
 			public ulong? recipient;
-			public TerminalSync.Id id;
+			public ASync.Id id;
 			public object value;
-			public List<long> blockId;
+			public List<long> entityId;
 
-			public SyncMessage(ulong? recipient, TerminalSync.Id id, object value, long blockId)
+			public SyncMessage(ulong? recipient, ASync.Id id, object value, long blockId)
 			{
 				this.recipient = recipient;
 				this.id = id;
 				this.value = value;
-				this.blockId = new List<long>();
-				this.blockId.Add(blockId);
+				this.entityId = new List<long>();
+				this.entityId.Add(blockId);
 			}
 
 			public override string ToString()
 			{
-				return "recipient: " + recipient + ", id: " + id + ", value: " + value + ", blockId: " + string.Join(",", blockId);
+				return "recipient: " + recipient + ", id: " + id + ", value: " + value + ", blockId: " + string.Join(",", entityId);
 			}
 		}
 
@@ -76,12 +103,12 @@ namespace Rynchodon.Utility.Network
 
 		private static bool _hasValues;
 		private static List<SyncMessage> _outgoingMessages;
-		private static Dictionary<Id, TerminalSync> _syncs;
+		private static Dictionary<Id, ASync> _syncs;
 
-		static TerminalSync()
+		static ASync()
 		{
-			MessageHandler.AddHandler(MessageHandler.SubMod.TerminalSync, HandleValue);
-			MessageHandler.AddHandler(MessageHandler.SubMod.TerminalSyncRequest, HandleRequest);
+			MessageHandler.AddHandler(MessageHandler.SubMod.Sync, HandleValue);
+			MessageHandler.AddHandler(MessageHandler.SubMod.SyncRequest, HandleRequest);
 		}
 
 		[OnWorldLoad]
@@ -89,7 +116,7 @@ namespace Rynchodon.Utility.Network
 		{
 			_hasValues = MyAPIGateway.Multiplayer.IsServer;
 			_outgoingMessages = new List<SyncMessage>();
-			_syncs = new Dictionary<Id, TerminalSync>();
+			_syncs = new Dictionary<Id, ASync>();
 
 			UpdateManager.Register(1, SendOutgoingMessages);
 		}
@@ -102,7 +129,7 @@ namespace Rynchodon.Utility.Network
 			_syncs = null;
 		}
 
-		public static bool TryGet(Id id, out TerminalSync sync)
+		public static bool TryGet(Id id, out ASync sync)
 		{
 			return _syncs.TryGetValue(id, out sync);
 		}
@@ -118,10 +145,10 @@ namespace Rynchodon.Utility.Network
 				sync.recipient = null;
 				sync.id = (Id)ByteConverter.GetOfType(message, ref position, typeof(Id));
 				Logger.TraceLog("id: " + sync.id);
-				TerminalSync instance;
+				ASync instance;
 				if (!_syncs.TryGetValue(sync.id, out instance))
 				{
-					Logger.AlwaysLog("Missing " + typeof(TerminalSync).Name + " for " + sync.id, Logger.severity.ERROR);
+					Logger.AlwaysLog("Missing " + typeof(ASync).Name + " for " + sync.id, Logger.severity.ERROR);
 					return;
 				}
 				Logger.TraceLog("got instance: " + instance.GetType().Name);
@@ -131,11 +158,11 @@ namespace Rynchodon.Utility.Network
 				sync.value = type == null ? null : ByteConverter.GetOfType(message, ref position, type);
 				Logger.TraceLog("value: " + sync.value);
 
-				sync.blockId = new List<long>((message.Length - position) / 8);
+				sync.entityId = new List<long>((message.Length - position) / 8);
 				while (position < message.Length)
-					sync.blockId.Add(ByteConverter.GetLong(message, ref position));
+					sync.entityId.Add(ByteConverter.GetLong(message, ref position));
 
-				Logger.TraceLog("block id count: " + sync.blockId.Count);
+				Logger.TraceLog("block id count: " + sync.entityId.Count);
 
 				instance.SetValue(sync);
 			}
@@ -163,7 +190,7 @@ namespace Rynchodon.Utility.Network
 					return;
 
 				Logger.TraceLog("got a request for values from " + recipient);
-				foreach (KeyValuePair<Id, TerminalSync> termSync in _syncs)
+				foreach (KeyValuePair<Id, ASync> termSync in _syncs)
 				{
 					Logger.TraceLog("adding values for: " + termSync.Key);
 					foreach (KeyValuePair<long, object> valuePair in termSync.Value.AllValues())
@@ -171,6 +198,7 @@ namespace Rynchodon.Utility.Network
 						Logger.TraceLog("value from: " + valuePair.Key + " is " + valuePair.Value);
 						_outgoingMessages.AddSyncMessage(recipient, termSync.Key, valuePair.Value, valuePair.Key);
 					}
+					SendOutgoingMessages();
 				}
 			}
 			catch (Exception ex)
@@ -183,16 +211,16 @@ namespace Rynchodon.Utility.Network
 		private static void AddIdAndValue(List<byte> bytes, SyncMessage sync)
 		{
 			bytes.Clear();
-			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.TerminalSync);
+			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.Sync);
 			ByteConverter.AppendBytes(bytes, sync.id);
 			ByteConverter.AppendBytes(bytes, sync.value);
 		}
 
-		private static Id GetId(Type scriptType, string terminalControlId)
+		private static Id GetId(Type scriptType, string valueId)
 		{
 			Id id;
-			if (!Enum.TryParse(scriptType.Name + '_' + terminalControlId, out id))
-				throw new Exception("No id for " + scriptType.Name + " and " + terminalControlId);
+			if (!Enum.TryParse(scriptType.Name + '_' + valueId, out id))
+				throw new Exception("No id for " + scriptType.Name + " and " + valueId);
 			return id;
 		}
 
@@ -204,7 +232,7 @@ namespace Rynchodon.Utility.Network
 			List<byte> bytes; ResourcePool.Get(out bytes);
 			bytes.Clear();
 
-			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.TerminalSyncRequest);
+			ByteConverter.AppendBytes(bytes, MessageHandler.SubMod.SyncRequest);
 			ByteConverter.AppendBytes(bytes, MyAPIGateway.Multiplayer.MyId);
 
 			Logger.DebugLog("requesting values from server");
@@ -235,9 +263,9 @@ namespace Rynchodon.Utility.Network
 					continue;
 				}
 
-				for (int blockIdIndex = sync.blockId.Count - 1; blockIdIndex >= 0; --blockIdIndex)
+				for (int blockIdIndex = sync.entityId.Count - 1; blockIdIndex >= 0; --blockIdIndex)
 				{
-					ByteConverter.AppendBytes(bytes, sync.blockId[blockIdIndex]);
+					ByteConverter.AppendBytes(bytes, sync.entityId[blockIdIndex]);
 					if (bytes.Count > maxSize)
 					{
 						Logger.TraceLog("Over max size, sending message");
@@ -270,13 +298,11 @@ namespace Rynchodon.Utility.Network
 
 		protected readonly Id _id;
 		protected readonly bool _save;
-		protected readonly Logger _logger;
 
-		protected TerminalSync(Type scriptType, string terminalControlId, bool save = true)
+		protected ASync(Type scriptType, string valueId, bool save = true)
 		{
-			this._id = GetId(scriptType, terminalControlId);
+			this._id = GetId(scriptType, valueId);
 			this._save = save;
-			this._logger = new Logger(_id.ToString);
 
 			if (_syncs == null)
 				return;
@@ -288,7 +314,7 @@ namespace Rynchodon.Utility.Network
 				RequestValues();
 			}
 
-			_logger.traceLog("initialized");
+			traceLog("initialized");
 		}
 
 		/// <summary>
@@ -309,13 +335,13 @@ namespace Rynchodon.Utility.Network
 			if (_outgoingMessages == null)
 				return;
 
-			_logger.traceLog("entered, blockId: " + blockId + ", value: " + value + ", clientId: " + clientId);
+			traceLog("entered, blockId: " + blockId + ", value: " + value + ", clientId: " + clientId);
 			_outgoingMessages.AddSyncMessage(clientId, _id, value, blockId);
 		}
 
-		protected void LogMissingFromRegistrar(long blockId, bool network, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		protected void LogMissingFromRegistrar(long blockId, bool network, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			_logger.alwaysLog("block not found in Registrar: " + blockId, network ? Logger.severity.WARNING : Logger.severity.ERROR, _id.ToString(), member: member, lineNumber: lineNumber);
+			alwaysLog("block not found in Registrar: " + blockId, network ? Logger.severity.WARNING : Logger.severity.ERROR, _id.ToString(), filePath: filePath, member: member, lineNumber: lineNumber);
 		}
 
 		/// <summary>The type of value contained.</summary>
@@ -329,6 +355,11 @@ namespace Rynchodon.Utility.Network
 		protected abstract void SetValue(SyncMessage sync);
 
 		protected abstract IEnumerable<KeyValuePair<long, object>> AllValues();
+
+		protected override sealed string GetContext()
+		{
+			return _id.ToString();
+		}
 
 	}
 }
