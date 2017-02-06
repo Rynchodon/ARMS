@@ -307,6 +307,7 @@
     <Compile Include="Utility\Network\RemoteTask.cs" />
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
+    <None Include="Utility\Network\Sync.snippet" />
     <None Include="Utility\Network\TestRemoteTask.cs" />
     <Compile Include="Utility\Network\TerminalButtonSync.cs" />
     <Compile Include="Utility\Network\TerminalStringBuilderSync.cs" />

@@ -128,7 +128,7 @@ namespace Rynchodon.Utility.Network
 				LogMissingFromRegistrar(entityId, false);
 		}
 
-		protected override sealed void SetValue(byte[] message, int position)
+		protected override sealed void SetValueFromNetwork(byte[] message, int position)
 		{
 			TValue value = ByteConverter.GetOfType<TValue>(message, ref position);
 			List<long> orphanIds = null;
@@ -205,7 +205,7 @@ namespace Rynchodon.Utility.Network
 
 		#region SendValue
 
-		protected override void SendAll(ulong clientId)
+		protected override void SendAllToClient(ulong clientId)
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{

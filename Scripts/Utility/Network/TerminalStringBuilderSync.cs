@@ -74,7 +74,7 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <param name="entityId">Id of the script's entity</param>
 		/// <param name="value">The value as a string</param>
-		public override void SetValue(long blockId, string value)
+		public override void SetValueFromSave(long blockId, string value)
 		{
 			SetValue(blockId, new StringBuilder(value), false);
 		}

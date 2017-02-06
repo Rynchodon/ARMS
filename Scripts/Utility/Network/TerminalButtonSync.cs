@@ -86,12 +86,12 @@ namespace Rynchodon.Utility.Network
 				LogMissingFromRegistrar(block.EntityId, false);
 		}
 
-		public override void SetValue(long blockId, string value)
+		public override void SetValueFromSave(long blockId, string value)
 		{
 			throw new NotSupportedException();
 		}
 
-		protected override void SetValue(byte[] message, int position)
+		protected override void SetValueFromNetwork(byte[] message, int position)
 		{
 			while (position < message.Length)
 			{
@@ -117,7 +117,7 @@ namespace Rynchodon.Utility.Network
 
 		#region SendValue
 
-		protected override void SendAll(ulong clientId) { }
+		protected override void SendAllToClient(ulong clientId) { }
 
 		private void SendValue(long entityId, ulong? clientId = null)
 		{

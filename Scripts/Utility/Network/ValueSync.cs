@@ -27,7 +27,7 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <param name="entityId">Id of the script's entity</param>
 		/// <param name="value">The value as a string</param>
-		public override void SetValue(long entityId, string value)
+		public override void SetValueFromSave(long entityId, string value)
 		{
 			SetValue(entityId, typeof(IConvertible).IsAssignableFrom(typeof(TValue))
 				? (TValue)Convert.ChangeType(value, typeof(TValue))

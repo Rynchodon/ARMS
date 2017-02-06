@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Rynchodon.Update;
 using Sandbox.ModAPI;
 using VRage.Collections;
 
@@ -120,7 +119,7 @@ namespace Rynchodon.Utility.Network
 					return;
 				}
 				Logger.TraceLog("got instance: " + instance.GetType().Name);
-				instance.SetValue(message, position);
+				instance.SetValueFromNetwork(message, position);
 			}
 			catch (Exception ex)
 			{
@@ -147,7 +146,7 @@ namespace Rynchodon.Utility.Network
 
 				Logger.TraceLog("got a request for values from " + recipient);
 				foreach (ASync termSync in _syncs.Values)
-					termSync.SendAll(recipient);
+					termSync.SendAllToClient(recipient);
 			}
 			catch (Exception ex)
 			{
@@ -210,7 +209,7 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <param name="entityId">Id of the script's entity</param>
 		/// <param name="value">The value as a string</param>
-		public abstract void SetValue(long entityId, string value);
+		public abstract void SetValueFromSave(long entityId, string value);
 
 		protected void LogMissingFromRegistrar(long blockId, bool network, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
@@ -220,9 +219,13 @@ namespace Rynchodon.Utility.Network
 		/// <summary>
 		/// Set the value from network message.
 		/// </summary>
-		protected abstract void SetValue(byte[] message, int position);
+		protected abstract void SetValueFromNetwork(byte[] message, int position);
 
-		protected abstract void SendAll(ulong clientId);
+		/// <summary>
+		/// Send all values to a client.
+		/// </summary>
+		/// <param name="clientId">Id of the client to send values to.</param>
+		protected abstract void SendAllToClient(ulong clientId);
 
 		protected override sealed string GetContext()
 		{

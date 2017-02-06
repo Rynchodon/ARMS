@@ -229,7 +229,7 @@ namespace Rynchodon.Utility.Network
 			else
 			{
 				Logger.TraceLog("Setting entity value for " + block.nameWithId() + ", value id: " + id + ", value: " + value);
-				sync.SetValue(block.EntityId, value);
+				sync.SetValueFromSave(block.EntityId, value);
 			}
 		}
 
