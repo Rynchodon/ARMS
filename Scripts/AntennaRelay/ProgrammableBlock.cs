@@ -59,7 +59,7 @@ namespace Rynchodon.AntennaRelay
 				MyTerminalControlFactory.AddControl(handleDetected);
 
 				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
-				new TerminalStringBuilderSync<ProgrammableBlock>(blockCountList, (prog) => prog.value_blockCountList, (prog, value) => {
+				new StringBuilderSync<ProgrammableBlock>(blockCountList, (prog) => prog.value_blockCountList, (prog, value) => {
 					prog.value_blockCountList = value;
 					prog.m_blockCountList_btl = new BlockTypeList(prog.m_blockCountList_sb.ToString().LowerRemoveWhitespace().Split(','));
 				});

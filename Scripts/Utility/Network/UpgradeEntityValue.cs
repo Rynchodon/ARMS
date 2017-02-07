@@ -16,7 +16,7 @@ using VRageMath;
 namespace Rynchodon.Utility.Network
 {
 	/// <summary>
-	/// Convert EntityValues saved to TerminalSync
+	/// Performs one-time conversion of EntityValues to TerminalSync
 	/// </summary>
 	public static class UpgradeEntityValue
 	{

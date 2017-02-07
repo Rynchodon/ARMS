@@ -38,10 +38,10 @@ namespace Rynchodon.Utility.Network
 		/// Synchronize and save a value associated with a terminal control. The value will be synchronized everytime it changes.
 		/// </summary>
 		/// <param name="control">GUI control for getting/setting the value.</param>
-		/// <param name="fieldOrPropertyName">The name of a field or property in the script to get/set the value from/to. If the field or propert has a default value, the DefaultValueAttribute should be used.</param>
+		/// <param name="fieldName">The name of a field in the script to get/set the value from/to. If the field has a default value, the DefaultValueAttribute should be used.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalValueSync(IMyTerminalValueControl<TValue> control, string fieldOrPropertyName, bool save = true)
-			: base(control.Id, fieldOrPropertyName, save)
+		public TerminalValueSync(IMyTerminalValueControl<TValue> control, string fieldName, bool save = true)
+			: base(control.Id, fieldName, save)
 		{
 			control.Getter = GetValue;
 			control.Setter = SetValue;

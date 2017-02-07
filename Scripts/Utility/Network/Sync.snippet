@@ -64,11 +64,11 @@
           <Default>Name</Default>
           <ToolTip>Replace with the name of the property.</ToolTip>
         </Literal>
-        <Literal>
+        <!--<Literal>
           <ID>TerminalControl</ID>
           <Default>TerminalControl</Default>
           <ToolTip>Replace with the id of the terminal control.</ToolTip>
-        </Literal>
+        </Literal>-->
         <Literal>
           <ID>BlockObject</ID>
           <Default>m_block</Default>
@@ -80,7 +80,7 @@
         public $PropertyType$ $PropertyName$
         {
           get { return value_$PropertyName$; }
-          private set { $TerminalControl$.SetValue(m_block, value); }
+          private set { Static.$PropertyName$.SetValue(m_block, value); }
         }]]>
       </Code>
     </Snippet>

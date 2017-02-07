@@ -8,6 +8,7 @@ using VRage.ModAPI;
 
 namespace Rynchodon
 {
+	[Obsolete]
 	public class TerminalTextBox<T>
 		where T : IConvertible
 	{

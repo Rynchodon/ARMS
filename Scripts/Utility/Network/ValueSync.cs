@@ -23,6 +23,15 @@ namespace Rynchodon.Utility.Network
 			: base(valueId, getter, setter, save, defaultValue) { }
 
 		/// <summary>
+		/// Synchronize a value that is not directly tied to a terminal control. The value will be synchronized every time it changes.
+		/// </summary>
+		/// <param name="valueId">Identifier for the value</param>
+		/// <param name="fieldName">The name of a field in the script to get/set the value from/to. If the field has a default value, the DefaultValueAttribute should be used.</param>
+		/// <param name="save">Save the value to disk</param>
+		public ValueSync(string valueId, string fieldName, bool save = true)
+			: base(valueId, fieldName, save) { }
+
+		/// <summary>
 		/// Set value from saved string.
 		/// </summary>
 		/// <param name="entityId">Id of the script's entity</param>

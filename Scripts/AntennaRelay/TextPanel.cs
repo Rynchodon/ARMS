@@ -457,14 +457,14 @@ namespace Rynchodon.AntennaRelay
 
 			public int CompareTo(SortableAutopilot other)
 			{
-				if (this.Autopilot.m_autopilotStatus.Value == other.Autopilot.m_autopilotStatus.Value)
+				if (this.Autopilot.m_autopilotStatus == other.Autopilot.m_autopilotStatus)
 				{
-					Logger.DebugLog("same status: " + this.Autopilot.m_autopilotStatus.Value);
+					Logger.DebugLog("same status: " + this.Autopilot.m_autopilotStatus);
 					return this.DistanceSquared.CompareTo(other.DistanceSquared);
 				}
 
-				Logger.DebugLog("diff status: " + this.Autopilot.m_autopilotStatus.Value + " vs " + other.Autopilot.m_autopilotStatus.Value + ", diff: " + ((int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value));
-				return (int)other.Autopilot.m_autopilotStatus.Value - (int)this.Autopilot.m_autopilotStatus.Value;
+				Logger.DebugLog("diff status: " + this.Autopilot.m_autopilotStatus + " vs " + other.Autopilot.m_autopilotStatus + ", diff: " + ((int)other.Autopilot.m_autopilotStatus - (int)this.Autopilot.m_autopilotStatus));
+				return (int)other.Autopilot.m_autopilotStatus - (int)this.Autopilot.m_autopilotStatus;
 			}
 
 		}

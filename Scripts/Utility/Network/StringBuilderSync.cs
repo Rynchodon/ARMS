@@ -12,10 +12,10 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 namespace Rynchodon.Utility.Network
 {
 	/// <summary>
-	/// Synchronize and save a StringBuilder associated with a terminal control. The StringBuilder is synchronized from time to time.
+	/// Synchronize and save a StringBuilder. The StringBuilder is synchronized from time to time.
 	/// </summary>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalStringBuilderSync<TScript> : AValueSync<StringBuilder, TScript>
+	public sealed class StringBuilderSync<TScript> : AValueSync<StringBuilder, TScript>
 	{
 
 		private readonly IMyTerminalControl _control;
@@ -32,7 +32,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="getter">Function to get the StringBuilder from a script.</param>
 		/// <param name="setter">Function to set a StringBuilder in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		public TerminalStringBuilderSync(IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
+		public StringBuilderSync(IMyTerminalControlTextbox control, GetterDelegate getter, SetterDelegate setter, bool save = true)
 			: base(((IMyTerminalControl)control).Id, getter, setter, save)
 		{
 			// MyTerminalControlTextbox has different Getter/Setter
@@ -41,6 +41,25 @@ namespace Rynchodon.Utility.Network
 
 			_control = control;
 		}
+
+		/// <summary>
+		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
+		/// </summary>
+		/// <param name="control">GUI control for getting/setting the value.</param>
+		/// <param name="fieldName">The name of a field in the script to get/set the value from/to. If the field has a default value, the DefaultValueAttribute should be used.</param>
+		/// <param name="save">Iff true, save the value to disk.</param>
+		public StringBuilderSync(IMyTerminalControlTextbox control, string fieldName, bool save = true)
+			: base(((IMyTerminalControl)control).Id, fieldName, save)
+		{
+			// MyTerminalControlTextbox has different Getter/Setter
+			control.Getter = GetValue;
+			control.Setter = SetValue;
+
+			_control = control;
+		}
+
+		public StringBuilderSync(string id, string fieldName, bool save = true)
+			: base(id, fieldName, save) { }
 
 		/// <summary>
 		/// If, after updateMethod is invoked, the StringBuilder passed to it does not match the current value, update the current value.
@@ -126,7 +145,7 @@ namespace Rynchodon.Utility.Network
 
 		private void UpdateVisual()
 		{
-			_control.UpdateVisual();
+			_control?.UpdateVisual();
 		}
 
 	}

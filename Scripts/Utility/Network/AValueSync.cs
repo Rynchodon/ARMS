@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Text;
 using Sandbox.ModAPI;
+using VRage.Collections;
 
 namespace Rynchodon.Utility.Network
 {
@@ -62,16 +65,16 @@ namespace Rynchodon.Utility.Network
 			_setter = setter;
 		}
 
-		public AValueSync(string valueId, string fieldOrPropertyName, bool save = true)
+		public AValueSync(string valueId, string fieldName, bool save = true)
 			: base(typeof(TScript), valueId, save)
 		{
 			Type type = typeof(TScript);
 
-			FieldInfo field = type.GetField(fieldOrPropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			FieldInfo field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 			if (field != null)
 			{
-				_getter = (script) => (TValue)field.GetValue(script);
-				_setter = (script, value) => field.SetValue(script, value);
+				_getter = GenerateGetter(field);
+				_setter = GenerateSetter(field);
 
 				DefaultValueAttribute defaultAtt = field.GetCustomAttribute<DefaultValueAttribute>();
 				_defaultValue = defaultAtt != null ? (TValue)defaultAtt.Value : default(TValue);
@@ -79,19 +82,28 @@ namespace Rynchodon.Utility.Network
 				return;
 			}
 
-			PropertyInfo property = type.GetProperty(fieldOrPropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-			if (property != null)
-			{
-				_getter = (script) => (TValue)property.GetValue(script);
-				_setter = (script, value) => property.SetValue(script, value);
+			throw new ArgumentException(fieldName + " does not match any instance field of " + type.Name);
+		}
 
-				DefaultValueAttribute defaultAtt = property.GetCustomAttribute<DefaultValueAttribute>();
-				_defaultValue = defaultAtt != null ? (TValue)defaultAtt.Value : default(TValue);
+		private static GetterDelegate GenerateGetter(FieldInfo field)
+		{
+			DynamicMethod getter = new DynamicMethod(field.DeclaringType.Name + ".get_" + field.Name, field.FieldType, new Type[] { typeof(TScript) }, true);
+			ILGenerator il = getter.GetILGenerator();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldfld, field);
+			il.Emit(OpCodes.Ret);
+			return (GetterDelegate)getter.CreateDelegate(typeof(GetterDelegate));
+		}
 
-				return;
-			}
-
-			throw new ArgumentException(fieldOrPropertyName + " does not match any instance field or property of " + type.Name);
+		private static SetterDelegate GenerateSetter(FieldInfo field)
+		{
+			DynamicMethod setter = new DynamicMethod(field.DeclaringType.Name + ".set_" + field.Name, null, new Type[] { typeof(TScript), typeof(TValue) }, true);
+			ILGenerator il = setter.GetILGenerator();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldarg_1);
+			il.Emit(OpCodes.Stfld, field);
+			il.Emit(OpCodes.Ret);
+			return (SetterDelegate)setter.CreateDelegate(typeof(SetterDelegate));
 		}
 
 		public TValue GetValue(IMyTerminalBlock block)
@@ -110,9 +122,19 @@ namespace Rynchodon.Utility.Network
 			return _defaultValue;
 		}
 
+		public TValue GetValue(TScript script)
+		{
+			return _getter(script);
+		}
+
 		public void SetValue(IMyTerminalBlock block, TValue value)
 		{
 			SetValue(block.EntityId, value, true);
+		}
+
+		public void SetValue(long entityId, TValue value)
+		{
+			SetValue(entityId, value, true);
 		}
 
 		protected void SetValue(long entityId, TValue value, bool send)
