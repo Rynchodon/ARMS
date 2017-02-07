@@ -310,11 +310,12 @@
     <None Include="Utility\Network\Sync.snippet" />
     <None Include="Utility\Network\TestRemoteTask.cs" />
     <Compile Include="Utility\Network\TerminalButtonSync.cs" />
-    <Compile Include="Utility\Network\TerminalStringBuilderSync.cs" />
+    <Compile Include="Utility\Network\StringBuilderSync.cs" />
     <Compile Include="Utility\Network\ASync.cs" />
     <None Include="Utility\Network\TerminalSyncMessage.cs" />
     <None Include="Utility\Network\ATerminalValueSync.cs" />
     <Compile Include="Utility\Network\TerminalValueSync.cs" />
+    <Compile Include="Utility\Network\TypedValueSync.cs" />
     <Compile Include="Utility\Network\UpgradeEntityValue.cs" />
     <Compile Include="Utility\Network\AValueSync.cs" />
     <Compile Include="Utility\Network\ValueSync.cs" />

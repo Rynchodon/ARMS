@@ -50,7 +50,9 @@ namespace Rynchodon.Utility.Network
 		protected readonly SetterDelegate _setter;
 		protected readonly TValue _defaultValue;
 
+		/// <summary>Values for which scripts do not yet exist.</summary>
 		private List<Orphan> _orphanValues;
+		/// <summary>The currently queued outgoing message.</summary>
 		private OutgoingMessage _outgoing;
 
 		protected virtual IEqualityComparer<TValue> EqualityComparer { get { return EqualityComparer<TValue>.Default; } }
@@ -85,6 +87,11 @@ namespace Rynchodon.Utility.Network
 			throw new ArgumentException(fieldName + " does not match any instance field of " + type.Name);
 		}
 
+		/// <summary>
+		/// Generate a GetterDelegate for a field.
+		/// </summary>
+		/// <param name="field">The field to generate the getter for.</param>
+		/// <returns>A GetterDelegate for field.</returns>
 		private static GetterDelegate GenerateGetter(FieldInfo field)
 		{
 			DynamicMethod getter = new DynamicMethod(field.DeclaringType.Name + ".get_" + field.Name, field.FieldType, new Type[] { typeof(TScript) }, true);
@@ -95,6 +102,11 @@ namespace Rynchodon.Utility.Network
 			return (GetterDelegate)getter.CreateDelegate(typeof(GetterDelegate));
 		}
 
+		/// <summary>
+		/// Generate a SetterDelegate for a field.
+		/// </summary>
+		/// <param name="field">The field to generate the setter for.</param>
+		/// <returns>A SetterDelegate for field.</returns>
 		private static SetterDelegate GenerateSetter(FieldInfo field)
 		{
 			DynamicMethod setter = new DynamicMethod(field.DeclaringType.Name + ".set_" + field.Name, null, new Type[] { typeof(TScript), typeof(TValue) }, true);
@@ -106,11 +118,21 @@ namespace Rynchodon.Utility.Network
 			return (SetterDelegate)setter.CreateDelegate(typeof(SetterDelegate));
 		}
 
+		/// <summary>
+		/// Get the locally stored value from a block.
+		/// </summary>
+		/// <param name="block">The block to get the value for.</param>
+		/// <returns>The local value from a block.</returns>
 		public TValue GetValue(IMyTerminalBlock block)
 		{
 			return GetValue(block.EntityId);
 		}
 
+		/// <summary>
+		/// Get the locally stored value for an entity with a specified ID
+		/// </summary>
+		/// <param name="entityId">Id of the entity to get the value for.</param>
+		/// <returns>The local value for an entity with the specified ID</returns>
 		public TValue GetValue(long entityId)
 		{
 			TScript script;
@@ -122,21 +144,42 @@ namespace Rynchodon.Utility.Network
 			return _defaultValue;
 		}
 
+		/// <summary>
+		/// Get the locally stored value from a script.
+		/// </summary>
+		/// <param name="script">The script to get the value from.</param>
+		/// <returns>The locally stored value from the script.</returns>
 		public TValue GetValue(TScript script)
 		{
 			return _getter(script);
 		}
 
+		/// <summary>
+		/// Set and synchronize the value for a block.
+		/// </summary>
+		/// <param name="block">The block whose value is being set.</param>
+		/// <param name="value">The value to set.</param>
 		public void SetValue(IMyTerminalBlock block, TValue value)
 		{
 			SetValue(block.EntityId, value, true);
 		}
 
+		/// <summary>
+		/// Set and synchronize the value for an entity ID.
+		/// </summary>
+		/// <param name="entityId">The ID of the entity whose value is to be set.</param>
+		/// <param name="value">The value to set.</param>
 		public void SetValue(long entityId, TValue value)
 		{
 			SetValue(entityId, value, true);
 		}
 
+		/// <summary>
+		/// Set and, optionally, synchronize a value for an entity ID.
+		/// </summary>
+		/// <param name="entityId">The ID of the entity whose value is being set.</param>
+		/// <param name="value">The new value.</param>
+		/// <param name="send">Iff true and the value has changed, send to to other game clients.</param>
 		protected void SetValue(long entityId, TValue value, bool send)
 		{
 			TScript script;
@@ -150,6 +193,37 @@ namespace Rynchodon.Utility.Network
 				LogMissingFromRegistrar(entityId, false);
 		}
 
+		/// <summary>
+		/// Get a TValue from a string. Throws an exception if value is of incorrect format.
+		/// </summary>
+		/// <param name="value">The value as a string.</param>
+		/// <returns>TValue representation of a string.</returns>
+		protected TValue FromString(string value)
+		{
+			return typeof(Enum).IsAssignableFrom(typeof(TValue))
+				? (TValue)Enum.Parse(typeof(TValue), value)
+				: typeof(IConvertible).IsAssignableFrom(typeof(TValue))
+				? (TValue)Convert.ChangeType(value, typeof(TValue))
+				: typeof(StringBuilder).IsAssignableFrom(typeof(TValue))
+				? (TValue)(object)new StringBuilder(value)
+				: MyAPIGateway.Utilities.SerializeFromXML<TValue>(value);
+		}
+
+		/// <summary>
+		/// Set value from saved string. Does not synchronize.
+		/// </summary>
+		/// <param name="entityId">Id of the script's entity</param>
+		/// <param name="value">The value as a string.</param>
+		public override sealed void SetValueFromSave(long entityId, string value)
+		{
+			SetValue(entityId, FromString(value), false);
+		}
+
+		/// <summary>
+		/// Set value from network message. Does not synchronize.
+		/// </summary>
+		/// <param name="message">Received bytes.</param>
+		/// <param name="position">Position in message to start reading at.</param>
 		protected override sealed void SetValueFromNetwork(byte[] message, int position)
 		{
 			TValue value = ByteConverter.GetOfType<TValue>(message, ref position);
@@ -184,6 +258,11 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		/// <summary>
+		/// Search for orphan values to add to a script.
+		/// </summary>
+		/// <param name="entityId">ID of the entity the script belongs to.</param>
+		/// <param name="script">The script to add the orphan value to, if one is found.</param>
 		private void CheckForOrphan(long entityId, TScript script)
 		{
 			if (_orphanValues == null)
@@ -219,6 +298,9 @@ namespace Rynchodon.Utility.Network
 			traceLog("no orphan value for block: " + entityId);
 		}
 
+		/// <summary>
+		/// Delayed removal of CheckForOrphan from Registrar.AfterScriptAdded.
+		/// </summary>
 		private void RemoveCheckForOrphan()
 		{
 			// it's locked right now, remove later
@@ -227,6 +309,10 @@ namespace Rynchodon.Utility.Network
 
 		#region SendValue
 
+		/// <summary>
+		/// Send all the values to a specified client.
+		/// </summary>
+		/// <param name="clientId">The client that needs the values.</param>
 		protected override void SendAllToClient(ulong clientId)
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
@@ -243,6 +329,15 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		/// <summary>
+		/// Send a value to a specific client, or broadcast it to all clients.
+		/// </summary>
+		/// <param name="entityId">ID of the entity whose value is to be sent.</param>
+		/// <param name="value">The value to send.</param>
+		/// <param name="clientId">If null, broadcast to all. Otherwise, send to the client with the specified ID.</param>
+		/// <remarks>
+		/// The value is not sent immediately, it is queued briefly so that multiple outgoing values may be combined.
+		/// </remarks>
 		protected void SendValue(long entityId, TValue value, ulong? clientId = null)
 		{
 			if (_outgoing == null)
@@ -261,6 +356,9 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		/// <summary>
+		/// Send _outgoing immediately.
+		/// </summary>
 		private void SendOutgoing()
 		{
 			const int maxSize = 4088;
@@ -294,6 +392,10 @@ namespace Rynchodon.Utility.Network
 			ResourcePool.Return(bytes);
 		}
 
+		/// <summary>
+		/// Clear bytes, add SudMod, _id, and _outgoing.Value.
+		/// </summary>
+		/// <param name="bytes">Message being prepared.</param>
 		private void AddIdAndValue(List<byte> bytes)
 		{
 			bytes.Clear();
@@ -302,18 +404,27 @@ namespace Rynchodon.Utility.Network
 			ByteConverter.AppendBytes(bytes, _outgoing.Value);
 		}
 
+		/// <summary>
+		/// Send bytes to a specific client or to all clients, dependant upon _outgoing.
+		/// </summary>
+		/// <param name="bytes">The message to send.</param>
 		private void SendOutgoing(List<byte> bytes)
 		{
 			Logger.TraceLog("sending to: " + _outgoing.ClientId + ", value: " + _outgoing.Value + ", entities: " + string.Join(",", _outgoing.EntityId));
 			bool result = _outgoing.ClientId.HasValue
-			? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
-			: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
+				? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
+				: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 			if (!result)
 				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
 		}
 
 		#endregion
 
+		/// <summary>
+		/// Tests if a value is the default value. Default values are not sent when all values are requested.
+		/// </summary>
+		/// <param name="value">The value to test.</param>
+		/// <returns>True iff value equals the default value.</returns>
 		protected virtual bool IsDefault(TValue value)
 		{
 			return EqualityComparer.Equals(value, _defaultValue);

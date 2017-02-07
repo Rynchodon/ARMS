@@ -31,17 +31,6 @@ namespace Rynchodon.Utility.Network
 		public ValueSync(string valueId, string fieldName, bool save = true)
 			: base(valueId, fieldName, save) { }
 
-		/// <summary>
-		/// Set value from saved string.
-		/// </summary>
-		/// <param name="entityId">Id of the script's entity</param>
-		/// <param name="value">The value as a string</param>
-		public override void SetValueFromSave(long entityId, string value)
-		{
-			SetValue(entityId, typeof(IConvertible).IsAssignableFrom(typeof(TValue))
-				? (TValue)Convert.ChangeType(value, typeof(TValue))
-				: MyAPIGateway.Utilities.SerializeFromXML<TValue>(value), false);
-		}
 
 		protected override void SetValue(long entityId, TScript script, TValue value, bool send)
 		{

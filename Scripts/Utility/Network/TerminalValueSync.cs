@@ -49,15 +49,6 @@ namespace Rynchodon.Utility.Network
 			_control = (IMyTerminalControl)control;
 		}
 
-		/// <summary>
-		/// Set value from saved string.
-		/// </summary>
-		/// <param name="entityId">Id of the script's entity</param>
-		/// <param name="value">The value as a string</param>
-		public override void SetValueFromSave(long blockId, string value)
-		{
-			SetValue(blockId, (TValue)Convert.ChangeType(value, typeof(TValue)), false);
-		}
 
 		protected override void SetValue(long blockId, TScript script, TValue value, bool send)
 		{
