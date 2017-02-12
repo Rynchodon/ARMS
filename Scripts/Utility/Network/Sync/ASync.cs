@@ -65,6 +65,10 @@ namespace Rynchodon.Utility.Network
 			TextPanel_DisplayGPS,
 			TextPanel_DisplayEntityId,
 			TextPanel_DisplayAutopilotStatus,
+
+			WeaponTargeting_TargetFlag,
+			WeaponTargeting_TargetType,
+			WeaponTargeting_WeaponFlags,
 		}
 
 		protected static MyConcurrentPool<StringBuilder> _stringBuilderPool = new MyConcurrentPool<StringBuilder>();

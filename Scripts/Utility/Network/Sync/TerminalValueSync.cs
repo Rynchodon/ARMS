@@ -12,6 +12,7 @@ namespace Rynchodon.Utility.Network
 	/// </summary>
 	/// <typeparam name="TValue">The type of value</typeparam>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
+	[Obsolete("merged into ValueSync")]
 	public sealed class TerminalValueSync<TValue, TScript> : AValueSync<TValue, TScript>
 	{
 

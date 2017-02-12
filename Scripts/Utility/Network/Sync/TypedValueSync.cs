@@ -8,8 +8,10 @@ using VRage.ModAPI;
 
 namespace Rynchodon.Utility.Network
 {
+	/// <summary>
+	/// Sync a value that is typed into a text box but must be parsed.
+	/// </summary>
 	public sealed class TypedValueSync<TValue, TScript> : AValueSync<TValue, TScript>
-		where TValue : IConvertible
 	{
 
 		private readonly IMyTerminalControl _control;

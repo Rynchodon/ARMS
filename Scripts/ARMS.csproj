@@ -307,18 +307,21 @@
     <Compile Include="Utility\Network\RemoteTask.cs" />
     <Compile Include="Utility\Network\MessageHandler.cs" />
     <Compile Include="Utility\Network\EntityValue.cs" />
-    <None Include="Utility\Network\Sync.snippet" />
+    <None Include="Utility\Network\Sync\Sync.snippet">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Utility\Network\TestRemoteTask.cs" />
-    <Compile Include="Utility\Network\TerminalButtonSync.cs" />
-    <Compile Include="Utility\Network\StringBuilderSync.cs" />
-    <Compile Include="Utility\Network\ASync.cs" />
-    <None Include="Utility\Network\TerminalSyncMessage.cs" />
-    <None Include="Utility\Network\ATerminalValueSync.cs" />
-    <Compile Include="Utility\Network\TerminalValueSync.cs" />
-    <Compile Include="Utility\Network\TypedValueSync.cs" />
-    <Compile Include="Utility\Network\UpgradeEntityValue.cs" />
-    <Compile Include="Utility\Network\AValueSync.cs" />
-    <Compile Include="Utility\Network\ValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\FlagsValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\TerminalButtonSync.cs" />
+    <Compile Include="Utility\Network\Sync\StringBuilderSync.cs" />
+    <Compile Include="Utility\Network\Sync\ASync.cs" />
+    <None Include="Utility\Network\Sync\TerminalSyncMessage.cs" />
+    <None Include="Utility\Network\Sync\ATerminalValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\TerminalValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\TypedValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\UpgradeEntityValue.cs" />
+    <Compile Include="Utility\Network\Sync\AValueSync.cs" />
+    <Compile Include="Utility\Network\Sync\ValueSync.cs" />
     <Compile Include="Utility\PrettySI.cs" />
     <Compile Include="Utility\Profiler.cs" />
     <Compile Include="Utility\RayCast.cs" />

@@ -6,6 +6,7 @@ using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
+using Rynchodon.Utility.Network.Sync;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
@@ -52,7 +53,7 @@ namespace Rynchodon.Weapons
 
 		private class StaticVariables
 		{
-			public Logger logger = new Logger();
+			//public Logger logger = new Logger();
 			/// <remarks>
 			/// <para>Increasing the number of threads would require locks to be added in many areas.</para>
 			/// <para>One thread has no trouble putting enough projectiles into play to slow the game to a crawl.</para>
@@ -61,12 +62,20 @@ namespace Rynchodon.Weapons
 
 			public ITerminalProperty<bool> TPro_Shoot;
 
-			public int indexShoot;
-			public MyTerminalControlOnOffSwitch<MyUserControllableGun> armsTargeting;
-			public MyTerminalControlOnOffSwitch<MyUserControllableGun> motorTurret;
-			public List<MyTerminalControl<MyUserControllableGun>> sharedControls = new List<MyTerminalControl<MyUserControllableGun>>();
-			public List<MyTerminalControl<MyUserControllableGun>> fixedControls = new List<MyTerminalControl<MyUserControllableGun>>();
-			public TerminalTextBox<long> termControlEntityId;
+			//public int indexShoot;
+			public MyTerminalControlOnOffSwitch<MyUserControllableGun> termControl_armsTargeting;
+			public MyTerminalControlOnOffSwitch<MyUserControllableGun> termControl_motorTurret;
+			//public List<MyTerminalControl<MyUserControllableGun>> sharedControls = new List<MyTerminalControl<MyUserControllableGun>>();
+			//public List<MyTerminalControl<MyUserControllableGun>> fixedControls = new List<MyTerminalControl<MyUserControllableGun>>();
+			//public TerminalTextBox<long> termControlEntityId;
+
+			public FlagsValueSync<TargetingFlags, WeaponTargeting> termControl_targetFlag;
+			public FlagsValueSync<TargetType, WeaponTargeting> termControl_targetType;
+			public FlagsValueSync<WeaponFlags, WeaponTargeting> termControl_weaponFlags;
+			public TypedValueSync<long, WeaponTargeting> termControl_targetEntityId;
+			public ValueSync<float, WeaponTargeting> termControl_range;
+			public StringBuilderSync<WeaponTargeting> termControl_blockList;
+			public ValueSync<Vector3D, WeaponTargeting> termControl_targetGolis;
 
 			public StaticVariables()
 			{
@@ -74,67 +83,67 @@ namespace Rynchodon.Weapons
 				TerminalControlHelper.EnsureTerminalControlCreated<MyLargeMissileTurret>();
 
 				// find the current position of shoot On/Off
-				int currentIndex = 0;
+				int currentIndex = 0;//, shootIndex = 0;
 				foreach (ITerminalControl control in MyTerminalControlFactory.GetControls(typeof(MyUserControllableGun)))
 				{
 					if (control.Id == "Shoot")
-					{
-						indexShoot = currentIndex;
 						break;
-					}
-					currentIndex++;
+					++currentIndex;
 				}
 
-				//logger.debugLog("shoot index: " + indexShoot);
+				termControl_targetFlag = new FlagsValueSync<TargetingFlags, WeaponTargeting>("TargetFlag", "value_termControl_targetFlag", true);
+				termControl_targetType = new FlagsValueSync<TargetType, WeaponTargeting>("TargetType", "value_termControl_targetType", true);
+				termControl_weaponFlags = new FlagsValueSync<WeaponFlags, WeaponTargeting>("WeaponFlags", "value_termControl_weaponFlags", true);
 
-				sharedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
+				MyTerminalControlFactory.AddControl(++currentIndex, new MyTerminalControlSeparator<MyUserControllableGun>());
 
-				armsTargeting = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("ArmsTargeting", MyStringId.GetOrCompute("ARMS Targeting"), MyStringId.GetOrCompute("ARMS will control this turret"));
-				AddGetSet(armsTargeting, TargetingFlags.ArmsEnabled);
+				termControl_armsTargeting = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("ArmsTargeting", MyStringId.GetOrCompute("ARMS Targeting"), MyStringId.GetOrCompute("ARMS will control this turret"));
+				termControl_armsTargeting.Enabled = termControl_armsTargeting.Visible = (block) => block is MyLargeTurretBase;
+				termControl_targetFlag.AddControl(termControl_armsTargeting, TargetingFlags.ArmsEnabled);
+				MyTerminalControlFactory.AddControl(++currentIndex, termControl_armsTargeting);
 
-				motorTurret = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("RotorTurret", MyStringId.GetOrCompute("Rotor-Turret"), MyStringId.GetOrCompute("ARMS will treat the weapon as part of a rotor-turret"));
-				AddGetSet(motorTurret, TargetingFlags.Turret);
+				termControl_motorTurret = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("RotorTurret", MyStringId.GetOrCompute("Rotor-Turret"), MyStringId.GetOrCompute("ARMS will treat the weapon as part of a rotor-turret"));
+				termControl_motorTurret.Enabled = termControl_motorTurret.Visible = (block) => !(block is MyLargeTurretBase);
+				termControl_targetFlag.AddControl(termControl_motorTurret, TargetingFlags.Turret);
+				MyTerminalControlFactory.AddControl(++currentIndex, termControl_motorTurret);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> functional = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetFunctional", MyStringId.GetOrCompute("Target Functional"),
 					MyStringId.GetOrCompute("ARMS will target blocks that are functional, not just blocks that are working"));
-				AddGetSet(functional, TargetingFlags.Functional);
-				sharedControls.Add(functional);
+				termControl_targetFlag.AddControl(functional, TargetingFlags.Functional);
+				MyTerminalControlFactory.AddControl(++currentIndex, functional);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> preserve = new MyTerminalControlCheckbox<MyUserControllableGun>("PreserveEnemy", MyStringId.GetOrCompute("Preserve Enemy"),
 					MyStringId.GetOrCompute("ARMS will not shoot through hostile blocks to destroy targets"));
-				AddGetSet(preserve, TargetingFlags.Preserve);
-				sharedControls.Add(preserve);
+				termControl_targetFlag.AddControl(preserve, TargetingFlags.Preserve);
+				MyTerminalControlFactory.AddControl(++currentIndex, preserve);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> destroy = new MyTerminalControlCheckbox<MyUserControllableGun>("DestroyBlocks", MyStringId.GetOrCompute("Destroy Blocks"),
 					MyStringId.GetOrCompute("ARMS will destroy every terminal block"));
-				AddGetSet(destroy, TargetType.Destroy);
-				sharedControls.Add(destroy);
+				termControl_targetType.AddControl(destroy, TargetType.Destroy);
+				MyTerminalControlFactory.AddControl(++currentIndex, destroy);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> laser = new MyTerminalControlCheckbox<MyUserControllableGun>("ShowLaser", MyStringId.GetOrCompute("Show Laser"),
 					MyStringId.GetOrCompute("Everything is better with lasers!"));
-				AddGetSet(laser, WeaponFlags.Laser);
-				sharedControls.Add(laser);
+				termControl_weaponFlags.AddControl(laser, WeaponFlags.Laser);
+				MyTerminalControlFactory.AddControl(++currentIndex, laser);
 
-				sharedControls.Add(new MyTerminalControlSeparator<MyUserControllableGun>());
+				MyTerminalControlFactory.AddControl(++currentIndex, new MyTerminalControlSeparator<MyUserControllableGun>());
 
 				MyTerminalControlTextbox<MyUserControllableGun> textBox = new MyTerminalControlTextbox<MyUserControllableGun>("TargetBlocks", MyStringId.GetOrCompute("Target Blocks"),
 					MyStringId.GetOrCompute("Comma separated list of blocks to target"));
-				IMyTerminalValueControl<StringBuilder> valueControl = textBox;
-				valueControl.Getter = GetBlockList;
-				valueControl.Setter = SetBlockList;
-				sharedControls.Add(textBox);
+				termControl_blockList = new StringBuilderSync<WeaponTargeting>(textBox, "value_termControl_blockList", true);
+				MyTerminalControlFactory.AddControl(++currentIndex, textBox);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> targetById = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByEntityId", MyStringId.GetOrCompute("Target by Entity ID"),
 					MyStringId.GetOrCompute("Use ID of an entity for targeting"));
-				AddGetSet(targetById, WeaponFlags.EntityId);
-				sharedControls.Add(targetById);
+				termControl_weaponFlags.AddControl(targetById, WeaponFlags.EntityId);
+				MyTerminalControlFactory.AddControl(++currentIndex, targetById);
 
 				textBox = new MyTerminalControlTextbox<MyUserControllableGun>("EntityId", MyStringId.GetOrCompute("Target Entity ID"),
 					MyStringId.GetOrCompute("ID of entity to target"));
 				textBox.Visible = block => GetEnum(block, WeaponFlags.EntityId);
-				valueControl = textBox;
-				termControlEntityId = new TerminalTextBox<long>(textBox, valueId_entityId, SetTargetEntity);
-				sharedControls.Add(textBox);
+				termControl_targetEntityId = new TypedValueSync<long, WeaponTargeting>(textBox, "value_termControl_targetEntityId", true);
+				MyTerminalControlFactory.AddControl(++currentIndex, textBox);
 
 				MyTerminalControlCheckbox<MyUserControllableGun> targetGolis = new MyTerminalControlCheckbox<MyUserControllableGun>("TargetByGps", MyStringId.GetOrCompute("Target by GPS"),
 				MyStringId.GetOrCompute("Use GPS for targeting"));
@@ -187,23 +196,23 @@ namespace Rynchodon.Weapons
 				}
 			}
 
-			private void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetType flag)
-			{
-				valueControl.Getter = block => GetEnum(block, flag);
-				valueControl.Setter = (block, value) => SetEnum(block, flag, value);
-			}
+			//private void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetType flag)
+			//{
+			//	valueControl.Getter = block => GetEnum(block, flag);
+			//	valueControl.Setter = (block, value) => SetEnum(block, flag, value);
+			//}
 
-			private void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetingFlags flag)
-			{
-				valueControl.Getter = block => GetEnum(block, flag);
-				valueControl.Setter = (block, value) => SetEnum(block, flag, value);
-			}
+			//private void AddGetSet(IMyTerminalValueControl<bool> valueControl, TargetingFlags flag)
+			//{
+			//	valueControl.Getter = block => GetEnum(block, flag);
+			//	valueControl.Setter = (block, value) => SetEnum(block, flag, value);
+			//}
 
-			private void AddGetSet(IMyTerminalValueControl<bool> valueControl, WeaponFlags which)
-			{
-				valueControl.Getter = block => GetEnum(block, which);
-				valueControl.Setter = (block, value) => SetEnum(block, which, value);
-			}
+			//private void AddGetSet(IMyTerminalValueControl<bool> valueControl, WeaponFlags which)
+			//{
+			//	valueControl.Getter = block => GetEnum(block, which);
+			//	valueControl.Setter = (block, value) => SetEnum(block, which, value);
+			//}
 
 			private void CloneTurretControl_OnOff(string id, TargetType flag)
 			{
@@ -237,24 +246,25 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		private static StaticVariables value_static;
-		private static StaticVariables Static
-		{
-			get
-			{
-				if (Globals.WorldClosed)
-					throw new Exception("World closed");
-				if (value_static == null)
-					value_static = new StaticVariables();
-				return value_static;
-			}
-			set { value_static = value; }
-		}
+		//private static StaticVariables value_static;
+		private static StaticVariables Static;
+		//{
+		//	get
+		//	{
+		//		if (Globals.WorldClosed)
+		//			throw new Exception("World closed");
+		//		if (value_static == null)
+		//			value_static = new StaticVariables();
+		//		return value_static;
+		//	}
+		//	set { value_static = value; }
+		//}
 
 		[OnWorldLoad]
 		private static void Init()
 		{
 			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
+			Static = new StaticVariables();
 		}
 
 		[OnWorldClose]
@@ -274,9 +284,9 @@ namespace Rynchodon.Weapons
 
 			controlList.Insert(index++, Static.sharedControls[sharedIndex++]);
 			if (block is MyLargeTurretBase)
-				controlList.Insert(index++, Static.armsTargeting);
+				controlList.Insert(index++, Static.termControl_armsTargeting);
 			else
-				controlList.Insert(index++, Static.motorTurret);
+				controlList.Insert(index++, Static.termControl_motorTurret);
 
 			for (; sharedIndex < Static.sharedControls.Count; sharedIndex++)
 				controlList.Insert(index++, Static.sharedControls[sharedIndex]);
@@ -467,8 +477,8 @@ namespace Rynchodon.Weapons
 
 		private static void UpdateVisual()
 		{
-			Static.armsTargeting.UpdateVisual();
-			Static.motorTurret.UpdateVisual();
+			Static.termControl_armsTargeting.UpdateVisual();
+			Static.termControl_motorTurret.UpdateVisual();
 			foreach (var control in Static.sharedControls)
 				control.UpdateVisual();
 			foreach (var control in Static.fixedControls)
@@ -537,20 +547,68 @@ namespace Rynchodon.Weapons
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
 
 		private string[] m_termControl_blockList;
-		/// <summary>Check weapon flag before using.</summary>
-		private long m_termControl_targetEntityId;
+		///// <summary>Check weapon flag before using.</summary>
+		//private long m_termControl_targetEntityId;
 
-		private EntityValue<TargetType> m_termControl_targetType_ev;
-		private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
-		private EntityValue<WeaponFlags> m_termControl_weaponFlags_ev;
-		private EntityValue<float> m_termControl_range_ev;
-		private EntityStringBuilder m_termControl_blockList_ev;
+		//private EntityValue<TargetType> m_termControl_targetType_ev;
+		//private EntityValue<TargetingFlags> m_termControl_targetFlag_ev;
+		//private EntityValue<WeaponFlags> m_termControl_weaponFlags_ev;
+		//private EntityValue<float> m_termControl_range_ev;
+		//private EntityStringBuilder m_termControl_blockList_ev;
 
-		/// <summary>Check weapon flag before using.</summary>
-		private EntityValue<Vector3D> m_termControl_targetGolis_ev;
+		///// <summary>Check weapon flag before using.</summary>
+		//private EntityValue<Vector3D> m_termControl_targetGolis_ev;
+
+		private long value_termControl_targetEntityId;
+		private long termControl_targetEntityId
+		{
+			get { return value_termControl_targetEntityId; }
+			set { Static.termControl_targetEntityId.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private TargetType value_termControl_targetType;
+		private TargetType termControl_targetType
+		{
+			get { return value_termControl_targetType; }
+			set { Static.termControl_targetType.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private TargetingFlags value_termControl_targetFlag;
+		private TargetingFlags termControl_targetFlag
+		{
+			get { return value_termControl_targetFlag; }
+			set { Static.termControl_targetFlag.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private WeaponFlags value_termControl_weaponFlags;
+		private WeaponFlags termControl_weaponFlags
+		{
+			get { return value_termControl_weaponFlags; }
+			set { Static.termControl_weaponFlags.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private float value_termControl_range;
+		private float termControl_range
+		{
+			get { return value_termControl_range; }
+			set { Static.termControl_range.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private StringBuilder value_termControl_blockList;
+		private StringBuilder termControl_blockList
+		{
+			get { return value_termControl_blockList; }
+			set { Static.termControl_blockList.SetValue(MyEntity.EntityId, value); }
+		}
+
+		private Vector3D value_termControl_targetGolis;
+		private Vector3D termControl_targetGolis
+		{
+			get { return value_termControl_targetGolis; }
+			set { Static.termControl_targetGolis.SetValue(MyEntity.EntityId, value); }
+		}
 
 		private bool value_suppressTargeting;
-
 		public bool SuppressTargeting
 		{
 			get { return value_suppressTargeting; }

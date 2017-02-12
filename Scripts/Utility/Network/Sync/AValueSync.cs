@@ -313,7 +313,7 @@ namespace Rynchodon.Utility.Network
 		/// Send all the values to a specified client.
 		/// </summary>
 		/// <param name="clientId">The client that needs the values.</param>
-		protected override void SendAllToClient(ulong clientId)
+		protected override sealed void SendAllToClient(ulong clientId)
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
