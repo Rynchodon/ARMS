@@ -79,7 +79,7 @@ namespace Rynchodon.AntennaRelay
 				AddCheckbox("HD_Enemy", "Enemy Ships", "Holographically display enemy ships", Option.Enemy);
 
 				MyTerminalControlSlider<MySpaceProjector> slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RangeDetection", MyStringId.GetOrCompute("Detection Range"), MyStringId.GetOrCompute("Maximum distance of detected entity"));
-				TerminalValueSync<float, Projector> tvsRange = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_rangeDetection, (proj, value) => proj.m_rangeDetection = value);
+				ValueSync<float, Projector> tvsRange = new ValueSync<float, Projector>(slider, (proj) => proj.m_rangeDetection, (proj, value) => proj.m_rangeDetection = value);
 				slider.DefaultValue = DefaultRangeDetection;
 				slider.Normalizer = (block, value) => Normalizer(MinRangeDetection, MaxRangeDetection, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRangeDetection, MaxRangeDetection, block, value);
@@ -87,7 +87,7 @@ namespace Rynchodon.AntennaRelay
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_RadiusHolo", MyStringId.GetOrCompute("Hologram Radius"), MyStringId.GetOrCompute("Maximum radius of hologram"));
-				TerminalValueSync<float, Projector>  tvsRadius = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_radiusHolo, (proj, value) => proj.m_radiusHolo = value);
+				ValueSync<float, Projector>  tvsRadius = new ValueSync<float, Projector>(slider, (proj) => proj.m_radiusHolo, (proj, value) => proj.m_radiusHolo = value);
 				slider.DefaultValue = DefaultRadiusHolo;
 				slider.Normalizer = (block, value) => Normalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinRadiusHolo, MaxRadiusHolo, block, value);
@@ -95,7 +95,7 @@ namespace Rynchodon.AntennaRelay
 				TermControls.Add(slider);
 
 				slider = new MyTerminalControlSlider<MySpaceProjector>("HD_EntitySizeScale", MyStringId.GetOrCompute("Entity Size Scale"), MyStringId.GetOrCompute("Larger value causes entities to appear larger"));
-				TerminalValueSync<float, Projector> tvsScale = new TerminalValueSync<float, Projector>(slider, (proj) => proj.m_sizeDistScale, (proj, value) => proj.m_sizeDistScale = value);
+				ValueSync<float, Projector> tvsScale = new ValueSync<float, Projector>(slider, (proj) => proj.m_sizeDistScale, (proj, value) => proj.m_sizeDistScale = value);
 				slider.DefaultValue = DefaultSizeScale;
 				slider.Normalizer = (block, value) => Normalizer(MinSizeScale, MaxSizeScale, block, value);
 				slider.Denormalizer = (block, value) => Denormalizer(MinSizeScale, MaxSizeScale, block, value);
@@ -175,7 +175,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				MyTerminalControlCheckbox<MySpaceProjector> control = new MyTerminalControlCheckbox<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
 
-				new TerminalValueSync<bool, Projector>(control,
+				new ValueSync<bool, Projector>(control,
 					(proj) => (proj.m_options & opt) == opt,
 					(proj, value) => {
 						logger.debugLog("set option: " + opt + " to " + value + ", current options: " + proj.m_options);
@@ -194,7 +194,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				MyTerminalControlSlider<MySpaceProjector> control = new MyTerminalControlSlider<MySpaceProjector>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
 
-				TerminalValueSync<float, Projector> tvs = new TerminalValueSync<float, Projector>(control, (proj) => proj.m_offset_ev.GetDim(dim), (proj, value) => proj.m_offset_ev.SetDim(dim, value));
+				ValueSync<float, Projector> tvs = new ValueSync<float, Projector>(control, (proj) => proj.m_offset_ev.GetDim(dim), (proj, value) => proj.m_offset_ev.SetDim(dim, value));
 
 				control.DefaultValue = dim == 1 ? 2.5f : 0f;
 				control.Normalizer = (block, value) => Normalizer(MinOffset, MaxOffset, block, value);

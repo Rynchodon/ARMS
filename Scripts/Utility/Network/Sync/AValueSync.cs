@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using Sandbox.ModAPI;
-using VRage.Collections;
 
 namespace Rynchodon.Utility.Network
 {
@@ -80,6 +79,8 @@ namespace Rynchodon.Utility.Network
 
 				DefaultValueAttribute defaultAtt = field.GetCustomAttribute<DefaultValueAttribute>();
 				_defaultValue = defaultAtt != null ? (TValue)defaultAtt.Value : default(TValue);
+
+				traceLog("default value: " + _defaultValue, condition: defaultAtt != null);
 
 				return;
 			}
@@ -216,7 +217,10 @@ namespace Rynchodon.Utility.Network
 		/// <param name="value">The value as a string.</param>
 		public override sealed void SetValueFromSave(long entityId, string value)
 		{
-			SetValue(entityId, FromString(value), false);
+			TValue v = FromString(value);
+			List<long> orphanIds = null;
+			TrySet(entityId, v, ref orphanIds);
+			SetOrphan(v, orphanIds);
 		}
 
 		/// <summary>
@@ -232,20 +236,29 @@ namespace Rynchodon.Utility.Network
 			while (position < message.Length)
 			{
 				long entityId = ByteConverter.GetLong(message, ref position);
-				TScript script;
-				if (Registrar.TryGetValue(entityId, out script))
-				{
-					traceLog("got script, setting value. entityId: " + entityId + ", value: " + value);
-					SetValue(entityId, script, value, false);
-				}
-				else
-				{
-					if (orphanIds == null)
-						orphanIds = new List<long>();
-					orphanIds.Add(entityId);
-				}
+				TrySet(entityId, value, ref orphanIds);
 			}
+			SetOrphan(value, orphanIds);
+		}
 
+		private void TrySet(long entityId, TValue value, ref List<long> orphanIds)
+		{
+			TScript script;
+			if (Registrar.TryGetValue(entityId, out script))
+			{
+				traceLog("got script, setting value. entityId: " + entityId + ", value: " + value);
+				SetValue(entityId, script, value, false);
+			}
+			else
+			{
+				if (orphanIds == null)
+					orphanIds = new List<long>();
+				orphanIds.Add(entityId);
+			}
+		}
+
+		private void SetOrphan(TValue value, List<long> orphanIds)
+		{
 			if (orphanIds != null)
 			{
 				if (_orphanValues == null)

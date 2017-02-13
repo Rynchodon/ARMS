@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Weapons;
@@ -272,7 +271,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 
-			foreach (FixedWeapon weapon in Registrar.Scripts<FixedWeapon>())
+			foreach (FixedWeapon weapon in Registrar.Scripts<FixedWeapon, WeaponTargeting>())
 			{
 				if (weapon.CubeBlock.CubeGrid == m_controlBlock.CubeGrid)
 				{
@@ -300,8 +299,12 @@ namespace Rynchodon.Autopilot.Navigator
 			{
 				foreach (IMyCubeBlock block in cache.BlocksOfType(weaponType))
 				{
-					Turret weapon;
-					Registrar.TryGetValue(block.EntityId, out weapon);
+					WeaponTargeting weapon;
+					if (!Registrar.TryGetValue(block.EntityId, out weapon))
+					{
+						Logger.AlwaysLog("Failed to get block: " + block.nameWithId(), Logger.severity.WARNING);
+						continue;
+					}
 					if (weapon.CurrentControl != WeaponTargeting.Control.Off)
 					{
 						m_logger.debugLog("Active turret: " + weapon.CubeBlock.DisplayNameText);

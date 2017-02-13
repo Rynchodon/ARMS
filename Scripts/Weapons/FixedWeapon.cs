@@ -41,7 +41,7 @@ namespace Rynchodon.Weapons
 			long entityId = ByteConverter.GetLong(message, ref pos);
 			bool control  = ByteConverter.GetBool(message, ref pos);
 
-			FixedWeapon weapon;
+			WeaponTargeting weapon;
 			if (!Registrar.TryGetValue(entityId, out weapon))
 			{
 				(new Logger()).debugLog("Weapon not in registrar: " + entityId, Logger.severity.WARNING);
@@ -49,9 +49,9 @@ namespace Rynchodon.Weapons
 			}
 
 			if (control)
-				weapon.EngagerTakeControl();
+				((FixedWeapon)weapon).EngagerTakeControl();
 			else
-				weapon.EngagerReleaseControl();
+				((FixedWeapon)weapon).EngagerReleaseControl();
 		}
 
 
@@ -64,7 +64,7 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger(block);
-			Registrar.Add(CubeBlock, this);
+			//Registrar.Add(CubeBlock, this);
 			//myLogger.debugLog("Initialized", "FixedWeapon()");
 
 			AllowFighterControl = WeaponDescription.GetFor(block).AllowFighterControl;

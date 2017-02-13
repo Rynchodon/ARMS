@@ -136,6 +136,14 @@ namespace Rynchodon.Utility.Network
 
 			_maps.Add(new EnumMapping(typeof(IMyTextPanel), 0, new ASync.Id[] { ASync.Id.TextPanel_DisplayDetected, ASync.Id.TextPanel_DisplayGPS, ASync.Id.TextPanel_DisplayEntityId, ASync.Id.TextPanel_DisplayAutopilotStatus }));
 
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 0, ASync.Id.WeaponTargeting_TargetType));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 1, ASync.Id.WeaponTargeting_TargetFlag));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 2, ASync.Id.WeaponTargeting_Range));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 3, ASync.Id.WeaponTargeting_TargetBlocks));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 4, ASync.Id.WeaponTargeting_EntityId));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 5, ASync.Id.WeaponTargeting_WeaponFlags));
+			_maps.Add(new SimpleMapping(typeof(IMyUserControllableGun), 6, ASync.Id.WeaponTargeting_GpsList));
+
 			MyEntities.OnEntityAdd += MyEntities_OnEntityAdd;
 			foreach (MyEntity entity in MyEntities.GetEntities())
 				MyEntities_OnEntityAdd(entity);

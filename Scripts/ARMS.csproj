@@ -315,9 +315,6 @@
     <Compile Include="Utility\Network\Sync\TerminalButtonSync.cs" />
     <Compile Include="Utility\Network\Sync\StringBuilderSync.cs" />
     <Compile Include="Utility\Network\Sync\ASync.cs" />
-    <None Include="Utility\Network\Sync\TerminalSyncMessage.cs" />
-    <None Include="Utility\Network\Sync\ATerminalValueSync.cs" />
-    <Compile Include="Utility\Network\Sync\TerminalValueSync.cs" />
     <Compile Include="Utility\Network\Sync\TypedValueSync.cs" />
     <Compile Include="Utility\Network\Sync\UpgradeEntityValue.cs" />
     <Compile Include="Utility\Network\Sync\AValueSync.cs" />

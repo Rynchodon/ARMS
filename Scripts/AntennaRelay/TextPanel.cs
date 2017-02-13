@@ -72,7 +72,7 @@ namespace Rynchodon.AntennaRelay
 		private static void AddCheckbox(string id, string title, string toolTip, Option opt)
 		{
 			MyTerminalControlCheckbox<MyTextPanel> control = new MyTerminalControlCheckbox<MyTextPanel>(id, MyStringId.GetOrCompute(title), MyStringId.GetOrCompute(toolTip));
-			new TerminalValueSync<bool, TextPanel>(control, (panel) => (panel.m_optionsTerminal & opt) == opt,
+			new ValueSync<bool, TextPanel>(control, (panel) => (panel.m_optionsTerminal & opt) == opt,
 				(panel, value) => {
 					if (value)
 						panel.m_optionsTerminal |= opt;

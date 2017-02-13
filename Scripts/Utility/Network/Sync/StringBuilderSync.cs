@@ -88,7 +88,6 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
-
 		protected override void SetValue(long blockId, TScript script, StringBuilder value, bool send)
 		{
 			traceLog("entered");

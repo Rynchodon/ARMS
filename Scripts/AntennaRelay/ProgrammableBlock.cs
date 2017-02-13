@@ -55,7 +55,7 @@ namespace Rynchodon.AntennaRelay
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyProgrammableBlock>());
 
 				handleDetected = new MyTerminalControlOnOffSwitch<MyProgrammableBlock>("HandleDetected", MyStringId.GetOrCompute("Handle Detected"));
-				new TerminalValueSync<bool, ProgrammableBlock>(handleDetected, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
+				new ValueSync<bool, ProgrammableBlock>(handleDetected, (prog) => prog.value_handleDetectedTerminal, (prog, value) => prog.value_handleDetectedTerminal = value);
 				MyTerminalControlFactory.AddControl(handleDetected);
 
 				blockCountList = new MyTerminalControlTextbox<MyProgrammableBlock>("BlockCounts", MyStringId.GetOrCompute("Blocks to Count"), MyStringId.GetOrCompute("Comma separated list of blocks to count"));
@@ -243,7 +243,7 @@ namespace Rynchodon.AntennaRelay
 
 			//m_logger.debugLog("parameters:\n" + parameter.ToString().Replace(string.Empty + entitySeparator, entitySeparator + "\n"));
 			if (!m_progBlock.TryRun(parameter.ToString()))
-				m_logger.alwaysLog("Failed to run program", Logger.severity.WARNING);
+				m_logger.alwaysLog("Failed to run program", Logger.severity.INFO);
 		}
 
 		private void HandleMessage(Message received)

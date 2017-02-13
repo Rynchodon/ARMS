@@ -8,7 +8,6 @@ using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
-using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
@@ -35,7 +34,7 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger(block);
-			Registrar.Add(CubeBlock, this);
+			//Registrar.Add(CubeBlock, this);
 
 			if (TP_TargetMissiles == null)
 			{

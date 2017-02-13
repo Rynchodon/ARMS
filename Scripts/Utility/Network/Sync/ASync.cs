@@ -69,6 +69,10 @@ namespace Rynchodon.Utility.Network
 			WeaponTargeting_TargetFlag,
 			WeaponTargeting_TargetType,
 			WeaponTargeting_WeaponFlags,
+			WeaponTargeting_EntityId,
+			WeaponTargeting_Range,
+			WeaponTargeting_TargetBlocks,
+			WeaponTargeting_GpsList,
 		}
 
 		protected static MyConcurrentPool<StringBuilder> _stringBuilderPool = new MyConcurrentPool<StringBuilder>();
@@ -82,12 +86,7 @@ namespace Rynchodon.Utility.Network
 			MessageHandler.AddHandler(MessageHandler.SubMod.SyncRequest, HandleRequest);
 		}
 
-		[OnWorldLoad]
-		private static void OnLoad()
-		{
-			_hasValues = MyAPIGateway.Multiplayer.IsServer;
-			_syncs = new Dictionary<Id, ASync>();
-		}
+		// not using OnWorldLoad as syncs are created by other OnWorldLoad functions, static init happens in instance constructor
 
 		[OnWorldClose]
 		private static void OnClose()
@@ -189,7 +188,12 @@ namespace Rynchodon.Utility.Network
 			this._save = save;
 
 			if (_syncs == null)
-				return;
+			{
+				if (Globals.WorldClosed)
+					return;
+				_syncs = new Dictionary<Id, ASync>();
+				_hasValues = MyAPIGateway.Multiplayer.IsServer;
+			}
 			_syncs.Add(_id, this);
 
 			if (!_hasValues)

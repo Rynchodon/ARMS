@@ -162,6 +162,14 @@ namespace Rynchodon
 			return TryGetValue(entity.EntityId, out value);
 		}
 
+		public static bool TryGetValue<TValue, TStored>(long entityId, out TValue value) where TValue : class, TStored
+		{
+			TStored item;
+			bool result = Register<TStored>.TryGetValue(entityId, out item);
+			value = item as TValue;
+			return result && value != null;
+		}
+
 		public static void ForEach<T>(Action<T> function)
 		{
 			if (Globals.WorldClosed)
@@ -184,6 +192,16 @@ namespace Rynchodon
 		public static IEnumerable<KeyValuePair<long, T>> IdScripts<T>()
 		{
 			return Register<T>.IdScripts();
+		}
+
+		public static IEnumerable<TValue> Scripts<TValue, TStored>() where TValue : class, TStored
+		{
+			foreach (TStored item in Scripts<TStored>())
+			{
+				TValue value = item as TValue;
+				if (value != null)
+					yield return value;
+			}
 		}
 
 		public static bool Contains<T>(long entityId)

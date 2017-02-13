@@ -38,7 +38,27 @@ namespace Rynchodon.Utility.Network.Sync
 					currentValue |= flagValue;
 				else
 					currentValue &= ~flagValue;
-				SetValue(block, (TValue)Convert.ChangeType(currentValue, typeof(TValue)));
+				SetValue(block, (TValue)Convert.ChangeType(currentValue, Enum.GetUnderlyingType(typeof(TValue))));
+			};
+		}
+
+		public void AddInverseControl(IMyTerminalValueControl<bool> control, TValue flag)
+		{
+			int flagValue = flag.ToInt32(CultureInfo.InvariantCulture);
+
+			_controls.Add((IMyTerminalControl)control);
+			control.Getter = (block) => {
+				int currentValue = GetValue(block).ToInt32(CultureInfo.InvariantCulture);
+				return (currentValue & flagValue) == 0;
+			};
+
+			control.Setter = (block, value) => {
+				int currentValue = GetValue(block).ToInt32(CultureInfo.InvariantCulture);
+				if (value)
+					currentValue &= ~flagValue;
+				else
+					currentValue |= flagValue;
+				SetValue(block, (TValue)Convert.ChangeType(currentValue, Enum.GetUnderlyingType(typeof(TValue))));
 			};
 		}
 

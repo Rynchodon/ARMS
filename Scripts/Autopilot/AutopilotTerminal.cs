@@ -60,7 +60,7 @@ namespace Rynchodon.Autopilot
 				AddControl(new MyTerminalControlSeparator<MyShipController>() { Enabled = ShipAutopilot.IsAutopilotBlock, Visible = ShipAutopilot.IsAutopilotBlock });
 
 				autopilotControl = new MyTerminalControlCheckbox<MyShipController>("ArmsAp_OnOff", MyStringId.GetOrCompute("ARMS Autopilot"), MyStringId.GetOrCompute("Enable ARMS Autopilot"));
-				new TerminalValueSync<bool, AutopilotTerminal>(autopilotControl, "value_autopilotControl");
+				new ValueSync<bool, AutopilotTerminal>(autopilotControl, "value_autopilotControl");
 				AddControl(autopilotControl);
 				AddAction(new MyTerminalAction<MyShipController>("ArmsAp_OnOff", new StringBuilder("ARMS Autopilot On/Off"), @"Textures\GUI\Icons\Actions\Toggle.dds") { Action = ToggleAutopilotControl });
 				AddAction(new MyTerminalAction<MyShipController>("ArmsAp_On", new StringBuilder("ARMS Autopilot On"), @"Textures\GUI\Icons\Actions\SwitchOn.dds") { Action = block => SetAutopilotControl(block, true) });
