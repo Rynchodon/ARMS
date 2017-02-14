@@ -47,7 +47,7 @@ namespace Rynchodon.Utility.Network
 
 		protected readonly GetterDelegate _getter;
 		protected readonly SetterDelegate _setter;
-		protected readonly TValue _defaultValue;
+		private readonly TValue _defaultValue;
 
 		/// <summary>Values for which scripts do not yet exist.</summary>
 		private List<Orphan> _orphanValues;
@@ -64,6 +64,17 @@ namespace Rynchodon.Utility.Network
 			_defaultValue = defaultValue;
 			_getter = getter;
 			_setter = setter;
+			Registrar.AddAfterScriptAdded<TScript>(SetDefaultValue);
+
+#if DEBUG
+			if (typeof(TValue) == typeof(StringBuilder))
+				_getter = script => {
+					TValue value = getter(script);
+					if (value == null)
+						alwaysLog("Returning null StringBuilder", Logger.severity.FATAL);
+					return value;
+				};
+#endif
 		}
 
 		public AValueSync(string valueId, string fieldName, bool save = true)
@@ -82,6 +93,7 @@ namespace Rynchodon.Utility.Network
 
 				traceLog("default value: " + _defaultValue, condition: defaultAtt != null);
 
+				Registrar.AddAfterScriptAdded<TScript>(SetDefaultValue);
 				return;
 			}
 
@@ -119,6 +131,16 @@ namespace Rynchodon.Utility.Network
 			return (SetterDelegate)setter.CreateDelegate(typeof(SetterDelegate));
 		}
 
+		private void SetDefaultValue(long entityId, TScript script)
+		{
+			_setter(script, GetDefaultValue());
+		}
+
+		protected virtual TValue GetDefaultValue()
+		{
+			return _defaultValue;
+		}
+
 		/// <summary>
 		/// Get the locally stored value from a block.
 		/// </summary>
@@ -142,7 +164,7 @@ namespace Rynchodon.Utility.Network
 
 			if (!Globals.WorldClosed)
 				LogMissingFromRegistrar(entityId, false);
-			return _defaultValue;
+			return GetDefaultValue();
 		}
 
 		/// <summary>
@@ -440,7 +462,7 @@ namespace Rynchodon.Utility.Network
 		/// <returns>True iff value equals the default value.</returns>
 		protected virtual bool IsDefault(TValue value)
 		{
-			return EqualityComparer.Equals(value, _defaultValue);
+			return EqualityComparer.Equals(value, GetDefaultValue());
 		}
 
 		/// <summary>

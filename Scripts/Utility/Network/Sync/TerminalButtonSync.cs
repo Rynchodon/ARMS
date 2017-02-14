@@ -11,13 +11,13 @@ namespace Rynchodon.Utility.Network
 {
 
 	/// <summary>
-	/// For running an event when a terminal control button is pressed.
+	/// For running an event.
 	/// </summary>
 	/// <typeparam name="TScript">The script that contains the value</typeparam>
-	public sealed class TerminalButtonSync<TScript> : ASync
+	public sealed class EventSync<TScript> : ASync
 	{
 
-		public delegate void OnButtonPressed(TScript script);
+		public delegate void Event(TScript script);
 
 		private class OutgoingMessage
 		{
@@ -31,7 +31,7 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
-		private readonly OnButtonPressed _onPress;
+		private readonly Event _onPress;
 		private readonly bool _serverOnly;
 
 		private OutgoingMessage _outgoing;
@@ -42,7 +42,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="control">Button for triggering the event</param>
 		/// <param name="onPress">The event to run.</param>
 		/// <param name="serverOnly">If true, run the event on the server. Otherwise, run the event on all clients.</param>
-		public TerminalButtonSync(IMyTerminalControlButton control, OnButtonPressed onPress, bool serverOnly = true)
+		public EventSync(IMyTerminalControlButton control, Event onPress, bool serverOnly = true)
 			: base(typeof(TScript), control.Id, false)
 		{
 			traceLog("entered");
@@ -50,10 +50,25 @@ namespace Rynchodon.Utility.Network
 			_onPress = onPress;
 			_serverOnly = serverOnly;
 
-			control.Action = Pressed;
+			control.Action = RunEvent;
 		}
 
-		public void Pressed(IMyTerminalBlock block)
+		/// <summary>
+		/// Run an event when RunEvent is invoked.
+		/// </summary>
+		/// <param name="controlId">Name of event.</param>
+		/// <param name="onPress">The event to run.</param>
+		/// <param name="serverOnly">If true, run the event on the server. Otherwise, run the event on all clients.</param>
+		public EventSync(string controlId, Event onPress, bool serverOnly = true)
+			: base(typeof(TScript), controlId, false)
+		{
+			traceLog("entered");
+
+			_onPress = onPress;
+			_serverOnly = serverOnly;
+		}
+
+		public void RunEvent(IMyTerminalBlock block)
 		{
 			traceLog("entered");
 
@@ -75,7 +90,7 @@ namespace Rynchodon.Utility.Network
 				}
 				else
 				{
-					traceLog("running here and sending to server");
+					traceLog("running here and sending to all");
 					_onPress(script);
 					SendValue(block.EntityId);
 				}
@@ -101,7 +116,7 @@ namespace Rynchodon.Utility.Network
 				if (Registrar.TryGetValue(blockId, out script))
 				{
 					if (_serverOnly && !MyAPIGateway.Multiplayer.IsServer)
-						Logger.AlwaysLog("Got button pressed event intended for the server", Logger.severity.WARNING, _id.ToString());
+						Logger.AlwaysLog("Got event intended for the server", Logger.severity.WARNING, _id.ToString());
 					else
 					{
 						traceLog("running here");

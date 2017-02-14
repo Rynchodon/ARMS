@@ -57,8 +57,7 @@ namespace Rynchodon.Weapons
 		private readonly Logger myLogger;
 		public readonly IMyEntity MyEntity;
 		/// <summary>Either the weapon block that is targeting or the block that created the weapon.</summary>
-		public readonly IMyCubeBlock CubeBlock;
-		public readonly IMyFunctionalBlock FuncBlock;
+		public readonly IMyUserControllableGun CubeBlock;
 
 		/// <summary>TryHard means the weapon is less inclined to switch targets and will continue to track targets when an intercept vector cannot be found.</summary>
 		protected bool TryHard = false;
@@ -66,7 +65,7 @@ namespace Rynchodon.Weapons
 		private ulong m_nextLastSeenSearch;
 		private Target value_CurrentTarget;
 		/// <summary>The target that is being processed.</summary>
-		protected Target myTarget;
+		private Target myTarget;
 
 		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
 		/// <summary>Targets that cannot be hit.</summary>
@@ -85,7 +84,7 @@ namespace Rynchodon.Weapons
 		public Target CurrentTarget
 		{
 			get { return value_CurrentTarget; }
-			set
+			private set
 			{
 				if (value_CurrentTarget != null && value != null && value_CurrentTarget.Entity == value.Entity)
 				{
@@ -148,6 +147,11 @@ namespace Rynchodon.Weapons
 			}
 		}
 
+		public void SetTarget(Target target)
+		{
+			CurrentTarget = myTarget = target;
+		}
+
 		public TargetingBase(IMyEntity entity, IMyCubeBlock controllingBlock)
 		{
 			if (entity == null)
@@ -157,8 +161,7 @@ namespace Rynchodon.Weapons
 
 			myLogger = new Logger(entity);
 			MyEntity = entity;
-			CubeBlock = controllingBlock;
-			FuncBlock = controllingBlock as IMyFunctionalBlock;
+			CubeBlock = (IMyUserControllableGun)controllingBlock;
 
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
@@ -278,7 +281,7 @@ namespace Rynchodon.Weapons
 		/// Targets a LastSeen chosen from the given storage, will overrride current target.
 		/// </summary>
 		/// <param name="storage">NetworkStorage to get LastSeen from.</param>
-		protected void GetLastSeenTarget(RelayStorage storage, double range)
+		public void GetLastSeenTarget(RelayStorage storage, double range)
 		{
 			if (Globals.UpdateCount < m_nextLastSeenSearch)
 				return;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
-using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Rynchodon.Weapons.SystemDisruption;
 using Sandbox.Game.Entities;
@@ -14,7 +13,7 @@ using VRageMath;
 
 namespace Rynchodon.Weapons.Guided
 {
-	public class GuidedMissile : TargetingBase
+	public sealed class GuidedMissile : TargetingBase
 	{
 
 		private class RailData
@@ -102,7 +101,7 @@ namespace Rynchodon.Weapons.Guided
 						continue;
 					if (missile.myCluster != null)
 						missile.UpdateCluster();
-					if (missile.myTarget.TType == TargetType.None)
+					if (missile.CurrentTarget.TType == TargetType.None)
 						continue;
 					if (missile.m_stage >= Stage.MidCourse && missile.m_stage <= Stage.Guided)
 						missile.SetFiringDirection();
@@ -332,7 +331,7 @@ namespace Rynchodon.Weapons.Guided
 		/// <summary>
 		/// Creates a missile with homing and target finding capabilities.
 		/// </summary>
-		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, ref Target initialTarget)
+		public GuidedMissile(IMyEntity missile, GuidedMissileLauncher launcher, Target initialTarget)
 			: base(missile, launcher.CubeBlock)
 		{
 			myLogger = new Logger(() => myAmmo.AmmoDefinition.DisplayNameText, () => missile.getBestName(), () => m_stage.ToString());
@@ -356,26 +355,7 @@ namespace Rynchodon.Weapons.Guided
 			Options = m_launcher.m_weaponTarget.Options.Clone();
 			Options.TargetingRange = myAmmo.Description.TargetRange;
 
-			if (initialTarget != null && initialTarget.Entity != null)
-			{
-				myLogger.debugLog("using target from launcher: " + initialTarget.Entity.nameWithId());
-				CurrentTarget = initialTarget;
-			}
-			else
-			{
-				RelayStorage storage = launcher.m_relayPart.GetStorage();
-				if (storage == null)
-				{
-					myLogger.debugLog("failed to get storage for launcher", Logger.severity.WARNING);
-				}
-				else
-				{
-					myLogger.debugLog("getting initial target from launcher", Logger.severity.DEBUG);
-					GetLastSeenTarget(storage, myAmmo.MissileDefinition.MaxTrajectory);
-				}
-				initialTarget = CurrentTarget;
-			}
-			myTarget = CurrentTarget;
+			SetTarget(initialTarget);
 
 			if (myAmmo.RadarDefinition != null)
 			{
@@ -388,12 +368,12 @@ namespace Rynchodon.Weapons.Guided
 				}
 			}
 
-			myLogger.debugLog("Options: " + Options + ", initial target: " + (myTarget == null ? "null" : myTarget.Entity.getBestName()) + ", entityId: " + missile.EntityId);
+			myLogger.debugLog("Options: " + Options + ", initial target: " + (CurrentTarget == null ? "null" : CurrentTarget.Entity.getBestName()) + ", entityId: " + missile.EntityId);
 			//myLogger.debugLog("AmmoDescription: \n" + MyAPIGateway.Utilities.SerializeToXML<Ammo.AmmoDescription>(myDescr), "GuidedMissile()");
 		}
 
-		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, ref Target initialTarget)
-			: this(missiles.Master, launcher, ref initialTarget)
+		public GuidedMissile(Cluster missiles, GuidedMissileLauncher launcher, Target initialTarget)
+			: this(missiles.Master, launcher, initialTarget)
 		{
 			myCluster = missiles;
 		}
@@ -450,12 +430,12 @@ namespace Rynchodon.Weapons.Guided
 
 		private void TargetSemiActive()
 		{
-			SemiActiveTarget sat = myTarget as SemiActiveTarget;
+			SemiActiveTarget sat = CurrentTarget as SemiActiveTarget;
 			if (sat == null)
 			{
 				myLogger.debugLog("creating semi-active target", Logger.severity.DEBUG);
 				sat = new SemiActiveTarget(m_launcher.CubeBlock);
-				myTarget = sat;
+				SetTarget(sat);
 			}
 
 			sat.Update(MyEntity);
@@ -533,7 +513,7 @@ namespace Rynchodon.Weapons.Guided
 				if (distSq < myDescr.TargetRange * myDescr.TargetRange)
 				{
 					myLogger.debugLog("Promoting targeting");
-					CurrentTarget = myTarget = new TurretTarget(CurrentTarget.Entity, CurrentTarget.TType);
+					SetTarget(new TurretTarget(CurrentTarget.Entity, CurrentTarget.TType));
 				}
 			}
 
@@ -572,8 +552,8 @@ namespace Rynchodon.Weapons.Guided
 			const float maxVelChangeSq = 10000f * 10000f * Globals.UpdateDuration * Globals.UpdateDuration;
 
 			Vector3[] slaveVelocity = new Vector3[myCluster.Slaves.Count];
-			if (myTarget.Entity != null)
-				myCluster.AdjustMulti(myTarget.Entity.LocalAABB.GetLongestDim() * 0.5f);
+			if (CurrentTarget.Entity != null)
+				myCluster.AdjustMulti(CurrentTarget.Entity.LocalAABB.GetLongestDim() * 0.5f);
 
 			MatrixD masterMatrix = MyEntity.WorldMatrix;
 

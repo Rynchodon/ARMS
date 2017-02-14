@@ -306,7 +306,6 @@
     <Compile Include="Utility\Network\MessageTooLongException.cs" />
     <Compile Include="Utility\Network\RemoteTask.cs" />
     <Compile Include="Utility\Network\MessageHandler.cs" />
-    <Compile Include="Utility\Network\EntityValue.cs" />
     <None Include="Utility\Network\Sync\Sync.snippet">
       <SubType>Designer</SubType>
     </None>
@@ -329,7 +328,6 @@
     <Compile Include="Utility\Settings\UserSettings.cs" />
     <Compile Include="Utility\SunProperties.cs" />
     <Compile Include="Utility\TerminalControlHelper.cs" />
-    <Compile Include="Utility\TerminalTextBox.cs" />
     <Compile Include="Utility\Threading\ThreadManager.cs" />
     <Compile Include="Utility\Threading\ThreadTracker.cs" />
     <Compile Include="Utility\Vectors\Direction.cs" />

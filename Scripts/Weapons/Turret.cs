@@ -11,7 +11,7 @@ using VRageMath;
 
 namespace Rynchodon.Weapons
 {
-	public class Turret : WeaponTargeting
+	public sealed class Turret : WeaponTargeting
 	{
 
 		/// <summary>vanilla property</summary>
@@ -153,7 +153,7 @@ namespace Rynchodon.Weapons
 			return m_barrel.PositionComp.GetPosition();
 		}
 
-		protected override Vector3 Facing()
+		public override Vector3 Facing()
 		{
 			return m_barrel.PositionComp.WorldMatrix.Forward;
 		}

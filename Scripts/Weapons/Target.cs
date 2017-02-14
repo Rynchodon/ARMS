@@ -41,15 +41,14 @@ namespace Rynchodon.Weapons
 
 		public override Vector3D GetPosition()
 		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-			throw new Exception();
+			throw new InvalidOperationException();
 		}
 
 		public override Vector3 GetLinearVelocity()
 		{
-			VRage.Exceptions.ThrowIf<NotImplementedException>(true);
-			throw new Exception();
+			throw new InvalidOperationException();
 		}
+
 	}
 
 	public class TurretTarget : Target
@@ -82,6 +81,7 @@ namespace Rynchodon.Weapons
 		{
 			return value_entity.GetLinearVelocity();
 		}
+
 	}
 
 	public class LastSeenTarget : Target

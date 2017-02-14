@@ -41,6 +41,9 @@ namespace Rynchodon.Utility.Network
 			AutopilotTerminal_ArmsAp_NavigatorMoverInfo,
 			AutopilotTerminal_ArmsAp_NavigatorRotatorInfo,
 
+			GuidedMissileLauncher_ShootOnce,
+			GuidedMissileLauncher_Shoot,
+
 			ProgrammableBlock_HandleDetected,
 			ProgrammableBlock_BlockCounts,
 

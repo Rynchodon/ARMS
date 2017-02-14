@@ -19,7 +19,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="getter">Function to get the value from a script.</param>
 		/// <param name="setter">Function to set a value in a script.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
-		/// <param name="defaultValue">Do not get value from server when it equals defaultValue. The value in the script will NOT be set to defaultValue by ValueSync.</param>
+		/// <param name="defaultValue">The default value to use. The value in the script will be set to defaultValue by ValueSync.</param>
 		public ValueSync(IMyTerminalValueControl<TValue> control, GetterDelegate getter, SetterDelegate setter, bool save = true, TValue defaultValue = default(TValue))
 			: base(control.Id, getter, setter, save, defaultValue)
 		{
@@ -51,7 +51,7 @@ namespace Rynchodon.Utility.Network
 		/// <param name="getter">Method to get the value from a script</param>
 		/// <param name="setter">Method to set the value in a script</param>
 		/// <param name="save">Save the value to disk</param>
-		/// <param name="defaultValue">Do not get value from server when it equals defaultValue. The value in the script will NOT be set to defaultValue by ValueSync.</param>
+		/// <param name="defaultValue">The default value to use. The value in the script will be set to defaultValue by ValueSync.</param>
 		public ValueSync(string valueId, GetterDelegate getter, SetterDelegate setter, bool save = true, TValue defaultValue = default(TValue)) 
 			: base(valueId, getter, setter, save, defaultValue) { }
 

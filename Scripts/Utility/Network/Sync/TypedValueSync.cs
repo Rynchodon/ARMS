@@ -112,7 +112,7 @@ namespace Rynchodon.Utility.Network
 				{
 					debugLog(ex.ToString(), Logger.severity.WARNING);
 					FailedToSet(item.Key, item.Value.ToString());
-					SetValue(item.Key, _defaultValue, true);
+					SetValue(item.Key, GetDefaultValue(), true);
 					continue;
 				}
 				SetValue(item.Key, value, true);

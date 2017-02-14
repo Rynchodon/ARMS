@@ -46,7 +46,7 @@ namespace Rynchodon.Utility.Network
 		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
 		/// </summary>
 		/// <param name="control">GUI control for getting/setting the value.</param>
-		/// <param name="fieldName">The name of a field in the script to get/set the value from/to. If the field has a default value, the DefaultValueAttribute should be used.</param>
+		/// <param name="fieldName">The name of a field in the script to get/set the value from/to.</param>
 		/// <param name="save">Iff true, save the value to disk.</param>
 		public StringBuilderSync(IMyTerminalControlTextbox control, string fieldName, bool save = true)
 			: base(((IMyTerminalControl)control).Id, fieldName, save)
@@ -60,6 +60,11 @@ namespace Rynchodon.Utility.Network
 
 		public StringBuilderSync(string id, string fieldName, bool save = true)
 			: base(id, fieldName, save) { }
+
+		protected override StringBuilder GetDefaultValue()
+		{
+			return new StringBuilder();
+		}
 
 		/// <summary>
 		/// If, after updateMethod is invoked, the StringBuilder passed to it does not match the current value, update the current value.

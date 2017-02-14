@@ -10,7 +10,7 @@ namespace Rynchodon.Weapons
 	/// <summary>
 	/// For rotor-turrets and Autopilot-usable weapons.
 	/// </summary>
-	public class FixedWeapon : WeaponTargeting
+	public sealed class FixedWeapon : WeaponTargeting
 	{
 
 		static FixedWeapon()
@@ -165,7 +165,7 @@ namespace Rynchodon.Weapons
 			return MyMotorTurret.CanFaceTowards(direction, 1.5f);
 		}
 
-		protected override Vector3 Facing()
+		public override Vector3 Facing()
 		{
 			return CubeBlock.WorldMatrix.Forward;
 		}

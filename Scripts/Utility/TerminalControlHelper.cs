@@ -8,6 +8,10 @@ namespace Rynchodon
 	public static class TerminalControlHelper
 	{
 
+		/// <summary>
+		/// Force vanilla terminal controls to be created for a given type of block. Always invoke this before adding controls.
+		/// MyTerminalControlFactory.EnsureControlsAreCreated does not work, use this method.
+		/// </summary>
 		public static void EnsureTerminalControlCreated<TBlock>() where TBlock : MyTerminalBlock, new()
 		{
 			if (MyTerminalControlFactory.AreControlsCreated<TBlock>())
