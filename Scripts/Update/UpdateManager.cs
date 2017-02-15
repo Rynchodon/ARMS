@@ -541,7 +541,6 @@ namespace Rynchodon.Update
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_RadioAntenna), "AP_Radar_Jammer_Small")).Enabled = false;
 			}
 
-			Message.Init();
 			Saver.Instance.DoLoad();
 		}
 

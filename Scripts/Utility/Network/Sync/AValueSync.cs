@@ -16,17 +16,17 @@ namespace Rynchodon.Utility.Network
 	public abstract class AValueSync<TValue, TScript> : ASync
 	{
 
-		private struct Orphan
-		{
-			public TValue Value;
-			public List<long> EntityId;
+		//private struct Orphan
+		//{
+		//	public TValue Value;
+		//	public List<long> EntityId;
 
-			public Orphan(TValue Value, List<long> EntityId)
-			{
-				this.Value = Value;
-				this.EntityId = EntityId;
-			}
-		}
+		//	public Orphan(TValue Value, List<long> EntityId)
+		//	{
+		//		this.Value = Value;
+		//		this.EntityId = EntityId;
+		//	}
+		//}
 
 		private class OutgoingMessage
 		{
@@ -42,6 +42,18 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		//private class Builder
+		//{
+		//	public readonly TValue Value;
+		//	public readonly List<long> EntityId;
+
+		//	public Builder(TValue Value, List<long> EntityId)
+		//	{
+		//		this.Value = Value;
+		//		this.EntityId = EntityId;
+		//	}
+		//}
+
 		public delegate TValue GetterDelegate(TScript script);
 		public delegate void SetterDelegate(TScript script, TValue value);
 
@@ -50,7 +62,7 @@ namespace Rynchodon.Utility.Network
 		private readonly TValue _defaultValue;
 
 		/// <summary>Values for which scripts do not yet exist.</summary>
-		private List<Orphan> _orphanValues;
+		private Dictionary<long, TValue> _orphanValues;
 		/// <summary>The currently queued outgoing message.</summary>
 		private OutgoingMessage _outgoing;
 
@@ -64,7 +76,7 @@ namespace Rynchodon.Utility.Network
 			_defaultValue = defaultValue;
 			_getter = getter;
 			_setter = setter;
-			Registrar.AddAfterScriptAdded<TScript>(SetDefaultValue);
+			RegisterSetDefaultValue();
 
 #if DEBUG
 			if (typeof(TValue) == typeof(StringBuilder))
@@ -93,7 +105,7 @@ namespace Rynchodon.Utility.Network
 
 				traceLog("default value: " + _defaultValue, condition: defaultAtt != null);
 
-				Registrar.AddAfterScriptAdded<TScript>(SetDefaultValue);
+				RegisterSetDefaultValue();
 				return;
 			}
 
@@ -129,6 +141,12 @@ namespace Rynchodon.Utility.Network
 			il.Emit(OpCodes.Stfld, field);
 			il.Emit(OpCodes.Ret);
 			return (SetterDelegate)setter.CreateDelegate(typeof(SetterDelegate));
+		}
+
+		private void RegisterSetDefaultValue()
+		{
+			if (!EqualityComparer.Equals(GetDefaultValue(), (default(TValue))))
+				Registrar.AddAfterScriptAdded<TScript>(SetDefaultValue);
 		}
 
 		private void SetDefaultValue(long entityId, TScript script)
@@ -233,20 +251,7 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <summary>
-		/// Set value from saved string. Does not synchronize.
-		/// </summary>
-		/// <param name="entityId">Id of the script's entity</param>
-		/// <param name="value">The value as a string.</param>
-		public override sealed void SetValueFromSave(long entityId, string value)
-		{
-			TValue v = FromString(value);
-			List<long> orphanIds = null;
-			TrySet(entityId, v, ref orphanIds);
-			SetOrphan(v, orphanIds);
-		}
-
-		/// <summary>
-		/// Set value from network message. Does not synchronize.
+		/// Set value from network message. Does not send.
 		/// </summary>
 		/// <param name="message">Received bytes.</param>
 		/// <param name="position">Position in message to start reading at.</param>
@@ -285,11 +290,12 @@ namespace Rynchodon.Utility.Network
 			{
 				if (_orphanValues == null)
 				{
-					_orphanValues = new List<Orphan>();
+					_orphanValues = new Dictionary<long, TValue>();
 					Registrar.AddAfterScriptAdded<TScript>(CheckForOrphan);
 				}
 				traceLog("orphans: " + orphanIds.Count);
-				_orphanValues.Add(new Orphan(value, orphanIds));
+				foreach (long orphan in orphanIds)
+					_orphanValues.Add(orphan, value);
 			}
 		}
 
@@ -307,30 +313,22 @@ namespace Rynchodon.Utility.Network
 				return;
 			}
 
-			for (int index = _orphanValues.Count - 1; index >= 0; --index)
+			TValue value;
+			if (!_orphanValues.TryGetValue(entityId, out value))
 			{
-				Orphan orphan = _orphanValues[index];
-				if (orphan.EntityId.Contains(entityId))
-				{
-					SetValue(entityId, script, orphan.Value, false);
-
-					orphan.EntityId.Remove(entityId);
-					if (orphan.EntityId.Count == 0)
-					{
-						debugLog("all id values have parents");
-						_orphanValues.Remove(orphan);
-						RemoveCheckForOrphan();
-						if (_orphanValues.Count == 0)
-						{
-							debugLog("no more orphan values");
-							_orphanValues = null;
-						}
-					}
-					return;
-				}
+				traceLog("no orphan value for block: " + entityId);
+				return;
 			}
 
-			traceLog("no orphan value for block: " + entityId);
+			SetValue(entityId, script, value, false);
+			_orphanValues.Remove(entityId);
+
+			if (_orphanValues.Count == 0)
+			{
+				debugLog("no more orphan values");
+				RemoveCheckForOrphan();
+				_orphanValues = null;
+			}
 		}
 
 		/// <summary>
@@ -451,6 +449,73 @@ namespace Rynchodon.Utility.Network
 				: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 			if (!result)
 				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
+		}
+
+		#endregion
+
+		#region Save/Load
+
+		protected override sealed void WriteToSave(List<byte> bytes)
+		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				Logger.AlwaysLog("Cannot write values, this is not the server", Logger.severity.ERROR);
+				return;
+			}
+
+			Dictionary<TValue, List<long>> values = new Dictionary<TValue, List<long>>();
+			foreach (KeyValuePair<long, TScript> pair in Registrar.IdScripts<TScript>())
+			{
+				TValue v = _getter(pair.Value);
+				if (IsDefault(v))
+					continue;
+
+				List<long> ids;
+				if (!values.TryGetValue(v, out ids))
+				{
+					ids = new List<long>();
+					values.Add(v, ids);
+				}
+
+				ids.Add(pair.Key);
+			}
+
+			ByteConverter.AppendBytes(bytes, values.Count);
+			foreach (KeyValuePair<TValue, List<long>> valueEntity in values)
+			{
+				ByteConverter.AppendBytes(bytes, valueEntity.Key);
+				ByteConverter.AppendBytes(bytes, valueEntity.Value.Count);
+				foreach (long entity in valueEntity.Value)
+					ByteConverter.AppendBytes(bytes, entity);
+			}
+		}
+
+		protected override sealed void ReadFromSave(byte[] bytes, ref int position)
+		{
+			int valueCount = ByteConverter.GetInt(bytes, ref position);
+			for (int valueIndex = 0; valueIndex < valueCount; ++valueIndex)
+			{
+				TValue value = ByteConverter.GetOfType<TValue>(bytes, ref position);
+				int entityCount = ByteConverter.GetInt(bytes, ref position);
+				for (int entityIndex = 0; entityIndex < entityCount; ++entityIndex)
+				{
+					long entity = ByteConverter.GetLong(bytes, ref position);
+					SetValue(entity, value, false);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Set value from saved string. Does not send.
+		/// </summary>
+		/// <param name="entityId">Id of the script's entity</param>
+		/// <param name="value">The value as a string.</param>
+		public override sealed void SetValueFromSave(long entityId, string value)
+		{
+			TValue v = FromString(value);
+			List<long> orphanIds = null;
+			TrySet(entityId, v, ref orphanIds);
+			SetOrphan(v, orphanIds);
 		}
 
 		#endregion

@@ -11,14 +11,18 @@ namespace Rynchodon.Utility
 
 		private EqualityComparer_StringBuilder() { }
 
-	 	public new bool Equals(object x, object y)
+		public new bool Equals(object x, object y)
 		{
 			return Equals((StringBuilder)x, (StringBuilder)y);
 		}
 
 		public bool Equals(StringBuilder x, StringBuilder y)
 		{
-			return x.EqualsIgnoreCapacity(y);
+			if (x == null)
+				return y == null;
+			if (y == null)
+				return false;
+			return ReferenceEquals(x, y) || x.EqualsIgnoreCapacity(y);
 		}
 
 		public int GetHashCode(object obj)

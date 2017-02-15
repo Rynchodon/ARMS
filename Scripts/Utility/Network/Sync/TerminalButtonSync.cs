@@ -195,15 +195,24 @@ namespace Rynchodon.Utility.Network
 		private void SendOutgoing(List<byte> bytes)
 		{
 			Logger.TraceLog("sending to: " + _outgoing.ClientId + ", entities: " + string.Join(",", _outgoing.EntityId));
-			bool result = _outgoing.ClientId.HasValue
-			? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
-			: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
+			bool result = _outgoing.ClientId.HasValue ?
+				MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value) :
+				MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 			if (!result)
 				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
 		}
 
 		#endregion
 
-	}
+		protected override void WriteToSave(List<byte> bytes)
+		{
+			throw new NotSupportedException();
+		}
 
+		protected override void ReadFromSave(byte[] bytes, ref int position)
+		{
+			throw new NotSupportedException();
+		}
+
+	}
 }

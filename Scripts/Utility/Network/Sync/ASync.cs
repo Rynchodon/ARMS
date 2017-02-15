@@ -14,8 +14,6 @@ namespace Rynchodon.Utility.Network
 	/// <summary>
 	/// Objects of this type synchronize and save events or values.
 	/// </summary>
-	/// TODO: saving
-	/// TODO: default value
 	public abstract class ASync : LogWise
 	{
 
@@ -78,6 +76,19 @@ namespace Rynchodon.Utility.Network
 			WeaponTargeting_GpsList,
 		}
 
+		[Serializable]
+		public class SyncBuilder
+		{
+			public byte[] Data;
+
+			public SyncBuilder() { }
+
+			public SyncBuilder(byte[] Data)
+			{
+				this.Data = Data;
+			}
+		}
+
 		protected static MyConcurrentPool<StringBuilder> _stringBuilderPool = new MyConcurrentPool<StringBuilder>();
 
 		private static bool _hasValues;
@@ -89,7 +100,12 @@ namespace Rynchodon.Utility.Network
 			MessageHandler.AddHandler(MessageHandler.SubMod.SyncRequest, HandleRequest);
 		}
 
-		// not using OnWorldLoad as syncs are created by other OnWorldLoad functions, static init happens in instance constructor
+		[OnWorldLoad(Order = -100)]
+		private static void OnLoad()
+		{
+			_syncs = new Dictionary<Id, ASync>();
+			_hasValues = MyAPIGateway.Multiplayer.IsServer;
+		}
 
 		[OnWorldClose]
 		private static void OnClose()
@@ -97,10 +113,41 @@ namespace Rynchodon.Utility.Network
 			_syncs = null;
 		}
 
+		public static SyncBuilder GetBuilder()
+		{
+			if (_syncs == null)
+				throw new Exception("Not initialized");
+
+			List<byte> bytes = new List<byte>(8192);
+			foreach (KeyValuePair<Id, ASync> idSync in _syncs)
+				if (idSync.Value._save)
+				{
+					ByteConverter.AppendBytes(bytes, idSync.Key);
+					idSync.Value.WriteToSave(bytes);
+				}
+
+			return new SyncBuilder(bytes.ToArray());
+		}
+
+		public static void SetBuilder(SyncBuilder builder)
+		{
+			if (_syncs == null)
+				throw new Exception("Failed to initialize");
+
+			for (int position = 0; position < builder.Data.Length;)
+			{
+				Id id = (Id)ByteConverter.GetOfType(builder.Data, ref position, typeof(Id));
+				ASync sync = _syncs[id];
+				sync.ReadFromSave(builder.Data, ref position);
+			}
+		}
+
 		public static bool TryGet(Id id, out ASync sync)
 		{
 			return _syncs.TryGetValue(id, out sync);
 		}
+
+		#region Message Handler
 
 		private static void HandleValue(byte[] message, int position)
 		{
@@ -154,6 +201,8 @@ namespace Rynchodon.Utility.Network
 			}
 		}
 
+		#endregion
+
 		private static Id GetId(Type scriptType, string valueId)
 		{
 			Id id;
@@ -191,12 +240,7 @@ namespace Rynchodon.Utility.Network
 			this._save = save;
 
 			if (_syncs == null)
-			{
-				if (Globals.WorldClosed)
-					return;
-				_syncs = new Dictionary<Id, ASync>();
-				_hasValues = MyAPIGateway.Multiplayer.IsServer;
-			}
+				throw new Exception("Not initialized");
 			_syncs.Add(_id, this);
 
 			if (!_hasValues)
@@ -230,6 +274,10 @@ namespace Rynchodon.Utility.Network
 		/// </summary>
 		/// <param name="clientId">Id of the client to send values to.</param>
 		protected abstract void SendAllToClient(ulong clientId);
+
+		protected abstract void WriteToSave(List<byte> bytes);
+
+		protected abstract void ReadFromSave(byte[] bytes, ref int position);
 
 		protected override sealed string GetContext()
 		{

@@ -32,20 +32,22 @@ namespace Rynchodon.Update
 			public RelayStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
-			[Obsolete("Old save data, new saves use EntityValues")]
+			[Obsolete("Old save data")]
 			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
-			[Obsolete("Old save data, new saves use EntityValues")]
+			[Obsolete("Old save data")]
 			public TextPanel.Builder_TextPanel[] TextPanel;
-			[Obsolete("Old save data, new saves use EntityValues")]
+			[Obsolete("Old save data")]
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
+			[Obsolete("Old save data")]
 			public UpgradeEntityValue.Builder_EntityValues[] EntityValues;
+			public ASync.SyncBuilder Sync;
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
 
 		public static Saver Instance { get; private set; }
 
-		[OnWorldLoad]
+		[OnWorldLoad(Order = int.MaxValue)]
 		private static void OnLoad()
 		{
 			Instance = new Saver();
@@ -76,10 +78,14 @@ namespace Rynchodon.Update
 			string serialized;
 			if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
 			{
+				m_logger.debugLog("Serial: " + serialized);
 				m_data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
 				if (m_data != null)
 				{
 					m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
+					m_logger.debugLog("entity value: " + m_data.EntityValues);
+					if (m_data.EntityValues != null)
+						m_logger.debugLog("entity value: " + string.Join<UpgradeEntityValue.Builder_EntityValues>(",", m_data.EntityValues));
 					return;
 				}
 			}
@@ -300,7 +306,7 @@ namespace Rynchodon.Update
 				}
 
 				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
-			
+
 				// messages in the save file belong on the server
 				if (messages == null)
 					continue;
@@ -424,12 +430,20 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 				}
 
-#pragma warning restore CS0618
-
 			// entity values
 
 			if (m_data.EntityValues != null)
+			{
+				m_logger.debugLog("Upgrading old entity values");
 				UpgradeEntityValue.Load(m_data.EntityValues);
+			}
+			else
+				m_logger.debugLog("no old entity values");
+
+#pragma warning restore CS0618
+
+			if (m_data.Sync != null)
+				ASync.SetBuilder(m_data.Sync);
 
 			m_data = null;
 		}
@@ -437,7 +451,7 @@ namespace Rynchodon.Update
 		/// <summary>
 		/// Saves data to a variable.
 		/// </summary>
-		[OnWorldSave]
+		[OnWorldSave(Order = int.MaxValue)] // has to be last, obviously
 		private static void SaveData()
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
@@ -482,6 +496,10 @@ namespace Rynchodon.Update
 						buildAuto.Add(builder);
 				});
 				data.Autopilot = buildAuto.ToArray();
+
+				// Sync
+
+				data.Sync = ASync.GetBuilder();
 				
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
 
