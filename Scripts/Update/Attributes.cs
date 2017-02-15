@@ -20,6 +20,15 @@ namespace Rynchodon
 	}
 
 	/// <summary>
+	/// Identifies a static method that is run after ARMS is fully initialized.
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Method)]
+	public class AfterArmsInit : Attribute, Ordered
+	{
+		public int Order { get; set; }
+	}
+
+	/// <summary>
 	/// Identifies a static method that is used to clear/reset a class when a world is closed.
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Method)]

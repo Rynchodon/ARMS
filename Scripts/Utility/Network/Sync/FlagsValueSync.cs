@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Sandbox.ModAPI.Interfaces.Terminal;

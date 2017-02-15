@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
@@ -16,18 +20,6 @@ namespace Rynchodon.Utility.Network
 	public abstract class AValueSync<TValue, TScript> : ASync
 	{
 
-		//private struct Orphan
-		//{
-		//	public TValue Value;
-		//	public List<long> EntityId;
-
-		//	public Orphan(TValue Value, List<long> EntityId)
-		//	{
-		//		this.Value = Value;
-		//		this.EntityId = EntityId;
-		//	}
-		//}
-
 		private class OutgoingMessage
 		{
 			public readonly ulong? ClientId;
@@ -41,19 +33,7 @@ namespace Rynchodon.Utility.Network
 				this.ClientId = ClientId;
 			}
 		}
-
-		//private class Builder
-		//{
-		//	public readonly TValue Value;
-		//	public readonly List<long> EntityId;
-
-		//	public Builder(TValue Value, List<long> EntityId)
-		//	{
-		//		this.Value = Value;
-		//		this.EntityId = EntityId;
-		//	}
-		//}
-
+		
 		public delegate TValue GetterDelegate(TScript script);
 		public delegate void SetterDelegate(TScript script, TValue value);
 
@@ -492,16 +472,26 @@ namespace Rynchodon.Utility.Network
 
 		protected override sealed void ReadFromSave(byte[] bytes, ref int position)
 		{
+			if (!MyAPIGateway.Multiplayer.IsServer)
+			{
+				Logger.AlwaysLog("Cannot read values, this is not the server", Logger.severity.ERROR);
+				return;
+			}
+
+			List<long> orphanIds = new List<long>();
+
 			int valueCount = ByteConverter.GetInt(bytes, ref position);
 			for (int valueIndex = 0; valueIndex < valueCount; ++valueIndex)
 			{
+				orphanIds.Clear();
 				TValue value = ByteConverter.GetOfType<TValue>(bytes, ref position);
 				int entityCount = ByteConverter.GetInt(bytes, ref position);
 				for (int entityIndex = 0; entityIndex < entityCount; ++entityIndex)
 				{
 					long entity = ByteConverter.GetLong(bytes, ref position);
-					SetValue(entity, value, false);
+					TrySet(entity, value, ref orphanIds);
 				}
+				SetOrphan(value, orphanIds);
 			}
 		}
 
