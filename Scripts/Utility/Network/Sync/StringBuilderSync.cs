@@ -42,6 +42,9 @@ namespace Rynchodon.Utility.Network
 			_control = control;
 		}
 
+		public StringBuilderSync(string id, GetterDelegate getter, SetterDelegate setter, bool save = true)
+			: base(id, getter, setter, save) { }
+
 		/// <summary>
 		/// Synchronize and save a StringBuilder associated with a MyTerminalControlTextbox. The StringBuilder is synchronized from time to time.
 		/// </summary>

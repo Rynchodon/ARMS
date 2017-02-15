@@ -122,6 +122,7 @@ namespace Rynchodon.Utility.Network
 			foreach (KeyValuePair<Id, ASync> idSync in _syncs)
 				if (idSync.Value._save)
 				{
+					Logger.TraceLog("saving: " + idSync.Key);
 					ByteConverter.AppendBytes(bytes, idSync.Key);
 					idSync.Value.WriteToSave(bytes);
 				}

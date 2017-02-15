@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using Rynchodon.Autopilot.Data;
@@ -79,7 +81,8 @@ namespace Rynchodon.Autopilot
 
 				AddPropertyAndSync<ShipAutopilot.State, Enum>("ArmsAp_Status", out autopilotStatus, "value_autopilotStatus");
 
-				autopilotFlags = new ValueSync<AutopilotFlags, AutopilotTerminal>("ArmsAp_AutopilotFlags", "value_autopilotFlags");
+				FieldInfo value_autopilotFlags = typeof(AutopilotTerminal).GetField("value_autopilotFlags", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+				autopilotFlags = new ValueSync<AutopilotFlags, AutopilotTerminal>("ArmsAp_AutopilotFlags", GenerateGetter<AutopilotFlags>(value_autopilotFlags), GenerateSetter<AutopilotFlags>(value_autopilotFlags), false);
 				foreach (AutopilotFlags flag in Enum.GetValues(typeof(AutopilotFlags)))
 					if (flag != 0)
 						AddPropertyAndSync(flag);
@@ -91,7 +94,8 @@ namespace Rynchodon.Autopilot
 				AddPropertyAndSync("ArmsAp_WaitUntil", out waitUntil, "value_waitUntil");
 				AddPropertyAndSyncEntityId("ArmsAp_BlockedBy", out blockedBy, "value_blockedBy");
 
-				distance = new ValueSync<long, AutopilotTerminal>("ArmsAp_Distance", "value_distance", false);
+				FieldInfo value_distance = typeof(AutopilotTerminal).GetField("value_distance", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+				distance = new ValueSync<long, AutopilotTerminal>("ArmsAp_Distance", GenerateGetter<long>(value_distance), GenerateSetter<long>(value_distance), false);
 				MyTerminalControlProperty<MyShipController, float> linearDistance = new MyTerminalControlProperty<MyShipController, float>("ArmsAp_LinearDistance") { Getter = GetLinearDistance };
 				AddControl(linearDistance, false);
 				MyTerminalControlProperty<MyShipController, float> angularDistance = new MyTerminalControlProperty<MyShipController, float>("ArmsAp_AngularDistance") { Getter = GetAngularDistance };
@@ -140,6 +144,37 @@ namespace Rynchodon.Autopilot
 				MyTerminalControlFactory.AddAction<MyShipController, MyRemoteControl>(action);
 		}
 
+		private static AValueSync<T, AutopilotTerminal>.GetterDelegate GenerateGetter<T>(FieldInfo field)
+		{
+			DynamicMethod getter = new DynamicMethod(field.DeclaringType.Name + ".get_" + field.Name, field.FieldType, new Type[] { typeof(AutopilotTerminal) }, true);
+			ILGenerator il = getter.GetILGenerator();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldfld, field);
+			il.Emit(OpCodes.Ret);
+			return (AValueSync<T, AutopilotTerminal>.GetterDelegate)getter.CreateDelegate(typeof(AValueSync<T, AutopilotTerminal>.GetterDelegate));
+		}
+
+		private static AValueSync<T, AutopilotTerminal>.SetterDelegate GenerateSetter<T>(FieldInfo field)
+		{
+			FieldInfo m_block = typeof(AutopilotTerminal).GetField("m_block", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			if (m_block == null)
+				throw new NullReferenceException("m_block");
+			MethodInfo RefreshCustomInfo = typeof(IMyTerminalBlock).GetMethod("RefreshCustomInfo");
+			if (RefreshCustomInfo == null)
+				throw new NullReferenceException("RefreshCustomInfo");
+
+			DynamicMethod setter = new DynamicMethod(field.DeclaringType.Name + ".set_" + field.Name, null, new Type[] { typeof(AutopilotTerminal), typeof(T) }, true);
+			ILGenerator il = setter.GetILGenerator();
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldarg_1);
+			il.Emit(OpCodes.Stfld, field);
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldfld, m_block);
+			il.Emit(OpCodes.Callvirt, RefreshCustomInfo);
+			il.Emit(OpCodes.Ret);
+			return (AValueSync<T, AutopilotTerminal>.SetterDelegate)setter.CreateDelegate(typeof(AValueSync<T, AutopilotTerminal>.SetterDelegate));
+		}
+
 		private static void AddPropertyAndSync(AutopilotFlags flag)
 		{
 			MyTerminalControlProperty<MyShipController, bool> property = new MyTerminalControlProperty<MyShipController, bool>("ArmsAp_" + flag);
@@ -162,7 +197,8 @@ namespace Rynchodon.Autopilot
 		{
 			MyTerminalControlProperty<MyShipController, T> property = new MyTerminalControlProperty<MyShipController, T>(id);
 
-			sync = new ValueSync<T, AutopilotTerminal>(id, fieldName, false);
+			FieldInfo field = typeof(AutopilotTerminal).GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			sync = new ValueSync<T, AutopilotTerminal>(id, GenerateGetter<T>(field), GenerateSetter<T>(field), false);
 			ValueSync<T, AutopilotTerminal> syncRef = sync;
 
 			property.Getter = syncRef.GetValue;
@@ -174,7 +210,8 @@ namespace Rynchodon.Autopilot
 		{
 			MyTerminalControlProperty<MyShipController, StringBuilder> property = new MyTerminalControlProperty<MyShipController, StringBuilder>(id);
 
-			sync = new StringBuilderSync<AutopilotTerminal>(id, fieldName, false);
+			FieldInfo field = typeof(AutopilotTerminal).GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			sync = new StringBuilderSync<AutopilotTerminal>(id, GenerateGetter<StringBuilder>(field), GenerateSetter<StringBuilder>(field), false);
 			StringBuilderSync<AutopilotTerminal> syncRef = sync;
 
 			property.Getter = syncRef.GetValue;
@@ -187,7 +224,8 @@ namespace Rynchodon.Autopilot
 		{
 			MyTerminalControlProperty<MyShipController, TYield> property = new MyTerminalControlProperty<MyShipController, TYield>(id);
 
-			sync = new ValueSync<TSync, AutopilotTerminal>(id, fieldName, false);
+			FieldInfo field = typeof(AutopilotTerminal).GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			sync = new ValueSync<TSync, AutopilotTerminal>(id, GenerateGetter<TSync>(field), GenerateSetter<TSync>(field), false);
 			ValueSync<TSync, AutopilotTerminal> syncRef = sync;
 
 			property.Getter = (block) => syncRef.GetValue(block);
@@ -199,7 +237,8 @@ namespace Rynchodon.Autopilot
 		{
 			MyTerminalControlProperty<MyShipController, string> property = new MyTerminalControlProperty<MyShipController, string>(id);
 
-			sync = new ValueSync<long, AutopilotTerminal>(id, fieldName, false);
+			FieldInfo field = typeof(AutopilotTerminal).GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			sync = new ValueSync<long, AutopilotTerminal>(id, GenerateGetter<long>(field), GenerateSetter<long>(field), false);
 			ValueSync<long, AutopilotTerminal> syncRef = sync;
 
 			property.Getter = (block) => {
