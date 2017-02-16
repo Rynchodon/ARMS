@@ -99,7 +99,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		static PathTester()
 		{
-			Vector2IMatrix<Vector3D>.EqualityComparer = new EqualityComparer_Vector3D();
+			Vector2IMatrix<Vector3D>.EqualityComparer = EqualityComparer_Vector3D.Instance;
 		}
 
 		private const float StartRayCast = 2.5f;

@@ -478,7 +478,7 @@ namespace Rynchodon.Autopilot
 			AutopilotTerminal ApTerm = m_block.AutopilotTerminal;
 			AllNavigationSettings.SettingsLevel Settings_Current = m_navSet.Settings_Current;
 
-			ApTerm.m_autopilotStatus.Value = m_state;
+			ApTerm.m_autopilotStatus = m_state;
 			if (m_state == State.Halted)
 				return;
 
@@ -488,45 +488,45 @@ namespace Rynchodon.Autopilot
 
 			if (m_pathfinder.ReportedObstruction != null)
 			{
-				ApTerm.m_blockedBy.Value = m_pathfinder.ReportedObstruction.EntityId;
+				ApTerm.m_blockedBy = m_pathfinder.ReportedObstruction.EntityId;
 				if (m_pathfinder.RotateCheck.ObstructingEntity != null)
 					flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
 			}
 			else if (m_pathfinder.RotateCheck.ObstructingEntity != null)
 			{
 				flags |= AutopilotTerminal.AutopilotFlags.RotationBlocked;
-				ApTerm.m_blockedBy.Value = m_pathfinder.RotateCheck.ObstructingEntity.EntityId;
+				ApTerm.m_blockedBy = m_pathfinder.RotateCheck.ObstructingEntity.EntityId;
 			}
 
 			EnemyFinder ef = Settings_Current.EnemyFinder;
 			if (ef != null && ef.Grid == null)
 			{
 				flags |= AutopilotTerminal.AutopilotFlags.EnemyFinderIssue;
-				ApTerm.m_reasonCannotTarget.Value = ef.m_reason;
+				ApTerm.m_reasonCannotTarget = ef.m_reason;
 				if (ef.m_bestGrid != null)
-					ApTerm.m_enemyFinderBestTarget.Value = ef.m_bestGrid.Entity.EntityId;
+					ApTerm.m_enemyFinderBestTarget = ef.m_bestGrid.Entity.EntityId;
 			}
 			INavigatorMover navM = Settings_Current.NavigatorMover;
 			if (navM != null)
 			{
 				flags |= AutopilotTerminal.AutopilotFlags.HasNavigatorMover;
-				ApTerm.m_prevNavMover.Value = navM.GetType().Name;
-				ApTerm.m_prevNavMoverInfo.Update(navM.AppendCustomInfo);
+				ApTerm.m_prevNavMover = navM.GetType().Name;
+				AutopilotTerminal.Static.prevNavMoverInfo.Update((IMyTerminalBlock)m_block.CubeBlock, navM.AppendCustomInfo);
 			}
 			INavigatorRotator navR = Settings_Current.NavigatorRotator;
 			if (navR != null && navR != navM)
 			{
 				flags |= AutopilotTerminal.AutopilotFlags.HasNavigatorRotator;
-				ApTerm.m_prevNavRotator.Value = navR.GetType().Name;
-				ApTerm.m_prevNavRotatorInfo.Update(navR.AppendCustomInfo);
+				ApTerm.m_prevNavRotator = navR.GetType().Name;
+				AutopilotTerminal.Static.prevNavRotatorInfo.Update((IMyTerminalBlock)m_block.CubeBlock, navR.AppendCustomInfo);
 			}
-			ApTerm.m_autopilotFlags.Value = flags;
-			ApTerm.m_pathfinderState.Value = m_pathfinder.CurrentState;
+			ApTerm.m_autopilotFlags = flags;
+			ApTerm.m_pathfinderState = m_pathfinder.CurrentState;
 			ApTerm.SetWaitUntil(Settings_Current.WaitUntil);
 			ApTerm.SetDistance(Settings_Current.Distance, Settings_Current.DistanceAngle);
-			ApTerm.m_welderUnfinishedBlocks.Value = m_navSet.WelderUnfinishedBlocks;
-			ApTerm.m_complaint.Value = Settings_Current.Complaint;
-			ApTerm.m_jumpComplaint.Value = m_pathfinder.JumpComplaint;
+			ApTerm.m_welderUnfinishedBlocks = m_navSet.WelderUnfinishedBlocks;
+			ApTerm.m_complaint = Settings_Current.Complaint;
+			ApTerm.m_jumpComplaint = m_pathfinder.JumpComplaint;
 		}
 
 		#endregion Custom Info

@@ -8,11 +8,10 @@ using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
-using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
-	public class Turret : WeaponTargeting
+	public sealed class Turret : WeaponTargeting
 	{
 
 		/// <summary>vanilla property</summary>
@@ -35,7 +34,7 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger(block);
-			Registrar.Add(CubeBlock, this);
+			//Registrar.Add(CubeBlock, this);
 
 			if (TP_TargetMissiles == null)
 			{
@@ -154,7 +153,7 @@ namespace Rynchodon.Weapons
 			return m_barrel.PositionComp.GetPosition();
 		}
 
-		protected override Vector3 Facing()
+		public override Vector3 Facing()
 		{
 			return m_barrel.PositionComp.WorldMatrix.Forward;
 		}

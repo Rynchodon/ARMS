@@ -24,28 +24,28 @@ namespace Rynchodon.Update
 		public class Builder_ArmsData
 		{
 			[XmlAttribute]
-			[Obsolete("Needed for backwards compatibility")]
-			public int ModVersion;
-			[XmlAttribute]
 			public long SaveTime;
 			public Version ArmsVersion;
 			public RelayStorage.Builder_NetworkStorage[] AntennaStorage;
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
-			[Obsolete("Old save data, new saves use EntityValues")]
+			public ASync.SyncBuilder Sync;
+
+#pragma warning disable CS0649
+			[XmlAttribute]
+			public int ModVersion;
 			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
-			[Obsolete("Old save data, new saves use EntityValues")]
 			public TextPanel.Builder_TextPanel[] TextPanel;
-			[Obsolete("Old save data, new saves use EntityValues")]
 			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
-			public EntityValue.Builder_EntityValues[] EntityValues;
+			public UpgradeEntityValue.Builder_EntityValues[] EntityValues;
+#pragma warning restore CS0649
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
 
-		public static Saver Instance { get; private set; }
+		private static Saver Instance { get; set; }
 
-		[OnWorldLoad]
+		[AfterArmsInit]
 		private static void OnLoad()
 		{
 			Instance = new Saver();
@@ -61,26 +61,27 @@ namespace Rynchodon.Update
 		/// <summary>LastSeen that were not added immediately upon world loading, Saver will keep trying to add them.</summary>
 		private CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>> m_failedLastSeen;
 		private FileMaster m_fileMaster;
-		private Builder_ArmsData m_data;
 
 		private Saver()
 		{
 			m_logger = new Logger();
-			GetData();
+			DoLoad(GetData());
 		}
 
-		private void GetData()
+		private Builder_ArmsData GetData()
 		{
 			m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", int.MaxValue);
+
+			Builder_ArmsData data = null;
 
 			string serialized;
 			if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
 			{
-				m_data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
-				if (m_data != null)
+				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
+				if (data != null)
 				{
 					m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
-					return;
+					return data;
 				}
 			}
 
@@ -88,28 +89,30 @@ namespace Rynchodon.Update
 			if (identifier == null)
 			{
 				m_logger.debugLog("no identifier");
-				return;
+				return data;
 			}
 
 			var reader = m_fileMaster.GetTextReader(identifier);
 			if (reader != null)
 			{
 				m_logger.debugLog("loading from file: " + identifier);
-				m_data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
+				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
 				reader.Close();
 			}
 			else
 				m_logger.alwaysLog("Failed to open file reader for " + identifier);
+
+			return data;
 		}
 
 		/// <summary>
 		/// Load data from a file. Shall be called after mod is fully initialized.
 		/// </summary>
-		public void DoLoad()
+		private void DoLoad(Builder_ArmsData data)
 		{
 			try
 			{
-				LoadSaveData();
+				LoadSaveData(data);
 			}
 			catch (Exception ex)
 			{
@@ -233,29 +236,29 @@ namespace Rynchodon.Update
 			return saveId;
 		}
 
-		private void LoadSaveData()
+		private void LoadSaveData(Builder_ArmsData data)
 		{
-			if (m_data == null)
+			if (data == null)
 			{
 				m_logger.debugLog("No data to load");
 				return;
 			}
 
 #pragma warning disable 612, 618
-			if (Comparer<Version>.Default.Compare(m_data.ArmsVersion, default(Version)) == 0)
+			if (Comparer<Version>.Default.Compare(data.ArmsVersion, default(Version)) == 0)
 			{
-				m_logger.debugLog("Old version: " + m_data.ModVersion);
-				m_data.ArmsVersion = new Version(m_data.ModVersion);
+				m_logger.debugLog("Old version: " + data.ModVersion);
+				data.ArmsVersion = new Version(data.ModVersion);
 			}
 #pragma warning restore 612, 618
 
-			m_logger.alwaysLog("Save version: " + m_data.ArmsVersion, Logger.severity.INFO);
+			m_logger.alwaysLog("Save version: " + data.ArmsVersion, Logger.severity.INFO);
 
 			// relay
 
 			Dictionary<Message.Builder_Message, Message> messages = MyAPIGateway.Multiplayer.IsServer ? new Dictionary<Message.Builder_Message, Message>() : null;
-			SerializableGameTime.Adjust = new TimeSpan(m_data.SaveTime);
-			foreach (RelayStorage.Builder_NetworkStorage bns in m_data.AntennaStorage)
+			SerializableGameTime.Adjust = new TimeSpan(data.SaveTime);
+			foreach (RelayStorage.Builder_NetworkStorage bns in data.AntennaStorage)
 			{
 				RelayNode node;
 				if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
@@ -300,7 +303,7 @@ namespace Rynchodon.Update
 				}
 
 				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
-			
+
 				// messages in the save file belong on the server
 				if (messages == null)
 					continue;
@@ -329,13 +332,13 @@ namespace Rynchodon.Update
 			// past this point, only synchronized data
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				m_data = null;
+				data = null;
 				return;
 			}
 
 			// system disruption
 
-			foreach (Disruption.Builder_Disruption bd in m_data.SystemDisruption)
+			foreach (Disruption.Builder_Disruption bd in data.SystemDisruption)
 			{
 				Disruption disrupt;
 				switch (bd.Type)
@@ -376,8 +379,8 @@ namespace Rynchodon.Update
 
 			// autopilot
 
-			if (m_data.Autopilot != null)
-				foreach (ShipAutopilot.Builder_Autopilot ba in m_data.Autopilot)
+			if (data.Autopilot != null)
+				foreach (ShipAutopilot.Builder_Autopilot ba in data.Autopilot)
 				{
 					ShipAutopilot autopilot;
 					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
@@ -386,12 +389,10 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 				}
 
-#pragma warning disable CS0618
-
 			// programmable block
 
-			if (m_data.ProgrammableBlock != null)
-				foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in m_data.ProgrammableBlock)
+			if (data.ProgrammableBlock != null)
+				foreach (ProgrammableBlock.Builder_ProgrammableBlock bpa in data.ProgrammableBlock)
 				{
 					ProgrammableBlock pb;
 					if (Registrar.TryGetValue(bpa.BlockId, out pb))
@@ -402,8 +403,8 @@ namespace Rynchodon.Update
 
 			// text panel
 
-			if (m_data.TextPanel != null)
-				foreach (TextPanel.Builder_TextPanel btp in m_data.TextPanel)
+			if (data.TextPanel != null)
+				foreach (TextPanel.Builder_TextPanel btp in data.TextPanel)
 				{
 					TextPanel panel;
 					if (Registrar.TryGetValue(btp.BlockId, out panel))
@@ -414,8 +415,8 @@ namespace Rynchodon.Update
 
 			// weapon
 
-			if (m_data.Weapon != null)
-				foreach (WeaponTargeting.Builder_WeaponTargeting bwt in m_data.Weapon)
+			if (data.Weapon != null)
+				foreach (WeaponTargeting.Builder_WeaponTargeting bwt in data.Weapon)
 				{
 					WeaponTargeting targeting;
 					if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
@@ -424,20 +425,23 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 				}
 
-#pragma warning restore CS0618
-
 			// entity values
 
-			if (m_data.EntityValues != null)
-				EntityValue.ResumeFromSave(m_data.EntityValues);
+			if (data.EntityValues != null)
+				UpgradeEntityValue.Load(data.EntityValues);
 
-			m_data = null;
+			// sync
+			
+			if (data.Sync != null)
+				ASync.SetBuilder(data.Sync);
+
+			data = null;
 		}
 
 		/// <summary>
 		/// Saves data to a variable.
 		/// </summary>
-		[OnWorldSave]
+		[OnWorldSave(Order = int.MaxValue)] // has to be last, obviously
 		private static void SaveData()
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
@@ -482,10 +486,10 @@ namespace Rynchodon.Update
 						buildAuto.Add(builder);
 				});
 				data.Autopilot = buildAuto.ToArray();
-				
-				// entity values
 
-				data.EntityValues = EntityValue.GetBuilders();
+				// Sync
+
+				data.Sync = ASync.GetBuilder();
 
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
 

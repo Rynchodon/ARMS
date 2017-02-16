@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets
+    xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>ARMS TerminalValueSync</Title>
+      <Author>Rynchodon</Author>
+      <Shortcut>TerminalValueSync</Shortcut>
+    </Header>
+    <Snippet>
+      <Imports>
+        <Import>
+          <Namespace>Rynchodon.Utility.Network</Namespace>
+        </Import>
+      </Imports>
+      <Declarations>
+        <Literal>
+          <ID>TValue</ID>
+          <Default>bool</Default>
+          <ToolTip>The type of value to be synced.</ToolTip>
+        </Literal>
+        <Literal>
+          <ID>TScript</ID>
+          <Default>script</Default>
+          <ToolTip>The type of script that contains the value.</ToolTip>
+        </Literal>
+        <Literal>
+          <ID>Control</ID>
+          <Default>control</Default>
+          <ToolTip>The terminal control to sync.</ToolTip>
+        </Literal>
+        <Literal>
+          <ID>Field</ID>
+          <Default>Field</Default>
+          <ToolTip>The field or property to sync.</ToolTip>
+        </Literal>
+      </Declarations>
+      <Code Language="CSharp">
+        <![CDATA[new TerminalValueSync<$TValue$, $TScript$>($Control$, (script) => script.$Field$, (script, value) => script.$Field$ = value);]]>
+      </Code>
+    </Snippet>
+  </CodeSnippet>
+  
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>ARMS ValueSync</Title>
+      <Author>Rynchodon</Author>
+      <Shortcut>sync</Shortcut>
+    </Header>
+    <Snippet>
+      <Imports>
+        <Import>
+          <Namespace>Rynchodon.Utility.Network</Namespace>
+        </Import>
+      </Imports>
+      <Declarations>
+        <Literal>
+          <ID>PropertyType</ID>
+          <Default>bool</Default>
+          <ToolTip>Replace with the type of the property.</ToolTip>
+        </Literal>
+        <Literal>
+          <ID>PropertyName</ID>
+          <Default>Name</Default>
+          <ToolTip>Replace with the name of the property.</ToolTip>
+        </Literal>
+        <!--<Literal>
+          <ID>TerminalControl</ID>
+          <Default>TerminalControl</Default>
+          <ToolTip>Replace with the id of the terminal control.</ToolTip>
+        </Literal>-->
+        <Literal>
+          <ID>BlockObject</ID>
+          <Default>m_block</Default>
+          <ToolTip>Replace with the reference to the entity.</ToolTip>
+        </Literal>
+      </Declarations>
+      <Code Language="CSharp">
+        <![CDATA[private $PropertyType$ value_$PropertyName$;
+        public $PropertyType$ $PropertyName$
+        {
+          get { return value_$PropertyName$; }
+          private set { Static.$PropertyName$.SetValue(MyEntity.EntityId, value); }
+        }]]>
+      </Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

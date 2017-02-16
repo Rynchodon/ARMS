@@ -51,9 +51,8 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Message needs to be explicitly initialized because there may be none in the world.
 		/// </summary>
-		public static void Init()
-		{
-		}
+		[OnWorldLoad]
+		private static void Init() { }
 
 		#region Create & Send
 

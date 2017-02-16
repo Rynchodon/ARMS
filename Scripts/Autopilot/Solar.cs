@@ -3,7 +3,6 @@ using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces.Terminal;
 using SpaceEngineers.Game.Entities.Blocks;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -18,18 +17,17 @@ namespace Rynchodon.Autopilot
 
 		private class StaticVariables
 		{
-			public MyTerminalControlCheckbox<MyTerminalBlock> s_termControl_faceSun;
-
 			public StaticVariables()
 			{
-			Logger.DebugLog("entered", Logger.severity.TRACE);
+				Logger.DebugLog("entered", Logger.severity.TRACE);
+				TerminalControlHelper.EnsureTerminalControlCreated<MySolarPanel>();
+				TerminalControlHelper.EnsureTerminalControlCreated<MyOxygenFarm>();
+
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySolarPanel>());
 				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyOxygenFarm>());
 
-				s_termControl_faceSun = new MyTerminalControlCheckbox<MyTerminalBlock>("FaceSun", MyStringId.GetOrCompute("Face Sun"), MyStringId.GetOrCompute("Face this block towards the sun"));
-				IMyTerminalValueControl<bool> valueControl = s_termControl_faceSun as IMyTerminalValueControl<bool>;
-				valueControl.Getter = GetFaceSun;
-				valueControl.Setter = SetFaceSun;
+				MyTerminalControlCheckbox<MyTerminalBlock> s_termControl_faceSun = new MyTerminalControlCheckbox<MyTerminalBlock>("FaceSun", MyStringId.GetOrCompute("Face Sun"), MyStringId.GetOrCompute("Face this block towards the sun"));
+				new ValueSync<bool, Solar>(s_termControl_faceSun, (script) => script.m_termControl_faceSun, (script, value) => script.m_termControl_faceSun = value);
 
 				MyTerminalControlFactory.AddControl<MyTerminalBlock, MySolarPanel>(s_termControl_faceSun);
 				MyTerminalControlFactory.AddControl<MyTerminalBlock, MyOxygenFarm>(s_termControl_faceSun);
@@ -56,30 +54,6 @@ namespace Rynchodon.Autopilot
 			Static = null;
 		}
 
-		private static bool GetFaceSun(IMyTerminalBlock block)
-		{
-			Solar instance;
-			if (!Registrar.TryGetValue(block, out instance))
-			{
-				(new Logger()).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
-				return false;
-			}
-
-			return instance.m_termControl_faceSun.Value;
-		}
-
-		private static void SetFaceSun(IMyTerminalBlock block, bool value)
-		{
-			Solar instance;
-			if (!Registrar.TryGetValue(block, out instance))
-			{
-				(new Logger()).alwaysLog("Failed to get instance from " + block.EntityId, Logger.severity.WARNING);
-				return;
-			}
-
-			instance.m_termControl_faceSun.Value = value;
-		}
-
 		private readonly IMyCubeBlock myBlock;
 		private readonly Logger myLogger;
 
@@ -87,7 +61,7 @@ namespace Rynchodon.Autopilot
 		private byte sinceNameChange = 0;
 
 		private bool m_nameCommand_faceSun;
-		private EntityValue<bool> m_termControl_faceSun;
+		private bool m_termControl_faceSun;
 
 		/// <param name="block">Must be an IMyTerminalBlock</param>
 		public Solar(IMyCubeBlock block)
@@ -96,7 +70,6 @@ namespace Rynchodon.Autopilot
 			myLogger = new Logger(block);
 			(myBlock as IMyTerminalBlock).CustomNameChanged += Solar_CustomNameChanged;
 			myBlock.OnClose += myBlock_OnClose;
-			m_termControl_faceSun = new EntityValue<bool>(block, 0, () => Static.s_termControl_faceSun.UpdateVisual());
 
 			Registrar.Add(block, this);
 
@@ -113,7 +86,7 @@ namespace Rynchodon.Autopilot
 
 		public void Update100()
 		{
-			if (m_termControl_faceSun.Value)
+			if (m_termControl_faceSun)
 			{
 				FaceSun();
 				return;

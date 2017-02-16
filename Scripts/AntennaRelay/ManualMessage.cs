@@ -18,8 +18,6 @@ namespace Rynchodon.AntennaRelay
 
 		private class StaticVariables
 		{
-			public Logger logger = new Logger();
-
 			public MyTerminalControlButton<MyFunctionalBlock>
 				SendMessageButton = new MyTerminalControlButton<MyFunctionalBlock>("ManualMessageId", MyStringId.GetOrCompute("Send Message"),
 					MyStringId.GetOrCompute("Send a message to an Autopilot or Programmable block"), SendMessage) { SupportsMultipleBlocks = false },
@@ -38,18 +36,20 @@ namespace Rynchodon.AntennaRelay
 					MyStringId.GetOrCompute("The message to send")) { SupportsMultipleBlocks = false, Getter = GetMessage, Setter = SetMessage };
 		}
 
-		private static StaticVariables Static = new StaticVariables();
+		private static StaticVariables Static;
 
 		[OnWorldLoad]
 		private static void Initialize()
 		{
 			MyTerminalControls.Static.CustomControlGetter += CustomHandler;
+			Static = new StaticVariables();
 		}
 
 		[OnWorldClose]
 		private static void Unload()
 		{
 			MyTerminalControls.Static.CustomControlGetter -= CustomHandler;
+			Static = null;
 		}
 
 		public static void CustomHandler(IMyTerminalBlock block, List<IMyTerminalControl> controlList)

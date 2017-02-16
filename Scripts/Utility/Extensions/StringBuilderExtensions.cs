@@ -51,5 +51,20 @@ namespace Rynchodon
 			JoinComma(builder, "or", args);
 		}
 
+		public static bool IsNullOrEmpty(this StringBuilder builder)
+		{
+			return builder == null || builder.Length == 0;
+		}
+
+		public static bool IsNullOrWhitespace(this StringBuilder builder)
+		{
+			if (builder == null || builder.Length == 0)
+				return true;
+			for (int index = builder.Length - 1; index >= 0; --index)
+				if (!char.IsWhiteSpace(builder[index]))
+					return false;
+			return true;
+		}
+
 	}
 }

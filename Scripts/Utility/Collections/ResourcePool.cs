@@ -1,3 +1,4 @@
+using System.Collections;
 using VRage.Collections;
 
 namespace Rynchodon
@@ -35,6 +36,7 @@ namespace Rynchodon
 		public static void Return(T item)
 		{
 			CheckInstancesCreated();
+			CheckCleared(item);
 			Pool.Return(item);
 		}
 
@@ -59,6 +61,17 @@ namespace Rynchodon
 				Logger.DebugLogCallStack();
 			}
 #endif
+		}
+
+		[System.Diagnostics.Conditional("DEBUG")]
+		private static void CheckCleared(T item)
+		{
+			ICollection collection = item as ICollection;
+			if (collection != null && collection.Count != 0)
+			{
+				Logger.DebugLog("Returning collection with items, collection: " + typeof(T).Name + ", count: " + collection.Count);
+				Logger.DebugLogCallStack();
+			}
 		}
 
 	}
