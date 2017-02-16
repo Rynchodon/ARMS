@@ -283,7 +283,7 @@ namespace Rynchodon
 
 			// get StatorEl from FaceBlock's grid
 			IMyMotorStator tempStator;
-			IMyCubeBlock RotorEl;
+			IMyMotorRotor RotorEl;
 			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator, out RotorEl))
 			{
 				myLogger.debugLog("Failed to get StatorEl");
@@ -301,7 +301,7 @@ namespace Rynchodon
 			else
 				getBFrom = RotorEl.CubeGrid;
 
-			IMyCubeBlock RotorAz;
+			IMyMotorRotor RotorAz;
 			if (!GetStatorRotor(getBFrom, out tempStator, out RotorAz, StatorEl, RotorEl))
 			{
 				myLogger.debugLog("Failed to get StatorAz");
@@ -319,7 +319,7 @@ namespace Rynchodon
 			return ClaimStators();
 		}
 
-		private bool GetStatorRotor(IMyCubeGrid grid, out IMyMotorStator Stator, out IMyCubeBlock Rotor, IMyMotorStator IgnoreStator = null, IMyCubeBlock IgnoreRotor = null)
+		private bool GetStatorRotor(IMyCubeGrid grid, out IMyMotorStator Stator, out IMyMotorRotor Rotor, IMyMotorStator IgnoreStator = null, IMyCubeBlock IgnoreRotor = null)
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
@@ -334,15 +334,17 @@ namespace Rynchodon
 					{
 						if (Stator == IgnoreStator)
 							continue;
-						if (StatorRotor.TryGetRotor(Stator, out Rotor) && FaceBlock.canControlBlock(Stator as IMyCubeBlock))
+						Rotor = (IMyMotorRotor)Stator.Top;
+						if (Rotor != null)
 							return true;
 					}
 					else
 					{
-						Rotor = motorPart;
-						if (Rotor == IgnoreRotor)
+						Rotor = motorPart as IMyMotorRotor;
+						if (Rotor == null || Rotor == IgnoreRotor)
 							continue;
-						if (StatorRotor.TryGetStator(Rotor, out Stator) && FaceBlock.canControlBlock(Stator as IMyCubeBlock))
+						Stator = (IMyMotorStator)Rotor.Base;
+						if (Stator != null)
 							return true;
 					}
 				}

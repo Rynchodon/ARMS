@@ -12,7 +12,7 @@ namespace Rynchodon.Attached
 		protected override IMyCubeBlock GetPartner()
 		{
 			IMyShipConnector myConn = (IMyShipConnector)myBlock;
-			if (!myConn.IsConnected)
+			if (myConn.Status != Sandbox.ModAPI.Ingame.MyShipConnectorStatus.Connected)
 				return null;
 
 			return myConn.OtherConnector;

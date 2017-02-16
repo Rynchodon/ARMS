@@ -62,7 +62,7 @@ namespace Rynchodon.Autopilot.Navigator
 							if (asFunc != null && !asFunc.Enabled)
 							{
 								m_logger.debugLog("Enabling m_navBlock: " + m_navBlock.Block.DisplayNameText, Logger.severity.DEBUG);
-								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.RequestEnable(true));
+								MyAPIGateway.Utilities.TryInvokeOnGameThread(() => asFunc.Enabled = true);
 							}
 							IMyLandingGear asGear = m_navBlock.Block as IMyLandingGear;
 							if (asGear != null)
@@ -128,7 +128,7 @@ namespace Rynchodon.Autopilot.Navigator
 				{
 					m_gridFinder.BlockCondition = block => {
 						Ingame.IMyShipConnector connector = block as Ingame.IMyShipConnector;
-						return connector != null && (!connector.IsConnected || connector.OtherConnector == m_navBlock.Block) && CanReserveTarget(connector.EntityId);
+						return connector != null && (connector.Status == Ingame.MyShipConnectorStatus.Unconnected || connector.OtherConnector == m_navBlock.Block) && CanReserveTarget(connector.EntityId);
 					};
 					m_landingDirection = m_targetBlock.Forward ?? Base6Directions.GetFlippedDirection(landingBlock.Block.FirstFaceDirection());
 				}
@@ -528,10 +528,10 @@ namespace Rynchodon.Autopilot.Navigator
 				return;
 			next_attemptLock = Globals.UpdateCount + 20ul;
 
-			Ingame.IMyShipConnector connector = m_navBlock.Block as Ingame.IMyShipConnector;
-			if (connector != null && !connector.IsConnected && connector.IsLocked)
+			IMyShipConnector connector = m_navBlock.Block as IMyShipConnector;
+			if (connector != null && connector.Status == Ingame.MyShipConnectorStatus.Connectable)
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-					if (!connector.IsConnected)
+					if (connector.Status == Ingame.MyShipConnectorStatus.Connectable)
 						connector.ApplyAction("Lock");
 				});
 		}
@@ -551,11 +551,11 @@ namespace Rynchodon.Autopilot.Navigator
 			if (asGear != null)
 				return asGear.IsLocked;
 
-			Ingame.IMyShipConnector asConn = m_navBlock.Block as Ingame.IMyShipConnector;
+			IMyShipConnector asConn = m_navBlock.Block as IMyShipConnector;
 			if (asConn != null)
 			{
 				//m_logger.debugLog("locked: " + asConn.IsLocked + ", connected: " + asConn.IsConnected + ", other: " + asConn.OtherConnector, "IsLocked()");
-				return asConn.IsConnected;
+				return asConn.Status == Ingame.MyShipConnectorStatus.Connected;
 			}
 
 			return false;

@@ -206,7 +206,7 @@ namespace Rynchodon.Autopilot
 				end++;
 				int lengthAfter = m_block.Terminal.DisplayNameText.Length - end;
 				string nameAfter = lengthAfter > 0 ? m_block.Terminal.DisplayNameText.Substring(end, lengthAfter) : string.Empty;
-				m_block.Terminal.SetCustomName((nameBefore + nameAfter).Trim());
+				m_block.Terminal.CustomName = (nameBefore + nameAfter).Trim();
 			}
 
 			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, PowerRequired);

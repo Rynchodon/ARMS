@@ -21,9 +21,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		protected override void StartEffect(IMyCubeBlock block)
 		{
-			IMyDoor door = block as IMyDoor;
-			if (door.Open)
-				door.ApplyAction("Open_Off");
+			((IMyDoor)block).CloseDoor();
 		}
 
 	}

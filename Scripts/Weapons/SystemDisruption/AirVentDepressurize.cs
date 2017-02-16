@@ -1,8 +1,8 @@
 
 using Sandbox.Common.ObjectBuilders;
+using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
-using Ingame = SpaceEngineers.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons.SystemDisruption
 {
@@ -16,17 +16,18 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		protected override bool CanDisrupt(IMyCubeBlock block)
 		{
-			return !(block as Ingame.IMyAirVent).IsDepressurizing;
+			IMyAirVent vent = (IMyAirVent)block;
+			return !vent.Depressurize && vent.CanPressurize;
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)
 		{
-			(block as Ingame.IMyAirVent).ApplyAction("Depressurize");
+			((IMyAirVent)block).Depressurize = true;
 		}
 
 		protected override void EndEffect(IMyCubeBlock block)
 		{
-			(block as Ingame.IMyAirVent).ApplyAction("Depressurize");
+			((IMyAirVent)block).Depressurize = false;
 		}
 
 	}
