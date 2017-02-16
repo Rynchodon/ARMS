@@ -23,7 +23,7 @@ namespace Rynchodon.Weapons.Guided
 	{
 		private const ulong checkInventoryInterval = Globals.UpdatesPerSecond;
 
-		private enum InitialTargetStatus : byte { None, Golis, FromWeapon, NoStorage, NotFoundId, NotFoundAny }
+		private enum InitialTargetStatus : byte { NotReady, Golis, FromWeapon, NoStorage, NotFoundId, NotFoundAny }
 
 		#region Static
 
@@ -349,19 +349,34 @@ namespace Rynchodon.Weapons.Guided
 
 		private InitialTargetStatus GetInitialTarget()
 		{
+			if (loadedAmmo == null || loadedAmmo.MissileDefinition == null)
+			{
+				myLogger.debugLog("no ammo");
+				return InitialTargetStatus.NotReady;
+			}
+
 			if (m_weaponTarget.Options.TargetGolis.IsValid())
 			{
+				myLogger.traceLog("golis: " + m_weaponTarget.Options.TargetGolis);
 				m_weaponTarget.SetTarget(new GolisTarget(CubeBlock, m_weaponTarget.Options.TargetGolis));
 				return InitialTargetStatus.Golis;
 			}
 
 			if (m_weaponTarget.CurrentControl != WeaponTargeting.Control.Off && !(m_weaponTarget.CurrentTarget is NoTarget))
+			{
+				myLogger.traceLog("from active weapon, control: " + m_weaponTarget.CurrentControl + ", target: " + m_weaponTarget.CurrentTarget);
 				return InitialTargetStatus.FromWeapon;
+			}
+			else
+			{
+				myLogger.traceLog("clearing weapon target");
+				m_weaponTarget.SetTarget(NoTarget.Instance);
+			}
 
 			RelayStorage storage = m_relayPart.GetStorage();
 			if (storage == null)
 			{
-				myLogger.debugLog("Failed to get storage for launcher", Logger.severity.WARNING);
+				myLogger.traceLog("Failed to get storage for launcher");
 				return InitialTargetStatus.NoStorage;
 			}
 			else
@@ -370,14 +385,17 @@ namespace Rynchodon.Weapons.Guided
 				if (rangeProperty == null)
 				{
 					Logger.AlwaysLog("rangeProperty == null", Logger.severity.FATAL);
-					return InitialTargetStatus.None;
+					return InitialTargetStatus.NotReady;
 				}
 				float range = rangeProperty.GetValue(CubeBlock);
 				if (range < 1f)
 					range = loadedAmmo.MissileDefinition.MaxTrajectory;
 				m_weaponTarget.GetLastSeenTarget(storage, range);
 				if (!(m_weaponTarget.CurrentTarget is NoTarget))
+				{
+					myLogger.traceLog("LastSeen: " + m_weaponTarget.CurrentTarget.Entity.nameWithId());
 					return InitialTargetStatus.FromWeapon;
+				}
 				else if (m_weaponTarget.Options.TargetEntityId != 0)
 					return InitialTargetStatus.NotFoundId;
 				else
@@ -389,7 +407,8 @@ namespace Rynchodon.Weapons.Guided
 		{
 			switch (_initial)
 			{
-				case InitialTargetStatus.None:
+				case InitialTargetStatus.NotReady:
+					customInfo.AppendLine("Launcher not ready");
 					return;
 				case InitialTargetStatus.Golis:
 					customInfo.Append(AmmoName());

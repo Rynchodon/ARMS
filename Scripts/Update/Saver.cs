@@ -21,20 +21,7 @@ namespace Rynchodon.Update
 	{
 
 		[Serializable]
-		public class Builder_ArmsData : Write_ArmsData
-		{
-#pragma warning disable CS0649
-			[XmlAttribute]
-			public int ModVersion;
-			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
-			public TextPanel.Builder_TextPanel[] TextPanel;
-			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
-			public UpgradeEntityValue.Builder_EntityValues[] EntityValues;
-#pragma warning restore CS0649
-		}
-
-		[Serializable]
-		public class Write_ArmsData
+		public class Builder_ArmsData
 		{
 			[XmlAttribute]
 			public long SaveTime;
@@ -43,6 +30,15 @@ namespace Rynchodon.Update
 			public Disruption.Builder_Disruption[] SystemDisruption;
 			public ShipAutopilot.Builder_Autopilot[] Autopilot;
 			public ASync.SyncBuilder Sync;
+
+#pragma warning disable CS0649
+			[XmlAttribute]
+			public int ModVersion;
+			public ProgrammableBlock.Builder_ProgrammableBlock[] ProgrammableBlock;
+			public TextPanel.Builder_TextPanel[] TextPanel;
+			public WeaponTargeting.Builder_WeaponTargeting[] Weapon;
+			public UpgradeEntityValue.Builder_EntityValues[] EntityValues;
+#pragma warning restore CS0649
 		}
 
 		private const string SaveIdString = "ARMS save file id", SaveXml = "ARMS save XML data";
@@ -455,7 +451,7 @@ namespace Rynchodon.Update
 			{
 				// fetching data needs to happen on game thread as not every script has locks
 
-				Write_ArmsData data = new Write_ArmsData();
+				Builder_ArmsData data = new Builder_ArmsData();
 
 				data.SaveTime = Globals.ElapsedTimeTicks;
 				data.ArmsVersion = Settings.ServerSettings.CurrentVersion;

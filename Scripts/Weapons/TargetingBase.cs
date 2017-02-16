@@ -307,6 +307,7 @@ namespace Rynchodon.Weapons
 				LastSeenTarget lst = myTarget as LastSeenTarget;
 				if (lst != null && lst.Block != null && !lst.Block.Closed)
 				{
+					myLogger.traceLog("Updating current last seen target");
 					lst.Update(processing);
 					CurrentTarget = myTarget;
 					return;
@@ -314,6 +315,7 @@ namespace Rynchodon.Weapons
 
 				if (ChooseBlock(processing, out targetBlock))
 				{
+					myLogger.traceLog("Updating current last seen, chose a new block");
 					myTarget = new LastSeenTarget(processing, targetBlock);
 					CurrentTarget = myTarget;
 					return;
@@ -324,6 +326,7 @@ namespace Rynchodon.Weapons
 			{
 				if (storage.TryGetLastSeen(Options.TargetEntityId, out processing))
 				{
+					myLogger.traceLog("Got last seen for entity id");
 					ChooseBlock(processing, out targetBlock);
 					myTarget = new LastSeenTarget(processing, targetBlock);
 					CurrentTarget = myTarget;
@@ -383,12 +386,18 @@ namespace Rynchodon.Weapons
 					}
 				});
 
-				myLogger.debugLog(() => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist, condition: processing != null);
+				myLogger.debugLog(() => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist + ", position: " + processing.Entity.GetPosition(), condition: processing != null);
 				myLogger.debugLog("no last seen target found", condition: processing == null);
 			}
 
 			if (processing == null)
 			{
+				if (this is Guided.GuidedMissile)
+				{
+					myLogger.traceLog("GuidedMissile failed to get LastSeen target, keeping previous");
+					return;
+				}
+
 				//myLogger.debugLog("failed to get a target from last seen", "GetLastSeenTarget()");
 				myTarget = NoTarget.Instance;
 				CurrentTarget = myTarget;

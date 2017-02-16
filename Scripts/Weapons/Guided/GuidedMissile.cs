@@ -142,7 +142,6 @@ namespace Rynchodon.Weapons.Guided
 			{
 				try
 				{
-					missile.myLogger.debugLog("updating");
 					if (missile.Stopped)
 						continue;
 					if (missile.m_stage == Stage.SemiActive)
@@ -476,7 +475,7 @@ namespace Rynchodon.Weapons.Guided
 			Vector3 forward = MyEntity.WorldMatrix.Forward;
 			float angle = (float)Math.Acos(Vector3.Dot(forward, targetDirection));
 
-			myLogger.traceLog("forward: " + forward + ", targetDirection: " + targetDirection + ", angle: " + angle);
+			myLogger.debugLog("forward: " + forward + ", targetDirection: " + targetDirection + ", angle: " + angle);
 
 			if (m_stage <= Stage.Guided && angle > 0.001f) // if the angle is too small, the matrix will be invalid
 			{ // rotate missile
@@ -586,7 +585,7 @@ namespace Rynchodon.Weapons.Guided
 			Vector3.DistanceSquared(ref masterVelocity, ref myCluster.masterVelocity, out distSq);
 			if (distSq > maxVelChangeSq)
 			{
-				myLogger.debugLog("massive change in master velocity, terminating", Logger.severity.INFO);
+				myLogger.debugLog("massive change in master velocity, terminating. master position: " + myCluster.Master.GetPosition() + ", master velocity: " + myCluster.Master.Physics.LinearVelocity, Logger.severity.INFO);
 				m_stage = Stage.Terminated;
 				return;
 			}
