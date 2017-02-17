@@ -217,7 +217,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					throw new Exception("Selected item not found in all ores. Selected item: " + selected[0].Text.ToString());
 				m_activeOres.Add(ore);
 				m_addingOres = false;
-				autopilot.SwitchTerminalTo();
+				autopilot.RebuildControls();
 				return;
 			}
 
@@ -232,7 +232,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		private void AddOre(IMyTerminalBlock block)
 		{
 			m_addingOres = true;
-			block.SwitchTerminalTo();
+			block.RebuildControls();
 		}
 
 		private void RemoveOre(IMyTerminalBlock block)

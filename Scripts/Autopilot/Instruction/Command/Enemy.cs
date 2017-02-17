@@ -247,7 +247,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 					return;
 				m_activeResponses.Add((EnemyFinder.Response)selected[0].UserData);
 				m_addingResponse = false;
-				autopilot.SwitchTerminalTo();
+				autopilot.RebuildControls();
 				return;
 			}
 
@@ -262,7 +262,7 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		private void AddResponse(IMyTerminalBlock block)
 		{
 			m_addingResponse = true;
-			block.SwitchTerminalTo();
+			block.RebuildControls();
 		}
 
 		private void RemoveResponse(IMyTerminalBlock block)

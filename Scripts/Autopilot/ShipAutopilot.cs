@@ -10,16 +10,12 @@ using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
-using Rynchodon.Update;
 using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using VRage;
-using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 namespace Rynchodon.Autopilot
@@ -307,11 +303,10 @@ namespace Rynchodon.Autopilot
 				if (RotateOnly())
 					return;
 
-				TimeSpan nextInstructions = m_previousInstructions + TimeSpan.FromSeconds(ef != null ? 10d : 1d);
-				m_logger.debugLog("ef: " + ef + ", next: " + nextInstructions);
+				TimeSpan nextInstructions = m_previousInstructions + TimeSpan.FromSeconds(m_navSet.Settings_Current.Complaint != InfoString.StringId.None || ef != null ? 60d : 1d);
 				if (nextInstructions > Globals.ElapsedTime)
 				{
-					m_logger.debugLog("Delaying instructions", Logger.severity.INFO);
+					m_logger.debugLog("Delaying instructions until " + nextInstructions, Logger.severity.INFO);
 					m_navSet.Settings_Task_NavWay.WaitUntil = nextInstructions;
 					return;
 				}

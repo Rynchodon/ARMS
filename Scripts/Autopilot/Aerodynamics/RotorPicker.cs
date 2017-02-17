@@ -80,7 +80,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			}
 
 			MyTerminalControls.Static.CustomControlGetter += CustomControlGetter;
-			cockpit.SwitchTerminalTo();
+			cockpit.RebuildControls();
 		}
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
@@ -113,7 +113,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private void SaveAndExit(MyCockpit cockpit)
 		{
 			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
-			cockpit.SwitchTerminalTo();
+			cockpit.RebuildControls();
 
 			m_onComplete(m_selected.Select(item => (IMyMotorStator)item.UserData), m_sensitivity, MathHelper.ToRadians(m_trim));
 		}

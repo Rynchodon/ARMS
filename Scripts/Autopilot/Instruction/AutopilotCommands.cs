@@ -243,8 +243,8 @@ namespace Rynchodon.Autopilot.Instruction
 				foreach (ACommand comm in ParseCommands(Commands))
 					m_commandList.Add(comm);
 				if (m_syntaxErrors.Length != 0)
-					m_block.RefreshCustomInfo();
-				m_block.SwitchTerminalTo();
+					m_block.UpdateCustomInfo();
+				m_block.RebuildControls();
 			}
 		}
 
@@ -263,7 +263,7 @@ namespace Rynchodon.Autopilot.Instruction
 				List<ACommand> commands = new List<ACommand>();
 				GetActions(Commands, m_actionList);
 				if (m_syntaxErrors.Length != 0)
-					m_block.RefreshCustomInfo();
+					m_block.UpdateCustomInfo();
 				return m_actionList;
 			}
 		}
@@ -278,7 +278,7 @@ namespace Rynchodon.Autopilot.Instruction
 				AutopilotActionList actList = new AutopilotActionList();
 				GetActions(Commands, actList);
 				if (m_syntaxErrors.Length != 0)
-					m_block.RefreshCustomInfo();
+					m_block.UpdateCustomInfo();
 				return actList;
 			}
 		}
@@ -438,7 +438,7 @@ namespace Rynchodon.Autopilot.Instruction
 					m_currentAddNode.Pop();
 					if (m_currentAddNode.Count == 0)
 						m_listCommands = true;
-					shipController.SwitchTerminalTo();
+					shipController.RebuildControls();
 				}));
 
 				return;
@@ -669,8 +669,8 @@ namespace Rynchodon.Autopilot.Instruction
 			MyTerminalControls.Static.CustomControlGetter -= CustomControlGetter;
 			m_block.AppendingCustomInfo -= m_block_AppendingCustomInfo;
 
-			m_block.RefreshCustomInfo();
-			m_block.SwitchTerminalTo();
+			m_block.UpdateCustomInfo();
+			m_block.RebuildControls();
 
 			Cleanup();
 		}
@@ -681,15 +681,15 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			m_logger.debugLog(message, member: member, lineNumber: lineNumber);
 			m_infoMessage = message;
-			m_block.RefreshCustomInfo();
-			m_block.SwitchTerminalTo();
+			m_block.UpdateCustomInfo();
+			m_block.RebuildControls();
 		}
 
 		private void ClearMessage()
 		{
 			m_infoMessage = null;
-			m_block.RefreshCustomInfo();
-			m_block.SwitchTerminalTo();
+			m_block.UpdateCustomInfo();
+			m_block.RebuildControls();
 		}
 
 		private void m_block_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder arg2)

@@ -124,7 +124,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			}
 
 			cockpitTerminal.m_aeroShow = value;
-			block.SwitchTerminalTo();
+			block.RebuildControls();
 		}
 
 		private static bool Get_Helper(IMyTerminalBlock block)
@@ -151,7 +151,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			if (value)
 			{
 				cockpitTerminal.m_controlHelper = new FlightControlAssist(cockpitTerminal.m_cockpit);
-				block.SwitchTerminalTo();
+				block.RebuildControls();
 			}
 			else
 			{

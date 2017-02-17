@@ -994,7 +994,7 @@ namespace Rynchodon.Weapons
 			ConditionChange(target, ref prev_target);
 
 			if (condition_changed)
-				MyAPIGateway.Utilities.InvokeOnGameThread(CubeBlock.RefreshCustomInfo);
+				MyAPIGateway.Utilities.InvokeOnGameThread(CubeBlock.UpdateCustomInfo);
 		}
 
 		private void ConditionChange<T>(T condition, ref T previous) where T : struct

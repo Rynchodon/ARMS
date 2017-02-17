@@ -392,7 +392,7 @@ namespace Rynchodon.AntennaRelay
 			func.Enabled = false;
 			func.Enabled = true;
 
-			TermBlock.RefreshCustomInfo();
+			TermBlock.UpdateCustomInfo();
 
 			byte detectionTypes = 0;
 			if (myDefinition.Radar)
@@ -1007,7 +1007,7 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			if (needToRefresh)
-				TermBlock.RefreshCustomInfo();
+				TermBlock.UpdateCustomInfo();
 		}
 
 		private void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)

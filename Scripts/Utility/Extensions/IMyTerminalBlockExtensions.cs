@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Rynchodon.Update;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
 using VRage.Input;
@@ -14,7 +15,6 @@ namespace Rynchodon
 
 		private class StaticVariables
 		{
-			//public IMyTerminalBlock switchTo;
 			public MyKeys[] importantKeys = new MyKeys[] { MyKeys.Enter, MyKeys.Space };
 			public List<MyKeys> pressedKeys = new List<MyKeys>();
 		}
@@ -26,15 +26,24 @@ namespace Rynchodon
 			Action<IMyTerminalBlock, StringBuilder> action = (termBlock, builder) => builder.Append(message);
 
 			block.AppendingCustomInfo += action;
-			block.RefreshCustomInfo();
+			block.UpdateCustomInfo();
 			block.AppendingCustomInfo -= action;
+		}
+
+		/// <summary>
+		/// Refresh custom info & raise properties changed.
+		/// </summary>
+		public static void UpdateCustomInfo(this IMyTerminalBlock block)
+		{
+			block.RefreshCustomInfo();
+			((MyTerminalBlock)block).RaisePropertiesChanged();
 		}
 
 		/// <summary>
 		/// Wait for input to finish, then switch control panel to the currently selected block(s).
 		/// </summary>
 		/// <param name="block">Not used.</param>
-		public static void SwitchTerminalTo(this IMyTerminalBlock block)//, [CallerMemberName] string caller = null)
+		public static void RebuildControls(this IMyTerminalBlock block)
 		{
 			if (Globals.WorldClosed)
 				return;
@@ -45,15 +54,8 @@ namespace Rynchodon
 				return;
 			}
 
-			//Logger.debugLog("IMyTerminalBlockExtensions", "block: " + block.getBestName());
-			//Logger.DebugLog("null block from " + caller, Logger.severity.FATAL, condition: block == null);
 			UpdateManager.Unregister(1, SwitchTerminalWhenNoInput);
 			UpdateManager.Register(1, SwitchTerminalWhenNoInput);
-			//Static.switchTo = block;
-
-			//Static.pressedKeys.Clear();
-			//MyAPIGateway.Input.GetPressedKeys(Static.pressedKeys);
-			//Logger.DebugLog("IMyTerminalBlockExtensions", "pressed: " + string.Join(", ", Static.pressedKeys));
 		}
 
 		private static void SwitchTerminalWhenNoInput()
@@ -62,7 +64,6 @@ namespace Rynchodon
 				return;
 
 			Logger.DebugLog("MyAPIGateway.Input == null", Logger.severity.FATAL, condition: MyAPIGateway.Input == null);
-			//Logger.DebugLog("switchTo == null", Logger.severity.FATAL, condition: Static.switchTo == null);
 
 			if (MyAPIGateway.Input.IsAnyMouseOrJoystickPressed())
 				return;
@@ -76,7 +77,6 @@ namespace Rynchodon
 						return;
 			}
 
-			//Logger.DebugLog("switching to: " + Static.switchTo.getBestName());
 			UpdateManager.Unregister(1, SwitchTerminalWhenNoInput);
 
 			Type type = typeof(MyGuiScreenTerminal);
@@ -94,9 +94,6 @@ namespace Rynchodon
 				Logger.AlwaysLog("SelectBlocks not found", Logger.severity.ERROR);
 			else
 				method.Invoke(obj, null);
-
-			//MyGuiScreenTerminal.SwitchToControlPanelBlock((MyTerminalBlock)Static.switchTo);
-			//Static.switchTo = null;
 		}
 
 	}

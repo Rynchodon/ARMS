@@ -121,7 +121,7 @@ namespace Rynchodon.AntennaRelay
 				control.Getter = block => ShowOffset;
 				control.Setter = (block, value) => {
 					ShowOffset = value;
-					IMyTerminalBlockExtensions.SwitchTerminalTo(null);
+					IMyTerminalBlockExtensions.RebuildControls(null);
 				};
 				TermControls.Add(control);
 
@@ -184,7 +184,7 @@ namespace Rynchodon.AntennaRelay
 						else
 							proj.m_options &= ~opt;
 						if (opt == Option.OnOff || opt == Option.IntegrityColours)
-							proj.m_block.SwitchTerminalTo();
+							proj.m_block.RebuildControls();
 					});
 
 				TermControls.Add(control);

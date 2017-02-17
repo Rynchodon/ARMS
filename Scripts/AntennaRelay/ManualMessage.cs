@@ -79,7 +79,7 @@ namespace Rynchodon.AntennaRelay
 			if (!Registrar.TryGetValue(block.EntityId, out instance))
 				throw new ArgumentException("block id not found in registrar");
 
-			block.SwitchTerminalTo();
+			block.RebuildControls();
 
 			if (instance.m_sending)
 			{
@@ -113,7 +113,7 @@ namespace Rynchodon.AntennaRelay
 				throw new ArgumentException("block id not found in registrar");
 
 			instance.m_sending = false;
-			block.SwitchTerminalTo();
+			block.RebuildControls();
 		}
 
 		#region Getter & Setter

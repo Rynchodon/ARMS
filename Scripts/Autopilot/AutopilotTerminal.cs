@@ -159,9 +159,9 @@ namespace Rynchodon.Autopilot
 			FieldInfo m_block = typeof(AutopilotTerminal).GetField("m_block", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 			if (m_block == null)
 				throw new NullReferenceException("m_block");
-			MethodInfo RefreshCustomInfo = typeof(IMyTerminalBlock).GetMethod("RefreshCustomInfo");
-			if (RefreshCustomInfo == null)
-				throw new NullReferenceException("RefreshCustomInfo");
+			MethodInfo UpdateCustomInfo = typeof(IMyTerminalBlockExtensions).GetMethod("UpdateCustomInfo");
+			if (UpdateCustomInfo == null)
+				throw new NullReferenceException("UpdateCustomInfo");
 
 			DynamicMethod setter = new DynamicMethod(field.DeclaringType.Name + ".set_" + field.Name, null, new Type[] { typeof(AutopilotTerminal), typeof(T) }, true);
 			ILGenerator il = setter.GetILGenerator();
@@ -170,7 +170,7 @@ namespace Rynchodon.Autopilot
 			il.Emit(OpCodes.Stfld, field);
 			il.Emit(OpCodes.Ldarg_0);
 			il.Emit(OpCodes.Ldfld, m_block);
-			il.Emit(OpCodes.Callvirt, RefreshCustomInfo);
+			il.Emit(OpCodes.Call, UpdateCustomInfo);
 			il.Emit(OpCodes.Ret);
 			return (AValueSync<T, AutopilotTerminal>.SetterDelegate)setter.CreateDelegate(typeof(AValueSync<T, AutopilotTerminal>.SetterDelegate));
 		}
@@ -523,7 +523,7 @@ namespace Rynchodon.Autopilot
 		public void SetDistance(float linear, float angular)
 		{
 			DistanceValues dv = new DistanceValues() { PackedValue = m_distance };
-			if (Math.Abs(linear - dv.LinearDistance) > 0.1f || Math.Abs(angular - dv.AngularDistance) > 0.01f)
+			if (Math.Abs(linear / dv.LinearDistance - 1f) > 0.01f || Math.Abs(angular / dv.AngularDistance -1f) > 0.01f)
 				m_distance = new DistanceValues() { LinearDistance = linear, AngularDistance = angular }.PackedValue;
 		}
 
@@ -708,7 +708,7 @@ namespace Rynchodon.Autopilot
 				WaitingNeedsUpdate = false;
 				return;
 			}
-			m_block.RefreshCustomInfo();
+			m_block.UpdateCustomInfo();
 		}
 
 	}

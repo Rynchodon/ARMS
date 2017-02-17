@@ -331,7 +331,7 @@ namespace Rynchodon.Weapons.Guided
 					myLogger.traceLog("Updating custom info");
 					_initial = initial;
 					_initialTarget = m_weaponTarget.CurrentTarget;
-					CubeBlock.RefreshCustomInfo();
+					CubeBlock.UpdateCustomInfo();
 				}
 
 				if (m_weaponTarget.CurrentTarget is NoTarget && !m_weaponTarget.FireWithoutLock)
