@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -21,8 +20,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private readonly List<MyEntity> m_obstructions = new List<MyEntity>();
 
 		private ulong m_nextRunRotate;
-		private MyPlanet m_closestPlanet;
-		private bool m_planetObstruction;
 
 		public IMyEntity ObstructingEntity { get; private set; }
 
@@ -94,43 +91,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			LineSegment axisSegment = new LineSegment();
 
-			m_closestPlanet = null;
-
 			foreach (MyEntity entity in m_collector.Invoke(m_obstructions))
 			{
 				if (entity is IMyVoxelBase)
 				{
-					IMyVoxelMap voxel = entity as IMyVoxelMap;
-					if (voxel != null)
-					{
-						if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
-						{
-							m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
-							ObstructingEntity = voxel;
-							return false;
-						}
-						continue;
-					}
+					MyVoxelBase voxel = (MyVoxelBase)entity;
+					Vector3D leftBottom = voxel.PositionLeftBottomCorner;
+					BoundingSphereD localSphere;
+					Vector3D.Subtract(ref surroundingSphere.Center, ref leftBottom, out localSphere.Center);
+					localSphere.Radius = surroundingSphere.Radius;
+					voxel.Storage.Geometry.Intersects(ref localSphere);
 
-					if (m_closestPlanet == null)
-					{
-						MyPlanet planet = entity as MyPlanet;
-						if (planet == null)
-							continue;
-
-						double distToPlanetSq = Vector3D.DistanceSquared(centreOfMass, planet.PositionComp.GetPosition());
-						if (distToPlanetSq < planet.MaximumRadius * planet.MaximumRadius)
-						{
-							m_closestPlanet = planet;
-
-							if (m_planetObstruction)
-							{
-								m_logger.debugLog("planet blocking");
-								ObstructingEntity = m_closestPlanet;
-								return false;
-							}
-						}
-					}
 					continue;
 				}
 
@@ -162,49 +133,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return false;
 			}
 
-			MyAPIGateway.Utilities.TryInvokeOnGameThread(TestPlanet);
 			ObstructingEntity = null;
 			return true;
-		}
-
-		private void TestPlanet()
-		{
-			MyPlanet planet = m_closestPlanet;
-			if (planet == null)
-				return;
-
-			IMyCubeGrid grid = m_block.CubeGrid;
-
-			Vector3D myPos = grid.GetCentre();
-			Vector3D planetCentre = planet.GetCentre();
-
-			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
-			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
-			{
-				m_logger.debugLog("higher than planet maximum");
-				m_planetObstruction = false;
-				return;
-			}
-
-			Vector3D closestPoint = planet.GetClosestSurfacePointGlobal(ref myPos);
-
-			if (distSqToPlanet < Vector3D.DistanceSquared(closestPoint, planetCentre))
-			{
-				m_logger.debugLog("below surface");
-				return;
-			}
-
-			float longest = grid.GetLongestDim();
-			if (Vector3D.DistanceSquared(myPos, closestPoint) < longest * longest)
-			{
-				m_logger.debugLog("near surface");
-				m_planetObstruction = true;
-				return;
-			}
-
-			m_logger.debugLog("clear");
-			m_planetObstruction = false;
-			return;
 		}
 
 	}

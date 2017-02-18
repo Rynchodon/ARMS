@@ -188,7 +188,6 @@
     <Compile Include="Autopilot\Aerodynamics\RotorPicker.cs" />
     <Compile Include="Autopilot\Movement\GyroProfiler.cs" />
     <Compile Include="Autopilot\Data\PseudoBlock.cs" />
-    <None Include="Autopilot\Movement\IMover.cs" />
     <Compile Include="Autopilot\Movement\ThrustProfiler.cs" />
     <Compile Include="Autopilot\EnemyFinder.cs" />
     <Compile Include="Autopilot\GridFinder.cs" />

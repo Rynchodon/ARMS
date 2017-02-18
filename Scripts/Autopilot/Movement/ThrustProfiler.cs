@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
-using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
-using VRage;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
 namespace Rynchodon.Autopilot.Movement
@@ -82,6 +78,7 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>The ship has thrusters that can operate effectively in space.</summary>
 		public bool CapableSpace { get; private set; }
 
+		/// <summary>Strength of gravity in m/s/s</summary>
 		public float GravityStrength
 		{
 			get

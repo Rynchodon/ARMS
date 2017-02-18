@@ -599,7 +599,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					Vector3 relativeF = relative;
 					Vector3 rejection; Vector3.Reject(ref relativeF, ref input.Direction, out rejection);
 					Vector3 planarComponents; Vector3.Transform(ref rejection, ref to2D, out planarComponents);
-					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.001f || planarComponents.Z < -0.001f);
+					Logger.DebugLog("Math fail: rejection: " + rejection + ", planar components: " + planarComponents + "\nto3D: " + to3D, Logger.severity.FATAL, condition: planarComponents.Z > 0.01f || planarComponents.Z < -0.01f);
 					Vector2 pc2 = new Vector2(planarComponents.X, planarComponents.Y);
 					apShipRejections.Add(ToCell(pc2, gridSize), offsetWorld);
 				}
