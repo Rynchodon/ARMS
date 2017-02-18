@@ -427,7 +427,7 @@ namespace Rynchodon.Autopilot.Movement
 			//m_logger.debugLog("entered CalcRotate()", "CalcRotate()");
 
 			// if the ship is limited, it must always face accel direction
-			if (!Thrust.CanMoveAnyDirection() && m_moveAccel != Vector3.Zero)
+			if (!Thrust.CanMoveAnyDirection(0.1f) && m_moveAccel != Vector3.Zero)
 			{
 				//m_logger.debugLog("limited thrust");
 				CalcRotate_Accel();
@@ -505,7 +505,7 @@ namespace Rynchodon.Autopilot.Movement
 			//m_logger.debugLog("entered CalcRotate_Stop()", "CalcRotate_Stop()");
 
 			Vector3 linearVelocity = LinearVelocity;
-			if (!Thrust.CanMoveAnyDirection() || linearVelocity.LengthSquared() > 1f)
+			if (!Thrust.CanMoveAnyDirection(0.1f) || linearVelocity.LengthSquared() > 1f)
 			{
 				//m_logger.debugLog("rotate to stop");
 
@@ -560,15 +560,15 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 gravAccel = -Thrust.LocalGravity.vector;
 			Vector3 gravForce = gravAccel * mass;
 
-			float primaryThrust = Thrust.PrimaryForce, secondaryThrust = Thrust.SecondaryForce;
+			float primaryThrust = Thrust.PrimaryForce, secondaryThrust = Thrust.SecondaryForce, tertiaryThrust = Thrust.TertiaryForce;
 
-			float maxForceSquared = primaryThrust * primaryThrust + secondaryThrust * secondaryThrust;
+			float maxForceSquared = primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust;
 			float gravForceSquared = gravForce.LengthSquared();
 
-			Vector3 targetDirection;
+			Vector3 targetPrimary;
 			if (maxForceSquared < gravForceSquared)
 			{
-				targetDirection = gravAccel / Thrust.GravityStrength;
+				targetPrimary = gravAccel / Thrust.GravityStrength;
 				m_logger.debugLog("max force below gravity force");
 			}
 			else
@@ -578,43 +578,53 @@ namespace Rynchodon.Autopilot.Movement
 				if (availableForceSquared < originalForceMagSquared)
 				{
 					float availableForce = (float)Math.Sqrt(availableForceSquared);
-					targetDirection = gravForce + originalDirection * availableForce;
+					targetPrimary = gravForce + originalDirection * availableForce;
 					m_logger.debugLog("available force is less than max. gravityForce: " + gravForce + ", original direction by available force: " + (originalDirection * availableForce));
 				}
 				else
 				{
 					Vector3 originalForce = originalVector * mass;
-					targetDirection = gravForce + originalForce;
+					targetPrimary = gravForce + originalForce;
 					m_logger.debugLog("available force is greater than max. gravityForce: " + gravForce + ", originalForce: " + originalForce);
 				}
-				targetDirection.Normalize();
+				targetPrimary.Normalize();
 			}
 
 			if (secondaryThrust != 0f)
 			{
-				// make altDirection perpendicular to targetDirection
-				Vector3 altDirection; Vector3.Reject(ref originalDirection, ref targetDirection, out altDirection);
-				if (!altDirection.IsValid() || altDirection.Normalize() == 0f)
+				// ensure targetSecondary is perpendicular to targetDirection
+				Vector3 targetSecondary; Vector3.Reject(ref originalDirection, ref targetPrimary, out targetSecondary);
+				if (!targetSecondary.IsValid() || targetSecondary.Normalize() == 0f)
 				{
-					m_logger.debugLog("bad alt direction: " + altDirection);
-					targetDirection.CalculatePerpendicularVector(out altDirection);
+					m_logger.debugLog("bad alt direction: " + targetSecondary);
+					targetPrimary.CalculatePerpendicularVector(out targetSecondary);
 				}
 
 				float maxForce = (float)Math.Sqrt(maxForceSquared);
-				Vector3 primaryDirection = targetDirection * primaryThrust + altDirection * secondaryThrust;
-				primaryDirection /= maxForce;
-				Vector3 secondaryDirection = targetDirection * secondaryThrust + altDirection * -primaryThrust;
-				secondaryDirection /= maxForce;
+				Vector3 primaryDirection, secondaryDirection;
+				if (tertiaryThrust != 0f)
+				{
+					Vector3 targetTertiary = Thrust.TertiaryForceIsRight ? targetPrimary.Cross(targetSecondary) : targetSecondary.Cross(targetPrimary);
+					Vector3 tertiaryAdjustment = targetTertiary * tertiaryThrust;
 
-				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetDirection + ", altDirection: " + altDirection + ", primaryDirection: " + primaryDirection + ", secondaryDirection: " + secondaryDirection);
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust + tertiaryAdjustment) / maxForce;
+					secondaryDirection = (targetPrimary * secondaryThrust + targetSecondary * -primaryThrust + tertiaryAdjustment) / maxForce;
+				}
+				else
+				{
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) /maxForce;
+					secondaryDirection = (targetPrimary * secondaryThrust + targetSecondary * -primaryThrust) / maxForce;
+				}
+
+				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetPrimary + ", altDirection: " + targetSecondary + ", primaryDirection: " + primaryDirection + ", secondaryDirection: " + secondaryDirection);
 
 				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, primaryDirection), RelativeDirection3F.FromLocal(Block.CubeGrid, secondaryDirection), true);
 			}
 			else
 			{
-				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetDirection);
+				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetPrimary);
 
-				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetDirection), null, true);
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetPrimary), null, true);
 			}
 		}
 

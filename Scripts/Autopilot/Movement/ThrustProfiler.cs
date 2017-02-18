@@ -48,6 +48,8 @@ namespace Rynchodon.Autopilot.Movement
 		private ForceInDirection m_primaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Forward };
 		/// <summary>Direction, perpendicular to primary, with strongest thrusters.</summary>
 		private ForceInDirection m_secondaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Up };
+		/// <summary>Direction, perpendicular to primary and secondary, with strongest thrusters.</summary>
+		private ForceInDirection m_tertiaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Right };
 
 		public IMyCubeGrid Grid { get { return myGrid; } }
 
@@ -63,6 +65,12 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Maximum force of thrusters in direction of Standard's upward.</summary>
 		public float SecondaryForce { get { return m_secondaryForce.Force; } }
 
+		/// <summary>Maximum force of thruster is tertiary direction.</summary>
+		public float TertiaryForce { get { return m_tertiaryForce.Force; } }
+
+		/// <summary>If true, the tertiary thrusters are at primary X secondary. If false, the tertiary thrusters are at secondary X primary.</summary>
+		public bool TertiaryForceIsRight { get { return m_tertiaryForce.Direction == Base6Directions.GetCross(m_primaryForce.Direction, m_secondaryForce.Direction); } }
+
 		/// <summary>Gravitational acceleration in grid space.</summary>
 		public DirectionGrid LocalGravity { get; private set; }
 
@@ -72,11 +80,11 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Thrust ratio to conteract gravity.</summary>
 		public DirectionGrid GravityReactRatio { get; private set; }
 
-		/// <summary>The ship has thrusters that can operate effectively in atmosphere.</summary>
-		public bool CapableAtmo { get; private set; }
+		///// <summary>The ship has thrusters that can operate effectively in atmosphere.</summary>
+		//public bool CapableAtmo { get; private set; }
 
-		/// <summary>The ship has thrusters that can operate effectively in space.</summary>
-		public bool CapableSpace { get; private set; }
+		///// <summary>The ship has thrusters that can operate effectively in space.</summary>
+		//public bool CapableSpace { get; private set; }
 
 		/// <summary>Strength of gravity in m/s/s</summary>
 		public float GravityStrength
@@ -208,7 +216,7 @@ namespace Rynchodon.Autopilot.Movement
 			//for (int i = m_totalThrustForce.Length - 1; i >= 0; i--)
 			//	m_totalThrustForce[i] = 0f;
 
-			CapableAtmo = false; CapableSpace = false;
+			//CapableAtmo = false; CapableSpace = false;
 
 			Vector3D position = myGrid.GetPosition();
 			bool first = true;
@@ -279,11 +287,11 @@ namespace Rynchodon.Autopilot.Movement
 			float thrusterForce = thruster.BlockDefinition.ForceMagnitude * (thruster as IMyThrust).ThrustMultiplier;
 			if (thruster.BlockDefinition.EffectivenessAtMaxInfluence != 1f || thruster.BlockDefinition.EffectivenessAtMinInfluence != 1f)
 			{
-				if (!CapableAtmo && thruster.BlockDefinition.EffectivenessAtMaxInfluence > thruster.BlockDefinition.EffectivenessAtMinInfluence)
-					CapableAtmo = true;
+				//if (!CapableAtmo && thruster.BlockDefinition.EffectivenessAtMaxInfluence > thruster.BlockDefinition.EffectivenessAtMinInfluence)
+				//	CapableAtmo = true;
 
-				if (!CapableSpace && thruster.BlockDefinition.EffectivenessAtMinInfluence > thruster.BlockDefinition.EffectivenessAtMaxInfluence)
-					CapableSpace = true;
+				//if (!CapableSpace && thruster.BlockDefinition.EffectivenessAtMinInfluence > thruster.BlockDefinition.EffectivenessAtMaxInfluence)
+				//	CapableSpace = true;
 
 				if (m_airDensity <= thruster.BlockDefinition.MinPlanetaryInfluence)
 					thrusterForce *= thruster.BlockDefinition.EffectivenessAtMinInfluence;
@@ -298,16 +306,18 @@ namespace Rynchodon.Autopilot.Movement
 					thrusterForce *= effectiveness;
 				}
 			}
-			else
-			{
-				CapableAtmo = true;
-				CapableSpace = true;
-			}
+			//else
+			//{
+			//	CapableAtmo = true;
+			//	CapableSpace = true;
+			//}
 			return thrusterForce;
 		}
 
-		private float CalcForceInDirection(Base6Directions.Direction direction)
+		private void CalcForceInDirection(Base6Directions.Direction direction)
 		{
+			const float currentDirectionBias = 1.1f;
+
 			float force = 0;
 			using (lock_thrustersInDirection.AcquireSharedUsing())
 				foreach (MyThrust thruster in m_thrustersInDirection[(int)direction])
@@ -321,7 +331,7 @@ namespace Rynchodon.Autopilot.Movement
 				//myLogger.debugLog("updating primary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
 				m_primaryForce.Force = force;
 			}
-			else if (force > m_primaryForce.Force * 1.1f)
+			else if (force > m_primaryForce.Force * currentDirectionBias)
 			{
 				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", primary: " + m_primaryForce, Logger.severity.DEBUG);
 				m_secondaryForce = m_primaryForce;
@@ -335,23 +345,40 @@ namespace Rynchodon.Autopilot.Movement
 
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
 				Gravity.SetMatrixOrientation(m_secondaryForce.Direction, m_primaryForce.Direction);
+
+				m_tertiaryForce.Direction = Base6Directions.GetCross(m_primaryForce.Direction, m_secondaryForce.Direction);
+				m_tertiaryForce.Force = 0f;
 			}
 			else if (direction == m_secondaryForce.Direction)
 			{
 				//myLogger.debugLog("updating secondary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
 				m_secondaryForce.Force = force;
 			}
-			else if (force > m_secondaryForce.Force * 1.1f && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
+			else if (force > m_secondaryForce.Force * currentDirectionBias && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
 			{
 				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", secondary: " + m_secondaryForce, Logger.severity.DEBUG);
 				m_secondaryForce.Direction = direction;
 				m_secondaryForce.Force = force;
+
 				Standard.SetMatrixOrientation(m_primaryForce.Direction, m_secondaryForce.Direction);
 				Gravity.SetMatrixOrientation(m_secondaryForce.Direction, m_primaryForce.Direction);
+
+				m_tertiaryForce.Direction = Base6Directions.GetCross(m_primaryForce.Direction, m_secondaryForce.Direction);
+				m_tertiaryForce.Force = 0f;
+			}
+			else if (direction == m_tertiaryForce.Direction)
+			{
+				m_tertiaryForce.Force = force;
+			}
+			else if (force > m_tertiaryForce.Force * currentDirectionBias && direction == Base6Directions.GetFlippedDirection(m_tertiaryForce.Direction))
+			{
+				myLogger.debugLog("stronger than tertiary force, direction: " + direction + ", force: " + force + ", tertiary: " + m_tertiaryForce);
+
+				m_tertiaryForce.Direction = direction;
+				m_tertiaryForce.Force = force;
 			}
 
 			//myLogger.debugLog("direction: " + direction + "(" + (int)direction + ")" + ", force: " + force);
-			return force;
 		}
 
 		#region Override
