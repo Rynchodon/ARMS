@@ -161,7 +161,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				adjusted.Length = 0f;
 			else
 			{
-				adjusted.Length = 20f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor;
+				adjusted.Length = 100f + adjusted.Direction.Normalize() * Pathfinder.SpeedFactor;
 				if (destination && input.Length < adjusted.Length)
 					adjusted.Length = input.Length;
 			}

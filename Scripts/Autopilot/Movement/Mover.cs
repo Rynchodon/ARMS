@@ -484,16 +484,15 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate_Accel()
 		{
+			m_logger.debugLog("entered");
+
 			if (m_moveAccel == Vector3.Zero)
 			{
 				CalcRotate_Stop();
 				return;
 			}
-		
-			if (SignificantGravity())
-				CalcRotate_InGravity(RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
-			else
-				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
+
+			CalcRotate_Accel(RelativeDirection3F.FromBlock(Block.CubeBlock, m_moveAccel));
 		}
 
 		/// <summary>
@@ -508,12 +507,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (!Thrust.CanMoveAnyDirection(0.1f) || linearVelocity.LengthSquared() > 1f)
 			{
 				//m_logger.debugLog("rotate to stop");
-
-				if (SignificantGravity())
-					CalcRotate_InGravity(RelativeDirection3F.FromWorld(Block.CubeGrid, linearVelocity * -0.5f));
-				else
-					CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromWorld(Block.CubeGrid, -linearVelocity));
-
+				CalcRotate_Accel(RelativeDirection3F.FromBlock(Block.CubeBlock, linearVelocity * -0.5f));
 				return;
 			}
 
@@ -546,6 +540,16 @@ namespace Rynchodon.Autopilot.Movement
 			StopRotate();
 		}
 
+		private void CalcRotate_Accel(RelativeDirection3F acceleration)
+		{
+			m_logger.debugLog("entered");
+
+			if (SignificantGravity())
+				CalcRotate_InGravity(acceleration);
+			else
+				CalcRotate_Space(acceleration);
+		}
+
 		/// <summary>
 		/// Calulates the angle necessary to generate optimal thrust when in a gravitational field.
 		/// </summary>
@@ -560,9 +564,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 gravAccel = -Thrust.LocalGravity.vector;
 			Vector3 gravForce = gravAccel * mass;
 
-			float primaryThrust = Thrust.PrimaryForce, secondaryThrust = Thrust.SecondaryForce, tertiaryThrust = Thrust.TertiaryForce;
-
-			float maxForceSquared = primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust;
+			float maxForceSquared = CalcMaxForceSquared();
 			float gravForceSquared = gravForce.LengthSquared();
 
 			Vector3 targetPrimary;
@@ -590,6 +592,29 @@ namespace Rynchodon.Autopilot.Movement
 				targetPrimary.Normalize();
 			}
 
+			CalcRotate_Accel(ref originalDirection, ref targetPrimary);
+		}
+
+		private void CalcRotate_Space(RelativeDirection3F acceleration)
+		{
+			m_logger.debugLog("entered");
+
+			Vector3 originalDirection = acceleration.ToLocalNormalized();
+			CalcRotate_Accel(ref originalDirection, ref originalDirection);
+		}
+
+		private float CalcMaxForceSquared()
+		{
+			float primaryThrust = Thrust.PrimaryForce, secondaryThrust = Thrust.SecondaryForce, tertiaryThrust = Thrust.TertiaryForce;
+			return primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust;
+		}
+
+		private void CalcRotate_Accel(ref Vector3 originalDirection, ref Vector3 targetPrimary)
+		{
+			m_logger.debugLog("entered");
+
+			float maxForceSquared = CalcMaxForceSquared();
+			float secondaryThrust = Thrust.SecondaryForce;
 			if (secondaryThrust != 0f)
 			{
 				// ensure targetSecondary is perpendicular to targetDirection
@@ -599,6 +624,8 @@ namespace Rynchodon.Autopilot.Movement
 					m_logger.debugLog("bad alt direction: " + targetSecondary);
 					targetPrimary.CalculatePerpendicularVector(out targetSecondary);
 				}
+
+				float primaryThrust = Thrust.PrimaryForce, tertiaryThrust = Thrust.TertiaryForce;
 
 				float maxForce = (float)Math.Sqrt(maxForceSquared);
 				Vector3 primaryDirection, secondaryDirection;
@@ -612,18 +639,16 @@ namespace Rynchodon.Autopilot.Movement
 				}
 				else
 				{
-					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) /maxForce;
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) / maxForce;
 					secondaryDirection = (targetPrimary * secondaryThrust + targetSecondary * -primaryThrust) / maxForce;
 				}
 
-				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetPrimary + ", altDirection: " + targetSecondary + ", primaryDirection: " + primaryDirection + ", secondaryDirection: " + secondaryDirection);
-
+				m_logger.debugLog("originalDirection: " + originalDirection + ", targetDirection: " + targetPrimary + ", altDirection: " + targetSecondary + ", primaryDirection: " + primaryDirection + ", secondaryDirection: " + secondaryDirection);
 				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, primaryDirection), RelativeDirection3F.FromLocal(Block.CubeGrid, secondaryDirection), true);
 			}
 			else
 			{
-				m_logger.debugLog("originalDirection: " + originalDirection + ", gravity direction: " + gravAccel / Thrust.GravityStrength + ", targetDirection: " + targetPrimary);
-
+				m_logger.debugLog("originalDirection: " + originalDirection + ", targetDirection: " + targetPrimary);
 				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetPrimary), null, true);
 			}
 		}
