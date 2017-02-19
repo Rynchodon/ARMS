@@ -176,7 +176,7 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <summary>
-		/// Set and synchronize the value for a block.
+		/// Set and synchronize the value for a block. Thread Safe.
 		/// </summary>
 		/// <param name="block">The block whose value is being set.</param>
 		/// <param name="value">The value to set.</param>
@@ -186,7 +186,7 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <summary>
-		/// Set and synchronize the value for an entity ID.
+		/// Set and synchronize the value for an entity ID. Thread Safe.
 		/// </summary>
 		/// <param name="entityId">The ID of the entity whose value is to be set.</param>
 		/// <param name="value">The value to set.</param>
@@ -196,13 +196,19 @@ namespace Rynchodon.Utility.Network
 		}
 
 		/// <summary>
-		/// Set and, optionally, synchronize a value for an entity ID.
+		/// Set and, optionally, synchronize a value for an entity ID. Thread Safe.
 		/// </summary>
 		/// <param name="entityId">The ID of the entity whose value is being set.</param>
 		/// <param name="value">The new value.</param>
 		/// <param name="send">Iff true and the value has changed, send to to other game clients.</param>
 		protected void SetValue(long entityId, TValue value, bool send)
 		{
+			if (!Threading.ThreadTracker.IsGameThread)
+			{
+				MyAPIGateway.Utilities.InvokeOnGameThread(() => SetValue(entityId, value, send));
+				return;
+			}
+
 			TScript script;
 			if (Registrar.TryGetValue(entityId, out script))
 			{
@@ -330,7 +336,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				Logger.AlwaysLog("Cannot send values, this is not the server", Logger.severity.ERROR);
+				alwaysLog("Cannot send values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 
@@ -383,7 +389,7 @@ namespace Rynchodon.Utility.Network
 
 			if (initCount > maxSize)
 			{
-				Logger.AlwaysLog("Cannot send message, value is too large. byte count: " + initCount + ", value: " + _outgoing.Value);
+				alwaysLog("Cannot send message, value is too large. byte count: " + initCount + ", value: " + _outgoing.Value);
 				_outgoing = null;
 				return;
 			}
@@ -393,7 +399,7 @@ namespace Rynchodon.Utility.Network
 				ByteConverter.AppendBytes(bytes, _outgoing.EntityId[entityIdIndex]);
 				if (bytes.Count > maxSize)
 				{
-					Logger.TraceLog("Over max size, splitting message");
+					traceLog("Over max size, splitting message");
 					SendOutgoing(bytes);
 					AddIdAndValue(bytes);
 				}
@@ -423,12 +429,12 @@ namespace Rynchodon.Utility.Network
 		/// <param name="bytes">The message to send.</param>
 		private void SendOutgoing(List<byte> bytes)
 		{
-			Logger.TraceLog("sending to: " + _outgoing.ClientId + ", value: " + _outgoing.Value + ", entities: " + string.Join(",", _outgoing.EntityId));
+			traceLog("sending to: " + _outgoing.ClientId + ", value: " + _outgoing.Value + ", entities: " + string.Join(",", _outgoing.EntityId));
 			bool result = _outgoing.ClientId.HasValue
 				? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
 				: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 			if (!result)
-				Logger.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
+				alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
 		}
 
 		#endregion
@@ -439,7 +445,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				Logger.AlwaysLog("Cannot write values, this is not the server", Logger.severity.ERROR);
+				alwaysLog("Cannot write values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 
@@ -474,7 +480,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				Logger.AlwaysLog("Cannot read values, this is not the server", Logger.severity.ERROR);
+				alwaysLog("Cannot read values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 
