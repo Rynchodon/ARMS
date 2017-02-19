@@ -361,22 +361,23 @@ namespace Rynchodon.Autopilot
 		private readonly Logger m_logger;
 		public readonly IMyTerminalBlock m_block;
 
-		private bool m_waitUpdate;
-
+		private bool value_waitUpdate;
 		private bool WaitingNeedsUpdate
 		{
-			get { return m_waitUpdate; }
+			get { return value_waitUpdate; }
 			set
 			{
-				if (value == m_waitUpdate)
+				if (value == value_waitUpdate)
 					return;
-				m_waitUpdate = value;
-				if (m_waitUpdate)
+				value_waitUpdate = value;
+				if (value_waitUpdate)
 					UpdateManager.Register(10u, RefreshWhileWaiting);
 				else
 					UpdateManager.Unregister(10u, RefreshWhileWaiting);
 			}
 		}
+
+		private Sandbox.Game.EntityComponents.MyResourceSinkComponent ResourceSink { get { return ((MyCubeBlock)m_block).ResourceSink; } }
 
 		#region Terminal Controls
 #pragma warning disable CS0649
@@ -523,7 +524,7 @@ namespace Rynchodon.Autopilot
 		public void SetDistance(float linear, float angular)
 		{
 			DistanceValues dv = new DistanceValues() { PackedValue = m_distance };
-			if (Math.Abs(linear / dv.LinearDistance - 1f) > 0.01f || Math.Abs(angular / dv.AngularDistance -1f) > 0.01f)
+			if (Math.Abs(linear / dv.LinearDistance - 1f) > 0.01f || Math.Abs(angular / dv.AngularDistance - 1f) > 0.01f)
 				m_distance = new DistanceValues() { LinearDistance = linear, AngularDistance = angular }.PackedValue;
 		}
 
@@ -550,21 +551,38 @@ namespace Rynchodon.Autopilot
 
 		public void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
 		{
+			ResourceSink.SetRequiredInputByType(Globals.Electricity, m_autopilotStatus == ShipAutopilot.State.Enabled ? m_waitUntil < DateTime.UtcNow ? 0.1f : 0.01f : 0.001f);
 			AppendingCustomInfo(customInfo);
 		}
 
 		public void AppendingCustomInfo(StringBuilder customInfo)
 		{
+			AppendMain(customInfo);
+
+			// power
+			customInfo.Append("Current Input: ");
+			customInfo.Append(PrettySI.makePretty(ResourceSink.RequiredInputByType(Globals.Electricity) * 1e6f));
+			customInfo.AppendLine("W");
+		}
+
+		private void AppendMain(StringBuilder customInfo)
+		{
 			if (m_autopilotStatus == ShipAutopilot.State.Halted)
+			{
 				if (MyAPIGateway.Multiplayer.IsServer)
 					customInfo.AppendLine("Autopilot crashed, please upload log files and report on steam page");
 				else
 					customInfo.AppendLine("Autopilot crashed, please upload server's log files and report on steam page");
+				return;
+			}
 			if (m_pathfinderState == Pathfinder.State.Crashed)
+			{
 				if (MyAPIGateway.Multiplayer.IsServer)
 					customInfo.AppendLine("Pathfinder crashed, please upload log files and report on steam page");
 				else
 					customInfo.AppendLine("Pathfinder crashed, please upload server's log files and report on steam page");
+				return;
+			}
 
 			if (!HasFlag(AutopilotFlags.HasControl))
 			{
@@ -582,16 +600,15 @@ namespace Rynchodon.Autopilot
 					else
 						customInfo.AppendLine("Does not have control of ship");
 				}
+				return;
 			}
-
-			bool waiting = false;
 
 			if (m_waitUntil > DateTime.UtcNow)
 			{
-				waiting = true;
 				WaitingNeedsUpdate = true;
 				customInfo.Append("Waiting for ");
 				customInfo.AppendLine(PrettySI.makePretty(m_waitUntil - DateTime.UtcNow));
+				return;
 			}
 			else
 				WaitingNeedsUpdate = false;
@@ -599,13 +616,8 @@ namespace Rynchodon.Autopilot
 			IMyPlayer controlling = MyAPIGateway.Players.GetPlayerControllingEntity(m_block.CubeGrid);
 			if (controlling != null)
 			{
-				waiting = true;
 				customInfo.Append("Player controlling: ");
 				customInfo.AppendLine(controlling.DisplayName);
-			}
-
-			if (waiting)
-			{
 				AppendingCustomInfo_EnemyFinder(customInfo);
 				return;
 			}
@@ -637,19 +649,27 @@ namespace Rynchodon.Autopilot
 			// nav mover info
 			if (HasFlag(AutopilotFlags.HasNavigatorMover))
 			{
-				customInfo.Append(m_prevNavMoverInfo);
-				customInfo.Append("Distance: ");
-				customInfo.Append(PrettySI.makePretty(LinearDistance));
-				customInfo.AppendLine("m");
+				float linear = LinearDistance;
+				if (linear.ValidNonZero())
+				{
+					customInfo.Append(m_prevNavMoverInfo);
+					customInfo.Append("Distance: ");
+					customInfo.Append(PrettySI.makePretty(LinearDistance));
+					customInfo.AppendLine("m");
+				}
 			}
 
 			// nav rotator info
 			if (HasFlag(AutopilotFlags.HasNavigatorRotator))
 			{
-				customInfo.Append(m_prevNavRotatorInfo);
-				customInfo.Append("Angle: ");
-				customInfo.Append(PrettySI.toSigFigs(AngularDistance));
-				customInfo.AppendLine(" rad");
+				float angular = AngularDistance;
+				if (angular.ValidNonZero())
+				{
+					customInfo.Append(m_prevNavRotatorInfo);
+					customInfo.Append("Angle: ");
+					customInfo.Append(PrettySI.toSigFigs(AngularDistance));
+					customInfo.AppendLine(" rad");
+				}
 			}
 
 			// enemy finder
@@ -665,10 +685,7 @@ namespace Rynchodon.Autopilot
 			if (jc != InfoString.StringId_Jump.None)
 				customInfo.AppendLine(InfoString.GetString(jc));
 
-			// power
-			customInfo.Append("Current Input: ");
-			customInfo.Append(PrettySI.makePretty(((MyCubeBlock)m_block).ResourceSink.RequiredInputByType(Globals.Electricity) * 1e6f));
-			customInfo.AppendLine("W");
+			return;
 		}
 
 		private void AppendingCustomInfo_EnemyFinder(StringBuilder customInfo)

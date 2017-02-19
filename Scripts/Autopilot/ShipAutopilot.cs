@@ -205,7 +205,6 @@ namespace Rynchodon.Autopilot
 				m_block.Terminal.CustomName = (nameBefore + nameAfter).Trim();
 			}
 
-			((MyCubeBlock)block).ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, PowerRequired);
 			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
 			Registrar.Add(block, this);
 		}
@@ -536,12 +535,7 @@ namespace Rynchodon.Autopilot
 				m_mover.SetControl(true);
 			}
 		}
-
-		private float PowerRequired()
-		{
-			return m_state == State.Enabled && m_navSet.Settings_Current.WaitUntil < Globals.ElapsedTime ? 0.1f : 0.01f;
-		}
-
+		
 		public Builder_Autopilot GetBuilder()
 		{
 			if (!m_block.AutopilotControl)

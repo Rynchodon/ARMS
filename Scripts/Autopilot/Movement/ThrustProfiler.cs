@@ -115,7 +115,7 @@ namespace Rynchodon.Autopilot.Movement
 			myGrid.OnBlockAdded += grid_OnBlockAdded;
 			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
 
-			ClearOverrides();
+			MyAPIGateway.Utilities.InvokeOnGameThread(ClearOverrides);
 		}
 
 		/// <summary>

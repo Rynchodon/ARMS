@@ -146,14 +146,18 @@ namespace Rynchodon.Autopilot.Movement
 		/// <param name="enableDampeners">If true, dampeners will be enabled. If false, they will not be toggled.</param>
 		public void MoveAndRotateStop(bool enableDampeners = true)
 		{
-			if (m_stopped)
-				return;
-
-			m_logger.debugLog("stopping movement and rotation");
-
-			m_moveForceRatio = m_moveAccel = Vector3.Zero;
 			if (enableDampeners)
 				SetDamping(true);
+
+			if (m_stopped)
+			{
+				m_logger.traceLog("already stopped");
+				return;
+			}
+
+			m_logger.debugLog("stopping movement and rotation, dampeners: " + enableDampeners);
+
+			m_moveForceRatio = m_moveAccel = Vector3.Zero;
 
 			StopRotate();
 
@@ -924,7 +928,7 @@ namespace Rynchodon.Autopilot.Movement
 			Sandbox.Game.Entities.IMyControllableEntity control = Block.Controller as Sandbox.Game.Entities.IMyControllableEntity;
 			if (control.EnabledDamping != enable)
 			{
-				//m_logger.debugLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable);
+				m_logger.traceLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable);
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 					if (control.EnabledDamping != enable)
 						control.SwitchDamping();

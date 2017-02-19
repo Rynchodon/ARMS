@@ -341,6 +341,22 @@ namespace Rynchodon
 		public static bool IsValid(this double number)
 		{ return !double.IsNaN(number) && !double.IsInfinity(number); }
 
+		/// <summary>
+		/// Check that a value is a real number and not zero.
+		/// </summary>
+		public static bool ValidNonZero(this float number)
+		{
+			return !float.IsInfinity(number) && (0f < number || number < 0f);
+		}
+
+		/// <summary>
+		/// Check that a value is a real number and not zero.
+		/// </summary>
+		public static bool ValidNonZero(this double number)
+		{
+			return !double.IsInfinity(number) && (0d < number || number < 0d);
+		}
+
 		public static bool NullOrClosed(this IMyEntity entity)
 		{ return entity == null || entity.MarkedForClose || entity.Closed; }
 
