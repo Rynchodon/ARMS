@@ -328,7 +328,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			if (direction == m_primaryForce.Direction)
 			{
-				//myLogger.debugLog("updating primary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
+				myLogger.debugLog("set primary force, direction: " + direction + ", force: " + force, condition: m_primaryForce.Force == 0f && force != 0f);
 				m_primaryForce.Force = force;
 			}
 			else if (force > m_primaryForce.Force * currentDirectionBias)
@@ -351,7 +351,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (direction == m_secondaryForce.Direction)
 			{
-				//myLogger.debugLog("updating secondary force, direction: " + direction + ", force: " + force, "CalcForceInDirection()");
+				myLogger.debugLog("set secondary force, direction: " + direction + ", force: " + force, condition: m_secondaryForce.Force == 0f && force != 0f);
 				m_secondaryForce.Force = force;
 			}
 			else if (force > m_secondaryForce.Force * currentDirectionBias && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))

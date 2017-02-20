@@ -484,8 +484,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// </summary>
 		public void CalcRotate_Accel()
 		{
-			m_logger.debugLog("entered");
-
 			if (m_moveAccel == Vector3.Zero)
 			{
 				CalcRotate_Stop();
@@ -507,7 +505,7 @@ namespace Rynchodon.Autopilot.Movement
 			if (!Thrust.CanMoveAnyDirection(0.1f) || linearVelocity.LengthSquared() > 1f)
 			{
 				//m_logger.debugLog("rotate to stop");
-				CalcRotate_Accel(RelativeDirection3F.FromBlock(Block.CubeBlock, linearVelocity * -0.5f));
+				CalcRotate_Accel(RelativeDirection3F.FromWorld(Block.CubeGrid, linearVelocity * -0.5f));
 				return;
 			}
 
@@ -540,14 +538,14 @@ namespace Rynchodon.Autopilot.Movement
 			StopRotate();
 		}
 
+		#region ternary thruster angles
+
 		private void CalcRotate_Accel(RelativeDirection3F acceleration)
 		{
-			m_logger.debugLog("entered");
-
 			if (SignificantGravity())
 				CalcRotate_InGravity(acceleration);
 			else
-				CalcRotate_Space(acceleration);
+				CalcRotate_InSpace(acceleration);
 		}
 
 		/// <summary>
@@ -567,10 +565,11 @@ namespace Rynchodon.Autopilot.Movement
 			float maxForceSquared = CalcMaxForceSquared();
 			float gravForceSquared = gravForce.LengthSquared();
 
-			Vector3 targetPrimary;
+			Vector3 targetPrimary, targetSecondaryHint;
 			if (maxForceSquared < gravForceSquared)
 			{
 				targetPrimary = gravAccel / Thrust.GravityStrength;
+				targetSecondaryHint = -originalDirection;
 				m_logger.debugLog("max force below gravity force");
 			}
 			else
@@ -590,68 +589,111 @@ namespace Rynchodon.Autopilot.Movement
 					m_logger.debugLog("available force is greater than max. gravityForce: " + gravForce + ", originalForce: " + originalForce);
 				}
 				targetPrimary.Normalize();
+				targetSecondaryHint = originalDirection;
 			}
 
-			CalcRotate_Accel(ref originalDirection, ref targetPrimary);
+			CalcRotate_InGravity(ref targetPrimary, ref targetSecondaryHint);
 		}
 
-		private void CalcRotate_Space(RelativeDirection3F acceleration)
+		private void CalcRotate_InGravity(ref Vector3 targetPrimary, ref Vector3 targetSecondaryHint)
 		{
-			m_logger.debugLog("entered");
+			float secondaryThrust = Thrust.SecondaryForce;
+			if (secondaryThrust != 0f)
+			{
+				Vector3 targetSecondary; GetTargetSecondary(ref targetPrimary, ref targetSecondaryHint, out targetSecondary);
+				float primaryThrust = Thrust.PrimaryForce, tertiaryThrust = Thrust.TertiaryForce;
+				float maxForce = CalcMaxForce(primaryThrust, secondaryThrust, tertiaryThrust);
+				Vector3 secondaryDirection = (targetPrimary * secondaryThrust - targetSecondary * primaryThrust) / maxForce;
 
-			Vector3 originalDirection = acceleration.ToLocalNormalized();
-			CalcRotate_Accel(ref originalDirection, ref originalDirection);
+				Vector3 primaryDirection;
+				if (tertiaryThrust != 0f)
+				{
+					Vector3 targetTertiary = Thrust.TertiaryForceIsRight ? targetPrimary.Cross(targetSecondary) : targetSecondary.Cross(targetPrimary);
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust + targetTertiary * tertiaryThrust) / maxForce;
+				}
+				else
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) / maxForce;
+
+				m_logger.debugLog("targetSecondaryHint: " + LocalToWorld(targetSecondaryHint) + ", targetPrimary: " + LocalToWorld(targetPrimary) + ", targetSecondary: " + LocalToWorld(targetSecondary) + ", primaryDirection: " + LocalToWorld(primaryDirection) + ", secondaryDirection: " + LocalToWorld(secondaryDirection));
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, primaryDirection), RelativeDirection3F.FromLocal(Block.CubeGrid, secondaryDirection), true);
+			}
+			else
+			{
+				m_logger.debugLog("targetSecondaryHint: " + LocalToWorld(targetSecondaryHint) + ", targetPrimary: " + LocalToWorld(targetPrimary));
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetPrimary), null, true);
+			}
+		}
+
+		private void CalcRotate_InSpace(RelativeDirection3F acceleration)
+		{
+			Vector3 targetPrimary = acceleration.ToLocalNormalized();
+
+			float secondaryThrust = Thrust.SecondaryForce;
+			if (secondaryThrust != 0f)
+			{
+				float primaryThrust = Thrust.PrimaryForce, tertiaryThrust = Thrust.TertiaryForce;
+				float maxForce = CalcMaxForce(primaryThrust, secondaryThrust, tertiaryThrust);
+
+				Vector3 targetSecondaryHint = (Thrust.Standard.LocalMatrix.Up * maxForce - targetPrimary * secondaryThrust) / -primaryThrust;
+				Vector3 targetSecondary; GetTargetSecondary(ref targetPrimary, ref targetSecondaryHint, out targetSecondary);
+				Vector3 secondaryDirection = (targetPrimary * secondaryThrust - targetSecondary * primaryThrust) / maxForce;
+
+				Vector3 primaryDirection;
+				if (tertiaryThrust != 0f)
+				{
+					Vector3 targetTertiary = Thrust.TertiaryForceIsRight ? targetPrimary.Cross(targetSecondary) : targetSecondary.Cross(targetPrimary);
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust + targetTertiary * tertiaryThrust) / maxForce;
+				}
+				else
+					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) / maxForce;
+
+				m_logger.debugLog("targetSecondaryHint: " + LocalToWorld(targetSecondaryHint) + ", targetPrimary: " + LocalToWorld(targetPrimary) + ", targetSecondary: " + LocalToWorld(targetSecondary) + ", primaryDirection: " + LocalToWorld(primaryDirection) + ", secondaryDirection: " + LocalToWorld(secondaryDirection));
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, primaryDirection), RelativeDirection3F.FromLocal(Block.CubeGrid, secondaryDirection), true);
+			}
+			else
+			{
+				m_logger.debugLog("targetPrimary: " + LocalToWorld(targetPrimary));
+				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetPrimary), null, true);
+			}
 		}
 
 		private float CalcMaxForceSquared()
 		{
 			float primaryThrust = Thrust.PrimaryForce, secondaryThrust = Thrust.SecondaryForce, tertiaryThrust = Thrust.TertiaryForce;
-			return primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust;
+			return (float)Math.Sqrt(primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust);
 		}
 
-		private void CalcRotate_Accel(ref Vector3 originalDirection, ref Vector3 targetPrimary)
+		private float CalcMaxForce(float primaryThrust, float secondaryThrust, float tertiaryThrust)
 		{
-			m_logger.debugLog("entered");
-
-			float maxForceSquared = CalcMaxForceSquared();
-			float secondaryThrust = Thrust.SecondaryForce;
-			if (secondaryThrust != 0f)
-			{
-				// ensure targetSecondary is perpendicular to targetDirection
-				Vector3 targetSecondary; Vector3.Reject(ref originalDirection, ref targetPrimary, out targetSecondary);
-				if (!targetSecondary.IsValid() || targetSecondary.Normalize() == 0f)
-				{
-					m_logger.debugLog("bad alt direction: " + targetSecondary);
-					targetPrimary.CalculatePerpendicularVector(out targetSecondary);
-				}
-
-				float primaryThrust = Thrust.PrimaryForce, tertiaryThrust = Thrust.TertiaryForce;
-
-				float maxForce = (float)Math.Sqrt(maxForceSquared);
-				Vector3 primaryDirection, secondaryDirection;
-				if (tertiaryThrust != 0f)
-				{
-					Vector3 targetTertiary = Thrust.TertiaryForceIsRight ? targetPrimary.Cross(targetSecondary) : targetSecondary.Cross(targetPrimary);
-					Vector3 tertiaryAdjustment = targetTertiary * tertiaryThrust;
-
-					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust + tertiaryAdjustment) / maxForce;
-					secondaryDirection = (targetPrimary * secondaryThrust + targetSecondary * -primaryThrust + tertiaryAdjustment) / maxForce;
-				}
-				else
-				{
-					primaryDirection = (targetPrimary * primaryThrust + targetSecondary * secondaryThrust) / maxForce;
-					secondaryDirection = (targetPrimary * secondaryThrust + targetSecondary * -primaryThrust) / maxForce;
-				}
-
-				m_logger.debugLog("originalDirection: " + originalDirection + ", targetDirection: " + targetPrimary + ", altDirection: " + targetSecondary + ", primaryDirection: " + primaryDirection + ", secondaryDirection: " + secondaryDirection);
-				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, primaryDirection), RelativeDirection3F.FromLocal(Block.CubeGrid, secondaryDirection), true);
-			}
-			else
-			{
-				m_logger.debugLog("originalDirection: " + originalDirection + ", targetDirection: " + targetPrimary);
-				CalcRotate(Thrust.Standard.LocalMatrix, RelativeDirection3F.FromLocal(Block.CubeGrid, targetPrimary), null, true);
-			}
+			return (float)Math.Sqrt(primaryThrust * primaryThrust + secondaryThrust * secondaryThrust + tertiaryThrust * tertiaryThrust);
 		}
+
+		private void GetTargetSecondary(ref Vector3 targetPrimary, ref Vector3 targetSecondaryHint, out Vector3 targetSecondary)
+		{
+			if (TryGetSecondary(ref targetPrimary, ref targetSecondaryHint, out targetSecondary))
+				return;
+
+			m_logger.debugLog("Unabled to get secondary from hint: " + targetSecondaryHint + ", primary: " + targetPrimary, Logger.severity.DEBUG);
+
+			targetSecondaryHint = Vector3.CalculatePerpendicularVector(targetSecondaryHint);
+			if (TryGetSecondary(ref targetPrimary, ref targetSecondaryHint, out targetSecondary))
+				return;
+
+			throw new Exception("Unabled to get secondary from hint: " + targetSecondaryHint + ", primary: " + targetPrimary);
+		}
+
+		private bool TryGetSecondary(ref Vector3 targetPrimary, ref Vector3 targetSecondaryHint, out Vector3 targetSecondary)
+		{
+			Vector3.Reject(ref targetSecondaryHint, ref targetPrimary, out targetSecondary);
+			return targetSecondary.IsValid() && targetSecondary.Normalize() != 0f;
+		}
+
+		private Vector3 LocalToWorld(Vector3 direction)
+		{
+			return Vector3.Transform(direction, Block.CubeGrid.WorldMatrix.GetOrientation());
+		}
+
+		#endregion
 
 		// necessary wrapper for main CalcRotate, should always be called.
 		private void CalcRotate(Matrix localMatrix, RelativeDirection3F Direction, RelativeDirection3F UpDirect = null, bool gravityAdjusted = false, IMyEntity targetEntity = null)
@@ -712,16 +754,19 @@ namespace Rynchodon.Autopilot.Movement
 			{
 				Vector3 upLocal = UpDirect.ToLocalNormalized();
 				Vector3 upRotBlock; Vector3.Transform(ref upLocal, ref inverted, out upRotBlock);
-				upRotBlock.Z = 0f;
-				upRotBlock.Normalize();
-				float roll = Math.Sign(upRotBlock.X) * (float)Math.Acos(MathHelper.Clamp(upRotBlock.Y, -1f, 1f));
+				if (upRotBlock.X != 0f && upRotBlock.Y != 0f)
+				{
+					upRotBlock.Z = 0f;
+					upRotBlock.Normalize();
+					float roll = Math.Sign(upRotBlock.X) * (float)Math.Acos(MathHelper.Clamp(upRotBlock.Y, -1f, 1f));
 
-				Vector3 rotaBackward = localMatrix.Backward;
-				Vector3 NFR_backward = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaBackward));
+					Vector3 rotaBackward = localMatrix.Backward;
+					Vector3 NFR_backward = Base6Directions.GetVector(Block.CubeBlock.LocalMatrix.GetClosestDirection(ref rotaBackward));
 
-				//m_logger.debugLog("upLocal: " + upLocal + ", upRotBlock: " + upRotBlock + ", roll: " + roll + ", displacement: " + displacement + ", NFR_backward: " + NFR_backward + ", change: " + roll * NFR_backward, "in_CalcRotate()");
+					//m_logger.debugLog("upLocal: " + upLocal + ", upRotBlock: " + upRotBlock + ", roll: " + roll + ", displacement: " + displacement + ", NFR_backward: " + NFR_backward + ", change: " + roll * NFR_backward, "in_CalcRotate()");
 
-				displacement += roll * NFR_backward;
+					displacement += roll * NFR_backward;
+				}
 			}
 
 			m_lastMoveAttempt = Globals.UpdateCount;
