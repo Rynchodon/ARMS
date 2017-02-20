@@ -626,12 +626,14 @@ namespace Rynchodon.Autopilot.Movement
 
 		private void CalcRotate_InSpace(RelativeDirection3F acceleration)
 		{
-			Vector3 targetPrimary = acceleration.ToLocalNormalized();
+			Vector3 targetPrimary = acceleration.ToLocal();
 
 			float secondaryThrust = Thrust.SecondaryForce;
-			if (secondaryThrust != 0f)
+			float primaryThrust;
+			m_logger.debugLog("secondary thrust: " + secondaryThrust + ", primary thrust: " + Thrust.PrimaryForce + ", requested thrust: " + targetPrimary.Length() * Block.Physics.Mass);
+			if (secondaryThrust != 0f && (primaryThrust = Thrust.PrimaryForce) < targetPrimary.Normalize() * Block.Physics.Mass)
 			{
-				float primaryThrust = Thrust.PrimaryForce, tertiaryThrust = Thrust.TertiaryForce;
+				float tertiaryThrust = Thrust.TertiaryForce;
 				float maxForce = CalcMaxForce(primaryThrust, secondaryThrust, tertiaryThrust);
 
 				Vector3 targetSecondaryHint = (Thrust.Standard.LocalMatrix.Up * maxForce - targetPrimary * secondaryThrust) / -primaryThrust;
