@@ -31,9 +31,10 @@ namespace Rynchodon.Autopilot.Movement
 		private const float maxThrustOverrideValue = 100f, minThrustOverrideValue = 1f;
 		private static ITerminalProperty<float> TP_ThrustOverride;
 
-		private Logger myLogger = null;
+		private readonly Logger myLogger;
+		private readonly IMyCubeGrid m_grid;
+		private Aerodynamics.AeroEffects m_aero;
 
-		private IMyCubeGrid myGrid;
 		private MyPlanet m_planetAtmos;
 		private float m_airDensity;
 		private float? m_gravStrength;
@@ -50,8 +51,6 @@ namespace Rynchodon.Autopilot.Movement
 		private ForceInDirection m_secondaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Up };
 		/// <summary>Direction, perpendicular to primary and secondary, with strongest thrusters.</summary>
 		private ForceInDirection m_tertiaryForce = new ForceInDirection() { Direction = Base6Directions.Direction.Right };
-
-		public IMyCubeGrid Grid { get { return myGrid; } }
 
 		/// <summary>Forward is the direction with the strongest thrusters and upward is the direction, perpendicular to forward, that has the strongest thrusters.</summary>
 		public StandardFlight Standard { get; private set; }
@@ -97,28 +96,31 @@ namespace Rynchodon.Autopilot.Movement
 			}
 		}
 
+		/// <summary>Local drag force.</summary>
+		public Vector3 LocalDrag { get { return m_aero != null ? m_aero.LocalDrag : Vector3.Zero; } }
+
 		public ThrustProfiler(IMyCubeBlock autopilot)
 		{
 			if (autopilot == null)
 				throw new NullReferenceException("autopilot");
 
 			myLogger = new Logger(autopilot);
-			myGrid = autopilot.CubeGrid;
+			m_grid = autopilot.CubeGrid;
 			Standard = new StandardFlight(autopilot, Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
 			Gravity = new StandardFlight(autopilot, Base6Directions.Direction.Up, Base6Directions.Direction.Forward);
 
 			for (int i = 0; i < 6; i++)
 				m_thrustersInDirection[i] = new List<MyThrust>();
 
-			CubeGridCache cache = CubeGridCache.GetFor(myGrid);
+			CubeGridCache cache = CubeGridCache.GetFor(m_grid);
 			if (cache == null)
 				return;
 
 			foreach (MyThrust thrust in cache.BlocksOfType(typeof(MyObjectBuilder_Thrust)))
 				newThruster(thrust);
 
-			myGrid.OnBlockAdded += grid_OnBlockAdded;
-			myGrid.OnBlockRemoved += grid_OnBlockRemoved;
+			m_grid.OnBlockAdded += grid_OnBlockAdded;
+			m_grid.OnBlockRemoved += grid_OnBlockRemoved;
 
 			MyAPIGateway.Utilities.InvokeOnGameThread(ClearOverrides);
 		}
@@ -193,7 +195,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			if (adjustForGravity)
 			{
-				float change = Base6Directions.GetVector(direction).Dot(LocalGravity) * myGrid.Physics.Mass;
+				float change = Base6Directions.GetVector(direction).Dot(LocalGravity) * m_grid.Physics.Mass;
 				//myLogger.debugLog("For direction " + direction + ", and force " + force + ", Gravity adjusts available force by " + change + ", after adjustment: " + (force + change), "GetForceInDirection()");
 				force += change;
 			}
@@ -206,11 +208,15 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void Update()
 		{
+			if (m_nextUpdate <= Globals.UpdateCount)
+				DoUpdate();
+		}
+
+		private void DoUpdate()
+		{
 			// sometimes called from Game Thread when world is loaded, has not been an issue so far
 			//myLogger.debugLog("Not on autopilot thread: " + ThreadTracker.ThreadName + ", from: " + callerPath + "." + callerMember, Logger.severity.ERROR, condition: !ThreadTracker.ThreadName.StartsWith("Autopilot"));
 
-			if (Globals.UpdateCount < m_nextUpdate)
-				return;
 			m_nextUpdate = Globals.UpdateCount + ShipAutopilot.UpdateFrequency;
 
 			//for (int i = m_totalThrustForce.Length - 1; i >= 0; i--)
@@ -218,7 +224,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			//CapableAtmo = false; CapableSpace = false;
 
-			Vector3D position = myGrid.GetPosition();
+			Vector3D position = m_grid.GetPosition();
 			bool first = true;
 			Vector3 worldGravity = Vector3.Zero;
 			m_planetAtmos = null;
@@ -262,21 +268,21 @@ namespace Rynchodon.Autopilot.Movement
 				return;
 			}
 			WorldGravity = worldGravity;
-			LocalGravity = new DirectionGrid() { vector = Vector3.Transform(worldGravity, myGrid.WorldMatrixNormalizedInv.GetOrientation()) };
+			LocalGravity = new DirectionGrid() { vector = Vector3.Transform(worldGravity, m_grid.WorldMatrixNormalizedInv.GetOrientation()) };
 
 			Vector3 gravityReactRatio = Vector3.Zero;
 			if (LocalGravity.vector.X > 0)
-				gravityReactRatio.X = -LocalGravity.vector.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Left);
+				gravityReactRatio.X = -LocalGravity.vector.X * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Left);
 			else
-				gravityReactRatio.X = -LocalGravity.vector.X * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Right);
+				gravityReactRatio.X = -LocalGravity.vector.X * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Right);
 			if (LocalGravity.vector.Y > 0)
-				gravityReactRatio.Y = -LocalGravity.vector.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Down);
+				gravityReactRatio.Y = -LocalGravity.vector.Y * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Down);
 			else
-				gravityReactRatio.Y = -LocalGravity.vector.Y * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Up);
+				gravityReactRatio.Y = -LocalGravity.vector.Y * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Up);
 			if (LocalGravity.vector.Z > 0)
-				gravityReactRatio.Z = -LocalGravity.vector.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Forward);
+				gravityReactRatio.Z = -LocalGravity.vector.Z * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Forward);
 			else
-				gravityReactRatio.Z = -LocalGravity.vector.Z * myGrid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward);
+				gravityReactRatio.Z = -LocalGravity.vector.Z * m_grid.Physics.Mass / GetForceInDirection(Base6Directions.Direction.Backward);
 			GravityReactRatio = gravityReactRatio;
 
 			myLogger.debugLog("Gravity: " + WorldGravity + ", local: " + LocalGravity + ", react: " + gravityReactRatio + ", air density: " + m_airDensity);
@@ -326,6 +332,14 @@ namespace Rynchodon.Autopilot.Movement
 
 			m_totalThrustForce[(int)direction] = force;
 
+			if (m_aero == null)
+			{
+				if (Registrar.TryGetValue(m_grid, out m_aero))
+					myLogger.debugLog("Got aero");
+			}
+			else
+				force += Base6Directions.GetVector(direction).Dot(LocalDrag);
+
 			if (direction == m_primaryForce.Direction)
 			{
 				myLogger.debugLog("set primary force, direction: " + direction + ", force: " + force, condition: m_primaryForce.Force == 0f && force != 0f);
@@ -333,7 +347,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (force > m_primaryForce.Force * currentDirectionBias)
 			{
-				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", primary: " + m_primaryForce, Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than primary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / m_grid.Physics.Mass + ", primary: " + m_primaryForce, Logger.severity.DEBUG);
 				m_secondaryForce = m_primaryForce;
 				m_primaryForce.Direction = direction;
 				m_primaryForce.Force = force;
@@ -356,7 +370,7 @@ namespace Rynchodon.Autopilot.Movement
 			}
 			else if (force > m_secondaryForce.Force * currentDirectionBias && direction != Base6Directions.GetFlippedDirection(m_primaryForce.Direction))
 			{
-				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / myGrid.Physics.Mass + ", secondary: " + m_secondaryForce, Logger.severity.DEBUG);
+				myLogger.debugLog("stronger than secondary force, direction: " + direction + ", force: " + force + ", acceleration: " + force / m_grid.Physics.Mass + ", secondary: " + m_secondaryForce, Logger.severity.DEBUG);
 				m_secondaryForce.Direction = direction;
 				m_secondaryForce.Force = force;
 
@@ -492,7 +506,7 @@ namespace Rynchodon.Autopilot.Movement
 		public bool CanMoveDirection(Base6Directions.Direction direction, float acceleration = 1f)
 		{
 			Update();
-			return GetForceInDirection(direction, true) > Grid.Physics.Mass * acceleration;
+			return GetForceInDirection(direction, true) > m_grid.Physics.Mass * acceleration;
 		}
 
 		/// <summary>
@@ -502,7 +516,7 @@ namespace Rynchodon.Autopilot.Movement
 		public bool CanMoveForward(float acceleration = 1f)
 		{
 			Update();
-			return GetForceInDirection(Base6Directions.GetDirection(Standard.LocalMatrix.Forward), true) > Grid.Physics.Mass * acceleration;
+			return GetForceInDirection(Base6Directions.GetDirection(Standard.LocalMatrix.Forward), true) > m_grid.Physics.Mass * acceleration;
 		}
 
 		/// <summary>
@@ -513,7 +527,7 @@ namespace Rynchodon.Autopilot.Movement
 		{
 			Update();
 
-			float force = Grid.Physics.Mass * acceleration;
+			float force = m_grid.Physics.Mass * acceleration;
 			foreach (Base6Directions.Direction direction in Base6Directions.EnumDirections)
 				if (GetForceInDirection(direction, true) < force)
 				{

@@ -19,8 +19,6 @@ namespace Rynchodon.Autopilot.Movement
 	/// <summary>
 	/// Performs the movement calculations and the movements.
 	/// </summary>
-	/// TODO: mover components, normal ship, missing thrusters, and helicopter
-	/// current system is a mess of trying to guess what is going on
 	public class Mover
 	{
 		#region S.E. Constants
@@ -34,8 +32,6 @@ namespace Rynchodon.Autopilot.Movement
 		/// <summary>Fraction of force used to calculate maximum speed.</summary>
 		public const float AvailableForceRatio = 0.5f;
 		public const float OverworkedThreshold = 0.75f;
-		/// <summary>How far from the destination a ship needs to be to take a curved path instead of a straight one.</summary>
-		public const float PlanetMoveDist = 1000f;
 		public const float DistanceSpeedFactor = 0.2f;
 		private const ulong WriggleAfter = 500ul, StuckAfter = WriggleAfter + 2000ul, MoveAwayAfter = StuckAfter + 100ul;
 
@@ -49,12 +45,8 @@ namespace Rynchodon.Autopilot.Movement
 		private Vector3 m_moveAccel;
 		private Vector3 m_rotateTargetVelocity = Vector3.Zero;
 		private Vector3 m_rotateForceRatio = Vector3.Zero;
-		//private Vector3 m_prevMoveControl = Vector3.Zero;
-		//private Vector2 m_prevRotateControl = Vector2.Zero;
-		//private float m_prevRollControl = 0f;
 
 		private Vector3 m_lastMoveAccel = Vector3.Zero;
-		//private float m_bestAngle = float.MaxValue;
 		private ulong m_lastMoveAttempt = ulong.MaxValue, m_lastAccel = ulong.MaxValue;
 
 		private bool m_stopped, m_thrustHigh;
@@ -164,7 +156,7 @@ namespace Rynchodon.Autopilot.Movement
 			MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 				Block.Controller.MoveAndRotateStopped();
 				Thrust.ClearOverrides();
-				//m_gyro.ClearOverrides();
+				m_gyro.ClearOverrides();
 			});
 
 			m_stopped = true;
@@ -241,7 +233,7 @@ namespace Rynchodon.Autopilot.Movement
 				//myLogger.debugLog("imposing speed limit: " + speedRequest + ", targetVelocity: " + targetVelocity, "CalcMove()");
 			}
 
-			m_moveAccel = targetVelocity - velocity;
+			m_moveAccel = targetVelocity - velocity - Thrust.LocalDrag / Block.CubeGrid.Physics.Mass;
 
 			if (m_moveAccel.LengthSquared() < 0.01f)
 			{
@@ -262,7 +254,7 @@ namespace Rynchodon.Autopilot.Movement
 
 			CalcMove(ref velocity);
 
-			m_logger.traceLog(string.Empty
+			m_logger.debugLog(string.Empty
 				//+ "block: " + block.Block.getBestName()
 				//+ ", dest point: " + destPoint
 				//+ ", position: " + block.WorldPosition
@@ -270,6 +262,7 @@ namespace Rynchodon.Autopilot.Movement
 				+ ", destVelocity: " + destVelocity
 				+ ", targetVelocity: " + targetVelocity
 				+ ", velocity: " + velocity
+				+ ", drag: " + Thrust.LocalDrag
 				+ ", m_moveAccel: " + m_moveAccel
 				+ ", moveForceRatio: " + m_moveForceRatio);
 		}
@@ -993,7 +986,7 @@ namespace Rynchodon.Autopilot.Movement
 					{
 						Block.Controller.MoveAndRotateStopped();
 						Thrust.ClearOverrides();
-						//m_gyro.ClearOverrides();
+						m_gyro.ClearOverrides();
 					}
 					Block.AutopilotControl = enable;
 				});
@@ -1002,13 +995,28 @@ namespace Rynchodon.Autopilot.Movement
 
 		public void SetDamping(bool enable)
 		{
-			Sandbox.Game.Entities.IMyControllableEntity control = Block.Controller as Sandbox.Game.Entities.IMyControllableEntity;
+			IMyShipController control = Block.Controller as IMyShipController;
 			if (control.EnabledDamping != enable)
 			{
 				m_logger.traceLog("setting damp, EnabledDamping: " + control.EnabledDamping + ", enable: " + enable);
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+				MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 					if (control.EnabledDamping != enable)
 						control.SwitchDamping();
+				});
+			}
+			if (!enable)
+				SetHandbrake(false);
+		}
+
+		public void SetHandbrake(bool enable)
+		{
+			IMyShipController control = Block.Controller as IMyShipController;
+			if (control.HandBrake != enable)
+			{
+				m_logger.traceLog("setting handbrake, HandBrake: " + control.HandBrake + ", enable: " + enable);
+				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
+					if (control.HandBrake != enable)
+						control.HandBrake = enable;
 				});
 			}
 		}

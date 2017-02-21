@@ -68,10 +68,12 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private ProfileTask m_profileTask;
 
 		private float m_airDensity;
-		private Vector3 m_worldDrag;
+		private Vector3 m_localDrag, m_worldDrag;
 
-		// public because Autopilot is going to need it later
-		public Vector3[] DragCoefficient;
+		private Vector3[] m_dragCoefficient;
+
+		/// <summary>Local drag force.</summary>
+		public Vector3 LocalDrag { get { return m_localDrag; } }
 
 		public AeroEffects(IMyCubeGrid grid)
 		{
@@ -95,7 +97,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private void ApplyDrag()
 		{
-			if (DragCoefficient == null || m_airDensity == 0f)
+			if (m_dragCoefficient == null || m_airDensity == 0f)
 			{
 				m_worldDrag = Vector3.Zero;
 				return;
@@ -120,13 +122,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				Vector3 vectorDirection; Base6Directions.GetVector(direction, out vectorDirection);
 				float dot; Vector3.Dot(ref localVelocity, ref vectorDirection, out dot);
 				// intentionally keeping negative values
-				Vector3 scaled; Vector3.Multiply(ref DragCoefficient[i], Math.Sign(dot) * dot * dot * m_airDensity, out scaled);
+				Vector3 scaled; Vector3.Multiply(ref m_dragCoefficient[i], Math.Sign(dot) * dot * dot * m_airDensity, out scaled);
 				Vector3.Add(ref localDrag, ref scaled, out localDrag);
 
 				m_logger.traceLog("direction: " + direction + ", dot: " + dot + ", scaled: " + scaled);
 			}
 
 			MatrixD world = m_grid.WorldMatrix.GetOrientation();
+			m_localDrag = localDrag;
 			Vector3D worldDrag; Vector3D.Transform(ref localDrag, ref world, out worldDrag);
 			m_worldDrag = worldDrag;
 
@@ -158,9 +161,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			{
 				if (m_profileTask.CurrentStatus == RemoteTask.Status.Success)
 				{
-					DragCoefficient = m_profileTask.DragCoefficient;
+					m_dragCoefficient = m_profileTask.DragCoefficient;
 					for (int i = 0; i < 6; ++i)
-						m_logger.debugLog("Direction: " + (Base6Directions.Direction)i + ", DragCoefficient: " + DragCoefficient[i], Logger.severity.DEBUG);
+						m_logger.debugLog("Direction: " + (Base6Directions.Direction)i + ", DragCoefficient: " + m_dragCoefficient[i], Logger.severity.DEBUG);
 				}
 				m_profileTask = null;
 			}
