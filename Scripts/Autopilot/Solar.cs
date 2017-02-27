@@ -1,5 +1,4 @@
-﻿using System;
-using Rynchodon.Utility.Network;
+﻿using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -15,43 +14,21 @@ namespace Rynchodon.Autopilot
 	public class Solar
 	{
 
-		private class StaticVariables
+		[OnWorldLoad]
+		private static void CreateTerminal()
 		{
-			public StaticVariables()
-			{
-				Logger.DebugLog("entered", Logger.severity.TRACE);
-				TerminalControlHelper.EnsureTerminalControlCreated<MySolarPanel>();
-				TerminalControlHelper.EnsureTerminalControlCreated<MyOxygenFarm>();
+			Logger.DebugLog("entered", Logger.severity.TRACE);
+			TerminalControlHelper.EnsureTerminalControlCreated<MySolarPanel>();
+			TerminalControlHelper.EnsureTerminalControlCreated<MyOxygenFarm>();
 
-				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySolarPanel>());
-				MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyOxygenFarm>());
+			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MySolarPanel>());
+			MyTerminalControlFactory.AddControl(new MyTerminalControlSeparator<MyOxygenFarm>());
 
-				MyTerminalControlCheckbox<MyTerminalBlock> s_termControl_faceSun = new MyTerminalControlCheckbox<MyTerminalBlock>("FaceSun", MyStringId.GetOrCompute("Face Sun"), MyStringId.GetOrCompute("Face this block towards the sun"));
-				new ValueSync<bool, Solar>(s_termControl_faceSun, (script) => script.m_termControl_faceSun, (script, value) => script.m_termControl_faceSun = value);
+			MyTerminalControlCheckbox<MyTerminalBlock> s_termControl_faceSun = new MyTerminalControlCheckbox<MyTerminalBlock>("FaceSun", MyStringId.GetOrCompute("Face Sun"), MyStringId.GetOrCompute("Face this block towards the sun"));
+			new ValueSync<bool, Solar>(s_termControl_faceSun, (script) => script.m_termControl_faceSun, (script, value) => script.m_termControl_faceSun = value);
 
-				MyTerminalControlFactory.AddControl<MyTerminalBlock, MySolarPanel>(s_termControl_faceSun);
-				MyTerminalControlFactory.AddControl<MyTerminalBlock, MyOxygenFarm>(s_termControl_faceSun);
-			}
-		}
-
-		private static StaticVariables value_static;
-		private static StaticVariables Static
-		{
-			get
-			{
-				if (Globals.WorldClosed)
-					throw new Exception("World closed");
-				if (value_static == null)
-					value_static = new StaticVariables();
-				return value_static;
-			}
-			set { value_static = value; }
-		}
-
-		[OnWorldClose]
-		private static void Unload()
-		{
-			Static = null;
+			MyTerminalControlFactory.AddControl<MyTerminalBlock, MySolarPanel>(s_termControl_faceSun);
+			MyTerminalControlFactory.AddControl<MyTerminalBlock, MyOxygenFarm>(s_termControl_faceSun);
 		}
 
 		private readonly IMyCubeBlock myBlock;
@@ -72,10 +49,6 @@ namespace Rynchodon.Autopilot
 			myBlock.OnClose += myBlock_OnClose;
 
 			Registrar.Add(block, this);
-
-			// make sure controls are added
-			if (Static == null)
-				throw new Exception("Static does not exist");
 		}
 
 		private void myBlock_OnClose(VRage.ModAPI.IMyEntity obj)

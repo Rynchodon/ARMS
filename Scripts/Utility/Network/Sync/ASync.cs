@@ -138,7 +138,9 @@ namespace Rynchodon.Utility.Network
 			for (int position = 0; position < builder.Data.Length;)
 			{
 				Id id = (Id)ByteConverter.GetOfType(builder.Data, ref position, typeof(Id));
-				ASync sync = _syncs[id];
+				ASync sync;
+				if (!_syncs.TryGetValue(id, out sync))
+					throw new KeyNotFoundException("ID not found in _syncs. ID: " + id);
 				sync.ReadFromSave(builder.Data, ref position);
 			}
 		}
