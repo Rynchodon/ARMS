@@ -842,9 +842,17 @@ namespace Rynchodon.Update
 
 			if (!Globals.WorldClosed)
 			{
-				Globals.WorldClosed = true;
 				MainLock.MainThread_ReleaseExclusive();
-				AttributeFinder.InvokeMethodsWithAttribute<OnWorldClose>();
+				try
+				{
+					AttributeFinder.InvokeMethodsWithAttribute<OnWorldClose>();
+				}
+				catch (Exception ex)
+				{
+					// if world is closed by X button, expect an exception
+					myLogger.alwaysLog("Exception while unloading: " + ex, Logger.severity.ERROR);
+				}
+				Globals.WorldClosed = true;
 				Profiler.Write();
 			}
 

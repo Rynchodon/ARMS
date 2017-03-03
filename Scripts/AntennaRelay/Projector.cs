@@ -332,30 +332,20 @@ namespace Rynchodon.AntennaRelay
 		private const float MinOffset = -20f, MaxOffset = 20f;
 		private const double CrosshairRange = 20d;
 
-		private static StaticVariables value_static;
-		private static StaticVariables Static
-		{
-			get
-			{
-				if (Globals.WorldClosed)
-					throw new Exception("World closed");
-				if (value_static == null)
-					value_static = new StaticVariables();
-				return value_static;
-			}
-		}
+		private static StaticVariables Static;
 
 		[OnWorldLoad]
 		private static void Init()
 		{
+			Static = new StaticVariables();
 			MyTerminalControls.Static.CustomControlGetter += Static.CustomControlGetter;
 		}
 
 		[OnWorldClose]
 		private static void Unload()
 		{
-			MyTerminalControls.Static.CustomControlGetter -= value_static.CustomControlGetter;
-			value_static = null;
+			MyTerminalControls.Static.CustomControlGetter -= Static.CustomControlGetter;
+			Static = null;
 		}
 
 		private static void AfterDamageHandler(object obj, MyDamageInformation damageInfo)

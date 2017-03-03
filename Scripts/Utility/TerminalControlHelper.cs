@@ -27,8 +27,6 @@ namespace Rynchodon
 					return;
 				}
 
-				Logger.DebugLog("Invoking CreateTerminalControls for " + typeof(TBlock).Name, Logger.severity.DEBUG);
-				method.Invoke(new TBlock(), null);
 				return;
 			}
 
