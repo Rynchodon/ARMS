@@ -251,9 +251,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			catch
 			{
-				m_logger.alwaysLog("Pathfinder crashed", Logger.severity.ERROR);
-				CurrentState = State.Crashed;
-				throw;
+				if (m_runHalt || m_runInterrupt)
+				{
+					m_logger.debugLog("Exception due to halt/interrupt", Logger.severity.DEBUG);
+					return;
+				}
+				else
+				{
+					m_logger.alwaysLog("Pathfinder crashed", Logger.severity.ERROR);
+					CurrentState = State.Crashed;
+					throw;
+				}
 			}
 			finally { m_runningLock.ReleaseExclusive(); }
 
