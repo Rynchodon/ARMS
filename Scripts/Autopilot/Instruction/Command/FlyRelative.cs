@@ -81,15 +81,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		public override void AddControls(List<IMyTerminalControl> controls)
 		{
 			MyTerminalControlTextbox<MyShipController> control;
-			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordX", MyStringId.GetOrCompute("Rightward"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordX", MyStringId.GetOrCompute("Rightward"), MyStringId.GetOrCompute("Rightward from current position"));
 			AddGetSet(control, 0);
 			controls.Add(control);
 
-			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordY", MyStringId.GetOrCompute("Upward"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordY", MyStringId.GetOrCompute("Upward"), MyStringId.GetOrCompute("Upward from current position"));
 			AddGetSet(control, 1);
 			controls.Add(control);
 
-			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordZ", MyStringId.GetOrCompute("Backward"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("RelativeCoordZ", MyStringId.GetOrCompute("Backward"), MyStringId.GetOrCompute("Backward from current position"));
 			AddGetSet(control, 2);
 			controls.Add(control);
 		}

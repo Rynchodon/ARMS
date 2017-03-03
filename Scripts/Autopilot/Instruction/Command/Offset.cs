@@ -41,15 +41,15 @@ namespace Rynchodon.Autopilot.Instruction.Command
 		public override void AddControls(List<Sandbox.ModAPI.Interfaces.Terminal.IMyTerminalControl> controls)
 		{
 			MyTerminalControlTextbox<MyShipController> control;
-			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordX", MyStringId.GetOrCompute("X Coordinate"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordX", MyStringId.GetOrCompute("Rightward"), MyStringId.GetOrCompute("Rightward from target block"));
 			AddGetSet(control, 0);
 			controls.Add(control);
 
-			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordY", MyStringId.GetOrCompute("Y Coordinate"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordY", MyStringId.GetOrCompute("Upward"), MyStringId.GetOrCompute("Upward from target block"));
 			AddGetSet(control, 1);
 			controls.Add(control);
 
-			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordZ", MyStringId.GetOrCompute("Z Coordinate"), MyStringId.NullOrEmpty);
+			control = new MyTerminalControlTextbox<MyShipController>("GolisCoordZ", MyStringId.GetOrCompute("Backward"), MyStringId.GetOrCompute("Backward from target block"));
 			AddGetSet(control, 2);
 			controls.Add(control);
 		}
