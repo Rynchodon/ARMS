@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Runtime.Serialization;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 
@@ -12,7 +13,7 @@ namespace Rynchodon
 		/// Force vanilla terminal controls to be created for a given type of block. Always invoke this before adding controls.
 		/// MyTerminalControlFactory.EnsureControlsAreCreated does not work, use this method.
 		/// </summary>
-		public static void EnsureTerminalControlCreated<TBlock>() where TBlock : MyTerminalBlock, new()
+		public static void EnsureTerminalControlCreated<TBlock>() where TBlock : MyTerminalBlock
 		{
 			if (MyTerminalControlFactory.AreControlsCreated<TBlock>())
 				return;
@@ -27,6 +28,9 @@ namespace Rynchodon
 					return;
 				}
 
+				Logger.DebugLog("Invoking CreateTerminalControls for " + typeof(TBlock).Name, Logger.severity.DEBUG);
+				// if CreateTerminalControls is changed to access fields this will throw an exception
+				method.Invoke(FormatterServices.GetUninitializedObject(typeof(TBlock)), null);
 				return;
 			}
 
