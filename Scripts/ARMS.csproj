@@ -300,6 +300,7 @@
     <Compile Include="Utility\LineSegmentD.cs" />
     <Compile Include="Utility\Logger.cs" />
     <Compile Include="Utility\LogWise.cs" />
+    <Compile Include="Utility\MainCockpitFix.cs" />
     <Compile Include="Utility\MainLock.cs" />
     <Compile Include="Utility\MathExtension.cs" />
     <Compile Include="Utility\MotorTurret.cs" />

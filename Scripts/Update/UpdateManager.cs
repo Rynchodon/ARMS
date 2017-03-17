@@ -354,6 +354,10 @@ namespace Rynchodon.Update
 			new ChatHandler();
 			Globals.Update100();
 			RegisterForUpdates(100, Globals.Update100);
+
+			Action<IMyCubeBlock> act = (block) => MainCockpitFix.AddController((IMyShipController)block);
+			RegisterForBlock(typeof(MyObjectBuilder_Cockpit), act);
+			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), act);
 		}
 
 		private static UpdateManager Instance;
