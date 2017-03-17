@@ -724,7 +724,7 @@ namespace Rynchodon.Weapons
 						if (target.FiringDirection.HasValue && !FireWeapon)
 						{
 							Vector4 yellow = Color.Yellow.ToVector4();
-							MySimpleObjectDraw.DrawLine(start + target.FiringDirection.Value, start + target.FiringDirection.Value * 11f, "WeaponLaser", ref yellow, 0.05f);
+							MySimpleObjectDraw.DrawLine(start + target.FiringDirection.Value, start + target.FiringDirection.Value * 11f, Globals.WeaponLaser, ref yellow, 0.05f);
 						}
 						distance = (float)Vector3D.Distance(start, target.GetPosition());
 					}
@@ -737,7 +737,7 @@ namespace Rynchodon.Weapons
 					Vector3D contact = Vector3D.Zero;
 					if (MyHudCrosshair.GetTarget(start + facing * 10f, end, ref contact))
 						end = contact;
-					MySimpleObjectDraw.DrawLine(start, end, "WeaponLaser", ref colour, 0.05f);
+					MySimpleObjectDraw.DrawLine(start, end, Globals.WeaponLaser, ref colour, 0.05f);
 				}
 
 				Update1_GameThread();

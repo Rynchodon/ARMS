@@ -4,6 +4,7 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.World;
 using VRage.Game;
 using VRage.Game.ObjectBuilders.Definitions;
+using VRage.Utils;
 using VRageMath;
 
 namespace Rynchodon
@@ -158,6 +159,8 @@ namespace Rynchodon
 			first = second;
 			second = temp;
 		}
+
+		public static MyStringId WeaponLaser = MyStringId.GetOrCompute("WeaponLaser");
 
 	}
 }
