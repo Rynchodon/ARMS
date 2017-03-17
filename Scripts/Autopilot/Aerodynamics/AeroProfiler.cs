@@ -717,7 +717,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						Vector3 velocity = Vector3.Multiply(currentData.CurVelocity, lineLength / speed);
 						Vector3D direction = Vector3D.Transform(velocity, ref rotationMatrix);
 						Vector3D worldEnd; Vector3D.Add(ref worldPosition, ref direction, out worldEnd);
+#if UNSTABLE
 						MySimpleObjectDraw.DrawLine(worldPosition, worldEnd, Globals.WeaponLaser, ref speedColourVector, 0.05f);
+#else
+						MySimpleObjectDraw.DrawLine(worldPosition, worldEnd, "WeaponLaser", ref speedColourVector, 0.05f);
+#endif
 
 						//m_logger.debugLog("Cell: " + (index + m_minCell) + ", " + currentData + ", sphere: " + airPressColour + ", line: " + speedColour);
 					}
