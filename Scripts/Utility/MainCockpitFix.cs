@@ -31,11 +31,6 @@ namespace Rynchodon.Utility
 		private static void MainCockpitChanged(MyShipController controller)
 		{
 			MyGroupControlSystem system = controller.CubeGrid.GridSystems.ControlSystem;
-			if (system == null)
-				return;
-
-			if (system.GetShipController() == controller)
-				return;
 
 			MethodInfo OnControlReleased = typeof(MyGridSelectionSystem).GetMethod("OnControlReleased", BindingFlags.Instance | BindingFlags.NonPublic);
 			if (OnControlReleased == null)
@@ -56,13 +51,15 @@ namespace Rynchodon.Utility
 
 					if (enabled)
 					{
-						system.RemoveControllerBlock(otherController);
+						if (system != null)
+							system.RemoveControllerBlock(otherController);
 						if (selectSystem != null)
 							OnControlReleased.Invoke(selectSystem, null);
 					}
 					else
 					{
-						system.AddControllerBlock(otherController);
+						if (system != null)
+							system.AddControllerBlock(otherController);
 						if (selectSystem != null)
 							OnControlAcquired.Invoke(selectSystem, null);
 					}
