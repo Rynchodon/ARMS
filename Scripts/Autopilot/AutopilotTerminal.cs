@@ -541,7 +541,7 @@ namespace Rynchodon.Autopilot
 		public AutopilotTerminal(IMyCubeBlock block)
 		{
 			this.m_logger = new Logger(block);
-			this.m_block = block as IMyTerminalBlock;
+			this.m_block = (IMyTerminalBlock)block;
 
 			m_block.AppendingCustomInfo += AppendingCustomInfo;
 
