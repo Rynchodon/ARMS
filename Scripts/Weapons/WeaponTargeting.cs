@@ -1,5 +1,5 @@
 ﻿#if DEBUG
-#define TRACE
+//#define TRACE
 #endif
 
 using System;
@@ -17,7 +17,6 @@ using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.Graphics.GUI;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using SpaceEngineers.Game.Weapons.Guns;
 using VRage.Game;
@@ -26,7 +25,6 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.Weapons
 {
@@ -65,11 +63,6 @@ namespace Rynchodon.Weapons
 			/// <para>One thread has no trouble putting enough projectiles into play to slow the game to a crawl.</para>
 			/// </remarks>
 			public ThreadManager Thread = new ThreadManager(threadName: "WeaponTargeting");
-
-			public ITerminalProperty<bool> TPro_Shoot;
-
-			//public int ControlsIndex;
-			//public List<ITerminalControl> Controls = new List<ITerminalControl>();
 
 			public FlagsValueSync<TargetingFlags, WeaponTargeting> termControl_targetFlag;
 			public FlagsValueSync<TargetType, WeaponTargeting> termControl_targetType;
@@ -391,9 +384,6 @@ namespace Rynchodon.Weapons
 		//		controlList.Insert(Static.ControlsIndex + index, (IMyTerminalControl)Static.Controls[index]);
 		//}
 
-		/// <summary>
-		/// FixedWeapons and Turrets are stored separately in Registrar, this makes it simpler to retreive one when only base class is needed.
-		/// </summary>
 		public static bool TryGetWeaponTargeting(long blockId, out WeaponTargeting result)
 		{
 			return Registrar.TryGetValue(blockId, out result);
@@ -468,10 +458,10 @@ namespace Rynchodon.Weapons
 
 		#endregion Static
 
-		public readonly Ingame.IMyLargeTurretBase myTurret;
+		public readonly IMyLargeTurretBase myTurret;
 
 		/// <remarks>Simple turrets can potentially shoot their own grids so they must be treated differently</remarks>
-		public readonly bool IsNormalTurret;
+		public bool IsNormalTurret { get { return myTurret != null; } }
 		/// <summary>Locked while an update on targeting thread is queued but not while it is running.</summary>
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
@@ -482,7 +472,7 @@ namespace Rynchodon.Weapons
 		private InterpreterWeapon Interpreter;
 
 		private bool FireWeapon;
-		private bool IsFiringWeapon;
+		private bool IsFiringWeapon { get { return CubeBlock.IsShooting; } }
 		private Control value_currentControl;
 
 		/// <summary>First item is target, second is the weapon, followed by custom items.</summary>
@@ -568,14 +558,9 @@ namespace Rynchodon.Weapons
 
 				if (MyAPIGateway.Multiplayer.IsServer)
 				{
-					if (IsNormalTurret)
-					{
-						if (value == Control.Off)
-							GameThreadActions.Enqueue(myTurret.ResetTargetingToDefault);
-						else
-							GameThreadActions.Enqueue(SetBarrelNeutral);
-					}
-					if (value == Control.Off)
+					if (IsNormalTurret && value == Control.Off)
+						GameThreadActions.Enqueue(RestoreDefaultTargeting);
+					else
 						GameThreadActions.Enqueue(ShootOff);
 				}
 
@@ -587,22 +572,70 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-		private void SetBarrelNeutral()
+#if UNSTABLE
+		/*
+		 * Bug in Space Engineers breaks Shoot_On, Shoot_Off, SetShooting, SetTarget, and TrackTarget for turrets.
+		 */
+
+		private MyEntityUpdateEnum _defaultNeedsUpdate;
+
+		private void TurretNeedsUpdate(bool enable)
 		{
-			myTurret.SetTarget(ProjectilePosition() + Facing() * 10f);
+			if (enable == (myTurret.NeedsUpdate != MyEntityUpdateEnum.NONE))
+				return;
+			if (enable)
+				myTurret.NeedsUpdate = _defaultNeedsUpdate;
+			else
+			{
+				_defaultNeedsUpdate |= myTurret.NeedsUpdate;
+				myTurret.NeedsUpdate = MyEntityUpdateEnum.NONE;
+			}
+		}
+
+		private void RestoreDefaultTargeting()
+		{
+			if (myTurret != null)
+			{
+				myTurret.ResetTargetingToDefault();
+				TurretNeedsUpdate(true);
+			}
+		}
+
+		private void ShootOn()
+		{
+			if (myTurret != null)
+			{
+				TurretNeedsUpdate(true);
+				myTurret.SetTarget(ProjectilePosition() + CurrentTarget.FiringDirection.Value * 1000f);
+			}
+			((MyUserControllableGun)CubeBlock).SetShooting(true);
+		}
+
+		private void ShootOff()
+		{
+			if (myTurret != null)
+				TurretNeedsUpdate(false);
+			((MyUserControllableGun)CubeBlock).SetShooting(false);
+		}
+#else
+		private void RestoreDefaultTargeting()
+		{
+			if (myTurret != null)
+				myTurret.ResetTargetingToDefault();
 		}
 
 		private void ShootOn()
 		{
 			// has to be this way for guided missiles
-			CubeBlock.ApplyAction("Shoot_On");
+			((MyUserControllableGun)CubeBlock).SetShooting(true);
 		}
 
 		private void ShootOff()
 		{
 			// has to be this way for guided missiles
-			CubeBlock.ApplyAction("Shoot_Off");
+			((MyUserControllableGun)CubeBlock).SetShooting(false);
 		}
+#endif
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
 		public bool CanControl
@@ -634,19 +667,15 @@ namespace Rynchodon.Weapons
 		{
 			if (weapon == null)
 				throw new ArgumentNullException("weapon");
-			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !((MyEntity)weapon).HasInventory || !(weapon is Ingame.IMyUserControllableGun))
+			if (!(weapon is IMyTerminalBlock) || !(weapon is IMyFunctionalBlock) || !((MyEntity)weapon).HasInventory || !(weapon is IMyUserControllableGun))
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
-			this.myTurret = weapon as Ingame.IMyLargeTurretBase;
+			this.myTurret = weapon as IMyLargeTurretBase;
 			this.myLogger = new Logger(weapon);
 
 			this.Interpreter = new InterpreterWeapon(weapon);
-			this.IsNormalTurret = myTurret != null;
 			this.CubeBlock.OnClose += weapon_OnClose;
 			this.CubeBlock.AppendingCustomInfo += FuncBlock_AppendingCustomInfo;
-
-			if (Static.TPro_Shoot == null)
-				Static.TPro_Shoot = (weapon as IMyTerminalBlock).GetProperty("Shoot").AsBool();
 
 			if (WeaponDescription.GetFor(weapon).LastSeenTargeting)
 				m_relayPart = RelayClient.GetOrCreateRelayPart(weapon);
@@ -682,7 +711,7 @@ namespace Rynchodon.Weapons
 		}
 
 		/// <summary>
-		/// UpdateManger invokes this every update.
+		/// UpdateManager invokes this every update.
 		/// </summary>
 		public void Update_Targeting()
 		{
@@ -694,21 +723,15 @@ namespace Rynchodon.Weapons
 				GameThreadActions.DequeueAll(action => action.Invoke());
 				if (CurrentControl != Control.Off && FireWeapon != IsFiringWeapon && MyAPIGateway.Multiplayer.IsServer)
 				{
-					IsFiringWeapon = FireWeapon;
 					if (FireWeapon)
 					{
-						//myLogger.debugLog("Opening fire", "Update_Targeting()");
+						myLogger.traceLog("Opening fire");
 						ShootOn();
 					}
 					else
 					{
-						//myLogger.debugLog("Holding fire", "Update_Targeting()");
-						IMyFunctionalBlock func = CubeBlock as IMyFunctionalBlock;
+						myLogger.traceLog("Holding fire");
 						ShootOff();
-
-						// Shoot_Off is not working for gatling/interior turrets, this seems to do the trick
-						if (myTurret != null)
-							SetBarrelNeutral();
 					}
 				}
 
@@ -876,7 +899,6 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			IsFiringWeapon = Static.TPro_Shoot.GetValue(CubeBlock);
 			//myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
 			ClearBlacklist();
 
@@ -913,7 +935,7 @@ namespace Rynchodon.Weapons
 
 			if (!target.FiringDirection.HasValue || !target.ContactPoint.HasValue)
 			{
-				//myLogger.debugLog("no firing direction");
+				myLogger.traceLog("no firing direction");
 				FireWeapon = false;
 				return;
 			}
@@ -926,7 +948,7 @@ namespace Rynchodon.Weapons
 			if (directionChange > 0.01f)
 			{
 				// weapon is still being aimed
-				//myLogger.debugLog("still turning, change: " + directionChange);
+				myLogger.traceLog("still turning, change: " + directionChange);
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
@@ -939,7 +961,7 @@ namespace Rynchodon.Weapons
 			if (accuracy < WeaponDefinition.RequiredAccuracy)
 			{
 				// not facing target
-				//myLogger.debugLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy);
+				myLogger.traceLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy);
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
@@ -948,14 +970,14 @@ namespace Rynchodon.Weapons
 			Vector3D position = target.ContactPoint.Value;
 			if (Obstructed(ref position, target.Entity))
 			{
-				//myLogger.debugLog("blacklisting: " + target.Entity.getBestName());
+				myLogger.traceLog("blacklisting: " + target.Entity.getBestName());
 				BlacklistTarget();
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
 			}
 
-			//myLogger.debugLog("firing");
+			//myLogger.traceLog("firing");
 			facingWrongWayFor = 0;
 			FireWeapon = true;
 		}

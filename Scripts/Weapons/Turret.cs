@@ -1,4 +1,6 @@
-﻿using System;
+﻿//#define USE_AI // SE 1.178: not working
+
+using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
@@ -168,7 +170,9 @@ namespace Rynchodon.Weapons
 
 			if (CurrentControl == Control.Off)
 			{
+#if USE_AI
 				if (!myTurret.AIEnabled)
+#endif
 				{
 					setElevation = myTurret.Elevation;
 					setAzimuth = myTurret.Azimuth;
@@ -186,11 +190,14 @@ namespace Rynchodon.Weapons
 			if (!GotTarget.FiringDirection.HasValue || !GotTarget.ContactPoint.HasValue) // happens alot
 				return;
 
+#if USE_AI
+			// broken in UNSTABLE
 			if (myTurret.AIEnabled)
 			{
-				myTurret.SetTarget(ProjectilePosition() + GotTarget.FiringDirection.Value * 100f);
+				myTurret.SetTarget(ProjectilePosition() + GotTarget.FiringDirection.Value * 1000f);
 				return;
 			}
+#endif
 
 			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
 			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(CubeBlock);
