@@ -180,7 +180,7 @@
     <Compile Include="Autopilot\Instruction\Command\Wait.cs" />
     <Compile Include="Autopilot\Instruction\Command\Weld.cs" />
     <Compile Include="Autopilot\Instruction\TextPanelMonitor.cs" />
-    <Compile Include="Autopilot\Aerodynamics\AeroDrawIndicators.cs" />
+    <None Include="Autopilot\Aerodynamics\AeroDrawIndicators.cs" />
     <Compile Include="Autopilot\Aerodynamics\AeroEffects.cs" />
     <Compile Include="Autopilot\Aerodynamics\AeroProfiler.cs" />
     <Compile Include="Autopilot\Aerodynamics\FlightControlAssist.cs" />

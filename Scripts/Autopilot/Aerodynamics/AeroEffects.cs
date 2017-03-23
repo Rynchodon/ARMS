@@ -209,7 +209,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				}
 			}
 
-			AeroDrawIndicators.DrawDrag(block, ref drag, m_airDensity);
+			//AeroDrawIndicators.DrawDrag(block, ref drag, m_airDensity);
 		}
 
 	}
