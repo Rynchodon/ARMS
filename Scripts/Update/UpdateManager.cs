@@ -477,10 +477,8 @@ namespace Rynchodon.Update
 					myLogger.alwaysLog("Space Engineers build is UNOFFICIAL; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
 				else if (CheckFinalBuildConstant("IS_DEBUG"))
 					myLogger.alwaysLog("Space Engineers build is DEBUG; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
-				else if (CheckFinalBuildConstant("IS_STABLE"))
-					myLogger.alwaysLog("Space Engineers build is STABLE. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
 				else
-					myLogger.alwaysLog("Space Engineers build is UNSTABLE. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
+					myLogger.alwaysLog("Space Engineers version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
 
 				Logger.DebugNotify("ARMS DEBUG build loaded", 10000, Logger.severity.INFO);
 
