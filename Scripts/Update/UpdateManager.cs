@@ -389,7 +389,7 @@ namespace Rynchodon.Update
 					Logger.AlwaysLog("No file at " + AutopilotSettings, Logger.severity.WARNING);
 			}
 			else
-				Logger.AlwaysLog("No directory at " + oldPath);
+				Logger.DebugLog("No directory at " + oldPath);
 		}
 
 		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
@@ -473,16 +473,16 @@ namespace Rynchodon.Update
 					myLogger.alwaysLog("Client, running client scripts only", Logger.severity.INFO);
 				}
 
-#pragma warning disable 162
-				if (!MyFinalBuildConstants.IS_STABLE)
-					myLogger.alwaysLog("Space Engineers build is UNSTABLE");
-				if (!MyFinalBuildConstants.IS_OFFICIAL)
-					myLogger.alwaysLog("Space Engineers build is UNOFFICIAL");
-				if (MyFinalBuildConstants.IS_DEBUG)
-					myLogger.alwaysLog("Space Engineers build is DEBUG");
-#pragma warning restore 162
+				if (!CheckFinalBuildConstant("IS_OFFICIAL"))
+					myLogger.alwaysLog("Space Engineers build is UNOFFICIAL; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
+				else if (CheckFinalBuildConstant("IS_DEBUG"))
+					myLogger.alwaysLog("Space Engineers build is DEBUG; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
+				else if (CheckFinalBuildConstant("IS_STABLE"))
+					myLogger.alwaysLog("Space Engineers build is STABLE. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
+				else
+					myLogger.alwaysLog("Space Engineers build is UNSTABLE. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
 
-				Logger.DebugNotify("ARMS dev version loaded", 10000, Logger.severity.INFO);
+				Logger.DebugNotify("ARMS DEBUG build loaded", 10000, Logger.severity.INFO);
 
 				ManagerStatus = Status.Initialized;
 			}
@@ -491,6 +491,14 @@ namespace Rynchodon.Update
 				myLogger.alwaysLog("Failed to Init(): " + ex, Logger.severity.FATAL);
 				ManagerStatus = Status.Terminated;
 			}
+		}
+
+		private bool CheckFinalBuildConstant(string fieldName)
+		{
+			FieldInfo field = typeof(MyFinalBuildConstants).GetField(fieldName);
+			if (field == null)
+				throw new NullReferenceException("MyFinalBuildConstants does not have a field named " + fieldName + " or it has unexpected binding");
+			return (bool)field.GetValue(null);
 		}
 
 		private void Start()
