@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Rynchodon.Autopilot.Instruction.Command;
-using Rynchodon.Autopilot.Movement;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -13,7 +11,6 @@ using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.Utils;
-using VRageMath;
 
 namespace Rynchodon.Autopilot.Instruction
 {
@@ -73,6 +70,7 @@ namespace Rynchodon.Autopilot.Instruction
 			AddDummy(new LandVoxel(), commands);
 			AddDummy(new Orbit(), commands);
 			AddDummy(new NavigationBlock(), commands);
+			AddDummy(new FaceMove(), commands);
 
 			rootCommands.Add(new AddCommandInternalNode("Tasks", commands.ToArray()));
 

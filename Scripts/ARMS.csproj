@@ -152,6 +152,7 @@
     <Compile Include="Autopilot\Instruction\Command\Enemy.cs" />
     <Compile Include="Autopilot\Instruction\Command\SingleWord\Exit.cs" />
     <Compile Include="Autopilot\Instruction\Command\FlyRelative.cs" />
+    <Compile Include="Autopilot\Instruction\Command\SingleWord\FaceMove.cs" />
     <Compile Include="Autopilot\Instruction\Command\SingleWord\Form.cs" />
     <Compile Include="Autopilot\Instruction\Command\GolisGps.cs" />
     <Compile Include="Autopilot\Instruction\Command\GolisCoordinate.cs" />
@@ -196,6 +197,7 @@
     <None Include="Autopilot\Help.cs" />
     <Compile Include="Autopilot\Movement\Mover.cs" />
     <Compile Include="Autopilot\Navigator\ALand.cs" />
+    <Compile Include="Autopilot\Navigator\FaceMove.cs" />
     <Compile Include="Autopilot\Navigator\Mining\AMiner.cs" />
     <Compile Include="Autopilot\Navigator\Mining\AMinerComponent.cs" />
     <Compile Include="Autopilot\Navigator\ANavigator.cs" />
