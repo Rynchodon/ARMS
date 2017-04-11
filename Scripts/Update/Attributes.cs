@@ -90,7 +90,7 @@ namespace Rynchodon
 
 			foreach (MethodInfo method in sorted.Values)
 			{
-				Logger.DebugLog("invoking " + method.DeclaringType + "." + method, Logger.severity.TRACE, primaryState: typeof(T).ToString());
+				//Logger.DebugLog("invoking " + method.DeclaringType + "." + method, Logger.severity.TRACE, primaryState: typeof(T).ToString());
 				method.Invoke(null, null);
 			}
 		}
