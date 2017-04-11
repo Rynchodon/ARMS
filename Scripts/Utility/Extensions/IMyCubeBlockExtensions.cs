@@ -6,6 +6,7 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRageMath;
 using Ingame = Sandbox.ModAPI.Ingame;
@@ -182,6 +183,43 @@ namespace Rynchodon
 		public static void EnableGameThread(this IMyCubeBlock block, bool enable)
 		{
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => ((MyFunctionalBlock)block).Enabled = enable);
+		}
+
+		/// <summary>
+		/// Creates an AABB that includes all subparts of the block.
+		/// </summary>
+		/// <param name="block">The block to create the AABB for.</param>
+		/// <param name="gsAABB">An AABB that includes all subparts of the block, in grid space.</param>
+		public static void CombinedAABB(this MyCubeBlock block, out BoundingBox gsAABB)
+		{
+			BoundingBox bsAABBSum = block.PositionComp.LocalAABB;
+
+			Dictionary<string, MyEntitySubpart> subparts = block.Subparts;
+			if (subparts != null && subparts.Count != 0)
+				foreach (MyEntitySubpart part in subparts.Values)
+					IncludeAABB(part, ref bsAABBSum);
+
+			Matrix blockLocalMatrix = block.PositionComp.LocalMatrix;
+			gsAABB = bsAABBSum.Transform(ref blockLocalMatrix);
+		}
+
+		/// <summary>
+		/// Include AABB for entity and all subparts in psAABB.
+		/// </summary>
+		/// <param name="entity">Entity to include the AABB of.</param>
+		/// <param name="psAABB">In entity's parent's space.</param>
+		private static void IncludeAABB(MyEntity entity, ref BoundingBox psAABB)
+		{
+			BoundingBox esAABBSum = entity.PositionComp.LocalAABB;
+
+			Dictionary<string, MyEntitySubpart> subparts = entity.Subparts;
+			if (subparts != null && subparts.Count != 0)
+				foreach (MyEntitySubpart part in subparts.Values)
+					IncludeAABB(part, ref esAABBSum);
+
+			Matrix entityLocalMatrix = entity.PositionComp.LocalMatrix;
+			BoundingBox psEntityAABB = esAABBSum.Transform(ref entityLocalMatrix);
+			psAABB.Include(ref psEntityAABB); // modifies psAABB and returns same
 		}
 
 	}

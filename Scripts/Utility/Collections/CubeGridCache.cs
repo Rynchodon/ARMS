@@ -266,13 +266,14 @@ namespace Rynchodon
 			}
 		}
 
+		/// <summary>
+		/// For every block in the grid, yields every cell from MySlimBlock.Min to MySlimBlock.Max, inclusive.
+		/// </summary>
 		public IEnumerable<Vector3I> OccupiedCells()
 		{
 			lock_blocks.AcquireShared();
 			try
 			{
-				Matrix invLocal = new Matrix();
-
 				foreach (List<MySlimBlock> blockList in CubeBlocks.Values)
 				{
 					for (int i = blockList.Count - 1; i >= 0; i--)
@@ -283,38 +284,11 @@ namespace Rynchodon
 							myLogger.debugLog("is closed: " + slim); // rare if blocks are being removed correctly
 							continue;
 						}
-
-						MyCubeBlock cubeBlock = slim.FatBlock;
-						if (cubeBlock is IMyDoor && cubeBlock.Subparts.Count != 0)
-						{
-							foreach (MyEntitySubpart part in cubeBlock.Subparts.Values)
-								yield return slim.CubeGrid.WorldToGridInteger(part.PositionComp.GetPosition());
-							continue;
-						}
-
-						// for piston base and stator, cell may not actually be inside local AABB
-						// if this is done for doors, they would always be treated as open
-						// other blocks have not been tested
-						bool checkLocal = cubeBlock is IMyMotorStator || cubeBlock is IMyPistonBase;
-
-						if (checkLocal)
-							invLocal = Matrix.Invert(cubeBlock.PositionComp.LocalMatrix);
-
 						Vector3I cell;
 						for (cell.X = slim.Min.X; cell.X <= slim.Max.X; cell.X++)
 							for (cell.Y = slim.Min.Y; cell.Y <= slim.Max.Y; cell.Y++)
 								for (cell.Z = slim.Min.Z; cell.Z <= slim.Max.Z; cell.Z++)
-								{
-									if (checkLocal)
-									{
-										Vector3 posGrid = cell * slim.CubeGrid.GridSize;
-										Vector3 posBlock;
-										Vector3.Transform(ref posGrid, ref invLocal, out posBlock);
-										if (cubeBlock.PositionComp.LocalAABB.Contains(posBlock) == ContainmentType.Disjoint)
-											continue;
-									}
 									yield return cell;
-								}
 					}
 				}
 			}
