@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Model Name="Hacker">
+	<Parameter Name="RescaleFactor">1.0</Parameter>
+	<Parameter Name="RescaleToLengthInMeters">false</Parameter>
+	<Parameter Name="Centered">false</Parameter>
+</Model>
