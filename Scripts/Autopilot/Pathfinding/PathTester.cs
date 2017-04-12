@@ -298,6 +298,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				foreach (Vector3I cell in cache.OccupiedCells())
 				{
 					Vector3 local = cell * gridSize;
+
+					MyCubeBlock block = (MyCubeBlock)cache.CubeGrid.GetCubeBlock(cell)?.FatBlock;
+					if (block != null && block.Subparts != null && block.Subparts.Count != 0 && !CellOccupiedByBlock(cell, block))
+						continue;
+
 					Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
 					Vector3D relative; Vector3D.Subtract(ref world, ref currentPosition, out relative);
 					Vector3 relativeF = relative;
@@ -370,10 +375,20 @@ namespace Rynchodon.Autopilot.Pathfinding
 							if (ring.DistanceSquared <= minDistanceSquared)
 							{
 								IMySlimBlock slim = oGrid.GetCubeBlock(cell);
-								if (checkBlock && slim.FatBlock == ignoreBlock)
-										continue;
 								if (slim != null)
-									result.ObstructingBlock = (MyCubeBlock)slim.FatBlock;
+								{
+									if (checkBlock && slim.FatBlock == ignoreBlock)
+										continue;
+
+									MyCubeBlock fat = (MyCubeBlock)slim.FatBlock;
+									if (fat != null && fat.Subparts != null && fat.Subparts.Count != 0 && !CellOccupiedByBlock(cell, fat))
+										continue;
+
+									result.ObstructingBlock = fat;
+								}
+								else
+									result.ObstructingBlock = null;
+
 								result.Proximity = 0f;
 								Logger.DebugLog("Hit, projectionDistance: " + result.Distance + ", min: " + minProjection + ", max: " + maxProjection + ", ring: " + ringIndex + ", ring dist sq: " + ring.DistanceSquared + ", min dist sq: " + minDistanceSquared + ", max dist sq: " + maxDistanceSquared);
 								Profiler.EndProfileBlock();
@@ -400,6 +415,25 @@ namespace Rynchodon.Autopilot.Pathfinding
 			ResourcePool.Return(otherGridRejections);
 			result.Proximity = (float)Math.Sqrt(maxDistanceSquared);
 			return false;
+		}
+
+		/// <summary>
+		/// Determine if a block's AABB, or any of its subparts' AABB, contain the given cell.
+		/// </summary>
+		/// <param name="cell">Cell in grid space.</param>
+		/// <param name="block">The block to test AABB of.</param>
+		/// <returns>True iff a block's AABB, or any of its subparts' AABB, contain the given cell.</returns>
+		/// <remarks>
+		/// If subparts are rotated this test will be very coarse.
+		/// This test allows autopilot to pass through open doors, above retracted pistons, etc.
+		/// </remarks>
+		private static bool CellOccupiedByBlock(Vector3I cell, MyCubeBlock block)
+		{
+			Vector3 position = cell * block.CubeGrid.GridSize;
+			BoundingBox gsAABB;
+			block.CombinedAABB(out gsAABB);
+
+			return gsAABB.Contains(position) != ContainmentType.Disjoint;
 		}
 
 		/// <summary>

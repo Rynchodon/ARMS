@@ -2,7 +2,6 @@
 using System.Linq;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -85,50 +84,22 @@ namespace Rynchodon
 						if (slim == null)
 							continue;
 
-						if (ignoreList != null && slim.FatBlock != null && ignoreList.Contains((Tignore)slim.FatBlock))
-							continue;
+						MyCubeBlock fatblock = (MyCubeBlock)slim.FatBlock;
 
-						if (slim.FatBlock != null)
+						if (fatblock != null)
 						{
-							Dictionary<string, MyEntitySubpart> subparts = ((MyCubeBlock)slim.FatBlock).Subparts;
+							if (ignoreList != null && ignoreList.Contains((Tignore)slim.FatBlock))
+								continue;
+
+							Dictionary<string, MyEntitySubpart> subparts = fatblock.Subparts;
 							if (subparts != null && subparts.Count != 0)
 							{
-								bool subpartHit = false;
-								foreach (var part in subparts)
-								{
-									Vector3 positionPart = Vector3.Transform(asGrid.GridIntegerToWorld(pos), part.Value.PositionComp.WorldMatrixNormalizedInv);
-
-									if (slim.FatBlock.LocalAABB.Contains(positionPart) == ContainmentType.Disjoint)
-									{
-										m_logger.debugLog("disjoint: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart);
-									}
-									else
-									{
-										m_logger.debugLog("contained: " + part.Key + ", LocalAABB: " + part.Value.PositionComp.LocalAABB + ", position: " + positionPart);
-										subpartHit = true;
-										break;
-									}
-								}
-								if (!subpartHit)
+								Vector3 gsPosition = pos * asGrid.GridSize;
+								BoundingBox gsAABB;
+								fatblock.CombinedAABB(out gsAABB);
+								if (gsAABB.Contains(gsPosition) == ContainmentType.Disjoint)
 									continue;
 							}
-
-							// for piston base and stator, cell may not actually be inside local AABB
-							// if this is done for doors, they would always be treated as open
-							// other blocks have not been tested
-							if ((slim.FatBlock is IMyMotorStator || slim.FatBlock is IMyPistonBase))
-							{
-								Vector3 positionBlock = Vector3.Transform(asGrid.GridIntegerToWorld(pos), slim.FatBlock.WorldMatrixNormalizedInv);
-
-								if (slim.FatBlock.LocalAABB.Contains(positionBlock) == ContainmentType.Disjoint)
-								{
-									m_logger.debugLog("disjoint: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock);
-									continue;
-								}
-								else
-									m_logger.debugLog("contained: " + slim.FatBlock.DisplayNameText + ", LocalAABB: " + slim.FatBlock.LocalAABB + ", position: " + positionBlock);
-							}
-
 						}
 
 						m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
