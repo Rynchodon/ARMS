@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Utility.Network;
 using Sandbox.Definitions;
@@ -27,7 +28,17 @@ namespace Rynchodon.Weapons.Guided
 
 		#region Static
 
+		private static readonly FieldInfo MyMissile__m_missileAmmoDefinition;
+
 		private static ValueSync<bool, GuidedMissileLauncher> termControl_shoot;
+
+		static GuidedMissileLauncher()
+		{
+			Type MyMissileType = typeof(MyAmmoBase).Assembly.GetType("Sandbox.Game.Weapons.MyMissile", true);
+			MyMissile__m_missileAmmoDefinition = MyMissileType.GetField("m_missileAmmoDefinition", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			if (MyMissile__m_missileAmmoDefinition == null)
+				throw new NullReferenceException("MyMissile__m_missileAmmoDefinition");
+		}
 
 		[OnWorldLoad]
 		private static void Init()
@@ -51,8 +62,10 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (obj.IsMissile())
 			{
+				MyDefinitionId definition = ((MyMissileAmmoDefinition)MyMissile__m_missileAmmoDefinition.GetValue(obj)).Id;
+				Logger.TraceLog("missile definition: " + definition);
 				foreach (GuidedMissileLauncher launcher in Registrar.Scripts<GuidedMissileLauncher>())
-					if (launcher.MissileBelongsTo(obj))
+					if (launcher.MissileBelongsTo(obj, ref definition))
 						return;
 				Logger.TraceLog("No launcher for: " + obj.nameWithId());
 			}
@@ -94,7 +107,10 @@ namespace Rynchodon.Weapons.Guided
 					};
 					shoot.Setter = (block, value) => {
 						if (IsGuidedMissileLauncher(block))
+						{
+							Logger.TraceLog("Set shoot: " + value);
 							termControl_shoot.SetValue(block, value);
+						}
 						else
 							originalSetter(block, value);
 					};
@@ -187,11 +203,18 @@ namespace Rynchodon.Weapons.Guided
 				LockAndShoot();
 		}
 
-		private bool MissileBelongsTo(IMyEntity missile)
+		private bool MissileBelongsTo(IMyEntity missile, ref MyDefinitionId definition)
 		{
 			if (!_isShooting)
 			{
 				myLogger.traceLog("Not mine, not shooting");
+				return false;
+			}
+			if (definition != loadedAmmo.MissileDefinition.Id)
+			{
+				myLogger.traceLog("Not mine, not my loaded ammo definition");
+				myLogger.traceLog("defn: " + definition);
+				myLogger.traceLog("loaded: " + loadedAmmo.MissileDefinition.Id);
 				return false;
 			}
 			Vector3D local = Vector3D.Transform(missile.GetPosition(), CubeBlock.WorldMatrixNormalizedInv);
@@ -321,7 +344,10 @@ namespace Rynchodon.Weapons.Guided
 		private void LockAndShoot()
 		{
 			if (m_onCooldown || m_onGameCooldown)
+			{
+				myLogger.traceLog("on cooldown");
 				return;
+			}
 
 			if (!_shootCluster)
 			{

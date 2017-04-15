@@ -525,7 +525,7 @@ namespace Rynchodon
 		[System.Diagnostics.Conditional("DEBUG")]
 		public static void DebugNotify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
 		{ Notify(message, disappearTimeMs, level); }
-#if UNSTABLE
+
 		/// <summary>
 		/// For a safe way to display a message as a notification, not conditional.
 		/// </summary>
@@ -567,49 +567,7 @@ namespace Rynchodon
 					return MyFontEnum.White;
 			}
 		}
-#else
-		/// <summary>
-		/// For a safe way to display a message as a notification, not conditional.
-		/// </summary>
-		/// <param name="message">the notification message</param>
-		/// <param name="disappearTimeMs">time on screen, in milliseconds</param>
-		/// <param name="level">severity level</param>
-		/// <returns>true iff the message was displayed</returns>
-		public static void Notify(string message, int disappearTimeMs = 2000, severity level = severity.TRACE)
-		{
-			if (Globals.WorldClosed)
-				return;
 
-			MyFontEnum font = fontForSeverity(level);
-			if (MyAPIGateway.Utilities != null)
-				MyAPIGateway.Utilities.TryInvokeOnGameThread(() => MyAPIGateway.Utilities.ShowNotification(message, disappearTimeMs, font));
-			//else
-			//	log(severity.WARNING, "ShowNotificationDebug()", "MyAPIGateway.Utilities == null");
-		}
-
-		public enum severity : byte { OFF, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, ALL }
-
-		private static MyFontEnum fontForSeverity(severity level = severity.TRACE)
-		{
-			switch (level)
-			{
-				case severity.TRACE:
-					return MyFontEnum.Blue;
-				case severity.DEBUG:
-					return MyFontEnum.DarkBlue;
-				case severity.INFO:
-					return MyFontEnum.Green;
-				case severity.WARNING:
-					return MyFontEnum.Red;
-				case severity.ERROR:
-					return MyFontEnum.Red;
-				case severity.FATAL:
-					return MyFontEnum.Red;
-				default:
-					return MyFontEnum.White;
-			}
-		}
-#endif
 		/// <summary>
 		/// Append the relevant portion of the stack to a StringBuilder.
 		/// </summary>

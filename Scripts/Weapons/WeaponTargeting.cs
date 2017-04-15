@@ -17,6 +17,7 @@ using Sandbox.Game.Gui;
 using Sandbox.Game.Weapons;
 using Sandbox.Graphics.GUI;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using SpaceEngineers.Game.Weapons.Guns;
 using VRage.Game;
@@ -83,19 +84,15 @@ namespace Rynchodon.Weapons
 				TerminalControlHelper.EnsureTerminalControlCreated<MySmallMissileLauncher>();
 				TerminalControlHelper.EnsureTerminalControlCreated<MySmallMissileLauncherReload>();
 
-				//// find the current position of shoot On/Off
-				//foreach (ITerminalControl control in MyTerminalControlFactory.GetControls(typeof(MyUserControllableGun)))
-				//{
-				//	++ControlsIndex;
-				//	if (control.Id == "Shoot")
-				//		break;
-				//}
-
-				//Logger.TraceLog("controls index: " + ControlsIndex);
-
 				termControl_targetFlag = new FlagsValueSync<TargetingFlags, WeaponTargeting>("TargetFlag", "value_termControl_targetFlag");
 				termControl_targetType = new FlagsValueSync<TargetType, WeaponTargeting>("TargetType", "value_termControl_targetType");
 				termControl_weaponFlags = new FlagsValueSync<WeaponFlags, WeaponTargeting>("WeaponFlags", "value_termControl_weaponFlags");
+
+				{
+					MyTerminalControlOnOffSwitch<MyUserControllableGun> targetMoving = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("ArmsTargetMoving", MyStringId.GetOrCompute("Target moving"), MyStringId.GetOrCompute("ARMS will target fast approaching objects"));
+					termControl_targetType.AddControl(targetMoving, TargetType.Moving);
+					AddControl(targetMoving, Visibility.Turret);
+				}
 
 				AddControl(new MyTerminalControlSeparator<MyUserControllableGun>());
 
@@ -199,7 +196,6 @@ namespace Rynchodon.Weapons
 				}
 
 				CloneTurretControl_OnOff("TargetMeteors", TargetType.Meteor);
-				CloneTurretControl_OnOff("TargetMoving", TargetType.Moving);
 				CloneTurretControl_OnOff("TargetMissiles", TargetType.Missile);
 				CloneTurretControl_OnOff("TargetSmallShips", TargetType.SmallGrid);
 				CloneTurretControl_OnOff("TargetLargeShips", TargetType.LargeGrid);
@@ -216,6 +212,12 @@ namespace Rynchodon.Weapons
 						AddControl(newControl, Visibility.Fixed);
 						break;
 					}
+				}
+
+				{
+					MyTerminalControlOnOffSwitch<MyUserControllableGun> targetMoving = new MyTerminalControlOnOffSwitch<MyUserControllableGun>("ArmsTargetMoving", MyStringId.GetOrCompute("Target moving"), MyStringId.GetOrCompute("ARMS will target fast approaching objects"));
+					termControl_targetType.AddControl(targetMoving, TargetType.Moving);
+					AddControl(targetMoving, Visibility.Fixed);
 				}
 
 				Logger.TraceLog("initialized");
@@ -472,7 +474,7 @@ namespace Rynchodon.Weapons
 		private InterpreterWeapon Interpreter;
 
 		private bool FireWeapon;
-		private bool IsFiringWeapon { get { return CubeBlock.IsShooting; } }
+		//private bool IsFiringWeapon { get { return CubeBlock.IsShooting; } }
 		private Control value_currentControl;
 
 		/// <summary>First item is target, second is the weapon, followed by custom items.</summary>
@@ -572,7 +574,6 @@ namespace Rynchodon.Weapons
 			}
 		}
 
-#if UNSTABLE
 		/*
 		 * Bug in Space Engineers breaks Shoot_On, Shoot_Off, SetShooting, SetTarget, and TrackTarget for turrets.
 		 */
@@ -601,41 +602,39 @@ namespace Rynchodon.Weapons
 			}
 		}
 
+		private static ITerminalProperty<bool> m_shootProperty;
+
+		private bool GetShootProp()
+		{
+			if (m_shootProperty == null)
+				m_shootProperty = CubeBlock.GetProperty("Shoot").AsBool();
+			return m_shootProperty.GetValue(CubeBlock);
+		}
+
 		private void ShootOn()
 		{
+			if (GetShootProp())
+				return;
+
+			myLogger.traceLog("Opening fire");
 			if (myTurret != null)
 			{
 				TurretNeedsUpdate(true);
 				myTurret.SetTarget(ProjectilePosition() + CurrentTarget.FiringDirection.Value * 1000f);
 			}
-			((MyUserControllableGun)CubeBlock).SetShooting(true);
+			m_shootProperty.SetValue(CubeBlock, true);
 		}
 
 		private void ShootOff()
 		{
+			if (!GetShootProp())
+				return;
+
+			myLogger.traceLog("Holding fire");
 			if (myTurret != null)
 				TurretNeedsUpdate(false);
-			((MyUserControllableGun)CubeBlock).SetShooting(false);
+			m_shootProperty.SetValue(CubeBlock, false);
 		}
-#else
-		private void RestoreDefaultTargeting()
-		{
-			if (myTurret != null)
-				myTurret.ResetTargetingToDefault();
-		}
-
-		private void ShootOn()
-		{
-			// has to be this way for guided missiles
-			((MyUserControllableGun)CubeBlock).SetShooting(true);
-		}
-
-		private void ShootOff()
-		{
-			// has to be this way for guided missiles
-			((MyUserControllableGun)CubeBlock).SetShooting(false);
-		}
-#endif
 
 		/// <summary>Checks that it is possible to control the weapon: working, not in use, etc.</summary>
 		public bool CanControl
@@ -721,16 +720,16 @@ namespace Rynchodon.Weapons
 			try
 			{
 				GameThreadActions.DequeueAll(action => action.Invoke());
-				if (CurrentControl != Control.Off && FireWeapon != IsFiringWeapon && MyAPIGateway.Multiplayer.IsServer)
+				if (CurrentControl != Control.Off && MyAPIGateway.Multiplayer.IsServer)
 				{
 					if (FireWeapon)
 					{
-						myLogger.traceLog("Opening fire");
+						//myLogger.traceLog("Opening fire");
 						ShootOn();
 					}
 					else
 					{
-						myLogger.traceLog("Holding fire");
+						//myLogger.traceLog("Holding fire");
 						ShootOff();
 					}
 				}
