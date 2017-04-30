@@ -198,7 +198,7 @@ os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
 
 if not "release" in str.lower(build):
 	SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
-	os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
+	os.system('start /D "' + SpaceBin + '" cmd /c "' + SpaceEngineers + '"')
 
 #    Pack Archive
 
