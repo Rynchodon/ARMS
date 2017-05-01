@@ -1,4 +1,4 @@
-pathToDotGit = os.path.dirname(os.path.realpath(sys.argv[0])) + r"\..\.git\\"
+# attempts to locate Space Engineers and git, it will try common paths if build.ini is incorrect
 
 if (not os.path.exists(GitExe)):
 	GitExe = r"C:\Program Files (x86)\Git\bin\git.exe"
@@ -17,11 +17,37 @@ if (not os.path.exists(GitExe)):
 						GitExe = GitHubPath + str(f) + "\\cmd\\git.exe"
 						break
 
+try:
+	if (not os.path.exists(SpaceEngineers)):
+		paths = [r"C:\Program Files (x86)\Steam\steamapps\common\SpaceEngineers",
+						 r"C:\Program Files\Steam\steamapps\common\SpaceEngineers",
+						 r"C:\Games\Steam\steamapps\common\SpaceEngineers"]
+		for SpaceEngineers in paths:
+			if (os.path.exists(SpaceEngineers)):
+				logging.info("Space Engineers located at " + SpaceEngineers)
+				break
+except NameError:
+	# SpaceEngineers variable was not defined, no need to search for Space Engineers
+	pass
+
 if os.path.exists(GitExe):
 	proc = subprocess.Popen([GitExe, "describe", "--always", "--dirty", "--tags"], stdout=subprocess.PIPE)
 	gitCommit = str(proc.stdout.read())
 	gitCommit = gitCommit[2:len(gitCommit)-3]
 else:
+	path = os.path.dirname(os.path.realpath(sys.argv[0]))
+	for c in range(0, 100):
+		pathToDotGit = path + r"\.git"
+		if (os.path.exists(pathToDotGit)):
+			logging.info("Git folder located at " + pathToDotGit)
+			break
+		upOne = os.path.dirname(path)
+		if (path == upOne):
+			logging.error("Hit root directory without finding .git folder")
+			sys.exit()
+		path = upOne
+	
+	pathToDotGit = pathToDotGit + "\\"
 	path = pathToDotGit + 'HEAD'
 	file = open(path, 'r')
 	text = file.read()
