@@ -604,6 +604,63 @@
       <DamagedSound>ParticleElectrical</DamagedSound>
     </Definition>
     
+    <!-- AESA -->
+    
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>AP_Radar_AESA_Small</SubtypeId>
+      </Id>
+      <Description>
+        Radar=true
+        MaxTargets_Tracking=10
+        MaxTargets_Jamming=1
+        MaxPowerLevel=4000
+        SignalEnhance=4
+        JammingEffect=0.4
+        PassiveDetect_Radar=40000
+        PassiveDetect_Jamming=40000
+        MinAzimuth=-1.05
+        MaxAzimuth=1.05
+        MinElevation=-1.05
+        MaxElevation=1.05
+      </Description>
+      <DisplayName>AESA Radar</DisplayName>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\AESA.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="45" />
+        <Component Subtype="Construction" Count="36" />
+        <Component Subtype="Superconductor" Count="5" />
+        <Component Subtype="MetalGrid" Count="17" />
+        <Component Subtype="Detector" Count="5" />
+        <Component Subtype="LargeTube" Count="30" />
+        <Component Subtype="RadioCommunication" Count="10" />
+        <Component Subtype="SmallTube" Count="50" />
+        <Component Subtype="Motor" Count="2" />
+        <Component Subtype="Computer" Count="4" />
+        <Component Subtype="SteelPlate" Count="65" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+      <BlockPairName>AP_Radar_AESA</BlockPairName>
+      <MirroringX>None</MirroringX>
+      <MirroringY>None</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <Center x="0" y="0" z="1" />
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <MaxRange>50000</MaxRange>
+      <DamageEffectId>213</DamageEffectId>
+      <DamagedSound>ParticleWeapExpl</DamagedSound>
+    </Definition>
+    
+    <!-- Jammer -->
+    
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
