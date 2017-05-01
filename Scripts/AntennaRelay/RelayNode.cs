@@ -51,6 +51,8 @@ namespace Rynchodon.AntennaRelay
 
 		public long EntityId { get { return m_entity.EntityId; } }
 
+		public long OwnerId { get { return m_ownerId(); } }
+
 		public Action<Message> MessageHandler
 		{
 			get { return value_messageHandler; }
@@ -265,16 +267,16 @@ namespace Rynchodon.AntennaRelay
 			IMyEntity topEntity = m_entity.GetTopMostParent();
 
 			m_logger.traceLog("Sending self to " + s_sendPositionTo.Count + " neutral/hostile storages", Logger.severity.TRACE);
-			RelayStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting));
+			RelayStorage.Receive(s_sendPositionTo, new LastSeen(topEntity, LastSeen.DetectedBy.Broadcasting));
 
 			if (Storage.VeryRecentRadarInfo(topEntity.EntityId))
 				return;
 
 			if (Block == null)
-				Storage.Receive(new LastSeen(topEntity, LastSeen.UpdateTime.Broadcasting, new LastSeen.RadarInfo(topEntity)));
+				Storage.Receive(new LastSeen(topEntity, LastSeen.DetectedBy.Broadcasting, new LastSeen.RadarInfo(topEntity)));
 			else
 				foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(Block.CubeGrid, AttachedGrid.AttachmentKind.Terminal, true))
-					Storage.Receive(new LastSeen(grid, LastSeen.UpdateTime.Broadcasting, new LastSeen.RadarInfo(grid)));
+					Storage.Receive(new LastSeen(grid, LastSeen.DetectedBy.Broadcasting, new LastSeen.RadarInfo(grid)));
 		}
 
 		/// <summary>

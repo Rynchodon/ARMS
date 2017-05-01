@@ -157,15 +157,15 @@ namespace Rynchodon.AntennaRelay
 
 			public float MaxSignal { get { return Math.Max(RadarSignature, Math.Max(RadarSignal, JammerSignal)); } }
 
-			public LastSeen.UpdateTime Times
+			public LastSeen.DetectedBy Times
 			{
 				get
 				{
-					LastSeen.UpdateTime times = LastSeen.UpdateTime.None;
+					LastSeen.DetectedBy times = LastSeen.DetectedBy.None;
 					if (RadarSignal > 0)
-						times |= LastSeen.UpdateTime.HasRadar;
+						times |= LastSeen.DetectedBy.HasRadar;
 					if (JammerSignal > 0)
-						times |= LastSeen.UpdateTime.HasJammer;
+						times |= LastSeen.DetectedBy.HasJammer;
 					return times;
 				}
 			}
