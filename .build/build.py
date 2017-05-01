@@ -157,6 +157,19 @@ createDir(finalDir)
 # erase old data
 eraseDir(finalDir + '\\Data')
 
+# copy data, models, and textures
+copyWithExtension(startDir + '/Audio/', finalDir + '/Audio/', '.xwm', True)
+copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
+copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
+copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
+copyWithExtension(startDir + '/Scripts/SteamShipped/', finalDir + '/Data/Scripts/SteamShipped/', '.cs', True)
+
+if "no-script" in str.lower(build):
+	SpaceBin = SpaceEngineers + '\Bin64'
+	SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
+	os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
+	sys.exit()
+	
 # get modules
 os.chdir(startDir + '/Scripts/')
 for file in os.listdir(startDir + '/Scripts/'):
@@ -166,13 +179,6 @@ for file in os.listdir(startDir + '/Scripts/'):
 		continue
 	if os.path.isdir(file):
 		modules.append(file)
-
-# copy data, models, and textures
-copyWithExtension(startDir + '/Audio/', finalDir + '/Audio/', '.xwm', True)
-copyWithExtension(startDir + '/Data/', finalDir + '/Data/', '.sbc', True)
-copyWithExtension(startDir + '/Models/', finalDir + '/Models/', '.mwm', True)
-copyWithExtension(startDir + '/Textures/', finalDir + '/Textures/', '.dds', True)
-copyWithExtension(startDir + '/Scripts/SteamShipped/', finalDir + '/Data/Scripts/SteamShipped/', '.cs', True)
 
 # build scripts
 for module in modules[:]:

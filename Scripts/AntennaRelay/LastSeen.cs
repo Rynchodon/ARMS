@@ -34,10 +34,10 @@ namespace Rynchodon.AntennaRelay
 		[Flags]
 		public enum UpdateTime : byte
 		{
-			None = 1 << 0,
+			None = 0 << 0,
 			Broadcasting = 1 << 1,
-			HasRadar = 1 << 3,
-			HasJammer = 1 << 4
+			HasRadar = 1 << 2,
+			HasJammer = 1 << 3
 		}
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
