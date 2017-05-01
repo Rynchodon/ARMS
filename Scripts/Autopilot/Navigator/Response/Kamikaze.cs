@@ -39,7 +39,7 @@ namespace Rynchodon.Autopilot.Navigator
 		public void UpdateTarget(LastSeen enemy)
 		{
 			m_enemy = enemy;
-			m_navSet.Settings_Task_NavEngage.DestinationEntity = enemy.Entity;
+			m_navSet.Settings_Task_NavEngage.DestinationEntity = enemy?.Entity;
 		}
 
 		#endregion

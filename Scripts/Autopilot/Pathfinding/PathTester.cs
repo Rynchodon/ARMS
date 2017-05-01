@@ -298,6 +298,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 				foreach (Vector3I cell in cache.OccupiedCells())
 				{
 					Vector3 local = cell * gridSize;
+
+					MyCubeBlock block = (MyCubeBlock)cache.CubeGrid.GetCubeBlock(cell)?.FatBlock;
+					if (block != null && block.Subparts != null && block.Subparts.Count != 0 && !CellOccupiedByBlock(cell, block))
+						continue;
+
 					Vector3D world; Vector3D.Transform(ref local, ref worldMatrix, out world);
 					Vector3D relative; Vector3D.Subtract(ref world, ref currentPosition, out relative);
 					Vector3 relativeF = relative;
@@ -422,7 +427,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// If subparts are rotated this test will be very coarse.
 		/// This test allows autopilot to pass through open doors, above retracted pistons, etc.
 		/// </remarks>
-		private bool CellOccupiedByBlock(Vector3I cell, MyCubeBlock block)
+		private static bool CellOccupiedByBlock(Vector3I cell, MyCubeBlock block)
 		{
 			Vector3 position = cell * block.CubeGrid.GridSize;
 			BoundingBox gsAABB;

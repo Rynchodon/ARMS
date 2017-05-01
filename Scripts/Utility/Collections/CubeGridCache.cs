@@ -54,7 +54,7 @@ namespace Rynchodon
 		}
 
 		private readonly Logger myLogger;
-		private readonly IMyCubeGrid CubeGrid;
+		public readonly IMyCubeGrid CubeGrid;
 
 		private Dictionary<MyObjectBuilderType, List<MySlimBlock>> CubeBlocks = new Dictionary<MyObjectBuilderType, List<MySlimBlock>>();
 		private FastResourceLock lock_blocks = new FastResourceLock();

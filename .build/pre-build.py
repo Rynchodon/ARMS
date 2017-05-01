@@ -3,9 +3,10 @@
 
 import logging, os.path, re, shutil, subprocess, sys
 
-logging.basicConfig(filename = "pre-build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
-
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+logging.basicConfig(filename = scriptDir + r"\pre-build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
+
 buildIni = scriptDir + r"\build.ini"
 buildIniTemplate = scriptDir + r"\build-template.ini"
 pathToVersionInfo = scriptDir + r"\..\Scripts\Properties\VersionInfo.cs"

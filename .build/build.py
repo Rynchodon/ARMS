@@ -5,10 +5,11 @@
 
 import datetime, errno, logging, os.path, psutil, shutil, stat, subprocess, sys, time
 
-logging.basicConfig(filename = "build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
+scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+logging.basicConfig(filename = scriptDir + r"\build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
 
 # script directories
-scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 buildIni = scriptDir + "\\build.ini"
 startDir = os.path.split(scriptDir)[0]
 cSharp = startDir + "/Scripts/"
@@ -204,7 +205,7 @@ os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
 
 if not "release" in str.lower(build):
 	SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
-	os.system('start /D ' + SpaceBin + ' cmd /c"' + SpaceEngineers)
+	os.system('start /D "' + SpaceBin + '" cmd /c "' + SpaceEngineers + '"')
 
 #    Pack Archive
 

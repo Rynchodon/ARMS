@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -15,9 +15,6 @@ namespace Rynchodon.Weapons
 {
 	public sealed class Turret : WeaponTargeting
 	{
-
-		/// <summary>vanilla property</summary>
-		private static ITerminalProperty<bool> TP_TargetMissiles, TP_TargetMeteors, TP_TargetCharacters, TP_TargetMoving, TP_TargetLargeGrids, TP_TargetSmallGrids, TP_TargetStations, TP_TargetNeutrals;
 
 		private readonly MyEntitySubpart m_barrel;
 		/// <summary>limits to determine whether or not a turret can face a target</summary>
@@ -36,21 +33,6 @@ namespace Rynchodon.Weapons
 			: base(block)
 		{
 			myLogger = new Logger(block);
-			//Registrar.Add(CubeBlock, this);
-
-			if (TP_TargetMissiles == null)
-			{
-				myLogger.debugLog("Filling Terminal Properties", Logger.severity.INFO);
-				IMyTerminalBlock term = CubeBlock as IMyTerminalBlock;
-				TP_TargetMissiles = term.GetProperty("TargetMissiles").AsBool();
-				TP_TargetMeteors = term.GetProperty("TargetMeteors").AsBool();
-				TP_TargetCharacters = term.GetProperty("TargetCharacters").AsBool();
-				TP_TargetMoving = term.GetProperty("TargetMoving").AsBool();
-				TP_TargetLargeGrids = term.GetProperty("TargetLargeShips").AsBool();
-				TP_TargetSmallGrids = term.GetProperty("TargetSmallShips").AsBool();
-				TP_TargetStations = term.GetProperty("TargetStations").AsBool();
-				TP_TargetNeutrals = term.GetProperty("TargetNeutrals").AsBool();
-			}
 
 			// definition limits
 			MyLargeTurretBaseDefinition definition = CubeBlock.GetCubeBlockDefinition() as MyLargeTurretBaseDefinition;
@@ -89,14 +71,15 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		protected override void Update100_Options_TargetingThread(TargetingOptions Options)
 		{
-			SetFlag(TP_TargetMissiles, TargetType.Missile);
-			SetFlag(TP_TargetMeteors, TargetType.Meteor);
-			SetFlag(TP_TargetCharacters, TargetType.Character);
-			SetFlag(TP_TargetMoving, TargetType.Moving);
-			SetFlag(TP_TargetLargeGrids, TargetType.LargeGrid);
-			SetFlag(TP_TargetSmallGrids, TargetType.SmallGrid);
-			SetFlag(TP_TargetStations, TargetType.Station);
-			if (TP_TargetNeutrals.GetValue(CubeBlock))
+			MyLargeTurretBase turret = (MyLargeTurretBase)CubeBlock;
+			SetFlag(turret.TargetMissiles, TargetType.Missile);
+			SetFlag(turret.TargetMeteors, TargetType.Meteor);
+			SetFlag(turret.TargetCharacters, TargetType.Character);
+			SetFlag(turret.TargetLargeGrids, TargetType.LargeGrid);
+			SetFlag(turret.TargetSmallGrids, TargetType.SmallGrid);
+			SetFlag(turret.TargetStations, TargetType.Station);
+
+			if (turret.TargetNeutrals)
 				Options.Flags &= ~TargetingFlags.IgnoreOwnerless;
 			else
 				Options.Flags |= TargetingFlags.IgnoreOwnerless;
@@ -106,9 +89,9 @@ namespace Rynchodon.Weapons
 			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
 
-		private void SetFlag(ITerminalProperty<bool> prop, TargetType typeFlag)
+		private void SetFlag(bool enable, TargetType typeFlag)
 		{
-			if (prop.GetValue(CubeBlock))
+			if (enable)
 				Options.CanTarget |= typeFlag;
 			else
 				Options.CanTarget &= ~typeFlag;
