@@ -86,7 +86,7 @@ namespace Rynchodon.AntennaRelay
 
 		public RelayStorage(RelayNode primary)
 		{
-			this.m_logger = new Logger(() => primary.LoggingName);
+			this.m_logger = new Logger(() => primary.DebugName);
 			this.PrimaryNode = primary;
 
 			m_logger.debugLog("Created", Logger.severity.DEBUG);
@@ -99,7 +99,7 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>A new storage that is a copy of this one.</returns>
 		public RelayStorage Clone(RelayNode primary)
 		{
-			m_logger.debugLog("cloning, primary " + primary.LoggingName, Logger.severity.DEBUG);
+			m_logger.debugLog("cloning, primary " + primary.DebugName, Logger.severity.DEBUG);
 
 			RelayStorage clone = new RelayStorage(primary);
 
@@ -117,7 +117,7 @@ namespace Rynchodon.AntennaRelay
 		public void CopyTo(RelayStorage recipient)
 		{
 			m_logger.debugLog("recipient == this", Logger.severity.FATAL, condition: recipient == this);
-			m_logger.debugLog("copying to: " + recipient.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+			m_logger.debugLog("copying to: " + recipient.PrimaryNode.DebugName, Logger.severity.DEBUG);
 
 			using (recipient.lock_lastSeen.AcquireExclusiveUsing())
 				ForEachLastSeen(recipient.in_Receive);
@@ -139,7 +139,7 @@ namespace Rynchodon.AntennaRelay
 				m_pushTo_count[node] = count + 1;
 			}
 
-			m_logger.debugLog("added push to: " + node.LoggingName + ", count: " + (count + 1), Logger.severity.DEBUG);
+			m_logger.debugLog("added push to: " + node.DebugName + ", count: " + (count + 1), Logger.severity.DEBUG);
 
 			if (count != 0)
 			{
@@ -149,13 +149,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (node.Storage == null)
 			{
-				m_logger.debugLog("target node has no storage, no copy. node: " + node.LoggingName, Logger.severity.TRACE);
+				m_logger.debugLog("target node has no storage, no copy. node: " + node.DebugName, Logger.severity.TRACE);
 				return;
 			}
 
 			if (node.Storage == this)
 			{
-				m_logger.debugLog("target node's storage is this, no copy. node: " + node.LoggingName, Logger.severity.TRACE);
+				m_logger.debugLog("target node's storage is this, no copy. node: " + node.DebugName, Logger.severity.TRACE);
 				return;
 			}
 
@@ -165,8 +165,8 @@ namespace Rynchodon.AntennaRelay
 					continue;
 				if (node.Storage == n.Storage)
 				{
-					m_logger.debugLog("already pushing to storage, no copy. node: " + node.LoggingName + ", node.Storage: " + node.Storage.PrimaryNode.LoggingName +
-						", n: " + n.LoggingName + ", n.Storage: " + n.Storage.PrimaryNode.LoggingName, Logger.severity.TRACE);
+					m_logger.debugLog("already pushing to storage, no copy. node: " + node.DebugName + ", node.Storage: " + node.Storage.PrimaryNode.DebugName +
+						", n: " + n.DebugName + ", n.Storage: " + n.Storage.PrimaryNode.DebugName, Logger.severity.TRACE);
 					return;
 				}
 			}
@@ -188,7 +188,7 @@ namespace Rynchodon.AntennaRelay
 				else
 					m_pushTo_count[node] = count - 1;
 
-				m_logger.debugLog("removed push to: " + node.LoggingName + ", count: " + (count - 1), Logger.severity.DEBUG);
+				m_logger.debugLog("removed push to: " + node.DebugName + ", count: " + (count - 1), Logger.severity.DEBUG);
 			}
 		}
 

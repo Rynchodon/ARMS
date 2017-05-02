@@ -8,7 +8,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using VRage;
@@ -153,23 +152,29 @@ namespace Rynchodon
 #endif
 		}
 
-		public IDisposable AcquireExclusiveUsing()
-		{
 #if DEBUG_LOCKS
+		public ExclusiveLock AcquireExclusiveUsing()
+		{
 			return new ExclusiveLock(this);
-#else
-			return FastLock.AcquireExclusiveUsing();
-#endif
 		}
-
-		public IDisposable AcquireSharedUsing()
+#else
+		public VRage.FastResourceLockExtensions.MyExclusiveLock AcquireExclusiveUsing()
 		{
-#if DEBUG_LOCKS
-			return new SharedLock(this);
-#else
-			return FastLock.AcquireSharedUsing();
-#endif
+			return FastLock.AcquireExclusiveUsing();
 		}
+#endif
+
+#if DEBUG_LOCKS
+		public SharedLock AcquireSharedUsing()
+		{
+			return new SharedLock(this);
+		}
+#else
+		public VRage.FastResourceLockExtensions.MySharedLock AcquireSharedUsing()
+		{
+			return FastLock.AcquireSharedUsing();
+		}
+#endif
 
 		#endregion
 #if DEBUG_LOCKS
@@ -310,7 +315,7 @@ namespace Rynchodon
 			public TimeoutException(string message) : base(message) { }
 		}
 
-		public class ExclusiveLock : IDisposable
+		public struct ExclusiveLock : IDisposable
 		{
 			private FastResourceLock MyLock;
 
@@ -324,7 +329,7 @@ namespace Rynchodon
 			{ MyLock.ReleaseExclusive(); }
 		}
 
-		public class SharedLock : IDisposable
+		public struct SharedLock : IDisposable
 		{
 			private FastResourceLock MyLock;
 

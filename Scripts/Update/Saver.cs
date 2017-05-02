@@ -273,7 +273,7 @@ namespace Rynchodon.Update
 					store = node.Storage;
 					if (store == null)
 					{
-						m_logger.alwaysLog("failed to create storage for " + node.LoggingName, Logger.severity.ERROR);
+						m_logger.alwaysLog("failed to create storage for " + node.DebugName, Logger.severity.ERROR);
 						continue;
 					}
 				}
@@ -302,7 +302,7 @@ namespace Rynchodon.Update
 					}
 				}
 
-				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
 
 				// messages in the save file belong on the server
 				if (messages == null)
@@ -326,7 +326,7 @@ namespace Rynchodon.Update
 						m_logger.alwaysLog("failed to create a valid message from builder for " + bm.DestCubeBlock + "/" + bm.SourceCubeBlock, Logger.severity.WARNING);
 				}
 
-				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.LoggingName, Logger.severity.DEBUG);
+				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
 			}
 
 			// past this point, only synchronized data

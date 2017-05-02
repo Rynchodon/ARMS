@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿#define TRACE // trace must be defined in calling class as well
+
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Rynchodon
