@@ -24,7 +24,7 @@ namespace Rynchodon.AntennaRelay
 {
 	/// <summary>
 	/// <para>Class for Radar and Radar Jammers</para>
-	/// </summary>
+	[Obsolete]
 	public class RadarEquipment
 	{
 		/// <summary>

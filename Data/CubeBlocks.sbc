@@ -609,21 +609,22 @@
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
-        <SubtypeId>AP_Radar_AESA_Small</SubtypeId>
+        <SubtypeId>ARMS_Radar_AESA_Small</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=10
-        MaxTargets_Jamming=1
-        MaxPowerLevel=4000
-        SignalEnhance=4
-        JammingEffect=0.4
-        PassiveDetect_Radar=40000
-        PassiveDetect_Jamming=40000
-        MinAzimuth=-1.05
-        MaxAzimuth=1.05
+        IsRadar=true
+        IsJammer=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        
+        MaxTransmitterPower=15000
+        AntennaGainFactor=36475
+        SignalToJamRatio=0.1
+        
         MinElevation=-1.05
         MaxElevation=1.05
+        MinAzimuth=-1.05
+        MaxAzimuth=1.05
       </Description>
       <DisplayName>AESA Radar</DisplayName>
       <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
