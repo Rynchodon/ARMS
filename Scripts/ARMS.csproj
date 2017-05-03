@@ -132,7 +132,6 @@
     <Compile Include="AntennaRelay\Projector.cs" />
     <Compile Include="AntennaRelay\RadarEquipment.cs" />
     <Compile Include="AntennaRelay\RelayNode.cs" />
-    <Compile Include="AntennaRelay\Sensor.cs" />
     <Compile Include="AntennaRelay\TextPanel.cs" />
     <Compile Include="Autopilot\AutopilotTerminal.cs" />
     <Compile Include="Autopilot\Data\AllNavigationSettings.cs" />

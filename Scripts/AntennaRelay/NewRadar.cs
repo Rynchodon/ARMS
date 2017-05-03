@@ -15,6 +15,7 @@ using Sandbox;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Lights;
@@ -452,7 +453,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		/// <param name="entity">Entity to get the volume of.</param>
 		/// <returns>The volume of an entity.</returns>
-		public static float Volume(IMyEntity entity)
+		private static float Volume(IMyEntity entity)
 		{
 			Debug.Assert(IsValidRadarTarget(entity), "Not a valid target: " + entity.nameWithId());
 
@@ -576,13 +577,12 @@ namespace Rynchodon.AntennaRelay
 					if (node.Entity is IMyCubeBlock)
 					{
 						IMyCubeGrid grid = node.Block.CubeGrid;
-						if (!_linkedTopEntity.Contains(grid))
+						if (_linkedTopEntity.Add(grid))
 						{
 							Logger.TraceLog("Adding grids logically connected to " + grid.nameWithId() + " to top entities");
 							Debug.Assert(_gridLogicalGroupNodes.Count == 0, "_gridLogicalGroupNodes not cleared");
-							MyCubeGridGroups.Static.Logical.GetGroupNodes((MyCubeGrid)grid, _gridLogicalGroupNodes);
-							foreach (IMyEntity entity in _gridLogicalGroupNodes)
-								_linkedTopEntity.Add(entity);
+							foreach (var gridNode in MyCubeGridGroups.Static.Logical.GetGroup((MyCubeGrid)grid).Nodes)
+								_linkedTopEntity.Add(gridNode.NodeData);
 							_gridLogicalGroupNodes.Clear();
 						}
 					}
@@ -596,6 +596,8 @@ namespace Rynchodon.AntennaRelay
 			CollectEquipmentAndJam(primaryNode.OwnerId);
 			RadarDetection();
 			PassiveDetection();
+			DecoyDetection();
+			SensorAndCameraBlocks();
 			CreateLastSeen(primaryNode);
 
 			_nearbyEntities.Clear();
@@ -654,7 +656,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Check that a top-most entity is a valid target for detection by radar.
 		/// </summary>
-		public static bool IsValidRadarTarget(IMyEntity entity)
+		private static bool IsValidRadarTarget(IMyEntity entity)
 		{
 			Debug.Assert(!(entity is IMyCubeBlock), "block not expected");
 			return entity is IMyCubeGrid || entity is IMyCharacter || entity is MyAmmoBase;
@@ -794,6 +796,31 @@ namespace Rynchodon.AntennaRelay
 						}
 
 					PushDetected(entity, ref detect);
+				}
+		}
+
+		private static void SensorAndCameraBlocks()
+		{
+			foreach (IMyEntity entity in _linkedTopEntity)
+				if (entity is IMyCubeGrid)
+				{
+					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)entity);
+					if (cache == null)
+						continue;
+
+					Detected detect;
+					_detected.TryGetValue(entity, out detect);
+					if (detect.ByRadar)
+						continue;
+
+					foreach (MySensorBlock sensor in cache.BlocksOfType(typeof(MyObjectBuilder_SensorBlock)))
+					{
+						IMyEntity lastDetected = sensor.LastDetectedEntity;
+						if (lastDetected != null && IsValidRadarTarget(lastDetected))
+							PushDetected(lastDetected, ref detect);
+					}
+
+					// TODO: camera
 				}
 		}
 
