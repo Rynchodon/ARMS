@@ -202,8 +202,6 @@ namespace Rynchodon.Weapons.Guided
 						missile.ClearBlacklist();
 						if (missile.m_gravData != null)
 							missile.UpdateGravity();
-						if (missile.m_radar != null && missile.CurrentTarget.TType == TargetType.None)
-							missile.m_radar.Update100();
 					}
 					if (!missile.Stopped)
 						missile.UpdateNetwork();
@@ -312,7 +310,7 @@ namespace Rynchodon.Weapons.Guided
 		private Stage m_stage;
 		private RailData m_rail;
 		private GravityData m_gravData;
-		private RadarEquipment m_radar;
+		private NewRadar m_radar;
 		private bool m_destroyedNearbyMissiles;
 
 		public bool Stopped
@@ -359,7 +357,7 @@ namespace Rynchodon.Weapons.Guided
 			if (myAmmo.RadarDefinition != null)
 			{
 				myLogger.debugLog("Has a radar definiton");
-				m_radar = new RadarEquipment(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
+				m_radar = new NewRadar(missile, myAmmo.RadarDefinition, launcher.CubeBlock);
 				if (myAntenna == null)
 				{
 					myLogger.debugLog("Creating node for radar");

@@ -134,7 +134,7 @@ namespace Rynchodon.Weapons
 		public readonly float DistanceToMaxSpeed;
 
 		public readonly AmmoDescription Description;
-		public readonly RadarEquipment.Definition RadarDefinition;
+		public readonly NewRadar.Definition RadarDefinition;
 
 		public readonly bool IsCluster;
 
@@ -174,8 +174,8 @@ namespace Rynchodon.Weapons
 			{
 				try
 				{
-					RadarDefinition = new RadarEquipment.Definition();
-					XML_Amendments<RadarEquipment.Definition> ammender = new XML_Amendments<RadarEquipment.Definition>(RadarDefinition);
+					RadarDefinition = new NewRadar.Definition();
+					XML_Amendments<NewRadar.Definition> ammender = new XML_Amendments<NewRadar.Definition>(RadarDefinition);
 					ammender.primarySeparator = new char[] { ',' };
 					ammender.AmendAll(Description.Radar, true);
 					RadarDefinition = ammender.Deserialize();

@@ -341,21 +341,22 @@ namespace Rynchodon.Weapons
 
 			if (SEAD)
 			{
-				float highestPowerLevel = 0f;
+				throw new NotImplementedException();
+				//float highestPowerLevel = 0f;
 
-				storage.ForEachLastSeen((LastSeen seen) => {
-					if (seen.isRecent() && Options.CanTargetType(seen.Entity) && CanConsiderHostile(seen.Entity))
-					{
-						IMyCubeBlock block;
-						float powerLevel;
-						if (RadarEquipment.GetRadarEquipment(seen, out block, out powerLevel) && powerLevel > highestPowerLevel)
-						{
-							highestPowerLevel = powerLevel;
-							processing = seen;
-							targetBlock = block;
-						}
-					}
-				});
+				//storage.ForEachLastSeen((LastSeen seen) => {
+				//	if (seen.isRecent() && Options.CanTargetType(seen.Entity) && CanConsiderHostile(seen.Entity))
+				//	{
+				//		IMyCubeBlock block;
+				//		float powerLevel;
+				//		if (RadarEquipment_old.GetRadarEquipment(seen, out block, out powerLevel) && powerLevel > highestPowerLevel)
+				//		{
+				//			highestPowerLevel = powerLevel;
+				//			processing = seen;
+				//			targetBlock = block;
+				//		}
+				//	}
+				//});
 			}
 			else
 			{
@@ -419,8 +420,9 @@ namespace Rynchodon.Weapons
 
 			if (SEAD)
 			{
-				float powerLevel;
-				return RadarEquipment.GetRadarEquipment(seen, out block, out powerLevel);
+				throw new NotImplementedException();
+				//float powerLevel;
+				//return RadarEquipment_old.GetRadarEquipment(seen, out block, out powerLevel);
 			}
 
 			if (!seen.RadarInfoIsRecent())

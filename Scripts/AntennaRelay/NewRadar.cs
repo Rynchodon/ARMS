@@ -913,12 +913,34 @@ namespace Rynchodon.AntennaRelay
 			_definition = Definition.GetFor(block);
 			if (block is MyBeacon)
 				_beaconLight = (MyLight)MyBeacon__m_light.GetValue(block);
-			if (block is IMyTerminalBlock)
-			{
-				IMyTerminalBlock term = (IMyTerminalBlock)block;
-				term.AppendingCustomInfo += AppendingCustomInfo;
-			}
+			((IMyTerminalBlock)block).AppendingCustomInfo += AppendingCustomInfo;
 
+			CtorHelper();
+
+			block.ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, GenerateElectricityFunction());
+			UpdateElectricityConsumption();
+			Log.TraceLog("created");
+		}
+
+		public NewRadar(IMyEntity missile, Definition defn, IMyCubeBlock relationsBlock)
+		{
+			Debug.Assert(missile is MyAmmoBase, "supplied entity is not a missile");
+
+			_entity = missile;
+			_definition = defn;
+
+			CtorHelper();
+
+			if (!TryGetRelayNode(out _relayPart))
+			{
+				Log.DebugLog("Missile has no antenna, creating a lonely node");
+				_relayPart = new RelayNode(missile, () => relationsBlock.OwnerId, null);
+			}
+			Log.TraceLog("created");
+		}
+
+		private void CtorHelper()
+		{
 			if (_definition.IsRadar && _definition.IsJammer)
 			{
 				float halfPower = 0.5f * _definition.MaxTransmitterPower;
@@ -932,10 +954,7 @@ namespace Rynchodon.AntennaRelay
 			else
 				Log.DebugLog("Block is neither radar nor jammer", Logger.severity.WARNING);
 
-			Registrar.Add(block, this);
-			block.ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, GenerateElectricityFunction());
-			UpdateElectricityConsumption();
-			Log.TraceLog("created");
+			Registrar.Add(_entity, this);
 		}
 
 		public int CompareTo(NewRadar other)

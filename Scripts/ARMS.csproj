@@ -130,7 +130,7 @@
     <Compile Include="AntennaRelay\Player.cs" />
     <Compile Include="AntennaRelay\ProgrammableBlock.cs" />
     <Compile Include="AntennaRelay\Projector.cs" />
-    <Compile Include="AntennaRelay\RadarEquipment.cs" />
+    <None Include="AntennaRelay\RadarEquipment_old.cs" />
     <Compile Include="AntennaRelay\RelayNode.cs" />
     <Compile Include="AntennaRelay\TextPanel.cs" />
     <Compile Include="Autopilot\AutopilotTerminal.cs" />
