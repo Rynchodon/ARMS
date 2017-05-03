@@ -47,6 +47,8 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Name used to identify this node.</summary>
 		public string DebugName { get { return m_debugName.Invoke(); } }
 
+		public IMyEntity Entity { get { return m_entity; } }
+
 		public IMyCubeBlock Block { get { return m_entity as IMyCubeBlock; } }
 
 		public long EntityId { get { return m_entity.EntityId; } }
