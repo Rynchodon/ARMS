@@ -654,7 +654,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Check that a top-most entity is a valid target for detection by radar.
 		/// </summary>
-		private static bool IsValidRadarTarget(IMyEntity entity)
+		public static bool IsValidRadarTarget(IMyEntity entity)
 		{
 			Debug.Assert(!(entity is IMyCubeBlock), "block not expected");
 			return entity is IMyCubeGrid || entity is IMyCharacter || entity is MyAmmoBase;

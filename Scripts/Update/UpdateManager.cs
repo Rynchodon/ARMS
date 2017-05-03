@@ -233,7 +233,6 @@ namespace Rynchodon.Update
 			#endregion
 
 			#region Radar
-			// must come after nodes are created
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{
@@ -246,6 +245,11 @@ namespace Rynchodon.Update
 						new NewRadar(block);
 				});
 				RegisterForUpdates(100, NewRadar.UpdateAll);
+
+				RegisterForBlock(typeof(MyObjectBuilder_SensorBlock), (block) => {
+					Sensor s = new Sensor(block);
+					RegisterForUpdates(100, s.Update100, block);
+				});
 			}
 
 			#endregion
