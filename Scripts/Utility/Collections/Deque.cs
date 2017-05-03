@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Rynchodon.Utility.Collections
 {
-	public class Deque<T> : IList<T>
+	public sealed class Deque<T> : IList<T>
 	{
-
 		public const int DefaultCapacity = 4;
 
 		private T[] _array;
@@ -70,31 +70,31 @@ namespace Rynchodon.Utility.Collections
 
 		public T PeekHead()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 			return _array[_head];
 		}
 
 		public void PeekHead(out T item)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 			item = _array[_head];
 		}
 
 		public T PeekTail()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 			return _array[(_tail - 1 + _array.Length) % _array.Length];
 		}
 
 		public void PeekTail(out T item)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 			item = _array[(_tail - 1 + _array.Length) % _array.Length];
 		}
 
 		public T PopHead()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			T result = _array[_head];
 			_array[_head] = default(T);
@@ -105,7 +105,7 @@ namespace Rynchodon.Utility.Collections
 
 		public void PopHead(out T item)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			item = _array[_head];
 			_array[_head] = default(T);
@@ -115,7 +115,7 @@ namespace Rynchodon.Utility.Collections
 
 		public T PopTail()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			T result = _array[_tail];
@@ -126,7 +126,7 @@ namespace Rynchodon.Utility.Collections
 
 		public void PopTail(out T item)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			item = _array[_tail];
@@ -136,7 +136,7 @@ namespace Rynchodon.Utility.Collections
 
 		public void RemoveHead()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			_array[_head] = default(T);
 			_head = (_head + 1) % _array.Length;
@@ -145,7 +145,7 @@ namespace Rynchodon.Utility.Collections
 
 		public void RemoveTail()
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			_tail = (_tail - 1 + _array.Length) % _array.Length;
 			_array[_tail] = default(T);
@@ -164,7 +164,7 @@ namespace Rynchodon.Utility.Collections
 		/// </summary>
 		private void Resize(int capacity = -1)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			if (capacity == -1)
 				capacity = _array.Length << 1;
@@ -194,7 +194,7 @@ namespace Rynchodon.Utility.Collections
 		/// </summary>
 		private void Remove(int inIndex)
 		{
-			Logger.DebugLog("Empty", Logger.severity.ERROR, condition: Count == 0);
+			if (Count == 0) ThrowEmpty();
 
 			if (_head < _tail)
 			{
@@ -409,33 +409,72 @@ namespace Rynchodon.Utility.Collections
 						return true;
 					}
 			}
-				
 
 			return false;
 		}
 
-		public IEnumerator<T> GetEnumerator()
+		public Enumerator GetEnumerator()
 		{
-			if (Count == 0)
-				yield break;
-
-			if (_head < _tail)
-			{
-				for (int index = _head; index < _tail; index++)
-					yield return _array[index];
-			}
-			else
-			{
-				for (int index = _head; index < _array.Length; index++)
-					yield return _array[index];
-				for (int index = 0; index < _tail; index++)
-					yield return _array[index];
-			}
+			return new Enumerator(this);
 		}
 
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+		IEnumerator<T> IEnumerable<T>.GetEnumerator()
 		{
 			return GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
+		}
+
+		private void ThrowEmpty()
+		{
+			throw new IndexOutOfRangeException(typeof(Deque<T>).Name + " is empty");
+		}
+
+		public struct Enumerator : IEnumerator<T>
+		{
+			private readonly Deque<T> _deque;
+			private bool _headToEnd;
+			private int _index;
+
+			public Enumerator(Deque<T> deque)
+			{
+				_deque = deque;
+				_headToEnd = _deque._head >= _deque._tail;
+				_index = _deque._head - 1;
+			}
+
+			public T Current
+			{
+				get { return _deque._array[_index]; }
+			}
+
+			object IEnumerator.Current
+			{
+				get { return Current; }
+			}
+
+			public void Dispose() { }
+
+			public bool MoveNext()
+			{
+				if (_headToEnd)
+				{
+					if (++_index < _deque._array.Length)
+						return true;
+					_index = 0;
+					_headToEnd = false;
+					return true;
+				}
+				return ++_index < _deque._tail;
+			}
+
+			public void Reset()
+			{
+				_index = _deque._head - 1;
+			}
 		}
 
 	}

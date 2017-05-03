@@ -1,5 +1,6 @@
 ﻿using System;
 using Rynchodon.Utility;
+using Rynchodon.Utility.Collections;
 using Sandbox.ModAPI;
 
 namespace Rynchodon.Threading
@@ -23,7 +24,7 @@ namespace Rynchodon.Threading
 		private readonly bool Background;
 		private readonly string ThreadName;
 
-		private LockedQueue<Action> ActionQueue = new LockedQueue<Action>(8);
+		private LockedDeque<Action> ActionQueue = new LockedDeque<Action>(8);
 
 		public readonly byte AllowedParallel;
 
@@ -53,7 +54,7 @@ namespace Rynchodon.Threading
 				return;
 			}
 
-			ActionQueue.Enqueue(toQueue);
+			ActionQueue.AddTail(toQueue);
 			VRage.Exceptions.ThrowIf<Exception>(ActionQueue.Count > QueueOverflow, "queue is too long");
 
 			if (ParallelTasks >= AllowedParallel || StaticParallel >= StaticMaxParallel)
@@ -87,7 +88,7 @@ namespace Rynchodon.Threading
 				if (ThreadName != null)
 					ThreadTracker.ThreadName = ThreadName + '(' + ThreadTracker.ThreadNumber + ')';
 				Action currentItem;
-				while (ActionQueue.TryDequeue(out currentItem))
+				while (ActionQueue.TryPopTail(out currentItem))
 				{
 					if (currentItem != null)
 					{

@@ -7,6 +7,7 @@ using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
+using Rynchodon.Utility.Collections;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -43,7 +44,7 @@ namespace Rynchodon
 
 		private class StaticVariables
 		{
-			public LockedQueue<LogItem> m_logItems = new LockedQueue<LogItem>();
+			public LockedDeque<LogItem> m_logItems = new LockedDeque<LogItem>();
 			public VRage.FastResourceLock m_lockLogging = new VRage.FastResourceLock(); // do not use debug lock or it can get stuck in an exception loop
 
 			public System.IO.TextWriter logWriter = null;
@@ -391,7 +392,7 @@ namespace Rynchodon
 			if (level <= severity.WARNING)
 				DebugNotify("Logger: " + level, 2000, level);
 
-			Static.m_logItems.Enqueue(new LogItem()
+			Static.m_logItems.AddTail(new LogItem()
 			{
 				context = f_context.InvokeIfExists(),
 				fileName = m_fileName,
@@ -420,7 +421,7 @@ namespace Rynchodon
 			if (level <= severity.WARNING)
 				DebugNotify("Logger: " + level, 2000, level);
 
-			Static.m_logItems.Enqueue(new LogItem()
+			Static.m_logItems.AddTail(new LogItem()
 			{
 				context = context,
 				fileName = fileName,
@@ -447,7 +448,7 @@ namespace Rynchodon
 				if (Globals.WorldClosed)
 					return;
 				LogItem item;
-				while (Static.m_logItems.TryDequeue(out item))
+				while (Static.m_logItems.TryPopTail(out item))
 					log(ref item);
 			}
 			catch (Exception ex)

@@ -9,6 +9,7 @@ using System.Xml.Serialization;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
+using Rynchodon.Utility.Collections;
 using Rynchodon.Utility.Network;
 using Rynchodon.Utility.Network.Sync;
 using Rynchodon.Weapons.Guided;
@@ -480,7 +481,7 @@ namespace Rynchodon.Weapons
 		/// <summary>First item is target, second is the weapon, followed by custom items.</summary>
 		private IMyEntity[] m_ignoreList = new IMyEntity[2];
 
-		private LockedQueue<Action> GameThreadActions = new LockedQueue<Action>(1);
+		private LockedDeque<Action> GameThreadActions = new LockedDeque<Action>(1);
 		private readonly IRelayPart m_relayPart;
 
 		public readonly WeaponDefinitionExpanded WeaponDefinition;
@@ -561,9 +562,9 @@ namespace Rynchodon.Weapons
 				if (MyAPIGateway.Multiplayer.IsServer)
 				{
 					if (IsNormalTurret && value == Control.Off)
-						GameThreadActions.Enqueue(RestoreDefaultTargeting);
+						GameThreadActions.AddTail(RestoreDefaultTargeting);
 					else
-						GameThreadActions.Enqueue(ShootOff);
+						GameThreadActions.AddTail(ShootOff);
 				}
 
 				if (value == Control.Engager)
@@ -701,7 +702,7 @@ namespace Rynchodon.Weapons
 
 		public void ResumeFromSave(Builder_WeaponTargeting builder)
 		{
-			GameThreadActions.Enqueue(() => {
+			GameThreadActions.AddTail(() => {
 				termControl_targetType = builder.TargetTypeFlags;
 				termControl_targetFlag = builder.TargetOptFlags;
 				termControl_range = builder.Range;
@@ -719,7 +720,7 @@ namespace Rynchodon.Weapons
 
 			try
 			{
-				GameThreadActions.DequeueAll(action => action.Invoke());
+				GameThreadActions.InvokeAndClear();
 				if (CurrentControl != Control.Off && MyAPIGateway.Multiplayer.IsServer)
 				{
 					if (FireWeapon)

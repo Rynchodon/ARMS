@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game.ModAPI;
-using VRage.ObjectBuilders;
-using Ingame = VRage.Game.ModAPI.Ingame;
 
 namespace Rynchodon.Attached
 {
@@ -200,9 +197,6 @@ namespace Rynchodon.Attached
 					yield return block;
 		}
 
-		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, Ingame.IMyCubeGrid grid2, bool add)
-		{ AddRemoveConnection(kind, grid1 as IMyCubeGrid, grid2 as IMyCubeGrid, add); }
-
 		internal static void AddRemoveConnection(AttachmentKind kind, IMyCubeGrid grid1, IMyCubeGrid grid2, bool add)
 		{
 			if (grid1 == grid2 || Globals.WorldClosed)
@@ -285,7 +279,7 @@ namespace Rynchodon.Attached
 			if (!searched.Add(this))
 				throw new Exception("AttachedGrid already searched");
 
-			foreach (var gridAttach in Connections.GetEnumerator())
+			foreach (var gridAttach in Connections)
 			{
 				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
 					continue;
@@ -302,7 +296,7 @@ namespace Rynchodon.Attached
 			if (!searched.Add(this))
 				throw new Exception("AttachedGrid already searched");
 
-			foreach (var gridAttach in Connections.GetEnumerator())
+			foreach (var gridAttach in Connections)
 			{
 				if ((gridAttach.Value.attachmentKinds & allowedConnections) == 0 || searched.Contains(gridAttach.Key))
 					continue;

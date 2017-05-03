@@ -10,6 +10,7 @@ using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Settings;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
+using Rynchodon.Utility.Collections;
 using Rynchodon.Weapons;
 using Rynchodon.Weapons.Guided;
 using Rynchodon.Weapons.SystemDisruption;
@@ -397,7 +398,7 @@ namespace Rynchodon.Update
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.Enqueue(() => {
+			Instance.ExternalRegistrations.AddTail(() => {
 				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
 			});
 		}
@@ -406,7 +407,7 @@ namespace Rynchodon.Update
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.Enqueue(() => {
+			Instance.ExternalRegistrations.AddTail(() => {
 				Instance.UnRegisterForUpdates(frequency, toInvoke);
 			});
 		}
@@ -423,8 +424,8 @@ namespace Rynchodon.Update
 		private enum Status : byte { Not_Initialized, Initialized, Started, Terminated }
 		private Status ManagerStatus = Status.Not_Initialized;
 
-		private LockedQueue<Action> AddRemoveActions = new LockedQueue<Action>();
-		private LockedQueue<Action> ExternalRegistrations = new LockedQueue<Action>();
+		private LockedDeque<Action> AddRemoveActions = new LockedDeque<Action>();
+		private LockedDeque<Action> ExternalRegistrations = new LockedDeque<Action>();
 
 		private HashSet<long> CubeBlocks = new HashSet<long>();
 		private HashSet<long> Characters = new HashSet<long>();
@@ -583,13 +584,13 @@ namespace Rynchodon.Update
 
 				if (AddRemoveActions.Count != 0)
 					try
-					{ AddRemoveActions.DequeueAll(action => action.Invoke()); }
+					{ AddRemoveActions.InvokeAndClear();	}
 					catch (Exception ex)
 					{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
 
 				if (ExternalRegistrations.Count != 0)
 					try
-					{ ExternalRegistrations.DequeueAll(action => action.Invoke()); }
+					{ ExternalRegistrations.InvokeAndClear(); }
 					catch (Exception ex)
 					{ myLogger.alwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
 
@@ -724,7 +725,7 @@ namespace Rynchodon.Update
 		private void Entities_OnEntityAdd(IMyEntity entity)
 		{
 			if (entity.Save || entity is IMyCharacter)
-				AddRemoveActions.Enqueue(() => AddEntity(entity));
+				AddRemoveActions.AddTail(() => AddEntity(entity));
 		}
 
 		/// <summary>
@@ -779,7 +780,7 @@ namespace Rynchodon.Update
 		}
 
 		private void Grid_OnBlockAdded(IMySlimBlock block)
-		{ AddRemoveActions.Enqueue(() => { AddBlock(block); }); }
+		{ AddRemoveActions.AddTail(() => { AddBlock(block); }); }
 
 		/// <summary>
 		/// if necessary, builds script for a block

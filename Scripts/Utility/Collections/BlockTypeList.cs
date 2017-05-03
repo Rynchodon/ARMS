@@ -113,7 +113,7 @@ namespace Rynchodon
 				HashSet<MyDefinitionId> added = new HashSet<MyDefinitionId>();
 				List<MyDefinitionId> idList = new List<MyDefinitionId>();
 
-				using (CubeGridCache.DefinitionType.lock_Dictionary.AcquireSharedUsing())
+				using (CubeGridCache.DefinitionType.Lock.AcquireSharedUsing())
 				{
 					for (int i = BlockNamesContain.Length - 1; i >= 0; i--)
 					{

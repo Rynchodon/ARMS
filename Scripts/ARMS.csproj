@@ -283,8 +283,8 @@
     <Compile Include="Utility\Instructions\BlockInstructions.cs" />
     <Compile Include="Utility\ByteConverter.cs" />
     <Compile Include="Utility\Collections\CubeGridCache.cs" />
-    <Compile Include="Utility\Collections\LockedQueue.cs" />
-    <Compile Include="Utility\Collections\ReadOnlyList.cs" />
+    <Compile Include="Utility\Collections\LockedDeque.cs" />
+    <None Include="Utility\Collections\ReadOnlyList.cs" />
     <Compile Include="Utility\Collections\Registrar.cs" />
     <None Include="Utility\Extensions\CapsuleExtensions.cs" />
     <Compile Include="Utility\Extensions\DictionaryExtensions.cs" />
