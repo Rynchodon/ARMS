@@ -17,7 +17,7 @@ using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class Player
+	public sealed class Player
 	{
 
 		private struct DistanceSeen : IComparable<DistanceSeen>
@@ -64,6 +64,7 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 		private readonly HashSet<MyEntity> m_updated = new HashSet<MyEntity>();
+		private readonly HashSet<MyCubeGrid> m_haveTerminalAccess = new HashSet<MyCubeGrid>();
 
 		private IMyEntity m_controlled;
 		private Func<RelayStorage> m_storage;
@@ -200,13 +201,27 @@ namespace Rynchodon.AntennaRelay
 				pair.Value.Prepare();
 			}
 
+			foreach (RelayNode node in Registrar.Scripts<RelayNode>())
+			{
+				MyCubeGrid grid = (node.Entity as MyCubeBlock)?.CubeGrid;
+				if (grid != null && node.GetStorage()?.PrimaryNode == store.PrimaryNode && m_haveTerminalAccess.Add(grid))
+					foreach (var gridNode in MyCubeGridGroups.Static.Logical.GetGroup(grid).Nodes)
+						m_haveTerminalAccess.Add(gridNode.NodeData);
+			}
+
 			store.ForEachLastSeen((LastSeen seen) => {
 				if (!seen.isRecent())
 					return;
 
 				if (seen.isRecent_Broadcast())
 				{
-					//myLogger.traceLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
+					myLogger.debugLog("already visible: " + seen.Entity.getBestName());
+					return;
+				}
+
+				if (seen.Entity is MyCubeGrid && m_haveTerminalAccess.Contains((MyCubeGrid)seen.Entity))
+				{
+					myLogger.debugLog("terminal linked: " + seen.Entity.nameWithId());
 					return;
 				}
 
@@ -306,61 +321,6 @@ namespace Rynchodon.AntennaRelay
 				}
 				index++;
 			}
-		}
-
-		private StringBuilder m_descrParts = new StringBuilder();
-
-		private string GetDescription(LastSeen seen)
-		{
-			m_descrParts.Clear();
-
-			if (seen.isRecent_Radar())
-				m_descrParts.Append("Has Radar, ");
-
-			if (seen.isRecent_Jam())
-				m_descrParts.Append("Has Jammer, ");
-
-			m_descrParts.Append("ID:");
-			m_descrParts.Append(seen.Entity.EntityId);
-			m_descrParts.Append(", ");
-
-			if (seen.RadarInfoIsRecent())
-			{
-				m_descrParts.Append(seen.Info.Pretty_Volume());
-				m_descrParts.Append(", ");
-			}
-
-			m_descrParts.Append(descrEnd);
-
-			return m_descrParts.ToString();
-		}
-
-		private bool Update(IMyGps gps, string name, string description, Vector3D coords)
-		{
-			bool updated = false;
-
-			if (gps.Name != name && name != null)
-			{
-				gps.Name = name;
-				updated = true;
-			}
-			if (gps.Description != description)
-			{
-				gps.Description = description;
-				updated = true;
-			}
-			if (gps.Coords != coords)
-			{
-				gps.Coords = coords;
-				updated = true;
-			}
-			if (!gps.ShowOnHud)
-			{
-				gps.ShowOnHud = true;
-				updated = true;
-			}
-
-			return updated;
 		}
 
 		private bool CanDisplay(LastSeen seen, out UserSettings.ByteSettingName settingName)
