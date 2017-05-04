@@ -47,7 +47,7 @@ namespace Rynchodon.AntennaRelay
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
-		public const long TicksPerTenthSecond = TimeSpan.TicksPerSecond / 10, RecentTicks = TimeSpan.TicksPerSecond * 10;
+		public const long TicksPerTenthSecond = TimeSpan.TicksPerSecond / 10, RecentTicks = TimeSpan.TicksPerSecond * 2;
 
 		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), RecentSpan = new TimeSpan(RecentTicks);
 

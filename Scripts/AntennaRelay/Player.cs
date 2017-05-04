@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+//#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
@@ -63,7 +67,6 @@ namespace Rynchodon.AntennaRelay
 		private readonly Logger myLogger;
 
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
-		private readonly HashSet<MyEntity> m_updated = new HashSet<MyEntity>();
 		private readonly HashSet<IMyCubeGrid> m_haveTerminalAccess = new HashSet<IMyCubeGrid>();
 
 		private IMyEntity m_controlled;
@@ -90,11 +93,11 @@ namespace Rynchodon.AntennaRelay
 			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
-				myLogger.debugLog("# of gps: " + list.Count);
+				myLogger.traceLog("# of gps: " + list.Count);
 				foreach (IMyGps gps in list)
 					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
-						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords);
+						myLogger.traceLog("old gps: " + gps.Name + ", " + gps.Coords);
 						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 					}
 			}
@@ -259,12 +262,10 @@ namespace Rynchodon.AntennaRelay
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 			});
 
-			m_updated.Clear(); 
+			m_haveTerminalAccess.Clear();
 			
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
-
-			m_updated.Clear();
 		}
 
 		private void UpdateGPS(UserSettings.ByteSettingName setting, GpsData relateData)
@@ -312,16 +313,16 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (entity != seen.Entity)
 					{
-						if (!m_updated.Contains(entity))
-							MyHud.LocationMarkers.UnregisterMarker(entity);
+						myLogger.debugLog("removing marker: " + entity.nameWithId());
+						MyHud.LocationMarkers.UnregisterMarker(entity);
 					}
-					else
+					else if (MyHud.LocationMarkers.MarkerEntities.ContainsKey(entity))
 						continue;
 				}
 
 				entity = (MyEntity)seen.Entity;
 				relateData.entities[index] = entity;
-				m_updated.Add(entity);
+				myLogger.debugLog("adding marker: " + entity.nameWithId());
 				MyHud.LocationMarkers.RegisterMarker(entity, new MyHudEntityParams() { FlagsEnum = MyHudIndicatorFlagsEnum.SHOW_ALL, Text = new StringBuilder(name), OffsetText = true, TargetMode = seRelate });
 			}
 
@@ -331,7 +332,7 @@ namespace Rynchodon.AntennaRelay
 				MyEntity entity = relateData.entities[index];
 				if (entity != null)
 				{
-					myLogger.traceLog("detritus: " + entity.nameWithId());
+					myLogger.debugLog("removing marker: " + entity.nameWithId());
 					MyHud.LocationMarkers.UnregisterMarker(entity);
 					relateData.entities[index] = null;
 				}
