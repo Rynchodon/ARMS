@@ -125,7 +125,7 @@
     <Compile Include="AntennaRelay\IRelayPart.cs" />
     <Compile Include="AntennaRelay\LastSeen.cs" />
     <Compile Include="AntennaRelay\Message.cs" />
-    <Compile Include="AntennaRelay\NewRadar.cs" />
+    <Compile Include="AntennaRelay\RadarEquipment.cs" />
     <Compile Include="AntennaRelay\RelayClient.cs" />
     <Compile Include="AntennaRelay\Player.cs" />
     <Compile Include="AntennaRelay\ProgrammableBlock.cs" />

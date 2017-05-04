@@ -237,14 +237,14 @@ namespace Rynchodon.Update
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{
 				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
-					if (NewRadar.IsDefinedRadarEquipment(block))
-						new NewRadar(block);
+					if (RadarEquipment.IsDefinedRadarEquipment(block))
+						new RadarEquipment(block);
 				});
 				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
-					if (NewRadar.IsDefinedRadarEquipment(block))
-						new NewRadar(block);
+					if (RadarEquipment.IsDefinedRadarEquipment(block))
+						new RadarEquipment(block);
 				});
-				RegisterForUpdates(100, NewRadar.UpdateAll);
+				RegisterForUpdates(100, RadarEquipment.UpdateAll);
 			}
 
 			#endregion

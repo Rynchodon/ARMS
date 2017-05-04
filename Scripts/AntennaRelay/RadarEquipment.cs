@@ -41,7 +41,7 @@ namespace Rynchodon.AntennaRelay
 	/// TODO:
 	/// guided missile reflectivity => RCS
 	/// when finished, replace assert is empty with clear
-	public sealed class NewRadar : IComparable<NewRadar>
+	public sealed class RadarEquipment : IComparable<RadarEquipment>
 	{
 		public sealed class Definition
 		{
@@ -220,21 +220,21 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>RCS for largest possible ship.</summary>
 		private static readonly float _maxRCS;
 
-		private static readonly Threading.ThreadManager _thread = new Threading.ThreadManager(threadName: typeof(NewRadar).Name);
+		private static readonly Threading.ThreadManager _thread = new Threading.ThreadManager(threadName: typeof(RadarEquipment).Name);
 
 		private static readonly FieldInfo MyBeacon__m_light = typeof(MyBeacon).GetField("m_light", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
 		/// <summary>Primary storage node and all the equipment with the same storage.</summary>
-		private static readonly Dictionary<IRelayPart, List<NewRadar>> _equipByPrimaryNode = new Dictionary<IRelayPart, List<NewRadar>>();
+		private static readonly Dictionary<IRelayPart, List<RadarEquipment>> _equipByPrimaryNode = new Dictionary<IRelayPart, List<RadarEquipment>>();
 		/// <summary>Group of equipment that is linked through relay currently being processed.</summary>
-		private static List<NewRadar> _linkedEquipment = new List<NewRadar>();
+		private static List<RadarEquipment> _linkedEquipment = new List<RadarEquipment>();
 		/// <summary>All the entities that are part of the current relay network.</summary>
 		private static readonly HashSet<IMyEntity> _linkedTopEntity = new HashSet<IMyEntity>();
 		private static readonly List<MyCubeGrid> _gridLogicalGroupNodes = new List<MyCubeGrid>();
 		/// <summary>Entities that are near any equipment of the current relay network.</summary>
 		private static readonly List<MyEntity> _nearbyEntities = new List<MyEntity>();
 		/// <summary>Radar equipment that are near any equipment of the the current relay network.</summary>
-		private static readonly List<NewRadar> _nearbyEquipment = new List<NewRadar>();
+		private static readonly List<RadarEquipment> _nearbyEquipment = new List<RadarEquipment>();
 		/// <summary>Detected entities and how they were detected.</summary>
 		private static readonly Dictionary<IMyEntity, Detected> _detected = new Dictionary<IMyEntity, Detected>();
 		/// <summary>Ignore set for ray cast.</summary>
@@ -242,7 +242,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static readonly MyTerminalControlSlider<MyFunctionalBlock> _radarSlider, _jammerSlider;
 
-		static NewRadar()
+		static RadarEquipment()
 		{
 			_blockLimit = MySession.Static.EnableBlockLimits ? MySession.Static.MaxGridSize : 50000;
 			_maxRCS = SphereCrossSection(_blockLimit * 2.5f * 2.5f * 2.5f);
@@ -254,7 +254,7 @@ namespace Rynchodon.AntennaRelay
 
 			{
 				_radarSlider = new MyTerminalControlSlider<MyFunctionalBlock>("RadarPowerLevel", MyStringId.GetOrCompute("Radar Power"), MyStringId.GetOrCompute("Power of radar transmissions"));
-				new ValueSync<float, NewRadar>(_radarSlider, GetRadarValue, SetRadarValue, false);
+				new ValueSync<float, RadarEquipment>(_radarSlider, GetRadarValue, SetRadarValue, false);
 				_radarSlider.SetEnabledAndVisible(IsRadarBlock);
 				_radarSlider.DefaultValueGetter = DefaultRadarValue;
 				_radarSlider.Normalizer = Normalizer;
@@ -267,7 +267,7 @@ namespace Rynchodon.AntennaRelay
 
 			{
 				_jammerSlider = new MyTerminalControlSlider<MyFunctionalBlock>("JammerPowerLevel", MyStringId.GetOrCompute("Jammer Power"), MyStringId.GetOrCompute("Power of jammer transmissions"));
-				new ValueSync<float, NewRadar>(_jammerSlider, GetJammerValue, SetJammerValue, false);
+				new ValueSync<float, RadarEquipment>(_jammerSlider, GetJammerValue, SetJammerValue, false);
 				_jammerSlider.SetEnabledAndVisible(IsJammerBlock);
 				_jammerSlider.DefaultValueGetter = DefaultJammerValue;
 				_jammerSlider.Normalizer = Normalizer;
@@ -283,7 +283,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static bool IsRadarBlock(IMyCubeBlock block)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -296,7 +296,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static bool IsJammerBlock(IMyCubeBlock block)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -307,7 +307,7 @@ namespace Rynchodon.AntennaRelay
 			return equip._definition.IsJammer;
 		}
 
-		private static float GetRadarValue(NewRadar equip)
+		private static float GetRadarValue(RadarEquipment equip)
 		{
 			return equip._targetRadarTransmitPower;
 		}
@@ -315,7 +315,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Does not update visual for radar or sync.
 		/// </summary>
-		private static void SetRadarValue(NewRadar equip, float value)
+		private static void SetRadarValue(RadarEquipment equip, float value)
 		{
 			if (value > equip._definition.MaxTransmitterPower)
 				value = equip._definition.MaxTransmitterPower;
@@ -339,7 +339,7 @@ namespace Rynchodon.AntennaRelay
 			equip.UpdateElectricityConsumption();
 		}
 
-		private static float GetJammerValue(NewRadar equip)
+		private static float GetJammerValue(RadarEquipment equip)
 		{
 			return equip._targetJammerTransmitPower;
 		}
@@ -347,7 +347,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>
 		/// Does not update visual for jammer or sync.
 		/// </summary>
-		private static void SetJammerValue(NewRadar equip, float value)
+		private static void SetJammerValue(RadarEquipment equip, float value)
 		{
 			if (value > equip._definition.MaxTransmitterPower)
 				value = equip._definition.MaxTransmitterPower;
@@ -373,7 +373,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static float DefaultRadarValue(IMyCubeBlock block)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -389,7 +389,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static float DefaultJammerValue(IMyCubeBlock block)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -405,7 +405,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static float Normalizer(IMyCubeBlock block, float val)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -417,7 +417,7 @@ namespace Rynchodon.AntennaRelay
 
 		private static float Denormalizer(IMyCubeBlock block, float val)
 		{
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(block, out equip))
 			{
 				Logger.TraceLog("No equipment: " + block.nameWithId());
@@ -535,7 +535,7 @@ namespace Rynchodon.AntennaRelay
 			Debug.Assert(_equipByPrimaryNode.Count == 0, "_equipByPrimaryNode is not empty");
 
 			// collect radar equip and sort by primary node
-			foreach (NewRadar equip in Registrar.Scripts<NewRadar>())
+			foreach (RadarEquipment equip in Registrar.Scripts<RadarEquipment>())
 			{
 				IRelayPart rp = equip._relayPart;
 				if (rp == null && !equip.TryGetRelayNode(out rp))
@@ -551,7 +551,7 @@ namespace Rynchodon.AntennaRelay
 					continue;
 				}
 
-				List<NewRadar> list;
+				List<RadarEquipment> list;
 				if (!_equipByPrimaryNode.TryGetValue(store.PrimaryNode, out list))
 				{
 					ResourcePool.Get(out list);
@@ -591,7 +591,7 @@ namespace Rynchodon.AntennaRelay
 			BoundingSphereD locale;
 			locale.Radius = 50000d;
 
-			foreach (NewRadar radar in _linkedEquipment)
+			foreach (RadarEquipment radar in _linkedEquipment)
 			{
 				radar.Update();
 				if (radar.IsWorking && radar.CanLocate)
@@ -667,7 +667,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			Debug.Assert(!(entity is IMyCubeGrid), "grid not expected");
 
-			NewRadar equip;
+			RadarEquipment equip;
 			if (!Registrar.TryGetValue(entity, out equip) || !equip.IsWorking || _linkedEquipment.BinarySearch(equip) >= 0)
 				return;
 
@@ -677,7 +677,7 @@ namespace Rynchodon.AntennaRelay
 			if (ExtensionsRelations.canConsiderHostile(ownerId, entity, false) && equip.IsJammerOn)
 			{
 				Vector3D position = entity.GetCentre();
-				foreach (NewRadar linked in _linkedEquipment)
+				foreach (RadarEquipment linked in _linkedEquipment)
 					if (linked.IsWorking && linked.CanLocate)
 						linked.ApplyJamming(ref position, equip);
 			}
@@ -697,7 +697,7 @@ namespace Rynchodon.AntennaRelay
 					Vector3D position = entity.GetCentre();
 					float RCS = RadarCrossSection(entity);
 					float signal = 0f;
-					foreach (NewRadar linked in _linkedEquipment)
+					foreach (RadarEquipment linked in _linkedEquipment)
 					{
 						if (!linked.IsWorking || !linked.IsRadarOn)
 							continue;
@@ -716,11 +716,11 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Foreach <see cref="NewRadar"/> in <see cref="_nearbyEquipment"/>, attempt to passively detect the equipment with radar in <see cref="_linkedEquipment"/>.
+		/// Foreach <see cref="RadarEquipment"/> in <see cref="_nearbyEquipment"/>, attempt to passively detect the equipment with radar in <see cref="_linkedEquipment"/>.
 		/// </summary>
 		private static void PassiveDetection()
 		{
-			foreach (NewRadar equip in _nearbyEquipment)
+			foreach (RadarEquipment equip in _nearbyEquipment)
 			{
 				if (!equip.IsWorking || !equip.CanBePassivelyDetected)
 					continue;
@@ -738,7 +738,7 @@ namespace Rynchodon.AntennaRelay
 				Vector3D position = equip._entity.GetCentre();
 				Logger.TraceLog("Trying to detect " + equip.DebugName);
 
-				foreach (NewRadar linked in _linkedEquipment)
+				foreach (RadarEquipment linked in _linkedEquipment)
 				{
 					if (!linked.IsWorking)
 						continue;
@@ -802,7 +802,7 @@ namespace Rynchodon.AntennaRelay
 						position += decoy.GetPosition();
 					position /= count;
 
-					foreach (NewRadar linked in _linkedEquipment)
+					foreach (RadarEquipment linked in _linkedEquipment)
 						if (linked.IsWorking && (detect.IsRadarQuiet && linked._definition.PassiveRadarDetection || detect.IsJammerQuiet && linked._definition.PassiveJammerDetection))
 						{
 							float signal = linked.PassiveSignalFromDecoy(ref position, entity);
@@ -984,7 +984,7 @@ namespace Rynchodon.AntennaRelay
 			get { return _radarTransmitPower != 0f || _jammerTransmitPower != 0f; }
 		}
 
-		public NewRadar(IMyCubeBlock block)
+		public RadarEquipment(IMyCubeBlock block)
 		{
 			Debug.Assert(block is IMyBeacon || block is IMyRadioAntenna, "block is of incorrect type: " + block.nameWithId());
 
@@ -1001,7 +1001,7 @@ namespace Rynchodon.AntennaRelay
 			Log.TraceLog("created");
 		}
 
-		public NewRadar(IMyEntity missile, Definition defn, IMyCubeBlock relationsBlock)
+		public RadarEquipment(IMyEntity missile, Definition defn, IMyCubeBlock relationsBlock)
 		{
 			Debug.Assert(missile is MyAmmoBase, "supplied entity is not a missile");
 
@@ -1036,7 +1036,7 @@ namespace Rynchodon.AntennaRelay
 			Registrar.Add(_entity, this);
 		}
 
-		public int CompareTo(NewRadar other)
+		public int CompareTo(RadarEquipment other)
 		{
 			return Math.Sign(_entity.EntityId - other._entity.EntityId);
 		}
@@ -1162,7 +1162,7 @@ namespace Rynchodon.AntennaRelay
 		#region Update Logic
 
 		/// <summary>
-		/// Perform update of <see cref="NewRadar"/>, including <see cref="_beaconLight"/> and power levels.
+		/// Perform update of <see cref="RadarEquipment"/>, including <see cref="_beaconLight"/> and power levels.
 		/// </summary>
 		private void Update()
 		{
@@ -1261,7 +1261,7 @@ namespace Rynchodon.AntennaRelay
 			return elevation < _definition.MinElevation || elevation > _definition.MaxElevation || azimuth < _definition.MinAzimuth || azimuth > _definition.MaxAzimuth;
 		}
 
-		private void ApplyJamming(ref Vector3D targetPosition, NewRadar targetDevice)
+		private void ApplyJamming(ref Vector3D targetPosition, RadarEquipment targetDevice)
 		{
 			Debug.Assert(IsWorking, "This device is not working");
 			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
@@ -1294,7 +1294,7 @@ namespace Rynchodon.AntennaRelay
 				return 0f;
 		}
 
-		private float PassiveSignalFromRadar(ref LineD vettedLine, NewRadar targetDevice)
+		private float PassiveSignalFromRadar(ref LineD vettedLine, RadarEquipment targetDevice)
 		{
 			Debug.Assert(IsWorking, "This device is not working");
 			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
@@ -1305,7 +1305,7 @@ namespace Rynchodon.AntennaRelay
 			return targetDevice._radarTransmitPower * targetDevice._definition.AntennaConstant * _definition.AntennaConstant / (float)distSquared;
 		}
 
-		private float PassiveSignalFromJammer(ref LineD vettedLine, NewRadar targetDevice)
+		private float PassiveSignalFromJammer(ref LineD vettedLine, RadarEquipment targetDevice)
 		{
 			Debug.Assert(IsWorking, "This device is not working");
 			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
