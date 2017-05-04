@@ -185,6 +185,22 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
+		/// <summary>
+		/// Equipment and entities linked by relay connections.
+		/// </summary>
+		private sealed class LinkedEE
+		{
+			public readonly HashSet<RadarEquipment> Equipment = new HashSet<RadarEquipment>();
+			public readonly HashSet<IMyEntity> TopEntity = new HashSet<IMyEntity>();
+
+			public void ClearAndReturn()
+			{
+				Equipment.Clear();
+				TopEntity.Clear();
+				ResourcePool.Return(this);
+			}
+		}
+
 		private struct Detected
 		{
 			/// <summary>Minimum signal strength for radar to be located from its noise.</summary>
@@ -224,19 +240,23 @@ namespace Rynchodon.AntennaRelay
 
 		private static readonly FieldInfo MyBeacon__m_light = typeof(MyBeacon).GetField("m_light", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-		/// <summary>Primary storage node and all the equipment with the same storage.</summary>
-		private static readonly Dictionary<IRelayPart, List<RadarEquipment>> _equipByPrimaryNode = new Dictionary<IRelayPart, List<RadarEquipment>>();
-		/// <summary>Group of equipment that is linked through relay currently being processed.</summary>
-		private static List<RadarEquipment> _linkedEquipment = new List<RadarEquipment>();
-		/// <summary>All the entities that are part of the current relay network.</summary>
-		private static readonly HashSet<IMyEntity> _linkedTopEntity = new HashSet<IMyEntity>();
-		private static readonly List<MyCubeGrid> _gridLogicalGroupNodes = new List<MyCubeGrid>();
+		/// <summary>Primary storage node and the <see cref="LinkedEE"/> with the same storage.</summary>
+		private static readonly Dictionary<RelayNode, LinkedEE> _linkedByPrimaryNode = new Dictionary<RelayNode, LinkedEE>();
+
+		#region Values for the storage that is being processed
+
+		private static RelayNode _currentPrimaryNode;
+		private static LinkedEE _currentLinked;
+
 		/// <summary>Entities that are near any equipment of the current relay network.</summary>
 		private static readonly List<MyEntity> _nearbyEntities = new List<MyEntity>();
 		/// <summary>Radar equipment that are near any equipment of the the current relay network.</summary>
 		private static readonly List<RadarEquipment> _nearbyEquipment = new List<RadarEquipment>();
 		/// <summary>Detected entities and how they were detected.</summary>
 		private static readonly Dictionary<IMyEntity, Detected> _detected = new Dictionary<IMyEntity, Detected>();
+
+		#endregion
+
 		/// <summary>Ignore set for ray cast.</summary>
 		private static ICollection<IMyEntity> _obstructedIgnore = new List<IMyEntity>();
 
@@ -532,66 +552,85 @@ namespace Rynchodon.AntennaRelay
 		private static void UpdateOnThread()
 		{
 			Logger.TraceLog("entered member");
-			Debug.Assert(_equipByPrimaryNode.Count == 0, "_equipByPrimaryNode is not empty");
+			Debug.Assert(_linkedByPrimaryNode.Count == 0, "_equipByPrimaryNode is not empty");
 
-			// collect radar equip and sort by primary node
-			foreach (RadarEquipment equip in Registrar.Scripts<RadarEquipment>())
+			foreach (RelayNode relayNode in Registrar.Scripts<RelayNode>())
 			{
-				IRelayPart rp = equip._relayPart;
-				if (rp == null && !equip.TryGetRelayNode(out rp))
-				{
-					Logger.TraceLog("Has no relay node: " + equip.DebugName);
-					continue;
-				}
-
-				RelayStorage store = rp.GetStorage();
+				RelayStorage store = relayNode.GetStorage();
 				if (store == null)
 				{
-					Logger.TraceLog("Has no relay storage: " + equip.DebugName);
+					Logger.TraceLog("Has no relay storage: " + relayNode.DebugName);
 					continue;
 				}
 
-				List<RadarEquipment> list;
-				if (!_equipByPrimaryNode.TryGetValue(store.PrimaryNode, out list))
+				LinkedEE linked;
+				GetLinked(store.PrimaryNode, out linked);
+
+				IMyEntity entity = relayNode.Entity;
+				if (entity is IMyCubeBlock)
 				{
-					ResourcePool.Get(out list);
-					_equipByPrimaryNode.Add(store.PrimaryNode, list);
+					IMyCubeGrid grid = ((IMyCubeBlock)entity).CubeGrid;
+					if (linked.TopEntity.Add(grid))
+					{
+						Logger.TraceLog("Adding grids logically connected to " + grid.nameWithId() + " to top entities");
+						foreach (IMyCubeGrid attGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, false))
+							linked.TopEntity.Add(attGrid);
+					}
 				}
-				list.Add(equip);
-				Logger.TraceLog("added " + equip.DebugName + " to group with primary node: " + store.PrimaryNode.DebugName + ", count: " + list.Count);
+				else
+				{
+					Logger.TraceLog("Adding " + entity.nameWithId() + " to top entities");
+					linked.TopEntity.Add(entity);
+				}
+
+				RadarEquipment equip;
+				if (Registrar.TryGetValue(relayNode.Entity, out equip))
+				{
+					Logger.TraceLog("adding " + equip.DebugName + " to group with primary node: " + store.PrimaryNode.DebugName);
+					linked.Equipment.Add(equip);
+				}
 			}
 
 			Logger.TraceLog("finished collecting, updating each");
 
-			foreach (var pair in _equipByPrimaryNode)
+			foreach (var pair in _linkedByPrimaryNode)
 			{
-				if (pair.Value.Count != 0)
+				if (pair.Value.Equipment.Count != 0 || pair.Value.TopEntity.Count != 0)
 				{
-					_linkedEquipment = pair.Value;
-					_linkedEquipment.Sort();
-					Update(pair.Key);
-					_linkedEquipment.Clear();
+					_currentPrimaryNode = pair.Key;
+					_currentLinked = pair.Value;
+					UpdateCurrent();
 				}
-				ResourcePool.Return(_linkedEquipment);
+				pair.Value.ClearAndReturn();
 			}
 
-			_equipByPrimaryNode.Clear();
+			_linkedByPrimaryNode.Clear();
 		}
 
-		private static void Update(IRelayPart primaryNode)
+		private static void GetLinked(RelayNode primaryNode, out LinkedEE linked)
+		{
+			if (!_linkedByPrimaryNode.TryGetValue(primaryNode, out linked))
+			{
+				ResourcePool.Get(out linked);
+				_linkedByPrimaryNode.Add(primaryNode, linked);
+			}
+		}
+
+		/// <summary>
+		/// Update for current storage.
+		/// </summary>
+		private static void UpdateCurrent()
 		{
 			Debug.Assert(_nearbyEntities.Count == 0, "_nearbyEntities not cleared");
 			Debug.Assert(_nearbyEquipment.Count == 0, "_nearbyEquipment not cleared");
 			Debug.Assert(_detected.Count == 0, "_detected not cleared");
-			Debug.Assert(_linkedTopEntity.Count == 0, "_linkedTopEntity not cleared");
-			Debug.Assert(primaryNode is RelayNode, "primaryNode is not a relay node");
 
-			Logger.TraceLog("Updating, primary node: " + primaryNode.DebugName + ", count: " + _linkedEquipment.Count);
+			Logger.TraceLog("Updating, primary node: " + _currentPrimaryNode.DebugName + ", counts: " + _currentLinked.Equipment.Count + " & " + _currentLinked.TopEntity.Count);
 
 			BoundingSphereD locale;
 			locale.Radius = 50000d;
 
-			foreach (RadarEquipment radar in _linkedEquipment)
+			foreach (RadarEquipment radar in _currentLinked.Equipment)
 			{
 				radar.Update();
 				if (radar.IsWorking && radar.CanLocate)
@@ -602,45 +641,23 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 
-			foreach (RelayNode node in Registrar.Scripts<RelayNode>())
-				if (node.Storage?.PrimaryNode == primaryNode)
-					if (node.Entity is IMyCubeBlock)
-					{
-						IMyCubeGrid grid = node.Block.CubeGrid;
-						if (_linkedTopEntity.Add(grid))
-						{
-							Logger.TraceLog("Adding grids logically connected to " + grid.nameWithId() + " to top entities");
-							Debug.Assert(_gridLogicalGroupNodes.Count == 0, "_gridLogicalGroupNodes not cleared");
-							foreach (var aGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, true))
-								_linkedTopEntity.Add(aGrid);
-							_gridLogicalGroupNodes.Clear();
-						}
-					}
-					else
-					{
-						Logger.TraceLog("Adding " + node.Entity.nameWithId() + " to top entities");
-						_linkedTopEntity.Add(node.Entity);
-					}
-
 			// all jamming must be applied before any detection
-			CollectEquipmentAndJam(primaryNode.OwnerId);
+			CollectEquipmentAndJam();
 			RadarDetection();
 			PassiveDetection();
 			DecoyDetection();
 			SensorAndCameraBlocks();
-			CreateLastSeen(primaryNode);
+			CreateLastSeen();
 
 			_nearbyEntities.Clear();
 			_nearbyEquipment.Clear();
 			_detected.Clear();
-			_linkedTopEntity.Clear();
 		}
 
 		/// <summary>
 		/// Collect equipment from entities in <see cref="_nearbyEntities"/> and apply any jamming effect.
 		/// </summary>
-		/// <param name="ownerId">Owner of <see cref="_linkedEquipment"/>.</param>
-		private static void CollectEquipmentAndJam(long ownerId)
+		private static void CollectEquipmentAndJam()
 		{
 			foreach (MyEntity entity in _nearbyEntities)
 				if (entity is IMyCubeGrid)
@@ -649,55 +666,55 @@ namespace Rynchodon.AntennaRelay
 					if (cache == null)
 						continue;
 					foreach (IMyEntity beacon in cache.BlocksOfType(typeof(MyObjectBuilder_Beacon)))
-						CollectEquipmentAndJam(ownerId, beacon);
+						CollectEquipmentAndJam(beacon);
 					foreach (IMyEntity antennna in cache.BlocksOfType(typeof(MyObjectBuilder_RadioAntenna)))
-						CollectEquipmentAndJam(ownerId, antennna);
+						CollectEquipmentAndJam(antennna);
 				}
 				else if (IsValidRadarTarget(entity))
-					CollectEquipmentAndJam(ownerId, entity);
+					CollectEquipmentAndJam(entity);
 		}
 
 		/// <summary>
 		/// If entity has equipment, add it to <see cref="_nearbyEquipment"/>.
-		/// If equipment is hostile, apply jamming to equipment in <see cref="_linkedEquipment"/>.
+		/// If equipment is hostile, apply jamming to equipment in <see cref="_currentLinked.Equipment"/>.
 		/// </summary>
-		/// <param name="ownerId">Owner of <see cref="_linkedEquipment"/>.</param>
 		/// <param name="entity">The entity that might have equipment.</param>
-		private static void CollectEquipmentAndJam(long ownerId, IMyEntity entity)
+		/// 
+		private static void CollectEquipmentAndJam(IMyEntity entity)
 		{
 			Debug.Assert(!(entity is IMyCubeGrid), "grid not expected");
 
 			RadarEquipment equip;
-			if (!Registrar.TryGetValue(entity, out equip) || !equip.IsWorking || _linkedEquipment.BinarySearch(equip) >= 0)
+			if (!Registrar.TryGetValue(entity, out equip) || !equip.IsWorking || _currentLinked.Equipment.Contains(equip))
 				return;
 
-			Logger.DebugLog("nearby equipment: " + equip.DebugName + ", hostile: " + ExtensionsRelations.canConsiderHostile(ownerId, entity, false) + ", jammer: " + equip.IsJammerOn);
+			Logger.DebugLog("nearby equipment: " + equip.DebugName + ", hostile: " + ExtensionsRelations.canConsiderHostile(_currentPrimaryNode.OwnerId, entity, false) + ", jammer: " + equip.IsJammerOn);
 			_nearbyEquipment.Add(equip);
 
-			if (ExtensionsRelations.canConsiderHostile(ownerId, entity, false) && equip.IsJammerOn)
+			if (ExtensionsRelations.canConsiderHostile(_currentPrimaryNode.OwnerId, entity, false) && equip.IsJammerOn)
 			{
 				Vector3D position = entity.GetCentre();
-				foreach (RadarEquipment linked in _linkedEquipment)
+				foreach (RadarEquipment linked in _currentLinked.Equipment)
 					if (linked.IsWorking && linked.CanLocate)
 						linked.ApplyJamming(ref position, equip);
 			}
 		}
 
 		/// <summary>
-		/// Foreach entity in <see cref="_nearbyEntities"/>, attempt to actively detect the entity with radar in <see cref="_linkedEquipment"/>.
+		/// Foreach entity in <see cref="_nearbyEntities"/>, attempt to actively detect the entity with radar in <see cref="_currentLinked.Equipment"/>.
 		/// </summary>
 		private static void RadarDetection()
 		{
 			const float minSignal = 1f;
 
 			foreach (IMyEntity entity in _nearbyEntities)
-				if (IsValidRadarTarget(entity) && !_linkedTopEntity.Contains(entity))
+				if (IsValidRadarTarget(entity) && !_currentLinked.TopEntity.Contains(entity))
 				{
 					Logger.TraceLog("trying to detect " + entity.nameWithId());
 					Vector3D position = entity.GetCentre();
 					float RCS = RadarCrossSection(entity);
 					float signal = 0f;
-					foreach (RadarEquipment linked in _linkedEquipment)
+					foreach (RadarEquipment linked in _currentLinked.Equipment)
 					{
 						if (!linked.IsWorking || !linked.IsRadarOn)
 							continue;
@@ -716,7 +733,7 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Foreach <see cref="RadarEquipment"/> in <see cref="_nearbyEquipment"/>, attempt to passively detect the equipment with radar in <see cref="_linkedEquipment"/>.
+		/// Foreach <see cref="RadarEquipment"/> in <see cref="_nearbyEquipment"/>, attempt to passively detect the equipment with radar in <see cref="_currentLinked.Equipment"/>.
 		/// </summary>
 		private static void PassiveDetection()
 		{
@@ -726,7 +743,7 @@ namespace Rynchodon.AntennaRelay
 					continue;
 
 				IMyEntity topEntity = GridIfBlock(equip._entity);
-				if (_linkedTopEntity.Contains(topEntity))
+				if (_currentLinked.TopEntity.Contains(topEntity))
 					continue;
 
 				Detected detect;
@@ -738,7 +755,7 @@ namespace Rynchodon.AntennaRelay
 				Vector3D position = equip._entity.GetCentre();
 				Logger.TraceLog("Trying to detect " + equip.DebugName);
 
-				foreach (RadarEquipment linked in _linkedEquipment)
+				foreach (RadarEquipment linked in _currentLinked.Equipment)
 				{
 					if (!linked.IsWorking)
 						continue;
@@ -778,7 +795,7 @@ namespace Rynchodon.AntennaRelay
 		private static void DecoyDetection()
 		{
 			foreach (IMyEntity entity in _nearbyEntities)
-				if (entity is IMyCubeGrid && !_linkedTopEntity.Contains(entity))
+				if (entity is IMyCubeGrid && !_currentLinked.TopEntity.Contains(entity))
 				{
 					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)entity);
 					if (cache == null)
@@ -799,13 +816,16 @@ namespace Rynchodon.AntennaRelay
 					// use average position of decoys
 					Vector3D position = Vector3D.Zero;
 					foreach (IMyDecoy decoy in cache.BlocksOfType(typeof(MyObjectBuilder_Decoy)))
-						position += decoy.GetPosition();
+						if (decoy.IsWorking)
+							position += decoy.GetPosition();
+						else
+							--count;
 					position /= count;
 
-					foreach (RadarEquipment linked in _linkedEquipment)
+					foreach (RadarEquipment linked in _currentLinked.Equipment)
 						if (linked.IsWorking && (detect.IsRadarQuiet && linked._definition.PassiveRadarDetection || detect.IsJammerQuiet && linked._definition.PassiveJammerDetection))
 						{
-							float signal = linked.PassiveSignalFromDecoy(ref position, entity);
+							float signal = count * linked.PassiveSignalFromDecoy(ref position, entity);
 							detect.RadarNoise += signal;
 							detect.JammerNoise += signal;
 							Logger.TraceLog(linked.DebugName + " increased signal strength to " + detect.RadarNoise + '/' + detect.JammerNoise);
@@ -825,7 +845,7 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static void SensorAndCameraBlocks()
 		{
-			foreach (IMyEntity linked in _linkedTopEntity)
+			foreach (IMyEntity linked in _currentLinked.TopEntity)
 				if (linked is IMyCubeGrid)
 				{
 					Logger.TraceLog("grid: " + linked.nameWithId());
@@ -843,6 +863,9 @@ namespace Rynchodon.AntennaRelay
 		{
 			foreach (MySensorBlock sensor in cache.BlocksOfType(typeof(MyObjectBuilder_SensorBlock)))
 			{
+				if (!sensor.IsWorking)
+					continue;
+
 				Logger.TraceLog("sensor: " + sensor.nameWithId());
 				IMyEntity lastDetected = sensor.LastDetectedEntity;
 				if (lastDetected != null && IsValidRadarTarget(lastDetected))
@@ -865,17 +888,21 @@ namespace Rynchodon.AntennaRelay
 		private static void CheckCamera(CubeGridCache cache)
 		{
 			BoundingSphereD nearby;
-			nearby.Radius = 1000d;
+			nearby.Radius = 3000d; // max camera distance
 
 			foreach (MyCameraBlock camera in cache.BlocksOfType(typeof(MyObjectBuilder_CameraBlock)))
 			{
+				if (!camera.IsWorking)
+					continue;
+
 				Logger.TraceLog("camera: " + camera.nameWithId());
 				nearby.Center = camera.PositionComp.GetPosition();
 				_nearbyEntities.Clear();
 				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, _nearbyEntities);
+				Vector3D cameraPosition = camera.PositionComp.GetPosition();
 
 				foreach (IMyEntity nearbyEntity in _nearbyEntities)
-					if (IsValidRadarTarget(nearbyEntity) && !_linkedTopEntity.Contains(nearbyEntity))
+					if (IsValidRadarTarget(nearbyEntity) && !_currentLinked.TopEntity.Contains(nearbyEntity))
 					{
 						Detected detect;
 						_detected.TryGetValue(nearbyEntity, out detect);
@@ -888,9 +915,19 @@ namespace Rynchodon.AntennaRelay
 							Logger.TraceLog("Outside angle limits: " + nearbyEntity.nameWithId());
 							continue;
 						}
+
 						if (RayCastObstructed(ref line, camera, nearbyEntity))
 						{
 							Logger.TraceLog("Ray cast obstructed: " + nearbyEntity.nameWithId());
+							continue;
+						}
+
+						Vector3D entityCentre = nearbyEntity.GetCentre();
+						double distSq; Vector3D.DistanceSquared(ref cameraPosition, ref entityCentre, out distSq);
+
+						if (RadarCrossSection(nearbyEntity) * 900d < distSq)
+						{
+							Logger.TraceLog("Entity is too far for its size: " + nearbyEntity.nameWithId());
 							continue;
 						}
 
@@ -907,9 +944,9 @@ namespace Rynchodon.AntennaRelay
 			_detected[entity] = detect;
 		}
 
-		private static void CreateLastSeen(IRelayPart primaryNode)
+		private static void CreateLastSeen()
 		{
-			RelayStorage store = primaryNode.GetStorage();
+			RelayStorage store = _currentPrimaryNode.GetStorage();
 			if (store == null)
 				return;
 
@@ -1203,13 +1240,18 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		private void IncreasePowerLevel(ref float powerLevel, float max)
+		private void IncreasePowerLevel(ref float powerLevel, float target)
 		{
-			if (powerLevel == max)
+			if (powerLevel == target)
 				return;
-			powerLevel += max * 0.1f;
-			if (powerLevel > max)
-				powerLevel = max;
+			if (powerLevel > target)
+			{
+				DecreasePowerLevel(ref powerLevel);
+				return;
+			}
+			powerLevel += target * 0.1f;
+			if (powerLevel > target)
+				powerLevel = target;
 			_dirtyCustomInfo = true;
 		}
 

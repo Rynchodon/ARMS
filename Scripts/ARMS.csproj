@@ -267,6 +267,7 @@
     <Compile Include="Utility\EqualityComparer_StringBuilder.cs" />
     <Compile Include="Utility\EqualityComparer_Vector3D.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\BoundingBoxDExtensions.cs" />
     <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
     <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
     <Compile Include="Utility\Extensions\CubeLineIntersection.cs" />

@@ -77,8 +77,8 @@ namespace Rynchodon.Utility.Network
 			WeaponTargeting_TargetBlocks,
 			WeaponTargeting_GpsList,
 
-			NewRadar_RadarPowerLevel,
-			NewRadar_JammerPowerLevel,
+			RadarEquipment_RadarPowerLevel,
+			RadarEquipment_JammerPowerLevel,
 		}
 
 		[Serializable]
