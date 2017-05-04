@@ -16,8 +16,8 @@ namespace Rynchodon.Weapons.SystemDisruption
 	{
 
 		private const float s_hackStrength = 50f;
-		private static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
-		private static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
+		public static readonly TimeSpan s_hackFrequency = new TimeSpan(0, 0, 11);
+		public static readonly TimeSpan s_hackLength = new TimeSpan(0, 0, 17);
 		//private static float allowedBreakForce = 1f;
 
 		public static bool IsHacker(IMyCubeBlock block)

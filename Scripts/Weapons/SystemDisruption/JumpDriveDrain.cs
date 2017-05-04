@@ -1,6 +1,7 @@
 
+using System;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -16,12 +17,20 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		protected override bool CanDisrupt(IMyCubeBlock block)
 		{
-			return (block as MyJumpDrive).IsFull;
+			IMyJumpDrive jumpDrive = (IMyJumpDrive)block;
+			float chargedRatio = jumpDrive.CurrentStoredPower / jumpDrive.MaxStoredPower;
+			return chargedRatio > 0.5f;
 		}
 
 		protected override void StartEffect(IMyCubeBlock block)
 		{
-			(block as MyJumpDrive).SetStoredPower(0.9f);
+			IMyJumpDrive jumpDrive = (IMyJumpDrive)block;
+			float maxChargeRateMW = jumpDrive.ResourceSink.MaxRequiredInputByType(Globals.Electricity);
+			float maxDrainMWs = 1.1f * maxChargeRateMW * (float)Hacker.s_hackLength.TotalSeconds;
+			float chargedRatio = jumpDrive.CurrentStoredPower / jumpDrive.MaxStoredPower;
+			float drainMWh = maxDrainMWs * chargedRatio / 3600;
+
+			jumpDrive.CurrentStoredPower = Math.Max(jumpDrive.CurrentStoredPower - drainMWh, 0f);
 		}
 
 	}
