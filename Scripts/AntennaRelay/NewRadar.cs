@@ -3,6 +3,7 @@
 #endif
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -39,6 +40,7 @@ namespace Rynchodon.AntennaRelay
 	/// </remarks>
 	/// TODO:
 	/// guided missile reflectivity => RCS
+	/// when finished, replace assert is empty with clear
 	public sealed class NewRadar : IComparable<NewRadar>
 	{
 		public sealed class Definition
@@ -190,7 +192,7 @@ namespace Rynchodon.AntennaRelay
 			/// <summary>Minimum signal strength for jammer to be located from its noise.</summary>
 			private const float _signalJammerNoise = 1e6f;
 
-			public bool ByRadar;
+			public bool ByRadarSensorOrCamera;
 			public float RadarNoise, JammerNoise;
 
 			public bool IsRadarQuiet
@@ -236,7 +238,7 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Detected entities and how they were detected.</summary>
 		private static readonly Dictionary<IMyEntity, Detected> _detected = new Dictionary<IMyEntity, Detected>();
 		/// <summary>Ignore set for ray cast.</summary>
-		private static readonly IMyEntity[] _obstructedIgnore = new IMyEntity[2];
+		private static ICollection<IMyEntity> _obstructedIgnore = new List<IMyEntity>();
 
 		private static readonly MyTerminalControlSlider<MyFunctionalBlock> _radarSlider, _jammerSlider;
 
@@ -482,6 +484,46 @@ namespace Rynchodon.AntennaRelay
 			return entity is IMyCubeBlock ? ((IMyCubeBlock)entity).CubeGrid : entity;
 		}
 
+		/// <summary>
+		/// Check that a top-most entity is a valid target for detection by radar.
+		/// </summary>
+		private static bool IsValidRadarTarget(IMyEntity entity)
+		{
+			Debug.Assert(!(entity is IMyCubeBlock), "block not expected: " + entity.nameWithId());
+			return entity is IMyCubeGrid || entity is IMyCharacter || entity is MyAmmoBase;
+		}
+
+		/// <summary>
+		/// Helper for <see cref="RayCast.Obstructed{Tignore}(LineD, IEnumerable{Tignore}, bool, bool)"/> that builds ignore set.
+		/// </summary>
+		/// <param name="line">Line to ray cast.</param>
+		/// <param name="from">Originating entity. Should never be a grid.</param>
+		/// <param name="to">Destination entity. If it is a grid, physically attached grids will be ignored.</param>
+		/// <returns>True if ray cast failed; the target is obstructed.</returns>
+		private static bool RayCastObstructed(ref LineD line, IMyEntity from, IMyEntity to)
+		{
+			Debug.Assert(!(from is IMyCubeGrid), "from should not be a grid");
+
+			_obstructedIgnore.Clear();
+			_obstructedIgnore.Add(from);
+			if (to is MyCubeGrid)
+				foreach (var grid in Attached.AttachedGrid.AttachedGrids((IMyCubeGrid)to, Attached.AttachedGrid.AttachmentKind.Physics, true))
+					_obstructedIgnore.Add(grid);
+			else
+				_obstructedIgnore.Add(to);
+
+			// don't use _nearbyEntities, entities in ray is a much shorter list
+			bool result = RayCast.Obstructed(line, _obstructedIgnore, true, true);
+
+			if (_obstructedIgnore is IList && _obstructedIgnore.Count >= 20)
+				_obstructedIgnore = new HashSet<IMyEntity>();
+			else
+				_obstructedIgnore.Clear();
+			return result;
+		}
+
+		#region Update
+
 		public static void UpdateAll()
 		{
 			_thread.EnqueueAction(UpdateOnThread);
@@ -510,25 +552,13 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				List<NewRadar> list;
-				if (rp == store.PrimaryNode)
+				if (!_equipByPrimaryNode.TryGetValue(store.PrimaryNode, out list))
 				{
-					if (!_equipByPrimaryNode.TryGetValue(rp, out list))
-					{
-						ResourcePool.Get(out list);
-						_equipByPrimaryNode.Add(rp, list);
-					}
-					list.Add(equip);
+					ResourcePool.Get(out list);
+					_equipByPrimaryNode.Add(store.PrimaryNode, list);
 				}
-				else
-				{
-					if (!_equipByPrimaryNode.TryGetValue(store.PrimaryNode, out list))
-					{
-						ResourcePool.Get(out list);
-						_equipByPrimaryNode.Add(store.PrimaryNode, list);
-					}
-					list.Add(equip);
-					Logger.TraceLog("added " + equip.DebugName + " to group with primary node: " + store.PrimaryNode.DebugName + ", count: " + list.Count);
-				}
+				list.Add(equip);
+				Logger.TraceLog("added " + equip.DebugName + " to group with primary node: " + store.PrimaryNode.DebugName + ", count: " + list.Count);
 			}
 
 			Logger.TraceLog("finished collecting, updating each");
@@ -581,8 +611,8 @@ namespace Rynchodon.AntennaRelay
 						{
 							Logger.TraceLog("Adding grids logically connected to " + grid.nameWithId() + " to top entities");
 							Debug.Assert(_gridLogicalGroupNodes.Count == 0, "_gridLogicalGroupNodes not cleared");
-							foreach (var gridNode in MyCubeGridGroups.Static.Logical.GetGroup((MyCubeGrid)grid).Nodes)
-								_linkedTopEntity.Add(gridNode.NodeData);
+							foreach (var aGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, true))
+								_linkedTopEntity.Add(aGrid);
 							_gridLogicalGroupNodes.Clear();
 						}
 					}
@@ -654,15 +684,6 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		/// <summary>
-		/// Check that a top-most entity is a valid target for detection by radar.
-		/// </summary>
-		private static bool IsValidRadarTarget(IMyEntity entity)
-		{
-			Debug.Assert(!(entity is IMyCubeBlock), "block not expected");
-			return entity is IMyCubeGrid || entity is IMyCharacter || entity is MyAmmoBase;
-		}
-
-		/// <summary>
 		/// Foreach entity in <see cref="_nearbyEntities"/>, attempt to actively detect the entity with radar in <see cref="_linkedEquipment"/>.
 		/// </summary>
 		private static void RadarDetection()
@@ -686,7 +707,7 @@ namespace Rynchodon.AntennaRelay
 						{
 							Logger.TraceLog("entity located");
 							Detected detect = new Detected();
-							detect.ByRadar = true;
+							detect.ByRadarSensorOrCamera = true;
 							PushDetected(entity, ref detect);
 							break;
 						}
@@ -799,29 +820,85 @@ namespace Rynchodon.AntennaRelay
 				}
 		}
 
+		/// <summary>
+		/// Add entities detected by sensors and cameras. _nearbyEntities is reused by this method.
+		/// </summary>
 		private static void SensorAndCameraBlocks()
 		{
-			foreach (IMyEntity entity in _linkedTopEntity)
-				if (entity is IMyCubeGrid)
+			foreach (IMyEntity linked in _linkedTopEntity)
+				if (linked is IMyCubeGrid)
 				{
-					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)entity);
+					Logger.TraceLog("grid: " + linked.nameWithId());
+
+					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)linked);
 					if (cache == null)
 						continue;
 
+					CheckSensor(cache);
+					CheckCamera(cache);
+				}
+		}
+
+		private static void CheckSensor(CubeGridCache cache)
+		{
+			foreach (MySensorBlock sensor in cache.BlocksOfType(typeof(MyObjectBuilder_SensorBlock)))
+			{
+				Logger.TraceLog("sensor: " + sensor.nameWithId());
+				IMyEntity lastDetected = sensor.LastDetectedEntity;
+				if (lastDetected != null && IsValidRadarTarget(lastDetected))
+				{
+					Logger.TraceLog("located: " + lastDetected.nameWithId());
 					Detected detect;
-					_detected.TryGetValue(entity, out detect);
-					if (detect.ByRadar)
+					_detected.TryGetValue(lastDetected, out detect);
+					if (detect.ByRadarSensorOrCamera)
 						continue;
 
-					foreach (MySensorBlock sensor in cache.BlocksOfType(typeof(MyObjectBuilder_SensorBlock)))
-					{
-						IMyEntity lastDetected = sensor.LastDetectedEntity;
-						if (lastDetected != null && IsValidRadarTarget(lastDetected))
-							PushDetected(lastDetected, ref detect);
-					}
-
-					// TODO: camera
+					detect.ByRadarSensorOrCamera = true;
+					PushDetected(lastDetected, ref detect);
 				}
+			}
+		}
+
+		/// <summary>
+		/// Add entities detected by cameras. _nearbyEntities is reused by this method.
+		/// </summary>
+		private static void CheckCamera(CubeGridCache cache)
+		{
+			BoundingSphereD nearby;
+			nearby.Radius = 1000d;
+
+			foreach (MyCameraBlock camera in cache.BlocksOfType(typeof(MyObjectBuilder_CameraBlock)))
+			{
+				Logger.TraceLog("camera: " + camera.nameWithId());
+				nearby.Center = camera.PositionComp.GetPosition();
+				_nearbyEntities.Clear();
+				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, _nearbyEntities);
+
+				foreach (IMyEntity nearbyEntity in _nearbyEntities)
+					if (IsValidRadarTarget(nearbyEntity) && !_linkedTopEntity.Contains(nearbyEntity))
+					{
+						Detected detect;
+						_detected.TryGetValue(nearbyEntity, out detect);
+						if (detect.ByRadarSensorOrCamera)
+							continue;
+
+						LineD line = new LineD(nearby.Center, nearbyEntity.GetCentre());
+						if (!camera.CheckAngleLimits(line.Direction))
+						{
+							Logger.TraceLog("Outside angle limits: " + nearbyEntity.nameWithId());
+							continue;
+						}
+						if (RayCastObstructed(ref line, camera, nearbyEntity))
+						{
+							Logger.TraceLog("Ray cast obstructed: " + nearbyEntity.nameWithId());
+							continue;
+						}
+
+						Logger.TraceLog("located: " + nearbyEntity.nameWithId());
+						detect.ByRadarSensorOrCamera = true;
+						PushDetected(nearbyEntity, ref detect);
+					}
+			}
 		}
 
 		private static void PushDetected(IMyEntity entity, ref Detected detect)
@@ -840,7 +917,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				Debug.Assert(IsValidRadarTarget(entityDetected.Key), "Not valid radar target: " + entityDetected.Key);
 
-				Logger.TraceLog("for " + entityDetected.Key.nameWithId() + " located by radar: " + entityDetected.Value.ByRadar + ", by radar noise: " + entityDetected.Value.IsRadarLoud + ", by jammer noise: " + entityDetected.Value.IsJammerLoud);
+				Logger.TraceLog("for " + entityDetected.Key.nameWithId() + " located by radar: " + entityDetected.Value.ByRadarSensorOrCamera + ", by radar noise: " + entityDetected.Value.IsRadarLoud + ", by jammer noise: " + entityDetected.Value.IsJammerLoud);
 
 				LastSeen.DetectedBy detBy = LastSeen.DetectedBy.None;
 				if (entityDetected.Value.IsRadarLoud)
@@ -848,12 +925,14 @@ namespace Rynchodon.AntennaRelay
 				if (entityDetected.Value.IsJammerLoud)
 					detBy |= LastSeen.DetectedBy.HasJammer;
 
-				if (entityDetected.Value.ByRadar)
+				if (entityDetected.Value.ByRadarSensorOrCamera)
 					store.Receive(new LastSeen(entityDetected.Key, detBy, new LastSeen.RadarInfo(Volume(entityDetected.Key))));
 				else
 					store.Receive(new LastSeen(entityDetected.Key, detBy));
 			}
 		}
+
+		#endregion Update
 
 		private readonly IMyEntity _entity;
 		private readonly Definition _definition;
@@ -1158,17 +1237,15 @@ namespace Rynchodon.AntennaRelay
 				return false;
 			}
 
-			_obstructedIgnore[0] = _entity;
-			_obstructedIgnore[1] = target;
 #if DEBUG
-			if (RayCast.Obstructed(line, _nearbyEntities, _obstructedIgnore, true, true))
+			if (RayCastObstructed(ref line, _entity, target)) 
 			{
 				Log.DebugLog(target.nameWithId() + " is obstructed");
 				return false;
 			}
 			return true;
 #else
-			return !RayCast.Obstructed(line, _nearbyEntities, _obstructedIgnore, true, true);
+			return !RayCastObstructed(ref line, _entity, target);
 #endif
 		}
 

@@ -1,3 +1,7 @@
+#if DEBUG
+#define TRACE
+#endif
+
 using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
@@ -34,7 +38,7 @@ namespace Rynchodon.AntennaRelay
 		public readonly IMyPlayer m_player;
 		private readonly IMyCubeBlock m_comp_blockAttach;
 		private readonly ComponentRadio m_comp_radio;
-		private readonly ComponentLaser m_comp_laser;
+		private readonly IMyLaserAntenna m_comp_laser;
 
 		/// <summary>Two-way communication is established between this node and these nodes.</summary>
 		private readonly HashSet<RelayNode> m_directConnect = new HashSet<RelayNode>();
@@ -123,7 +127,7 @@ namespace Rynchodon.AntennaRelay
 
 			IMyLaserAntenna lAnt = block as IMyLaserAntenna;
 			if (lAnt != null)
-				this.m_comp_laser = new ComponentLaser(lAnt);
+				this.m_comp_laser = lAnt;
 
 			Registrar.Add(block, this);
 		}
@@ -167,9 +171,6 @@ namespace Rynchodon.AntennaRelay
 		public void Update100()
 		{
 			s_sendPositionTo.Clear();
-
-			if (m_comp_laser != null)
-				m_comp_laser.Update();
 
 			bool checkPrimary = false;
 
@@ -306,13 +307,13 @@ namespace Rynchodon.AntennaRelay
 			}
 
 			// test block connection
+			// skip is working test so that storage doesn't split if ship powers off
 			if (this.m_comp_blockAttach != null && other.m_comp_blockAttach != null &&
-				this.m_comp_blockAttach.IsWorking && other.m_comp_blockAttach.IsWorking &&
 				AttachedGrid.IsGridAttached(this.m_comp_blockAttach.CubeGrid, other.m_comp_blockAttach.CubeGrid, AttachedGrid.AttachmentKind.Terminal))
 				return CommunicationType.TwoWay;
 
 			// test laser
-			if (this.m_comp_laser != null && other.m_comp_laser != null && this.m_comp_laser.IsConnectedTo(other.m_comp_laser))
+			if (this.m_comp_laser != null && other.m_comp_laser != null && m_comp_laser.Other == other.m_comp_laser && other.m_comp_laser.Other == m_comp_laser)
 				return CommunicationType.TwoWay;
 
 			// test radio
@@ -322,7 +323,10 @@ namespace Rynchodon.AntennaRelay
 				CommunicationType radioResult;
 				radioResult = this.m_comp_radio.TestConnection(other.m_comp_radio);
 				if (radioResult != CommunicationType.None)
+				{
+					m_logger.traceLog("radio connection to " + other.DebugName + " is " + radioResult);
 					return radioResult;
+				}
 
 				// check beacon to radio antenna
 				if (this.m_comp_radio.CanBroadcastPositionTo(other.m_comp_radio) && other.Storage != null)

@@ -64,7 +64,7 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
 		private readonly HashSet<MyEntity> m_updated = new HashSet<MyEntity>();
-		private readonly HashSet<MyCubeGrid> m_haveTerminalAccess = new HashSet<MyCubeGrid>();
+		private readonly HashSet<IMyCubeGrid> m_haveTerminalAccess = new HashSet<IMyCubeGrid>();
 
 		private IMyEntity m_controlled;
 		private Func<RelayStorage> m_storage;
@@ -201,33 +201,45 @@ namespace Rynchodon.AntennaRelay
 				pair.Value.Prepare();
 			}
 
+			myLogger.traceLog("primary node: " + store.PrimaryNode.DebugName);
+
+			m_haveTerminalAccess.Clear();
 			foreach (RelayNode node in Registrar.Scripts<RelayNode>())
 			{
 				MyCubeGrid grid = (node.Entity as MyCubeBlock)?.CubeGrid;
+				myLogger.traceLog("grid: " + grid.nameWithId() + ", node storage: " + node.GetStorage()?.PrimaryNode.DebugName);
 				if (grid != null && node.GetStorage()?.PrimaryNode == store.PrimaryNode && m_haveTerminalAccess.Add(grid))
-					foreach (var gridNode in MyCubeGridGroups.Static.Logical.GetGroup(grid).Nodes)
-						m_haveTerminalAccess.Add(gridNode.NodeData);
+					foreach (var aGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, true))
+						m_haveTerminalAccess.Add(aGrid);
 			}
 
 			store.ForEachLastSeen((LastSeen seen) => {
-				if (!seen.isRecent())
-					return;
+				myLogger.traceLog("seen: " + seen.Entity.nameWithId());
 
-				if (seen.isRecent_Broadcast())
+				if (!seen.isRecent())
 				{
-					myLogger.debugLog("already visible: " + seen.Entity.getBestName());
+					myLogger.traceLog("not recent: " + seen.Entity.nameWithId());
 					return;
 				}
 
-				if (seen.Entity is MyCubeGrid && m_haveTerminalAccess.Contains((MyCubeGrid)seen.Entity))
+				if (seen.isRecent_Broadcast())
 				{
-					myLogger.debugLog("terminal linked: " + seen.Entity.nameWithId());
+					myLogger.traceLog("already visible: " + seen.Entity.getBestName());
+					return;
+				}
+
+				if (seen.Entity is IMyCubeGrid && m_haveTerminalAccess.Contains((IMyCubeGrid)seen.Entity))
+				{
+					myLogger.traceLog("terminal linked: " + seen.Entity.nameWithId());
 					return;
 				}
 
 				UserSettings.ByteSettingName setting;
 				if (!CanDisplay(seen, out setting))
+				{
+					myLogger.traceLog("cannot display: " + seen.Entity.nameWithId());
 					return;
+				}
 
 				GpsData relateData;
 				if (!Data.TryGetValue(setting, out relateData))
@@ -237,8 +249,12 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				if (relateData.MaxOnHUD == 0)
+				{
+					myLogger.traceLog("type not permitted: " + seen.Entity.nameWithId());
 					return;
+				}
 
+				myLogger.traceLog("approved: " + seen.Entity.nameWithId());
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 			});
