@@ -313,11 +313,13 @@ namespace Rynchodon.Weapons.Guided
 		private RadarEquipment m_radar;
 		private bool m_destroyedNearbyMissiles;
 
+		public int ClusterCount
+		{
+			get { return myCluster == null ? 1 : myCluster.Slaves.Count + 1; }
+		}
+
 		public bool Stopped
 		{ get { return MyEntity.Closed || m_stage >= Stage.Terminated; } }
-
-		public float RadarReflectivity
-		{ get { return myDescr.RadarReflectivity; } }
 
 		private Ammo.AmmoDescription myDescr
 		{ get { return myAmmo.Description; } }

@@ -12,6 +12,7 @@ using System.Threading;
 using System.Xml.Serialization;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
+using Rynchodon.Weapons.Guided;
 using Sandbox;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
@@ -496,6 +497,12 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static float RadarCrossSection(IMyEntity entity)
 		{
+			if (entity is MyAmmoBase)
+			{
+				GuidedMissile gm;
+				if (Registrar.TryGetValue(entity, out gm))
+					return SphereCrossSection(gm.ClusterCount * Volume(entity));
+			}
 			return SphereCrossSection(Volume(entity));
 		}
 
