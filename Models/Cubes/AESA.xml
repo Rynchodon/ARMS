@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<Model Name="Default">
-  <Parameter Name="RescaleFactor">0.01</Parameter>
-  <Material Name="Iron">
-    <Parameter Name="Technique">MESH</Parameter>
-    <Parameter Name="ColorMetalTexture">Textures\Models\Cubes\Iron_cm.dds</Parameter>
-    <Parameter Name="NormalGlossTexture">Textures\Models\Cubes\Iron_ng.dds</Parameter>
-  </Material>
-</Model>

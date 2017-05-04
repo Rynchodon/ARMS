@@ -603,7 +603,7 @@
     </Definition>
     
     <!-- AESA -->
-    
+    <!--
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
@@ -655,7 +655,7 @@
       <DamageEffectId>213</DamageEffectId>
       <DamagedSound>ParticleWeapExpl</DamagedSound>
     </Definition>
-    
+    -->
     <!-- Jammer -->
     
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
