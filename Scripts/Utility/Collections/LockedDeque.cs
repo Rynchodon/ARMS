@@ -166,8 +166,8 @@ namespace Rynchodon.Utility.Collections
 
 		public struct Enumerator : IEnumerator<T>
 		{
-			private readonly Deque<T>.Enumerator _enumerator;
 			private readonly FastResourceLock _lock;
+			private Deque<T>.Enumerator _enumerator;
 
 			public Enumerator(LockedDeque<T> lockedDeque)
 			{

@@ -191,7 +191,7 @@ namespace Rynchodon
 		public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
 		{
 			private readonly LockedDictionary<TKey, TValue> _dictionary;
-			private readonly Dictionary<TKey, TValue>.Enumerator _enumerator;
+			private Dictionary<TKey, TValue>.Enumerator _enumerator;
 
 			public Enumerator(LockedDictionary<TKey, TValue> dictionary)
 			{
@@ -289,8 +289,8 @@ namespace Rynchodon
 
 			public struct Enumerator : IEnumerator<TKey>
 			{
-				private readonly Dictionary<TKey, TValue>.KeyCollection.Enumerator _enumerator;
 				private readonly FastResourceLock _lock;
+				private Dictionary<TKey, TValue>.KeyCollection.Enumerator _enumerator;
 
 				public Enumerator(LockedDictionary<TKey, TValue> dictionary)
 				{
@@ -389,8 +389,8 @@ namespace Rynchodon
 
 			public struct Enumerator : IEnumerator<TValue>
 			{
-				private readonly Dictionary<TKey, TValue>.ValueCollection.Enumerator _enumerator;
 				private readonly FastResourceLock _lock;
+				private Dictionary<TKey, TValue>.ValueCollection.Enumerator _enumerator;
 
 				public Enumerator(LockedDictionary<TKey, TValue> dictionary)
 				{
