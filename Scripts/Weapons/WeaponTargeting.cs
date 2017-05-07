@@ -862,13 +862,17 @@ namespace Rynchodon.Weapons
 				UpdateAmmo();
 
 			if (CurrentControl == Control.Off || SuppressTargeting)
+			{
+				myLogger.traceLog("off", condition: CurrentControl == Control.Off);
+				myLogger.traceLog("suppressed", condition: SuppressTargeting);
 				return;
+			}
 
 			if (!GuidedLauncher)
 				UpdateAmmo();
 			if (LoadedAmmo == null)
 			{
-				//myLogger.debugLog("No ammo loaded", "Update10()");
+				myLogger.traceLog("No ammo loaded");
 				SetTarget(NoTarget.Instance);
 				return;
 			}

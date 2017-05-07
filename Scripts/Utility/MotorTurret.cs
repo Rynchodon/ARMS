@@ -8,6 +8,7 @@ using Sandbox.ModAPI.Interfaces;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
+using System.Diagnostics;
 
 namespace Rynchodon
 {
@@ -24,12 +25,11 @@ namespace Rynchodon
 		{
 			public readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
 			public readonly HashSet<IMyMotorStator> claimedStators = new HashSet<IMyMotorStator>();
-			public ITerminalProperty<float> statorVelocity;
 		}
 
 		private static StaticVariables Static = new StaticVariables();
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
-		private const float def_RotationSpeedMultiplier = 100;
+		private const float def_RotationSpeedMultiplier = 5;
 
 		private static void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
 		{
@@ -60,7 +60,7 @@ namespace Rynchodon
 		private readonly StatorChangeHandler OnStatorChange;
 
 		private float my_RotationSpeedMulitplier = def_RotationSpeedMultiplier;
-		private float mySpeedLimit = 30f;
+		private float mySpeedLimit = MathHelper.Pi;
 
 		private bool m_claimedElevation, m_claimedAzimuth;
 		private IMyMotorStator value_statorEl, value_statorAz;
@@ -146,6 +146,7 @@ namespace Rynchodon
 		public void FaceTowards(DirectionWorld target)
 		{
 			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			Debug.Assert(Threading.ThreadTracker.IsGameThread, "not game thread");
 
 			if (!SetupStators())
 				return;
@@ -323,6 +324,11 @@ namespace Rynchodon
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
+			// first stator & rotater that are found that are not working
+			// returned if a working set is not found
+			IMyMotorStator offStator = null;
+			IMyMotorRotor offRotor = null;
+
 			foreach (MyObjectBuilderType type in Static.types_Rotor)
 				foreach (IMyCubeBlock motorPart in cache.BlocksOfType(type))
 				{
@@ -336,7 +342,15 @@ namespace Rynchodon
 							continue;
 						Rotor = (IMyMotorRotor)Stator.Top;
 						if (Rotor != null)
-							return true;
+						{
+							if (Stator.IsWorking && Rotor.IsWorking)
+								return true;
+							else if (offStator == null || offRotor == null)
+							{
+								offStator = Stator;
+								offRotor = Rotor;
+							}
+						}
 					}
 					else
 					{
@@ -345,9 +359,24 @@ namespace Rynchodon
 							continue;
 						Stator = (IMyMotorStator)Rotor.Base;
 						if (Stator != null)
-							return true;
+						{
+							if (Stator.IsWorking && Rotor.IsWorking)
+								return true;
+							else if (offStator == null || offRotor == null)
+							{
+								offStator = Stator;
+								offRotor = Rotor;
+							}
+						}
 					}
 				}
+
+			if (offStator != null && offRotor != null)
+			{
+				Stator = offStator;
+				Rotor = offRotor;
+				return true;
+			}
 
 			Stator = null;
 			Rotor = null;
@@ -361,11 +390,9 @@ namespace Rynchodon
 			// keep in mind, azimuth is undefined if elevation is straight up or straight down
 			float speed = angle.IsValid() ? MathHelper.Clamp(angle * RotationSpeedMultiplier, -mySpeedLimit, mySpeedLimit) : 0f;
 
-			if (Static.statorVelocity == null)
-				Static.statorVelocity = Stator.GetProperty("Velocity") as ITerminalProperty<float>;
-			float currentSpeed = Static.statorVelocity.GetValue(Stator);
+			float currentSpeed = Stator.TargetVelocity;
 			if ((speed == 0f && currentSpeed != 0f) || Math.Abs(speed - currentSpeed) > 0.1f)
-				Static.statorVelocity.SetValue(Stator, speed);
+				Stator.TargetVelocity = speed;
 		}
 	}
 }

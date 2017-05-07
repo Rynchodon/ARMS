@@ -91,7 +91,7 @@ namespace Rynchodon.Autopilot
 			if (myMotorTurret == null)
 			{
 				myLogger.debugLog("Now facing sun", Logger.severity.DEBUG);
-				myMotorTurret = new MotorTurret(myBlock) { RotationSpeedMultiplier = 2f, SpeedLimit = 2f };
+				myMotorTurret = new MotorTurret(myBlock) { RotationSpeedMultiplier = 0.1f, SpeedLimit = 0.1f };
 			}
 
 			myMotorTurret.FaceTowards(SunProperties.SunDirection);
