@@ -1,5 +1,6 @@
 using System;
 using Rynchodon.Attached;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -55,6 +56,9 @@ namespace Rynchodon.AntennaRelay
 		private RelayStorage m_storage;
 
 		private Action<Message> m_messageHandler;
+
+		public string DebugName { get { return m_block.nameWithId(); } }
+		public long OwnerId { get { return m_block.OwnerId; } }
 
 		/// <summary>
 		/// Use GetOrCreateRelayPart if client may already exist.
@@ -126,7 +130,7 @@ namespace Rynchodon.AntennaRelay
 				return "null";
 			if (store.PrimaryNode == null)
 				return "NetworkStorage without PrimaryNode!";
-			return store.PrimaryNode.LoggingName;
+			return store.PrimaryNode.DebugName;
 		}
 
 	}

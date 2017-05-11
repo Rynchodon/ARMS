@@ -125,11 +125,12 @@
     <Compile Include="AntennaRelay\IRelayPart.cs" />
     <Compile Include="AntennaRelay\LastSeen.cs" />
     <Compile Include="AntennaRelay\Message.cs" />
+    <Compile Include="AntennaRelay\RadarEquipment.cs" />
     <Compile Include="AntennaRelay\RelayClient.cs" />
     <Compile Include="AntennaRelay\Player.cs" />
     <Compile Include="AntennaRelay\ProgrammableBlock.cs" />
     <Compile Include="AntennaRelay\Projector.cs" />
-    <Compile Include="AntennaRelay\RadarEquipment.cs" />
+    <None Include="AntennaRelay\RadarEquipment_old.cs" />
     <Compile Include="AntennaRelay\RelayNode.cs" />
     <Compile Include="AntennaRelay\TextPanel.cs" />
     <Compile Include="Autopilot\AutopilotTerminal.cs" />
@@ -266,6 +267,7 @@
     <Compile Include="Utility\EqualityComparer_StringBuilder.cs" />
     <Compile Include="Utility\EqualityComparer_Vector3D.cs" />
     <Compile Include="Utility\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Utility\Extensions\BoundingBoxDExtensions.cs" />
     <Compile Include="Utility\Extensions\BoundingSphereDExtensions.cs" />
     <Compile Include="Utility\Extensions\CapsuleDExtensions.cs" />
     <Compile Include="Utility\Extensions\CubeLineIntersection.cs" />
@@ -300,6 +302,7 @@
     <Compile Include="Utility\Lazy.cs" />
     <Compile Include="Utility\LineSegment.cs" />
     <Compile Include="Utility\LineSegmentD.cs" />
+    <Compile Include="Utility\Logable.cs" />
     <Compile Include="Utility\Logger.cs" />
     <Compile Include="Utility\LogWise.cs" />
     <Compile Include="Utility\MainCockpitFix.cs" />

@@ -1,98 +1,130 @@
-﻿using System;
+﻿#if DEBUG
+#define TRACE
+#endif
+
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
-using Rynchodon.Threading;
+using System.Threading;
+using System.Xml.Serialization;
+using Rynchodon.Utility;
+using Rynchodon.Utility.Network;
 using Rynchodon.Weapons.Guided;
+using Sandbox;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
+using Sandbox.Game.Gui;
 using Sandbox.Game.Lights;
+using Sandbox.Game.Weapons;
+using Sandbox.Game.World;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
-using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
-using VRage.Game.ObjectBuilders.Definitions;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
+using VRage.Utils;
 using VRageMath;
-using Ingame = Sandbox.ModAPI.Ingame;
 
 namespace Rynchodon.AntennaRelay
 {
-	/// <summary>
-	/// <para>Class for Radar and Radar Jammers</para>
-	/// </summary>
-	public class RadarEquipment
+	/// <remarks>
+	/// <para>Now with real radar equation!</para>
+	/// <para>pattern propogation factor = 1</para>
+	/// <para>wavelength = 1</para>
+	/// <para>min signal strength = 1</para>
+	/// </remarks>
+	/// TODO:
+	/// guided missile reflectivity => RCS
+	/// when finished, replace assert is empty with clear
+	public sealed class RadarEquipment : IComparable<RadarEquipment>
 	{
-		/// <summary>
-		/// <para>Every field and property can be explicitly defined in .sbc files, except EnforceAngle.</para>
-		/// </summary>
-		public class Definition
+		public sealed class Definition
 		{
-			#region Public Fields
+			/// <summary>Definition for a decoy block.</summary>
+			public static readonly Definition Decoy;
 
-			/// <summary>
-			/// <para>Can actively detect objects.</para>
-			/// <para>Passive detection is not restricted to radar.</para>
-			/// </summary>
-			public bool Radar = false;
+			private static readonly Dictionary<SerializableDefinitionId, Definition> _knownDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
+			private static readonly List<SerializableDefinitionId> _notRadarEquip = new List<SerializableDefinitionId>();
 
-			/// <summary>Equipment requires line of sight to work.</summary>
-			public bool LineOfSight = true;
+			static Definition()
+			{
+				Decoy = new Definition();
+				Decoy.MaxTransmitterPower = 25000f; // RTG has power of about 50 W, though this clashes with higher power usages in game
+				Decoy.AntennaGainDecibels = 40f;
+				Decoy.Init();
+			}
 
-			/// <summary>The maximum number of targets that can be detected (active + passive).</summary>
-			public int MaxTargets_Tracking = 1;
+			[OnWorldClose]
+			private static void OnUnload()
+			{
+				_knownDefinitions.Clear();
+				_notRadarEquip.Clear();
+			}
 
-			/// <summary>The maximum number of radar that can be jammed. No effect on passive detection.</summary>
-			public int MaxTargets_Jamming = 0;
+			public static Definition GetFor(IMyCubeBlock block)
+			{
+				Definition result;
+				if (_knownDefinitions.TryGetValue(block.BlockDefinition, out result))
+					return result;
 
-			/// <summary>Strength of jamming signal necessary to passively determine the location of a radar jammer. 0 = no passive detection.</summary>
-			public float PassiveDetect_Jamming = 0;
+				if (_notRadarEquip.Contains(block.BlockDefinition))
+					return null;
 
-			/// <summary>Strength of radar signal necessary to passively determine the location of a radar. 0 = no passive detection.</summary>
-			public float PassiveDetect_Radar = 0;
+				MyCubeBlockDefinition defn = block.GetCubeBlockDefinition();
+				if (defn == null)
+					throw new NullReferenceException("defn");
 
-			/// <summary>Power level will be forced down to this number.</summary>
-			public float MaxPowerLevel = 50000;
+				if (string.IsNullOrWhiteSpace(defn.DescriptionString))
+				{
+					_notRadarEquip.Add(block.BlockDefinition);
+					return null;
+				}
 
-			/// <summary>Power change per 100 updates while on.</summary>
-			public float PowerIncrease = 1000;
+				XML_Amendments<Definition> ammend = new XML_Amendments<Definition>(new Definition());
+				ammend.AmendAll(defn.DescriptionString, true);
+				result = ammend.Deserialize();
 
-			/// <summary>Power change per 100 updates while off.</summary>
-			public float PowerDecrease = -2000;
+				if (result.IsRadar || result.IsJammer || result.PassiveRadarDetection || result.PassiveJammerDetection)
+				{
+					Logger.DebugLog("Created definition for " + block.DefinitionDisplayNameText, Logger.severity.DEBUG);
+					_knownDefinitions.Add(block.BlockDefinition, result);
+					result.Init();
+					return result;
+				}
+				else
+				{
+					Logger.DebugLog("Nothing in description for " + block.DefinitionDisplayNameText, Logger.severity.DEBUG);
+					_notRadarEquip.Add(block.BlockDefinition);
+					return null;
+				}
+			}
 
-			/// <summary>
-			/// <para>Represents the quality of this piece of equipment. Affects the function of the device without affecting its detectability.</para>
-			/// </summary>
-			public float SignalEnhance = 1;
+			public bool IsRadar, IsJammer;
+			public bool PassiveRadarDetection, PassiveJammerDetection;
 
-			///// <summary>Not implemented. How well the signal can penetrate a solid object.</summary>
-			//public float Penetration = 0;
+			/// <summary>Maximum power of transmitter.</summary>
+			public float MaxTransmitterPower;
 
-			/// <summary>How much the jamming effect affects this radar. In the range [1-0].</summary>
-			public float JammingEffect = 1f;
+			/// <summary>Antenna gain in decibels.</summary>
+			public float AntennaGainDecibels;
 
-			/// <summary>How much of the jamming effect is applied to friendly radar and radar beyond the MaximumTargets limit.</summary>
-			public float JamIncidental = 0.2f;
+			/// <summary>Antenna gain factor, not decibels.</summary>
+			public float AntennaGainFactor;
 
-			/// <summary>
-			/// <para>Affects how much of the signal is reflected back.</para>
-			/// <para>Reflected signal = signal * (volume + A) / (volume + B)</para>
-			/// </summary>
-			public float Reflect_A = 1000, Reflect_B = 20000;
+			/// <summary>How much stronger the signal needs to be than jam noise.</summary>
+			public float SignalToJamRatio;
 
-			/// <summary>
-			/// <para>Iff false, angles are ignored.</para>
-			/// <para>Will be set to true if any angles are specified.</para>
-			/// </summary>
-			public bool EnforceAngle = false;
+			/// <summary>antenna gain / (4 Pi). Calaculated by <see cref="Init"/>.</summary>
+			[XmlIgnore]
+			public float AntennaConstant { get; private set; }
 
-			#endregion
-
-			#region Public Properties
+			#region Angle Properties
 
 			/// <summary>In radians.</summary>
 			public float MinAzimuth
@@ -138,943 +170,1215 @@ namespace Rynchodon.AntennaRelay
 				}
 			}
 
+			/// <summary>If true, angles need to be checked.</summary>
+			[XmlIgnore]
+			public bool EnforceAngle { get; private set; }
+
 			#endregion
 
 			private float value_MinAzimuth = -MathHelper.Pi, value_MaxAzimuth = MathHelper.Pi, value_MinElevation = -MathHelper.Pi, value_MaxElevation = MathHelper.Pi;
-		}
 
-		private class DetectedInfo : IComparable<DetectedInfo>
-		{
-			public readonly IMyEntity Entity;
-			public readonly ExtensionsRelations.Relations Relate;
-			private readonly byte relateOrder;
-
-			public LastSeen.RadarInfo Info { get; private set; }
-
-			public float RadarSignature { get; private set; }
-			public float RadarSignal { get; set; }
-			public float JammerSignal { get; set; }
-
-			public float MaxSignal { get { return Math.Max(RadarSignature, Math.Max(RadarSignal, JammerSignal)); } }
-
-			public LastSeen.UpdateTime Times
+			private void Init()
 			{
-				get
-				{
-					LastSeen.UpdateTime times = LastSeen.UpdateTime.None;
-					if (RadarSignal > 0)
-						times |= LastSeen.UpdateTime.HasRadar;
-					if (JammerSignal > 0)
-						times |= LastSeen.UpdateTime.HasJammer;
-					return times;
-				}
+				if (AntennaGainFactor == 0f)
+					AntennaGainFactor = (float)Math.Pow(10d, AntennaGainDecibels / 10d);
+				AntennaConstant = AntennaGainFactor / MathHelper.FourPi;
 			}
-
-			public DetectedInfo(IMyEntity entity, ExtensionsRelations.Relations relate)
-			{
-				this.Entity = entity;
-				this.Relate = relate;
-				this.relateOrder = Relate.PriorityOrder();
-			}
-
-			public void SetRadar(float radarSignature, LastSeen.RadarInfo info)
-			{
-				this.Info = info;
-				this.RadarSignature = radarSignature;
-			}
-
-			/// <summary>
-			/// Sorted based on relations and signal strength.
-			/// </summary>
-			public int CompareTo(DetectedInfo other)
-			{
-				int byRelate = this.relateOrder - other.relateOrder;
-				if (byRelate != 0)
-					return byRelate;
-
-				return Math.Sign(other.MaxSignal - this.MaxSignal); // descending
-			}
-		}
-
-		#region Static
-
-		// these might be moved to definition
-		/// <summary>Signal strength of each decoy.</summary>
-		private const float decoySignal = 5000f;
-		/// <summary>Ammount each decoy adds to reported volume of ship.</summary>
-		private const float decoyVolume = 10000f;
-
-		private static Logger staticLogger = new Logger();
-		private static ThreadManager myThread = new ThreadManager(background: true, threadName: "Radar");
-		private static Dictionary<SerializableDefinitionId, Definition> AllDefinitions = new Dictionary<SerializableDefinitionId, Definition>();
-		private static FieldInfo MyBeacon__m_light = typeof(MyBeacon).GetField("m_light", BindingFlags.Instance | BindingFlags.NonPublic);
-
-		/// <summary>Returns true if this block is either a radar or a radar jammer.</summary>
-		public static bool IsRadarOrJammer(IMyCubeBlock block)
-		{
-			return block.BlockDefinition.SubtypeName.ToLower().Contains("radar");
 		}
 
 		/// <summary>
-		/// Gets the radar equipment with the highest power level from a LastSeen.
+		/// Equipment and entities linked by relay connections.
 		/// </summary>
-		/// <param name="gridLastSeen">LastSeen for the detected grid.</param>
-		/// <param name="strongestEquipment">The equipment with the highest power level.</param>
-		/// <param name="powerLevel">The power level of the equipment.</param>
-		/// <returns>True iff a radar equipment was found.</returns>
-		public static bool GetRadarEquipment(LastSeen gridLastSeen, out IMyCubeBlock strongestEquipment, out float powerLevel)
+		private sealed class LinkedEE
 		{
-			strongestEquipment = null;
-			powerLevel = 0f;
-			IMyCubeBlock strongest_in = null;
-			float powerLevel_in = 0f;
+			public readonly HashSet<RadarEquipment> Equipment = new HashSet<RadarEquipment>();
+			public readonly HashSet<IMyEntity> TopEntity = new HashSet<IMyEntity>();
 
-			bool recentRadar = gridLastSeen.isRecent_Radar();
-			bool recentJammer = gridLastSeen.isRecent_Jam();
-
-			Registrar.ForEach((RadarEquipment re) => {
-				if (re.CubeBlock.CubeGrid == gridLastSeen.Entity)
-				{
-					if (!re.IsWorking)
-						return;
-
-					float reStr = 0f;
-					if (recentRadar && re.myDefinition.Radar) // PowerLevel_Radar can be > 0 even if it is not a radar
-						reStr = re.PowerLevel_Radar;
-					if (recentJammer && re.PowerLevel_Jammer > reStr)
-						reStr = re.PowerLevel_Jammer;
-					if (reStr > powerLevel_in)
-					{
-						powerLevel_in = reStr;
-						strongest_in = re.CubeBlock;
-					}
-				}
-			});
-
-			strongestEquipment = strongest_in;
-			powerLevel = powerLevel_in;
-
-			return strongestEquipment != null;
+			public void ClearAndReturn()
+			{
+				Equipment.Clear();
+				TopEntity.Clear();
+				ResourcePool.Return(this);
+			}
 		}
 
-		private static Definition GetDefinition(IMyCubeBlock block)
+		private struct Detected
 		{
-			Definition result;
-			SerializableDefinitionId ID = block.BlockDefinition;
+			/// <summary>Minimum signal strength for radar to be located from its noise.</summary>
+			private const float _signalRadarNoise = 1e5f;
+			/// <summary>Minimum signal strength for jammer to be located from its noise.</summary>
+			private const float _signalJammerNoise = 1e6f;
 
-			if (AllDefinitions.TryGetValue(ID, out result))
+			public bool ByRadarSensorOrCamera;
+			public float RadarNoise, JammerNoise;
+
+			public bool IsRadarQuiet
 			{
-				staticLogger.debugLog("definition already loaded for " + ID);
-				return result;
+				get { return RadarNoise < _signalRadarNoise; }
 			}
 
-			staticLogger.debugLog("creating new definition for " + ID);
-			result = new Definition();
-
-			MyCubeBlockDefinition def = block.GetCubeBlockDefinition();
-			if (def == null)
-				throw new NullReferenceException("no block definition found for " + block.getBestName());
-
-			if (string.IsNullOrWhiteSpace(def.DescriptionString))
+			public bool IsRadarLoud
 			{
-				staticLogger.debugLog("No description, using defaults for " + ID, Logger.severity.WARNING);
-				result.Radar = true;
-				AllDefinitions.Add(ID, result);
-				return result;
+				get { return RadarNoise >= _signalRadarNoise; }
 			}
 
-			XML_Amendments<Definition> ammend = new XML_Amendments<Definition>(result);
-			ammend.AmendAll(def.DescriptionString, true);
-			result = ammend.Deserialize();
+			public bool IsJammerQuiet
+			{
+				get { return JammerNoise < _signalJammerNoise; }
+			}
 
-			//staticLogger.debugLog("new definition:\n" + MyAPIGateway.Utilities.SerializeToXML<Definition>(result), "GetDefinition()");
-			AllDefinitions.Add(ID, result);
+			public bool IsJammerLoud
+			{
+				get { return JammerNoise >= _signalJammerNoise; }
+			}
+		}
+
+		private static readonly int _blockLimit;
+		/// <summary>RCS for largest possible ship.</summary>
+		private static readonly float _maxRCS;
+
+		private static readonly Threading.ThreadManager _thread = new Threading.ThreadManager(threadName: typeof(RadarEquipment).Name);
+
+		private static readonly FieldInfo MyBeacon__m_light = typeof(MyBeacon).GetField("m_light", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+		/// <summary>Primary storage node and the <see cref="LinkedEE"/> with the same storage.</summary>
+		private static readonly Dictionary<RelayNode, LinkedEE> _linkedByPrimaryNode = new Dictionary<RelayNode, LinkedEE>();
+
+		#region Values for the storage that is being processed
+
+		private static RelayNode _currentPrimaryNode;
+		private static LinkedEE _currentLinked;
+
+		/// <summary>Entities that are near any equipment of the current relay network.</summary>
+		private static readonly List<MyEntity> _nearbyEntities = new List<MyEntity>();
+		/// <summary>Radar equipment that are near any equipment of the the current relay network.</summary>
+		private static readonly List<RadarEquipment> _nearbyEquipment = new List<RadarEquipment>();
+		/// <summary>Detected entities and how they were detected.</summary>
+		private static readonly Dictionary<IMyEntity, Detected> _detected = new Dictionary<IMyEntity, Detected>();
+
+		#endregion
+
+		/// <summary>Ignore set for ray cast.</summary>
+		private static ICollection<IMyEntity> _obstructedIgnore = new List<IMyEntity>();
+
+		private static readonly MyTerminalControlSlider<MyFunctionalBlock> _radarSlider, _jammerSlider;
+
+		static RadarEquipment()
+		{
+			_blockLimit = MySession.Static.EnableBlockLimits ? MySession.Static.MaxGridSize : 50000;
+			_maxRCS = SphereCrossSection(_blockLimit * 2.5f * 2.5f * 2.5f);
+			if (MyBeacon__m_light == null)
+				throw new NullReferenceException("MyBeacon__m_light");
+
+			TerminalControlHelper.EnsureTerminalControlCreated<MyBeacon>();
+			TerminalControlHelper.EnsureTerminalControlCreated<MyRadioAntenna>();
+
+			{
+				_radarSlider = new MyTerminalControlSlider<MyFunctionalBlock>("RadarPowerLevel", MyStringId.GetOrCompute("Radar Power"), MyStringId.GetOrCompute("Power of radar transmissions"));
+				new ValueSync<float, RadarEquipment>(_radarSlider, GetRadarValue, SetRadarValue, false);
+				_radarSlider.SetEnabledAndVisible(IsRadarBlock);
+				_radarSlider.DefaultValueGetter = DefaultRadarValue;
+				_radarSlider.Normalizer = Normalizer;
+				_radarSlider.Denormalizer = Denormalizer;
+				_radarSlider.Writer = (block, sb) => WriterWatts(_radarSlider.GetValue(block), sb);
+
+				MyTerminalControlFactory.AddControl<MyFunctionalBlock, MyBeacon>(_radarSlider);
+				MyTerminalControlFactory.AddControl<MyFunctionalBlock, MyRadioAntenna>(_radarSlider);
+			}
+
+			{
+				_jammerSlider = new MyTerminalControlSlider<MyFunctionalBlock>("JammerPowerLevel", MyStringId.GetOrCompute("Jammer Power"), MyStringId.GetOrCompute("Power of jammer transmissions"));
+				new ValueSync<float, RadarEquipment>(_jammerSlider, GetJammerValue, SetJammerValue, false);
+				_jammerSlider.SetEnabledAndVisible(IsJammerBlock);
+				_jammerSlider.DefaultValueGetter = DefaultJammerValue;
+				_jammerSlider.Normalizer = Normalizer;
+				_jammerSlider.Denormalizer = Denormalizer;
+				_jammerSlider.Writer = (block, sb) => WriterWatts(_jammerSlider.GetValue(block), sb);
+
+				MyTerminalControlFactory.AddControl<MyFunctionalBlock, MyBeacon>(_jammerSlider);
+				MyTerminalControlFactory.AddControl<MyFunctionalBlock, MyRadioAntenna>(_jammerSlider);
+			}
+		}
+
+		#region Terminal Functions
+
+		private static bool IsRadarBlock(IMyCubeBlock block)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return false;
+			}
+
+			//Logger.TraceLog(block.nameWithId() + " is radar: " + equip._definition.IsRadar);
+			return equip._definition.IsRadar;
+		}
+
+		private static bool IsJammerBlock(IMyCubeBlock block)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return false;
+			}
+
+			//Logger.TraceLog(block.nameWithId() + " is jammer: " + equip._definition.IsJammer);
+			return equip._definition.IsJammer;
+		}
+
+		private static float GetRadarValue(RadarEquipment equip)
+		{
+			return equip._targetRadarTransmitPower;
+		}
+
+		/// <summary>
+		/// Does not update visual for radar or sync.
+		/// </summary>
+		private static void SetRadarValue(RadarEquipment equip, float value)
+		{
+			if (value > equip._definition.MaxTransmitterPower)
+				value = equip._definition.MaxTransmitterPower;
+
+			if (equip._targetRadarTransmitPower == value)
+				return;
+
+			equip.Log.TraceLog("change radar target from " + equip._targetRadarTransmitPower + " to " + value);
+			equip._targetRadarTransmitPower = value;
+
+			if (equip._definition.IsJammer)
+			{
+				float maxJam = equip._definition.MaxTransmitterPower - value;
+				if (equip._targetJammerTransmitPower > maxJam)
+				{
+					equip._targetJammerTransmitPower = maxJam;
+					_jammerSlider.UpdateVisual();
+				}
+			}
+
+			equip.UpdateElectricityConsumption();
+		}
+
+		private static float GetJammerValue(RadarEquipment equip)
+		{
+			return equip._targetJammerTransmitPower;
+		}
+
+		/// <summary>
+		/// Does not update visual for jammer or sync.
+		/// </summary>
+		private static void SetJammerValue(RadarEquipment equip, float value)
+		{
+			if (value > equip._definition.MaxTransmitterPower)
+				value = equip._definition.MaxTransmitterPower;
+
+			if (equip._targetJammerTransmitPower == value)
+				return;
+
+			equip.Log.TraceLog("change jammer target from " + equip._targetJammerTransmitPower + " to " + value);
+			equip._targetJammerTransmitPower = value;
+
+			if (equip._definition.IsRadar)
+			{
+				float maxRadar = equip._definition.MaxTransmitterPower - value;
+				if (equip._targetRadarTransmitPower > maxRadar)
+				{
+					equip._targetRadarTransmitPower = maxRadar;
+					_radarSlider.UpdateVisual();
+				}
+			}
+			
+			equip.UpdateElectricityConsumption();
+		}
+
+		private static float DefaultRadarValue(IMyCubeBlock block)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return default(float);
+			}
+
+			Debug.Assert(equip._definition.IsRadar, "Not radar");
+
+			if (equip._definition.IsJammer)
+				return 0.5f * equip._definition.MaxTransmitterPower;
+			return equip._definition.MaxTransmitterPower;
+		}
+
+		private static float DefaultJammerValue(IMyCubeBlock block)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return default(float);
+			}
+
+			Debug.Assert(equip._definition.IsJammer, "Not jammer");
+
+			if (equip._definition.IsRadar)
+				return 0.5f * equip._definition.MaxTransmitterPower;
+			return equip._definition.MaxTransmitterPower;
+		}
+
+		private static float Normalizer(IMyCubeBlock block, float val)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return default(float);
+			}
+
+			return val / equip._definition.MaxTransmitterPower;
+		}
+
+		private static float Denormalizer(IMyCubeBlock block, float val)
+		{
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(block, out equip))
+			{
+				Logger.TraceLog("No equipment: " + block.nameWithId());
+				return default(float);
+			}
+
+			return val * equip._definition.MaxTransmitterPower;
+		}
+
+		private static void WriterWatts(float value, StringBuilder sb)
+		{
+			sb.Append(PrettySI.makePretty(value));
+			sb.Append("W");
+		}
+
+		#endregion
+
+		public static bool IsDefinedRadarEquipment(IMyCubeBlock block)
+		{
+			return Definition.GetFor(block) != null;
+		}
+
+		/// <summary>
+		/// Get the cross section area of a sphere with a given volume.
+		/// </summary>
+		private static float SphereCrossSection(float volume)
+		{
+			const double value1 = 3d / (4d * Math.PI);
+			const double value2 = 2d / 3d;
+			return (float)Math.Pow(value1 * volume, value2) * MathHelper.Pi;
+		}
+
+		/// <summary>
+		/// Volume of entity, including decoy blocks, if present.
+		/// </summary>
+		/// <param name="entity">Entity to get the volume of.</param>
+		/// <returns>The volume of an entity.</returns>
+		private static float Volume(IMyEntity entity)
+		{
+			Debug.Assert(IsValidRadarTarget(entity), "Not a valid target: " + entity.nameWithId());
+
+			const int decoyFakeBlocks = 1000;
+
+			if (entity is IMyCubeGrid)
+			{
+				IMyCubeGrid grid = (IMyCubeGrid)entity;
+				CubeGridCache cache = CubeGridCache.GetFor(grid);
+				if (cache != null)
+					return (cache.CellCount + decoyFakeBlocks * cache.CountByType(typeof(MyObjectBuilder_Decoy))) * grid.GridSize * grid.GridSize * grid.GridSize;
+			}
+			return entity.LocalAABB.Volume();
+		}
+
+		/// <summary>
+		/// Estimate the cross section of the entity by pretending it is a sphere.
+		/// </summary>
+		private static float RadarCrossSection(IMyEntity entity)
+		{
+			if (entity is MyAmmoBase)
+			{
+				GuidedMissile gm;
+				if (Registrar.TryGetValue(entity, out gm))
+					return SphereCrossSection(gm.ClusterCount * Volume(entity));
+			}
+			return SphereCrossSection(Volume(entity));
+		}
+
+		private static IMyEntity GridIfBlock(IMyEntity entity)
+		{
+			return entity is IMyCubeBlock ? ((IMyCubeBlock)entity).CubeGrid : entity;
+		}
+
+		/// <summary>
+		/// Check that a top-most entity is a valid target for detection by radar.
+		/// </summary>
+		private static bool IsValidRadarTarget(IMyEntity entity)
+		{
+			Debug.Assert(!(entity is IMyCubeBlock), "block not expected: " + entity.nameWithId());
+			return entity is IMyCubeGrid || entity is IMyCharacter || entity is MyAmmoBase;
+		}
+
+		/// <summary>
+		/// Helper for <see cref="RayCast.Obstructed{Tignore}(LineD, IEnumerable{Tignore}, bool, bool)"/> that builds ignore set.
+		/// </summary>
+		/// <param name="line">Line to ray cast.</param>
+		/// <param name="from">Originating entity. Should never be a grid.</param>
+		/// <param name="to">Destination entity. If it is a grid, physically attached grids will be ignored.</param>
+		/// <returns>True if ray cast failed; the target is obstructed.</returns>
+		private static bool RayCastObstructed(ref LineD line, IMyEntity from, IMyEntity to)
+		{
+			Debug.Assert(!(from is IMyCubeGrid), "from should not be a grid");
+
+			_obstructedIgnore.Clear();
+			_obstructedIgnore.Add(from);
+			if (to is MyCubeGrid)
+				foreach (var grid in Attached.AttachedGrid.AttachedGrids((IMyCubeGrid)to, Attached.AttachedGrid.AttachmentKind.Physics, true))
+					_obstructedIgnore.Add(grid);
+			else
+				_obstructedIgnore.Add(to);
+
+			// don't use _nearbyEntities, entities in ray is a much shorter list
+			bool result = RayCast.Obstructed(line, _obstructedIgnore, true, true);
+
+			if (_obstructedIgnore is IList && _obstructedIgnore.Count >= 20)
+				_obstructedIgnore = new HashSet<IMyEntity>();
+			else
+				_obstructedIgnore.Clear();
 			return result;
 		}
 
-		#endregion
+		#region Update
 
-		/// <summary>The entity that has the radar.</summary>
-		private readonly IMyEntity Entity;
-		/// <summary>Block for comparing relations.</summary>
-		private readonly IMyCubeBlock RelationsBlock;
-		private readonly MyLight m_beaconLight;
+		public static void UpdateAll()
+		{
+			_thread.EnqueueAction(UpdateOnThread);
+		}
 
-		/// <summary>Entity as IMyCubeBlock</summary>
-		private IMyCubeBlock CubeBlock
-		{ get { return Entity as IMyCubeBlock; } }
-		/// <summary>Entity as IMyTerminalBlock</summary>
-		private IMyTerminalBlock TermBlock
-		{ get { return CubeBlock as IMyTerminalBlock; } }
-		private RelayNode m_node;
+		private static void UpdateOnThread()
+		{
+			Logger.TraceLog("entered member");
+			Debug.Assert(_linkedByPrimaryNode.Count == 0, "_equipByPrimaryNode is not empty");
 
-		private readonly Logger myLogger;
-		private readonly Definition myDefinition;
-		private readonly FastResourceLock myLock = new FastResourceLock();
+			foreach (RelayNode relayNode in Registrar.Scripts<RelayNode>())
+			{
+				RelayStorage store = relayNode.GetStorage();
+				if (store == null)
+				{
+					Logger.TraceLog("Has no relay storage: " + relayNode.DebugName);
+					continue;
+				}
 
-		/// <summary>All detected entities will be added here.</summary>
-		private readonly List<DetectedInfo> detectedObjects_list = new List<DetectedInfo>();
-		/// <summary>Iff equipment has more than one means of detecting objects, this dictionary Keeps track of entities already found.</summary>
-		private readonly Dictionary<IMyEntity, DetectedInfo> detectedObjects_hash;
-		private readonly List<LastSeen> myLastSeen = new List<LastSeen>();
+				LinkedEE linked;
+				GetLinked(store.PrimaryNode, out linked);
 
-		private readonly SortedDictionary<float, RadarEquipment> jamming_enemy = new SortedDictionary<float, RadarEquipment>();
-		private readonly SortedDictionary<float, RadarEquipment> jamming_friendly = new SortedDictionary<float, RadarEquipment>();
-		private readonly Dictionary<RadarEquipment, float> beingJammedBy = new Dictionary<RadarEquipment, float>();
+				IMyEntity entity = relayNode.Entity;
+				if (entity is IMyCubeBlock)
+				{
+					IMyCubeGrid grid = ((IMyCubeBlock)entity).CubeGrid;
+					if (linked.TopEntity.Add(grid))
+					{
+						Logger.TraceLog("Adding grids logically connected to " + grid.nameWithId() + " to top entities");
+						foreach (IMyCubeGrid attGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, false))
+							linked.TopEntity.Add(attGrid);
+					}
+				}
+				else
+				{
+					Logger.TraceLog("Adding " + entity.nameWithId() + " to top entities");
+					linked.TopEntity.Add(entity);
+				}
 
-		/// <summary>Power level specified by the player.</summary>
-		private float PowerLevel_Target = 0f;
-		/// <summary>Power level achieved.</summary>
-		private float PowerLevel_Current = 0f;
+				RadarEquipment equip;
+				if (Registrar.TryGetValue(relayNode.Entity, out equip))
+				{
+					Logger.TraceLog("adding " + equip.DebugName + " to group with primary node: " + store.PrimaryNode.DebugName);
+					linked.Equipment.Add(equip);
+				}
+			}
 
-		private float PowerRatio_Jammer = 0f;
+			Logger.TraceLog("finished collecting, updating each");
 
-		private float PowerLevel_RadarEffective = 0f;
+			foreach (var pair in _linkedByPrimaryNode)
+			{
+				if (pair.Value.Equipment.Count != 0 || pair.Value.TopEntity.Count != 0)
+				{
+					_currentPrimaryNode = pair.Key;
+					_currentLinked = pair.Value;
+					UpdateCurrent();
+				}
+				pair.Value.ClearAndReturn();
+			}
 
-		private int deliberateJamming = 0;
+			_linkedByPrimaryNode.Clear();
+		}
 
-		private List<IMyEntity> obstructed_ignore = new List<IMyEntity>();
-		/// <summary>Only GetNearby() should fill this list.</summary>
-		private List<MyEntity> m_nearbyEntities = new List<MyEntity>();
-		private float m_nearbyRange;
+		private static void GetLinked(RelayNode primaryNode, out LinkedEE linked)
+		{
+			if (!_linkedByPrimaryNode.TryGetValue(primaryNode, out linked))
+			{
+				ResourcePool.Get(out linked);
+				_linkedByPrimaryNode.Add(primaryNode, linked);
+			}
+		}
 
-		#region Properties
+		/// <summary>
+		/// Update for current storage.
+		/// </summary>
+		private static void UpdateCurrent()
+		{
+			Debug.Assert(_nearbyEntities.Count == 0, "_nearbyEntities not cleared");
+			Debug.Assert(_nearbyEquipment.Count == 0, "_nearbyEquipment not cleared");
+			Debug.Assert(_detected.Count == 0, "_detected not cleared");
+
+			Logger.TraceLog("Updating, primary node: " + _currentPrimaryNode.DebugName + ", counts: " + _currentLinked.Equipment.Count + " & " + _currentLinked.TopEntity.Count);
+
+			BoundingSphereD locale;
+			locale.Radius = 50000d;
+
+			foreach (RadarEquipment radar in _currentLinked.Equipment)
+			{
+				radar.Update();
+				if (radar.IsWorking && radar.CanLocate)
+				{
+					Logger.TraceLog("Collecting entities near " + radar.DebugName);
+					locale.Center = radar._entity.GetCentre();
+					MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref locale, _nearbyEntities);
+				}
+			}
+
+			// all jamming must be applied before any detection
+			CollectEquipmentAndJam();
+			RadarDetection();
+			PassiveDetection();
+			DecoyDetection();
+			SensorAndCameraBlocks();
+			CreateLastSeen();
+
+			_nearbyEntities.Clear();
+			_nearbyEquipment.Clear();
+			_detected.Clear();
+		}
+
+		/// <summary>
+		/// Collect equipment from entities in <see cref="_nearbyEntities"/> and apply any jamming effect.
+		/// </summary>
+		private static void CollectEquipmentAndJam()
+		{
+			foreach (MyEntity entity in _nearbyEntities)
+				if (entity is IMyCubeGrid)
+				{
+					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)entity);
+					if (cache == null)
+						continue;
+					foreach (IMyEntity beacon in cache.BlocksOfType(typeof(MyObjectBuilder_Beacon)))
+						CollectEquipmentAndJam(beacon);
+					foreach (IMyEntity antennna in cache.BlocksOfType(typeof(MyObjectBuilder_RadioAntenna)))
+						CollectEquipmentAndJam(antennna);
+				}
+				else if (IsValidRadarTarget(entity))
+					CollectEquipmentAndJam(entity);
+		}
+
+		/// <summary>
+		/// If entity has equipment, add it to <see cref="_nearbyEquipment"/>.
+		/// If equipment is hostile, apply jamming to equipment in <see cref="_currentLinked.Equipment"/>.
+		/// </summary>
+		/// <param name="entity">The entity that might have equipment.</param>
+		/// 
+		private static void CollectEquipmentAndJam(IMyEntity entity)
+		{
+			Debug.Assert(!(entity is IMyCubeGrid), "grid not expected");
+
+			RadarEquipment equip;
+			if (!Registrar.TryGetValue(entity, out equip) || !equip.IsWorking || _currentLinked.Equipment.Contains(equip))
+				return;
+
+			Logger.DebugLog("nearby equipment: " + equip.DebugName + ", hostile: " + ExtensionsRelations.canConsiderHostile(_currentPrimaryNode.OwnerId, entity, false) + ", jammer: " + equip.IsJammerOn);
+			_nearbyEquipment.Add(equip);
+
+			if (ExtensionsRelations.canConsiderHostile(_currentPrimaryNode.OwnerId, entity, false) && equip.IsJammerOn)
+			{
+				Vector3D position = entity.GetCentre();
+				foreach (RadarEquipment linked in _currentLinked.Equipment)
+					if (linked.IsWorking && linked.CanLocate)
+						linked.ApplyJamming(ref position, equip);
+			}
+		}
+
+		/// <summary>
+		/// Foreach entity in <see cref="_nearbyEntities"/>, attempt to actively detect the entity with radar in <see cref="_currentLinked.Equipment"/>.
+		/// </summary>
+		private static void RadarDetection()
+		{
+			const float minSignal = 1f;
+
+			foreach (IMyEntity entity in _nearbyEntities)
+				if (IsValidRadarTarget(entity) && !_currentLinked.TopEntity.Contains(entity))
+				{
+					Logger.TraceLog("trying to detect " + entity.nameWithId());
+					Vector3D position = entity.GetCentre();
+					float RCS = RadarCrossSection(entity);
+					float signal = 0f;
+					foreach (RadarEquipment linked in _currentLinked.Equipment)
+					{
+						if (!linked.IsWorking || !linked.IsRadarOn)
+							continue;
+						signal += linked.RadarSignal(ref position, entity, RCS);
+						Logger.TraceLog(linked.DebugName + " increased total signal to " + signal);
+						if (signal > minSignal)
+						{
+							Logger.TraceLog("entity located");
+							Detected detect = new Detected();
+							detect.ByRadarSensorOrCamera = true;
+							PushDetected(entity, ref detect);
+							break;
+						}
+					}
+				}
+		}
+
+		/// <summary>
+		/// Foreach <see cref="RadarEquipment"/> in <see cref="_nearbyEquipment"/>, attempt to passively detect the equipment with radar in <see cref="_currentLinked.Equipment"/>.
+		/// </summary>
+		private static void PassiveDetection()
+		{
+			foreach (RadarEquipment equip in _nearbyEquipment)
+			{
+				if (!equip.IsWorking || !equip.CanBePassivelyDetected)
+					continue;
+
+				IMyEntity topEntity = GridIfBlock(equip._entity);
+				if (_currentLinked.TopEntity.Contains(topEntity))
+					continue;
+
+				Detected detect;
+				_detected.TryGetValue(topEntity, out detect);
+
+				if (detect.IsRadarLoud && detect.IsJammerLoud)
+					continue;
+
+				Vector3D position = equip._entity.GetCentre();
+				Logger.TraceLog("Trying to detect " + equip.DebugName);
+
+				foreach (RadarEquipment linked in _currentLinked.Equipment)
+				{
+					if (!linked.IsWorking)
+						continue;
+
+					bool radar =  detect.IsRadarQuiet && equip.IsRadarOn && linked._definition.PassiveRadarDetection;
+					bool jammer = detect.IsJammerQuiet && equip.IsJammerOn && linked._definition.PassiveJammerDetection;
+
+					if (radar || jammer)
+					{
+						LineD line = new LineD(linked._entity.GetCentre(), position);
+						if (!linked.SignalCanReach(ref line, equip._entity))
+							continue;
+
+						if (radar)
+						{
+							detect.RadarNoise += linked.PassiveSignalFromRadar(ref line, equip);
+							Logger.TraceLog(linked.DebugName + " increased total radar noise to " + detect.RadarNoise);
+						}
+						if (jammer)
+						{
+							detect.JammerNoise += linked.PassiveSignalFromJammer(ref line, equip);
+							Logger.TraceLog(linked.DebugName + " increased total jammer noise to " + detect.JammerNoise);
+						}
+
+						PushDetected(GridIfBlock(equip._entity), ref detect);
+
+						if (detect.IsRadarLoud && detect.IsJammerLoud)
+						{
+							Logger.TraceLog("Detected both radar and jammer, early exit");
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		private static void DecoyDetection()
+		{
+			foreach (IMyEntity entity in _nearbyEntities)
+				if (entity is IMyCubeGrid && !_currentLinked.TopEntity.Contains(entity))
+				{
+					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)entity);
+					if (cache == null)
+						continue;
+
+					int count = cache.CountByType(typeof(MyObjectBuilder_Decoy));
+					if (count == 0)
+						continue;
+
+					Detected detect;
+					_detected.TryGetValue(entity, out detect);
+
+					if (detect.IsRadarLoud && detect.IsJammerLoud)
+						continue;
+
+					Logger.TraceLog("Trying to detect decoys from " + entity.nameWithId());
+
+					// use average position of decoys
+					Vector3D position = Vector3D.Zero;
+					foreach (IMyDecoy decoy in cache.BlocksOfType(typeof(MyObjectBuilder_Decoy)))
+						if (decoy.IsWorking)
+							position += decoy.GetPosition();
+						else
+							--count;
+					position /= count;
+
+					foreach (RadarEquipment linked in _currentLinked.Equipment)
+						if (linked.IsWorking && (detect.IsRadarQuiet && linked._definition.PassiveRadarDetection || detect.IsJammerQuiet && linked._definition.PassiveJammerDetection))
+						{
+							float signal = count * linked.PassiveSignalFromDecoy(ref position, entity);
+							detect.RadarNoise += signal;
+							detect.JammerNoise += signal;
+							Logger.TraceLog(linked.DebugName + " increased signal strength to " + detect.RadarNoise + '/' + detect.JammerNoise);
+							if (detect.IsRadarLoud && detect.IsJammerLoud)
+							{
+								Logger.TraceLog("Deception is total, early exit");
+								break;
+							}
+						}
+
+					PushDetected(entity, ref detect);
+				}
+		}
+
+		/// <summary>
+		/// Add entities detected by sensors and cameras. _nearbyEntities is reused by this method.
+		/// </summary>
+		private static void SensorAndCameraBlocks()
+		{
+			foreach (IMyEntity linked in _currentLinked.TopEntity)
+				if (linked is IMyCubeGrid)
+				{
+					Logger.TraceLog("grid: " + linked.nameWithId());
+
+					CubeGridCache cache = CubeGridCache.GetFor((IMyCubeGrid)linked);
+					if (cache == null)
+						continue;
+
+					CheckSensor(cache);
+					CheckCamera(cache);
+				}
+		}
+
+		private static void CheckSensor(CubeGridCache cache)
+		{
+			foreach (MySensorBlock sensor in cache.BlocksOfType(typeof(MyObjectBuilder_SensorBlock)))
+			{
+				if (!sensor.IsWorking)
+					continue;
+
+				Logger.TraceLog("sensor: " + sensor.nameWithId());
+				IMyEntity lastDetected = sensor.LastDetectedEntity;
+				if (lastDetected != null && IsValidRadarTarget(lastDetected))
+				{
+					Logger.TraceLog("located: " + lastDetected.nameWithId());
+					Detected detect;
+					_detected.TryGetValue(lastDetected, out detect);
+					if (detect.ByRadarSensorOrCamera)
+						continue;
+
+					detect.ByRadarSensorOrCamera = true;
+					PushDetected(lastDetected, ref detect);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Add entities detected by cameras. _nearbyEntities is reused by this method.
+		/// </summary>
+		private static void CheckCamera(CubeGridCache cache)
+		{
+			BoundingSphereD nearby;
+			nearby.Radius = 3000d; // max camera distance
+
+			foreach (MyCameraBlock camera in cache.BlocksOfType(typeof(MyObjectBuilder_CameraBlock)))
+			{
+				if (!camera.IsWorking)
+					continue;
+
+				Logger.TraceLog("camera: " + camera.nameWithId());
+				nearby.Center = camera.PositionComp.GetPosition();
+				_nearbyEntities.Clear();
+				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, _nearbyEntities);
+				Vector3D cameraPosition = camera.PositionComp.GetPosition();
+
+				foreach (IMyEntity nearbyEntity in _nearbyEntities)
+					if (IsValidRadarTarget(nearbyEntity) && !_currentLinked.TopEntity.Contains(nearbyEntity))
+					{
+						Detected detect;
+						_detected.TryGetValue(nearbyEntity, out detect);
+						if (detect.ByRadarSensorOrCamera)
+							continue;
+
+						LineD line = new LineD(nearby.Center, nearbyEntity.GetCentre());
+						if (!camera.CheckAngleLimits(line.Direction))
+						{
+							Logger.TraceLog("Outside angle limits: " + nearbyEntity.nameWithId());
+							continue;
+						}
+
+						if (RayCastObstructed(ref line, camera, nearbyEntity))
+						{
+							Logger.TraceLog("Ray cast obstructed: " + nearbyEntity.nameWithId());
+							continue;
+						}
+
+						Vector3D entityCentre = nearbyEntity.GetCentre();
+						double distSq; Vector3D.DistanceSquared(ref cameraPosition, ref entityCentre, out distSq);
+
+						if (RadarCrossSection(nearbyEntity) * 900d < distSq)
+						{
+							Logger.TraceLog("Entity is too far for its size: " + nearbyEntity.nameWithId());
+							continue;
+						}
+
+						Logger.TraceLog("located: " + nearbyEntity.nameWithId());
+						detect.ByRadarSensorOrCamera = true;
+						PushDetected(nearbyEntity, ref detect);
+					}
+			}
+		}
+
+		private static void PushDetected(IMyEntity entity, ref Detected detect)
+		{
+			Debug.Assert(!(entity is IMyCubeBlock), entity.nameWithId() + " is block, grid should be passed");
+			_detected[entity] = detect;
+		}
+
+		private static void CreateLastSeen()
+		{
+			RelayStorage store = _currentPrimaryNode.GetStorage();
+			if (store == null)
+				return;
+
+			foreach (var entityDetected in _detected)
+			{
+				Debug.Assert(IsValidRadarTarget(entityDetected.Key), "Not valid radar target: " + entityDetected.Key);
+
+				Logger.TraceLog("for " + entityDetected.Key.nameWithId() + " located by radar: " + entityDetected.Value.ByRadarSensorOrCamera + ", by radar noise: " + entityDetected.Value.IsRadarLoud + ", by jammer noise: " + entityDetected.Value.IsJammerLoud);
+
+				LastSeen.DetectedBy detBy = LastSeen.DetectedBy.None;
+				if (entityDetected.Value.IsRadarLoud)
+					detBy |= LastSeen.DetectedBy.HasRadar;
+				if (entityDetected.Value.IsJammerLoud)
+					detBy |= LastSeen.DetectedBy.HasJammer;
+
+				if (entityDetected.Value.ByRadarSensorOrCamera)
+					store.Receive(new LastSeen(entityDetected.Key, detBy, new LastSeen.RadarInfo(Volume(entityDetected.Key))));
+				else
+					store.Receive(new LastSeen(entityDetected.Key, detBy));
+			}
+		}
+
+		#endregion Update
+
+		private readonly IMyEntity _entity;
+		private readonly Definition _definition;
+		private readonly MyLight _beaconLight;
+
+		private IRelayPart _relayPart;
+
+		private float _targetRadarTransmitPower, _targetJammerTransmitPower;
+		private float _radarTransmitPower, _jammerTransmitPower;
+		private float _radarJammed, _previousRadarJammed;
+		private bool _dirtyCustomInfo;
+
+		private Logable Log
+		{
+			get { return new Logable(_entity); }
+		}
+
+		private string DebugName
+		{
+			get { return _entity.nameWithId(); }
+		}
 
 		private bool IsWorking
-		{ get { return CubeBlock == null || CubeBlock.IsWorking; } }
+		{
+			get
+			{
+				IMyCubeBlock block = _entity as IMyCubeBlock;
+				return block == null || block.IsWorking;
+			}
+		}
 
-		private bool IsRadar
-		{ get { return myDefinition.Radar; } }
+		public bool IsRadarOn
+		{
+			get { return _radarTransmitPower != 0f; }
+		}
 
-		private bool IsJammer
-		{ get { return myDefinition.MaxTargets_Jamming > 0; } }
+		public bool IsJammerOn
+		{
+			get { return _jammerTransmitPower != 0f; }
+		}
 
-		private bool CanPassiveDetectRadar
-		{ get { return myDefinition.PassiveDetect_Radar > 0; } }
+		public bool CanLocate
+		{
+			get { return _radarTransmitPower != 0f || _definition.PassiveRadarDetection || _definition.PassiveJammerDetection; }
+		}
 
-		private bool CanPassiveDetectJammer
-		{ get { return myDefinition.PassiveDetect_Jamming > 0; } }
+		public bool CanBePassivelyDetected
+		{
+			get { return _radarTransmitPower != 0f || _jammerTransmitPower != 0f; }
+		}
 
-		private float PowerRatio_Radar
-		{ get { return 1f - PowerRatio_Jammer; } }
-
-		private float PowerLevel_Jammer
-		{ get { return PowerLevel_Current * PowerRatio_Jammer; } }
-
-		private float PowerLevel_Radar
-		{ get { return PowerLevel_Current * PowerRatio_Radar; } }
-
-		#endregion
-
-		/// <summary>
-		/// Create a RadarEquipment for a block, getting the definition from the block.
-		/// </summary>
 		public RadarEquipment(IMyCubeBlock block)
 		{
-			this.myLogger = new Logger(block);
+			Debug.Assert(block is IMyBeacon || block is IMyRadioAntenna, "block is of incorrect type: " + block.nameWithId());
 
-			this.Entity = block;
-			this.RelationsBlock = block;
-			this.myDefinition = GetDefinition(block);
+			_entity = block;
+			_definition = Definition.GetFor(block);
+			if (block is MyBeacon)
+				_beaconLight = (MyLight)MyBeacon__m_light.GetValue(block);
+			((IMyTerminalBlock)block).AppendingCustomInfo += AppendingCustomInfo;
 
-			Registrar.Add(block, this);
+			CtorHelper();
 
-			TermBlock.OnClose += CustomInfoBlock_OnClose;
-
-			TermBlock.AppendingCustomInfo += AppendingCustomInfo;
-
-			UpdateTargetPowerLevel();
-			PowerLevel_Current = Math.Min(PowerLevel_Target, myDefinition.MaxPowerLevel);
-			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
-
-			// maybe this is a bug fix?
-			MyFunctionalBlock func = (MyFunctionalBlock)block;
-			func.Enabled = false;
-			func.Enabled = true;
-
-			TermBlock.UpdateCustomInfo();
-
-			byte detectionTypes = 0;
-			if (myDefinition.Radar)
-				detectionTypes++;
-			if (myDefinition.PassiveDetect_Jamming > 0)
-				detectionTypes++;
-			if (myDefinition.PassiveDetect_Radar > 0)
-				detectionTypes++;
-			if (detectionTypes > 1)
-				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
-
-			m_beaconLight = GetLight();
-
-			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
+			block.ResourceSink.SetRequiredInputFuncByType(Globals.Electricity, GenerateElectricityFunction());
+			UpdateElectricityConsumption();
+			Log.TraceLog("created");
 		}
 
-		/// <summary>
-		/// Create a RadarEquipment for an entity, with the specified definition and an owner block.
-		/// </summary>
-		public RadarEquipment(IMyEntity radarEntity, Definition radarDef, IMyCubeBlock relationsBlock)
+		public RadarEquipment(IMyEntity missile, Definition defn, IMyCubeBlock relationsBlock)
 		{
-			this.myLogger = new Logger(() => RelationsBlock.CubeGrid.DisplayName, () => RelationsBlock.DisplayNameText, () => radarEntity.ToString());
+			Debug.Assert(missile is MyAmmoBase, "supplied entity is not a missile");
 
-			this.Entity = radarEntity;
-			this.RelationsBlock = relationsBlock;
-			this.myDefinition = radarDef;
+			_entity = missile;
+			_definition = defn;
 
-			Registrar.Add(radarEntity, this);
-			PowerLevel_Current = PowerLevel_Target = this.myDefinition.MaxPowerLevel;
+			CtorHelper();
 
-			byte detectionTypes = 0;
-			if (myDefinition.Radar)
-				detectionTypes++;
-			if (myDefinition.PassiveDetect_Jamming > 0)
-				detectionTypes++;
-			if (myDefinition.PassiveDetect_Radar > 0)
-				detectionTypes++;
-			if (detectionTypes > 1)
-				detectedObjects_hash = new Dictionary<IMyEntity, DetectedInfo>();
-
-			m_beaconLight = GetLight();
-
-			myLogger.debugLog("Radar equipment initialized, power level: " + PowerLevel_Current, Logger.severity.INFO);
-		}
-
-		private void CustomInfoBlock_OnClose(IMyEntity obj)
-		{
-			ClearJamming();
-			TermBlock.AppendingCustomInfo -= AppendingCustomInfo;
-		}
-
-		private MyLight GetLight()
-		{
-			MyBeacon beacon = this.Entity as MyBeacon;
-			if (beacon == null)
-				return null;
-
-			return (MyLight)MyBeacon__m_light.GetValue(beacon);
-		}
-
-		public void Update100()
-		{
-			if (m_beaconLight != null && m_beaconLight.Intensity != 0f)
+			if (!TryGetRelayNode(out _relayPart))
 			{
-				m_beaconLight.GlareIntensity = 0f;
-				m_beaconLight.Intensity = 0f;
-				m_beaconLight.ReflectorIntensity = 0f;
-				m_beaconLight.UpdateLight();
+				Log.DebugLog("Missile has no antenna, creating a lonely node");
+				_relayPart = new RelayNode(missile, () => relationsBlock.OwnerId, null);
 			}
-
-			if (myLock.TryAcquireExclusive())
-			{
-				if (m_node == null)
-				{
-					if (!Registrar.TryGetValue(Entity, out m_node))
-					{
-						myLogger.debugLog("failed to get node");
-						return;
-					}
-				}
-				if (m_node.Storage == null)
-				{
-					myLogger.debugLog("no storage");
-					return;
-				}
-
-				// actions on main thread
-				CheckCustomInfo();
-				//if (myLastSeen.Count > 0)
-				//{
-				//	myLogger.debugLog("sending to storage: " + myLastSeen.Count);
-				//	m_node.Storage.Receive(myLastSeen);
-				//}
-
-				myThread.EnqueueAction(Update_OnThread);
-			}
+			Log.TraceLog("created");
 		}
 
-		private void Update_OnThread()
+		private void CtorHelper()
 		{
-			try
+			if (_definition.IsRadar && _definition.IsJammer)
 			{
-				m_nearbyEntities.Clear();
-				m_nearbyRange = 0f;
-				myLastSeen.Clear();
-				detectedObjects_list.Clear();
-				if (detectedObjects_hash != null)
-					detectedObjects_hash.Clear();
-
-				if (!IsWorking)
-				{
-					if (PowerLevel_Current > 0)
-						PowerLevel_Current += myDefinition.PowerDecrease;
-					ClearJamming();
-					return;
-				}
-
-				UpdatePowerLevel();
-
-				if (IsJammer)
-					JamRadar();
-
-				if (IsRadar)
-					ActiveDetection();
-
-				if (myDefinition.PassiveDetect_Jamming > 0)
-					PassiveDetection(false);
-
-				if (myDefinition.PassiveDetect_Radar > 0)
-					PassiveDetection(true);
-
-				if (detectedObjects_list.Count > 0)
-				{
-					detectedObjects_list.Sort();
-					int transmit = Math.Min(detectedObjects_list.Count, myDefinition.MaxTargets_Tracking);
-					for (int i = 0; i < transmit; i++)
-					{
-						DetectedInfo detFo = detectedObjects_list[i];
-						myLastSeen.Add(new LastSeen(detFo.Entity, detFo.Times, detFo.Info));
-						//myLogger.debugLog("created last seen for: " + detFo.Entity.getBestName());
-					}
-					//myLogger.debugLog("sending to storage: " + myLastSeen.Count);
-					m_node.Storage.Receive(myLastSeen);
-				}
+				float halfPower = 0.5f * _definition.MaxTransmitterPower;
+				SetRadarValue(this, halfPower);
+				SetJammerValue(this, halfPower);
 			}
-			catch (Exception ex)
-			{
-				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
-				CubeBlock.EnableGameThread(false);
-			}
-			finally
-			{ myLock.ReleaseExclusive(); }
-		}
-
-		private void UpdateTargetPowerLevel()
-		{
-			Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
-			if (asBeacon != null)
-				PowerLevel_Target = asBeacon.Radius;
+			else if (_definition.IsRadar)
+				SetRadarValue(this, _definition.MaxTransmitterPower);
+			else if (_definition.IsJammer)
+				SetJammerValue(this, _definition.MaxTransmitterPower);
 			else
-			{
-				Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-				if (asRadio != null)
-					PowerLevel_Target = asRadio.Radius;
-			}
+				Log.DebugLog("Block is neither radar nor jammer", Logger.severity.WARNING);
+
+			Registrar.Add(_entity, this);
 		}
 
-		private void UpdatePowerLevel()
+		public int CompareTo(RadarEquipment other)
 		{
-			if (this.CubeBlock == null)
-			{
-				myLogger.debugLog("not updating power levels, not a block");
-				return;
-			}
-
-			UpdateTargetPowerLevel();
-
-			if (PowerLevel_Current == PowerLevel_Target)
-				return;
-
-			myLogger.debugLog("current power level: " + PowerLevel_Current + ", target power level: " + PowerLevel_Target, Logger.severity.TRACE);
-
-			// cap power level
-			{
-				if (PowerLevel_Target > myDefinition.MaxPowerLevel)
-				{
-					PowerLevel_Target = myDefinition.MaxPowerLevel;
-					if (MyAPIGateway.Multiplayer.IsServer)
-					{
-						IMyTerminalBlock TermBlock = this.TermBlock;
-						IMyCubeBlock CubeBlock = this.CubeBlock;
-
-						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
-							myLogger.debugLog("Reducing target power from " + PowerLevel_Target + " to " + myDefinition.MaxPowerLevel, Logger.severity.INFO);
-
-							// turn down slider
-							Ingame.IMyBeacon asBeacon = CubeBlock as Ingame.IMyBeacon;
-							if (asBeacon != null)
-								asBeacon.SetValueFloat("Radius", PowerLevel_Target);
-							else
-							{
-								Ingame.IMyRadioAntenna asRadio = CubeBlock as Ingame.IMyRadioAntenna;
-								if (asRadio != null)
-									asRadio.SetValueFloat("Radius", PowerLevel_Target);
-							}
-
-							UpdatePowerConsumption();
-						});
-					}
-					else
-						MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
-				}
-			}
-
-			// adjust current power level
-			if (PowerLevel_Current < 0)
-				PowerLevel_Current = 0;
-			PowerLevel_Current += myDefinition.PowerIncrease;
-			if (PowerLevel_Current > PowerLevel_Target)
-				PowerLevel_Current = PowerLevel_Target;
-			MyAPIGateway.Utilities.InvokeOnGameThread(UpdatePowerConsumption);
-			myLogger.debugLog("PowerLevel_Target: " + PowerLevel_Target + ", PowerLevel_Current: " + PowerLevel_Current, Logger.severity.TRACE);
+			return Math.Sign(_entity.EntityId - other._entity.EntityId);
 		}
 
-		private void JamRadar()
+		private bool TryGetRelayNode(out IRelayPart part)
 		{
-			ClearJamming();
+			Log.EnteredMember();
 
-			MathHelper.Clamp(PowerRatio_Jammer, 0f, 1f);
-
-			float effectivePowerLevel = PowerLevel_Current * myDefinition.SignalEnhance;
-
-			if (effectivePowerLevel <= 0)
+			RelayNode node;
+			if (Registrar.TryGetValue(_entity, out node))
 			{
-				myLogger.debugLog("no power for jamming");
-				return;
+				_relayPart = part = node;
+				return part != null;
 			}
+			part = node;
+			return false;
+		}
 
-			//int allowedTargets = MathHelper.Floor(myDefinition.MaxTargets_Jamming * PowerRatio_Jammer);
+		#region Electricity
 
-			//myLogger.debugLog("jamming power level: " + effectivePowerLevel + ", allowedTargets: " + allowedTargets, "JamRadar()");
-
-			// collect targets
-			Registrar.ForEach((RadarEquipment otherDevice) => {
-				if (!otherDevice.IsRadar || !otherDevice.IsWorking)
-					return;
-
-				if (SignalCannotReach(otherDevice.Entity, effectivePowerLevel))
-					return;
-
-				bool notHostile = !RelationsBlock.canConsiderHostile(otherDevice.RelationsBlock);
-				if (notHostile && myDefinition.JamIncidental == 0f)
-				{
-					myLogger.debugLog("cannot jam a friendly: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
-					return;
-				}
-
-				float distance = Vector3.Distance(Entity.GetCentre(), otherDevice.Entity.GetCentre());
-				float signalStrength = effectivePowerLevel - distance;
-
-				if (signalStrength > 0)
-				{
-					if (notHostile)
-					{
-						myLogger.debugLog("adding friendly: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
-						jamming_friendly.Add(signalStrength, otherDevice);
-					}
-					else
-					{
-						myLogger.debugLog("adding enemy: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
-						jamming_enemy.Add(signalStrength, otherDevice);
-					}
-				}
-			});
-
-			// apply jamming
-			if (jamming_enemy.Count == 0)
+		private Func<float> GenerateElectricityFunction()
+		{
+			if (_entity is IMyCubeBlock)
 			{
-				myLogger.debugLog("no targets to jam", Logger.severity.TRACE);
-				jamming_friendly.Clear();
+				MethodInfo UpdatePowerInput = _entity.GetType().GetMethod("UpdatePowerInput", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-				PowerRatio_Jammer = 0f;
-				return;
-			}
-
-			// Up to MaximumTargets, radars will be deliberately jammed. Others will be incidentally jammed
-			deliberateJamming = 0;
-
-			foreach (var pair in jamming_enemy)
-			{
-				if (deliberateJamming < myDefinition.MaxTargets_Jamming)
+				if (UpdatePowerInput != null)
 				{
-					myLogger.debugLog("jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key, Logger.severity.TRACE);
-					pair.Value.beingJammedBy.Add(this, pair.Key);
-					deliberateJamming++;
+					Func<float> delegateUPI = (Func<float>)Delegate.CreateDelegate(typeof(Func<float>), _entity, UpdatePowerInput);
+					return () => delegateUPI.Invoke() + ElectricityConsumptionByRadarEquipment();
 				}
 				else
-				{
-					myLogger.debugLog("incidentally jamming enemy: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, Logger.severity.TRACE);
-					pair.Value.beingJammedBy.Add(this, pair.Key * myDefinition.JamIncidental);
-				}
+					Log.AlwaysLog("Failed to get \"UpdatePowerInput\" method", Logger.severity.WARNING);
 			}
 
-			PowerRatio_Jammer = (float)deliberateJamming / (float)myDefinition.MaxTargets_Jamming;
-			myLogger.debugLog("PowerRatio_Jammer: " + PowerRatio_Jammer, Logger.severity.TRACE);
-
-			foreach (var pair in jamming_friendly)
-			{
-				myLogger.debugLog("incidentally jamming friendly: " + pair.Value.Entity.getBestName() + ", strength: " + pair.Key * myDefinition.JamIncidental, Logger.severity.TRACE);
-				pair.Value.beingJammedBy.Add(this, pair.Key * myDefinition.JamIncidental);
-			}
+			return ElectricityConsumptionByRadarEquipment;
 		}
 
-		private void ActiveDetection()
+		/// <summary>
+		/// Calculates electricty needed to power radar equipment.
+		/// </summary>
+		/// <returns>Electricty needed to power radar equipment.</returns>
+		/// <remarks>
+		/// Radar electricty requirements in game is significantly greater than real life because we operate at shorter distances.
+		/// </remarks>
+		private float ElectricityConsumptionByRadarEquipment()
 		{
-			PowerLevel_RadarEffective = PowerLevel_Radar * myDefinition.SignalEnhance;
+			Log.EnteredMember();
 
-			if (PowerLevel_RadarEffective <= 0f)
-			{
-				myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, Logger.severity.DEBUG);
-				return;
-			}
+			const float standbyPowerRatio = 1f / 100f;
 
-			if (beingJammedBy.Count != 0)
-			{
-				float jamSum = 0;
-				foreach (float jamStrength in beingJammedBy.Values)
-					jamSum += jamStrength;
+			IMyTerminalBlock block = (IMyTerminalBlock)_entity;
 
-				jamSum *= myDefinition.JammingEffect;
+			float transmissionPower = _targetRadarTransmitPower + _targetJammerTransmitPower;
+			float standbyPower = standbyPowerRatio * _definition.MaxTransmitterPower;
 
-				if (jamSum > 0f)
-					PowerLevel_RadarEffective -= jamSum;
-
-				myLogger.debugLog("being jammed by " + beingJammedBy.Count + " jammers, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
-
-				if (PowerLevel_RadarEffective <= 0f)
-				{
-					myLogger.debugLog("no detection possible, effective power level: " + PowerLevel_RadarEffective, Logger.severity.DEBUG);
-					PowerLevel_RadarEffective = 0f;
-					return;
-				}
-			}
-			//else
-			//	myLogger.debugLog("not being jammed, power available: " + PowerLevel_Radar + ", effective power level: " + PowerLevel_RadarEffective, Logger.severity.TRACE);
-
-			GetNearby(PowerLevel_RadarEffective);
-
-			foreach (IMyEntity entity in m_nearbyEntities)
-			{
-				if (entity.MarkedForClose)
-					continue;
-
-				if (m_node.Storage.VeryRecentRadarInfo(entity.EntityId))
-					continue;
-
-				float volume, reflectivity;
-				if (entity.IsMissile())
-				{
-					GuidedMissile guided;
-					if (!Registrar.TryGetValue(entity, out guided))
-						continue;
-					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
-						continue;
-					volume = LastSeen.RadarInfo.GetVolume(entity);
-					reflectivity = guided.RadarReflectivity;
-					myLogger.debugLog("missile volume: " + volume + ", reflectivity: " + reflectivity);
-				}
-				else if (entity is IMyCubeGrid)
-				{
-					if (!entity.Save)
-						continue; 
-					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
-						continue;
-					volume = LastSeen.RadarInfo.GetVolume(entity);
-					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-				}
-				else if (entity is IMyCharacter)
-				{
-					if (SignalCannotReach(entity, PowerLevel_RadarEffective))
-						continue;
-					volume = LastSeen.RadarInfo.GetVolume(entity);
-					reflectivity = (volume + myDefinition.Reflect_A) / (volume + myDefinition.Reflect_B);
-				}
-				else
-					continue;
-
-				float distance = Vector3.Distance(Entity.GetCentre(), entity.GetCentre());
-				float radarSignature = (PowerLevel_RadarEffective - distance) * reflectivity - distance;
-				int decoys = WorkingDecoys(entity);
-				radarSignature += decoySignal * decoys;
-
-				//myLogger.debugLog("name: " + entity.getBestName() + ", volume: " + volume + ", reflectivity: " + reflectivity + ", distance: " + distance
-				//	+ ", radar signature: " + radarSignature + ", decoys: " + decoys, Logger.severity.TRACE);
-
-				if (radarSignature > 0)
-				{
-					DetectedInfo detFo = new DetectedInfo(entity, RelationsBlock.getRelationsTo(entity));
-					detFo.SetRadar(radarSignature, new LastSeen.RadarInfo(volume + decoyVolume * decoys));
-					detectedObjects_list.Add(detFo);
-					if (detectedObjects_hash != null)
-						detectedObjects_hash.Add(entity, detFo);
-				}
-			}
+			return 1e-6f * (transmissionPower + standbyPower);
 		}
 
-		private void PassiveDetection(bool radar)
+		/// <summary>
+		/// Force game to update electricity input by invoking the secret method.
+		/// </summary>
+		private void UpdateElectricityConsumption()
 		{
-			float detectionThreshold;
-			if (radar)
-			{
-				if (!CanPassiveDetectRadar)
-					return;
-				detectionThreshold = myDefinition.PassiveDetect_Radar;
-			}
+			Log.EnteredMember();
+
+			if (MySandboxGame.Static.UpdateThread == Thread.CurrentThread)
+				(_entity.Components.Get<MyDataBroadcaster>() as MyRadioBroadcaster)?.OnBroadcastRadiusChanged?.Invoke();
 			else
-			{
-				if (!CanPassiveDetectJammer)
-					return;
-				detectionThreshold = myDefinition.PassiveDetect_Jamming;
-			}
-
-			Registrar.ForEach((RadarEquipment otherDevice) => {
-				if (!otherDevice.IsWorking)
-					return;
-
-				IMyEntity otherEntity = otherDevice.Entity.Hierarchy.GetTopMostParent().Entity;
-				if (m_node.Storage.VeryRecentRadarInfo(otherEntity.EntityId))
-					return;
-
-				float otherPowerLevel = radar ? otherDevice.PowerLevel_Radar : otherDevice.PowerLevel_Jammer;
-				if (otherPowerLevel <= 0)
-					return;
-				otherPowerLevel *= myDefinition.SignalEnhance;
-
-				if (SignalCannotReach(otherDevice.Entity, otherPowerLevel))
-					return;
-
-				float distance = Vector3.Distance(Entity.GetCentre(), otherDevice.Entity.GetCentre());
-				float signalStrength = otherPowerLevel - distance - detectionThreshold;
-
-				signalStrength += decoySignal * WorkingDecoys(otherDevice);
-
-				if (signalStrength > 0)
-				{
-					myLogger.debugLog("radar signal seen: " + otherDevice.Entity.getBestName(), Logger.severity.TRACE);
-
-					DetectedInfo detFo;
-					if (detectedObjects_hash == null || !detectedObjects_hash.TryGetValue(otherEntity, out detFo))
-					{
-						detFo = new DetectedInfo(otherEntity, RelationsBlock.getRelationsTo(otherDevice.RelationsBlock));
-						detectedObjects_list.Add(detFo);
-						if (detectedObjects_hash != null)
-							detectedObjects_hash.Add(otherEntity, detFo);
-					}
-					if (radar)
-						detFo.RadarSignal = signalStrength;
-					else
-						detFo.JammerSignal = signalStrength;
-				}
-			});
+				MySandboxGame.Static.Invoke(UpdateElectricityConsumption);
 		}
 
-		#region Signal Cannot Reach
-
-		private bool SignalCannotReach(IMyEntity target, float compareDist)
-		{
-			//myLogger.debugLog("target: " + target.getBestName() + ", really far: " + ReallyFar(target.GetCentre(), compareDist) + ", compareDist: " + compareDist + ", unacceptable angle: " + UnacceptableAngle(target) + 
-			//	", obstructed: " + Obstructed(target), "SignalCannotReach()");
-			return ReallyFar(target.GetCentre(), compareDist) || UnacceptableAngle(target) || Obstructed(target, compareDist);
-		}
-
-		private bool ReallyFar(Vector3D target, float compareTo)
-		{
-			Vector3D position = Entity.GetCentre();
-			return Math.Abs(position.X - target.X) > compareTo
-					|| Math.Abs(position.Y - target.Y) > compareTo
-					|| Math.Abs(position.Z - target.Z) > compareTo;
-		}
-
-		/// <summary>
-		/// Determines if the position does not fall within the angle limits of the radar.
-		/// </summary>
-		private bool UnacceptableAngle(IMyEntity target)
-		{
-			if (!myDefinition.EnforceAngle)
-				return false;
-
-			MatrixD Transform = Entity.WorldMatrixNormalizedInv.GetOrientation();
-			Vector3 directionToTarget = Vector3.Transform(target.GetCentre() - Entity.GetCentre(), Transform);
-			directionToTarget.Normalize();
-			//myLogger.debugLog("my position: " + Entity.GetCentre() + ", target: " + target.DisplayName + ", target position: " + target.GetCentre()
-			//	+ ", displacement: " + (target.GetCentre() - Entity.GetCentre()) + ", direction: " + directionToTarget, "UnacceptableAngle()");
-
-			float azimuth, elevation;
-			Vector3.GetAzimuthAndElevation(directionToTarget, out azimuth, out elevation);
-
-			//myLogger.debugLog("azimuth: " + azimuth + ", min: " + myDefinition.MinAzimuth + ", max: " + myDefinition.MaxAzimuth
-			//	+ ", elevation: " + elevation + ", min: " + myDefinition.MinElevation + ", max: " + myDefinition.MaxElevation, "UnacceptableAngle()");
-			//myLogger.debugLog("azimuth below: " + (azimuth < myDefinition.MinAzimuth) + ", azimuth above: " + (azimuth > myDefinition.MaxAzimuth)
-			//	+ ", elevation below: " + (elevation < myDefinition.MinElevation) + ", elevation above: " + (elevation > myDefinition.MaxElevation), "UnacceptableAngle()");
-			return azimuth < myDefinition.MinAzimuth || azimuth > myDefinition.MaxAzimuth || elevation < myDefinition.MinElevation || elevation > myDefinition.MaxElevation;
-		}
-
-		/// <summary>
-		/// Determines if there is an obstruction between radar and target.
-		/// </summary>
-		private bool Obstructed(IMyEntity target, float range)
-		{
-			//myLogger.debugLog("me: " + Entity.getBestName() + ", target: " + target.getBestName(), "Obstructed()");
-
-			if (!myDefinition.LineOfSight)
-				return false;
-
-			GetNearby(range);
-
-			obstructed_ignore.Clear();
-			obstructed_ignore.Add(Entity);
-			obstructed_ignore.Add(target);
-
-			return RayCast.Obstructed(new LineD(Entity.GetCentre(), target.GetCentre()), m_nearbyEntities, obstructed_ignore);
-		}
-
-		#endregion
-
-		private int WorkingDecoys(IMyEntity target)
-		{
-			IMyCubeGrid grid = target as IMyCubeGrid;
-			if (grid == null || RelationsBlock.canConsiderFriendly(grid))
-				return 0;
-
-			CubeGridCache cache = CubeGridCache.GetFor(grid);
-			if (cache == null)
-				return 0;
-			return cache.CountByType(typeof(MyObjectBuilder_Decoy), block => block.IsWorking);
-		}
-
-		private int WorkingDecoys(RadarEquipment otherEquip)
-		{
-			if (otherEquip.CubeBlock == null)
-				return 0;
-
-			return WorkingDecoys(otherEquip.CubeBlock.CubeGrid);
-		}
-
-		private void ClearJamming()
-		{
-			foreach (RadarEquipment jammed in jamming_enemy.Values)
-				jammed.beingJammedBy.Remove(this);
-
-			foreach (RadarEquipment jammed in jamming_friendly.Values)
-				jammed.beingJammedBy.Remove(this);
-
-			jamming_enemy.Clear();
-			jamming_friendly.Clear();
-			deliberateJamming = 0;
-		}
+		#endregion Electricity
 
 		#region Custom Info
 
-		private float previous_PowerLevel_Current;
-		private int previous_deliberateJamming;
-		private float previous_PowerLevel_Radar;
-		private float previous_PowerLevel_RadarEffective;
-		private int previous_beingJammedBy_Count;
-		private int previous_detectedObjects_Count;
-
-		private void CheckCustomInfo()
+		private void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder info)
 		{
-			if (TermBlock == null)
-				return;
+			Log.EnteredMember();
 
-			bool needToRefresh = false;
-
-			if (IsJammer)
-				if (PowerLevel_Current != previous_PowerLevel_Current)
-				{
-					needToRefresh = true;
-					previous_PowerLevel_Current = PowerLevel_Current;
-				}
-
-			if (deliberateJamming != previous_deliberateJamming)
+			info.AppendLine();
+	
+			// radar
+			if (IsRadarOn)
 			{
-				needToRefresh = true;
-				previous_deliberateJamming = deliberateJamming;
+				info.Append("Radar transmit power: ");
+				info.Append(PrettySI.makePretty(_radarTransmitPower));
+				info.Append('W');
+				info.AppendLine();
+
+				info.Append("Max radar range: ");
+				info.Append(PrettySI.makePretty(CalcMaxRadarRange()));
+				info.Append('m');
+				info.AppendLine();
 			}
 
-			if (IsRadar)
-			{
-				if (PowerLevel_Radar != previous_PowerLevel_Radar)
-				{
-					needToRefresh = true;
-					previous_PowerLevel_Radar = PowerLevel_Radar;
-				}
-				if (PowerLevel_RadarEffective != previous_PowerLevel_RadarEffective)
-				{
-					needToRefresh = true;
-					previous_PowerLevel_RadarEffective = PowerLevel_RadarEffective;
-				}
-			}
-
-			if (beingJammedBy.Count != previous_beingJammedBy_Count)
-			{
-				needToRefresh = true;
-				previous_beingJammedBy_Count = beingJammedBy.Count;
-			}
-
-			if (myLastSeen.Count != previous_detectedObjects_Count)
-			{
-				needToRefresh = true;
-				previous_detectedObjects_Count = myLastSeen.Count;
-			}
-
-			if (needToRefresh)
-				TermBlock.UpdateCustomInfo();
-		}
-
-		private void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)
-		{
-			customInfo.AppendLine();
+			if (_radarJammed > 1f)
+				info.AppendLine("  ***  Jamming Detected  ***");
 
 			// jammer
-
-			if (IsJammer)
-				if (PowerLevel_Current > 0)
-				{
-					customInfo.AppendLine("Jammer power level: " + (int)PowerLevel_Current);
-					customInfo.AppendLine("Maximum jamming range: " + (int)(PowerLevel_Current * myDefinition.SignalEnhance));
-				}
-
-			if (deliberateJamming > 0)
+			if (IsJammerOn)
 			{
-				customInfo.AppendLine("Jamming " + deliberateJamming + " of " + myDefinition.MaxTargets_Jamming + " radars");
+				info.Append("Jammer transmit power: ");
+				info.Append(PrettySI.makePretty(_jammerTransmitPower));
+				info.Append('W');
+				info.AppendLine();
 			}
 
-			// radar
-
-			if (IsRadar)
-				if (PowerLevel_Radar > 0)
-				{
-					customInfo.AppendLine("Radar power level: " + (int)PowerLevel_Radar);
-					customInfo.AppendLine("Maximum radar range: " + (int)(PowerLevel_RadarEffective / 2));
-				}
-
-			if (beingJammedBy.Count > 0)
-			{
-				customInfo.Append("Interference from " + beingJammedBy.Count + " source");
-				if (beingJammedBy.Count != 1)
-					customInfo.Append('s');
-				customInfo.AppendLine();
-			}
-
-			// detected
-
-			if (myLastSeen.Count > 0)
-			{
-				customInfo.AppendLine("Detecting " + myLastSeen.Count + " of " + myDefinition.MaxTargets_Tracking + " objects");
-			}
-
-			customInfo.AppendLine("Power use: " + PrettySI.makePretty(((MyCubeBlock)block).ResourceSink.RequiredInputByType(new MyDefinitionId(typeof(MyObjectBuilder_GasProperties), "Electricity")) * 1e6f) + 'W');
+			info.AppendLine();
 		}
 
-		#endregion
-
-		private void UpdatePowerConsumption()
+		/// <summary>
+		/// Calculate range at which radar can detect the largest possible ship.
+		/// </summary>
+		/// <returns>Range at which radar can detect the largest possible ship.</returns>
+		private float CalcMaxRadarRange()
 		{
-			// if required input is zero, the block will not be consider working by SE
-			float powerConsumption = Math.Max(PowerLevel_Target, 1f) * 1e-4f;
-			((MyCubeBlock)CubeBlock).ResourceSink.SetRequiredInputByType(Globals.Electricity, powerConsumption);
+			return (float)Math.Pow(_radarTransmitPower * _definition.AntennaConstant * _definition.AntennaConstant * _maxRCS / Math.Max(1f, _radarJammed), 1d / 4d);
 		}
 
-		private void GetNearby(float range)
+		#endregion Custom Info
+
+		#region Update Logic
+
+		/// <summary>
+		/// Perform update of <see cref="RadarEquipment"/>, including <see cref="_beaconLight"/> and power levels.
+		/// </summary>
+		private void Update()
 		{
-			if (m_nearbyRange < range)
+			if (_beaconLight != null && _beaconLight.Intensity != 0)
 			{
-				range++;
-				m_nearbyEntities.Clear();
-				BoundingSphereD nearby = new BoundingSphereD(Entity.GetPosition(), range);
-				MyGamePruningStructure.GetAllTopMostEntitiesInSphere(ref nearby, m_nearbyEntities);
-				m_nearbyRange = range;
+				_beaconLight.GlareIntensity = _beaconLight.Intensity = _beaconLight.ReflectorIntensity = 0f;
+				MySandboxGame.Static.Invoke(_beaconLight.UpdateLight);
+			}
+
+			float change = _radarJammed / _previousRadarJammed;
+			Log.TraceLog("previous jam: " + _previousRadarJammed + ", current: " + _radarJammed + ", change: " + change);
+			if (change < 0.9f || change > 1.1f)
+			{
+				_dirtyCustomInfo = true;
+				_previousRadarJammed = _radarJammed;
+			}
+			_radarJammed = 0f;
+
+			if (IsWorking)
+			{
+				IncreasePowerLevel(ref _radarTransmitPower, _targetRadarTransmitPower);
+				IncreasePowerLevel(ref _jammerTransmitPower, _targetJammerTransmitPower);
+				Log.TraceLog("is working, power levels: " + _radarTransmitPower + ", " + _jammerTransmitPower);
+			}
+			else
+			{
+				DecreasePowerLevel(ref _radarTransmitPower);
+				DecreasePowerLevel(ref _jammerTransmitPower);
+				Log.TraceLog("not working, power levels: " + _radarTransmitPower + ", " + _jammerTransmitPower);
+			}
+
+			if (_dirtyCustomInfo)
+			{
+				_dirtyCustomInfo = false;
+				IMyTerminalBlock term = _entity as IMyTerminalBlock;
+				if (term != null)
+					MySandboxGame.Static.Invoke(term.UpdateCustomInfo);
 			}
 		}
+
+		private void IncreasePowerLevel(ref float powerLevel, float target)
+		{
+			if (powerLevel == target)
+				return;
+			if (powerLevel > target)
+			{
+				DecreasePowerLevel(ref powerLevel);
+				return;
+			}
+			powerLevel += target * 0.1f;
+			if (powerLevel > target)
+				powerLevel = target;
+			_dirtyCustomInfo = true;
+		}
+
+		private void DecreasePowerLevel(ref float powerLevel)
+		{
+			if (powerLevel == 0f)
+				return;
+			powerLevel -= _definition.MaxTransmitterPower * 0.1f;
+			if (powerLevel < 0f)
+				powerLevel = 0f;
+			_dirtyCustomInfo = true;
+		}
+
+		/// <summary>
+		/// Checks for acceptable angle and ray cast.
+		/// </summary>
+		/// <param name="line">Line from this entity to target entity.</param>
+		/// <param name="target">Entity that will be ignored by ray cast.</param>
+		/// <returns></returns>
+		private bool SignalCanReach(ref LineD line, IMyEntity target)
+		{
+			if (_definition.EnforceAngle && UnacceptableAngle(ref line.Direction))
+			{
+				Log.DebugLog(target.nameWithId() + " rejected because it is outside angle limits");
+				return false;
+			}
+
+#if DEBUG
+			if (RayCastObstructed(ref line, _entity, target)) 
+			{
+				Log.DebugLog(target.nameWithId() + " is obstructed");
+				return false;
+			}
+			return true;
+#else
+			return !RayCastObstructed(ref line, _entity, target);
+#endif
+		}
+
+		private bool UnacceptableAngle(ref Vector3D worldDirection)
+		{
+			Debug.Assert(_definition.EnforceAngle, "Angle should not be enforced");
+
+			MatrixD rotate = _entity.WorldMatrixNormalizedInv;
+			Vector3D localDirection; Vector3D.Rotate(ref worldDirection, ref rotate, out localDirection);
+
+			float elevation, azimuth;
+			Vector3.GetAzimuthAndElevation(localDirection, out azimuth, out elevation);
+			return elevation < _definition.MinElevation || elevation > _definition.MaxElevation || azimuth < _definition.MinAzimuth || azimuth > _definition.MaxAzimuth;
+		}
+
+		private void ApplyJamming(ref Vector3D targetPosition, RadarEquipment targetDevice)
+		{
+			Debug.Assert(IsWorking, "This device is not working");
+			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
+			Debug.Assert(CanLocate, "This device cannot be jammed");
+			Debug.Assert(targetDevice.IsJammerOn, targetDevice.DebugName + " is not jammer");
+
+			LineD line = new LineD(_entity.GetCentre(), targetPosition);
+			if (SignalCanReach(ref line, targetDevice._entity))
+			{
+				// no receiver gain for jamming
+				double distSquared; Vector3D.DistanceSquared(ref targetPosition, ref line.From, out distSquared);
+				_radarJammed += targetDevice._jammerTransmitPower * targetDevice._definition.AntennaConstant / (float)distSquared;
+				Log.TraceLog("Jammed by " + targetDevice.DebugName + ", total: " + _radarJammed);
+			}
+		}
+
+		private float RadarSignal(ref Vector3D targetPosition, IMyEntity target, float targetRCS)
+		{
+			Debug.Assert(IsWorking, "This device is not working");
+			Debug.Assert(IsRadarOn, "This device is not radar");
+			Debug.Assert(!(target is IMyCubeBlock), "block not expected");
+
+			LineD line = new LineD(_entity.GetCentre(), targetPosition);
+			if (SignalCanReach(ref line, target))
+			{
+				double distSquared; Vector3D.DistanceSquared(ref targetPosition, ref line.From, out distSquared);
+				return Math.Max(_radarTransmitPower * _definition.AntennaConstant * _definition.AntennaConstant * targetRCS / ((float)distSquared * (float)distSquared) - _radarJammed * _definition.SignalToJamRatio, 0f);
+			}
+			else
+				return 0f;
+		}
+
+		private float PassiveSignalFromRadar(ref LineD vettedLine, RadarEquipment targetDevice)
+		{
+			Debug.Assert(IsWorking, "This device is not working");
+			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
+			Debug.Assert(_definition.PassiveRadarDetection, "This device cannot passively detect radar");
+			Debug.Assert(targetDevice.IsRadarOn, targetDevice.DebugName + " is not radar");
+
+			double distSquared; Vector3D.DistanceSquared(ref vettedLine.To, ref vettedLine.From, out distSquared);
+			return targetDevice._radarTransmitPower * targetDevice._definition.AntennaConstant * _definition.AntennaConstant / (float)distSquared;
+		}
+
+		private float PassiveSignalFromJammer(ref LineD vettedLine, RadarEquipment targetDevice)
+		{
+			Debug.Assert(IsWorking, "This device is not working");
+			Debug.Assert(targetDevice.IsWorking, targetDevice.DebugName + " is not working");
+			Debug.Assert(_definition.PassiveJammerDetection, "This device cannot passively detect jammer");
+			Debug.Assert(targetDevice.IsJammerOn, targetDevice.DebugName + " is not jammer");
+
+			double distSquared; Vector3D.DistanceSquared(ref vettedLine.To, ref vettedLine.From, out distSquared);
+			return targetDevice._jammerTransmitPower * targetDevice._definition.AntennaConstant * _definition.AntennaConstant / (float)distSquared;
+		}
+
+		private float PassiveSignalFromDecoy(ref Vector3D targetPosition, IMyEntity decoyGrid)
+		{
+			Debug.Assert(decoyGrid is IMyCubeGrid, "not a grid: " + decoyGrid.nameWithId());
+
+			LineD line = new LineD(_entity.GetCentre(), targetPosition);
+			if (SignalCanReach(ref line, decoyGrid))
+			{
+				double distSquared; Vector3D.DistanceSquared(ref targetPosition, ref line.From, out distSquared);
+				return  Definition.Decoy.MaxTransmitterPower * Definition.Decoy.AntennaConstant * _definition.AntennaConstant / (float)distSquared;
+			}
+			return 0f;
+		}
+
+		#endregion Update Logic
 
 	}
 }

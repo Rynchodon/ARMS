@@ -58,13 +58,13 @@ namespace Rynchodon.Update
 		{
 			#region Autopilot
 
-			RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
-			{
-				Radar = true,
-				LineOfSight = false,
-				MaxTargets_Tracking = 3,
-				MaxPowerLevel = 1000
-			};
+			//RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
+			//{
+			//	Radar = true,
+			//	LineOfSight = false,
+			//	MaxTargets_Tracking = 3,
+			//	MaxPowerLevel = 1000
+			//};
 
 			Action<IMyCubeBlock> construct = block => {
 				if (ShipAutopilot.IsAutopilotBlock(block))
@@ -72,8 +72,8 @@ namespace Rynchodon.Update
 					var sca = new ShipAutopilot(block);
 					RegisterForUpdates(ShipAutopilot.UpdateFrequency, sca.Update, block);
 					RegisterForUpdates(100, sca.m_block.NetworkNode.Update100, block);
-					RadarEquipment r = new RadarEquipment(block, apRadar, block);
-					RegisterForUpdates(100, r.Update100, block);
+					//RadarEquipment r = new RadarEquipment(block, apRadar, block);
+					//RegisterForUpdates(100, r.Update100, block);
 				}
 			};
 
@@ -197,21 +197,21 @@ namespace Rynchodon.Update
 
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
-				{
-					Radar = true,
-					LineOfSight = false,
-					MaxTargets_Tracking = 3,
-					MaxPowerLevel = 1000
-				};
+				//RadarEquipment.Definition apRadar = new RadarEquipment.Definition()
+				//{
+				//	Radar = true,
+				//	LineOfSight = false,
+				//	MaxTargets_Tracking = 3,
+				//	MaxPowerLevel = 1000
+				//};
 
 				Action<IMyCubeBlock> apConstruct = (block) => {
 					if (ShipAutopilot.IsAutopilotBlock(block))
 					{
 						nodeConstruct(block);
 						new AutopilotTerminal(block);
-						RadarEquipment r = new RadarEquipment(block, apRadar, block);
-						RegisterForUpdates(100, r.Update100, block);
+						//RadarEquipment r = new RadarEquipment(block, apRadar, block);
+						//RegisterForUpdates(100, r.Update100, block);
 					}
 				};
 
@@ -234,31 +234,18 @@ namespace Rynchodon.Update
 			#endregion
 
 			#region Radar
-			// must come after nodes are created
 
 			if (ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{
 				RegisterForBlock(typeof(MyObjectBuilder_Beacon), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
+					if (RadarEquipment.IsDefinedRadarEquipment(block))
+						new RadarEquipment(block);
 				});
 				RegisterForBlock(typeof(MyObjectBuilder_RadioAntenna), (block) => {
-					if (RadarEquipment.IsRadarOrJammer(block))
-					{
-						RadarEquipment r = new RadarEquipment(block);
-						RegisterForUpdates(100, r.Update100, block);
-					}
+					if (RadarEquipment.IsDefinedRadarEquipment(block))
+						new RadarEquipment(block);
 				});
-				//RegisterForEveryBlock((IMyCubeBlock block) => {
-				//	if (RadarEquipment.IsRadarOrJammer(block))
-				//	{
-				//		RadarEquipment r = new RadarEquipment(block);
-				//		RegisterForUpdates(100, r.Update100, block);
-				//	}
-				//});
+				RegisterForUpdates(100, RadarEquipment.UpdateAll);
 			}
 
 			#endregion

@@ -9,12 +9,6 @@
         <TypeId>Cockpit</TypeId>
         <SubtypeId>Autopilot-Block_Large</SubtypeId>
       </Id>
-      <Description>
-        Radar=true
-        LineOfSight=false
-        MaxTargets_Tracking=3
-        MaxPowerLevel=1000
-      </Description>
       <DisplayName>Autopilot Block</DisplayName>
       <Icon>Textures\Icon\Autopilot-Block.dds</Icon>
       <CubeSize>Large</CubeSize>
@@ -96,7 +90,7 @@
       <DamageEffectId>214</DamageEffectId>
     </Definition>
     
-    <!-- Radar -->
+    <!-- Dish -->
     
     <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
@@ -104,10 +98,10 @@
         <SubtypeId>LargeBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=5
-        MaxPowerLevel=25000
-        SignalEnhance=2
+        IsRadar=true
+        MaxTransmitterPower=2500000
+        AntennaGainFactor=49051
+        SignalToJamRatio=1
         MinAzimuth=-1.963495408493621
         MaxAzimuth=0.3926990816987241
         MinElevation=-0.3926990816987241
@@ -152,10 +146,10 @@
         <SubtypeId>SmallBlockRadarRynAR</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=5
-        MaxPowerLevel=10000
-        SignalEnhance=2
+        IsRadar=true
+        MaxTransmitterPower=15000
+        AntennaGainFactor=24818
+        SignalToJamRatio=1
         MinAzimuth=-1.963495408493621
         MaxAzimuth=0.3926990816987241
         MinElevation=-0.3926990816987241
@@ -197,17 +191,18 @@
       <DamageEffectId>214</DamageEffectId>
     </Definition>
     
+    <!-- Dome -->
+    
     <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
         <SubtypeId>Radar_A_Large_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=15
-        MaxPowerLevel=20000
-        SignalEnhance=2.25
-        JammingEffect=0.7
+        IsRadar=true
+        MaxTransmitterPower=1000000
+        AntennaGainFactor=62821
+        SignalToJamRatio=0.5
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
@@ -249,11 +244,10 @@
         <SubtypeId>Radar_A_Small_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=15
-        MaxPowerLevel=8000
-        SignalEnhance=2.25
-        JammingEffect=0.7
+        IsRadar=true
+        MaxTransmitterPower=100000
+        AntennaGainFactor=31785
+        SignalToJamRatio=0.5
         MinElevation=-1.1
       </Description>
       <DisplayName>Radar Dome</DisplayName>
@@ -292,18 +286,20 @@
       <DamageEffectId>214</DamageEffectId>
     </Definition>
     
+    <!-- Phased -->
+    
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>PhasedArrayRadar_Large_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=50
-        MaxPowerLevel=10000
-        SignalEnhance=4
-        JammingEffect=0.4
-        PassiveDetect_Radar=20000
+        IsRadar=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        MaxTransmitterPower=300000
+        AntennaGainFactor=90624
+        SignalToJamRatio=0.25
         MinElevation=-0.8
         MaxElevation=1.4
       </Description>
@@ -349,12 +345,12 @@
         <SubtypeId>PhasedArrayRadar_Small_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=50
-        MaxPowerLevel=4000
-        SignalEnhance=4
-        JammingEffect=0.4
-        PassiveDetect_Radar=40000
+        IsRadar=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        MaxTransmitterPower=30000
+        AntennaGainFactor=45852
+        SignalToJamRatio=0.25
         MinElevation=-0.8
         MaxElevation=1.4
       </Description>
@@ -395,18 +391,20 @@
       <DamageEffectId>214</DamageEffectId>
     </Definition>
     
+    <!-- Phased Offset -->
+    
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>PhasedArrayRadarOffset_Large_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=50
-        MaxPowerLevel=10000
-        SignalEnhance=4
-        JammingEffect=0.4
-        PassiveDetect_Radar=20000
+        IsRadar=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        MaxTransmitterPower=300000
+        AntennaGainFactor=90624
+        SignalToJamRatio=0.25
         MinElevation=-0.8
         MaxElevation=1.4
       </Description>
@@ -452,12 +450,12 @@
         <SubtypeId>PhasedArrayRadarOffset_Small_Souper07</SubtypeId>
       </Id>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=50
-        MaxPowerLevel=4000
-        SignalEnhance=4
-        JammingEffect=0.4
-        PassiveDetect_Radar=40000
+        IsRadar=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        MaxTransmitterPower=30000
+        AntennaGainFactor=45852
+        SignalToJamRatio=0.25
         MinElevation=-0.8
         MaxElevation=1.4
       </Description>
@@ -498,6 +496,8 @@
       <DamageEffectId>214</DamageEffectId>
     </Definition>
     
+    <!-- AWACS -->
+    
     <Definition xsi:type="MyObjectBuilder_BeaconDefinition">
       <Id>
         <TypeId>Beacon</TypeId>
@@ -514,12 +514,11 @@
         <MountPoint Side="Bottom" StartX="2.20" StartY="2.20" EndX="2.80" EndY="2.80" />
       </MountPoints>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=15
-        MaxPowerLevel=25000
-        SignalEnhance=2.4
-        JammingEffect=1.25
-        PassiveDetect_Radar=10000
+        IsRadar=true
+        PassiveRadarDetection=true
+        MaxTransmitterPower=5000000
+        AntennaGainFactor=49946
+        SignalToJamRatio=4
         MinElevation=-1.4
         MinAzimuth=-1.57
         MaxAzimuth=1.57
@@ -561,12 +560,11 @@
       <CubeSize>Small</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
       <Description>
-        Radar=true
-        MaxTargets_Tracking=15
-        MaxPowerLevel=10000
-        SignalEnhance=2.4
-        JammingEffect=1.25
-        PassiveDetect_Radar=20000
+        IsRadar=true
+        PassiveRadarDetection=true
+        MaxTransmitterPower=500000
+        AntennaGainFactor=25271
+        SignalToJamRatio=4
         MinElevation=-1.4
         MinAzimuth=-1.57
         MaxAzimuth=1.57
@@ -604,15 +602,71 @@
       <DamagedSound>ParticleElectrical</DamagedSound>
     </Definition>
     
+    <!-- AESA -->
+    <!--
+    <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
+      <Id>
+        <TypeId>RadioAntenna</TypeId>
+        <SubtypeId>ARMS_Radar_AESA_Small</SubtypeId>
+      </Id>
+      <Description>
+        IsRadar=true
+        IsJammer=true
+        PassiveRadarDetection=true
+        PassiveJammerDetection=true
+        MaxTransmitterPower=15000
+        AntennaGainFactor=36475
+        SignalToJamRatio=0.1
+        MinElevation=-1.05
+        MaxElevation=1.05
+        MinAzimuth=-1.05
+        MaxAzimuth=1.05
+      </Description>
+      <DisplayName>AESA Radar</DisplayName>
+      <Icon>Textures\Icons\LargeBlockRadarRynAR.dds</Icon>
+      <CubeSize>Small</CubeSize>
+      <BlockTopology>TriangleMesh</BlockTopology>
+      <Size x="1" y="1" z="3" />
+      <ModelOffset x="0" y="0" z="0" />
+      <Model>Models\Cubes\AESA.mwm</Model>
+      <Components>
+        <Component Subtype="SteelPlate" Count="45" />
+        <Component Subtype="Construction" Count="36" />
+        <Component Subtype="Superconductor" Count="5" />
+        <Component Subtype="MetalGrid" Count="17" />
+        <Component Subtype="Detector" Count="5" />
+        <Component Subtype="LargeTube" Count="30" />
+        <Component Subtype="RadioCommunication" Count="10" />
+        <Component Subtype="SmallTube" Count="50" />
+        <Component Subtype="Motor" Count="2" />
+        <Component Subtype="Computer" Count="4" />
+        <Component Subtype="SteelPlate" Count="65" />
+      </Components>
+      <CriticalComponent Subtype="Computer" Index="0" />
+      <BlockPairName>AP_Radar_AESA</BlockPairName>
+      <MirroringX>None</MirroringX>
+      <MirroringY>None</MirroringY>
+      <MirroringZ>None</MirroringZ>
+      <Center x="0" y="0" z="1" />
+      <BuildTimeSeconds>20</BuildTimeSeconds>
+      <EdgeType>Light</EdgeType>
+      <ResourceSinkGroup>Utility</ResourceSinkGroup>
+      <MaxRange>50000</MaxRange>
+      <DamageEffectId>213</DamageEffectId>
+      <DamagedSound>ParticleWeapExpl</DamagedSound>
+    </Definition>
+    -->
+    <!-- Jammer -->
+    
     <Definition xsi:type="MyObjectBuilder_RadioAntennaDefinition">
       <Id>
         <TypeId>RadioAntenna</TypeId>
         <SubtypeId>AP_Radar_Jammer_Large</SubtypeId>
       </Id>
       <Description>
-        MaxTargets_Jamming=1
-        MaxPowerLevel=25000
-        SignalEnhance=2
+        IsJammer=true
+        MaxTransmitterPower=1000000
+        AntennaGainFactor=20106
         MinElevation=-1.3
         MaxElevation=1.3
       </Description>
@@ -663,9 +717,9 @@
         <SubtypeId>AP_Radar_Jammer_Small</SubtypeId>
       </Id>
       <Description>
-        MaxTargets_Jamming=1
-        MaxPowerLevel=10000
-        SignalEnhance=2
+        IsJammer=true
+        MaxTransmitterPower=100000
+        AntennaGainFactor=20106
         MinElevation=-1.3
         MaxElevation=1.3
       </Description>

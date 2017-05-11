@@ -302,7 +302,7 @@ namespace Rynchodon.Utility.Network
 			TValue value;
 			if (!_orphanValues.TryGetValue(entityId, out value))
 			{
-				traceLog("no orphan value for block: " + entityId);
+				traceLog("no orphan value for entity: " + entityId);
 				return;
 			}
 

@@ -32,17 +32,22 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		[Flags]
-		public enum UpdateTime : byte
+		public enum DetectedBy : byte
 		{
-			None = 1 << 0,
+			None = 0 << 0,
+			/// <summary>Entity was broadcasting its position</summary>
 			Broadcasting = 1 << 1,
-			HasRadar = 1 << 3,
-			HasJammer = 1 << 4
+			/// <summary>Entity's radar was detected</summary>
+			HasRadar = 1 << 2,
+			/// <summary>Entity's jammer was detected</summary>
+			HasJammer = 1 << 3,
+			/// <summary>Entity was detected by radar</summary>
+			ByRadar = 1 << 4
 		}
 
 		public enum EntityType : byte { None, Grid, Character, Missile, Unknown }
 
-		public const long TicksPerTenthSecond = TimeSpan.TicksPerSecond / 10, RecentTicks = TimeSpan.TicksPerSecond * 10;
+		public const long TicksPerTenthSecond = TimeSpan.TicksPerSecond / 10, RecentTicks = TimeSpan.TicksPerSecond * 2;
 
 		public static readonly TimeSpan MaximumLifetime = new TimeSpan(24, 0, 0), RecentSpan = new TimeSpan(RecentTicks);
 
@@ -206,21 +211,21 @@ namespace Rynchodon.AntennaRelay
 			value_isValid = true;
 		}
 
-		public LastSeen(IMyEntity entity, UpdateTime times)
+		public LastSeen(IMyEntity entity, DetectedBy times)
 			: this(entity)
 		{
-			if ((times & UpdateTime.Broadcasting) != 0)
+			if ((times & DetectedBy.Broadcasting) != 0)
 				this.m_lastBroadcast = OlderBy.MinAge;
-			if ((times & UpdateTime.HasJammer) != 0)
+			if ((times & DetectedBy.HasJammer) != 0)
 				this.m_lastRadar = OlderBy.MinAge;
-			if ((times & UpdateTime.HasRadar) != 0)
+			if ((times & DetectedBy.HasRadar) != 0)
 				this.m_lastJam = OlderBy.MinAge;
 		}
 
 		/// <summary>
 		/// Creates a LastSeen for an entity that was detected with an active radar scan.
 		/// </summary>
-		public LastSeen(IMyEntity entity, UpdateTime times, RadarInfo info)
+		public LastSeen(IMyEntity entity, DetectedBy times, RadarInfo info)
 			: this(entity, times)
 		{
 			this.Info = info;

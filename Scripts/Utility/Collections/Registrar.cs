@@ -69,13 +69,15 @@ namespace Rynchodon
 			public static IEnumerable<T> Scripts()
 			{
 				using (m_lock.AcquireSharedUsing())
-					return m_dictionary.Values;
+					foreach (T script in m_dictionary.Values)
+						yield return script;
 			}
 
 			public static IEnumerable<KeyValuePair<long, T>> IdScripts()
 			{
 				using (m_lock.AcquireSharedUsing())
-					return m_dictionary;
+					foreach (KeyValuePair<long, T> pair in m_dictionary)
+						yield return pair;
 			}
 
 			public static bool Contains(long entityId)

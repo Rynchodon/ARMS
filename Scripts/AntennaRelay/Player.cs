@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if DEBUG
+//#define TRACE
+#endif
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Rynchodon.Settings;
@@ -17,7 +21,7 @@ using VRageMath;
 
 namespace Rynchodon.AntennaRelay
 {
-	public class Player
+	public sealed class Player
 	{
 
 		private struct DistanceSeen : IComparable<DistanceSeen>
@@ -63,7 +67,7 @@ namespace Rynchodon.AntennaRelay
 		private readonly Logger myLogger;
 
 		private readonly Dictionary<UserSettings.ByteSettingName, GpsData> Data = new Dictionary<UserSettings.ByteSettingName, GpsData>();
-		private readonly HashSet<MyEntity> m_updated = new HashSet<MyEntity>();
+		private readonly HashSet<IMyCubeGrid> m_haveTerminalAccess = new HashSet<IMyCubeGrid>();
 
 		private IMyEntity m_controlled;
 		private Func<RelayStorage> m_storage;
@@ -89,11 +93,11 @@ namespace Rynchodon.AntennaRelay
 			List<IMyGps> list = MyAPIGateway.Session.GPS.GetGpsList(myPlayer.IdentityId);
 			if (list != null)
 			{
-				myLogger.debugLog("# of gps: " + list.Count);
+				myLogger.traceLog("# of gps: " + list.Count);
 				foreach (IMyGps gps in list)
 					if (gps.Description != null && gps.Description.EndsWith(descrEnd))
 					{
-						myLogger.debugLog("old gps: " + gps.Name + ", " + gps.Coords);
+						myLogger.traceLog("old gps: " + gps.Name + ", " + gps.Coords);
 						MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
 					}
 			}
@@ -200,19 +204,45 @@ namespace Rynchodon.AntennaRelay
 				pair.Value.Prepare();
 			}
 
+			myLogger.traceLog("primary node: " + store.PrimaryNode.DebugName);
+
+			m_haveTerminalAccess.Clear();
+			foreach (RelayNode node in Registrar.Scripts<RelayNode>())
+			{
+				MyCubeGrid grid = (node.Entity as MyCubeBlock)?.CubeGrid;
+				myLogger.traceLog("grid: " + grid.nameWithId() + ", node storage: " + node.GetStorage()?.PrimaryNode.DebugName);
+				if (grid != null && node.GetStorage()?.PrimaryNode == store.PrimaryNode && m_haveTerminalAccess.Add(grid))
+					foreach (var aGrid in Attached.AttachedGrid.AttachedGrids(grid, Attached.AttachedGrid.AttachmentKind.Terminal, true))
+						m_haveTerminalAccess.Add(aGrid);
+			}
+
 			store.ForEachLastSeen((LastSeen seen) => {
+				myLogger.traceLog("seen: " + seen.Entity.nameWithId());
+
 				if (!seen.isRecent())
+				{
+					myLogger.traceLog("not recent: " + seen.Entity.nameWithId());
 					return;
+				}
 
 				if (seen.isRecent_Broadcast())
 				{
-					//myLogger.traceLog("already visible: " + seen.Entity.getBestName(), "UpdateGPS()");
+					myLogger.traceLog("already visible: " + seen.Entity.getBestName());
+					return;
+				}
+
+				if (seen.Entity is IMyCubeGrid && m_haveTerminalAccess.Contains((IMyCubeGrid)seen.Entity))
+				{
+					myLogger.traceLog("terminal linked: " + seen.Entity.nameWithId());
 					return;
 				}
 
 				UserSettings.ByteSettingName setting;
 				if (!CanDisplay(seen, out setting))
+				{
+					myLogger.traceLog("cannot display: " + seen.Entity.nameWithId());
 					return;
+				}
 
 				GpsData relateData;
 				if (!Data.TryGetValue(setting, out relateData))
@@ -222,18 +252,20 @@ namespace Rynchodon.AntennaRelay
 				}
 
 				if (relateData.MaxOnHUD == 0)
+				{
+					myLogger.traceLog("type not permitted: " + seen.Entity.nameWithId());
 					return;
+				}
 
+				myLogger.traceLog("approved: " + seen.Entity.nameWithId());
 				float distance = Vector3.DistanceSquared(myPosition, seen.GetPosition());
 				relateData.distanceSeen.Add(new DistanceSeen(distance, seen));
 			});
 
-			m_updated.Clear(); 
+			m_haveTerminalAccess.Clear();
 			
 			foreach (var pair in Data)
 				UpdateGPS(pair.Key, pair.Value);
-
-			m_updated.Clear();
 		}
 
 		private void UpdateGPS(UserSettings.ByteSettingName setting, GpsData relateData)
@@ -281,16 +313,16 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (entity != seen.Entity)
 					{
-						if (!m_updated.Contains(entity))
-							MyHud.LocationMarkers.UnregisterMarker(entity);
+						myLogger.debugLog("removing marker: " + entity.nameWithId());
+						MyHud.LocationMarkers.UnregisterMarker(entity);
 					}
-					else
+					else if (MyHud.LocationMarkers.MarkerEntities.ContainsKey(entity))
 						continue;
 				}
 
 				entity = (MyEntity)seen.Entity;
 				relateData.entities[index] = entity;
-				m_updated.Add(entity);
+				myLogger.debugLog("adding marker: " + entity.nameWithId());
 				MyHud.LocationMarkers.RegisterMarker(entity, new MyHudEntityParams() { FlagsEnum = MyHudIndicatorFlagsEnum.SHOW_ALL, Text = new StringBuilder(name), OffsetText = true, TargetMode = seRelate });
 			}
 
@@ -300,67 +332,12 @@ namespace Rynchodon.AntennaRelay
 				MyEntity entity = relateData.entities[index];
 				if (entity != null)
 				{
-					myLogger.traceLog("detritus: " + entity.nameWithId());
+					myLogger.debugLog("removing marker: " + entity.nameWithId());
 					MyHud.LocationMarkers.UnregisterMarker(entity);
 					relateData.entities[index] = null;
 				}
 				index++;
 			}
-		}
-
-		private StringBuilder m_descrParts = new StringBuilder();
-
-		private string GetDescription(LastSeen seen)
-		{
-			m_descrParts.Clear();
-
-			if (seen.isRecent_Radar())
-				m_descrParts.Append("Has Radar, ");
-
-			if (seen.isRecent_Jam())
-				m_descrParts.Append("Has Jammer, ");
-
-			m_descrParts.Append("ID:");
-			m_descrParts.Append(seen.Entity.EntityId);
-			m_descrParts.Append(", ");
-
-			if (seen.RadarInfoIsRecent())
-			{
-				m_descrParts.Append(seen.Info.Pretty_Volume());
-				m_descrParts.Append(", ");
-			}
-
-			m_descrParts.Append(descrEnd);
-
-			return m_descrParts.ToString();
-		}
-
-		private bool Update(IMyGps gps, string name, string description, Vector3D coords)
-		{
-			bool updated = false;
-
-			if (gps.Name != name && name != null)
-			{
-				gps.Name = name;
-				updated = true;
-			}
-			if (gps.Description != description)
-			{
-				gps.Description = description;
-				updated = true;
-			}
-			if (gps.Coords != coords)
-			{
-				gps.Coords = coords;
-				updated = true;
-			}
-			if (!gps.ShowOnHud)
-			{
-				gps.ShowOnHud = true;
-				updated = true;
-			}
-
-			return updated;
 		}
 
 		private bool CanDisplay(LastSeen seen, out UserSettings.ByteSettingName settingName)

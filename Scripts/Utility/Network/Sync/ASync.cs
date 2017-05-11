@@ -16,7 +16,9 @@ namespace Rynchodon.Utility.Network
 	/// </summary>
 	public abstract class ASync : LogWise
 	{
-
+		/// <summary>
+		/// Serialized as byte; do not change order.
+		/// </summary>
 		public enum Id : byte
 		{
 			None,
@@ -74,6 +76,9 @@ namespace Rynchodon.Utility.Network
 			WeaponTargeting_Range,
 			WeaponTargeting_TargetBlocks,
 			WeaponTargeting_GpsList,
+
+			RadarEquipment_RadarPowerLevel,
+			RadarEquipment_JammerPowerLevel,
 		}
 
 		[Serializable]
@@ -262,9 +267,9 @@ namespace Rynchodon.Utility.Network
 		/// <param name="value">The value as a string</param>
 		public abstract void SetValueFromSave(long entityId, string value);
 
-		protected void LogMissingFromRegistrar(long blockId, bool network, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		protected void LogMissingFromRegistrar(long entityId, bool network, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			alwaysLog("block not found in Registrar: " + blockId, network ? Logger.severity.WARNING : Logger.severity.ERROR, _id.ToString(), filePath: filePath, member: member, lineNumber: lineNumber);
+			alwaysLog("entity not found in Registrar: " + entityId, network ? Logger.severity.WARNING : Logger.severity.ERROR, filePath: filePath, member: member, lineNumber: lineNumber);
 		}
 
 		/// <summary>

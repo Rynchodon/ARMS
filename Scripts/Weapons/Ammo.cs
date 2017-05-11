@@ -51,7 +51,7 @@ namespace Rynchodon.Weapons
 			public float AcquisitionAngle = MathHelper.Pi;
 			/// <summary>Set automatically, cosine of AcquisitionAngle.</summary>
 			public float CosAcquisitionAngle;
-			/// <summary>How visible the missile is to radar.</summary>
+			[Obsolete]
 			public float RadarReflectivity = 0.025f;
 
 			/// <summary>For ICBM, distance from launcher when boost phase ends</summary>

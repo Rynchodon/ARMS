@@ -213,12 +213,22 @@ namespace Rynchodon
 
 		public static bool canConsiderFriendly(this long identityId, IMyCubeGrid target)
 		{
-			return toIsFriendly(getRelationsTo(identityId, target));
+			return toIsFriendly(getRelationsTo(identityId, target, Relations.Enemy));
+		}
+
+		public static bool canConsiderFriendly(this long identityId, IMyEntity target)
+		{
+			return toIsFriendly(getRelationsTo(identityId, target, Relations.Enemy));
 		}
 
 		public static bool canConsiderHostile(this long identityId, long target, bool ownerlessHostile = true)
 		{
-			return toIsHostile(getRelationsTo(identityId, target));
+			return toIsHostile(getRelationsTo(identityId, target), ownerlessHostile);
+		}
+
+		public static bool canConsiderHostile(this long identityId, IMyEntity target, bool ownerlessHostile = true)
+		{
+			return toIsHostile(getRelationsTo(identityId, target, Relations.Enemy), ownerlessHostile);
 		}
 
 

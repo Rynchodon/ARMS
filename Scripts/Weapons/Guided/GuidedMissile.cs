@@ -202,8 +202,6 @@ namespace Rynchodon.Weapons.Guided
 						missile.ClearBlacklist();
 						if (missile.m_gravData != null)
 							missile.UpdateGravity();
-						if (missile.m_radar != null && missile.CurrentTarget.TType == TargetType.None)
-							missile.m_radar.Update100();
 					}
 					if (!missile.Stopped)
 						missile.UpdateNetwork();
@@ -315,11 +313,13 @@ namespace Rynchodon.Weapons.Guided
 		private RadarEquipment m_radar;
 		private bool m_destroyedNearbyMissiles;
 
+		public int ClusterCount
+		{
+			get { return myCluster == null ? 1 : myCluster.Slaves.Count + 1; }
+		}
+
 		public bool Stopped
 		{ get { return MyEntity.Closed || m_stage >= Stage.Terminated; } }
-
-		public float RadarReflectivity
-		{ get { return myDescr.RadarReflectivity; } }
 
 		private Ammo.AmmoDescription myDescr
 		{ get { return myAmmo.Description; } }
@@ -748,7 +748,7 @@ namespace Rynchodon.Weapons.Guided
 			}
 
 			//myLogger.debugLog("Updating launcher with location of this missile", "UpdateNetwork()");
-			store.Receive(new LastSeen(MyEntity, LastSeen.UpdateTime.None));
+			store.Receive(new LastSeen(MyEntity, LastSeen.DetectedBy.None));
 		}
 
 		private void UpdateRail()
