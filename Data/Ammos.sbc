@@ -12,7 +12,6 @@
         GuidanceSeconds=90;
         Acceleration=25;
         RotationPerUpdate=0.017453292519943;
-        RadarReflectivity=0.067;
         DetonateRange=3;
       </Description>
       <BasicProperties>
@@ -43,7 +42,6 @@
         GuidanceSeconds=60;
         Acceleration=100;
         RotationPerUpdate=0.017453292519943;
-        RadarReflectivity=0.053;
         HasAntenna=true;
         DetonateRange=3;
         EMP_Strength=300000;
@@ -77,7 +75,6 @@
         GuidanceSeconds=15;
         Acceleration=100;
         RotationPerUpdate=0.01;
-        RadarReflectivity=0.081;
         HasAntenna=true;
         ClusterCooldown=5;
       </Description>
@@ -109,7 +106,6 @@
         GuidanceSeconds=15;
         AcquisitionAngle=0.5;
         Acceleration=400;
-        RadarReflectivity=0.081;
         TargetRange=800;
         DetonateRange=10;
       </Description>
