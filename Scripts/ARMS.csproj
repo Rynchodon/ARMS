@@ -118,6 +118,7 @@
       <HintPath>..\..\..\..\..\..\..\..\Games\Steam\SteamApps\common\SpaceEngineers\Bin64\VRage.Math.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="VRage.Render, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AntennaRelay\ComponentLaser.cs" />
