@@ -297,6 +297,7 @@
     <Compile Include="Utility\Extensions\VectorExtensions.cs" />
     <Compile Include="Utility\FastResourceLock.cs" />
     <Compile Include="Utility\Globals.cs" />
+    <Compile Include="Utility\Mods.cs" />
     <Compile Include="Utility\Lazy.cs" />
     <Compile Include="Utility\LineSegment.cs" />
     <Compile Include="Utility\LineSegmentD.cs" />
