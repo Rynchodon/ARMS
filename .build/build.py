@@ -4,7 +4,9 @@
 # for Space Engineers to load (and a bunch of other useful deploy tasks)
 
 import datetime, errno, logging, os.path, psutil, shutil, stat, subprocess, sys, time
+from subprocess import Popen, PIPE
 
+buildDir = os.getcwd()
 scriptDir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 logging.basicConfig(filename = scriptDir + r"\build.log", filemode = 'w', format = '%(asctime)s %(levelname)s: %(message)s', level = logging.DEBUG)
@@ -95,7 +97,18 @@ def copyWithExtension(l_from, l_to, l_ext, log):
 				if log:
 					logging.info ("Copying file: " + file)
 				shutil.copy2(sourceFile, target)
-				
+
+
+def run_sepl(exe_path, json_config_path, build_dir, publish=False):
+	command_parts = [exe_path, json_config_path, 'publish={}'.format(publish)]
+	print('Running SEPL command:', command_parts)
+	proc = Popen(command_parts, stdout=PIPE, stderr=PIPE, cwd=build_dir)
+	(stdout, stderr) = proc.communicate()
+	if proc.returncode == 0:
+		print("SEPL succeeded.\n", stdout.decode('ascii'))
+	else:
+		raise ValueError('SEPL error:\n', stderr.decode('ascii'))
+
 
 exec(open(buildIni).read())
 
@@ -191,18 +204,14 @@ for module in modules[:]:
 #	os.system('start /wait cmd /c "' + pathPublish + '" ' + build)
 #else:
 
+run_sepl(
+	SpaceEngineers + '\\SpaceEngineersPluginLoader\\PluginManager.exe',
+	startDir + '\\plugin.json',
+	buildDir,
+	("release" in str.lower(build))
+)
 
 SpaceBin = SpaceEngineers + '\Bin64'
-LoadArmsExe = SpaceBin + '\LoadARMS.exe'
-
-source = cSharp + 'bin/x64/' + build
-command = '""' + LoadArmsExe + '" --author=Rynchodon --repo=ARMS'
-if "release" in str.lower(build):
-	command = command + ' --publish '
-command = command + ' ARMS.dll ..\..\..\..\README.md ..\..\..\..\LICENSE"'
-logging.info(command)
-os.system('start /D "' + source + '" /WAIT cmd.exe /C ' + command)
-
 if not "release" in str.lower(build):
 	SpaceEngineers = SpaceBin + '\SpaceEngineers.exe'
 	os.system('start /D "' + SpaceBin + '" cmd /c "' + SpaceEngineers + '"')
