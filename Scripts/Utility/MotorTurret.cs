@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
@@ -56,7 +57,6 @@ namespace Rynchodon
 		}
 
 		private readonly IMyCubeBlock FaceBlock;
-		private readonly Logger myLogger;
 		private readonly StatorChangeHandler OnStatorChange;
 
 		private float my_RotationSpeedMulitplier = def_RotationSpeedMultiplier;
@@ -77,9 +77,9 @@ namespace Rynchodon
 				{
 					m_claimedElevation = false;
 					if (Static.claimedStators.Remove(value_statorEl))
-						myLogger.debugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
+						Log.DebugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
 					else
-						myLogger.alwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
+						Log.AlwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
 				}
 				value_statorEl = value;
 			}
@@ -97,18 +97,19 @@ namespace Rynchodon
 				{
 					m_claimedAzimuth = false;
 					if (Static.claimedStators.Remove(value_statorAz))
-						myLogger.debugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
+						Log.DebugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
 					else
-						myLogger.alwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
+						Log.AlwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
 				}
 				value_statorAz = value;
 			}
 		}
 
+		private Logable Log { get { return new Logable(FaceBlock); } }
+
 		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null)
 		{
 			this.FaceBlock = block;
-			this.myLogger = new Logger(block);
 			this.OnStatorChange = handler;
 			this.SetupStators();
 		}
@@ -145,7 +146,7 @@ namespace Rynchodon
 		/// </summary>
 		public void FaceTowards(DirectionWorld target)
 		{
-			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 			Debug.Assert(Threading.ThreadTracker.IsGameThread, "not game thread");
 
 			if (!SetupStators())
@@ -245,7 +246,7 @@ namespace Rynchodon
 
 		public void Stop()
 		{
-			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			if (!StatorOK())
 				return;
@@ -264,12 +265,12 @@ namespace Rynchodon
 			if (!m_claimedElevation)
 			{
 				m_claimedElevation = Static.claimedStators.Add(StatorEl);
-				myLogger.debugLog("claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG, condition: m_claimedElevation);
+				Log.DebugLog("claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG, condition: m_claimedElevation);
 			}
 			if (!m_claimedAzimuth)
 			{
 				m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
-				myLogger.debugLog("claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG, condition: m_claimedAzimuth);
+				Log.DebugLog("claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG, condition: m_claimedAzimuth);
 			}
 			return m_claimedElevation || m_claimedAzimuth;
 		}
@@ -278,7 +279,7 @@ namespace Rynchodon
 		{
 			if (StatorOK())
 			{
-				//myLogger.debugLog("Stators are already set up", "SetupStators()");
+				//Log.DebugLog("Stators are already set up", "SetupStators()");
 				return ClaimStators();
 			}
 
@@ -287,7 +288,7 @@ namespace Rynchodon
 			IMyMotorRotor RotorEl;
 			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator, out RotorEl))
 			{
-				myLogger.debugLog("Failed to get StatorEl");
+				Log.DebugLog("Failed to get StatorEl");
 				StatorEl = null;
 				if (OnStatorChange != null)
 					OnStatorChange(StatorEl, StatorAz);
@@ -305,7 +306,7 @@ namespace Rynchodon
 			IMyMotorRotor RotorAz;
 			if (!GetStatorRotor(getBFrom, out tempStator, out RotorAz, StatorEl, RotorEl))
 			{
-				myLogger.debugLog("Failed to get StatorAz");
+				Log.DebugLog("Failed to get StatorAz");
 				StatorAz = null;
 				if (OnStatorChange != null)
 					OnStatorChange(StatorEl, StatorAz);
@@ -313,7 +314,7 @@ namespace Rynchodon
 			}
 			StatorAz = tempStator;
 
-			myLogger.debugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText);
+			Log.DebugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText);
 			if (OnStatorChange != null)
 				OnStatorChange(StatorEl, StatorAz);
 			Stop();
@@ -385,7 +386,7 @@ namespace Rynchodon
 
 		private void SetVelocity(IMyMotorStator Stator, float angle)
 		{
-			myLogger.debugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			// keep in mind, azimuth is undefined if elevation is straight up or straight down
 			float speed = angle.IsValid() ? MathHelper.Clamp(angle * RotationSpeedMultiplier, -mySpeedLimit, mySpeedLimit) : 0f;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Rynchodon.Utility;
 using VRage.Collections;
@@ -118,8 +118,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			return X * MathHelper.Sqrt3 + (Y - X) * MathHelper.Sqrt2 + Z - Y;
 		}
 
-		private readonly Logger m_logger;
-
 		/// <summary>Nodes that have not been testing for reachable, sorted by estimated distance to target set. Use AddOpenNode to add nodes.</summary>
 		public MyBinaryStructHeap<float, PathNode> m_openNodes;
 		/// <summary>Nodes that have been reached, indexed by position hash or "Key".</summary>
@@ -127,6 +125,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <summary>Nodes that have been reached that are not near anything.</summary>
 		public List<Vector3D> m_blueSkyNodes;
 		public bool Failed { get { return NodeDistance == MinNodeDistance && m_openNodes.Count == 0; } }
+		private Logable Log {
+			get {
+				return new Logable(
+					ResourcePool<FindingSet>.InstancesCreated.ToString(), 
+					m_referencePosition.ToString() + ":" + m_startPosition.ToString(), 
+					string.Concat(m_blueSkyNodes.Count, ':', m_reachedNodes.Count, ':', m_openNodes.Count));
+			}
+		}
 #if PROFILE
 			public int m_unreachableNodes;
 #endif
@@ -142,7 +148,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_reachedNodes = new Dictionary<long, PathNode>();
 			m_blueSkyNodes = new List<Vector3D>();
 			NodeDistance = DefaultNodeDistance << 1;
-			m_logger = new Logger(ResourcePool<FindingSet>.InstancesCreated.ToString, () => m_referencePosition.ToString() + ":" + m_startPosition.ToString(), () => string.Concat(m_blueSkyNodes.Count, ':', m_reachedNodes.Count, ':', m_openNodes.Count));
 #if PROFILE
 				m_unreachableNodes = 0;
 #endif
@@ -203,7 +208,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				maxNodeDistance = MinNodeDistance;
 			while (NodeDistance > maxNodeDistance)
 				NodeDistance = NodeDistance >> 1;
-			m_logger.debugLog("Finished setup. reference: " + reference + ", start: " + start + ", NodeDistance: " + NodeDistance, Logger.severity.DEBUG);
+			Log.DebugLog("Finished setup. reference: " + reference + ", start: " + start + ", NodeDistance: " + NodeDistance, Logger.severity.DEBUG);
 		}
 
 		/// <summary>
@@ -231,12 +236,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (halve)
 			{
 				NodeDistance = NodeDistance >> 1;
-				m_logger.debugLog("Halved node distance, now: " + NodeDistance);
+				Log.DebugLog("Halved node distance, now: " + NodeDistance);
 			}
 			else
 			{
 				NodeDistance = NodeDistance << 1;
-				m_logger.debugLog("Doubled node distance, now: " + NodeDistance);
+				Log.DebugLog("Doubled node distance, now: " + NodeDistance);
 			}
 
 			foreach (PathNode reachedNode in m_reachedNodes.Values)
@@ -298,7 +303,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			VectorExtensions.RoundTo(ref finishToPosition, NodeDistance);
 			Vector3D.Add(ref m_referencePosition, ref finishToPosition, out position);
 
-			m_logger.debugLog("m_reachedNodes == null", Logger.severity.FATAL, condition: m_reachedNodes == null);
+			Log.DebugLog("m_reachedNodes == null", Logger.severity.FATAL, condition: m_reachedNodes == null);
 
 			if (m_reachedNodes.ContainsKey(position.GetHash()))
 			{
@@ -340,12 +345,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 				resultKey += TurnPenalty * (1f - turn);
 			}
 
-			//m_logger.debugLog("DirectionFromParent is incorrect. DirectionFromParent: " + result.DirectionFromParent + ", parent: " + parent.Position + ", current: " + result.Position + ", direction: " +
+			//Log.DebugLog("DirectionFromParent is incorrect. DirectionFromParent: " + result.DirectionFromParent + ", parent: " + parent.Position + ", current: " + result.Position + ", direction: " +
 			//	Vector3.Normalize(result.Position - parent.Position), Logger.severity.ERROR, condition: !Vector3.Normalize(result.Position - parent.Position).Equals(result.DirectionFromParent, 0.01f));
-			//m_logger.debugLog("Length is incorrect. Length: " + (result.DistToCur - parent.DistToCur) + ", distance: " + Vector3D.Distance(result.Position, parent.Position), Logger.severity.ERROR,
+			//Log.DebugLog("Length is incorrect. Length: " + (result.DistToCur - parent.DistToCur) + ", distance: " + Vector3D.Distance(result.Position, parent.Position), Logger.severity.ERROR,
 			//	condition: Math.Abs((result.DistToCur - parent.DistToCur) - (Vector3D.Distance(result.Position, parent.Position))) > 0.01f);
 
-			//m_logger.debugLog("resultKey <= 0", Logger.severity.ERROR, condition: resultKey <= 0f);
+			//Log.DebugLog("resultKey <= 0", Logger.severity.ERROR, condition: resultKey <= 0f);
 			AddOpenNode(ref result, resultKey);
 			Profiler.EndProfileBlock();
 		}

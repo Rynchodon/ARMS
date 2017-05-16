@@ -1,4 +1,5 @@
 using System;
+using Rynchodon.Utility;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
@@ -29,8 +30,6 @@ namespace Rynchodon.Autopilot.Data
 	/// </summary>
 	public class PseudoBlock
 	{
-
-		protected readonly Logger m_logger;
 		private readonly Func<IMyCubeGrid> m_grid;
 		private ulong m_lastCalc_worldMatrix;
 		private MatrixD value_worldMatrix;
@@ -46,11 +45,13 @@ namespace Rynchodon.Autopilot.Data
 		public virtual string DisplayName
 		{ get { return Block != null ? Block.getBestName() : "Pseudo: " + LocalPosition.ToString(); } }
 
+		protected Logable Log { get { return Block != null ? new Logable(Block) : new Logable(m_grid.Invoke().DisplayName); } }
+
 		public MatrixD WorldMatrix
 		{
 			get
 			{
-				m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+				Log.DebugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
 
 				if (m_lastCalc_worldMatrix != Globals.UpdateCount)
 				{
@@ -66,7 +67,6 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		public PseudoBlock(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(block);
 			this.LocalMatrix = block.LocalMatrix;
 			this.m_grid = () => block.CubeGrid;
 			this.Block = block;
@@ -77,7 +77,6 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		protected PseudoBlock(Func<IMyCubeGrid> grid)
 		{
-			this.m_logger = new Logger(() => grid.Invoke().DisplayName);
 			this.m_grid = grid;
 		}
 
@@ -86,7 +85,6 @@ namespace Rynchodon.Autopilot.Data
 		/// </summary>
 		public PseudoBlock(Func<IMyCubeGrid> grid, Matrix local)
 		{
-			this.m_logger = new Logger(() => grid.Invoke().DisplayName);
 			this.LocalMatrix = local;
 			this.m_grid = grid;
 		}
@@ -106,7 +104,7 @@ namespace Rynchodon.Autopilot.Data
 
 			if (for2 == up2 || for2 == Base6Directions.GetFlippedDirection(up2))
 			{
-				m_logger.debugLog("incompatible directions, for2: " + for2 + ", up2: " + up2);
+				Log.DebugLog("incompatible directions, for2: " + for2 + ", up2: " + up2);
 				up2 = Base6Directions.GetPerpendicular(for2);
 			}
 
@@ -137,7 +135,7 @@ namespace Rynchodon.Autopilot.Data
 		{
 			if (forward == up || forward == Base6Directions.GetFlippedDirection(up))
 			{
-				m_logger.alwaysLog("incompatible directions, for2: " + forward + ", up2: " + up, Logger.severity.FATAL);
+				Log.AlwaysLog("incompatible directions, for2: " + forward + ", up2: " + up, Logger.severity.FATAL);
 				throw new ArgumentException("forward is not perpendicular to up");
 			}
 
@@ -189,11 +187,11 @@ namespace Rynchodon.Autopilot.Data
 
 			try
 			{
-				m_logger.debugLog("Closed block: " + obj.getBestName());
+				Log.DebugLog("Closed block: " + obj.getBestName());
 				calculateLocalMatrix();
 			}
 			catch (Exception ex)
-			{ m_logger.debugLog("Exception: " + ex); }
+			{ Log.DebugLog("Exception: " + ex); }
 		}
 
 		private void calculateLocalMatrix()

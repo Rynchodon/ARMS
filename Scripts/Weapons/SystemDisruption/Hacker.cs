@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Attached;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using SpaceEngineers.Game.ModAPI;
@@ -28,19 +29,19 @@ namespace Rynchodon.Weapons.SystemDisruption
 			return descr != null && descr.ToLower().Contains("hacker");
 		}
 
-		private readonly Logger m_logger;
 		private readonly IMyLandingGear m_hackBlock;
 
 		private TimeSpan m_nextHack;
 		private float m_strengthLeft;
 
+		private Logable Log { get { return new Logable(m_hackBlock as IMyCubeBlock); } }
+
 		public Hacker(IMyCubeBlock block)
 		{
-			m_logger = new Logger(block);
 			m_hackBlock = block as IMyLandingGear;
 
-			m_logger.debugLog("created for: " + block.DisplayNameText);
-			m_logger.debugLog("Not a hacker", Logger.severity.FATAL, condition: !IsHacker(block));
+			Log.DebugLog("created for: " + block.DisplayNameText);
+			Log.DebugLog("Not a hacker", Logger.severity.FATAL, condition: !IsHacker(block));
 		}
 
 		public void Update10()
@@ -62,11 +63,11 @@ namespace Rynchodon.Weapons.SystemDisruption
 			// break force might be removed from game entirely
 			//if (m_hackBlock.BreakForce > allowedBreakForce)
 			//{
-			//	m_logger.debugLog("break force too high: " + m_hackBlock.BreakForce);
+			//	Log.DebugLog("break force too high: " + m_hackBlock.BreakForce);
 			//	ITerminalProperty<float> prop = m_hackBlock.GetProperty("BreakForce") as ITerminalProperty<float>;
 			//	if (prop == null)
 			//	{
-			//		m_logger.debugLog("break force is disabled in SE", Logger.severity.INFO);
+			//		Log.DebugLog("break force is disabled in SE", Logger.severity.INFO);
 			//		allowedBreakForce = float.PositiveInfinity;
 			//	}
 			//	else
@@ -77,7 +78,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 				// landing gear is unbreakable, disconnect / fail if not otherwise attached
 				if (!AttachedGrid.IsGridAttached(m_hackBlock.CubeGrid as IMyCubeGrid, attached, AttachedGrid.AttachmentKind.Physics))
 				{
-					m_logger.debugLog("no other connection to attached, hacker must disconnect", Logger.severity.DEBUG);
+					Log.DebugLog("no other connection to attached, hacker must disconnect", Logger.severity.DEBUG);
 					ITerminalProperty<bool> autolock = m_hackBlock.GetProperty("Autolock") as ITerminalProperty<bool>;
 					if (autolock.GetValue(m_hackBlock))
 						autolock.SetValue(m_hackBlock, false);
@@ -119,7 +120,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 						disrupt = new MedicalRoom();
 						break;
 					default:
-						m_logger.alwaysLog("Case not implemented: " + i, Logger.severity.FATAL);
+						Log.AlwaysLog("Case not implemented: " + i, Logger.severity.FATAL);
 						continue;
 				}
 				foreach (IMyCubeGrid grid in AttachedGrid.AttachedGrids(attached, AttachedGrid.AttachmentKind.Terminal, true))

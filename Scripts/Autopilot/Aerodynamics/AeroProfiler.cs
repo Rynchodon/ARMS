@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 //#define TRACE
 #endif
 
@@ -89,7 +89,6 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private static ThreadManager Thread = new ThreadManager((byte)(Environment.ProcessorCount / 2), true, typeof(AeroProfiler).Name);
 
-		private readonly Logger m_logger;
 		private readonly MyCubeGrid m_grid;
 
 		public readonly Base6Directions.Direction? m_drawDirection;
@@ -104,9 +103,10 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		public bool Success { get; private set; }
 		public Vector3[] DragCoefficient { get; private set; }
 
+		private Logable Log { get { return new Logable(m_grid); } }
+
 		public AeroProfiler(IMyCubeGrid grid, Base6Directions.Direction? drawDirection = null)
 		{
-			this.m_logger = new Logger(grid);
 			this.m_grid = (MyCubeGrid)grid;
 			this.m_drawDirection = drawDirection;
 
@@ -146,7 +146,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private void Calculate()
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 			m_minCell = m_grid.Min - GridPadding;
 			m_maxCell = m_grid.Max + GridPadding;
 			m_sizeCell = m_maxCell - m_minCell + 1;
@@ -188,7 +188,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						if (Vector3.RectangularDistance(ref dragValues[0], ref dragValues[1]) < changeThreshold || Vector3.RectangularDistance(ref dragValues[0], ref dragValues[2]) < changeThreshold)
 						{
 							dragValues[0] = (dragValues[0] + dragValues[1]) * 0.5f;
-							m_logger.debugLog("Drag is stable at " + dragValues[0] +", direction: "+ Base6Directions.GetDirection(m_shipDirection), Logger.severity.DEBUG);
+							Log.DebugLog("Drag is stable at " + dragValues[0] +", direction: "+ Base6Directions.GetDirection(m_shipDirection), Logger.severity.DEBUG);
 							break;
 						}
 						if (steps == maxSteps)
@@ -199,7 +199,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						}
 					}
 
-					m_logger.debugLog("Steps: " + steps + ", current drag: " + dragValues[0] + ", previous drag: " + dragValues[1] + " and " + dragValues[2]);
+					Log.DebugLog("Steps: " + steps + ", current drag: " + dragValues[0] + ", previous drag: " + dragValues[1] + " and " + dragValues[2]);
 
 					steps++;
 					dragValues[2] = dragValues[1];
@@ -213,7 +213,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 					if (m_grid.BlocksCount != blockCount)
 					{
-						m_logger.debugLog("Block count changed from " + blockCount + " to " + m_grid.BlocksCount + ", cannot continue", Logger.severity.INFO);
+						Log.DebugLog("Block count changed from " + blockCount + " to " + m_grid.BlocksCount + ", cannot continue", Logger.severity.INFO);
 						break;
 					}
 				}
@@ -223,14 +223,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 					break;
 			}
 
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
 		private void Init()
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 			Vector3I top = m_sizeCell - GridPadding - 1;
 			Vector3I index;
 			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
@@ -242,20 +242,20 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						if (index.X < GridPadding || top.X < index.X || index.Y < GridPadding || top.Y < index.Y || index.Z < GridPadding || top.Z < index.Z)
 							data.Process = true;
 					}
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
 		private void SetDefault()
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 			Vector3I index;
 			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
 				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
 					for (index.Z = 0; index.Z < m_sizeCell.Z; index.Z++)
 						m_data[index.X, index.Y, index.Z].Copy(m_defaultData);
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
@@ -265,7 +265,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private void MoveAir()
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 			int dirDim = m_shipDirection.Max() == 0 ? 0 : m_sizeCell.Dot(ref m_shipDirection) - 1;
 
 			Vector3I index;
@@ -293,9 +293,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						if (dot == dirDim)
 							currentData.NextAirPress += m_defaultData.CurAirPress;
 
-						m_logger.traceLog("Cell: " + currentCell + ", " + currentData, condition: currentData.LogChange);
+						Log.TraceLog("Cell: " + currentCell + ", " + currentData, condition: currentData.LogChange);
 					}
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
@@ -309,7 +309,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			{
 				if (currentData.CurVelocity.AbsMax() < 0.1f)
 				{
-					m_logger.traceLog("Air is stopped at " + currentCell + ", " + currentData);
+					Log.TraceLog("Air is stopped at " + currentCell + ", " + currentData);
 					break;
 				}
 
@@ -353,7 +353,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 					break;
 				}
 			}
-			m_logger.debugLog("Too many tries", Logger.severity.WARNING, condition: tries >= 100);
+			Log.DebugLog("Too many tries", Logger.severity.WARNING, condition: tries >= 100);
 			currentData.BlockTest = true;
 		}
 
@@ -364,8 +364,8 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			float projectionLength; Vector3.Dot(ref currentVelocity, ref normal, out projectionLength);
 			Vector3 projection; Vector3.Multiply(ref normal, -projectionLength, out projection);
 
-			m_logger.traceLog("Air intersects block, cell: " + currentCell + ", velocity: " + currentVelocity + ", normal: " + normal + ", dot: " + projectionLength);
-			m_logger.traceLog("projection: " + projection + ", " + currentData);
+			Log.TraceLog("Air intersects block, cell: " + currentCell + ", velocity: " + currentVelocity + ", normal: " + normal + ", dot: " + projectionLength);
+			Log.TraceLog("projection: " + projection + ", " + currentData);
 
 			Vector3.Add(ref currentVelocity, ref projection, out currentVelocity);
 			Vector3.Subtract(ref currentVelocity, ref currentData.DiffuseVelocity, out currentData.MoveVelocity);
@@ -411,7 +411,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 					if (!m_grid.Intersects(ref extraLine, m_rayCastCells, out result, IntersectionFlags.ALL_TRIANGLES))
 					{
-						m_logger.traceLog("No hit: " + extraLine.From + " to " + extraLine.To);
+						Log.TraceLog("No hit: " + extraLine.From + " to " + extraLine.To);
 						return false;
 					}
 
@@ -426,7 +426,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						hitNormal = normal;
 					else if (!hitNormal.Equals(normal, 0.01f) && !hitNormal.Equals(-normal, 0.01f))
 					{
-						m_logger.traceLog("Normal discrepancy between " + hitNormal + " and " + normal);
+						Log.TraceLog("Normal discrepancy between " + hitNormal + " and " + normal);
 						return false;
 					}
 				}
@@ -484,7 +484,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				currentData.NextAirPress -= airMove;
 				targetData.NextAirPress += airMove;
 
-				m_logger.traceLog("Current: " + currentCell + ", other: " + targetCell + ", target ratio: " + targetRatio + ", air moving: " + airMove);
+				Log.TraceLog("Current: " + currentCell + ", other: " + targetCell + ", target ratio: " + targetRatio + ", air moving: " + airMove);
 			}
 		}
 
@@ -494,7 +494,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private void DiffuseAir()
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 			Vector3I index;
 			for (index.X = 0; index.X < m_sizeCell.X; index.X++)
 				for (index.Y = 0; index.Y < m_sizeCell.Y; index.Y++)
@@ -528,9 +528,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 							Vector3.Add(ref currentData.DiffuseVelocity, ref diffusionVelocity, out currentData.DiffuseVelocity);
 						}
 						
-						m_logger.traceLog("Cell: " + cell + ", " + currentData, condition: currentData.LogChange);
+						Log.TraceLog("Cell: " + cell + ", " + currentData, condition: currentData.LogChange);
 					}
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
@@ -541,7 +541,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private void CalculateDrag(out Vector3 drag)
 		{
 			Profiler.StartProfileBlock();
-			m_logger.traceLog("entered");
+			Log.TraceLog("entered");
 
 			drag = Vector3.Zero;
 
@@ -559,7 +559,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			float gridSize = m_grid.GridSize;
 			Vector3.Multiply(ref drag, gridSize * gridSize, out drag);
-			m_logger.traceLog("exiting");
+			Log.TraceLog("exiting");
 			Profiler.EndProfileBlock();
 		}
 
@@ -623,9 +623,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 							oppositeIndex.Z = index.Z;
 
 							if (oppositeIndex == index)
-								m_logger.debugLog("X value: " + currentData.CurVelocity.X + ", same index: " + index + ", " + currentData);
+								Log.DebugLog("X value: " + currentData.CurVelocity.X + ", same index: " + index + ", " + currentData);
 							else if (!IsGridIndex(ref oppositeIndex))
-								m_logger.debugLog("Opposite index is out of range, cell: " + (index + m_minCell) + ", " + currentData);
+								Log.DebugLog("Opposite index is out of range, cell: " + (index + m_minCell) + ", " + currentData);
 							else
 							{
 								AeroCell oppositeData;
@@ -633,7 +633,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 								float sum = currentData.CurVelocity.X * currentData.CurAirPress + oppositeData.CurVelocity.X * oppositeData.CurAirPress;
 								if (Math.Abs(sum) > min)
-									m_logger.debugLog("X sum: " + sum + ", cell: " + (index + m_minCell) + ", " + currentData + ", opposite: " + (oppositeIndex + m_minCell) + ", " + oppositeData);
+									Log.DebugLog("X sum: " + sum + ", cell: " + (index + m_minCell) + ", " + currentData + ", opposite: " + (oppositeIndex + m_minCell) + ", " + oppositeData);
 							}
 						}
 
@@ -645,9 +645,9 @@ namespace Rynchodon.Autopilot.Aerodynamics
 							oppositeIndex.Z = index.Z;
 
 							if (oppositeIndex == index)
-								m_logger.debugLog("Y value: " + currentData.CurVelocity.Y + ", same index: " + index + ", " + currentData);
+								Log.DebugLog("Y value: " + currentData.CurVelocity.Y + ", same index: " + index + ", " + currentData);
 							else if (!IsGridIndex(ref oppositeIndex))
-								m_logger.debugLog("Opposite index is out of range, cell: " + (index + m_minCell) + ", " + currentData);
+								Log.DebugLog("Opposite index is out of range, cell: " + (index + m_minCell) + ", " + currentData);
 							else
 							{
 								AeroCell oppositeData;
@@ -655,7 +655,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 								float sum = currentData.CurVelocity.Y * currentData.CurAirPress + oppositeData.CurVelocity.Y * oppositeData.CurAirPress;
 								if (Math.Abs(sum) > min)
-									m_logger.debugLog("Y sum: " + sum + ", cell: " + (index + m_minCell) + ", " + currentData + ", opposite: " + (oppositeIndex + m_minCell) + ", " + oppositeData);
+									Log.DebugLog("Y sum: " + sum + ", cell: " + (index + m_minCell) + ", " + currentData + ", opposite: " + (oppositeIndex + m_minCell) + ", " + oppositeData);
 							}
 						}
 					}
@@ -719,7 +719,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 						Vector3D worldEnd; Vector3D.Add(ref worldPosition, ref direction, out worldEnd);
 						MySimpleObjectDraw.DrawLine(worldPosition, worldEnd, Globals.WeaponLaser, ref speedColourVector, 0.05f);
 
-						//m_logger.debugLog("Cell: " + (index + m_minCell) + ", " + currentData + ", sphere: " + airPressColour + ", line: " + speedColour);
+						//Log.DebugLog("Cell: " + (index + m_minCell) + ", " + currentData + ", sphere: " + airPressColour + ", line: " + speedColour);
 					}
 		}
 

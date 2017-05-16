@@ -32,7 +32,6 @@ namespace Rynchodon.Instructions
 
 		private static readonly Regex InstructionSets = new Regex(@"\[.*?\]");
 
-		private readonly Logger m_logger;
 		private readonly List<TextMonitor> m_monitors = new List<TextMonitor>();
 
 		private bool m_displayNameDirty = true;
@@ -43,9 +42,11 @@ namespace Rynchodon.Instructions
 
 		public bool HasInstructions { get; private set; }
 
+		private Logable Log
+		{ get { return new Logable(m_block); } }
+
 		protected BlockInstructions(IMyCubeBlock block)
 		{
-			m_logger = new Logger(block as IMyCubeBlock);
 			m_block = block;
 
 			IMyTerminalBlock term = block as IMyTerminalBlock;
@@ -64,7 +65,7 @@ namespace Rynchodon.Instructions
 			foreach (TextMonitor monitor in m_monitors)
 				if (monitor.Changed())
 				{
-					m_logger.debugLog("Monitor value changed");
+					Log.DebugLog("Monitor value changed");
 					m_displayNameDirty = false;
 					m_displayName = m_block.DisplayNameText;
 					GetInstructions();
@@ -79,11 +80,11 @@ namespace Rynchodon.Instructions
 
 			if (m_displayName == m_block.DisplayNameText)
 			{
-				m_logger.debugLog("no name change");
+				Log.DebugLog("no name change");
 				return false;
 			}
 
-			m_logger.debugLog("name changed to " + m_block.DisplayNameText);
+			Log.DebugLog("name changed to " + m_block.DisplayNameText);
 			m_displayName = m_block.DisplayNameText;
 			GetInstructions();
 			if (!HasInstructions && fallback != null)
@@ -120,30 +121,30 @@ namespace Rynchodon.Instructions
 			m_monitors.Clear();
 			HasInstructions = false;
 
-			//m_logger.debugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
+			//Log.DebugLog("Trying to get instructions from name: " + m_displayName, "GetInstructions()", Logger.severity.DEBUG);
 			if (GetInstructions(m_displayName))
 			{
-				//m_logger.debugLog("Got instructions from name", "GetInstructions()", Logger.severity.DEBUG);
+				//Log.DebugLog("Got instructions from name", "GetInstructions()", Logger.severity.DEBUG);
 				return;
 			}
 
 			Ingame.IMyTextPanel asPanel = m_block as Ingame.IMyTextPanel;
 			if (asPanel != null)
 			{
-				//m_logger.debugLog("Trying to get instructions from public title: " + asPanel.GetPublicTitle(), "GetInstructions()");
+				//Log.DebugLog("Trying to get instructions from public title: " + asPanel.GetPublicTitle(), "GetInstructions()");
 				AddMonitor(asPanel.GetPublicTitle);
 				if (GetInstructions(asPanel.GetPublicTitle()))
 				{
-					//m_logger.debugLog("Got instructions from public title", "GetInstructions()", Logger.severity.DEBUG);
+					//Log.DebugLog("Got instructions from public title", "GetInstructions()", Logger.severity.DEBUG);
 					return;
 				}
-				//m_logger.debugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
+				//Log.DebugLog("Trying to get instructions from private title: " + asPanel.GetPrivateTitle(), "GetInstructions()");
 #pragma warning disable CS0618
 				AddMonitor(asPanel.GetPrivateTitle);
 				if (GetInstructions(asPanel.GetPrivateTitle()))
 #pragma warning restore CS0618
 				{
-					//m_logger.debugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
+					//Log.DebugLog("Got instructions from private title", "GetInstructions()", Logger.severity.DEBUG);
 					return;
 				}
 			}
@@ -158,7 +159,7 @@ namespace Rynchodon.Instructions
 				string instruct = matches[i].Value.Substring(1, matches[i].Value.Length - 2);
 				if (ParseAll(instruct))
 				{
-					//m_logger.debugLog("instructions: " + instruct, "GetInstrucions()");
+					//Log.DebugLog("instructions: " + instruct, "GetInstrucions()");
 					HasInstructions = true;
 					m_instructions = instruct;
 					return true;

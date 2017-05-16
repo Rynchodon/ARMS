@@ -22,7 +22,7 @@ namespace Rynchodon
 			public void Dispose() { }
 		}
 
-		private static Logger myLogger = new Logger();
+		private static Logger Log = new Logger();
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
 		/// <summary>Dummy lock, exclusive is never held</summary>
 		private static DummyDisposable lock_dummy = new DummyDisposable();

@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Threading;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using Sandbox.Game.Entities;
 using VRageMath;
@@ -16,7 +17,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		private static ThreadManager Thread = new ThreadManager(1, true, "Surface Miner");
 
-		private readonly Logger m_logger;
 		private Vector3 m_perp1, m_perp2;
 		private int m_ringIndex, m_squareIndex;
 		private Vector3D m_surfacePoint;
@@ -31,7 +31,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (value_stage == value)
 					return;
 
-				m_logger.debugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
+				Log.DebugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
 				switch (value)
 				{
 					case Stage.GetSurface:
@@ -46,10 +46,12 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				value_stage = value;
 			}
 		}
+		private Logable Log
+		{ get { return LogableFrom.Pseudo(m_navSet.Settings_Current.NavigationBlock, m_stage.ToString()); } }
+
 
 		public SurfaceMiner(Pathfinder pathfinder, Destination target, string oreName) : base(pathfinder, oreName)
 		{
-			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = target;
 
 			Vector3 toDeposit = Vector3.Normalize(m_target.WorldPosition() - m_grid.GetCentre());
@@ -64,7 +66,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			level.PathfinderCanChangeCourse = false;
 
 			m_stage = Stage.GetSurface;
-			m_logger.debugLog("started", Logger.severity.DEBUG);
+			Log.DebugLog("started", Logger.severity.DEBUG);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -133,13 +135,13 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			{
 				if (m_finalMine)
 				{
-					m_logger.debugLog("Reached target", Logger.severity.DEBUG);
+					Log.DebugLog("Reached target", Logger.severity.DEBUG);
 					m_stage = Stage.Escape;
 					new EscapeMiner(m_pathfinder, TargetVoxel);
 				}
 				else
 				{
-					m_logger.debugLog("Reached surface point", Logger.severity.DEBUG);
+					Log.DebugLog("Reached surface point", Logger.severity.DEBUG);
 					m_stage = Stage.GetSurface;
 				}
 			}
@@ -175,28 +177,28 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				surfaceFinder.P1 = targetWorld + direct1 + direct2;
 				if (CapsuleDExtensions.Intersects(ref surfaceFinder, (MyVoxelBase)m_target.Entity, out m_surfacePoint))
 				{
-					m_logger.debugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", hit voxel at " + m_surfacePoint);
+					Log.DebugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", hit voxel at " + m_surfacePoint);
 					m_finalMine = Vector3D.DistanceSquared(m_surfacePoint, m_target.WorldPosition()) < 1d;
 					m_stage = Stage.Mine;
 					return;
 				}
-				m_logger.debugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", did not hit voxel. P1 constructed from " + targetWorld + ", " + direct1 + ", " + direct2);
+				Log.DebugLog("test from " + surfaceFinder.P0 + " to " + surfaceFinder.P1 + ", did not hit voxel. P1 constructed from " + targetWorld + ", " + direct1 + ", " + direct2);
 
 				if (ring.DistanceSquared > maxRingSize)
 				{
 					if (overMax)
 					{
-						m_logger.alwaysLog("Infinite loop", Logger.severity.FATAL);
+						Log.AlwaysLog("Infinite loop", Logger.severity.FATAL);
 						throw new Exception("Infinte loop");
 					}
 					overMax = true;
-					m_logger.debugLog("Over max ring size, starting next level", Logger.severity.INFO);
+					Log.DebugLog("Over max ring size, starting next level", Logger.severity.INFO);
 					m_squareIndex = 0;
 					m_ringIndex = 0;
 				}
 			}
 
-			m_logger.alwaysLog("Infinite loop", Logger.severity.FATAL);
+			Log.AlwaysLog("Infinite loop", Logger.severity.FATAL);
 			throw new Exception("Infinte loop");
 		}
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Utility;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -23,7 +24,6 @@ namespace Rynchodon.Autopilot
 
 		private readonly ShipControllerBlock m_controlBlock;
 		private readonly AttachedGrid.AttachmentKind m_allowedAttachment;
-		private readonly Logger m_logger;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly bool m_mustBeRecent;
 		public Vector3D m_startPosition;
@@ -47,18 +47,18 @@ namespace Rynchodon.Autopilot
 
 		private RelayStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
 
+		private Logable Log { get { return new Logable(m_controlBlock.CubeBlock); } }
+
 		/// <summary>
 		/// Creates a GridFinder to find a friendly grid based on its name.
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, string targetGrid, string targetBlock = null,
 			AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, bool mustBeRecent = false)
 		{
-			this.m_logger = new Logger(controller.CubeBlock);
-
-			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
-			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
-			m_logger.debugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
-			m_logger.debugLog("targetGrid == null", Logger.severity.FATAL, condition: targetGrid == null);
+			Log.DebugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
+			Log.DebugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
+			Log.DebugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
+			Log.DebugLog("targetGrid == null", Logger.severity.FATAL, condition: targetGrid == null);
 
 			this.m_targetGridName = targetGrid.LowerRemoveWhitespace();
 			if (targetBlock != null)
@@ -76,11 +76,9 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		public GridFinder(AllNavigationSettings navSet, ShipControllerBlock controller, float maxRange = 0f)
 		{
-			this.m_logger = new Logger(controller.CubeBlock);
-
-			m_logger.debugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
-			m_logger.debugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
-			m_logger.debugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
+			Log.DebugLog("navSet == null", Logger.severity.FATAL, condition: navSet == null);
+			Log.DebugLog("controller == null", Logger.severity.FATAL, condition: controller == null);
+			Log.DebugLog("controller.CubeBlock == null", Logger.severity.FATAL, condition: controller.CubeBlock == null);
 
 			this.m_controlBlock = controller;
 			//this.m_enemies = new List<LastSeen>();
@@ -132,7 +130,7 @@ namespace Rynchodon.Autopilot
 			RelayStorage store = m_netStore;
 			if (store == null)
 			{
-				m_logger.debugLog("no storage", Logger.severity.DEBUG);
+				Log.DebugLog("no storage", Logger.severity.DEBUG);
 				return;
 			}
 
@@ -144,7 +142,7 @@ namespace Rynchodon.Autopilot
 					bestNameLength = grid.DisplayName.Length;
 					if (bestNameLength == m_targetGridName.Length)
 					{
-						m_logger.debugLog("perfect match LastSeen: " + seen.Entity.getBestName());
+						Log.DebugLog("perfect match LastSeen: " + seen.Entity.getBestName());
 						return true;
 					}
 				}
@@ -152,7 +150,7 @@ namespace Rynchodon.Autopilot
 			});
 
 			if (Grid != null)
-				m_logger.debugLog("Best match LastSeen: " + Grid.Entity.getBestName());
+				Log.DebugLog("Best match LastSeen: " + Grid.Entity.getBestName());
 		}
 
 		private void GridSearch_Enemy()
@@ -160,7 +158,7 @@ namespace Rynchodon.Autopilot
 			RelayStorage store = m_netStore;
 			if (store == null)
 			{
-				m_logger.debugLog("no storage", Logger.severity.DEBUG);
+				Log.DebugLog("no storage", Logger.severity.DEBUG);
 				return;
 			}
 
@@ -170,7 +168,7 @@ namespace Rynchodon.Autopilot
 				if (store.TryGetLastSeen(m_targetEntityId, out target) && CanTarget(target))
 				{
 					Grid = target;
-					m_logger.debugLog("found target: " + target.Entity.getBestName());
+					Log.DebugLog("found target: " + target.Entity.getBestName());
 				}
 				else
 					Grid = null;
@@ -190,11 +188,11 @@ namespace Rynchodon.Autopilot
 					return false;
 
 				enemies.Add(seen);
-				m_logger.debugLog("enemy: " + asGrid.DisplayName);
+				Log.DebugLog("enemy: " + asGrid.DisplayName);
 				return false;
 			});
 
-			m_logger.debugLog("number of enemies: " + enemies.Count);
+			Log.DebugLog("number of enemies: " + enemies.Count);
 			IOrderedEnumerable<LastSeen> enemiesByDistance = enemies.OrderBy(OrderValue != null ? OrderValue : seen => Vector3D.DistanceSquared(position, seen.GetPosition()));
 			m_reason = ReasonCannotTarget.None;
 			foreach (LastSeen enemy in enemiesByDistance)
@@ -202,7 +200,7 @@ namespace Rynchodon.Autopilot
 				if (CanTarget(enemy))
 				{
 					Grid = enemy;
-					m_logger.debugLog("found target: " + enemy.Entity.getBestName());
+					Log.DebugLog("found target: " + enemy.Entity.getBestName());
 					enemies.Clear();
 					ResourcePool<List<LastSeen>>.Return(enemies);
 					return;
@@ -210,32 +208,32 @@ namespace Rynchodon.Autopilot
 			}
 
 			Grid = null;
-			m_logger.debugLog("nothing found"); 
+			Log.DebugLog("nothing found"); 
 			enemies.Clear();
 			ResourcePool<List<LastSeen>>.Return(enemies);
 		}
 
 		private void GridUpdate()
 		{
-			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+			Log.DebugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
 
 			if (!Grid.IsValid)
 			{
-				m_logger.debugLog("no longer valid: " + Grid.Entity.getBestName(), Logger.severity.DEBUG);
+				Log.DebugLog("no longer valid: " + Grid.Entity.getBestName(), Logger.severity.DEBUG);
 				Grid = null;
 				return;
 			}
 
 			if (m_mustBeRecent && !Grid.isRecent())
 			{
-				m_logger.debugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (Globals.ElapsedTime - Grid.LastSeenAt));
+				Log.DebugLog("no longer recent: " + Grid.Entity.getBestName() + ", age: " + (Globals.ElapsedTime - Grid.LastSeenAt));
 				Grid = null;
 				return;
 			}
 
 			if (!CanTarget(Grid))
 			{
-				m_logger.debugLog("can no longer target: " + Grid.Entity.getBestName(), Logger.severity.DEBUG);
+				Log.DebugLog("can no longer target: " + Grid.Entity.getBestName(), Logger.severity.DEBUG);
 				Grid = null;
 				return;
 			}
@@ -243,7 +241,7 @@ namespace Rynchodon.Autopilot
 			RelayStorage storage = m_netStore;
 			if (storage == null)
 			{
-				m_logger.debugLog("lost storage", Logger.severity.DEBUG);
+				Log.DebugLog("lost storage", Logger.severity.DEBUG);
 				Grid = null;
 				return;
 			}
@@ -251,12 +249,12 @@ namespace Rynchodon.Autopilot
 			LastSeen updated;
 			if (!m_netStore.TryGetLastSeen(Grid.Entity.EntityId, out updated))
 			{
-				m_logger.alwaysLog("Where does the good go? Searching for " + Grid.Entity.EntityId, Logger.severity.WARNING);
+				Log.AlwaysLog("Where does the good go? Searching for " + Grid.Entity.EntityId, Logger.severity.WARNING);
 				Grid = null;
 				return;
 			}
 
-			//m_logger.debugLog("updating grid last seen " + Grid.LastSeenAt + " => " + updated.LastSeenAt, "GridUpdate()");
+			//Log.DebugLog("updating grid last seen " + Grid.LastSeenAt + " => " + updated.LastSeenAt, "GridUpdate()");
 			Grid = updated;
 		}
 
@@ -265,15 +263,15 @@ namespace Rynchodon.Autopilot
 		/// </summary>
 		private void BlockSearch()
 		{
-			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
-			m_logger.debugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
+			Log.DebugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+			Log.DebugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
 
 			NextSearch_Block = Globals.UpdateCount + SearchInterval_Block;
 			Block = null;
 
 			int bestNameLength = int.MaxValue;
 			IMyCubeGrid asGrid = Grid.Entity as IMyCubeGrid;
-			m_logger.debugLog("asGrid == null", Logger.severity.FATAL, condition: asGrid == null);
+			Log.DebugLog("asGrid == null", Logger.severity.FATAL, condition: asGrid == null);
 
 			foreach (IMyCubeBlock Fatblock in AttachedGrid.AttachedCubeBlocks(asGrid, m_allowedAttachment, true))
 			{
@@ -285,10 +283,10 @@ namespace Rynchodon.Autopilot
 				if (BlockCondition != null && !BlockCondition(Fatblock))
 					continue;
 
-				//m_logger.debugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
+				//Log.DebugLog("checking block name: \"" + blockName + "\" contains \"" + m_targetBlockName + "\"", "BlockSearch()");
 				if (blockName.Length < bestNameLength && blockName.Contains(m_targetBlockName))
 				{
-					m_logger.debugLog("block name matches: " + Fatblock.DisplayNameText);
+					Log.DebugLog("block name matches: " + Fatblock.DisplayNameText);
 					Block = Fatblock;
 					bestNameLength = blockName.Length;
 					if (m_targetBlockName.Length == bestNameLength)
@@ -299,20 +297,20 @@ namespace Rynchodon.Autopilot
 
 		private void BlockCheck()
 		{
-			m_logger.debugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
-			m_logger.debugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
-			m_logger.debugLog("Block == null", Logger.severity.FATAL, condition: Block == null);
+			Log.DebugLog("Grid == null", Logger.severity.FATAL, condition: Grid == null);
+			Log.DebugLog("m_targetBlockName == null", Logger.severity.FATAL, condition: m_targetBlockName == null);
+			Log.DebugLog("Block == null", Logger.severity.FATAL, condition: Block == null);
 
 			if (!m_controlBlock.CubeBlock.canControlBlock(Block))
 			{
-				m_logger.debugLog("lost control of block: " + Block.DisplayNameText, Logger.severity.DEBUG);
+				Log.DebugLog("lost control of block: " + Block.DisplayNameText, Logger.severity.DEBUG);
 				Block = null;
 				return;
 			}
 
 			if (BlockCondition != null && !BlockCondition(Block))
 			{
-				m_logger.debugLog("Block does not statisfy condition: " + Block.DisplayNameText, Logger.severity.DEBUG);
+				Log.DebugLog("Block does not statisfy condition: " + Block.DisplayNameText, Logger.severity.DEBUG);
 				Block = null;
 				return;
 			}
@@ -325,7 +323,7 @@ namespace Rynchodon.Autopilot
 				// if it is too far from start, cannot target
 				if (MaximumRange > 1f && Vector3.DistanceSquared(m_startPosition, seen.GetPosition()) > MaximumRange * MaximumRange)
 				{
-					m_logger.debugLog("out of range: " + seen.Entity.getBestName());
+					Log.DebugLog("out of range: " + seen.Entity.getBestName());
 					if (m_reason < ReasonCannotTarget.Too_Far)
 					{
 						m_reason = ReasonCannotTarget.Too_Far;
@@ -338,7 +336,7 @@ namespace Rynchodon.Autopilot
 				float speedTarget = m_navSet.Settings_Task_NavEngage.SpeedTarget - 1f;
 				if (seen.GetLinearVelocity().LengthSquared() >= speedTarget * speedTarget)
 				{
-					m_logger.debugLog("too fast to target: " + seen.Entity.getBestName() + ", speed: " + seen.GetLinearVelocity().Length() + ", my speed: " + m_navSet.Settings_Task_NavEngage.SpeedTarget);
+					Log.DebugLog("too fast to target: " + seen.Entity.getBestName() + ", speed: " + seen.GetLinearVelocity().Length() + ", my speed: " + m_navSet.Settings_Task_NavEngage.SpeedTarget);
 					if (m_reason < ReasonCannotTarget.Too_Fast)
 					{
 						m_reason = ReasonCannotTarget.Too_Fast;
@@ -349,7 +347,7 @@ namespace Rynchodon.Autopilot
 
 				if (GridCondition != null && !GridCondition(seen.Entity as IMyCubeGrid))
 				{
-					m_logger.debugLog("Failed grid condition: " + seen.Entity.getBestName());
+					Log.DebugLog("Failed grid condition: " + seen.Entity.getBestName());
 					if (m_reason < ReasonCannotTarget.Grid_Condition)
 					{
 						m_reason = ReasonCannotTarget.Grid_Condition;
@@ -363,11 +361,11 @@ namespace Rynchodon.Autopilot
 			}
 			catch (NullReferenceException nre)
 			{
-				m_logger.alwaysLog("Exception: " + nre, Logger.severity.ERROR);
+				Log.AlwaysLog("Exception: " + nre, Logger.severity.ERROR);
 
 				if (!seen.Entity.Closed)
 					throw;
-				m_logger.debugLog("Caught exception caused by grid closing, ignoring.");
+				Log.DebugLog("Caught exception caused by grid closing, ignoring.");
 				return false;
 			}
 		}

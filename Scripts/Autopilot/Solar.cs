@@ -1,4 +1,5 @@
-﻿using Rynchodon.Utility.Network;
+using Rynchodon.Utility;
+using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -32,7 +33,6 @@ namespace Rynchodon.Autopilot
 		}
 
 		private readonly IMyCubeBlock myBlock;
-		private readonly Logger myLogger;
 
 		private MotorTurret myMotorTurret;
 		private byte sinceNameChange = 0;
@@ -40,11 +40,12 @@ namespace Rynchodon.Autopilot
 		private bool m_nameCommand_faceSun;
 		private bool m_termControl_faceSun;
 
+		private Logable Log { get { return new Logable(myBlock); } }
+
 		/// <param name="block">Must be an IMyTerminalBlock</param>
 		public Solar(IMyCubeBlock block)
 		{
 			myBlock = block;
-			myLogger = new Logger(block);
 			(myBlock as IMyTerminalBlock).CustomNameChanged += Solar_CustomNameChanged;
 			myBlock.OnClose += myBlock_OnClose;
 
@@ -69,7 +70,7 @@ namespace Rynchodon.Autopilot
 				FaceSun();
 			else
 			{
-				myLogger.debugLog("no longer facing the sun", Logger.severity.DEBUG, condition: myMotorTurret != null);
+				Log.DebugLog("no longer facing the sun", Logger.severity.DEBUG, condition: myMotorTurret != null);
 				if (myMotorTurret != null)
 				{
 					myMotorTurret.Dispose();
@@ -90,7 +91,7 @@ namespace Rynchodon.Autopilot
 		{
 			if (myMotorTurret == null)
 			{
-				myLogger.debugLog("Now facing sun", Logger.severity.DEBUG);
+				Log.DebugLog("Now facing sun", Logger.severity.DEBUG);
 				myMotorTurret = new MotorTurret(myBlock) { RotationSpeedMultiplier = 0.1f, SpeedLimit = 0.1f };
 			}
 

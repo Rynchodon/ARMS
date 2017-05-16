@@ -1,4 +1,4 @@
-﻿//#define USE_AI // SE 1.178: not working
+//#define USE_AI // SE 1.178: not working
 
 using System;
 using System.Collections.Generic;
@@ -6,6 +6,7 @@ using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
+using Rynchodon.Utility;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -27,13 +28,11 @@ namespace Rynchodon.Weapons
 		/// <summary>value set by Turret, updated when not controlling</summary>
 		private float setElevation, setAzimuth;
 
-		private Logger myLogger;
+		private Logable Log { get { return new Logable(CubeBlock); } }
 
 		public Turret(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger(block);
-
 			// definition limits
 			MyLargeTurretBaseDefinition definition = CubeBlock.GetCubeBlockDefinition() as MyLargeTurretBaseDefinition;
 
@@ -62,8 +61,8 @@ namespace Rynchodon.Weapons
 				subparts = m_barrel.Subparts;
 			}
 
-			//myLogger.debugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
-			//myLogger.debugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
+			//Log.DebugLog("definition limits = " + definition.MinElevationDegrees + ", " + definition.MaxElevationDegrees + ", " + definition.MinAzimuthDegrees + ", " + definition.MaxAzimuthDegrees, "Turret()");
+			//Log.DebugLog("radian limits = " + minElevation + ", " + maxElevation + ", " + minAzimuth + ", " + maxAzimuth, "Turret()");
 		}
 
 		/// <summary>
@@ -86,7 +85,7 @@ namespace Rynchodon.Weapons
 
 			Options.TargetingRange = myTurret.Range;
 
-			//myLogger.debugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
+			//Log.DebugLog("CanTarget = " + Options.CanTarget, "TargetOptionsFromTurret()");
 		}
 
 		private void SetFlag(bool enable, TargetType typeFlag)
@@ -105,16 +104,16 @@ namespace Rynchodon.Weapons
 			float azimuth, elevation;
 			Vector3.GetAzimuthAndElevation(localTarget, out azimuth, out elevation);
 
-			//myLogger.debugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
+			//Log.DebugLog("target azimuth: " + azimuth + ", elevation: " + elevation, "CanRotateTo()");
 
 			if (elevation < minElevation)
 			{
-				//myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
+				//Log.DebugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " below min: " + minElevation, "CanRotateTo()");
 				return false;
 			}
 			if (elevation > maxElevation)
 			{
-				//myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
+				//Log.DebugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", elevation: " + elevation + " above max: " + maxElevation, "CanRotateTo()");
 				return false;
 			}
 
@@ -122,12 +121,12 @@ namespace Rynchodon.Weapons
 				return true;
 			if (azimuth < minAzimuth)
 			{
-				//myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
+				//Log.DebugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " below min: " + minAzimuth, "CanRotateTo()");
 				return false;
 			}
 			if (azimuth > maxAzimuth)
 			{
-				//myLogger.debugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
+				//Log.DebugLog("Cannot rotate to " + targetPoint + ", local: " + localTarget + ", azimuth: " + azimuth + " above max: " + maxAzimuth, "CanRotateTo()");
 				return false;
 			}
 			return true;
@@ -184,13 +183,13 @@ namespace Rynchodon.Weapons
 
 			//Vector3 RotateTo = RelativeVector3F.createFromWorld(GotTarget.FiringDirection.Value, weapon.CubeGrid).getBlock(weapon);
 			Vector3 RotateToDirection = RelativeDirection3F.FromWorld(CubeBlock.CubeGrid, GotTarget.FiringDirection.Value).ToBlockNormalized(CubeBlock);
-			//myLogger.debugLog("FiringDirection = " + GotTarget.FiringDirection.Value + ", RotateToDirection = " + RotateToDirection, "Update()");
+			//Log.DebugLog("FiringDirection = " + GotTarget.FiringDirection.Value + ", RotateToDirection = " + RotateToDirection, "Update()");
 
 			float targetElevation, targetAzimuth; // the position of the target
 			Vector3.GetAzimuthAndElevation(RotateToDirection, out targetAzimuth, out targetElevation);
 			if (!targetElevation.IsValid() || !targetAzimuth.IsValid())
 			{
-				//myLogger.debugLog("cannot rotate, invalid el(" + targetElevation + ") or az(" + targetAzimuth + ")", "RotateAndFire()");
+				//Log.DebugLog("cannot rotate, invalid el(" + targetElevation + ") or az(" + targetAzimuth + ")", "RotateAndFire()");
 				return;
 			}
 
@@ -233,7 +232,7 @@ namespace Rynchodon.Weapons
 					nextAzimuth = maxAzimuth;
 			}
 
-			//myLogger.debugLog("next elevation = " + nextElevation + ", next azimuth = " + nextAzimuth, "RotateAndFire()");
+			//Log.DebugLog("next elevation = " + nextElevation + ", next azimuth = " + nextAzimuth, "RotateAndFire()");
 
 			// apply changes
 			if (nextElevation != myTurret.Elevation)
@@ -242,14 +241,14 @@ namespace Rynchodon.Weapons
 				myTurret.SyncElevation();
 			}
 			//else
-			//	myLogger.debugLog("not setting elevation", "RotateAndFire()");
+			//	Log.DebugLog("not setting elevation", "RotateAndFire()");
 			if (nextAzimuth != myTurret.Azimuth)
 			{
 				myTurret.Azimuth = nextAzimuth;
 				myTurret.SyncAzimuth();
 			}
 			//else
-			//	myLogger.debugLog("not setting azimuth", "RotateAndFire()");
+			//	Log.DebugLog("not setting azimuth", "RotateAndFire()");
 
 			setElevation = nextElevation;
 			setAzimuth = nextAzimuth;

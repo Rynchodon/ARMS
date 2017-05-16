@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
@@ -14,27 +15,26 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		protected Destination m_target;
 		protected string m_oreName;
 
-		private readonly Logger m_logger;
-
 		protected override MyVoxelBase TargetVoxel { get { return (MyVoxelBase)m_target.Entity; } }
+		private Logable Log
+		{ get { return LogableFrom.Pseudo(m_navSet.Settings_Current.NavigationBlock); } }
 
 		protected AMinerComponent(Pathfinder pathfinder, string oreName) : base(pathfinder)
 		{
-			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock);
 			m_oreName = oreName;
 		}
 
 		protected void EnableDrills(bool enable)
 		{
 			if (enable)
-				m_logger.debugLog("Enabling drills", Logger.severity.DEBUG);
+				Log.DebugLog("Enabling drills", Logger.severity.DEBUG);
 			else
-				m_logger.debugLog("Disabling drills", Logger.severity.DEBUG);
+				Log.DebugLog("Disabling drills", Logger.severity.DEBUG);
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_controlBlock.CubeGrid);
 			if (cache == null)
 			{
-				m_logger.debugLog("Failed to get cache", Logger.severity.INFO);
+				Log.DebugLog("Failed to get cache", Logger.severity.INFO);
 				return;
 			}
 
@@ -49,22 +49,22 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			if (DrillFullness() > FullAmount_Abort)
 			{
-				m_logger.debugLog("Drills are full", Logger.severity.DEBUG);
+				Log.DebugLog("Drills are full", Logger.severity.DEBUG);
 				return true;
 			}
 			else if (!SufficientAcceleration(MinAccel_Abort))
 			{
-				m_logger.debugLog("Not enough acceleration", Logger.severity.DEBUG);
+				Log.DebugLog("Not enough acceleration", Logger.severity.DEBUG);
 				return true;
 			}
 			else if (m_mover.ThrustersOverWorked())
 			{
-				m_logger.debugLog("Thrusters overworked", Logger.severity.DEBUG);
+				Log.DebugLog("Thrusters overworked", Logger.severity.DEBUG);
 				return true;
 			}
 			else if (IsStuck)
 			{
-				m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+				Log.DebugLog("Stuck", Logger.severity.DEBUG);
 				return true;
 			}
 			return false;
@@ -84,11 +84,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			Vector3D hitPos;
 			if (!CapsuleDExtensions.Intersects(ref capsule, voxel, out hitPos))
 			{
-				m_logger.debugLog("capsule: " + capsule.String() + ", does not intersect voxel", Logger.severity.DEBUG);
+				Log.DebugLog("capsule: " + capsule.String() + ", does not intersect voxel", Logger.severity.DEBUG);
 				hitPos = capsule.P0;
 			}
 
-			//m_logger.debugLog((tunnel ? "Tunnel target: " : "Backout target: ") + hitPos, Logger.severity.DEBUG);
+			//Log.DebugLog((tunnel ? "Tunnel target: " : "Backout target: ") + hitPos, Logger.severity.DEBUG);
 			m_target.SetWorld(ref hitPos);
 		}
 

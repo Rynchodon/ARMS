@@ -2,6 +2,7 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Rynchodon.Weapons;
 using VRage.Game.ModAPI;
 using VRageMath;
@@ -10,19 +11,12 @@ namespace Rynchodon.Autopilot.Navigator
 {
 	public class Kamikaze : NavigatorMover, IEnemyResponse
 	{
-
-		private readonly Logger m_logger;
-
 		private LastSeen m_enemy;
 		private bool m_approaching;
 
-		public Kamikaze(Pathfinder pathfinder, AllNavigationSettings navSet)
-			: base(pathfinder)
-		{
-			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
+		private Logable Log { get { return new Logable(m_controlBlock.CubeGrid.DisplayName); } }
 
-			//m_logger.debugLog("Initialized");
-		}
+		public Kamikaze(Pathfinder pathfinder, AllNavigationSettings navSet) : base(pathfinder) { }
 
 		#region IEnemyResponse Members
 
@@ -46,7 +40,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			//m_logger.debugLog("entered");
+			//Log.DebugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -78,7 +72,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
-			//m_logger.debugLog("entered");
+			//Log.DebugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -88,12 +82,12 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_approaching)
 			{
-				//m_logger.debugLog("approaching");
+				//Log.DebugLog("approaching");
 				m_mover.CalcRotate();
 			}
 			else
 			{
-				//m_logger.debugLog("ramming");
+				//Log.DebugLog("ramming");
 				if (m_navSet.DistanceLessThan(100f))
 				{
 					// just before impact, face the target

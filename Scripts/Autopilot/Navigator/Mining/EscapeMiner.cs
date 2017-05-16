@@ -1,6 +1,7 @@
-﻿using System.Text;
+using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using VRageMath;
 
@@ -10,8 +11,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	{
 
 		public enum Stage : byte { None, /*Pathfind,*/Backout, FromCentre, }
-
-		private readonly Logger m_logger;
 
 		private Stage value_stage;
 		private Stage m_stage
@@ -36,9 +35,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			}
 		}
 
+		private Logable Log
+		{ get { return LogableFrom.Pseudo(m_navSet.Settings_Current.NavigationBlock, m_stage.ToString()); } }
+
 		public EscapeMiner(Pathfinder pathfinder, MyVoxelBase voxel) : base(pathfinder, string.Empty)
 		{
-			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = Destination.FromWorld(voxel, m_navBlock.WorldPosition);
 
 			AllNavigationSettings.SettingsLevel level = m_navSet.Settings_Task_NavWay;
@@ -50,7 +51,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 			m_stage = Stage.Backout;
 			EnableDrills(false);
-			m_logger.debugLog("started", Logger.severity.DEBUG);
+			Log.DebugLog("started", Logger.severity.DEBUG);
 		}
 
 		public override void Rotate()
@@ -102,7 +103,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			if (m_navSet.DistanceLessThan(1f))
 			{
-				m_logger.debugLog("Reached position: " + m_target, Logger.severity.WARNING);
+				Log.DebugLog("Reached position: " + m_target, Logger.severity.WARNING);
 				if (m_stage == Stage.Backout)
 				{
 					m_target.SetWorld(m_target.WorldPosition() + m_navBlock.WorldMatrix.Backward * 100d);
@@ -118,18 +119,18 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			{
 				if (m_stage == Stage.Backout)
 				{
-					m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+					Log.DebugLog("Stuck", Logger.severity.DEBUG);
 					m_stage = Stage.FromCentre;
 				}
 				else
 				{
-					m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+					Log.DebugLog("Stuck", Logger.severity.DEBUG);
 					m_navSet.OnTaskComplete_NavWay();
 				}
 			}
 			else if (!IsNearVoxel(2d))
 			{
-				m_logger.debugLog("Outside of voxel", Logger.severity.INFO);
+				Log.DebugLog("Outside of voxel", Logger.severity.INFO);
 				m_mover.MoveAndRotateStop();
 				m_navSet.OnTaskComplete_NavMove();
 			}

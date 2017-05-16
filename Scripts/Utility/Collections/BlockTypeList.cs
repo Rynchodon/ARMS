@@ -12,9 +12,6 @@ namespace Rynchodon
 	/// </summary>
 	public class BlockTypeList
 	{
-
-		public static readonly Logger m_logger = new Logger();
-
 		public static BlockTypeList Union(BlockTypeList first, BlockTypeList second)
 		{
 			return new BlockTypeList(first.BlockNamesContain.Union(second.BlockNamesContain).ToArray());

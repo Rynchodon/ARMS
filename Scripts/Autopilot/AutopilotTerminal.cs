@@ -8,6 +8,7 @@ using Rynchodon.Autopilot.Instruction;
 using Rynchodon.Autopilot.Pathfinding;
 using Rynchodon.Settings;
 using Rynchodon.Update;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
@@ -358,7 +359,6 @@ namespace Rynchodon.Autopilot
 			return entity.GetNameForDisplay(autopilot.m_block.OwnerId);
 		}
 
-		private readonly Logger m_logger;
 		public readonly IMyTerminalBlock m_block;
 
 		private bool value_waitUpdate;
@@ -378,6 +378,9 @@ namespace Rynchodon.Autopilot
 		}
 
 		private Sandbox.Game.EntityComponents.MyResourceSinkComponent ResourceSink { get { return ((MyCubeBlock)m_block).ResourceSink; } }
+
+		private Logable Log { get { return new Logable(m_block); } }
+
 
 		#region Terminal Controls
 #pragma warning disable CS0649
@@ -540,13 +543,12 @@ namespace Rynchodon.Autopilot
 
 		public AutopilotTerminal(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(block);
 			this.m_block = (IMyTerminalBlock)block;
 
 			m_block.AppendingCustomInfo += AppendingCustomInfo;
 
 			Registrar.Add(block, this);
-			m_logger.debugLog("Initialized", Logger.severity.INFO);
+			Log.DebugLog("Initialized", Logger.severity.INFO);
 		}
 
 		public void AppendingCustomInfo(IMyTerminalBlock block, StringBuilder customInfo)

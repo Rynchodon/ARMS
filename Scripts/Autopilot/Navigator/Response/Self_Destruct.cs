@@ -1,5 +1,6 @@
 using System.Text;
 using Rynchodon.Attached;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using VRage.Game.ModAPI;
 
@@ -7,14 +8,13 @@ namespace Rynchodon.Autopilot.Navigator
 {
 	public class Self_Destruct : IEnemyResponse
 	{
-
-		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
 		private bool m_countingDown;
 
+		private Logable Log { get { return new Logable(m_block); } }
+
 		public Self_Destruct(IMyCubeBlock block)
 		{
-			this.m_logger = new Logger(block);
 			this.m_block = block;
 		}
 
@@ -41,7 +41,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (IMyCubeBlock warhead in cache.BlocksOfType(typeof(MyObjectBuilder_Warhead)))
 					if (m_block.canControlBlock(warhead))
 					{
-						m_logger.debugLog("Starting countdown for " + warhead.getBestName(), Logger.severity.DEBUG);
+						Log.DebugLog("Starting countdown for " + warhead.getBestName(), Logger.severity.DEBUG);
 						warhead.ApplyAction("StartCountdown");
 					}
 			}

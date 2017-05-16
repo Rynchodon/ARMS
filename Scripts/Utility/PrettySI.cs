@@ -17,7 +17,7 @@ namespace Rynchodon
 		private const double k = 1000;
 		private const double m = 0.001f;
 
-		//private static readonly Logger myLogger = new Logger(null, "PrettySI");
+		//private static readonly Logger Log = new Logger(null, "PrettySI");
 
 		/// <summary>
 		/// For a double between 0.1 and 999, round to a number of significant figures. Minimum of three significant figures.
@@ -70,7 +70,7 @@ namespace Rynchodon
 				}
 
 				// more than a thousand of highest multi
-				//myLogger.debugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
+				//Log.DebugLog("more than a thousand of highest multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 
@@ -87,7 +87,7 @@ namespace Rynchodon
 				}
 
 				// less than a thousandth of lowest sub-multi
-				//myLogger.debugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
+				//Log.DebugLog("less than a thousandth of lowest sub-multi: " + toPretty, "makePretty()");
 				return toPretty.ToString("E" + (sigFig - 1)) + (space ? " " : "");
 			}
 		}
@@ -118,7 +118,7 @@ namespace Rynchodon
 		public static string makePretty(double toPretty, byte sigFigs = 3, bool space = true)
 		{
 			string result = makePretty(toPretty, SI_1000_multiples, SI_1000_subMulti, sigFigs, space);
-			//myLogger.debugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
+			//Log.DebugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
 			return result;
 		}
 
@@ -131,7 +131,7 @@ namespace Rynchodon
 		public static string makePrettyCubic(double toPretty, byte sigFig = 3, bool space = true)
 		{
 			string result = makePretty(toPretty, SI_10_multiples, SI_10_subMulti, sigFig, space);
-			//myLogger.debugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
+			//Log.DebugLog("converted \"" + toPretty + "\" to \"" + result + '"', "makePretty()");
 			return result;
 		}
 		

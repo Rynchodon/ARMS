@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rynchodon.Attached;
 using Rynchodon.Threading;
 using Rynchodon.Utility.Vectors;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -23,7 +24,6 @@ namespace Rynchodon.Autopilot.Movement
 		private static readonly ThreadManager Thread = new ThreadManager(2, true, "GyroProfiler");
 		private static ITerminalProperty<bool> TP_GyroOverrideToggle;
 
-		private readonly Logger m_logger;
 		private readonly IMyCubeGrid myGrid;
 
 		private PositionGrid m_centreOfMass;
@@ -37,6 +37,8 @@ namespace Rynchodon.Autopilot.Movement
 		private FastResourceLock m_lock = new FastResourceLock();
 
 		public float GyroForce { get; private set; }
+
+		private Logable Log { get { return new Logable(myGrid.DisplayName); } }
 
 		/// <summary>The three moments of inertial for the coordinate axes</summary>
 		public Vector3 InertiaMoment
@@ -60,7 +62,6 @@ namespace Rynchodon.Autopilot.Movement
 
 		public GyroProfiler(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger(() => grid.DisplayName);
 			this.myGrid = grid;
 
 			ClearOverrides();
@@ -91,7 +92,7 @@ namespace Rynchodon.Autopilot.Movement
 				{
 					if (m_updating)
 					{
-						m_logger.debugLog("already updating", Logger.severity.DEBUG);
+						Log.DebugLog("already updating", Logger.severity.DEBUG);
 						return;
 					}
 					m_updating = true;
@@ -108,7 +109,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		private void CalculateInertiaMoment()
 		{
-			m_logger.debugLog("recalculating inertia moment", Logger.severity.INFO);
+			Log.DebugLog("recalculating inertia moment", Logger.severity.INFO);
 
 			m_calcInertiaMoment = Vector3.Zero;
 			foreach (IMySlimBlock slim in (AttachedGrid.AttachedSlimBlocks(myGrid, AttachedGrid.AttachmentKind.Physics, true)))
@@ -120,8 +121,8 @@ namespace Rynchodon.Autopilot.Movement
 				m_invertedInertiaMoment = 1f / m_inertiaMoment;
 			}
 
-			m_logger.debugLog("Inertia moment: " + m_inertiaMoment, Logger.severity.DEBUG);
-			m_logger.debugLog("Inverted inertia moment: " + m_invertedInertiaMoment, Logger.severity.DEBUG);
+			Log.DebugLog("Inertia moment: " + m_inertiaMoment, Logger.severity.DEBUG);
+			Log.DebugLog("Inverted inertia moment: " + m_invertedInertiaMoment, Logger.severity.DEBUG);
 
 			m_updating = false;
 		}
@@ -146,7 +147,7 @@ namespace Rynchodon.Autopilot.Movement
 			Vector3 size = (Max - Min) / stepSize + 1f;
 			float mass = block.Mass / size.Volume;
 
-			//m_logger.debugLog("block: " + block.getBestName() + ", block mass: " + block.Mass + ", min: " + Min + ", max: " + Max + ", step: " + stepSize + ", size: " + size + ", volume: " + size.Volume + ", sub mass: " + mass, "AddToInertiaMoment()");
+			//Log.DebugLog("block: " + block.getBestName() + ", block mass: " + block.Mass + ", min: " + Min + ", max: " + Max + ", step: " + stepSize + ", size: " + size + ", volume: " + size.Volume + ", sub mass: " + mass, "AddToInertiaMoment()");
 
 			Vector3 current = Vector3.Zero;
 			for (current.X = Min.X; current.X <= Max.X + stepSize * 0.5f; current.X += stepSize)

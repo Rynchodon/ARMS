@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 //#define TRACE
 #endif
 
@@ -468,7 +468,6 @@ namespace Rynchodon.Weapons
 		/// <summary>Locked while an update on targeting thread is queued but not while it is running.</summary>
 		private readonly FastResourceLock lock_Queued = new FastResourceLock();
 
-		private Logger myLogger;
 		public Ammo LoadedAmmo { get; private set; }
 		private long UpdateNumber = 0;
 
@@ -557,7 +556,7 @@ namespace Rynchodon.Weapons
 				if (value_currentControl == value || Globals.WorldClosed)
 					return;
 
-				myLogger.debugLog("Control changed from " + value_currentControl + " to " + value);
+				Log.DebugLog("Control changed from " + value_currentControl + " to " + value);
 
 				if (MyAPIGateway.Multiplayer.IsServer)
 				{
@@ -617,7 +616,7 @@ namespace Rynchodon.Weapons
 			if (GetShootProp())
 				return;
 
-			myLogger.traceLog("Opening fire");
+			Log.TraceLog("Opening fire");
 			if (myTurret != null)
 			{
 				TurretNeedsUpdate(true);
@@ -631,7 +630,7 @@ namespace Rynchodon.Weapons
 			if (!GetShootProp())
 				return;
 
-			myLogger.traceLog("Holding fire");
+			Log.TraceLog("Holding fire");
 			if (myTurret != null)
 				TurretNeedsUpdate(false);
 			m_shootProperty.SetValue(CubeBlock, false);
@@ -653,6 +652,8 @@ namespace Rynchodon.Weapons
 			get { return LoadedAmmo == null ? 800f : LoadedAmmo.AmmoDefinition.MaxTrajectory; }
 		}
 
+		private Logable Log { get { return new Logable(myTurret as IMyCubeBlock); } }
+
 		private long TermControl_TargetEntityId
 		{ get { return (termControl_weaponFlags & WeaponFlags.EntityId) == 0 ? 0L : termControl_targetEntityId; } }
 
@@ -671,7 +672,6 @@ namespace Rynchodon.Weapons
 				throw new ArgumentException("weapon(" + weapon.DefinitionDisplayNameText + ") is not of correct type");
 
 			this.myTurret = weapon as IMyLargeTurretBase;
-			this.myLogger = new Logger(weapon);
 
 			this.Interpreter = new InterpreterWeapon(weapon);
 			this.CubeBlock.OnClose += weapon_OnClose;
@@ -686,18 +686,18 @@ namespace Rynchodon.Weapons
 
 			Registrar.Add(weapon, this);
 
-			//myLogger.debugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
+			//Log.DebugLog("initialized", "WeaponTargeting()", Logger.severity.INFO);
 		}
 
 		private void weapon_OnClose(IMyEntity obj)
 		{
-			//myLogger.debugLog("entered weapon_OnClose()", "weapon_OnClose()");
+			//Log.DebugLog("entered weapon_OnClose()", "weapon_OnClose()");
 
 			CubeBlock.OnClose -= weapon_OnClose;
 			if (Options != null)
 				Options.Flags = TargetingFlags.None;
 
-			//myLogger.debugLog("leaving weapon_OnClose()", "weapon_OnClose()");
+			//Log.DebugLog("leaving weapon_OnClose()", "weapon_OnClose()");
 		}
 
 		public void ResumeFromSave(Builder_WeaponTargeting builder)
@@ -725,12 +725,12 @@ namespace Rynchodon.Weapons
 				{
 					if (FireWeapon)
 					{
-						//myLogger.traceLog("Opening fire");
+						//Log.TraceLog("Opening fire");
 						ShootOn();
 					}
 					else
 					{
-						//myLogger.traceLog("Holding fire");
+						//Log.TraceLog("Holding fire");
 						ShootOff();
 					}
 				}
@@ -770,7 +770,7 @@ namespace Rynchodon.Weapons
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+				Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				if (MyAPIGateway.Multiplayer.IsServer && CubeBlock != null)
 					CubeBlock.Enabled = false;
 
@@ -803,13 +803,13 @@ namespace Rynchodon.Weapons
 
 			if (LoadedAmmo.DistanceToMaxSpeed < 1)
 			{
-				//myLogger.debugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
+				//Log.DebugLog("DesiredSpeed = " + LoadedAmmo.AmmoDefinition.DesiredSpeed, "LoadedAmmoSpeed()");
 				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
 			if (LoadedAmmo.MissileDefinition == null)
 			{
-				myLogger.alwaysLog("Missile Ammo expected: " + LoadedAmmo.AmmoDefinition.DisplayNameText, Logger.severity.ERROR);
+				Log.AlwaysLog("Missile Ammo expected: " + LoadedAmmo.AmmoDefinition.DisplayNameText, Logger.severity.ERROR);
 				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
@@ -834,7 +834,7 @@ namespace Rynchodon.Weapons
 				Profiler.Profile(Update1);
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.WARNING); }
+			{ Log.AlwaysLog("Exception: " + ex, Logger.severity.WARNING); }
 			UpdateNumber++;
 		}
 
@@ -863,8 +863,8 @@ namespace Rynchodon.Weapons
 
 			if (CurrentControl == Control.Off || SuppressTargeting)
 			{
-				myLogger.traceLog("off", condition: CurrentControl == Control.Off);
-				myLogger.traceLog("suppressed", condition: SuppressTargeting);
+				Log.TraceLog("off", condition: CurrentControl == Control.Off);
+				Log.TraceLog("suppressed", condition: SuppressTargeting);
 				return;
 			}
 
@@ -872,7 +872,7 @@ namespace Rynchodon.Weapons
 				UpdateAmmo();
 			if (LoadedAmmo == null)
 			{
-				myLogger.traceLog("No ammo loaded");
+				Log.TraceLog("No ammo loaded");
 				SetTarget(NoTarget.Instance);
 				return;
 			}
@@ -889,13 +889,13 @@ namespace Rynchodon.Weapons
 
 			if (!CanControl)
 			{
-				//myLogger.debugLog("cannot control", "Update100()");
+				//Log.DebugLog("cannot control", "Update100()");
 				CurrentControl = Control.Off;
 				Options.Flags = TargetingFlags.None;
 				return;
 			}
 
-			//myLogger.debugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
+			//Log.DebugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
 			ClearBlacklist();
 
 			Interpreter.UpdateInstruction();
@@ -913,7 +913,7 @@ namespace Rynchodon.Weapons
 				return;
 			}
 
-			//myLogger.debugLog("Not running targeting");
+			//Log.DebugLog("Not running targeting");
 			CurrentControl = Control.Off;
 		}
 
@@ -931,7 +931,7 @@ namespace Rynchodon.Weapons
 
 			if (!target.FiringDirection.HasValue || !target.ContactPoint.HasValue)
 			{
-				myLogger.traceLog("no firing direction");
+				Log.TraceLog("no firing direction");
 				FireWeapon = false;
 				return;
 			}
@@ -944,7 +944,7 @@ namespace Rynchodon.Weapons
 			if (directionChange > 0.01f)
 			{
 				// weapon is still being aimed
-				myLogger.traceLog("still turning, change: " + directionChange);
+				Log.TraceLog("still turning, change: " + directionChange);
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
@@ -957,7 +957,7 @@ namespace Rynchodon.Weapons
 			if (accuracy < WeaponDefinition.RequiredAccuracy)
 			{
 				// not facing target
-				myLogger.traceLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy);
+				Log.TraceLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy);
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
@@ -966,14 +966,14 @@ namespace Rynchodon.Weapons
 			Vector3D position = target.ContactPoint.Value;
 			if (Obstructed(ref position, target.Entity))
 			{
-				myLogger.traceLog("blacklisting: " + target.Entity.getBestName());
+				Log.TraceLog("blacklisting: " + target.Entity.getBestName());
 				BlacklistTarget();
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;
 			}
 
-			//myLogger.traceLog("firing");
+			//Log.TraceLog("firing");
 			facingWrongWayFor = 0;
 			FireWeapon = true;
 		}
@@ -986,7 +986,7 @@ namespace Rynchodon.Weapons
 		/// Not going to add a ready-to-fire bypass for ignoring source grid it would only protect against suicidal designs
 		protected override bool Obstructed(ref Vector3D contactPosition, IMyEntity target)
 		{
-			myLogger.debugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
+			Log.DebugLog("CubeBlock == null", Logger.severity.FATAL, condition: CubeBlock == null);
 			m_ignoreList[0] = target;
 			return RayCast.Obstructed(new LineD(ProjectilePosition(), contactPosition), PotentialObstruction, m_ignoreList, true);
 		}

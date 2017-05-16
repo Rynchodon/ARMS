@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Sandbox.ModAPI;
+using Rynchodon.Utility;
 using VRageMath;
 
 namespace Rynchodon.Settings
@@ -84,7 +85,7 @@ namespace Rynchodon.Settings
 			if (Instance.ByteSettings[name].Value == value)
 				return;
 
-			Instance.myLogger.debugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
+			Instance.Log.DebugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
 			Instance.ByteSettings[name].Value = value;
 		}
 
@@ -96,7 +97,7 @@ namespace Rynchodon.Settings
 			if (Instance.BoolSettings[name].Value == value)
 				return;
 
-			Instance.myLogger.debugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
+			Instance.Log.DebugLog("Setting " + name + " to " + value, Logger.severity.DEBUG);
 			Instance.BoolSettings[name].Value = value;
 		}
 
@@ -113,13 +114,11 @@ namespace Rynchodon.Settings
 		private readonly Dictionary<ByteSettingName, SettingSimple<byte>> ByteSettings = new Dictionary<ByteSettingName, SettingSimple<byte>>();
 		private readonly Dictionary<BoolSettingName, SettingSimple<bool>> BoolSettings = new Dictionary<BoolSettingName, SettingSimple<bool>>();
 		private readonly Dictionary<IntSettingName, SettingSimple<uint>> IntSettings = new Dictionary<IntSettingName, SettingSimple<uint>>();
-		
-		private readonly Logger myLogger;
+
+		private Logable Log { get { return new Logable(""); } }
 
 		private UserSettings()
 		{
-			this.myLogger = new Logger();
-
 			buildSettings();
 			readAll();
 		}
@@ -170,7 +169,7 @@ namespace Rynchodon.Settings
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to read settings from " + userSettings_fileName + ": " + ex, Logger.severity.WARNING);
+				Log.AlwaysLog("Failed to read settings from " + userSettings_fileName + ": " + ex, Logger.severity.WARNING);
 				Logger.DebugNotify("Failed to read user settings from file", 10000, Logger.severity.WARNING);
 			}
 			finally
@@ -203,7 +202,7 @@ namespace Rynchodon.Settings
 				settingsWriter.Flush();
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Failed to write settings to " + userSettings_fileName + ":\n" + ex, Logger.severity.WARNING); }
+			{ Log.AlwaysLog("Failed to write settings to " + userSettings_fileName + ":\n" + ex, Logger.severity.WARNING); }
 			finally
 			{
 				if (settingsWriter != null)
@@ -237,7 +236,7 @@ namespace Rynchodon.Settings
 
 			if (split.Length != 2)
 			{
-				myLogger.alwaysLog("split wrong length: " + split.Length + ", line: " + line, Logger.severity.WARNING);
+				Log.AlwaysLog("split wrong length: " + split.Length + ", line: " + line, Logger.severity.WARNING);
 				return;
 			}
 
@@ -246,10 +245,10 @@ namespace Rynchodon.Settings
 			{	try
 				{
 					if (ByteSettings[byteSet].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + byteSet + " to " + split[1], Logger.severity.INFO);
+						Log.AlwaysLog("Set " + byteSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + byteSet, Logger.severity.WARNING); }
+				{ Log.AlwaysLog("failed to parse: " + split[1] + " for " + byteSet, Logger.severity.WARNING); }
 				return;
 			}
 
@@ -259,10 +258,10 @@ namespace Rynchodon.Settings
 				try
 				{
 					if (BoolSettings[boolSet].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + boolSet + " to " + split[1], Logger.severity.INFO);
+						Log.AlwaysLog("Set " + boolSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + boolSet, Logger.severity.WARNING); }
+				{ Log.AlwaysLog("failed to parse: " + split[1] + " for " + boolSet, Logger.severity.WARNING); }
 				return;
 			}
 
@@ -272,14 +271,14 @@ namespace Rynchodon.Settings
 				try
 				{
 					if (IntSettings[uintSet].ValueFromString(split[1]))
-						myLogger.alwaysLog("Set " + uintSet + " to " + split[1], Logger.severity.INFO);
+						Log.AlwaysLog("Set " + uintSet + " to " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + uintSet, Logger.severity.WARNING); }
+				{ Log.AlwaysLog("failed to parse: " + split[1] + " for " + uintSet, Logger.severity.WARNING); }
 				return;
 			}
 
-			myLogger.alwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
+			Log.AlwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
 		}
 
 		private void SetSetting_FromString(string nameValue)
@@ -311,7 +310,7 @@ namespace Rynchodon.Settings
 						SetSetting(byteSet, y, true);
 					else
 					{
-						myLogger.debugLog("failed to parse as byte: " + value, Logger.severity.INFO);
+						Log.DebugLog("failed to parse as byte: " + value, Logger.severity.INFO);
 						MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a byte: \"" + value + '"');
 					}
 					return;
@@ -325,7 +324,7 @@ namespace Rynchodon.Settings
 						SetSetting(boolSet, b, true);
 					else
 					{
-						myLogger.debugLog("failed to parse as bool: " + value, Logger.severity.INFO);
+						Log.DebugLog("failed to parse as bool: " + value, Logger.severity.INFO);
 						MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a bool: \"" + value + '"');
 					}
 					return;
@@ -337,14 +336,14 @@ namespace Rynchodon.Settings
 				if (SetSetting_FuzzyBool(name, value))
 					return;
 
-				myLogger.debugLog("failed to find enum for " + name, Logger.severity.INFO);
+				Log.DebugLog("failed to find enum for " + name, Logger.severity.INFO);
 				MyAPIGateway.Utilities.ShowMessage("ARMS", "Failed, not a setting: \"" + name + '"');
 				return;
 
 			}
 			catch (Exception ex)
 			{
-				myLogger.debugLog("Exception: " + ex, Logger.severity.ERROR);
+				Log.DebugLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.Notify("Error while parsing set command", 10000, Logger.severity.ERROR);
 			}
 		}
@@ -371,14 +370,14 @@ namespace Rynchodon.Settings
 			if (setting == ByteSettingName.None)
 				return false;
 
-			myLogger.debugLog(setting + " variation: " + name);
+			Log.DebugLog(setting + " variation: " + name);
 
 			byte y;
 			if (byte.TryParse(value, out y))
 				SetSetting(setting, y, true);
 			else
 			{
-				myLogger.debugLog("failed to parse as byte: " + value, Logger.severity.INFO);
+				Log.DebugLog("failed to parse as byte: " + value, Logger.severity.INFO);
 				MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a byte: \"" + value + '"');
 			}
 
@@ -394,14 +393,14 @@ namespace Rynchodon.Settings
 			if (setting == BoolSettingName.None)
 				return false;
 
-			myLogger.debugLog(setting + " variation: " + name);
+			Log.DebugLog(setting + " variation: " + name);
 
 			bool b;
 			if (bool.TryParse(value, out b))
 				SetSetting(setting, b, true);
 			else
 			{
-				myLogger.debugLog("failed to parse: " + value, Logger.severity.INFO);
+				Log.DebugLog("failed to parse: " + value, Logger.severity.INFO);
 				MyAPIGateway.Utilities.ShowMessage("ARMS", "Not a bool: \"" + value + '"');
 			}
 

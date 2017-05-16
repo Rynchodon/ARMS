@@ -1,6 +1,7 @@
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
@@ -13,8 +14,6 @@ namespace Rynchodon.Autopilot.Navigator
 {
 	class UnLander : ALand
 	{
-
-		private readonly Logger m_logger;
 		private readonly PseudoBlock m_unlandBlock;
 		/// <summary>Entity is attached entity</summary>
 		private readonly Destination m_destination;
@@ -22,49 +21,51 @@ namespace Rynchodon.Autopilot.Navigator
 		
 		private bool m_attached = true;
 
+		private Logable Log
+		{ get { return new Logable(m_controlBlock.CubeBlock); } }
+
 		public UnLander(Pathfinder pathfinder, PseudoBlock unlandBlock = null)
 			: base(pathfinder)
 		{
-			this.m_logger = new Logger(m_controlBlock.CubeBlock);
 			this.m_unlandBlock = unlandBlock ?? m_navSet.Settings_Current.LandingBlock ?? m_navSet.LastLandingBlock;
 
 			if (this.m_unlandBlock == null)
 			{
-				m_logger.debugLog("No unland block", Logger.severity.INFO);
+				Log.DebugLog("No unland block", Logger.severity.INFO);
 				return;
 			}
-			m_logger.debugLog("Unland block is missing Block property", Logger.severity.FATAL, condition: this.m_unlandBlock.Block == null);
+			Log.DebugLog("Unland block is missing Block property", Logger.severity.FATAL, condition: this.m_unlandBlock.Block == null);
 
 			IMyLandingGear asGear = m_unlandBlock.Block as IMyLandingGear;
 			if (asGear != null)
 			{
 				m_destination.Entity = asGear.GetAttachedEntity();
-				m_logger.debugLog("m_destination.Entity: " + m_destination.Entity);
+				Log.DebugLog("m_destination.Entity: " + m_destination.Entity);
 				if (m_destination.Entity == null)
 				{
-					m_logger.debugLog("Not attached: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
+					Log.DebugLog("Not attached: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
 					return;
 				}
-				m_logger.debugLog("Got attached entity from Landing Gear : " + m_unlandBlock.Block.DisplayNameText, Logger.severity.DEBUG);
+				Log.DebugLog("Got attached entity from Landing Gear : " + m_unlandBlock.Block.DisplayNameText, Logger.severity.DEBUG);
 			}
 			else
 			{
 				IMyShipConnector asConn = m_unlandBlock.Block as IMyShipConnector;
 				if (asConn != null)
 				{
-					m_logger.debugLog("connector");
+					Log.DebugLog("connector");
 					IMyShipConnector other = asConn.OtherConnector;
 					if (other == null)
 					{
-						m_logger.debugLog("Not connected: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
+						Log.DebugLog("Not connected: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
 						return;
 					}
-					m_logger.debugLog("Got attached connector from Connector : " + m_unlandBlock.Block.DisplayNameText, Logger.severity.DEBUG);
+					Log.DebugLog("Got attached connector from Connector : " + m_unlandBlock.Block.DisplayNameText, Logger.severity.DEBUG);
 					m_destination.Entity = other.CubeGrid;
 				}
 				else
 				{
-					m_logger.debugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
+					Log.DebugLog("Cannot unland block: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
 					m_unlandBlock.Block.EnableGameThread(false);
 				}
 			}
@@ -81,10 +82,10 @@ namespace Rynchodon.Autopilot.Navigator
 			//m_detachDirection = m_unlandBlock.WorldMatrix.Backward;
 			//m_detachLength = 2f;
 			//m_detatchedOffset = attachOffset + leaveDirection * (20f + m_navSet.Settings_Current.DestinationRadius);
-			//m_logger.debugLog("m_detatchedOffset: " + m_detatchedOffset, "UnLander()", Logger.severity.DEBUG);
+			//Log.DebugLog("m_detatchedOffset: " + m_detatchedOffset, "UnLander()", Logger.severity.DEBUG);
 			//m_detatchDirection = attachOffset + leaveDirection
 
-			//m_logger.debugLog("offset: " + m_detachOffset + ", direction: " + m_detachDirection);
+			//Log.DebugLog("offset: " + m_detachOffset + ", direction: " + m_detachDirection);
 
 			m_destination.Position = m_unlandBlock.WorldMatrix.Backward * 100f;
 
@@ -109,7 +110,7 @@ namespace Rynchodon.Autopilot.Navigator
 				//if (m_detachLength >= Math.Min(m_controlBlock.CubeGrid.GetLongestDim(), m_navSet.Settings_Task_NavEngage.DestinationRadius))
 				//{
 				m_unlandBlock.Block.EnableGameThread(false);
-				m_logger.debugLog("Moved away. distSqMoved: " + distSqMoved + ", dest radius: " + m_navSet.Settings_Task_NavEngage.DestinationRadius, Logger.severity.INFO);
+				Log.DebugLog("Moved away. distSqMoved: " + distSqMoved + ", dest radius: " + m_navSet.Settings_Task_NavEngage.DestinationRadius, Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavMove();
 				m_mover.MoveAndRotateStop(false);
 				return;
@@ -118,7 +119,7 @@ namespace Rynchodon.Autopilot.Navigator
 				//{
 				//	m_detachLength *= 1.1f;
 				//	m_navSet.Settings_Current.DestinationRadius = m_detachLength * 0.5f;
-				//	m_logger.debugLog("increased detach length to " + m_detachLength);
+				//	Log.DebugLog("increased detach length to " + m_detachLength);
 				//}
 			}
 
@@ -134,7 +135,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_attached = asGear.GetAttachedEntity() != null;
 				if (m_attached)
 				{
-					m_logger.debugLog("Unlocking landing gear", Logger.severity.DEBUG);
+					Log.DebugLog("Unlocking landing gear", Logger.severity.DEBUG);
 					MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 						asGear.ApplyAction("Unlock");
 					});
@@ -150,7 +151,7 @@ namespace Rynchodon.Autopilot.Navigator
 					{
 						MyShipConnector otherConnector = (MyShipConnector)((IMyShipConnector)asConn).OtherConnector;
 						ReserveTarget(otherConnector.EntityId);
-						m_logger.debugLog("Unlocking connector", Logger.severity.DEBUG);
+						Log.DebugLog("Unlocking connector", Logger.severity.DEBUG);
 						MyAPIGateway.Utilities.TryInvokeOnGameThread(() => {
 							asConn.Enabled = true;
 							otherConnector.Enabled = true;
@@ -160,7 +161,7 @@ namespace Rynchodon.Autopilot.Navigator
 				}
 				else
 				{
-					m_logger.debugLog("cannot unlock: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
+					Log.DebugLog("cannot unlock: " + m_unlandBlock.Block.DisplayNameText, Logger.severity.INFO);
 					m_attached = false;
 				}
 			}

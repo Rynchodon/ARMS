@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -54,18 +55,17 @@ namespace Rynchodon.Weapons
 				((FixedWeapon)weapon).EngagerReleaseControl();
 		}
 
-
-		private readonly Logger myLogger;
 		private readonly bool AllowFighterControl;
 
 		private MotorTurret MyMotorTurret = null;
 
+		private Logable Log { get { return new Logable(CubeBlock); } }
+
 		public FixedWeapon(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger(block);
 			//Registrar.Add(CubeBlock, this);
-			//myLogger.debugLog("Initialized", "FixedWeapon()");
+			//Log.DebugLog("Initialized", "FixedWeapon()");
 
 			AllowFighterControl = WeaponDescription.GetFor(block).AllowFighterControl;
 		}
@@ -78,7 +78,7 @@ namespace Rynchodon.Weapons
 		{
 			if (AllowFighterControl && CanControl && MyMotorTurret == null)
 			{
-				//myLogger.debugLog("engager takes control", "EngagerTakeControl()");
+				//Log.DebugLog("engager takes control", "EngagerTakeControl()");
 				CurrentControl = Control.Engager;
 
 				if (MyAPIGateway.Multiplayer.IsServer)
@@ -135,12 +135,12 @@ namespace Rynchodon.Weapons
 			if (CurrentControl == Control.Engager)
 				return;
 
-			//myLogger.debugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
+			//Log.DebugLog("Turret flag: " + current.FlagSet(TargetingFlags.Turret) + ", No motor turret: " + (MyMotorTurret == null) + ", CanControl = " + CanControl, "Update_Options()");
 			if (current.FlagSet(TargetingFlags.Turret))
 			{
 				if (MyMotorTurret == null && CanControl)
 				{
-					//myLogger.debugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
+					//Log.DebugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange);
 				}
 			}
@@ -148,7 +148,7 @@ namespace Rynchodon.Weapons
 			{
 				if (MyMotorTurret != null)
 				{
-					//myLogger.debugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
+					//Log.DebugLog("MotorTurret is now disabled", "Update_Options()", Logger.severity.INFO);
 					MyMotorTurret.Dispose();
 					MyMotorTurret = null; // MyMotorTurret will not be updated, so it will be recreated later incase something weird happens to motors
 				}
@@ -175,19 +175,19 @@ namespace Rynchodon.Weapons
 		/// </summary>
 		private void MyMotorTurret_OnStatorChange(IMyMotorStator statorEl, IMyMotorStator statorAz)
 		{
-			//myLogger.debugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
+			//Log.DebugLog("entered MyMotorTurret_OnStatorChange()", "MyMotorTurret_OnStatorChange()");
 
 			List<IMyEntity> ignore = new List<IMyEntity>();
 			if (statorEl != null)
 			{
-				//myLogger.debugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
+				//Log.DebugLog("added statorEl.CubeGrid: " + statorEl.CubeGrid.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorEl.CubeGrid);
 
 				// elevation rotor will be on same grid as weapon, already ignored
 			}
 			if (statorAz != null)
 			{
-				//myLogger.debugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
+				//Log.DebugLog("added statorAz: " + statorAz.getBestName(), "MyMotorTurret_OnStatorChange()");
 				ignore.Add(statorAz);
 
 				// azimuth rotor will be on same grid as elevation stator, ignored above

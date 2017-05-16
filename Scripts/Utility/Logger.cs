@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -111,104 +111,6 @@ namespace Rynchodon
 
 		private readonly string m_fileName;
 		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
-
-
-		public Logger([CallerFilePath] string callerPath = null)
-		{
-			this.m_fileName = Path.GetFileName(callerPath);
-		}
-
-		/// <summary>
-		/// Creates a Logger that gets the context and states from supplied functions.
-		/// </summary>
-		/// <param name="context">the context of this logger</param>
-		/// <param name="default_primary">the primary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(Func<string> context, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
-		{
-			this.m_fileName = Path.GetFileName(callerPath);
-			this.f_context = context;
-			this.f_state_primary = default_primary;
-			this.f_state_secondary = default_secondary;
-		}
-
-		/// <summary>
-		/// Creates a Logger that gets the context and states from block and supplied function.
-		/// </summary>
-		/// <param name="block">The block to get context and states from</param>
-		/// <param name="default_secondary">the secondary state used when one is not supplied to alwaysLog() or debugLog()</param>
-		public Logger(IMyCubeBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
-		{
-			this.m_fileName = Path.GetFileName(callerPath);
-
-			if (block == null)
-			{
-				f_context = () => "Null block";
-				return;
-			}
-
-			this.f_context = () => block.CubeGrid.nameWithId();
-
-			if (default_secondary == null)
-			{
-				this.f_state_primary = () => block.DefinitionDisplayNameText;
-				this.f_state_secondary = () => block.nameWithId();
-			}
-			else
-			{
-				this.f_state_primary = () => block.nameWithId();
-				this.f_state_secondary = default_secondary;
-			}
-		}
-
-		public Logger(PseudoBlock block, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
-		 : this(block.Block, default_secondary, callerPath)
-		{
-			if (block == null || block.Block != null)
-				return;
-
-			this.f_context = () => block.Grid.nameWithId();
-			this.f_state_primary = () => block.DisplayName;
-			this.f_state_secondary = default_secondary;
-		}
-
-		public Logger(IMyCubeGrid grid, Func<string> default_primary = null, Func<string> default_secondary = null, [CallerFilePath] string callerPath = null)
-		{
-			this.m_fileName = Path.GetFileName(callerPath);
-
-			if (grid == null)
-			{
-				f_context = () => "Null grid";
-				return;
-			}
-
-			this.f_context = () => grid.nameWithId();
-			this.f_state_primary = default_primary;
-			this.f_state_secondary = default_secondary;
-		}
-
-		public Logger(IMyEntity entity, [CallerFilePath] string callerPath = null)
-		{
-			this.m_fileName = Path.GetFileName(callerPath);
-
-			IMyCubeBlock asBlock = entity as IMyCubeBlock;
-			if (asBlock != null)
-			{
-				this.f_context = () => asBlock.CubeGrid.nameWithId();
-				this.f_state_primary = () => asBlock.DefinitionDisplayNameText;
-				this.f_state_secondary = () => asBlock.nameWithId();
-				return;
-			}
-
-			IMyCubeGrid asGrid = entity as IMyCubeGrid;
-			if (asGrid != null)
-			{
-				this.f_context = () => asGrid.nameWithId();
-				return;
-			}
-
-			this.f_context = entity.getBestName;
-		}
 
 		private static void deleteIfExists(string filename)
 		{

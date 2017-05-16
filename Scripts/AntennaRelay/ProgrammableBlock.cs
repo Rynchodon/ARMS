@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Xml.Serialization;
 using Rynchodon.Instructions;
 using Rynchodon.Utility.Network;
+using Rynchodon.Utility;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.Gui;
@@ -113,7 +114,6 @@ namespace Rynchodon.AntennaRelay
 
 		private readonly Ingame.IMyProgrammableBlock m_progBlock;
 		private readonly RelayClient m_networkClient;
-		private readonly Logger m_logger;
 
 		private bool m_handleDetected;
 
@@ -133,14 +133,16 @@ namespace Rynchodon.AntennaRelay
 
 		private BlockTypeList m_blockCountList_btl;
 
+		private Logable Log
+		{ get { return new Logable(m_progBlock as IMyCubeBlock); } }
+
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
-			m_logger = new Logger(block);
 			m_progBlock = block as Ingame.IMyProgrammableBlock;
 			m_networkClient = new RelayClient(block, HandleMessage);
 
-			m_logger.debugLog("initialized");
+			Log.DebugLog("initialized");
 			Registrar.Add(block, this);
 		}
 
@@ -237,13 +239,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (parameter.Length == 0)
 			{
-				m_logger.debugLog("no detected entities");
+				Log.DebugLog("no detected entities");
 				return;
 			}
 
-			//m_logger.debugLog("parameters:\n" + parameter.ToString().Replace(string.Empty + entitySeparator, entitySeparator + "\n"));
+			//Log.DebugLog("parameters:\n" + parameter.ToString().Replace(string.Empty + entitySeparator, entitySeparator + "\n"));
 			if (!m_progBlock.TryRun(parameter.ToString()))
-				m_logger.alwaysLog("Failed to run program", Logger.severity.INFO);
+				Log.AlwaysLog("Failed to run program", Logger.severity.INFO);
 		}
 
 		private void HandleMessage(Message received)
@@ -252,13 +254,13 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_progBlock.TryRun(param))
 			{
-				m_logger.debugLog("Sent message to program", Logger.severity.DEBUG);
+				Log.DebugLog("Sent message to program", Logger.severity.DEBUG);
 				if (MyAPIGateway.Session.Player != null)
 					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message");
 			}
 			else
 			{
-				m_logger.debugLog("Failed to send message to program", Logger.severity.WARNING);
+				Log.DebugLog("Failed to send message to program", Logger.severity.WARNING);
 				if (MyAPIGateway.Session.Player != null)
 					(m_block as IMyTerminalBlock).AppendCustomInfo("Received message but failed to run program.");
 			}

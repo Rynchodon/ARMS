@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using Sandbox.ModAPI;
@@ -19,8 +19,6 @@ namespace Rynchodon.Threading
 			StaticMaxParallel = Math.Max(Environment.ProcessorCount - 2, 1);
 		}
 
-		private readonly Logger myLogger = new Logger();
-
 		private readonly bool Background;
 		private readonly string ThreadName;
 
@@ -30,9 +28,10 @@ namespace Rynchodon.Threading
 
 		public byte ParallelTasks { get; private set; }
 
+		private Logable Log { get { return new Logable(ThreadName ?? string.Empty, ParallelTasks.ToString()); } }
+
 		public ThreadManager(byte AllowedParallel = 1, bool background = false, string threadName = null)
 		{
-			this.myLogger = new Logger(() => threadName ?? string.Empty, () => ParallelTasks.ToString());
 			this.AllowedParallel = AllowedParallel;
 			this.Background = background;
 			this.ThreadName = threadName;
@@ -50,7 +49,7 @@ namespace Rynchodon.Threading
 		{
 			if (Globals.WorldClosed)
 			{
-				myLogger.debugLog("Cannot enqueue, world is closed");
+				Log.DebugLog("Cannot enqueue, world is closed");
 				return;
 			}
 
@@ -63,7 +62,7 @@ namespace Rynchodon.Threading
 			MyAPIGateway.Utilities.InvokeOnGameThread(() => {
 				if (MyAPIGateway.Parallel == null)
 				{
-					myLogger.debugLog("Parallel == null", Logger.severity.WARNING);
+					Log.DebugLog("Parallel == null", Logger.severity.WARNING);
 					return;
 				}
 
@@ -97,10 +96,10 @@ namespace Rynchodon.Threading
 						Profiler.EndProfileBlock();
 					}
 					else
-						myLogger.debugLog("null action", Logger.severity.WARNING);
+						Log.DebugLog("null action", Logger.severity.WARNING);
 				}
 			}
-			catch (Exception ex) { myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
+			catch (Exception ex) { Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 			finally
 			{
 				using (lock_parallelTasks.AcquireExclusiveUsing())

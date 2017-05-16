@@ -1,4 +1,4 @@
-﻿using VRage.Game.ModAPI;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace Rynchodon
@@ -19,13 +19,9 @@ namespace Rynchodon
 		private readonly IMyCubeGrid CubeGrid;
 		private IMyCubeBlock CubeBlock;
 
-		private Logger myLogger;
-
-
 		private RelativeDirection3F(IMyCubeGrid grid)
 		{
 			this.CubeGrid = grid;
-			myLogger = new Logger(() => grid.DisplayName);
 		}
 
 

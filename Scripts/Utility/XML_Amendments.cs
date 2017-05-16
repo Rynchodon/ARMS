@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Rynchodon.Utility;
 using Sandbox.ModAPI;
 
 namespace Rynchodon
@@ -11,7 +12,6 @@ namespace Rynchodon
 	/// <typeparam name="T">The type of object to ammend.</typeparam>
 	public class XML_Amendments<T>
 	{
-		private readonly Logger myLogger;
 		private string _serial;
 
 		/// <summary>Will contain the keys that could not be matched and their values.</summary>
@@ -22,9 +22,13 @@ namespace Rynchodon
 		/// <summary>Data entries shall be (key)(keyValueSeparator)(value)</summary>
 		public char[] keyValueSeparator = { '=' };
 
+		private Type m_Type;
+
+		private Logable Log { get { return new Logable(m_Type.FullName); } }
+
 		public XML_Amendments(T obj)
 		{
-			myLogger = new Logger(typeof(T).ToString);
+			m_Type = typeof(T);
 			this._serial = MyAPIGateway.Utilities.SerializeToXML<T>(obj);
 		}
 
@@ -60,7 +64,7 @@ namespace Rynchodon
 
 				if (matchCount == 0)
 				{
-					myLogger.alwaysLog("failed to match key: " + key + '/' + value, Logger.severity.WARNING, typeof(T).FullName);
+					Log.AlwaysLog("failed to match key: " + key + '/' + value, Logger.severity.WARNING);
 					Failed.Add(key, value);
 				}
 			}
