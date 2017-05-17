@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Rynchodon.Autopilot.Instruction.Command;
+using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.ModAPI;
@@ -175,7 +176,6 @@ namespace Rynchodon.Autopilot.Instruction
 		private readonly IMyTerminalBlock m_block;
 		/// <summary>Command list for GUI programming, not to be used by others</summary>
 		private readonly List<ACommand> m_commandList = new List<ACommand>();
-		private readonly Logger m_logger;
 
 		/// <summary>Shared from any command source</summary>
 		private readonly StringBuilder m_syntaxErrors = new StringBuilder();
@@ -189,6 +189,8 @@ namespace Rynchodon.Autopilot.Instruction
 		private Stack<AddCommandInternalNode> m_currentAddNode = new Stack<AddCommandInternalNode>();
 		private string m_infoMessage, m_commands;
 
+		private Logable Log { get { return new Logable(m_block); } }
+
 		/// <summary>
 		/// The most recent commands from either terminal or a message.
 		/// </summary>
@@ -198,7 +200,7 @@ namespace Rynchodon.Autopilot.Instruction
 			private set
 			{
 				m_commands = value;
-				m_logger.alwaysLog("Commands: " + m_commands); // for bug reports
+				Log.AlwaysLog("Commands: " + m_commands); // for bug reports
 			}
 		}
 
@@ -207,7 +209,6 @@ namespace Rynchodon.Autopilot.Instruction
 		private AutopilotCommands(IMyTerminalBlock block)
 		{
 			this.m_block = block;
-			this.m_logger = new Logger(block);
 
 			m_block.AppendingCustomInfo += m_block_AppendSyntaxErrors;
 
@@ -219,13 +220,13 @@ namespace Rynchodon.Autopilot.Instruction
 		/// </summary>
 		public void OnCommandsChanged()
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 			m_actionList.Clear();
 		}
 
 		public void StartGooeyProgramming()
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
 			using (MainLock.AcquireSharedUsing())
 			{
@@ -379,7 +380,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
 		{
-			//m_logger.debugLog("entered");
+			//Log.DebugLog("entered");
 
 			if (block != m_block)
 				return;
@@ -388,7 +389,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 			if (m_listCommands)
 			{
-				m_logger.debugLog("showing command list");
+				Log.DebugLog("showing command list");
 
 				if (m_termCommandList == null)
 				{
@@ -442,7 +443,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return;
 			}
 
-			m_logger.debugLog("showing single command: " + m_currentCommand.Identifier);
+			Log.DebugLog("showing single command: " + m_currentCommand.Identifier);
 
 			m_currentCommand.AddControls(controls);
 			controls.Add(new MyTerminalControlSeparator<MyShipController>());
@@ -452,7 +453,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void ListCommands(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> allItems, List<MyTerminalControlListBoxItem> selected)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			foreach (ACommand command in m_commandList)
 			{
@@ -466,18 +467,18 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CommandSelected(IMyTerminalBlock block, List<MyTerminalControlListBoxItem> selected)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
-			m_logger.debugLog("selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("selected.Count: " + selected.Count, Logger.severity.ERROR, condition: selected.Count > 1);
 
 			if (selected.Count == 0)
 			{
 				m_currentCommand = null;
-				m_logger.debugLog("selection cleared");
+				Log.DebugLog("selection cleared");
 			}
 			else
 			{
 				m_currentCommand = (ACommand)selected[0].UserData;
-				m_logger.debugLog("selected: " + m_currentCommand.DisplayString);
+				Log.DebugLog("selected: " + m_currentCommand.DisplayString);
 			}
 		}
 
@@ -485,10 +486,10 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void Discard(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
-			m_logger.debugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
 
 			m_currentCommand = null;
 			m_listCommands = true;
@@ -498,21 +499,21 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void CheckAndSave(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
-			m_logger.debugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("m_currentCommand == null", Logger.severity.FATAL, condition: m_currentCommand == null);
 
 			string msg;
 			if (m_currentCommand.ValidateControls((IMyCubeBlock)m_block, out msg))
 			{
 				if (m_commandList.Contains(m_currentCommand))
 				{
-					m_logger.debugLog("edited command: " + m_currentCommand.DisplayString);
+					Log.DebugLog("edited command: " + m_currentCommand.DisplayString);
 				}
 				else
 				{
 					if (m_insertIndex == -1)
 					{
-						m_logger.debugLog("new command: " + m_currentCommand.DisplayString);
+						Log.DebugLog("new command: " + m_currentCommand.DisplayString);
 						m_commandList.Add(m_currentCommand);
 					}
 					else
@@ -520,10 +521,10 @@ namespace Rynchodon.Autopilot.Instruction
 						if (m_replace)
 						{
 							m_commandList.RemoveAt(m_insertIndex);
-							m_logger.debugLog("replace at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
+							Log.DebugLog("replace at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
 						}
 						else
-							m_logger.debugLog("new command at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
+							Log.DebugLog("new command at " + m_insertIndex + ": " + m_currentCommand.DisplayString);
 						m_commandList.Insert(m_insertIndex, m_currentCommand);
 					}
 				}
@@ -533,26 +534,26 @@ namespace Rynchodon.Autopilot.Instruction
 			}
 			else
 			{
-				m_logger.debugLog("failed to save command: " + m_currentCommand.DisplayString + ", reason: " + msg);
+				Log.DebugLog("failed to save command: " + m_currentCommand.DisplayString + ", reason: " + msg);
 				LogAndInfo(msg);
 			}
 		}
 
 		private void AddCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			m_insertIndex = -1;
 			m_replace = false;
 			m_currentCommand = null;
 			m_listCommands = false;
 			ClearMessage();
-			m_logger.debugLog("adding new command at end");
+			Log.DebugLog("adding new command at end");
 		}
 
 		private void InsertCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -565,14 +566,14 @@ namespace Rynchodon.Autopilot.Instruction
 			m_currentCommand = null;
 			m_listCommands = false;
 			ClearMessage();
-			m_logger.debugLog("inserting new command at " + m_insertIndex);
+			Log.DebugLog("inserting new command at " + m_insertIndex);
 		}
 
 		private void RemoveCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -587,7 +588,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void EditCommand(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -601,7 +602,7 @@ namespace Rynchodon.Autopilot.Instruction
 				return;
 			}
 
-			m_logger.debugLog("editing: " + m_currentCommand.DisplayString);
+			Log.DebugLog("editing: " + m_currentCommand.DisplayString);
 
 			m_insertIndex = m_commandList.IndexOf(m_currentCommand);
 			m_replace = true;
@@ -612,7 +613,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void MoveCommandUp(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -626,14 +627,14 @@ namespace Rynchodon.Autopilot.Instruction
 				LogAndInfo("already first element: " + m_currentCommand.DisplayString);
 				return;
 			}
-			m_logger.debugLog("moved up: " + m_currentCommand.DisplayString);
+			Log.DebugLog("moved up: " + m_currentCommand.DisplayString);
 			m_commandList.Swap(index, index - 1);
 			ClearMessage();
 		}
 
 		private void MoveCommandDown(IMyTerminalBlock block)
 		{
-			m_logger.debugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
+			Log.DebugLog("block != m_block", Logger.severity.FATAL, condition: block != m_block);
 
 			if (m_currentCommand == null)
 			{
@@ -647,14 +648,14 @@ namespace Rynchodon.Autopilot.Instruction
 				LogAndInfo("already last element: " + m_currentCommand.DisplayString);
 				return;
 			}
-			m_logger.debugLog("moved down: " + m_currentCommand.DisplayString);
+			Log.DebugLog("moved down: " + m_currentCommand.DisplayString);
 			m_commandList.Swap(index, index + 1);
 			ClearMessage();
 		}
 
 		private void Finished(bool save)
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
 			if (save)
 			{
@@ -677,7 +678,7 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void LogAndInfo(string message, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			m_logger.debugLog(message, member: member, lineNumber: lineNumber);
+			Log.DebugLog(message, member: member, lineNumber: lineNumber);
 			m_infoMessage = message;
 			m_block.UpdateCustomInfo();
 			m_block.RebuildControls();
@@ -692,18 +693,18 @@ namespace Rynchodon.Autopilot.Instruction
 
 		private void m_block_AppendingCustomInfo(IMyTerminalBlock arg1, StringBuilder arg2)
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
 			if (!string.IsNullOrWhiteSpace(m_infoMessage))
 			{
-				m_logger.debugLog("appending info message: " + m_infoMessage);
+				Log.DebugLog("appending info message: " + m_infoMessage);
 				arg2.AppendLine();
 				arg2.AppendLine(m_infoMessage);
 			}
 
 			if (!m_listCommands && m_currentCommand != null)
 			{
-				m_logger.debugLog("appending command info");
+				Log.DebugLog("appending command info");
 				arg2.AppendLine();
 				m_currentCommand.AppendCustomInfo(arg2);
 				arg2.AppendLine();
@@ -714,7 +715,7 @@ namespace Rynchodon.Autopilot.Instruction
 		{
 			if (m_syntaxErrors.Length != 0)
 			{
-				m_logger.debugLog("appending syntax errors");
+				Log.DebugLog("appending syntax errors");
 				arg2.AppendLine();
 				arg2.Append("Syntax Errors:\n");
 				arg2.Append(m_syntaxErrors);

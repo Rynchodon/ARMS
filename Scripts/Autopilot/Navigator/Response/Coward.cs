@@ -2,6 +2,7 @@ using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -12,17 +13,15 @@ namespace Rynchodon.Autopilot.Navigator
 	/// </summary>
 	public class Coward : NavigatorMover, IEnemyResponse
 	{
-
-		private readonly Logger m_logger;
-
 		private LastSeen m_enemy;
+
+		private Logable Log
+		{ get { return new Logable(m_controlBlock.CubeGrid.DisplayName); } }
 
 		public Coward(Pathfinder pathfinder, AllNavigationSettings navSet)
 			: base(pathfinder)
 		{
-			this.m_logger = new Logger(() => m_controlBlock.CubeGrid.DisplayName);
-
-			m_logger.debugLog("Initialized");
+			Log.DebugLog("Initialized");
 		}
 
 		#region IEnemyResponse Members
@@ -46,7 +45,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public override void Move()
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 
 			if (m_enemy == null)
 			{
@@ -64,7 +63,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		public void Rotate()
 		{
-			m_logger.debugLog("entered");
+			Log.DebugLog("entered");
 			
 			if (m_enemy == null)
 			{

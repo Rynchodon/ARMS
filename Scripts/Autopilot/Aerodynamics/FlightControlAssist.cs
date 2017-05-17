@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Utility;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
@@ -59,7 +60,6 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		private const byte StopAfter = 4;
 		private const float InputSmoothing = 0.2f, OppInputSmooth = 1f - InputSmoothing;
 		private readonly MyCockpit m_cockpit;
-		private readonly Logger m_logger;
 		private readonly PseudoBlock Pseudo;
 
 		private FlightControlStator[] m_aileron, m_elevator, m_rudder;
@@ -75,10 +75,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private MyCubeGrid m_grid { get { return m_cockpit.CubeGrid; } }
 
+		private Logable Log { get { return new Logable(m_grid); } }
+
 		public FlightControlAssist(MyCockpit cockpit)
 		{
 			this.m_cockpit = cockpit;
-			this.m_logger = new Logger(m_grid);
 			this.m_aileron = m_elevator = m_rudder = new FlightControlStator[0];
 
 			CubeGridCache cache = CubeGridCache.GetFor(m_grid);
@@ -104,14 +105,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				Vector3 facing = stator.LocalMatrix.Up;
 				if (facing == Pseudo.LocalMatrix.Forward || facing == Pseudo.LocalMatrix.Backward)
 				{
-					m_logger.alwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
+					Log.AlwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
 					continue;
 				}
 
 				FlightControlStator flightControl = new FlightControlStator(stator);
 				if (!stator.IsOnSide(facing))
 				{
-					m_logger.debugLog("On " + Base6Directions.GetDirection(-facing) + " side and facing " + Base6Directions.GetDirection(facing));
+					Log.DebugLog("On " + Base6Directions.GetDirection(-facing) + " side and facing " + Base6Directions.GetDirection(facing));
 					flightControl.Flip();
 				}
 
@@ -130,14 +131,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			{
 				Vector3 facing = stator.LocalMatrix.Up;
 				bool isForward = stator.IsOnSide(Pseudo.LocalMatrix.Forward);
-				m_logger.debugLog(stator.DisplayNameText + " is on " + (isForward ? "forward" : "backward") + " side");
+				Log.DebugLog(stator.DisplayNameText + " is on " + (isForward ? "forward" : "backward") + " side");
 
 				FlightControlStator flightControl = new FlightControlStator(stator);
 				if (facing == Pseudo.LocalMatrix.Left)
 				{
 					if (!isForward)
 					{
-						m_logger.debugLog("Aft and facing port: " + stator.DisplayNameText);
+						Log.DebugLog("Aft and facing port: " + stator.DisplayNameText);
 						flightControl.Flip();
 					}
 				}
@@ -145,13 +146,13 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				{
 					if (isForward)
 					{
-						m_logger.debugLog("Fore and facing starboard: " + stator.DisplayNameText);
+						Log.DebugLog("Fore and facing starboard: " + stator.DisplayNameText);
 						flightControl.Flip();
 					}
 				}
 				else
 				{
-					m_logger.alwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
+					Log.AlwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
 					continue;
 				}
 
@@ -170,14 +171,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			{
 				Vector3 facing = stator.LocalMatrix.Up;
 				bool isForward = stator.IsOnSide(Pseudo.LocalMatrix.Forward);
-				m_logger.debugLog(stator.DisplayNameText + " is on " + (isForward ? "forward" : "backward") + " side");
+				Log.DebugLog(stator.DisplayNameText + " is on " + (isForward ? "forward" : "backward") + " side");
 
 				FlightControlStator flightControl = new FlightControlStator(stator);
 				if (facing == Pseudo.LocalMatrix.Up)
 				{
 					if (!isForward)
 					{
-						m_logger.debugLog("Aft and facing up: " + stator.DisplayNameText);
+						Log.DebugLog("Aft and facing up: " + stator.DisplayNameText);
 						flightControl.Flip();
 					}
 				}
@@ -185,13 +186,13 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				{
 					if (isForward)
 					{
-						m_logger.debugLog("Fore and facing down: " + stator.DisplayNameText);
+						Log.DebugLog("Fore and facing down: " + stator.DisplayNameText);
 						flightControl.Flip();
 					}
 				}
 				else
 				{
-					m_logger.alwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
+					Log.AlwaysLog("Facing the wrong way: " + stator.nameWithId() + ", facing: " + facing + ", local flight matrix: " + Pseudo.LocalMatrix, Logger.severity.WARNING);
 					continue;
 				}
 
@@ -233,8 +234,8 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			bool skipInput = MyGuiScreenGamePlay.ActiveGameplayScreen != null || MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.LOOKAROUND);
 
-			m_logger.debugLog("active screen: " + MyGuiScreenGamePlay.ActiveGameplayScreen, condition: MyGuiScreenGamePlay.ActiveGameplayScreen != null);
-			m_logger.debugLog("Lookaround", condition: MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.LOOKAROUND));
+			Log.DebugLog("active screen: " + MyGuiScreenGamePlay.ActiveGameplayScreen, condition: MyGuiScreenGamePlay.ActiveGameplayScreen != null);
+			Log.DebugLog("Lookaround", condition: MyAPIGateway.Input.IsGameControlPressed(MyControlsSpace.LOOKAROUND));
 
 			Vector3D gridCentre = m_grid.GetCentre();
 			MyPlanet closest = MyPlanetExtensions.GetClosestPlanet(gridCentre);
@@ -288,7 +289,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				ModStabilizeFactor(2, targetVelocity, currentVelocity);
 				targetAngle = m_stabilizeFactor.Z * SqrtMag(targetVelocity - currentVelocity) + m_trim.Z;
 
-				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Z + ", targetAngle: " + targetAngle);
+				Log.TraceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Z + ", targetAngle: " + targetAngle);
 			}
 
 			for (int index = 0; index < m_aileron.Length; ++index)
@@ -319,7 +320,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				ModStabilizeFactor(0, targetVelocity, currentVelocity);
 				targetAngle = m_stabilizeFactor.X * SqrtMag(targetVelocity - currentVelocity) + m_trim.X;
 
-				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.X + ", targetAngle: " + targetAngle);
+				Log.TraceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.X + ", targetAngle: " + targetAngle);
 			}
 
 			for (int index = 0; index < m_elevator.Length; ++index)
@@ -350,7 +351,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				ModStabilizeFactor(1, targetVelocity, currentVelocity);
 				targetAngle = m_stabilizeFactor.Y * SqrtMag(targetVelocity - currentVelocity) + m_trim.Y;
 
-				m_logger.traceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Y + ", targetAngle: " + targetAngle);
+				Log.TraceLog("targetVelocity: " + targetVelocity + ", currentVelocity: " + currentVelocity + ", stabilizeFactor: " + m_stabilizeFactor.Y + ", targetAngle: " + targetAngle);
 			}
 
 			for (int index = 0; index < m_rudder.Length; ++index)
@@ -375,7 +376,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			if (Math.Abs(targetVelocity - previousTargetVelocity) > 0.01f)
 			{
-				m_logger.debugLog("target velocity changed", primaryState: "index: " + index);
+				Log.DebugLog("target velocity changed. Index: " + index);
 				return;
 			}
 
@@ -389,14 +390,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 			if (ratio < 0.5f)
 			{
 				m_stabilizeFactor.SetDim(index, 0.99f * m_stabilizeFactor.GetDim(index));
-				m_logger.debugLog("ratio is low: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
-					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity, primaryState: "index: " + index);
+				Log.DebugLog("ratio is low: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
+					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity + ", index: " + index);
 			}
 			else if (ratio > 0.9f)
 			{
 				m_stabilizeFactor.SetDim(index, 1.01f * m_stabilizeFactor.GetDim(index));
-				m_logger.debugLog("ratio is high: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
-					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity, primaryState: "index: " + index);
+				Log.DebugLog("ratio is high: " + ratio + ", stabilize factor: " + m_stabilizeFactor.GetDim(index) + ", targetVelocity: " + targetVelocity + ", previousTargetVelocity: " + previousTargetVelocity +
+					", currentVelocity: " + currentVelocity + ", previousVelocity: " + previousVelocity + ", index: " + index);
 			}
 		}
 

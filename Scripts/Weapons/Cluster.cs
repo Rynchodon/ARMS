@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rynchodon.Utility;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -7,8 +8,6 @@ namespace Rynchodon.Weapons
 {
 	public class Cluster
 	{
-
-		private readonly Logger m_logger;
 		private readonly float MinOffMult;
 
 		public readonly IMyEntity Master;
@@ -17,10 +16,11 @@ namespace Rynchodon.Weapons
 		public float OffsetMulti;
 		public Vector3 masterVelocity;
 
+		private Logable Log
+		{ get { return new Logable(""); } }
+
 		public Cluster(List<IMyEntity> missiles, IMyEntity launcher)
 		{
-			m_logger = new Logger();
-
 			Vector3 centre = Vector3.Zero;
 			foreach (IMyEntity miss in missiles)
 				centre += miss.GetPosition();
@@ -31,12 +31,12 @@ namespace Rynchodon.Weapons
 			{
 				if (miss.Closed)
 				{
-					m_logger.debugLog("missile is closed: " + miss.nameWithId());
+					Log.DebugLog("missile is closed: " + miss.nameWithId());
 					continue;
 				}
 				if (miss.Physics == null)
 				{
-					m_logger.debugLog("missile has no physics: " + miss.nameWithId());
+					Log.DebugLog("missile has no physics: " + miss.nameWithId());
 					continue;
 				}
 
@@ -70,7 +70,7 @@ namespace Rynchodon.Weapons
 				Slaves.Add(miss);
 				SlaveOffsets.Add(Vector3.Transform(miss.GetPosition(), masterInv));
 				float distSq = Vector3.DistanceSquared(miss.GetPosition(), masterPos);
-				m_logger.debugLog("slave: " + miss + ", offset: " + SlaveOffsets[SlaveOffsets.Count - 1], Logger.severity.TRACE);
+				Log.DebugLog("slave: " + miss + ", offset: " + SlaveOffsets[SlaveOffsets.Count - 1], Logger.severity.TRACE);
 				if (distSq > Furthest)
 					Furthest = distSq;
 			}
@@ -80,7 +80,7 @@ namespace Rynchodon.Weapons
 
 			MinOffMult = Furthest * 2f;
 			OffsetMulti = Furthest * 1e6f; // looks pretty
-			m_logger.debugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, Logger.severity.DEBUG);
+			Log.DebugLog("created new cluster, missiles: " + missiles.Count + ", slaves: " + Slaves.Count + ", offsets: " + SlaveOffsets.Count + ", furthest: " + Furthest, Logger.severity.DEBUG);
 		}
 
 		public void AdjustMulti(float target)

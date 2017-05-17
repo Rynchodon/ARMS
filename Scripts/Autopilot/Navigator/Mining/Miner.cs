@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Harvest;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
@@ -37,7 +38,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				throw new NullReferenceException("MyShipDrillDefinition__SensorRadius");
 		}
 
-		private readonly Logger m_logger;
 		private readonly byte[] m_oreTargets;
 
 		private string m_oreName;
@@ -69,7 +69,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (value_stage == value)
 					return;
 
-				m_logger.debugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
+				Log.DebugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
 				switch (value)
 				{
 					case Stage.GetDeposit:
@@ -80,7 +80,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 								return;
 							}
 							OreDetector.SearchForMaterial(m_controlBlock, m_oreTargets, OnOreSearchComplete);
-							m_logger.debugLog("Waiting on ore detector", Logger.severity.DEBUG);
+							Log.DebugLog("Waiting on ore detector", Logger.severity.DEBUG);
 							break;
 						}
 				}
@@ -89,6 +89,8 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				value_stage = value;
 			}
 		}
+		private Logable Log
+		{ get { return LogableFrom.Pseudo(m_navSet.Settings_Current.NavigationBlock); } }
 
 		public Miner(Pathfinder pathfinder, byte[] oreTargets) : base(pathfinder)
 		{
@@ -114,7 +116,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				return;
 			}
 
-			m_logger = new Logger(navDrill);
 			m_navSet.Settings_Task_NavRot.NavigatorMover = this;
 			m_navSet.Settings_Task_NavRot.NavigationBlock = navDrill;
 
@@ -125,7 +126,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			foreach (MyVoxelBase voxel in nearbyVoxels)
 				if ((voxel is IMyVoxelMap || voxel is MyPlanet) && voxel.ContainsOrIntersects(ref nearby))
 				{
-					m_logger.debugLog("near a voxel, escape first", Logger.severity.DEBUG);
+					Log.DebugLog("near a voxel, escape first", Logger.severity.DEBUG);
 					m_stage = Stage.Mining;
 					new EscapeMiner(m_pathfinder, voxel);
 					return;
@@ -183,7 +184,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					m_pathfinder.MoveTo(destinations: m_destinations);
 					return;
 				case Stage.Mining:
-					m_logger.debugLog("Finished mining", Logger.severity.DEBUG);
+					Log.DebugLog("Finished mining", Logger.severity.DEBUG);
 					m_stage = Stage.GetDeposit;
 					return;
 			}
@@ -223,11 +224,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					foreach (BoundingSphere sensor in sensors)
 						if (ray.Intersects(sensor).HasValue)
 						{
-							//m_logger.debugLog(block.getBestName() + " is behind a drill");
+							//Log.DebugLog(block.getBestName() + " is behind a drill");
 							goto NextBlock;
 						}
 
-					//m_logger.debugLog(block.getBestName() + " is not behind any drill");
+					//Log.DebugLog(block.getBestName() + " is not behind any drill");
 					return false;
 				}
 
@@ -239,11 +240,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		private void OnOreSearchComplete(bool success, IMyVoxelBase foundVoxel, string oreName, IEnumerable<Vector3D> positions)
 		{
-			m_logger.debugLog("success: " + success + ", foundVoxel: " + foundVoxel + ", oreName: " + oreName, Logger.severity.DEBUG);
+			Log.DebugLog("success: " + success + ", foundVoxel: " + foundVoxel + ", oreName: " + oreName, Logger.severity.DEBUG);
 
 			if (!success)
 			{
-				m_logger.debugLog("No ore target found", Logger.severity.INFO);
+				Log.DebugLog("No ore target found", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavRot();
 				m_navSet.Settings_Commands.Complaint = InfoString.StringId.NoOreFound;
 				return;
@@ -273,7 +274,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 					break;
 			}
 
-			m_logger.debugLog("Created " + m_approachFinders.Count + " finders for " + oreName);
+			Log.DebugLog("Created " + m_approachFinders.Count + " finders for " + oreName);
 			m_stage = Stage.GetApproach;
 		}
 
@@ -283,7 +284,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (!approachFinder.Completed)
 					return;
 
-			m_logger.debugLog(m_approachFinders.Count + " approach finders completed", Logger.severity.DEBUG);
+			Log.DebugLog(m_approachFinders.Count + " approach finders completed", Logger.severity.DEBUG);
 
 			// first try to get a deposit that is near surface, failing that grab any deposit
 
@@ -292,17 +293,17 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			foreach (DepositFreeSpace approachFinder in m_approachFinders)
 				if (approachFinder.NearSurface)
 				{
-					m_logger.debugLog("near surface: " + approachFinder.FreePosition);
+					Log.DebugLog("near surface: " + approachFinder.FreePosition);
 					destinations.Add(Destination.FromWorld(m_targetVoxel, approachFinder.FreePosition));
 				}
 				else
 				{
-					m_logger.debugLog("not near surface: " + approachFinder.FreePosition);
+					Log.DebugLog("not near surface: " + approachFinder.FreePosition);
 					removeList.Add(approachFinder);
 				}
 			if (destinations.Count == 0)
 			{
-				m_logger.debugLog("No ore is near surface.", Logger.severity.DEBUG);
+				Log.DebugLog("No ore is near surface.", Logger.severity.DEBUG);
 				m_destinations = new Destination[m_approachFinders.Count];
 				int index = 0;
 				foreach (DepositFreeSpace approachFinder in m_approachFinders)
@@ -319,7 +320,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		private void CreateMiner()
 		{
-			m_logger.debugLog("Approached, start mining", Logger.severity.DEBUG);
+			Log.DebugLog("Approached, start mining", Logger.severity.DEBUG);
 
 			DepositFreeSpace closestApproach = null;
 			double closestDistSq = double.MaxValue;
@@ -352,19 +353,19 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			if (DrillFullness() > FullAmount_Return)
 			{
-				m_logger.debugLog("Drills are full", Logger.severity.DEBUG);
+				Log.DebugLog("Drills are full", Logger.severity.DEBUG);
 				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_Full;
 				return true;
 			}
 			else if (!SufficientAcceleration(MinAccel_Return))
 			{
-				m_logger.debugLog("Not enough acceleration", Logger.severity.DEBUG);
+				Log.DebugLog("Not enough acceleration", Logger.severity.DEBUG);
 				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_Heavy;
 				return true;
 			}
 			else if (m_mover.ThrustersOverWorked())
 			{
-				m_logger.debugLog("Thrusters overworked", Logger.severity.DEBUG);
+				Log.DebugLog("Thrusters overworked", Logger.severity.DEBUG);
 				m_navSet.Settings_Commands.Complaint |= InfoString.StringId.ReturnCause_OverWorked;
 				return true;
 			}

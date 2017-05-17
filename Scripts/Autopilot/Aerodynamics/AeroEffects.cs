@@ -1,8 +1,9 @@
-﻿#if DEBUG
+#if DEBUG
 //#define DEBUG_IN_SPACE
 #endif
 
 using System;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Game.Entities;
@@ -60,7 +61,6 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 		private const ulong ProfileWait = 200uL;
 
-		private readonly Logger m_logger;
 		private readonly IMyCubeGrid m_grid;
 		private readonly CubeGridCache m_cache;
 
@@ -73,9 +73,11 @@ namespace Rynchodon.Autopilot.Aerodynamics
 		// public because Autopilot is going to need it later
 		public Vector3[] DragCoefficient;
 
+		private Logable Log
+		{ get { return new Logable(m_grid); } }
+
 		public AeroEffects(IMyCubeGrid grid)
 		{
-			this.m_logger = new Logger(grid);
 			this.m_grid = grid;
 			this.m_cache = CubeGridCache.GetFor(m_grid);
 			this.m_profileAt = Globals.UpdateCount + ProfileWait;
@@ -123,14 +125,14 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				Vector3 scaled; Vector3.Multiply(ref DragCoefficient[i], Math.Sign(dot) * dot * dot * m_airDensity, out scaled);
 				Vector3.Add(ref localDrag, ref scaled, out localDrag);
 
-				m_logger.traceLog("direction: " + direction + ", dot: " + dot + ", scaled: " + scaled);
+				Log.TraceLog("direction: " + direction + ", dot: " + dot + ", scaled: " + scaled);
 			}
 
 			MatrixD world = m_grid.WorldMatrix.GetOrientation();
 			Vector3D worldDrag; Vector3D.Transform(ref localDrag, ref world, out worldDrag);
 			m_worldDrag = worldDrag;
 
-			m_logger.traceLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
+			Log.TraceLog("world velocity: " + worldVelocity + ", local velocity: " + localVelocity + ", local drag: " + localDrag + ", world drag: " + m_worldDrag);
 
 			m_grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, m_worldDrag, null, null);
 
@@ -148,7 +150,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 
 			if (m_profileAt <= Globals.UpdateCount)
 			{
-				m_logger.debugLog("Starting profile task", Logger.severity.DEBUG);
+				Log.DebugLog("Starting profile task", Logger.severity.DEBUG);
 				m_profileAt = ulong.MaxValue;
 				m_profileTask = new ProfileTask(m_grid.EntityId);
 				RemoteTask.StartTask(m_profileTask, ((MyCubeGrid)m_grid).CubeBlocks.Count < 100);
@@ -160,7 +162,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				{
 					DragCoefficient = m_profileTask.DragCoefficient;
 					for (int i = 0; i < 6; ++i)
-						m_logger.debugLog("Direction: " + (Base6Directions.Direction)i + ", DragCoefficient: " + DragCoefficient[i], Logger.severity.DEBUG);
+						Log.DebugLog("Direction: " + (Base6Directions.Direction)i + ", DragCoefficient: " + DragCoefficient[i], Logger.severity.DEBUG);
 				}
 				m_profileTask = null;
 			}
@@ -205,7 +207,7 @@ namespace Rynchodon.Autopilot.Aerodynamics
 				if (Registrar.TryGetValue(grid.EntityId, out aero))
 				{
 					Vector3.Add(ref drag, ref aero.m_worldDrag, out drag);
-					m_logger.traceLog("Drag: " + ((DirectionWorld)aero.m_worldDrag).ToGrid(m_grid), primaryState: grid.nameWithId());
+					Log.TraceLog("Drag: " + ((DirectionWorld)aero.m_worldDrag).ToGrid(m_grid) + " Grid: " + grid.nameWithId());
 				}
 			}
 

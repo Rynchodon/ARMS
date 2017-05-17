@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.ModAPI;
 
@@ -52,7 +53,7 @@ namespace Rynchodon.Settings
 			ServerSettings instance = Instance;
 			SettingSimple<T> set = instance.AllSettings[name] as SettingSimple<T>;
 			set.Value = value;
-			instance.myLogger.alwaysLog("Setting " + name + " = " + value, Logger.severity.INFO);
+			instance.Log.AlwaysLog("Setting " + name + " = " + value, Logger.severity.INFO);
 		}
 
 		/// <exception cref="NullReferenceException">if setting does not exist or is of a different type</exception>
@@ -69,10 +70,11 @@ namespace Rynchodon.Settings
 
 		private Dictionary<SettingName, Setting> AllSettings = new Dictionary<SettingName, Setting>();
 		private System.IO.TextWriter settingsWriter;
-		private Logger myLogger = new Logger();
 		private Version fileVersion;
 		private Version m_currentVersion, m_serverVersion;
 		private bool m_settingsLoaded;
+
+		private Logable Log { get { return new Logable(""); } }
 
 		[OnWorldClose]
 		private static void Unload()
@@ -95,7 +97,7 @@ namespace Rynchodon.Settings
 				fileVersion = readAll();
 				if (fileVersion.CompareTo(m_currentVersion) < 0)
 					Logger.DebugNotify(modName + " has been updated to version " + m_currentVersion, 10000, Logger.severity.INFO);
-				myLogger.alwaysLog("file version: " + fileVersion + ", latest version: " + m_currentVersion, Logger.severity.INFO);
+				Log.AlwaysLog("file version: " + fileVersion + ", latest version: " + m_currentVersion, Logger.severity.INFO);
 
 				writeAll(); // writing immediately decreases user errors & whining
 			}
@@ -112,18 +114,18 @@ namespace Rynchodon.Settings
 			{
 				if (message == null)
 				{
-					myLogger.debugLog("Message is null");
+					Log.DebugLog("Message is null");
 					return;
 				}
 				if( message.Length < 8)
 				{
-					myLogger.debugLog("Message is too short: " + message.Length);
+					Log.DebugLog("Message is too short: " + message.Length);
 					return;
 				}
 
 				ulong SteamUserId = ByteConverter.GetUlong(message, ref pos);
 
-				myLogger.debugLog("Received request from: " + SteamUserId);
+				Log.DebugLog("Received request from: " + SteamUserId);
 
 				List<byte> send = new List<byte>();
 				ByteConverter.AppendBytes(send, (byte)MessageHandler.SubMod.ServerSettings);
@@ -146,19 +148,19 @@ namespace Rynchodon.Settings
 				ByteConverter.AppendBytes(send, GetSetting<float>(SettingName.fMaxWeaponRange));
 
 				if (MyAPIGateway.Multiplayer.SendMessageTo(ModID, send.ToArray(), SteamUserId))
-					myLogger.debugLog("Sent settings to " + SteamUserId, Logger.severity.INFO);
+					Log.DebugLog("Sent settings to " + SteamUserId, Logger.severity.INFO);
 				else
-					myLogger.alwaysLog("Failed to send settings to " + SteamUserId, Logger.severity.ERROR);
+					Log.AlwaysLog("Failed to send settings to " + SteamUserId, Logger.severity.ERROR);
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
+			{ Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
 		private void Client_ReceiveMessage(byte[] message, int pos)
 		{
 			try
 			{
-				myLogger.debugLog("Received settings from server");
+				Log.DebugLog("Received settings from server");
 
 				m_serverVersion.Major = ByteConverter.GetInt(message, ref pos);
 				m_serverVersion.Minor = ByteConverter.GetInt(message, ref pos);
@@ -168,11 +170,11 @@ namespace Rynchodon.Settings
 				if (m_currentVersion.Major == m_serverVersion.Major && m_currentVersion.Minor == m_serverVersion.Minor && m_currentVersion.Build == m_serverVersion.Build)
 				{
 					if (m_currentVersion.Revision != m_serverVersion.Revision)
-						myLogger.alwaysLog("Server has different revision of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.WARNING);
+						Log.AlwaysLog("Server has different revision of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.WARNING);
 				}
 				else
 				{
-					myLogger.alwaysLog("Server has different version of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.FATAL);
+					Log.AlwaysLog("Server has different version of ARMS. Server version: " + m_serverVersion + ", client version: " + m_currentVersion, Logger.severity.FATAL);
 					return;
 				}
 
@@ -191,14 +193,14 @@ namespace Rynchodon.Settings
 				m_settingsLoaded = true;
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR); }
+			{ Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR); }
 		}
 
 		private void RequestSettingsFromServer()
 		{
 			if (MyAPIGateway.Session.Player == null)
 			{
-				myLogger.alwaysLog("Could not get player, not requesting server settings.", Logger.severity.WARNING);
+				Log.AlwaysLog("Could not get player, not requesting server settings.", Logger.severity.WARNING);
 				m_settingsLoaded = true;
 				return;
 			}
@@ -208,9 +210,9 @@ namespace Rynchodon.Settings
 			ByteConverter.AppendBytes(bytes, MyAPIGateway.Session.Player.SteamUserId);
 
 			if (MyAPIGateway.Multiplayer.SendMessageToServer(ModID, bytes.ToArray()))
-				myLogger.debugLog("Sent request to server", Logger.severity.INFO);
+				Log.DebugLog("Sent request to server", Logger.severity.INFO);
 			else
-				myLogger.alwaysLog("Failed to send request to server", Logger.severity.ERROR);
+				Log.AlwaysLog("Failed to send request to server", Logger.severity.ERROR);
 		}
 
 		/// <summary>
@@ -265,7 +267,7 @@ namespace Rynchodon.Settings
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, Logger.severity.WARNING);
+				Log.AlwaysLog("Failed to read settings from " + settings_file_name + ": " + ex, Logger.severity.WARNING);
 				return new Version(-4); // exception while reading
 			}
 			finally
@@ -293,7 +295,7 @@ namespace Rynchodon.Settings
 				settingsWriter.Flush();
 			}
 			catch (Exception ex)
-			{ myLogger.alwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, Logger.severity.WARNING); }
+			{ Log.AlwaysLog("Failed to write settings to " + settings_file_name + ": " + ex, Logger.severity.WARNING); }
 			finally
 			{
 				if (settingsWriter != null)
@@ -327,7 +329,7 @@ namespace Rynchodon.Settings
 
 			if (split.Length != 2)
 			{
-				myLogger.alwaysLog("split wrong length: " + split.Length + ", line: " + line, Logger.severity.WARNING);
+				Log.AlwaysLog("split wrong length: " + split.Length + ", line: " + line, Logger.severity.WARNING);
 				return;
 			}
 
@@ -336,12 +338,12 @@ namespace Rynchodon.Settings
 				try
 				{
 					if (AllSettings[name].ValueFromString(split[1]))
-						myLogger.alwaysLog("Setting " + name + " = " + split[1], Logger.severity.INFO);
+						Log.AlwaysLog("Setting " + name + " = " + split[1], Logger.severity.INFO);
 				}
 				catch (Exception)
-				{ myLogger.alwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
+				{ Log.AlwaysLog("failed to parse: " + split[1] + " for " + name, Logger.severity.WARNING); }
 			else
-				myLogger.alwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
+				Log.AlwaysLog("Setting does not exist: " + split[0], Logger.severity.WARNING);
 		}
 
 	}

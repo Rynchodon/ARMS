@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using Rynchodon.AntennaRelay;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using VRage.Game.ModAPI;
 using VRageMath;
 
@@ -14,17 +15,20 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private static readonly TimeSpan timeout = new TimeSpan(0, 1, 0);
 
-		private readonly Logger m_logger;
 		private readonly string m_charName;
+		private readonly string m_charName_orig;
 
 		private ulong m_nextLastSeen;
 		private LastSeen m_character;
 		private TimeSpan m_timeoutAt;
 
+		private Logable Log
+		{ get { return new Logable(m_controlBlock.CubeBlock.CubeGrid.nameWithId(), m_controlBlock.CubeBlock.nameWithId(), m_charName_orig); } }
+
 		public FlyToCharacter(Pathfinder mover, string charName)
 			: base(mover)
 		{
-			this.m_logger = new Logger(m_controlBlock.CubeBlock, () => charName);
+			this.m_charName_orig = charName;
 			this.m_charName = charName.LowerRemoveWhitespace();
 			this.m_timeoutAt = Globals.ElapsedTime + timeout;
 
@@ -44,7 +48,7 @@ namespace Rynchodon.Autopilot.Navigator
 				m_mover.StopMove();
 				if (Globals.ElapsedTime > m_timeoutAt)
 				{
-					m_logger.debugLog("terminating search");
+					Log.DebugLog("terminating search");
 					m_navSet.OnTaskComplete_NavMove();
 				}
 				return;
@@ -52,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_navSet.DistanceLessThanDestRadius())
 			{
-				m_logger.debugLog("Reached player", Logger.severity.INFO);
+				Log.DebugLog("Reached player", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavMove();
 			}
 			else
@@ -84,7 +88,7 @@ namespace Rynchodon.Autopilot.Navigator
 			RelayStorage store = m_controlBlock.NetworkStorage;
 			if (store == null)
 			{
-				m_logger.debugLog("failed to get storage", Logger.severity.INFO);
+				Log.DebugLog("failed to get storage", Logger.severity.INFO);
 				m_character = null;
 				return;
 			}
@@ -92,28 +96,28 @@ namespace Rynchodon.Autopilot.Navigator
 			if (m_character != null)
 				if (store.TryGetLastSeen(m_character.Entity.EntityId, out m_character))
 				{
-					m_logger.debugLog("got updated last seen");
+					Log.DebugLog("got updated last seen");
 					return;
 				}
 				else
 				{
-					m_logger.debugLog("failed to update last seen", Logger.severity.WARNING);
+					Log.DebugLog("failed to update last seen", Logger.severity.WARNING);
 					m_character = null;
 					m_timeoutAt = Globals.ElapsedTime + timeout;
 				}
 
 			store.SearchLastSeen((LastSeen seen) => {
-				m_logger.debugLog("seen: " + seen.Entity.getBestName());
+				Log.DebugLog("seen: " + seen.Entity.getBestName());
 				if (seen.Entity is IMyCharacter && seen.Entity.DisplayName.LowerRemoveWhitespace().Contains(m_charName))
 				{
-					m_logger.debugLog("found a last seen for character");
+					Log.DebugLog("found a last seen for character");
 					m_character = seen;
 					return true;
 				}
 				return false;
 			});
 
-			m_logger.debugLog("failed to find a character from last seen", condition: m_character == null);
+			Log.DebugLog("failed to find a character from last seen", condition: m_character == null);
 		}
 
 	}

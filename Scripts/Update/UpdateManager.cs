@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -94,7 +94,7 @@ namespace Rynchodon.Update
 					}
 				});
 			else
-				myLogger.debugLog("Hacker is disabled in settings");
+				Log.DebugLog("Hacker is disabled in settings");
 
 			#endregion
 
@@ -325,7 +325,7 @@ namespace Rynchodon.Update
 				RegisterForUpdates(100, GuidedMissile.Update100);
 			}
 			else
-				myLogger.debugLog("Weapon Control is disabled", Logger.severity.INFO);
+				Log.DebugLog("Weapon Control is disabled", Logger.severity.INFO);
 
 			#endregion
 
@@ -417,13 +417,12 @@ namespace Rynchodon.Update
 		private HashSet<long> CubeBlocks = new HashSet<long>();
 		private HashSet<long> Characters = new HashSet<long>();
 
-		private Logger myLogger;
-
 		private DateTime m_lastUpdate;
+
+		private Logable Log { get { return new Logable("", ManagerStatus.ToString()); } }
 
 		public UpdateManager()
 		{
-			myLogger = new Logger(() => string.Empty, () => { return ManagerStatus.ToString(); });
 			ThreadTracker.SetGameThread();
 			Instance = this;
 			MainLock.MainThread_AcquireExclusive();
@@ -431,7 +430,7 @@ namespace Rynchodon.Update
 
 		public void Init()
 		{
-			//myLogger.debugLog("entered Init", "Init()");
+			//Log.DebugLog("entered Init", "Init()");
 			try
 			{
 				if (MyAPIGateway.CubeBuilder == null || MyAPIGateway.Entities == null || MyAPIGateway.Multiplayer == null || MyAPIGateway.Parallel == null
@@ -442,31 +441,31 @@ namespace Rynchodon.Update
 					return;
 
 				Globals.WorldClosed = false;
-				myLogger.debugLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
+				Log.DebugLog("World: " + MyAPIGateway.Session.Name + ", Path: " + MyAPIGateway.Session.CurrentPath, Logger.severity.INFO);
 				AttributeFinder.InvokeMethodsWithAttribute<OnWorldLoad>();
 				MyAPIGateway.Entities.OnCloseAll += UnloadData;
 
 				if (!MyAPIGateway.Multiplayer.MultiplayerActive)
 				{
-					myLogger.alwaysLog("Single player, running server scripts", Logger.severity.INFO);
+					Log.AlwaysLog("Single player, running server scripts", Logger.severity.INFO);
 					RegisterScripts_Server();
 				}
 				else if (MyAPIGateway.Multiplayer.IsServer)
 				{
-					myLogger.alwaysLog("This is the server, running server scripts", Logger.severity.INFO);
+					Log.AlwaysLog("This is the server, running server scripts", Logger.severity.INFO);
 					RegisterScripts_Server();
 				}
 				else
 				{
-					myLogger.alwaysLog("Client, running client scripts only", Logger.severity.INFO);
+					Log.AlwaysLog("Client, running client scripts only", Logger.severity.INFO);
 				}
 
 				if (!CheckFinalBuildConstant("IS_OFFICIAL"))
-					myLogger.alwaysLog("Space Engineers build is UNOFFICIAL; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
+					Log.AlwaysLog("Space Engineers build is UNOFFICIAL; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
 				else if (CheckFinalBuildConstant("IS_DEBUG"))
-					myLogger.alwaysLog("Space Engineers build is DEBUG; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
+					Log.AlwaysLog("Space Engineers build is DEBUG; this build is not supported. Version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.WARNING);
 				else
-					myLogger.alwaysLog("Space Engineers version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
+					Log.AlwaysLog("Space Engineers version: " + MyFinalBuildConstants.APP_VERSION_STRING, Logger.severity.INFO);
 
 				Logger.DebugNotify("ARMS DEBUG build loaded", 10000, Logger.severity.INFO);
 
@@ -474,7 +473,7 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Failed to Init(): " + ex, Logger.severity.FATAL);
+				Log.AlwaysLog("Failed to Init(): " + ex, Logger.severity.FATAL);
 				ManagerStatus = Status.Terminated;
 			}
 		}
@@ -495,7 +494,7 @@ namespace Rynchodon.Update
 			HashSet<IMyEntity> allEntities = new HashSet<IMyEntity>();
 			MyAPIGateway.Entities.GetEntities(allEntities);
 
-			//myLogger.debugLog("Adding all entities", "Init()");
+			//Log.DebugLog("Adding all entities", "Init()");
 			foreach (IMyEntity entity in allEntities)
 				AddEntity(entity);
 
@@ -504,13 +503,13 @@ namespace Rynchodon.Update
 
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowAutopilot))
 			{
-				myLogger.alwaysLog("Disabling autopilot blocks", Logger.severity.INFO);
+				Log.AlwaysLog("Disabling autopilot blocks", Logger.severity.INFO);
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Large")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Cockpit), "Autopilot-Block_Small")).Enabled = false;
 			}
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowGuidedMissile))
 			{
-				myLogger.alwaysLog("Disabling guided missile blocks", Logger.severity.INFO);
+				Log.AlwaysLog("Disabling guided missile blocks", Logger.severity.INFO);
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R12VP_Launcher")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_R8EA_Launcher")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_SmallMissileLauncher), "Souper_B3MP_Launcher")).Enabled = false;
@@ -518,13 +517,13 @@ namespace Rynchodon.Update
 			}
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowHacker))
 			{
-				myLogger.alwaysLog("Disabling hacker blocks", Logger.severity.INFO);
+				Log.AlwaysLog("Disabling hacker blocks", Logger.severity.INFO);
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LandingGear), "ARMS_SmallHackerBlock")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_LandingGear), "ARMS_LargeHackerBlock")).Enabled = false;
 			}
 			if (!ServerSettings.GetSetting<bool>(ServerSettings.SettingName.bAllowRadar))
 			{
-				myLogger.alwaysLog("Disabling radar blocks", Logger.severity.INFO);
+				Log.AlwaysLog("Disabling radar blocks", Logger.severity.INFO);
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "LargeBlockRadarRynAR")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "SmallBlockRadarRynAR")).Enabled = false;
 				MyDefinitionManager.Static.GetCubeBlockDefinition(new SerializableDefinitionId(typeof(MyObjectBuilder_Beacon), "Radar_A_Large_Souper07")).Enabled = false;
@@ -559,7 +558,7 @@ namespace Rynchodon.Update
 					case Status.Initialized:
 						if (ServerSettings.ServerSettingsLoaded)
 						{
-							myLogger.debugLog("Server settings loaded");
+							Log.DebugLog("Server settings loaded");
 							Start();
 						}
 						return;
@@ -573,13 +572,13 @@ namespace Rynchodon.Update
 					try
 					{ AddRemoveActions.InvokeAndClear();	}
 					catch (Exception ex)
-					{ myLogger.alwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
+					{ Log.AlwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
 
 				if (ExternalRegistrations.Count != 0)
 					try
 					{ ExternalRegistrations.InvokeAndClear(); }
 					catch (Exception ex)
-					{ myLogger.alwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
+					{ Log.AlwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
 
 				foreach (KeyValuePair<uint, List<Action>> pair in UpdateRegistrar)
 					if (Globals.UpdateCount % pair.Key == 0)
@@ -597,7 +596,7 @@ namespace Rynchodon.Update
 									Unregister = new Dictionary<Action, uint>();
 								if (!Unregister.ContainsKey(item))
 								{
-									myLogger.alwaysLog("Script threw exception, unregistering: " + ex2, Logger.severity.ERROR);
+									Log.AlwaysLog("Script threw exception, unregistering: " + ex2, Logger.severity.ERROR);
 									Logger.DebugNotify("A script has been terminated", 10000, Logger.severity.ERROR);
 									Unregister.Add(item, pair.Key);
 								}
@@ -610,7 +609,7 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("Exception: " + ex, Logger.severity.FATAL);
+				Log.AlwaysLog("Exception: " + ex, Logger.severity.FATAL);
 				ManagerStatus = Status.Terminated;
 			}
 			finally
@@ -620,7 +619,7 @@ namespace Rynchodon.Update
 				float instantSimSpeed = Globals.UpdateDuration / (float)(DateTime.UtcNow - m_lastUpdate).TotalSeconds;
 				if (instantSimSpeed > 0.01f && instantSimSpeed < 1.1f)
 					Globals.SimSpeed = Globals.SimSpeed * 0.9f + instantSimSpeed * 0.1f;
-				//myLogger.debugLog("instantSimSpeed: " + instantSimSpeed + ", SimSpeed: " + Globals.SimSpeed);
+				//Log.DebugLog("instantSimSpeed: " + instantSimSpeed + ", SimSpeed: " + Globals.SimSpeed);
 				m_lastUpdate = DateTime.UtcNow;
 
 				MainLock.MainThread_AcquireExclusive();
@@ -651,13 +650,13 @@ namespace Rynchodon.Update
 			if (UpdateRegistrar == null)
 				return;
 
-			//myLogger.debugLog("entered UnRegisterForUpdates()");
+			//Log.DebugLog("entered UnRegisterForUpdates()");
 			List<Action> UpdateL = UpdateList(frequency);
 			UpdateL.Remove(toInvoke);
 
 			if (UpdateL.Count == 0)
 				UpdateRegistrar.Remove(frequency);
-			//myLogger.debugLog("leaving UnRegisterForUpdates()");
+			//Log.DebugLog("leaving UnRegisterForUpdates()");
 		}
 
 		/// <summary>
@@ -676,7 +675,7 @@ namespace Rynchodon.Update
 		/// <param name="constructor">construcor wrapped in an Action</param>
 		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor)
 		{
-			//myLogger.debugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
+			//Log.DebugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
@@ -692,7 +691,7 @@ namespace Rynchodon.Update
 		/// <param name="constructor">constructor wrapped in an Action</param>
 		private void RegisterForCharacter(Action<IMyCharacter> constructor)
 		{
-			//myLogger.debugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
+			//Log.DebugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
 			CharacterScriptConstructors.Add(constructor);
 		}
 
@@ -702,7 +701,7 @@ namespace Rynchodon.Update
 		/// <param name="constructor">constructor wrapped in an Action</param>
 		private void RegisterForGrid(Action<IMyCubeGrid> constructor)
 		{
-			//myLogger.debugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
+			//Log.DebugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -739,7 +738,7 @@ namespace Rynchodon.Update
 					try { constructor.Invoke(asGrid); }
 					catch (Exception ex)
 					{
-						myLogger.alwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
+						Log.AlwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
 						Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
 					}
 				return;
@@ -754,12 +753,12 @@ namespace Rynchodon.Update
 						Characters.Remove(alsoChar.EntityId);
 				};
 
-				myLogger.debugLog("adding character: " + entity.getBestName());
+				Log.DebugLog("adding character: " + entity.getBestName());
 				foreach (var constructor in CharacterScriptConstructors)
 					try { constructor.Invoke(asCharacter); }
 					catch (Exception ex)
 					{
-						myLogger.alwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
+						Log.AlwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
 						Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
 					}
 				return;
@@ -786,14 +785,14 @@ namespace Rynchodon.Update
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
 
-				//myLogger.debugLog("block definition: " + fatblock.DefinitionDisplayNameText + ", typeId: " + typeId, "AddBlock()"); // used to find which builder is associated with a block
+				//Log.DebugLog("block definition: " + fatblock.DefinitionDisplayNameText + ", typeId: " + typeId, "AddBlock()"); // used to find which builder is associated with a block
 
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
 						try { constructor.Invoke(fatblock); }
 						catch (Exception ex)
 						{
-							myLogger.alwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
+							Log.AlwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
 							Logger.DebugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
 						}
 
@@ -802,7 +801,7 @@ namespace Rynchodon.Update
 						try { constructor.Invoke(fatblock); }
 						catch (Exception ex)
 						{
-							myLogger.alwaysLog("Exception in every block constructor: " + ex, Logger.severity.ERROR);
+							Log.AlwaysLog("Exception in every block constructor: " + ex, Logger.severity.ERROR);
 							Logger.DebugNotify("Exception in every block constructor", 10000, Logger.severity.ERROR);
 						}
 
@@ -815,7 +814,7 @@ namespace Rynchodon.Update
 		/// </summary>
 		private void Grid_OnClosing(IMyEntity gridAsEntity)
 		{
-			// myLogger may be null, so log with Logger...
+			// Log may be null, so log with Logger...
 
 			IMyCubeGrid asGrid = gridAsEntity as IMyCubeGrid;
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
@@ -848,7 +847,7 @@ namespace Rynchodon.Update
 				catch (Exception ex)
 				{
 					// if world is closed by X button, expect an exception
-					myLogger.alwaysLog("Exception while unloading: " + ex, Logger.severity.ERROR);
+					Log.AlwaysLog("Exception while unloading: " + ex, Logger.severity.ERROR);
 				}
 				Globals.WorldClosed = true;
 				Profiler.Write();

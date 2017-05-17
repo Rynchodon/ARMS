@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rynchodon.Attached;
+using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.Entity;
@@ -15,7 +16,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		private static Threading.ThreadManager Thread = new Threading.ThreadManager(threadName: "RotateChecker");
 
-		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
 		private readonly Func<List<MyEntity>, IEnumerable<MyEntity>> m_collector;
 		private readonly List<MyEntity> m_obstructions = new List<MyEntity>();
@@ -24,11 +24,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private MyPlanet m_closestPlanet;
 		private bool m_planetObstruction;
 
+		private Logable Log { get { return new Logable(m_block); } }
 		public IMyEntity ObstructingEntity { get; private set; }
 
 		public RotateChecker(IMyCubeBlock block, Func<List<MyEntity>, IEnumerable<MyEntity>> collector)
 		{
-			this.m_logger = new Logger(block);
 			this.m_block = block;
 			this.m_collector = collector;
 		}
@@ -62,12 +62,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Ray upper = new Ray(myLocalCentre + myLocalAxis * longestDim * 2f, -myLocalAxis);
 			float? upperBound = myGrid.LocalAABB.Intersects(upper);
 			if (!upperBound.HasValue)
-				m_logger.alwaysLog("Math fail, upperBound does not have a value", Logger.severity.FATAL);
+				Log.AlwaysLog("Math fail, upperBound does not have a value", Logger.severity.FATAL);
 			Ray lower = new Ray(myLocalCentre - myLocalAxis * longestDim * 2f, myLocalAxis);
 			float? lowerBound = myGrid.LocalAABB.Intersects(lower);
 			if (!lowerBound.HasValue)
-				m_logger.alwaysLog("Math fail, lowerBound does not have a value", Logger.severity.FATAL);
-			//m_logger.debugLog("LocalAABB: " + myGrid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
+				Log.AlwaysLog("Math fail, lowerBound does not have a value", Logger.severity.FATAL);
+			//Log.DebugLog("LocalAABB: " + myGrid.LocalAABB + ", centre: " + myLocalCentre + ", axis: " + myLocalAxis + ", longest dimension: " + longestDim + ", upper ray: " + upper + ", lower ray: " + lower);
 			float height = longestDim * 4f - upperBound.Value - lowerBound.Value;
 
 			float furthest = 0f;
@@ -86,7 +86,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			float length = (float)Math.Sqrt(furthest) + myGrid.GridSize;
 
-			//m_logger.debugLog("height: " + height + ", length: " + length);
+			//Log.DebugLog("height: " + height + ", length: " + length);
 
 			BoundingSphereD surroundingSphere = new BoundingSphereD(centreOfMass, Math.Max(length, height) * MathHelper.Sqrt2);
 			m_obstructions.Clear();
@@ -105,7 +105,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					{
 						if (voxel.GetIntersectionWithSphere(ref surroundingSphere))
 						{
-							m_logger.debugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
+							Log.DebugLog("Too close to " + voxel.getBestName() + ", CoM: " + centreOfMass.ToGpsTag("Centre of Mass") + ", required distance: " + surroundingSphere.Radius);
 							ObstructingEntity = voxel;
 							return false;
 						}
@@ -125,7 +125,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 							if (m_planetObstruction)
 							{
-								m_logger.debugLog("planet blocking");
+								Log.DebugLog("planet blocking");
 								ObstructingEntity = m_closestPlanet;
 								return false;
 							}
@@ -149,7 +149,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					foreach (Vector3I cell in cache.OccupiedCells())
 						if (axisSegment.PointInCylinder(length, cell * grid.GridSize))
 						{
-							m_logger.debugLog("axis segment: " + axisSegment.From + " to " + axisSegment.To + ", radius: " + length + ", hit " + grid.nameWithId() + " at " + cell);
+							Log.DebugLog("axis segment: " + axisSegment.From + " to " + axisSegment.To + ", radius: " + length + ", hit " + grid.nameWithId() + " at " + cell);
 							ObstructingEntity = grid;
 							return false;
 						}
@@ -157,7 +157,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					continue;
 				}
 
-				m_logger.debugLog("No tests for object: " + entity.getBestName(), Logger.severity.INFO);
+				Log.DebugLog("No tests for object: " + entity.getBestName(), Logger.severity.INFO);
 				ObstructingEntity = entity;
 				return false;
 			}
@@ -181,7 +181,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			double distSqToPlanet = Vector3D.DistanceSquared(myPos, planetCentre);
 			if (distSqToPlanet > planet.MaximumRadius * planet.MaximumRadius)
 			{
-				m_logger.debugLog("higher than planet maximum");
+				Log.DebugLog("higher than planet maximum");
 				m_planetObstruction = false;
 				return;
 			}
@@ -190,19 +190,19 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (distSqToPlanet < Vector3D.DistanceSquared(closestPoint, planetCentre))
 			{
-				m_logger.debugLog("below surface");
+				Log.DebugLog("below surface");
 				return;
 			}
 
 			float longest = grid.GetLongestDim();
 			if (Vector3D.DistanceSquared(myPos, closestPoint) < longest * longest)
 			{
-				m_logger.debugLog("near surface");
+				Log.DebugLog("near surface");
 				m_planetObstruction = true;
 				return;
 			}
 
-			m_logger.debugLog("clear");
+			Log.DebugLog("clear");
 			m_planetObstruction = false;
 			return;
 		}

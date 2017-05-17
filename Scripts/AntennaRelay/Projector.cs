@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,7 +50,6 @@ namespace Rynchodon.AntennaRelay
 			/// <summary>Maximum time since detection for entity to be kept in cache.</summary>
 			public readonly TimeSpan keepInCache = new TimeSpan(0, 1, 0);
 
-			public readonly Logger logger = new Logger();
 			public readonly List<IMyTerminalControl> TermControls = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Colours = new List<IMyTerminalControl>();
 			public readonly List<IMyTerminalControl> TermControls_Offset = new List<IMyTerminalControl>();
@@ -178,7 +177,7 @@ namespace Rynchodon.AntennaRelay
 				new ValueSync<bool, Projector>(control,
 					(proj) => (proj.m_options & opt) == opt,
 					(proj, value) => {
-						logger.debugLog("set option: " + opt + " to " + value + ", current options: " + proj.m_options);
+						StaticLog.DebugLog("set option: " + opt + " to " + value + ", current options: " + proj.m_options);
 						if (value)
 							proj.m_options |= opt;
 						else
@@ -312,6 +311,8 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
+		private static Logable StaticLog { get { return new Logable(""); } }
+
 		public static bool ShowBoundary
 		{
 			get { return UserSettings.GetSetting(UserSettings.BoolSettingName.HologramShowBoundary); }
@@ -415,14 +416,14 @@ namespace Rynchodon.AntennaRelay
 		/// </summary>
 		private static void ColourBlock(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
 		{
-			Static.logger.debugLog("realBlock == null", Logger.severity.FATAL, condition: realBlock == null);
+			StaticLog.DebugLog("realBlock == null", Logger.severity.FATAL, condition: realBlock == null);
 
 			float integrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
 			float criticalRatio = ((MyCubeBlockDefinition)realBlock.BlockDefinition).CriticalIntegrityRatio;
 
 			float scaledRatio;
 			Color blockColour;
-			Static.logger.debugLog("integrityRatio: " + integrityRatio + ", criticalRatio: " + criticalRatio + ", fatblock: " + realBlock.FatBlock.getBestName() + ", functional: " + (realBlock.FatBlock != null && realBlock.FatBlock.IsFunctional), condition: integrityRatio != 1f);
+			StaticLog.DebugLog("integrityRatio: " + integrityRatio + ", criticalRatio: " + criticalRatio + ", fatblock: " + realBlock.FatBlock.getBestName() + ", functional: " + (realBlock.FatBlock != null && realBlock.FatBlock.IsFunctional), condition: integrityRatio != 1f);
 			if (integrityRatio > criticalRatio && (realBlock.FatBlock == null || realBlock.FatBlock.IsFunctional))
 			{
 				scaledRatio = (integrityRatio - criticalRatio) / (1f - criticalRatio);
@@ -442,7 +443,7 @@ namespace Rynchodon.AntennaRelay
 		private static void UpdateBlockModel(IMySlimBlock realBlock, IMyCubeGrid holoGrid)
 		{
 			IMySlimBlock holoBlock = holoGrid.GetCubeBlock(realBlock.Position);
-			Static.logger.debugLog("holoBlock == null", Logger.severity.FATAL, condition: holoBlock == null);
+			StaticLog.DebugLog("holoBlock == null", Logger.severity.FATAL, condition: holoBlock == null);
 
 			float realIntegrityRatio = (realBlock.BuildIntegrity - realBlock.CurrentDamage) / realBlock.MaxIntegrity;
 			float holoIntegrityRatio = (holoBlock.BuildIntegrity - holoBlock.CurrentDamage) / holoBlock.MaxIntegrity;
@@ -476,7 +477,6 @@ namespace Rynchodon.AntennaRelay
 			}
 		}
 
-		private readonly Logger m_logger;
 		private readonly IMyProjector m_block;
 		private readonly RelayClient m_netClient;
 
@@ -506,12 +506,13 @@ namespace Rynchodon.AntennaRelay
 
 		private PositionBlock m_offset { get { return m_offset_ev; } }
 
+		private Logable Log { get { return new Logable(m_block); } }
+
 		public Projector(IMyCubeBlock block)
 		{
 			if (Static == null)
 				throw new Exception("StaticVariables not loaded");
 
-			this.m_logger = new Logger(block);
 			this.m_block = (IMyProjector)block;
 			this.m_netClient = new RelayClient(block);
 
@@ -525,10 +526,10 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (m_holoEntities.Count != 0 && DateTime.UtcNow >= m_clearAllAt)
 			{
-				m_logger.debugLog("clearing all holo entities");
+				Log.DebugLog("clearing all holo entities");
 				foreach (SeenHolo sh in m_holoEntities.Values)
 				{
-					m_logger.debugLog("removing " + sh.Seen.Entity.EntityId + "from m_holoEntities (clear all)");
+					Log.DebugLog("removing " + sh.Seen.Entity.EntityId + "from m_holoEntities (clear all)");
 					OnRemove(sh);
 				}
 				m_holoEntities.Clear();
@@ -582,7 +583,7 @@ namespace Rynchodon.AntennaRelay
 				{
 					if (!sh.Holo.Render.Visible)
 					{
-						m_logger.debugLog("showing holo: " + sh.Seen.Entity.getBestName());
+						Log.DebugLog("showing holo: " + sh.Seen.Entity.getBestName());
 						SetupProjection(sh.Holo);
 						SetVisible(sh.Holo, true);
 					}
@@ -596,7 +597,7 @@ namespace Rynchodon.AntennaRelay
 				}
 				else if (sh.Holo.Render.Visible)
 				{
-					m_logger.debugLog("hiding holo: " + sh.Seen.Entity.getBestName());
+					Log.DebugLog("hiding holo: " + sh.Seen.Entity.getBestName());
 					SetVisible(sh.Holo, false);
 				}
 			}
@@ -605,12 +606,12 @@ namespace Rynchodon.AntennaRelay
 			{
 				foreach (long entityId in m_holoEntitiesRemove)
 				{
-					m_logger.debugLog("removing " + entityId + "from m_holoEntities");
+					Log.DebugLog("removing " + entityId + "from m_holoEntities");
 					SeenHolo sh;
 					if (!m_holoEntities.TryGetValue(entityId, out sh))
 					{
 						// this may be normal
-						m_logger.debugLog("not in m_holoEntities: " + entityId, Logger.severity.WARNING);
+						Log.DebugLog("not in m_holoEntities: " + entityId, Logger.severity.WARNING);
 						continue;
 					}
 					OnRemove(sh);
@@ -630,7 +631,7 @@ namespace Rynchodon.AntennaRelay
 				foreach (SeenHolo sh in m_holoEntities.Values)
 					if (sh.Holo.Render.Visible)
 					{
-						m_logger.debugLog("hiding holo: " + sh.Seen.Entity.getBestName());
+						Log.DebugLog("hiding holo: " + sh.Seen.Entity.getBestName());
 						SetVisible(sh.Holo, false);
 					}
 				return;
@@ -648,7 +649,7 @@ namespace Rynchodon.AntennaRelay
 			{
 				MatrixD worldMatrix = sh.Seen.Entity.WorldMatrix;
 				worldMatrix.Translation = projectionCentre + (sh.Seen.Entity.GetPosition() - m_centreEntity.GetPosition()) * distanceScale + (sh.Seen.Entity.GetPosition() - sh.Seen.Entity.GetCentre()) * (sizeScale - distanceScale);
-				m_logger.debugLog("entity: " + sh.Seen.Entity.getBestName() + "(" + sh.Seen.Entity.EntityId + "), centre: " + projectionCentre + ", offset: " + (worldMatrix.Translation - projectionCentre) + ", position: " + worldMatrix.Translation);
+				Log.DebugLog("entity: " + sh.Seen.Entity.getBestName() + "(" + sh.Seen.Entity.EntityId + "), centre: " + projectionCentre + ", offset: " + (worldMatrix.Translation - projectionCentre) + ", position: " + worldMatrix.Translation);
 				sh.Holo.PositionComp.SetWorldMatrix(worldMatrix);
 				sh.Holo.PositionComp.Scale = sizeScale;
 			}
@@ -771,7 +772,7 @@ namespace Rynchodon.AntennaRelay
 			MyAPIGateway.Entities.AddEntity(holo);
 			Profiler.EndProfileBlock();
 
-			m_logger.debugLog("created holo for " + seen.Entity.nameWithId() + ", holo: " + holo.nameWithId());
+			Log.DebugLog("created holo for " + seen.Entity.nameWithId() + ", holo: " + holo.nameWithId());
 			m_holoEntities.Add(seen.Entity.EntityId, new SeenHolo() { Seen = seen, Holo = holo });
 
 			MyCubeGrid actual = (MyCubeGrid)seen.Entity;
@@ -800,7 +801,7 @@ namespace Rynchodon.AntennaRelay
 			SeenHolo sh;
 			if (!m_holoEntities.TryGetValue(obj.CubeGrid.EntityId, out sh))
 			{
-				m_logger.debugLog("failed lookup of grid: " + obj.CubeGrid.DisplayName, Logger.severity.ERROR);
+				Log.DebugLog("failed lookup of grid: " + obj.CubeGrid.DisplayName, Logger.severity.ERROR);
 				obj.CubeGrid.OnBlockAdded -= Actual_OnBlockAdded;
 				obj.CubeGrid.OnBlockRemoved -= Actual_OnBlockRemoved;
 				return;
@@ -821,7 +822,7 @@ namespace Rynchodon.AntennaRelay
 			SeenHolo sh;
 			if (!m_holoEntities.TryGetValue(obj.CubeGrid.EntityId, out sh))
 			{
-				m_logger.debugLog("failed lookup of grid: " + obj.CubeGrid.DisplayName, Logger.severity.ERROR);
+				Log.DebugLog("failed lookup of grid: " + obj.CubeGrid.DisplayName, Logger.severity.ERROR);
 				obj.CubeGrid.OnBlockAdded -= Actual_OnBlockAdded;
 				obj.CubeGrid.OnBlockRemoved -= Actual_OnBlockRemoved;
 				return;
@@ -846,7 +847,7 @@ namespace Rynchodon.AntennaRelay
 
 		private void ColourByIntegrity(SeenHolo sh)
 		{
-			m_logger.debugLog("colouring by integriy: " + sh.Seen.Entity.getBestName());
+			Log.DebugLog("colouring by integriy: " + sh.Seen.Entity.getBestName());
 			MyCubeGrid realGrid = (MyCubeGrid)sh.Seen.Entity;
 			IMyCubeGrid holoGrid = (IMyCubeGrid)sh.Holo;
 			foreach (IMySlimBlock block in realGrid.CubeBlocks)
@@ -856,7 +857,7 @@ namespace Rynchodon.AntennaRelay
 
 		private void RestoreColour(SeenHolo sh)
 		{
-			m_logger.debugLog("restoring original colour: " + sh.Seen.Entity.getBestName());
+			Log.DebugLog("restoring original colour: " + sh.Seen.Entity.getBestName());
 			MyCubeGrid realGrid = (MyCubeGrid)sh.Seen.Entity;
 			MyCubeGrid holo = (MyCubeGrid)sh.Holo;
 			foreach (IMySlimBlock block in realGrid.CubeBlocks)
@@ -869,7 +870,7 @@ namespace Rynchodon.AntennaRelay
 			SeenHolo sh;
 			if (!m_holoEntities.TryGetValue(block.CubeGrid.EntityId, out sh))
 			{
-				m_logger.debugLog("grid entity id lookup failed", Logger.severity.ERROR);
+				Log.DebugLog("grid entity id lookup failed", Logger.severity.ERROR);
 				((MyCubeGrid)block.CubeGrid).OnBlockIntegrityChanged -= OnBlockIntegrityChanged;
 				return;
 			}
@@ -888,10 +889,10 @@ namespace Rynchodon.AntennaRelay
 			}
 			else if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out value_centreEntity))
 			{
-				m_logger.alwaysLog("Failed to get entity for id: " + entityId, Logger.severity.WARNING);
+				Log.AlwaysLog("Failed to get entity for id: " + entityId, Logger.severity.WARNING);
 				value_centreEntity = null;
 			}
-			m_logger.debugLog("centre entity is now " + m_centreEntity.getBestName() + "(" + entityId + ")");
+			Log.DebugLog("centre entity is now " + m_centreEntity.getBestName() + "(" + entityId + ")");
 		}
 
 		private bool GetOption(Option opt)

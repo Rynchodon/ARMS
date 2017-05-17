@@ -58,7 +58,6 @@ namespace Rynchodon.Autopilot.Harvest
 				Static = null;
 			}
 
-			private readonly Logger m_logger;
 			private readonly IMyOreDetector m_oreDetector;
 			private readonly IMyVoxelBase m_voxel;
 			private readonly float m_maxRange;
@@ -87,6 +86,8 @@ namespace Rynchodon.Autopilot.Harvest
 						m_position = m_oreDetector.GetPosition();
 				}
 			}
+			private Logable Log
+			{ get { return new Logable(m_oreDetector.CubeGrid.DisplayName, m_oreDetector.DisplayNameText, m_voxel.ToString()); } }
 
 			private void AddMaterialLocation(byte material, ref Vector3I location)
 			{
@@ -101,7 +102,6 @@ namespace Rynchodon.Autopilot.Harvest
 
 			public VoxelData(IMyOreDetector oreDetector, IMyVoxelBase voxel, float maxRange)
 			{
-				this.m_logger = new Logger(() => oreDetector.CubeGrid.DisplayName, () => oreDetector.DisplayNameText, () => voxel.ToString());
 				this.m_oreDetector = oreDetector;
 				this.m_voxel = voxel;
 				this.m_storage.Resize(new Vector3I(QUERY_STEP, QUERY_STEP, QUERY_STEP));
@@ -109,7 +109,7 @@ namespace Rynchodon.Autopilot.Harvest
 				(this.m_voxel as MyVoxelBase).RangeChanged += m_voxel_RangeChanged;
 				this.NeedsUpdate = true;
 
-				m_logger.debugLog("Created for voxel at " + voxel.PositionLeftBottomCorner);
+				Log.DebugLog("Created for voxel at " + voxel.PositionLeftBottomCorner);
 			}
 
 			private void m_voxel_RangeChanged(MyVoxelBase storage, Vector3I minVoxelChanged, Vector3I maxVoxelChanged, MyStorageDataTypeFlags changedData)
@@ -203,10 +203,10 @@ namespace Rynchodon.Autopilot.Harvest
 				m_localMin >>= QUERY_LOD;
 				m_localMax >>= QUERY_LOD;
 				odPosVoxelStorage >>= QUERY_LOD;
-				m_logger.debugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax + ", odPosVoxelStorage: " + odPosVoxelStorage);
+				Log.DebugLog("minLocal: " + m_localMin + ", maxLocal: " + m_localMax + ", odPosVoxelStorage: " + odPosVoxelStorage);
 
 				Vector3I size = m_localMax - m_localMin;
-				m_logger.debugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1));
+				Log.DebugLog("number of coords in box: " + (size.X + 1) * (size.Y + 1) * (size.Z + 1));
 				//ulong processed = 0;
 				foreach (List<Vector3I> locations in m_materialLocations2.Values)
 					locations.Clear();
@@ -231,7 +231,7 @@ namespace Rynchodon.Autopilot.Harvest
 												byte mat = m_storage.Material(linear);
 												if (Static.RareMaterials[mat])
 												{
-													//m_logger.debugLog("mat: " + mat + ", content: " + m_storage.Content(linear) + ", vector: " + vector + ", position: " + vector + index
+													//Log.DebugLog("mat: " + mat + ", content: " + m_storage.Content(linear) + ", vector: " + vector + ", position: " + vector + index
 													//	+ ", name: " + MyDefinitionManager.Static.GetVoxelMaterialDefinition(mat).MinedOre, "Read()");
 													//m_materialLocations[vector + index] = mat;
 
@@ -253,7 +253,7 @@ namespace Rynchodon.Autopilot.Harvest
 								//processed++;
 							}
 
-				//m_logger.debugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
+				//Log.DebugLog("read " + processed + ", chunks" + ", number of mats: " + m_materialLocations.Count, Logger.severity.DEBUG);
 				Profiler.EndProfileBlock();
 			}
 
@@ -413,7 +413,6 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private readonly List<MyVoxelBase> m_nearbyVoxel = new List<MyVoxelBase>();
 
-		private readonly Logger m_logger;
 		private readonly IMyOreDetector m_oreDetector;
 		private readonly float m_maxRange;
 		private readonly RelayClient m_netClient;
@@ -423,13 +422,14 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private readonly FastResourceLock l_getOreLocations = new FastResourceLock();
 
+		private Logable Log { get { return new Logable(m_oreDetector as IMyCubeBlock); } }
+
 		/// <summary>
 		/// Create an OreDetector for the given block.
 		/// </summary>
 		/// <param name="oreDetector">The ore detector block.</param>
 		public OreDetector(IMyCubeBlock oreDetector)
 		{
-			this.m_logger = new Logger(oreDetector);
 			this.Block = oreDetector;
 			this.m_oreDetector = oreDetector as IMyOreDetector;
 			this.m_netClient = new RelayClient(oreDetector);
@@ -449,7 +449,7 @@ namespace Rynchodon.Autopilot.Harvest
 				foreach (var voxelData in m_voxelData)
 					if (!voxelData.Value.IsValid())
 					{
-						m_logger.debugLog("removing old: " + voxelData.Key);
+						Log.DebugLog("removing old: " + voxelData.Key);
 						m_voxelData.Remove(voxelData.Key);
 						break;
 					}
@@ -464,7 +464,7 @@ namespace Rynchodon.Autopilot.Harvest
 		/// <returns>true iff an ore is found</returns>
 		private bool GetOreLocations(Vector3D position, byte[] oreType, OreSearchComplete onComplete)
 		{
-			m_logger.debugLog("entered GetOreLocations()");
+			Log.DebugLog("entered GetOreLocations()");
 
 			using (l_getOreLocations.AcquireExclusiveUsing())
 			{
@@ -489,24 +489,24 @@ namespace Rynchodon.Autopilot.Harvest
 						}
 						if (data.NeedsUpdate)
 						{
-							m_logger.debugLog("Data needs to be updated for " + nearbyMap.getBestName());
+							Log.DebugLog("Data needs to be updated for " + nearbyMap.getBestName());
 							data.Read();
 						}
 						else
-							m_logger.debugLog("Old data OK for " + nearbyMap.getBestName());
+							Log.DebugLog("Old data OK for " + nearbyMap.getBestName());
 
 						IEnumerable<Vector3D> positions;
 						byte foundOre;
 						if (data.GetRandom(oreType, ref position, out foundOre, out positions))
 						{
-							//m_logger.debugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest));
+							//Log.DebugLog("PositionLeftBottomCorner: " + nearbyMap.PositionLeftBottomCorner + ", worldPosition: " + closest + ", distance: " + Vector3D.Distance(position, closest));
 							string oreName = MyDefinitionManager.Static.GetVoxelMaterialDefinition(foundOre).MinedOre;
 							onComplete(true, nearbyMap, oreName, positions);
 							m_nearbyVoxel.Clear();
 							return true;
 						}
 						else
-							m_logger.debugLog("No ore found");
+							Log.DebugLog("No ore found");
 					}
 				}
 

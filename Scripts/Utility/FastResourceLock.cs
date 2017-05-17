@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 //#define DEBUG_LOCKS
 #if DEBUG_LOCKS
 #define STACK_TRACE
@@ -67,12 +67,13 @@ namespace Rynchodon
 			}
 		}
 
+		private string m_callerFilePath;
 		private const int recentActivityCount = 20;
 		private static readonly TimeSpan timeout = new TimeSpan(0, 0, 10);
-
-		private Logger myLogger;
 		private MyQueue<Activity> recentActivity = new MyQueue<Activity>(recentActivityCount);
 		private VRage.FastResourceLock lock_recentActivity = new VRage.FastResourceLock();
+
+		private Logable Log { get { return Logable(callerFilePath, lockName); } }
 #endif
 
 		private VRage.FastResourceLock FastLock = new VRage.FastResourceLock();
@@ -80,8 +81,7 @@ namespace Rynchodon
 		public FastResourceLock(string lockName = "N/A", [CallerFilePath]string callerFilePath = null)
 		{
 #if DEBUG_LOCKS
-			callerFilePath = Path.GetFileName(callerFilePath);
-			this.myLogger = new Logger(() => callerFilePath, () => lockName);
+			m_callerFilePath = Path.GetFileName(callerFilePath);
 #endif
 		}
 
@@ -210,7 +210,7 @@ namespace Rynchodon
 			sb.AppendLine("End of recent activity");
 			string log = sb.ToString();
 			VRage.Utils.MyLog.Default.WriteLine(log);
-			myLogger.alwaysLog(log, level);
+			Log.AlwaysLog(log, level);
 		}
 
 		/// <summary>
@@ -238,7 +238,7 @@ namespace Rynchodon
 		/// </summary>
 		private void AcquireShared_Debug()
 		{
-			//myLogger.alwaysLog("entered AcquireShared_Debug(). " + State(), "AcquireShared_Debug()");
+			//Log.AlwaysLog("entered AcquireShared_Debug(). " + State(), "AcquireShared_Debug()");
 			AddRecent("entered AcquireShared_Debug().");
 
 			DateTime timeoutAt = DateTime.UtcNow + timeout;
@@ -265,7 +265,7 @@ namespace Rynchodon
 			FastLock.ReleaseExclusive();
 
 			if (issue)
-				myLogger.alwaysLog("Released exclusive lock successfully.", Logger.severity.WARNING);
+				Log.AlwaysLog("Released exclusive lock successfully.", Logger.severity.WARNING);
 
 			AddRecent("leaving ReleaseExclusive_Debug().");
 		}
@@ -281,7 +281,7 @@ namespace Rynchodon
 			FastLock.ReleaseShared();
 
 			if (issue)
-				myLogger.alwaysLog("Released shared lock successfully.", Logger.severity.WARNING);
+				Log.AlwaysLog("Released shared lock successfully.", Logger.severity.WARNING);
 
 			AddRecent("leaving ReleaseShared_Debug().");
 		}

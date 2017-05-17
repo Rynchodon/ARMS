@@ -12,14 +12,14 @@ namespace Rynchodon.Utility
 		private readonly SortedList<DateTime, string> m_fileAgeName = new SortedList<DateTime, string>();
 		private readonly string[] m_separator = { " - " };
 
-		private readonly Logger m_logger;
 		private readonly string m_masterName;
 		private readonly string m_slaveName;
 		private readonly int m_limit;
 
+		private Logable Log { get { return new Logable(m_masterName); } }
+
 		public FileMaster(string masterName, string slaveName, int limit = 100)
 		{
-			this.m_logger = new Logger(() => m_masterName);
 			this.m_masterName = masterName;
 			this.m_slaveName = slaveName;
 			this.m_limit = limit;
@@ -66,7 +66,7 @@ namespace Rynchodon.Utility
 				return false;
 
 			try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(fileName, GetType()); }
-			catch (Exception) { m_logger.alwaysLog("failed to delete file:" + fileName, Logger.severity.INFO); }
+			catch (Exception) { Log.AlwaysLog("failed to delete file:" + fileName, Logger.severity.INFO); }
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(fileName, GetType()))
 				return false;
 
@@ -91,12 +91,12 @@ namespace Rynchodon.Utility
 			while (m_fileAgeName.Count >= m_limit)
 			{
 				string delete = m_fileAgeName.ElementAt(0).Value;
-				m_logger.alwaysLog("At limit, deleting: " + delete, Logger.severity.INFO);
+				Log.AlwaysLog("At limit, deleting: " + delete, Logger.severity.INFO);
 				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(delete, GetType()); }
-				catch (Exception) { m_logger.alwaysLog("failed to delete file:" + delete, Logger.severity.INFO); }
+				catch (Exception) { Log.AlwaysLog("failed to delete file:" + delete, Logger.severity.INFO); }
 				if (MyAPIGateway.Utilities.FileExistsInLocalStorage(delete, GetType()))
 				{
-					m_logger.alwaysLog("Failed to delete: " + delete, Logger.severity.INFO);
+					Log.AlwaysLog("Failed to delete: " + delete, Logger.severity.INFO);
 					break;
 				}
 				m_fileAgeName.RemoveAt(0);
@@ -121,7 +121,7 @@ namespace Rynchodon.Utility
 		{
 			if (!MyAPIGateway.Utilities.FileExistsInLocalStorage(m_masterName, GetType()))
 			{
-				m_logger.debugLog("No master file", Logger.severity.INFO);
+				Log.DebugLog("No master file", Logger.severity.INFO);
 				return;
 			}
 
@@ -135,19 +135,19 @@ namespace Rynchodon.Utility
 				DateTime modified;
 				if (!DateTime.TryParse(split[0], out modified))
 				{
-					m_logger.debugLog("Failed to parse: " + split[0] + " to DateTime");
+					Log.DebugLog("Failed to parse: " + split[0] + " to DateTime");
 					continue;
 				}
 				if (m_fileAgeName.ContainsKey(modified))
 				{
-					m_logger.alwaysLog("Duplicate key in file master: " + modified + ". Incrementing the later key", Logger.severity.WARNING);
+					Log.AlwaysLog("Duplicate key in file master: " + modified + ". Incrementing the later key", Logger.severity.WARNING);
 					for (int i = 0; m_fileAgeName.ContainsKey(modified); i++)
 					{
 						if (i < 100)
 							modified = modified.AddTicks(1);
 						else
 						{
-							m_logger.alwaysLog("Master file is corrupt", Logger.severity.FATAL);
+							Log.AlwaysLog("Master file is corrupt", Logger.severity.FATAL);
 							throw new Exception(m_masterName + " is corrupt");
 						}
 					}

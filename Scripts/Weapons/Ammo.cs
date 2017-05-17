@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Utility;
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -32,9 +33,9 @@ namespace Rynchodon.Weapons
 				catch (Exception ex)
 				{
 					Logger.DebugNotify("Failed to load description for an ammo", 10000, Logger.severity.ERROR);
-					Logger log = new Logger(() => ammo.Id.SubtypeName);
-					log.alwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
-					log.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+					Logable Log = new Logable(ammo.Id.SubtypeName);
+					Log.AlwaysLog("Failed to load description for an ammo", Logger.severity.ERROR);
+					Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					return null;
 				}
 			}
@@ -138,12 +139,13 @@ namespace Rynchodon.Weapons
 
 		public readonly bool IsCluster;
 
-		private readonly Logger myLogger;
+		private Logable Log {
+			get { return new Logable(MagazineDefinition.Id.ToString(), AmmoDefinition.Id.ToString()); }
+		}
 
 		private Ammo(MyAmmoMagazineDefinition ammoMagDef)
 		{
 			MyAmmoDefinition ammoDef = MyDefinitionManager.Static.GetAmmoDefinition(ammoMagDef.AmmoDefinitionId);
-			this.myLogger = new Logger(() => ammoMagDef.Id.ToString(), () => ammoDef.Id.ToString());
 
 			this.AmmoDefinition = ammoDef;
 			this.MissileDefinition = AmmoDefinition as MyMissileAmmoDefinition;
@@ -167,7 +169,7 @@ namespace Rynchodon.Weapons
 
 			if (Description.ClusterCooldown > 0f)
 			{
-				myLogger.debugLog("Is a cluster missile");
+				Log.DebugLog("Is a cluster missile");
 				IsCluster = true;
 			}
 			if (!string.IsNullOrWhiteSpace(Description.Radar))
@@ -179,13 +181,13 @@ namespace Rynchodon.Weapons
 					ammender.primarySeparator = new char[] { ',' };
 					ammender.AmendAll(Description.Radar, true);
 					RadarDefinition = ammender.Deserialize();
-					myLogger.debugLog("Loaded description for radar", Logger.severity.DEBUG);
+					Log.DebugLog("Loaded description for radar", Logger.severity.DEBUG);
 				}
 				catch (Exception ex)
 				{
 					Logger.DebugNotify("Failed to load radar description for an ammo", 10000, Logger.severity.ERROR);
-					myLogger.alwaysLog("Failed to load radar description for an ammo", Logger.severity.ERROR);
-					myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+					Log.AlwaysLog("Failed to load radar description for an ammo", Logger.severity.ERROR);
+					Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 					RadarDefinition = null;
 				}
 			}
@@ -193,12 +195,12 @@ namespace Rynchodon.Weapons
 
 		public float MissileSpeed(float distance)
 		{
-			//myLogger.debugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed);
+			//Log.DebugLog("distance = " + distance + ", DistanceToMaxSpeed = " + DistanceToMaxSpeed);
 			if (distance < DistanceToMaxSpeed)
 			{
 				float finalSpeed = (float)Math.Sqrt(MissileDefinition.MissileInitialSpeed * MissileDefinition.MissileInitialSpeed + 2 * MissileDefinition.MissileAcceleration * distance);
 
-				//myLogger.debugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
+				//Log.DebugLog("close missile calc: " + ((missileAmmo.MissileInitialSpeed + finalSpeed) / 2), "LoadedAmmoSpeed()");
 				return (MissileDefinition.MissileInitialSpeed + finalSpeed) / 2;
 			}
 			else
@@ -206,9 +208,9 @@ namespace Rynchodon.Weapons
 				float distanceAfterMaxVel = distance - DistanceToMaxSpeed;
 				float timeAfterMaxVel = distanceAfterMaxVel / MissileDefinition.DesiredSpeed;
 
-				//myLogger.debugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
+				//Log.DebugLog("DistanceToMaxSpeed = " + DistanceToMaxSpeed + ", TimeToMaxSpeed = " + TimeToMaxSpeed + ", distanceAfterMaxVel = " + distanceAfterMaxVel + ", timeAfterMaxVel = " + timeAfterMaxVel
 				//	+ ", average speed = " + (distance / (TimeToMaxSpeed + timeAfterMaxVel)));
-				//myLogger.debugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
+				//Log.DebugLog("far missile calc: " + (distance / (LoadedAmmo.TimeToMaxSpeed + timeAfterMaxVel)), "LoadedAmmoSpeed()");
 				return distance / (TimeToMaxSpeed + timeAfterMaxVel);
 			}
 		}

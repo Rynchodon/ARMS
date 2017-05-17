@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic; // from mscorlib.dll, System.dll, System.Core.dll, and VRage.Library.dll
 using System.Text; // from mscorlib.dll
 using Rynchodon.Autopilot.Data;
+using Rynchodon.Utility;
 using Sandbox.Definitions; // from Sandbox.Game.dll
 using Sandbox.Game.Entities; // from Sandbox.Game.dll
 using Sandbox.ModAPI;
@@ -20,7 +21,6 @@ namespace Rynchodon.Autopilot.Navigator
 	{
 		private const float maxTransfer = 1;
 
-		private readonly Logger m_logger;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly IMyCubeGrid m_grid;
 		private readonly List<IMyInventory> m_destInventory = new List<IMyInventory>();
@@ -30,9 +30,12 @@ namespace Rynchodon.Autopilot.Navigator
 		private ulong m_nextUpdate;
 		private Dictionary<string, int> m_shoppingList;
 
+
+		private Logable Log
+		{ get { return new Logable(m_grid); } }
+
 		public Shopper(AllNavigationSettings navSet, IMyCubeGrid grid, Dictionary<string, int> shopList)
 		{
-			this.m_logger = new Logger(grid);
 			this.m_navSet = navSet;
 			this.m_shoppingList = shopList;
 			this.m_grid = grid;
@@ -40,7 +43,7 @@ namespace Rynchodon.Autopilot.Navigator
 			this.m_currentTask = Return;
 
 			foreach (var pair in m_shoppingList)
-				m_logger.debugLog("Item: " + pair.Key + ", amount: " + pair.Value);
+				Log.DebugLog("Item: " + pair.Key + ", amount: " + pair.Value);
 		}
 
 		public void Move()
@@ -54,7 +57,7 @@ namespace Rynchodon.Autopilot.Navigator
 				FindSourceInventory();
 				if (m_sourceInventory.Count == 0)
 				{
-					m_logger.debugLog("No source inventories found", Logger.severity.WARNING);
+					Log.DebugLog("No source inventories found", Logger.severity.WARNING);
 					m_navSet.OnTaskComplete_NavWay();
 					return;
 				}
@@ -64,7 +67,7 @@ namespace Rynchodon.Autopilot.Navigator
 				MyAPIGateway.Utilities.TryInvokeOnGameThread(m_currentTask);
 			else
 			{
-				m_logger.debugLog("Shopping finished, proceed to checkout", Logger.severity.INFO);
+				Log.DebugLog("Shopping finished, proceed to checkout", Logger.severity.INFO);
 				m_navSet.OnTaskComplete_NavWay();
 			}
 		}
@@ -90,14 +93,14 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		public void Start()
 		{
-			m_logger.debugLog("shopper started");
+			Log.DebugLog("shopper started");
 			m_navSet.Shopper = null;
 
 			this.m_grid.GetBlocks_Safe(null, slim => {
 				MyEntity entity = slim.FatBlock as MyEntity;
 				if (entity != null && entity is Sandbox.ModAPI.Ingame.IMyCargoContainer)
 				{
-					m_logger.debugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
+					Log.DebugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
 					int count = entity.InventoryCount;
 					for (int i = 0; i < count; i++)
 						m_destInventory.Add(entity.GetInventory(i));
@@ -107,7 +110,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 			if (m_destInventory.Count == 0)
 			{
-				m_logger.debugLog("no dest inventory");
+				Log.DebugLog("no dest inventory");
 				return;
 			}
 
@@ -122,12 +125,12 @@ namespace Rynchodon.Autopilot.Navigator
 		/// </summary>
 		private void FindSourceInventory()
 		{
-			m_logger.debugLog("looking for attached blocks");
+			Log.DebugLog("looking for attached blocks");
 
 			foreach (MyEntity entity in Attached.AttachedGrid.AttachedCubeBlocks(this.m_grid, Attached.AttachedGrid.AttachmentKind.Terminal, false))
 				if (entity.HasInventory && (entity.GetInventory(0) as IMyInventory).IsConnectedTo(m_destInventory[0]))
 				{
-					m_logger.debugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
+					Log.DebugLog("entity: " + entity.GetBaseEntity().getBestName() + ", inventories: " + entity.InventoryCount);
 					int count = entity.InventoryCount;
 					for (int i = 0; i < count; i++)
 						m_sourceInventory.Add(entity.GetInventory(i));
@@ -160,8 +163,8 @@ namespace Rynchodon.Autopilot.Navigator
 								int allowedAmount = (int)(allowedVolume / oneVol);
 								if (allowedAmount <= 0)
 								{
-									m_logger.debugLog("allowedAmount < 0", Logger.severity.FATAL, condition: allowedAmount < 0);
-									m_logger.debugLog("reached max transfer for this update", Logger.severity.DEBUG);
+									Log.DebugLog("allowedAmount < 0", Logger.severity.FATAL, condition: allowedAmount < 0);
+									Log.DebugLog("reached max transfer for this update", Logger.severity.DEBUG);
 									return;
 								}
 
@@ -176,7 +179,7 @@ namespace Rynchodon.Autopilot.Navigator
 								MyFixedPoint volumeBefore = destInv.CurrentVolume;
 								if (destInv.TransferItemFrom(sourceInv, 0, stackIfPossible: true, amount: transferAmount))
 								{
-									//m_logger.debugLog("transfered item from " + (sourceInv.Owner as IMyEntity).getBestName() + " to " + (destInv.Owner as IMyEntity).getBestName() +
+									//Log.DebugLog("transfered item from " + (sourceInv.Owner as IMyEntity).getBestName() + " to " + (destInv.Owner as IMyEntity).getBestName() +
 									//	", amount: " + transferAmount + ", volume: " + (destInv.CurrentVolume - volumeBefore), "Return()");
 									allowedVolume += (float)(volumeBefore - destInv.CurrentVolume);
 								}
@@ -184,7 +187,7 @@ namespace Rynchodon.Autopilot.Navigator
 					}
 				}
 
-			m_logger.debugLog("finished emptying inventories", Logger.severity.INFO);
+			Log.DebugLog("finished emptying inventories", Logger.severity.INFO);
 			m_currentTask = Shop;
 		}
 
@@ -196,21 +199,21 @@ namespace Rynchodon.Autopilot.Navigator
 			float allowedVolume = maxTransfer; // volume is in m³ not l
 
 			var component = m_shoppingList.FirstPair();
-			//m_logger.debugLog("shopping for " + component.Key, "Move()");
+			//Log.DebugLog("shopping for " + component.Key, "Move()");
 			SerializableDefinitionId defId = new SerializableDefinitionId(typeof(MyObjectBuilder_Component), component.Key);
 			float oneVol = MyDefinitionManager.Static.GetPhysicalItemDefinition(defId).Volume;
 			foreach (IMyInventory source in m_sourceInventory)
 			{
-				//m_logger.debugLog("source: " + (source.Owner as IMyEntity).getBestName(), "Move()");
+				//Log.DebugLog("source: " + (source.Owner as IMyEntity).getBestName(), "Move()");
 
 				int amountToMove, sourceIndex;
 				GetComponentInInventory(source, defId, out amountToMove, out sourceIndex);
 				if (amountToMove < 1)
 					continue;
-				//m_logger.debugLog("found: " + component.Key + ", count: " + amountToMove, "Move()");
+				//Log.DebugLog("found: " + component.Key + ", count: " + amountToMove, "Move()");
 				if (amountToMove > component.Value)
 				{
-					//m_logger.debugLog("reducing amountToMove to " + component.Value, "Move()");
+					//Log.DebugLog("reducing amountToMove to " + component.Value, "Move()");
 					amountToMove = component.Value;
 				}
 
@@ -219,17 +222,17 @@ namespace Rynchodon.Autopilot.Navigator
 					if (amountToMove < 1)
 						break;
 
-					//m_logger.debugLog("destination: " + (destination.Owner as IMyEntity).getBestName(), "Move()");
+					//Log.DebugLog("destination: " + (destination.Owner as IMyEntity).getBestName(), "Move()");
 
 					int allowedAmount = (int)(allowedVolume / oneVol);
 					if (allowedAmount < 1)
 					{
-						m_logger.debugLog("allowed amount less than 1");
+						Log.DebugLog("allowed amount less than 1");
 						return;
 					}
 					if (allowedAmount < amountToMove)
 					{
-						//m_logger.debugLog("allowedAmount(" + allowedAmount + ") < amountToMove(" + amountToMove + ")", "Move()");
+						//Log.DebugLog("allowedAmount(" + allowedAmount + ") < amountToMove(" + amountToMove + ")", "Move()");
 						amountToMove = allowedAmount;
 					}
 
@@ -239,7 +242,7 @@ namespace Rynchodon.Autopilot.Navigator
 						MyFixedPoint amountNow = destination.GetItemAmount(defId);
 						if (amountNow == amountInDest)
 						{
-							m_logger.debugLog("no transfer took place");
+							Log.DebugLog("no transfer took place");
 						}
 						else
 						{
@@ -247,13 +250,13 @@ namespace Rynchodon.Autopilot.Navigator
 							m_shoppingList[component.Key] -= transferred;
 							allowedVolume -= transferred * oneVol;
 							amountToMove -= transferred;
-							//m_logger.debugLog("transfered: " + transferred + ", remaining volume: " + allowedVolume + " remaining amount: " + amountToMove, "Move()");
+							//Log.DebugLog("transfered: " + transferred + ", remaining volume: " + allowedVolume + " remaining amount: " + amountToMove, "Move()");
 							component = m_shoppingList.FirstPair();
 							if (amountToMove < 1)
 							{
 								if (component.Value < 1)
 								{
-									m_logger.debugLog("final transfer for " + component.Key);
+									Log.DebugLog("final transfer for " + component.Key);
 									m_shoppingList.Remove(component.Key);
 								}
 								return;
@@ -261,17 +264,17 @@ namespace Rynchodon.Autopilot.Navigator
 						}
 					}
 					else
-						m_logger.debugLog("transfer failed", Logger.severity.WARNING);
+						Log.DebugLog("transfer failed", Logger.severity.WARNING);
 				}
 			}
 
 			if (allowedVolume == maxTransfer)
 			{
-				m_logger.debugLog("no items were transferred, dropping item from list: " + component.Key, Logger.severity.DEBUG);
+				Log.DebugLog("no items were transferred, dropping item from list: " + component.Key, Logger.severity.DEBUG);
 				m_shoppingList.Remove(component.Key);
 			}
 			else
-				m_logger.debugLog("value: " + m_shoppingList[component.Key], Logger.severity.DEBUG);
+				Log.DebugLog("value: " + m_shoppingList[component.Key], Logger.severity.DEBUG);
 		}
 
 		/// <summary>

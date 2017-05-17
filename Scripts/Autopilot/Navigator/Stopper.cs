@@ -1,5 +1,6 @@
-﻿using System.Text;
+using System.Text;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 
 namespace Rynchodon.Autopilot.Navigator
 {
@@ -8,11 +9,11 @@ namespace Rynchodon.Autopilot.Navigator
 	/// </summary>
 	public class Stopper : NavigatorMover, INavigatorRotator
 	{
-
-		private readonly Logger _logger;
 		private readonly bool m_exitAfter;
 
 		private float m_lastLinearSpeedSquared = float.MaxValue, m_lastAngularSpeedSquared = float.MaxValue;
+
+		private Logable Log { get { return new Logable(m_controlBlock.Controller); } }
 
 		/// <summary>
 		/// Creates a new Stopper
@@ -22,7 +23,6 @@ namespace Rynchodon.Autopilot.Navigator
 		public Stopper(Pathfinder pathfinder, bool exitAfter = false)
 			: base(pathfinder)
 		{
-			_logger = new Logger(m_controlBlock.Controller);
 			m_exitAfter = exitAfter;
 
 			m_mover.MoveAndRotateStop();
@@ -75,23 +75,23 @@ namespace Rynchodon.Autopilot.Navigator
 		{
 			if (LinearSlowdown() || AngularSlowdown())
 			{
-				_logger.debugLog("linear: " + m_mover.Block.Physics.LinearVelocity + ", angular: " + m_mover.Block.Physics.AngularVelocity);
+				Log.DebugLog("linear: " + m_mover.Block.Physics.LinearVelocity + ", angular: " + m_mover.Block.Physics.AngularVelocity);
 				return;
 			}
 
 			INavigatorRotator rotator = m_navSet.Settings_Current.NavigatorRotator;
 			if (rotator != null && !m_navSet.DirectionMatched())
 			{
-				_logger.debugLog("waiting for rotator to match");
+				Log.DebugLog("waiting for rotator to match");
 				return;
 			}
 
 			m_mover.MoveAndRotateStop();
-			_logger.debugLog("stopped");
+			Log.DebugLog("stopped");
 			m_navSet.OnTaskComplete_NavRot();
 			if (m_exitAfter)
 			{
-				_logger.debugLog("setting disable", Logger.severity.DEBUG);
+				Log.DebugLog("setting disable", Logger.severity.DEBUG);
 				m_mover.SetControl(false);
 			}
 		}

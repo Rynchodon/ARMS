@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
+using Rynchodon.Utility;
 using VRage.Collections;
 using VRage.Game.ModAPI;
 
@@ -10,21 +11,23 @@ namespace Rynchodon.Attached
 	{
 		private class Attachments
 		{
-
-			private readonly Logger myLogger;
-
 			private readonly Dictionary<AttachmentKind, ushort> dictionary = new Dictionary<AttachmentKind, ushort>();
 
+			private IMyCubeGrid m_grid_0;
+			private IMyCubeGrid m_grid_1;
+
 			public AttachmentKind attachmentKinds { get; private set; }
+			private Logable Log { get { return new Logable(m_grid_0.DisplayName, m_grid_1.DisplayName); } }
 
 			public Attachments(IMyCubeGrid grid0, IMyCubeGrid grid1)
 			{
-				myLogger = new Logger(() => grid0.DisplayName, () => grid1.DisplayName);
+				m_grid_0 = grid0;
+				m_grid_1 = grid1;
 			}
 
 			public void Add(AttachmentKind kind)
 			{
-				myLogger.debugLog("adding: " + kind);
+				Log.DebugLog("adding: " + kind);
 
 				ushort count;
 				if (!dictionary.TryGetValue(kind, out count))
@@ -34,13 +37,13 @@ namespace Rynchodon.Attached
 				}
 
 				count++;
-				myLogger.debugLog(kind + " count: " + count);
+				Log.DebugLog(kind + " count: " + count);
 				dictionary[kind] = count;
 			}
 
 			public void Remove(AttachmentKind kind)
 			{
-				myLogger.debugLog("removing: " + kind);
+				Log.DebugLog("removing: " + kind);
 
 				ushort count = dictionary[kind];
 				count--;
@@ -52,7 +55,7 @@ namespace Rynchodon.Attached
 				else
 					dictionary[kind] = count;
 
-				myLogger.debugLog(kind + " count: " + count);
+				Log.DebugLog(kind + " count: " + count);
 			}
 
 		}
@@ -233,8 +236,9 @@ namespace Rynchodon.Attached
 			return attached;
 		}
 
-		private readonly Logger myLogger;
 		private readonly IMyCubeGrid myGrid;
+
+		private Logable Log { get { return new Logable(myGrid.DisplayName); } }
 
 		/// <summary>
 		/// The grid connected to, the types of connection, the number of connections.
@@ -244,11 +248,10 @@ namespace Rynchodon.Attached
 
 		private AttachedGrid(IMyCubeGrid grid)
 		{
-			this.myLogger = new Logger(() => grid.DisplayName);
 			this.myGrid = grid;
 			Registrar.Add(grid, this);
 
-			myLogger.debugLog("Initialized");
+			Log.DebugLog("Initialized");
 		}
 
 		private void AddRemoveConnection(AttachmentKind kind, AttachedGrid attached, bool add)
@@ -263,7 +266,7 @@ namespace Rynchodon.Attached
 				}
 				else
 				{
-					myLogger.alwaysLog("cannot remove, no attachments of kind " + kind, Logger.severity.ERROR);
+					Log.AlwaysLog("cannot remove, no attachments of kind " + kind, Logger.severity.ERROR);
 					return;
 				}
 			}

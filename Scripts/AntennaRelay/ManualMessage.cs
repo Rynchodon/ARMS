@@ -174,7 +174,6 @@ namespace Rynchodon.AntennaRelay
 
 		#endregion Getter & Setter
 
-		private readonly Logger m_logger;
 		private readonly IMyCubeBlock m_block;
 
 		private bool m_sending;
@@ -182,7 +181,6 @@ namespace Rynchodon.AntennaRelay
 
 		public ManualMessage(IMyCubeBlock block)
 		{
-			m_logger = new Logger(block);
 			m_block = block;
 
 			Registrar.Add(block, this);

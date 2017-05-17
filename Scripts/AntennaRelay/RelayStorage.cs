@@ -62,8 +62,6 @@ namespace Rynchodon.AntennaRelay
 							AddStorage(sendToSet, connected.Storage);
 		}
 
-		private readonly Logger m_logger;
-
 		private readonly FastResourceLock lock_lastSeen = new FastResourceLock();
 		private readonly Dictionary<long, LastSeen> m_lastSeen = new Dictionary<long, LastSeen>();
 		private readonly FastResourceLock lock_messages = new FastResourceLock();
@@ -84,12 +82,14 @@ namespace Rynchodon.AntennaRelay
 		/// <summary>Number of LastSeen stored</summary>
 		public int LastSeenCount { get { return m_lastSeen.Count; } }
 
+		private Logable Log
+		{ get { return new Logable(PrimaryNode.DebugName); } }
+
 		public RelayStorage(RelayNode primary)
 		{
-			this.m_logger = new Logger(() => primary.DebugName);
 			this.PrimaryNode = primary;
 
-			m_logger.debugLog("Created", Logger.severity.DEBUG);
+			Log.DebugLog("Created", Logger.severity.DEBUG);
 		}
 
 		/// <summary>
@@ -99,7 +99,7 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>A new storage that is a copy of this one.</returns>
 		public RelayStorage Clone(RelayNode primary)
 		{
-			m_logger.debugLog("cloning, primary " + primary.DebugName, Logger.severity.DEBUG);
+			Log.DebugLog("cloning, primary " + primary.DebugName, Logger.severity.DEBUG);
 
 			RelayStorage clone = new RelayStorage(primary);
 
@@ -116,8 +116,8 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="recipient">NetworkStorage to copy transmissions to.</param>
 		public void CopyTo(RelayStorage recipient)
 		{
-			m_logger.debugLog("recipient == this", Logger.severity.FATAL, condition: recipient == this);
-			m_logger.debugLog("copying to: " + recipient.PrimaryNode.DebugName, Logger.severity.DEBUG);
+			Log.DebugLog("recipient == this", Logger.severity.FATAL, condition: recipient == this);
+			Log.DebugLog("copying to: " + recipient.PrimaryNode.DebugName, Logger.severity.DEBUG);
 
 			using (recipient.lock_lastSeen.AcquireExclusiveUsing())
 				ForEachLastSeen(recipient.in_Receive);
@@ -139,23 +139,23 @@ namespace Rynchodon.AntennaRelay
 				m_pushTo_count[node] = count + 1;
 			}
 
-			m_logger.debugLog("added push to: " + node.DebugName + ", count: " + (count + 1), Logger.severity.DEBUG);
+			Log.DebugLog("added push to: " + node.DebugName + ", count: " + (count + 1), Logger.severity.DEBUG);
 
 			if (count != 0)
 			{
-				m_logger.debugLog("not first connection, no copy. count: " + count, Logger.severity.TRACE);
+				Log.DebugLog("not first connection, no copy. count: " + count, Logger.severity.TRACE);
 				return;
 			}
 
 			if (node.Storage == null)
 			{
-				m_logger.debugLog("target node has no storage, no copy. node: " + node.DebugName, Logger.severity.TRACE);
+				Log.DebugLog("target node has no storage, no copy. node: " + node.DebugName, Logger.severity.TRACE);
 				return;
 			}
 
 			if (node.Storage == this)
 			{
-				m_logger.debugLog("target node's storage is this, no copy. node: " + node.DebugName, Logger.severity.TRACE);
+				Log.DebugLog("target node's storage is this, no copy. node: " + node.DebugName, Logger.severity.TRACE);
 				return;
 			}
 
@@ -165,7 +165,7 @@ namespace Rynchodon.AntennaRelay
 					continue;
 				if (node.Storage == n.Storage)
 				{
-					m_logger.debugLog("already pushing to storage, no copy. node: " + node.DebugName + ", node.Storage: " + node.Storage.PrimaryNode.DebugName +
+					Log.DebugLog("already pushing to storage, no copy. node: " + node.DebugName + ", node.Storage: " + node.Storage.PrimaryNode.DebugName +
 						", n: " + n.DebugName + ", n.Storage: " + n.Storage.PrimaryNode.DebugName, Logger.severity.TRACE);
 					return;
 				}
@@ -188,7 +188,7 @@ namespace Rynchodon.AntennaRelay
 				else
 					m_pushTo_count[node] = count - 1;
 
-				m_logger.debugLog("removed push to: " + node.DebugName + ", count: " + (count - 1), Logger.severity.DEBUG);
+				Log.DebugLog("removed push to: " + node.DebugName + ", count: " + (count - 1), Logger.severity.DEBUG);
 			}
 		}
 
@@ -200,7 +200,7 @@ namespace Rynchodon.AntennaRelay
 		/// <exception cref="ArgumentException">iff the block already has a handler registered.</exception>
 		public void AddMessageHandler(long entityId, Action<Message> handler)
 		{
-			m_logger.debugLog("Adding message handler for " + entityId, Logger.severity.DEBUG);
+			Log.DebugLog("Adding message handler for " + entityId, Logger.severity.DEBUG);
 
 			using (lock_messageHandlers.AcquireExclusiveUsing())
 				m_messageHandlers.Add(entityId, handler);
@@ -220,7 +220,7 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="entityId">The EntityId of the block to unregister for</param>
 		public void RemoveMessageHandler(long entityId)
 		{
-			m_logger.debugLog("Removing message handler for " + entityId, Logger.severity.DEBUG);
+			Log.DebugLog("Removing message handler for " + entityId, Logger.severity.DEBUG);
 
 			using (lock_messageHandlers.AcquireExclusiveUsing())
 				m_messageHandlers.Remove(entityId);
@@ -244,7 +244,7 @@ namespace Rynchodon.AntennaRelay
 						sto.in_Receive(seen);
 					if (sto.m_nextClean_lastSeen <= Globals.UpdateCount)
 					{
-						m_logger.debugLog("Running cleanup on last seen", Logger.severity.INFO);
+						Log.DebugLog("Running cleanup on last seen", Logger.severity.INFO);
 						sto.ForEachLastSeen(s => { });
 					}
 				}
@@ -274,7 +274,7 @@ namespace Rynchodon.AntennaRelay
 						sto.in_Receive(msg);
 					if (sto.m_nextClean_message <= Globals.UpdateCount)
 					{
-						m_logger.debugLog("Running cleanup on message", Logger.severity.INFO);
+						Log.DebugLog("Running cleanup on message", Logger.severity.INFO);
 						sto.ForEachMessage(s => { });
 					}
 				}
@@ -304,7 +304,7 @@ namespace Rynchodon.AntennaRelay
 							sto.in_Receive(s);
 					if (sto.m_nextClean_lastSeen <= Globals.UpdateCount)
 					{
-						m_logger.debugLog("Running cleanup on last seen", Logger.severity.INFO);
+						Log.DebugLog("Running cleanup on last seen", Logger.severity.INFO);
 						sto.ForEachLastSeen(s => { });
 					}
 				}
@@ -339,7 +339,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (invalid != null)
 			{
-				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
+				Log.DebugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
 				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
@@ -371,7 +371,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (invalid != null)
 			{
-				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
+				Log.DebugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
 				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
@@ -410,7 +410,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (invalid != null)
 			{
-				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
+				Log.DebugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
 				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (LastSeen seen in invalid)
 						m_lastSeen.Remove(seen.Entity.EntityId);
@@ -450,7 +450,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (invalid != null)
 			{
-				m_logger.debugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
+				Log.DebugLog("Removing " + invalid.Count + " invalid LastSeen", Logger.severity.DEBUG);
 				using (lock_lastSeen.AcquireExclusiveUsing())
 					foreach (long id in invalid)
 						m_lastSeen.Remove(id);
@@ -492,7 +492,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (invalid != null)
 			{
-				m_logger.debugLog("Removing " + invalid.Count + " invalid Message", Logger.severity.DEBUG);
+				Log.DebugLog("Removing " + invalid.Count + " invalid Message", Logger.severity.DEBUG);
 				using (lock_messages.AcquireExclusiveUsing())
 					foreach (Message msg in invalid)
 						m_messages.Remove(msg);
@@ -525,13 +525,13 @@ namespace Rynchodon.AntennaRelay
 		{
 			Action<Message> handler;
 			bool gotHandler;
-			m_logger.debugLog("looking for a handler for " + msg.DestCubeBlock.EntityId);
+			Log.DebugLog("looking for a handler for " + msg.DestCubeBlock.EntityId);
 			using (lock_messageHandlers.AcquireSharedUsing())
 				gotHandler = m_messageHandlers.TryGetValue(msg.DestCubeBlock.EntityId, out handler);
 
 			if (gotHandler)
 			{
-				m_logger.debugLog("have a handler for msg");
+				Log.DebugLog("have a handler for msg");
 				msg.IsValid = false;
 				handler(msg);
 				return;
@@ -539,14 +539,14 @@ namespace Rynchodon.AntennaRelay
 
 			if (m_messages.Count >= 100)
 			{
-				m_logger.alwaysLog("Cannot receive more messages, at limit: " + m_messages.Count, Logger.severity.INFO);
+				Log.AlwaysLog("Cannot receive more messages, at limit: " + m_messages.Count, Logger.severity.INFO);
 				return;
 			}
 
 			if (m_messages.Add(msg))
-				m_logger.debugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
+				Log.DebugLog("got a new message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
 			else
-				m_logger.debugLog("already have message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
+				Log.DebugLog("already have message: " + msg.Content + ", count is now " + m_messages.Count, Logger.severity.DEBUG);
 		}
 
 		/// <remarks>

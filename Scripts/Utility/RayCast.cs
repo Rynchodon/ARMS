@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Rynchodon.Utility;
 using Sandbox.Game.Entities;
@@ -15,8 +15,9 @@ namespace Rynchodon
 		public const bool DefaultCheckPlanet = false;
 		private const int FilterLayerVoxel = 28;
 
-		private static Logger m_logger = new Logger();
 		private static FastResourceLock m_rayCastLock = new FastResourceLock();
+
+		private static Logable Log { get { return new Logable(""); } }
 
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
@@ -58,7 +59,7 @@ namespace Rynchodon
 					double distance;
 					if (entity.WorldAABB.Intersects(ref line, out distance))
 					{
-						m_logger.debugLog("obstructed by character: " + entity.getBestName());
+						Log.DebugLog("obstructed by character: " + entity.getBestName());
 						Profiler.EndProfileBlock();
 						return true;
 					}
@@ -102,7 +103,7 @@ namespace Rynchodon
 							}
 						}
 
-						m_logger.debugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
+						Log.DebugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
 						Profiler.EndProfileBlock();
 						return true;
 					}
@@ -116,7 +117,7 @@ namespace Rynchodon
 				Vector3D hitPosition;
 				if (RayCastVoxels(line, out hitVoxel, out hitPosition, checkPlanet))
 				{
-					m_logger.debugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
+					Log.DebugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
 					Profiler.EndProfileBlock();
 					return true;
 				}

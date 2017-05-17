@@ -57,14 +57,14 @@ namespace Rynchodon.Update
 			Instance = null;
 		}
 
-		private readonly Logger m_logger;
 		/// <summary>LastSeen that were not added immediately upon world loading, Saver will keep trying to add them.</summary>
 		private CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>> m_failedLastSeen;
 		private FileMaster m_fileMaster;
 
+		private Logable Log { get { return new Logable(""); } }
+
 		private Saver()
 		{
-			m_logger = new Logger();
 			DoLoad(GetData());
 		}
 
@@ -80,7 +80,7 @@ namespace Rynchodon.Update
 				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
 				if (data != null)
 				{
-					m_logger.debugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
+					Log.DebugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
 					return data;
 				}
 			}
@@ -88,19 +88,19 @@ namespace Rynchodon.Update
 			string identifier = LegacyIdentifier(true);
 			if (identifier == null)
 			{
-				m_logger.debugLog("no identifier");
+				Log.DebugLog("no identifier");
 				return data;
 			}
 
 			var reader = m_fileMaster.GetTextReader(identifier);
 			if (reader != null)
 			{
-				m_logger.debugLog("loading from file: " + identifier);
+				Log.DebugLog("loading from file: " + identifier);
 				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
 				reader.Close();
 			}
 			else
-				m_logger.alwaysLog("Failed to open file reader for " + identifier);
+				Log.AlwaysLog("Failed to open file reader for " + identifier);
 
 			return data;
 		}
@@ -116,7 +116,7 @@ namespace Rynchodon.Update
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+				Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				Logger.Notify("ARMS: failed to load data", 60000, Logger.severity.ERROR);
 			}
 		}
@@ -136,44 +136,44 @@ namespace Rynchodon.Update
 							LastSeen ls = new LastSeen(builder);
 							if (ls.IsValid)
 							{
-								m_logger.debugLog("Successfully created a LastSeen. Primary node: " + storageLastSeen.Key + ", entity: " + ls.Entity.nameWithId());
+								Log.DebugLog("Successfully created a LastSeen. Primary node: " + storageLastSeen.Key + ", entity: " + ls.Entity.nameWithId());
 								storageLastSeen.Value.Remove(builder);
 							}
 							else
-								m_logger.alwaysLog("Unknown failure with last seen", Logger.severity.ERROR);
+								Log.AlwaysLog("Unknown failure with last seen", Logger.severity.ERROR);
 						}
 						else
-							m_logger.debugLog("Not yet available: " + builder.EntityId);
+							Log.DebugLog("Not yet available: " + builder.EntityId);
 					}
 					storageLastSeen.Value.ApplyRemovals();
 					if (storageLastSeen.Value.Count == 0)
 					{
-						m_logger.debugLog("Finished with: " + storageLastSeen.Key, Logger.severity.DEBUG);
+						Log.DebugLog("Finished with: " + storageLastSeen.Key, Logger.severity.DEBUG);
 						m_failedLastSeen.Remove(storageLastSeen.Key);
 					}
 					else
-						m_logger.debugLog("For " + storageLastSeen.Key + ", " + storageLastSeen.Value.Count + " builders remain");
+						Log.DebugLog("For " + storageLastSeen.Key + ", " + storageLastSeen.Value.Count + " builders remain");
 				}
 				else
-					m_logger.debugLog("Failed to get node for " + storageLastSeen.Key, Logger.severity.WARNING);
+					Log.DebugLog("Failed to get node for " + storageLastSeen.Key, Logger.severity.WARNING);
 			}
 			m_failedLastSeen.ApplyRemovals();
 
 			if (m_failedLastSeen.Count() == 0)
 			{
-				m_logger.debugLog("All LastSeen have been successfully added", Logger.severity.INFO);
+				Log.DebugLog("All LastSeen have been successfully added", Logger.severity.INFO);
 				m_failedLastSeen = null;
 				UpdateManager.Unregister(100, RetryLastSeen);
 			}
 			else
 			{
-				m_logger.debugLog(m_failedLastSeen.Count() + " primary nodes still have last seen to be added");
+				Log.DebugLog(m_failedLastSeen.Count() + " primary nodes still have last seen to be added");
 
 				if (Globals.UpdateCount >= 3600)
 				{
 					foreach (KeyValuePair<long, CachingList<LastSeen.Builder_LastSeen>> storageLastSeen in m_failedLastSeen)
 						foreach (LastSeen.Builder_LastSeen builder in storageLastSeen.Value)
-							m_logger.alwaysLog("Failed to add last seen to world. Primary node: " + storageLastSeen.Key + ", entity ID: " + builder.EntityId, Logger.severity.WARNING);
+							Log.AlwaysLog("Failed to add last seen to world. Primary node: " + storageLastSeen.Key + ", entity ID: " + builder.EntityId, Logger.severity.WARNING);
 					m_failedLastSeen = null;
 					UpdateManager.Unregister(100, RetryLastSeen);
 				}
@@ -195,17 +195,17 @@ namespace Rynchodon.Update
 			{
 				if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
 				{
-					m_logger.alwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Logger.severity.ERROR);
+					Log.AlwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Logger.severity.ERROR);
 				}
 				else if (saveId_fromPath != saveId_fromWorld)
 				{
-					m_logger.alwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Logger.severity.ERROR);
+					Log.AlwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Logger.severity.ERROR);
 
 					// prefer from world
 					if (m_fileMaster.FileExists(saveId_fromWorld))
 						saveId = saveId_fromWorld;
 					else
-						m_logger.alwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Logger.severity.ERROR);
+						Log.AlwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Logger.severity.ERROR);
 				}
 			}
 			else
@@ -215,20 +215,20 @@ namespace Rynchodon.Update
 					if (m_fileMaster.FileExists(saveId_fromWorld))
 					{
 						if (loading)
-							m_logger.alwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
+							Log.AlwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Logger.severity.DEBUG);
 						saveId = saveId_fromWorld;
 					}
 					else
 					{
 						if (loading)
-							m_logger.alwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
+							Log.AlwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Logger.severity.DEBUG);
 						return null;
 					}
 				}
 				else
 				{
 					if (loading)
-						m_logger.alwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
+						Log.AlwaysLog("Cannot load world, no save id found", Logger.severity.DEBUG);
 					return null;
 				}
 			}
@@ -240,19 +240,19 @@ namespace Rynchodon.Update
 		{
 			if (data == null)
 			{
-				m_logger.debugLog("No data to load");
+				Log.DebugLog("No data to load");
 				return;
 			}
 
 #pragma warning disable 612, 618
 			if (Comparer<Version>.Default.Compare(data.ArmsVersion, default(Version)) == 0)
 			{
-				m_logger.debugLog("Old version: " + data.ModVersion);
+				Log.DebugLog("Old version: " + data.ModVersion);
 				data.ArmsVersion = new Version(data.ModVersion);
 			}
 #pragma warning restore 612, 618
 
-			m_logger.alwaysLog("Save version: " + data.ArmsVersion, Logger.severity.INFO);
+			Log.AlwaysLog("Save version: " + data.ArmsVersion, Logger.severity.INFO);
 
 			// relay
 
@@ -263,7 +263,7 @@ namespace Rynchodon.Update
 				RelayNode node;
 				if (!Registrar.TryGetValue(bns.PrimaryNode, out node))
 				{
-					m_logger.alwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
+					Log.AlwaysLog("Failed to get node for: " + bns.PrimaryNode, Logger.severity.WARNING);
 					continue;
 				}
 				RelayStorage store = node.Storage;
@@ -273,7 +273,7 @@ namespace Rynchodon.Update
 					store = node.Storage;
 					if (store == null)
 					{
-						m_logger.alwaysLog("failed to create storage for " + node.DebugName, Logger.severity.ERROR);
+						Log.AlwaysLog("failed to create storage for " + node.DebugName, Logger.severity.ERROR);
 						continue;
 					}
 				}
@@ -285,7 +285,7 @@ namespace Rynchodon.Update
 						store.Receive(ls);
 					else
 					{
-						m_logger.alwaysLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to create a valid last seen from builder for " + bls.EntityId, Logger.severity.WARNING);
 						if (m_failedLastSeen == null)
 						{
 							m_failedLastSeen = new CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>>();
@@ -302,7 +302,7 @@ namespace Rynchodon.Update
 					}
 				}
 
-				m_logger.debugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
+				Log.DebugLog("added " + bns.LastSeenList.Length + " last seen to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
 
 				// messages in the save file belong on the server
 				if (messages == null)
@@ -318,15 +318,15 @@ namespace Rynchodon.Update
 					}
 					else
 					{
-						m_logger.debugLog("found linked message", Logger.severity.TRACE);
+						Log.DebugLog("found linked message", Logger.severity.TRACE);
 					}
 					if (msg.IsValid)
 						store.Receive(msg);
 					else
-						m_logger.alwaysLog("failed to create a valid message from builder for " + bm.DestCubeBlock + "/" + bm.SourceCubeBlock, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to create a valid message from builder for " + bm.DestCubeBlock + "/" + bm.SourceCubeBlock, Logger.severity.WARNING);
 				}
 
-				m_logger.debugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
+				Log.DebugLog("added " + bns.MessageList.Length + " message to " + store.PrimaryNode.DebugName, Logger.severity.DEBUG);
 			}
 
 			// past this point, only synchronized data
@@ -371,7 +371,7 @@ namespace Rynchodon.Update
 						disrupt = new TraitorTurret();
 						break;
 					default:
-						m_logger.alwaysLog("Unknown disruption: " + bd.Type, Logger.severity.WARNING);
+						Log.AlwaysLog("Unknown disruption: " + bd.Type, Logger.severity.WARNING);
 						continue;
 				}
 				disrupt.Start(bd);
@@ -386,7 +386,7 @@ namespace Rynchodon.Update
 					if (Registrar.TryGetValue(ba.AutopilotBlock, out autopilot))
 						autopilot.ResumeFromSave(ba);
 					else
-						m_logger.alwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to find autopilot block " + ba.AutopilotBlock, Logger.severity.WARNING);
 				}
 
 			// programmable block
@@ -398,7 +398,7 @@ namespace Rynchodon.Update
 					if (Registrar.TryGetValue(bpa.BlockId, out pb))
 						pb.ResumeFromSave(bpa);
 					else
-						m_logger.alwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to find programmable block " + bpa.BlockId, Logger.severity.WARNING);
 				}
 
 			// text panel
@@ -410,7 +410,7 @@ namespace Rynchodon.Update
 					if (Registrar.TryGetValue(btp.BlockId, out panel))
 						panel.ResumeFromSave(btp);
 					else
-						m_logger.alwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to find text panel " + btp.BlockId, Logger.severity.WARNING);
 				}
 
 			// weapon
@@ -422,7 +422,7 @@ namespace Rynchodon.Update
 					if (WeaponTargeting.TryGetWeaponTargeting(bwt.WeaponId, out targeting))
 						targeting.ResumeFromSave(bwt);
 					else
-						m_logger.alwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
+						Log.AlwaysLog("failed to find weapon " + bwt.WeaponId, Logger.severity.WARNING);
 				}
 
 			// entity values

@@ -1,6 +1,7 @@
-﻿using System.Text;
+using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using Sandbox.Game.Entities;
 using VRageMath;
 
@@ -9,8 +10,6 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 	class TunnelMiner : AMinerComponent
 	{
 		public enum Stage : byte { None, Mine, Tunnel, Escape }
-
-		private readonly Logger m_logger;
 
 		private Stage value_stage;
 		private Stage m_stage
@@ -21,7 +20,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				if (value_stage == value)
 					return;
 
-				m_logger.debugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
+				Log.DebugLog("stage changed from " + value_stage + " to " + value, Logger.severity.DEBUG);
 				switch (value)
 				{
 					case Stage.Mine:
@@ -43,10 +42,11 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				value_stage = value;
 			}
 		}
+		private Logable Log
+		{ get { return LogableFrom.Pseudo(m_navSet.Settings_Current.NavigationBlock, m_stage.ToString()); } }
 
 		public TunnelMiner(Pathfinder pathfinder, Destination target, string oreName) : base(pathfinder, oreName)
 		{
-			m_logger = new Logger(m_navSet.Settings_Current.NavigationBlock, () => m_stage.ToString());
 			m_target = target;
 
 			AllNavigationSettings.SettingsLevel level = m_navSet.Settings_Task_NavMove;
@@ -57,7 +57,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			level.PathfinderCanChangeCourse = false;
 
 			m_stage = Stage.Mine;
-			m_logger.debugLog("started", Logger.severity.DEBUG);
+			Log.DebugLog("started", Logger.severity.DEBUG);
 		}
 
 		public override void AppendCustomInfo(StringBuilder customInfo)
@@ -91,7 +91,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 				case Stage.Tunnel:
 					if (!IsNearVoxel(2d))
 					{
-						m_logger.debugLog("Outside of voxel", Logger.severity.INFO);
+						Log.DebugLog("Outside of voxel", Logger.severity.INFO);
 						m_mover.MoveAndRotateStop();
 						m_navSet.OnTaskComplete_NavMove();
 					}
@@ -123,7 +123,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 
 		private bool MineTarget()
 		{
-			//m_logger.debugLog("distance: " + m_navSet.Settings_Current.Distance);
+			//Log.DebugLog("distance: " + m_navSet.Settings_Current.Distance);
 
 			if (m_navSet.Settings_Current.Distance > 10f && !m_navSet.DirectionMatched() && IsNearVoxel())
 			{
@@ -137,7 +137,7 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 			}
 			else if (m_navSet.DistanceLessThan(1f))
 			{
-				m_logger.debugLog("Reached position: " + m_target, Logger.severity.DEBUG);
+				Log.DebugLog("Reached position: " + m_target, Logger.severity.DEBUG);
 				return false;
 			}
 			else
@@ -151,13 +151,13 @@ namespace Rynchodon.Autopilot.Navigator.Mining
 		{
 			if (m_navSet.DistanceLessThan(1f))
 			{
-				m_logger.debugLog("Reached position: " + m_target, Logger.severity.WARNING);
+				Log.DebugLog("Reached position: " + m_target, Logger.severity.WARNING);
 				m_target.SetWorld(m_target.WorldPosition() + m_navBlock.WorldMatrix.Forward * 100d);
 				return true;
 			}
 			else if (IsStuck)
 			{
-				m_logger.debugLog("Stuck", Logger.severity.DEBUG);
+				Log.DebugLog("Stuck", Logger.severity.DEBUG);
 				return false;
 			}
 			else

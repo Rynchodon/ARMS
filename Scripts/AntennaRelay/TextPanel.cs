@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
 using Rynchodon.Attached;
 using Rynchodon.Autopilot;
 using Rynchodon.Instructions;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Entities.Cube;
@@ -112,7 +113,6 @@ namespace Rynchodon.AntennaRelay
 		}
 
 		private readonly Ingame.IMyTextPanel m_textPanel;
-		private readonly Logger myLogger;
 
 		private Option m_optionsTerminal;
 
@@ -122,14 +122,15 @@ namespace Rynchodon.AntennaRelay
 		private List<sortableLastSeen> m_sortableList;
 		private TimeSpan m_lastDisplay;
 
+		private Logable Log { get { return new Logable(myTermBlock as IMyCubeBlock);  } }
+
 		public TextPanel(IMyCubeBlock block)
 			: base(block)
 		{
-			myLogger = new Logger(block);
 			m_textPanel = block as Ingame.IMyTextPanel;
 			myTermBlock = block as IMyTerminalBlock;
 			m_networkClient = new RelayClient(block);
-			myLogger.debugLog("init: " + m_block.DisplayNameText);
+			Log.DebugLog("init: " + m_block.DisplayNameText);
 
 			Registrar.Add(block, this);
 		}
@@ -187,7 +188,7 @@ namespace Rynchodon.AntennaRelay
 			if (entityIds != null)
 				UpdateInstructions();
 
-			//myLogger.debugLog("Building display list", "Display()", Logger.severity.TRACE);
+			//Log.DebugLog("Building display list", "Display()", Logger.severity.TRACE);
 
 			RelayStorage store = m_networkClient.GetStorage();
 			if (store == null)
@@ -231,7 +232,7 @@ namespace Rynchodon.AntennaRelay
 
 			string displayString = displayText.ToString();
 
-			//myLogger.debugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "Display()", Logger.severity.TRACE);
+			//Log.DebugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "Display()", Logger.severity.TRACE);
 			m_textPanel.WritePublicText(displayText.ToString());
 		}
 
@@ -246,7 +247,7 @@ namespace Rynchodon.AntennaRelay
 
 				ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 				m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
-				//myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display()");
+				//Log.DebugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display()");
 			});
 		}
 
@@ -261,14 +262,14 @@ namespace Rynchodon.AntennaRelay
 				{
 					ExtensionsRelations.Relations relations = m_block.getRelationsTo(seen.Entity, ExtensionsRelations.Relations.Enemy).highestPriority();
 					m_sortableList.Add(new sortableLastSeen(myPos, seen, relations, m_options));
-					//myLogger.debugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display_FromProgram()");
+					//Log.DebugLog("item: " + seen.Entity.getBestName() + ", relations: " + relations, "Display_FromProgram()");
 				}
 			}
 		}
 
 		private void DisplyAutopilotStatus()
 		{
-			//myLogger.debugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
+			//Log.DebugLog("Building autopilot list", "DisplyAutopilotStatus()", Logger.severity.TRACE);
 
 			RelayStorage store = m_networkClient.GetStorage();
 			if (store == null)
@@ -315,7 +316,7 @@ namespace Rynchodon.AntennaRelay
 
 			string displayString = displayText.ToString();
 
-			//myLogger.debugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "DisplyAutopilotStatus()", Logger.severity.TRACE);
+			//Log.DebugLog("Writing to panel: " + m_textPanel.DisplayNameText + ":\n\t" + displayString, "DisplyAutopilotStatus()", Logger.severity.TRACE);
 			m_textPanel.WritePublicText(displayText.ToString());
 		}
 

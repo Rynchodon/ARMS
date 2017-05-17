@@ -1,12 +1,22 @@
-﻿#define TRACE
+#define TRACE
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Rynchodon.Autopilot.Data;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 
 namespace Rynchodon.Utility
 {
+
+	public static class LogableFrom
+	{
+		public static Logable Pseudo(PseudoBlock pseudo, string SecondaryState = null)
+		{
+			return new Logable(pseudo.Grid.nameWithId(), pseudo.DisplayName, SecondaryState);
+		}
+	}
+
 	/// <summary>
 	/// Latest attempt to make logging lighter. Classes define a property that creates a single use Logable.
 	/// </summary>
@@ -46,27 +56,27 @@ namespace Rynchodon.Utility
 		public void TraceLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.TraceLog(toLog, level, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+				Logger.TraceLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
 		[Conditional("DEBUG")]
 		public void DebugLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.DebugLog(toLog, level, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+				Logger.DebugLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
 		[Conditional("PROFILE")]
 		public void ProfileLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
 		public void AlwaysLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
 		[Conditional("TRACE")]

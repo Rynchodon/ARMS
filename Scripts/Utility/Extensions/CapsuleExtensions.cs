@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -8,8 +8,6 @@ namespace Rynchodon
 {
 	public static class CapsuleExtensions
 	{
-		private static Logger myLogger = new Logger();
-
 		public static Vector3 get_Middle(this Capsule cap)
 		{ return (cap.P0 + cap.P1) / 2f; }
 
@@ -64,7 +62,7 @@ namespace Rynchodon
 			BoundingBox AABB = (BoundingBox)entity.WorldAABB;
 			Vector3 Radius = new Vector3(cap.Radius, cap.Radius, cap.Radius);
 			AABB = new BoundingBox(AABB.Min - Radius, AABB.Max + Radius);
-			//myLogger.debugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
+			//Log.DebugLog("Testing AABB: " + AABB.Min + ", " + AABB.Max + " against line: " + cap.P0 + ", " + cap.P1, "IntersectsAABB()");
 			return (AABB.Intersects(cap.get_Line(), out distance));
 		}
 

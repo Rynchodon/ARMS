@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
@@ -31,8 +31,6 @@ namespace Rynchodon.Autopilot
 		public readonly RelayNode NetworkNode;
 		public readonly AutopilotTerminal AutopilotTerminal;
 
-		private readonly Logger m_logger;
-
 		public MyShipController Controller { get { return (MyShipController)CubeBlock; } }
 		public IMyTerminalBlock Terminal { get { return (IMyTerminalBlock)CubeBlock; } }
 		public RelayStorage NetworkStorage { get { return NetworkNode.Storage; } }
@@ -47,7 +45,6 @@ namespace Rynchodon.Autopilot
 
 		public ShipControllerBlock(IMyCubeBlock block, Action<Message> messageHandler)
 		{
-			m_logger = new Logger(block);
 			CubeBlock = block;
 			Pseudo = new PseudoBlock(block);
 			NetworkNode = new RelayNode(block) { MessageHandler = messageHandler };
@@ -122,7 +119,6 @@ namespace Rynchodon.Autopilot
 		public enum State : byte { Disabled, Player, Enabled, Halted, Closed }
 
 		public readonly ShipControllerBlock m_block;
-		private readonly Logger m_logger;
 		private readonly FastResourceLock lock_execution = new FastResourceLock();
 		private Pathfinder m_pathfinder;
 		private AutopilotCommands m_commands;
@@ -136,6 +132,7 @@ namespace Rynchodon.Autopilot
 
 		private AutopilotActionList m_autopilotActions;
 
+		private Logable Log { get { return new Logable(m_block.CubeBlock); } }
 		private Mover m_mover { get { return m_pathfinder.Mover; } }
 		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 
@@ -146,7 +143,7 @@ namespace Rynchodon.Autopilot
 			{
 				if (value_state == value || value_state == State.Closed)
 					return;
-				m_logger.debugLog("state change from " + value_state + " to " + value, Logger.severity.DEBUG);
+				Log.DebugLog("state change from " + value_state + " to " + value, Logger.severity.DEBUG);
 				value_state = value;
 				m_pathfinder.Halt();
 
@@ -175,11 +172,13 @@ namespace Rynchodon.Autopilot
 						return;
 
 					default:
-						m_logger.alwaysLog("State not implemented: " + value, Logger.severity.FATAL);
+						Log.AlwaysLog("State not implemented: " + value, Logger.severity.FATAL);
 						return;
 				}
 			}
 		}
+
+
 
 		/// <summary>
 		/// Creates an Autopilot for the given ship controller.
@@ -188,7 +187,6 @@ namespace Rynchodon.Autopilot
 		public ShipAutopilot(IMyCubeBlock block)
 		{
 			this.m_block = new ShipControllerBlock(block, HandleMessage);
-			this.m_logger = new Logger(block);
 			this.m_pathfinder = new Pathfinder(m_block);
 			this.m_commands = AutopilotCommands.GetOrCreate(m_block.Terminal);
 			this.m_block.CubeBlock.OnClosing += CubeBlock_OnClosing;
@@ -205,7 +203,7 @@ namespace Rynchodon.Autopilot
 				m_block.Terminal.CustomName = (nameBefore + nameAfter).Trim();
 			}
 
-			m_logger.debugLog("Created autopilot for: " + block.DisplayNameText);
+			Log.DebugLog("Created autopilot for: " + block.DisplayNameText);
 			Registrar.Add(block, this);
 		}
 
@@ -282,19 +280,19 @@ namespace Rynchodon.Autopilot
 					{
 						if (!m_autopilotActions.MoveNext())
 						{
-							m_logger.debugLog("finder: " + m_navSet.Settings_Current.EnemyFinder);
+							Log.DebugLog("finder: " + m_navSet.Settings_Current.EnemyFinder);
 							m_autopilotActions = null;
 							return;
 						}
 						m_autopilotActions.Current.Invoke(m_pathfinder);
 						if (m_navSet.Settings_Current.WaitUntil > Globals.ElapsedTime)
 						{
-							m_logger.debugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
+							Log.DebugLog("now waiting until " + m_navSet.Settings_Current.WaitUntil);
 							return;
 						}
 						if (m_navSet.Settings_Current.NavigatorMover != null)
 						{
-							m_logger.debugLog("now have a navigator mover: " + m_navSet.Settings_Current.NavigatorMover);
+							Log.DebugLog("now have a navigator mover: " + m_navSet.Settings_Current.NavigatorMover);
 							return;
 						}
 					}
@@ -305,11 +303,11 @@ namespace Rynchodon.Autopilot
 				TimeSpan nextInstructions = m_previousInstructions + TimeSpan.FromSeconds(m_navSet.Settings_Current.Complaint != InfoString.StringId.None || ef != null ? 60d : 1d);
 				if (nextInstructions > Globals.ElapsedTime)
 				{
-					m_logger.debugLog("Delaying instructions until " + nextInstructions, Logger.severity.INFO);
+					Log.DebugLog("Delaying instructions until " + nextInstructions, Logger.severity.INFO);
 					m_navSet.Settings_Task_NavWay.WaitUntil = nextInstructions;
 					return;
 				}
-				m_logger.debugLog("enqueing instructions", Logger.severity.DEBUG);
+				Log.DebugLog("enqueing instructions", Logger.severity.DEBUG);
 				m_previousInstructions = Globals.ElapsedTime;
 
 				m_autopilotActions = m_commands.GetActions();
@@ -324,8 +322,8 @@ namespace Rynchodon.Autopilot
 			}
 			catch (Exception ex)
 			{
-				m_logger.alwaysLog("Commands: " + m_commands.Commands, Logger.severity.DEBUG);
-				m_logger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+				Log.AlwaysLog("Commands: " + m_commands.Commands, Logger.severity.DEBUG);
+				Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 				m_state = State.Halted;
 			}
 			finally
@@ -455,11 +453,11 @@ namespace Rynchodon.Autopilot
 
 			if (!GridBeingControlled.Remove(m_controlledGrid))
 			{
-				m_logger.alwaysLog("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled", Logger.severity.FATAL);
+				Log.AlwaysLog("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled", Logger.severity.FATAL);
 				throw new InvalidOperationException("Failed to remove " + m_controlledGrid.DisplayName + " from GridBeingControlled");
 			}
 
-			//myLogger.debugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
+			//Log.DebugLog("Released control of " + ControlledGrid.DisplayName, "ReleaseControlledGrid()", Logger.severity.DEBUG);
 			m_controlledGrid = null;
 		}
 
@@ -547,17 +545,17 @@ namespace Rynchodon.Autopilot
 				return null;
 
 			result.CurrentCommand = m_autopilotActions.CurrentIndex;
-			m_logger.debugLog("current command: " + result.CurrentCommand);
+			Log.DebugLog("current command: " + result.CurrentCommand);
 
 			result.Commands = m_commands.Commands;
-			m_logger.debugLog("commands: " + result.Commands);
+			Log.DebugLog("commands: " + result.Commands);
 
 			EnemyFinder finder = m_navSet.Settings_Current.EnemyFinder;
 			if (finder != null)
 			{
 				result.EngagerOriginalEntity = finder.m_originalDestEntity == null ? 0L : finder.m_originalDestEntity.EntityId;
 				result.EngagerOriginalPosition = finder.m_originalPosition;
-				m_logger.debugLog("added EngagerOriginalEntity: " + result.EngagerOriginalEntity + ", and EngagerOriginalPosition: " + result.EngagerOriginalPosition);
+				Log.DebugLog("added EngagerOriginalEntity: " + result.EngagerOriginalEntity + ", and EngagerOriginalPosition: " + result.EngagerOriginalPosition);
 			}
 
 			return result;
@@ -568,13 +566,13 @@ namespace Rynchodon.Autopilot
 			using (lock_execution.AcquireExclusiveUsing())
 			{
 				m_navSet.OnStartOfCommands();
-				m_logger.debugLog("resume: " + builder.Commands + ", current: " + builder.CurrentCommand, Logger.severity.DEBUG);
+				Log.DebugLog("resume: " + builder.Commands + ", current: " + builder.CurrentCommand, Logger.severity.DEBUG);
 				m_autopilotActions = m_commands.GetActions(builder.Commands);
 
 				while (m_autopilotActions.CurrentIndex < builder.CurrentCommand - 1 && m_autopilotActions.MoveNext())
 				{
 					m_autopilotActions.Current.Invoke(m_pathfinder);
-					m_logger.debugLog("fast forward: " + m_autopilotActions.CurrentIndex);
+					Log.DebugLog("fast forward: " + m_autopilotActions.CurrentIndex);
 
 					// clear navigators' levels
 					for (AllNavigationSettings.SettingsLevelName levelName = AllNavigationSettings.SettingsLevelName.NavRot; levelName < AllNavigationSettings.SettingsLevelName.NavWay; levelName++)
@@ -582,7 +580,7 @@ namespace Rynchodon.Autopilot
 						AllNavigationSettings.SettingsLevel settingsAtLevel = m_navSet.GetSettingsLevel(levelName);
 						if (settingsAtLevel.NavigatorMover != null || settingsAtLevel.NavigatorRotator != null)
 						{
-							m_logger.debugLog("clear " + levelName);
+							Log.DebugLog("clear " + levelName);
 							m_navSet.OnTaskComplete(levelName);
 							break;
 						}
@@ -601,16 +599,16 @@ namespace Rynchodon.Autopilot
 					{
 						if (!MyAPIGateway.Entities.TryGetEntityById(builder.EngagerOriginalEntity, out finder.m_originalDestEntity))
 						{
-							m_logger.alwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, Logger.severity.WARNING);
+							Log.AlwaysLog("Failed to restore original destination enitity for enemy finder: " + builder.EngagerOriginalEntity, Logger.severity.WARNING);
 							finder.m_originalDestEntity = null;
 						}
 						else
-							m_logger.debugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName());
+							Log.DebugLog("Restored original destination enitity for enemy finder: " + finder.m_originalDestEntity.getBestName());
 					}
 					if (builder.EngagerOriginalPosition.IsValid())
 					{
 						finder.m_originalPosition = builder.EngagerOriginalPosition;
-						m_logger.debugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
+						Log.DebugLog("Restored original position for enemy finder: " + builder.EngagerOriginalPosition);
 					}
 				}
 			}

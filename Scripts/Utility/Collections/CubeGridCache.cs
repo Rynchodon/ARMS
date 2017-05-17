@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -10,6 +10,7 @@ using VRage.ObjectBuilders;
 using VRage.Utils;
 using System.Linq;
 using VRageMath;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Vectors;
 using VRage.Game.Entity;
 using Sandbox.Game.Entities.Cube;
@@ -53,7 +54,6 @@ namespace Rynchodon
 			}
 		}
 
-		private readonly Logger myLogger;
 		public readonly IMyCubeGrid CubeGrid;
 
 		private Dictionary<MyObjectBuilderType, List<MySlimBlock>> CubeBlocks = new Dictionary<MyObjectBuilderType, List<MySlimBlock>>();
@@ -62,9 +62,10 @@ namespace Rynchodon
 		public int CellCount { get; private set; }
 		public int TerminalBlocks { get; private set; }
 
+		private Logable Log { get { return new Logable(CubeGrid.DisplayName); } }
+
 		private CubeGridCache(IMyCubeGrid grid)
 		{
-			myLogger = new Logger(() => grid.DisplayName);
 			CubeGrid = grid;
 			List<IMySlimBlock> allSlims = new List<IMySlimBlock>();
 			CubeGrid.GetBlocks_Safe(allSlims);
@@ -78,7 +79,7 @@ namespace Rynchodon
 			CubeGrid.OnClosing += CubeGrid_OnClosing;
 
 			Registrar.Add(CubeGrid, this);
-			myLogger.debugLog("built for: " + CubeGrid.DisplayName, Logger.severity.DEBUG);
+			Log.DebugLog("built for: " + CubeGrid.DisplayName, Logger.severity.DEBUG);
 		}
 
 		private void CubeGrid_OnClosing(IMyEntity grid)
@@ -92,7 +93,7 @@ namespace Rynchodon
 		{
 			lock_blocks.AcquireExclusive();
 			try { Add(obj); }
-			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
+			catch (Exception e) { Log.AlwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally { lock_blocks.ReleaseExclusive(); }
 		}
 
@@ -106,14 +107,14 @@ namespace Rynchodon
 				blockList = new List<MySlimBlock>();
 				CubeBlocks.Add(typeId, blockList);
 			}
-			myLogger.debugLog("already in blockList: " + obj.nameWithId(), Logger.severity.ERROR, condition: blockList.Contains(block));
+			Log.DebugLog("already in blockList: " + obj.nameWithId(), Logger.severity.ERROR, condition: blockList.Contains(block));
 			blockList.Add(block);
 
 			IMyTerminalBlock term = block.FatBlock as IMyTerminalBlock;
 			if (term != null)
 			{
 				if (DefinitionType.TrySet(((MyCubeBlock)term).BlockDefinition.Id, term.DefinitionDisplayNameText))
-					myLogger.debugLog("new type: " + term.DefinitionDisplayNameText, Logger.severity.DEBUG);
+					Log.DebugLog("new type: " + term.DefinitionDisplayNameText, Logger.severity.DEBUG);
 				TerminalBlocks++;
 			}
 
@@ -131,16 +132,16 @@ namespace Rynchodon
 				List<MySlimBlock> blockList;
 				if (!CubeBlocks.TryGetValue(typeId, out blockList))
 				{
-					myLogger.debugLog("failed to get list of type: " + typeId, Logger.severity.WARNING);
+					Log.DebugLog("failed to get list of type: " + typeId, Logger.severity.WARNING);
 					return;
 				}
 				if (!blockList.Remove(block))
 				{
-					myLogger.debugLog("already removed: " + obj.nameWithId(), Logger.severity.WARNING);
+					Log.DebugLog("already removed: " + obj.nameWithId(), Logger.severity.WARNING);
 					return;
 				}
 
-				myLogger.debugLog("block removed: " + obj.nameWithId(), Logger.severity.TRACE);
+				Log.DebugLog("block removed: " + obj.nameWithId(), Logger.severity.TRACE);
 				//Logger.DebugNotify("block removed: " + obj.getBestName(), level: Logger.severity.TRACE);
 
 				if (blockList.Count == 0)
@@ -151,7 +152,7 @@ namespace Rynchodon
 				Vector3I cellSize = block.Max - block.Min + 1;
 				CellCount -= cellSize.X * cellSize.Y * cellSize.Z;
 			}
-			catch (Exception e) { myLogger.alwaysLog("Exception: " + e, Logger.severity.ERROR); }
+			catch (Exception e) { Log.AlwaysLog("Exception: " + e, Logger.severity.ERROR); }
 			finally { lock_blocks.ReleaseExclusive(); }
 		}
 
@@ -281,7 +282,7 @@ namespace Rynchodon
 						MySlimBlock slim = blockList[i];
 						if (slim.Closed())
 						{
-							myLogger.debugLog("is closed: " + slim); // rare if blocks are being removed correctly
+							Log.DebugLog("is closed: " + slim); // rare if blocks are being removed correctly
 							continue;
 						}
 						Vector3I cell;

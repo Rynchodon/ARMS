@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 #define TRACE
 #endif
 
@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Rynchodon.AntennaRelay;
+using Rynchodon.Utility;
 using Rynchodon.Utility.Network;
 using Sandbox.Definitions;
 using Sandbox.Game.Gui;
@@ -129,7 +130,6 @@ namespace Rynchodon.Weapons.Guided
 
 		#endregion
 
-		private readonly Logger myLogger;
 		public readonly WeaponTargeting m_weaponTarget;
 		public IMyUserControllableGun CubeBlock { get { return m_weaponTarget.CubeBlock; } }
 		/// <summary>Local position where the magic happens (hopefully).</summary>
@@ -161,10 +161,11 @@ namespace Rynchodon.Weapons.Guided
 
 		public Ammo loadedAmmo { get { return m_weaponTarget.LoadedAmmo; } }
 
+		private Logable Log { get { return new Logable(CubeBlock); } }
+
 		public GuidedMissileLauncher(WeaponTargeting weapon)
 		{
 			m_weaponTarget = weapon;
-			myLogger = new Logger(CubeBlock);
 			m_relayPart = RelayClient.GetOrCreateRelayPart(m_weaponTarget.CubeBlock);
 			this._initialTarget = NoTarget.Instance;
 
@@ -179,11 +180,11 @@ namespace Rynchodon.Weapons.Guided
 			MissileSpawnBox = BoundingBox.CreateFromPoints(points);
 			if (m_weaponTarget.myTurret != null)
 			{
-				myLogger.traceLog("original box: " + MissileSpawnBox);
+				Log.TraceLog("original box: " + MissileSpawnBox);
 				MissileSpawnBox.Inflate(CubeBlock.CubeGrid.GridSize * 2f);
 			}
 
-			myLogger.traceLog("MissileSpawnBox: " + MissileSpawnBox);
+			Log.TraceLog("MissileSpawnBox: " + MissileSpawnBox);
 
 			myInventory = ((MyEntity)CubeBlock).GetInventoryBase(0);
 
@@ -191,7 +192,7 @@ namespace Rynchodon.Weapons.Guided
 			m_weaponTarget.GuidedLauncher = true;
 
 			m_gameCooldownTime = TimeSpan.FromSeconds(60d / MyDefinitionManager.Static.GetWeaponDefinition(defn.WeaponDefinitionId).WeaponAmmoDatas[(int)MyAmmoType.Missile].RateOfFire);
-			myLogger.traceLog("m_gameCooldownTime: " + m_gameCooldownTime);
+			Log.TraceLog("m_gameCooldownTime: " + m_gameCooldownTime);
 
 			CubeBlock.AppendingCustomInfo += CubeBlock_AppendingCustomInfo;
 		}
@@ -207,27 +208,27 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (!_isShooting)
 			{
-				myLogger.traceLog("Not mine, not shooting");
+				Log.TraceLog("Not mine, not shooting");
 				return false;
 			}
 			if (definition != loadedAmmo.MissileDefinition.Id)
 			{
-				myLogger.traceLog("Not mine, not my loaded ammo definition");
-				myLogger.traceLog("defn: " + definition);
-				myLogger.traceLog("loaded: " + loadedAmmo.MissileDefinition.Id);
+				Log.TraceLog("Not mine, not my loaded ammo definition");
+				Log.TraceLog("defn: " + definition);
+				Log.TraceLog("loaded: " + loadedAmmo.MissileDefinition.Id);
 				return false;
 			}
 			Vector3D local = Vector3D.Transform(missile.GetPosition(), CubeBlock.WorldMatrixNormalizedInv);
 			if (MissileSpawnBox.Contains(local) != ContainmentType.Contains)
 			{
-				myLogger.traceLog("Not in my box: " + missile + ", position: " + local);
+				Log.TraceLog("Not in my box: " + missile + ", position: " + local);
 				return false;
 			}
 			if (m_weaponTarget.myTurret == null)
 			{
 				if (Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward) > 0.01)
 				{
-					myLogger.traceLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward
+					Log.TraceLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", block direction: " + CubeBlock.WorldMatrix.Forward
 						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward));
 					return false;
 				}
@@ -239,7 +240,7 @@ namespace Rynchodon.Weapons.Guided
 				turretDirection = Vector3.Transform(turretDirection, CubeBlock.WorldMatrix.GetOrientation());
 				if (Vector3D.RectangularDistance(turretDirection, missile.WorldMatrix.Forward) > 0.01)
 				{
-					myLogger.traceLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", turret direction: " + turretDirection
+					Log.TraceLog("Facing the wrong way: " + missile + ", missile direction: " + missile.WorldMatrix.Forward + ", turret direction: " + turretDirection
 						+ ", RectangularDistance: " + Vector3D.RectangularDistance(CubeBlock.WorldMatrix.Forward, missile.WorldMatrix.Forward));
 					return false;
 				}
@@ -249,17 +250,17 @@ namespace Rynchodon.Weapons.Guided
 
 			if (loadedAmmo == null)
 			{
-				myLogger.debugLog("Mine but no loaded ammo!", Logger.severity.INFO);
+				Log.DebugLog("Mine but no loaded ammo!", Logger.severity.INFO);
 				return true;
 			}
 
 			if (loadedAmmo.Description == null || loadedAmmo.Description.GuidanceSeconds < 1f)
 			{
-				myLogger.debugLog("Mine but not a guided missile!", Logger.severity.INFO);
+				Log.DebugLog("Mine but not a guided missile!", Logger.severity.INFO);
 				return true;
 			}
 
-			//myLogger.debugLog("Opts: " + m_weaponTarget.Options);
+			//Log.DebugLog("Opts: " + m_weaponTarget.Options);
 			try
 			{
 				if (loadedAmmo.IsCluster)
@@ -267,32 +268,32 @@ namespace Rynchodon.Weapons.Guided
 					m_cluster.Add(missile);
 					if (m_cluster.Count >= loadedAmmo.MagazineDefinition.Capacity)
 					{
-						myLogger.traceLog("Final missile in cluster: " + missile, Logger.severity.DEBUG);
+						Log.TraceLog("Final missile in cluster: " + missile, Logger.severity.DEBUG);
 						_shootCluster = false;
 					}
 					else
 					{
 						_shootCluster = true;
-						myLogger.traceLog("Added to cluster: " + missile + ", count: " + m_cluster.Count, Logger.severity.DEBUG);
+						Log.TraceLog("Added to cluster: " + missile + ", count: " + m_cluster.Count, Logger.severity.DEBUG);
 						return true;
 					}
 				}
 
-				myLogger.traceLog("creating new guided missile");
+				Log.TraceLog("creating new guided missile");
 				if (m_cluster.Count != 0)
 				{
-					myLogger.traceLog("Creating cluster guided missile");
+					Log.TraceLog("Creating cluster guided missile");
 					Cluster cluster = new Cluster(m_cluster, CubeBlock);
 					if (cluster.Master != null)
 						new GuidedMissile(new Cluster(m_cluster, CubeBlock), this, _initialTarget);
 					else
-						myLogger.alwaysLog("Failed to create cluster, all missiles closed", Logger.severity.WARNING);
+						Log.AlwaysLog("Failed to create cluster, all missiles closed", Logger.severity.WARNING);
 					StartCooldown();
 					m_cluster.Clear();
 				}
 				else
 				{
-					myLogger.traceLog("Creating standard guided missile");
+					Log.TraceLog("Creating standard guided missile");
 					new GuidedMissile(missile, this, _initialTarget);
 					StartCooldown(true);
 				}
@@ -303,8 +304,8 @@ namespace Rynchodon.Weapons.Guided
 			}
 			catch (Exception ex)
 			{
-				myLogger.alwaysLog("failed to create GuidedMissile", Logger.severity.ERROR);
-				myLogger.alwaysLog("Exception: " + ex, Logger.severity.ERROR);
+				Log.AlwaysLog("failed to create GuidedMissile", Logger.severity.ERROR);
+				Log.AlwaysLog("Exception: " + ex, Logger.severity.ERROR);
 			}
 
 			return true;
@@ -317,7 +318,7 @@ namespace Rynchodon.Weapons.Guided
 				m_onGameCooldown = true;
 				m_weaponTarget.SuppressTargeting = true;
 				cooldownUntil = Globals.ElapsedTime + m_gameCooldownTime;
-				myLogger.debugLog("started game cooldown, suppressing targeting until " + cooldownUntil);
+				Log.DebugLog("started game cooldown, suppressing targeting until " + cooldownUntil);
 			}
 			else
 			{
@@ -333,7 +334,7 @@ namespace Rynchodon.Weapons.Guided
 
 			if (cooldownUntil < Globals.ElapsedTime)
 			{
-				myLogger.debugLog("off cooldown");
+				Log.DebugLog("off cooldown");
 				if (m_onGameCooldown)
 					m_weaponTarget.SuppressTargeting = false;
 				m_onCooldown = false;
@@ -345,7 +346,7 @@ namespace Rynchodon.Weapons.Guided
 		{
 			if (m_onCooldown || m_onGameCooldown)
 			{
-				myLogger.traceLog("on cooldown");
+				Log.TraceLog("on cooldown");
 				return;
 			}
 
@@ -354,7 +355,7 @@ namespace Rynchodon.Weapons.Guided
 				InitialTargetStatus initial = GetInitialTarget();
 				if (initial != _initial || _initialTarget != m_weaponTarget.CurrentTarget)
 				{
-					myLogger.traceLog("Updating custom info");
+					Log.TraceLog("Updating custom info");
 					_initial = initial;
 					_initialTarget = m_weaponTarget.CurrentTarget;
 					CubeBlock.UpdateCustomInfo();
@@ -362,47 +363,47 @@ namespace Rynchodon.Weapons.Guided
 
 				if (m_weaponTarget.CurrentTarget is NoTarget && !m_weaponTarget.FireWithoutLock)
 				{
-					myLogger.traceLog("Cannot fire, no target found", Logger.severity.TRACE);
+					Log.TraceLog("Cannot fire, no target found", Logger.severity.TRACE);
 					return;
 				}
 			}
 
-			myLogger.traceLog("Shooting from terminal");
+			Log.TraceLog("Shooting from terminal");
 			_isShooting = true;
 			((MyUserControllableGun)CubeBlock).ShootFromTerminal(m_weaponTarget.Facing());
-			myLogger.traceLog("Back from shoot");
+			Log.TraceLog("Back from shoot");
 		}
 
 		private InitialTargetStatus GetInitialTarget()
 		{
 			if (loadedAmmo == null || loadedAmmo.MissileDefinition == null)
 			{
-				myLogger.debugLog("no ammo");
+				Log.DebugLog("no ammo");
 				return InitialTargetStatus.NotReady;
 			}
 
 			if (m_weaponTarget.Options.TargetGolis.IsValid())
 			{
-				myLogger.traceLog("golis: " + m_weaponTarget.Options.TargetGolis);
+				Log.TraceLog("golis: " + m_weaponTarget.Options.TargetGolis);
 				m_weaponTarget.SetTarget(new GolisTarget(CubeBlock, m_weaponTarget.Options.TargetGolis));
 				return InitialTargetStatus.Golis;
 			}
 
 			if (m_weaponTarget.CurrentControl != WeaponTargeting.Control.Off && !(m_weaponTarget.CurrentTarget is NoTarget))
 			{
-				myLogger.traceLog("from active weapon, control: " + m_weaponTarget.CurrentControl + ", target: " + m_weaponTarget.CurrentTarget);
+				Log.TraceLog("from active weapon, control: " + m_weaponTarget.CurrentControl + ", target: " + m_weaponTarget.CurrentTarget);
 				return InitialTargetStatus.FromWeapon;
 			}
 			else
 			{
-				myLogger.traceLog("clearing weapon target");
+				Log.TraceLog("clearing weapon target");
 				m_weaponTarget.SetTarget(NoTarget.Instance);
 			}
 
 			RelayStorage storage = m_relayPart.GetStorage();
 			if (storage == null)
 			{
-				myLogger.traceLog("Failed to get storage for launcher");
+				Log.TraceLog("Failed to get storage for launcher");
 				return InitialTargetStatus.NoStorage;
 			}
 			else
@@ -419,7 +420,7 @@ namespace Rynchodon.Weapons.Guided
 				m_weaponTarget.GetLastSeenTarget(storage, range);
 				if (!(m_weaponTarget.CurrentTarget is NoTarget))
 				{
-					myLogger.traceLog("LastSeen: " + m_weaponTarget.CurrentTarget.Entity.nameWithId());
+					Log.TraceLog("LastSeen: " + m_weaponTarget.CurrentTarget.Entity.nameWithId());
 					return InitialTargetStatus.FromWeapon;
 				}
 				else if (m_weaponTarget.Options.TargetEntityId != 0)

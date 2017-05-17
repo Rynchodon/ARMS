@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
 using Rynchodon.Threading;
-using Rynchodon.Utility;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -22,7 +19,6 @@ namespace Rynchodon
 			public void Dispose() { }
 		}
 
-		private static Logger myLogger = new Logger();
 		private static FastResourceLock Lock_MainThread = new FastResourceLock();
 		/// <summary>Dummy lock, exclusive is never held</summary>
 		private static DummyDisposable lock_dummy = new DummyDisposable();

@@ -12,7 +12,6 @@ namespace Rynchodon.AntennaRelay
 
 		private const byte FinalState = 5;
 
-		private readonly Logger m_logger;
 		private readonly IMyLaserAntenna m_laser;
 
 		private long? m_targetEntityId;
@@ -25,7 +24,6 @@ namespace Rynchodon.AntennaRelay
 		/// <param name="laser">The block to create the laser component for.</param>
 		public ComponentLaser(IMyLaserAntenna laser)
 		{
-			this.m_logger = new Logger(laser);
 			this.m_laser = laser;
 		}
 

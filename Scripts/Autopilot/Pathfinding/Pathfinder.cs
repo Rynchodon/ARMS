@@ -1,4 +1,4 @@
-﻿#if DEBUG
+#if DEBUG
 //#define TRACE
 #endif
 
@@ -84,8 +84,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		#endregion
 
 		#region Fields
-
-		private readonly Logger m_logger;
 		private readonly PathTester m_tester;
 
 		private readonly FastResourceLock m_runningLock = new FastResourceLock();
@@ -131,6 +129,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Properties
 
+		private Logable Log { get { return new Logable(m_autopilotGrid.nameWithId(), m_navBlock != null ? m_navBlock.DisplayName : "N/A", CurrentState.ToString()); } }
 		public MyEntity ReportedObstruction { get { return m_obstructingBlock ?? m_obstructingEntity.Entity; } }
 		public Mover Mover { get; private set; }
 		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }
@@ -145,11 +144,6 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="block">The autopilot or remote control that needs to find its way in the world.</param>
 		public Pathfinder(ShipControllerBlock block)
 		{
-			m_logger = new Logger(() => m_autopilotGrid.nameWithId(), () => {
-				if (m_navBlock != null)
-					return m_navBlock.DisplayName;
-				return "N/A";
-			}, () => CurrentState.ToString());
 			Mover = new Mover(block, new RotateChecker(block.CubeBlock, CollectEntities));
 			m_tester = new PathTester(Mover.Block);
 			NavSet.AfterTaskComplete += NavSet_AfterTaskComplete;
@@ -230,13 +224,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 			if (targetEntity.isRecent())
 			{
 				dest = new Destination(targetEntity.Entity, ref offset);
-				m_logger.debugLog("recent. dest: " + dest);
+				Log.DebugLog("recent. dest: " + dest);
 			}
 			else
 			{
 				dest = new Destination(targetEntity.LastKnownPosition + offset);
 				addToVelocity += targetEntity.LastKnownVelocity;
-				m_logger.debugLog("not recent. dest: " + dest + ", actual position: " + targetEntity.Entity.GetPosition());
+				Log.DebugLog("not recent. dest: " + dest + ", actual position: " + targetEntity.Entity.GetPosition());
 			}
 			MoveTo(addToVelocity, dest);
 		}
@@ -270,7 +264,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				return;
 			}
 			
-			m_logger.debugLog("Nav settings changed");
+			Log.DebugLog("Nav settings changed");
 
 			using (m_runningLock.AcquireExclusiveUsing())
 			{
@@ -285,7 +279,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_navBlock == null)
 			{
-				m_logger.debugLog("No nav block");
+				Log.DebugLog("No nav block");
 				return;
 			}
 
@@ -312,13 +306,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_holdPosition)
 			{
-				//m_logger.debugLog("Holding position");
+				//Log.DebugLog("Holding position");
 				Mover.CalcMove(m_navBlock, ref Vector3.Zero, ref targetVelocity);
 				return;
 			}
 
-			m_logger.traceLog("Should not be moving! disp: " + disp, Logger.severity.DEBUG, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
-			m_logger.traceLog("moving: " + disp + ", targetVelocity: " + targetVelocity);
+			Log.TraceLog("Should not be moving! disp: " + disp, Logger.severity.DEBUG, condition: CurrentState != State.Unobstructed && CurrentState != State.FollowingPath);
+			Log.TraceLog("moving: " + disp + ", targetVelocity: " + targetVelocity);
 			Mover.CalcMove(m_navBlock, ref disp, ref targetVelocity);
 		}
 		
@@ -367,13 +361,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 						FillDestWorld();
 						if (NavSet.Settings_Current.Distance < distance - MyGridJumpDriveSystem.MIN_JUMP_DISTANCE * 0.5d)
 						{
-							m_logger.debugLog("Jump completed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.INFO);
+							Log.DebugLog("Jump completed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.INFO);
 							m_nextJumpAttempt = 0uL;
 							JumpComplaint = InfoString.StringId_Jump.None;
 						}
 						else
 						{
-							m_logger.debugLog("Jump failed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.WARNING);
+							Log.DebugLog("Jump failed, distance travelled: " + (distance - NavSet.Settings_Current.Distance), Logger.severity.WARNING);
 							JumpComplaint = InfoString.StringId_Jump.Failed;
 						}
 						m_jumpSystem = null;
@@ -395,7 +389,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			}
 			catch
 			{
-				m_logger.alwaysLog("Pathfinder crashed", Logger.severity.ERROR);
+				Log.AlwaysLog("Pathfinder crashed", Logger.severity.ERROR);
 				CurrentState = State.Crashed;
 				throw;
 			}
@@ -441,11 +435,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 			double distance; Vector3D.Distance(ref finalDestWorld, ref m_currentPosition, out distance);
 			NavSet.Settings_Current.Distance = (float)distance;
 
-			m_logger.debugLog("Missing obstruction", Logger.severity.ERROR, condition: m_path.HasTarget && m_obstructingEntity.Entity == null);
+			Log.DebugLog("Missing obstruction", Logger.severity.ERROR, condition: m_path.HasTarget && m_obstructingEntity.Entity == null);
 
 			m_destWorld = m_path.HasTarget ? m_path.GetTarget() + m_obstructingEntity.GetPosition() : finalDestWorld;
 
-			m_logger.traceLog("final dest world: " + finalDestWorld + ", picked: " + m_pickedDestination.WorldPosition() + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + 
+			Log.TraceLog("final dest world: " + finalDestWorld + ", picked: " + m_pickedDestination.WorldPosition() + ", current position: " + m_currentPosition + ", offset: " + (m_currentPosition - m_navBlock.WorldPosition) + 
 				", distance: " + distance + ", is final: " + (m_path.Count == 0) + ", dest world: " + m_destWorld);
 		}
 
@@ -475,7 +469,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <returns>True iff the entity is moving away.</returns>
 		private bool ObstructionMovingAway(MyEntity obstruction)
 		{
-			m_logger.debugLog("obstruction == null", Logger.severity.FATAL, condition: obstruction == null);
+			Log.DebugLog("obstruction == null", Logger.severity.FATAL, condition: obstruction == null);
 
 			MyEntity topDest = GetTopMostDestEntity();
 			Vector3D destVelocity = topDest != null && topDest.Physics != null ? topDest.Physics.LinearVelocity : Vector3.Zero;
@@ -491,7 +485,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			Vector3D nextPosition; Vector3D.Add(ref position, ref obstVlocity, out nextPosition);
 			double current; Vector3D.DistanceSquared(ref m_currentPosition, ref position, out current);
 			double next; Vector3D.DistanceSquared(ref m_currentPosition, ref nextPosition, out next);
-			m_logger.debugLog("Obstruction is moving away", condition: current < next);
+			Log.DebugLog("Obstruction is moving away", condition: current < next);
 			return current < next;
 		}
 
@@ -575,7 +569,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				// don't chase an obstructing entity unless it is the destination
 				if (ObstructionMovingAway(m_obstructingEntity.Entity))
 				{
-					m_logger.debugLog("Obstruction is moving away, I'll just wait here", Logger.severity.TRACE);
+					Log.DebugLog("Obstruction is moving away, I'll just wait here", Logger.severity.TRACE);
 					m_path.Clear();
 					m_obstructingEntity = new Obstruction();
 					m_obstructingBlock = null;
@@ -601,21 +595,21 @@ namespace Rynchodon.Autopilot.Pathfinding
 				if (reachedDest)
 				{
 					m_path.ReachedTarget();
-					m_logger.debugLog("Reached waypoint: " + m_path.GetReached() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
+					Log.DebugLog("Reached waypoint: " + m_path.GetReached() + ", remaining: " + (m_path.Count - 1), Logger.severity.DEBUG);
 					FillDestWorld();
 					if (!m_path.IsFinished)
 					{
 						FillEntitiesLists();
 						if (!SetNextPathTarget())
 						{
-							m_logger.debugLog("Failed to set next target, clearing path");
+							Log.DebugLog("Failed to set next target, clearing path");
 							m_path.Clear();
 						}
 					}
 				}
 			}
 
-			//m_logger.debugLog("Current position: " + m_currentPosition + ", destination: " + m_destWorld);
+			//Log.DebugLog("Current position: " + m_currentPosition + ", destination: " + m_destWorld);
 
 			FillEntitiesLists();
 
@@ -632,17 +626,17 @@ namespace Rynchodon.Autopilot.Pathfinding
 					float distance = dispF.Length();
 					Vector3 scaledRepulsion; Vector3.Multiply(ref repulsion, distance * 0.001f, out scaledRepulsion);
 					Vector3.Add(ref dispF, ref scaledRepulsion, out m_moveDirection);
-					m_logger.traceLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					Log.TraceLog("Scaled repulsion: " + repulsion + " * " + (distance * 0.001f) + " = " + scaledRepulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 				else
 				{
 					Vector3.Add(ref dispF, ref repulsion, out m_moveDirection);
-					m_logger.traceLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
+					Log.TraceLog("Repulsion: " + repulsion + ", dispF: " + dispF + ", m_targetDirection: " + m_moveDirection);
 				}
 			}
 			else
 			{
-				m_logger.traceLog("No repulsion, direction is displacement: " + dispF);
+				Log.TraceLog("No repulsion, direction is displacement: " + dispF);
 				m_moveDirection = dispF;
 			}
 
@@ -666,12 +660,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_obstructingBlock = block;
 				m_holdPosition = true;
 
-				m_logger.debugLog("Current path is obstructed by " + obstructing.getBestName() + "." + block.getBestName() + ", starting pathfinding", Logger.severity.DEBUG);
+				Log.DebugLog("Current path is obstructed by " + obstructing.getBestName() + "." + block.getBestName() + ", starting pathfinding", Logger.severity.DEBUG);
 				StartPathfinding();
 				return;
 			}
 
-			m_logger.traceLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength + ", disp: " + dispF);
+			Log.TraceLog("Move direction: " + m_moveDirection + ", move distance: " + m_moveLength + ", disp: " + dispF);
 			if (!m_path.HasTarget)
 			{
 				CurrentState = State.Unobstructed;
@@ -713,14 +707,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 				if (input.Length < 1f)
 				{
-					m_logger.debugLog("Already on line");
+					Log.DebugLog("Already on line");
 					break;
 				}
 
 				float proximity;
 				if (CanTravelSegment(ref input, out proximity))
 				{
-					m_logger.debugLog("can travel to line");
+					Log.DebugLog("can travel to line");
 					m_moveDirection = input.Direction;
 					m_moveLength = input.Length;
 					return true;
@@ -729,7 +723,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				tValue *= 0.5d;
 				if (tValue <= 1d)
 				{
-					m_logger.debugLog("Cannot reach line");
+					Log.DebugLog("Cannot reach line");
 					break;
 				}
 				Vector3D disp; Vector3D.Multiply(ref direction, tValue, out disp);
@@ -765,8 +759,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 			{
 				MyEntity entity = m_entitiesRepulse[index];
 
-				m_logger.debugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
-				m_logger.debugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy != null && entity.Hierarchy.Parent != null);
+				Log.DebugLog("entity is null", Logger.severity.FATAL, condition: entity == null);
+				Log.DebugLog("entity is not top-most", Logger.severity.FATAL, condition: entity.Hierarchy != null && entity.Hierarchy.Parent != null);
 
 				Vector3D centre = entity.GetCentre();
 				Vector3D toCentreD;
@@ -815,7 +809,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 								VariableRadius = gravLimit - maxRadius + linearSpeedFactor
 							};
 							sphere.SetEntity(entity);
-							//m_logger.traceLog("Far planet sphere: " + sphere);
+							//Log.TraceLog("Far planet sphere: " + sphere);
 							m_clusters.Add(ref sphere);
 						}
 						else
@@ -828,7 +822,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 								VariableRadius = Math.Min(linearSpeedFactor + distAutopilotToFinalDest * 0.1f, distAutopilotToFinalDest * 0.25f)
 							};
 							sphere.SetEntity(entity);
-							//m_logger.traceLog("Nearby planet sphere: " + sphere);
+							//Log.TraceLog("Nearby planet sphere: " + sphere);
 							m_clusters.Add(ref sphere);
 						}
 					}
@@ -881,7 +875,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						VariableRadius = linearSpeedFactor
 					};
 					sphere.SetEntity(entity);
-					//m_logger.traceLog("sphere: " + sphere);
+					//Log.TraceLog("sphere: " + sphere);
 					m_clusters.Add(ref sphere);
 				}
 			}
@@ -898,7 +892,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			m_clusters.AddMiddleSpheres();
 
-			//m_logger.debugLog("repulsion spheres: " + m_clusters.Clusters.Count);
+			//Log.DebugLog("repulsion spheres: " + m_clusters.Clusters.Count);
 
 			repulsion = Vector3.Zero;
 			for (int indexO = m_clusters.Clusters.Count - 1; indexO >= 0; indexO--)
@@ -920,7 +914,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <param name="entity">If it is a voxel, set m_checkVoxel = true, otherwise added to m_entitiesPruneAvoid.</param>
 		private void AvoidEntity(MyEntity entity)
 		{
-			m_logger.traceLog("Avoid: " + entity.nameWithId());
+			Log.TraceLog("Avoid: " + entity.nameWithId());
 			if (entity is MyVoxelBase)
 				m_checkVoxel = true;
 			else
@@ -952,7 +946,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			float repulseMagnitude = maxRepulseDist - toCurrentLen;
 
 			Vector3 sphereRepulsion; Vector3.Multiply(ref toCurrent, repulseMagnitude / toCurrentLen, out sphereRepulsion);
-			m_logger.traceLog("repulsion of " + sphereRepulsion + " from sphere: " + sphere);
+			Log.TraceLog("repulsion of " + sphereRepulsion + " from sphere: " + sphere);
 			repulsion.X += sphereRepulsion.X;
 			repulsion.Y += sphereRepulsion.Y;
 			repulsion.Z += sphereRepulsion.Z;
@@ -971,8 +965,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		/// <returns>True iff the current path is obstructed.</returns>
 		private bool CurrentObstructed(out MyEntity obstructingEntity, out MyCubeBlock obstructBlock, out float distance)
 		{
-			//m_logger.debugLog("m_moveDirection: " + m_moveDirection, Logger.severity.FATAL, condition: Math.Abs(m_moveDirection.LengthSquared() - 1f) > 0.01f);
-			//m_logger.debugLog("m_moveLength: " + m_moveLength, Logger.severity.FATAL, condition: Math.Abs(m_moveLength) < 0.1f);
+			//Log.DebugLog("m_moveDirection: " + m_moveDirection, Logger.severity.FATAL, condition: Math.Abs(m_moveDirection.LengthSquared() - 1f) > 0.01f);
+			//Log.DebugLog("m_moveLength: " + m_moveLength, Logger.severity.FATAL, condition: Math.Abs(m_moveLength) < 0.1f);
 
 			MyCubeBlock ignoreBlock = NavSet.Settings_Current.DestinationEntity as MyCubeBlock;
 
@@ -990,7 +984,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					PathTester.GridTestResult result;
 					if (m_tester.ObstructedBy(destTop, ignoreBlock, ref adjustedInput, out result))
 					{
-						//m_logger.debugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
+						//Log.DebugLog("Obstructed by " + destTop.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 						obstructingEntity = destTop;
 						obstructBlock = result.ObstructingBlock;
 						distance = result.Distance;
@@ -1003,14 +997,14 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (m_checkVoxel)
 			{
-				//m_logger.debugLog("raycasting voxels");
+				//Log.DebugLog("raycasting voxels");
 				m_tester.AdjustForCurrentVelocity(ref input, out adjustedInput, null, false);
 				if (adjustedInput.Length != 0f)
 				{
 					PathTester.VoxelTestResult voxelResult;
 					if (m_tester.RayCastIntersectsVoxel(ref adjustedInput, out voxelResult))
 					{
-						//m_logger.debugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition+ ", autopilotVelocity: " + autopilotVelocity + ", m_moveDirection: " + m_moveDirection);
+						//Log.DebugLog("Obstructed by voxel " + hitVoxel + " at " + hitPosition+ ", autopilotVelocity: " + autopilotVelocity + ", m_moveDirection: " + m_moveDirection);
 						obstructingEntity = voxelResult.ObstructingVoxel;
 						obstructBlock = null;
 						distance = voxelResult.Distance;
@@ -1021,12 +1015,12 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			// check remaining entities
 
-			//m_logger.debugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
+			//Log.DebugLog("checking " + m_entitiesPruneAvoid.Count + " entites - destination entity - voxels");
 
 			if (m_entitiesPruneAvoid.Count != 0)
 				for (int i = m_entitiesPruneAvoid.Count - 1; i >= 0; i--)
 				{
-					//m_logger.debugLog("entity: " + m_entitiesPruneAvoid[i]);
+					//Log.DebugLog("entity: " + m_entitiesPruneAvoid[i]);
 					obstructingEntity = m_entitiesPruneAvoid[i];
 					if (obstructingEntity == destTop || obstructingEntity is MyVoxelBase)
 						// already checked
@@ -1037,7 +1031,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 						PathTester.GridTestResult result;
 						if (m_tester.ObstructedBy(obstructingEntity, ignoreBlock, ref adjustedInput, out result))
 						{
-							//m_logger.debugLog("Obstructed by " + obstructingEntity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
+							//Log.DebugLog("Obstructed by " + obstructingEntity.nameWithId() + "." + obstructBlock, Logger.severity.DEBUG);
 							obstructBlock = (MyCubeBlock)result.ObstructingBlock;
 							distance = result.Distance;
 							return true;
@@ -1045,7 +1039,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 				}
 
-			//m_logger.debugLog("No obstruction");
+			//Log.DebugLog("No obstruction");
 			obstructingEntity = null;
 			obstructBlock = null;
 			distance = 0f;
@@ -1067,7 +1061,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 			m_nextJumpAttempt = Globals.UpdateCount + 100uL;
 			if (NavSet.Settings_Current.MinDistToJump < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE || NavSet.Settings_Current.Distance < NavSet.Settings_Current.MinDistToJump)
 			{
-				//m_logger.debugLog("not allowed to jump, distance: " + NavSet.Settings_Current.Distance + ", min dist: " + NavSet.Settings_Current.MinDistToJump);
+				//Log.DebugLog("not allowed to jump, distance: " + NavSet.Settings_Current.Distance + ", min dist: " + NavSet.Settings_Current.MinDistToJump);
 				JumpComplaint = InfoString.StringId_Jump.None;
 				return false;
 			}
@@ -1078,7 +1072,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				CubeGridCache cache = CubeGridCache.GetFor(grid);
 				if (cache == null)
 				{
-					m_logger.debugLog("Missing a CubeGridCache");
+					Log.DebugLog("Missing a CubeGridCache");
 					return false;
 				}
 				foreach (MyJumpDrive jumpDrive in cache.BlocksOfType(typeof(MyObjectBuilder_JumpDrive)))
@@ -1089,7 +1083,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 			}
 
-			//m_logger.debugLog("No usable jump drives", Logger.severity.TRACE);
+			//Log.DebugLog("No usable jump drives", Logger.severity.TRACE);
 			JumpComplaint = InfoString.StringId_Jump.NotCharged;
 			return false;
 		}
@@ -1105,7 +1099,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (!Vector3.IsZero(MyGravityProviderSystem.CalculateNaturalGravityInPoint(apGrid.WorldMatrix.Translation)))
 			{
-				//m_logger.debugLog("Cannot jump, in gravity");
+				//Log.DebugLog("Cannot jump, in gravity");
 				JumpComplaint = InfoString.StringId_Jump.InGravity;
 				return false;
 			}
@@ -1115,19 +1109,19 @@ namespace Rynchodon.Autopilot.Pathfinding
 			{
 				if (grid.MarkedForClose)
 				{
-					m_logger.debugLog("Cannot jump with closing grid: " + grid.nameWithId(), Logger.severity.WARNING);
+					Log.DebugLog("Cannot jump with closing grid: " + grid.nameWithId(), Logger.severity.WARNING);
 					JumpComplaint = InfoString.StringId_Jump.ClosingGrid;
 					return false;
 				}
 				if (grid.IsStatic)
 				{
-					m_logger.debugLog("Cannot jump with static grid: " + grid.nameWithId(), Logger.severity.WARNING);
+					Log.DebugLog("Cannot jump with static grid: " + grid.nameWithId(), Logger.severity.WARNING);
 					JumpComplaint = InfoString.StringId_Jump.StaticGrid;
 					return false;
 				}
 				if (grid.GridSystems.JumpSystem.GetJumpDriveDirection().HasValue)
 				{
-					m_logger.debugLog("Cannot jump, grid already jumping: " + grid.nameWithId(), Logger.severity.WARNING);
+					Log.DebugLog("Cannot jump, grid already jumping: " + grid.nameWithId(), Logger.severity.WARNING);
 					JumpComplaint = InfoString.StringId_Jump.AlreadyJumping;
 					return false;
 				}
@@ -1137,7 +1131,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (MySession.Static.Settings.WorldSizeKm > 0 && finalDest.Length() > MySession.Static.Settings.WorldSizeKm * 500)
 			{
-				m_logger.debugLog("Cannot jump outside of world", Logger.severity.WARNING);
+				Log.DebugLog("Cannot jump outside of world", Logger.severity.WARNING);
 				JumpComplaint = InfoString.StringId_Jump.DestOutsideWorld;
 				return false;
 			}
@@ -1150,13 +1144,13 @@ namespace Rynchodon.Autopilot.Pathfinding
 			double jumpDistSq = jumpDisp.LengthSquared();
 			if (maxJumpDistance * maxJumpDistance < jumpDistSq)
 			{
-				m_logger.debugLog("Jump drives do not have sufficient power to jump the desired distance", Logger.severity.DEBUG);
+				Log.DebugLog("Jump drives do not have sufficient power to jump the desired distance", Logger.severity.DEBUG);
 				Vector3D newJumpDisp; Vector3D.Multiply(ref jumpDisp, maxJumpDistance / Math.Sqrt(jumpDistSq), out newJumpDisp);
 				jumpDisp = newJumpDisp;
 
 				if (newJumpDisp.LengthSquared() < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE * MyGridJumpDriveSystem.MIN_JUMP_DISTANCE)
 				{
-					m_logger.debugLog("Jump drives do not have sufficient power to jump the minimum distance", Logger.severity.WARNING);
+					Log.DebugLog("Jump drives do not have sufficient power to jump the minimum distance", Logger.severity.WARNING);
 					JumpComplaint = InfoString.StringId_Jump.CannotJumpMin;
 					return false;
 				}
@@ -1184,7 +1178,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 					}
 					else
 					{
-						m_logger.debugLog("planet gravity does not hit line: " + planet.getBestName());
+						Log.DebugLog("planet gravity does not hit line: " + planet.getBestName());
 						continue;
 					}
 				}
@@ -1201,11 +1195,11 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 			if (closest.Element != null)
 			{
-				m_logger.debugLog("jump would hit: " + closest.Element.nameWithId() + ", shortening jump from " + m_lineSegment.Length + " to " + closest.Distance, Logger.severity.DEBUG);
+				Log.DebugLog("jump would hit: " + closest.Element.nameWithId() + ", shortening jump from " + m_lineSegment.Length + " to " + closest.Distance, Logger.severity.DEBUG);
 
 				if (closest.Distance < MyGridJumpDriveSystem.MIN_JUMP_DISTANCE)
 				{
-					m_logger.debugLog("Jump is obstructed", Logger.severity.DEBUG);
+					Log.DebugLog("Jump is obstructed", Logger.severity.DEBUG);
 					JumpComplaint = InfoString.StringId_Jump.Obstructed;
 					return false;
 				}
@@ -1213,7 +1207,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 				m_lineSegment.To = m_lineSegment.From + m_lineSegment.Direction * closest.Distance;
 			}
 
-			m_logger.debugLog("Requesting jump to " + m_lineSegment.To, Logger.severity.DEBUG);
+			Log.DebugLog("Requesting jump to " + m_lineSegment.To, Logger.severity.DEBUG);
 			JumpComplaint = InfoString.StringId_Jump.Jumping;
 			// if jump fails after request, wait a long time before trying again
 			m_nextJumpAttempt = 10000uL;

@@ -5,6 +5,7 @@ using Rynchodon.Autopilot.Movement;
 using Rynchodon.Autopilot.Navigator;
 using Rynchodon.Autopilot.Navigator.Response;
 using Rynchodon.Autopilot.Pathfinding;
+using Rynchodon.Utility;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -28,7 +29,6 @@ namespace Rynchodon.Autopilot
 			}
 		}
 
-		private readonly Logger m_logger;
 		private readonly Pathfinder m_pathfinder;
 		private readonly AllNavigationSettings m_navSet;
 		private readonly List<ResponseRange> m_allResponses = new List<ResponseRange>();
@@ -44,6 +44,14 @@ namespace Rynchodon.Autopilot
 		private bool m_engageSet;
 
 		private LastSeen value_grid;
+
+		private Logable Log
+		{
+			get {
+				VRage.Game.ModAPI.IMyCubeBlock block = m_pathfinder.Mover.Block.CubeBlock;
+				return new Logable(block.CubeGrid.nameWithId(), block.DefinitionDisplayNameText, CurrentResponse.Response.ToString());
+			}
+		}
 
 		public override LastSeen Grid
 		{
@@ -62,12 +70,12 @@ namespace Rynchodon.Autopilot
 				value_grid = value;
 				if (value_grid == null)
 				{
-					m_logger.debugLog("no longer have an Enemy", Logger.severity.DEBUG);
+					Log.DebugLog("no longer have an Enemy", Logger.severity.DEBUG);
 					EndEngage();
 				}
 				else
 				{
-					m_logger.debugLog("Enemy is now: " + value_grid.Entity.getBestName(), Logger.severity.DEBUG);
+					Log.DebugLog("Enemy is now: " + value_grid.Entity.getBestName(), Logger.severity.DEBUG);
 					SetEngage();
 				}
 			}
@@ -78,13 +86,13 @@ namespace Rynchodon.Autopilot
 			get { return m_curResponse; }
 			set
 			{
-				m_logger.debugLog("Changing response from " + m_curResponse.Response + " to " + value.Response, Logger.severity.DEBUG);
+				Log.DebugLog("Changing response from " + m_curResponse.Response + " to " + value.Response, Logger.severity.DEBUG);
 				m_navResponse = null;
 				m_curResponse = value;
 				switch (m_curResponse.Response)
 				{
 					case Response.None:
-						m_logger.debugLog("No responses left", Logger.severity.DEBUG);
+						Log.DebugLog("No responses left", Logger.severity.DEBUG);
 						EndEngage();
 						return;
 					case Response.Fight:
@@ -103,7 +111,7 @@ namespace Rynchodon.Autopilot
 						m_navResponse = new EnemyLander(m_pathfinder, m_landingGear);
 						break;
 					default:
-						m_logger.alwaysLog("Response not implemented: " + m_curResponse.Response, Logger.severity.WARNING);
+						Log.AlwaysLog("Response not implemented: " + m_curResponse.Response, Logger.severity.WARNING);
 						NextResponse();
 						return;
 				}
@@ -111,7 +119,7 @@ namespace Rynchodon.Autopilot
 				GridCondition = m_navResponse.CanTarget;
 				if (Grid != null)
 				{
-					m_logger.debugLog("adding responder: " + m_navResponse, Logger.severity.DEBUG);
+					Log.DebugLog("adding responder: " + m_navResponse, Logger.severity.DEBUG);
 					SetEngage();
 				}
 			}
@@ -120,13 +128,12 @@ namespace Rynchodon.Autopilot
 		public EnemyFinder(Pathfinder pathfinder, AllNavigationSettings navSet, long entityId)
 			: base(navSet, pathfinder.Mover.Block)
 		{
-			this.m_logger = new Logger(pathfinder.Mover.Block.CubeBlock, () => CurrentResponse.Response.ToString());
 			this.m_pathfinder = pathfinder;
 			this.m_navSet = navSet;
 			this.m_targetEntityId = entityId;
 			this.m_landingGear = m_navSet.Settings_Current.LandingBlock;
 
-			m_logger.debugLog("Initialized");
+			Log.DebugLog("Initialized");
 		}
 
 		public void AddResponses(float range, List<Response> responses)
@@ -139,14 +146,14 @@ namespace Rynchodon.Autopilot
 					ResponseRange rr = m_allResponses[i];
 					if (r == rr.Response)
 					{
-						m_logger.debugLog("ammending old response: " + r + ", range: " + range);
+						Log.DebugLog("ammending old response: " + r + ", range: " + range);
 						found = true;
 						rr.SearchRange = range;
 					}
 				}
 				if (!found)
 				{
-					m_logger.debugLog("adding new response: " + r + ", range: " + range);
+					Log.DebugLog("adding new response: " + r + ", range: " + range);
 					m_allResponses.Add(new ResponseRange(r, range));
 				}
 			}
@@ -161,7 +168,7 @@ namespace Rynchodon.Autopilot
 
 			if (!m_navResponse.CanRespond())
 			{
-				m_logger.debugLog("cannot respond");
+				Log.DebugLog("cannot respond");
 				NextResponse();
 				return;
 			}
@@ -175,10 +182,10 @@ namespace Rynchodon.Autopilot
 					originalPosition = m_originalPosition;
 				float distance = (float)Vector3D.Distance(m_pathfinder.Mover.Block.CubeBlock.GetPosition(), originalPosition);
 				MaximumRange = CurrentResponse.SearchRange - 0.5f * distance;
-				//m_logger.debugLog("SearchRange: " + CurrentResponse.SearchRange + ", distance: " + distance + ", MaximumRange: " + MaximumRange, "Update()");
+				//Log.DebugLog("SearchRange: " + CurrentResponse.SearchRange + ", distance: " + distance + ", MaximumRange: " + MaximumRange, "Update()");
 				if (!m_engageSet && distance < m_navSet.Settings_Current.DestinationRadius)
 				{
-					m_logger.debugLog("returned to original position");
+					Log.DebugLog("returned to original position");
 					m_originalPosition = Vector3D.PositiveInfinity;
 				}
 			}
@@ -201,7 +208,7 @@ namespace Rynchodon.Autopilot
 		/// This runs after m_navResponse is created and will override settings.
 		private void SetEngage()
 		{
-			m_logger.debugLog("entered", Logger.severity.DEBUG);
+			Log.DebugLog("entered", Logger.severity.DEBUG);
 			m_navSet.OnTaskComplete_NavEngage();
 			m_navSet.Settings_Task_NavEngage.NavigatorMover = m_navResponse;
 			m_navSet.Settings_Task_NavEngage.NavigatorRotator = m_navResponse;
@@ -216,21 +223,21 @@ namespace Rynchodon.Autopilot
 				if (m_originalDestEntity == null)
 				{
 					m_originalPosition = m_pathfinder.Mover.Block.CubeBlock.GetPosition();
-					m_logger.debugLog("original entity null", Logger.severity.DEBUG);
+					Log.DebugLog("original entity null", Logger.severity.DEBUG);
 				}
 				else if (m_originalDestEntity == m_pathfinder.Mover.Block.CubeBlock || m_originalDestEntity == m_pathfinder.Mover.Block.CubeGrid)
 				{
 					m_originalDestEntity = null;
 					m_originalPosition = m_pathfinder.Mover.Block.CubeBlock.GetPosition();
-					m_logger.debugLog("original entity is me", Logger.severity.DEBUG);
+					Log.DebugLog("original entity is me", Logger.severity.DEBUG);
 				}
 				else
 				{
-					m_logger.debugLog("original entity OK", Logger.severity.DEBUG);
+					Log.DebugLog("original entity OK", Logger.severity.DEBUG);
 					m_originalPosition = m_pathfinder.Mover.Block.CubeBlock.GetPosition() - m_originalDestEntity.GetPosition();
 				}
 
-				m_logger.debugLog("original dest entity: " + m_originalDestEntity.getBestName() + ", original position: " + m_originalPosition, Logger.severity.DEBUG);
+				Log.DebugLog("original dest entity: " + m_originalDestEntity.getBestName() + ", original position: " + m_originalPosition, Logger.severity.DEBUG);
 			}
 
 			m_engageSet = true;
@@ -245,17 +252,17 @@ namespace Rynchodon.Autopilot
 			{
 				if (m_originalDestEntity != null)
 				{
-					m_logger.debugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, Logger.severity.DEBUG);
+					Log.DebugLog("return to original entity: " + m_originalDestEntity.getBestName() + ", offset: " + m_originalPosition, Logger.severity.DEBUG);
 					new Waypoint(m_pathfinder, AllNavigationSettings.SettingsLevelName.NavEngage, m_originalDestEntity, m_originalPosition);
 				}
 				else
 				{
-					m_logger.debugLog("return to original position: " + m_originalPosition, Logger.severity.DEBUG);
+					Log.DebugLog("return to original position: " + m_originalPosition, Logger.severity.DEBUG);
 					new GOLIS(m_pathfinder, m_originalPosition, AllNavigationSettings.SettingsLevelName.NavEngage);
 				}
 			}
 			else
-				m_logger.debugLog("original postion is invalid, no return possible");
+				Log.DebugLog("original postion is invalid, no return possible");
 
 			m_engageSet = false;
 		}
