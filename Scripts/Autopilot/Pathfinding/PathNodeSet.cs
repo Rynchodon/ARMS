@@ -128,8 +128,8 @@ namespace Rynchodon.Autopilot.Pathfinding
 		private Logable Log {
 			get {
 				return new Logable(
-					ResourcePool<FindingSet>.InstancesCreated.ToString(), 
-					m_referencePosition.ToString() + ":" + m_startPosition.ToString(), 
+					ResourcePool<FindingSet>.InstancesCreated.ToString(),
+					m_referencePosition.ToString() + ":" + m_startPosition.ToString(),
 					string.Concat(m_blueSkyNodes.Count, ':', m_reachedNodes.Count, ':', m_openNodes.Count));
 			}
 		}
