@@ -9,10 +9,9 @@ namespace Rynchodon
 {
 	public static class Mods
 	{
-		public static MySessionComponentBase FindModSessionComponent(string modName, string modProject, string componentClassName)
+		public static MySessionComponentBase FindModSessionComponent(string modName, string modScriptsFolder, string typeName)
 		{
-			string assemblyName = $"{modName}_{modProject}, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
-			string typeName = $"{modProject}.{componentClassName}";
+			string assemblyName = $"{modName}_{modScriptsFolder}, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null";
 
 			CachingDictionary<Type, MySessionComponentBase> sessionComponents = (CachingDictionary<Type, MySessionComponentBase>)
 				typeof(MySession).GetField("m_sessionComponents", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(MySession.Static);

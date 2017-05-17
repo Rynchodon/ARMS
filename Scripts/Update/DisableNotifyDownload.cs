@@ -18,7 +18,7 @@ namespace Rynchodon.Update
 				if (mod.PublishedFileId == 363880940uL || mod.Name == "ARMS")
 				{
 					Logger.DebugLog("ARMS mod: FriendlyName: " + mod.FriendlyName + ", Name: " + mod.Name + ", Published ID: " + mod.PublishedFileId);
-					MySessionComponentBase component = Mods.FindModSessionComponent(mod.Name, "SteamShipped", "Notify");
+					MySessionComponentBase component = Mods.FindModSessionComponent(mod.Name, "SteamShipped", "SteamShipped.Notify");
 					if (component == null)
 					{
 						Logger.AlwaysLog($"Failed to find Session Component.", Logger.severity.ERROR);
