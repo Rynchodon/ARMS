@@ -68,12 +68,12 @@ namespace Rynchodon.Utility.Network.Sync
 
 		protected override void SetValue(long entityId, TScript script, TValue value, bool send)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			TValue currentValue = _getter(script);
 			if (!EqualityComparer.Equals(value, currentValue))
 			{
-				traceLog("value changed from " + currentValue + " to " + value);
+				Log.TraceLog("value changed from " + currentValue + " to " + value);
 				_setter(script, value);
 				if (send)
 					SendValue(entityId, value);
@@ -81,7 +81,7 @@ namespace Rynchodon.Utility.Network.Sync
 				UpdateVisual();
 			}
 			else
-				traceLog("equals previous value");
+				Log.TraceLog("equals previous value");
 		}
 
 		private void UpdateVisual()

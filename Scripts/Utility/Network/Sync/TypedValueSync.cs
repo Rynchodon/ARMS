@@ -81,12 +81,12 @@ namespace Rynchodon.Utility.Network
 
 		protected override void SetValue(long entityId, TScript script, TValue value, bool send)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			TValue currentValue = _getter(script);
 			if (!EqualityComparer.Equals(value, currentValue))
 			{
-				traceLog("value changed from " + currentValue + " to " + value);
+				Log.TraceLog("value changed from " + currentValue + " to " + value);
 				_setter(script, value);
 				if (send)
 					SendValue(entityId, value);
@@ -94,7 +94,7 @@ namespace Rynchodon.Utility.Network
 				UpdateVisual();
 			}
 			else
-				traceLog("equals previous value");
+				Log.TraceLog("equals previous value");
 		}
 
 		private void Update10()
@@ -102,7 +102,7 @@ namespace Rynchodon.Utility.Network
 			if (_waitUntil > Globals.UpdateCount)
 				return;
 
-			debugLog("Finished wait, parse and send", Logger.severity.DEBUG);
+			Log.DebugLog("Finished wait, parse and send", Logger.severity.DEBUG);
 
 			foreach (KeyValuePair<long, StringBuilder> item in _recentlySet)
 			{
@@ -110,7 +110,7 @@ namespace Rynchodon.Utility.Network
 				try { value = FromString(item.Value.ToString()); }
 				catch (Exception ex)
 				{
-					debugLog(ex.ToString(), Logger.severity.WARNING);
+					Log.DebugLog(ex.ToString(), Logger.severity.WARNING);
 					FailedToSet(item.Key, item.Value.ToString());
 					SetValue(item.Key, GetDefaultValue(), true);
 					continue;
@@ -131,12 +131,12 @@ namespace Rynchodon.Utility.Network
 		{
 			string message = "Cannot convert \"" + value + "\" to " + typeof(TValue);
 			Logger.Notify(message, level: Logger.severity.WARNING);
-			alwaysLog(message + ", entity ID: " + entityId, Logger.severity.INFO);
+			Log.AlwaysLog(message + ", entity ID: " + entityId, Logger.severity.INFO);
 
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
 			{
-				alwaysLog("Failed to get entity for " + entityId, Logger.severity.WARNING);
+				Log.AlwaysLog("Failed to get entity for " + entityId, Logger.severity.WARNING);
 				return;
 			}
 
@@ -147,7 +147,7 @@ namespace Rynchodon.Utility.Network
 				return;
 			}
 
-			alwaysLog("Expected IMyTerminalBlock, got: " + entity.nameWithId(), Logger.severity.ERROR);
+			Log.AlwaysLog("Expected IMyTerminalBlock, got: " + entity.nameWithId(), Logger.severity.ERROR);
 		}
 
 	}
