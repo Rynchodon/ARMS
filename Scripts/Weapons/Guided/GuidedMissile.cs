@@ -52,7 +52,6 @@ namespace Rynchodon.Weapons.Guided
 			public readonly float Angle_AccelerateWhen = 0.02f;
 			public readonly float Cos_Angle_Detonate = (float)Math.Cos(0.3f);
 
-			public Logger staticLogger = new Logger();
 			public CachingList<GuidedMissile> AllGuidedMissiles = new CachingList<GuidedMissile>();
 			public List<byte> SerialPositions;
 		}
@@ -222,7 +221,7 @@ namespace Rynchodon.Weapons.Guided
 
 			if (MyAPIGateway.Multiplayer.IsServer)
 				if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, Static.SerialPositions.ToArray(), false))
-					Static.staticLogger.alwaysLog("Missile sync failed, too many missiles in play: " + Static.AllGuidedMissiles.Count + ", byte count: " + Static.SerialPositions.Count);
+					Logger.AlwaysLog("Missile sync failed, too many missiles in play: " + Static.AllGuidedMissiles.Count + ", byte count: " + Static.SerialPositions.Count);
 
 #if PROFILE
 			}
@@ -251,10 +250,10 @@ namespace Rynchodon.Weapons.Guided
 					{
 						if (!updated)
 							// it could be that server only has missiles that were generated before the client connects and client only has missiles that were generated after server sent message
-							Static.staticLogger.alwaysLog("Failed to update missile positions. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
+							Logger.AlwaysLog("Failed to update missile positions. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
 						else
 							// normal when client connects while missiles are in play
-							Static.staticLogger.debugLog("Server has more missiles than client. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
+							Logger.DebugLog("Server has more missiles than client. Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length, Logger.severity.INFO);
 						return;
 					}
 
@@ -265,15 +264,15 @@ namespace Rynchodon.Weapons.Guided
 					if (Vector3D.DistanceSquared(worldPos, currentPosition) > 100d)
 					{
 						if (updated)
-							Static.staticLogger.alwaysLog("Interruption in missile position updates, it is likely that threshold needs to be adjusted. " +
+							Logger.AlwaysLog("Interruption in missile position updates, it is likely that threshold needs to be adjusted. " +
 								"Local count: " + Static.AllGuidedMissiles.Count + ", bytes received: " + data.Length + ", distance squared: " + Vector3D.DistanceSquared(worldPos, currentPosition), Logger.severity.WARNING);
 						else
-							Static.staticLogger.debugLog("Position values are far apart, trying next missile");
+							Logger.DebugLog("Position values are far apart, trying next missile");
 						continue;
 					}
 
 					updated = true;
-					Static.staticLogger.debugLog("Update position of " + missile.MyEntity.EntityId + " from " + missile.MyEntity.PositionComp.GetPosition() + " to " + worldPos);
+					Logger.DebugLog("Update position of " + missile.MyEntity.EntityId + " from " + missile.MyEntity.PositionComp.GetPosition() + " to " + worldPos);
 					missile.MyEntity.SetPosition(worldPos);
 					missile.MyEntity.Physics.LinearVelocity = velocity;
 					break;

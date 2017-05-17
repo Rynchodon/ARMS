@@ -34,7 +34,7 @@ namespace Rynchodon.Weapons
 			ByteConverter.AppendBytes(message, control);
 
 			if (!MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, message.ToArray()))
-				(new Logger()).alwaysLog("Failed to send message", Logger.severity.ERROR);
+				Logger.AlwaysLog("Failed to send message", Logger.severity.ERROR);
 		}
 
 		private static void Handler_EngagerControl(byte[] message, int pos)
@@ -45,7 +45,7 @@ namespace Rynchodon.Weapons
 			WeaponTargeting weapon;
 			if (!Registrar.TryGetValue(entityId, out weapon))
 			{
-				(new Logger()).debugLog("Weapon not in registrar: " + entityId, Logger.severity.WARNING);
+				Logger.DebugLog("Weapon not in registrar: " + entityId, Logger.severity.WARNING);
 				return;
 			}
 

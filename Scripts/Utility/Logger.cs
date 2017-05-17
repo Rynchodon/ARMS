@@ -4,14 +4,11 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Rynchodon.Autopilot.Data;
 using Rynchodon.Threading;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Collections;
 using Sandbox.ModAPI;
 using VRage.Game;
-using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRage.Utils;
 
 namespace Rynchodon
@@ -29,7 +26,7 @@ namespace Rynchodon
 	/// <para>#endif</para>
 	/// <para>Otherwise, an exception will be thrown by traceLog and TraceLog</para>
 	/// </remarks>
-	public class Logger
+	public static class Logger
 	{
 
 		private struct LogItem
@@ -109,9 +106,6 @@ namespace Rynchodon
 			}
 		}
 
-		private readonly string m_fileName;
-		private readonly Func<string> f_context, f_state_primary, f_state_secondary;
-
 		private static void deleteIfExists(string filename)
 		{
 			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(filename, typeof(Logger)))
@@ -153,83 +147,6 @@ namespace Rynchodon
 				MyLog.Default.WriteLine(ex);
 				throw;
 			}
-		}
-
-		/// <summary>
-		/// Conditional on TRACE in calling class. TRACE must be manually specified. If this method is invoked and the build is not Debug an Exception will be thrown.
-		/// </summary>
-		/// <param name="condition">only log if true</param>
-		/// <param name="toLog">message to log</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		/// <exception cref="Exception">When the build is not DEBUG</exception>
-		[System.Diagnostics.Conditional("TRACE")]
-		public void traceLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-#if DEBUG
-			if (condition)
-				log(level, member, lineNumber, toLog, primaryState, secondaryState);
-#else
-			throw new Exception("DEBUG is not defined");
-#endif
-		}
-
-		/// <summary>
-		/// Conditional on DEBUG in calling class. DEBUG is specified by Debug build.
-		/// </summary>
-		/// <param name="condition">only log if true</param>
-		/// <param name="toLog">message to log</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("DEBUG")]
-		public void debugLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			if (condition)
-				log(level, member, lineNumber, toLog, primaryState, secondaryState);
-		}
-
-		/// <summary>
-		/// Conditional on DEBUG in calling class. DEBUG is specified by Debug build.
-		/// </summary>
-		/// <param name="condition">only log if true</param>
-		/// <param name="toLog">message to log</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("DEBUG")]
-		public void debugLog(Func<string> toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			if (condition)
-				log(level, member, lineNumber, toLog.Invoke(), primaryState, secondaryState);
-		}
-
-		/// <summary>
-		/// Conditional on PROFILE in calling class. PROFILE is specified by Profile build.
-		/// </summary>
-		/// <param name="condition">only log if true</param>
-		/// <param name="toLog">message to log</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		[System.Diagnostics.Conditional("PROFILE")]
-		public void profileLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, bool condition = true, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			if (condition)
-				log(level, member, lineNumber, toLog, primaryState, secondaryState);
-		}
-
-		/// <summary>
-		/// For logging messages in any build.
-		/// </summary>
-		/// <param name="toLog">message to log</param>
-		/// <param name="level">severity level</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		public void alwaysLog(string toLog, severity level = severity.TRACE, string primaryState = null, string secondaryState = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
-		{
-			log(level, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -277,39 +194,6 @@ namespace Rynchodon
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
-		}
-
-		/// <param name="level">severity level</param>
-		/// <param name="toLog">message to log</param>
-		/// <param name="primaryState">class specific, appears before secondary state in log</param>
-		/// <param name="secondaryState">class specific, appears before message in log</param>
-		private void log(severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
-		{
-			if (Globals.WorldClosed)
-				return;
-
-			if (Static.numLines >= Static.maxNumLines)
-				return;
-
-			if (level <= severity.WARNING)
-				DebugNotify("Logger: " + level, 2000, level);
-
-			Static.m_logItems.AddTail(new LogItem()
-			{
-				context = f_context.InvokeIfExists(),
-				fileName = m_fileName,
-				time = DateTime.Now,
-				level = level,
-				member = member,
-				lineNumber = lineNumber,
-				toLog = toLog,
-				primaryState = primaryState ?? f_state_primary.InvokeIfExists(),
-				secondaryState = secondaryState ?? f_state_secondary.InvokeIfExists(),
-				thread = ThreadTracker.GetNameOrNumber()
-			});
-
-			if (MyAPIGateway.Parallel != null)
-				MyAPIGateway.Parallel.StartBackground(logLoop);
 		}
 
 		private static void log(string context, string fileName, severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)

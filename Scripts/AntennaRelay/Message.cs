@@ -37,7 +37,6 @@ namespace Rynchodon.AntennaRelay
 		private class StaticVariables
 		{
 			public readonly TimeSpan MaximumLifetime = new TimeSpan(1, 0, 0);
-			public readonly Logger logger = new Logger();
 			public readonly List<byte> bytes = new List<byte>();
 		}
 
@@ -70,10 +69,10 @@ namespace Rynchodon.AntennaRelay
 			ByteConverter.AppendBytes(Static.bytes, message);
 
 			if (MyAPIGateway.Multiplayer.TrySendMessageToServer(Static.bytes.ToArray()))
-				Static.logger.debugLog("Sent message to server");
+				Logger.DebugLog("Sent message to server");
 			else
 			{
-				Static.logger.alwaysLog("Message too long", Logger.severity.WARNING);
+				Logger.AlwaysLog("Message too long", Logger.severity.WARNING);
 
 				IMyEntity entity;
 				if (MyAPIGateway.Entities.TryGetEntityById(sender, out entity))
@@ -89,7 +88,7 @@ namespace Rynchodon.AntennaRelay
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				Static.logger.alwaysLog("Not the server!", Logger.severity.WARNING);
+				Logger.AlwaysLog("Not the server!", Logger.severity.WARNING);
 				return;
 			}
 
@@ -106,7 +105,7 @@ namespace Rynchodon.AntennaRelay
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out entity))
 			{
-				Static.logger.alwaysLog("Failed to get entity id for " + entityId, Logger.severity.WARNING);
+				Logger.AlwaysLog("Failed to get entity id for " + entityId, Logger.severity.WARNING);
 				block = null;
 				storage = null;
 				return;
@@ -115,7 +114,7 @@ namespace Rynchodon.AntennaRelay
 			block = entity as IMyCubeBlock;
 			if (block == null)
 			{
-				Static.logger.alwaysLog("Entity is not a block: " + entityId, Logger.severity.WARNING);
+				Logger.AlwaysLog("Entity is not a block: " + entityId, Logger.severity.WARNING);
 				storage = null;
 				return;
 			}
@@ -133,7 +132,7 @@ namespace Rynchodon.AntennaRelay
 		/// <returns>The number of blocks that will receive the message.</returns>
 		public static int CreateAndSendMessage(long sender, string recipientGrid, string recipientBlock, string message)
 		{
-			Static.logger.debugLog("sender: " + sender + ", recipientGrid: " + recipientGrid + ", recipientBlock: " + recipientBlock + ", message: " + message);
+			Logger.DebugLog("sender: " + sender + ", recipientGrid: " + recipientGrid + ", recipientBlock: " + recipientBlock + ", message: " + message);
 
 			int count =  CreateAndSendMessage_Autopilot(sender, recipientGrid, recipientBlock, message);
 			if (count != 0 && !MyAPIGateway.Multiplayer.IsServer)
@@ -154,7 +153,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (storage == null)
 			{
-				Static.logger.debugLog("No storage");
+				Logger.DebugLog("No storage");
 				return 0;
 			}
 
@@ -182,7 +181,7 @@ namespace Rynchodon.AntennaRelay
 
 			if (storage == null)
 			{
-				Static.logger.debugLog("No storage");
+				Logger.DebugLog("No storage");
 				return 0;
 			}
 
@@ -231,13 +230,13 @@ namespace Rynchodon.AntennaRelay
 			IMyEntity entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.DestCubeBlock, out entity) || !(entity is IMyCubeBlock))
 			{
-				(new Logger()).alwaysLog("Entity does not exist in world: " + builder.DestCubeBlock, Logger.severity.WARNING);
+				Logger.AlwaysLog("Entity does not exist in world: " + builder.DestCubeBlock, Logger.severity.WARNING);
 				return;
 			}
 			this.DestCubeBlock = (IMyCubeBlock)entity;
 			if (!MyAPIGateway.Entities.TryGetEntityById(builder.SourceCubeBlock, out entity) || !(entity is IMyCubeBlock))
 			{
-				(new Logger()).alwaysLog("Entity does not exist in world: " + builder.SourceCubeBlock, Logger.severity.WARNING);
+				Logger.AlwaysLog("Entity does not exist in world: " + builder.SourceCubeBlock, Logger.severity.WARNING);
 				return;
 			}
 			this.SourceCubeBlock = (IMyCubeBlock)entity;

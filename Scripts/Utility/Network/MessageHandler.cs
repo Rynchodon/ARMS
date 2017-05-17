@@ -14,7 +14,6 @@ namespace Rynchodon.Utility.Network
 		public delegate void Handler(byte[] message, int position);
 
 		private static Dictionary<SubMod, Handler> Handlers = new Dictionary<SubMod, Handler>();
-		private static Logger s_logger = new Logger();
 
 		[OnWorldLoad]
 		private static void Init()
@@ -54,13 +53,13 @@ namespace Rynchodon.Utility.Network
 				try { handler(received, position); }
 				catch (Exception ex)
 				{
-					s_logger.alwaysLog("Handler threw exception: " + ex, Logger.severity.ERROR);
-					s_logger.alwaysLog("Removing handler for " + dest, Logger.severity.ERROR);
+					Logger.AlwaysLog("Handler threw exception: " + ex, Logger.severity.ERROR);
+					Logger.AlwaysLog("Removing handler for " + dest, Logger.severity.ERROR);
 					Handlers.Remove(dest);
 				}
 			}
 			else
-				s_logger.alwaysLog("No handler for " + dest, Logger.severity.WARNING);
+				Logger.AlwaysLog("No handler for " + dest, Logger.severity.WARNING);
 		}
 
 	}
