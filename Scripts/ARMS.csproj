@@ -142,7 +142,11 @@
       <HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\SpaceEngineers')">C:\Program Files (x86)\Steam\steamapps\common\SpaceEngineers\Bin64\VRage.Math.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="VRage.Render, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+    <Reference Include="VRage.Render, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath Condition="Exists('C:\Games\Steam\steamapps\common\SpaceEngineers')">C:\Games\Steam\steamapps\common\SpaceEngineers\Bin64\VRage.Render.dll</HintPath>
+      <HintPath Condition="Exists('C:\Program Files\Steam\steamapps\common\SpaceEngineers')">C:\Program Files\Steam\steamapps\common\SpaceEngineers\Bin64\VRage.Render.dll</HintPath>
+      <HintPath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\SpaceEngineers')">..\..\..\..\Program Files (x86)\Steam\steamapps\common\SpaceEngineers\Bin64\VRage.Render.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AntennaRelay\ComponentLaser.cs" />
