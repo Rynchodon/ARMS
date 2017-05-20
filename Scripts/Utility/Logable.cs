@@ -76,7 +76,7 @@ namespace Rynchodon.Utility
 		public void AlwaysLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.AlwaysLog(toLog, level, Context, PrimaryState, SecondaryState, filePath, member, lineNumber);
 		}
 
 		[Conditional("TRACE")]
