@@ -1,4 +1,4 @@
-using System; // partial
+﻿using System; // partial
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Serialization;
@@ -59,7 +59,6 @@ namespace Rynchodon.Update
 
 		/// <summary>LastSeen that were not added immediately upon world loading, Saver will keep trying to add them.</summary>
 		private CachingDictionary<long, CachingList<LastSeen.Builder_LastSeen>> m_failedLastSeen;
-		private FileMaster m_fileMaster;
 
 		private Saver()
 		{
@@ -68,38 +67,16 @@ namespace Rynchodon.Update
 
 		private Builder_ArmsData GetData()
 		{
-			m_fileMaster = new FileMaster("SaveDataMaster.txt", "SaveData - ", int.MaxValue);
-
 			Builder_ArmsData data = null;
-
 			string serialized;
 			if (MyAPIGateway.Utilities.GetVariable(SaveXml, out serialized))
 			{
 				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(serialized);
 				if (data != null)
 				{
-					Logger.DebugLog("ARMS data was imbeded in the save file proper", Rynchodon.Logger.severity.DEBUG);
-					return data;
+					Logger.DebugLog("ARMS data was imbeded in the save file proper", Logger.severity.DEBUG);
 				}
 			}
-
-			string identifier = LegacyIdentifier(true);
-			if (identifier == null)
-			{
-				Logger.DebugLog("no identifier");
-				return data;
-			}
-
-			var reader = m_fileMaster.GetTextReader(identifier);
-			if (reader != null)
-			{
-				Logger.DebugLog("loading from file: " + identifier);
-				data = MyAPIGateway.Utilities.SerializeFromXML<Builder_ArmsData>(reader.ReadToEnd());
-				reader.Close();
-			}
-			else
-				Logger.AlwaysLog("Failed to open file reader for " + identifier);
-
 			return data;
 		}
 
@@ -176,62 +153,6 @@ namespace Rynchodon.Update
 					UpdateManager.Unregister(100, RetryLastSeen);
 				}
 			}
-		}
-
-		private string LegacyIdentifier(bool loading)
-		{
-			string path = MyAPIGateway.Session.CurrentPath;
-			string saveId_fromPath = path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1) + ".xml";
-			string saveId_fromWorld;
-
-			string saveId = null;
-			if (m_fileMaster.FileExists(saveId_fromPath))
-				saveId = saveId_fromPath;
-
-			// if file from path exists, it should match stored value
-			if (saveId != null)
-			{
-				if (!MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
-				{
-					Logger.AlwaysLog("Save exists for path but save id could not be retrieved from world. From path: " + saveId_fromPath, Rynchodon.Logger.severity.ERROR);
-				}
-				else if (saveId_fromPath != saveId_fromWorld)
-				{
-					Logger.AlwaysLog("Save id from path does not match save id from world. From path: " + saveId_fromPath + ", from world: " + saveId_fromWorld, Rynchodon.Logger.severity.ERROR);
-
-					// prefer from world
-					if (m_fileMaster.FileExists(saveId_fromWorld))
-						saveId = saveId_fromWorld;
-					else
-						Logger.AlwaysLog("Save id from world does not match a save. From world: " + saveId_fromWorld, Rynchodon.Logger.severity.ERROR);
-				}
-			}
-			else
-			{
-				if (MyAPIGateway.Utilities.GetVariable(SaveIdString, out saveId_fromWorld))
-				{
-					if (m_fileMaster.FileExists(saveId_fromWorld))
-					{
-						if (loading)
-							Logger.AlwaysLog("Save is a copy, loading from old world: " + saveId_fromWorld, Rynchodon.Logger.severity.DEBUG);
-						saveId = saveId_fromWorld;
-					}
-					else
-					{
-						if (loading)
-							Logger.AlwaysLog("Cannot load world, save id does not match any save: " + saveId_fromWorld, Rynchodon.Logger.severity.DEBUG);
-						return null;
-					}
-				}
-				else
-				{
-					if (loading)
-						Logger.AlwaysLog("Cannot load world, no save id found", Rynchodon.Logger.severity.DEBUG);
-					return null;
-				}
-			}
-
-			return saveId;
 		}
 
 		private void LoadSaveData(Builder_ArmsData data)
@@ -490,14 +411,6 @@ namespace Rynchodon.Update
 				data.Sync = ASync.GetBuilder();
 
 				MyAPIGateway.Utilities.SetVariable(SaveXml, MyAPIGateway.Utilities.SerializeToXML(data));
-
-				if (Instance.m_fileMaster != null)
-				{
-					string identifier = Instance.LegacyIdentifier(false);
-					if (identifier != null)
-						if (Instance.m_fileMaster.Delete(identifier))
-							Rynchodon.Logger.DebugLog("file deleted: " + identifier);
-				}
 			}
 			catch (Exception ex)
 			{

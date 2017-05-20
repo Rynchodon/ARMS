@@ -37,8 +37,6 @@ namespace Rynchodon
 			public DateTime time;
 		}
 
-		private const string s_logMaster = "log-master.txt";
-
 		private class StaticVariables
 		{
 			public LockedDeque<LogItem> m_logItems = new LockedDeque<LogItem>();
@@ -106,35 +104,11 @@ namespace Rynchodon
 			}
 		}
 
-		private static void deleteIfExists(string filename)
-		{
-			if (MyAPIGateway.Utilities.FileExistsInLocalStorage(filename, typeof(Logger)))
-				try { MyAPIGateway.Utilities.DeleteFileInLocalStorage(filename, typeof(Logger)); }
-				catch { AlwaysLog("failed to delete file: " + filename, severity.INFO); }
-		}
-
 		private static void createLog()
 		{
 			try
 			{
-				if (MyAPIGateway.Utilities.FileExistsInLocalStorage(s_logMaster, typeof(Logger)))
-				{
-					for (int i = 0; i < 10; i++)
-						deleteIfExists("log-" + i + ".txt");
-					FileMaster master = new FileMaster(s_logMaster, "log-", 10);
-					Static.logWriter = master.GetTextWriter(DateTime.UtcNow.Ticks + ".txt");
-				}
-				else
-				{
-					for (int i = 0; i < 10; i++)
-						if (Static.logWriter == null)
-							try
-							{ Static.logWriter = MyAPIGateway.Utilities.WriteFileInLocalStorage("log-" + i + ".txt", typeof(Logger)); }
-							catch { AlwaysLog("failed to start writer for file: log-" + i + ".txt", severity.INFO); }
-						else
-							deleteIfExists("log-" + i + ".txt");
-				}
-
+				Static.logWriter = new ModFile("log", "txt", Assembly.GetExecutingAssembly(), 10).GetTextWriter();
 				if (Static.logWriter == null)
 				{
 					MyLog.Default.WriteLine("ARMS Logger ERROR: failed to create a log file");
