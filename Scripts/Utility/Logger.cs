@@ -135,7 +135,11 @@ namespace Rynchodon
 		{
 #if DEBUG
 			if (condition)
+			{
+				assembly = (assembly != null) ? assembly : Assembly.GetCallingAssembly();
 				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
+			}
+
 #else
 			throw new Exception("DEBUG is not defined");
 #endif
@@ -149,7 +153,10 @@ namespace Rynchodon
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
 			if (condition)
+			{
+				assembly = (assembly != null) ? assembly : Assembly.GetCallingAssembly();
 				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
+			}
 		}
 
 		/// <summary>
@@ -160,7 +167,10 @@ namespace Rynchodon
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
 			if (condition)
+			{
+				assembly = (assembly != null) ? assembly : Assembly.GetCallingAssembly();
 				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
+			}
 		}
 
 		/// <summary>
@@ -169,6 +179,7 @@ namespace Rynchodon
 		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
 			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
+			assembly = (assembly != null) ? assembly : Assembly.GetCallingAssembly();
 			log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
