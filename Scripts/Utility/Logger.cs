@@ -35,18 +35,39 @@ namespace Rynchodon
 			public string context, fileName, member, toLog, primaryState, secondaryState, thread;
 			public int lineNumber;
 			public DateTime time;
+			public ModLog modLog;
+		}
+
+		private class ModLog
+		{
+			public TextWriter Writer;
+			public uint numLines = 0;
+
+			public ModLog(Assembly assembly)
+			{
+				try
+				{
+					Writer = new ModFile("log", "txt", assembly, 10).GetTextWriter();
+				}
+				catch (Exception ex)
+				{
+					string assemblyName = assembly == null ? "Null Assembly" : assembly.GetName().Name;
+					MyLog.Default.WriteLine("ARMS Logger ERROR: failed to create a log file for " + assemblyName);
+					MyLog.Default.WriteLine(ex);
+					throw;
+				}
+			}
 		}
 
 		private class StaticVariables
 		{
 			public LockedDeque<LogItem> m_logItems = new LockedDeque<LogItem>();
 			public VRage.FastResourceLock m_lockLogging = new VRage.FastResourceLock(); // do not use debug lock or it can get stuck in an exception loop
+			public LockedDictionary<Assembly, ModLog> m_modLogs = new LockedDictionary<Assembly, ModLog>();
 
-			public System.IO.TextWriter logWriter = null;
 			public StringBuilder stringCache = new StringBuilder();
 
 			public int maxNumLines = 1000000;
-			public int numLines = 0;
 		}
 
 		private static StaticVariables value_static;
@@ -79,6 +100,7 @@ namespace Rynchodon
 					fileName = typeof(Logger).ToString(),
 					time = DateTime.Now,
 					level = severity.INFO,
+					modLog = GetModLog(),
 					//member = null,
 					//lineNumber = 0,
 					toLog = "Closing log",
@@ -88,12 +110,11 @@ namespace Rynchodon
 				};
 				log(ref closingLog);
 
-
-				if (Static.logWriter != null)
+				foreach (ModLog log in Static.m_modLogs.Values)
 				{
-					Static.logWriter.Flush();
-					Static.logWriter.Close();
-					Static.logWriter = null;
+					log.Writer.Flush();
+					log.Writer.Close();
+					log.Writer = null;
 				}
 			}
 			catch (ObjectDisposedException) { }
@@ -104,36 +125,17 @@ namespace Rynchodon
 			}
 		}
 
-		private static void createLog()
-		{
-			try
-			{
-				Static.logWriter = new ModFile("log", "txt", Assembly.GetExecutingAssembly(), 10).GetTextWriter();
-				if (Static.logWriter == null)
-				{
-					MyLog.Default.WriteLine("ARMS Logger ERROR: failed to create a log file");
-					throw new Exception("Failed to create log file");
-				}
-			}
-			catch (Exception ex)
-			{
-				MyLog.Default.WriteLine("ARMS Logger ERROR: failed to create a log file");
-				MyLog.Default.WriteLine(ex);
-				throw;
-			}
-		}
-
 		/// <summary>
 		/// Conditional on TRACE in calling class. TRACE must be manually specified. If this method is invoked and the build is not Debug an Exception will be thrown.
 		/// </summary>
 		/// <exception cref="Exception">When the build is not DEBUG</exception>
 		[System.Diagnostics.Conditional("TRACE")]
 		public static void TraceLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
-			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
 #if DEBUG
 			if (condition)
-				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
 #else
 			throw new Exception("DEBUG is not defined");
 #endif
@@ -144,10 +146,10 @@ namespace Rynchodon
 		/// </summary>
 		[System.Diagnostics.Conditional("DEBUG")]
 		public static void DebugLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
-			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
 			if (condition)
-				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
@@ -155,27 +157,29 @@ namespace Rynchodon
 		/// </summary>
 		[System.Diagnostics.Conditional("PROFILE")]
 		public static void ProfileLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null, bool condition = true,
-			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
 			if (condition)
-				log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+				log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
 		/// <summary>
 		/// For logging messages in any build.
 		/// </summary>
 		public static void AlwaysLog(string toLog, severity level = severity.TRACE, string context = null, string primaryState = null, string secondaryState = null,
-			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+			[CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0, Assembly assembly = null)
 		{
-			log(context, Path.GetFileName(filePath), level, member, lineNumber, toLog, primaryState, secondaryState);
+			log(context, Path.GetFileName(filePath), level, assembly, member, lineNumber, toLog, primaryState, secondaryState);
 		}
 
-		private static void log(string context, string fileName, severity level, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
+		private static void log(string context, string fileName, severity level, Assembly assembly, string member, int lineNumber, string toLog, string primaryState = null, string secondaryState = null)
 		{
 			if (Globals.WorldClosed)
 				return;
 
-			if (Static.numLines >= Static.maxNumLines)
+			ModLog modLog = GetModLog(assembly);
+
+			if (modLog.numLines >= Static.maxNumLines)
 				return;
 
 			if (level <= severity.WARNING)
@@ -187,6 +191,7 @@ namespace Rynchodon
 				fileName = fileName,
 				time = DateTime.Now,
 				level = level,
+				modLog = modLog,
 				member = member,
 				lineNumber = lineNumber,
 				toLog = toLog,
@@ -226,7 +231,7 @@ namespace Rynchodon
 
 		private static void log(ref LogItem item)
 		{
-			if (Static.numLines >= Static.maxNumLines)
+			if (item.modLog.numLines >= Static.maxNumLines)
 				return;
 
 			if (item.toLog == null)
@@ -245,10 +250,8 @@ namespace Rynchodon
 				return;
 			}
 
-			if (Static.logWriter == null)
-				createLog();
 
-			Static.numLines++;
+			item.modLog.numLines++;
 			appendWithBrackets(item.time.ToString("yyyy-MM-dd HH:mm:ss,fff"));
 			appendWithBrackets(item.level.ToString());
 			appendWithBrackets(item.thread);
@@ -260,8 +263,8 @@ namespace Rynchodon
 			appendWithBrackets(item.secondaryState);
 			Static.stringCache.Append(item.toLog);
 
-			Static.logWriter.WriteLine(Static.stringCache);
-			Static.logWriter.Flush();
+			item.modLog.Writer.WriteLine(Static.stringCache);
+			item.modLog.Writer.Flush();
 			Static.stringCache.Clear();
 		}
 
@@ -327,6 +330,21 @@ namespace Rynchodon
 				default:
 					return MyFontEnum.White;
 			}
+		}
+
+		private static ModLog GetModLog(Assembly assembly = null)
+		{
+			if (assembly == null)
+				assembly = Assembly.GetExecutingAssembly();
+
+			ModLog result;
+			if (!Static.m_modLogs.TryGetValue(assembly, out result))
+			{
+				result = new ModLog(assembly);
+				Static.m_modLogs[assembly] = result;
+			}
+
+			return result;
 		}
 
 		/// <summary>

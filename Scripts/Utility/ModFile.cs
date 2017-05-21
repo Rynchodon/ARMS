@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using VRage.Utils;
 
 namespace Rynchodon.Utility
 {
@@ -11,6 +12,9 @@ namespace Rynchodon.Utility
 	/// Affixes a timestamp to the filename if maxVersions > 1.
 	/// Deletes all but the maxVersions most recent files with the same baseName and extension.
 	/// </summary>
+	/// <remarks>
+	/// Used by Logger. Don't use logging.
+	/// </remarks>
 	class ModFile
 	{
 		private static readonly string SEStoragePath = Path.Combine(
@@ -19,8 +23,6 @@ namespace Rynchodon.Utility
 
 		private readonly string m_assemblyName, m_baseName, m_dirPath, m_extension, m_fileName, m_filePath;
 		private readonly uint m_maxVersions;
-
-		private Logable Log { get { return new Logable(m_assemblyName, m_baseName, m_extension); } }
 
 		public ModFile(string baseName, string extension, Assembly modAssembly, uint maxVersions = 10)
 		{
@@ -37,7 +39,6 @@ namespace Rynchodon.Utility
 			m_filePath = Path.Combine(m_dirPath, m_fileName);
 			m_maxVersions = maxVersions;
 
-			Log.DebugLog($"Created ModFile. m_filePath: {m_filePath}, m_maxVersions: {m_maxVersions}");
 			Rotate();
 		}
 
@@ -91,7 +92,7 @@ namespace Rynchodon.Utility
 			}
 			catch (Exception e)
 			{
-				Log.AlwaysLog($"Error rotating files: {e}");
+				MyLog.Default.WriteLine("ARMS ModFile ERROR while rotating files: " + e);
 			}
 
 		}
@@ -103,11 +104,10 @@ namespace Rynchodon.Utility
 			try
 			{
 				File.Delete(path);
-				Log.DebugLog($"Deleted file at '{path}'");
 			}
 			catch (Exception e)
 			{
-				Log.AlwaysLog($"Error deleting file at '{path}': {e}");
+				MyLog.Default.WriteLine($"ARMS Logger ERROR deleting file at {path}: " + e);
 			}
 		}
 	}
