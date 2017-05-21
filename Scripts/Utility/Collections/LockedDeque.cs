@@ -6,10 +6,13 @@ namespace Rynchodon.Utility.Collections
 {
 	public static class LockedDequeExtensions
 	{
-		public static void InvokeAndClear(this LockedDeque<Action> actions)
+		/// <summary>
+		/// Pop from head and invoke every action in the deque.
+		/// </summary>
+		public static void PopHeadInvokeAll(this LockedDeque<Action> actions)
 		{
 			Action current;
-			while (actions.TryPopTail(out current))
+			while (actions.TryPopHead(out current))
 				current.Invoke();
 		}
 	}

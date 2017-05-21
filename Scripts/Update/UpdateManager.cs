@@ -570,13 +570,13 @@ namespace Rynchodon.Update
 
 				if (AddRemoveActions.Count != 0)
 					try
-					{ AddRemoveActions.InvokeAndClear();	}
+					{ AddRemoveActions.PopHeadInvokeAll();	}
 					catch (Exception ex)
 					{ Log.AlwaysLog("Exception in AddRemoveActions: " + ex, Logger.severity.ERROR); }
 
 				if (ExternalRegistrations.Count != 0)
 					try
-					{ ExternalRegistrations.InvokeAndClear(); }
+					{ ExternalRegistrations.PopHeadInvokeAll(); }
 					catch (Exception ex)
 					{ Log.AlwaysLog("Exception in ExternalRegistrations: " + ex, Logger.severity.ERROR); }
 

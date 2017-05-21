@@ -120,7 +120,7 @@ namespace Rynchodon.AntennaRelay
 				control.Getter = block => ShowOffset;
 				control.Setter = (block, value) => {
 					ShowOffset = value;
-					IMyTerminalBlockExtensions.RebuildControls(null);
+					block.RebuildControls();
 				};
 				TermControls.Add(control);
 

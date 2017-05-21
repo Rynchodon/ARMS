@@ -720,7 +720,7 @@ namespace Rynchodon.Weapons
 
 			try
 			{
-				GameThreadActions.InvokeAndClear();
+				GameThreadActions.PopHeadInvokeAll();
 				if (CurrentControl != Control.Off && MyAPIGateway.Multiplayer.IsServer)
 				{
 					if (FireWeapon)
