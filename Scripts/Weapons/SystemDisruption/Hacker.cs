@@ -34,7 +34,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		private TimeSpan m_nextHack;
 		private float m_strengthLeft;
 
-		private Logable Log { get { return new Logable(m_hackBlock as IMyCubeBlock); } }
+		private Logable Log { get { return new Logable(m_hackBlock); } }
 
 		public Hacker(IMyCubeBlock block)
 		{

@@ -14,7 +14,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private LastSeen m_enemy;
 		private bool m_approaching;
 
-		private Logable Log { get { return new Logable(m_controlBlock.CubeGrid.DisplayName); } }
+		private Logable Log { get { return new Logable(m_controlBlock.CubeGrid); } }
 
 		public Kamikaze(Pathfinder pathfinder, AllNavigationSettings navSet) : base(pathfinder) { }
 

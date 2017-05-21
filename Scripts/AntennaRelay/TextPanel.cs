@@ -122,7 +122,7 @@ namespace Rynchodon.AntennaRelay
 		private List<sortableLastSeen> m_sortableList;
 		private TimeSpan m_lastDisplay;
 
-		private Logable Log { get { return new Logable(myTermBlock as IMyCubeBlock);  } }
+		private Logable Log { get { return new Logable(myTermBlock);  } }
 
 		public TextPanel(IMyCubeBlock block)
 			: base(block)

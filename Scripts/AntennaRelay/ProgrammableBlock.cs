@@ -112,7 +112,7 @@ namespace Rynchodon.AntennaRelay
 				(block as IMyTerminalBlock).AppendCustomInfo("Sent message to " + count + " block" + (count == 1 ? "" : "s"));
 		}
 
-		private readonly Ingame.IMyProgrammableBlock m_progBlock;
+		private readonly IMyProgrammableBlock m_progBlock;
 		private readonly RelayClient m_networkClient;
 
 		private bool m_handleDetected;
@@ -134,12 +134,12 @@ namespace Rynchodon.AntennaRelay
 		private BlockTypeList m_blockCountList_btl;
 
 		private Logable Log
-		{ get { return new Logable(m_progBlock as IMyCubeBlock); } }
+		{ get { return new Logable(m_progBlock); } }
 
 		public ProgrammableBlock(IMyCubeBlock block)
 			: base(block)
 		{
-			m_progBlock = block as Ingame.IMyProgrammableBlock;
+			m_progBlock = block as IMyProgrammableBlock;
 			m_networkClient = new RelayClient(block, HandleMessage);
 
 			Log.DebugLog("initialized");

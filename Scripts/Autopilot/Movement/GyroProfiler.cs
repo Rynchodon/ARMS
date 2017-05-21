@@ -38,7 +38,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		public float GyroForce { get; private set; }
 
-		private Logable Log { get { return new Logable(myGrid.DisplayName); } }
+		private Logable Log { get { return new Logable(myGrid); } }
 
 		/// <summary>The three moments of inertial for the coordinate axes</summary>
 		public Vector3 InertiaMoment

@@ -86,8 +86,11 @@ namespace Rynchodon.Autopilot.Harvest
 						m_position = m_oreDetector.GetPosition();
 				}
 			}
+
 			private Logable Log
-			{ get { return new Logable(m_oreDetector.CubeGrid.DisplayName, m_oreDetector.DisplayNameText, m_voxel.ToString()); } }
+			{
+				get { return new Logable(m_oreDetector, m_voxel?.ToString()); }
+			}
 
 			private void AddMaterialLocation(byte material, ref Vector3I location)
 			{
@@ -422,7 +425,7 @@ namespace Rynchodon.Autopilot.Harvest
 
 		private readonly FastResourceLock l_getOreLocations = new FastResourceLock();
 
-		private Logable Log { get { return new Logable(m_oreDetector as IMyCubeBlock); } }
+		private Logable Log { get { return new Logable(m_oreDetector); } }
 
 		/// <summary>
 		/// Create an OreDetector for the given block.

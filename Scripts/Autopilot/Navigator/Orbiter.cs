@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private Vector3 m_faceDirection;
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeBlock); } }
+		{ get { return new Logable(m_controlBlock?.CubeBlock); } }
 		private IMyEntity OrbitEntity
 		{
 			get { return value_orbitEntity; }

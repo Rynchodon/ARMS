@@ -23,7 +23,9 @@ namespace Rynchodon.Autopilot.Navigator
 		private TimeSpan m_timeoutAt;
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeBlock.CubeGrid.nameWithId(), m_controlBlock.CubeBlock.nameWithId(), m_charName_orig); } }
+		{
+			get { return new Logable(m_controlBlock.CubeBlock, m_charName_orig); }
+		}
 
 		public FlyToCharacter(Pathfinder mover, string charName)
 			: base(mover)

@@ -13,7 +13,7 @@ namespace Rynchodon.Utility
 	{
 		public static Logable Pseudo(PseudoBlock pseudo, string SecondaryState = null)
 		{
-			return new Logable(pseudo.Grid.nameWithId(), pseudo.DisplayName, SecondaryState);
+			return new Logable(pseudo.Grid?.nameWithId(), pseudo?.DisplayName, SecondaryState);
 		}
 	}
 
@@ -49,6 +49,26 @@ namespace Rynchodon.Utility
 			{
 				Context = entity.nameWithId();
 				PrimaryState = SecondaryState = null;
+			}
+		}
+
+		public Logable(IMyEntity entity, string SecondaryState)
+		{
+			this.SecondaryState = SecondaryState;
+			if (entity == null)
+			{
+				Context = PrimaryState = null;
+			}
+			else if (entity is IMyCubeBlock)
+			{
+				IMyCubeBlock block = (IMyCubeBlock)entity;
+				Context = block.CubeGrid.nameWithId();
+				PrimaryState = block.nameWithId();
+			}
+			else
+			{
+				Context = entity.nameWithId();
+				PrimaryState = null;
 			}
 		}
 

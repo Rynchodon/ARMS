@@ -1,7 +1,6 @@
 using System.Text;
 using Rynchodon.Autopilot.Data;
 using Rynchodon.Autopilot.Pathfinding;
-using Rynchodon.Utility;
 using SpaceEngineers.Game.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -14,7 +13,6 @@ namespace Rynchodon.Autopilot.Navigator.Response
 		private readonly bool m_hasLandingGear;
 
 		private AllNavigationSettings m_navSet { get { return m_pathfinder.NavSet; } }
-		private Logable Log { get { return new Logable(""); } }
 
 		public EnemyLander(Pathfinder pathfinder, PseudoBlock landingGear)
 		{
@@ -22,13 +20,13 @@ namespace Rynchodon.Autopilot.Navigator.Response
 
 			if (landingGear == null)
 			{
-				Log.DebugLog("landingGear param is null, not going to land");
+				Logger.DebugLog("landingGear param is null, not going to land");
 				return;
 			}
 			this.m_hasLandingGear = landingGear.Block is IMyLandingGear;
 			if (!this.m_hasLandingGear)
 			{
-				Log.DebugLog("landingGear param is not landing gear: " + landingGear.Block.getBestName() + ", not going to land");
+				Logger.DebugLog("landingGear param is not landing gear: " + landingGear.Block.getBestName() + ", not going to land");
 				return;
 			}
 			this.m_flyToGrid = new FlyToGrid(pathfinder, finder: m_navSet.Settings_Current.EnemyFinder, landingBlock: landingGear);

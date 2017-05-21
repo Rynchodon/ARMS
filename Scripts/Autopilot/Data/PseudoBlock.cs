@@ -45,7 +45,7 @@ namespace Rynchodon.Autopilot.Data
 		public virtual string DisplayName
 		{ get { return Block != null ? Block.getBestName() : "Pseudo: " + LocalPosition.ToString(); } }
 
-		protected Logable Log { get { return Block != null ? new Logable(Block) : new Logable(m_grid.Invoke().DisplayName); } }
+		protected Logable Log { get { return LogableFrom.Pseudo(this); } }
 
 		public MatrixD WorldMatrix
 		{

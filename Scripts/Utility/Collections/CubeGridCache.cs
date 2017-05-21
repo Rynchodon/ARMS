@@ -62,7 +62,7 @@ namespace Rynchodon
 		public int CellCount { get; private set; }
 		public int TerminalBlocks { get; private set; }
 
-		private Logable Log { get { return new Logable(CubeGrid.DisplayName); } }
+		private Logable Log { get { return new Logable(CubeGrid); } }
 
 		private CubeGridCache(IMyCubeGrid grid)
 		{

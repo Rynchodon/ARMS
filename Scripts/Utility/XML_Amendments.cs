@@ -22,13 +22,10 @@ namespace Rynchodon
 		/// <summary>Data entries shall be (key)(keyValueSeparator)(value)</summary>
 		public char[] keyValueSeparator = { '=' };
 
-		private Type m_Type;
-
-		private Logable Log { get { return new Logable(m_Type.FullName); } }
+		private Logable Log { get { return new Logable(typeof(T).FullName); } }
 
 		public XML_Amendments(T obj)
 		{
-			m_Type = typeof(T);
 			this._serial = MyAPIGateway.Utilities.SerializeToXML<T>(obj);
 		}
 

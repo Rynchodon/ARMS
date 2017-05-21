@@ -65,7 +65,7 @@ namespace Rynchodon.Autopilot.Movement
 
 		public RotateChecker RotateCheck;
 
-		private Logable Log { get { return new Logable(Block.Controller); } }
+		private Logable Log { get { return new Logable(Block?.Controller); } }
 
 		private bool CheckStuck(ulong duration)
 		{

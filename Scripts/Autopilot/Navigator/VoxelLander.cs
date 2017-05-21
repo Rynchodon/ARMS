@@ -29,13 +29,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private Logable Log
 		{
-			get {
-				return new Logable(
-					m_controlBlock.CubeBlock.CubeGrid.nameWithId(),
-					m_controlBlock.CubeBlock.nameWithId(),
-					m_landBlock != null ? m_landBlock.Block.getBestName() : string.Empty
-				);
-			}
+			get { return new Logable(m_controlBlock.CubeBlock, m_landBlock?.Block.getBestName()); }
 		}
 
 		public VoxelLander(Pathfinder pathfinder, bool planet, PseudoBlock landBlock = null)

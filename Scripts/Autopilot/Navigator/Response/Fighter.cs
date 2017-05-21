@@ -42,7 +42,9 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_weaponDataDirty = true;
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeGrid.DisplayName); } }
+		{
+			get { return new Logable(m_controlBlock.CubeGrid); }
+		}
 
 		public Fighter(Pathfinder pathfinder, AllNavigationSettings navSet)
 			: base(pathfinder)

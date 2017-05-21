@@ -18,7 +18,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly PseudoBlock m_pseudoBlock;
 		private readonly IMyLaserAntenna m_laser;
 
-		private Logable Log { get { return new Logable(m_controlBlock.CubeBlock); } }
+		private Logable Log { get { return new Logable(m_controlBlock?.CubeBlock); } }
 
 		/// <param name="pathfinder">The mover to use</param>
 		/// 

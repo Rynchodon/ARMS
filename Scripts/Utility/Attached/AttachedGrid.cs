@@ -17,7 +17,7 @@ namespace Rynchodon.Attached
 			private IMyCubeGrid m_grid_1;
 
 			public AttachmentKind attachmentKinds { get; private set; }
-			private Logable Log { get { return new Logable(m_grid_0.DisplayName, m_grid_1.DisplayName); } }
+			private Logable Log { get { return new Logable(m_grid_0?.DisplayName, m_grid_1?.DisplayName); } }
 
 			public Attachments(IMyCubeGrid grid0, IMyCubeGrid grid1)
 			{
@@ -238,7 +238,7 @@ namespace Rynchodon.Attached
 
 		private readonly IMyCubeGrid myGrid;
 
-		private Logable Log { get { return new Logable(myGrid.DisplayName); } }
+		private Logable Log { get { return new Logable(myGrid); } }
 
 		/// <summary>
 		/// The grid connected to, the types of connection, the number of connections.

@@ -71,7 +71,9 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		private Logable Log
-		{ get { return new Logable(m_pathfinder.Mover.Block.CubeGrid.DisplayName, m_targetSlim.getBestName(), m_stage.ToString()); } }
+		{
+			get { return new Logable(m_pathfinder.Mover.Block.CubeBlock.nameWithId(), m_targetSlim.nameWithId(), m_stage.ToString()); }
+		}
 
 		public WeldBlock(Pathfinder pathfinder, AllNavigationSettings navSet, PseudoBlock welder, IMySlimBlock block)
 			: base(pathfinder)

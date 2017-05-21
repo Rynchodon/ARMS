@@ -16,7 +16,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly AllNavigationSettings.SettingsLevelName m_level;
 		private Destination m_destination;
 
-		private Logable Log { get { return new Logable(m_controlBlock.CubeBlock); } }
+		private Logable Log { get { return new Logable(m_controlBlock?.CubeBlock); } }
 		private PseudoBlock NavBlock
 		{
 			get { return m_navSet.Settings_Current.NavigationBlock; }

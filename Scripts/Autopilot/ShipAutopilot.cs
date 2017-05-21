@@ -132,7 +132,7 @@ namespace Rynchodon.Autopilot
 
 		private AutopilotActionList m_autopilotActions;
 
-		private Logable Log { get { return new Logable(m_block.CubeBlock); } }
+		private Logable Log { get { return new Logable(m_block?.CubeBlock); } }
 		private Mover m_mover { get { return m_pathfinder.Mover; } }
 		private AllNavigationSettings m_navSet { get { return m_mover.NavSet; } }
 

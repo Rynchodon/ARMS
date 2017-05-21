@@ -69,7 +69,9 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeGrid.DisplayName, m_stage.ToString()); } }
+		{
+			get { return new Logable(m_controlBlock.CubeGrid, m_stage.ToString()); }
+		}
 
 
 		public Grinder(Pathfinder pathfinder, float maxRange)

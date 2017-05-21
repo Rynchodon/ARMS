@@ -34,7 +34,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private List<IMySlimBlock> m_blocksWithInventory;
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeBlock); } }
+		{ get { return new Logable(m_controlBlock?.CubeBlock); } }
 
 		public WeldGrid(Pathfinder pathfinder, string gridName, bool shopAfter)
 			: base(pathfinder)

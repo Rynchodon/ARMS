@@ -53,7 +53,6 @@ namespace Rynchodon.Weapons.SystemDisruption
 
 		/// <summary>Block types that are affected by the disruption</summary>
 		protected abstract MyObjectBuilderType[] BlocksAffected { get; }
-		protected Logable Log { get { return new Logable(""); } }
 
 		/// <summary>
 		/// Adds a disruption effect to a grid.
@@ -66,7 +65,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 		{
 			if (strength < MinCost)
 			{
-				Log.DebugLog("strength: " + strength + ", below minimum: " + MinCost);
+				Logger.DebugLog("strength: " + strength + ", below minimum: " + MinCost);
 				return;
 			}
 
@@ -81,18 +80,18 @@ namespace Rynchodon.Weapons.SystemDisruption
 				{
 					if (!block.IsWorking || m_allAffected.Contains(block))
 					{
-						Log.DebugLog("cannot disrupt: " + block);
+						Logger.DebugLog("cannot disrupt: " + block);
 						continue;
 					}
 					float cost = BlockCost(block);
 					if (cost > strength)
 					{
-						Log.DebugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength);
+						Logger.DebugLog("cannot disrupt block: " + block + ", cost: " + cost + " is greater than strength available: " + strength);
 						continue;
 					}
 
 					StartEffect(block);
-					Log.DebugLog("disrupting: " + block + ", cost: " + cost + ", remaining strength: " + strength);
+					Logger.DebugLog("disrupting: " + block + ", cost: " + cost + ", remaining strength: " + strength);
 					strength -= cost;
 					applied += cost;
 					MyCubeBlock cubeBlock = block as MyCubeBlock;
@@ -110,7 +109,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 FinishedBlocks:
 			if (m_affected.Count != 0)
 			{
-				Log.DebugLog("Added new effect, strength: " + applied);
+				Logger.DebugLog("Added new effect, strength: " + applied);
 				m_expire = Globals.ElapsedTime.Add(duration);
 
 				UpdateManager.Register(UpdateFrequency, UpdateEffect); // don't unregister on grid close, blocks can still be valid
@@ -127,7 +126,7 @@ FinishedBlocks:
 				IMyEntity entity;
 				if (!MyAPIGateway.Entities.TryGetEntityById(builder.Affected_Blocks[index], out entity) || !(entity is IMyCubeBlock))
 				{
-					Log.DebugLog("Block is not in world: " + builder.Affected_Blocks[index], Logger.severity.WARNING);
+					Logger.DebugLog("Block is not in world: " + builder.Affected_Blocks[index], Rynchodon.Logger.severity.WARNING);
 					continue;
 				}
 				IMyCubeBlock block  = (IMyCubeBlock)entity;
@@ -141,7 +140,7 @@ FinishedBlocks:
 
 			if (m_affected.Count != 0)
 			{
-				Log.DebugLog("Added old effect from builder");
+				Logger.DebugLog("Added old effect from builder");
 				m_expire = builder.Expires.ToTimeSpan();
 				UpdateManager.Register(UpdateFrequency, UpdateEffect);
 				AllDisruptions.Add(this);
@@ -155,7 +154,7 @@ FinishedBlocks:
 		{
 			if (Globals.ElapsedTime > m_expire)
 			{
-				Log.DebugLog("Removing the effect", Logger.severity.DEBUG);
+				Logger.DebugLog("Removing the effect", Rynchodon.Logger.severity.DEBUG);
 				UpdateManager.Unregister(UpdateFrequency, UpdateEffect);
 				AllDisruptions.Remove(this);
 				RemoveEffect();
@@ -175,7 +174,7 @@ FinishedBlocks:
 				// sound files are not linked properly
 				try { block.SetDamageEffect(false); }
 				catch (NullReferenceException nre)
-				{ Log.AlwaysLog("Exception on disabling damage effect:\n" + nre, Logger.severity.ERROR); }
+				{ Logger.AlwaysLog("Exception on disabling damage effect:\n" + nre, Rynchodon.Logger.severity.ERROR); }
 
 				MyCubeBlock cubeBlock = block as MyCubeBlock;
 				cubeBlock.ChangeOwner(pair.Value.Owner, pair.Value.ShareMode);

@@ -23,7 +23,7 @@ namespace Rynchodon.Weapons
 		public List<string> Errors = new List<string>();
 
 		private Logable Log
-		{ get { return new Logable(Grid.DisplayName, Block.DefinitionDisplayNameText, Block.getNameOnly()); } }
+		{ get { return new Logable(Block); } }
 
 		public InterpreterWeapon(IMyCubeBlock block)
 			: base(block)

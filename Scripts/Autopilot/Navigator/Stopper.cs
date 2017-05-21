@@ -13,7 +13,7 @@ namespace Rynchodon.Autopilot.Navigator
 
 		private float m_lastLinearSpeedSquared = float.MaxValue, m_lastAngularSpeedSquared = float.MaxValue;
 
-		private Logable Log { get { return new Logable(m_controlBlock.Controller); } }
+		private Logable Log { get { return new Logable(m_controlBlock?.Controller); } }
 
 		/// <summary>
 		/// Creates a new Stopper

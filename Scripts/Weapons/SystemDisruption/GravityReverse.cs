@@ -37,7 +37,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 				return;
 			}
 
-			Log.AlwaysLog("Exotic gravity generator: " + block.DefinitionDisplayNameText + "/" + block.DisplayNameText, Logger.severity.WARNING);
+			Logger.AlwaysLog("Exotic gravity generator: " + block.DefinitionDisplayNameText + "/" + block.DisplayNameText, Rynchodon.Logger.severity.WARNING);
 		}
 
 	}

@@ -25,7 +25,7 @@ namespace Rynchodon.Weapons.SystemDisruption
 			if (pilot == null)
 				return;
 
-			Log.DebugLog("Killing: " + pilot + ", in " + block.DisplayNameText);
+			Logger.DebugLog("Killing: " + pilot + ", in " + block.DisplayNameText);
 			pilot.Kill();
 		}
 

@@ -17,8 +17,6 @@ namespace Rynchodon
 
 		private static FastResourceLock m_rayCastLock = new FastResourceLock();
 
-		private static Logable Log { get { return new Logable(""); } }
-
 		/// <summary>
 		/// <para>Test line segment between startPosition and targetPosition for obstructing entities.</para>
 		/// <para>Tests for obstructing voxel map, character, or grid.</para>
@@ -59,7 +57,7 @@ namespace Rynchodon
 					double distance;
 					if (entity.WorldAABB.Intersects(ref line, out distance))
 					{
-						Log.DebugLog("obstructed by character: " + entity.getBestName());
+						Logger.DebugLog("obstructed by character: " + entity.getBestName());
 						Profiler.EndProfileBlock();
 						return true;
 					}
@@ -103,7 +101,7 @@ namespace Rynchodon
 							}
 						}
 
-						Log.DebugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
+						Logger.DebugLog("obstructed by block: " + slim.getBestName() + " on " + slim.CubeGrid.DisplayName + ", id: " + slim.CubeGrid.EntityId);
 						Profiler.EndProfileBlock();
 						return true;
 					}
@@ -117,7 +115,7 @@ namespace Rynchodon
 				Vector3D hitPosition;
 				if (RayCastVoxels(line, out hitVoxel, out hitPosition, checkPlanet))
 				{
-					Log.DebugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
+					Logger.DebugLog("obstructed by voxel: " + hitVoxel + " at " + hitPosition);
 					Profiler.EndProfileBlock();
 					return true;
 				}

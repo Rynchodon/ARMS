@@ -86,7 +86,9 @@ namespace Rynchodon.Autopilot.Navigator
 		}
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeBlock.CubeGrid.nameWithId(), m_controlBlock.CubeBlock.nameWithId(), m_landingState.ToString()); } }
+		{
+			get { return new Logable(m_controlBlock.CubeBlock, m_landingState.ToString()); }
+		}
 
 		public FlyToGrid(Pathfinder pathfinder, string targetGrid = null, AttachedGrid.AttachmentKind allowedAttachment = AttachedGrid.AttachmentKind.Permanent, GridFinder finder = null, PseudoBlock landingBlock = null)
 			: base(pathfinder)

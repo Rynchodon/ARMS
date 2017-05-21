@@ -652,7 +652,7 @@ namespace Rynchodon.Weapons
 			get { return LoadedAmmo == null ? 800f : LoadedAmmo.AmmoDefinition.MaxTrajectory; }
 		}
 
-		private Logable Log { get { return new Logable(myTurret as IMyCubeBlock); } }
+		private Logable Log { get { return new Logable(myTurret); } }
 
 		private long TermControl_TargetEntityId
 		{ get { return (termControl_weaponFlags & WeaponFlags.EntityId) == 0 ? 0L : termControl_targetEntityId; } }

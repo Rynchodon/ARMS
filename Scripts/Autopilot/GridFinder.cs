@@ -47,7 +47,7 @@ namespace Rynchodon.Autopilot
 
 		private RelayStorage m_netStore { get { return m_controlBlock.NetworkStorage; } }
 
-		private Logable Log { get { return new Logable(m_controlBlock.CubeBlock); } }
+		private Logable Log { get { return new Logable(m_controlBlock?.CubeBlock); } }
 
 		/// <summary>
 		/// Creates a GridFinder to find a friendly grid based on its name.

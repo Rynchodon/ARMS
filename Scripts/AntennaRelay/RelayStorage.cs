@@ -83,7 +83,7 @@ namespace Rynchodon.AntennaRelay
 		public int LastSeenCount { get { return m_lastSeen.Count; } }
 
 		private Logable Log
-		{ get { return new Logable(PrimaryNode.DebugName); } }
+		{ get { return new Logable(PrimaryNode?.DebugName); } }
 
 		public RelayStorage(RelayNode primary)
 		{

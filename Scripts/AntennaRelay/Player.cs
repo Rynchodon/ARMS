@@ -78,7 +78,7 @@ namespace Rynchodon.AntennaRelay
 		private GuidedMissile m_threat;
 		private ulong m_nextBeep;
 
-		private Logable Log { get { return new Logable(myPlayer.DisplayName);  } }
+		private Logable Log { get { return new Logable(myPlayer?.DisplayName);  } }
 
 		public Player()
 		{

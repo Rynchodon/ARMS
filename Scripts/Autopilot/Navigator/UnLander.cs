@@ -22,7 +22,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private bool m_attached = true;
 
 		private Logable Log
-		{ get { return new Logable(m_controlBlock.CubeBlock); } }
+		{ get { return new Logable(m_controlBlock?.CubeBlock); } }
 
 		public UnLander(Pathfinder pathfinder, PseudoBlock unlandBlock = null)
 			: base(pathfinder)

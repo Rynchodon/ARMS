@@ -129,7 +129,7 @@ namespace Rynchodon.Autopilot.Pathfinding
 
 		#region Properties
 
-		private Logable Log { get { return new Logable(m_autopilotGrid.nameWithId(), m_navBlock != null ? m_navBlock.DisplayName : "N/A", CurrentState.ToString()); } }
+		private Logable Log { get { return new Logable(m_autopilotGrid.nameWithId(), m_navBlock?.DisplayName, CurrentState.ToString()); } }
 		public MyEntity ReportedObstruction { get { return m_obstructingBlock ?? m_obstructingEntity.Entity; } }
 		public Mover Mover { get; private set; }
 		public AllNavigationSettings NavSet { get { return Mover.NavSet; } }

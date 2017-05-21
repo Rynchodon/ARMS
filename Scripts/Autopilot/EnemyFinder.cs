@@ -47,10 +47,7 @@ namespace Rynchodon.Autopilot
 
 		private Logable Log
 		{
-			get {
-				VRage.Game.ModAPI.IMyCubeBlock block = m_pathfinder.Mover.Block.CubeBlock;
-				return new Logable(block.CubeGrid.nameWithId(), block.DefinitionDisplayNameText, CurrentResponse.Response.ToString());
-			}
+			get { return new Logable(m_pathfinder.Mover.Block.CubeBlock, CurrentResponse.Response.ToString()); }
 		}
 
 		public override LastSeen Grid

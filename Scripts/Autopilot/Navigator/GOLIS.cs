@@ -15,7 +15,7 @@ namespace Rynchodon.Autopilot.Navigator
 		private readonly Vector3D location;
 		private readonly AllNavigationSettings.SettingsLevelName m_level;
 
-		private Logable Log { get { return new Logable(m_controlBlock.CubeBlock); } }
+		private Logable Log { get { return new Logable(m_controlBlock?.CubeBlock); } }
 
 		/// <summary>
 		/// Creates a GOLIS
