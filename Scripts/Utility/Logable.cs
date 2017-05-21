@@ -1,6 +1,7 @@
 #define TRACE
 
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
 using VRage.Game.ModAPI;
@@ -25,9 +26,11 @@ namespace Rynchodon.Utility
 	{
 
 		public readonly string Context, PrimaryState, SecondaryState;
+		public readonly Assembly CallerAssembly;
 
 		public Logable(string Context, string PrimaryState = null, string SecondaryState = null)
 		{
+			this.CallerAssembly = Assembly.GetCallingAssembly();
 			this.Context = Context;
 			this.PrimaryState = PrimaryState;
 			this.SecondaryState = SecondaryState;
@@ -35,6 +38,7 @@ namespace Rynchodon.Utility
 		
 		public Logable(IMyEntity entity)
 		{
+			this.CallerAssembly = Assembly.GetCallingAssembly();
 			if (entity == null)
 			{
 				Context = PrimaryState = SecondaryState = null;
@@ -77,7 +81,7 @@ namespace Rynchodon.Utility
 		public void TraceLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.TraceLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.TraceLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("TRACE")]
@@ -91,7 +95,7 @@ namespace Rynchodon.Utility
 		public void DebugLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.DebugLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.DebugLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("DEBUG")]
@@ -105,25 +109,25 @@ namespace Rynchodon.Utility
 		public void ProfileLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.ProfileLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		public void AlwaysLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.AlwaysLog(toLog, level, Context, PrimaryState, SecondaryState, filePath, member, lineNumber);
+				Logger.AlwaysLog(toLog, level, Context, PrimaryState, SecondaryState, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("TRACE")]
 		public void EnteredMember([CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			Logger.TraceLog("entered member", Logger.severity.TRACE, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+			Logger.TraceLog("entered member", Logger.severity.TRACE, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("TRACE")]
 		public void LeavingMember([CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			Logger.TraceLog("leaving member", Logger.severity.TRACE, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber);
+			Logger.TraceLog("leaving member", Logger.severity.TRACE, Context, PrimaryState, SecondaryState, true, filePath, member, lineNumber, CallerAssembly);
 		}
 
 	}
