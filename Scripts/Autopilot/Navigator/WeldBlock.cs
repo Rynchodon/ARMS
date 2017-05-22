@@ -367,7 +367,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (Vector3I cell in removeList)
 					m_emptyNeighbours.Remove(cell);
 
-			Log.DebugLog("closest cell: " + m_closestEmptyNeighbour + ", closest position: " + m_realGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value), Logger.severity.DEBUG, condition: m_closestEmptyNeighbour.HasValue);
+			Log.DebugLog(() => "closest cell: " + m_closestEmptyNeighbour + ", closest position: " + m_realGrid.GridIntegerToWorld(m_closestEmptyNeighbour.Value), Logger.severity.DEBUG, condition: m_closestEmptyNeighbour.HasValue);
 		}
 
 	}

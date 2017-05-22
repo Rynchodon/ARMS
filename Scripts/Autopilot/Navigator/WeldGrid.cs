@@ -310,7 +310,7 @@ namespace Rynchodon.Autopilot.Navigator
 				foreach (IMySlimBlock remove in removeList)
 					m_damagedBlocks.Remove(remove);
 
-			Log.DebugLog("closest repairable block: " + repairable.getBestName(), Logger.severity.DEBUG, condition: repairable != null);
+			Log.DebugLog(() => "closest repairable block: " + repairable.getBestName(), Logger.severity.DEBUG, condition: repairable != null);
 
 			return repairable;
 		}

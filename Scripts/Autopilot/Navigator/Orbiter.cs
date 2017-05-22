@@ -56,7 +56,7 @@ namespace Rynchodon.Autopilot.Navigator
 					Vector3D navBlockPos = m_navBlock.WorldPosition;
 					double distSquared;
 					MyPlanet closest = MyPlanetExtensions.GetClosestPlanet(navBlockPos, out distSquared);
-					Log.DebugLog("distance to closest: " + Math.Sqrt(distSquared) + ", MaximumRadius: " + closest.MaximumRadius, condition: closest != null);
+					Log.DebugLog(() => "distance to closest: " + Math.Sqrt(distSquared) + ", MaximumRadius: " + closest.MaximumRadius, condition: closest != null);
 					if (closest != null && distSquared < closest.MaximumRadius * closest.MaximumRadius)
 					{
 						Vector3D targetCentre = value.GetCentre();

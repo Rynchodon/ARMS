@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Rynchodon.Autopilot.Data;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using System;
 
 namespace Rynchodon.Utility
 {
@@ -79,11 +80,25 @@ namespace Rynchodon.Utility
 				Logger.TraceLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
+		[Conditional("TRACE")]
+		public void TraceLog(Func<string> toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				Logger.TraceLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+		}
+
 		[Conditional("DEBUG")]
 		public void DebugLog(string toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
 				Logger.DebugLog(toLog, level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+		}
+
+		[Conditional("DEBUG")]
+		public void DebugLog(Func<string> toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
+		{
+			if (condition)
+				Logger.DebugLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
 		}
 
 		[Conditional("PROFILE")]

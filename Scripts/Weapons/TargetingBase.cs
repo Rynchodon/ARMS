@@ -406,7 +406,7 @@ namespace Rynchodon.Weapons
 					}
 				});
 
-				Log.DebugLog("chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist + ", position: " + processing.Entity.GetPosition(), condition: processing != null);
+				Log.DebugLog(() => "chose last seen with entity: " + processing.Entity.nameWithId() + ", block: " + targetBlock.getBestName() + ", type: " + bestType + ", distance squared: " + closestDist + ", position: " + processing.Entity.GetPosition(), condition: processing != null);
 				Log.DebugLog("no last seen target found", condition: processing == null);
 			}
 

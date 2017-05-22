@@ -234,7 +234,7 @@ namespace Rynchodon
 				if (Globals.WorldClosed)
 					return;
 				LogItem item;
-				while (Static.m_logItems.TryPopTail(out item))
+				while (Static.m_logItems.TryPopHead(out item))
 					log(ref item);
 			}
 			catch (Exception ex)
