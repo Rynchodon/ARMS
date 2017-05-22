@@ -206,7 +206,7 @@ for module in modules[:]:
 
 run_sepl(
 	SpaceEngineers + '\\SpaceEngineersPluginLoader\\PluginManager.exe',
-	startDir + '\\plugin.json',
+	startDir + '\\.build\\plugin.json',
 	buildDir,
 	("release" in str.lower(build))
 )

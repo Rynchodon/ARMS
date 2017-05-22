@@ -35,7 +35,6 @@ Global
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Profile|x64.ActiveCfg = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Profile|x64.Build.0 = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Release|x64.ActiveCfg = Release|x64
-		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Release|x64.Build.0 = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Release-Unstable|x64.ActiveCfg = Release|x64
 		{07082A56-DEB8-40F6-92E0-E57B5765FFC7}.Release-Unstable|x64.Build.0 = Release|x64
 	EndGlobalSection
