@@ -30,7 +30,7 @@ namespace Rynchodon
 
 		private static StaticVariables Static = new StaticVariables();
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
-		private const float def_RotationSpeedMultiplier = 5;
+		private const float speedLimit = MathHelper.Pi;
 
 		private static void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
 		{
@@ -58,9 +58,8 @@ namespace Rynchodon
 
 		private readonly IMyCubeBlock FaceBlock;
 		private readonly StatorChangeHandler OnStatorChange;
-
-		private float my_RotationSpeedMulitplier = def_RotationSpeedMultiplier;
-		private float mySpeedLimit = MathHelper.Pi;
+		/// <summary>Conversion between angle delta and speed.</summary>
+		private readonly float m_rotationSpeedMulitplier;
 
 		private bool m_claimedElevation, m_claimedAzimuth;
 		private IMyMotorStator value_statorEl, value_statorAz;
@@ -107,11 +106,13 @@ namespace Rynchodon
 
 		private Logable Log { get { return new Logable(FaceBlock); } }
 
-		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null)
+		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null, int updateFrequency = 100)
 		{
 			this.FaceBlock = block;
 			this.OnStatorChange = handler;
 			this.SetupStators();
+
+			m_rotationSpeedMulitplier = 60f / Math.Max(updateFrequency, 6);
 		}
 
 		~MotorTurret()
@@ -129,18 +130,6 @@ namespace Rynchodon
 			}
 		}
 
-		public float RotationSpeedMultiplier
-		{
-			get { return my_RotationSpeedMulitplier; }
-			set { my_RotationSpeedMulitplier = Math.Abs(value); }
-		}
-
-		public float SpeedLimit
-		{
-			get { return mySpeedLimit; }
-			set { mySpeedLimit = Math.Abs(value); }
-		}
-
 		/// <summary>
 		/// Try to face in the target direction.
 		/// </summary>
@@ -155,6 +144,8 @@ namespace Rynchodon
 			float bestDeltaElevation;
 			float bestDeltaAzimuth;
 			CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
+
+			Log.TraceLog("Face: " + target + ", elevation: " + bestDeltaElevation + ", azimuth: " + bestDeltaAzimuth);
 
 			if (m_claimedElevation)
 				SetVelocity(StatorEl, bestDeltaElevation);
@@ -389,11 +380,16 @@ namespace Rynchodon
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
 			// keep in mind, azimuth is undefined if elevation is straight up or straight down
-			float speed = angle.IsValid() ? MathHelper.Clamp(angle * RotationSpeedMultiplier, -mySpeedLimit, mySpeedLimit) : 0f;
+			float speed = angle.IsValid() ? MathHelper.Clamp(angle * m_rotationSpeedMulitplier, -speedLimit, speedLimit) : 0f;
 
 			float currentSpeed = Stator.TargetVelocity;
-			if ((speed == 0f && currentSpeed != 0f) || Math.Abs(speed - currentSpeed) > 0.1f)
+			if (Math.Abs(speed - currentSpeed) > 0.001f)
+			{
+				Log.TraceLog("Setting speed. current speed: " + currentSpeed + ", target: " + speed + ", angle: " + angle);
 				Stator.TargetVelocity = speed;
+			}
+			else
+				Log.TraceLog("Not changing speed. current speed: " + currentSpeed + ", target: " + speed + ", angle: " + angle);
 		}
 	}
 }
