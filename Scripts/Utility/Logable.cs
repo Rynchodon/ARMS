@@ -1,4 +1,4 @@
-#define TRACE
+﻿#define TRACE
 
 using System.Diagnostics;
 using System.Reflection;
@@ -59,6 +59,7 @@ namespace Rynchodon.Utility
 
 		public Logable(IMyEntity entity, string SecondaryState)
 		{
+			this.CallerAssembly = Assembly.GetCallingAssembly();
 			this.SecondaryState = SecondaryState;
 			if (entity == null)
 			{
@@ -88,7 +89,7 @@ namespace Rynchodon.Utility
 		public void TraceLog(Func<string> toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.TraceLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.TraceLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("DEBUG")]
@@ -102,7 +103,7 @@ namespace Rynchodon.Utility
 		public void DebugLog(Func<string> toLog, Logger.severity level = Logger.severity.TRACE, bool condition = true, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
 			if (condition)
-				Logger.DebugLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber);
+				Logger.DebugLog(toLog.Invoke(), level, Context, PrimaryState, SecondaryState, condition, filePath, member, lineNumber, CallerAssembly);
 		}
 
 		[Conditional("PROFILE")]
