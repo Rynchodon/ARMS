@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -348,6 +348,7 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), act);
 		}
 
+		private static LockedDeque<Action> ExternalRegistrations = new LockedDeque<Action>();
 		private static UpdateManager Instance;
 
 		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
@@ -355,7 +356,7 @@ namespace Rynchodon.Update
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.AddTail(() => {
+			ExternalRegistrations.AddTail(() => {
 				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
 			});
 		}
@@ -364,7 +365,7 @@ namespace Rynchodon.Update
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.AddTail(() => {
+			ExternalRegistrations.AddTail(() => {
 				Instance.UnRegisterForUpdates(frequency, toInvoke);
 			});
 		}
@@ -382,7 +383,6 @@ namespace Rynchodon.Update
 		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedDeque<Action> AddRemoveActions = new LockedDeque<Action>();
-		private LockedDeque<Action> ExternalRegistrations = new LockedDeque<Action>();
 
 		private HashSet<long> CubeBlocks = new HashSet<long>();
 		private HashSet<long> Characters = new HashSet<long>();
