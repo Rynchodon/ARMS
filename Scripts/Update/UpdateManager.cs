@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -349,36 +349,6 @@ namespace Rynchodon.Update
 		}
 
 		private static UpdateManager Instance;
-
-		static UpdateManager()
-		{
-			string oldPath = Path.Combine(MyFileSystem.UserDataPath, "Storage", "363880940.sbm_Autopilot");
-			if (Directory.Exists(oldPath))
-			{
-				string newPath = Path.Combine(MyFileSystem.UserDataPath, "Storage", "ARMS");
-				if (Directory.Exists(newPath))
-				{
-					Logger.AlwaysLog("ARMS folder exists, data must be manually merged", Logger.severity.WARNING);
-					return;
-				}
-				Directory.Move(oldPath, newPath);
-				string AutopilotSettings = Path.Combine(newPath, "AutopilotSettings.txt");
-				if (File.Exists(AutopilotSettings))
-				{
-					string ServerSettings = Path.Combine(newPath, "ServerSettings.txt");
-					if (File.Exists(ServerSettings))
-					{
-						Logger.AlwaysLog("AutopilotSettings.txt and ServerSettings.txt both exist", Logger.severity.WARNING);
-						return;
-					}
-					File.Move(AutopilotSettings, ServerSettings);
-				}
-				else
-					Logger.AlwaysLog("No file at " + AutopilotSettings, Logger.severity.WARNING);
-			}
-			else
-				Logger.DebugLog("No directory at " + oldPath);
-		}
 
 		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
 		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
