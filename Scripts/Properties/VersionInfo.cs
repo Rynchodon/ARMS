@@ -11,4 +11,4 @@ using System.Runtime.InteropServices;
 //
 // Major, Minor, and Build should be set in VersionInfo.cs not VersionInfo - User.cs
 // Revision is set by pre-build.py
-[assembly: AssemblyVersion("1.81.1.0")]
+[assembly: AssemblyVersion("1.81.2.0")]
