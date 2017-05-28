@@ -373,9 +373,6 @@ namespace Rynchodon.Update
 		private Dictionary<uint, List<Action>> UpdateRegistrar = new Dictionary<uint, List<Action>>();
 
 		private Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
-		/// <summary>For scripts that use a separate condition to determine if they run for a block.</summary>
-		private List<Action<IMyCubeBlock>> EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
-		/// <summary>For scripts that run on IMyCharacter entities.</summary>
 		private List<Action<IMyCharacter>> CharacterScriptConstructors = new List<Action<IMyCharacter>>();
 		private List<Action<IMyCubeGrid>> GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
@@ -630,15 +627,6 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Register a constructor for every block, it is highly recommended to include a condition in the Action.
-		/// </summary>
-		/// <param name="constructor">constructor wrapped in an Action</param>
-		private void RegisterForEveryBlock(Action<IMyCubeBlock> constructor)
-		{
-			EveryBlockScriptConstructors.Add(constructor);
-		}
-
-		/// <summary>
 		/// register a constructor Action for a block
 		/// </summary>
 		/// <param name="objBuildType">type of block to create for</param>
@@ -765,16 +753,6 @@ namespace Rynchodon.Update
 							Log.AlwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
 							Logger.DebugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
 						}
-
-				if (EveryBlockScriptConstructors.Count > 0)
-					foreach (Action<IMyCubeBlock> constructor in EveryBlockScriptConstructors)
-						try { constructor.Invoke(fatblock); }
-						catch (Exception ex)
-						{
-							Log.AlwaysLog("Exception in every block constructor: " + ex, Logger.severity.ERROR);
-							Logger.DebugNotify("Exception in every block constructor", 10000, Logger.severity.ERROR);
-						}
-
 				return;
 			}
 		}
