@@ -791,8 +791,6 @@ namespace Rynchodon.Update
 			asGrid.OnClosing -= Grid_OnClosing;
 		}
 
-		#endregion
-
 		public override void SaveData()
 		{
 			AttributeFinder.InvokeMethodsWithAttribute<OnWorldSave>();
@@ -831,6 +829,9 @@ namespace Rynchodon.Update
 			ManagerStatus = Status.Terminated;
 		}
 
+		#endregion
+		#region Internal data access helpers
+
 		/// <summary>
 		/// Gets the constructor list mapped to a MyObjectBuilderType
 		/// </summary>
@@ -859,5 +860,6 @@ namespace Rynchodon.Update
 			return updates;
 		}
 
+		#endregion
 	}
 }
