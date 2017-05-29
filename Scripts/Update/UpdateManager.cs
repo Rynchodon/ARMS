@@ -595,7 +595,6 @@ namespace Rynchodon.Update
 		}
 
 		#region Register
-
 		/// <summary>
 		/// register an Action for updates
 		/// </summary>
@@ -637,12 +636,7 @@ namespace Rynchodon.Update
 			//Log.DebugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
 			foreach (var block in CubeBlocks)
 				if (block.BlockDefinition.TypeId == objBuildType)
-					try { constructor.Invoke(block); }
-					catch (Exception ex)
-					{
-						Log.AlwaysLog("Exception in block constructor: " + ex, Logger.severity.ERROR);
-						Logger.DebugNotify("Exception in block constructor", 10000, Logger.severity.ERROR);
-					}
+					TryInvoke(() => constructor.Invoke(block), "block constructor");
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
@@ -660,12 +654,7 @@ namespace Rynchodon.Update
 		{
 			//Log.DebugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
 			foreach (var character in Characters)
-				try { constructor.Invoke(character); }
-				catch (Exception ex)
-				{
-					Log.AlwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
-					Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
-				}
+				TryInvoke(() => constructor.Invoke(character), "character constructor");
 			CharacterScriptConstructors.Add(constructor);
 		}
 
@@ -677,12 +666,7 @@ namespace Rynchodon.Update
 		{
 			//Log.DebugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
 			foreach (var grid in CubeGrids)
-				try { constructor.Invoke(grid); }
-				catch (Exception ex)
-				{
-					Log.AlwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
-					Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
-				}
+				TryInvoke(() => constructor.Invoke(grid), "grid constructor");
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -722,12 +706,7 @@ namespace Rynchodon.Update
 				asGrid.OnClosing += Grid_OnClosing;
 
 				foreach (var constructor in GridScriptConstructors)
-					try { constructor.Invoke(asGrid); }
-					catch (Exception ex)
-					{
-						Log.AlwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
-						Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
-					}
+					TryInvoke(() => constructor.Invoke(asGrid), "grid constructor");
 				return;
 			}
 			IMyCharacter asCharacter = entity as IMyCharacter;
@@ -742,12 +721,7 @@ namespace Rynchodon.Update
 
 				Log.DebugLog("adding character: " + entity.getBestName());
 				foreach (var constructor in CharacterScriptConstructors)
-					try { constructor.Invoke(asCharacter); }
-					catch (Exception ex)
-					{
-						Log.AlwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
-						Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
-					}
+					TryInvoke(() => constructor.Invoke(asCharacter), "character constructor");
 				return;
 			}
 		}
@@ -776,12 +750,7 @@ namespace Rynchodon.Update
 
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
-						try { constructor.Invoke(fatblock); }
-						catch (Exception ex)
-						{
-							Log.AlwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
-							Logger.DebugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
-						}
+						TryInvoke(() => constructor.Invoke(fatblock), typeId + " constructor");
 				return;
 			}
 		}
@@ -865,6 +834,20 @@ namespace Rynchodon.Update
 				UpdateRegistrar.Add(frequency, updates);
 			}
 			return updates;
+		}
+
+		private bool TryInvoke(Action action, string context)
+		{
+			try {
+				action.Invoke();
+				return true;
+			}
+			catch (Exception error)
+			{
+				Log.AlwaysLog($"Error running action for {context}: {error}", Logger.severity.ERROR);
+				Logger.DebugNotify($"Error running action for {context}.", 10000, Logger.severity.ERROR);
+				return false;
+			}
 		}
 
 		#endregion
