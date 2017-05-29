@@ -381,8 +381,9 @@ namespace Rynchodon.Update
 
 		private LockedDeque<Action> AddRemoveActions = new LockedDeque<Action>();
 
-		private HashSet<long> CubeBlocks = new HashSet<long>();
-		private HashSet<long> Characters = new HashSet<long>();
+		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
+		private HashSet<IMyCubeGrid> CubeGrids = new HashSet<IMyCubeGrid>();
+		private HashSet<IMyCharacter> Characters = new HashSet<IMyCharacter>();
 
 		private DateTime m_lastUpdate;
 
@@ -634,6 +635,14 @@ namespace Rynchodon.Update
 		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor)
 		{
 			//Log.DebugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
+			foreach (var block in CubeBlocks)
+				if (block.BlockDefinition.TypeId == objBuildType)
+					try { constructor.Invoke(block); }
+					catch (Exception ex)
+					{
+						Log.AlwaysLog("Exception in block constructor: " + ex, Logger.severity.ERROR);
+						Logger.DebugNotify("Exception in block constructor", 10000, Logger.severity.ERROR);
+					}
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
@@ -650,6 +659,13 @@ namespace Rynchodon.Update
 		private void RegisterForCharacter(Action<IMyCharacter> constructor)
 		{
 			//Log.DebugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
+			foreach (var character in Characters)
+				try { constructor.Invoke(character); }
+				catch (Exception ex)
+				{
+					Log.AlwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
+					Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
+				}
 			CharacterScriptConstructors.Add(constructor);
 		}
 
@@ -660,6 +676,13 @@ namespace Rynchodon.Update
 		private void RegisterForGrid(Action<IMyCubeGrid> constructor)
 		{
 			//Log.DebugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
+			foreach (var grid in CubeGrids)
+				try { constructor.Invoke(grid); }
+				catch (Exception ex)
+				{
+					Log.AlwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
+					Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
+				}
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -685,6 +708,12 @@ namespace Rynchodon.Update
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
+				if (!CubeGrids.Add(asGrid))
+					return;
+				asGrid.OnClosing += alsoGrid => {
+					if (CubeGrids != null)
+						CubeGrids.Remove((IMyCubeGrid)alsoGrid);
+				};
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
@@ -704,11 +733,11 @@ namespace Rynchodon.Update
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
-				if (!Characters.Add(entity.EntityId))
+				if (!Characters.Add(asCharacter))
 					return;
 				entity.OnClosing += alsoChar => {
 					if (Characters != null)
-						Characters.Remove(alsoChar.EntityId);
+						Characters.Remove((IMyCharacter)alsoChar);
 				};
 
 				Log.DebugLog("adding character: " + entity.getBestName());
@@ -734,11 +763,11 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				if (!CubeBlocks.Add(fatblock.EntityId))
+				if (!CubeBlocks.Add(fatblock))
 					return;
 				fatblock.OnClosing += alsoFatblock => {
 					if (CubeBlocks != null)
-						CubeBlocks.Remove(alsoFatblock.EntityId);
+						CubeBlocks.Remove((IMyCubeBlock)alsoFatblock);
 				};
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
