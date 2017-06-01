@@ -348,44 +348,15 @@ namespace Rynchodon.Update
 			RegisterForBlock(typeof(MyObjectBuilder_RemoteControl), act);
 		}
 
+		private static LockedDeque<Action> ExternalRegistrations = new LockedDeque<Action>();
 		private static UpdateManager Instance;
-
-		static UpdateManager()
-		{
-			string oldPath = Path.Combine(MyFileSystem.UserDataPath, "Storage", "363880940.sbm_Autopilot");
-			if (Directory.Exists(oldPath))
-			{
-				string newPath = Path.Combine(MyFileSystem.UserDataPath, "Storage", "ARMS");
-				if (Directory.Exists(newPath))
-				{
-					Logger.AlwaysLog("ARMS folder exists, data must be manually merged", Logger.severity.WARNING);
-					return;
-				}
-				Directory.Move(oldPath, newPath);
-				string AutopilotSettings = Path.Combine(newPath, "AutopilotSettings.txt");
-				if (File.Exists(AutopilotSettings))
-				{
-					string ServerSettings = Path.Combine(newPath, "ServerSettings.txt");
-					if (File.Exists(ServerSettings))
-					{
-						Logger.AlwaysLog("AutopilotSettings.txt and ServerSettings.txt both exist", Logger.severity.WARNING);
-						return;
-					}
-					File.Move(AutopilotSettings, ServerSettings);
-				}
-				else
-					Logger.AlwaysLog("No file at " + AutopilotSettings, Logger.severity.WARNING);
-			}
-			else
-				Logger.DebugLog("No directory at " + oldPath);
-		}
 
 		/// <param name="unregisterOnClosing">Leave as null if you plan on using Unregister at all.</param>
 		public static void Register(uint frequency, Action toInvoke, IMyEntity unregisterOnClosing = null)
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.AddTail(() => {
+			ExternalRegistrations.AddTail(() => {
 				Instance.RegisterForUpdates(frequency, toInvoke, unregisterOnClosing);
 			});
 		}
@@ -394,7 +365,7 @@ namespace Rynchodon.Update
 		{
 			if (Globals.WorldClosed)
 				return;
-			Instance.ExternalRegistrations.AddTail(() => {
+			ExternalRegistrations.AddTail(() => {
 				Instance.UnRegisterForUpdates(frequency, toInvoke);
 			});
 		}
@@ -402,9 +373,6 @@ namespace Rynchodon.Update
 		private Dictionary<uint, List<Action>> UpdateRegistrar = new Dictionary<uint, List<Action>>();
 
 		private Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>> AllBlockScriptConstructors = new Dictionary<MyObjectBuilderType, List<Action<IMyCubeBlock>>>();
-		/// <summary>For scripts that use a separate condition to determine if they run for a block.</summary>
-		private List<Action<IMyCubeBlock>> EveryBlockScriptConstructors = new List<Action<IMyCubeBlock>>();
-		/// <summary>For scripts that run on IMyCharacter entities.</summary>
 		private List<Action<IMyCharacter>> CharacterScriptConstructors = new List<Action<IMyCharacter>>();
 		private List<Action<IMyCubeGrid>> GridScriptConstructors = new List<Action<IMyCubeGrid>>();
 
@@ -412,10 +380,10 @@ namespace Rynchodon.Update
 		private Status ManagerStatus = Status.Not_Initialized;
 
 		private LockedDeque<Action> AddRemoveActions = new LockedDeque<Action>();
-		private LockedDeque<Action> ExternalRegistrations = new LockedDeque<Action>();
 
-		private HashSet<long> CubeBlocks = new HashSet<long>();
-		private HashSet<long> Characters = new HashSet<long>();
+		private HashSet<IMyCubeBlock> CubeBlocks = new HashSet<IMyCubeBlock>();
+		private HashSet<IMyCubeGrid> CubeGrids = new HashSet<IMyCubeGrid>();
+		private HashSet<IMyCharacter> Characters = new HashSet<IMyCharacter>();
 
 		private DateTime m_lastUpdate;
 
@@ -627,7 +595,6 @@ namespace Rynchodon.Update
 		}
 
 		#region Register
-
 		/// <summary>
 		/// register an Action for updates
 		/// </summary>
@@ -660,15 +627,6 @@ namespace Rynchodon.Update
 		}
 
 		/// <summary>
-		/// Register a constructor for every block, it is highly recommended to include a condition in the Action.
-		/// </summary>
-		/// <param name="constructor">constructor wrapped in an Action</param>
-		private void RegisterForEveryBlock(Action<IMyCubeBlock> constructor)
-		{
-			EveryBlockScriptConstructors.Add(constructor);
-		}
-
-		/// <summary>
 		/// register a constructor Action for a block
 		/// </summary>
 		/// <param name="objBuildType">type of block to create for</param>
@@ -676,6 +634,9 @@ namespace Rynchodon.Update
 		private void RegisterForBlock(MyObjectBuilderType objBuildType, Action<IMyCubeBlock> constructor)
 		{
 			//Log.DebugLog("Registered for block: " + objBuildType, "RegisterForBlock()", Logger.severity.DEBUG);
+			foreach (var block in CubeBlocks)
+				if (block.BlockDefinition.TypeId == objBuildType)
+					TryInvoke(() => constructor.Invoke(block), "block constructor");
 			BlockScriptConstructor(objBuildType).Add(constructor);
 		}
 
@@ -692,6 +653,8 @@ namespace Rynchodon.Update
 		private void RegisterForCharacter(Action<IMyCharacter> constructor)
 		{
 			//Log.DebugLog("Registered for character", "RegisterForCharacter()", Logger.severity.DEBUG);
+			foreach (var character in Characters)
+				TryInvoke(() => constructor.Invoke(character), "character constructor");
 			CharacterScriptConstructors.Add(constructor);
 		}
 
@@ -702,6 +665,8 @@ namespace Rynchodon.Update
 		private void RegisterForGrid(Action<IMyCubeGrid> constructor)
 		{
 			//Log.DebugLog("Registered for grid", "RegisterForGrid()", Logger.severity.DEBUG);
+			foreach (var grid in CubeGrids)
+				TryInvoke(() => constructor.Invoke(grid), "grid constructor");
 			GridScriptConstructors.Add(constructor);
 		}
 
@@ -727,6 +692,12 @@ namespace Rynchodon.Update
 			IMyCubeGrid asGrid = entity as IMyCubeGrid;
 			if (asGrid != null)
 			{
+				if (!CubeGrids.Add(asGrid))
+					return;
+				asGrid.OnClosing += alsoGrid => {
+					if (CubeGrids != null)
+						CubeGrids.Remove((IMyCubeGrid)alsoGrid);
+				};
 				List<IMySlimBlock> blocksInGrid = new List<IMySlimBlock>();
 				asGrid.GetBlocks(blocksInGrid, slim => slim.FatBlock != null);
 				foreach (IMySlimBlock slim in blocksInGrid)
@@ -735,32 +706,22 @@ namespace Rynchodon.Update
 				asGrid.OnClosing += Grid_OnClosing;
 
 				foreach (var constructor in GridScriptConstructors)
-					try { constructor.Invoke(asGrid); }
-					catch (Exception ex)
-					{
-						Log.AlwaysLog("Exception in grid constructor: " + ex, Logger.severity.ERROR);
-						Logger.DebugNotify("Exception in grid constructor", 10000, Logger.severity.ERROR);
-					}
+					TryInvoke(() => constructor.Invoke(asGrid), "grid constructor");
 				return;
 			}
 			IMyCharacter asCharacter = entity as IMyCharacter;
 			if (asCharacter != null)
 			{
-				if (!Characters.Add(entity.EntityId))
+				if (!Characters.Add(asCharacter))
 					return;
 				entity.OnClosing += alsoChar => {
 					if (Characters != null)
-						Characters.Remove(alsoChar.EntityId);
+						Characters.Remove((IMyCharacter)alsoChar);
 				};
 
 				Log.DebugLog("adding character: " + entity.getBestName());
 				foreach (var constructor in CharacterScriptConstructors)
-					try { constructor.Invoke(asCharacter); }
-					catch (Exception ex)
-					{
-						Log.AlwaysLog("Exception in character constructor: " + ex, Logger.severity.ERROR);
-						Logger.DebugNotify("Exception in character constructor", 10000, Logger.severity.ERROR);
-					}
+					TryInvoke(() => constructor.Invoke(asCharacter), "character constructor");
 				return;
 			}
 		}
@@ -776,11 +737,11 @@ namespace Rynchodon.Update
 			IMyCubeBlock fatblock = block.FatBlock;
 			if (fatblock != null)
 			{
-				if (!CubeBlocks.Add(fatblock.EntityId))
+				if (!CubeBlocks.Add(fatblock))
 					return;
 				fatblock.OnClosing += alsoFatblock => {
 					if (CubeBlocks != null)
-						CubeBlocks.Remove(alsoFatblock.EntityId);
+						CubeBlocks.Remove((IMyCubeBlock)alsoFatblock);
 				};
 
 				MyObjectBuilderType typeId = fatblock.BlockDefinition.TypeId;
@@ -789,22 +750,7 @@ namespace Rynchodon.Update
 
 				if (AllBlockScriptConstructors.ContainsKey(typeId))
 					foreach (Action<IMyCubeBlock> constructor in BlockScriptConstructor(typeId))
-						try { constructor.Invoke(fatblock); }
-						catch (Exception ex)
-						{
-							Log.AlwaysLog("Exception in " + typeId + " constructor: " + ex, Logger.severity.ERROR);
-							Logger.DebugNotify("Exception in " + typeId + " constructor", 10000, Logger.severity.ERROR);
-						}
-
-				if (EveryBlockScriptConstructors.Count > 0)
-					foreach (Action<IMyCubeBlock> constructor in EveryBlockScriptConstructors)
-						try { constructor.Invoke(fatblock); }
-						catch (Exception ex)
-						{
-							Log.AlwaysLog("Exception in every block constructor: " + ex, Logger.severity.ERROR);
-							Logger.DebugNotify("Exception in every block constructor", 10000, Logger.severity.ERROR);
-						}
-
+						TryInvoke(() => constructor.Invoke(fatblock), typeId + " constructor");
 				return;
 			}
 		}
@@ -820,8 +766,6 @@ namespace Rynchodon.Update
 			asGrid.OnBlockAdded -= Grid_OnBlockAdded;
 			asGrid.OnClosing -= Grid_OnClosing;
 		}
-
-		#endregion
 
 		public override void SaveData()
 		{
@@ -861,6 +805,9 @@ namespace Rynchodon.Update
 			ManagerStatus = Status.Terminated;
 		}
 
+		#endregion
+		#region Internal data access helpers
+
 		/// <summary>
 		/// Gets the constructor list mapped to a MyObjectBuilderType
 		/// </summary>
@@ -889,5 +836,20 @@ namespace Rynchodon.Update
 			return updates;
 		}
 
+		private bool TryInvoke(Action action, string context)
+		{
+			try {
+				action.Invoke();
+				return true;
+			}
+			catch (Exception error)
+			{
+				Log.AlwaysLog($"Error running action for {context}: {error}", Logger.severity.ERROR);
+				Logger.DebugNotify($"Error running action for {context}.", 10000, Logger.severity.ERROR);
+				return false;
+			}
+		}
+
+		#endregion
 	}
 }
