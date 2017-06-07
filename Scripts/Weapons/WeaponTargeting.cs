@@ -833,7 +833,11 @@ namespace Rynchodon.Weapons
 				if (UpdateNumber % 10 == 0)
 				{
 					if (UpdateNumber % 100 == 0)
+					{
+						if (UpdateNumber % 1000 == 0 || CurrentTarget.IsNull())
+							ClearBlacklist();
 						Profiler.Profile(Update100);
+					}
 					Profiler.Profile(Update10);
 				}
 				Profiler.Profile(Update1);
@@ -901,7 +905,6 @@ namespace Rynchodon.Weapons
 			}
 
 			//Log.DebugLog("fire: " + FireWeapon + ", isFiring: " + IsFiringWeapon, "Update100()");
-			ClearBlacklist();
 
 			Interpreter.UpdateInstruction();
 			Options.Assimilate(Interpreter.Options, termControl_targetType, termControl_targetFlag, termControl_range, TermControl_TargetGolis, TermControl_TargetEntityId, m_termControl_blockList);

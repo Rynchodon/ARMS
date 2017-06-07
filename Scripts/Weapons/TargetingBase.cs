@@ -73,7 +73,7 @@ namespace Rynchodon.Weapons
 
 		protected List<IMyEntity> PotentialObstruction = new List<IMyEntity>();
 		/// <summary>Targets that cannot be hit.</summary>
-		private readonly MyUniqueList<IMyEntity> Blacklist = new MyUniqueList<IMyEntity>();
+		private readonly HashSet<long> Blacklist = new HashSet<long>();
 		private readonly Dictionary<TargetType, List<IMyEntity>> Available_Targets = new Dictionary<TargetType, List<IMyEntity>>();
 		private List<MyEntity> nearbyEntities = new List<MyEntity>();
 
@@ -239,7 +239,7 @@ namespace Rynchodon.Weapons
 		protected void BlacklistTarget()
 		{
 #endif
-			Blacklist.Add(myTarget.Entity);
+			Blacklist.Add(myTarget.Entity.EntityId);
 			myTarget = NoTarget.Instance;
 			CurrentTarget = myTarget;
 		}
@@ -482,7 +482,7 @@ namespace Rynchodon.Weapons
 					continue;
 				}
 
-				if (Blacklist.Contains(entity))
+				if (Blacklist.Contains(entity.EntityId))
 				{
 					Log.TraceLog("blacklisted: " + entity.nameWithId());
 					continue;
@@ -655,7 +655,7 @@ namespace Rynchodon.Weapons
 					if (PhysicalProblem(ref targetPosition, target))
 					{
 						Log.TraceLog("can't target: " + target.getBestName());
-						Blacklist.Add(target);
+						Blacklist.Add(target.EntityId);
 						continue;
 					}
 				}
@@ -700,7 +700,7 @@ namespace Rynchodon.Weapons
 					return false;
 				}
 
-			if (Blacklist.Contains(block))
+			if (Blacklist.Contains(block.EntityId))
 			{
 				Log.TraceLog("blacklisted: " + block.nameWithId());
 				return false;

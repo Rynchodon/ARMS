@@ -6,6 +6,14 @@ using VRageMath;
 
 namespace Rynchodon.Weapons
 {
+	public static class TargetExtensions
+	{
+		public static bool IsNull(this Target t)
+		{
+			return t == null || t.Entity == null;
+		}
+	}
+
 	public abstract class Target
 	{
 
