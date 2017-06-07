@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using VRageMath;
 
 namespace Rynchodon
@@ -239,6 +240,18 @@ namespace Rynchodon
 		public static int Max(this Vector3I vector)
 		{
 			return Math.Max(vector.X, Math.Max(vector.Y, vector.Z));
+		}
+
+		[Conditional("DEBUG")]
+		public static void AssertNormalized(this Vector3 vector, string vectorName = "vector")
+		{
+			Debug.Assert(Math.Abs(vector.LengthSquared() - 1f) < 0.01f, vectorName + " is not normalized");
+		}
+
+		[Conditional("DEBUG")]
+		public static void AssertNormalized(this Vector3D vector, string vectorName = "vector")
+		{
+			Debug.Assert(Math.Abs(vector.LengthSquared() - 1d) < 0.01d, vectorName + " is not normalized");
 		}
 
 	}
