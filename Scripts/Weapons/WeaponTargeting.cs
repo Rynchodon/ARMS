@@ -603,11 +603,15 @@ namespace Rynchodon.Weapons
 		}
 
 		private static ITerminalProperty<bool> m_shootProperty;
+		private static Sandbox.ModAPI.Interfaces.ITerminalAction m_shootOnce;
 
 		private bool GetShootProp()
 		{
 			if (m_shootProperty == null)
+			{
 				m_shootProperty = CubeBlock.GetProperty("Shoot").AsBool();
+				m_shootOnce = CubeBlock.GetAction("ShootOnce");
+			}
 			return m_shootProperty.GetValue(CubeBlock);
 		}
 
@@ -623,6 +627,7 @@ namespace Rynchodon.Weapons
 				myTurret.SetTarget(ProjectilePosition() + CurrentTarget.FiringDirection.Value * 1000f);
 			}
 			m_shootProperty.SetValue(CubeBlock, true);
+			m_shootOnce.Apply(CubeBlock);
 		}
 
 		private void ShootOff()
