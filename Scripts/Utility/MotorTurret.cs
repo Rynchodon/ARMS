@@ -302,7 +302,7 @@ namespace Rynchodon
 			Logger.TraceLog("normalized " + nameof(target) + " is " + target);
 
 			float dot; Vector3.Dot(ref current, ref target, out dot);
-			if (dot == 1f)
+			if (dot > 0.99999f)
 			{
 				Logger.TraceLog("Already facing desired direction");
 				// already facing the desired direction
