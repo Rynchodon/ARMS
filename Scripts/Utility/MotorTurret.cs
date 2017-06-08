@@ -1,15 +1,13 @@
 #if DEBUG
-#define TRACE
+//#define TRACE
 #endif
 
 using System;
 using System.Collections.Generic;
-using Rynchodon.Attached;
 using Rynchodon.Utility;
 using Rynchodon.Utility.Vectors;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
@@ -311,6 +309,8 @@ namespace Rynchodon
 			}
 
 			float angle = (float)Math.Acos(dot);
+			angle.AssertIsValid();
+
 			if (target.Z * current.X - target.X * current.Z > 0f) // Y component of cross product > 0
 			{
 				delta1 = angle;
@@ -475,18 +475,18 @@ namespace Rynchodon
 		private void SetVelocity(MyMotorStator stator, float angle)
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			angle.AssertIsValid();
 
-			// keep in mind, azimuth is undefined if elevation is straight up or straight down
-			float speed = angle.IsValid() ? MathHelper.Clamp(angle * m_rotationSpeedMulitplier, -speedLimit, speedLimit) : 0f;
+			float velocity = MathHelper.Clamp(angle * m_rotationSpeedMulitplier, -speedLimit, speedLimit);
 
-			float currentSpeed = stator.TargetVelocity;
-			if (Math.Abs(speed - currentSpeed) > 0.001f)
+			float currentVelocity = stator.TargetVelocity;
+			if (Math.Sign(velocity) != Math.Sign(currentVelocity) || Math.Abs(velocity - currentVelocity) > 0.01f)
 			{
-				Log.TraceLog("Setting speed. current speed: " + currentSpeed + ", target: " + speed + ", angle: " + angle);
-				stator.TargetVelocity.Value = speed;
+				Log.TraceLog("Stator: " + stator.nameWithId() + ", Setting velocity. " + nameof(currentVelocity) + ": " + currentVelocity + ", target: " + velocity + ", angle: " + angle);
+				stator.TargetVelocity.Value = velocity;
 			}
-			else
-				Log.TraceLog("Not changing speed. current speed: " + currentSpeed + ", target: " + speed + ", angle: " + angle);
+			//else
+			//	Log.TraceLog("Not changing velocity. " + nameof(currentVelocity) + ": " + currentVelocity + ", target: " + velocity + ", angle: " + angle);
 		}
 	}
 }
