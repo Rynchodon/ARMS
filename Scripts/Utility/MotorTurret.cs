@@ -1,5 +1,5 @@
 #if DEBUG
-//#define TRACE
+#define TRACE
 #endif
 
 using System;
@@ -35,233 +35,52 @@ namespace Rynchodon
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 		private const float speedLimit = MathHelper.Pi;
 
-		private static void GetElevationAndAzimuth(Vector3 vector, out float elevation, out float azimuth)
-		{
-			elevation = (float)Math.Asin(vector.Y);
-
-			// azimuth is arbitrary when elevation is +/- 1
-			if (Math.Abs(vector.Y) > 0.9999f)
-				azimuth = float.NaN;
-			else
-				azimuth = (float)Math.Atan2(vector.X, vector.Z);
-		}
-
 		/// <summary>
 		/// Determines if a stator can rotate a specific amount.
 		/// </summary>
 		/// <returns>True iff the stator can rotate the specified amount.</returns>
-		private static bool CanRotate(IMyMotorStator stator, float amount)
+		private static bool WithinLimits(IMyMotorStator stator, float delta)
 		{
-			// NaN is treated as zero
-			if (float.IsNaN(amount) || stator.UpperLimit - stator.LowerLimit > MathHelper.TwoPi)
+			if (stator.UpperLimit - stator.LowerLimit >= MathHelper.TwoPi)
 				return true;
 
-			return amount > 0f ? amount <= stator.UpperLimit - stator.Angle : amount >= stator.LowerLimit - stator.Angle;
-		}
-
-		private readonly IMyCubeBlock FaceBlock;
-		private readonly StatorChangeHandler OnStatorChange;
-		/// <summary>Conversion between angle delta and speed.</summary>
-		private readonly float m_rotationSpeedMulitplier;
-
-		private bool m_claimedElevation, m_claimedAzimuth;
-		private IMyMotorStator value_statorEl, value_statorAz;
-
-		/// <summary>Shall be the stator that is closer to the FaceBlock (by grids).</summary>
-		public IMyMotorStator StatorEl
-		{
-			get { return value_statorEl; }
-			private set
-			{
-				if (value_statorEl == value)
-					return;
-				if (m_claimedElevation)
-				{
-					m_claimedElevation = false;
-					if (Static.claimedStators.Remove(value_statorEl))
-						Log.DebugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
-					else
-						Log.AlwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
-				}
-				value_statorEl = value;
-			}
-		}
-
-		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
-		public IMyMotorStator StatorAz
-		{
-			get { return value_statorAz; }
-			private set
-			{
-				if (value_statorAz == value)
-					return;
-				if (m_claimedAzimuth)
-				{
-					m_claimedAzimuth = false;
-					if (Static.claimedStators.Remove(value_statorAz))
-						Log.DebugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
-					else
-						Log.AlwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
-				}
-				value_statorAz = value;
-			}
-		}
-
-		private Logable Log { get { return new Logable(FaceBlock); } }
-
-		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null, int updateFrequency = 100)
-		{
-			this.FaceBlock = block;
-			this.OnStatorChange = handler;
-			this.SetupStators();
-
-			m_rotationSpeedMulitplier = 60f / Math.Max(updateFrequency, 6);
-		}
-
-		~MotorTurret()
-		{
-			Dispose();
-		}
-
-		public void Dispose()
-		{
-			if (!Globals.WorldClosed)
-			{
-				Stop();
-				StatorEl = null;
-				StatorAz = null;
-			}
+			float target = stator.Angle + delta;
+			return delta > 0f ? target <= stator.UpperLimit : target >= stator.LowerLimit;
 		}
 
 		/// <summary>
-		/// Try to face in the target direction.
+		/// Clamp an angle change by the angle limits of a stator.
 		/// </summary>
-		public void FaceTowards(DirectionWorld target)
+		private static float ClampToLimits(IMyMotorStator stator, float delta)
 		{
-			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
-			Debug.Assert(Threading.ThreadTracker.IsGameThread, "not game thread");
+			if (stator.UpperLimit - stator.LowerLimit >= MathHelper.TwoPi)
+				return delta;
 
-			if (!SetupStators())
-				return;
-
-			float bestDeltaElevation;
-			float bestDeltaAzimuth;
-			CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
-
-			Log.TraceLog("Face: " + target + ", elevation: " + bestDeltaElevation + ", azimuth: " + bestDeltaAzimuth);
-
-			if (m_claimedElevation)
-				SetVelocity(StatorEl, bestDeltaElevation);
-			if (m_claimedAzimuth)
-				SetVelocity(StatorAz, bestDeltaAzimuth);
-		}
-
-		public bool CanFaceTowards(DirectionWorld target)
-		{
-			if (!StatorOK())
-				return false;
-
-			float bestDeltaElevation;
-			float bestDeltaAzimuth;
-			return CalcFaceTowards(target, out bestDeltaElevation, out bestDeltaAzimuth);
-		}
-
-		private bool CalcFaceTowards(DirectionWorld target, out float bestDeltaElevation, out float bestDeltaAzimuth)
-		{
-			float bestSumDeltaMag = float.PositiveInfinity;
-			bestDeltaElevation = bestDeltaAzimuth = float.NaN;
-			Vector3 elTarget = target.ToBlock(StatorEl);
-
-			foreach (var direction in FaceBlock.FaceDirections())
-			{
-				DirectionWorld faceDirection = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(direction) };
-
-				Vector3 elCurrent = faceDirection.ToBlock(StatorEl);
-
-				Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(elTarget) + ": " + elTarget + ", " + nameof(elCurrent) + ": " + elCurrent);
-
-				float firstElDelta, secondElDelta;
-				CalcDelta(elCurrent, elTarget, out firstElDelta, out secondElDelta);
-
-				float deltaAzimuth;
-
-				if (CanRotate(StatorEl, firstElDelta) && CalcAzimuth(target, faceDirection, firstElDelta, out deltaAzimuth))
-				{
-					float sumDeltaMag = Math.Abs(firstElDelta) + Math.Abs(deltaAzimuth);
-					Log.TraceLog(nameof(firstElDelta) + ": " + firstElDelta + ", " + nameof(deltaAzimuth) + ": " + deltaAzimuth + ", " + nameof(bestSumDeltaMag) + ": " + bestSumDeltaMag);
-					if (sumDeltaMag < bestSumDeltaMag)
-					{
-						bestSumDeltaMag = sumDeltaMag;
-						bestDeltaElevation = firstElDelta;
-						bestDeltaAzimuth = deltaAzimuth;
-					}
-				}
-				else if (CanRotate(StatorEl, secondElDelta) && CalcAzimuth(target, faceDirection, secondElDelta, out deltaAzimuth))
-				{
-					float sumDeltaMag = Math.Abs(secondElDelta) + Math.Abs(deltaAzimuth);
-					Log.TraceLog(nameof(secondElDelta) + ": " + secondElDelta + ", " + nameof(deltaAzimuth) + ": " + deltaAzimuth + ", " + nameof(bestSumDeltaMag) + ": " + bestSumDeltaMag);
-					if (sumDeltaMag < bestSumDeltaMag)
-					{
-						bestSumDeltaMag = sumDeltaMag;
-						bestDeltaElevation = secondElDelta;
-						bestDeltaAzimuth = deltaAzimuth;
-					}
-				}
-				Log.TraceLog("cannot rotate to target");
-			}
-
-			if (bestSumDeltaMag != float.PositiveInfinity)
-				return true;
-
-			Log.TraceLog("Cannot rotate to target");
-			bestDeltaElevation = bestDeltaAzimuth = float.NaN;
-			return false;
-		}
-
-		private bool CalcAzimuth(DirectionWorld target, DirectionWorld faceDirection, float elDelta, out float azDelta)
-		{
-			ApplyElevationChange(ref faceDirection, elDelta);
-			Vector3 azCurrent = faceDirection.ToBlock(StatorAz);
-			Vector3 azTarget = target.ToBlock(StatorAz);
-
-			Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(azTarget) + ": " + azTarget + ", " + nameof(azCurrent) + ": " + azCurrent);
-
-			float firstAzDelta, secondAzDelta;
-			CalcDelta(azCurrent, azTarget, out firstAzDelta, out secondAzDelta);
-
-			if (CanRotate(StatorAz, firstAzDelta))
-			{
-				Log.TraceLog("First azimuth delta approved: " + firstAzDelta);
-				azDelta = firstAzDelta;
-				return true;
-			}
-
-			if (CanRotate(StatorAz, secondAzDelta))
-			{
-				Log.TraceLog("Second azimuth delta approved: " + secondAzDelta);
-				azDelta = secondAzDelta;
-				return true;
-			}
-
-			Log.TraceLog("Neither azimuth delta approved");
-			azDelta = float.NaN;
-			return false;
+			return delta > 0f ? Math.Min(delta, stator.UpperLimit - stator.Angle) : Math.Max(delta, stator.LowerLimit - stator.Angle);
 		}
 
 		/// <summary>
-		/// Rotate current direction by elevation stator's delta.
+		/// Given two deltas that are not within angle limits, find the delta angle that gets closest to either delta.
 		/// </summary>
-		/// <param name="facing">The current direction.</param>
-		/// <param name="elDelta">The change in angle of elevation stator.</param>
-		private void ApplyElevationChange(ref DirectionWorld facing, float elDelta)
+		/// <param name="accuracy">How close delta is to either of the original deltas.</param>
+		private static void BestEffort(IMyMotorStator stator, float firstDelta, float secondDelta, out float delta, out float accuracy)
 		{
-			Log.TraceLog(nameof(facing) + " is " + facing);
-			Vector3 axis = StatorEl.WorldMatrix.Down;
-			Log.TraceLog(nameof(axis) + " is " + axis);
-			Log.TraceLog(nameof(elDelta) + " is " + elDelta);
-			Quaternion rotation; Quaternion.CreateFromAxisAngle(ref axis, elDelta, out rotation);
-			Vector3.Transform(ref facing.vector, ref rotation, out facing.vector);
-			Log.TraceLog(nameof(facing) + " is " + facing);
+			float clampFirstAzDelta = ClampToLimits(stator, firstDelta);
+			float clampSecondAzDelta = ClampToLimits(stator, secondDelta);
+
+			float firstAccuracy = Math.Abs(firstDelta - clampFirstAzDelta);
+			float secondAccuracy = Math.Abs(secondDelta - clampSecondAzDelta);
+
+			if (firstAccuracy <= secondAccuracy)
+			{
+				delta = clampFirstAzDelta;
+				accuracy = firstAccuracy;
+			}
+			else
+			{
+				delta = clampSecondAzDelta;
+				accuracy = secondAccuracy;
+			}
 		}
 
 		/// <summary>
@@ -327,6 +146,330 @@ namespace Rynchodon
 			return;
 		}
 
+		private readonly IMyCubeBlock FaceBlock;
+		private readonly StatorChangeHandler OnStatorChange;
+		/// <summary>Conversion between angle delta and speed.</summary>
+		private readonly float m_rotationSpeedMulitplier;
+		/// <summary>The maximum difference between the direction the turret is facing and the target where rotation is considered to be useful.</summary>
+		/// <remarks>
+		/// For solar facing, float.PositiveInfinity is used, indicating that the turret should make a best effort.
+		/// For weapons, a lower value is used because the turret must point accurately enough that the weapon can hit the target.
+		/// </remarks>
+		private readonly float m_requiredAccuracyRadians;
+
+		private bool m_claimedElevation, m_claimedAzimuth;
+		private IMyMotorStator value_statorEl, value_statorAz;
+
+		/// <summary>Shall be the stator that is closer to the FaceBlock (by grids).</summary>
+		public IMyMotorStator StatorEl
+		{
+			get { return value_statorEl; }
+			private set
+			{
+				if (value_statorEl == value)
+					return;
+				if (m_claimedElevation)
+				{
+					m_claimedElevation = false;
+					lock (Static.claimedStators)
+						if (Static.claimedStators.Remove(value_statorEl))
+							Log.DebugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
+						else
+							Log.AlwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
+				}
+				value_statorEl = value;
+			}
+		}
+
+		/// <summary>Shall be the stator that is further from the FaceBlock (by grids).</summary>
+		public IMyMotorStator StatorAz
+		{
+			get { return value_statorAz; }
+			private set
+			{
+				if (value_statorAz == value)
+					return;
+				if (m_claimedAzimuth)
+				{
+					m_claimedAzimuth = false;
+					lock (Static.claimedStators)
+						if (Static.claimedStators.Remove(value_statorAz))
+							Log.DebugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
+						else
+							Log.AlwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
+				}
+				value_statorAz = value;
+			}
+		}
+
+		private Logable Log { get { return new Logable(FaceBlock); } }
+
+		public MotorTurret(IMyCubeBlock block, StatorChangeHandler handler = null, int updateFrequency = 100, float requiredAccuracyRadians = float.PositiveInfinity)
+		{
+			this.FaceBlock = block;
+			this.OnStatorChange = handler;
+
+			m_rotationSpeedMulitplier = 60f / Math.Max(updateFrequency, 6);
+			m_requiredAccuracyRadians = requiredAccuracyRadians;
+
+			this.SetupStators();
+		}
+
+		~MotorTurret()
+		{
+			Dispose();
+		}
+
+		public void Dispose()
+		{
+			GC.SuppressFinalize(this);
+			if (!Globals.WorldClosed)
+			{
+				Stop();
+				StatorEl = null;
+				StatorAz = null;
+			}
+		}
+
+		/// <summary>
+		/// Try to face in the target direction.
+		/// </summary>
+		public void FaceTowards(DirectionWorld target)
+		{
+			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+			Debug.Assert(Threading.ThreadTracker.IsGameThread, "not game thread");
+
+			if (!SetupStators())
+				return;
+
+			FaceResult bestResult;
+			if (!CalcFaceTowards(target, out bestResult))
+			{
+				Stop();
+				return;
+			}
+
+			Log.TraceLog("Face: " + target + ", elevation: " + bestResult.DeltaElevation + ", azimuth: " + bestResult.DeltaAzimuth);
+
+			if (m_claimedElevation)
+				SetVelocity(StatorEl, bestResult.DeltaElevation);
+			if (m_claimedAzimuth)
+				SetVelocity(StatorAz, bestResult.DeltaAzimuth);
+		}
+
+		/// <summary>
+		/// Determine if the motor turret can face the target direction.
+		/// </summary>
+		/// <param name="target">The direction to face.</param>
+		/// <returns>True iff the turret can face the target direction.</returns>
+		public bool CanFaceTowards(DirectionWorld target)
+		{
+			if (!StatorOK())
+				return false;
+
+			FaceResult bestResult;
+			return CalcFaceTowards(target, out bestResult);
+		}
+
+		private struct FaceResult
+		{
+			public static readonly FaceResult Default = new FaceResult()
+			{
+				AccuracySquared = float.PositiveInfinity,
+				SumDeltaMag = float.PositiveInfinity,
+				DeltaElevation = float.NaN,
+				DeltaAzimuth = float.NaN
+			};
+
+			public float AccuracySquared;
+			public float SumDeltaMag;
+			public float DeltaElevation;
+			public float DeltaAzimuth;
+
+			public bool ReplaceBy(float accSq, float sumDelta)
+			{
+				if (accSq + 0.01f < AccuracySquared)
+					return true;
+				if (accSq - 0.01f > AccuracySquared)
+					return false;
+				return sumDelta < SumDeltaMag;
+			}
+
+			public override string ToString()
+			{
+				return nameof(AccuracySquared) + ": " + AccuracySquared + ", " + 
+					nameof(SumDeltaMag) + ": " + SumDeltaMag + ", " + 
+					nameof(DeltaElevation) + ": " + DeltaElevation + ", " + 
+					nameof(DeltaAzimuth) + ": " + DeltaAzimuth;
+			}
+		}
+
+		private bool CalcFaceTowards(DirectionWorld target, out FaceResult bestResult)
+		{
+			bestResult = FaceResult.Default;
+			Vector3 elTarget = target.ToBlock(StatorEl);
+
+			foreach (var direction in FaceBlock.FaceDirections())
+			{
+				DirectionWorld faceDirection = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(direction) };
+				Vector3 elCurrent = faceDirection.ToBlock(StatorEl);
+				Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(elTarget) + ": " + elTarget + ", " + nameof(elCurrent) + ": " + elCurrent);
+
+				float firstElDelta, secondElDelta;
+				CalcDelta(elCurrent, elTarget, out firstElDelta, out secondElDelta);
+
+				if (m_claimedElevation)
+				{
+					// elevation has been claimed, check limits
+					if (CalcFaceTowards_Claimed(ref bestResult, target, faceDirection, firstElDelta))
+						Log.TraceLog("First elevation delta reachable: " + firstElDelta);
+					else if (CalcFaceTowards_Claimed(ref bestResult, target, faceDirection, secondElDelta))
+						Log.TraceLog("Second elevation delta reachable: " + secondElDelta);
+					else
+						Log.TraceLog("Neither elevation delta acceptable");
+				}
+				else if (CalcFaceTowards_NotClaimed(ref bestResult, target, faceDirection, firstElDelta)) // elevation has not been claimed, check that current elevation is close enough
+					Log.TraceLog("Elevation within tolerance: " + firstElDelta);
+				else
+					Log.TraceLog("Elevation outside tolerance: " + firstElDelta);
+			}
+
+			if (bestResult.AccuracySquared != float.PositiveInfinity)
+			{
+				Log.TraceLog("Best: " + bestResult);
+				return true;
+			}
+
+			Log.TraceLog("Cannot rotate to target");
+			return false;
+		}
+
+		private bool CalcFaceTowards_Claimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float elDelta)
+		{
+			float elAccuracy;
+			if (WithinLimits(StatorEl, elDelta))
+				elAccuracy = 0f;
+			else
+			{
+				float clamped = ClampToLimits(StatorEl, elDelta);
+				elAccuracy = Math.Abs(elDelta - clamped);
+				if (elAccuracy > m_requiredAccuracyRadians)
+					return false;
+				elDelta = clamped;
+			}
+
+			float azDelta, azAccuracy;
+			if (CalcAzimuth(target, faceDirection, elDelta, out azDelta, out azAccuracy))
+			{
+				float accSq = elAccuracy * elAccuracy + azAccuracy * azAccuracy;
+				float sumDeltaMag = Math.Abs(elDelta) + Math.Abs(azDelta);
+				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elDelta, DeltaAzimuth = azDelta });
+				if (bestResult.ReplaceBy(accSq, sumDeltaMag))
+				{
+					bestResult.AccuracySquared = accSq;
+					bestResult.SumDeltaMag = sumDeltaMag;
+					bestResult.DeltaElevation = elDelta;
+					bestResult.DeltaAzimuth = azDelta;
+				}
+				return true;
+			}
+			return false;
+		}
+
+		private bool CalcFaceTowards_NotClaimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float elDelta)
+		{
+			if (Math.Abs(elDelta) > m_requiredAccuracyRadians)
+				return false;
+
+			float azDelta, azAccuracy;
+			if (CalcAzimuth(target, faceDirection, elDelta, out azDelta, out azAccuracy))
+			{
+				float accSq = elDelta * elDelta + azAccuracy * azAccuracy;
+				if (accSq > m_requiredAccuracyRadians * m_requiredAccuracyRadians)
+					return false;
+				float sumDeltaMag = Math.Abs(azDelta);
+				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elDelta, DeltaAzimuth = azDelta });
+				if (bestResult.ReplaceBy(accSq, sumDeltaMag))
+				{
+					bestResult.AccuracySquared = accSq;
+					bestResult.SumDeltaMag = sumDeltaMag;
+					bestResult.DeltaElevation = 0f;
+					bestResult.DeltaAzimuth = azDelta;
+				}
+				return true;
+			}
+			return false;
+		}
+
+		private bool CalcAzimuth(DirectionWorld target, DirectionWorld faceDirection, float elDelta, out float azDelta, out float azAccuracy)
+		{
+			ApplyElevationChange(ref faceDirection, elDelta);
+			Vector3 azCurrent = faceDirection.ToBlock(StatorAz);
+			Vector3 azTarget = target.ToBlock(StatorAz);
+
+			Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(azTarget) + ": " + azTarget + ", " + nameof(azCurrent) + ": " + azCurrent);
+
+			float firstAzDelta, secondAzDelta;
+			CalcDelta(azCurrent, azTarget, out firstAzDelta, out secondAzDelta);
+
+			if (m_claimedAzimuth)
+			{
+				// azimuth has been claimed, check limits
+				if (WithinLimits(StatorAz, firstAzDelta))
+				{
+					Log.TraceLog("First azimuth delta reachable: " + firstAzDelta);
+					azDelta = firstAzDelta;
+					azAccuracy = 0f;
+					return true;
+				}
+				if (WithinLimits(StatorAz, secondAzDelta))
+				{
+					Log.TraceLog("Second azimuth delta reachable: " + secondAzDelta);
+					azDelta = secondAzDelta;
+					azAccuracy = 0f;
+					return true;
+				}
+				BestEffort(StatorAz, firstAzDelta, secondAzDelta, out azDelta, out azAccuracy);
+				if (azAccuracy < m_requiredAccuracyRadians)
+				{
+					Log.TraceLog("Best effort: " + azDelta);
+					return true;
+				}
+			}
+			else
+			{
+				// azimuth not claimed, check that the current azimuth is close enough
+				azAccuracy = Math.Abs(firstAzDelta);
+				if (azAccuracy < m_requiredAccuracyRadians)
+				{
+					Log.TraceLog("Azimuth within tolerance: " + firstAzDelta);
+					azDelta = 0f; // not claimed, no rotation
+					return true;
+				}
+			}
+
+			Log.TraceLog("Neither azimuth delta acceptable");
+			azDelta = float.NaN;
+			azAccuracy = float.PositiveInfinity;
+			return false;
+		}
+
+		/// <summary>
+		/// Rotate current direction by elevation stator's delta.
+		/// </summary>
+		/// <param name="facing">The current direction.</param>
+		/// <param name="elDelta">The change in angle of elevation stator.</param>
+		private void ApplyElevationChange(ref DirectionWorld facing, float elDelta)
+		{
+			Log.TraceLog(nameof(facing) + " is " + facing);
+			Vector3 axis = StatorEl.WorldMatrix.Down;
+			Log.TraceLog(nameof(axis) + " is " + axis);
+			Log.TraceLog(nameof(elDelta) + " is " + elDelta);
+			Quaternion rotation; Quaternion.CreateFromAxisAngle(ref axis, elDelta, out rotation);
+			Vector3.Transform(ref facing.vector, ref rotation, out facing.vector);
+			Log.TraceLog(nameof(facing) + " is " + facing);
+		}
+
 		public void Stop()
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
@@ -347,12 +490,14 @@ namespace Rynchodon
 		{
 			if (!m_claimedElevation)
 			{
-				m_claimedElevation = Static.claimedStators.Add(StatorEl);
+				lock (Static.claimedStators)
+					m_claimedElevation = Static.claimedStators.Add(StatorEl);
 				Log.DebugLog("claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG, condition: m_claimedElevation);
 			}
 			if (!m_claimedAzimuth)
 			{
-				m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
+				lock (Static.claimedStators)
+					m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
 				Log.DebugLog("claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG, condition: m_claimedAzimuth);
 			}
 			return m_claimedElevation || m_claimedAzimuth;
@@ -472,10 +617,10 @@ namespace Rynchodon
 			SetVelocity((MyMotorStator)stator, angle);
 		}
 
+		/// <exception cref="ArithmeticException">If angle is not a number.</exception>
 		private void SetVelocity(MyMotorStator stator, float angle)
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
-			angle.AssertIsValid();
 
 			float velocity = MathHelper.Clamp(angle * m_rotationSpeedMulitplier, -speedLimit, speedLimit);
 

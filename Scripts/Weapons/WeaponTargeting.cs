@@ -818,7 +818,7 @@ namespace Rynchodon.Weapons
 				return LoadedAmmo.AmmoDefinition.DesiredSpeed;
 			}
 
-			float distance = Vector3.Distance(ProjectilePosition(), targetPos);
+			float distance = (float)Vector3D.Distance(ProjectilePosition(), targetPos);
 			return LoadedAmmo.MissileSpeed(distance);
 		}
 
@@ -962,10 +962,10 @@ namespace Rynchodon.Weapons
 			float accuracy;
 			Vector3.Dot(ref CurrentDirection, ref firingDirection, out accuracy);
 
-			if (accuracy < WeaponDefinition.RequiredAccuracy)
+			if (accuracy < WeaponDefinition.RequiredAccuracyCos)
 			{
 				// not facing target
-				Log.TraceLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracy);
+				Log.TraceLog("not facing, accuracy: " + accuracy + ", required: " + WeaponDefinition.RequiredAccuracyCos);
 				if (++facingWrongWayFor > 9)
 					FireWeapon = false;
 				return;

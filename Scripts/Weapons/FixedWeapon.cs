@@ -141,7 +141,7 @@ namespace Rynchodon.Weapons
 				if (MyMotorTurret == null && CanControl)
 				{
 					//Log.DebugLog("MotorTurret is now enabled", "Update_Options()", Logger.severity.INFO);
-					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange, 1);
+					MyMotorTurret = new MotorTurret(CubeBlock, MyMotorTurret_OnStatorChange, 1, WeaponDefinition.RequiredAccuracyRadians);
 				}
 			}
 			else

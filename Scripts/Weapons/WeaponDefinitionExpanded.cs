@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Sandbox.Definitions;
-using Sandbox.Game.Entities;
 using VRage.Game;
 
 namespace Rynchodon.Weapons
@@ -24,7 +23,8 @@ namespace Rynchodon.Weapons
 
 		public readonly MyWeaponDefinition WeaponDefinition;
 		public readonly MyAmmoType AmmoType;
-		public readonly float RequiredAccuracy;
+		public readonly float RequiredAccuracyRadians;
+		public readonly float RequiredAccuracyCos;
 		public readonly Ammo FirstAmmo;
 
 		public MyWeaponDefinition.MyWeaponAmmoData WeaponAmmoData
@@ -42,13 +42,17 @@ namespace Rynchodon.Weapons
 				{
 					AmmoType = (MyAmmoType)i;
 					FirstAmmo = Ammo.GetAmmo(WeaponDefinition.AmmoMagazinesId[0]);
-					RequiredAccuracy = FirstAmmo.Description != null ? 0.99f : (float)Math.Cos(0.02f + Math.Min(weaponDefn.WeaponAmmoDatas[i].RateOfFire, 1000) / 72000f);
+
+					RequiredAccuracyRadians = FirstAmmo.Description != null ? 
+						0.15f : // fire guided missile with less accuracy, despite slower RoF
+						0.02f + Math.Min(weaponDefn.WeaponAmmoDatas[i].RateOfFire, 1000) / 72000f;
+					RequiredAccuracyCos = (float)Math.Cos(RequiredAccuracyRadians);
 					return;
 				}
 			}
 
 			AmmoType = MyAmmoType.Unknown;
-			RequiredAccuracy = 2f;
+			RequiredAccuracyCos = 2f;
 		}
 
 	}
