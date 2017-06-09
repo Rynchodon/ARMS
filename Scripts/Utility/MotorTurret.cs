@@ -1,5 +1,5 @@
 #if DEBUG
-#define TRACE
+//#define TRACE
 #endif
 
 using System;
@@ -164,6 +164,8 @@ namespace Rynchodon
 
 		#endregion
 
+		#region Static Calc Face
+
 		/// <summary>
 		/// Determines if a stator can rotate a specific amount.
 		/// </summary>
@@ -275,6 +277,13 @@ namespace Rynchodon
 			return;
 		}
 
+		#endregion
+
+		private static bool StatorOk(IMyMotorStator stator)
+		{
+			return stator != null && !stator.Closed && stator.IsAttached;
+		}
+
 		private readonly IMyCubeBlock FaceBlock;
 		private readonly StatorChangeHandler OnStatorChange;
 		/// <summary>Conversion between angle delta and speed.</summary>
@@ -324,12 +333,13 @@ namespace Rynchodon
 			this.FaceBlock = block;
 			this.OnStatorChange = handler;
 
-			FaceBlock.OnClose += (x) => Dispose();
-			m_rotationSpeedMulitplier = 60f / Math.Max(updateFrequency, 6);
+			m_rotationSpeedMulitplier = 30f / Math.Max(updateFrequency, 6);
 			m_requiredAccuracyRadians = requiredAccuracyRadians;
 
-			SetupStators();
-			ClaimStators();
+			FaceBlock.OnClose += (x) => Dispose();
+			FaceBlock.IsWorkingChanged += FaceBlock_IsWorkingChanged;
+			if (FaceBlock.IsWorking)
+				FaceBlock_IsWorkingChanged(FaceBlock);
 		}
 
 		~MotorTurret()
@@ -347,6 +357,23 @@ namespace Rynchodon
 				StatorAz = null;
 			}
 		}
+
+		private void FaceBlock_IsWorkingChanged(IMyCubeBlock obj)
+		{
+			if (obj.IsWorking)
+			{
+				SetupStators();
+				ClaimStators();
+			}
+			else
+			{
+				Stop();
+				StatorEl = null;
+				StatorAz = null;
+			}
+		}
+
+		#region Calc Face
 
 		/// <summary>
 		/// Try to face in the target direction. Must execute on game thread.
@@ -376,7 +403,7 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Determine if the motor turret can face the target direction.
+		/// Determine if the motor turret can face the target direction. Thread-safe.
 		/// </summary>
 		/// <param name="target">The direction to face.</param>
 		/// <returns>True iff the turret can face the target direction.</returns>
@@ -406,11 +433,12 @@ namespace Rynchodon
 
 			public bool ReplaceBy(float accSq, float sumDelta)
 			{
-				if (accSq + 0.01f < AccuracySquared)
-					return true;
-				if (accSq - 0.01f > AccuracySquared)
-					return false;
-				return sumDelta < SumDeltaMag;
+				const float accuracyMulti = 100f;
+
+				float myScore = accuracyMulti * AccuracySquared + SumDeltaMag * SumDeltaMag;
+				float otherScore = accuracyMulti * accSq + sumDelta * sumDelta;
+
+				return otherScore < myScore;
 			}
 
 			public override string ToString()
@@ -422,34 +450,59 @@ namespace Rynchodon
 			}
 		}
 
-		private bool CalcFaceTowards(DirectionWorld target, out FaceResult bestResult)
+		private bool CalcFaceTowards(DirectionWorld targetWorldSpace, out FaceResult bestResult)
+		{
+			if (StatorOk(StatorAz))
+				return CalcFaceTowards_AzimuthOk(targetWorldSpace, out bestResult);
+			else
+				return CalcFaceTowards_NoAzimuth(targetWorldSpace, out bestResult);
+		}
+
+		private bool CalcFaceTowards_AzimuthOk(DirectionWorld targetWorldSpace, out FaceResult bestResult)
 		{
 			bestResult = FaceResult.Default;
-			Vector3 elTarget = target.ToBlock(StatorEl);
+			Vector3 target = targetWorldSpace.ToBlock(StatorAz);
 
 			foreach (var direction in FaceBlock.FaceDirections())
 			{
 				DirectionWorld faceDirection = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(direction) };
-				Vector3 elCurrent = faceDirection.ToBlock(StatorEl);
-				Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(elTarget) + ": " + elTarget + ", " + nameof(elCurrent) + ": " + elCurrent);
+				Vector3 current = faceDirection.ToBlock(StatorAz);
 
-				float firstElDelta, secondElDelta;
-				CalcDelta(elCurrent, elTarget, out firstElDelta, out secondElDelta);
-
-				if (m_claimedElevation)
+				float firstDelta, secondDelta;
+				CalcDelta(current, target, out firstDelta, out secondDelta);
+				if (m_claimedAzimuth)
 				{
-					// elevation has been claimed, check limits
-					if (CalcFaceTowards_Claimed(ref bestResult, target, faceDirection, firstElDelta))
-						Log.TraceLog("First elevation delta reachable: " + firstElDelta);
-					else if (CalcFaceTowards_Claimed(ref bestResult, target, faceDirection, secondElDelta))
-						Log.TraceLog("Second elevation delta reachable: " + secondElDelta);
-					else
-						Log.TraceLog("Neither elevation delta acceptable");
+					// azimuth has been claimed, check limits
+					if (CalcFaceTowards_Claimed(ref bestResult, targetWorldSpace, faceDirection, firstDelta))
+						Log.TraceLog("First azimuth delta is reachable: " + firstDelta);
+					else if (CalcFaceTowards_Claimed(ref bestResult, targetWorldSpace, faceDirection, secondDelta))
+						Log.TraceLog("Second azimuth delta is reachable: " + secondDelta);
+
+					if (bestResult.AccuracySquared > 0.1f)
+					{
+						// try flipped
+						float clamped = ClampToLimits(StatorAz, firstDelta);
+						if (clamped > 0f)
+						{
+							firstDelta = clamped - MathHelper.Pi;
+							secondDelta = clamped + MathHelper.Pi;
+						}
+						else
+						{
+							firstDelta = clamped + MathHelper.Pi;
+							secondDelta = clamped - MathHelper.Pi;
+						}
+
+						if (CalcFaceTowards_Claimed(ref bestResult, targetWorldSpace, faceDirection, firstDelta))
+							Log.TraceLog("First flipped azimuth delta is reachable: " + firstDelta);
+						else if (CalcFaceTowards_Claimed(ref bestResult, targetWorldSpace, faceDirection, secondDelta))
+							Log.TraceLog("Second flipped azimuth delta is reachable: " + secondDelta);
+					}
 				}
-				else if (CalcFaceTowards_NotClaimed(ref bestResult, target, faceDirection, firstElDelta)) // elevation has not been claimed, check that current elevation is close enough
-					Log.TraceLog("Elevation within tolerance: " + firstElDelta);
+				else if (CalcFaceTowards_NotClaimed(ref bestResult, targetWorldSpace, faceDirection, firstDelta)) // azimuth has not been claimed, check that current azimuth is close enough
+					Log.TraceLog("Azimuth is within tolerance: " + firstDelta);
 				else
-					Log.TraceLog("Elevation outside tolerance: " + firstElDelta);
+					Log.TraceLog("Azimuth is outside tolerance: " + firstDelta);
 			}
 
 			if (bestResult.AccuracySquared != float.PositiveInfinity)
@@ -462,154 +515,156 @@ namespace Rynchodon
 			return false;
 		}
 
-		private bool CalcFaceTowards_Claimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float elDelta)
+		private bool CalcFaceTowards_NoAzimuth(DirectionWorld targetWorldSpace, out FaceResult bestResult)
 		{
-			float elAccuracy;
-			if (WithinLimits(StatorEl, elDelta))
-				elAccuracy = 0f;
-			else
+			bestResult = FaceResult.Default;
+
+			foreach (var direction in FaceBlock.FaceDirections())
 			{
-				float clamped = ClampToLimits(StatorEl, elDelta);
-				elAccuracy = Math.Abs(elDelta - clamped);
-				if (elAccuracy > m_requiredAccuracyRadians)
-					return false;
-				elDelta = clamped;
+				DirectionWorld faceDirection = new DirectionWorld() { vector = FaceBlock.WorldMatrix.GetDirectionVector(direction) };
+				CalcFaceTowards_NotClaimed(ref bestResult, targetWorldSpace, faceDirection, MathHelper.TwoPi);
 			}
 
-			float azDelta, azAccuracy;
-			if (CalcAzimuth(target, faceDirection, elDelta, out azDelta, out azAccuracy))
+			if (bestResult.AccuracySquared != float.PositiveInfinity)
 			{
-				float accSq = elAccuracy * elAccuracy + azAccuracy * azAccuracy;
-				float sumDeltaMag = Math.Abs(elDelta) + Math.Abs(azDelta);
-				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elDelta, DeltaAzimuth = azDelta });
+				Log.TraceLog("Best: " + bestResult);
+				return true;
+			}
+
+			Log.TraceLog("Cannot rotate to target");
+			return false;
+		}
+
+		private bool CalcFaceTowards_Claimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float azimuthDelta)
+		{
+			float azimuthAccuracy;
+			if (WithinLimits(StatorAz, azimuthDelta))
+				azimuthAccuracy = 0f;
+			else
+			{
+				float clamped = ClampToLimits(StatorAz, azimuthDelta);
+				azimuthAccuracy = Math.Abs(azimuthDelta - clamped);
+				if (azimuthAccuracy > m_requiredAccuracyRadians)
+					return false;
+				azimuthDelta = clamped;
+			}
+
+			float elevationDelta, elevationAccuracy;
+			if (CalcElevation(target, faceDirection, azimuthDelta, out elevationDelta, out elevationAccuracy))
+			{
+				float accSq = azimuthAccuracy * azimuthAccuracy + elevationAccuracy * elevationAccuracy;
+				float sumDeltaMag = Math.Abs(azimuthDelta) + Math.Abs(elevationDelta);
+				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elevationDelta, DeltaAzimuth = azimuthDelta });
 				if (bestResult.ReplaceBy(accSq, sumDeltaMag))
 				{
 					bestResult.AccuracySquared = accSq;
 					bestResult.SumDeltaMag = sumDeltaMag;
-					bestResult.DeltaElevation = elDelta;
-					bestResult.DeltaAzimuth = azDelta;
+					bestResult.DeltaAzimuth = azimuthDelta;
+					bestResult.DeltaElevation = elevationDelta;
 				}
 				return true;
 			}
 			return false;
 		}
 
-		private bool CalcFaceTowards_NotClaimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float elDelta)
+		private bool CalcFaceTowards_NotClaimed(ref FaceResult bestResult, DirectionWorld target, DirectionWorld faceDirection, float azimuthDelta)
 		{
-			if (Math.Abs(elDelta) > m_requiredAccuracyRadians)
+			if (Math.Abs(azimuthDelta) > m_requiredAccuracyRadians)
 				return false;
 
-			float azDelta, azAccuracy;
-			if (CalcAzimuth(target, faceDirection, elDelta, out azDelta, out azAccuracy))
+			float elevationDelta, elevationAccuracy;
+			if (CalcElevation(target, faceDirection, azimuthDelta, out elevationDelta, out elevationAccuracy))
 			{
-				float accSq = elDelta * elDelta + azAccuracy * azAccuracy;
+				float accSq = azimuthDelta * azimuthDelta + elevationAccuracy * elevationAccuracy;
 				if (accSq > m_requiredAccuracyRadians * m_requiredAccuracyRadians)
 					return false;
-				float sumDeltaMag = Math.Abs(azDelta);
-				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elDelta, DeltaAzimuth = azDelta });
+				float sumDeltaMag = Math.Abs(elevationDelta);
+				Log.TraceLog("Best: " + bestResult + ", current: " + new FaceResult() { AccuracySquared = accSq, SumDeltaMag = sumDeltaMag, DeltaElevation = elevationDelta, DeltaAzimuth = 0f });
 				if (bestResult.ReplaceBy(accSq, sumDeltaMag))
 				{
 					bestResult.AccuracySquared = accSq;
 					bestResult.SumDeltaMag = sumDeltaMag;
-					bestResult.DeltaElevation = 0f;
-					bestResult.DeltaAzimuth = azDelta;
+					bestResult.DeltaAzimuth = 0f;
+					bestResult.DeltaElevation = elevationDelta;
 				}
 				return true;
 			}
 			return false;
 		}
 
-		private bool CalcAzimuth(DirectionWorld target, DirectionWorld faceDirection, float elDelta, out float azDelta, out float azAccuracy)
+		private bool CalcElevation(DirectionWorld targetWorldSpace, DirectionWorld faceDirection, float azimuthDelta, out float elevationDelta, out float elevationAccuracy)
 		{
-			if (!StatorOk(StatorAz))
+			if (StatorOk(StatorAz) && m_claimedAzimuth)
+				ApplyAzimuthChange(ref faceDirection, azimuthDelta);
+			Vector3 current = faceDirection.ToBlock(StatorEl);
+			Vector3 target = targetWorldSpace.ToBlock(StatorEl);
+
+			Log.TraceLog(nameof(targetWorldSpace) + ": " + targetWorldSpace + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(target) + ": " + target + ", " + nameof(current) + ": " + current);
+
+			float firstDelta, secondDelta;
+			CalcDelta(current, target, out firstDelta, out secondDelta);
+
+			if (m_claimedElevation)
 			{
-				Log.TraceLog(nameof(StatorAz) + " not available, skipping azimuth calculations");
-				azDelta = 0f;
-				azAccuracy = MathHelper.TwoPi;
-				return true;
-			}
-
-			ApplyElevationChange(ref faceDirection, elDelta);
-			Vector3 azCurrent = faceDirection.ToBlock(StatorAz);
-			Vector3 azTarget = target.ToBlock(StatorAz);
-
-			Log.TraceLog(nameof(target) + ": " + target + ", " + nameof(faceDirection) + ": " + faceDirection + ", " + nameof(azTarget) + ": " + azTarget + ", " + nameof(azCurrent) + ": " + azCurrent);
-
-			float firstAzDelta, secondAzDelta;
-			CalcDelta(azCurrent, azTarget, out firstAzDelta, out secondAzDelta);
-
-			if (m_claimedAzimuth)
-			{
-				// azimuth has been claimed, check limits
-				if (WithinLimits(StatorAz, firstAzDelta))
+				// elevation has been claimed, check limits
+				if (WithinLimits(StatorEl, firstDelta))
 				{
-					Log.TraceLog("First azimuth delta reachable: " + firstAzDelta);
-					azDelta = firstAzDelta;
-					azAccuracy = 0f;
+					Log.TraceLog("First elevation delta is reachable: " + firstDelta);
+					elevationDelta = firstDelta;
+					elevationAccuracy = 0f;
 					return true;
 				}
-				if (WithinLimits(StatorAz, secondAzDelta))
+				if (WithinLimits(StatorEl, secondDelta))
 				{
-					Log.TraceLog("Second azimuth delta reachable: " + secondAzDelta);
-					azDelta = secondAzDelta;
-					azAccuracy = 0f;
+					Log.TraceLog("Second elevation delta is reachable: " + secondDelta);
+					elevationDelta = secondDelta;
+					elevationAccuracy = 0f;
 					return true;
 				}
-				BestEffort(StatorAz, firstAzDelta, secondAzDelta, out azDelta, out azAccuracy);
-				if (azAccuracy < m_requiredAccuracyRadians)
+				BestEffort(StatorEl, firstDelta, secondDelta, out elevationDelta, out elevationAccuracy);
+				if (elevationAccuracy < m_requiredAccuracyRadians)
 				{
-					Log.TraceLog("Best effort: " + azDelta);
+					Log.TraceLog("Best effort: " + elevationDelta);
 					return true;
 				}
 			}
 			else
 			{
-				// azimuth not claimed, check that the current azimuth is close enough
-				azAccuracy = Math.Abs(firstAzDelta);
-				if (azAccuracy < m_requiredAccuracyRadians)
+				// elevation not claimed, check that the current elevation is close enough
+				elevationAccuracy = Math.Abs(firstDelta);
+				if (elevationAccuracy < m_requiredAccuracyRadians)
 				{
-					Log.TraceLog("Azimuth within tolerance: " + firstAzDelta);
-					azDelta = 0f; // not claimed, no rotation
+					Log.TraceLog("Elevation within tolerance: " + firstDelta);
+					elevationDelta = 0f; // not claimed, no rotation
 					return true;
 				}
 			}
 
-			Log.TraceLog("Neither azimuth delta acceptable");
-			azDelta = float.NaN;
-			azAccuracy = float.PositiveInfinity;
+			Log.TraceLog("Neither elevation delta acceptable");
+			elevationDelta = float.NaN;
+			elevationAccuracy = float.PositiveInfinity;
 			return false;
 		}
 
 		/// <summary>
-		/// Rotate current direction by elevation stator's delta.
+		/// Rotate current direction by azimuth stator's delta.
 		/// </summary>
 		/// <param name="facing">The current direction.</param>
-		/// <param name="elDelta">The change in angle of elevation stator.</param>
-		private void ApplyElevationChange(ref DirectionWorld facing, float elDelta)
+		/// <param name="azDelta">The change in angle of azimuth stator.</param>
+		private void ApplyAzimuthChange(ref DirectionWorld facing, float azDelta)
 		{
 			Log.TraceLog(nameof(facing) + " is " + facing);
-			Vector3 axis = StatorEl.WorldMatrix.Down;
+			Vector3 axis = StatorAz.WorldMatrix.Down;
 			Log.TraceLog(nameof(axis) + " is " + axis);
-			Log.TraceLog(nameof(elDelta) + " is " + elDelta);
-			Quaternion rotation; Quaternion.CreateFromAxisAngle(ref axis, elDelta, out rotation);
+			Log.TraceLog(nameof(azDelta) + " is " + azDelta);
+			Quaternion rotation; Quaternion.CreateFromAxisAngle(ref axis, azDelta, out rotation);
 			Vector3.Transform(ref facing.vector, ref rotation, out facing.vector);
 			Log.TraceLog(nameof(facing) + " is " + facing);
 		}
 
-		public void Stop()
-		{
-			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+		#endregion
 
-			if (m_claimedElevation)
-				SetVelocity(StatorEl, 0);
-			if (m_claimedAzimuth)
-				SetVelocity(StatorAz, 0);
-		}
-
-		private static bool StatorOk(IMyMotorStator stator)
-		{
-			return stator != null && !stator.Closed && stator.IsAttached;
-		}
+		#region Setup
 
 		/// <summary>
 		/// One-time setup for stators.
@@ -705,6 +760,21 @@ namespace Rynchodon
 
 			Stator = null;
 			return false;
+		}
+
+		#endregion
+
+		/// <summary>
+		/// Must execute on game thread.
+		/// </summary>
+		public void Stop()
+		{
+			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+
+			if (m_claimedElevation)
+				SetVelocity(StatorEl, 0);
+			if (m_claimedAzimuth)
+				SetVelocity(StatorAz, 0);
 		}
 
 		private void SetVelocity(IMyMotorStator stator, float angle)
