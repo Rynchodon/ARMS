@@ -25,15 +25,144 @@ namespace Rynchodon
 	/// </remarks>
 	public class MotorTurret : IDisposable
 	{
-		private class StaticVariables
-		{
-			public readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor), typeof(MyObjectBuilder_MotorStator), typeof(MyObjectBuilder_MotorAdvancedStator) };
-			public readonly HashSet<IMyMotorStator> claimedStators = new HashSet<IMyMotorStator>();
-		}
-
-		private static StaticVariables Static = new StaticVariables();
 		public delegate void StatorChangeHandler(IMyMotorStator statorEl, IMyMotorStator statorAz);
 		private const float speedLimit = MathHelper.Pi;
+
+		private static readonly MyObjectBuilderType[] types_Rotor = new MyObjectBuilderType[] { typeof(MyObjectBuilder_MotorRotor), typeof(MyObjectBuilder_MotorAdvancedRotor) };
+
+		#region Stator Claiming
+
+		private static readonly Dictionary<IMyMotorStator, List<MotorTurret>> claimedStator = new Dictionary<IMyMotorStator, List<MotorTurret>>();
+
+		private static int GetMiddle(List<MotorTurret> users)
+		{
+			Vector3D middle = new Vector3D();
+			int count = 0;
+			for (int index = users.Count - 1; index >= 0; --index)
+			{
+				middle += users[index].FaceBlock.GetPosition();
+				++count;
+			}
+			middle /= count;
+
+			double closeSq = double.PositiveInfinity;
+			int closest = 0;
+			for (int index = users.Count - 1; index >= 0; --index)
+			{
+				double distSq = Vector3D.DistanceSquared(users[index].FaceBlock.GetPosition(), middle);
+				Logger.DebugLog("user: " + users[index].FaceBlock.nameWithId() + ", distSq: " + distSq + ", closestSq: " + closeSq);
+				if (distSq < closeSq)
+				{
+					closeSq = distSq;
+					closest = index;
+				}
+			}
+
+			return closest;
+		}
+
+		private static void UpdateClaim(IMyMotorStator stator)
+		{
+			List<MotorTurret> users = claimedStator[stator];
+
+			MotorTurret currentClaimant = users[0];
+			if (currentClaimant.StatorEl == stator)
+			{
+				if (!currentClaimant.m_claimedElevation)
+					currentClaimant = null;
+			}
+			else if (currentClaimant.StatorAz == stator)
+			{
+				if (!currentClaimant.m_claimedAzimuth)
+					currentClaimant = null;
+			}
+			else
+				throw new Exception(currentClaimant.FaceBlock.nameWithId() + " does not have " + stator.nameWithId());
+
+			int middle = GetMiddle(users);
+			MotorTurret middleClaimant = users[middle];
+			if (currentClaimant == middleClaimant)
+			{
+				Logger.DebugLog("Claim for " + stator.nameWithId() + " is up-to-date. Claimed by " + currentClaimant.FaceBlock.nameWithId());
+				return;
+			}
+
+			Logger.DebugLog("claim of " + stator.nameWithId() + " changed from " + currentClaimant?.FaceBlock.nameWithId() + " to " + middleClaimant.FaceBlock.nameWithId());
+			if (middle != 0)
+				users.Swap(0, middle);
+
+			if (currentClaimant != null)
+				SetClaim(stator, currentClaimant, false);
+
+			SetClaim(stator, middleClaimant, true);
+		}
+
+		private static void SetClaim(IMyMotorStator stator, MotorTurret turret, bool claimed)
+		{
+			Logger.DebugLog(nameof(stator) + ": " + stator.nameWithId() + ", " + nameof(turret) + ": " + turret.FaceBlock.nameWithId() + ", " + nameof(claimed) + ": " + claimed);
+			if (turret.StatorEl == stator)
+				turret.m_claimedElevation = claimed;
+			else if (turret.StatorAz == stator)
+				turret.m_claimedAzimuth = claimed;
+			else
+				throw new Exception(turret.FaceBlock.nameWithId() + " does not have " + stator.nameWithId());
+		}
+
+		private static void RegisterClaim(IMyMotorStator stator, MotorTurret turret)
+		{
+			lock (claimedStator)
+			{
+				List<MotorTurret> users;
+				if (claimedStator.TryGetValue(stator, out users))
+				{
+					Debug.Assert(!users.Contains(turret), turret.FaceBlock.nameWithId() + " is already in users list");
+					Logger.DebugLog("registered claim: " + stator.nameWithId() + "/" + turret.FaceBlock.nameWithId());
+					users.Add(turret);
+					UpdateClaim(stator);
+				}
+				else
+				{
+					Logger.DebugLog("first claim: " + stator.nameWithId() + "/" + turret.FaceBlock.nameWithId());
+					users = new List<MotorTurret>();
+					claimedStator.Add(stator, users);
+					users.Add(turret);
+					SetClaim(stator, turret, true);
+				}
+			}
+		}
+
+		private static void RescindClaim(IMyMotorStator stator, MotorTurret turret)
+		{
+			lock (claimedStator)
+			{
+				List<MotorTurret> users;
+				if (claimedStator.TryGetValue(stator, out users))
+				{
+					int index = users.IndexOf(turret);
+					if (index < 0)
+					{
+						Logger.DebugLog("Cannot remove claim on " + stator.nameWithId() + " by " + turret.FaceBlock.nameWithId() + ", not in users list");
+						return;
+					}
+					SetClaim(stator, turret, false);
+					if (users.Count == 1)
+					{
+						Logger.DebugLog("removing only claim: " + stator.nameWithId() + "/" + turret.FaceBlock.nameWithId());
+						claimedStator.Remove(stator);
+						return;
+					}
+					users.RemoveAtFast(index);
+					UpdateClaim(stator);
+				}
+				else
+				{
+					Logger.DebugLog("Cannot remove claim on " + stator.nameWithId() + " by " + turret.FaceBlock.nameWithId() + ", no users list");
+					return;
+				}
+			}
+		}
+
+		#endregion
 
 		/// <summary>
 		/// Determines if a stator can rotate a specific amount.
@@ -168,15 +297,8 @@ namespace Rynchodon
 			{
 				if (value_statorEl == value)
 					return;
-				if (m_claimedElevation)
-				{
-					m_claimedElevation = false;
-					lock (Static.claimedStators)
-						if (Static.claimedStators.Remove(value_statorEl))
-							Log.DebugLog("Released claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.DEBUG);
-						else
-							Log.AlwaysLog("Failed to remove claim on elevation stator: " + value_statorEl.nameWithId(), Logger.severity.ERROR);
-				}
+				if (value_statorEl != null)
+					RescindClaim(value_statorEl, this);
 				value_statorEl = value;
 			}
 		}
@@ -189,15 +311,8 @@ namespace Rynchodon
 			{
 				if (value_statorAz == value)
 					return;
-				if (m_claimedAzimuth)
-				{
-					m_claimedAzimuth = false;
-					lock (Static.claimedStators)
-						if (Static.claimedStators.Remove(value_statorAz))
-							Log.DebugLog("Released claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.DEBUG);
-						else
-							Log.AlwaysLog("Failed to remove claim on azimuth stator: " + value_statorAz.nameWithId(), Logger.severity.ERROR);
-				}
+				if (value_statorAz != null)
+					RescindClaim(value_statorAz, this);
 				value_statorAz = value;
 			}
 		}
@@ -209,10 +324,12 @@ namespace Rynchodon
 			this.FaceBlock = block;
 			this.OnStatorChange = handler;
 
+			FaceBlock.OnClose += (x) => Dispose();
 			m_rotationSpeedMulitplier = 60f / Math.Max(updateFrequency, 6);
 			m_requiredAccuracyRadians = requiredAccuracyRadians;
 
-			this.SetupStators();
+			SetupStators();
+			ClaimStators();
 		}
 
 		~MotorTurret()
@@ -232,14 +349,15 @@ namespace Rynchodon
 		}
 
 		/// <summary>
-		/// Try to face in the target direction.
+		/// Try to face in the target direction. Must execute on game thread.
 		/// </summary>
 		public void FaceTowards(DirectionWorld target)
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 			Debug.Assert(Threading.ThreadTracker.IsGameThread, "not game thread");
 
-			if (!SetupStators())
+			if (!m_claimedElevation && !m_claimedAzimuth)
+				// nothing to do
 				return;
 
 			FaceResult bestResult;
@@ -264,7 +382,7 @@ namespace Rynchodon
 		/// <returns>True iff the turret can face the target direction.</returns>
 		public bool CanFaceTowards(DirectionWorld target)
 		{
-			if (!StatorOK())
+			if (!StatorOk(StatorEl))
 				return false;
 
 			FaceResult bestResult;
@@ -403,6 +521,14 @@ namespace Rynchodon
 
 		private bool CalcAzimuth(DirectionWorld target, DirectionWorld faceDirection, float elDelta, out float azDelta, out float azAccuracy)
 		{
+			if (!StatorOk(StatorAz))
+			{
+				Log.TraceLog(nameof(StatorAz) + " not available, skipping azimuth calculations");
+				azDelta = 0f;
+				azAccuracy = MathHelper.TwoPi;
+				return true;
+			}
+
 			ApplyElevationChange(ref faceDirection, elDelta);
 			Vector3 azCurrent = faceDirection.ToBlock(StatorAz);
 			Vector3 azTarget = target.ToBlock(StatorAz);
@@ -474,141 +600,110 @@ namespace Rynchodon
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
 
-			if (!StatorOK())
-				return;
-
 			if (m_claimedElevation)
 				SetVelocity(StatorEl, 0);
 			if (m_claimedAzimuth)
 				SetVelocity(StatorAz, 0);
 		}
 
-		private bool StatorOK()
-		{ return StatorEl != null && !StatorEl.Closed && StatorEl.IsAttached && StatorAz != null && !StatorAz.Closed && StatorAz.IsAttached; }
-
-		private bool ClaimStators()
+		private static bool StatorOk(IMyMotorStator stator)
 		{
-			if (!m_claimedElevation)
-			{
-				lock (Static.claimedStators)
-					m_claimedElevation = Static.claimedStators.Add(StatorEl);
-				Log.DebugLog("claimed elevation stator: " + StatorEl.nameWithId(), Logger.severity.DEBUG, condition: m_claimedElevation);
-			}
-			if (!m_claimedAzimuth)
-			{
-				lock (Static.claimedStators)
-					m_claimedAzimuth = Static.claimedStators.Add(StatorAz);
-				Log.DebugLog("claimed azimuth stator: " + StatorAz.nameWithId(), Logger.severity.DEBUG, condition: m_claimedAzimuth);
-			}
-			return m_claimedElevation || m_claimedAzimuth;
+			return stator != null && !stator.Closed && stator.IsAttached;
 		}
 
-		private bool SetupStators()
+		/// <summary>
+		/// One-time setup for stators.
+		/// </summary>
+		private void SetupStators()
 		{
-			if (StatorOK())
-			{
-				//Log.DebugLog("Stators are already set up", "SetupStators()");
-				return ClaimStators();
-			}
-
 			// get StatorEl from FaceBlock's grid
 			IMyMotorStator tempStator;
-			IMyMotorRotor RotorEl;
-			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator, out RotorEl))
+			if (!GetStatorRotor(FaceBlock.CubeGrid, out tempStator))
 			{
 				Log.DebugLog("Failed to get StatorEl");
 				StatorEl = null;
-				if (OnStatorChange != null)
-					OnStatorChange(StatorEl, StatorAz);
-				return false;
+				OnStatorChange?.Invoke(StatorEl, StatorAz);
+				return;
 			}
 			StatorEl = tempStator;
 
-			// get StatorAz from grid from either StatorEl or RotorEl, whichever is not on Faceblock's grid
-			IMyCubeGrid getBFrom;
-			if (RotorEl.CubeGrid == FaceBlock.CubeGrid)
-				getBFrom = StatorEl.CubeGrid as IMyCubeGrid;
-			else
-				getBFrom = RotorEl.CubeGrid;
-
-			IMyMotorRotor RotorAz;
-			if (!GetStatorRotor(getBFrom, out tempStator, out RotorAz, StatorEl, RotorEl))
+			if (!GetStatorRotor(StatorEl.CubeGrid, out tempStator, StatorEl))
 			{
 				Log.DebugLog("Failed to get StatorAz");
 				StatorAz = null;
-				if (OnStatorChange != null)
-					OnStatorChange(StatorEl, StatorAz);
-				return false;
+				OnStatorChange?.Invoke(StatorEl, StatorAz);
+				return;
 			}
 			StatorAz = tempStator;
 
-			Log.DebugLog("Successfully got stators. Elevation = " + StatorEl.DisplayNameText + ", Azimuth = " + StatorAz.DisplayNameText);
-			if (OnStatorChange != null)
-				OnStatorChange(StatorEl, StatorAz);
+			Log.DebugLog("Successfully got stators. Elevation = " + StatorEl.nameWithId() + ", Azimuth = " + StatorAz.nameWithId());
+			OnStatorChange?.Invoke(StatorEl, StatorAz);
 			Stop();
-			return ClaimStators();
+			return;
 		}
 
-		private bool GetStatorRotor(IMyCubeGrid grid, out IMyMotorStator Stator, out IMyMotorRotor Rotor, IMyMotorStator IgnoreStator = null, IMyCubeBlock IgnoreRotor = null)
+		/// <summary>
+		/// One-time registration of stator claims.
+		/// </summary>
+		private void ClaimStators()
+		{
+			if (StatorOk(StatorEl))
+				RegisterClaim(StatorEl, this);
+			else if (StatorEl != null)
+				StatorEl = null;
+
+			if (StatorOk(StatorAz))
+				RegisterClaim(StatorAz, this);
+			else if (StatorAz != null)
+				StatorAz = null;
+		}
+
+		private static bool ArePerpendicular(IMyMotorStator statorOne, IMyMotorStator statorTwo)
+		{
+			Logger.TraceLog(nameof(statorOne) + ": " + statorOne.nameWithId() + ", Up: " + statorOne.WorldMatrix.Up + ", " + nameof(statorTwo) + ": " + statorTwo.nameWithId() + ", Up: " + statorTwo.WorldMatrix.Up + ", dot: " + statorOne.WorldMatrix.Up.Dot(statorTwo.WorldMatrix.Up));
+			return Math.Abs(statorOne.WorldMatrix.Up.Dot(statorTwo.WorldMatrix.Up)) < 0.1f;
+		}
+
+		private bool GetStatorRotor(IMyCubeGrid grid, out IMyMotorStator Stator, IMyMotorStator IgnoreStator = null)
 		{
 			CubeGridCache cache = CubeGridCache.GetFor(grid);
 
-			// first stator & rotater that are found that are not working
+			// first stator that are found that are not working
 			// returned if a working set is not found
 			IMyMotorStator offStator = null;
-			IMyMotorRotor offRotor = null;
 
-			foreach (MyObjectBuilderType type in Static.types_Rotor)
-				foreach (IMyCubeBlock motorPart in cache.BlocksOfType(type))
+			foreach (MyObjectBuilderType type in types_Rotor)
+				foreach (IMyMotorRotor rotor in cache.BlocksOfType(type))
 				{
-					if (!FaceBlock.canControlBlock(motorPart))
+					if (!FaceBlock.canControlBlock(rotor))
+					{
+						Log.DebugLog("Cannot control: " + rotor.nameWithId());
+						continue;
+					}
+
+					Stator = (IMyMotorStator)rotor.Base;
+					if (Stator == null || Stator == IgnoreStator)
 						continue;
 
-					Stator = motorPart as IMyMotorStator;
-					if (Stator != null)
+					if (IgnoreStator != null && !ArePerpendicular(IgnoreStator, Stator))
 					{
-						if (Stator == IgnoreStator)
-							continue;
-						Rotor = (IMyMotorRotor)Stator.Top;
-						if (Rotor != null)
-						{
-							if (Stator.IsWorking && Rotor.IsWorking)
-								return true;
-							else if (offStator == null || offRotor == null)
-							{
-								offStator = Stator;
-								offRotor = Rotor;
-							}
-						}
+						Log.DebugLog("Not perpendicular: " + IgnoreStator.nameWithId() + " & " + Stator.nameWithId());
+						continue;
 					}
-					else
-					{
-						Rotor = motorPart as IMyMotorRotor;
-						if (Rotor == null || Rotor == IgnoreRotor)
-							continue;
-						Stator = (IMyMotorStator)Rotor.Base;
-						if (Stator != null)
-						{
-							if (Stator.IsWorking && Rotor.IsWorking)
-								return true;
-							else if (offStator == null || offRotor == null)
-							{
-								offStator = Stator;
-								offRotor = Rotor;
-							}
-						}
-					}
+
+					if (Stator.IsWorking)
+						return true;
+					else if (offStator == null)
+						offStator = Stator;
 				}
 
-			if (offStator != null && offRotor != null)
+			if (offStator != null)
 			{
 				Stator = offStator;
-				Rotor = offRotor;
 				return true;
 			}
 
 			Stator = null;
-			Rotor = null;
 			return false;
 		}
 
@@ -621,6 +716,12 @@ namespace Rynchodon
 		private void SetVelocity(MyMotorStator stator, float angle)
 		{
 			Log.DebugLog("Not server!", Logger.severity.FATAL, condition: !MyAPIGateway.Multiplayer.IsServer);
+
+			if (!StatorOk(stator))
+				return;
+
+			if (!stator.Enabled)
+				stator.Enabled = true;
 
 			float velocity = MathHelper.Clamp(angle * m_rotationSpeedMulitplier, -speedLimit, speedLimit);
 
