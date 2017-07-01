@@ -63,7 +63,7 @@ namespace Rynchodon.Utility.Network
 				_getter = script => {
 					TValue value = getter(script);
 					if (value == null)
-						alwaysLog("Returning null StringBuilder", Logger.severity.FATAL);
+						Log.AlwaysLog("Returning null StringBuilder", Logger.severity.FATAL);
 					return value;
 				};
 #endif
@@ -83,7 +83,7 @@ namespace Rynchodon.Utility.Network
 				DefaultValueAttribute defaultAtt = field.GetCustomAttribute<DefaultValueAttribute>();
 				_defaultValue = defaultAtt != null ? (TValue)defaultAtt.Value : default(TValue);
 
-				traceLog("default value: " + _defaultValue, condition: defaultAtt != null);
+				Log.TraceLog("default value: " + _defaultValue, condition: defaultAtt != null);
 
 				RegisterSetDefaultValue();
 				return;
@@ -259,7 +259,7 @@ namespace Rynchodon.Utility.Network
 			TScript script;
 			if (Registrar.TryGetValue(entityId, out script))
 			{
-				traceLog("got script, setting value. entityId: " + entityId + ", value: " + value);
+				Log.TraceLog("got script, setting value. entityId: " + entityId + ", value: " + value);
 				SetValue(entityId, script, value, false);
 			}
 			else
@@ -279,7 +279,7 @@ namespace Rynchodon.Utility.Network
 					_orphanValues = new Dictionary<long, TValue>();
 					Registrar.AddAfterScriptAdded<TScript>(CheckForOrphan);
 				}
-				traceLog("orphans: " + orphanIds.Count);
+				Log.TraceLog("orphans: " + orphanIds.Count);
 				foreach (long orphan in orphanIds)
 					_orphanValues.Add(orphan, value);
 			}
@@ -294,7 +294,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (_orphanValues == null)
 			{
-				debugLog("no orphan values, unregister", Logger.severity.WARNING);
+				Log.DebugLog("no orphan values, unregister", Logger.severity.WARNING);
 				RemoveCheckForOrphan();
 				return;
 			}
@@ -302,7 +302,7 @@ namespace Rynchodon.Utility.Network
 			TValue value;
 			if (!_orphanValues.TryGetValue(entityId, out value))
 			{
-				traceLog("no orphan value for entity: " + entityId);
+				Log.TraceLog("no orphan value for entity: " + entityId);
 				return;
 			}
 
@@ -311,7 +311,7 @@ namespace Rynchodon.Utility.Network
 
 			if (_orphanValues.Count == 0)
 			{
-				debugLog("no more orphan values");
+				Log.DebugLog("no more orphan values");
 				RemoveCheckForOrphan();
 				_orphanValues = null;
 			}
@@ -336,7 +336,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				alwaysLog("Cannot send values, this is not the server", Logger.severity.ERROR);
+				Log.AlwaysLog("Cannot send values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 
@@ -389,7 +389,7 @@ namespace Rynchodon.Utility.Network
 
 			if (initCount > maxSize)
 			{
-				alwaysLog("Cannot send message, value is too large. byte count: " + initCount + ", value: " + _outgoing.Value);
+				Log.AlwaysLog("Cannot send message, value is too large. byte count: " + initCount + ", value: " + _outgoing.Value);
 				_outgoing = null;
 				return;
 			}
@@ -399,7 +399,7 @@ namespace Rynchodon.Utility.Network
 				ByteConverter.AppendBytes(bytes, _outgoing.EntityId[entityIdIndex]);
 				if (bytes.Count > maxSize)
 				{
-					traceLog("Over max size, splitting message");
+					Log.TraceLog("Over max size, splitting message");
 					SendOutgoing(bytes);
 					AddIdAndValue(bytes);
 				}
@@ -429,12 +429,12 @@ namespace Rynchodon.Utility.Network
 		/// <param name="bytes">The message to send.</param>
 		private void SendOutgoing(List<byte> bytes)
 		{
-			traceLog("sending to: " + _outgoing.ClientId + ", value: " + _outgoing.Value + ", entities: " + string.Join(",", _outgoing.EntityId));
+			Log.TraceLog("sending to: " + _outgoing.ClientId + ", value: " + _outgoing.Value + ", entities: " + string.Join(",", _outgoing.EntityId));
 			bool result = _outgoing.ClientId.HasValue
 				? MyAPIGateway.Multiplayer.SendMessageTo(MessageHandler.ModId, bytes.ToArray(), _outgoing.ClientId.Value)
 				: MyAPIGateway.Multiplayer.SendMessageToOthers(MessageHandler.ModId, bytes.ToArray());
 			if (!result)
-				alwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
+				Log.AlwaysLog("Failed to send message, length: " + bytes.Count, Logger.severity.ERROR);
 		}
 
 		#endregion
@@ -445,7 +445,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				alwaysLog("Cannot write values, this is not the server", Logger.severity.ERROR);
+				Log.AlwaysLog("Cannot write values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 
@@ -480,7 +480,7 @@ namespace Rynchodon.Utility.Network
 		{
 			if (!MyAPIGateway.Multiplayer.IsServer)
 			{
-				alwaysLog("Cannot read values, this is not the server", Logger.severity.ERROR);
+				Log.AlwaysLog("Cannot read values, this is not the server", Logger.severity.ERROR);
 				return;
 			}
 

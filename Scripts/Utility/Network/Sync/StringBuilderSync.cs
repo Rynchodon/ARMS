@@ -76,20 +76,20 @@ namespace Rynchodon.Utility.Network
 		/// <param name="updateMethod">Method to populate the StringBuilder</param>
 		public void Update(IMyTerminalBlock block, Action<StringBuilder> updateMethod)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			StringBuilder temp = _stringBuilderPool.Get(), current = GetValue(block);
 
 			updateMethod.Invoke(temp);
 			if (temp.EqualsIgnoreCapacity(current))
 			{
-				traceLog("equals previous value");
+				Log.TraceLog("equals previous value");
 				temp.Clear();
 				_stringBuilderPool.Return(temp);
 			}
 			else
 			{
-				traceLog("value changed from " + current + " to " + temp);
+				Log.TraceLog("value changed from " + current + " to " + temp);
 				SetValue(block, temp);
 				current.Clear();
 				_stringBuilderPool.Return(current);
@@ -98,9 +98,9 @@ namespace Rynchodon.Utility.Network
 
 		protected override void SetValue(long blockId, TScript script, StringBuilder value, bool send)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
-			traceLog("set value to " + value);
+			Log.TraceLog("set value to " + value);
 			_setter(script, value);
 			if (send)
 				EnqueueSend(blockId);
@@ -115,7 +115,7 @@ namespace Rynchodon.Utility.Network
 
 		private void EnqueueSend(long blockId)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			if (_updatedBlocks == null)
 			{
@@ -129,7 +129,7 @@ namespace Rynchodon.Utility.Network
 
 		private void Update10()
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			if (_waitUntil > Globals.UpdateCount)
 				return;

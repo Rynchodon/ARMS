@@ -45,7 +45,7 @@ namespace Rynchodon.Utility.Network
 		public EventSync(IMyTerminalControlButton control, Event onPress, bool serverOnly = true)
 			: base(typeof(TScript), control.Id, false)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			_onPress = onPress;
 			_serverOnly = serverOnly;
@@ -62,7 +62,7 @@ namespace Rynchodon.Utility.Network
 		public EventSync(string controlId, Event onPress, bool serverOnly = true)
 			: base(typeof(TScript), controlId, false)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			_onPress = onPress;
 			_serverOnly = serverOnly;
@@ -70,7 +70,7 @@ namespace Rynchodon.Utility.Network
 
 		public void RunEvent(IMyTerminalBlock block)
 		{
-			traceLog("entered");
+			Log.TraceLog("entered");
 
 			TScript script;
 			if (Registrar.TryGetValue(block.EntityId, out script))
@@ -79,18 +79,18 @@ namespace Rynchodon.Utility.Network
 				{
 					if (MyAPIGateway.Multiplayer.IsServer)
 					{
-						traceLog("running here");
+						Log.TraceLog("running here");
 						_onPress(script);
 					}
 					else
 					{
-						traceLog("sending to server");
+						Log.TraceLog("sending to server");
 						SendValue(block.EntityId, MyAPIGateway.Multiplayer.ServerId);
 					}
 				}
 				else
 				{
-					traceLog("running here and sending to all");
+					Log.TraceLog("running here and sending to all");
 					_onPress(script);
 					SendValue(block.EntityId);
 				}
@@ -119,7 +119,7 @@ namespace Rynchodon.Utility.Network
 						Logger.AlwaysLog("Got event intended for the server", Logger.severity.WARNING, _id.ToString());
 					else
 					{
-						traceLog("running here");
+						Log.TraceLog("running here");
 						_onPress(script);
 					}
 					return;
