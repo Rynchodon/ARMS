@@ -272,7 +272,6 @@
     <Compile Include="Utility\Extensions\IMyVoxelBaseExtensions.cs" />
     <Compile Include="Utility\Extensions\ObjectExtensions.cs" />
     <Compile Include="Utility\Extensions\StringBuilderExtensions.cs" />
-    <Compile Include="Utility\FileMaster.cs" />
     <Compile Include="Utility\Instructions\BlockInstructions.cs" />
     <Compile Include="Utility\ByteConverter.cs" />
     <Compile Include="Utility\Collections\CubeGridCache.cs" />
@@ -290,6 +289,7 @@
     <Compile Include="Utility\Extensions\VectorExtensions.cs" />
     <Compile Include="Utility\FastResourceLock.cs" />
     <Compile Include="Utility\Globals.cs" />
+    <Compile Include="Utility\ModFile.cs" />
     <Compile Include="Utility\Mods.cs" />
     <Compile Include="Utility\Lazy.cs" />
     <Compile Include="Utility\LineSegment.cs" />

@@ -1,6 +1,7 @@
 using System; // partial
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Sandbox.ModAPI;
 using VRage.Library.Utils;
@@ -65,8 +66,7 @@ namespace Rynchodon.Utility
 		[System.Diagnostics.Conditional("PROFILE")]
 		public static void Write()
 		{
-			FileMaster master = new FileMaster("Profiler master.txt", "Profiler - ", 10);
-			System.IO.TextWriter writer = master.GetTextWriter(DateTime.UtcNow.Ticks + ".csv");
+			System.IO.TextWriter writer = new ModFile("Profiler", "csv", Assembly.GetExecutingAssembly(), 10).GetTextWriter();
 			writer.WriteLine("Class Name, Method Name, Seconds, Invokes, Seconds per Invoke, Worst Time, Ratio of Sum, Ratio of Game Time");
 
 			using (ProfileValues.m_lock.AcquireExclusiveUsing())
