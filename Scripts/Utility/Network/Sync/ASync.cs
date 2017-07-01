@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Sandbox.ModAPI;
+using Rynchodon.Utility;
 using VRage.Collections;
 
 namespace Rynchodon.Utility.Network
@@ -14,7 +15,7 @@ namespace Rynchodon.Utility.Network
 	/// <summary>
 	/// Objects of this type synchronize and save events or values.
 	/// </summary>
-	public abstract class ASync : LogWise
+	public abstract class ASync
 	{
 		/// <summary>
 		/// Serialized as byte; do not change order.
@@ -242,6 +243,8 @@ namespace Rynchodon.Utility.Network
 		protected readonly Id _id;
 		protected readonly bool _save;
 
+		protected Logable Log { get { return new Logable(_id.ToString()); } }
+
 		protected ASync(Type scriptType, string valueId, bool save = true)
 		{
 			this._id = GetId(scriptType, valueId);
@@ -257,7 +260,7 @@ namespace Rynchodon.Utility.Network
 				RequestValues();
 			}
 
-			traceLog("initialized");
+			Log.TraceLog("initialized");
 		}
 
 		/// <summary>
@@ -269,7 +272,7 @@ namespace Rynchodon.Utility.Network
 
 		protected void LogMissingFromRegistrar(long entityId, bool network, [CallerFilePath] string filePath = null, [CallerMemberName] string member = null, [CallerLineNumber] int lineNumber = 0)
 		{
-			alwaysLog("entity not found in Registrar: " + entityId, network ? Logger.severity.WARNING : Logger.severity.ERROR, filePath: filePath, member: member, lineNumber: lineNumber);
+			Log.AlwaysLog("entity not found in Registrar: " + entityId, network ? Logger.severity.WARNING : Logger.severity.ERROR, filePath: filePath, member: member, lineNumber: lineNumber);
 		}
 
 		/// <summary>
@@ -286,11 +289,5 @@ namespace Rynchodon.Utility.Network
 		protected abstract void WriteToSave(List<byte> bytes);
 
 		protected abstract void ReadFromSave(byte[] bytes, ref int position);
-
-		protected override sealed string GetContext()
-		{
-			return _id.ToString();
-		}
-
 	}
 }
